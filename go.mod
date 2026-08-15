@@ -1,4 +1,4 @@
-module github.com/jhaelfire/picarda
+module github.com/jpcranford/picarda
 
 go 1.26.6
 

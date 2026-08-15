@@ -2,14 +2,29 @@ package config
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/robfig/cron/v3"
 )
 
 // defaultCitationFormat mirrors design doc §6's format string.
 const defaultCitationFormat = `{composer}, {Book.bookTitle}, "{title}" ({workOpusNumber}), {publisher}, {imslpNumber|publisherId}, ca. {yearWritten}`
+
+const defaultLogLevel = "info"
+
+// logLevels are the recognized LOG_LEVEL values. INFO is the default,
+// matching CLAUDE.md > Logging's convention that routine-but-notable
+// events (deletions, backups) belong at INFO in production; DEBUG is
+// there to turn up verbosity when troubleshooting a deployed instance.
+var logLevels = map[string]slog.Level{
+	"debug": slog.LevelDebug,
+	"info":  slog.LevelInfo,
+	"warn":  slog.LevelWarn,
+	"error": slog.LevelError,
+}
 
 type Config struct {
 	Port                string
@@ -18,6 +33,13 @@ type Config struct {
 	BackupRetentionDays int
 	BackupCron          string
 	CitationFormat      string
+	LogLevel            string
+}
+
+// SlogLevel converts the validated LogLevel string into a slog.Level for
+// building the app's logger.
+func (c *Config) SlogLevel() slog.Level {
+	return logLevels[c.LogLevel]
 }
 
 // Load reads and validates configuration from the environment, failing fast
@@ -28,6 +50,7 @@ func Load() (*Config, error) {
 		DataDir:        getEnv("DATA_DIR", "/data"),
 		BackupCron:     getEnv("BACKUP_CRON", "0 3 * * *"),
 		CitationFormat: getEnv("CITATION_FORMAT", defaultCitationFormat),
+		LogLevel:       strings.ToLower(getEnv("LOG_LEVEL", defaultLogLevel)),
 	}
 	cfg.BackupDir = getEnv("BACKUP_DIR", cfg.DataDir+"/backups")
 
@@ -40,6 +63,10 @@ func Load() (*Config, error) {
 
 	if _, err := cron.ParseStandard(cfg.BackupCron); err != nil {
 		return nil, fmt.Errorf("BACKUP_CRON is not a valid cron expression: %w", err)
+	}
+
+	if _, ok := logLevels[cfg.LogLevel]; !ok {
+		return nil, fmt.Errorf("LOG_LEVEL must be one of debug, info, warn, error, got %q", cfg.LogLevel)
 	}
 
 	return cfg, nil

@@ -12,11 +12,7 @@ import (
 //go:embed migrations/*.sql
 var migrationsFS embed.FS
 
-// Open opens the SQLite database at path, applies WAL mode and foreign key
-// enforcement (CLAUDE.md > Concurrency), and runs any pending goose
-// migrations. v1 is single-user/single-session, so a single connection is
-// intentional here — it also sidesteps SQLITE_BUSY entirely rather than
-// relying on retries across a pool.
+// Open opens the SQLite database at path, applies WAL mode and foreign key enforcement (CLAUDE.md > Concurrency), and runs any pending goose migrations. v1 is single-user/single-session, so a single connection is intentional here — it also sidesteps SQLITE_BUSY entirely rather than relying on retries across a pool.
 func Open(path string) (*sql.DB, error) {
 	dsn := fmt.Sprintf(
 		"file:%s?_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)",

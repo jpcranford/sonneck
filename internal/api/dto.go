@@ -1,0 +1,250 @@
+package api
+
+import (
+	"context"
+	"time"
+
+	"github.com/jpcranford/picarda/internal/models"
+	"github.com/jpcranford/picarda/internal/repo"
+)
+
+// EffectiveTagRef and EffectiveTagRefs are the tag-shaped counterparts to
+// repo.EffectiveIDField/EffectiveTagsField, carrying the resolved Tag
+// (id+name) instead of a bare ID so the frontend never has to make a
+// second round trip to show "Inherited from book" (design doc §15).
+type EffectiveTagRef struct {
+	Value     *repo.Tag `json:"value"`
+	Inherited bool      `json:"inherited"`
+}
+
+type EffectiveTagRefs struct {
+	Values    []repo.Tag `json:"values"`
+	Inherited bool       `json:"inherited"`
+}
+
+// PieceResponse is the wire shape for a Piece. Every book-inheritable field
+// is an effective-value object ({value, inherited}) built via
+// repo.ResolveEffective — never a raw Piece column — per CLAUDE.md > Book-
+// level soft inheritance: display must go through the same resolver as
+// validation/citation/search, or it would silently diverge from them.
+type PieceResponse struct {
+	ID              int64               `json:"id"`
+	Title           string              `json:"title"`
+	Composer        repo.EffectiveField `json:"composer"`
+	Arranger        *string             `json:"arranger"`
+	Favorite        bool                `json:"favorite"`
+	WorkOpusNumber  repo.EffectiveField `json:"workOpusNumber"`
+	Key             *repo.Tag           `json:"key"`
+	SheetType       EffectiveTagRef     `json:"sheetType"`
+	Publisher       repo.EffectiveField `json:"publisher"`
+	PublisherID     repo.EffectiveField `json:"publisherId"`
+	YearWritten     repo.EffectiveField `json:"yearWritten"`
+	Description     repo.EffectiveField `json:"description"`
+	UserNotes       *string             `json:"userNotes"`
+	UserTags        []repo.Tag          `json:"userTags"`
+	PracticeStatus  *string             `json:"practiceStatus"`
+	ImslpNumber     repo.EffectiveField `json:"imslpNumber"`
+	Instruments     EffectiveTagRefs    `json:"instruments"`
+	SourceBookID    *int64              `json:"sourceBookId"`
+	SourceBookTitle *string             `json:"sourceBookTitle,omitempty"`
+	SourcePageStart *int                `json:"sourcePageStart"`
+	SourcePageEnd   *int                `json:"sourcePageEnd"`
+	Duration        *int                `json:"duration"`
+	BPM             *int                `json:"bpm"`
+	MeasureCount    *int                `json:"measureCount"`
+	BeatsPerMeasure *int                `json:"beatsPerMeasure"`
+	FileHash        string              `json:"fileHash"`
+	CopyrightYear   *int                `json:"copyrightYear"`
+	PublicDomain    bool                `json:"publicDomain"`
+	CreatedAt       time.Time           `json:"createdAt"`
+	UpdatedAt       time.Time           `json:"updatedAt"`
+}
+
+// BuildPieceResponse resolves p's effective values and every referenced
+// tag's display name, in the fewest queries reasonable for v1's scale.
+func BuildPieceResponse(ctx context.Context, q repo.Queryer, p *models.Piece) (*PieceResponse, error) {
+	eff, err := repo.ResolveEffective(ctx, q, p)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := &PieceResponse{
+		ID:              p.ID,
+		Title:           p.Title,
+		Composer:        eff.Composer,
+		Arranger:        p.Arranger,
+		Favorite:        p.Favorite,
+		WorkOpusNumber:  eff.WorkOpusNumber,
+		Publisher:       eff.Publisher,
+		PublisherID:     eff.PublisherID,
+		YearWritten:     eff.YearWritten,
+		Description:     eff.Description,
+		UserNotes:       p.UserNotes,
+		PracticeStatus:  p.PracticeStatus,
+		ImslpNumber:     eff.ImslpNumber,
+		SourceBookID:    p.SourceBookID,
+		SourcePageStart: p.SourcePageStart,
+		SourcePageEnd:   p.SourcePageEnd,
+		Duration:        p.Duration,
+		BPM:             p.BPM,
+		MeasureCount:    p.MeasureCount,
+		BeatsPerMeasure: p.BeatsPerMeasure,
+		FileHash:        p.FileHash,
+		CopyrightYear:   p.CopyrightYear,
+		PublicDomain:    p.PublicDomain,
+		CreatedAt:       p.CreatedAt,
+		UpdatedAt:       p.UpdatedAt,
+	}
+
+	if p.KeyID != nil {
+		k, err := repo.GetKeyByID(ctx, q, *p.KeyID)
+		if err != nil {
+			return nil, err
+		}
+		resp.Key = &repo.Tag{ID: k.ID, Name: k.Name}
+	}
+
+	resp.SheetType = EffectiveTagRef{Inherited: eff.SheetTypeID.Inherited}
+	if eff.SheetTypeID.Value != nil {
+		st, err := repo.GetSheetTypeByID(ctx, q, *eff.SheetTypeID.Value)
+		if err != nil {
+			return nil, err
+		}
+		resp.SheetType.Value = &repo.Tag{ID: st.ID, Name: st.Name}
+	}
+
+	resp.Instruments = EffectiveTagRefs{Inherited: eff.InstrumentIDs.Inherited}
+	if len(eff.InstrumentIDs.IDs) > 0 {
+		tags, err := repo.TagsByIDs(ctx, q, "instruments", eff.InstrumentIDs.IDs)
+		if err != nil {
+			return nil, err
+		}
+		resp.Instruments.Values = tags
+	}
+
+	if len(p.UserTagIDs) > 0 {
+		tags, err := repo.TagsByIDs(ctx, q, "user_tags", p.UserTagIDs)
+		if err != nil {
+			return nil, err
+		}
+		resp.UserTags = tags
+	}
+
+	if p.SourceBookID != nil {
+		book, err := repo.GetBookByID(ctx, q, *p.SourceBookID)
+		if err != nil {
+			return nil, err
+		}
+		resp.SourceBookTitle = &book.BookTitle
+	}
+
+	return resp, nil
+}
+
+// BookResponse is the wire shape for a Book (design doc §16's edit menu
+// surface). PieceCount backs the "this affects N pieces" UI note called
+// for when editing book-level fields.
+type BookResponse struct {
+	ID               int64      `json:"id"`
+	BookTitle        string     `json:"bookTitle"`
+	Composer         *string    `json:"composer"`
+	YearWritten      *string    `json:"yearWritten"`
+	WorkOpusNumber   *string    `json:"workOpusNumber"`
+	SheetType        *repo.Tag  `json:"sheetType"`
+	Publisher        *string    `json:"publisher"`
+	PublisherID      *string    `json:"publisherId"`
+	Description      *string    `json:"description"`
+	ImslpNumber      *string    `json:"imslpNumber"`
+	Instruments      []repo.Tag `json:"instruments"`
+	OriginalFilename string     `json:"originalFilename"`
+	FileHash         string     `json:"fileHash"`
+	ImportedAt       time.Time  `json:"importedAt"`
+	PieceCount       int        `json:"pieceCount"`
+}
+
+func BuildBookResponse(ctx context.Context, q repo.Queryer, b *models.Book) (*BookResponse, error) {
+	resp := &BookResponse{
+		ID:               b.ID,
+		BookTitle:        b.BookTitle,
+		Composer:         b.Composer,
+		YearWritten:      b.YearWritten,
+		WorkOpusNumber:   b.WorkOpusNumber,
+		Publisher:        b.Publisher,
+		PublisherID:      b.PublisherID,
+		Description:      b.Description,
+		ImslpNumber:      b.ImslpNumber,
+		OriginalFilename: b.OriginalFilename,
+		FileHash:         b.FileHash,
+		ImportedAt:       b.ImportedAt,
+	}
+
+	if b.SheetTypeID != nil {
+		st, err := repo.GetSheetTypeByID(ctx, q, *b.SheetTypeID)
+		if err != nil {
+			return nil, err
+		}
+		resp.SheetType = &repo.Tag{ID: st.ID, Name: st.Name}
+	}
+
+	if len(b.InstrumentIDs) > 0 {
+		tags, err := repo.TagsByIDs(ctx, q, "instruments", b.InstrumentIDs)
+		if err != nil {
+			return nil, err
+		}
+		resp.Instruments = tags
+	}
+
+	count, err := repo.CountPiecesForBook(ctx, q, b.ID)
+	if err != nil {
+		return nil, err
+	}
+	resp.PieceCount = count
+
+	return resp, nil
+}
+
+// PieceWriteRequest is the full-form submission shape for both the
+// wizard's per-piece fill step and the standalone piece edit menu (design
+// doc §5, §15) — react-hook-form submits the whole form each time, so this
+// is a wholesale replace, not a sparse PATCH: a nil/empty field means
+// "cleared", not "leave unchanged". Tag fields are names, not IDs
+// (Calibre-style pick-existing-or-type-new — resolved server-side via
+// repo.FindOrCreate*).
+type PieceWriteRequest struct {
+	Title           string   `json:"title"`
+	Composer        *string  `json:"composer"`
+	Arranger        *string  `json:"arranger"`
+	Favorite        bool     `json:"favorite"`
+	WorkOpusNumber  *string  `json:"workOpusNumber"`
+	KeyName         *string  `json:"keyName"`
+	SheetTypeName   *string  `json:"sheetTypeName"`
+	Publisher       *string  `json:"publisher"`
+	PublisherID     *string  `json:"publisherId"`
+	YearWritten     *string  `json:"yearWritten"`
+	Description     *string  `json:"description"`
+	UserNotes       *string  `json:"userNotes"`
+	Instruments     []string `json:"instruments"`
+	UserTags        []string `json:"userTags"`
+	PracticeStatus  *string  `json:"practiceStatus"`
+	ImslpNumber     *string  `json:"imslpNumber"`
+	SourcePageStart *int     `json:"sourcePageStart"`
+	SourcePageEnd   *int     `json:"sourcePageEnd"`
+	BPM             *int     `json:"bpm"`
+	MeasureCount    *int     `json:"measureCount"`
+	BeatsPerMeasure *int     `json:"beatsPerMeasure"`
+}
+
+// BookWriteRequest is the Book Properties Edit Menu's submission shape
+// (design doc §16). No field is required except BookTitle.
+type BookWriteRequest struct {
+	BookTitle      string   `json:"bookTitle"`
+	Composer       *string  `json:"composer"`
+	YearWritten    *string  `json:"yearWritten"`
+	WorkOpusNumber *string  `json:"workOpusNumber"`
+	SheetTypeName  *string  `json:"sheetTypeName"`
+	Publisher      *string  `json:"publisher"`
+	PublisherID    *string  `json:"publisherId"`
+	Description    *string  `json:"description"`
+	ImslpNumber    *string  `json:"imslpNumber"`
+	Instruments    []string `json:"instruments"`
+}
