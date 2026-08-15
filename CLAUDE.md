@@ -1,0 +1,107 @@
+# CLAUDE.md — House Rules & Conventions
+
+Companion to `picarda-design.md` (the design doc for **Picarda**, codenamed after the English music scholar). Re-read this file at the start of every session — its job is to keep cross-cutting decisions consistent across many separate sessions, which a design doc alone won't do.
+
+## Database migrations
+Tool: **goose**. Every schema change is a migration file, checked into the repo, never a hand-edited change to an existing migration. Several fields are already known to be coming later (`composerDeathYear`, `SheetType.definition`, custom fields — see design doc §13), each gets its own new migration when it lands, not a retrofit into v1's schema. (Reconsidered whether a lighter-weight approach than a dedicated migration tool would do for a small project — kept `goose` regardless, since this risk is driven by session count across a vibe-coded build, not team size, and the tool itself is small and low-overhead.)
+
+**Deliberate exception:** `copyrightYear` (int) and `publicDomain` (bool) are pre-built into v1's `Piece` schema now, unused, even though the feature they belong to (the public-domain badge, design doc §13) is deferred — see design doc §3 for the reasoning. This is a one-off exception for these two specifically (cheap, simple columns), not a general license to pre-build ahead of features. `composerDeathYear` — part of the same deferred feature — does *not* get this treatment and arrives as a normal migration if/when that feature is built.
+
+## API response contract
+Every endpoint returns one of two shapes — no per-handler improvisation:
+```json
+// success
+{ "data": { ... } }
+
+// error
+{ "error": { "code": "VALIDATION_ERROR", "message": "human-readable description" } }
+```
+If a decision point isn't covered by this doc, default to this shape rather than inventing a variant.
+
+## Testing
+No comprehensive test suite is required for v1, but one area is **not optional** because failures there are silent and permanent:
+- **PDF page-extraction logic** (the import wizard's split step) — a wrong page range is a data-correctness bug nobody notices until they open the piece later. Needs unit tests covering at least: single-page piece, multi-page piece, first piece includes page 1, last piece includes the final page, off-by-one boundaries between adjacent pieces.
+
+(Public-domain calculation testing was flagged as similarly load-bearing in an earlier pass — that requirement is deferred along with the feature itself; see design doc §13. Revisit this section when that feature is built.)
+
+Everything else: use judgment, but the PDF-extraction logic above is load-bearing.
+
+## Concurrency
+v1 is single-user, single-session (see design doc §8). Do not build multi-writer conflict handling. Do enable SQLite WAL mode at startup regardless — cheap, no design cost, cost of skipping it isn't worth the reason to skip it.
+
+**Naming/architecture note:** `Piece.userNotes`, `Piece.userTags`, `Piece.favorite`, and `Piece.practiceStatus` will all be genuinely account-scoped and different per-user once multi-user support lands (confirmed, not just speculative) — but there's no user model in v1 to scope them to yet (see above). **Resolved:** keep them simple in v1 (as currently structured — plain fields and a shared-catalog many-to-many for tags) and accept a real migration when multi-user lands, rather than pre-building relational structure now — same treatment as `composerDeathYear` above, for the same reason (not cheap/simple enough to justify pre-building unused). One detail worth remembering for that future migration: `userTags` is confirmed to become a **fully private per-user vocabulary** once multi-user lands (no shared tag catalog across users, unlike `Key`/`SheetType`) — a bigger restructuring than just adding a `userId` column, since it changes what a "tag" even is (user-owned, not globally shared), so budget the future migration accordingly rather than assuming it's a small add-a-column change.
+
+## Book-level soft inheritance
+Full mechanism in design doc §3/§14/§15/§16 — this section is about the implementation convention, not the feature itself.
+
+**One shared "resolve effective piece values" helper, used everywhere a book-inheritable field is read** — display (Piece View, edit menu), validation, citation generation (design doc §6), and search indexing (below) all need the same piece's-own-value-falling-back-to-book's-value resolution. Implement it once, call it from all four places. Do not let validation or citation generation read `Piece` columns directly for `composer`/`publisher`/`publisherId`/`imslpNumber`/`yearWritten`/`workOpusNumber`/`instruments`/`sheetType` — that would silently diverge from what's displayed, which is exactly the kind of inconsistency this pattern exists to avoid.
+
+**Saving a `Book` edit (design doc §16) writes to exactly one record — the `Book` itself.** Nothing about any `Piece` row changes. What changes is what gets *read*: every piece with that `sourceBookId` and no override for the changed field resolves its effective value live against current `Book` data (the shared helper above), so the result naturally reflects the edit without the app writing to any `Piece` row. This still needs: a search-index resync for every affected piece's `pieces_fts` row (not the underlying `Piece` row — see Search below, this is a property of how the search index denormalizes data, not of the data model itself), and ideally a UI-level "this affects N pieces" indication so it doesn't read as a surprising side effect.
+
+## File handling
+- All file hashing uses **SHA-256** (`crypto/sha256`, standard library — not BLAKE3, see design doc §2 for why), streamed incrementally during upload via the standard `hash.Hash` interface — never buffer a full 100+MB file into memory before hashing.
+- **Duplicate upload behavior:** dedupe on SHA-256 hash match — reuse the existing `Book` record, never create a second copy of the same file.
+- **Deletion semantics (confirmed):** hard delete + orphan cleanup. Deleting a `Piece` removes its DB row and its extracted file. If that was the last `Piece` referencing a `Book`, the `Book` record and its original file are deleted too (no indefinite orphan retention). Both piece deletions and orphaned-book cleanups must be logged — see Logging below.
+- **`Book` fields are not denormalized onto `Piece`** (design doc §3) — the Piece View resolves book-level display live via `sourceBookId → Book`, edited through the Book Properties Edit Menu (design doc §16), not stored copies on `Piece`. This is deliberate: don't add a "sync book fields to all pieces" step anywhere in application code, since there's nothing to sync — the join makes every piece reflect the current book data automatically. If a future feature ever needs book data to be point-in-time/historical rather than always-current, that's a real design conversation to have, not something to solve by quietly denormalizing it back.
+- **`Book` is entirely optional** (design doc §3) — `Piece` is the app's actual primary unit, and a piece with no `Book` at all (via §5's single-piece upload) is a normal, first-class case, not an edge case to special-case around. Don't write code that assumes `sourceBookId` is usually present.
+- **File replacement** (design doc §14): hard-replace on the same `Piece` record, not a new piece — same no-soft-delete philosophy as piece/book deletion above. `sourceBookId`/`sourcePageStart`/`sourcePageEnd` are kept as historical provenance after a replace, per an explicit decision — don't clear them, and don't assume they still describe the current file's exact page range.
+
+## Logging
+Use the standard library's **`log/slog`** (structured logging, built in since Go 1.21 — no third-party library needed, hence the version floor in the design doc's stack table).
+
+Deletions (piece deletion, cascading orphaned-book cleanup) **and piece file replacement** (design doc §14) are logged at **INFO level**, not DEBUG or WARN/ERROR. This follows standard practice: INFO is the conventional level for production systems, and destructive-but-expected user actions belong there so they're visible in normal production logs rather than hidden behind DEBUG (typically disabled in production) or miscategorized as a warning/error when nothing actually went wrong. Reserve WARN/ERROR for things that are actually problems.
+
+Use structured fields, not string interpolation — e.g.:
+```go
+logger.Info("piece deleted", "pieceId", piece.ID, "fileHash", piece.FileHash, "title", piece.Title)
+logger.Info("orphaned book cleaned up", "bookId", book.ID, "fileHash", book.FileHash, "reason", "last referencing piece deleted")
+logger.Info("piece file replaced", "pieceId", piece.ID, "oldFileHash", oldHash, "newFileHash", newHash)
+```
+This keeps logs greppable/filterable (e.g. `level:info AND pieceId:...`) rather than requiring regex over free text.
+
+## Config
+- All global settings are env vars (no settings table in v1) — see design doc §3. Includes `BACKUP_CRON` (backup schedule, standard cron expression, default `0 3 * * *`) as of this revision.
+- Validate all env vars at startup and fail fast with a clear message rather than failing later mid-request (e.g. `BACKUP_RETENTION_DAYS` isn't a valid integer, `BACKUP_CRON` isn't parseable). A `COPYRIGHT_REGION` validation rule was specified in an earlier pass, tied to the now-deferred public-domain feature — revisit this when that feature is built (design doc §13).
+- **How env vars get set is entirely a Docker Compose concern, not application code.** `environment:` block in `docker-compose.yml` (this project's own choice) vs. a sibling `.env` file are both natively supported by Compose — the app just reads env vars the same way either way. Don't build anything app-side to support one or the other.
+- **Backup scheduling** uses `robfig/cron` (pure Go, no CGO, well-known/standard choice — same dependency posture as `modernc.org/sqlite`/BLAKE3-vs-SHA256 elsewhere in this doc) to parse `BACKUP_CRON` and drive the daily `VACUUM INTO` snapshot (design doc §4).
+
+## Operational basics
+- `/healthz` endpoint, used by the Docker healthcheck.
+- Backup: daily `VACUUM INTO` snapshot of the SQLite DB (design doc §4). Restore: stop container → replace the DB file → restart. Document this in the README, not just implied.
+
+## Search
+SQLite FTS5, not a separate search engine like Bleve — see design doc §2 for the full reasoning (StashApp's approach was the starting inspiration; FTS5 achieves the same goal with less operational overhead for this project's scale).
+
+- Virtual table: `pieces_fts`, one row per `Piece`, denormalized content per design doc §3 — **book-inheritable fields are indexed by their effective value** (the shared resolution helper above), not the raw `Piece` column, or search would miss pieces that only inherit a value from their book.
+- **Sync mechanism:** application-level — an explicit `resyncSearchIndex(pieceId)` call after any `Piece` or tag-assignment mutation, run in the same transaction as the mutation itself. Not SQL triggers: trigger logic spread across `Piece` and several tag join tables is harder for a Go-focused contributor to discover and test than one function called from application code, which fits this project's existing maintainer-accommodation reasoning (design doc §2's TypeScript choice, for one). Real trade-off accepted: this relies on remembering to call it at every mutation site, so a shared repository/service-layer helper (not ad hoc calls scattered through handlers) is worth building for exactly that reason. **Editing a `Book` field (design doc §16) must resync every affected `Piece`, not just call this once** — loop over every piece with that `sourceBookId` lacking its own override for the changed field.
+- The `pieces_fts` table is derived data, not a source of truth — if it's ever suspected out of sync, it can be safely dropped and rebuilt from `Piece` and the tag tables. Same principle as StashApp's own index philosophy, just without needing a scheduled staleness check to trigger it.
+- **Manual full rebuild**: exposed as a CLI subcommand, not an HTTP endpoint — see the general pattern below.
+
+**General pattern for admin/maintenance actions before real auth exists:** default to a CLI subcommand on the same binary, gated by shell/`docker exec` access to the container, rather than an HTTP endpoint with no auth to protect it. The search-index rebuild is the first concrete instance of this; treat it as the template for future maintenance actions (e.g. anything that comes up before OIDC/multi-user, §13, actually lands). Reuse the app's existing config/DB-connection bootstrap code in these subcommands rather than duplicating it — the CLI command and the server should read the same config the same way. Commands that write to the SQLite file while the server may still be running rely on WAL mode (already an established v1 convention, see Concurrency above) for safety — this is the one deliberate exception to "single writer" in an otherwise single-user/single-session v1.
+
+## Frontend
+- **Language:** TypeScript. Types should mirror the backend's `{data}`/`{error}` API contract (see above) — this is the main defense against frontend/backend drift across sessions.
+- **Icons:** Tabler Icons via `@tabler/icons-react` — the scoped package, not the older unscoped `tabler-icons-react` (stale, last published years ago). Import icons by name; never `import *` (defeats tree-shaking).
+- **Data fetching:** TanStack Query for all API calls — one consistent caching/loading/error pattern, not ad-hoc `useEffect`+`useState` per component.
+- **Forms:** react-hook-form, with **light** client-side validation only — required fields and obviously-plausible ranges. The backend (design doc §5's validation table) remains sole authority; don't maintain a full second copy of every backend rule as a mirrored zod schema, since keeping two validation definitions in sync in two languages is exactly the kind of drift risk not worth taking on for this project's size. Surface whatever error the backend returns for anything beyond the cheap checks. All line-text inputs share a 255-char max (design doc §5); box/multi-line inputs (`description`, `userNotes`) don't.
+- **Computed fields:** `Piece.duration` is derived from `bpm`/`measureCount`/`beatsPerMeasure` (design doc §3), not directly user-entered — recalculate and store whenever those three change, rather than computing on every read.
+- **Styling:** Tailwind CSS with the high-contrast palette defined once as theme tokens, not re-picked per component. Formal accessibility compliance (WCAG auditing, full ARIA coverage) is a **tertiary concern for v1** — see design doc §10. The actual driver is a clean, non-distracting, intuitive interface (calmer wizard flow, restrained notifications, one thing at a time rather than dense all-at-once forms).
+- **Routing:** React Router. Wizard steps are real routes.
+- **API calls:** relative paths (`/api/...`), same-origin — no base URL config, no CORS, a direct consequence of the single-image architecture.
+- **Wizard draft persistence:** `localStorage`, keyed by `bookId`, storing split points + in-progress field values. Restore on return to an in-progress import; clear on confirm or explicit cancel. See design doc §5.
+- **Mobile scope:** the import wizard must work well on phones/small tablets, not just the browse/view screens — this needs deliberate touch-friendly interaction design for the split-marking step, not just responsive CSS carried over from a desktop layout.
+- **Component choices:** where an accessible pattern (e.g. a proper combobox for tag entry) is also just the better component generally, use it — this isn't extra compliance work, it's picking the better tool. Don't do additional accessibility-only work with no general-UX upside (full keyboard-nav audits, ARIA completeness as its own task) — that's the part actually being deprioritized.
+- One cheap habit worth keeping regardless: don't rely on color alone to distinguish tags/keys — pair with text or shape.
+- **Device-aware conventions (design doc §12):** buttons over sliders (or both); progress bars over spinners wherever progress is measurable; no hover-dependent interactions — tap-triggered info buttons instead of hover tooltips. These apply across v1, not just the deferred Sheet Viewer.
+- **Search-as-you-type** (design doc §11): debounced (~200-300ms) query against the backend, not a full client-side filter over the whole library.
+- **Uploads:** show real upload progress (not just a spinner) for 100+MB files, plus client-side file-type/size checks before the request starts.
+- **Linting/formatting:** ESLint + Prettier, standard config.
+- **Testing:** not comprehensive for v1, but the wizard's page-range calculation/display logic (mapping thumbnails to piece boundaries) should have unit tests — same "silent, permanent correctness bug" risk as the backend's PDF-extraction logic in Testing above, just on the frontend side of the same operation.
+
+## Docker / build
+- Single image, Go's native `//go:embed` for the frontend (not `go.rice` — see design doc §2 for why).
+- **Multi-arch via native runners, not QEMU emulation:** GitHub now provides free, GA native ARM64 Linux hosted runners for public repos (`ubuntu-24.04-arm`). Build amd64 and arm64 as separate matrix jobs, each running natively on its own architecture's runner, then merge into a multi-arch manifest — faster and less flaky than a single `buildx` command emulating arm64 under QEMU, for the same end result.
+- Get `docker build` green locally before wiring up GitHub Actions.
+
+## Open items still pending a decision
+None outstanding as of this revision. If a new cross-cutting decision comes up mid-session, add it here rather than deciding it silently — this file is the one meant to be re-read every session, the design doc describes what's being built once.
