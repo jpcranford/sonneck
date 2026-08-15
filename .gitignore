@@ -4,3 +4,4 @@
 *.sqlite-wal
 /bin/
 /picarda
+*.DS_Store
