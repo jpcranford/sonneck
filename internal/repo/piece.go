@@ -15,13 +15,13 @@ func CreatePiece(ctx context.Context, q Queryer, p *models.Piece) (int64, error)
 			publisher, publisher_id, year_written, description, user_notes, practice_status,
 			imslp_number, source_book_id, source_page_start, source_page_end,
 			duration, bpm, measure_count, beats_per_measure,
-			file_path, file_hash, copyright_year, public_domain
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			file_path, file_hash, page_count, copyright_year, public_domain
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		p.Title, p.Composer, p.Arranger, p.Favorite, p.WorkOpusNumber, p.KeyID, p.SheetTypeID,
 		p.Publisher, p.PublisherID, p.YearWritten, p.Description, p.UserNotes, p.PracticeStatus,
 		p.ImslpNumber, p.SourceBookID, p.SourcePageStart, p.SourcePageEnd,
 		p.Duration, p.BPM, p.MeasureCount, p.BeatsPerMeasure,
-		p.FilePath, p.FileHash, p.CopyrightYear, p.PublicDomain,
+		p.FilePath, p.FileHash, p.PageCount, p.CopyrightYear, p.PublicDomain,
 	)
 	if err != nil {
 		return 0, err
@@ -36,14 +36,14 @@ func GetPieceByID(ctx context.Context, q Queryer, id int64) (*models.Piece, erro
 			publisher, publisher_id, year_written, description, user_notes, practice_status,
 			imslp_number, source_book_id, source_page_start, source_page_end,
 			duration, bpm, measure_count, beats_per_measure,
-			file_path, file_hash, copyright_year, public_domain, created_at, updated_at
+			file_path, file_hash, page_count, copyright_year, public_domain, created_at, updated_at
 		FROM pieces WHERE id = ?`, id,
 	).Scan(
 		&p.ID, &p.Title, &p.Composer, &p.Arranger, &p.Favorite, &p.WorkOpusNumber, &p.KeyID, &p.SheetTypeID,
 		&p.Publisher, &p.PublisherID, &p.YearWritten, &p.Description, &p.UserNotes, &p.PracticeStatus,
 		&p.ImslpNumber, &p.SourceBookID, &p.SourcePageStart, &p.SourcePageEnd,
 		&p.Duration, &p.BPM, &p.MeasureCount, &p.BeatsPerMeasure,
-		&p.FilePath, &p.FileHash, &p.CopyrightYear, &p.PublicDomain, &p.CreatedAt, &p.UpdatedAt,
+		&p.FilePath, &p.FileHash, &p.PageCount, &p.CopyrightYear, &p.PublicDomain, &p.CreatedAt, &p.UpdatedAt,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
@@ -80,7 +80,7 @@ func UpdatePiece(ctx context.Context, q Queryer, p *models.Piece) error {
 			description = ?, user_notes = ?, practice_status = ?, imslp_number = ?,
 			source_book_id = ?, source_page_start = ?, source_page_end = ?,
 			duration = ?, bpm = ?, measure_count = ?, beats_per_measure = ?,
-			file_path = ?, file_hash = ?, copyright_year = ?, public_domain = ?,
+			file_path = ?, file_hash = ?, page_count = ?, copyright_year = ?, public_domain = ?,
 			updated_at = ?
 		WHERE id = ?`,
 		p.Title, p.Composer, p.Arranger, p.Favorite, p.WorkOpusNumber,
@@ -88,7 +88,7 @@ func UpdatePiece(ctx context.Context, q Queryer, p *models.Piece) error {
 		p.Description, p.UserNotes, p.PracticeStatus, p.ImslpNumber,
 		p.SourceBookID, p.SourcePageStart, p.SourcePageEnd,
 		p.Duration, p.BPM, p.MeasureCount, p.BeatsPerMeasure,
-		p.FilePath, p.FileHash, p.CopyrightYear, p.PublicDomain,
+		p.FilePath, p.FileHash, p.PageCount, p.CopyrightYear, p.PublicDomain,
 		p.UpdatedAt,
 		p.ID,
 	)
@@ -105,15 +105,35 @@ func DeletePiece(ctx context.Context, q Queryer, id int64) error {
 }
 
 // CountPiecesWithFileHash counts pieces referencing the given file hash.
-// Storage is content-addressed (internal/storage), but — unlike Book
-// uploads — Piece uploads aren't deduped at creation time, so two distinct
-// Piece rows can legitimately end up pointing at the same on-disk file
-// (identical content extracted from two different page ranges, or two
-// separately uploaded files that happen to match). Callers must check this
-// before deleting a piece's file: removing it while another row still
-// references it would silently break that piece's download/preview.
+// Storage is content-addressed (internal/storage). handleCreatePiece dedupes
+// standalone single-piece uploads at creation time (see GetPieceByFileHash),
+// but the book-import wizard's confirm step deliberately does not: two
+// sibling Piece rows split from the same book can legitimately end up
+// pointing at the same on-disk file (e.g. identical duplicate pages), and
+// those are genuinely different pieces, not a duplicate upload to collapse.
+// Callers must check this before deleting a piece's file: removing it while
+// another row still references it would silently break that piece's
+// download/preview.
 func CountPiecesWithFileHash(ctx context.Context, q Queryer, hash string) (int, error) {
 	var count int
 	err := q.QueryRowContext(ctx, `SELECT COUNT(*) FROM pieces WHERE file_hash = ?`, hash).Scan(&count)
 	return count, err
+}
+
+// GetPieceByFileHash supports the single-piece-upload dedupe rule
+// (handleCreatePiece): reuse an existing Piece on SHA-256 match rather than
+// creating a duplicate row for identical file content, mirroring
+// GetBookByHash. Deliberately not used by the book-import wizard (see
+// CountPiecesWithFileHash) — matches the oldest existing piece by id when
+// more than one legitimately shares the hash. Returns ErrNotFound if none do.
+func GetPieceByFileHash(ctx context.Context, q Queryer, hash string) (*models.Piece, error) {
+	var id int64
+	err := q.QueryRowContext(ctx, `SELECT id FROM pieces WHERE file_hash = ? ORDER BY id LIMIT 1`, hash).Scan(&id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return GetPieceByID(ctx, q, id)
 }

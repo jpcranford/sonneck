@@ -1,0 +1,38 @@
+import type { Piece, PieceWriteRequest } from '../api/types'
+
+/**
+ * PATCH /api/pieces/:id is a full replace, not a sparse patch (see
+ * PieceWriteRequest's own doc comment) — every field must be resent or it's
+ * cleared. Piece's book-inheritable fields are *resolved effective* values
+ * (own value falling back to the book's), so naively echoing them back on
+ * every edit would silently convert an inherited field into an explicit
+ * override, permanently opting the piece out of future book-level
+ * inheritance the next time the book changes. Blank instead for any
+ * inherited field this call doesn't intend to touch, so an edit only ever
+ * changes what was actually edited.
+ */
+export function pieceToWriteRequest(piece: Piece): PieceWriteRequest {
+  return {
+    title: piece.title,
+    composer: piece.composer.value,
+    arranger: piece.arranger,
+    favorite: piece.favorite,
+    workOpusNumber: piece.workOpusNumber.inherited ? '' : piece.workOpusNumber.value,
+    keyName: piece.key?.name ?? '',
+    sheetTypeName: piece.sheetType.inherited ? '' : (piece.sheetType.value?.name ?? ''),
+    publisher: piece.publisher.inherited ? '' : piece.publisher.value,
+    publisherId: piece.publisherId.inherited ? '' : piece.publisherId.value,
+    yearWritten: piece.yearWritten.inherited ? '' : piece.yearWritten.value,
+    description: piece.description.inherited ? '' : piece.description.value,
+    userNotes: piece.userNotes,
+    instruments: piece.instruments.inherited ? [] : piece.instruments.values.map((t) => t.name),
+    userTags: piece.userTags.map((t) => t.name),
+    practiceStatus: piece.practiceStatus,
+    imslpNumber: piece.imslpNumber.inherited ? '' : piece.imslpNumber.value,
+    sourcePageStart: piece.sourcePageStart,
+    sourcePageEnd: piece.sourcePageEnd,
+    bpm: piece.bpm,
+    measureCount: piece.measureCount,
+    beatsPerMeasure: piece.beatsPerMeasure,
+  }
+}

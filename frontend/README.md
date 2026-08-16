@@ -20,7 +20,7 @@ npm run dev
 
 ## Notable choices
 
-- **Baskervville** is self-hosted (`src/assets/fonts/`, `@font-face` in `src/index.css`) rather than loaded from Google Fonts at runtime — see the root README's Acknowledgements. It's used for display text only (headings, piece/card titles, sidebar nav); general UI chrome uses a system sans-serif stack.
+- **Libre Baskerville** is self-hosted (`src/assets/fonts/`, `@font-face` in `src/index.css`) rather than loaded from Google Fonts at runtime — see the root README's Acknowledgements. It's used for display text only (headings, piece/card titles, sidebar nav); general UI chrome uses a system sans-serif stack.
 - **Design tokens** (colors, fonts) live in `src/index.css` under `@theme` (Tailwind v4's CSS-first config) — e.g. `bg-paper`, `text-ink`, `font-display` are all defined there, not scattered through components.
 - **`src/api/`** mirrors the backend's `{data}`/`{error}` response contract and JSON types by hand (`client.ts`, `types.ts`) — this is the main defense against frontend/backend drift across sessions (CLAUDE.md > Frontend). When a backend response shape changes, this is where the frontend catches up.
 - **`src/components/Modal.tsx`** and **`ContextMenu.tsx`** are shared primitives (Escape-to-close, click-outside-to-close) built once so every popup/menu in the app behaves consistently, rather than each screen reimplementing the behavior.

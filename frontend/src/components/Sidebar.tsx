@@ -1,10 +1,11 @@
 import { useState, type ComponentType } from 'react'
 import { NavLink } from 'react-router-dom'
 import {
-  IconBooks,
+  IconLibrary,
+  IconUser,
   IconUserFilled,
   IconCloudUpload,
-  IconHeartFilled,
+  IconHeart,
   IconProgress,
   IconLayoutSidebarLeftCollapseFilled,
   IconLayoutSidebarLeftExpandFilled,
@@ -17,10 +18,10 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { to: '/', label: 'Library', icon: IconBooks },
-  { to: '/composers', label: 'Composers', icon: IconUserFilled },
+  { to: '/', label: 'Library', icon: IconLibrary },
+  { to: '/composers', label: 'Composers', icon: IconUser },
   { to: '/upload', label: 'Upload', icon: IconCloudUpload },
-  { to: '/favorites', label: 'Favorites', icon: IconHeartFilled },
+  { to: '/favorites', label: 'Favorites', icon: IconHeart },
   { to: '/practicing', label: 'Currently Practicing', icon: IconProgress },
 ]
 
@@ -29,7 +30,12 @@ const NAV_ITEMS: NavItem[] = [
 const SETLISTS: { id: string; name: string }[] = []
 
 export function Sidebar() {
-  const [collapsed, setCollapsed] = useState(false)
+  // Defaults collapsed on narrow viewports — expanded (256px) eats most of a
+  // phone screen otherwise. One-time check on mount, not a resize listener:
+  // this is a v1 "cheap habit" per CLAUDE.md's device-aware conventions, not
+  // a fully responsive redesign — desktop windows aren't typically resized
+  // across this breakpoint mid-session.
+  const [collapsed, setCollapsed] = useState(() => window.innerWidth < 768)
 
   return (
     <aside
@@ -37,10 +43,7 @@ export function Sidebar() {
         collapsed ? 'w-16' : 'w-64'
       }`}
     >
-      <div
-        className={`flex h-14 shrink-0 items-center px-3 ${collapsed ? 'justify-center' : 'justify-between'}`}
-      >
-        {!collapsed && <span className="font-display text-lg text-sidebar-text">Sonneck</span>}
+      <div className="flex h-14 shrink-0 items-center justify-end px-3">
         <button
           type="button"
           onClick={() => setCollapsed((value) => !value)}
@@ -63,18 +66,21 @@ export function Sidebar() {
             end={to === '/'}
             title={collapsed ? label : undefined}
             className={({ isActive }) =>
-              `flex h-10 items-center gap-3 rounded-md px-2 font-display text-sm ${
+              `flex h-10 items-center gap-3 rounded-md px-2 font-display text-[0.95rem] ${
                 collapsed ? 'justify-center' : ''
               } ${
                 isActive
                   ? 'bg-sidebar-panel text-sidebar-text'
-                  : 'text-sidebar-text-dim hover:bg-sidebar-panel hover:text-sidebar-text'
+                  : 'text-sidebar-text hover:bg-white/5'
               }`
             }
           >
             {({ isActive }) => (
               <>
-                <Icon size={22} className={isActive ? 'text-accent-on-dark' : ''} />
+                <Icon
+                  size={22}
+                  className={isActive ? 'text-accent-on-dark opacity-100' : 'opacity-[0.85]'}
+                />
                 {!collapsed && <span className="truncate">{label}</span>}
               </>
             )}
@@ -98,10 +104,10 @@ export function Sidebar() {
                 to={`/setlists/${setlist.id}`}
                 title={setlist.name}
                 className={({ isActive }) =>
-                  `flex size-10 items-center justify-center rounded-md font-display text-sm ${
+                  `flex size-10 items-center justify-center rounded-md font-display text-[0.95rem] ${
                     isActive
                       ? 'bg-sidebar-panel text-sidebar-text'
-                      : 'text-sidebar-text-dim hover:bg-sidebar-panel hover:text-sidebar-text'
+                      : 'text-sidebar-text hover:bg-white/5'
                   }`
                 }
               >
@@ -112,10 +118,10 @@ export function Sidebar() {
                 key={setlist.id}
                 to={`/setlists/${setlist.id}`}
                 className={({ isActive }) =>
-                  `mt-1 truncate rounded-md px-2 py-1.5 font-display text-sm first:mt-0 ${
+                  `mt-1 truncate rounded-md px-2 py-1.5 font-display text-[0.95rem] first:mt-0 ${
                     isActive
                       ? 'bg-sidebar-panel text-sidebar-text'
-                      : 'text-sidebar-text-dim hover:bg-sidebar-panel hover:text-sidebar-text'
+                      : 'text-sidebar-text hover:bg-white/5'
                   }`
                 }
               >
@@ -133,7 +139,7 @@ export function Sidebar() {
           <IconUserFilled size={16} />
         </span>
         {!collapsed && (
-          <span className="truncate text-sm text-sidebar-text-dim">Local Library</span>
+          <span className="truncate text-[0.95rem] text-sidebar-text">Local Library</span>
         )}
       </div>
     </aside>

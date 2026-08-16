@@ -2,14 +2,17 @@ package handlers
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/jpcranford/sonneck/internal/api"
 	"github.com/jpcranford/sonneck/internal/models"
+	"github.com/jpcranford/sonneck/internal/pdf"
 	"github.com/jpcranford/sonneck/internal/repo"
 	"github.com/jpcranford/sonneck/internal/storage"
 )
@@ -20,6 +23,12 @@ import (
 // api.ValidatePiece — that only applies to the two flows CLAUDE.md names
 // (the wizard's fill step and the standalone edit menu), both of which
 // happen via handleUpdatePiece after this upload completes.
+//
+// Dedupes on SHA-256 match against any existing Piece (CLAUDE.md > File
+// handling), same rule as Book uploads: an identical file returns the
+// existing Piece with 200 OK instead of creating a duplicate row, so the
+// frontend can route the user to the piece that already represents this
+// file rather than minting a second one.
 func (s *Server) handleCreatePiece(w http.ResponseWriter, r *http.Request) {
 	file, header, ok := requireMultipartFile(w, r)
 	if !ok {
@@ -28,8 +37,24 @@ func (s *Server) handleCreatePiece(w http.ResponseWriter, r *http.Request) {
 	defer file.Close()
 
 	stagingDir := filepath.Join(s.Cfg.DataDir, "library", "pieces")
-	tempPath, hash, _, ok := s.stageUpload(w, r, stagingDir, file)
+	tempPath, hash, pageCount, ok := s.stageUpload(w, r, stagingDir, file)
 	if !ok {
+		return
+	}
+
+	existing, err := repo.GetPieceByFileHash(r.Context(), s.DB, hash)
+	if err != nil && !errors.Is(err, repo.ErrNotFound) {
+		s.writeError(w, err)
+		return
+	}
+	if existing != nil {
+		os.Remove(tempPath)
+		resp, err := api.BuildPieceResponse(r.Context(), s.DB, existing)
+		if err != nil {
+			s.writeError(w, err)
+			return
+		}
+		api.WriteData(w, http.StatusOK, resp)
 		return
 	}
 
@@ -40,12 +65,13 @@ func (s *Server) handleCreatePiece(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var resp *api.PieceResponse
-	err := s.withTx(r.Context(), func(tx *sql.Tx) error {
+	err = s.withTx(r.Context(), func(tx *sql.Tx) error {
 		p := &models.Piece{
 			Title:       defaultTitleFromFilename(header.Filename),
 			ImslpNumber: detectImslpNumber(header.Filename),
 			FilePath:    finalPath,
 			FileHash:    hash,
+			PageCount:   pageCount,
 		}
 		id, err := repo.CreatePiece(r.Context(), tx, p)
 		if err != nil {
@@ -254,6 +280,58 @@ func (s *Server) handleDownloadPieceFile(w http.ResponseWriter, r *http.Request)
 	http.ServeFile(w, r, p.FilePath)
 }
 
+// handlePieceThumbnail renders (and caches) a single page of a piece's own
+// file as a PNG — the Library view's card thumbnail and page-cycle control
+// (design doc §11) and a building block for the basic piece preview (§7).
+// Unlike handleBookPageThumbnail, this always renders from p.FilePath, never
+// a book's file: a Piece's file is already just that piece's own content,
+// whether it's a book-extraction (already split down to this piece's pages)
+// or a standalone upload — so this is the one thumbnail route that works
+// for every piece regardless of provenance, with no dependency on
+// sourceBookId being set. page is validated against the piece's own
+// PageCount (populated at upload/replace time — see CreatePiece call sites),
+// not the book's.
+func (s *Server) handlePieceThumbnail(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathID(r, "id")
+	if !ok {
+		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid piece id")
+		return
+	}
+	page, err := strconv.Atoi(r.PathValue("page"))
+	if err != nil || page < 1 {
+		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid page number")
+		return
+	}
+
+	p, err := repo.GetPieceByID(r.Context(), s.DB, id)
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+	if page > p.PageCount {
+		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError,
+			fmt.Sprintf("page %d exceeds this piece's %d page(s)", page, p.PageCount))
+		return
+	}
+
+	cacheDir := filepath.Join(s.Cfg.DataDir, "cache", "thumbnails")
+	if err := os.MkdirAll(cacheDir, 0o755); err != nil {
+		s.writeError(w, err)
+		return
+	}
+	outPrefix := filepath.Join(cacheDir, fmt.Sprintf("piece-%d-page-%d", id, page))
+	thumbPath := outPrefix + ".png"
+
+	if _, err := os.Stat(thumbPath); os.IsNotExist(err) {
+		if _, err := pdf.RenderThumbnail(r.Context(), p.FilePath, page, 100, outPrefix); err != nil {
+			s.writeError(w, err)
+			return
+		}
+	}
+
+	http.ServeFile(w, r, thumbPath)
+}
+
 // handleReplacePieceFile hard-replaces a piece's file on the same record
 // (design doc §14): sourceBookId/sourcePageStart/sourcePageEnd are
 // deliberately left untouched as historical provenance. The new file is
@@ -275,7 +353,7 @@ func (s *Server) handleReplacePieceFile(w http.ResponseWriter, r *http.Request) 
 	defer file.Close()
 
 	stagingDir := filepath.Join(s.Cfg.DataDir, "library", "pieces")
-	tempPath, newHash, _, ok := s.stageUpload(w, r, stagingDir, file)
+	tempPath, newHash, newPageCount, ok := s.stageUpload(w, r, stagingDir, file)
 	if !ok {
 		return
 	}
@@ -303,6 +381,7 @@ func (s *Server) handleReplacePieceFile(w http.ResponseWriter, r *http.Request) 
 
 		p.FilePath = newPath
 		p.FileHash = newHash
+		p.PageCount = newPageCount
 		p.UpdatedAt = time.Now().UTC()
 		if err := repo.UpdatePiece(r.Context(), tx, p); err != nil {
 			return err
@@ -341,6 +420,22 @@ func (s *Server) handleReplacePieceFile(w http.ResponseWriter, r *http.Request) 
 			}
 		}
 	}
+
+	// handlePieceThumbnail caches per page by piece id, not file hash — every
+	// cached page for this piece is now stale (both its content and how many
+	// pages exist may have changed), so clear all of them and let requests
+	// re-render on demand (derived data, safe to just remove).
+	stalePattern := filepath.Join(s.Cfg.DataDir, "cache", "thumbnails", fmt.Sprintf("piece-%d-page-*.png", id))
+	if stale, err := filepath.Glob(stalePattern); err != nil {
+		s.Logger.Error("failed to list stale piece thumbnails after file replace", "error", err, "pieceId", id)
+	} else {
+		for _, f := range stale {
+			if err := os.Remove(f); err != nil && !os.IsNotExist(err) {
+				s.Logger.Error("failed to invalidate stale piece thumbnail after file replace", "error", err, "pieceId", id, "file", f)
+			}
+		}
+	}
+
 	s.Logger.Info("piece file replaced", "pieceId", id, "oldFileHash", oldFileHash, "newFileHash", newHash)
 
 	api.WriteData(w, http.StatusOK, resp)

@@ -55,6 +55,7 @@ export interface Piece {
   measureCount: number | null
   beatsPerMeasure: number | null
   fileHash: string
+  pageCount: number
   copyrightYear: number | null
   publicDomain: boolean
   createdAt: string

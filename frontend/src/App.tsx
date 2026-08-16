@@ -2,6 +2,7 @@ import { Routes, Route } from 'react-router-dom'
 import { AppShell } from './components/AppShell'
 import { LibraryPage } from './routes/LibraryPage'
 import { UploadPage } from './routes/UploadPage'
+import { PiecePage } from './routes/PiecePage'
 import { ComposersPage } from './routes/ComposersPage'
 import { FavoritesPage } from './routes/FavoritesPage'
 import { PracticingPage } from './routes/PracticingPage'
@@ -14,6 +15,7 @@ function App() {
       <Route element={<AppShell />}>
         <Route index element={<LibraryPage />} />
         <Route path="upload" element={<UploadPage />} />
+        <Route path="pieces/:id" element={<PiecePage />} />
         <Route path="composers" element={<ComposersPage />} />
         <Route path="favorites" element={<FavoritesPage />} />
         <Route path="practicing" element={<PracticingPage />} />

@@ -51,6 +51,9 @@ func TestConfirmImport_PageRangesAndComposerInheritance(t *testing.T) {
 	if *toccata.SourcePageStart != 1 || *toccata.SourcePageEnd != 4 {
 		t.Errorf("Toccata pages = %d-%d, want 1-4", *toccata.SourcePageStart, *toccata.SourcePageEnd)
 	}
+	if toccata.PageCount != 4 {
+		t.Errorf("Toccata pageCount = %d, want 4 (derived from its 1-4 page range)", toccata.PageCount)
+	}
 	if !toccata.Composer.Inherited || toccata.Composer.Value != "Charles-Marie Widor" {
 		t.Errorf("Toccata composer = %+v, want inherited Charles-Marie Widor", toccata.Composer)
 	}
@@ -60,6 +63,9 @@ func TestConfirmImport_PageRangesAndComposerInheritance(t *testing.T) {
 	}
 	if *adagio.SourcePageStart != 5 || *adagio.SourcePageEnd != 8 {
 		t.Errorf("Adagio pages = %d-%d, want 5-8", *adagio.SourcePageStart, *adagio.SourcePageEnd)
+	}
+	if adagio.PageCount != 4 {
+		t.Errorf("Adagio pageCount = %d, want 4 (derived from its 5-8 page range)", adagio.PageCount)
 	}
 	if adagio.Composer.Inherited || adagio.Composer.Value != "Override Composer" {
 		t.Errorf("Adagio composer = %+v, want own value Override Composer", adagio.Composer)

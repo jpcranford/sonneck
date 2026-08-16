@@ -76,12 +76,19 @@ export function apiDelete<T>(path: string): Promise<T> {
  * specifically because fetch has no upload-progress API — and design doc
  * §2 requires real progress bars for uploads, not a spinner, for anything
  * as large as a scanned book PDF.
+ *
+ * Resolves with the HTTP status alongside the unwrapped data — some upload
+ * endpoints (e.g. POST /api/pieces) use 200 vs 201 to signal "reused an
+ * existing record" vs "created a new one" (CLAUDE.md > File handling's
+ * dedupe rule) without changing the response body shape, so callers that
+ * care about that distinction need the status; apiUpload below discards it
+ * for the common case that doesn't.
  */
-export function apiUpload<T>(
+function uploadRequest<T>(
   path: string,
   file: File,
   onProgress?: (percent: number) => void,
-): Promise<T> {
+): Promise<{ data: T; status: number }> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest()
     xhr.open('POST', path)
@@ -104,7 +111,7 @@ export function apiUpload<T>(
       }
 
       if (xhr.status >= 200 && xhr.status < 300 && !isErrorEnvelope(body)) {
-        resolve((body as SuccessEnvelope<T>).data)
+        resolve({ data: (body as SuccessEnvelope<T>).data, status: xhr.status })
       } else if (isErrorEnvelope(body)) {
         reject(new ApiError(body.error.code, body.error.message, xhr.status))
       } else {
@@ -118,4 +125,20 @@ export function apiUpload<T>(
     formData.append('file', file)
     xhr.send(formData)
   })
+}
+
+export function apiUpload<T>(
+  path: string,
+  file: File,
+  onProgress?: (percent: number) => void,
+): Promise<T> {
+  return uploadRequest<T>(path, file, onProgress).then((r) => r.data)
+}
+
+export function apiUploadWithStatus<T>(
+  path: string,
+  file: File,
+  onProgress?: (percent: number) => void,
+): Promise<{ data: T; status: number }> {
+  return uploadRequest<T>(path, file, onProgress)
 }

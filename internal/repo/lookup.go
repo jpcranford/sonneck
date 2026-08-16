@@ -8,6 +8,11 @@ import (
 	"github.com/jpcranford/sonneck/internal/models"
 )
 
+// ListKeys, and every other List* in this package, initializes its result
+// as an empty slice rather than `var x []T` — a nil slice with zero appends
+// marshals as JSON `null`, and frontend callers type these as plain arrays,
+// not T[] | null (a real bug: an empty musical_keys/instruments/user_tags
+// table crashed the frontend before this fix).
 func ListKeys(ctx context.Context, q Queryer) ([]models.Key, error) {
 	rows, err := q.QueryContext(ctx, `SELECT id, name FROM musical_keys ORDER BY id`)
 	if err != nil {
@@ -15,7 +20,7 @@ func ListKeys(ctx context.Context, q Queryer) ([]models.Key, error) {
 	}
 	defer rows.Close()
 
-	var keys []models.Key
+	keys := []models.Key{}
 	for rows.Next() {
 		var k models.Key
 		if err := rows.Scan(&k.ID, &k.Name); err != nil {
@@ -45,7 +50,7 @@ func ListSheetTypes(ctx context.Context, q Queryer) ([]models.SheetType, error) 
 	}
 	defer rows.Close()
 
-	var types []models.SheetType
+	types := []models.SheetType{}
 	for rows.Next() {
 		var st models.SheetType
 		if err := rows.Scan(&st.ID, &st.Name); err != nil {

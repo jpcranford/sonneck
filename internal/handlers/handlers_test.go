@@ -2,6 +2,7 @@ package handlers_test
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -24,6 +25,15 @@ import (
 // than mocking anything.
 func newTestServer(t *testing.T) http.Handler {
 	t.Helper()
+	h, _ := newTestServerWithDB(t)
+	return h
+}
+
+// newTestServerWithDB is newTestServer plus the underlying *sql.DB, for the
+// rare test that needs to fabricate state the HTTP API itself won't produce
+// (e.g. two Piece rows sharing a file hash — see piece_test.go).
+func newTestServerWithDB(t *testing.T) (http.Handler, *sql.DB) {
+	t.Helper()
 	dataDir := t.TempDir()
 
 	conn, err := db.Open(filepath.Join(dataDir, "sonneck.sqlite"))
@@ -35,7 +45,7 @@ func newTestServer(t *testing.T) http.Handler {
 	cfg := &config.Config{DataDir: dataDir}
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
 
-	return handlers.New(conn, cfg, logger)
+	return handlers.New(conn, cfg, logger), conn
 }
 
 // writeFixturePDF is a thin wrapper over the shared fixture generator
@@ -146,6 +156,7 @@ type pieceResponse struct {
 	SourcePageEnd   *int            `json:"sourcePageEnd"`
 	FileHash        string          `json:"fileHash"`
 	SourceBookID    *int64          `json:"sourceBookId"`
+	PageCount       int             `json:"pageCount"`
 }
 
 func readAll(t *testing.T, path string) []byte {

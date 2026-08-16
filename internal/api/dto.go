@@ -54,6 +54,7 @@ type PieceResponse struct {
 	MeasureCount    *int                `json:"measureCount"`
 	BeatsPerMeasure *int                `json:"beatsPerMeasure"`
 	FileHash        string              `json:"fileHash"`
+	PageCount       int                 `json:"pageCount"`
 	CopyrightYear   *int                `json:"copyrightYear"`
 	PublicDomain    bool                `json:"publicDomain"`
 	CreatedAt       time.Time           `json:"createdAt"`
@@ -90,6 +91,7 @@ func BuildPieceResponse(ctx context.Context, q repo.Queryer, p *models.Piece) (*
 		MeasureCount:    p.MeasureCount,
 		BeatsPerMeasure: p.BeatsPerMeasure,
 		FileHash:        p.FileHash,
+		PageCount:       p.PageCount,
 		CopyrightYear:   p.CopyrightYear,
 		PublicDomain:    p.PublicDomain,
 		CreatedAt:       p.CreatedAt,
@@ -113,7 +115,10 @@ func BuildPieceResponse(ctx context.Context, q repo.Queryer, p *models.Piece) (*
 		resp.SheetType.Value = &repo.Tag{ID: st.ID, Name: st.Name}
 	}
 
-	resp.Instruments = EffectiveTagRefs{Inherited: eff.InstrumentIDs.Inherited}
+	// Array fields default to an empty slice, never left nil — encoding/json
+	// marshals a nil slice as `null`, and every frontend consumer types
+	// these as plain arrays (e.g. Piece.userTags: Tag[]), not Tag[] | null.
+	resp.Instruments = EffectiveTagRefs{Values: []repo.Tag{}, Inherited: eff.InstrumentIDs.Inherited}
 	if len(eff.InstrumentIDs.IDs) > 0 {
 		tags, err := repo.TagsByIDs(ctx, q, "instruments", eff.InstrumentIDs.IDs)
 		if err != nil {
@@ -122,6 +127,7 @@ func BuildPieceResponse(ctx context.Context, q repo.Queryer, p *models.Piece) (*
 		resp.Instruments.Values = tags
 	}
 
+	resp.UserTags = []repo.Tag{}
 	if len(p.UserTagIDs) > 0 {
 		tags, err := repo.TagsByIDs(ctx, q, "user_tags", p.UserTagIDs)
 		if err != nil {
@@ -173,6 +179,7 @@ func BuildBookResponse(ctx context.Context, q repo.Queryer, b *models.Book) (*Bo
 		PublisherID:      b.PublisherID,
 		Description:      b.Description,
 		ImslpNumber:      b.ImslpNumber,
+		Instruments:      []repo.Tag{},
 		OriginalFilename: b.OriginalFilename,
 		FileHash:         b.FileHash,
 		ImportedAt:       b.ImportedAt,

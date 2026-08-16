@@ -3,14 +3,22 @@ package handlers_test
 import (
 	"net/http"
 	"net/url"
+	"sync/atomic"
 	"testing"
 )
+
+// testPieceCounter gives each createTestPiece call distinct fixture content
+// (via distinct page counts), so callers get genuinely separate Piece rows
+// even now that /api/pieces dedupes identical uploads (handleCreatePiece).
+// Package-level rather than per-test: search tests in this file create
+// several pieces per test and must never collide with each other.
+var testPieceCounter atomic.Int64
 
 func createTestPiece(t *testing.T, h http.Handler, fields map[string]any) pieceResponse {
 	t.Helper()
 	dir := t.TempDir()
 	path := dir + "/piece.pdf"
-	writeFixturePDF(t, path, 1)
+	writeFixturePDF(t, path, int(testPieceCounter.Add(1)))
 
 	rec := recordRequest(h, multipartUpload(t, "/api/pieces", "piece.pdf", readAll(t, path)))
 	if rec.Code != http.StatusCreated {

@@ -86,4 +86,4 @@ Sonneck is named after **Oscar Sonneck** (1873–1928), an American musicologist
 
 ## Acknowledgements
 
-The frontend typeface is [Baskervville](https://fonts.google.com/specimen/Baskervville) by Storm Type Foundry, [Google Fonts](https://fonts.google.com/), licensed under the [SIL Open Font License 1.1](https://fonts.google.com/specimen/Baskervville/license). Self-hosted rather than loaded from Google Fonts at runtime.
+The frontend typeface is [Libre Baskerville](https://fonts.google.com/specimen/Libre+Baskerville) by Pablo Impallari, [Google Fonts](https://fonts.google.com/), licensed under the [SIL Open Font License 1.1](https://fonts.google.com/specimen/Libre+Baskerville/license) — [source on GitHub](https://github.com/impallari/Libre-Baskerville). Self-hosted rather than loaded from Google Fonts at runtime.

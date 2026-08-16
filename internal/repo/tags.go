@@ -142,7 +142,7 @@ func listTags(ctx context.Context, q Queryer, table string) ([]Tag, error) {
 	}
 	defer rows.Close()
 
-	var tags []Tag
+	tags := []Tag{} // empty, not nil — see ListKeys' comment on why
 	for rows.Next() {
 		var t Tag
 		if err := rows.Scan(&t.ID, &t.Name); err != nil {
@@ -158,7 +158,7 @@ func listTags(ctx context.Context, q Queryer, table string) ([]Tag, error) {
 // needs flattened names for the search index).
 func TagsByIDs(ctx context.Context, q Queryer, table string, ids []int64) ([]Tag, error) {
 	if len(ids) == 0 {
-		return nil, nil
+		return []Tag{}, nil
 	}
 	placeholders := make([]byte, 0, len(ids)*2)
 	args := make([]any, len(ids))
@@ -176,7 +176,7 @@ func TagsByIDs(ctx context.Context, q Queryer, table string, ids []int64) ([]Tag
 	}
 	defer rows.Close()
 
-	var tags []Tag
+	tags := []Tag{} // empty, not nil — see ListKeys' comment on why
 	for rows.Next() {
 		var t Tag
 		if err := rows.Scan(&t.ID, &t.Name); err != nil {

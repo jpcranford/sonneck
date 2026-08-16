@@ -44,8 +44,9 @@ type Piece struct {
 	MeasureCount    *int
 	BeatsPerMeasure *int
 
-	FilePath string
-	FileHash string
+	FilePath  string
+	FileHash  string
+	PageCount int // total pages in FilePath, for the Library card page-cycle control
 
 	// Deliberate pre-build exception (CLAUDE.md > Database migrations):
 	// unused until the public-domain badge feature (design doc §13) lands.
