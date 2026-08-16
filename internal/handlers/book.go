@@ -198,15 +198,6 @@ func (s *Server) handleBookPageThumbnail(w http.ResponseWriter, r *http.Request)
 		s.writeError(w, err)
 		return
 	}
-	outPrefix := filepath.Join(cacheDir, fmt.Sprintf("book-%d-page-%d", id, page))
-	thumbPath := outPrefix + ".png"
-
-	if _, err := os.Stat(thumbPath); os.IsNotExist(err) {
-		if _, err := pdf.RenderThumbnail(r.Context(), b.FilePath, page, 100, outPrefix); err != nil {
-			s.writeError(w, err)
-			return
-		}
-	}
 
 	http.ServeFile(w, r, thumbPath)
 }

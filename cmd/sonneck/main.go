@@ -51,7 +51,7 @@ func main() {
 	// unauthenticated HTTP endpoint. Reuses the exact config/DB bootstrap
 	// above rather than duplicating it, per that same section.
 	if len(os.Args) > 1 {
-		runSubcommand(os.Args[1], conn, logger)
+		runSubcommand(os.Args[1], conn, cfg, logger)
 		return
 	}
 
@@ -71,7 +71,7 @@ func main() {
 	}
 }
 
-func runSubcommand(name string, conn *sql.DB, logger *slog.Logger) {
+func runSubcommand(name string, conn *sql.DB, cfg *config.Config, logger *slog.Logger) {
 	switch name {
 	case "rebuild-search-index":
 		// Safe to run against a live server (WAL mode, CLAUDE.md >
@@ -81,6 +81,19 @@ func runSubcommand(name string, conn *sql.DB, logger *slog.Logger) {
 			os.Exit(1)
 		}
 		logger.Info("search index rebuild completed")
+	case "regenerate-thumbnails":
+		// Also safe against a live server, same WAL-mode reasoning — this
+		// only touches data/cache/thumbnails, never the database, and every
+		// write lands via an atomic rename (helpers.go's regenerateThumbnail)
+		// so a concurrent live request for the same page never observes a
+		// partial file.
+		s := &handlers.Server{DB: conn, Cfg: cfg, Logger: logger}
+		count, err := s.RegenerateThumbnails(context.Background())
+		if err != nil {
+			logger.Error("thumbnail regeneration failed", "error", err, "regenerated", count)
+			os.Exit(1)
+		}
+		logger.Info("thumbnail regeneration completed", "count", count)
 	default:
 		logger.Error("unknown subcommand", "subcommand", name)
 		os.Exit(1)

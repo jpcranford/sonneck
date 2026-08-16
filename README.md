@@ -56,15 +56,18 @@ This backs up the **database only**. The `library/` folder (original book PDFs a
 2. Replace `$DATA_DIR/db/sonneck.sqlite` with the desired backup file (e.g. `cp $DATA_DIR/backups/sonneck-2026-08-01.sqlite $DATA_DIR/db/sonneck.sqlite`).
 3. Start the server again.
 
-## Maintenance: rebuilding the search index
+## Admin CLI commands
 
-The full-text search index (`pieces_fts`) is derived data — it can be safely dropped and rebuilt from the database's core tables at any time, e.g. if it's ever suspected to be out of sync:
+Maintenance actions are exposed as subcommands on the same binary — `./sonneck <command>` — rather than HTTP endpoints, since there's no authentication to protect an endpoint with (see "No authentication" below). Each one is safe to run against a live server: they rely on SQLite's WAL mode (already enabled) and, where they touch on-disk files, write via a temp-file-then-atomic-rename so a concurrent request never sees a partial result.
 
 ```sh
-DATA_DIR=./data ./sonneck rebuild-search-index
+DATA_DIR=./data ./sonneck <command>
 ```
 
-Safe to run against a live server (it relies on SQLite's WAL mode, already enabled). This is a CLI subcommand rather than an HTTP endpoint deliberately — see "No authentication" below.
+| Command | What it does | When to run it |
+|---|---|---|
+| `rebuild-search-index` | Drops and repopulates the full-text search index (`pieces_fts`) from the database's core tables. | The index is derived data — safe to rebuild any time it's suspected out of sync. |
+| `regenerate-thumbnails` | Clears `$DATA_DIR/cache/thumbnails` and re-renders every page of every piece from scratch, also sweeping up any orphaned entries left over from deleted pieces. | If a cached thumbnail is ever suspected corrupted or stale — no need to know which cache entries are actually bad. |
 
 ## No authentication — deployment warning
 
