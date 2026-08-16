@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/jpcranford/picarda/internal/models"
+	"github.com/jpcranford/sonneck/internal/models"
 )
 
 // EffectiveField is a book-inheritable string field resolved to its

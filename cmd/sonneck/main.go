@@ -8,11 +8,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/jpcranford/picarda/internal/backup"
-	"github.com/jpcranford/picarda/internal/config"
-	"github.com/jpcranford/picarda/internal/db"
-	"github.com/jpcranford/picarda/internal/handlers"
-	"github.com/jpcranford/picarda/internal/repo"
+	"github.com/jpcranford/sonneck/internal/backup"
+	"github.com/jpcranford/sonneck/internal/config"
+	"github.com/jpcranford/sonneck/internal/db"
+	"github.com/jpcranford/sonneck/internal/handlers"
+	"github.com/jpcranford/sonneck/internal/repo"
 )
 
 func main() {
@@ -32,7 +32,7 @@ func main() {
 	logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: cfg.SlogLevel()}))
 	slog.SetDefault(logger)
 
-	dbPath := filepath.Join(cfg.DataDir, "db", "picarda.sqlite")
+	dbPath := filepath.Join(cfg.DataDir, "db", "sonneck.sqlite")
 	if err := os.MkdirAll(filepath.Dir(dbPath), 0o755); err != nil {
 		logger.Error("failed to create database directory", "error", err, "path", filepath.Dir(dbPath))
 		os.Exit(1)

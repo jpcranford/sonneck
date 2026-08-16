@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jpcranford/picarda/internal/models"
-	"github.com/jpcranford/picarda/internal/repo"
+	"github.com/jpcranford/sonneck/internal/models"
+	"github.com/jpcranford/sonneck/internal/repo"
 )
 
 // MaxLineLength is the 255-char cap shared by every line-text input,

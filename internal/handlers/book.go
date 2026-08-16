@@ -9,11 +9,11 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/jpcranford/picarda/internal/api"
-	"github.com/jpcranford/picarda/internal/models"
-	"github.com/jpcranford/picarda/internal/pdf"
-	"github.com/jpcranford/picarda/internal/repo"
-	"github.com/jpcranford/picarda/internal/storage"
+	"github.com/jpcranford/sonneck/internal/api"
+	"github.com/jpcranford/sonneck/internal/models"
+	"github.com/jpcranford/sonneck/internal/pdf"
+	"github.com/jpcranford/sonneck/internal/repo"
+	"github.com/jpcranford/sonneck/internal/storage"
 )
 
 // handleUploadBook is the import wizard's step 1 (design doc §5): upload

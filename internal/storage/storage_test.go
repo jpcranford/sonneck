@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jpcranford/picarda/internal/storage"
+	"github.com/jpcranford/sonneck/internal/storage"
 )
 
 func TestSaveStreamed_HashesIncrementallyWithoutBufferingWhole(t *testing.T) {

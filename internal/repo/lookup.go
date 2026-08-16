@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 
-	"github.com/jpcranford/picarda/internal/models"
+	"github.com/jpcranford/sonneck/internal/models"
 )
 
 func ListKeys(ctx context.Context, q Queryer) ([]models.Key, error) {

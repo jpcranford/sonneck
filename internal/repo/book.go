@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 
-	"github.com/jpcranford/picarda/internal/models"
+	"github.com/jpcranford/sonneck/internal/models"
 )
 
 func CreateBook(ctx context.Context, q Queryer, b *models.Book) (int64, error) {

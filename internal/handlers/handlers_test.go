@@ -12,10 +12,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/jpcranford/picarda/internal/config"
-	"github.com/jpcranford/picarda/internal/db"
-	"github.com/jpcranford/picarda/internal/handlers"
-	"github.com/jpcranford/picarda/internal/testutil"
+	"github.com/jpcranford/sonneck/internal/config"
+	"github.com/jpcranford/sonneck/internal/db"
+	"github.com/jpcranford/sonneck/internal/handlers"
+	"github.com/jpcranford/sonneck/internal/testutil"
 )
 
 // newTestServer wires up a real handler against a fresh temp DB and temp
@@ -26,7 +26,7 @@ func newTestServer(t *testing.T) http.Handler {
 	t.Helper()
 	dataDir := t.TempDir()
 
-	conn, err := db.Open(filepath.Join(dataDir, "picarda.sqlite"))
+	conn, err := db.Open(filepath.Join(dataDir, "sonneck.sqlite"))
 	if err != nil {
 		t.Fatalf("opening test database: %v", err)
 	}

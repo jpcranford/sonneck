@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 
-	"github.com/jpcranford/picarda/internal/models"
+	"github.com/jpcranford/sonneck/internal/models"
 )
 
 func CreatePiece(ctx context.Context, q Queryer, p *models.Piece) (int64, error) {

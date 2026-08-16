@@ -7,8 +7,8 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/jpcranford/picarda/internal/api"
-	"github.com/jpcranford/picarda/internal/config"
+	"github.com/jpcranford/sonneck/internal/api"
+	"github.com/jpcranford/sonneck/internal/config"
 )
 
 type Server struct {

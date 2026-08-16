@@ -1,4 +1,4 @@
-module github.com/jpcranford/picarda
+module github.com/jpcranford/sonneck
 
 go 1.26.6
 

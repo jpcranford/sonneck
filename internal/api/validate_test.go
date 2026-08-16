@@ -7,10 +7,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jpcranford/picarda/internal/api"
-	"github.com/jpcranford/picarda/internal/db"
-	"github.com/jpcranford/picarda/internal/models"
-	"github.com/jpcranford/picarda/internal/repo"
+	"github.com/jpcranford/sonneck/internal/api"
+	"github.com/jpcranford/sonneck/internal/db"
+	"github.com/jpcranford/sonneck/internal/models"
+	"github.com/jpcranford/sonneck/internal/repo"
 )
 
 func newTestDB(t *testing.T) *sql.DB {

@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/jpcranford/picarda/internal/api"
-	"github.com/jpcranford/picarda/internal/repo"
+	"github.com/jpcranford/sonneck/internal/api"
+	"github.com/jpcranford/sonneck/internal/repo"
 )
 
 // handleSearchPieces is design doc §11's library browse/search: search-as-

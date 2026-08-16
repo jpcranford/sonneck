@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/jpcranford/picarda/internal/handlers"
+	"github.com/jpcranford/sonneck/internal/handlers"
 )
 
 // TestUnmatchedRoute_ReturnsJSONNotFound covers the gap a manual review

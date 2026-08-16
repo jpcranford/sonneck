@@ -11,10 +11,10 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/jpcranford/picarda/internal/api"
-	"github.com/jpcranford/picarda/internal/pdf"
-	"github.com/jpcranford/picarda/internal/repo"
-	"github.com/jpcranford/picarda/internal/storage"
+	"github.com/jpcranford/sonneck/internal/api"
+	"github.com/jpcranford/sonneck/internal/pdf"
+	"github.com/jpcranford/sonneck/internal/repo"
+	"github.com/jpcranford/sonneck/internal/storage"
 )
 
 // MaxUploadBytes bounds request bodies on every upload endpoint. Set well

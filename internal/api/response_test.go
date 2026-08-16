@@ -5,7 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/jpcranford/picarda/internal/api"
+	"github.com/jpcranford/sonneck/internal/api"
 )
 
 func TestWriteData_MatchesContract(t *testing.T) {

@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/jpcranford/picarda/internal/wizard"
+	"github.com/jpcranford/sonneck/internal/wizard"
 )
 
 // This suite covers exactly the cases CLAUDE.md > Testing requires for the

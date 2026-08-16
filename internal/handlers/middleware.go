@@ -4,7 +4,7 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/jpcranford/picarda/internal/api"
+	"github.com/jpcranford/sonneck/internal/api"
 )
 
 // recoverMiddleware turns a panic in any handler into a logged 500 with the

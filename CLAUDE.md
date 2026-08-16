@@ -1,6 +1,6 @@
 # CLAUDE.md — House Rules & Conventions
 
-Companion to `picarda-design.md` (the design doc for **Picarda**, codenamed after the English music scholar). Re-read this file at the start of every session — its job is to keep cross-cutting decisions consistent across many separate sessions, which a design doc alone won't do.
+Companion to `sonneck-design.md` (the design doc for **Sonneck**, named after Oscar Sonneck, the American musicologist and first head of the Library of Congress's Music Division — see the root README's "About the name" section for the full story). Re-read this file at the start of every session — its job is to keep cross-cutting decisions consistent across many separate sessions, which a design doc alone won't do.
 
 ## Database migrations
 Tool: **goose**. Every schema change is a migration file, checked into the repo, never a hand-edited change to an existing migration. Several fields are already known to be coming later (`composerDeathYear`, `SheetType.definition`, custom fields — see design doc §13), each gets its own new migration when it lands, not a retrofit into v1's schema. (Reconsidered whether a lighter-weight approach than a dedicated migration tool would do for a small project — kept `goose` regardless, since this risk is driven by session count across a vibe-coded build, not team size, and the tool itself is small and low-overhead.)

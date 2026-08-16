@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/jpcranford/picarda/internal/pdf"
-	"github.com/jpcranford/picarda/internal/testutil"
+	"github.com/jpcranford/sonneck/internal/pdf"
+	"github.com/jpcranford/sonneck/internal/testutil"
 )
 
 func TestPageCount_MatchesFixture(t *testing.T) {

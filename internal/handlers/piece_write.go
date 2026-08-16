@@ -4,9 +4,9 @@ import (
 	"context"
 	"strings"
 
-	"github.com/jpcranford/picarda/internal/api"
-	"github.com/jpcranford/picarda/internal/models"
-	"github.com/jpcranford/picarda/internal/repo"
+	"github.com/jpcranford/sonneck/internal/api"
+	"github.com/jpcranford/sonneck/internal/models"
+	"github.com/jpcranford/sonneck/internal/repo"
 )
 
 // applyPieceWriteRequest maps req's fields onto p and resolves its tag

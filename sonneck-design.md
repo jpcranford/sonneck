@@ -1,4 +1,4 @@
-# Picarda — Design Document
+# Sonneck — Design Document
 
 *Codename, after the English music scholar.*
 
@@ -128,16 +128,16 @@ No settings table in v1 — global config is environment-variable driven per you
     books/<sha256-hash>.pdf     # original unmodified uploads
     pieces/<sha256-hash>.pdf     # extracted per-piece files
   db/
-    picarda.sqlite
+    sonneck.sqlite
   backups/
-    picarda-YYYY-MM-DD.sqlite
+    sonneck-YYYY-MM-DD.sqlite
 ```
 
 - Both the original book PDF and the extracted per-piece PDFs are retained indefinitely. "Download piece" serves the piece's own extracted file, never the full book.
 - **Daily backup job**: a scheduled in-process task that snapshots the database, timing configurable via `BACKUP_CRON` (standard cron expression, default `0 3 * * *` — 3 AM daily — if unset). Use SQLite's `VACUUM INTO` (or the backup API) rather than a raw file copy — a raw copy can catch the file mid-write; `VACUUM INTO` guarantees a consistent snapshot. Scheduling itself needs a small cron-expression parser/scheduler — `robfig/cron` is the standard, well-known, pure-Go choice for this (no CGO, fits the project's existing dependency posture — see §2's BLAKE3-vs-SHA256, `modernc.org/sqlite` reasoning for the same pattern).
 - Retention controlled by `BACKUP_RETENTION_DAYS` (delete backups older than N days).
 - The library folder itself (books/pieces) should live on a mounted volume the user is expected to back up separately (e.g., via their NAS's own snapshot mechanism) — the app's job is the DB backup, not full-library backup.
-- **Restore procedure** (documented, not just backup creation): stop the container, replace `/data/db/picarda.sqlite` with the desired backup file, restart. Worth a line in the README, not just implied by the backup mechanism existing.
+- **Restore procedure** (documented, not just backup creation): stop the container, replace `/data/db/sonneck.sqlite` with the desired backup file, restart. Worth a line in the README, not just implied by the backup mechanism existing.
 
 ### 4.5 Concurrency
 v1 targets a single user, single session (§8) — this removes the need for multi-writer conflict handling. Still worth doing cheaply regardless: enable SQLite's **WAL mode** at startup. It costs nothing, and protects against edge cases like an accidental double-submit from the browser without requiring any real concurrency design.

@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/jpcranford/picarda/internal/db"
+	"github.com/jpcranford/sonneck/internal/db"
 )
 
 func newTestDB(t *testing.T) *sql.DB {

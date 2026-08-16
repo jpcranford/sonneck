@@ -39,7 +39,7 @@ func WriteFixturePDF(t *testing.T, path string, pageCount int) {
 
 	for i := 0; i < pageCount; i++ {
 		offsets = append(offsets, buf.Len())
-		fmt.Fprintf(&buf, "%d 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /PicardaTestPageNumber %d >>\nendobj\n", 3+i, i+1)
+		fmt.Fprintf(&buf, "%d 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /SonneckTestPageNumber %d >>\nendobj\n", 3+i, i+1)
 	}
 
 	xrefStart := buf.Len()

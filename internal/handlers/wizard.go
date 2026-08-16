@@ -7,12 +7,12 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/jpcranford/picarda/internal/api"
-	"github.com/jpcranford/picarda/internal/models"
-	"github.com/jpcranford/picarda/internal/pdf"
-	"github.com/jpcranford/picarda/internal/repo"
-	"github.com/jpcranford/picarda/internal/storage"
-	"github.com/jpcranford/picarda/internal/wizard"
+	"github.com/jpcranford/sonneck/internal/api"
+	"github.com/jpcranford/sonneck/internal/models"
+	"github.com/jpcranford/sonneck/internal/pdf"
+	"github.com/jpcranford/sonneck/internal/repo"
+	"github.com/jpcranford/sonneck/internal/storage"
+	"github.com/jpcranford/sonneck/internal/wizard"
 )
 
 // ConfirmImportRequest is the wizard's steps 2-4 combined (design doc §5):

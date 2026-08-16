@@ -27,7 +27,7 @@ func Run(ctx context.Context, db *sql.DB, backupDir string) (string, error) {
 		return "", fmt.Errorf("creating backup directory: %w", err)
 	}
 
-	path := filepath.Join(backupDir, fmt.Sprintf("picarda-%s.sqlite", time.Now().UTC().Format("2006-01-02")))
+	path := filepath.Join(backupDir, fmt.Sprintf("sonneck-%s.sqlite", time.Now().UTC().Format("2006-01-02")))
 
 	// VACUUM INTO refuses to write over an existing file — a second backup
 	// on the same UTC day (e.g. a manual re-run) replaces the first rather
@@ -45,7 +45,7 @@ func Run(ctx context.Context, db *sql.DB, backupDir string) (string, error) {
 }
 
 // Prune deletes backup files older than retentionDays, matching the
-// picarda-YYYY-MM-DD.sqlite naming convention Run writes. A missing
+// sonneck-YYYY-MM-DD.sqlite naming convention Run writes. A missing
 // backup directory (no backups have run yet) is not an error.
 func Prune(backupDir string, retentionDays int) error {
 	entries, err := os.ReadDir(backupDir)

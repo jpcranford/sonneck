@@ -8,17 +8,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jpcranford/picarda/internal/backup"
-	"github.com/jpcranford/picarda/internal/db"
-	"github.com/jpcranford/picarda/internal/models"
-	"github.com/jpcranford/picarda/internal/repo"
+	"github.com/jpcranford/sonneck/internal/backup"
+	"github.com/jpcranford/sonneck/internal/db"
+	"github.com/jpcranford/sonneck/internal/models"
+	"github.com/jpcranford/sonneck/internal/repo"
 )
 
 func TestRun_ProducesIndependentConsistentSnapshot(t *testing.T) {
 	ctx := context.Background()
 	dir := t.TempDir()
 
-	conn, err := db.Open(filepath.Join(dir, "picarda.sqlite"))
+	conn, err := db.Open(filepath.Join(dir, "sonneck.sqlite"))
 	if err != nil {
 		t.Fatalf("opening source database: %v", err)
 	}
@@ -62,7 +62,7 @@ func TestRun_ProducesIndependentConsistentSnapshot(t *testing.T) {
 func TestRun_ReplacesSameDayBackupRatherThanErroring(t *testing.T) {
 	ctx := context.Background()
 	dir := t.TempDir()
-	conn, err := db.Open(filepath.Join(dir, "picarda.sqlite"))
+	conn, err := db.Open(filepath.Join(dir, "sonneck.sqlite"))
 	if err != nil {
 		t.Fatalf("opening database: %v", err)
 	}
@@ -80,8 +80,8 @@ func TestRun_ReplacesSameDayBackupRatherThanErroring(t *testing.T) {
 func TestPrune_DeletesOnlyExpiredBackups(t *testing.T) {
 	dir := t.TempDir()
 
-	recent := filepath.Join(dir, "picarda-2026-08-14.sqlite")
-	old := filepath.Join(dir, "picarda-2026-01-01.sqlite")
+	recent := filepath.Join(dir, "sonneck-2026-08-14.sqlite")
+	old := filepath.Join(dir, "sonneck-2026-01-01.sqlite")
 	for _, p := range []string{recent, old} {
 		if err := os.WriteFile(p, []byte("not a real db, just testing file lifecycle"), 0o644); err != nil {
 			t.Fatalf("seeding backup file %s: %v", p, err)

@@ -3,8 +3,8 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/jpcranford/picarda/internal/api"
-	"github.com/jpcranford/picarda/internal/repo"
+	"github.com/jpcranford/sonneck/internal/api"
+	"github.com/jpcranford/sonneck/internal/repo"
 )
 
 func (s *Server) handleListKeys(w http.ResponseWriter, r *http.Request) {

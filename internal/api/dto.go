@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/jpcranford/picarda/internal/models"
-	"github.com/jpcranford/picarda/internal/repo"
+	"github.com/jpcranford/sonneck/internal/models"
+	"github.com/jpcranford/sonneck/internal/repo"
 )
 
 // EffectiveTagRef and EffectiveTagRefs are the tag-shaped counterparts to

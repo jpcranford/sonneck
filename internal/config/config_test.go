@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/jpcranford/picarda/internal/config"
+	"github.com/jpcranford/sonneck/internal/config"
 )
 
 var configEnvVars = []string{
