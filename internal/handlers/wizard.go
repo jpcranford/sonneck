@@ -118,10 +118,11 @@ func (s *Server) handleConfirmImport(w http.ResponseWriter, r *http.Request) {
 		for i, sp := range staged {
 			start, end := sp.start, sp.end
 			p := &models.Piece{
-				SourceBookID: &bookID,
-				FilePath:     storage.PiecePath(s.Cfg.DataDir, sp.hash),
-				FileHash:     sp.hash,
-				PageCount:    end - start + 1,
+				SourceBookID:  &bookID,
+				FilePath:      storage.PiecePath(s.Cfg.DataDir, sp.hash),
+				FileHash:      sp.hash,
+				PageCount:     end - start + 1,
+				ThumbnailPage: 1,
 			}
 
 			if err := applyPieceWriteRequest(r.Context(), tx, p, req.Pieces[i]); err != nil {

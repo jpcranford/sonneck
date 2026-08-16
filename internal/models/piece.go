@@ -43,9 +43,10 @@ type Piece struct {
 	MeasureCount    *int
 	BeatsPerMeasure *int
 
-	FilePath  string
-	FileHash  string
-	PageCount int // total pages in FilePath, for the Library card page-cycle control
+	FilePath      string
+	FileHash      string
+	PageCount     int // total pages in FilePath, for the Library card page-cycle control
+	ThumbnailPage int // which page renders as the Library card thumbnail (design doc §14 addition); user-selectable via the Piece View, defaults to 1
 
 	// Deliberate pre-build exception (CLAUDE.md > Database migrations):
 	// unused until the public-domain badge feature (design doc §13) lands.

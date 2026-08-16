@@ -35,6 +35,7 @@ func New(db *sql.DB, cfg *config.Config, logger *slog.Logger) http.Handler {
 	mux.HandleFunc("DELETE /api/pieces/{id}", s.handleDeletePiece)
 	mux.HandleFunc("GET /api/pieces/{id}/file", s.handleDownloadPieceFile)
 	mux.HandleFunc("POST /api/pieces/{id}/replace-file", s.handleReplacePieceFile)
+	mux.HandleFunc("PATCH /api/pieces/{id}/thumbnail-page", s.handleSetPieceThumbnailPage)
 	mux.HandleFunc("GET /api/pieces/{id}/citation", s.handleGetCitation)
 	mux.HandleFunc("GET /api/pieces/{id}/pages/{page}/thumbnail", s.handlePieceThumbnail)
 

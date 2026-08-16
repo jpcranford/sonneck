@@ -58,6 +58,10 @@ export interface Piece {
   beatsPerMeasure: number | null
   fileHash: string
   pageCount: number
+  /** Which rendered page is used as this piece's Library card thumbnail
+   * (design doc §14 addition) — user-selectable from the Piece View,
+   * defaults to 1. */
+  thumbnailPage: number
   copyrightYear: number | null
   publicDomain: boolean
   createdAt: string

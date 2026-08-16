@@ -9,7 +9,9 @@ import (
 	"mime/multipart"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/jpcranford/sonneck/internal/api"
 	"github.com/jpcranford/sonneck/internal/pdf"
@@ -74,6 +76,136 @@ func (s *Server) stageUpload(w http.ResponseWriter, r *http.Request, stagingDir 
 	}
 
 	return tempPath, hash, pageCount, true
+}
+
+// cachedThumbnail returns the path to a cached page-thumbnail PNG for
+// srcPath, rendering (via pdftoppm) and caching it under cacheKey on a
+// miss. Used by both handlePieceThumbnail and handleBookPageThumbnail.
+//
+// Renders to a private temp file first and atomically renames it into
+// place with storage.MoveIntoPlace, rather than having pdftoppm write
+// straight to the final cache path. Two concurrent first-requests for the
+// same not-yet-cached page (e.g. the Piece View and a Library card
+// prefetching the same thumbnail at once) would otherwise both pass the
+// existence check and both invoke pdftoppm with the *same* output path,
+// racing to write the same file — the loser's partial/interleaved write
+// can leave a torn PNG on disk that then "exists" forever, since the
+// existence check alone gates regeneration. Rendering to a unique temp
+// name means each request writes its own complete file; whichever renames
+// into place first wins, and MoveIntoPlace already discards the other
+// (content-addressed storage's own dedupe rule, reused here for the same
+// reason).
+func (s *Server) cachedThumbnail(ctx context.Context, srcPath string, page, dpi int, cacheKey string) (string, error) {
+	cacheDir := filepath.Join(s.Cfg.DataDir, "cache", "thumbnails")
+	if err := os.MkdirAll(cacheDir, 0o755); err != nil {
+		return "", err
+	}
+
+	thumbPath := filepath.Join(cacheDir, cacheKey+".png")
+	if _, err := os.Stat(thumbPath); err == nil {
+		return thumbPath, nil
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return "", err
+	}
+
+	tmpPNG, err := s.renderThumbnailToTemp(ctx, cacheDir, srcPath, page, dpi, cacheKey)
+	if err != nil {
+		return "", err
+	}
+	if err := storage.MoveIntoPlace(tmpPNG, thumbPath); err != nil {
+		os.Remove(tmpPNG)
+		return "", err
+	}
+
+	return thumbPath, nil
+}
+
+// renderThumbnailToTemp renders page of srcPath to a private, uniquely
+// named temp PNG inside cacheDir (via a reserved-then-freed name from
+// os.CreateTemp, since pdftoppm needs to create the file itself given a
+// bare prefix) — the render step shared by cachedThumbnail's on-miss path
+// and regenerateThumbnail's always-render path.
+func (s *Server) renderThumbnailToTemp(ctx context.Context, cacheDir, srcPath string, page, dpi int, cacheKey string) (string, error) {
+	tmpFile, err := os.CreateTemp(cacheDir, cacheKey+"-*.tmp")
+	if err != nil {
+		return "", err
+	}
+	tmpPrefix := strings.TrimSuffix(tmpFile.Name(), ".tmp")
+	tmpFile.Close()
+	os.Remove(tmpFile.Name())
+
+	return pdf.RenderThumbnail(ctx, srcPath, page, dpi, tmpPrefix)
+}
+
+// regenerateThumbnail force-renders page of srcPath, unconditionally
+// replacing any existing cache entry — unlike cachedThumbnail, which skips
+// rendering if thumbPath already exists. Used by the regenerate-thumbnails
+// CLI subcommand (CLAUDE.md > Search's general admin/maintenance pattern)
+// to recover from a corrupted cache entry without needing to know which
+// ones are bad. Still renders to a private temp file and renames into
+// place — os.Rename atomically replaces an existing destination on POSIX,
+// so a reader (a concurrent live HTTP request for the same page) never
+// observes a partially-written file, same guarantee as cachedThumbnail.
+func (s *Server) regenerateThumbnail(ctx context.Context, srcPath string, page, dpi int, cacheKey string) (string, error) {
+	cacheDir := filepath.Join(s.Cfg.DataDir, "cache", "thumbnails")
+	if err := os.MkdirAll(cacheDir, 0o755); err != nil {
+		return "", err
+	}
+
+	tmpPNG, err := s.renderThumbnailToTemp(ctx, cacheDir, srcPath, page, dpi, cacheKey)
+	if err != nil {
+		return "", err
+	}
+
+	thumbPath := filepath.Join(cacheDir, cacheKey+".png")
+	if err := os.Rename(tmpPNG, thumbPath); err != nil {
+		os.Remove(tmpPNG)
+		return "", err
+	}
+	return thumbPath, nil
+}
+
+// RegenerateThumbnails force-regenerates every piece's page thumbnails from
+// scratch — the manual recovery path behind the regenerate-thumbnails CLI
+// subcommand. Clears data/cache/thumbnails entirely first (it's derived
+// data, same "safely dropped and rebuilt" philosophy as pieces_fts, CLAUDE.md
+// > Search) so any corrupted or orphaned entry (a deleted piece, a page
+// beyond the current PageCount, a stale book-import thumbnail) is gone too,
+// not just the ones a caller happens to know about — then re-renders one
+// PNG per page of every piece still in the library. Returns the count
+// regenerated for the caller to report.
+func (s *Server) RegenerateThumbnails(ctx context.Context) (int, error) {
+	cacheDir := filepath.Join(s.Cfg.DataDir, "cache", "thumbnails")
+	entries, err := os.ReadDir(cacheDir)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return 0, err
+	}
+	for _, e := range entries {
+		if err := os.Remove(filepath.Join(cacheDir, e.Name())); err != nil {
+			return 0, err
+		}
+	}
+
+	ids, err := repo.AllPieceIDs(ctx, s.DB)
+	if err != nil {
+		return 0, err
+	}
+
+	count := 0
+	for _, id := range ids {
+		p, err := repo.GetPieceByID(ctx, s.DB, id)
+		if err != nil {
+			return count, err
+		}
+		for page := 1; page <= p.PageCount; page++ {
+			cacheKey := fmt.Sprintf("piece-%d-page-%d", p.ID, page)
+			if _, err := s.regenerateThumbnail(ctx, p.FilePath, page, 100, cacheKey); err != nil {
+				return count, fmt.Errorf("piece %d page %d: %w", p.ID, page, err)
+			}
+			count++
+		}
+	}
+	return count, nil
 }
 
 // withTx runs fn inside a transaction, committing on success and rolling

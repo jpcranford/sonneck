@@ -46,6 +46,10 @@ export function replacePieceFile(
   return apiUpload<Piece>(`/api/pieces/${id}/replace-file`, file, onProgress)
 }
 
+export function setPieceThumbnailPage(id: number, page: number): Promise<Piece> {
+  return apiPatch<Piece>(`/api/pieces/${id}/thumbnail-page`, { page })
+}
+
 export function getCitation(id: number): Promise<{ citation: string }> {
   return apiGet(`/api/pieces/${id}/citation`)
 }

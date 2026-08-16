@@ -55,6 +55,7 @@ type PieceResponse struct {
 	BeatsPerMeasure *int                `json:"beatsPerMeasure"`
 	FileHash        string              `json:"fileHash"`
 	PageCount       int                 `json:"pageCount"`
+	ThumbnailPage   int                 `json:"thumbnailPage"`
 	CopyrightYear   *int                `json:"copyrightYear"`
 	PublicDomain    bool                `json:"publicDomain"`
 	CreatedAt       time.Time           `json:"createdAt"`
@@ -92,6 +93,7 @@ func BuildPieceResponse(ctx context.Context, q repo.Queryer, p *models.Piece) (*
 		BeatsPerMeasure: p.BeatsPerMeasure,
 		FileHash:        p.FileHash,
 		PageCount:       p.PageCount,
+		ThumbnailPage:   p.ThumbnailPage,
 		CopyrightYear:   p.CopyrightYear,
 		PublicDomain:    p.PublicDomain,
 		CreatedAt:       p.CreatedAt,

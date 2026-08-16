@@ -24,7 +24,7 @@ export function PieceGridCard({ piece }: PieceGridCardProps) {
       >
         <div className="relative aspect-[180/132] w-full overflow-hidden bg-border">
           <img
-            src={getPieceThumbnailUrl(piece.id, 1)}
+            src={getPieceThumbnailUrl(piece.id, piece.thumbnailPage)}
             alt=""
             loading="lazy"
             className="h-full w-full object-cover object-top"

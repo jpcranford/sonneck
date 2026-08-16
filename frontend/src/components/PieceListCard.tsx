@@ -12,7 +12,7 @@ interface PieceListCardProps {
 }
 
 export function PieceListCard({ piece }: PieceListCardProps) {
-  const [page, setPage] = useState(1)
+  const [page, setPage] = useState(piece.thumbnailPage)
   const meta = formatPieceMeta(piece)
 
   return (

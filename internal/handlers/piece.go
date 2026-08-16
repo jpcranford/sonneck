@@ -12,7 +12,6 @@ import (
 
 	"github.com/jpcranford/sonneck/internal/api"
 	"github.com/jpcranford/sonneck/internal/models"
-	"github.com/jpcranford/sonneck/internal/pdf"
 	"github.com/jpcranford/sonneck/internal/repo"
 	"github.com/jpcranford/sonneck/internal/storage"
 )
@@ -67,11 +66,12 @@ func (s *Server) handleCreatePiece(w http.ResponseWriter, r *http.Request) {
 	var resp *api.PieceResponse
 	err = s.withTx(r.Context(), func(tx *sql.Tx) error {
 		p := &models.Piece{
-			Title:       defaultTitleFromFilename(header.Filename),
-			ImslpNumber: detectImslpNumber(header.Filename),
-			FilePath:    finalPath,
-			FileHash:    hash,
-			PageCount:   pageCount,
+			Title:         defaultTitleFromFilename(header.Filename),
+			ImslpNumber:   detectImslpNumber(header.Filename),
+			FilePath:      finalPath,
+			FileHash:      hash,
+			PageCount:     pageCount,
+			ThumbnailPage: 1,
 		}
 		id, err := repo.CreatePiece(r.Context(), tx, p)
 		if err != nil {
@@ -156,6 +156,9 @@ func (s *Server) handleUpdatePiece(w http.ResponseWriter, r *http.Request) {
 
 		p.UpdatedAt = time.Now().UTC()
 		if err := repo.UpdatePiece(r.Context(), tx, p); err != nil {
+			return err
+		}
+		if err := repo.SetPieceKeys(r.Context(), tx, id, p.KeyIDs); err != nil {
 			return err
 		}
 		if err := repo.SetPieceInstruments(r.Context(), tx, id, p.InstrumentIDs); err != nil {
@@ -314,19 +317,10 @@ func (s *Server) handlePieceThumbnail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cacheDir := filepath.Join(s.Cfg.DataDir, "cache", "thumbnails")
-	if err := os.MkdirAll(cacheDir, 0o755); err != nil {
+	thumbPath, err := s.cachedThumbnail(r.Context(), p.FilePath, page, 100, fmt.Sprintf("piece-%d-page-%d", id, page))
+	if err != nil {
 		s.writeError(w, err)
 		return
-	}
-	outPrefix := filepath.Join(cacheDir, fmt.Sprintf("piece-%d-page-%d", id, page))
-	thumbPath := outPrefix + ".png"
-
-	if _, err := os.Stat(thumbPath); os.IsNotExist(err) {
-		if _, err := pdf.RenderThumbnail(r.Context(), p.FilePath, page, 100, outPrefix); err != nil {
-			s.writeError(w, err)
-			return
-		}
 	}
 
 	http.ServeFile(w, r, thumbPath)
@@ -382,6 +376,11 @@ func (s *Server) handleReplacePieceFile(w http.ResponseWriter, r *http.Request) 
 		p.FilePath = newPath
 		p.FileHash = newHash
 		p.PageCount = newPageCount
+		// A prior manual thumbnail-page pick almost certainly no longer
+		// points at the same content (or may not even be a valid page
+		// number anymore, if the new file is shorter) — reset to 1 rather
+		// than carry a stale/out-of-range selection forward silently.
+		p.ThumbnailPage = 1
 		p.UpdatedAt = time.Now().UTC()
 		if err := repo.UpdatePiece(r.Context(), tx, p); err != nil {
 			return err
@@ -437,6 +436,61 @@ func (s *Server) handleReplacePieceFile(w http.ResponseWriter, r *http.Request) 
 	}
 
 	s.Logger.Info("piece file replaced", "pieceId", id, "oldFileHash", oldFileHash, "newFileHash", newHash)
+
+	api.WriteData(w, http.StatusOK, resp)
+}
+
+type setThumbnailPageRequest struct {
+	Page int `json:"page"`
+}
+
+// handleSetPieceThumbnailPage lets the user manually pick which rendered
+// page becomes this piece's Library card thumbnail — a design doc §14
+// addition made during the Piece View's build, not in the original spec.
+// A small, single-purpose action endpoint (same shape as replace-file),
+// not folded into PieceWriteRequest/handleUpdatePiece: that's a full-form
+// replace meant for the (not-yet-built) Piece Properties Edit Menu, and
+// this is a one-click action triggered from the preview, not a field edit.
+func (s *Server) handleSetPieceThumbnailPage(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathID(r, "id")
+	if !ok {
+		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid piece id")
+		return
+	}
+
+	var req setThumbnailPageRequest
+	if err := decodeJSON(r, &req); err != nil {
+		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid request body: "+err.Error())
+		return
+	}
+
+	var resp *api.PieceResponse
+	err := s.withTx(r.Context(), func(tx *sql.Tx) error {
+		p, err := repo.GetPieceByID(r.Context(), tx, id)
+		if err != nil {
+			return err
+		}
+
+		if req.Page < 1 || req.Page > p.PageCount {
+			return api.ValidationErrors{{
+				Field:   "page",
+				Message: fmt.Sprintf("must be between 1 and %d", p.PageCount),
+			}}
+		}
+
+		p.ThumbnailPage = req.Page
+		p.UpdatedAt = time.Now().UTC()
+		if err := repo.UpdatePiece(r.Context(), tx, p); err != nil {
+			return err
+		}
+
+		resp, err = api.BuildPieceResponse(r.Context(), tx, p)
+		return err
+	})
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
 
 	api.WriteData(w, http.StatusOK, resp)
 }

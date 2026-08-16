@@ -11,7 +11,6 @@ import (
 
 	"github.com/jpcranford/sonneck/internal/api"
 	"github.com/jpcranford/sonneck/internal/models"
-	"github.com/jpcranford/sonneck/internal/pdf"
 	"github.com/jpcranford/sonneck/internal/repo"
 	"github.com/jpcranford/sonneck/internal/storage"
 )
@@ -194,8 +193,8 @@ func (s *Server) handleBookPageThumbnail(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	cacheDir := filepath.Join(s.Cfg.DataDir, "cache", "thumbnails")
-	if err := os.MkdirAll(cacheDir, 0o755); err != nil {
+	thumbPath, err := s.cachedThumbnail(r.Context(), b.FilePath, page, 100, fmt.Sprintf("book-%d-page-%d", id, page))
+	if err != nil {
 		s.writeError(w, err)
 		return
 	}

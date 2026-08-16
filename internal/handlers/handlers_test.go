@@ -148,6 +148,11 @@ type effectiveString struct {
 	Inherited bool   `json:"inherited"`
 }
 
+type tagStub struct {
+	ID   int64  `json:"id"`
+	Name string `json:"name"`
+}
+
 type pieceResponse struct {
 	ID              int64           `json:"id"`
 	Title           string          `json:"title"`
@@ -158,6 +163,7 @@ type pieceResponse struct {
 	FileHash        string          `json:"fileHash"`
 	SourceBookID    *int64          `json:"sourceBookId"`
 	PageCount       int             `json:"pageCount"`
+	ThumbnailPage   int             `json:"thumbnailPage"`
 }
 
 func readAll(t *testing.T, path string) []byte {
