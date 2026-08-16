@@ -82,7 +82,7 @@ Most packages have meaningful test coverage; two areas are treated as non-option
 
 ## About the name
 
-Sonneck is named after **Oscar Sonneck** (1873–1928), an American musicologist and librarian. In 1902 he became the first chief of the new Music Division at the Library of Congress, a post he held until 1917; there he built the division's holdings into one of the world's great music collections and devised a classification scheme still in use today, with modifications. He's regarded as the founding figure of American musicology — his bibliographic work on early American music laid the groundwork for the field.
+Sonneck is named after **Oscar Sonneck** (1873–1928), an American musicologist and librarian. In 1902 he became the first chief of the new Music Division at the Library of Congress, a post he held until 1917; there he built the division's holdings into one of the world's great music collections and devised a classification scheme still in use today, with modifications. He's regarded as the founding figure of American musicology — his bibliographic work on early American music laid the groundwork for the field. And most importantly, his last name sounded great for an app. ;)
 
 ## Acknowledgements
 
