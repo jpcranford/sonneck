@@ -67,8 +67,8 @@ func TestSearchPieces_FiltersByPracticeStatus(t *testing.T) {
 
 func TestSearchPieces_FiltersByKeyId(t *testing.T) {
 	h := newTestServer(t)
-	inC := createTestPiece(t, h, map[string]any{"title": "In C", "keyName": "C Major"})
-	createTestPiece(t, h, map[string]any{"title": "In D", "keyName": "D Major"})
+	inC := createTestPiece(t, h, map[string]any{"title": "In C", "keys": []string{"C Major"}})
+	createTestPiece(t, h, map[string]any{"title": "In D", "keys": []string{"D Major"}})
 
 	rec := doJSON(t, h, http.MethodGet, "/api/keys", nil)
 	var keys []struct {

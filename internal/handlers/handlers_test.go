@@ -152,6 +152,7 @@ type pieceResponse struct {
 	ID              int64           `json:"id"`
 	Title           string          `json:"title"`
 	Composer        effectiveString `json:"composer"`
+	Keys            []tagStub       `json:"keys"`
 	SourcePageStart *int            `json:"sourcePageStart"`
 	SourcePageEnd   *int            `json:"sourcePageEnd"`
 	FileHash        string          `json:"fileHash"`

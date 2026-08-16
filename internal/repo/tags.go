@@ -35,6 +35,15 @@ func findOrCreateTag(ctx context.Context, q Queryer, table, name string) (int64,
 	return res.LastInsertId()
 }
 
+// SetPieceKeys replaces the full set of keys on a piece with keyIDs — a
+// piece can genuinely be written in more than one key (e.g. a piece that
+// modulates, or a medley), so this is many-to-many like instruments/user
+// tags, not a single nullable column (migration 00008). Callers are
+// responsible for resyncing the search index in the same transaction.
+func SetPieceKeys(ctx context.Context, q Queryer, pieceID int64, keyIDs []int64) error {
+	return replaceJoinRows(ctx, q, "piece_keys", "piece_id", "key_id", pieceID, keyIDs)
+}
+
 // SetPieceInstruments replaces the full set of instrument tags on a piece
 // with instrumentIDs. Callers are responsible for resyncing the search
 // index (ResyncSearchIndex) in the same transaction, per CLAUDE.md > Search.
@@ -65,6 +74,10 @@ func replaceJoinRows(ctx context.Context, q Queryer, table, ownerCol, tagCol str
 		}
 	}
 	return nil
+}
+
+func getPieceKeyIDs(ctx context.Context, q Queryer, pieceID int64) ([]int64, error) {
+	return getJoinedIDs(ctx, q, `SELECT key_id FROM piece_keys WHERE piece_id = ? ORDER BY key_id`, pieceID)
 }
 
 func getPieceInstrumentIDs(ctx context.Context, q Queryer, pieceID int64) ([]int64, error) {

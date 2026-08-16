@@ -18,7 +18,7 @@ export function pieceToWriteRequest(piece: Piece): PieceWriteRequest {
     arranger: piece.arranger,
     favorite: piece.favorite,
     workOpusNumber: piece.workOpusNumber.inherited ? '' : piece.workOpusNumber.value,
-    keyName: piece.key?.name ?? '',
+    keys: piece.keys.map((k) => k.name),
     sheetTypeName: piece.sheetType.inherited ? '' : (piece.sheetType.value?.name ?? ''),
     publisher: piece.publisher.inherited ? '' : piece.publisher.value,
     publisherId: piece.publisherId.inherited ? '' : piece.publisherId.value,

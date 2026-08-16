@@ -34,7 +34,7 @@ type PieceResponse struct {
 	Arranger        *string             `json:"arranger"`
 	Favorite        bool                `json:"favorite"`
 	WorkOpusNumber  repo.EffectiveField `json:"workOpusNumber"`
-	Key             *repo.Tag           `json:"key"`
+	Keys            []repo.Tag          `json:"keys"`
 	SheetType       EffectiveTagRef     `json:"sheetType"`
 	Publisher       repo.EffectiveField `json:"publisher"`
 	PublisherID     repo.EffectiveField `json:"publisherId"`
@@ -96,14 +96,15 @@ func BuildPieceResponse(ctx context.Context, q repo.Queryer, p *models.Piece) (*
 		PublicDomain:    p.PublicDomain,
 		CreatedAt:       p.CreatedAt,
 		UpdatedAt:       p.UpdatedAt,
+		Keys:            []repo.Tag{},
 	}
 
-	if p.KeyID != nil {
-		k, err := repo.GetKeyByID(ctx, q, *p.KeyID)
+	if len(p.KeyIDs) > 0 {
+		keys, err := repo.TagsByIDs(ctx, q, "musical_keys", p.KeyIDs)
 		if err != nil {
 			return nil, err
 		}
-		resp.Key = &repo.Tag{ID: k.ID, Name: k.Name}
+		resp.Keys = keys
 	}
 
 	resp.SheetType = EffectiveTagRef{Inherited: eff.SheetTypeID.Inherited}
@@ -223,7 +224,7 @@ type PieceWriteRequest struct {
 	Arranger        *string  `json:"arranger"`
 	Favorite        bool     `json:"favorite"`
 	WorkOpusNumber  *string  `json:"workOpusNumber"`
-	KeyName         *string  `json:"keyName"`
+	Keys            []string `json:"keys"`
 	SheetTypeName   *string  `json:"sheetTypeName"`
 	Publisher       *string  `json:"publisher"`
 	PublisherID     *string  `json:"publisherId"`

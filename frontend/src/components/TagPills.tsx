@@ -2,7 +2,7 @@ import { IconMusic } from '@tabler/icons-react'
 import type { Tag } from '../api/types'
 
 interface TagPillsProps {
-  musicalKey: Tag | null
+  keys: Tag[]
   sheetType: Tag | null
   instruments: Tag[]
   userTags: Tag[]
@@ -16,9 +16,12 @@ interface TagPillsProps {
 // data (`userTags`, user-authored) — key/sheetType/instruments are
 // system/book-level data, so they stay neutral hollow pills, never
 // distinguished by color alone anyway (CLAUDE.md > Frontend) since key
-// also carries a music-note icon.
-export function TagPills({ musicalKey, sheetType, instruments, userTags }: TagPillsProps) {
-  if (!musicalKey && !sheetType && instruments.length === 0 && userTags.length === 0) return null
+// also carries a music-note icon. Keys are many-to-many (a piece can be
+// written in more than one key), each rendered as its own pill.
+export function TagPills({ keys, sheetType, instruments, userTags }: TagPillsProps) {
+  if (keys.length === 0 && !sheetType && instruments.length === 0 && userTags.length === 0) {
+    return null
+  }
 
   return (
     <div className="flex flex-wrap items-center gap-1">
@@ -27,10 +30,13 @@ export function TagPills({ musicalKey, sheetType, instruments, userTags }: TagPi
           {tag.name}
         </span>
       ))}
-      {musicalKey && (
-        <span className="flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs text-ink-soft">
+      {keys.map((key) => (
+        <span
+          key={key.id}
+          className="flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs font-medium text-ink-soft"
+        >
           <IconMusic size={11} />
-          {musicalKey.name}
+          {key.name}
         </span>
       )}
       {sheetType && (

@@ -74,6 +74,7 @@ export function UploadPage() {
         title: data.title,
         composer: data.composer,
         favorite: false,
+        keys: [],
         instruments: [],
         userTags: [],
       }),

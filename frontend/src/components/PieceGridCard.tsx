@@ -53,7 +53,7 @@ export function PieceGridCard({ piece }: PieceGridCardProps) {
           )}
           <div className="mt-1 flex items-center justify-end">
             <TagPills
-              musicalKey={piece.key}
+              keys={piece.keys}
               sheetType={piece.sheetType.value}
               instruments={piece.instruments.values}
               userTags={piece.userTags}

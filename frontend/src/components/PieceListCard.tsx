@@ -37,7 +37,7 @@ export function PieceListCard({ piece }: PieceListCardProps) {
         </div>
         <div className="mt-2 flex items-center border-t border-border pt-2">
           <TagPills
-            musicalKey={piece.key}
+            keys={piece.keys}
             sheetType={piece.sheetType.value}
             instruments={piece.instruments.values}
             userTags={piece.userTags}

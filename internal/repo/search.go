@@ -35,13 +35,9 @@ func ResyncSearchIndex(ctx context.Context, q Queryer, pieceID int64) error {
 		return err
 	}
 
-	var keyName string
-	if p.KeyID != nil {
-		k, err := GetKeyByID(ctx, q, *p.KeyID)
-		if err != nil {
-			return err
-		}
-		keyName = k.Name
+	keyNames, err := namesByIDs(ctx, q, "musical_keys", p.KeyIDs)
+	if err != nil {
+		return err
 	}
 
 	var sheetTypeName string
@@ -70,7 +66,7 @@ func ResyncSearchIndex(ctx context.Context, q Queryer, pieceID int64) error {
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		p.ID, p.Title, eff.Composer.Value, strOrEmpty(p.Arranger), eff.Publisher.Value, eff.PublisherID.Value,
 		eff.ImslpNumber.Value, eff.YearWritten.Value, eff.WorkOpusNumber.Value, eff.Description.Value, strOrEmpty(p.UserNotes),
-		keyName, sheetTypeName, strings.Join(instrumentNames, " "), strings.Join(userTagNames, " "),
+		strings.Join(keyNames, " "), sheetTypeName, strings.Join(instrumentNames, " "), strings.Join(userTagNames, " "),
 	)
 	return err
 }
@@ -101,23 +97,10 @@ func RebuildSearchIndex(ctx context.Context, q Queryer) error {
 		return err
 	}
 
-	rows, err := q.QueryContext(ctx, `SELECT id FROM pieces ORDER BY id`)
+	ids, err := AllPieceIDs(ctx, q)
 	if err != nil {
 		return err
 	}
-	var ids []int64
-	for rows.Next() {
-		var id int64
-		if err := rows.Scan(&id); err != nil {
-			rows.Close()
-			return err
-		}
-		ids = append(ids, id)
-	}
-	if err := rows.Err(); err != nil {
-		return err
-	}
-	rows.Close()
 
 	for _, id := range ids {
 		if err := ResyncSearchIndex(ctx, q, id); err != nil {

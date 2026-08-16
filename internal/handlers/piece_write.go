@@ -41,11 +41,11 @@ func applyPieceWriteRequest(ctx context.Context, q repo.Queryer, p *models.Piece
 	p.BeatsPerMeasure = req.BeatsPerMeasure
 	p.Duration = computeDuration(req.BPM, req.MeasureCount, req.BeatsPerMeasure)
 
-	keyID, err := resolveOptionalTagName(ctx, q, repo.FindOrCreateKey, req.KeyName, "keyName")
+	keyIDs, err := resolveTagNames(ctx, q, repo.FindOrCreateKey, req.Keys, "keys")
 	if err != nil {
 		return err
 	}
-	p.KeyID = keyID
+	p.KeyIDs = keyIDs
 
 	sheetTypeID, err := resolveOptionalTagName(ctx, q, repo.FindOrCreateSheetType, req.SheetTypeName, "sheetTypeName")
 	if err != nil {

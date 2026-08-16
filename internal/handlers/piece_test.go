@@ -67,6 +67,56 @@ func TestSinglePieceUpload_BypassesValidationButEditRequiresIt(t *testing.T) {
 // data dependency: a standalone upload's page count must be captured from
 // the file itself (pdf.PageCount, already computed for PDF validation in
 // stageUpload) rather than left at the schema's DEFAULT 1 fallback.
+// TestUpdatePiece_SupportsMultipleKeys covers key becoming many-to-many
+// (migration 00008) — a piece can genuinely be written in more than one
+// key (e.g. a piece that modulates). Confirms both keys persist, round-trip
+// through a fresh GET (not just the mutation's own response), and that
+// replacing the set with a single key correctly drops the other.
+func TestUpdatePiece_SupportsMultipleKeys(t *testing.T) {
+	h := newTestServer(t)
+	dir := t.TempDir()
+	path := dir + "/piece.pdf"
+	writeFixturePDF(t, path, 1)
+	uploadRec := recordRequest(h, multipartUpload(t, "/api/pieces", "piece.pdf", readAll(t, path)))
+	var uploaded pieceResponse
+	decodeData(t, uploadRec, &uploaded)
+
+	updateRec := doJSON(t, h, http.MethodPatch, apiPiecesURL(uploaded.ID), map[string]any{
+		"title":    "Modulating Piece",
+		"composer": "Someone",
+		"keys":     []string{"C Major", "A Minor"},
+	})
+	var updated pieceResponse
+	decodeData(t, updateRec, &updated)
+	if len(updated.Keys) != 2 {
+		t.Fatalf("keys after update = %+v, want 2 keys", updated.Keys)
+	}
+
+	getRec := recordRequest(h, httptestGet(t, apiPiecesURL(uploaded.ID)))
+	var reread pieceResponse
+	decodeData(t, getRec, &reread)
+	gotNames := map[string]bool{}
+	for _, k := range reread.Keys {
+		gotNames[k.Name] = true
+	}
+	if !gotNames["C Major"] || !gotNames["A Minor"] || len(reread.Keys) != 2 {
+		t.Errorf("keys on re-fetch = %+v, want exactly [C Major, A Minor]", reread.Keys)
+	}
+
+	// Replacing with a single key must drop the other, not just add to it —
+	// PieceWriteRequest is a full replace (same rule as every other field).
+	replaceRec := doJSON(t, h, http.MethodPatch, apiPiecesURL(uploaded.ID), map[string]any{
+		"title":    "Modulating Piece",
+		"composer": "Someone",
+		"keys":     []string{"G Major"},
+	})
+	var replaced pieceResponse
+	decodeData(t, replaceRec, &replaced)
+	if len(replaced.Keys) != 1 || replaced.Keys[0].Name != "G Major" {
+		t.Errorf("keys after replace = %+v, want exactly [G Major]", replaced.Keys)
+	}
+}
+
 func TestCreatePiece_SetsPageCount(t *testing.T) {
 	h := newTestServer(t)
 	dir := t.TempDir()
@@ -261,6 +311,67 @@ func TestReplacePieceFile_PreservesProvenanceAndSwapsHash(t *testing.T) {
 	downloadRec := recordRequest(h, httptestGet(t, apiPiecesURL(original.ID)+"/file"))
 	if downloadRec.Code != http.StatusOK {
 		t.Fatalf("download after replace: status %d", downloadRec.Code)
+	}
+}
+
+// TestSetPieceThumbnailPage covers the manual thumbnail-page picker (design
+// doc §14 addition): a valid selection persists and is reflected back by a
+// fresh GET (not just the mutation's own response), an out-of-range page is
+// rejected with a validation error and leaves the stored value untouched,
+// and replacing the piece's file resets the selection to 1 rather than
+// carrying a now-stale/possibly-out-of-range page number forward.
+func TestSetPieceThumbnailPage(t *testing.T) {
+	h := newTestServer(t)
+	dir := t.TempDir()
+	path := dir + "/piece.pdf"
+	writeFixturePDF(t, path, 3)
+
+	uploadRec := recordRequest(h, multipartUpload(t, "/api/pieces", "piece.pdf", readAll(t, path)))
+	var uploaded pieceResponse
+	decodeData(t, uploadRec, &uploaded)
+	if uploaded.ThumbnailPage != 1 {
+		t.Fatalf("thumbnailPage on upload = %d, want 1", uploaded.ThumbnailPage)
+	}
+
+	setRec := doJSON(t, h, http.MethodPatch, apiPiecesURL(uploaded.ID)+"/thumbnail-page", map[string]any{"page": 2})
+	if setRec.Code != http.StatusOK {
+		t.Fatalf("set thumbnail page: status %d, body %s", setRec.Code, setRec.Body.String())
+	}
+	var updated pieceResponse
+	decodeData(t, setRec, &updated)
+	if updated.ThumbnailPage != 2 {
+		t.Errorf("thumbnailPage after set = %d, want 2", updated.ThumbnailPage)
+	}
+
+	// Reflected by a fresh read, not just the mutation's own response.
+	getRec := recordRequest(h, httptestGet(t, apiPiecesURL(uploaded.ID)))
+	var reread pieceResponse
+	decodeData(t, getRec, &reread)
+	if reread.ThumbnailPage != 2 {
+		t.Errorf("thumbnailPage on re-fetch = %d, want 2", reread.ThumbnailPage)
+	}
+
+	// Out of range (piece has 3 pages) must be rejected, not clamped.
+	badRec := doJSON(t, h, http.MethodPatch, apiPiecesURL(uploaded.ID)+"/thumbnail-page", map[string]any{"page": 4})
+	if badRec.Code != http.StatusBadRequest {
+		t.Fatalf("out-of-range page: status %d, want 400; body %s", badRec.Code, badRec.Body.String())
+	}
+	unchangedRec := recordRequest(h, httptestGet(t, apiPiecesURL(uploaded.ID)))
+	var unchanged pieceResponse
+	decodeData(t, unchangedRec, &unchanged)
+	if unchanged.ThumbnailPage != 2 {
+		t.Errorf("thumbnailPage after rejected update = %d, want unchanged 2", unchanged.ThumbnailPage)
+	}
+
+	// Replacing the file resets the selection rather than carrying a
+	// possibly-stale/out-of-range page number forward.
+	replacementPath := dir + "/replacement.pdf"
+	writeFixturePDF(t, replacementPath, 1)
+	replaceRec := recordRequest(h, multipartUpload(t, apiPiecesURL(uploaded.ID)+"/replace-file", "replacement.pdf", readAll(t, replacementPath)))
+	var replaced pieceResponse
+	decodeData(t, replaceRec, &replaced)
+	if replaced.ThumbnailPage != 1 {
+		t.Errorf("thumbnailPage after file replace = %d, want reset to 1", replaced.ThumbnailPage)
 	}
 }
 
@@ -461,7 +572,7 @@ func TestUpdatePiece_TagValidationErrorNamesTheRealField(t *testing.T) {
 		body  map[string]any
 		field string
 	}{
-		{"keyName", map[string]any{"title": "T", "composer": "C", "keyName": tooLong}, "keyName"},
+		{"keys", map[string]any{"title": "T", "composer": "C", "keys": []string{tooLong}}, "keys"},
 		{"sheetTypeName", map[string]any{"title": "T", "composer": "C", "sheetTypeName": tooLong}, "sheetTypeName"},
 		{"instruments", map[string]any{"title": "T", "composer": "C", "instruments": []string{tooLong}}, "instruments"},
 		{"userTags", map[string]any{"title": "T", "composer": "C", "userTags": []string{tooLong}}, "userTags"},

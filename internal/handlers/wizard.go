@@ -151,6 +151,9 @@ func (s *Server) handleConfirmImport(w http.ResponseWriter, r *http.Request) {
 			}
 			p.ID = id
 
+			if err := repo.SetPieceKeys(r.Context(), tx, id, p.KeyIDs); err != nil {
+				return err
+			}
 			if err := repo.SetPieceInstruments(r.Context(), tx, id, p.InstrumentIDs); err != nil {
 				return err
 			}

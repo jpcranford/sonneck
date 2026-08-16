@@ -35,7 +35,9 @@ export interface Piece {
   arranger: string | null
   favorite: boolean
   workOpusNumber: EffectiveField
-  key: Tag | null
+  /** Many-to-many, not book-inheritable — a piece can genuinely be written
+   * in more than one key (e.g. a piece that modulates, or a medley). */
+  keys: Tag[]
   sheetType: EffectiveTagRef
   publisher: EffectiveField
   publisherId: EffectiveField
@@ -94,7 +96,7 @@ export interface PieceWriteRequest {
   arranger?: string | null
   favorite: boolean
   workOpusNumber?: string | null
-  keyName?: string | null
+  keys: string[]
   sheetTypeName?: string | null
   publisher?: string | null
   publisherId?: string | null

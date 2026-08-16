@@ -31,18 +31,6 @@ func ListKeys(ctx context.Context, q Queryer) ([]models.Key, error) {
 	return keys, rows.Err()
 }
 
-func GetKeyByID(ctx context.Context, q Queryer, id int64) (*models.Key, error) {
-	var k models.Key
-	err := q.QueryRowContext(ctx, `SELECT id, name FROM musical_keys WHERE id = ?`, id).Scan(&k.ID, &k.Name)
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil, ErrNotFound
-	}
-	if err != nil {
-		return nil, err
-	}
-	return &k, nil
-}
-
 func ListSheetTypes(ctx context.Context, q Queryer) ([]models.SheetType, error) {
 	rows, err := q.QueryContext(ctx, `SELECT id, name FROM sheet_types ORDER BY id`)
 	if err != nil {

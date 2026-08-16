@@ -34,10 +34,13 @@ func (s *Server) handleSearchPieces(w http.ResponseWriter, r *http.Request) {
 		args = append(args, sanitizeFTSQuery(query))
 	}
 
+	// keyId: a piece can have more than one key (migration 00008) — match
+	// if any of its keys is the requested one, same join-table pattern as
+	// instrumentId/userTagId below.
 	if id, present, ok := parseIDFilter(w, q, "keyId"); !ok {
 		return
 	} else if present {
-		where = append(where, "p.key_id = ?")
+		where = append(where, "p.id IN (SELECT piece_id FROM piece_keys WHERE key_id = ?)")
 		args = append(args, id)
 	}
 

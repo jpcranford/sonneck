@@ -25,7 +25,6 @@ type Piece struct {
 	Arranger       *string
 	Favorite       bool
 	WorkOpusNumber *string // book-inheritable
-	KeyID          *int64  // not book-inheritable
 	SheetTypeID    *int64  // book-inheritable
 	Publisher      *string // book-inheritable
 	PublisherID    *string // book-inheritable
@@ -56,7 +55,11 @@ type Piece struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 
-	// Loaded separately via join tables, not columns on `pieces`.
+	// Loaded separately via join tables, not columns on `pieces`. KeyIDs
+	// (many-to-many, not book-inheritable — a piece can genuinely be
+	// written in more than one key) moved here from a single KeyID column;
+	// see migration 00008.
+	KeyIDs        []int64
 	InstrumentIDs []int64
 	UserTagIDs    []int64
 }
