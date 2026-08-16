@@ -1,5 +1,13 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
-import { IconDotsVertical } from '@tabler/icons-react'
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
+import { IconDotsVerticalFilled } from '@tabler/icons-react'
 
 export interface ContextMenuItem {
   label: string
@@ -7,24 +15,46 @@ export interface ContextMenuItem {
   destructive?: boolean
 }
 
+export interface ContextMenuHandle {
+  /** Opens the menu anchored at a viewport point — for a caller that wants
+   * its own custom-positioned trigger instead of the built-in "⋯" button
+   * (e.g. one anchored to an inner element, not the whole wrapped area). */
+  open: (x: number, y: number) => void
+}
+
 interface ContextMenuProps {
   items: ContextMenuItem[]
   children: ReactNode
+  /** Suppresses the built-in "⋯" button when a caller supplies its own
+   * custom-positioned trigger via the forwarded ref instead. */
+  hideTriggerButton?: boolean
 }
 
 /**
  * Wraps children with a context menu — built once here so every place the
- * app needs one (piece cards, book rows, ...) shares the same positioning,
- * dismiss-on-Escape, and dismiss-on-outside-click behavior instead of each
- * usage reimplementing it. Two triggers: right-click (desktop), and a
- * always-visible "⋯" button (device-aware conventions, CLAUDE.md > Frontend
- * — right-click has no reliable touch equivalent, some mobile browsers map
- * long-press to the contextmenu event and many don't, so a real tappable
- * affordance is needed rather than relying on long-press alone).
+ * app needs one (piece cards, book rows, ...) shares the same popup
+ * rendering, viewport-clamped positioning, dismiss-on-Escape, and
+ * dismiss-on-outside-click behavior instead of each usage reimplementing
+ * it. Two triggers by default: right-click (desktop), and an always-visible
+ * "⋯" button (device-aware conventions, CLAUDE.md > Frontend — right-click
+ * has no reliable touch equivalent, some mobile browsers map long-press to
+ * the contextmenu event and many don't, so a real tappable affordance is
+ * needed rather than relying on long-press alone). Right-click always works
+ * anywhere on `children`; the visible button can instead be a caller-owned
+ * custom-positioned trigger via `hideTriggerButton` + the forwarded ref,
+ * for when it needs to anchor to a specific inner element rather than the
+ * whole wrapped area (see PieceGridCard's bottom-right-of-thumbnail trigger).
  */
-export function ContextMenu({ items, children }: ContextMenuProps) {
+export const ContextMenu = forwardRef<ContextMenuHandle, ContextMenuProps>(function ContextMenu(
+  { items, children, hideTriggerButton },
+  ref,
+) {
   const [position, setPosition] = useState<{ x: number; y: number } | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
+
+  useImperativeHandle(ref, () => ({
+    open: (x, y) => setPosition({ x, y }),
+  }))
 
   useEffect(() => {
     if (!position) return
@@ -44,10 +74,10 @@ export function ContextMenu({ items, children }: ContextMenuProps) {
   }, [position])
 
   // Clamps the menu back on-screen after it mounts, when the anchor point
-  // (a right-click near a screen edge, or the "⋯" button which sits at a
-  // card's own right edge — closer to the viewport edge on narrow screens)
-  // would otherwise render it partially or fully off-viewport. Runs after
-  // layout but before paint, so there's no visible jump.
+  // (a right-click near a screen edge, or a trigger button that sits near a
+  // card's own edge — closer to the viewport edge on narrow screens) would
+  // otherwise render it partially or fully off-viewport. Runs after layout
+  // but before paint, so there's no visible jump.
   useLayoutEffect(() => {
     if (!position || !menuRef.current) return
     const margin = 8
@@ -68,17 +98,19 @@ export function ContextMenu({ items, children }: ContextMenuProps) {
         }}
       >
         {children}
-        <button
-          type="button"
-          aria-label="More actions"
-          onClick={(event) => {
-            const rect = event.currentTarget.getBoundingClientRect()
-            setPosition({ x: rect.right, y: rect.bottom })
-          }}
-          className="absolute top-2 right-2 z-10 flex size-7 items-center justify-center rounded-md bg-paper-raised/90 text-ink-soft shadow-sm hover:text-ink"
-        >
-          <IconDotsVertical size={16} />
-        </button>
+        {!hideTriggerButton && (
+          <button
+            type="button"
+            aria-label="More actions"
+            onClick={(event) => {
+              const rect = event.currentTarget.getBoundingClientRect()
+              setPosition({ x: rect.right, y: rect.bottom })
+            }}
+            className="absolute top-2 right-2 z-10 flex size-7 items-center justify-center rounded-md bg-paper-raised/90 text-ink-soft shadow-sm hover:text-ink"
+          >
+            <IconDotsVerticalFilled size={16} />
+          </button>
+        )}
       </div>
       {position && (
         <div
@@ -107,4 +139,4 @@ export function ContextMenu({ items, children }: ContextMenuProps) {
       )}
     </>
   )
-}
+})

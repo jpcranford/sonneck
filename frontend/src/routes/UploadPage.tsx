@@ -6,7 +6,7 @@ import {
   IconCloudUpload,
   IconFileTypePdf,
   IconCircleCheckFilled,
-  IconAlertTriangleFilled,
+  IconAlertTriangle,
 } from '@tabler/icons-react'
 import { uploadPiece, updatePiece } from '../api/pieces'
 import { ApiError } from '../api/client'
@@ -147,13 +147,13 @@ export function UploadPage() {
           />
           {fileError && (
             <p className="flex items-center gap-2 text-sm text-red-700">
-              <IconAlertTriangleFilled size={16} />
+              <IconAlertTriangle size={16} />
               {fileError}
             </p>
           )}
           {uploadMutation.isError && (
             <p className="flex items-center gap-2 text-sm text-red-700">
-              <IconAlertTriangleFilled size={16} />
+              <IconAlertTriangle size={16} />
               {uploadMutation.error instanceof ApiError
                 ? uploadMutation.error.message
                 : 'Upload failed. Please try again.'}
@@ -205,7 +205,7 @@ export function UploadPage() {
           </div>
           {saveMutation.isError && (
             <p className="flex items-center gap-2 text-sm text-red-700">
-              <IconAlertTriangleFilled size={16} />
+              <IconAlertTriangle size={16} />
               {saveMutation.error instanceof ApiError
                 ? saveMutation.error.message
                 : 'Could not save. Please try again.'}
@@ -224,7 +224,9 @@ export function UploadPage() {
       {stage === 'success' && piece && (
         <div className="flex w-full max-w-md flex-col items-center gap-3 text-center">
           <IconCircleCheckFilled size={40} className="text-accent" />
-          <h1 className="font-display text-2xl text-ink">"{piece.title}" uploaded</h1>
+          <h1 className="font-display text-2xl text-ink">
+            "<span className="font-medium">{piece.title}</span>" uploaded
+          </h1>
           <button
             type="button"
             onClick={reset}

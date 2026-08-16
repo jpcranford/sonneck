@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { IconAlertTriangleFilled } from '@tabler/icons-react'
+import { IconAlertTriangle } from '@tabler/icons-react'
 import { updatePiece } from '../api/pieces'
 import { ApiError } from '../api/client'
 import { pieceToWriteRequest } from '../lib/pieceToWriteRequest'
@@ -45,6 +45,11 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pieces'] })
+      // Also invalidate the Piece View's single-piece query (['piece', id])
+      // — 'pieces' alone only matches the list query's key, so without this
+      // an edit made from the Piece View itself wouldn't refresh the page
+      // that just triggered it.
+      queryClient.invalidateQueries({ queryKey: ['piece'] })
       onClose()
     },
   })
@@ -82,7 +87,7 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
         </div>
         {saveMutation.isError && (
           <p className="flex items-center gap-2 text-sm text-red-700">
-            <IconAlertTriangleFilled size={16} />
+            <IconAlertTriangle size={16} />
             {saveMutation.error instanceof ApiError
               ? saveMutation.error.message
               : 'Could not save. Please try again.'}

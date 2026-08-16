@@ -4,3 +4,4 @@
 *.sqlite-wal
 /bin/
 *.DS_Store
+/design-review/

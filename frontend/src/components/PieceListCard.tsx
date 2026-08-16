@@ -23,7 +23,7 @@ export function PieceListCard({ piece }: PieceListCardProps) {
       >
         <div className="flex items-start justify-between gap-4">
           <div className="flex min-w-0 flex-col gap-1">
-            <p className="truncate font-display text-lg text-ink">{piece.title}</p>
+            <p className="truncate font-display text-lg font-medium text-ink">{piece.title}</p>
             {meta && <p className="truncate text-sm text-ink-soft">{meta}</p>}
           </div>
           <div className="flex w-[134px] shrink-0 justify-center">
@@ -36,7 +36,12 @@ export function PieceListCard({ piece }: PieceListCardProps) {
           </div>
         </div>
         <div className="mt-2 flex items-center border-t border-border pt-2">
-          <TagPills musicalKey={piece.key} userTags={piece.userTags} />
+          <TagPills
+            musicalKey={piece.key}
+            sheetType={piece.sheetType.value}
+            instruments={piece.instruments.values}
+            userTags={piece.userTags}
+          />
           {/* ml-auto (not justify-between on the parent) so this stays pinned
               under the thumbnail even when TagPills renders nothing — with no
               sibling, justify-between has nothing to push against and the

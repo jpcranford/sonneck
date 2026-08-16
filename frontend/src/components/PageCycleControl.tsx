@@ -9,7 +9,10 @@ interface PageCycleControlProps {
 // Card footer control (locked design system: "both card styles show a
 // page-cycle control") — lets the user flip through a piece's pages right
 // on its card without opening it. Renders nothing for a single-page piece,
-// the common case for a standalone upload of one sheet.
+// the common case for a standalone upload of one sheet. Stops and greys
+// out at the first/last page rather than wrapping around — wrapping
+// silently past the end read as a bug, not a feature (Piece View mockup
+// review, 2026-08-16), applied here too for consistency.
 export function PageCycleControl({ page, pageCount, onChange }: PageCycleControlProps) {
   if (pageCount <= 1) return null
 
@@ -19,10 +22,11 @@ export function PageCycleControl({ page, pageCount, onChange }: PageCycleControl
         type="button"
         onClick={(event) => {
           event.stopPropagation()
-          onChange(page > 1 ? page - 1 : pageCount)
+          if (page > 1) onChange(page - 1)
         }}
+        disabled={page <= 1}
         aria-label="Previous page"
-        className="flex size-6 items-center justify-center rounded hover:bg-accent-soft hover:text-accent"
+        className="flex size-6 items-center justify-center rounded hover:bg-accent-soft hover:text-accent disabled:pointer-events-none disabled:opacity-30"
       >
         <IconChevronLeft size={16} />
       </button>
@@ -33,10 +37,11 @@ export function PageCycleControl({ page, pageCount, onChange }: PageCycleControl
         type="button"
         onClick={(event) => {
           event.stopPropagation()
-          onChange(page < pageCount ? page + 1 : 1)
+          if (page < pageCount) onChange(page + 1)
         }}
+        disabled={page >= pageCount}
         aria-label="Next page"
-        className="flex size-6 items-center justify-center rounded hover:bg-accent-soft hover:text-accent"
+        className="flex size-6 items-center justify-center rounded hover:bg-accent-soft hover:text-accent disabled:pointer-events-none disabled:opacity-30"
       >
         <IconChevronRightFilled size={16} />
       </button>

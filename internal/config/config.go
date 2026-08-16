@@ -10,8 +10,13 @@ import (
 	"github.com/robfig/cron/v3"
 )
 
-// defaultCitationFormat mirrors design doc §6's format string.
-const defaultCitationFormat = `{composer}, {Book.bookTitle}, "{title}" ({workOpusNumber}), {publisher}, {imslpNumber|publisherId}, ca. {yearWritten}`
+// defaultCitationFormat mirrors design doc §6's format string. No "ca. "
+// prefix on {yearWritten} — see CLAUDE.md > Config for why: that's a
+// deliberate deviation from §6's literal wording, kept in sync here since
+// this constant describes the same format buildCitation actually
+// generates (internal/handlers/citation.go), even though CITATION_FORMAT
+// itself has no effect on generation.
+const defaultCitationFormat = `{composer}, {Book.bookTitle}, "{title}" ({workOpusNumber}), {publisher}, {imslpNumber|publisherId}, {yearWritten}`
 
 const defaultLogLevel = "info"
 

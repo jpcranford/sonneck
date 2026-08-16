@@ -44,8 +44,16 @@ func (s *Server) handleGetCitation(w http.ResponseWriter, r *http.Request) {
 
 // buildCitation implements design doc §6's fixed v1 format:
 // {composer}, {Book.bookTitle}, "{title}" ({workOpusNumber}), {publisher},
-// {imslpNumber falling back to publisherId}, ca. {yearWritten} — every
-// blank component omitted entirely, never shown as empty punctuation.
+// {imslpNumber falling back to publisherId}, {yearWritten} — every blank
+// component omitted entirely, never shown as empty punctuation.
+//
+// Deliberate deviation from §6's literal "ca. {yearWritten}" wording:
+// yearWritten is free text specifically so it can hold its own
+// approximate/uncertain-date qualifier when one applies (design doc §3:
+// e.g. "ca. 1708-1711") — an unconditional "ca. " prefix here would
+// misrepresent a piece with a precisely known year (e.g. "1848") as
+// merely approximate. The citation renders the field's stored value
+// verbatim; any "ca." belongs in the value itself, entered by the user.
 //
 // This is deliberately not generic CITATION_FORMAT token substitution:
 // blank-field omission doesn't fit a plain-substitution model, and the
@@ -80,7 +88,7 @@ func buildCitation(eff *repo.EffectivePiece, title, bookTitle string) string {
 	}
 
 	if eff.YearWritten.Value != "" {
-		parts = append(parts, "ca. "+eff.YearWritten.Value)
+		parts = append(parts, eff.YearWritten.Value)
 	}
 
 	return strings.Join(parts, ", ")
