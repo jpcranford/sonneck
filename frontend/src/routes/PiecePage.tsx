@@ -12,6 +12,7 @@ import {
   IconDownload,
   IconHeart,
   IconHeartFilled,
+  IconImageInPicture,
   IconInfoCircle,
   IconMusic,
   IconProgress,
@@ -19,10 +20,19 @@ import {
   IconShieldCheck,
 } from '@tabler/icons-react'
 import { getBook } from '../api/books'
-import { getCitation, getPiece, getPieceFileUrl, getPieceThumbnailUrl, replacePieceFile, updatePiece } from '../api/pieces'
+import {
+  getCitation,
+  getPiece,
+  getPieceFileUrl,
+  getPieceThumbnailUrl,
+  replacePieceFile,
+  setPieceThumbnailPage,
+  updatePiece,
+} from '../api/pieces'
 import { ApiError } from '../api/client'
 import { pieceToWriteRequest } from '../lib/pieceToWriteRequest'
 import { EditPieceModal } from '../components/EditPieceModal'
+import { InfoTooltip } from '../components/InfoTooltip'
 
 // Mirrors UploadPage's own cap (backend's MaxUploadBytes) — same reasoning
 // as there: reject an oversized file instantly rather than after a slow
@@ -50,36 +60,19 @@ function formatDate(iso: string): string {
   })
 }
 
-// Same hover-or-tap pattern used for the public domain badge below: hover
-// works on desktop, click/tap toggles it open on touch (§12's "no
-// hover-dependent interactions"). Each instance owns its own open state,
-// so several can appear on the page independently.
 function InheritedNote({ compact }: { compact?: boolean }) {
-  const [open, setOpen] = useState(false)
   return (
-    <span className="group relative inline-flex">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        aria-label="Why this value is shown"
-        className={
-          compact
-            ? 'text-[0.65rem] text-ink-soft/50 hover:text-ink-soft'
-            : 'rounded-full border border-border px-1.5 py-px text-[0.65rem] font-medium text-ink-soft hover:text-ink'
-        }
-      >
-        {compact ? '• inherited' : 'inherited'}
-      </button>
-      <span
-        role="tooltip"
-        className={`pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 w-max max-w-[190px] -translate-x-1/2 rounded-md bg-ink px-2 py-1 text-center text-xs text-paper shadow-md transition-opacity ${
-          open ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-        }`}
-      >
-        Inherited from book
-      </span>
-    </span>
+    <InfoTooltip
+      message="Inherited from book"
+      ariaLabel="Why this value is shown"
+      triggerClassName={
+        compact
+          ? 'text-[0.65rem] text-ink-soft/50 hover:text-ink-soft'
+          : 'rounded-full border border-border px-1.5 py-px text-[0.65rem] font-medium text-ink-soft hover:text-ink'
+      }
+    >
+      {compact ? '• inherited' : 'inherited'}
+    </InfoTooltip>
   )
 }
 
@@ -121,18 +114,21 @@ function ActionButton({
   icon,
   label,
   onClick,
+  disabled,
   className = '',
 }: {
   icon: ReactNode
   label: string
   onClick?: () => void
+  disabled?: boolean
   className?: string
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-sm text-ink hover:border-accent ${className}`}
+      disabled={disabled}
+      className={`flex items-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-sm text-ink hover:border-accent disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border ${className}`}
     >
       {icon}
       {label}
@@ -169,16 +165,19 @@ export function PiecePage() {
     enabled: !!piece,
   })
 
-  // Reset the preview to page 1 when navigating between pieces, without an
-  // effect — React Router reuses this component instance across sibling
-  // route matches, so pieceId can change without a remount. This is the
-  // render-time "adjusting state when a prop changes" pattern rather than
-  // an effect, since an effect here would cause an extra cascading render.
+  // Load the preview at the piece's chosen thumbnail page, resetting
+  // whenever we navigate to a different piece, without an effect — React
+  // Router reuses this component instance across sibling route matches, so
+  // pieceId can change without a remount. This is the render-time
+  // "adjusting state when a prop changes" pattern rather than an effect,
+  // since an effect here would cause an extra cascading render. Waits for
+  // `piece` to actually be loaded (pageResetFor starts null) since
+  // thumbnailPage isn't known until then.
   const [page, setPage] = useState(1)
-  const [pageResetFor, setPageResetFor] = useState(pieceId)
-  if (pieceId !== pageResetFor) {
+  const [pageResetFor, setPageResetFor] = useState<number | null>(null)
+  if (piece && pageResetFor !== pieceId) {
     setPageResetFor(pieceId)
-    setPage(1)
+    setPage(piece.thumbnailPage)
   }
 
   const [downloadOpen, setDownloadOpen] = useState(false)
@@ -188,7 +187,6 @@ export function PiecePage() {
   const [tempoOpen, setTempoOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [copyToast, setCopyToast] = useState<{ x: number; y: number } | null>(null)
-  const [publicDomainInfoOpen, setPublicDomainInfoOpen] = useState(false)
   const replaceFileInputRef = useRef<HTMLInputElement>(null)
 
   const favoriteMutation = useMutation({
@@ -210,6 +208,16 @@ export function PiecePage() {
       queryClient.invalidateQueries({ queryKey: ['pieces'] })
       setReplaceConfirming(false)
       setPage(1)
+    },
+  })
+
+  const setThumbnailMutation = useMutation({
+    mutationFn: (thumbnailPage: number) => setPieceThumbnailPage(piece!.id, thumbnailPage),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(['piece', pieceId], updated)
+      // Library cards read thumbnailPage too — invalidate so they pick up
+      // the new selection next time they're shown, not just this page.
+      queryClient.invalidateQueries({ queryKey: ['pieces'] })
     },
   })
 
@@ -258,44 +266,57 @@ export function PiecePage() {
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
           {/* ---- Preview column (§7/§14: dominates ~half the view) ---- */}
           <div className="flex flex-col gap-3">
-            <div className="mx-auto flex aspect-[200/260] w-full max-w-md items-center justify-center overflow-hidden rounded-lg border border-border bg-paper-raised shadow-sm">
+            {/* No forced aspect ratio here on purpose — a fixed portrait
+                box (the old aspect-[200/260]) made landscape pieces render
+                small and letterboxed inside a tall frame that didn't match
+                their actual shape. The frame always fills the column's
+                full width (w-full on both the wrapper and the image);
+                height is purely derived from the image's own aspect ratio
+                at that width (h-auto), so every piece — portrait or
+                landscape — renders at a consistent, predictable width
+                instead of shrinking to whatever size the image happens to
+                render at. */}
+            <div className="relative mx-auto flex w-full max-w-md items-center justify-center overflow-hidden rounded-lg border border-border bg-paper-raised shadow-sm">
               <img
                 src={getPieceThumbnailUrl(piece.id, page)}
                 alt={`Page ${page} of ${piece.title}`}
-                className="h-full w-full object-contain"
+                className="h-auto w-full"
               />
-            </div>
 
-            {/* Clickable cycle buttons, not swipe/drag-only, per §12. Stop
-                and grey out at the first/last page rather than wrapping
-                around. Hidden entirely for a single-page piece, same
-                convention as the shared PageCycleControl on library
-                cards. */}
-            {piece.pageCount > 1 && (
-              <div className="flex items-center justify-center gap-3 text-ink-soft">
-                <button
-                  type="button"
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                  aria-label="Previous page"
-                  className="flex size-9 items-center justify-center rounded-md border border-border hover:border-accent hover:bg-accent-soft hover:text-accent disabled:pointer-events-none disabled:opacity-30"
-                >
-                  <IconChevronLeft size={18} />
-                </button>
-                <span className="text-sm tabular-nums">
-                  Page {page} of {piece.pageCount}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setPage((p) => Math.min(piece.pageCount, p + 1))}
-                  disabled={page === piece.pageCount}
-                  aria-label="Next page"
-                  className="flex size-9 items-center justify-center rounded-md border border-border hover:border-accent hover:bg-accent-soft hover:text-accent disabled:pointer-events-none disabled:opacity-30"
-                >
-                  <IconChevronRightFilled size={18} />
-                </button>
-              </div>
-            )}
+              {/* Page cycle control, floating over the bottom edge of the
+                  preview itself rather than as a separate row underneath
+                  (design review 2026-08-16, "integrated capsule" option) —
+                  keeps the preview column shorter and reads as one piece of
+                  chrome instead of two. Stops and greys out at the
+                  first/last page rather than wrapping around, per §12.
+                  Hidden entirely for a single-page piece, same convention
+                  as the shared PageCycleControl on library cards. */}
+              {piece.pageCount > 1 && (
+                <div className="absolute bottom-2.5 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-ink/80 py-1 pr-1 pl-3 shadow-md backdrop-blur-sm">
+                  <button
+                    type="button"
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                    aria-label="Previous page"
+                    className="flex size-6 items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline-accent-on-dark disabled:pointer-events-none disabled:opacity-35"
+                  >
+                    <IconChevronLeft size={14} />
+                  </button>
+                  <span className="text-xs tabular-nums text-white/90">
+                    {page} / {piece.pageCount}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setPage((p) => Math.min(piece.pageCount, p + 1))}
+                    disabled={page === piece.pageCount}
+                    aria-label="Next page"
+                    className="flex size-6 items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline-accent-on-dark disabled:pointer-events-none disabled:opacity-35"
+                  >
+                    <IconChevronRightFilled size={14} />
+                  </button>
+                </div>
+              )}
+            </div>
 
             {/* Download / Replace File — act on the file the preview above
                 shows, so both sit with the preview rather than in the info
@@ -343,6 +364,12 @@ export function PiecePage() {
                 icon={<IconRefresh size={16} />}
                 label="Replace File"
                 onClick={() => setReplaceConfirming(true)}
+              />
+              <ActionButton
+                icon={<IconImageInPicture size={16} />}
+                label="Use Page as Thumbnail"
+                onClick={() => setThumbnailMutation.mutate(page)}
+                disabled={page === piece.thumbnailPage || setThumbnailMutation.isPending}
               />
               <input
                 ref={replaceFileInputRef}
@@ -465,23 +492,31 @@ export function PiecePage() {
                   user tags stay green (genuinely user data); key/sheetType
                   are neutral hollow pills like everywhere else. */}
               <div className="mt-1 flex flex-wrap items-center gap-2">
-                <span className="flex items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent">
-                  <IconProgress size={13} />
-                  {piece.practiceStatus ?? 'No status set'}
-                </span>
+                {piece.practiceStatus && (
+                  <span className="flex items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent">
+                    <IconProgress size={13} />
+                    {piece.practiceStatus}
+                  </span>
+                )}
                 {piece.userTags.map((tag) => (
-                  <span key={tag.id} className="rounded-full bg-accent-soft px-2.5 py-1 text-xs text-accent">
+                  <span
+                    key={tag.id}
+                    className="rounded-full bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent"
+                  >
                     {tag.name}
                   </span>
                 ))}
-                {piece.key && (
-                  <span className="flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-xs text-ink-soft">
+                {piece.keys.map((key) => (
+                  <span
+                    key={key.id}
+                    className="flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-xs font-medium text-ink-soft"
+                  >
                     <IconMusic size={12} />
-                    {piece.key.name}
+                    {key.name}
                   </span>
-                )}
+                ))}
                 {piece.sheetType.value && (
-                  <span className="flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-xs text-ink-soft">
+                  <span className="flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-xs font-medium text-ink-soft">
                     {piece.sheetType.value.name}
                     {piece.sheetType.inherited && <InheritedNote compact />}
                   </span>
@@ -510,31 +545,17 @@ export function PiecePage() {
                   <span className="inline-flex items-center gap-2">
                     <EffectiveValue value={piece.yearWritten.value} inherited={piece.yearWritten.inherited} />
                     {/* Public domain badge — circular icon-only badge
-                        sharing this row. Inert/deferred (§13). Both hover
-                        (desktop) and tap/click (touch, per §12's "no
-                        hover-dependent interactions") reveal the real copy
-                        once the feature lands (three states: copyleft /
-                        likely PD / PD) — for now the coming-soon
+                        sharing this row. Inert/deferred (§13); the real
+                        copy (three states: copyleft / likely PD / PD)
+                        lands with the feature — for now the coming-soon
                         placeholder text. */}
-                    <span className="group relative inline-flex">
-                      <button
-                        type="button"
-                        onClick={() => setPublicDomainInfoOpen((o) => !o)}
-                        aria-expanded={publicDomainInfoOpen}
-                        aria-label="Public domain status info"
-                        className="flex size-5 shrink-0 items-center justify-center rounded-full border border-dashed border-border text-ink-soft/50 hover:text-ink-soft"
-                      >
-                        <IconShieldCheck size={11} />
-                      </button>
-                      <span
-                        role="tooltip"
-                        className={`pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 w-max max-w-[220px] -translate-x-1/2 rounded-md bg-ink px-2 py-1 text-center text-xs text-paper shadow-md transition-opacity ${
-                          publicDomainInfoOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                        }`}
-                      >
-                        Public domain status — coming soon
-                      </span>
-                    </span>
+                    <InfoTooltip
+                      message="Public domain status — coming soon"
+                      ariaLabel="Public domain status info"
+                      triggerClassName="flex size-5 shrink-0 items-center justify-center rounded-full border border-dashed border-border text-ink-soft/50 hover:text-ink-soft"
+                    >
+                      <IconShieldCheck size={11} />
+                    </InfoTooltip>
                   </span>
                 </DetailRow>
               )}
@@ -543,11 +564,13 @@ export function PiecePage() {
                   label={
                     <span className="flex items-center gap-1">
                       Opus / catalog no.
-                      <IconInfoCircle
-                        size={13}
-                        className="cursor-pointer text-ink-soft/60"
-                        aria-label="If this piece is part of a larger work which has a number assigned, enter that number."
-                      />
+                      <InfoTooltip
+                        message="If this piece is part of a larger work which has a number assigned, enter that number."
+                        ariaLabel="What Opus / catalog no. means"
+                        triggerClassName="text-ink-soft/60 hover:text-ink-soft"
+                      >
+                        <IconInfoCircle size={13} />
+                      </InfoTooltip>
                     </span>
                   }
                 >
@@ -586,33 +609,37 @@ export function PiecePage() {
               {/* bpm/measureCount/beatsPerMeasure — tucked behind a
                   disclosure, same convention as the edit menu (§15):
                   duration is what matters day-to-day, these are
-                  supporting inputs. */}
-              <div className="py-1.5">
-                <button
-                  type="button"
-                  onClick={() => setTempoOpen((o) => !o)}
-                  className="flex items-center gap-1 text-xs text-ink-soft/60 hover:text-ink-soft"
-                >
-                  <IconChevronRight
-                    size={12}
-                    className={`transition-transform ${tempoOpen ? 'rotate-90' : ''}`}
-                  />
-                  Tempo details
-                </button>
-                {tempoOpen && (
-                  <div className="mt-1 flex flex-col pl-5">
-                    <DetailRow tight label="BPM">
-                      {piece.bpm ?? '—'}
-                    </DetailRow>
-                    <DetailRow tight label="Measures">
-                      {piece.measureCount ?? '—'}
-                    </DetailRow>
-                    <DetailRow tight label="Beats / measure">
-                      {piece.beatsPerMeasure ?? '—'}
-                    </DetailRow>
-                  </div>
-                )}
-              </div>
+                  supporting inputs. Same hide-if-missing rule as the rest
+                  of this list — no point in a disclosure with nothing
+                  behind it. */}
+              {(piece.bpm != null || piece.measureCount != null || piece.beatsPerMeasure != null) && (
+                <div className="py-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setTempoOpen((o) => !o)}
+                    className="flex items-center gap-1 text-xs text-ink-soft/60 hover:text-ink-soft"
+                  >
+                    <IconChevronRight
+                      size={12}
+                      className={`transition-transform ${tempoOpen ? 'rotate-90' : ''}`}
+                    />
+                    Tempo details
+                  </button>
+                  {tempoOpen && (
+                    <div className="mt-1 flex flex-col pl-5">
+                      <DetailRow tight label="BPM">
+                        {piece.bpm ?? '—'}
+                      </DetailRow>
+                      <DetailRow tight label="Measures">
+                        {piece.measureCount ?? '—'}
+                      </DetailRow>
+                      <DetailRow tight label="Beats / measure">
+                        {piece.beatsPerMeasure ?? '—'}
+                      </DetailRow>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Description (book-inheritable) */}

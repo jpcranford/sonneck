@@ -110,7 +110,20 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-:focus-visible {
-  outline: 2px solid var(--color-focus);
-  outline-offset: 2px;
+/* @layer base, not unlayered: Tailwind v4's @import expands to
+   `@layer theme, base, components, utilities;`, and an unlayered rule
+   beats every named layer regardless of specificity — so a bare
+   `:focus-visible` rule here could never be overridden by any utility
+   class (e.g. focus-visible:outline-none), no matter how specific.
+   Real bug this caused: TagComboBox's inner <input> kept a visible
+   outline "double box" nested inside its own styled container despite
+   outline-none focus-visible:outline-none, because that utility lives in
+   the utilities layer and this rule, unlayered, always won anyway. Layering
+   it here (base, declared before utilities) lets utilities correctly
+   override it via normal cascade-layer order. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+  }
 }

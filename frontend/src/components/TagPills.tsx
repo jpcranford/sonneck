@@ -26,7 +26,10 @@ export function TagPills({ keys, sheetType, instruments, userTags }: TagPillsPro
   return (
     <div className="flex flex-wrap items-center gap-1">
       {userTags.map((tag) => (
-        <span key={tag.id} className="rounded-full bg-accent-soft px-2 py-0.5 text-xs text-accent">
+        <span
+          key={tag.id}
+          className="rounded-full bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent"
+        >
           {tag.name}
         </span>
       ))}
@@ -38,16 +41,16 @@ export function TagPills({ keys, sheetType, instruments, userTags }: TagPillsPro
           <IconMusic size={11} />
           {key.name}
         </span>
-      )}
+      ))}
       {sheetType && (
-        <span className="rounded-full border border-border px-2 py-0.5 text-xs text-ink-soft">
+        <span className="rounded-full border border-border px-2 py-0.5 text-xs font-medium text-ink-soft">
           {sheetType.name}
         </span>
       )}
       {instruments.map((tag) => (
         <span
           key={tag.id}
-          className="rounded-full border border-border px-2 py-0.5 text-xs text-ink-soft"
+          className="rounded-full border border-border px-2 py-0.5 text-xs font-medium text-ink-soft"
         >
           {tag.name}
         </span>
