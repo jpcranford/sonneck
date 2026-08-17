@@ -117,6 +117,55 @@ func TestUpdatePiece_SupportsMultipleKeys(t *testing.T) {
 	}
 }
 
+// TestUpdatePiece_SupportsRepeatedKeys covers migration 00012: a piece that
+// modulates back to a key it already used (e.g. C Major -> G Major -> C
+// Major) must be able to store that key twice, in sequence order — not
+// collapse it to one occurrence. Before 00012, piece_keys' PRIMARY KEY
+// (piece_id, key_id) made this impossible; PRIMARY KEY (piece_id, position)
+// replaced it specifically so this round-trips.
+func TestUpdatePiece_SupportsRepeatedKeys(t *testing.T) {
+	h := newTestServer(t)
+	dir := t.TempDir()
+	path := dir + "/piece.pdf"
+	writeFixturePDF(t, path, 1)
+	uploadRec := recordRequest(h, multipartUpload(t, "/api/pieces", "piece.pdf", readAll(t, path)))
+	var uploaded pieceResponse
+	decodeData(t, uploadRec, &uploaded)
+
+	updateRec := doJSON(t, h, http.MethodPatch, apiPiecesURL(uploaded.ID), map[string]any{
+		"title":    "Doubly Modulating Piece",
+		"composer": "Someone",
+		"keys":     []string{"C Major", "G Major", "C Major"},
+	})
+	var updated pieceResponse
+	decodeData(t, updateRec, &updated)
+	if updateRec.Code != http.StatusOK {
+		t.Fatalf("update: status %d, body %s", updateRec.Code, updateRec.Body.String())
+	}
+	assertKeySequence(t, updated.Keys, "C Major", "G Major", "C Major")
+
+	// Round-trip through a fresh GET, not just the mutation's own response —
+	// same check TestUpdatePiece_SupportsMultipleKeys makes, since position
+	// ordering is exactly the kind of thing that could look right in the
+	// write response but come back reshuffled on read.
+	getRec := recordRequest(h, httptestGet(t, apiPiecesURL(uploaded.ID)))
+	var reread pieceResponse
+	decodeData(t, getRec, &reread)
+	assertKeySequence(t, reread.Keys, "C Major", "G Major", "C Major")
+}
+
+func assertKeySequence(t *testing.T, keys []tagStub, want ...string) {
+	t.Helper()
+	if len(keys) != len(want) {
+		t.Fatalf("keys = %+v, want %v", keys, want)
+	}
+	for i, w := range want {
+		if keys[i].Name != w {
+			t.Errorf("keys[%d] = %q, want %q (full sequence: %+v)", i, keys[i].Name, w, keys)
+		}
+	}
+}
+
 // Duration is written directly from the request, not recomputed from
 // bpm/measureCount/beatsPerMeasure (a deliberate deviation from design doc
 // §3 — see CLAUDE.md > Frontend > Computed fields). This deliberately sends

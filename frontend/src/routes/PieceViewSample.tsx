@@ -444,7 +444,10 @@ export function PieceViewSample() {
                   <IconMusic size={12} className="shrink-0" />
                   <span className="flex items-center gap-1">
                     {piece.keys.map((key, i) => (
-                      <span key={key.id} className="flex items-center gap-1">
+                      // Composite key (id + position), not just key.id — a
+                      // modulating piece can use the same key twice in its
+                      // sequence (migration 00012).
+                      <span key={`${key.id}-${i}`} className="flex items-center gap-1">
                         {i > 0 && (
                           <span className="font-normal opacity-[0.55]" aria-hidden="true">
                             ›

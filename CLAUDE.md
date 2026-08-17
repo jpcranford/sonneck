@@ -9,6 +9,8 @@ Tool: **goose**. Every schema change is a migration file, checked into the repo,
 
 **Deliberate deviation from design doc §3:** `Piece.key` is many-to-many (`Piece.keys`), not the single `key` tag/FK column §3 specifies. Requested directly ("a piece can have multiple keys in it" — a piece that modulates, or a medley, can legitimately need more than one), not surfaced by a compliance review. Migration `00008_piece_keys_many_to_many.sql` adds a `piece_keys` join table (same shape as `piece_instruments`) and drops `pieces.key_id`; the down migration is lossy by necessity (collapses to `MIN(key_id)` per piece) and documented as such inline. Keys remain explicitly *not* book-inheritable, same as before this change — this is about single- vs. multi-valued, not about inheritance, so it doesn't conflict with §3's inheritance reasoning. Not reflected back into `sonneck-design.md`, same convention as the rest of this file.
 
+**Follow-on, 2026-08-17:** the same reasoning extends to a piece modulating back to a key it already used (e.g. C Major → G Major → C Major) — `piece_keys` originally had `PRIMARY KEY (piece_id, key_id)`, which silently made that impossible (a repeat insert would hit the PK). Migration `00012_piece_keys_allow_repeats.sql` recreates the table with `PRIMARY KEY (piece_id, position)` instead (`position` already existed per-row since migration `00011`, so this reuses it rather than adding a surrogate key); the down migration is lossy the same way `00008`'s is (collapses repeats to the earliest `position` per `(piece_id, key_id)`). Frontend side: `TagComboBox` gained an `allowDuplicates` prop (Key(s) picker only — Instruments/Your Tags don't need it) and switched its selected-pill list from keying/removing by `tag.id` to keying/removing by array index, since two pills can now legitimately share an id.
+
 ## API response contract
 Every endpoint returns one of two shapes — no per-handler improvisation:
 ```json
@@ -27,6 +29,18 @@ No comprehensive test suite is required for v1, but one area is **not optional**
 (Public-domain calculation testing was flagged as similarly load-bearing in an earlier pass — that requirement is deferred along with the feature itself; see design doc §13. Revisit this section when that feature is built.)
 
 Everything else: use judgment, but the PDF-extraction logic above is load-bearing.
+
+## Live browser verification (dev tooling, not app code)
+No MCP browser tool is configured in this environment — `ToolSearch` for "playwright"/"chromium"/"mcp" comes back empty, and every project's `mcpServers` in `~/.claude.json` is `{}`. A real Chromium is still available, though: `npx playwright` caches a full install — including the browser binaries themselves, under `~/Library/Caches/ms-playwright/` — to `~/.npm/_npx/<hash>/node_modules/playwright/`. Confirmed working 2026-08-17 (found via `find ~/.npm/_npx -maxdepth 3 -iname playwright`; run `npx playwright --version` once first if that comes up empty, to populate the cache). Drive it directly with a hand-written Node script through Bash, e.g.:
+```js
+import { chromium } from '/Users/<user>/.npm/_npx/<hash>/node_modules/playwright/index.mjs'
+const browser = await chromium.launch()
+const page = await browser.newPage({ viewport: { width: 1000, height: 1000 } })
+await page.goto('http://localhost:5173/...')
+// ...interact, assert, page.screenshot()...
+await browser.close()
+```
+Needs both dev servers already running — backend on `:8080`, Vite on `:5173` (check with `lsof -iTCP -sTCP:LISTEN -P` rather than assuming either is up or down). Use this for anything a type-check or unit test can't actually catch — a real click-through sequence, animation/transition timing, DOM state after an interaction — rather than reporting "type-checks clean" as if that were equivalent to having verified the feature live. If a live check mutates real dev data (e.g. editing a piece through the running app), restore it afterward via a direct API call.
 
 ## Concurrency
 v1 is single-user, single-session (see design doc §8). Do not build multi-writer conflict handling. Do enable SQLite WAL mode at startup regardless — cheap, no design cost, cost of skipping it isn't worth the reason to skip it.

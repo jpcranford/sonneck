@@ -54,7 +54,10 @@ export function TagPills({ keys, sheetType, instruments, userTags }: TagPillsPro
           <IconMusic size={11} className="shrink-0" />
           <span className="truncate">
             {keys.map((key, i) => (
-              <span key={key.id}>
+              // Composite key (id + position), not just key.id — a
+              // modulating piece can legitimately use the same key twice
+              // in its sequence (migration 00012).
+              <span key={`${key.id}-${i}`}>
                 {i > 0 && (
                   <span className="font-normal opacity-[0.55]" aria-hidden="true">
                     {' '}

@@ -12,6 +12,7 @@ import { getPieceThumbnailUrl, updatePiece } from '../api/pieces'
 import { listInstruments, listKeys, listSheetTypes, listUserTags } from '../api/lookups'
 import { ApiError } from '../api/client'
 import { secondsToMMSS, mmssToSeconds } from '../lib/duration'
+import { matchesKeyQuery } from '../lib/keySearch'
 import type { Piece, PieceWriteRequest, PracticeStatus, Tag } from '../api/types'
 import { Modal } from './Modal'
 import { InfoTooltip } from './InfoTooltip'
@@ -536,6 +537,8 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
                 selected={field.value}
                 multiple
                 onChange={field.onChange}
+                filterOption={(o, query) => matchesKeyQuery(o.name, query)}
+                allowDuplicates
               />
             )}
           />

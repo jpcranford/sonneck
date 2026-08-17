@@ -18,6 +18,8 @@ export function TagComboBox({
   onChange,
   bookValue,
   onCopy,
+  filterOption,
+  allowDuplicates,
 }: {
   label: string
   options: Tag[]
@@ -26,6 +28,15 @@ export function TagComboBox({
   onChange: (next: Tag[]) => void
   bookValue?: string
   onCopy?: () => void
+  // Overrides the default plain-substring match against `name` — e.g. the
+  // Key(s) picker passes matchesKeyQuery (../lib/keySearch.ts) so typing
+  // "Eb" or "e flat" finds "E♭ Major", not just a literal "♭" match.
+  filterOption?: (option: Tag, query: string) => boolean
+  // Lets an already-selected option be picked again — the Key(s) picker
+  // needs this for a piece that modulates back to a key it already used
+  // (e.g. C Major -> G Major -> C Major, migration 00012). Off by default:
+  // Instruments/Your Tags have no reason to hold the same tag twice.
+  allowDuplicates?: boolean
 }) {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
@@ -38,8 +49,10 @@ export function TagComboBox({
   const nextNewTagId = useRef(-1)
 
   const filtered = options
-    .filter((o) => !selected.some((s) => s.id === o.id))
-    .filter((o) => o.name.toLowerCase().includes(query.toLowerCase()))
+    .filter((o) => allowDuplicates || !selected.some((s) => s.id === o.id))
+    .filter((o) =>
+      filterOption ? filterOption(o, query) : o.name.toLowerCase().includes(query.toLowerCase()),
+    )
   const exactMatch = options.some((o) => o.name.toLowerCase() === query.trim().toLowerCase())
 
   function selectOption(opt: Tag) {
@@ -54,8 +67,11 @@ export function TagComboBox({
     selectOption({ id: nextNewTagId.current--, name: query.trim() })
   }
 
-  function removeTag(id: number) {
-    onChange(selected.filter((s) => s.id !== id))
+  // Removes by position, not by id — with allowDuplicates, two pills can
+  // share a tag id (the same key used twice), so "remove the one matching
+  // this id" would delete both, or the wrong one.
+  function removeTagAt(index: number) {
+    onChange(selected.filter((_, i) => i !== index))
   }
 
   const showInput = multiple || selected.length === 0
@@ -68,9 +84,11 @@ export function TagComboBox({
           onClick={() => inputRef.current?.focus()}
           className="flex min-h-[42px] flex-wrap items-center gap-1.5 rounded-md border border-border bg-paper-raised px-2 py-1.5 focus-within:outline focus-within:outline-2 focus-within:outline-accent focus-within:outline-offset-2"
         >
-          {selected.map((tag) => (
+          {selected.map((tag, index) => (
+            // Composite key (id + position) rather than just tag.id — two
+            // pills can legitimately share an id with allowDuplicates.
             <span
-              key={tag.id}
+              key={`${tag.id}-${index}`}
               className="flex items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent"
             >
               {tag.name}
@@ -78,7 +96,7 @@ export function TagComboBox({
                 type="button"
                 onClick={(event) => {
                   event.stopPropagation()
-                  removeTag(tag.id)
+                  removeTagAt(index)
                 }}
                 aria-label={`Remove ${tag.name}`}
                 className="hover:text-ink"
