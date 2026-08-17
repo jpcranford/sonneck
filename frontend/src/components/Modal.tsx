@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 
 // "Very short" pop animation duration — kept as one constant so the
 // unmount-delay timeout below can't drift out of sync with the CSS
@@ -37,6 +37,10 @@ export function Modal({ open, onClose, labelledBy, children, size = 'md', footer
   // transition classes; `mounted` is only about whether to render at all.
   const [mounted, setMounted] = useState(open)
   const [visible, setVisible] = useState(false)
+  // Tracks whichever of the two nested rAF handles below is currently
+  // pending, so the effect's cleanup can cancel the right one regardless
+  // of which of the two frames the effect gets torn down on.
+  const rafRef = useRef(0)
 
   // Synchronizes mounted/visible to the open prop inside a real effect —
   // not the "adjust state during render" pattern this used previously.
@@ -58,11 +62,26 @@ export function Modal({ open, onClose, labelledBy, children, size = 'md', footer
       // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate: see the comment above this effect for why the render-phase-update alternative is broken, not just a lint-appeasement choice.
       setMounted(true)
       // Starts in the "hidden" classes (mounted just went true above),
-      // then flips to visible on the next frame — flipping both in the
-      // same tick would skip the transition entirely (no state change
-      // left for the browser to animate between).
-      const raf = requestAnimationFrame(() => setVisible(true))
-      return () => cancelAnimationFrame(raf)
+      // then flips to visible — needs a DOUBLE rAF, not one. A single rAF
+      // fires before the browser has actually painted the just-mounted
+      // "hidden" frame (opacity-0 scale-95): React commits `mounted=true`
+      // and the rAF callback runs `setVisible(true)` within the same
+      // paint cycle, so the browser coalesces both into one frame and the
+      // transition has nothing to animate from — the dialog just pops in
+      // at full opacity/scale instantly. Confirmed via instrumentation
+      // (polling computed opacity/transform + listening for
+      // transitionrun/transitionstart across the open transition): with a
+      // single rAF, opacity was already "1" and transform "none" on the
+      // very first sampled frame, and no transition event ever fired.
+      // Nesting a second rAF forces a full paint of the hidden state
+      // first, so the visible flip lands on a later frame and the CSS
+      // transition actually has something to animate between.
+      const raf1 = requestAnimationFrame(() => {
+        const raf2 = requestAnimationFrame(() => setVisible(true))
+        rafRef.current = raf2
+      })
+      rafRef.current = raf1
+      return () => cancelAnimationFrame(rafRef.current)
     }
     setVisible(false)
     // visible already dropped (above) so the exit transition is already
