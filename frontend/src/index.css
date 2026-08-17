@@ -89,7 +89,7 @@
   --color-paper-raised: #ffffff;
   --color-border: #e4e0d8;
 
-  --color-sidebar-bg: #211b18;
+  --color-sidebar-bg: #0f0c0b;
   --color-sidebar-panel: #2f2723;
   --color-sidebar-text: #d9d0c3;
   --color-sidebar-text-dim: #8f857a;
@@ -99,7 +99,10 @@
   --color-accent-soft: #e3e9e0;
   --color-accent-on-dark: #86a67f;
 
-  --color-focus: #2f6f77;
+  /* Trying focus == accent (was a distinct teal, #2f6f77) — references
+     accent directly so the two can't drift out of sync if accent ever
+     changes. */
+  --color-focus: var(--color-accent);
 }
 
 body {
