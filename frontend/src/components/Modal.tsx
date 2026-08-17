@@ -15,6 +15,15 @@ interface ModalProps {
    * added for the Piece Properties Edit Menu (§15), which has far more
    * fields than max-w-lg can lay out without feeling cramped. */
   size?: 'md' | 'lg'
+  /** Rendered outside the scrolling body, pinned to the top of the dialog
+   * — mirrors `footer` below but for content that must stay visible while
+   * the rest scrolls underneath it (the Piece Properties Edit Menu's
+   * title/close row plus its collapsible page preview, added 2026-08-17 —
+   * a preview that scrolled away with the fields it's meant to be
+   * referenced against would defeat the point of having it). Short modals
+   * with nothing that needs pinning above the fields can leave this unset
+   * and put everything in `children` as before. */
+  header?: ReactNode
   /** Rendered outside the scrolling body, pinned to the bottom of the
    * dialog — for a form's Cancel/Save row that should stay visible while
    * long content scrolls above it (the Piece Properties Edit Menu is long
@@ -30,7 +39,7 @@ interface ModalProps {
  * needs a modal all get identical Escape-to-close and backdrop-click-to-
  * close behavior for free, rather than each screen reimplementing it.
  */
-export function Modal({ open, onClose, labelledBy, children, size = 'md', footer }: ModalProps) {
+export function Modal({ open, onClose, labelledBy, children, size = 'md', header, footer }: ModalProps) {
   // Stays mounted slightly past `open` going false, so the exit transition
   // (scale/opacity back down) actually has something to animate instead of
   // the dialog just vanishing — `visible` is the one driving the CSS
@@ -118,6 +127,7 @@ export function Modal({ open, onClose, labelledBy, children, size = 'md', footer
           size === 'lg' ? 'max-w-2xl' : 'max-w-lg'
         } ${visible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}
       >
+        {header && <div className="shrink-0 px-6 pt-6">{header}</div>}
         <div className="overflow-y-auto p-6">{children}</div>
         {footer && (
           <div className="shrink-0 border-t border-border bg-paper-raised px-6 py-4">{footer}</div>

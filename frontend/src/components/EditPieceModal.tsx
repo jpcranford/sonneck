@@ -1,8 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { IconAlertTriangle, IconChevronRight, IconInfoCircle, IconXFilled } from '@tabler/icons-react'
-import { updatePiece } from '../api/pieces'
+import {
+  IconAlertTriangle,
+  IconChevronDown,
+  IconChevronRight,
+  IconInfoCircle,
+  IconXFilled,
+} from '@tabler/icons-react'
+import { getPieceThumbnailUrl, updatePiece } from '../api/pieces'
 import { listInstruments, listKeys, listSheetTypes, listUserTags } from '../api/lookups'
 import { ApiError } from '../api/client'
 import { secondsToMMSS, mmssToSeconds } from '../lib/duration'
@@ -12,6 +18,7 @@ import { InfoTooltip } from './InfoTooltip'
 import { InheritedNote } from './InheritedNote'
 import { TagComboBox } from './TagComboBox'
 import { SingleSelect } from './SingleSelect'
+import { PageCycleControl } from './PageCycleControl'
 
 // The real Piece Properties Edit Menu (design doc §15) — built from the
 // locked mockup design (EditPieceModalMockup.tsx, /mockup/edit-piece-modal,
@@ -149,6 +156,8 @@ function SectionHeading({ children }: { children: React.ReactNode }) {
 export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
   const queryClient = useQueryClient()
   const [tempoOpen, setTempoOpen] = useState(false)
+  const [previewOpen, setPreviewOpen] = useState(false)
+  const [previewPage, setPreviewPage] = useState(piece.thumbnailPage)
   const {
     register,
     handleSubmit,
@@ -160,7 +169,15 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
   } = useForm<FormValues>({ defaultValues: pieceToFormValues(piece) })
 
   useEffect(() => {
-    if (open) reset(pieceToFormValues(piece))
+    if (open) {
+      reset(pieceToFormValues(piece))
+      // Reopening (possibly for a different piece) always starts the
+      // preview closed on that piece's own thumbnail page — carrying over
+      // an open/scrolled-to-page-4 state from whatever was last edited
+      // would be confusing, not a convenience.
+      setPreviewOpen(false)
+      setPreviewPage(piece.thumbnailPage)
+    }
   }, [open, piece, reset])
 
   // Small fixed lookup lists (design doc §5) — generous staleTime since
@@ -220,6 +237,86 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
       onClose={onClose}
       labelledBy="edit-piece-title"
       size="lg"
+      header={
+        <div className="flex flex-col gap-3">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 id="edit-piece-title" className="font-display text-2xl text-ink">
+                Edit piece
+              </h2>
+              <p className="text-sm text-ink-soft">{piece.title}</p>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close"
+              className="mt-1 shrink-0 text-ink-soft hover:text-accent"
+            >
+              <IconXFilled size={22} />
+            </button>
+          </div>
+
+          {/* Page preview — pinned here (Modal's `header` slot) rather than
+              inside the scrolling form, specifically so it can't scroll out
+              of view while the fields below it do (design review,
+              2026-08-17: "the preview should remain fixed while the fields
+              freely scroll"). Starts closed, same footprint as before this
+              feature existed; toggling it open only adds height here, never
+              changes the modal's width. Full-width image in its own capped-
+              height scroll box (a portrait page at full modal width is
+              taller than any reasonable fixed strip) with the plain below-
+              image PageCycleControl underneath — not the Piece View's
+              floating-capsule cycler, which overlaps the bottom of the page
+              itself and could cover exactly the content (final measures, a
+              signature, page numbers) someone opened the preview to check. */}
+          {/* Toggle + collapsible panel share one non-gapped wrapper, not
+              two direct children of the outer `gap-3` flex column — a
+              flex `gap` reserves its full space between every pair of
+              siblings regardless of whether one of them is visually
+              collapsed to zero height, so treating the panel as a sibling
+              of the toggle button (rather than nested under it) left a
+              stray extra gap-3 worth of whitespace even while folded. */}
+          <div>
+            <button
+              type="button"
+              onClick={() => setPreviewOpen((o) => !o)}
+              className="flex w-fit items-center gap-1.5 rounded-full border border-border bg-paper px-3 py-1.5 text-xs text-ink-soft hover:text-ink"
+            >
+              {/* Points right (toward the label) while folded — the usual
+                  "expands this way" affordance — and rotates to point down
+                  once open, matching the panel expanding downward beneath
+                  it. */}
+              <IconChevronDown
+                size={13}
+                className={`transition-transform ${previewOpen ? '' : '-rotate-90'}`}
+              />
+              {previewOpen ? 'Hide page preview' : 'Show page preview'}
+            </button>
+            <div
+              className={`overflow-hidden transition-[max-height] duration-200 ease-in-out ${
+                previewOpen ? 'max-h-[420px] border-b border-border' : 'max-h-0'
+              }`}
+            >
+              <div className="flex flex-col gap-2 pt-3 pb-4">
+                <div className="max-h-[280px] overflow-y-auto rounded-md border border-border bg-paper-sunken">
+                  <img
+                    src={getPieceThumbnailUrl(piece.id, previewPage)}
+                    alt={`Page ${previewPage} of ${piece.title}`}
+                    className="block h-auto w-full"
+                  />
+                </div>
+                <div className="flex justify-center">
+                  <PageCycleControl
+                    page={previewPage}
+                    pageCount={piece.pageCount}
+                    onChange={setPreviewPage}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      }
       footer={
         <div className="flex flex-col gap-2">
           {saveMutation.isError && (
@@ -251,23 +348,6 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
       }
     >
       <form id="edit-piece-form" onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 id="edit-piece-title" className="font-display text-2xl text-ink">
-              Edit piece
-            </h2>
-            <p className="text-sm text-ink-soft">{piece.title}</p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="mt-1 shrink-0 text-ink-soft hover:text-accent"
-          >
-            <IconXFilled size={22} />
-          </button>
-        </div>
-
         <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-1">
             <label htmlFor="f-title" className="text-sm text-ink-soft">
@@ -310,70 +390,6 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
               />
             </div>
           </div>
-        </div>
-
-        {/* Classification */}
-        <div className="flex flex-col gap-3 border-t border-border pt-4">
-          <SectionHeading>Classification</SectionHeading>
-          <Controller
-            name="keys"
-            control={control}
-            render={({ field }) => (
-              <TagComboBox
-                label="Key(s)"
-                options={keyOptions}
-                selected={field.value}
-                multiple
-                onChange={field.onChange}
-              />
-            )}
-          />
-          <Controller
-            name="sheetType"
-            control={control}
-            render={({ field }) => (
-              <SingleSelect
-                label="Sheet Type"
-                options={sheetTypeSelectOptions}
-                value={field.value}
-                onChange={field.onChange}
-                bookValue={piece.sheetType.inherited ? (piece.sheetType.value?.name ?? undefined) : undefined}
-                onCopy={() => field.onChange(piece.sheetType.value?.name ?? '')}
-              />
-            )}
-          />
-          <Controller
-            name="instruments"
-            control={control}
-            render={({ field }) => (
-              <TagComboBox
-                label="Instruments"
-                options={instrumentOptions}
-                selected={field.value}
-                multiple
-                onChange={field.onChange}
-                bookValue={
-                  piece.instruments.inherited
-                    ? piece.instruments.values.map((i) => i.name).join(', ')
-                    : undefined
-                }
-                onCopy={() => field.onChange(piece.instruments.values)}
-              />
-            )}
-          />
-          <Controller
-            name="userTags"
-            control={control}
-            render={({ field }) => (
-              <TagComboBox
-                label="Your Tags"
-                options={userTagOptions}
-                selected={field.value}
-                multiple
-                onChange={field.onChange}
-              />
-            )}
-          />
         </div>
 
         {/* Piece Details */}
@@ -505,6 +521,70 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
               {...register('description')}
             />
           </div>
+        </div>
+
+        {/* Classification */}
+        <div className="flex flex-col gap-3 border-t border-border pt-4">
+          <SectionHeading>Classification</SectionHeading>
+          <Controller
+            name="keys"
+            control={control}
+            render={({ field }) => (
+              <TagComboBox
+                label="Key(s)"
+                options={keyOptions}
+                selected={field.value}
+                multiple
+                onChange={field.onChange}
+              />
+            )}
+          />
+          <Controller
+            name="sheetType"
+            control={control}
+            render={({ field }) => (
+              <SingleSelect
+                label="Sheet Type"
+                options={sheetTypeSelectOptions}
+                value={field.value}
+                onChange={field.onChange}
+                bookValue={piece.sheetType.inherited ? (piece.sheetType.value?.name ?? undefined) : undefined}
+                onCopy={() => field.onChange(piece.sheetType.value?.name ?? '')}
+              />
+            )}
+          />
+          <Controller
+            name="instruments"
+            control={control}
+            render={({ field }) => (
+              <TagComboBox
+                label="Instruments"
+                options={instrumentOptions}
+                selected={field.value}
+                multiple
+                onChange={field.onChange}
+                bookValue={
+                  piece.instruments.inherited
+                    ? piece.instruments.values.map((i) => i.name).join(', ')
+                    : undefined
+                }
+                onCopy={() => field.onChange(piece.instruments.values)}
+              />
+            )}
+          />
+          <Controller
+            name="userTags"
+            control={control}
+            render={({ field }) => (
+              <TagComboBox
+                label="Your Tags"
+                options={userTagOptions}
+                selected={field.value}
+                multiple
+                onChange={field.onChange}
+              />
+            )}
+          />
         </div>
 
         {/* Personal */}
