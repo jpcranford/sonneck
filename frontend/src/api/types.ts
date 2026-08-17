@@ -113,6 +113,13 @@ export interface PieceWriteRequest {
   imslpNumber?: string | null
   sourcePageStart?: number | null
   sourcePageEnd?: number | null
+  /** Directly user-entered (mm:ss in the UI, seconds on the wire) — not
+   * recomputed server-side from bpm/measureCount/beatsPerMeasure, a
+   * deliberate deviation from design doc §3 (see CLAUDE.md > Frontend >
+   * Computed fields). Omitting this on a write clears it, same full-replace
+   * rule as every other field — every write-request builder must resend it
+   * to preserve the current value, not just the ones that mean to change it. */
+  duration?: number | null
   bpm?: number | null
   measureCount?: number | null
   beatsPerMeasure?: number | null

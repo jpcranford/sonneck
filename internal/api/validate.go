@@ -88,6 +88,7 @@ func ValidatePiece(ctx context.Context, q repo.Queryer, p *models.Piece) (Valida
 		errs = append(errs, FieldError{"practiceStatus", "must be one of: Want to Learn, Learning, Learned, Stalled, Dropped"})
 	}
 
+	checkPositiveInt(&errs, "duration", p.Duration)
 	checkPositiveInt(&errs, "bpm", p.BPM)
 	checkPositiveInt(&errs, "measureCount", p.MeasureCount)
 	checkPositiveInt(&errs, "beatsPerMeasure", p.BeatsPerMeasure)

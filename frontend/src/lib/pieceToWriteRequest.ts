@@ -31,6 +31,7 @@ export function pieceToWriteRequest(piece: Piece): PieceWriteRequest {
     imslpNumber: piece.imslpNumber.inherited ? '' : piece.imslpNumber.value,
     sourcePageStart: piece.sourcePageStart,
     sourcePageEnd: piece.sourcePageEnd,
+    duration: piece.duration,
     bpm: piece.bpm,
     measureCount: piece.measureCount,
     beatsPerMeasure: piece.beatsPerMeasure,

@@ -117,6 +117,61 @@ func TestUpdatePiece_SupportsMultipleKeys(t *testing.T) {
 	}
 }
 
+// Duration is written directly from the request, not recomputed from
+// bpm/measureCount/beatsPerMeasure (a deliberate deviation from design doc
+// §3 — see CLAUDE.md > Frontend > Computed fields). This deliberately sends
+// a duration that does NOT match what the old formula would have derived
+// from the given tempo fields (95s here vs. the ~71s the formula would
+// compute for 88bpm/35 measures/3 beats), so a regression back to
+// auto-computing would be caught by this assertion, not silently pass.
+func TestUpdatePiece_DurationIsWrittenDirectlyNotComputed(t *testing.T) {
+	h := newTestServer(t)
+	dir := t.TempDir()
+	path := dir + "/piece.pdf"
+	writeFixturePDF(t, path, 1)
+	uploadRec := recordRequest(h, multipartUpload(t, "/api/pieces", "piece.pdf", readAll(t, path)))
+	var uploaded pieceResponse
+	decodeData(t, uploadRec, &uploaded)
+
+	updateRec := doJSON(t, h, http.MethodPatch, apiPiecesURL(uploaded.ID), map[string]any{
+		"title":           "Tempo Test",
+		"composer":        "Someone",
+		"duration":        95,
+		"bpm":             88,
+		"measureCount":    35,
+		"beatsPerMeasure": 3,
+	})
+	var updated pieceResponse
+	decodeData(t, updateRec, &updated)
+	if updated.Duration == nil || *updated.Duration != 95 {
+		t.Fatalf("duration after update = %v, want 95 (written as sent, not recomputed)", updated.Duration)
+	}
+
+	getRec := recordRequest(h, httptestGet(t, apiPiecesURL(uploaded.ID)))
+	var reread pieceResponse
+	decodeData(t, getRec, &reread)
+	if reread.Duration == nil || *reread.Duration != 95 {
+		t.Errorf("duration on re-fetch = %v, want 95", reread.Duration)
+	}
+
+	// Omitting duration on a later write clears it, same full-replace rule
+	// as every other field (CLAUDE.md-documented PieceWriteRequest
+	// semantics) — it must not silently keep the old value or fall back to
+	// recomputing one from the still-present tempo fields.
+	clearRec := doJSON(t, h, http.MethodPatch, apiPiecesURL(uploaded.ID), map[string]any{
+		"title":           "Tempo Test",
+		"composer":        "Someone",
+		"bpm":             88,
+		"measureCount":    35,
+		"beatsPerMeasure": 3,
+	})
+	var cleared pieceResponse
+	decodeData(t, clearRec, &cleared)
+	if cleared.Duration != nil {
+		t.Errorf("duration after omitting it on write = %v, want nil (cleared, not recomputed)", cleared.Duration)
+	}
+}
+
 func TestCreatePiece_SetsPageCount(t *testing.T) {
 	h := newTestServer(t)
 	dir := t.TempDir()

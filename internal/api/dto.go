@@ -239,6 +239,7 @@ type PieceWriteRequest struct {
 	ImslpNumber     *string  `json:"imslpNumber"`
 	SourcePageStart *int     `json:"sourcePageStart"`
 	SourcePageEnd   *int     `json:"sourcePageEnd"`
+	Duration        *int     `json:"duration"`
 	BPM             *int     `json:"bpm"`
 	MeasureCount    *int     `json:"measureCount"`
 	BeatsPerMeasure *int     `json:"beatsPerMeasure"`

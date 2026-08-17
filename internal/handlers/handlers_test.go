@@ -160,6 +160,10 @@ type pieceResponse struct {
 	Keys            []tagStub       `json:"keys"`
 	SourcePageStart *int            `json:"sourcePageStart"`
 	SourcePageEnd   *int            `json:"sourcePageEnd"`
+	Duration        *int            `json:"duration"`
+	BPM             *int            `json:"bpm"`
+	MeasureCount    *int            `json:"measureCount"`
+	BeatsPerMeasure *int            `json:"beatsPerMeasure"`
 	FileHash        string          `json:"fileHash"`
 	SourceBookID    *int64          `json:"sourceBookId"`
 	PageCount       int             `json:"pageCount"`

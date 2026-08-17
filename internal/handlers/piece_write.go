@@ -39,7 +39,10 @@ func applyPieceWriteRequest(ctx context.Context, q repo.Queryer, p *models.Piece
 	p.BPM = req.BPM
 	p.MeasureCount = req.MeasureCount
 	p.BeatsPerMeasure = req.BeatsPerMeasure
-	p.Duration = computeDuration(req.BPM, req.MeasureCount, req.BeatsPerMeasure)
+	// Duration is written directly from the request, not recomputed from
+	// BPM/MeasureCount/BeatsPerMeasure — a deliberate deviation from design
+	// doc §3, see CLAUDE.md > Frontend > Computed fields for the reasoning.
+	p.Duration = req.Duration
 
 	keyIDs, err := resolveTagNames(ctx, q, repo.FindOrCreateKey, req.Keys, "keys")
 	if err != nil {
@@ -66,19 +69,6 @@ func applyPieceWriteRequest(ctx context.Context, q repo.Queryer, p *models.Piece
 	p.UserTagIDs = userTagIDs
 
 	return nil
-}
-
-// computeDuration mirrors the frontend's computed field (design doc §3):
-// (measureCount × beatsPerMeasure ÷ bpm) × 60, in seconds. The backend
-// recomputes it too rather than trusting a client-sent value, since it's
-// derived data and the backend remains the source of truth for anything
-// persisted.
-func computeDuration(bpm, measureCount, beatsPerMeasure *int) *int {
-	if bpm == nil || measureCount == nil || beatsPerMeasure == nil || *bpm <= 0 {
-		return nil
-	}
-	seconds := int(float64(*measureCount) * float64(*beatsPerMeasure) / float64(*bpm) * 60)
-	return &seconds
 }
 
 type findOrCreateFunc func(ctx context.Context, q repo.Queryer, name string) (int64, error)

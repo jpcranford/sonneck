@@ -31,6 +31,7 @@ import {
 } from '../api/pieces'
 import { ApiError } from '../api/client'
 import { pieceToWriteRequest } from '../lib/pieceToWriteRequest'
+import { secondsToMMSS } from '../lib/duration'
 import { EditPieceModal } from '../components/EditPieceModal'
 import { InfoTooltip } from '../components/InfoTooltip'
 
@@ -47,9 +48,7 @@ function validateReplacementFile(file: File): string | null {
 
 function formatDuration(seconds: number | null): string | null {
   if (seconds == null) return null
-  const m = Math.floor(seconds / 60)
-  const s = seconds % 60
-  return `${m}:${String(s).padStart(2, '0')}`
+  return secondsToMMSS(seconds)
 }
 
 function formatDate(iso: string): string {

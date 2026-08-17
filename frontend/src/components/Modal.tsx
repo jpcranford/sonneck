@@ -35,35 +35,36 @@ export function Modal({ open, onClose, labelledBy, children, size = 'md', footer
   // (scale/opacity back down) actually has something to animate instead of
   // the dialog just vanishing — `visible` is the one driving the CSS
   // transition classes; `mounted` is only about whether to render at all.
-  //
-  // The immediate reactions to `open` changing (mount right away when
-  // opening; drop `visible` right away when closing, so the CSS transition
-  // actually starts) happen at render time — the same "adjust state during
-  // render" pattern used elsewhere for prop-driven resets — tracked via
-  // `openMirror` so each transition only fires once per `open` change. The
-  // effect below only ever calls setState from inside a callback (a frame,
-  // a timer), which is the part effects are actually for.
   const [mounted, setMounted] = useState(open)
   const [visible, setVisible] = useState(false)
-  const [openMirror, setOpenMirror] = useState(open)
-  if (open !== openMirror) {
-    setOpenMirror(open)
-    if (open) {
-      setMounted(true)
-    } else {
-      setVisible(false)
-    }
-  }
 
+  // Synchronizes mounted/visible to the open prop inside a real effect —
+  // not the "adjust state during render" pattern this used previously.
+  // That earlier version set `mounted` synchronously during render
+  // specifically to satisfy the react-hooks/set-state-in-effect lint rule,
+  // but it had a real, confirmed bug: when a parent re-renders while this
+  // effect's pending rAF/timeout is still in flight (e.g. EditPieceModal's
+  // own reset() call notifying react-hook-form's subscribers right as the
+  // modal opens), the render-phase update and the async callback could
+  // race, leaving `mounted` stuck false even though `open` was still true
+  // — the modal would silently never appear. Confirmed via direct
+  // instrumentation (logging every render's state across the transition)
+  // before switching back to this straightforward effect-based version,
+  // which is the standard, correct way to synchronize local state to an
+  // external controlled prop. Worth the lint rule's nudge here — see the
+  // inline disable below — not worth reintroducing that race.
   useEffect(() => {
     if (open) {
-      // Starts in the "hidden" classes (mounted just went true above, on
-      // this same render), then flips to visible on the next frame —
-      // flipping both in the same tick would skip the transition entirely
-      // (no state change left for the browser to animate between).
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate: see the comment above this effect for why the render-phase-update alternative is broken, not just a lint-appeasement choice.
+      setMounted(true)
+      // Starts in the "hidden" classes (mounted just went true above),
+      // then flips to visible on the next frame — flipping both in the
+      // same tick would skip the transition entirely (no state change
+      // left for the browser to animate between).
       const raf = requestAnimationFrame(() => setVisible(true))
       return () => cancelAnimationFrame(raf)
     }
+    setVisible(false)
     // visible already dropped (above) so the exit transition is already
     // playing — wait for it to finish before actually unmounting.
     const timeout = setTimeout(() => setMounted(false), TRANSITION_MS)
