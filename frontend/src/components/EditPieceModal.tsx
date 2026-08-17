@@ -99,6 +99,16 @@ function toIntOrNull(value: string): number | null {
   return Number.isFinite(n) ? n : null
 }
 
+// Strips a leading "IMSLP" label (with or without a following
+// space/colon/hash/dash, any case) before the value is ever sent to the
+// backend — the citation now adds its own "IMSLP #" label (buildCitation,
+// internal/handlers/citation.go), so a value typed in as "IMSLP04154"
+// would otherwise render doubled ("IMSLP #IMSLP04154"). Only strips an
+// actual prefix match; a value with no "IMSLP" text is returned as-is.
+function stripImslpPrefix(value: string): string {
+  return value.replace(/^\s*imslp[\s:#-]*/i, '')
+}
+
 function formValuesToWriteRequest(data: FormValues, piece: Piece): PieceWriteRequest {
   return {
     title: data.title,
@@ -120,7 +130,7 @@ function formValuesToWriteRequest(data: FormValues, piece: Piece): PieceWriteReq
     instruments: data.instruments.map((i) => i.name),
     userTags: data.userTags.map((t) => t.name),
     practiceStatus: (data.practiceStatus || null) as PracticeStatus | null,
-    imslpNumber: data.imslpNumber,
+    imslpNumber: stripImslpPrefix(data.imslpNumber),
     sourcePageStart: toIntOrNull(data.sourcePageStart),
     sourcePageEnd: toIntOrNull(data.sourcePageEnd),
     duration: data.duration.trim() === '' ? null : mmssToSeconds(data.duration),
