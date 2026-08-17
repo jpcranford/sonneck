@@ -44,9 +44,16 @@ interface Tag {
   name: string
 }
 
+// bookTitle and workOpusNumber deliberately kept as two separate fields
+// (not "Album für die Jugend, Op. 68" baked into one title string) to
+// exercise buildCitation's book-opus dedup logic (citation.go,
+// 2026-08-17) the way it's actually meant to be used: the book's own
+// opus number is a structured field the citation composes in, not free
+// text a user has to remember to type into the title itself.
 const sampleBook = {
-  bookTitle: 'Album für die Jugend, Op. 68',
+  bookTitle: 'Album für die Jugend',
   composer: 'Robert Schumann',
+  workOpusNumber: 'Op. 68',
   yearWritten: '1848',
 }
 
@@ -92,8 +99,18 @@ const samplePiece = {
   updatedAt: '2026-08-16T09:41:17Z',
 }
 
+// Matches buildCitation's current logic exactly (internal/handlers/
+// citation.go), including the three 2026-08-17 deviations: arranger
+// fused onto composer ("Robert Schumann, arr. Louis Köhler"); the book's
+// own "Op. 68" dropped from the book-title segment because it's already
+// contained (spaces ignored) in the piece's own "Op. 68, No. 9"; and
+// imslpNumber rendered as "IMSLP #04154" — note samplePiece.imslpNumber
+// below deliberately keeps the old-style "IMSLP04154" raw value (prefix
+// still baked in, as real pre-2026-08-17 data would have it) specifically
+// to demonstrate that buildCitation strips it at render time regardless
+// of what's actually stored.
 const sampleCitation =
-  'Robert Schumann, Album für die Jugend, Op. 68, "No. 9, Volksliedchen (Little Folk Song)" (Op. 68, No. 9), G. Schirmer, IMSLP04154, 1848'
+  'Robert Schumann, arr. Louis Köhler, Album für die Jugend, "No. 9, Volksliedchen (Little Folk Song)" (Op. 68, No. 9), G. Schirmer, IMSLP #04154, 1848'
 
 function SheetPagePlaceholder({ page }: { page: number }) {
   return (
