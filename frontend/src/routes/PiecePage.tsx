@@ -1,4 +1,4 @@
-import { useRef, useState, type MouseEvent, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -8,6 +8,7 @@ import {
   IconChevronLeft,
   IconChevronRight,
   IconChevronRightFilled,
+  IconCopy,
   IconEditFilled,
   IconDownload,
   IconHeart,
@@ -197,6 +198,38 @@ export function PiecePage() {
     },
   })
 
+  // Keyboard shortcuts: E opens the edit menu, F toggles favorite — matches
+  // the header buttons right above (IconEditFilled/IconHeart), just a
+  // faster path to the same two actions. Skipped entirely while the edit
+  // modal is already open (its own fields are the ones that should own
+  // keystrokes then) or while focus is in any text-entry element, so typing
+  // a title/description containing "e"/"f" is never intercepted. `repeat`
+  // is checked separately from that, since holding the key down fires
+  // repeated keydown events — harmless for opening the modal a second time,
+  // but would otherwise flip favorite back and forth on every repeat tick.
+  useEffect(() => {
+    if (!piece || editOpen) return
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return
+      const target = event.target as HTMLElement | null
+      const tag = target?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target?.isContentEditable) {
+        return
+      }
+      const key = event.key.toLowerCase()
+      if (key === 'e') {
+        event.preventDefault()
+        setEditOpen(true)
+      } else if (key === 'f') {
+        event.preventDefault()
+        favoriteMutation.mutate()
+      }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- favoriteMutation is a fresh object every render (useMutation, not memoized); depending on it would tear down/re-add this listener on every render for no behavioral difference. piece/editOpen are the only real dependencies.
+  }, [piece, editOpen])
+
   const replaceMutation = useMutation({
     mutationFn: (file: File) => {
       setReplaceProgress(0)
@@ -229,11 +262,18 @@ export function PiecePage() {
     replaceMutation.mutate(file)
   }
 
-  function handleCopyCitation(event: MouseEvent) {
-    if (!citationData) return
-    navigator.clipboard?.writeText(citationData.citation).catch(() => {})
+  // Shared by the citation button and the file hash's copy button below —
+  // same "copy this text, show a toast at the click point" behavior either
+  // way, just different source text.
+  function handleCopy(text: string, event: MouseEvent) {
+    navigator.clipboard?.writeText(text).catch(() => {})
     setCopyToast({ x: event.clientX, y: event.clientY })
     window.setTimeout(() => setCopyToast(null), 1200)
+  }
+
+  function handleCopyCitation(event: MouseEvent) {
+    if (!citationData) return
+    handleCopy(citationData.citation, event)
   }
 
   return (
@@ -679,11 +719,6 @@ export function PiecePage() {
               </div>
             )}
 
-            {/* Last updated — directly below Description; the
-                Advanced/Get Info disclosure below stays in its own spot
-                after Source Book, this line isn't part of it. */}
-            <p className="text-xs text-ink-soft">Last updated {formatDate(piece.updatedAt)}</p>
-
             {/* Book Details section — shown only when sourceBookId is
                 set. Editing writes to the Book record only (§14/§16); the
                 edit affordance is inert for now — the Book Properties
@@ -734,13 +769,32 @@ export function PiecePage() {
                       secondary/deferred, and tightened (tight) same as
                       Tempo details' rows. */}
                   <DetailRow small tight label="File hash">
-                    <span className="font-mono">{piece.fileHash.slice(0, 16)}…</span>
+                    {/* Abbreviated display stays as-is (a full 64-char
+                        SHA-256 would wrap raggedly in this tight
+                        label/value row, worse on mobile) — the copy
+                        button gives access to the full value for anyone
+                        who actually needs to verify it against e.g.
+                        `sha256sum`, without changing the row's layout. */}
+                    <span className="inline-flex items-center gap-1">
+                      <span className="font-mono">{piece.fileHash.slice(0, 16)}…</span>
+                      <button
+                        type="button"
+                        onClick={(event) => handleCopy(piece.fileHash, event)}
+                        aria-label="Copy full file hash"
+                        className="text-ink-soft/50 hover:text-ink-soft"
+                      >
+                        <IconCopy size={12} />
+                      </button>
+                    </span>
                   </DetailRow>
                   <DetailRow small tight label="Page count">
                     {piece.pageCount}
                   </DetailRow>
                   <DetailRow small tight label="Created">
                     {formatDate(piece.createdAt)}
+                  </DetailRow>
+                  <DetailRow small tight label="Last updated">
+                    {formatDate(piece.updatedAt)}
                   </DetailRow>
                   <DetailRow small tight label="Copyright year">
                     {piece.copyrightYear ?? '—'}

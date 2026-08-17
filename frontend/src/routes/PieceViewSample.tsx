@@ -7,6 +7,7 @@ import {
   IconChevronLeft,
   IconChevronRight,
   IconChevronRightFilled,
+  IconCopy,
   IconEditFilled,
   IconDownload,
   IconHeart,
@@ -242,10 +243,14 @@ export function PieceViewSample() {
   const [copyToast, setCopyToast] = useState<{ x: number; y: number } | null>(null)
   const replaceFileInputRef = useRef<HTMLInputElement>(null)
 
-  function handleCopyCitation(event: MouseEvent) {
-    navigator.clipboard?.writeText(sampleCitation).catch(() => {})
+  function handleCopy(text: string, event: MouseEvent) {
+    navigator.clipboard?.writeText(text).catch(() => {})
     setCopyToast({ x: event.clientX, y: event.clientY })
     window.setTimeout(() => setCopyToast(null), 1200)
+  }
+
+  function handleCopyCitation(event: MouseEvent) {
+    handleCopy(sampleCitation, event)
   }
 
   return (
@@ -580,8 +585,6 @@ export function PieceViewSample() {
             </div>
           )}
 
-          <p className="text-xs text-ink-soft">Last updated {formatDate(piece.updatedAt)}</p>
-
           {piece.sourceBookId && (
             <div className="flex flex-col gap-2 rounded-lg border border-border bg-paper-raised px-4 py-3">
               <div className="flex items-center justify-between gap-3">
@@ -620,13 +623,26 @@ export function PieceViewSample() {
             {advancedOpen && (
               <div className="flex flex-col rounded-md border border-dashed border-border px-3 py-2">
                 <DetailRow small tight label="File hash">
-                  <span className="font-mono">{piece.fileHash.slice(0, 16)}…</span>
+                  <span className="inline-flex items-center gap-1">
+                    <span className="font-mono">{piece.fileHash.slice(0, 16)}…</span>
+                    <button
+                      type="button"
+                      onClick={(event) => handleCopy(piece.fileHash, event)}
+                      aria-label="Copy full file hash"
+                      className="text-ink-soft/50 hover:text-ink-soft"
+                    >
+                      <IconCopy size={12} />
+                    </button>
+                  </span>
                 </DetailRow>
                 <DetailRow small tight label="Page count">
                   {piece.pageCount}
                 </DetailRow>
                 <DetailRow small tight label="Created">
                   {formatDate(piece.createdAt)}
+                </DetailRow>
+                <DetailRow small tight label="Last updated">
+                  {formatDate(piece.updatedAt)}
                 </DetailRow>
                 <DetailRow small tight label="Copyright year">
                   {piece.copyrightYear ?? '—'}
