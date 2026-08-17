@@ -258,3 +258,37 @@ func TestCitation_ShowsBookOpusNumberWhenNotContainedInPieceOpusNumber(t *testin
 		t.Errorf("citation = %q, want %q", citation.Citation, want)
 	}
 }
+
+// A title containing its own literal double quotes (a nested subtitle,
+// e.g. "Merry-Go-Round of Life from "Howl's Moving Castle"") would
+// otherwise collide with the citation's own wrapping quotes — those
+// embedded quotes render as single quotes instead, standard nested-quote
+// convention.
+func TestCitation_TitleDoubleQuotesBecomeSingleQuotes(t *testing.T) {
+	h := newTestServer(t)
+	dir := t.TempDir()
+	path := dir + "/piece.pdf"
+	writeFixturePDF(t, path, 1)
+	rec := recordRequest(h, multipartUpload(t, "/api/pieces", "piece.pdf", readAll(t, path)))
+	var uploaded pieceResponse
+	decodeData(t, rec, &uploaded)
+
+	decodeData(t, doJSON(t, h, http.MethodPatch, apiPiecesURL(uploaded.ID), map[string]any{
+		"title":       `Merry-Go-Round of Life from "Howl's Moving Castle"`,
+		"composer":    "Joe Hisaishi",
+		"arranger":    "M. Yamamoto",
+		"publisher":   "Sony/ATV Music Publishing (UK)",
+		"yearWritten": "2004",
+	}), nil)
+
+	citeRec := doJSON(t, h, http.MethodGet, apiPiecesURL(uploaded.ID)+"/citation", nil)
+	var citation struct {
+		Citation string `json:"citation"`
+	}
+	decodeData(t, citeRec, &citation)
+
+	want := `Joe Hisaishi, arr. M. Yamamoto, "Merry-Go-Round of Life from 'Howl's Moving Castle'", Sony/ATV Music Publishing (UK), 2004`
+	if citation.Citation != want {
+		t.Errorf("citation = %q, want %q", citation.Citation, want)
+	}
+}

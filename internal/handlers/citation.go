@@ -108,6 +108,17 @@ func (s *Server) handleGetCitation(w http.ResponseWriter, r *http.Request) {
 //     once from the piece's own "(workOpusNumber)" parenthetical next to
 //     the title.
 //
+// Fourth deviation, added 2026-08-17: any double quote character inside
+// title itself is rendered as a single quote before the whole title gets
+// wrapped in the citation's own double quotes — a title like
+// `Merry-Go-Round of Life from "Howl's Moving Castle"` would otherwise
+// produce a `""Howl's Moving Castle""` collision where the title's own
+// embedded quotes run straight into the citation's wrapping ones,
+// unreadable as to which quote closes what. Standard nested-quote
+// typographic convention (outer double, inner single) resolves it, and
+// costs nothing here since titles containing a literal double quote at
+// all are rare and this only ever touches that character.
+//
 // This is deliberately not generic CITATION_FORMAT token substitution:
 // blank-field omission doesn't fit a plain-substitution model, and the
 // design doc explicitly defers a configurable conditional template engine
@@ -131,7 +142,7 @@ func buildCitation(eff *repo.EffectivePiece, title, arranger, bookTitle, bookWor
 		parts = append(parts, bookPart)
 	}
 
-	titlePart := fmt.Sprintf(`"%s"`, title)
+	titlePart := fmt.Sprintf(`"%s"`, strings.ReplaceAll(title, `"`, `'`))
 	if eff.WorkOpusNumber.Value != "" {
 		titlePart += fmt.Sprintf(" (%s)", eff.WorkOpusNumber.Value)
 	}
