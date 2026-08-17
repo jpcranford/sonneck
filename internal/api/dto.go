@@ -102,7 +102,7 @@ func BuildPieceResponse(ctx context.Context, q repo.Queryer, p *models.Piece) (*
 	}
 
 	if len(p.KeyIDs) > 0 {
-		keys, err := repo.TagsByIDs(ctx, q, "musical_keys", p.KeyIDs)
+		keys, err := repo.KeysByIDs(ctx, q, p.KeyIDs)
 		if err != nil {
 			return nil, err
 		}

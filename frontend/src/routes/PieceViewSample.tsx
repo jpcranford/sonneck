@@ -145,8 +145,8 @@ function InheritedNote({ compact }: { compact?: boolean }) {
       ariaLabel="Why this value is shown"
       triggerClassName={
         compact
-          ? 'text-[0.65rem] text-ink-soft/50 hover:text-ink-soft'
-          : 'rounded-full border border-border px-1.5 py-px text-[0.65rem] font-medium text-ink-soft hover:text-ink'
+          ? 'text-[0.65rem] text-ink-soft/75 hover:text-ink'
+          : 'rounded-full border border-border px-1.5 py-px text-[0.65rem] font-medium text-ink-soft/75 hover:text-ink'
       }
     >
       {compact ? '• inherited' : 'inherited'}
@@ -232,7 +232,7 @@ export function PieceViewSample() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 p-6 md:p-8">
+    <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-6 pt-6 md:px-8 md:pt-8">
       <Link
         to="/"
         className="inline-flex w-fit items-center gap-1.5 text-sm text-ink-soft hover:text-ink"
@@ -419,15 +419,26 @@ export function PieceViewSample() {
                   {tag.name}
                 </span>
               ))}
-              {piece.keys.map((key) => (
-                <span
-                  key={key.id}
-                  className="flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-xs font-medium text-ink-soft"
-                >
-                  <IconMusic size={12} />
-                  {key.name}
+              {/* One merged pill for the whole key sequence, kept in sync
+                  with PiecePage.tsx's real version — see that file's
+                  comment for the design rationale. */}
+              {piece.keys.length > 0 && (
+                <span className="flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-xs font-medium text-ink-soft">
+                  <IconMusic size={12} className="shrink-0" />
+                  <span className="flex items-center gap-1">
+                    {piece.keys.map((key, i) => (
+                      <span key={key.id} className="flex items-center gap-1">
+                        {i > 0 && (
+                          <span className="font-normal opacity-[0.55]" aria-hidden="true">
+                            ›
+                          </span>
+                        )}
+                        <span className="text-center">{key.name}</span>
+                      </span>
+                    ))}
+                  </span>
                 </span>
-              ))}
+              )}
               {piece.sheetType.value && (
                 <span className="flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-xs font-medium text-ink-soft">
                   {piece.sheetType.value.name}
@@ -578,7 +589,7 @@ export function PieceViewSample() {
             <button
               type="button"
               onClick={() => setAdvancedOpen((o) => !o)}
-              className="flex w-fit items-center gap-1 hover:text-ink"
+              className="flex w-fit items-center gap-1 text-ink-soft/60 hover:text-ink-soft"
             >
               <IconChevronRight
                 size={13}
@@ -609,7 +620,7 @@ export function PieceViewSample() {
             <button
               type="button"
               onClick={handleCopyCitation}
-              className="w-fit text-left font-display text-sm text-ink-soft/50 italic hover:text-ink-soft"
+              className="w-fit text-left font-display text-sm text-ink-soft/25 italic hover:text-ink-soft"
             >
               {sampleCitation}
             </button>

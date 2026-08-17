@@ -66,8 +66,8 @@ function InheritedNote({ compact }: { compact?: boolean }) {
       ariaLabel="Why this value is shown"
       triggerClassName={
         compact
-          ? 'text-[0.65rem] text-ink-soft/50 hover:text-ink-soft'
-          : 'rounded-full border border-border px-1.5 py-px text-[0.65rem] font-medium text-ink-soft hover:text-ink'
+          ? 'text-[0.65rem] text-ink-soft/75 hover:text-ink'
+          : 'rounded-full border border-border px-1.5 py-px text-[0.65rem] font-medium text-ink-soft/75 hover:text-ink'
       }
     >
       {compact ? '• inherited' : 'inherited'}
@@ -237,7 +237,7 @@ export function PiecePage() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 p-6 md:p-8">
+    <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-6 pt-6 md:px-8 md:pt-8">
       <Link
         to="/"
         className="inline-flex w-fit items-center gap-1.5 text-sm text-ink-soft hover:text-ink"
@@ -505,15 +505,37 @@ export function PiecePage() {
                     {tag.name}
                   </span>
                 ))}
-                {piece.keys.map((key) => (
-                  <span
-                    key={key.id}
-                    className="flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-xs font-medium text-ink-soft"
-                  >
-                    <IconMusic size={12} />
-                    {key.name}
+                {/* A piece's keys are a sequence, not an unordered set of
+                    tags — a piece that modulates (e.g. A Minor → C Major)
+                    needs that order to survive the display. One merged
+                    pill, keys joined by a small de-emphasized chevron
+                    (design review: "option A, with the small arrows from
+                    option E" — A's neutral bordered pill styling, E's
+                    subtler opacity-based separator instead of A's own
+                    "→"), rather than one separate pill per key with no
+                    indication of order at all. */}
+                {piece.keys.length > 0 && (
+                  <span className="flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-xs font-medium text-ink-soft">
+                    <IconMusic size={12} className="shrink-0" />
+                    <span className="flex items-center gap-1">
+                      {piece.keys.map((key, i) => (
+                        <span key={key.id} className="flex items-center gap-1">
+                          {i > 0 && (
+                            <span className="font-normal opacity-[0.55]" aria-hidden="true">
+                              ›
+                            </span>
+                          )}
+                          {/* text-center: at narrow widths a key name can
+                              wrap onto two lines ("E" / "Major") — without
+                              this the wrapped lines default to left-align,
+                              so a short top word like "E" doesn't sit
+                              centered over the wider word below it. */}
+                          <span className="text-center">{key.name}</span>
+                        </span>
+                      ))}
+                    </span>
                   </span>
-                ))}
+                )}
                 {piece.sheetType.value && (
                   <span className="flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-xs font-medium text-ink-soft">
                     {piece.sheetType.value.name}
@@ -616,7 +638,7 @@ export function PiecePage() {
                   <button
                     type="button"
                     onClick={() => setTempoOpen((o) => !o)}
-                    className="flex items-center gap-1 text-xs text-ink-soft/60 hover:text-ink-soft"
+                    className="flex items-center gap-1 text-xs text-ink-soft/75 hover:text-ink-soft"
                   >
                     <IconChevronRight
                       size={12}
@@ -691,7 +713,7 @@ export function PiecePage() {
               <button
                 type="button"
                 onClick={() => setAdvancedOpen((o) => !o)}
-                className="flex w-fit items-center gap-1 hover:text-ink"
+                className="flex w-fit items-center gap-1 text-ink-soft/75 hover:text-ink-soft"
               >
                 <IconChevronRight
                   size={13}
@@ -739,7 +761,7 @@ export function PiecePage() {
                 <button
                   type="button"
                   onClick={handleCopyCitation}
-                  className="w-fit text-left font-display text-sm text-ink-soft/50 italic hover:text-ink-soft"
+                  className="w-fit text-left font-display text-sm text-ink-soft/75 italic hover:text-ink-soft"
                 >
                   {citationData.citation}
                 </button>

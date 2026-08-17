@@ -17,14 +17,16 @@ interface TagPillsProps {
 // system/book-level data, so they stay neutral hollow pills, never
 // distinguished by color alone anyway (CLAUDE.md > Frontend) since key
 // also carries a music-note icon. Keys are many-to-many (a piece can be
-// written in more than one key), each rendered as its own pill.
+// written in more than one key) and genuinely ordered (e.g. a piece that
+// modulates) — rendered as one merged pill with the sequence joined by a
+// small chevron, not one independent pill per key (2026-08-17).
 export function TagPills({ keys, sheetType, instruments, userTags }: TagPillsProps) {
   if (keys.length === 0 && !sheetType && instruments.length === 0 && userTags.length === 0) {
     return null
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-1">
+    <div className="flex min-w-0 flex-wrap items-center gap-1">
       {userTags.map((tag) => (
         <span
           key={tag.id}
@@ -33,15 +35,38 @@ export function TagPills({ keys, sheetType, instruments, userTags }: TagPillsPro
           {tag.name}
         </span>
       ))}
-      {keys.map((key) => (
-        <span
-          key={key.id}
-          className="flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs font-medium text-ink-soft"
-        >
-          <IconMusic size={11} />
-          {key.name}
+      {/* One merged pill for the whole key sequence, not one pill per key
+          — a piece's keys are ordered (e.g. a piece that modulates), and a
+          separate pill per key gives no indication of that order. Same
+          treatment as the Piece View (PiecePage.tsx/PieceViewSample.tsx):
+          neutral bordered pill, single IconMusic prefix, keys joined by a
+          small de-emphasized chevron rather than shown as independent tags. */}
+      {keys.length > 0 && (
+        // whitespace-nowrap: without it, a long sequence (3-4 keys isn't
+        // uncommon) wraps mid-pill on a narrow card — and a rounded-full
+        // pill whose content wraps renders as two disjoint rounded
+        // fragments (a real rendering artifact, not a design choice), not
+        // one clean shape. Capped with max-w-full + truncate so a
+        // pathologically long sequence on a narrow card ellipsizes
+        // instead of overflowing the card, same fallback the card's own
+        // title text already uses elsewhere.
+        <span className="flex min-w-0 max-w-full items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs font-medium whitespace-nowrap text-ink-soft">
+          <IconMusic size={11} className="shrink-0" />
+          <span className="truncate">
+            {keys.map((key, i) => (
+              <span key={key.id}>
+                {i > 0 && (
+                  <span className="font-normal opacity-[0.55]" aria-hidden="true">
+                    {' '}
+                    ›{' '}
+                  </span>
+                )}
+                {key.name}
+              </span>
+            ))}
+          </span>
         </span>
-      ))}
+      )}
       {sheetType && (
         <span className="rounded-full border border-border px-2 py-0.5 text-xs font-medium text-ink-soft">
           {sheetType.name}

@@ -13,8 +13,12 @@ import (
 // marshals as JSON `null`, and frontend callers type these as plain arrays,
 // not T[] | null (a real bug: an empty musical_keys/instruments/user_tags
 // table crashed the frontend before this fix).
+// Ordered by sort_order (an explicit chromatic display order, migration
+// 00010), not id — id order silently breaks the moment a key is inserted
+// out of chromatic sequence (e.g. G♭ Major, added after every other seed
+// row already existed, needs to sit next to F♯ Major, not at the end).
 func ListKeys(ctx context.Context, q Queryer) ([]models.Key, error) {
-	rows, err := q.QueryContext(ctx, `SELECT id, name FROM musical_keys ORDER BY id`)
+	rows, err := q.QueryContext(ctx, `SELECT id, name FROM musical_keys ORDER BY sort_order`)
 	if err != nil {
 		return nil, err
 	}

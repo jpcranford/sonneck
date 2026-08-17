@@ -11,7 +11,21 @@ export function AppShell() {
           this scrolling div) stays pinned to the full viewport height
           instead of ending after one screen's worth of scroll like it did
           when the whole page (not this div) used to scroll as a block. */}
-      <div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
+      {/* overflow-x-hidden explicitly, not left implicit: per the CSS spec,
+          setting overflow-y to a non-visible value (auto, here) silently
+          computes a bare/unset overflow-x to auto too, not visible — this
+          container was quietly horizontally scrollable as a result, with
+          nothing intentionally using that space. Real instance found on
+          the Piece View: InfoTooltip's bubble (e.g. the public-domain
+          badge, positioned at the right edge of the info column) is
+          centered on its trigger and can extend past this container's
+          right edge while still invisible (opacity-0 until hovered) —
+          invisible elements still contribute to scrollWidth, so this read
+          as "extra space to the right that can be horizontally scrolled
+          to" with nothing visibly there. This app has no design that
+          calls for horizontal scrolling anywhere in the main content
+          column, so hidden is correct here, not auto. */}
+      <div className="flex min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto">
         <main className="flex flex-1 flex-col">
           <Outlet />
         </main>

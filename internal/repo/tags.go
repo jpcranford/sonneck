@@ -40,8 +40,25 @@ func findOrCreateTag(ctx context.Context, q Queryer, table, name string) (int64,
 // modulates, or a medley), so this is many-to-many like instruments/user
 // tags, not a single nullable column (migration 00008). Callers are
 // responsible for resyncing the search index in the same transaction.
+//
+// Unlike the other join tables, key order is meaningful — a piece's key
+// pills must display in the order the user selected them, not any
+// alphabetical/chromatic one (migration 00011) — so this doesn't use the
+// generic order-blind replaceJoinRows; keyIDs' slice order is persisted
+// directly as an explicit position column.
 func SetPieceKeys(ctx context.Context, q Queryer, pieceID int64, keyIDs []int64) error {
-	return replaceJoinRows(ctx, q, "piece_keys", "piece_id", "key_id", pieceID, keyIDs)
+	if _, err := q.ExecContext(ctx, `DELETE FROM piece_keys WHERE piece_id = ?`, pieceID); err != nil {
+		return err
+	}
+	for position, keyID := range keyIDs {
+		if _, err := q.ExecContext(ctx,
+			`INSERT INTO piece_keys (piece_id, key_id, position) VALUES (?, ?, ?)`,
+			pieceID, keyID, position,
+		); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // SetPieceInstruments replaces the full set of instrument tags on a piece
@@ -77,7 +94,7 @@ func replaceJoinRows(ctx context.Context, q Queryer, table, ownerCol, tagCol str
 }
 
 func getPieceKeyIDs(ctx context.Context, q Queryer, pieceID int64) ([]int64, error) {
-	return getJoinedIDs(ctx, q, `SELECT key_id FROM piece_keys WHERE piece_id = ? ORDER BY key_id`, pieceID)
+	return getJoinedIDs(ctx, q, `SELECT key_id FROM piece_keys WHERE piece_id = ? ORDER BY position`, pieceID)
 }
 
 func getPieceInstrumentIDs(ctx context.Context, q Queryer, pieceID int64) ([]int64, error) {
@@ -168,8 +185,39 @@ func listTags(ctx context.Context, q Queryer, table string) ([]Tag, error) {
 
 // TagsByIDs looks up id+name pairs for a set of tag IDs from the given
 // lookup table — the API response counterpart to namesByIDs (which only
-// needs flattened names for the search index).
+// needs flattened names for the search index). No particular row order.
 func TagsByIDs(ctx context.Context, q Queryer, table string, ids []int64) ([]Tag, error) {
+	return tagsByIDsOrdered(ctx, q, table, ids, "")
+}
+
+// KeysByIDs is TagsByIDs specialized to musical_keys, preserving the exact
+// order of ids rather than any DB-side order. ids is expected to already
+// be in the piece's own selection order (piece_keys.position, migration
+// 00011, via getPieceKeyIDs) — a piece's key pills must display in the
+// order the user selected them, not musical_keys' own chromatic
+// sort_order (that one's only for the picker dropdown's master list,
+// ListKeys, a genuinely different concern). `WHERE id IN (...)` doesn't
+// preserve argument order on its own, so this re-sorts the query result
+// in Go to match ids exactly.
+func KeysByIDs(ctx context.Context, q Queryer, ids []int64) ([]Tag, error) {
+	unordered, err := tagsByIDsOrdered(ctx, q, "musical_keys", ids, "")
+	if err != nil {
+		return nil, err
+	}
+	byID := make(map[int64]Tag, len(unordered))
+	for _, t := range unordered {
+		byID[t.ID] = t
+	}
+	tags := make([]Tag, 0, len(ids))
+	for _, id := range ids {
+		if t, ok := byID[id]; ok {
+			tags = append(tags, t)
+		}
+	}
+	return tags, nil
+}
+
+func tagsByIDsOrdered(ctx context.Context, q Queryer, table string, ids []int64, orderBy string) ([]Tag, error) {
 	if len(ids) == 0 {
 		return []Tag{}, nil
 	}
@@ -183,7 +231,12 @@ func TagsByIDs(ctx context.Context, q Queryer, table string, ids []int64) ([]Tag
 		args[i] = id
 	}
 
-	rows, err := q.QueryContext(ctx, `SELECT id, name FROM `+table+` WHERE id IN (`+string(placeholders)+`)`, args...)
+	query := `SELECT id, name FROM ` + table + ` WHERE id IN (` + string(placeholders) + `)`
+	if orderBy != "" {
+		query += ` ORDER BY ` + orderBy
+	}
+
+	rows, err := q.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
