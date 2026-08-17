@@ -36,7 +36,7 @@ export function AppShell() {
             rel="noreferrer"
             className="font-display text-[0.8rem] text-ink-soft italic hover:text-ink"
           >
-            Powered by Sonneck, an open-source music score library
+            Powered by Sonneck, an open-source music library
           </a>
         </footer>
       </div>
