@@ -55,6 +55,16 @@ func (s *Server) handleGetCitation(w http.ResponseWriter, r *http.Request) {
 // merely approximate. The citation renders the field's stored value
 // verbatim; any "ca." belongs in the value itself, entered by the user.
 //
+// Deliberate deviation, added 2026-08-17: when publisherId is the one
+// actually used (imslpNumber blank), it renders fused onto the publisher
+// name as "{publisher} #{publisherId}" — no comma, a "#" prefix — rather
+// than as its own comma-joined part like every other component. IMSLP
+// number's own appearance is unchanged (still its own plain comma-joined
+// part) — this only affects the publisherId fallback case, since an
+// IMSLP catalog number reads fine on its own but a bare publisher ID
+// ("G. Schirmer, HL50252950") read ambiguously, like a second unrelated
+// value, without something marking what it actually is.
+//
 // This is deliberately not generic CITATION_FORMAT token substitution:
 // blank-field omission doesn't fit a plain-substitution model, and the
 // design doc explicitly defers a configurable conditional template engine
@@ -75,16 +85,23 @@ func buildCitation(eff *repo.EffectivePiece, title, bookTitle string) string {
 	}
 	parts = append(parts, titlePart)
 
-	if eff.Publisher.Value != "" {
+	// publisherId only renders (fused onto publisher, "#" prefixed) when
+	// it's the one actually in use — i.e. imslpNumber is blank. When
+	// imslpNumber is present, publisherId is dropped from the citation
+	// entirely, same as before this change (imslpNumber always wins the
+	// fallback; the two were never both shown).
+	usingPublisherID := eff.ImslpNumber.Value == "" && eff.PublisherID.Value != ""
+	switch {
+	case eff.Publisher.Value != "" && usingPublisherID:
+		parts = append(parts, fmt.Sprintf("%s #%s", eff.Publisher.Value, eff.PublisherID.Value))
+	case eff.Publisher.Value != "":
 		parts = append(parts, eff.Publisher.Value)
+	case usingPublisherID:
+		parts = append(parts, fmt.Sprintf("#%s", eff.PublisherID.Value))
 	}
 
-	id := eff.ImslpNumber.Value
-	if id == "" {
-		id = eff.PublisherID.Value
-	}
-	if id != "" {
-		parts = append(parts, id)
+	if eff.ImslpNumber.Value != "" {
+		parts = append(parts, eff.ImslpNumber.Value)
 	}
 
 	if eff.YearWritten.Value != "" {

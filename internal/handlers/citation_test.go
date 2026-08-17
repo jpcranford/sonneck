@@ -35,6 +35,8 @@ func TestCitation_OmitsBlankFieldsAndUsesBookTitle(t *testing.T) {
 	}
 }
 
+// publisherId with no publisher name to attach to: still gets the "#"
+// prefix, just with no publisher text ahead of it.
 func TestCitation_FallsBackToPublisherIdWhenImslpNumberBlank(t *testing.T) {
 	h := newTestServer(t)
 	dir := t.TempDir()
@@ -56,7 +58,70 @@ func TestCitation_FallsBackToPublisherIdWhenImslpNumberBlank(t *testing.T) {
 	}
 	decodeData(t, citeRec, &citation)
 
-	want := `Someone, "Solo", PN-123`
+	want := `Someone, "Solo", #PN-123`
+	if citation.Citation != want {
+		t.Errorf("citation = %q, want %q", citation.Citation, want)
+	}
+}
+
+// publisherId fuses onto the publisher name ("Publisher #ID", no comma)
+// when it's the one actually in use — a real deviation from the plain
+// comma-joined treatment every other citation component gets.
+func TestCitation_PublisherIdFusesOntoPublisherName(t *testing.T) {
+	h := newTestServer(t)
+	dir := t.TempDir()
+	path := dir + "/piece.pdf"
+	writeFixturePDF(t, path, 1)
+	rec := recordRequest(h, multipartUpload(t, "/api/pieces", "piece.pdf", readAll(t, path)))
+	var uploaded pieceResponse
+	decodeData(t, rec, &uploaded)
+
+	decodeData(t, doJSON(t, h, http.MethodPatch, apiPiecesURL(uploaded.ID), map[string]any{
+		"title":       "Solo",
+		"composer":    "Someone",
+		"publisher":   "G. Schirmer",
+		"publisherId": "HL50252950",
+	}), nil)
+
+	citeRec := doJSON(t, h, http.MethodGet, apiPiecesURL(uploaded.ID)+"/citation", nil)
+	var citation struct {
+		Citation string `json:"citation"`
+	}
+	decodeData(t, citeRec, &citation)
+
+	want := `Someone, "Solo", G. Schirmer #HL50252950`
+	if citation.Citation != want {
+		t.Errorf("citation = %q, want %q", citation.Citation, want)
+	}
+}
+
+// IMSLP number's own appearance is unchanged by the publisherId fusion
+// change — still its own plain comma-joined part, and it wins the
+// fallback entirely (publisherId is dropped, not shown alongside it).
+func TestCitation_ImslpNumberKeepsExistingAppearanceOverPublisherId(t *testing.T) {
+	h := newTestServer(t)
+	dir := t.TempDir()
+	path := dir + "/piece.pdf"
+	writeFixturePDF(t, path, 1)
+	rec := recordRequest(h, multipartUpload(t, "/api/pieces", "piece.pdf", readAll(t, path)))
+	var uploaded pieceResponse
+	decodeData(t, rec, &uploaded)
+
+	decodeData(t, doJSON(t, h, http.MethodPatch, apiPiecesURL(uploaded.ID), map[string]any{
+		"title":       "Solo",
+		"composer":    "Someone",
+		"publisher":   "G. Schirmer",
+		"publisherId": "HL50252950",
+		"imslpNumber": "IMSLP04154",
+	}), nil)
+
+	citeRec := doJSON(t, h, http.MethodGet, apiPiecesURL(uploaded.ID)+"/citation", nil)
+	var citation struct {
+		Citation string `json:"citation"`
+	}
+	decodeData(t, citeRec, &citation)
+
+	want := `Someone, "Solo", G. Schirmer, IMSLP04154`
 	if citation.Citation != want {
 		t.Errorf("citation = %q, want %q", citation.Citation, want)
 	}
