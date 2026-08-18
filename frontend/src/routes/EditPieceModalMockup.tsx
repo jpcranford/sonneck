@@ -769,8 +769,15 @@ export function EditPieceModalMockup() {
                 />
               </div>
               <div className="flex w-36 shrink-0 flex-col gap-1">
-                <label htmlFor="f-publisher-id" className="text-sm text-ink-soft">
+                <label htmlFor="f-publisher-id" className="flex items-center gap-1 text-sm text-ink-soft">
                   Publisher ID
+                  <InfoTooltip
+                    message="Publisher serial or engraving plate number. Typically found in bottom margin notes."
+                    ariaLabel="What Publisher ID means"
+                    triggerClassName="text-ink-soft/60 hover:text-ink-soft"
+                  >
+                    <IconInfoCircle size={13} />
+                  </InfoTooltip>
                 </label>
                 <input
                   id="f-publisher-id"

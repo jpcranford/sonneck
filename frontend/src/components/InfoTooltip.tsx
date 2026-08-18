@@ -16,18 +16,42 @@ interface InfoTooltipProps {
  * (the Piece View's opus-number info icon, the Edit Piece modal's own copy
  * of it) made the duplication worth naming.
  *
- * Horizontally clamps to the viewport (added 2026-08-17): the bubble is
- * centered on its trigger by default, but a trigger sitting near a
- * container's edge (e.g. the public-domain badge, the rightmost element in
- * its row) would center a bubble that extends past the visible area.
- * Measured via a real getBoundingClientRect() check in useLayoutEffect —
- * which fires before paint, so the correction is already applied on the
- * very first visible frame, no flash of a misplaced bubble — rather than
- * hiding the overflow at the container level (that approach was tried
- * first and reverted: it stopped the phantom scrollable space but then
- * silently clipped this exact tooltip's text whenever it was actually
- * opened near an edge, trading one bug for a worse one).
+ * Horizontally clamps to its nearest clipping ancestor (added 2026-08-17,
+ * widened 2026-08-18): the bubble is centered on its trigger by default,
+ * but a trigger sitting near a container's edge (e.g. the public-domain
+ * badge, the rightmost element in its row) would center a bubble that
+ * extends past the visible area. Originally clamped against the browser
+ * viewport only — correct for a page-level trigger, but wrong for one
+ * inside Modal.tsx's dialog: that dialog is `overflow-hidden` (for its
+ * rounded corners) and narrower than the viewport, so a bubble could stay
+ * within the viewport's bounds yet still get silently clipped by the
+ * dialog around it (found via the Edit Piece modal's Publisher ID field,
+ * the first trigger placed in that modal's narrow rightmost column).
+ * `getClipBoundary` below walks up from the trigger to the nearest
+ * ancestor that actually clips overflow — auto/hidden/scroll/clip on
+ * either axis, which also catches an ancestor whose overflow-x silently
+ * computed to auto because only overflow-y was set (CSS spec behavior,
+ * already documented elsewhere in this codebase — see AppShell.tsx) — and
+ * clamps against that element's rect instead of the viewport when one
+ * exists. Measured via a real getBoundingClientRect() check in
+ * useLayoutEffect — which fires before paint, so the correction is already
+ * applied on the very first visible frame, no flash of a misplaced bubble
+ * — rather than hiding the overflow at the container level (that approach
+ * was tried first and reverted: it stopped the phantom scrollable space
+ * but then silently clipped this exact tooltip's text whenever it was
+ * actually opened near an edge, trading one bug for a worse one).
  */
+function getClipBoundary(el: HTMLElement): { left: number; right: number } {
+  for (let node = el.parentElement; node; node = node.parentElement) {
+    const style = getComputedStyle(node)
+    if (style.overflowX !== 'visible' || style.overflowY !== 'visible') {
+      const rect = node.getBoundingClientRect()
+      return { left: rect.left, right: rect.right }
+    }
+  }
+  return { left: 0, right: document.documentElement.clientWidth }
+}
+
 export function InfoTooltip({ message, ariaLabel, triggerClassName, children }: InfoTooltipProps) {
   const [open, setOpen] = useState(false)
   const bubbleRef = useRef<HTMLSpanElement>(null)
@@ -44,12 +68,12 @@ export function InfoTooltip({ message, ariaLabel, triggerClassName, children }: 
       // measurements would compound the correction.
       el.style.transform = 'translateX(-50%)'
       const rect = el.getBoundingClientRect()
-      const viewportWidth = document.documentElement.clientWidth
+      const boundary = getClipBoundary(el)
       let shift = 0
-      if (rect.right > viewportWidth - margin) {
-        shift = viewportWidth - margin - rect.right
-      } else if (rect.left < margin) {
-        shift = margin - rect.left
+      if (rect.right > boundary.right - margin) {
+        shift = boundary.right - margin - rect.right
+      } else if (rect.left < boundary.left + margin) {
+        shift = boundary.left + margin - rect.left
       }
       setShiftPx(shift)
     }
