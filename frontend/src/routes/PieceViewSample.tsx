@@ -38,6 +38,16 @@ import { useMockupTitle } from '../lib/useMockupTitle'
 // calls a real API. Edit (piece and book) stay inert/disabled: wiring the
 // real EditPieceModal to this fake data could fire a real PATCH request
 // against whatever ID happens to collide with this page's fake one.
+//
+// Resynced to the real build 2026-08-18: three text-ink-soft opacity
+// values that had drifted from PiecePage.tsx (Tempo details/Advanced
+// disclosures were /60, citation was /25 — real page uses /75 for all
+// three), ActionButton's unused-but-present className prop, and a whole
+// missing UI state — the "Replacing… N%" progress bar has been in
+// PiecePage.tsx since its very first commit but was never ported here.
+// "Choose File…" below now fakes a short progress ramp via setInterval
+// (simulateReplace) instead of just closing the confirm box, so that
+// state is actually reachable in this reference too.
 // ---------------------------------------------------------------------
 
 interface Tag {
@@ -208,18 +218,20 @@ function ActionButton({
   label,
   onClick,
   disabled,
+  className = '',
 }: {
   icon: ReactNode
   label: string
   onClick?: () => void
   disabled?: boolean
+  className?: string
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="flex items-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-sm text-ink hover:border-accent disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border"
+      className={`flex items-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-sm text-ink hover:border-accent disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border ${className}`}
     >
       {icon}
       {label}
@@ -238,6 +250,13 @@ export function PieceViewSample() {
   const [favorite, setFavorite] = useState(piece.favorite)
   const [downloadOpen, setDownloadOpen] = useState(false)
   const [replaceConfirming, setReplaceConfirming] = useState(false)
+  // Simulated version of PiecePage.tsx's replaceMutation.isPending state —
+  // there's no real upload here, but the progress-bar UI itself is part of
+  // the design this file exists to keep a faithful reference for, so
+  // "Choose File…" below fakes a short progress ramp instead of just
+  // closing the confirm box outright.
+  const [replacePending, setReplacePending] = useState(false)
+  const [replaceProgress, setReplaceProgress] = useState(0)
   const [advancedOpen, setAdvancedOpen] = useState(false)
   const [tempoOpen, setTempoOpen] = useState(false)
   const [copyToast, setCopyToast] = useState<{ x: number; y: number } | null>(null)
@@ -251,6 +270,23 @@ export function PieceViewSample() {
 
   function handleCopyCitation(event: MouseEvent) {
     handleCopy(sampleCitation, event)
+  }
+
+  function simulateReplace() {
+    setReplaceConfirming(false)
+    setReplacePending(true)
+    setReplaceProgress(0)
+    const interval = window.setInterval(() => {
+      setReplaceProgress((p) => {
+        const next = p + 20
+        if (next >= 100) {
+          window.clearInterval(interval)
+          window.setTimeout(() => setReplacePending(false), 400)
+          return 100
+        }
+        return next
+      })
+    }, 120)
   }
 
   return (
@@ -359,7 +395,7 @@ export function PieceViewSample() {
             <input ref={replaceFileInputRef} type="file" accept="application/pdf,.pdf" className="hidden" />
           </div>
 
-          {replaceConfirming && (
+          {replaceConfirming && !replacePending && (
             <div className="flex flex-col items-center gap-2 rounded-md border border-border bg-accent-soft/40 px-4 py-2.5 text-center text-sm">
               <span className="text-ink">
                 Replace this piece's file? The old file is deleted permanently.
@@ -374,12 +410,25 @@ export function PieceViewSample() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setReplaceConfirming(false)}
+                  onClick={simulateReplace}
                   className="rounded-md bg-accent px-3 py-1 text-white hover:bg-accent/90"
                 >
                   Choose File…
                 </button>
               </div>
+            </div>
+          )}
+          {replacePending && (
+            <div className="flex flex-col items-center gap-2 rounded-md border border-border bg-accent-soft/40 px-4 py-2.5">
+              <div className="h-2 w-full max-w-xs overflow-hidden rounded-full bg-border">
+                <div
+                  className="h-full rounded-full bg-accent transition-[width]"
+                  style={{ width: `${Math.round(replaceProgress)}%` }}
+                />
+              </div>
+              <span className="text-sm text-ink-soft">
+                Replacing… {Math.round(replaceProgress)}%
+              </span>
             </div>
           )}
 
@@ -548,7 +597,7 @@ export function PieceViewSample() {
                 <button
                   type="button"
                   onClick={() => setTempoOpen((o) => !o)}
-                  className="flex items-center gap-1 text-xs text-ink-soft/60 hover:text-ink-soft"
+                  className="flex items-center gap-1 text-xs text-ink-soft/75 hover:text-ink-soft"
                 >
                   <IconChevronRight
                     size={12}
@@ -612,7 +661,7 @@ export function PieceViewSample() {
             <button
               type="button"
               onClick={() => setAdvancedOpen((o) => !o)}
-              className="flex w-fit items-center gap-1 text-ink-soft/60 hover:text-ink-soft"
+              className="flex w-fit items-center gap-1 text-ink-soft/75 hover:text-ink-soft"
             >
               <IconChevronRight
                 size={13}
@@ -656,7 +705,7 @@ export function PieceViewSample() {
             <button
               type="button"
               onClick={handleCopyCitation}
-              className="w-fit text-left font-display text-sm text-ink-soft/25 italic hover:text-ink-soft"
+              className="w-fit text-left font-display text-sm text-ink-soft/75 italic hover:text-ink-soft"
             >
               {sampleCitation}
             </button>
