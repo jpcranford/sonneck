@@ -1,0 +1,20 @@
+<!--
+  Sonneck S mark — the standalone S from the wordmark, the opaque, full-bleed app-icon tile (Regular weight, 75% fill, Diagonal Light gradient) — no corner rounding baked in, since iOS/Android apply their own mask on top of whatever is provided.
+  Construction + the whole per-size weight/fill decision documented in the
+  "frontend-logo-exploration" memory entry; originally derived at
+  https://claude.ai/code/artifact/efba43e3-7db7-4581-ba14-7bd75350403d
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+<defs>
+  <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0%" stop-color="#ffffff" stop-opacity="0.20"/>
+    <stop offset="50%" stop-color="#ffffff" stop-opacity="0"/>
+    <stop offset="100%" stop-color="#000000" stop-opacity="0.14"/>
+  </linearGradient>
+</defs>
+<rect width="512" height="512" fill="#3f5c3f"/>
+<rect width="512" height="512" fill="url(#g)"/>
+<svg x="64.00" y="64.00" width="384.00" height="384.00" viewBox="-75.48 -686.48 735.96 847.96">
+  <path d="M260 103Q256 101 252 100Q248 99 243 97Q190 79 167 40Q85 28 35-19Q-17-70-17-152Q-17-262 63-342Q142-421 253-421Q331-421 376-380Q398-397 430.50-422.50Q463-448 506-482L506-501Q506-628 565-628Q579-628 590-617Q602-607 602-593Q602-553 521-482Q523-468 530-439.50Q537-411 550-369Q571-299 571-253Q571-123 455-36Q347 43 214 43Q206 43 197 42.50Q188 42 180 41Q200 74 241 88Q250 92 254 92Q257 92 266 89Q274 86 277 86Q283 86 283 92Q283 103 260 103M519-494Q593-559 593-598Q593-618 567-618Q518-618 518-522Q518-515 518-508.50Q518-502 519-494M172 25Q233 25 303-11Q334-27 362.50-46.50Q391-66 416-90Q453-125 466-153Q515-248 515-349Q515-342 513-372Q511-402 507-470Q486-454 455.50-429.50Q425-405 384-372Q418-338 418-288Q418-221 370-174Q321-126 254-126Q216-126 191-143Q162-77 162-28Q162-13 165 0.50Q168 14 172 25M161 25Q152 4 152-24Q152-79 182-151Q158-174 158-207Q158-219 164-235Q172-256 180-256Q182-256 184-254Q182-248 179-247L180-247Q166-227 166-205Q166-179 185-159Q230-260 359-366Q315-407 248-407Q154-407 77-323Q2-242 2-146Q2-79 48-29Q71-4 99 9.50Q127 23 161 25M250-133Q304-133 350-182Q396-231 396-284Q396-324 367-358Q305-306 262-253.50Q219-201 195-150Q218-133 250-133" fill="#fbfaf8"/>
+</svg>
+</svg>

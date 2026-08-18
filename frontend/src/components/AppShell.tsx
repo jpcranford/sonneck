@@ -1,5 +1,6 @@
 import { Outlet } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
+import { SonneckMark } from './SonneckMark'
 
 export function AppShell() {
   return (
@@ -29,14 +30,17 @@ export function AppShell() {
         <main className="flex flex-1 flex-col">
           <Outlet />
         </main>
-        <footer className="shrink-0 px-4 py-3 text-center">
+        <footer className="shrink-0 border-t border-border px-6 py-3">
           <a
             href="https://github.com/jpcranford/sonneck"
             target="_blank"
             rel="noreferrer"
-            className="font-display text-[0.8rem] text-ink-soft italic hover:text-ink"
+            className="flex items-center gap-2 text-ink-soft hover:text-ink"
           >
-            Powered by Sonneck, an open-source music library
+            <SonneckMark weight="medium" className="size-[15px] shrink-0" />
+            <span className="font-display text-[0.72rem] italic">
+              Powered by Sonneck, an open-source music library
+            </span>
           </a>
         </footer>
       </div>
