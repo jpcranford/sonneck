@@ -276,8 +276,31 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
               siblings regardless of whether one of them is visually
               collapsed to zero height, so treating the panel as a sibling
               of the toggle button (rather than nested under it) left a
-              stray extra gap-3 worth of whitespace even while folded. */}
-          <div>
+              stray extra gap-3 worth of whitespace even while folded.
+
+              border-b lives on THIS wrapper, not inside the collapsible
+              panel below (where it used to be, conditional on
+              previewOpen) — a border on the panel itself disappears along
+              with everything else once max-h collapses to 0, so the
+              header had no bottom edge at all in the (default) closed
+              state, and the transition into the scrolling form content
+              below read as abrupt once a user actually started scrolling.
+              This wrapper never collapses, so the line is always there,
+              right under the toggle button when closed and right under
+              the preview when open.
+
+              -mx-6 + px-6 (bleeding past this header's own padding, then
+              adding it straight back as this element's own padding)
+              full-bleeds the line to the dialog's true edges instead of
+              stopping at the same content width as the fields below — at
+              1px it read as just another field border while scrolling,
+              easy to lose track of as the one that actually separates
+              the pinned header from the scrolling form. border-b-[1.5px]
+              (vs. the 1px borders everywhere else in this modal) is the
+              other half of making it read as a structural divider rather
+              than another box edge. Locked design: mockup at
+              /mockup/edit-piece-modal, approved 2026-08-18. */}
+          <div className="-mx-6 border-b-[1.5px] border-border px-6 pb-3">
             <button
               type="button"
               onClick={() => setPreviewOpen((o) => !o)}
@@ -295,10 +318,10 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
             </button>
             <div
               className={`overflow-hidden transition-[max-height] duration-200 ease-in-out ${
-                previewOpen ? 'max-h-[420px] border-b border-border' : 'max-h-0'
+                previewOpen ? 'max-h-[420px]' : 'max-h-0'
               }`}
             >
-              <div className="flex flex-col gap-2 pt-3 pb-4">
+              <div className="flex flex-col gap-2 pt-3 pb-1">
                 <div className="max-h-[280px] overflow-y-auto rounded-md border border-border bg-paper-sunken">
                   <img
                     src={getPieceThumbnailUrl(piece.id, previewPage)}
