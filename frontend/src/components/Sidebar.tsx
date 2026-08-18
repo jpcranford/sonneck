@@ -2,6 +2,7 @@ import { useState, type ComponentType } from 'react'
 import { NavLink } from 'react-router-dom'
 import {
   IconLibrary,
+  IconBook,
   IconUser,
   IconUserFilled,
   IconCloudUpload,
@@ -20,7 +21,13 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { to: '/', label: 'Library', icon: IconLibrary },
   { to: '/composers', label: 'Composers', icon: IconUser },
+  { to: '/books', label: 'Books', icon: IconBook },
   { to: '/upload', label: 'Upload', icon: IconCloudUpload },
+]
+
+// Personal/filtered views of the library, not browsing surfaces in their
+// own right — split below the divider from the primary nav above.
+const SECONDARY_NAV_ITEMS: NavItem[] = [
   { to: '/favorites', label: 'Favorites', icon: IconHeart },
   { to: '/practicing', label: 'Currently Practicing', icon: IconProgress },
 ]
@@ -28,6 +35,41 @@ const NAV_ITEMS: NavItem[] = [
 // No setlist backend yet (design doc §13) — this stays empty until that lands,
 // but the section itself is scaffolded now per the locked shell scope.
 const SETLISTS: { id: string; name: string }[] = []
+
+// Shared between the primary nav group and the secondary (Favorites/
+// Currently Practicing) group below the divider — same link styling
+// either side, just a different item list.
+function NavItemsList({ items, collapsed }: { items: NavItem[]; collapsed: boolean }) {
+  return (
+    <nav className="flex flex-col gap-1 px-2">
+      {items.map(({ to, label, icon: Icon }) => (
+        <NavLink
+          key={to}
+          to={to}
+          end={to === '/'}
+          title={collapsed ? label : undefined}
+          className={({ isActive }) =>
+            `flex h-10 items-center gap-3 rounded-md px-2 font-display text-[0.95rem] ${
+              collapsed ? 'justify-center' : ''
+            } ${
+              isActive ? 'bg-sidebar-panel text-sidebar-text' : 'text-sidebar-text hover:bg-white/5'
+            }`
+          }
+        >
+          {({ isActive }) => (
+            <>
+              <Icon
+                size={22}
+                className={isActive ? 'text-accent-on-dark opacity-100' : 'opacity-[0.85]'}
+              />
+              {!collapsed && <span className="truncate">{label}</span>}
+            </>
+          )}
+        </NavLink>
+      ))}
+    </nav>
+  )
+}
 
 export function Sidebar() {
   // Defaults collapsed on narrow viewports — expanded (256px) eats most of a
@@ -58,45 +100,42 @@ export function Sidebar() {
         </button>
       </div>
 
-      <nav className="flex flex-col gap-1 px-2">
-        {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={to === '/'}
-            title={collapsed ? label : undefined}
-            className={({ isActive }) =>
-              `flex h-10 items-center gap-3 rounded-md px-2 font-display text-[0.95rem] ${
-                collapsed ? 'justify-center' : ''
-              } ${
-                isActive
-                  ? 'bg-sidebar-panel text-sidebar-text'
-                  : 'text-sidebar-text hover:bg-white/5'
-              }`
-            }
-          >
-            {({ isActive }) => (
-              <>
-                <Icon
-                  size={22}
-                  className={isActive ? 'text-accent-on-dark opacity-100' : 'opacity-[0.85]'}
-                />
-                {!collapsed && <span className="truncate">{label}</span>}
-              </>
-            )}
-          </NavLink>
-        ))}
-      </nav>
+      <NavItemsList items={NAV_ITEMS} collapsed={collapsed} />
 
       <div className="mx-3 my-3 border-t border-sidebar-border" />
 
-      <div className="flex flex-1 flex-col overflow-y-auto px-2">
+      <NavItemsList items={SECONDARY_NAV_ITEMS} collapsed={collapsed} />
+
+      <div className="mt-6 flex flex-1 flex-col overflow-y-auto px-2">
         {!collapsed && (
           <span className="px-2 text-xs tracking-wide text-sidebar-text-dim uppercase">
             Setlists
           </span>
         )}
         <div className={collapsed ? 'mt-1 flex flex-col items-center gap-1' : 'mt-1 flex flex-col'}>
+          {/* No setlist backend yet (design doc §13, same as SETLISTS
+              above) — styled as a real setlist row would be (same
+              size/rounding/font/text color as the NavLinks below) rather
+              than plain prose, so it reads as "a setlist entry, just not
+              a real one yet" instead of an unrelated caption. Still a
+              plain span, not a NavLink, so it has no hover/active state —
+              that alone marks it as inert, without needing dimmer text
+              too. Collapsed view gets the same single-letter-circle
+              treatment as a real setlist would, using "C" for "Coming
+              soon" the same way a real entry uses its own first letter. */}
+          {SETLISTS.length === 0 &&
+            (collapsed ? (
+              <span
+                title="Coming soon"
+                className="flex size-10 items-center justify-center rounded-md font-display text-[0.95rem] text-sidebar-text"
+              >
+                C
+              </span>
+            ) : (
+              <span className="truncate rounded-md px-2 py-1.5 font-display text-[0.95rem] text-sidebar-text">
+                Coming soon
+              </span>
+            ))}
           {SETLISTS.map((setlist) =>
             collapsed ? (
               <NavLink

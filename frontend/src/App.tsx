@@ -1,6 +1,7 @@
 import { Routes, Route } from 'react-router-dom'
 import { AppShell } from './components/AppShell'
 import { LibraryPage } from './routes/LibraryPage'
+import { BooksPage } from './routes/BooksPage'
 import { UploadPage } from './routes/UploadPage'
 import { PiecePage } from './routes/PiecePage'
 import { PieceViewSample } from './routes/PieceViewSample'
@@ -16,6 +17,7 @@ function App() {
     <Routes>
       <Route element={<AppShell />}>
         <Route index element={<LibraryPage />} />
+        <Route path="books" element={<BooksPage />} />
         <Route path="upload" element={<UploadPage />} />
         <Route path="pieces/:id" element={<PiecePage />} />
         {/* Reference sample, unlinked from nav — a standing design
