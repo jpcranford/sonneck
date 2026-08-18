@@ -1,6 +1,11 @@
 import { useRef, useState, type ReactNode } from 'react'
 import { Controller, useForm } from 'react-hook-form'
-import { IconChevronDown, IconChevronRight, IconInfoCircle, IconXFilled } from '@tabler/icons-react'
+import {
+  IconChevronDown,
+  IconChevronRight,
+  IconInfoCircle,
+  IconXFilled,
+} from '@tabler/icons-react'
 import { Modal } from '../components/Modal'
 import { InfoTooltip } from '../components/InfoTooltip'
 import { PageCycleControl } from '../components/PageCycleControl'
@@ -226,6 +231,7 @@ function TagComboBox({
   onCopy,
   filterOption,
   allowDuplicates,
+  sequenceStyle,
 }: {
   label: string
   options: TagOption[]
@@ -243,6 +249,15 @@ function TagComboBox({
   // Off by default: Instruments/Your Tags have no reason to hold the same
   // tag twice.
   allowDuplicates?: boolean
+  // Renders the selected values as one merged, ordered sequence ("›"
+  // chevron between entries) instead of one independent pill per value —
+  // matches how the Piece View / TagPills already display a piece's key
+  // sequence (PiecePage.tsx, TagPills.tsx), so the input looks like the
+  // thing it's editing. Each key keeps its own remove button; only the
+  // pill-per-key wrapper is replaced, not the removability. Key(s)-only —
+  // Instruments/Your Tags aren't ordered, so they keep the
+  // independent-pill treatment.
+  sequenceStyle?: boolean
 }) {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
@@ -289,27 +304,89 @@ function TagComboBox({
           onClick={() => inputRef.current?.focus()}
           className="flex min-h-[42px] flex-wrap items-center gap-1.5 rounded-md border border-border bg-paper-raised px-2 py-1.5 focus-within:outline focus-within:outline-2 focus-within:outline-accent focus-within:outline-offset-2"
         >
-          {selected.map((tag, index) => (
-            // Composite key (id + position) rather than just tag.id — two
-            // pills can legitimately share an id with allowDuplicates.
-            <span
-              key={`${tag.id}-${index}`}
-              className="flex items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent"
-            >
-              {tag.name}
-              <button
-                type="button"
-                onClick={(event) => {
-                  event.stopPropagation()
-                  removeTagAt(index)
-                }}
-                aria-label={`Remove ${tag.name}`}
-                className="hover:text-ink"
-              >
-                <IconXFilled size={11} />
-              </button>
+          {sequenceStyle && selected.length > 0 ? (
+            // One merged sequence for the whole key list (TagPills.tsx /
+            // PiecePage.tsx treatment) instead of one pill per key — the
+            // "›" chevron between entries is what actually needs to
+            // survive into the input, since it's the only thing showing
+            // the keys are ordered, not an unordered set of tags. No pill
+            // background or icon here (unlike the read-only display
+            // elsewhere) — this sits inside the input's own bordered box,
+            // so a second nested pill/icon would be redundant chrome. Each
+            // key still gets its own small remove button, right after its
+            // name and before the next chevron, so removability isn't
+            // lost by merging the pills.
+            // No pill background left to carry the accent-green pill
+            // text style either — this now reads as plain typed field
+            // content (text-sm text-ink, same as the query input below),
+            // not a tag/label anymore.
+            <span className="flex flex-wrap items-center gap-1.5 text-sm text-ink">
+              {selected.map((tag, index) => (
+                // Composite key (id + position) rather than just tag.id —
+                // two entries can legitimately share an id with
+                // allowDuplicates.
+                <span key={`${tag.id}-${index}`} className="flex items-center gap-1.5">
+                  {index > 0 && (
+                    // A real icon, not a text glyph — a "›" character's
+                    // glyph sits inside its own em-box off-center by
+                    // whatever the font's metrics happen to be, so no
+                    // amount of flex/line-height centering lines it up
+                    // reliably against the key names next to it. An icon
+                    // component has a known, symmetric bounding box, so
+                    // items-center on the row actually centers it. Muted
+                    // grey, not accent — reads as inert decoration next
+                    // to the real × button, not a second control.
+                    <IconChevronRight
+                      size={15}
+                      className="shrink-0 text-ink-soft/40"
+                      aria-hidden="true"
+                    />
+                  )}
+                  {/* Tighter gap than the outer row (0.5 vs 1.5) — the ×
+                      belongs to this key specifically, so it should read
+                      as attached to its name, not evenly spaced between
+                      the name and the next key's chevron. */}
+                  <span className="flex items-center gap-0.5">
+                    <span>{tag.name}</span>
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        removeTagAt(index)
+                      }}
+                      aria-label={`Remove ${tag.name}`}
+                      className="text-ink-soft/70 hover:text-ink"
+                    >
+                      <IconXFilled size={12} />
+                    </button>
+                  </span>
+                </span>
+              ))}
             </span>
-          ))}
+          ) : (
+            selected.map((tag, index) => (
+              // Composite key (id + position) rather than just tag.id —
+              // two pills can legitimately share an id with
+              // allowDuplicates.
+              <span
+                key={`${tag.id}-${index}`}
+                className="flex items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent"
+              >
+                {tag.name}
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    removeTagAt(index)
+                  }}
+                  aria-label={`Remove ${tag.name}`}
+                  className="hover:text-ink"
+                >
+                  <IconXFilled size={11} />
+                </button>
+              </span>
+            ))
+          )}
           {showInput && (
             <input
               ref={inputRef}
@@ -785,6 +862,7 @@ export function EditPieceModalMockup() {
                   onChange={field.onChange}
                   filterOption={(o, q) => matchesKeyQuery(o.name, q)}
                   allowDuplicates
+                  sequenceStyle
                 />
               )}
             />

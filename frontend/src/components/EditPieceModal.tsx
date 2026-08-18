@@ -539,6 +539,7 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
                 onChange={field.onChange}
                 filterOption={(o, query) => matchesKeyQuery(o.name, query)}
                 allowDuplicates
+                sequenceStyle
               />
             )}
           />
