@@ -3,14 +3,26 @@ import { Controller, useForm } from 'react-hook-form'
 import { IconChevronDown, IconChevronRight, IconInfoCircle, IconXFilled } from '@tabler/icons-react'
 import { Modal } from '../components/Modal'
 import { InfoTooltip } from '../components/InfoTooltip'
+import { PageCycleControl } from '../components/PageCycleControl'
+import { matchesKeyQuery } from '../lib/keySearch'
 import { useMockupTitle } from '../lib/useMockupTitle'
 
 // ---------------------------------------------------------------------
-// DESIGN MOCKUP — not wired to the API, no real mutations. Exists to lock
-// in the Piece Properties Edit Menu's visual design (design doc §15)
-// before building it for real, same review-before-code pattern as the
-// Piece View (see project memory "frontend-piece-view"). Route is
-// unlinked from nav — visit /mockup/edit-piece-modal directly.
+// DESIGN MOCKUP — not wired to the API, no real mutations, still not
+// linked from nav (visit /mockup/edit-piece-modal directly). Originally
+// built to lock in the Piece Properties Edit Menu's visual design (design
+// doc §15) before the real EditPieceModal.tsx existed; kept as its own
+// standalone route since (no API/local dev data needed to view the
+// design), and manually resynced to the real build on 2026-08-18 after
+// several rounds of real-build changes had drifted from it — section
+// order (Piece Details before Classification), the collapsible page
+// preview, key search aliasing, repeated keys, and current Sheet Type
+// values. Its own TagComboBox/SingleSelect/InheritedNote stay local
+// duplicates rather than importing the real shared components (this page
+// has always been self-contained), but small pure-logic pieces — page
+// preview's PageCycleControl, key search's matchesKeyQuery — get imported
+// directly, since duplicating actual logic (not just markup) is exactly
+// the kind of drift risk this resync exists to avoid repeating.
 // ---------------------------------------------------------------------
 
 interface TagOption {
@@ -25,11 +37,19 @@ const KEY_OPTIONS: TagOption[] = [
   { id: 4, name: 'G Major' },
   { id: 5, name: 'D Major' },
   { id: 6, name: 'E Minor' },
+  // A flat/sharp key so the "Eb"/"e flat" search-alias behavior
+  // (matchesKeyQuery, ../lib/keySearch) is actually demonstrable here —
+  // none of the other options above have an accidental to search for.
+  { id: 7, name: 'E♭ Major' },
 ]
+// Matches the current seeded sheet_types (migration 00013): "Solo Part"
+// renamed to "Solo Piece", "Ensemble Score" renamed to "Ensemble Piece –
+// Full Score", and "Ensemble Piece – Part" added alongside it.
 const SHEET_TYPE_OPTIONS: TagOption[] = [
   { id: 1, name: 'Lead Sheet' },
-  { id: 2, name: 'Solo Part' },
-  { id: 3, name: 'Ensemble Score' },
+  { id: 2, name: 'Solo Piece' },
+  { id: 3, name: 'Ensemble Piece – Full Score' },
+  { id: 5, name: 'Ensemble Piece – Part' },
   { id: 4, name: 'PVG Score' },
 ]
 const INSTRUMENT_OPTIONS: TagOption[] = [
@@ -62,7 +82,7 @@ const mockBook = {
   bookTitle: 'Album für die Jugend, Op. 68',
   composer: 'Robert Schumann',
   yearWritten: '1848',
-  sheetType: SHEET_TYPE_OPTIONS[3],
+  sheetType: SHEET_TYPE_OPTIONS[4],
   publisher: 'G. Schirmer',
   publisherId: 'HL50252950',
   imslpNumber: 'IMSLP04154',
@@ -132,6 +152,53 @@ function SectionHeading({ children }: { children: ReactNode }) {
   )
 }
 
+// Stand-in for a real page image (this mockup has no piece.id to build a
+// real getPieceThumbnailUrl(...) call against) — same drawn-SVG-page
+// pattern PieceViewSample.tsx uses for its own preview, kept as its own
+// local copy rather than a shared import since every mockup route here is
+// self-contained.
+function SheetPagePlaceholder({ page }: { page: number }) {
+  return (
+    <svg
+      viewBox="0 0 200 260"
+      width={200}
+      height={260}
+      className="h-auto w-full"
+      role="img"
+      aria-label={`Page ${page} preview`}
+    >
+      <rect x="0.5" y="0.5" width="199" height="259" fill="#fffdf9" stroke="#e4e0d8" />
+      <text x="100" y="26" textAnchor="middle" fontFamily="Georgia, serif" fontSize="9" fill="#5c5349">
+        Volksliedchen
+      </text>
+      {[55, 88, 121, 154, 187, 220].map((y) => (
+        <g key={y} stroke="#c9c2b6" strokeWidth="0.5">
+          {[0, 3.5, 7, 10.5, 14].map((offset) => (
+            <line key={offset} x1="18" x2="182" y1={y + offset} y2={y + offset} />
+          ))}
+        </g>
+      ))}
+      <text x="184" y="248" textAnchor="end" fontFamily="Georgia, serif" fontSize="7" fill="#8f857a">
+        {page}
+      </text>
+    </svg>
+  )
+}
+
+// Strips a leading "IMSLP" label before a save, matching
+// EditPieceModal.tsx's real behavior exactly — mockup's onSubmit only
+// logs, but the transform itself is worth mirroring since it's the
+// visible reason a value like "IMSLP04154" doesn't render doubled in the
+// citation ("IMSLP #IMSLP04154").
+function stripImslpPrefix(value: string): string {
+  return value.replace(/^\s*imslp[\s:#-]*/i, '')
+}
+
+// A piece not tied to any real uploaded file still needs a page count and
+// starting page for the mock preview panel below.
+const MOCK_PAGE_COUNT = 3
+const MOCK_THUMBNAIL_PAGE = 1
+
 // Shown under a book-inheritable field only while the piece's own value is
 // empty (design doc §15) — gone the moment it has a value, typed or
 // copied. `onCopy` performs the one-time copy, not an ongoing link.
@@ -157,6 +224,8 @@ function TagComboBox({
   onChange,
   bookValue,
   onCopy,
+  filterOption,
+  allowDuplicates,
 }: {
   label: string
   options: TagOption[]
@@ -165,6 +234,15 @@ function TagComboBox({
   onChange: (next: TagOption[]) => void
   bookValue?: string
   onCopy?: () => void
+  // Overrides the default plain-substring match — the Key(s) picker below
+  // passes matchesKeyQuery (../lib/keySearch.ts) so typing "Eb" or
+  // "e flat" finds "E♭ Major", not just a literal "♭" match.
+  filterOption?: (option: TagOption, query: string) => boolean
+  // Lets an already-selected option be picked again — the Key(s) picker
+  // needs this for a piece that modulates back to a key it already used.
+  // Off by default: Instruments/Your Tags have no reason to hold the same
+  // tag twice.
+  allowDuplicates?: boolean
 }) {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
@@ -176,8 +254,10 @@ function TagComboBox({
   const nextNewTagId = useRef(-1)
 
   const filtered = options
-    .filter((o) => !selected.some((s) => s.id === o.id))
-    .filter((o) => o.name.toLowerCase().includes(query.toLowerCase()))
+    .filter((o) => allowDuplicates || !selected.some((s) => s.id === o.id))
+    .filter((o) =>
+      filterOption ? filterOption(o, query) : o.name.toLowerCase().includes(query.toLowerCase()),
+    )
   const exactMatch = options.some((o) => o.name.toLowerCase() === query.trim().toLowerCase())
 
   function selectOption(opt: TagOption) {
@@ -192,8 +272,11 @@ function TagComboBox({
     selectOption({ id: nextNewTagId.current--, name: query.trim() })
   }
 
-  function removeTag(id: number) {
-    onChange(selected.filter((s) => s.id !== id))
+  // Removes by position, not by id — with allowDuplicates, two pills can
+  // share a tag id (the same key used twice), so "remove the one matching
+  // this id" would delete both, or the wrong one.
+  function removeTagAt(index: number) {
+    onChange(selected.filter((_, i) => i !== index))
   }
 
   const showInput = multiple || selected.length === 0
@@ -206,9 +289,11 @@ function TagComboBox({
           onClick={() => inputRef.current?.focus()}
           className="flex min-h-[42px] flex-wrap items-center gap-1.5 rounded-md border border-border bg-paper-raised px-2 py-1.5 focus-within:outline focus-within:outline-2 focus-within:outline-accent focus-within:outline-offset-2"
         >
-          {selected.map((tag) => (
+          {selected.map((tag, index) => (
+            // Composite key (id + position) rather than just tag.id — two
+            // pills can legitimately share an id with allowDuplicates.
             <span
-              key={tag.id}
+              key={`${tag.id}-${index}`}
               className="flex items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent"
             >
               {tag.name}
@@ -216,7 +301,7 @@ function TagComboBox({
                 type="button"
                 onClick={(event) => {
                   event.stopPropagation()
-                  removeTag(tag.id)
+                  removeTagAt(index)
                 }}
                 aria-label={`Remove ${tag.name}`}
                 className="hover:text-ink"
@@ -341,6 +426,8 @@ export function EditPieceModalMockup() {
 
   const [open, setOpen] = useState(true)
   const [tempoOpen, setTempoOpen] = useState(false)
+  const [previewOpen, setPreviewOpen] = useState(false)
+  const [previewPage, setPreviewPage] = useState(MOCK_THUMBNAIL_PAGE)
   const {
     register,
     handleSubmit,
@@ -383,7 +470,7 @@ export function EditPieceModalMockup() {
       return
     }
     clearErrors('composer')
-    console.log('Mockup submit (no real save):', data)
+    console.log('Mockup submit (no real save):', { ...data, imslpNumber: stripImslpPrefix(data.imslpNumber) })
     setOpen(false)
   }
 
@@ -409,6 +496,75 @@ export function EditPieceModalMockup() {
         onClose={() => setOpen(false)}
         labelledBy="edit-piece-mockup-title"
         size="lg"
+        header={
+          <div className="flex flex-col gap-3">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 id="edit-piece-mockup-title" className="font-display text-2xl text-ink">
+                  Edit piece
+                </h2>
+                <p className="text-sm text-ink-soft">{defaultValues.title}</p>
+              </div>
+              {/* Favorite lives on the Piece View's own header now (that
+                  page already has its own real toggle) — editing it a
+                  second time from here was redundant. A close button here
+                  instead, now that Cancel/Save live in the sticky footer
+                  below and might not always be in view while scrolling. */}
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                aria-label="Close"
+                className="mt-1 shrink-0 text-ink-soft hover:text-accent"
+              >
+                <IconXFilled size={22} />
+              </button>
+            </div>
+
+            {/* Page preview — pinned here (Modal's `header` slot) rather
+                than inside the scrolling form, so it can't scroll out of
+                view while the fields below it do. Starts closed; toggling
+                it open only adds height here, never changes the modal's
+                width. Toggle + collapsible panel share one non-gapped
+                wrapper, not two direct children of the outer `gap-3` flex
+                column — a flex `gap` reserves its full space between every
+                pair of siblings regardless of whether one is visually
+                collapsed to zero height. */}
+            <div>
+              <button
+                type="button"
+                onClick={() => setPreviewOpen((o) => !o)}
+                className="flex w-fit items-center gap-1.5 rounded-full border border-border bg-paper px-3 py-1.5 text-xs text-ink-soft hover:text-ink"
+              >
+                {/* Points right (toward the label) while folded, rotates
+                    to point down once open, matching the panel expanding
+                    downward beneath it. */}
+                <IconChevronDown
+                  size={13}
+                  className={`transition-transform ${previewOpen ? '' : '-rotate-90'}`}
+                />
+                {previewOpen ? 'Hide page preview' : 'Show page preview'}
+              </button>
+              <div
+                className={`overflow-hidden transition-[max-height] duration-200 ease-in-out ${
+                  previewOpen ? 'max-h-[420px] border-b border-border' : 'max-h-0'
+                }`}
+              >
+                <div className="flex flex-col gap-2 pt-3 pb-4">
+                  <div className="max-h-[280px] overflow-y-auto rounded-md border border-border bg-paper-sunken">
+                    <SheetPagePlaceholder page={previewPage} />
+                  </div>
+                  <div className="flex justify-center">
+                    <PageCycleControl
+                      page={previewPage}
+                      pageCount={MOCK_PAGE_COUNT}
+                      onChange={setPreviewPage}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        }
         footer={
           <div className="flex justify-end gap-2">
             <button
@@ -429,28 +585,6 @@ export function EditPieceModalMockup() {
         }
       >
         <form id="edit-piece-form" onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h2 id="edit-piece-mockup-title" className="font-display text-2xl text-ink">
-                Edit piece
-              </h2>
-              <p className="text-sm text-ink-soft">{defaultValues.title}</p>
-            </div>
-            {/* Favorite lives on the Piece View's own header now (that
-                page already has its own real toggle) — editing it a
-                second time from here was redundant. A close button here
-                instead, now that Cancel/Save live in the sticky footer
-                below and might not always be in view while scrolling. */}
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              aria-label="Close"
-              className="mt-1 shrink-0 text-ink-soft hover:text-accent"
-            >
-              <IconXFilled size={22} />
-            </button>
-          </div>
-
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-1">
               <label htmlFor="f-title" className="text-sm text-ink-soft">
@@ -496,75 +630,6 @@ export function EditPieceModalMockup() {
                 />
               </div>
             </div>
-          </div>
-
-          {/* Classification */}
-          <div className="flex flex-col gap-3 border-t border-border pt-4">
-            <SectionHeading>Classification</SectionHeading>
-            {/* A piece can genuinely be written in more than one key (e.g.
-                a piece that modulates, or a medley) — multi-select, same
-                combobox/pill pattern as Instruments/Your Tags below, not
-                the single-select treatment Sheet Type gets. */}
-            <Controller
-              name="keys"
-              control={control}
-              render={({ field }) => (
-                <TagComboBox
-                  label="Key(s)"
-                  options={KEY_OPTIONS}
-                  selected={field.value}
-                  multiple
-                  onChange={field.onChange}
-                />
-              )}
-            />
-            {/* Sheet Type is a small fixed lookup (4 seeded values) — a
-                single-select dropdown, not a searchable combobox/pill;
-                there's nothing to filter and only one value ever applies.
-                Still custom-styled (SingleSelect), same as Practice status
-                below, for visual consistency with the rest of the form. */}
-            <Controller
-              name="sheetType"
-              control={control}
-              render={({ field }) => (
-                <SingleSelect
-                  label="Sheet Type"
-                  options={SHEET_TYPE_SELECT_OPTIONS}
-                  value={field.value}
-                  onChange={field.onChange}
-                  bookValue={mockBook.sheetType.name}
-                  onCopy={() => field.onChange(mockBook.sheetType.name)}
-                />
-              )}
-            />
-            <Controller
-              name="instruments"
-              control={control}
-              render={({ field }) => (
-                <TagComboBox
-                  label="Instruments"
-                  options={INSTRUMENT_OPTIONS}
-                  selected={field.value}
-                  multiple
-                  onChange={field.onChange}
-                  bookValue={mockBook.instruments.map((i) => i.name).join(', ')}
-                  onCopy={() => field.onChange(mockBook.instruments)}
-                />
-              )}
-            />
-            <Controller
-              name="userTags"
-              control={control}
-              render={({ field }) => (
-                <TagComboBox
-                  label="Your Tags"
-                  options={USER_TAG_OPTIONS}
-                  selected={field.value}
-                  multiple
-                  onChange={field.onChange}
-                />
-              )}
-            />
           </div>
 
           {/* Piece Details */}
@@ -699,6 +764,77 @@ export function EditPieceModalMockup() {
                 {...register('description')}
               />
             </div>
+          </div>
+
+          {/* Classification */}
+          <div className="flex flex-col gap-3 border-t border-border pt-4">
+            <SectionHeading>Classification</SectionHeading>
+            {/* A piece can genuinely be written in more than one key (e.g.
+                a piece that modulates, or a medley) — multi-select, same
+                combobox/pill pattern as Instruments/Your Tags below, not
+                the single-select treatment Sheet Type gets. */}
+            <Controller
+              name="keys"
+              control={control}
+              render={({ field }) => (
+                <TagComboBox
+                  label="Key(s)"
+                  options={KEY_OPTIONS}
+                  selected={field.value}
+                  multiple
+                  onChange={field.onChange}
+                  filterOption={(o, q) => matchesKeyQuery(o.name, q)}
+                  allowDuplicates
+                />
+              )}
+            />
+            {/* Sheet Type is a small fixed lookup (5 seeded values) — a
+                single-select dropdown, not a searchable combobox/pill;
+                there's nothing to filter and only one value ever applies.
+                Still custom-styled (SingleSelect), same as Practice status
+                below, for visual consistency with the rest of the form. */}
+            <Controller
+              name="sheetType"
+              control={control}
+              render={({ field }) => (
+                <SingleSelect
+                  label="Sheet Type"
+                  options={SHEET_TYPE_SELECT_OPTIONS}
+                  value={field.value}
+                  onChange={field.onChange}
+                  bookValue={mockBook.sheetType.name}
+                  onCopy={() => field.onChange(mockBook.sheetType.name)}
+                />
+              )}
+            />
+            <Controller
+              name="instruments"
+              control={control}
+              render={({ field }) => (
+                <TagComboBox
+                  label="Instruments"
+                  options={INSTRUMENT_OPTIONS}
+                  selected={field.value}
+                  multiple
+                  onChange={field.onChange}
+                  bookValue={mockBook.instruments.map((i) => i.name).join(', ')}
+                  onCopy={() => field.onChange(mockBook.instruments)}
+                />
+              )}
+            />
+            <Controller
+              name="userTags"
+              control={control}
+              render={({ field }) => (
+                <TagComboBox
+                  label="Your Tags"
+                  options={USER_TAG_OPTIONS}
+                  selected={field.value}
+                  multiple
+                  onChange={field.onChange}
+                />
+              )}
+            />
           </div>
 
           {/* Personal */}
