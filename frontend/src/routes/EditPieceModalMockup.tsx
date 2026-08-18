@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from 'react'
+import { useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import {
   IconChevronDown,
@@ -261,6 +261,11 @@ function TagComboBox({
 }) {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
+  // Which menu row (existing options, then the "New tag" row if shown)
+  // Enter would act on — arrow keys move it, typing resets it back to 0 so
+  // Enter always defaults to "the top result" without requiring a press of
+  // ArrowDown first.
+  const [highlightedIndex, setHighlightedIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
   // Stable, decrementing negative IDs for on-the-fly "new tag" entries in
   // this mockup — avoids calling an impure function like Date.now() from
@@ -274,10 +279,16 @@ function TagComboBox({
       filterOption ? filterOption(o, query) : o.name.toLowerCase().includes(query.toLowerCase()),
     )
   const exactMatch = options.some((o) => o.name.toLowerCase() === query.trim().toLowerCase())
+  // Same slice(0, 6) the dropdown itself renders — keyboard nav has to walk
+  // exactly the rows actually on screen, not the full unfiltered match set.
+  const visibleOptions = filtered.slice(0, 6)
+  const showCreateOption = query.trim() !== '' && !exactMatch
+  const menuItemCount = visibleOptions.length + (showCreateOption ? 1 : 0)
 
   function selectOption(opt: TagOption) {
     onChange(multiple ? [...selected, opt] : [opt])
     setQuery('')
+    setHighlightedIndex(0)
     if (!multiple) setOpen(false)
     inputRef.current?.focus()
   }
@@ -285,6 +296,29 @@ function TagComboBox({
   function createNew() {
     if (!query.trim()) return
     selectOption({ id: nextNewTagId.current--, name: query.trim() })
+  }
+
+  // ArrowUp/Down cycles the highlighted row (options first, "New tag" row
+  // last, wrapping both ends); Enter acts on whichever row is currently
+  // highlighted — the top result by default, or the create-new row when
+  // there are no matches at all, matching what's actually shown on screen.
+  function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (!open || menuItemCount === 0) return
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      setHighlightedIndex((i) => (i + 1) % menuItemCount)
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      setHighlightedIndex((i) => (i - 1 + menuItemCount) % menuItemCount)
+    } else if (event.key === 'Enter') {
+      if (highlightedIndex < visibleOptions.length) {
+        event.preventDefault()
+        selectOption(visibleOptions[highlightedIndex])
+      } else if (showCreateOption) {
+        event.preventDefault()
+        createNew()
+      }
+    }
   }
 
   // Removes by position, not by id — with allowDuplicates, two pills can
@@ -394,9 +428,11 @@ function TagComboBox({
               onChange={(event) => {
                 setQuery(event.target.value)
                 setOpen(true)
+                setHighlightedIndex(0)
               }}
               onFocus={() => setOpen(true)}
               onBlur={() => setTimeout(() => setOpen(false), 150)}
+              onKeyDown={handleKeyDown}
               placeholder={selected.length === 0 ? 'Type to search or add…' : ''}
               className="min-w-[100px] flex-1 border-none bg-transparent text-sm text-ink outline-none focus-visible:outline-none"
             />
@@ -404,23 +440,27 @@ function TagComboBox({
         </div>
         {open && showInput && (filtered.length > 0 || query.trim()) && (
           <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border border-border bg-paper-raised py-1 shadow-lg">
-            {filtered.slice(0, 6).map((opt) => (
+            {visibleOptions.map((opt, index) => (
               <button
                 key={opt.id}
                 type="button"
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => selectOption(opt)}
-                className="block w-full px-3 py-2 text-left text-sm text-ink hover:bg-accent-soft"
+                className={`block w-full px-3 py-2 text-left text-sm text-ink hover:bg-accent-soft ${
+                  index === highlightedIndex ? 'bg-accent-soft' : ''
+                }`}
               >
                 {opt.name}
               </button>
             ))}
-            {query.trim() && !exactMatch && (
+            {showCreateOption && (
               <button
                 type="button"
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={createNew}
-                className="block w-full px-3 py-2 text-left text-sm text-accent hover:bg-accent-soft"
+                className={`block w-full px-3 py-2 text-left text-sm text-accent hover:bg-accent-soft ${
+                  highlightedIndex === visibleOptions.length ? 'bg-accent-soft' : ''
+                }`}
               >
                 New tag: "{query.trim()}"
               </button>
