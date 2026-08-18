@@ -1,10 +1,8 @@
-import { useRef } from 'react'
-import { IconDotsVerticalFilled, IconProgress } from '@tabler/icons-react'
+import { IconProgress } from '@tabler/icons-react'
 import { getPieceThumbnailUrl } from '../api/pieces'
 import type { Piece } from '../api/types'
 import { ClickableCard } from './ClickableCard'
 import { PieceContextMenu } from './PieceContextMenu'
-import type { ContextMenuHandle } from './ContextMenu'
 
 interface PieceGridCardProps {
   piece: Piece
@@ -13,7 +11,6 @@ interface PieceGridCardProps {
 // No page-cycle control here — the locked mockup only shows it on list
 // cards (see PieceListCard). Grid always shows the piece's first page.
 export function PieceGridCard({ piece }: PieceGridCardProps) {
-  const menuRef = useRef<ContextMenuHandle>(null)
   // Composer (+ arranger) • year written only — narrower than
   // PieceListCard's formatPieceMeta (which also folds in opus number/
   // source book), since the grid card's tighter layout only has room for
@@ -30,7 +27,13 @@ export function PieceGridCard({ piece }: PieceGridCardProps) {
     .join(' • ')
 
   return (
-    <PieceContextMenu piece={piece} ref={menuRef} hideTriggerButton>
+    // No visible "⋯" trigger on grid cards (removed 2026-08-18 — a
+    // permanently-visible button on every card in a dense grid read as
+    // clutter, and it only ever existed for touch users anyway since
+    // desktop already has right-click). Touch users get the menu via
+    // ContextMenu's built-in long-press instead; hideTriggerButton stays
+    // true so the button doesn't fall back in.
+    <PieceContextMenu piece={piece} hideTriggerButton>
       <ClickableCard
         to={`/pieces/${piece.id}`}
         className="flex flex-col overflow-hidden rounded-lg border border-border bg-paper-raised text-left transition-colors hover:border-accent"
@@ -54,28 +57,11 @@ export function PieceGridCard({ piece }: PieceGridCardProps) {
               className="absolute inset-0 bg-[linear-gradient(to_top,rgba(255,255,255,0.55)_0%,rgba(255,255,255,0.1925)_32%,rgba(255,255,255,0)_62%)]"
             />
           )}
-          {/* Anchored to the thumbnail specifically (bottom-right), not the
-              whole card — the card's own text/tag section below the
-              thumbnail varies in height, so this can't be a simple
-              top/bottom offset on the outer card the way list cards' can. */}
-          <button
-            type="button"
-            aria-label="More actions"
-            onClick={(event) => {
-              event.stopPropagation()
-              const rect = event.currentTarget.getBoundingClientRect()
-              menuRef.current?.open(rect.right, rect.bottom)
-            }}
-            className="absolute right-2 bottom-2 z-10 flex size-7 items-center justify-center rounded-md bg-paper-raised/90 text-ink-soft shadow-sm hover:text-ink"
-          >
-            <IconDotsVerticalFilled size={16} />
-          </button>
           {/* Practice status as a badge over the thumbnail, not a footer
               pill — keeps every grid card the same height regardless of
               whether a status is set, instead of the text block growing by
               a row when one is present (design review, 2026-08-17: "Option
-              B" from a 5-way comparison). Bottom-left, mirroring the "⋯"
-              menu's bottom-right placement so the two never collide. */}
+              B" from a 5-way comparison). Bottom-left. */}
           {piece.practiceStatus && (
             <span className="absolute bottom-2 left-2 z-10 flex max-w-[calc(100%-3rem)] items-center gap-1 rounded-full bg-accent-soft/90 px-2 py-0.5 text-xs font-medium text-accent shadow-sm backdrop-blur-sm">
               <IconProgress size={11} className="shrink-0" />

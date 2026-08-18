@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
   type ReactNode,
+  type TouchEvent,
 } from 'react'
 import { IconDotsVerticalFilled } from '@tabler/icons-react'
 
@@ -30,20 +31,32 @@ interface ContextMenuProps {
   hideTriggerButton?: boolean
 }
 
+// A long press holds for this long before it counts, matching the rough
+// duration iOS/Android themselves use for their own long-press gestures —
+// short enough to feel responsive, long enough not to fire on an ordinary
+// tap-and-release.
+const LONG_PRESS_MS = 500
+// A touch that drifts more than this many px before LONG_PRESS_MS elapses
+// is a scroll/drag, not a long-press — cancel the pending timer rather than
+// opening the menu out from under a finger that's clearly scrolling.
+const LONG_PRESS_MOVE_CANCEL_PX = 10
+
 /**
  * Wraps children with a context menu — built once here so every place the
  * app needs one (piece cards, book rows, ...) shares the same popup
  * rendering, viewport-clamped positioning, dismiss-on-Escape, and
  * dismiss-on-outside-click behavior instead of each usage reimplementing
- * it. Two triggers by default: right-click (desktop), and an always-visible
- * "⋯" button (device-aware conventions, CLAUDE.md > Frontend — right-click
- * has no reliable touch equivalent, some mobile browsers map long-press to
- * the contextmenu event and many don't, so a real tappable affordance is
- * needed rather than relying on long-press alone). Right-click always works
- * anywhere on `children`; the visible button can instead be a caller-owned
- * custom-positioned trigger via `hideTriggerButton` + the forwarded ref,
- * for when it needs to anchor to a specific inner element rather than the
- * whole wrapped area (see PieceGridCard's bottom-right-of-thumbnail trigger).
+ * it. Three triggers by default: right-click (desktop), a long-press
+ * (touch — implemented as a real touchstart/touchmove/touchend timer here,
+ * not by relying on the browser mapping long-press to the `contextmenu`
+ * event, which not every mobile browser does), and an always-visible "⋯"
+ * button. Right-click and long-press always work anywhere on `children`;
+ * the visible button can instead be a caller-owned custom-positioned
+ * trigger via `hideTriggerButton` + the forwarded ref, or omitted
+ * entirely when long-press is meant to be the only touch affordance (see
+ * PieceGridCard, 2026-08-18 — removed its own thumbnail-anchored button
+ * in favor of long-press, since a permanently-visible "⋯" read as clutter
+ * on the grid's already-dense card).
  */
 export const ContextMenu = forwardRef<ContextMenuHandle, ContextMenuProps>(function ContextMenu(
   { items, children, hideTriggerButton },
@@ -51,10 +64,43 @@ export const ContextMenu = forwardRef<ContextMenuHandle, ContextMenuProps>(funct
 ) {
   const [position, setPosition] = useState<{ x: number; y: number } | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null)
+  // A long-press that fires while the finger is still down still gets a
+  // trailing synthetic `click` once it lifts — without this, that click
+  // would fall through to whatever's under the finger (e.g. a card's own
+  // navigate-on-click) right after the menu opens.
+  const suppressNextClickRef = useRef(false)
 
   useImperativeHandle(ref, () => ({
     open: (x, y) => setPosition({ x, y }),
   }))
+
+  function clearLongPressTimer() {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current)
+      longPressTimerRef.current = null
+    }
+  }
+
+  function onTouchStart(event: TouchEvent) {
+    const touch = event.touches[0]
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY }
+    clearLongPressTimer()
+    longPressTimerRef.current = setTimeout(() => {
+      suppressNextClickRef.current = true
+      setPosition({ x: touch.clientX, y: touch.clientY })
+      navigator.vibrate?.(10)
+    }, LONG_PRESS_MS)
+  }
+
+  function onTouchMove(event: TouchEvent) {
+    if (!touchStartRef.current || !longPressTimerRef.current) return
+    const touch = event.touches[0]
+    const dx = touch.clientX - touchStartRef.current.x
+    const dy = touch.clientY - touchStartRef.current.y
+    if (Math.hypot(dx, dy) > LONG_PRESS_MOVE_CANCEL_PX) clearLongPressTimer()
+  }
 
   useEffect(() => {
     if (!position) return
@@ -91,10 +137,20 @@ export const ContextMenu = forwardRef<ContextMenuHandle, ContextMenuProps>(funct
   return (
     <>
       <div
-        className="relative"
+        className="relative [-webkit-touch-callout:none]"
         onContextMenu={(event) => {
           event.preventDefault()
           setPosition({ x: event.clientX, y: event.clientY })
+        }}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={clearLongPressTimer}
+        onTouchCancel={clearLongPressTimer}
+        onClickCapture={(event) => {
+          if (!suppressNextClickRef.current) return
+          suppressNextClickRef.current = false
+          event.preventDefault()
+          event.stopPropagation()
         }}
       >
         {children}
