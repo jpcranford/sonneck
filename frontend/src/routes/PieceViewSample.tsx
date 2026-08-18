@@ -10,6 +10,7 @@ import {
   IconCopy,
   IconEditFilled,
   IconDownload,
+  IconExternalLink,
   IconHeart,
   IconHeartFilled,
   IconImageInPicture,
@@ -164,6 +165,13 @@ function formatDate(iso: string): string {
     month: 'short',
     day: 'numeric',
   })
+}
+
+// Kept in sync with PiecePage.tsx's real version — see that file's comment
+// for the reasoning (built from the field's displayed value verbatim, not
+// a re-derivation of the citation's own stripImslpPrefix logic).
+function imslpReverseLookupUrl(imslpNumber: string): string {
+  return `https://imslp.org/index.php?title=Special:ReverseLookup&action=submit&indexsearch=${encodeURIComponent(imslpNumber)}`
 }
 
 function InheritedNote({ compact }: { compact?: boolean }) {
@@ -568,7 +576,24 @@ export function PieceViewSample() {
             )}
             {piece.imslpNumber.value && (
               <DetailRow label="IMSLP no.">
-                <EffectiveValue value={piece.imslpNumber.value} inherited={piece.imslpNumber.inherited} />
+                <span className="inline-flex items-center gap-1.5">
+                  <EffectiveValue
+                    value={piece.imslpNumber.value}
+                    inherited={piece.imslpNumber.inherited}
+                  />
+                  {/* Comes after the "inherited" pill (inside
+                      EffectiveValue), same as PiecePage.tsx's real version
+                      — see that file's comment for the reasoning. */}
+                  <a
+                    href={imslpReverseLookupUrl(piece.imslpNumber.value)}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label="View on IMSLP"
+                    className="text-ink-soft/60 hover:text-ink-soft"
+                  >
+                    <IconExternalLink size={13} />
+                  </a>
+                </span>
               </DetailRow>
             )}
             {(piece.publisher.value || piece.publisherId.value) && (

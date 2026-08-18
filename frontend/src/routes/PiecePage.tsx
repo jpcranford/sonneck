@@ -11,6 +11,7 @@ import {
   IconCopy,
   IconEditFilled,
   IconDownload,
+  IconExternalLink,
   IconHeart,
   IconHeartFilled,
   IconImageInPicture,
@@ -58,6 +59,17 @@ function formatDate(iso: string): string {
     month: 'short',
     day: 'numeric',
   })
+}
+
+// IMSLP's "ReverseLookup" special page resolves a work/file number straight
+// to its page — no need to know the piece's title or composer to link to
+// it. Built from the field's own displayed value verbatim (whatever's
+// actually shown, prefix or not) rather than re-deriving/stripping it —
+// this is a separate, deliberately dumb pass-through, not the citation's
+// own stripImslpPrefix logic (internal/handlers/citation.go), which only
+// applies at citation-format time.
+function imslpReverseLookupUrl(imslpNumber: string): string {
+  return `https://imslp.org/index.php?title=Special:ReverseLookup&action=submit&indexsearch=${encodeURIComponent(imslpNumber)}`
 }
 
 function InheritedNote({ compact }: { compact?: boolean }) {
@@ -646,7 +658,26 @@ export function PiecePage() {
               )}
               {piece.imslpNumber.value && (
                 <DetailRow label="IMSLP no.">
-                  <EffectiveValue value={piece.imslpNumber.value} inherited={piece.imslpNumber.inherited} />
+                  <span className="inline-flex items-center gap-1.5">
+                    <EffectiveValue
+                      value={piece.imslpNumber.value}
+                      inherited={piece.imslpNumber.inherited}
+                    />
+                    {/* Comes after the "inherited" pill (inside
+                        EffectiveValue) rather than before it — the pill
+                        explains where the number came from, this link
+                        acts on the number itself, so it reads left-to-
+                        right as value → provenance → action. */}
+                    <a
+                      href={imslpReverseLookupUrl(piece.imslpNumber.value)}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label="View on IMSLP"
+                      className="text-ink-soft/60 hover:text-ink-soft"
+                    >
+                      <IconExternalLink size={13} />
+                    </a>
+                  </span>
                 </DetailRow>
               )}
               {(piece.publisher.value || piece.publisherId.value) && (
