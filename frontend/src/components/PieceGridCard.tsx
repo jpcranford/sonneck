@@ -1,8 +1,8 @@
-import { IconProgress } from '@tabler/icons-react'
 import { getPieceThumbnailUrl } from '../api/pieces'
 import type { Piece } from '../api/types'
 import { ClickableCard } from './ClickableCard'
 import { PieceContextMenu } from './PieceContextMenu'
+import { PracticeStatusIcon } from './PracticeStatusIcon'
 
 interface PieceGridCardProps {
   piece: Piece
@@ -63,8 +63,14 @@ export function PieceGridCard({ piece }: PieceGridCardProps) {
               a row when one is present (design review, 2026-08-17: "Option
               B" from a 5-way comparison). Bottom-left. */}
           {piece.practiceStatus && (
-            <span className="absolute bottom-2 left-2 z-10 flex max-w-[calc(100%-3rem)] items-center gap-1 rounded-full bg-accent-soft/90 px-2 py-0.5 text-xs font-medium text-accent shadow-sm backdrop-blur-sm">
-              <IconProgress size={11} className="shrink-0" />
+            // Opaque background (was bg-accent-soft/90 + backdrop-blur-sm)
+            // — the translucent version still had a hard time standing out
+            // against busy scan artwork; solid + no blur reads clearly
+            // regardless of what's underneath. Icon size unified to 13px
+            // (was 11px) to match the Piece View pill exactly — the two
+            // are now the same icon/text size everywhere a status shows.
+            <span className="absolute bottom-2 left-2 z-10 flex max-w-[calc(100%-3rem)] items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent shadow-sm">
+              <PracticeStatusIcon status={piece.practiceStatus} size={13} className="shrink-0" />
               <span className="truncate">{piece.practiceStatus}</span>
             </span>
           )}

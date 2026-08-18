@@ -17,7 +17,6 @@ import {
   IconImageInPicture,
   IconInfoCircle,
   IconMusic,
-  IconProgress,
   IconRefresh,
   IconShieldCheck,
 } from '@tabler/icons-react'
@@ -36,6 +35,7 @@ import { pieceToWriteRequest } from '../lib/pieceToWriteRequest'
 import { secondsToMMSS } from '../lib/duration'
 import { EditPieceModal } from '../components/EditPieceModal'
 import { InfoTooltip } from '../components/InfoTooltip'
+import { PracticeStatusIcon } from '../components/PracticeStatusIcon'
 
 // Mirrors UploadPage's own cap (backend's MaxUploadBytes) — same reasoning
 // as there: reject an oversized file instantly rather than after a slow
@@ -548,7 +548,7 @@ export function PiecePage() {
               <div className="mt-1 flex flex-wrap items-center gap-2">
                 {piece.practiceStatus && (
                   <span className="flex items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent">
-                    <IconProgress size={13} />
+                    <PracticeStatusIcon status={piece.practiceStatus} size={13} />
                     {piece.practiceStatus}
                   </span>
                 )}

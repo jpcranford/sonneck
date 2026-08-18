@@ -7,7 +7,7 @@ import {
   IconUserFilled,
   IconCloudUpload,
   IconHeart,
-  IconProgress,
+  IconCircleHalf2,
   IconLayoutSidebarLeftCollapseFilled,
   IconLayoutSidebarLeftExpandFilled,
 } from '@tabler/icons-react'
@@ -29,7 +29,11 @@ const NAV_ITEMS: NavItem[] = [
 // own right — split below the divider from the primary nav above.
 const SECONDARY_NAV_ITEMS: NavItem[] = [
   { to: '/favorites', label: 'Favorites', icon: IconHeart },
-  { to: '/practicing', label: 'Currently Practicing', icon: IconProgress },
+  // Same icon as the "Learning" practice-status pill (PracticeStatusIcon,
+  // 2026-08-18 icon pass) — this nav item is literally about practicing
+  // pieces, so it borrows that icon rather than the generic IconProgress
+  // it used before.
+  { to: '/practicing', label: 'Currently Practicing', icon: IconCircleHalf2 },
 ]
 
 // No setlist backend yet (design doc §13) — this stays empty until that lands,

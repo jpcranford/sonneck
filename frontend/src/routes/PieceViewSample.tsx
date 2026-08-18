@@ -16,11 +16,12 @@ import {
   IconImageInPicture,
   IconInfoCircle,
   IconMusic,
-  IconProgress,
   IconRefresh,
   IconShieldCheck,
 } from '@tabler/icons-react'
+import type { PracticeStatus } from '../api/types'
 import { InfoTooltip } from '../components/InfoTooltip'
+import { PracticeStatusIcon } from '../components/PracticeStatusIcon'
 import { useMockupTitle } from '../lib/useMockupTitle'
 
 // ---------------------------------------------------------------------
@@ -94,7 +95,7 @@ const samplePiece = {
   },
   userNotes: 'Left hand voicing in m.9 keeps tripping me up — slow it down to 60bpm next time.',
   userTags: [{ id: 1, name: 'recital candidate' }] as Tag[],
-  practiceStatus: 'Learning' as string | null,
+  practiceStatus: 'Learning' as PracticeStatus | null,
   imslpNumber: { value: 'IMSLP04154', inherited: true },
   instruments: { values: [{ id: 1, name: 'Piano' }] as Tag[], inherited: true },
   sourceBookId: 1,
@@ -489,7 +490,7 @@ export function PieceViewSample() {
             <div className="mt-1 flex flex-wrap items-center gap-2">
               {piece.practiceStatus && (
                 <span className="flex items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent">
-                  <IconProgress size={13} />
+                  <PracticeStatusIcon status={piece.practiceStatus} size={13} />
                   {piece.practiceStatus}
                 </span>
               )}
