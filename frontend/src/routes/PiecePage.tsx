@@ -282,7 +282,7 @@ export function PiecePage() {
         to="/"
         className="inline-flex w-fit items-center gap-1.5 text-sm text-ink-soft hover:text-ink"
       >
-        <IconArrowLeft size={16} />
+        <IconArrowLeft size={24} />
         Back to Library
       </Link>
 

@@ -40,7 +40,9 @@ await page.goto('http://localhost:5173/...')
 // ...interact, assert, page.screenshot()...
 await browser.close()
 ```
-Needs both dev servers already running — backend on `:8080`, Vite on `:5173` (check with `lsof -iTCP -sTCP:LISTEN -P` rather than assuming either is up or down). Use this for anything a type-check or unit test can't actually catch — a real click-through sequence, animation/transition timing, DOM state after an interaction — rather than reporting "type-checks clean" as if that were equivalent to having verified the feature live. If a live check mutates real dev data (e.g. editing a piece through the running app), restore it afterward via a direct API call.
+Needs both dev servers already running — backend on `:8080`, Vite on `:5173` (check with `lsof -iTCP -sTCP:LISTEN -P` rather than assuming either is up or down). Use this for anything a type-check or unit test can't actually catch — a real click-through sequence, animation/transition timing, DOM state after an interaction — rather than reporting "type-checks clean" as if that were equivalent to having verified the feature live.
+
+**The dev library at `./data` (`DATA_DIR`) is read-only for Claude — direct instruction, 2026-08-18.** Earlier sessions mutated real piece records during live checks (editing a piece, toggling favorite) and restored them afterward via a follow-up API call; that's no longer good enough — don't write to it at all, through the app's own endpoints, direct SQL, or file operations. Live verification stays read-only (navigate, view, screenshot). If a check genuinely needs to mutate state to prove a feature, use a disposable piece/book created in a separate, throwaway location instead of touching the real dev library, or ask the user how they'd like it verified.
 
 ## Concurrency
 v1 is single-user, single-session (see design doc §8). Do not build multi-writer conflict handling. Do enable SQLite WAL mode at startup regardless — cheap, no design cost, cost of skipping it isn't worth the reason to skip it.
