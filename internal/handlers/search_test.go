@@ -144,7 +144,7 @@ func TestSearchPieces_SheetTypeAndInstrumentFiltersMatchInheritedValues(t *testi
 	bookID, _ := uploadBook(t, h, "book.pdf", 4)
 	decodeData(t, doJSON(t, h, http.MethodPatch, apiBooksURL(bookID), map[string]any{
 		"bookTitle":     "Anthology",
-		"sheetTypeName": "Ensemble Score",
+		"sheetTypeName": "Ensemble Piece – Full Score",
 		"instruments":   []string{"Violin"},
 	}), nil)
 
@@ -169,12 +169,12 @@ func TestSearchPieces_SheetTypeAndInstrumentFiltersMatchInheritedValues(t *testi
 	decodeData(t, sheetTypesRec, &sheetTypes)
 	var ensembleID int64
 	for _, st := range sheetTypes {
-		if st.Name == "Ensemble Score" {
+		if st.Name == "Ensemble Piece – Full Score" {
 			ensembleID = st.ID
 		}
 	}
 	if ensembleID == 0 {
-		t.Fatal("could not find seeded Ensemble Score sheet type")
+		t.Fatal("could not find seeded Ensemble Piece – Full Score sheet type")
 	}
 
 	sheetTypeSearchRec := doJSON(t, h, http.MethodGet, "/api/pieces?sheetTypeId="+itoa(ensembleID), nil)

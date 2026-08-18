@@ -7,8 +7,8 @@ type Key struct {
 	Name string `json:"name"`
 }
 
-// SheetType is a seeded lookup value (Lead Sheet, Solo Part, Ensemble
-// Score, PVG Score). Book-inheritable.
+// SheetType is a seeded lookup value (Lead Sheet, Solo Piece, Ensemble
+// Piece – Full Score, Ensemble Piece – Part, PVG Score). Book-inheritable.
 type SheetType struct {
 	ID   int64  `json:"id"`
 	Name string `json:"name"`

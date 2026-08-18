@@ -35,8 +35,14 @@ func ListKeys(ctx context.Context, q Queryer) ([]models.Key, error) {
 	return keys, rows.Err()
 }
 
+// Ordered by sort_order (an explicit display order, migration 00013), not
+// id — same reasoning as ListKeys above: id order silently breaks the
+// moment a row is inserted out of its intended reading position (e.g.
+// "Ensemble Piece – Part", added after every other seed row already
+// existed, needs to sit next to "Ensemble Piece – Full Score", not at the
+// end).
 func ListSheetTypes(ctx context.Context, q Queryer) ([]models.SheetType, error) {
-	rows, err := q.QueryContext(ctx, `SELECT id, name FROM sheet_types ORDER BY id`)
+	rows, err := q.QueryContext(ctx, `SELECT id, name FROM sheet_types ORDER BY sort_order`)
 	if err != nil {
 		return nil, err
 	}
