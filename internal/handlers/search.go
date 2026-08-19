@@ -90,24 +90,45 @@ func (s *Server) handleSearchPieces(w http.ResponseWriter, r *http.Request) {
 		args = append(args, v)
 	}
 
+	// sourceBookId: the Book Details page's pieces grid/list — every piece
+	// belonging to this book. Sorted by start page ascending instead of the
+	// default newest-first order below, with a tie-break the design review
+	// asked for: when two pieces share a start page (e.g. a short reprise
+	// that opens on the same page the piece before it is still finishing),
+	// the 1-page one sorts first. No LIMIT/OFFSET either — a book's own
+	// piece count is the natural bound, and the page renders all of them
+	// at once rather than paginating.
+	bookID, byBook, ok := parseIDFilter(w, q, "sourceBookId")
+	if !ok {
+		return
+	}
+	if byBook {
+		where = append(where, "p.source_book_id = ?")
+		args = append(args, bookID)
+	}
+
 	if len(where) > 0 {
 		sqlStr += " WHERE " + strings.Join(where, " AND ")
 	}
 
-	limit := 50
-	if v := q.Get("limit"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 && n <= 200 {
-			limit = n
+	if byBook {
+		sqlStr += " ORDER BY p.source_page_start IS NULL, p.source_page_start ASC, (p.page_count = 1) DESC"
+	} else {
+		limit := 50
+		if v := q.Get("limit"); v != "" {
+			if n, err := strconv.Atoi(v); err == nil && n > 0 && n <= 200 {
+				limit = n
+			}
 		}
-	}
-	offset := 0
-	if v := q.Get("offset"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
-			offset = n
+		offset := 0
+		if v := q.Get("offset"); v != "" {
+			if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+				offset = n
+			}
 		}
+		sqlStr += " ORDER BY p.id DESC LIMIT ? OFFSET ?"
+		args = append(args, limit, offset)
 	}
-	sqlStr += " ORDER BY p.id DESC LIMIT ? OFFSET ?"
-	args = append(args, limit, offset)
 
 	rows, err := s.DB.QueryContext(r.Context(), sqlStr, args...)
 	if err != nil {

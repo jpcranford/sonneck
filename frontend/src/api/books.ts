@@ -49,6 +49,14 @@ export function getBookPageThumbnailUrl(bookId: number, page: number): string {
   return `/api/books/${bookId}/pages/${page}/thumbnail`
 }
 
+// Book Details page's "Open Book PDF" button — inline Content-Disposition
+// (handleDownloadBookFile), so opened with target="_blank" this renders in
+// a new tab instead of forcing a download, same convention as the piece
+// file route (getPieceFileUrl).
+export function getBookFileUrl(bookId: number): string {
+  return `/api/books/${bookId}/file`
+}
+
 export function confirmImport(
   bookId: number,
   req: ConfirmImportRequest,

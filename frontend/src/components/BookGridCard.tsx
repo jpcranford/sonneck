@@ -1,7 +1,8 @@
-import { IconBook, IconMusic } from '@tabler/icons-react'
+import { IconFileX, IconMusic } from '@tabler/icons-react'
 import { getBookPageThumbnailUrl } from '../api/books'
 import type { Book } from '../api/types'
 import { formatBookMeta } from '../lib/formatBookMeta'
+import { ClickableCard } from './ClickableCard'
 
 interface BookGridCardProps {
   book: Book
@@ -14,15 +15,14 @@ interface BookGridCardProps {
 // same card-grid pattern. Piece count sits as a minimal label on a dark
 // scrim in the bottom-right corner (not a pill) — real cover art is often
 // colorful/photographic, so a light label over a dark gradient holds up
-// across unpredictable art the way a pill badge wouldn't need to. No
-// click-through yet — there's no Book View page to land on (design doc
-// §16's Book Properties Edit Menu is reached from a Piece's own page, not
-// a standalone route), so these cards are just browsable, not navigable.
+// across unpredictable art the way a pill badge wouldn't need to. Links to
+// the Book Details page (added once that page was built for real) — was
+// browsable-but-not-navigable before that page existed.
 export function BookGridCard({ book }: BookGridCardProps) {
   const meta = formatBookMeta(book)
 
   return (
-    <div className="flex flex-col gap-2">
+    <ClickableCard to={`/books/${book.id}`} className="flex flex-col gap-2 text-left">
       <div className="relative aspect-[2/3] overflow-hidden rounded-md border border-border bg-paper-sunken shadow-sm transition-shadow hover:shadow-lg">
         {book.fileHash ? (
           <img
@@ -33,11 +33,16 @@ export function BookGridCard({ book }: BookGridCardProps) {
           />
         ) : (
           // A manually created book (migration 00014) has no file to
-          // render a cover from — a neutral placeholder, not the colorful
-          // design-review mockup art (that was only ever a stand-in to
-          // stress-test the scrim/label against varied cover brightness).
-          <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-ink-soft/40">
-            <IconBook size={28} />
+          // render a cover from — file-x on flat-sunken, locked in the
+          // "No-File Cover" design review over book-off/file-unknown/
+          // file-alert. Icon color is a solid pre-blended hex, not a
+          // translucent text-ink-soft/* opacity utility: Tabler icons are
+          // several overlapping <path> strokes, so a translucent color
+          // re-blends at every overlap (e.g. file-x's corners), leaving
+          // visibly darker patches there — found and fixed during that
+          // same review.
+          <div className="flex h-full w-full flex-col items-center justify-center gap-2">
+            <IconFileX size={28} className="text-[#aea8a0]" />
           </div>
         )}
         <div className="absolute inset-x-0 bottom-0 h-11 bg-[linear-gradient(to_top,rgba(0,0,0,0.18)_0%,rgba(0,0,0,0)_100%)]" />
@@ -50,6 +55,6 @@ export function BookGridCard({ book }: BookGridCardProps) {
         <p className="line-clamp-2 font-display text-sm font-medium text-ink">{book.bookTitle}</p>
         {meta && <p className="truncate text-xs text-ink-soft">{meta}</p>}
       </div>
-    </div>
+    </ClickableCard>
   )
 }

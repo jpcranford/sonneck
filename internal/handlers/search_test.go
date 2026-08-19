@@ -95,6 +95,60 @@ func TestSearchPieces_FiltersByKeyId(t *testing.T) {
 	}
 }
 
+// TestSearchPieces_FiltersByBookAndSortsByStartPageWithTieBreak covers the
+// Book Details page's pieces grid/list: sourceBookId scopes results to
+// just that book (a piece from elsewhere must never appear), sorted by
+// start page ascending rather than the default newest-first order — with
+// the design review's tie-break rule when two pieces share a start page
+// (e.g. a short reprise opening on the same page the piece before it is
+// still finishing): the 1-page one sorts first. The tie is forced by hand
+// via a PATCH (sourcePageStart is "purely cosmetic," design doc §3 — a
+// real, expected way for two pieces to end up sharing a start page, not a
+// contrived edge case), since confirm-import's own ranges never overlap.
+func TestSearchPieces_FiltersByBookAndSortsByStartPageWithTieBreak(t *testing.T) {
+	h := newTestServer(t)
+	bookID, _ := uploadBook(t, h, "book.pdf", 5)
+
+	confirmRec := doJSON(t, h, http.MethodPost, apiBooksURL(bookID)+"/confirm-import", map[string]any{
+		"boundaries": []int{1},
+		"pieces": []map[string]any{
+			{"title": "Short", "composer": "Someone"},
+			{"title": "Long", "composer": "Someone"},
+		},
+	})
+	var result struct {
+		Pieces []pieceResponse `json:"pieces"`
+	}
+	decodeData(t, confirmRec, &result)
+	short, long := result.Pieces[0], result.Pieces[1]
+	if short.PageCount != 1 {
+		t.Fatalf("Short piece pageCount = %d, want 1 (fixture assumption)", short.PageCount)
+	}
+
+	// A piece with no relation to this book must never appear in its results.
+	createTestPiece(t, h, map[string]any{"title": "Unrelated"})
+
+	decodeData(t, doJSON(t, h, http.MethodPatch, apiPiecesURL(long.ID), map[string]any{
+		"title":           long.Title,
+		"composer":        "Someone",
+		"sourceBookId":    bookID,
+		"sourcePageStart": *short.SourcePageStart,
+		"sourcePageEnd":   *long.SourcePageEnd,
+	}), nil)
+
+	rec := doJSON(t, h, http.MethodGet, "/api/pieces?sourceBookId="+itoa(bookID), nil)
+	var results []pieceResponse
+	decodeData(t, rec, &results)
+
+	if len(results) != 2 {
+		t.Fatalf("sourceBookId filter returned %d piece(s), want 2", len(results))
+	}
+	if results[0].ID != short.ID || results[1].ID != long.ID {
+		t.Errorf("order = [id %d (%d pp), id %d (%d pp)], want the 1-page piece (Short) first when start pages tie",
+			results[0].ID, results[0].PageCount, results[1].ID, results[1].PageCount)
+	}
+}
+
 func TestSearchPieces_RejectsInvalidFilterValue(t *testing.T) {
 	h := newTestServer(t)
 	rec := doJSON(t, h, http.MethodGet, "/api/pieces?keyId=not-a-number", nil)

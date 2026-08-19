@@ -4,9 +4,11 @@ import { LibraryPage } from './routes/LibraryPage'
 import { BooksPage } from './routes/BooksPage'
 import { UploadPage } from './routes/UploadPage'
 import { PiecePage } from './routes/PiecePage'
+import { BookDetailsPage } from './routes/BookDetailsPage'
 import { PieceViewSample } from './routes/PieceViewSample'
 import { EditPieceModalMockup } from './routes/EditPieceModalMockup'
 import { BooksLibrarySample } from './routes/BooksLibrarySample'
+import { BookDetailsSample } from './routes/BookDetailsSample'
 import { ComposersPage } from './routes/ComposersPage'
 import { FavoritesPage } from './routes/FavoritesPage'
 import { PracticingPage } from './routes/PracticingPage'
@@ -21,6 +23,7 @@ function App() {
         <Route path="books" element={<BooksPage />} />
         <Route path="upload" element={<UploadPage />} />
         <Route path="pieces/:id" element={<PiecePage />} />
+        <Route path="books/:id" element={<BookDetailsPage />} />
         {/* Reference sample, unlinked from nav — a standing design
             reference for the Piece View, kept intentionally (not deleted
             once "locked in" the way earlier mockups were). */}
@@ -31,6 +34,9 @@ function App() {
         {/* Design mockup, unlinked from nav — remove once the Books library
             view is locked in and built for real. */}
         <Route path="mockup/books-library" element={<BooksLibrarySample />} />
+        {/* Design mockup, unlinked from nav — remove once the Book
+            Details page is locked in and built for real (Phase 4). */}
+        <Route path="mockup/book-details" element={<BookDetailsSample />} />
         <Route path="composers" element={<ComposersPage />} />
         <Route path="favorites" element={<FavoritesPage />} />
         <Route path="practicing" element={<PracticingPage />} />

@@ -1,0 +1,376 @@
+import { useState } from 'react'
+import { Link, useParams } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import {
+  IconArrowLeft,
+  IconExternalLink,
+  IconFileX,
+  IconHeartFilled,
+  IconLayoutGridFilled,
+  IconLayoutListFilled,
+  IconPencil,
+} from '@tabler/icons-react'
+import { getBook, getBookFileUrl, getBookPageThumbnailUrl } from '../api/books'
+import { getPieceThumbnailUrl, searchPieces } from '../api/pieces'
+import { ApiError } from '../api/client'
+import type { Piece } from '../api/types'
+import { effectiveBookComposer } from '../lib/formatBookMeta'
+import { ClickableCard } from '../components/ClickableCard'
+import { TagPills } from '../components/TagPills'
+
+// Book Details page — no design-doc spec (new ground, same as the Books
+// library view before it). Built from the "Book Details — Consolidated
+// Design" artifact via the locked mockup, /mockup/book-details
+// (BookDetailsSample.tsx) — kept in sync by hand per that file's own
+// convention. Header is its own card; the pieces grid/list below it is
+// deliberately NOT a card (no border/radius/shadow, just spacing) —
+// verified against the artifact directly, see BookDetailsSample.tsx's own
+// file comment for the two regressions that got this wrong along the way.
+
+function imslpReverseLookupUrl(imslpNumber: string): string {
+  return `https://imslp.org/index.php?title=Special:ReverseLookup&action=submit&indexsearch=${encodeURIComponent(imslpNumber)}`
+}
+
+// "p. 22–24" / "p. 22" from the piece's own historical provenance fields
+// (design doc §14: purely cosmetic, not necessarily in sync with the
+// current file's actual pageCount after a replace) — not derived from
+// pageCount, which is the current file's real page count and can
+// legitimately diverge from this range.
+function pageRangeLabel(piece: Piece): string {
+  if (piece.sourcePageStart == null) return '—'
+  const end = piece.sourcePageEnd ?? piece.sourcePageStart
+  return end > piece.sourcePageStart ? `p. ${piece.sourcePageStart}–${end}` : `p. ${piece.sourcePageStart}`
+}
+
+function pagesLabel(piece: Piece): string {
+  return `${piece.pageCount} ${piece.pageCount === 1 ? 'page' : 'pages'}`
+}
+
+// piece.composer is already an EffectiveField — the backend has already
+// resolved the book fallback, so no client-side fallback logic is needed
+// here the way the mockup's hardcoded data required.
+function pieceMetaLine(piece: Piece): string {
+  return [piece.composer.value, pagesLabel(piece)].filter((part): part is string => !!part).join(' • ')
+}
+
+function PieceGrid({ pieces }: { pieces: Piece[] }) {
+  return (
+    <div className="grid grid-cols-[repeat(auto-fill,minmax(112px,1fr))] gap-3">
+      {pieces.map((piece) => (
+        <ClickableCard
+          key={piece.id}
+          to={`/pieces/${piece.id}`}
+          className="overflow-hidden rounded-lg border border-border bg-paper-raised text-left transition-colors hover:border-accent"
+        >
+          <div className="relative aspect-[180/132] bg-border">
+            <img
+              src={getPieceThumbnailUrl(piece.id, piece.thumbnailPage)}
+              alt=""
+              loading="lazy"
+              className="h-full w-full object-cover object-top"
+            />
+            {piece.sourcePageStart != null && (
+              <span className="absolute bottom-1.5 left-1.5 rounded-full bg-ink/85 px-2 py-0.5 text-[0.65rem] font-medium tabular-nums text-white">
+                {pageRangeLabel(piece)}
+              </span>
+            )}
+          </div>
+          <div className="flex flex-col gap-0.5 px-2 py-1.5">
+            <p className="truncate font-display text-[0.8rem] font-medium text-ink">{piece.title}</p>
+            {piece.composer.value && (
+              <p className="truncate text-[0.7rem] text-ink-soft">{piece.composer.value}</p>
+            )}
+            <p className="text-[0.65rem] text-ink-soft/80">{pagesLabel(piece)}</p>
+          </div>
+        </ClickableCard>
+      ))}
+    </div>
+  )
+}
+
+// Tailwind v4 compiles an arbitrary max-width variant to the modern range
+// syntax (`@media (width < 500px)`) — exclusive of the boundary itself,
+// not the traditional inclusive `max-width: 500px`. `max-[501px]:*`
+// (verified against the served CSS) is what actually makes the drop
+// happen *at* 500px and below.
+const THUMB_HIDE_CLASS = 'max-[501px]:hidden'
+const ROW_COLLAPSE_CLASS = 'max-[501px]:grid-cols-[60px_1fr]'
+
+function PieceList({ pieces }: { pieces: Piece[] }) {
+  return (
+    <div className="flex flex-col">
+      <div className="grid grid-cols-[60px_1fr_56px] gap-3 px-1.5 pb-2.5 text-[0.7rem] font-medium tracking-wide text-ink-soft uppercase">
+        <div>Page</div>
+        <div>Title</div>
+        <div className={THUMB_HIDE_CLASS} />
+      </div>
+      {pieces.map((piece) => (
+        <ClickableCard
+          key={piece.id}
+          to={`/pieces/${piece.id}`}
+          className={`grid grid-cols-[60px_1fr_56px] items-center gap-3 border-t border-border px-1.5 py-2.5 text-left first:border-t-0 hover:rounded-md hover:bg-accent-soft ${ROW_COLLAPSE_CLASS}`}
+        >
+          <div className="text-sm font-medium tabular-nums text-ink">{pageRangeLabel(piece)}</div>
+          <div className="min-w-0">
+            <p className="flex flex-wrap items-center gap-1.5 font-display text-[0.92rem] font-medium text-ink">
+              {piece.title}
+              {piece.favorite && (
+                <span className="text-accent" title="Favorite">
+                  <IconHeartFilled size={13} />
+                </span>
+              )}
+            </p>
+            <p className="mt-0.5 text-xs text-ink-soft">{pieceMetaLine(piece)}</p>
+            <TagPills
+              keys={piece.keys}
+              sheetType={piece.sheetType.value}
+              instruments={piece.instruments.values}
+              userTags={piece.userTags}
+            />
+          </div>
+          <div
+            className={`relative h-[42px] w-14 overflow-hidden rounded-md border border-border ${THUMB_HIDE_CLASS}`}
+          >
+            <img
+              src={getPieceThumbnailUrl(piece.id, piece.thumbnailPage)}
+              alt=""
+              loading="lazy"
+              className="h-full w-full object-cover object-top"
+            />
+          </div>
+        </ClickableCard>
+      ))}
+    </div>
+  )
+}
+
+export function BookDetailsPage() {
+  const { id } = useParams<{ id: string }>()
+  const bookId = Number(id)
+
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+
+  const {
+    data: book,
+    isLoading: bookLoading,
+    isError: bookIsError,
+    error: bookError,
+  } = useQuery({
+    queryKey: ['book', bookId],
+    queryFn: () => getBook(bookId),
+  })
+
+  const { data: pieces, isLoading: piecesLoading } = useQuery({
+    queryKey: ['pieces', { sourceBookId: bookId }],
+    queryFn: () => searchPieces({ sourceBookId: bookId }),
+    enabled: !!book,
+  })
+
+  const notFound = bookError instanceof ApiError && bookError.code === 'NOT_FOUND'
+
+  const fields: { label: string; value: React.ReactNode }[] = []
+  if (book) {
+    if (book.publisher || book.publisherId) {
+      fields.push({
+        label: 'Publisher',
+        value: [book.publisher, book.publisherId ? `#${book.publisherId}` : null].filter(Boolean).join(' '),
+      })
+    }
+    if (book.imslpNumber) {
+      fields.push({
+        label: 'IMSLP no.',
+        value: (
+          <a
+            href={imslpReverseLookupUrl(book.imslpNumber)}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-0.5 text-accent hover:underline"
+          >
+            {book.imslpNumber}
+            <IconExternalLink size={12} />
+          </a>
+        ),
+      })
+    }
+    if (book.originalFilename) {
+      fields.push({ label: 'Original filename', value: book.originalFilename })
+    }
+  }
+
+  return (
+    <div className="flex flex-1 flex-col gap-6 p-6 md:p-8">
+      <Link to="/books" className="inline-flex w-fit items-center gap-1.5 text-sm text-ink-soft hover:text-ink">
+        <IconArrowLeft size={24} />
+        Back to Books
+      </Link>
+
+      {bookLoading && <p className="text-ink-soft">Loading…</p>}
+
+      {bookIsError && notFound && (
+        <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
+          <h1 className="font-display text-3xl text-ink">Book not found</h1>
+          <p className="text-ink-soft">It may have been deleted or moved.</p>
+        </div>
+      )}
+
+      {bookIsError && !notFound && (
+        <p className="text-ink-soft">
+          {bookError instanceof ApiError ? bookError.message : 'Could not load this book.'}
+        </p>
+      )}
+
+      {book && (
+        <div>
+          {/* Header is its own card. items-start on the header row: without
+              it, the cover's flex cross-axis defaults to stretch, which
+              fights its own aspect-[2/3] the moment a sibling column grows
+              taller than the cover, distorting its shape. */}
+          <div className="overflow-hidden rounded-2xl border border-border bg-paper-raised shadow-sm">
+            <div className="flex items-start gap-6 p-7">
+              <div className="aspect-[2/3] w-[110px] shrink-0 overflow-hidden rounded-md border border-border bg-paper-sunken">
+                {book.fileHash ? (
+                  <img
+                    src={getBookPageThumbnailUrl(book.id, 1)}
+                    alt=""
+                    className="h-full w-full object-cover object-top"
+                  />
+                ) : (
+                  // file-x on flat-sunken, locked in the "No-File Cover" design
+                  // review. Solid pre-blended hex, not a translucent opacity
+                  // utility — see the matching comment in BookGridCard.tsx.
+                  <div className="flex h-full w-full items-center justify-center">
+                    <IconFileX size={28} className="text-[#aea8a0]" />
+                  </div>
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="mb-2 flex items-start justify-between gap-4">
+                  <div>
+                    <h1 className="font-display text-[1.35rem] font-medium text-ink">
+                      {book.bookTitle}
+                      {book.workOpusNumber ? ` (${book.workOpusNumber})` : ''}
+                    </h1>
+                    <p className="text-[0.92rem] text-ink-soft">
+                      {[effectiveBookComposer(book), book.yearWritten].filter(Boolean).join(' • ')}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-stretch gap-2.5">
+                    <button
+                      type="button"
+                      title="Book Properties Edit Menu — not built yet"
+                      className="flex w-[38px] cursor-not-allowed items-center justify-center rounded-md border border-border bg-paper-raised text-ink-soft"
+                    >
+                      <IconPencil size={16} />
+                    </button>
+                    {book.fileHash ? (
+                      <a
+                        href={getBookFileUrl(book.id)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-1.5 rounded-md bg-accent px-4 py-2 font-display text-sm text-white hover:bg-accent/90"
+                      >
+                        <IconExternalLink size={16} />
+                        Open Book PDF
+                      </a>
+                    ) : (
+                      <span
+                        title="No original file on record"
+                        className="flex cursor-not-allowed items-center gap-1.5 rounded-md bg-accent/40 px-4 py-2 font-display text-sm text-white/70"
+                      >
+                        <IconExternalLink size={16} />
+                        Open Book PDF
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {(book.sheetType || book.instruments.length > 0) && (
+                  <div className="mt-1 mb-1.5 flex flex-wrap gap-1.5">
+                    {book.sheetType && (
+                      <span className="rounded-full border border-border px-2.5 py-0.5 text-xs font-medium text-ink-soft">
+                        {book.sheetType.name}
+                      </span>
+                    )}
+                    {book.instruments.map((instrument) => (
+                      <span
+                        key={instrument.id}
+                        className="rounded-full border border-border px-2.5 py-0.5 text-xs font-medium text-ink-soft"
+                      >
+                        {instrument.name}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {book.description && (
+                  <p className="mt-3.5 max-w-[60ch] text-[0.88rem] text-ink-soft">{book.description}</p>
+                )}
+
+                {fields.length > 0 && (
+                  <div className="mt-3.5 flex flex-wrap gap-x-8 gap-y-3">
+                    {fields.map((field) => (
+                      <div key={field.label}>
+                        <dt className="mb-0.5 text-[0.7rem] tracking-wide text-ink-soft uppercase">
+                          {field.label}
+                        </dt>
+                        <dd className="text-[0.88rem] text-ink">{field.value}</dd>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Pieces — deliberately NOT a card, just spacing below the header
+              card. */}
+          <div className="mt-6 bg-paper">
+            <div className="flex flex-wrap items-center justify-between gap-4 px-6 pb-4">
+              <h2 className="font-display text-[0.95rem] font-semibold text-ink-soft">
+                {pieces ? `${pieces.length} ${pieces.length === 1 ? 'piece' : 'pieces'} in this book` : '…'}
+              </h2>
+              <div className="flex shrink-0 items-center gap-1 rounded-md border border-border p-0.5">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('grid')}
+                  aria-label="Grid view"
+                  aria-pressed={viewMode === 'grid'}
+                  className={`flex size-8 items-center justify-center rounded ${
+                    viewMode === 'grid' ? 'bg-accent-soft text-accent' : 'text-ink-soft'
+                  }`}
+                >
+                  <IconLayoutGridFilled size={16} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('list')}
+                  aria-label="List view"
+                  aria-pressed={viewMode === 'list'}
+                  className={`flex size-8 items-center justify-center rounded ${
+                    viewMode === 'list' ? 'bg-accent-soft text-accent' : 'text-ink-soft'
+                  }`}
+                >
+                  <IconLayoutListFilled size={16} />
+                </button>
+              </div>
+            </div>
+            <div className="px-6 pb-5">
+              {piecesLoading && <p className="text-ink-soft">Loading…</p>}
+              {pieces && pieces.length === 0 && (
+                <div className="py-6 text-center">
+                  <p className="font-display text-ink">No pieces yet</p>
+                  <p className="mt-1 text-sm text-ink-soft">
+                    Pieces added to this book will appear here, sorted by their start page.
+                  </p>
+                </div>
+              )}
+              {pieces &&
+                pieces.length > 0 &&
+                (viewMode === 'grid' ? <PieceGrid pieces={pieces} /> : <PieceList pieces={pieces} />)}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

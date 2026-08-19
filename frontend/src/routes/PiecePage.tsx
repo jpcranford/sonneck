@@ -21,6 +21,7 @@ import {
   IconShieldCheck,
 } from '@tabler/icons-react'
 import { getBook } from '../api/books'
+import { formatBookMeta } from '../lib/formatBookMeta'
 import {
   getCitation,
   getPiece,
@@ -773,9 +774,16 @@ export function PiecePage() {
                     <IconEditFilled size={16} />
                   </button>
                 </div>
-                <p className="font-display text-ink italic">{book.bookTitle}</p>
+                <Link
+                  to={`/books/${book.id}`}
+                  className="font-display text-ink italic hover:text-accent hover:underline"
+                >
+                  {book.bookTitle}
+                </Link>
                 <p className="text-sm text-ink-soft">
-                  {[book.composer, book.yearWritten].filter(Boolean).join(' • ')}
+                  {formatBookMeta(book) || (
+                    <span className="text-ink-soft/60 italic">No composer or publisher on file</span>
+                  )}
                 </p>
               </div>
             )}

@@ -2,6 +2,7 @@ package handlers_test
 
 import (
 	"net/http"
+	"strings"
 	"testing"
 )
 
@@ -135,6 +136,43 @@ func TestCreateBookManual_CreatesFilelessBook(t *testing.T) {
 	thumbRec := recordRequest(h, httptestGet(t, "/api/books/"+itoa(book.ID)+"/pages/1/thumbnail"))
 	if thumbRec.Code != http.StatusNotFound {
 		t.Errorf("thumbnail for file-less book: status %d, want 404", thumbRec.Code)
+	}
+}
+
+// TestDownloadBookFile_ReturnsFileInline covers the Book Details page's
+// "Open Book PDF" button: the file downloads with an "inline" (not
+// "attachment") Content-Disposition, so it opens in a new tab instead of
+// forcing a save dialog — same convention as handleDownloadPieceFile.
+func TestDownloadBookFile_ReturnsFileInline(t *testing.T) {
+	h := newTestServer(t)
+	bookID, _ := uploadBook(t, h, "book.pdf", 3)
+
+	rec := recordRequest(h, httptestGet(t, "/api/books/"+itoa(bookID)+"/file"))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("download: status %d, body %s", rec.Code, rec.Body.String())
+	}
+	if cd := rec.Header().Get("Content-Disposition"); !strings.HasPrefix(cd, "inline;") {
+		t.Errorf("Content-Disposition = %q, want it to start with %q", cd, "inline;")
+	}
+	if rec.Body.Len() == 0 {
+		t.Error("download response body is empty")
+	}
+}
+
+// TestDownloadBookFile_FilelessBookReturns404 guards the nil-FilePath
+// dereference for a manually created book (migration 00014) — a clean
+// 404, not a panic.
+func TestDownloadBookFile_FilelessBookReturns404(t *testing.T) {
+	h := newTestServer(t)
+	rec := doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
+		"bookTitle": "Christmas Medleys",
+	})
+	var book bookResponse
+	decodeData(t, rec, &book)
+
+	downloadRec := recordRequest(h, httptestGet(t, "/api/books/"+itoa(book.ID)+"/file"))
+	if downloadRec.Code != http.StatusNotFound {
+		t.Errorf("download for file-less book: status %d, want 404", downloadRec.Code)
 	}
 }
 

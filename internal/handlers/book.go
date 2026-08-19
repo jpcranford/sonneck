@@ -334,3 +334,28 @@ func (s *Server) handleBookPageThumbnail(w http.ResponseWriter, r *http.Request)
 
 	http.ServeFile(w, r, thumbPath)
 }
+
+// handleDownloadBookFile is the Book Details page's "Open Book PDF"
+// button — mirrors handleDownloadPieceFile (piece.go) exactly: Content-
+// Disposition "inline" (not "attachment") opens the original file in a
+// new tab rather than forcing a download. A manually created Book
+// (migration 00014) has no file at all — a clean 404, same guard
+// handleBookPageThumbnail already uses, not a nil-pointer panic.
+func (s *Server) handleDownloadBookFile(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathID(r, "id")
+	if !ok {
+		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid book id")
+		return
+	}
+	b, err := repo.GetBookByID(r.Context(), s.DB, id)
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+	if b.FilePath == nil {
+		api.WriteError(w, http.StatusNotFound, api.CodeNotFound, "this book has no file")
+		return
+	}
+	w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=%q", sanitizeFilename(b.BookTitle)+".pdf"))
+	http.ServeFile(w, r, *b.FilePath)
+}

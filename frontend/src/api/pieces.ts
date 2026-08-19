@@ -62,6 +62,12 @@ export interface SearchPiecesParams {
   userTagId?: number
   favorite?: boolean
   practiceStatus?: string
+  /** Book Details page: every piece belonging to this book, sorted by
+   * start page ascending (server-side tie-break: a same-start-page 1-page
+   * piece sorts before a longer one) instead of the default newest-first
+   * order — and with no limit/offset cap, since the page renders every
+   * piece in the book at once rather than paginating. */
+  sourceBookId?: number
   limit?: number
   offset?: number
 }

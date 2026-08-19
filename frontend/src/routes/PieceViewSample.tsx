@@ -64,8 +64,17 @@ interface Tag {
 // opus number is a structured field the citation composes in, not free
 // text a user has to remember to type into the title itself.
 const sampleBook = {
+  // Fake id, purely so the Source Book title can link to /books/1 like
+  // the real page does — a harmless dead end if no book with that id
+  // exists in whatever dev database this mockup happens to be viewed
+  // against (shows the real "Book not found" state, not a bug).
+  id: 1,
   bookTitle: 'Album für die Jugend',
   composer: 'Robert Schumann',
+  // Only here to mirror the real Book shape for the composer→publisher
+  // fallback below (lib/formatBookMeta.ts's effectiveBookComposer) — never
+  // actually exercised in this mock since composer above is always set.
+  publisher: null as string | null,
   workOpusNumber: 'Op. 68',
   yearWritten: '1848',
 }
@@ -679,9 +688,16 @@ export function PieceViewSample() {
                   <IconEditFilled size={16} />
                 </button>
               </div>
-              <p className="font-display text-ink italic">{book.bookTitle}</p>
+              <Link
+                to={`/books/${book.id}`}
+                className="font-display text-ink italic hover:text-accent hover:underline"
+              >
+                {book.bookTitle}
+              </Link>
               <p className="text-sm text-ink-soft">
-                {[book.composer, book.yearWritten].filter(Boolean).join(' • ')}
+                {[book.composer || book.publisher, book.yearWritten].filter(Boolean).join(' • ') || (
+                  <span className="text-ink-soft/60 italic">No composer or publisher on file</span>
+                )}
               </p>
             </div>
           )}
