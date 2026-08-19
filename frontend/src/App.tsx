@@ -5,6 +5,7 @@ import { BooksPage } from './routes/BooksPage'
 import { UploadPage } from './routes/UploadPage'
 import { PiecePage } from './routes/PiecePage'
 import { BookDetailsPage } from './routes/BookDetailsPage'
+import { MockupIndexPage } from './routes/MockupIndexPage'
 import { PieceViewSample } from './routes/PieceViewSample'
 import { EditPieceModalMockup } from './routes/EditPieceModalMockup'
 import { BooksLibrarySample } from './routes/BooksLibrarySample'
@@ -24,18 +25,14 @@ function App() {
         <Route path="upload" element={<UploadPage />} />
         <Route path="pieces/:id" element={<PiecePage />} />
         <Route path="books/:id" element={<BookDetailsPage />} />
-        {/* Reference sample, unlinked from nav — a standing design
-            reference for the Piece View, kept intentionally (not deleted
-            once "locked in" the way earlier mockups were). */}
+        {/* Design mockups and reference samples — unlinked from the main
+            nav, browsable via the /mockup index below. Kept intentionally
+            for future reference/experimentation, not deleted once whatever
+            they were mocking is locked in and built for real. */}
+        <Route path="mockup" element={<MockupIndexPage />} />
         <Route path="mockup/piece-view" element={<PieceViewSample />} />
-        {/* Design mockup, unlinked from nav — remove once §15 is locked in
-            and built for real. */}
         <Route path="mockup/edit-piece-modal" element={<EditPieceModalMockup />} />
-        {/* Design mockup, unlinked from nav — remove once the Books library
-            view is locked in and built for real. */}
         <Route path="mockup/books-library" element={<BooksLibrarySample />} />
-        {/* Design mockup, unlinked from nav — remove once the Book
-            Details page is locked in and built for real (Phase 4). */}
         <Route path="mockup/book-details" element={<BookDetailsSample />} />
         <Route path="composers" element={<ComposersPage />} />
         <Route path="favorites" element={<FavoritesPage />} />
