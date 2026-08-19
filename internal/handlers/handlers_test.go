@@ -170,6 +170,19 @@ type pieceResponse struct {
 	ThumbnailPage   int             `json:"thumbnailPage"`
 }
 
+// bookResponse mirrors api.BookResponse's wire shape for tests that only
+// need a handful of fields — OriginalFilename/FileHash stay pointers here
+// specifically so file-less-book tests can assert they come back nil
+// (migration 00014) rather than empty strings.
+type bookResponse struct {
+	ID               int64   `json:"id"`
+	BookTitle        string  `json:"bookTitle"`
+	Composer         *string `json:"composer"`
+	OriginalFilename *string `json:"originalFilename"`
+	FileHash         *string `json:"fileHash"`
+	PieceCount       int     `json:"pieceCount"`
+}
+
 func readAll(t *testing.T, path string) []byte {
 	t.Helper()
 	content, err := os.ReadFile(path)

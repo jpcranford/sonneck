@@ -6,6 +6,7 @@ import { UploadPage } from './routes/UploadPage'
 import { PiecePage } from './routes/PiecePage'
 import { PieceViewSample } from './routes/PieceViewSample'
 import { EditPieceModalMockup } from './routes/EditPieceModalMockup'
+import { BooksLibrarySample } from './routes/BooksLibrarySample'
 import { ComposersPage } from './routes/ComposersPage'
 import { FavoritesPage } from './routes/FavoritesPage'
 import { PracticingPage } from './routes/PracticingPage'
@@ -27,6 +28,9 @@ function App() {
         {/* Design mockup, unlinked from nav — remove once §15 is locked in
             and built for real. */}
         <Route path="mockup/edit-piece-modal" element={<EditPieceModalMockup />} />
+        {/* Design mockup, unlinked from nav — remove once the Books library
+            view is locked in and built for real. */}
+        <Route path="mockup/books-library" element={<BooksLibrarySample />} />
         <Route path="composers" element={<ComposersPage />} />
         <Route path="favorites" element={<FavoritesPage />} />
         <Route path="practicing" element={<PracticingPage />} />

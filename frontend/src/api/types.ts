@@ -80,10 +80,26 @@ export interface Book {
   description: string | null
   imslpNumber: string | null
   instruments: Tag[]
-  originalFilename: string
-  fileHash: string
+  // Nullable (backend migration 00014) — a manually created book (Books
+  // library view's "New Book" button) has no underlying file.
+  originalFilename: string | null
+  fileHash: string | null
   importedAt: string
   pieceCount: number
+}
+
+/**
+ * Books library view's "New Book" button submission shape — creates a
+ * Book with no underlying file, distinct from the upload/import wizard
+ * (which always requires a real PDF). Deliberately narrower than
+ * BookWriteRequest: only the fields a book can meaningfully have before
+ * any pieces exist to classify it by. Only bookTitle is required.
+ */
+export interface BookCreateRequest {
+  bookTitle: string
+  composer?: string | null
+  publisher?: string | null
+  yearWritten?: string | null
 }
 
 /**

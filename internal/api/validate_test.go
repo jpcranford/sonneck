@@ -58,9 +58,9 @@ func TestValidatePiece_ComposerRequiredButInheritedSatisfiesIt(t *testing.T) {
 	bookID, err := repo.CreateBook(ctx, dbConn, &models.Book{
 		BookTitle:        "Anthology",
 		Composer:         strPtr("Book Composer"),
-		OriginalFilename: "anthology.pdf",
-		FilePath:         "/data/library/books/anthology.pdf",
-		FileHash:         "anthology-hash",
+		OriginalFilename: strPtr("anthology.pdf"),
+		FilePath:         strPtr("/data/library/books/anthology.pdf"),
+		FileHash:         strPtr("anthology-hash"),
 	})
 	if err != nil {
 		t.Fatalf("CreateBook: %v", err)

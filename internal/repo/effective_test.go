@@ -15,9 +15,9 @@ func TestResolveEffective_InheritsFromBook(t *testing.T) {
 	bookID, err := repo.CreateBook(ctx, dbConn, &models.Book{
 		BookTitle:        "Complete Organ Symphonies",
 		Composer:         strPtr("Charles-Marie Widor"),
-		OriginalFilename: "widor.pdf",
-		FilePath:         "/data/library/books/abc.pdf",
-		FileHash:         "abc",
+		OriginalFilename: strPtr("widor.pdf"),
+		FilePath:         strPtr("/data/library/books/abc.pdf"),
+		FileHash:         strPtr("abc"),
 	})
 	if err != nil {
 		t.Fatalf("CreateBook: %v", err)
@@ -58,9 +58,9 @@ func TestResolveEffective_PieceOwnValueWins(t *testing.T) {
 	bookID, err := repo.CreateBook(ctx, dbConn, &models.Book{
 		BookTitle:        "Anthology",
 		Composer:         strPtr("Book Composer"),
-		OriginalFilename: "anthology.pdf",
-		FilePath:         "/data/library/books/abc.pdf",
-		FileHash:         "abc2",
+		OriginalFilename: strPtr("anthology.pdf"),
+		FilePath:         strPtr("/data/library/books/abc.pdf"),
+		FileHash:         strPtr("abc2"),
 	})
 	if err != nil {
 		t.Fatalf("CreateBook: %v", err)
@@ -135,9 +135,9 @@ func TestResolveEffective_WhitespaceOnlyPieceValueFallsBackToBook(t *testing.T) 
 	bookID, err := repo.CreateBook(ctx, dbConn, &models.Book{
 		BookTitle:        "Anthology",
 		Composer:         strPtr("Book Composer"),
-		OriginalFilename: "anthology.pdf",
-		FilePath:         "/data/library/books/whitespace.pdf",
-		FileHash:         "whitespace-hash",
+		OriginalFilename: strPtr("anthology.pdf"),
+		FilePath:         strPtr("/data/library/books/whitespace.pdf"),
+		FileHash:         strPtr("whitespace-hash"),
 	})
 	if err != nil {
 		t.Fatalf("CreateBook: %v", err)
@@ -184,9 +184,9 @@ func TestResolveEffective_InstrumentsFallBackAsWholeSet(t *testing.T) {
 
 	bookID, err := repo.CreateBook(ctx, dbConn, &models.Book{
 		BookTitle:        "Chamber Works",
-		OriginalFilename: "chamber.pdf",
-		FilePath:         "/data/library/books/chamber.pdf",
-		FileHash:         "chamber-hash",
+		OriginalFilename: strPtr("chamber.pdf"),
+		FilePath:         strPtr("/data/library/books/chamber.pdf"),
+		FileHash:         strPtr("chamber-hash"),
 	})
 	if err != nil {
 		t.Fatalf("CreateBook: %v", err)

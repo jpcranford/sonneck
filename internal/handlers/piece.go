@@ -254,10 +254,25 @@ func (s *Server) handleDeletePiece(w http.ResponseWriter, r *http.Request) {
 	s.Logger.Info("piece deleted", "pieceId", deletedPiece.ID, "fileHash", deletedPiece.FileHash, "title", deletedPiece.Title)
 
 	if orphanedBook != nil {
-		if err := os.Remove(orphanedBook.FilePath); err != nil && !os.IsNotExist(err) {
-			s.Logger.Error("failed to remove book file after orphan cleanup", "error", err, "bookId", orphanedBook.ID, "filePath", orphanedBook.FilePath)
+		// orphanedBook.FilePath is nil only for a manually created book
+		// (migration 00014) — which, in practice, can never actually reach
+		// this path (nothing can attach a Piece to a book with no PDF to
+		// split), but the field is nullable now regardless, so this stays
+		// a real nil check rather than an assumed-safe dereference.
+		if orphanedBook.FilePath != nil {
+			if err := os.Remove(*orphanedBook.FilePath); err != nil && !os.IsNotExist(err) {
+				s.Logger.Error("failed to remove book file after orphan cleanup", "error", err, "bookId", orphanedBook.ID, "filePath", *orphanedBook.FilePath)
+			}
 		}
-		s.Logger.Info("orphaned book cleaned up", "bookId", orphanedBook.ID, "fileHash", orphanedBook.FileHash, "reason", "last referencing piece deleted")
+		// slog's default formatting of a *string logs the pointer address,
+		// not the value it points to (fmt only auto-derefs pointer-to-
+		// struct/slice/map for %v, not pointer-to-scalar) — dereference
+		// explicitly rather than let a real hash silently log as 0xc000....
+		fileHash := "(none)"
+		if orphanedBook.FileHash != nil {
+			fileHash = *orphanedBook.FileHash
+		}
+		s.Logger.Info("orphaned book cleaned up", "bookId", orphanedBook.ID, "fileHash", fileHash, "reason", "last referencing piece deleted")
 	}
 
 	api.WriteData(w, http.StatusOK, map[string]any{"deleted": true, "id": id})

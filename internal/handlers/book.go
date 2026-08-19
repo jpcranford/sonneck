@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/jpcranford/sonneck/internal/api"
 	"github.com/jpcranford/sonneck/internal/models"
@@ -58,9 +59,9 @@ func (s *Server) handleUploadBook(w http.ResponseWriter, r *http.Request) {
 		b := &models.Book{
 			BookTitle:        defaultTitleFromFilename(header.Filename),
 			ImslpNumber:      detectImslpNumber(header.Filename),
-			OriginalFilename: header.Filename,
-			FilePath:         finalPath,
-			FileHash:         hash,
+			OriginalFilename: &header.Filename,
+			FilePath:         &finalPath,
+			FileHash:         &hash,
 		}
 		id, err := repo.CreateBook(r.Context(), tx, b)
 		if err != nil {
@@ -82,6 +83,132 @@ func (s *Server) handleUploadBook(w http.ResponseWriter, r *http.Request) {
 	}
 
 	api.WriteData(w, http.StatusCreated, map[string]any{"book": resp, "pageCount": pageCount})
+}
+
+// handleCreateBookManual is the Books library view's "New Book" button —
+// distinct from handleUploadBook above, which always requires a real PDF.
+// The resulting Book has no file (migration 00014) and, since nothing can
+// attach a Piece to a book with no original PDF to split, no path to ever
+// gaining one either — it exists purely as a placeholder record a user can
+// fill in ahead of actually having the sheet music.
+func (s *Server) handleCreateBookManual(w http.ResponseWriter, r *http.Request) {
+	var req api.BookCreateRequest
+	if err := decodeJSON(r, &req); err != nil {
+		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid request body: "+err.Error())
+		return
+	}
+
+	var resp *api.BookResponse
+	err := s.withTx(r.Context(), func(tx *sql.Tx) error {
+		b := &models.Book{
+			BookTitle:   req.BookTitle,
+			Composer:    req.Composer,
+			Publisher:   req.Publisher,
+			YearWritten: req.YearWritten,
+		}
+		if errs := api.ValidateBook(b); len(errs) > 0 {
+			return errs
+		}
+
+		id, err := repo.CreateBook(r.Context(), tx, b)
+		if err != nil {
+			return err
+		}
+
+		// Re-fetch rather than reusing b: CreateBook doesn't populate
+		// DB-assigned defaults (importedAt) back onto it.
+		created, err := repo.GetBookByID(r.Context(), tx, id)
+		if err != nil {
+			return err
+		}
+		resp, err = api.BuildBookResponse(r.Context(), tx, created)
+		return err
+	})
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+
+	api.WriteData(w, http.StatusCreated, resp)
+}
+
+// handleListBooks is the Books library view's browse/search (mirrors
+// handleSearchPieces's shape) — text query against book_title/composer/
+// publisher via plain LIKE, not FTS5: unlike pieces_fts (design doc §11),
+// there's no books_fts table, and a books library realistically holds a
+// tiny fraction of the row count a pieces library does, so a LIKE scan
+// costs nothing worth building real full-text search to avoid.
+func (s *Server) handleListBooks(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+
+	var where []string
+	var args []any
+
+	sqlStr := `SELECT id FROM books`
+
+	if query := strings.TrimSpace(q.Get("query")); query != "" {
+		where = append(where, `(book_title LIKE ? OR composer LIKE ? OR publisher LIKE ?)`)
+		like := "%" + query + "%"
+		args = append(args, like, like, like)
+	}
+
+	if len(where) > 0 {
+		sqlStr += " WHERE " + strings.Join(where, " AND ")
+	}
+
+	limit := 50
+	if v := q.Get("limit"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 && n <= 200 {
+			limit = n
+		}
+	}
+	offset := 0
+	if v := q.Get("offset"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+			offset = n
+		}
+	}
+	sqlStr += " ORDER BY id DESC LIMIT ? OFFSET ?"
+	args = append(args, limit, offset)
+
+	rows, err := s.DB.QueryContext(r.Context(), sqlStr, args...)
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+	var ids []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			rows.Close()
+			s.writeError(w, err)
+			return
+		}
+		ids = append(ids, id)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		s.writeError(w, err)
+		return
+	}
+	rows.Close()
+
+	results := make([]*api.BookResponse, 0, len(ids))
+	for _, id := range ids {
+		b, err := repo.GetBookByID(r.Context(), s.DB, id)
+		if err != nil {
+			s.writeError(w, err)
+			return
+		}
+		resp, err := api.BuildBookResponse(r.Context(), s.DB, b)
+		if err != nil {
+			s.writeError(w, err)
+			return
+		}
+		results = append(results, resp)
+	}
+
+	api.WriteData(w, http.StatusOK, results)
 }
 
 func (s *Server) handleGetBook(w http.ResponseWriter, r *http.Request) {
@@ -192,8 +319,14 @@ func (s *Server) handleBookPageThumbnail(w http.ResponseWriter, r *http.Request)
 		s.writeError(w, err)
 		return
 	}
+	// A manually created Book (migration 00014) has no file to render a
+	// page from at all — a clean 404 here, not a nil-pointer panic.
+	if b.FilePath == nil {
+		api.WriteError(w, http.StatusNotFound, api.CodeNotFound, "this book has no file")
+		return
+	}
 
-	thumbPath, err := s.cachedThumbnail(r.Context(), b.FilePath, page, 100, fmt.Sprintf("book-%d-page-%d", id, page))
+	thumbPath, err := s.cachedThumbnail(r.Context(), *b.FilePath, page, 100, fmt.Sprintf("book-%d-page-%d", id, page))
 	if err != nil {
 		s.writeError(w, err)
 		return

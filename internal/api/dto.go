@@ -152,7 +152,9 @@ func BuildPieceResponse(ctx context.Context, q repo.Queryer, p *models.Piece) (*
 
 // BookResponse is the wire shape for a Book (design doc §16's edit menu
 // surface). PieceCount backs the "this affects N pieces" UI note called
-// for when editing book-level fields.
+// for when editing book-level fields. OriginalFilename/FileHash are
+// nullable (migration 00014) — a manually created Book (Books library
+// view's "New Book" button) has no underlying file.
 type BookResponse struct {
 	ID               int64      `json:"id"`
 	BookTitle        string     `json:"bookTitle"`
@@ -165,8 +167,8 @@ type BookResponse struct {
 	Description      *string    `json:"description"`
 	ImslpNumber      *string    `json:"imslpNumber"`
 	Instruments      []repo.Tag `json:"instruments"`
-	OriginalFilename string     `json:"originalFilename"`
-	FileHash         string     `json:"fileHash"`
+	OriginalFilename *string    `json:"originalFilename"`
+	FileHash         *string    `json:"fileHash"`
 	ImportedAt       time.Time  `json:"importedAt"`
 	PieceCount       int        `json:"pieceCount"`
 }
@@ -243,6 +245,20 @@ type PieceWriteRequest struct {
 	BPM             *int     `json:"bpm"`
 	MeasureCount    *int     `json:"measureCount"`
 	BeatsPerMeasure *int     `json:"beatsPerMeasure"`
+}
+
+// BookCreateRequest is the Books library view's "New Book" button
+// submission shape — creating a Book with no underlying file, distinct
+// from the upload/import wizard's POST /api/books (which always requires
+// a real PDF). Deliberately narrower than BookWriteRequest: only the
+// fields a book can meaningfully have before any pieces exist to classify
+// it by (no sheet type/instruments/opus/IMSLP/description here). Only
+// BookTitle is required, same reasoning as BookWriteRequest/ValidateBook.
+type BookCreateRequest struct {
+	BookTitle   string  `json:"bookTitle"`
+	Composer    *string `json:"composer"`
+	Publisher   *string `json:"publisher"`
+	YearWritten *string `json:"yearWritten"`
 }
 
 // BookWriteRequest is the Book Properties Edit Menu's submission shape

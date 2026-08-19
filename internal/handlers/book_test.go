@@ -85,6 +85,85 @@ func TestBookPageThumbnail_ReturnsPNG(t *testing.T) {
 	}
 }
 
+// TestCreateBookManual_RequiresTitle locks in ValidateBook's one required
+// field (CLAUDE.md > Book-level soft inheritance) for the new file-less
+// creation path specifically, not just the upload/edit paths that already
+// covered it.
+func TestCreateBookManual_RequiresTitle(t *testing.T) {
+	h := newTestServer(t)
+
+	rec := doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
+		"composer": "Erik Satie",
+	})
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status %d, want 400 (bookTitle required); body %s", rec.Code, rec.Body.String())
+	}
+}
+
+// TestCreateBookManual_CreatesFilelessBook is the Books library view's
+// "New Book" button end to end: only bookTitle required, the book starts
+// at zero pieces, and its file-related fields come back null rather than
+// empty strings (migration 00014).
+func TestCreateBookManual_CreatesFilelessBook(t *testing.T) {
+	h := newTestServer(t)
+
+	rec := doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
+		"bookTitle": "Gymnopédies",
+		"composer":  "Erik Satie",
+	})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status %d, want 201; body %s", rec.Code, rec.Body.String())
+	}
+
+	var book bookResponse
+	decodeData(t, rec, &book)
+	if book.BookTitle != "Gymnopédies" {
+		t.Errorf("bookTitle = %q, want %q", book.BookTitle, "Gymnopédies")
+	}
+	if book.PieceCount != 0 {
+		t.Errorf("pieceCount = %d, want 0 (nothing can attach a piece to a file-less book)", book.PieceCount)
+	}
+	if book.FileHash != nil {
+		t.Errorf("fileHash = %v, want nil", *book.FileHash)
+	}
+	if book.OriginalFilename != nil {
+		t.Errorf("originalFilename = %v, want nil", *book.OriginalFilename)
+	}
+
+	// The thumbnail endpoint has nothing to render from — a clean 404, not
+	// a panic (guards the nil-FilePath dereference in handleBookPageThumbnail).
+	thumbRec := recordRequest(h, httptestGet(t, "/api/books/"+itoa(book.ID)+"/pages/1/thumbnail"))
+	if thumbRec.Code != http.StatusNotFound {
+		t.Errorf("thumbnail for file-less book: status %d, want 404", thumbRec.Code)
+	}
+}
+
+// TestListBooks_ReturnsAllAndFiltersByQuery covers the new GET /api/books
+// (both a real uploaded book and a manually created one should appear —
+// this endpoint isn't specific to either creation path) and its LIKE-based
+// query filter.
+func TestListBooks_ReturnsAllAndFiltersByQuery(t *testing.T) {
+	h := newTestServer(t)
+	uploadBook(t, h, "book.pdf", 2) // default title comes from the filename ("Book")
+
+	decodeData(t, doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
+		"bookTitle": "Gymnopédies",
+		"composer":  "Erik Satie",
+	}), nil)
+
+	var all []bookResponse
+	decodeData(t, doJSON(t, h, http.MethodGet, "/api/books", nil), &all)
+	if len(all) != 2 {
+		t.Fatalf("GET /api/books returned %d book(s), want 2", len(all))
+	}
+
+	var filtered []bookResponse
+	decodeData(t, doJSON(t, h, http.MethodGet, "/api/books?query=Satie", nil), &filtered)
+	if len(filtered) != 1 || filtered[0].BookTitle != "Gymnopédies" {
+		t.Errorf("query=Satie returned %+v, want just the Gymnopédies book", filtered)
+	}
+}
+
 func assertSearchCount(t *testing.T, h http.Handler, query string, want int) {
 	t.Helper()
 	rec := doJSON(t, h, http.MethodGet, "/api/pieces?query="+query, nil)

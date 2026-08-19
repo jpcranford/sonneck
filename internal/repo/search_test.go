@@ -31,9 +31,9 @@ func TestSearchIndex_FindsInheritedComposer(t *testing.T) {
 	bookID, err := repo.CreateBook(ctx, dbConn, &models.Book{
 		BookTitle:        "Six Symphonies",
 		Composer:         strPtr("Charles-Marie Widor"),
-		OriginalFilename: "widor.pdf",
-		FilePath:         "/data/library/books/widor.pdf",
-		FileHash:         "widor-hash",
+		OriginalFilename: strPtr("widor.pdf"),
+		FilePath:         strPtr("/data/library/books/widor.pdf"),
+		FileHash:         strPtr("widor-hash"),
 	})
 	if err != nil {
 		t.Fatalf("CreateBook: %v", err)
@@ -68,9 +68,9 @@ func TestSearchIndex_BookEditFansOutToAllPieces(t *testing.T) {
 	bookID, err := repo.CreateBook(ctx, dbConn, &models.Book{
 		BookTitle:        "Anthology",
 		Composer:         strPtr("Original Composer"),
-		OriginalFilename: "anthology.pdf",
-		FilePath:         "/data/library/books/anthology.pdf",
-		FileHash:         "anthology-hash",
+		OriginalFilename: strPtr("anthology.pdf"),
+		FilePath:         strPtr("/data/library/books/anthology.pdf"),
+		FileHash:         strPtr("anthology-hash"),
 	})
 	if err != nil {
 		t.Fatalf("CreateBook: %v", err)
