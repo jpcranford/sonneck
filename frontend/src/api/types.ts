@@ -127,6 +127,12 @@ export interface PieceWriteRequest {
   userTags: string[]
   practiceStatus?: PracticeStatus | null
   imslpNumber?: string | null
+  /** Re-matches this piece to a different existing Book, or clears the
+   * association (null) — same full-replace rule as every other field here.
+   * Backend rejects a non-null id that doesn't reference a real Book
+   * (VALIDATION_ERROR naming this field), rather than surfacing it as an
+   * opaque 500 later. */
+  sourceBookId?: number | null
   sourcePageStart?: number | null
   sourcePageEnd?: number | null
   /** Directly user-entered (mm:ss in the UI, seconds on the wire) — not

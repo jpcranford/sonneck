@@ -701,6 +701,95 @@ func TestUpdatePiece_TagValidationErrorNamesTheRealField(t *testing.T) {
 	}
 }
 
+// TestUpdatePiece_SetsAndClearsSourceBookID covers the Piece Properties
+// Edit Menu's Source Book field (design doc §15) — re-matching a piece to
+// an existing Book via sourceBookId, and clearing it back to none via the
+// same full-replace rule every other field here follows (omitting it on a
+// later write clears it, not "leaves it alone").
+func TestUpdatePiece_SetsAndClearsSourceBookID(t *testing.T) {
+	h := newTestServer(t)
+	dir := t.TempDir()
+	path := dir + "/piece.pdf"
+	writeFixturePDF(t, path, 1)
+	uploadRec := recordRequest(h, multipartUpload(t, "/api/pieces", "piece.pdf", readAll(t, path)))
+	var uploaded pieceResponse
+	decodeData(t, uploadRec, &uploaded)
+
+	bookRec := doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
+		"bookTitle": "Album für die Jugend, Op. 68",
+	})
+	var book bookResponse
+	decodeData(t, bookRec, &book)
+
+	setRec := doJSON(t, h, http.MethodPatch, apiPiecesURL(uploaded.ID), map[string]any{
+		"title":        "No. 9, Volksliedchen",
+		"composer":     "Robert Schumann",
+		"sourceBookId": book.ID,
+	})
+	var withBook pieceResponse
+	decodeData(t, setRec, &withBook)
+	if withBook.SourceBookID == nil || *withBook.SourceBookID != book.ID {
+		t.Fatalf("sourceBookId = %v, want %d", withBook.SourceBookID, book.ID)
+	}
+	if withBook.SourceBookTitle == nil || *withBook.SourceBookTitle != book.BookTitle {
+		t.Errorf("sourceBookTitle = %v, want %q", withBook.SourceBookTitle, book.BookTitle)
+	}
+
+	// Round-trip through a fresh GET, not just the mutation's own response.
+	getRec := doJSON(t, h, http.MethodGet, apiPiecesURL(uploaded.ID), nil)
+	var reloaded pieceResponse
+	decodeData(t, getRec, &reloaded)
+	if reloaded.SourceBookID == nil || *reloaded.SourceBookID != book.ID {
+		t.Fatalf("after reload, sourceBookId = %v, want %d", reloaded.SourceBookID, book.ID)
+	}
+
+	// Omitting sourceBookId on a later write clears it — same full-replace
+	// rule as every other field, not "leaves it alone."
+	clearRec := doJSON(t, h, http.MethodPatch, apiPiecesURL(uploaded.ID), map[string]any{
+		"title":    "No. 9, Volksliedchen",
+		"composer": "Robert Schumann",
+	})
+	var cleared pieceResponse
+	decodeData(t, clearRec, &cleared)
+	if cleared.SourceBookID != nil {
+		t.Errorf("sourceBookId after omitting it = %v, want nil (full-replace)", cleared.SourceBookID)
+	}
+}
+
+// TestUpdatePiece_RejectsNonexistentSourceBookID ensures a bad/stale
+// sourceBookId (e.g. the book was deleted in another tab) surfaces as a
+// clean 400 validation error naming the field, not an opaque 500 from
+// repo.ResolveEffective discovering the missing book later in the request.
+func TestUpdatePiece_RejectsNonexistentSourceBookID(t *testing.T) {
+	h := newTestServer(t)
+	dir := t.TempDir()
+	path := dir + "/piece.pdf"
+	writeFixturePDF(t, path, 1)
+	uploadRec := recordRequest(h, multipartUpload(t, "/api/pieces", "piece.pdf", readAll(t, path)))
+	var uploaded pieceResponse
+	decodeData(t, uploadRec, &uploaded)
+
+	rec := doJSON(t, h, http.MethodPatch, apiPiecesURL(uploaded.ID), map[string]any{
+		"title":        "T",
+		"composer":     "C",
+		"sourceBookId": 999999,
+	})
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400; body %s", rec.Code, rec.Body.String())
+	}
+	var body struct {
+		Error struct {
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decoding error body: %v", err)
+	}
+	if !strings.Contains(body.Error.Message, "sourceBookId") {
+		t.Errorf("error message = %q, want it to name field %q", body.Error.Message, "sourceBookId")
+	}
+}
+
 func TestUpdatePiece_400ForMalformedJSON(t *testing.T) {
 	h := newTestServer(t)
 	req := httptest.NewRequest(http.MethodPatch, apiPiecesURL(1), strings.NewReader("{not valid json"))

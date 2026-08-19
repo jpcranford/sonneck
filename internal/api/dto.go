@@ -223,28 +223,35 @@ func BuildBookResponse(ctx context.Context, q repo.Queryer, b *models.Book) (*Bo
 // (Calibre-style pick-existing-or-type-new — resolved server-side via
 // repo.FindOrCreate*).
 type PieceWriteRequest struct {
-	Title           string   `json:"title"`
-	Composer        *string  `json:"composer"`
-	Arranger        *string  `json:"arranger"`
-	Favorite        bool     `json:"favorite"`
-	WorkOpusNumber  *string  `json:"workOpusNumber"`
-	Keys            []string `json:"keys"`
-	SheetTypeName   *string  `json:"sheetTypeName"`
-	Publisher       *string  `json:"publisher"`
-	PublisherID     *string  `json:"publisherId"`
-	YearWritten     *string  `json:"yearWritten"`
-	Description     *string  `json:"description"`
-	UserNotes       *string  `json:"userNotes"`
-	Instruments     []string `json:"instruments"`
-	UserTags        []string `json:"userTags"`
-	PracticeStatus  *string  `json:"practiceStatus"`
-	ImslpNumber     *string  `json:"imslpNumber"`
-	SourcePageStart *int     `json:"sourcePageStart"`
-	SourcePageEnd   *int     `json:"sourcePageEnd"`
-	Duration        *int     `json:"duration"`
-	BPM             *int     `json:"bpm"`
-	MeasureCount    *int     `json:"measureCount"`
-	BeatsPerMeasure *int     `json:"beatsPerMeasure"`
+	Title          string   `json:"title"`
+	Composer       *string  `json:"composer"`
+	Arranger       *string  `json:"arranger"`
+	Favorite       bool     `json:"favorite"`
+	WorkOpusNumber *string  `json:"workOpusNumber"`
+	Keys           []string `json:"keys"`
+	SheetTypeName  *string  `json:"sheetTypeName"`
+	Publisher      *string  `json:"publisher"`
+	PublisherID    *string  `json:"publisherId"`
+	YearWritten    *string  `json:"yearWritten"`
+	Description    *string  `json:"description"`
+	UserNotes      *string  `json:"userNotes"`
+	Instruments    []string `json:"instruments"`
+	UserTags       []string `json:"userTags"`
+	PracticeStatus *string  `json:"practiceStatus"`
+	ImslpNumber    *string  `json:"imslpNumber"`
+	// SourceBookID lets the Piece Properties Edit Menu (design doc §15)
+	// re-match a piece to a different existing Book, or clear it to none
+	// (nil, full-replace like every other field here). Must reference a
+	// real Book — applyPieceWriteRequest checks this explicitly and
+	// returns a validation error rather than letting a bad id surface as
+	// an opaque 500 from repo.ResolveEffective later in the request.
+	SourceBookID    *int64 `json:"sourceBookId"`
+	SourcePageStart *int   `json:"sourcePageStart"`
+	SourcePageEnd   *int   `json:"sourcePageEnd"`
+	Duration        *int   `json:"duration"`
+	BPM             *int   `json:"bpm"`
+	MeasureCount    *int   `json:"measureCount"`
+	BeatsPerMeasure *int   `json:"beatsPerMeasure"`
 }
 
 // BookCreateRequest is the Books library view's "New Book" button

@@ -56,38 +56,92 @@ export function InfoTooltip({ message, ariaLabel, triggerClassName, children }: 
   const [open, setOpen] = useState(false)
   const bubbleRef = useRef<HTMLSpanElement>(null)
   const [shiftPx, setShiftPx] = useState(0)
+  // Mirrors shiftPx, written synchronously inside clamp() itself (not via
+  // a separate useEffect keyed on shiftPx) — see clamp()'s own comment for
+  // why this needs to be a ref at all, not just closure-captured state.
+  const shiftPxRef = useRef(0)
+
+  // Stable across renders (not redefined inside the effect below) so both
+  // the mount effect and the hover/open handlers further down can call the
+  // exact same measurement logic.
+  //
+  // Two real bugs already found and fixed here, both worth keeping in mind
+  // before touching this function again:
+  //
+  // 1. An earlier version measured the bubble's "unshifted" baseline by
+  //    imperatively mutating the DOM first (`el.style.transform =
+  //    'translateX(-50%)'`), then reading getBoundingClientRect(), then
+  //    calling setShiftPx(shift). That broke on a *second* hover (mouse
+  //    off, then back on): the freshly computed shift is often identical
+  //    to the current shiftPx state (same trigger, same boundary — nothing
+  //    moved), and React bails out of re-rendering when a state setter is
+  //    called with a value equal to the current one (Object.is check). The
+  //    DOM was left holding whatever the imperative reset-to-unshifted
+  //    line wrote at the *top* of this function, never overwritten by
+  //    React's own controlled style, since React never re-ran — the
+  //    bubble rendered off-center/overflowing on every second-and-later
+  //    hover. Fixed by never mutating the DOM here: instead, mathematically
+  //    subtract the *currently applied* shift back out of the measured
+  //    rect to recover the same unshifted baseline.
+  //
+  // 2. That "currently applied shift" can't be read from the `shiftPx`
+  //    state variable via closure, either — the mount effect below
+  //    registers a `resize` listener exactly once (its dependency array is
+  //    just `[message]`, which never changes after mount), so that
+  //    listener permanently holds the `clamp` closure — and thus the
+  //    `shiftPx` value — from the very first render. Any resize handled
+  //    after the bubble had already been shifted once would undo the wrong
+  //    (stale, usually 0) amount. Fixed with `shiftPxRef`, updated
+  //    synchronously in the same place `setShiftPx` is called — always
+  //    current regardless of which closure happens to be calling `clamp`.
+  function clamp() {
+    const margin = 8
+    const el = bubbleRef.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    const unshiftedRight = rect.right - shiftPxRef.current
+    const unshiftedLeft = rect.left - shiftPxRef.current
+    const boundary = getClipBoundary(el)
+    let shift = 0
+    if (unshiftedRight > boundary.right - margin) {
+      shift = boundary.right - margin - unshiftedRight
+    } else if (unshiftedLeft < boundary.left + margin) {
+      shift = boundary.left + margin - unshiftedLeft
+    }
+    shiftPxRef.current = shift
+    setShiftPx(shift)
+  }
 
   useLayoutEffect(() => {
-    const margin = 8
-
-    function clamp() {
-      const el = bubbleRef.current
-      if (!el) return
-      // Measure against the bubble's own un-shifted centered position each
-      // time, not the previous (already-shifted) rect — otherwise repeated
-      // measurements would compound the correction.
-      el.style.transform = 'translateX(-50%)'
-      const rect = el.getBoundingClientRect()
-      const boundary = getClipBoundary(el)
-      let shift = 0
-      if (rect.right > boundary.right - margin) {
-        shift = boundary.right - margin - rect.right
-      } else if (rect.left < boundary.left + margin) {
-        shift = boundary.left + margin - rect.left
-      }
-      setShiftPx(shift)
-    }
-
+    // This mount-time measurement is necessarily approximate when the
+    // tooltip mounts inside Modal.tsx: Modal sets `mounted` (which is what
+    // renders this component's subtree at all) synchronously, before its
+    // own scale-95→scale-100 entrance transition has played out — so this
+    // first clamp() can run while the dialog is still visually scaled
+    // down, computing a boundary/shift in a coordinate space that's ~5%
+    // off from the settled, fully-open dialog. Harmless on its own (the
+    // `open`/`onMouseEnter` recomputes below run again once the tooltip
+    // is actually about to be shown, which is always after a real user has
+    // had time to notice and move toward it, i.e. well past the 150ms
+    // transition) — this effect just gets the shift roughly right before
+    // that point, and handles plain window resizes after mount.
     clamp()
     window.addEventListener('resize', clamp)
     return () => window.removeEventListener('resize', clamp)
   }, [message])
 
   return (
-    <span className="group relative inline-flex">
+    <span className="group relative inline-flex" onMouseEnter={clamp}>
       <button
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => {
+          // Recompute right before opening — the mount-time measurement
+          // above can be stale (see its comment), and by the time a user
+          // actually clicks, any entrance animation on an ancestor modal
+          // has long since settled, so this reflects real, final geometry.
+          if (!open) clamp()
+          setOpen((o) => !o)
+        }}
         aria-expanded={open}
         aria-label={ariaLabel}
         className={triggerClassName}

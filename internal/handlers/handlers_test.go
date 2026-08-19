@@ -166,6 +166,7 @@ type pieceResponse struct {
 	BeatsPerMeasure *int            `json:"beatsPerMeasure"`
 	FileHash        string          `json:"fileHash"`
 	SourceBookID    *int64          `json:"sourceBookId"`
+	SourceBookTitle *string         `json:"sourceBookTitle"`
 	PageCount       int             `json:"pageCount"`
 	ThumbnailPage   int             `json:"thumbnailPage"`
 }

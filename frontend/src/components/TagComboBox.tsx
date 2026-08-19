@@ -1,5 +1,5 @@
 import { useRef, useState, type KeyboardEvent } from 'react'
-import { IconChevronRight, IconXFilled } from '@tabler/icons-react'
+import { IconArrowRight, IconXFilled } from '@tabler/icons-react'
 import type { Tag } from '../api/types'
 import { InheritedNote } from './InheritedNote'
 
@@ -155,12 +155,21 @@ export function TagComboBox({
                     // flex/line-height centering lines it up reliably
                     // against the key names next to it. An icon component
                     // has a known, symmetric bounding box, so items-center
-                    // on the row actually centers it. Muted grey, not
-                    // accent — reads as inert decoration next to the real
-                    // × button, not a second control.
-                    <IconChevronRight
+                    // on the row actually centers it.
+                    //
+                    // arrow-right (not chevron-right), full-opacity
+                    // text-ink-soft — settled after comparing 15 outline/
+                    // filled candidates directly in this field. Not
+                    // clickable (no onClick, no hover state, no cursor
+                    // change), so it doesn't need to be faint to read as
+                    // inert. Deliberately scoped to this editable field
+                    // only — the read-only key-sequence pills elsewhere
+                    // (TagPills.tsx, PiecePage.tsx/PieceViewSample.tsx)
+                    // keep their own plain "›" text-glyph separator,
+                    // untouched.
+                    <IconArrowRight
                       size={15}
-                      className="shrink-0 text-ink-soft/40"
+                      className="shrink-0 text-ink-soft"
                       aria-hidden="true"
                     />
                   )}

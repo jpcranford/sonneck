@@ -19,6 +19,7 @@ import { InfoTooltip } from './InfoTooltip'
 import { InheritedNote } from './InheritedNote'
 import { TagComboBox } from './TagComboBox'
 import { SingleSelect } from './SingleSelect'
+import { SourceBookField } from './SourceBookField'
 import { PageCycleControl } from './PageCycleControl'
 
 // The real Piece Properties Edit Menu (design doc §15) — built from the
@@ -50,6 +51,7 @@ interface FormValues {
   description: string
   userNotes: string
   practiceStatus: string
+  sourceBookId: number | null
   sourcePageStart: string
   sourcePageEnd: string
   duration: string
@@ -92,6 +94,7 @@ function pieceToFormValues(piece: Piece): FormValues {
     description: ownValue(piece.description),
     userNotes: piece.userNotes ?? '',
     practiceStatus: piece.practiceStatus ?? '',
+    sourceBookId: piece.sourceBookId,
     sourcePageStart: piece.sourcePageStart != null ? String(piece.sourcePageStart) : '',
     sourcePageEnd: piece.sourcePageEnd != null ? String(piece.sourcePageEnd) : '',
     duration: piece.duration != null ? secondsToMMSS(piece.duration) : '',
@@ -139,6 +142,7 @@ function formValuesToWriteRequest(data: FormValues, piece: Piece): PieceWriteReq
     userTags: data.userTags.map((t) => t.name),
     practiceStatus: (data.practiceStatus || null) as PracticeStatus | null,
     imslpNumber: stripImslpPrefix(data.imslpNumber),
+    sourceBookId: data.sourceBookId,
     sourcePageStart: toIntOrNull(data.sourcePageStart),
     sourcePageEnd: toIntOrNull(data.sourcePageEnd),
     duration: data.duration.trim() === '' ? null : mmssToSeconds(data.duration),
@@ -292,15 +296,13 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
               -mx-6 + px-6 (bleeding past this header's own padding, then
               adding it straight back as this element's own padding)
               full-bleeds the line to the dialog's true edges instead of
-              stopping at the same content width as the fields below — at
-              1px it read as just another field border while scrolling,
-              easy to lose track of as the one that actually separates
-              the pinned header from the scrolling form. border-b-[1.5px]
-              (vs. the 1px borders everywhere else in this modal) is the
-              other half of making it read as a structural divider rather
-              than another box edge. Locked design: mockup at
-              /mockup/edit-piece-modal, approved 2026-08-18. */}
-          <div className="-mx-6 border-b-[1.5px] border-border px-6 pb-3">
+              stopping at the same content width as the fields below.
+              Standard 1px weight (tried 1.5px briefly to make it read as
+              more of a structural divider; reverted — 1px plus the
+              full-bleed already does that job). Locked design: mockup at
+              /mockup/edit-piece-modal, approved 2026-08-18, revised
+              2026-08-19. */}
+          <div className="-mx-6 border-b border-border px-6 pb-3">
             <button
               type="button"
               onClick={() => setPreviewOpen((o) => !o)}
@@ -416,9 +418,9 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
           </div>
         </div>
 
-        {/* Piece Details */}
+        {/* Frontmatter (was "Piece Details" — renamed 2026-08-19) */}
         <div className="flex flex-col gap-3 border-t border-border pt-4">
-          <SectionHeading>Piece Details</SectionHeading>
+          <SectionHeading>Frontmatter</SectionHeading>
           <div className="flex flex-wrap gap-3">
             <div className="flex min-w-[250px] flex-1 flex-col gap-1">
               <label htmlFor="f-opus" className="flex items-center gap-1 text-sm text-ink-soft">
@@ -517,30 +519,6 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
               />
             )}
           </div>
-          <div className="flex gap-3">
-            <div className="flex flex-1 flex-col gap-1">
-              <label htmlFor="f-page-start" className="text-sm text-ink-soft">
-                Book page start
-              </label>
-              <input
-                id="f-page-start"
-                type="number"
-                className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-                {...register('sourcePageStart')}
-              />
-            </div>
-            <div className="flex flex-1 flex-col gap-1">
-              <label htmlFor="f-page-end" className="text-sm text-ink-soft">
-                Book page end
-              </label>
-              <input
-                id="f-page-end"
-                type="number"
-                className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-                {...register('sourcePageEnd')}
-              />
-            </div>
-          </div>
           <div className="flex flex-col gap-1">
             <label htmlFor="f-description" className="text-sm text-ink-soft">
               Description
@@ -554,9 +532,64 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
           </div>
         </div>
 
-        {/* Classification */}
+        {/* Book Details (new 2026-08-19, was "Source Details") — the Source
+            Book search field, plus the page range split out of
+            Frontmatter into its own section so it reads as "where this
+            piece lives inside its source book" rather than bundled with
+            the piece's own bibliographic fields. Source Book sits above
+            the page range — picking a different book is the thing that
+            makes "page 22–24 of what?" answerable, so it reads first.
+            key={piece.id} forces a full remount (resetting the field's
+            internal search-query text) whenever this modal is reused for
+            a different piece, rather than only when it unmounts. */}
         <div className="flex flex-col gap-3 border-t border-border pt-4">
-          <SectionHeading>Classification</SectionHeading>
+          <SectionHeading>Book Details</SectionHeading>
+          <Controller
+            name="sourceBookId"
+            control={control}
+            render={({ field }) => (
+              <SourceBookField
+                key={piece.id}
+                value={field.value}
+                onChange={field.onChange}
+                initialTitle={piece.sourceBookTitle ?? null}
+              />
+            )}
+          />
+          <div className="flex gap-3">
+            <div className="flex flex-1 flex-col gap-1">
+              <label htmlFor="f-page-start" className="text-sm text-ink-soft">
+                Start page
+              </label>
+              <input
+                id="f-page-start"
+                type="number"
+                className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+                {...register('sourcePageStart')}
+              />
+            </div>
+            <div className="flex flex-1 flex-col gap-1">
+              <label htmlFor="f-page-end" className="text-sm text-ink-soft">
+                End page
+              </label>
+              <input
+                id="f-page-end"
+                type="number"
+                className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+                {...register('sourcePageEnd')}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Musical Details (was "Classification", then briefly "Piece
+            Details" mid-rename — renamed twice 2026-08-19). Key(s)/Sheet
+            type/Instruments, plus Duration moved down to the end of this
+            section (was its own top-level "Duration" section). Your Tags
+            moved out to Personal — it's the user's own organizational
+            label, not a musical-classification fact about the piece. */}
+        <div className="flex flex-col gap-3 border-t border-border pt-4">
+          <SectionHeading>Musical Details</SectionHeading>
           <Controller
             name="keys"
             control={control}
@@ -578,7 +611,7 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
             control={control}
             render={({ field }) => (
               <SingleSelect
-                label="Sheet Type"
+                label="Sheet type"
                 options={sheetTypeSelectOptions}
                 value={field.value}
                 onChange={field.onChange}
@@ -606,52 +639,16 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
               />
             )}
           />
-          <Controller
-            name="userTags"
-            control={control}
-            render={({ field }) => (
-              <TagComboBox
-                label="Your Tags"
-                options={userTagOptions}
-                selected={field.value}
-                multiple
-                onChange={field.onChange}
-              />
-            )}
-          />
-        </div>
 
-        {/* Personal */}
-        <div className="flex flex-col gap-3 border-t border-border pt-4">
-          <SectionHeading>Personal</SectionHeading>
-          <Controller
-            name="practiceStatus"
-            control={control}
-            render={({ field }) => (
-              <SingleSelect
-                label="Practice status"
-                options={PRACTICE_STATUS_OPTIONS}
-                value={field.value}
-                onChange={field.onChange}
-              />
-            )}
-          />
-          <div className="flex flex-col gap-1">
-            <label htmlFor="f-notes" className="text-sm text-ink-soft">
-              Your notes
-            </label>
-            <textarea
-              id="f-notes"
-              rows={2}
-              className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-              {...register('userNotes')}
-            />
-          </div>
-        </div>
-
-        {/* Duration */}
-        <div className="flex flex-col gap-3 border-t border-border pt-4">
-          <SectionHeading>Duration</SectionHeading>
+          {/* Duration — manually entered as mm:ss (this input's whole
+              reason to exist), stored server-side as an integer of
+              seconds; the frontend only ever shows/accepts mm:ss. The
+              tempo-calc fields live behind a small faint disclosure below
+              the input — same chevron + text-xs/60 convention as the
+              Piece View's own "Tempo details" disclosure (PiecePage.tsx),
+              which is itself commented as matching this edit menu;
+              duration is what matters day-to-day, the calc fields are a
+              supporting, occasionally-needed alternate path to it. */}
           <div className="flex flex-col gap-1">
             <label htmlFor="f-duration" className="text-sm text-ink-soft">
               Duration (mm:ss)
@@ -726,6 +723,49 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
                 </button>
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Personal — Your Tags moved here from Musical Details above
+            (it's the user's own organizational label, not a musical fact
+            about the piece). */}
+        <div className="flex flex-col gap-3 border-t border-border pt-4">
+          <SectionHeading>Personal</SectionHeading>
+          <Controller
+            name="practiceStatus"
+            control={control}
+            render={({ field }) => (
+              <SingleSelect
+                label="Practice status"
+                options={PRACTICE_STATUS_OPTIONS}
+                value={field.value}
+                onChange={field.onChange}
+              />
+            )}
+          />
+          <Controller
+            name="userTags"
+            control={control}
+            render={({ field }) => (
+              <TagComboBox
+                label="Your tags"
+                options={userTagOptions}
+                selected={field.value}
+                multiple
+                onChange={field.onChange}
+              />
+            )}
+          />
+          <div className="flex flex-col gap-1">
+            <label htmlFor="f-notes" className="text-sm text-ink-soft">
+              Your notes
+            </label>
+            <textarea
+              id="f-notes"
+              rows={2}
+              className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+              {...register('userNotes')}
+            />
           </div>
         </div>
       </form>

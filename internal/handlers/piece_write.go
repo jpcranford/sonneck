@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"strings"
 
 	"github.com/jpcranford/sonneck/internal/api"
@@ -34,6 +35,24 @@ func applyPieceWriteRequest(ctx context.Context, q repo.Queryer, p *models.Piece
 	p.UserNotes = req.UserNotes
 	p.PracticeStatus = req.PracticeStatus
 	p.ImslpNumber = req.ImslpNumber
+
+	// Must reference a real Book — checked explicitly here rather than
+	// left for repo.ResolveEffective to discover later (inside
+	// ValidatePiece), which would surface a bad id as an opaque
+	// infrastructure error instead of a clean field-level validation
+	// message. nil is a legitimate value (design doc §3: Book is entirely
+	// optional) and clears the association, same full-replace rule as
+	// every other field here — it's only a non-nil-but-wrong id that's
+	// rejected.
+	if req.SourceBookID != nil {
+		if _, err := repo.GetBookByID(ctx, q, *req.SourceBookID); err != nil {
+			if errors.Is(err, repo.ErrNotFound) {
+				return api.ValidationErrors{{Field: "sourceBookId", Message: "book not found"}}
+			}
+			return err
+		}
+	}
+	p.SourceBookID = req.SourceBookID
 	p.SourcePageStart = req.SourcePageStart
 	p.SourcePageEnd = req.SourcePageEnd
 	p.BPM = req.BPM

@@ -1,9 +1,11 @@
 import { useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import {
+  IconArrowRight,
   IconChevronDown,
   IconChevronRight,
   IconInfoCircle,
+  IconSearch,
   IconXFilled,
 } from '@tabler/icons-react'
 import { Modal } from '../components/Modal'
@@ -20,7 +22,7 @@ import { useMockupTitle } from '../lib/useMockupTitle'
 // standalone route since (no API/local dev data needed to view the
 // design), and manually resynced to the real build on 2026-08-18 after
 // several rounds of real-build changes had drifted from it — section
-// order (Piece Details before Classification), the collapsible page
+// order (the first section before the second), the collapsible page
 // preview, key search aliasing, repeated keys, and current Sheet Type
 // values. Its own TagComboBox/SingleSelect/InheritedNote stay local
 // duplicates rather than importing the real shared components (this page
@@ -28,6 +30,15 @@ import { useMockupTitle } from '../lib/useMockupTitle'
 // preview's PageCycleControl, key search's matchesKeyQuery — get imported
 // directly, since duplicating actual logic (not just markup) is exactly
 // the kind of drift risk this resync exists to avoid repeating.
+//
+// 2026-08-18 (later same day) — section headings renamed, MOCKUP ONLY,
+// pending approval before porting to the real EditPieceModal.tsx: the
+// section formerly called "Piece Details" is now "Frontmatter"; the
+// section formerly called "Classification" is now "Piece Details". The
+// real modal still uses the old names ("Piece Details" / "Classification")
+// until this is explicitly approved — don't let the shared name "Piece
+// Details" between the old real-modal section and the new mockup section
+// cause confusion; they refer to different form sections.
 // ---------------------------------------------------------------------
 
 interface TagOption {
@@ -84,6 +95,7 @@ const PRACTICE_STATUS_OPTIONS = [
 ]
 
 const mockBook = {
+  id: 1,
   bookTitle: 'Album für die Jugend, Op. 68',
   composer: 'Robert Schumann',
   yearWritten: '1848',
@@ -93,6 +105,23 @@ const mockBook = {
   imslpNumber: 'IMSLP04154',
   instruments: [INSTRUMENT_OPTIONS[0]],
 }
+
+// Candidate books for the Source Book search field below — standing in for
+// a real GET /api/books?q=... lookup (same list this mockup's sibling
+// route, BooksLibrarySample.tsx, seeds its own gallery with, so the two
+// mockups feel like they're describing the same library). mockBook above
+// is always option [0] here, so the field's default text matches the
+// piece's actual current source book.
+const SOURCE_BOOK_OPTIONS = [
+  { id: 1, bookTitle: 'Album für die Jugend, Op. 68' },
+  { id: 2, bookTitle: 'The Real Book — Sixth Edition' },
+  { id: 3, bookTitle: '24 Préludes, Op. 28' },
+  { id: 4, bookTitle: 'Sonatas and Partitas for Solo Violin' },
+  { id: 5, bookTitle: 'Piano Sonatas, Volume I' },
+  { id: 6, bookTitle: 'Anthology of American Folk Songs' },
+  { id: 7, bookTitle: 'Suite bergamasque' },
+  { id: 8, bookTitle: 'The Nutcracker Suite, Op. 71a (Piano Reduction)' },
+]
 
 // Deliberately mixes overridden and inherited book-inheritable fields, so
 // both states of the "Inherited from book" UI are visible at once:
@@ -115,6 +144,7 @@ interface FormValues {
   description: string
   userNotes: string
   practiceStatus: string
+  sourceBookId: number | null
   sourcePageStart: string
   sourcePageEnd: string
   duration: string
@@ -143,6 +173,7 @@ const defaultValues: FormValues = {
   description: "A short, wistful A-minor miniature from the Album — one of the more melancholy entries.",
   userNotes: 'Left hand voicing in m.9 keeps tripping me up — slow it down to 60bpm next time.',
   practiceStatus: 'Learning',
+  sourceBookId: mockBook.id,
   sourcePageStart: '22',
   sourcePageEnd: '24',
   duration: '1:35',
@@ -367,12 +398,25 @@ function TagComboBox({
                     // amount of flex/line-height centering lines it up
                     // reliably against the key names next to it. An icon
                     // component has a known, symmetric bounding box, so
-                    // items-center on the row actually centers it. Muted
-                    // grey, not accent — reads as inert decoration next
-                    // to the real × button, not a second control.
-                    <IconChevronRight
+                    // items-center on the row actually centers it.
+                    //
+                    // arrow-right, not chevron-right — settled after
+                    // comparing 15 outline/filled candidates directly in
+                    // this field (see the removed gallery this route used
+                    // to render above the modal). Deliberately scoped to
+                    // this *editable* field only: the read-only pill
+                    // displays elsewhere (TagPills.tsx, PiecePage.tsx/
+                    // PieceViewSample.tsx's own key sequence) keep their
+                    // existing plain "›" text-glyph separator, untouched —
+                    // a distinct, simpler treatment for a non-interactive
+                    // context, not something this decision overrides.
+                    // Full-opacity text-ink-soft (not clickable — no
+                    // onClick, no hover state, no cursor change — so it
+                    // doesn't need to be faint to read as inert; darker is
+                    // just more legible as a separator).
+                    <IconArrowRight
                       size={15}
-                      className="shrink-0 text-ink-soft/40"
+                      className="shrink-0 text-ink-soft"
                       aria-hidden="true"
                     />
                   )}
@@ -497,7 +541,50 @@ function SingleSelect({
   onCopy?: () => void
 }) {
   const [open, setOpen] = useState(false)
+  // Which option row ArrowUp/Down move between and Enter would pick — set
+  // to the currently selected option (or 0) whenever the menu opens, same
+  // "start somewhere sensible" convention as TagComboBox's own
+  // highlightedIndex, just seeded from the current value instead of
+  // always 0 since there's always exactly one already-selected option
+  // here (TagComboBox has no equivalent "current value" to seed from).
+  const [highlightedIndex, setHighlightedIndex] = useState(0)
   const selected = options.find((opt) => opt.value === value)
+
+  function openMenu() {
+    const currentIndex = options.findIndex((opt) => opt.value === value)
+    setHighlightedIndex(currentIndex >= 0 ? currentIndex : 0)
+    setOpen(true)
+  }
+
+  function selectOption(opt: { value: string; label: string }) {
+    onChange(opt.value)
+    setOpen(false)
+  }
+
+  // ArrowUp/Down opens the (closed) menu seeded at the current value, or
+  // cycles the highlighted row (wrapping both ends) when already open;
+  // Enter/Space picks whichever row is highlighted. Mirrors TagComboBox's
+  // handleKeyDown, adapted for a fixed option list with no text input to
+  // type into.
+  function handleKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      if (!open) openMenu()
+      else setHighlightedIndex((i) => (i + 1) % options.length)
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      if (!open) openMenu()
+      else setHighlightedIndex((i) => (i - 1 + options.length) % options.length)
+    } else if (event.key === 'Enter' || event.key === ' ') {
+      if (open) {
+        event.preventDefault()
+        const opt = options[highlightedIndex]
+        if (opt) selectOption(opt)
+      }
+      // Closed: let the native click-on-Enter/Space behavior open it via
+      // the button's own onClick below — no preventDefault needed.
+    }
+  }
 
   return (
     <div className="flex flex-col gap-1">
@@ -505,7 +592,8 @@ function SingleSelect({
       <div className="relative">
         <button
           type="button"
-          onClick={() => setOpen((o) => !o)}
+          onClick={() => (open ? setOpen(false) : openMenu())}
+          onKeyDown={handleKeyDown}
           onBlur={() => setTimeout(() => setOpen(false), 150)}
           className="flex w-full items-center justify-between rounded-md border border-border bg-paper-raised px-3 py-2 text-left text-ink focus:outline focus:outline-2 focus:outline-accent focus:outline-offset-2"
         >
@@ -514,18 +602,15 @@ function SingleSelect({
         </button>
         {open && (
           <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border border-border bg-paper-raised py-1 shadow-lg">
-            {options.map((opt) => (
+            {options.map((opt, index) => (
               <button
                 key={opt.value}
                 type="button"
                 onMouseDown={(event) => event.preventDefault()}
-                onClick={() => {
-                  onChange(opt.value)
-                  setOpen(false)
-                }}
+                onClick={() => selectOption(opt)}
                 className={`block w-full px-3 py-2 text-left text-sm hover:bg-accent-soft ${
                   opt.value === value ? 'text-accent' : 'text-ink'
-                }`}
+                } ${index === highlightedIndex ? 'bg-accent-soft' : ''}`}
               >
                 {opt.label}
               </button>
@@ -534,6 +619,129 @@ function SingleSelect({
         )}
       </div>
       {!value && bookValue && onCopy && <InheritedNote bookValue={bookValue} onCopy={onCopy} />}
+    </div>
+  )
+}
+
+// Search-as-you-type book picker for the piece's sourceBookId (Source
+// Details, above the page-range fields). Styled like a plain text field
+// (Title/Composer above) rather than TagComboBox's pill-input treatment —
+// there's exactly one value here, not a set, and it's picked from an
+// existing catalog rather than typed/created freehand the way a tag is, so
+// it reads better as "search" than "tag entry." A left-aligned search icon
+// makes that read obvious at a glance. Real build: options would come from
+// a debounced GET /api/books?q=... (design doc §11's existing search-as-
+// you-type convention), and selecting a result is what actually sets the
+// piece's sourceBookId — this field IS the book-selection mechanism, not a
+// display of it.
+function SourceBookField({
+  value,
+  onChange,
+  options,
+}: {
+  value: number | null
+  onChange: (next: number | null) => void
+  options: { id: number; bookTitle: string }[]
+}) {
+  const selectedBook = options.find((b) => b.id === value)
+  const [query, setQuery] = useState(selectedBook?.bookTitle ?? '')
+  const [open, setOpen] = useState(false)
+  // Which result row Enter would pick — arrow keys move it, typing resets
+  // it back to 0. Every dropdown-style field in this app must support
+  // ArrowUp/Down/Enter, not just TagComboBox/SingleSelect.
+  const [highlightedIndex, setHighlightedIndex] = useState(0)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const filtered = options
+    .filter((b) => b.bookTitle.toLowerCase().includes(query.toLowerCase()))
+    .slice(0, 6)
+
+  function selectBook(book: { id: number; bookTitle: string }) {
+    onChange(book.id)
+    setQuery(book.bookTitle)
+    setHighlightedIndex(0)
+    setOpen(false)
+    inputRef.current?.blur()
+  }
+
+  // ArrowUp/Down cycles the highlighted result (wrapping both ends);
+  // Enter picks whichever row is currently highlighted. No create-new row
+  // to fall through to here (unlike TagComboBox) — a source book must
+  // already exist, so Enter is simply a no-op when there are no results.
+  function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (!open || filtered.length === 0) return
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      setHighlightedIndex((i) => (i + 1) % filtered.length)
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      setHighlightedIndex((i) => (i - 1 + filtered.length) % filtered.length)
+    } else if (event.key === 'Enter') {
+      event.preventDefault()
+      selectBook(filtered[highlightedIndex])
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-1">
+      <label htmlFor="f-source-book" className="flex items-center gap-1 text-sm text-ink-soft">
+        Source book
+        <InfoTooltip
+          message="Use this to match with an existing book. If the book hasn't been created yet, go do that and come back here."
+          ariaLabel="What Source book means"
+          triggerClassName="text-ink-soft/60 hover:text-ink-soft"
+        >
+          <IconInfoCircle size={13} />
+        </InfoTooltip>
+      </label>
+      <div className="relative">
+        <IconSearch
+          size={15}
+          className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-soft/60"
+        />
+        <input
+          ref={inputRef}
+          id="f-source-book"
+          value={query}
+          onChange={(event) => {
+            setQuery(event.target.value)
+            setOpen(true)
+            setHighlightedIndex(0)
+            // Typing invalidates whatever was previously selected until a
+            // suggestion is actually clicked — same "no half-matched state"
+            // principle as TagComboBox, just without a create-new fallback
+            // (a source book is picked from the existing catalog, not
+            // typed into existence here).
+            if (event.target.value !== selectedBook?.bookTitle) onChange(null)
+          }}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setTimeout(() => setOpen(false), 150)}
+          onKeyDown={handleKeyDown}
+          placeholder="Search books by title…"
+          className="w-full rounded-md border border-border bg-paper-raised py-2 pr-3 pl-9 text-ink"
+        />
+        {open && query.trim() !== '' && (
+          <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border border-border bg-paper-raised py-1 shadow-lg">
+            {filtered.length > 0 ? (
+              filtered.map((book, index) => (
+                <button
+                  key={book.id}
+                  type="button"
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => selectBook(book)}
+                  className={`block w-full px-3 py-2 text-left text-sm hover:bg-accent-soft ${
+                    book.id === value ? 'text-accent' : 'text-ink'
+                  } ${index === highlightedIndex ? 'bg-accent-soft' : ''}`}
+                >
+                  {book.bookTitle}
+                </button>
+              ))
+            ) : (
+              <p className="px-3 py-2 text-sm text-ink-soft/60 italic">No matching books</p>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -661,14 +869,12 @@ export function EditPieceModalMockup() {
                 -mx-6 + px-6 (bleeding past this header's own padding, then
                 adding it straight back as this element's own padding) full-
                 bleeds the line to the dialog's true edges instead of
-                stopping at the same content width as the fields below —
-                at 1px it read as just another field border while
-                scrolling, easy to lose track of as the one that actually
-                separates the pinned header from the scrolling form.
-                border-b-[1.5px] (vs. the 1px borders everywhere else in
-                this modal) is the other half of making it read as a
-                structural divider rather than another box edge. */}
-            <div className="-mx-6 border-b-[1.5px] border-border px-6 pb-3">
+                stopping at the same content width as the fields below.
+                Back to the standard 1px weight used everywhere else in
+                this modal (tried 1.5px briefly to make it read as more of
+                a structural divider; reverted — 1px plus the full-bleed
+                already does that job). */}
+            <div className="-mx-6 border-b border-border px-6 pb-3">
               <button
                 type="button"
                 onClick={() => setPreviewOpen((o) => !o)}
@@ -771,9 +977,9 @@ export function EditPieceModalMockup() {
             </div>
           </div>
 
-          {/* Piece Details */}
+          {/* Frontmatter (was "Piece Details" — renamed, see Classification below) */}
           <div className="flex flex-col gap-3 border-t border-border pt-4">
-            <SectionHeading>Piece Details</SectionHeading>
+            <SectionHeading>Frontmatter</SectionHeading>
             {/* Opus/Year written share a row on wide viewports, same
                 250px-floor pattern as Composer/Arranger above. */}
             <div className="flex flex-wrap gap-3">
@@ -875,30 +1081,6 @@ export function EditPieceModalMockup() {
                 />
               )}
             </div>
-            <div className="flex gap-3">
-              <div className="flex flex-1 flex-col gap-1">
-                <label htmlFor="f-page-start" className="text-sm text-ink-soft">
-                  Book page start
-                </label>
-                <input
-                  id="f-page-start"
-                  type="number"
-                  className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-                  {...register('sourcePageStart')}
-                />
-              </div>
-              <div className="flex flex-1 flex-col gap-1">
-                <label htmlFor="f-page-end" className="text-sm text-ink-soft">
-                  Book page end
-                </label>
-                <input
-                  id="f-page-end"
-                  type="number"
-                  className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-                  {...register('sourcePageEnd')}
-                />
-              </div>
-            </div>
             <div className="flex flex-col gap-1">
               <label htmlFor="f-description" className="text-sm text-ink-soft">
                 Description
@@ -912,9 +1094,56 @@ export function EditPieceModalMockup() {
             </div>
           </div>
 
-          {/* Classification */}
+          {/* Book Details (new, was "Source Details") — the book page
+              range, split out of Frontmatter into its own section so it
+              reads as "where this piece lives inside its source book"
+              rather than bundled with the piece's own bibliographic
+              fields. Source Book itself (new) sits above the page range —
+              picking a different book is the thing that makes "page
+              22–24 of what?" answerable, so it reads first. */}
           <div className="flex flex-col gap-3 border-t border-border pt-4">
-            <SectionHeading>Classification</SectionHeading>
+            <SectionHeading>Book Details</SectionHeading>
+            <Controller
+              name="sourceBookId"
+              control={control}
+              render={({ field }) => (
+                <SourceBookField value={field.value} onChange={field.onChange} options={SOURCE_BOOK_OPTIONS} />
+              )}
+            />
+            <div className="flex gap-3">
+              <div className="flex flex-1 flex-col gap-1">
+                <label htmlFor="f-page-start" className="text-sm text-ink-soft">
+                  Start page
+                </label>
+                <input
+                  id="f-page-start"
+                  type="number"
+                  className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+                  {...register('sourcePageStart')}
+                />
+              </div>
+              <div className="flex flex-1 flex-col gap-1">
+                <label htmlFor="f-page-end" className="text-sm text-ink-soft">
+                  End page
+                </label>
+                <input
+                  id="f-page-end"
+                  type="number"
+                  className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+                  {...register('sourcePageEnd')}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Musical Details (was "Piece Details", which was itself renamed
+              from "Classification" earlier the same day — Key(s)/Sheet
+              Type/Instruments, plus Duration moved down to the end of this
+              section below. Your Tags moved out to Personal — it's the
+              user's own organizational label, not a musical-classification
+              fact about the piece. */}
+          <div className="flex flex-col gap-3 border-t border-border pt-4">
+            <SectionHeading>Musical Details</SectionHeading>
             {/* A piece can genuinely be written in more than one key (e.g.
                 a piece that modulates, or a medley) — multi-select, same
                 combobox/pill pattern as Instruments/Your Tags below, not
@@ -945,7 +1174,7 @@ export function EditPieceModalMockup() {
               control={control}
               render={({ field }) => (
                 <SingleSelect
-                  label="Sheet Type"
+                  label="Sheet type"
                   options={SHEET_TYPE_SELECT_OPTIONS}
                   value={field.value}
                   onChange={field.onChange}
@@ -969,60 +1198,18 @@ export function EditPieceModalMockup() {
                 />
               )}
             />
-            <Controller
-              name="userTags"
-              control={control}
-              render={({ field }) => (
-                <TagComboBox
-                  label="Your Tags"
-                  options={USER_TAG_OPTIONS}
-                  selected={field.value}
-                  multiple
-                  onChange={field.onChange}
-                />
-              )}
-            />
-          </div>
 
-          {/* Personal */}
-          <div className="flex flex-col gap-3 border-t border-border pt-4">
-            <SectionHeading>Personal</SectionHeading>
-            <Controller
-              name="practiceStatus"
-              control={control}
-              render={({ field }) => (
-                <SingleSelect
-                  label="Practice status"
-                  options={PRACTICE_STATUS_OPTIONS}
-                  value={field.value}
-                  onChange={field.onChange}
-                />
-              )}
-            />
-            <div className="flex flex-col gap-1">
-              <label htmlFor="f-notes" className="text-sm text-ink-soft">
-                Your notes
-              </label>
-              <textarea
-                id="f-notes"
-                rows={2}
-                className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-                {...register('userNotes')}
-              />
-            </div>
-          </div>
-
-          {/* Duration — manually entered as mm:ss (this input's whole
-              reason to exist), stored server-side as an integer of
-              seconds; the frontend only ever shows/accepts mm:ss. The
-              tempo-calc fields live behind a small faint disclosure below
-              the input — same chevron + text-xs/60 convention as the
-              Piece View's own "Tempo details" disclosure (PiecePage.tsx),
-              which is itself commented as matching this edit menu; duration
-              is what matters day-to-day, the calc fields are a supporting,
-              occasionally-needed alternate path to it. */}
-          <div className="flex flex-col gap-3 border-t border-border pt-4">
-            <SectionHeading>Duration</SectionHeading>
+            {/* Duration — moved to the end of this section (was its own
+                top-level "Duration" section). Manually entered as mm:ss
+                (this input's whole reason to exist), stored server-side as
+                an integer of seconds; the frontend only ever shows/accepts
+                mm:ss. The tempo-calc fields live behind a small faint
+                disclosure below the input — same chevron + text-xs/60
+                convention as the Piece View's own "Tempo details"
+                disclosure (PiecePage.tsx), which is itself commented as
+                matching this edit menu; duration is what matters day-to-
+                day, the calc fields are a supporting, occasionally-needed
+                alternate path to it. */}
             <div className="flex flex-col gap-1">
               <label htmlFor="f-duration" className="text-sm text-ink-soft">
                 Duration (mm:ss)
@@ -1097,6 +1284,49 @@ export function EditPieceModalMockup() {
                   </button>
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* Personal — Your Tags moved here from Musical Details above
+              (it's the user's own organizational label, not a musical fact
+              about the piece). */}
+          <div className="flex flex-col gap-3 border-t border-border pt-4">
+            <SectionHeading>Personal</SectionHeading>
+            <Controller
+              name="practiceStatus"
+              control={control}
+              render={({ field }) => (
+                <SingleSelect
+                  label="Practice status"
+                  options={PRACTICE_STATUS_OPTIONS}
+                  value={field.value}
+                  onChange={field.onChange}
+                />
+              )}
+            />
+            <Controller
+              name="userTags"
+              control={control}
+              render={({ field }) => (
+                <TagComboBox
+                  label="Your tags"
+                  options={USER_TAG_OPTIONS}
+                  selected={field.value}
+                  multiple
+                  onChange={field.onChange}
+                />
+              )}
+            />
+            <div className="flex flex-col gap-1">
+              <label htmlFor="f-notes" className="text-sm text-ink-soft">
+                Your notes
+              </label>
+              <textarea
+                id="f-notes"
+                rows={2}
+                className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+                {...register('userNotes')}
+              />
             </div>
           </div>
         </form>

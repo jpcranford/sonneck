@@ -136,13 +136,18 @@ func (s *Server) handleConfirmImport(w http.ResponseWriter, r *http.Request) {
 			if err := applyPieceWriteRequest(r.Context(), tx, p, req.Pieces[i]); err != nil {
 				return fmt.Errorf("piece %d (pages %d-%d): %w", i+1, start, end, err)
 			}
-			// The actual extraction range is authoritative here — it must
-			// win over whatever req happened to carry (the wizard's fill
-			// step doesn't collect these; they're seeded from the real
-			// split, editable later via the piece edit menu, design doc
-			// §15). Setting these after applyPieceWriteRequest, not
-			// before, is what makes that override correct rather than a
-			// silent page-range bug.
+			// The actual book/extraction range is authoritative here — it
+			// must win over whatever req happened to carry (the wizard's
+			// fill step doesn't collect a sourceBookId or page range at
+			// all; they're seeded from the real split, editable later via
+			// the piece edit menu, design doc §15). Setting these after
+			// applyPieceWriteRequest, not before, is what makes the
+			// override correct rather than a silent bug — req.Pieces[i]
+			// has no sourceBookId key in its JSON body, so
+			// applyPieceWriteRequest's own (correct, general-case)
+			// full-replace handling of that field would otherwise null out
+			// the &bookID this piece was just constructed with above.
+			p.SourceBookID = &bookID
 			p.SourcePageStart = &start
 			p.SourcePageEnd = &end
 
