@@ -1,14 +1,17 @@
 import { useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
+  IconArrowLeft,
+  IconBook2,
   IconCloudUpload,
+  IconFileMusic,
   IconFileTypePdf,
   IconCircleCheckFilled,
   IconAlertTriangle,
 } from '@tabler/icons-react'
-import { uploadPiece, updatePiece } from '../api/pieces'
+import { getPieceThumbnailUrl, uploadPiece, updatePiece } from '../api/pieces'
 import { ApiError } from '../api/client'
 import type { Piece } from '../api/types'
 
@@ -31,12 +34,12 @@ interface DetailsForm {
   composer: string
 }
 
-type Stage = 'select' | 'uploading' | 'details' | 'success'
+type Stage = 'landing' | 'select' | 'uploading' | 'details' | 'success' | 'book'
 
 export function UploadPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const [stage, setStage] = useState<Stage>('select')
+  const [stage, setStage] = useState<Stage>('landing')
   const [fileError, setFileError] = useState<string | null>(null)
   const [progress, setProgress] = useState(0)
   const [piece, setPiece] = useState<Piece | null>(null)
@@ -97,7 +100,7 @@ export function UploadPage() {
   }
 
   function reset() {
-    setStage('select')
+    setStage('landing')
     setFileError(null)
     setProgress(0)
     setPiece(null)
@@ -108,8 +111,94 @@ export function UploadPage() {
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-6 p-8">
+      {/* Landing fork — "B" from the "Piece or Book?" design review
+          (https://claude.ai/code/artifact/9152253a-3609-40a0-8fef-d17bcda72dba),
+          locked in over a segmented toggle/tabs: these two paths diverge
+          into structurally different flows (one file field vs. the future
+          book-splitting wizard below), not just a different layout of the
+          same data, so it's worth a beat of real explanation rather than a
+          pill someone might not notice has two settings. */}
+      {stage === 'landing' && (
+        <div className="flex w-full max-w-md flex-col gap-4">
+          <h1 className="font-display text-2xl text-ink">What are you uploading?</h1>
+          <div className="flex flex-col gap-3">
+            <button
+              type="button"
+              onClick={() => setStage('select')}
+              className="flex items-start gap-3.5 rounded-xl border-[1.5px] border-border bg-paper-raised p-4 text-left transition-colors hover:border-accent"
+            >
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-paper-sunken text-ink-soft">
+                <IconFileMusic size={19} />
+              </span>
+              <span>
+                <span className="block font-display text-[0.98rem] text-ink">Upload a piece</span>
+                <span className="block text-[0.8rem] text-ink-soft">
+                  One PDF, one piece of music. The common case.
+                </span>
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setStage('book')}
+              className="flex items-start gap-3.5 rounded-xl border-[1.5px] border-border bg-paper-raised p-4 text-left transition-colors hover:border-accent"
+            >
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-paper-sunken text-ink-soft">
+                <IconBook2 size={19} />
+              </span>
+              <span>
+                <span className="block font-display text-[0.98rem] text-ink">Upload a book</span>
+                <span className="block text-[0.8rem] text-ink-soft">
+                  One PDF containing several pieces — we'll walk you through splitting it up.
+                </span>
+              </span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Book-splitting wizard doesn't exist yet (design doc §5) — this
+          stands in for it so the fork above leads somewhere real rather
+          than a dead click, same "shell now, wire up later" treatment as
+          the Favorites/Currently Practicing nav items (ComingSoon). */}
+      {stage === 'book' && (
+        <div className="flex w-full max-w-md flex-col items-center gap-3 text-center">
+          <button
+            type="button"
+            onClick={() => setStage('landing')}
+            className="flex items-center gap-1.5 self-start text-base text-ink-soft hover:text-ink"
+          >
+            <IconArrowLeft size={24} />
+            Back
+          </button>
+          <IconBook2 size={40} className="text-ink-soft" />
+          <h1 className="font-display text-2xl text-ink">Book upload is coming soon</h1>
+          <p className="text-ink-soft">
+            Splitting a book's PDF into individual pieces isn't built yet. For now, you can{' '}
+            <Link to="/books" className="text-accent hover:underline">
+              create a book record from the Books page
+            </Link>{' '}
+            (title/composer only, no file) and upload its pieces one at a time instead.
+          </p>
+          <button
+            type="button"
+            onClick={() => setStage('select')}
+            className="rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent"
+          >
+            Upload a piece instead
+          </button>
+        </div>
+      )}
+
       {stage === 'select' && (
         <div className="flex w-full max-w-md flex-col items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setStage('landing')}
+            className="flex items-center gap-1.5 self-start text-base text-ink-soft hover:text-ink"
+          >
+            <IconArrowLeft size={24} />
+            Back
+          </button>
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
@@ -179,46 +268,65 @@ export function UploadPage() {
       {stage === 'details' && piece && (
         <form
           onSubmit={handleSubmit((data) => saveMutation.mutate(data))}
-          className="flex w-full max-w-md flex-col gap-4"
+          className="flex w-full max-w-2xl flex-col gap-4"
         >
           <h1 className="font-display text-2xl text-ink">Piece details</h1>
-          <div className="flex flex-col gap-1">
-            <label htmlFor="title" className="text-sm text-ink-soft">
-              Title
-            </label>
-            <input
-              id="title"
-              className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-              {...register('title', { required: 'Title is required.', maxLength: 255 })}
-            />
-            {errors.title && <p className="text-sm text-red-700">{errors.title.message}</p>}
+          {/* Large first-page thumbnail so what's about to be saved is
+              visually confirmed, not just taken on faith from the
+              filename — locked design (design-review/upload-details-thumb-
+              preview-v4.png, 2026-08-19): thumb on the left, fields +
+              Save stacked on the right rather than spanning the full row
+              under it. */}
+          <div className="flex flex-col items-start gap-7 sm:flex-row">
+            <div className="w-full max-w-[340px] shrink-0 overflow-hidden rounded-lg border border-border shadow-sm sm:w-[340px]">
+              <img
+                src={getPieceThumbnailUrl(piece.id, piece.thumbnailPage)}
+                alt=""
+                className="block w-full"
+              />
+            </div>
+            <div className="flex w-full min-w-0 flex-1 flex-col gap-4">
+              <div className="flex flex-col gap-1">
+                <label htmlFor="title" className="text-sm text-ink-soft">
+                  Title
+                </label>
+                <input
+                  id="title"
+                  className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+                  {...register('title', { required: 'Title is required.', maxLength: 255 })}
+                />
+                {errors.title && <p className="text-sm text-red-700">{errors.title.message}</p>}
+              </div>
+              <div className="flex flex-col gap-1">
+                <label htmlFor="composer" className="text-sm text-ink-soft">
+                  Composer
+                </label>
+                <input
+                  id="composer"
+                  className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+                  {...register('composer', { required: 'Composer is required.', maxLength: 255 })}
+                />
+                {errors.composer && (
+                  <p className="text-sm text-red-700">{errors.composer.message}</p>
+                )}
+              </div>
+              {saveMutation.isError && (
+                <p className="flex items-center gap-2 text-sm text-red-700">
+                  <IconAlertTriangle size={16} />
+                  {saveMutation.error instanceof ApiError
+                    ? saveMutation.error.message
+                    : 'Could not save. Please try again.'}
+                </p>
+              )}
+              <button
+                type="submit"
+                disabled={saveMutation.isPending}
+                className="rounded-md bg-accent px-4 py-2 font-display text-white disabled:opacity-60"
+              >
+                {saveMutation.isPending ? 'Saving…' : 'Save'}
+              </button>
+            </div>
           </div>
-          <div className="flex flex-col gap-1">
-            <label htmlFor="composer" className="text-sm text-ink-soft">
-              Composer
-            </label>
-            <input
-              id="composer"
-              className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-              {...register('composer', { required: 'Composer is required.', maxLength: 255 })}
-            />
-            {errors.composer && <p className="text-sm text-red-700">{errors.composer.message}</p>}
-          </div>
-          {saveMutation.isError && (
-            <p className="flex items-center gap-2 text-sm text-red-700">
-              <IconAlertTriangle size={16} />
-              {saveMutation.error instanceof ApiError
-                ? saveMutation.error.message
-                : 'Could not save. Please try again.'}
-            </p>
-          )}
-          <button
-            type="submit"
-            disabled={saveMutation.isPending}
-            className="rounded-md bg-accent px-4 py-2 font-display text-white disabled:opacity-60"
-          >
-            {saveMutation.isPending ? 'Saving…' : 'Save'}
-          </button>
         </form>
       )}
 
@@ -233,7 +341,7 @@ export function UploadPage() {
             onClick={reset}
             className="rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent"
           >
-            Upload another piece
+            Upload another file
           </button>
         </div>
       )}

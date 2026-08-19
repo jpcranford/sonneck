@@ -2,7 +2,7 @@ import { useState, type ComponentType } from 'react'
 import { NavLink } from 'react-router-dom'
 import {
   IconLibrary,
-  IconBook,
+  IconBooks,
   IconUser,
   IconUserFilled,
   IconCloudUpload,
@@ -21,7 +21,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { to: '/', label: 'Library', icon: IconLibrary },
   { to: '/composers', label: 'Composers', icon: IconUser },
-  { to: '/books', label: 'Books', icon: IconBook },
+  { to: '/books', label: 'Books', icon: IconBooks },
   { to: '/upload', label: 'Upload', icon: IconCloudUpload },
 ]
 
