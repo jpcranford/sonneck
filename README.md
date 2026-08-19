@@ -90,5 +90,6 @@ Sonneck is named after **Oscar Sonneck** (1873–1928), an American musicologist
 And most importantly, his last name sounded great for an app. ;)
 
 ## Acknowledgements
-
-- The frontend typeface is [Libre Baskerville](https://fonts.google.com/specimen/Libre+Baskerville) by Pablo Impallari, [Google Fonts](https://fonts.google.com/), licensed under the [SIL Open Font License 1.1](https://fonts.google.com/specimen/Libre+Baskerville/license) — [source on GitHub](https://github.com/impallari/Libre-Baskerville). Self-hosted rather than loaded from Google Fonts at runtime.
+- Despite some passing resemblance in name, we are in no way affiliated with a certain blue runs-fast creature. Whatever species it claims to be.
+- My beautiful girlfriend, for helping design the logo
+- The frontend typeface is [Libre Baskerville](https://github.com/impallari/Libre-Baskerville) by Pablo Impallari, [Google Fonts](https://fonts.google.com/), licensed under the [SIL Open Font License 1.1](https://fonts.google.com/specimen/Libre+Baskerville/license). Self-hosted rather than loaded from Google Fonts at runtime.
