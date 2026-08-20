@@ -1,9 +1,13 @@
 package handlers_test
 
 import (
+	"context"
 	"net/http"
 	"strings"
 	"testing"
+
+	"github.com/jpcranford/sonneck/internal/models"
+	"github.com/jpcranford/sonneck/internal/repo"
 )
 
 func TestUploadBook_DedupesOnHashMatch(t *testing.T) {
@@ -199,6 +203,94 @@ func TestListBooks_ReturnsAllAndFiltersByQuery(t *testing.T) {
 	decodeData(t, doJSON(t, h, http.MethodGet, "/api/books?query=Satie", nil), &filtered)
 	if len(filtered) != 1 || filtered[0].BookTitle != "Gymnopédies" {
 		t.Errorf("query=Satie returned %+v, want just the Gymnopédies book", filtered)
+	}
+}
+
+// TestDeleteBook_CascadeDeletesAllPieces is the Book Library context menu's
+// "Delete Book" action end to end — confirmed direct instruction: this
+// removes the Book *and* every Piece referencing it in one action, not the
+// existing orphan-cleanup path (which only ever fires once a book's last
+// piece is already gone via individual piece deletes).
+func TestDeleteBook_CascadeDeletesAllPieces(t *testing.T) {
+	h := newTestServer(t)
+	bookID, _ := uploadBook(t, h, "book.pdf", 4)
+
+	confirmRec := doJSON(t, h, http.MethodPost, apiBooksURL(bookID)+"/confirm-import", map[string]any{
+		"boundaries": []int{2},
+		"pieces": []map[string]any{
+			{"title": "First", "composer": "Someone"},
+			{"title": "Second", "composer": "Someone"},
+		},
+	})
+	var result struct {
+		Pieces []pieceResponse `json:"pieces"`
+	}
+	decodeData(t, confirmRec, &result)
+
+	delRec := doJSON(t, h, http.MethodDelete, apiBooksURL(bookID), nil)
+	if delRec.Code != http.StatusOK {
+		t.Fatalf("delete book: status %d, body %s", delRec.Code, delRec.Body.String())
+	}
+
+	if rec := doJSON(t, h, http.MethodGet, apiBooksURL(bookID), nil); rec.Code != http.StatusNotFound {
+		t.Errorf("book after delete: status %d, want 404", rec.Code)
+	}
+	for _, p := range result.Pieces {
+		if rec := doJSON(t, h, http.MethodGet, apiPiecesURL(p.ID), nil); rec.Code != http.StatusNotFound {
+			t.Errorf("piece %d (%q) after book delete: status %d, want 404", p.ID, p.Title, rec.Code)
+		}
+	}
+
+	// A search that would have matched a deleted piece must also come up
+	// empty — proves the pieces_fts rows were cleaned up, not just the
+	// pieces table (CLAUDE.md > Search: resync must happen in the same
+	// transaction as the mutation).
+	assertSearchCount(t, h, "Someone", 0)
+}
+
+// TestDeleteBook_DoesNotRemoveFileStillReferencedOutsideTheBook mirrors
+// TestDeletePiece_DoesNotRemoveFileStillReferencedByAnotherPiece for the
+// cascade path: storage is content-addressed and piece uploads aren't
+// hash-deduped (CLAUDE.md > File handling), so a piece with no relation to
+// this book at all can legitimately share its on-disk file with one of the
+// book's pieces. Deleting the book must not take that unrelated piece's
+// file down with it.
+func TestDeleteBook_DoesNotRemoveFileStillReferencedOutsideTheBook(t *testing.T) {
+	h, conn := newTestServerWithDB(t)
+	bookID, _ := uploadBook(t, h, "book.pdf", 2)
+
+	confirmRec := doJSON(t, h, http.MethodPost, apiBooksURL(bookID)+"/confirm-import", map[string]any{
+		"boundaries": []int{},
+		"pieces":     []map[string]any{{"title": "In The Book", "composer": "Someone"}},
+	})
+	var result struct {
+		Pieces []pieceResponse `json:"pieces"`
+	}
+	decodeData(t, confirmRec, &result)
+	inBookPiece := result.Pieces[0]
+
+	inBookRow, err := repo.GetPieceByID(context.Background(), conn, inBookPiece.ID)
+	if err != nil {
+		t.Fatalf("fetching in-book piece row: %v", err)
+	}
+	outsideID, err := repo.CreatePiece(context.Background(), conn, &models.Piece{
+		Title:     "Outside The Book",
+		FilePath:  inBookRow.FilePath,
+		FileHash:  inBookRow.FileHash,
+		PageCount: inBookRow.PageCount,
+	})
+	if err != nil {
+		t.Fatalf("fabricating outside piece sharing the same file: %v", err)
+	}
+
+	decodeData(t, doJSON(t, h, http.MethodDelete, apiBooksURL(bookID), nil), nil)
+
+	downloadRec := recordRequest(h, httptestGet(t, apiPiecesURL(outsideID)+"/file"))
+	if downloadRec.Code != http.StatusOK {
+		t.Fatalf("downloading the outside piece after the book (sharing its file) was deleted: status %d, want 200 — the shared file must survive", downloadRec.Code)
+	}
+	if downloadRec.Body.Len() == 0 {
+		t.Error("outside piece's file is empty after the book's deletion")
 	}
 }
 

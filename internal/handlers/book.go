@@ -299,6 +299,117 @@ func (s *Server) handleUpdateBook(w http.ResponseWriter, r *http.Request) {
 	api.WriteData(w, http.StatusOK, resp)
 }
 
+// handleDeleteBook implements the Book Library's context menu "Delete Book"
+// action (frontend, 2026-08-20) — a direct, user-initiated cascade delete:
+// removes the Book and every Piece that references it in one action.
+// Confirmed via direct instruction (cascade, not unlink-and-keep) — this is
+// the single largest blast-radius action in the app, gated by a strong
+// frontend confirmation naming the piece count.
+//
+// Distinct from the existing orphan-cleanup path (handleDeletePiece, which
+// only ever deletes a Book once its *last* referencing Piece is gone one at
+// a time) — this is reachable with pieces still attached and removes them
+// too, in one transaction, same delete-then-file-cleanup-then-log shape as
+// handleDeletePiece just fanned out over every piece up front.
+//
+// File-hash reference counts (CLAUDE.md > File handling: piece uploads
+// aren't deduped, so two pieces can legitimately share a hash — e.g.
+// duplicate blank pages split from the same book) are computed only after
+// *all* of this book's own pieces are already deleted from the table, not
+// piece-by-piece as each is removed — otherwise a still-undeleted sibling
+// piece in the same batch would make an already-deleted piece's file look
+// "still referenced" and wrongly survive the cleanup.
+func (s *Server) handleDeleteBook(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathID(r, "id")
+	if !ok {
+		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid book id")
+		return
+	}
+
+	var book *models.Book
+	var deletedPieces []*models.Piece
+	var fileStillReferenced []bool // parallel to deletedPieces
+
+	err := s.withTx(r.Context(), func(tx *sql.Tx) error {
+		b, err := repo.GetBookByID(r.Context(), tx, id)
+		if err != nil {
+			return err
+		}
+		book = b
+
+		pieceIDs, err := repo.PieceIDsForBook(r.Context(), tx, id)
+		if err != nil {
+			return err
+		}
+
+		pieces := make([]*models.Piece, 0, len(pieceIDs))
+		for _, pieceID := range pieceIDs {
+			p, err := repo.GetPieceByID(r.Context(), tx, pieceID)
+			if err != nil {
+				return err
+			}
+			pieces = append(pieces, p)
+		}
+
+		for _, pieceID := range pieceIDs {
+			if err := repo.DeletePiece(r.Context(), tx, pieceID); err != nil {
+				return err
+			}
+			if err := repo.ResyncSearchIndex(r.Context(), tx, pieceID); err != nil {
+				return err
+			}
+		}
+
+		// Every piece this book referenced is gone from the table now, so
+		// this count only reflects genuinely unrelated pieces/books that
+		// happen to share a hash — see the file comment above.
+		for _, p := range pieces {
+			remaining, err := repo.CountPiecesWithFileHash(r.Context(), tx, p.FileHash)
+			if err != nil {
+				return err
+			}
+			fileStillReferenced = append(fileStillReferenced, remaining > 0)
+		}
+		deletedPieces = pieces
+
+		return repo.DeleteBook(r.Context(), tx, id)
+	})
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+
+	for i, p := range deletedPieces {
+		if !fileStillReferenced[i] {
+			if err := os.Remove(p.FilePath); err != nil && !os.IsNotExist(err) {
+				s.Logger.Error("failed to remove piece file after delete", "error", err, "pieceId", p.ID, "filePath", p.FilePath)
+			}
+		}
+		s.Logger.Info("piece deleted", "pieceId", p.ID, "fileHash", p.FileHash, "title", p.Title)
+	}
+
+	// FilePath is nil only for a manually created book (migration 00014,
+	// the Books library view's "New Book" button) — a real, reachable case
+	// here, unlike the same nil check in handleDeletePiece's orphan-cleanup
+	// path (a book can exist with zero pieces and still have this action
+	// run against it directly).
+	if book.FilePath != nil {
+		if err := os.Remove(*book.FilePath); err != nil && !os.IsNotExist(err) {
+			s.Logger.Error("failed to remove book file after delete", "error", err, "bookId", book.ID, "filePath", *book.FilePath)
+		}
+	}
+	// Same pointer-dereference note as handleDeletePiece's orphan-cleanup
+	// logging — slog's default %v on a *string logs the pointer address.
+	fileHash := "(none)"
+	if book.FileHash != nil {
+		fileHash = *book.FileHash
+	}
+	s.Logger.Info("book deleted", "bookId", book.ID, "fileHash", fileHash, "bookTitle", book.BookTitle,
+		"pieceCount", len(deletedPieces), "reason", "direct delete (cascade)")
+
+	api.WriteData(w, http.StatusOK, map[string]any{"deleted": true, "id": id})
+}
+
 // handleBookPageThumbnail renders (and caches) a single page of a book as
 // a PNG, for the wizard's split step (design doc §5) and the basic piece
 // preview (§7).

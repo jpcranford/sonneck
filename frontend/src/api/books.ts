@@ -1,4 +1,4 @@
-import { apiGet, apiPatch, apiPost, apiUpload } from './client'
+import { apiDelete, apiGet, apiPatch, apiPost, apiUpload } from './client'
 import type {
   Book,
   BookCreateRequest,
@@ -43,6 +43,15 @@ export function getBook(id: number): Promise<Book> {
 
 export function updateBook(id: number, req: BookWriteRequest): Promise<Book> {
   return apiPatch<Book>(`/api/books/${id}`, req)
+}
+
+// Book Library context menu's "Delete Book" — a direct cascade delete
+// (confirmed via direct instruction): removes the Book *and* every Piece
+// referencing it in one action, unlike deletePiece's own orphan-cleanup
+// side effect (which only ever removes a Book once its last piece is
+// already gone, one piece at a time).
+export function deleteBook(id: number): Promise<{ deleted: boolean; id: number }> {
+  return apiDelete(`/api/books/${id}`)
 }
 
 export function getBookPageThumbnailUrl(bookId: number, page: number): string {
