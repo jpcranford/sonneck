@@ -16,12 +16,13 @@ import (
 )
 
 // ConfirmImportRequest is the wizard's steps 2-4 combined (design doc §5):
-// boundaries are the split points (see wizard.ComputePieceRanges), pieces
-// is the per-piece field data collected in step 3, one entry per resulting
-// range — so len(pieces) must equal len(boundaries)+1.
+// ranges are the per-piece page ranges computed by the Split screen's own
+// UI (see wizard.ValidateRanges — the server validates, it doesn't derive),
+// pieces is the per-piece field data collected in step 3, one entry per
+// range in the same order — so len(pieces) must equal len(ranges).
 type ConfirmImportRequest struct {
-	Boundaries []int                   `json:"boundaries"`
-	Pieces     []api.PieceWriteRequest `json:"pieces"`
+	Ranges []wizard.PageRange      `json:"ranges"`
+	Pieces []api.PieceWriteRequest `json:"pieces"`
 }
 
 type stagedPiece struct {
@@ -71,16 +72,16 @@ func (s *Server) handleConfirmImport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ranges, err := wizard.ComputePieceRanges(totalPages, req.Boundaries)
-	if err != nil {
+	if err := wizard.ValidateRanges(totalPages, req.Ranges); err != nil {
 		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, err.Error())
 		return
 	}
-	if len(ranges) != len(req.Pieces) {
+	if len(req.Ranges) != len(req.Pieces) {
 		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError,
-			fmt.Sprintf("expected %d piece(s) (one per range), got %d", len(ranges), len(req.Pieces)))
+			fmt.Sprintf("expected %d piece(s) (one per range), got %d", len(req.Ranges), len(req.Pieces)))
 		return
 	}
+	ranges := req.Ranges
 
 	stagingDir := filepath.Join(s.Cfg.DataDir, "library", "pieces")
 	if err := os.MkdirAll(stagingDir, 0o755); err != nil {

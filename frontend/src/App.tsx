@@ -11,6 +11,10 @@ import { EditPieceModalMockup } from './routes/EditPieceModalMockup'
 import { BooksLibrarySample } from './routes/BooksLibrarySample'
 import { BookDetailsSample } from './routes/BookDetailsSample'
 import { EditBookModalMockup } from './routes/EditBookModalMockup'
+import { UploadBookAboutMockup } from './routes/UploadBookAboutMockup'
+import { UploadBookSplitMockup } from './routes/UploadBookSplitMockup'
+import { UploadBookTitlesMockup } from './routes/UploadBookTitlesMockup'
+import { UploadBookConfirmMockup } from './routes/UploadBookConfirmMockup'
 import { ComposersPage } from './routes/ComposersPage'
 import { FavoritesPage } from './routes/FavoritesPage'
 import { PracticingPage } from './routes/PracticingPage'
@@ -36,6 +40,10 @@ function App() {
         <Route path="mockup/books-library" element={<BooksLibrarySample />} />
         <Route path="mockup/book-details" element={<BookDetailsSample />} />
         <Route path="mockup/edit-book-modal" element={<EditBookModalMockup />} />
+        <Route path="mockup/upload-book-about" element={<UploadBookAboutMockup />} />
+        <Route path="mockup/upload-book-split" element={<UploadBookSplitMockup />} />
+        <Route path="mockup/upload-book-titles" element={<UploadBookTitlesMockup />} />
+        <Route path="mockup/upload-book-confirm" element={<UploadBookConfirmMockup />} />
         <Route path="composers" element={<ComposersPage />} />
         <Route path="favorites" element={<FavoritesPage />} />
         <Route path="practicing" element={<PracticingPage />} />

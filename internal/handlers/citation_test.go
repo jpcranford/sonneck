@@ -14,8 +14,8 @@ func TestCitation_OmitsBlankFieldsAndUsesBookTitle(t *testing.T) {
 	}), nil)
 
 	confirmRec := doJSON(t, h, http.MethodPost, apiBooksURL(bookID)+"/confirm-import", map[string]any{
-		"boundaries": []int{},
-		"pieces":     []map[string]any{{"title": "Toccata", "workOpusNumber": "Op. 42"}},
+		"ranges": []map[string]any{{"start": 1, "end": 4}},
+		"pieces": []map[string]any{{"title": "Toccata", "workOpusNumber": "Op. 42"}},
 	})
 	var result struct {
 		Pieces []pieceResponse `json:"pieces"`
@@ -203,8 +203,8 @@ func TestCitation_SuppressesBookOpusNumberWhenContainedInPieceOpusNumber(t *test
 	}), nil)
 
 	confirmRec := doJSON(t, h, http.MethodPost, apiBooksURL(bookID)+"/confirm-import", map[string]any{
-		"boundaries": []int{},
-		"pieces":     []map[string]any{{"title": "Volksliedchen", "workOpusNumber": "Op. 68, No. 9"}},
+		"ranges": []map[string]any{{"start": 1, "end": 4}},
+		"pieces": []map[string]any{{"title": "Volksliedchen", "workOpusNumber": "Op. 68, No. 9"}},
 	})
 	var result struct {
 		Pieces []pieceResponse `json:"pieces"`
@@ -238,8 +238,8 @@ func TestCitation_ShowsBookOpusNumberWhenNotContainedInPieceOpusNumber(t *testin
 	}), nil)
 
 	confirmRec := doJSON(t, h, http.MethodPost, apiBooksURL(bookID)+"/confirm-import", map[string]any{
-		"boundaries": []int{},
-		"pieces":     []map[string]any{{"title": "Minuet", "workOpusNumber": "BWV Anh. 114"}},
+		"ranges": []map[string]any{{"start": 1, "end": 4}},
+		"pieces": []map[string]any{{"title": "Minuet", "workOpusNumber": "BWV Anh. 114"}},
 	})
 	var result struct {
 		Pieces []pieceResponse `json:"pieces"`

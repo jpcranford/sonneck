@@ -31,6 +31,26 @@ const MOCKUPS = [
     name: 'Edit Book Modal',
     note: 'Book Properties Edit Menu (§16) design mockup, incl. the animated Save-progress button.',
   },
+  {
+    to: '/mockup/upload-book-about',
+    name: 'Upload — About This Book',
+    note: 'Book Upload Wizard (§5), screen 3 of 6 — book-metadata entry with the sticky cover column.',
+  },
+  {
+    to: '/mockup/upload-book-split',
+    name: 'Upload — Split the Book',
+    note: 'Book Upload Wizard (§5), screen 4 of 6 — interactive page grid, tap to mark/skip/share, drag to range-select.',
+  },
+  {
+    to: '/mockup/upload-book-titles',
+    name: 'Upload — Name Each Piece',
+    note: 'Book Upload Wizard (§5), screen 5 of 6 — Title/Composer table with live validation and a page preview overlay.',
+  },
+  {
+    to: '/mockup/upload-book-confirm',
+    name: 'Upload — Ready to Import',
+    note: 'Book Upload Wizard (§5), screen 6 of 6 — read-only review, real stripe-animation import, and the success screen.',
+  },
 ]
 
 export function MockupIndexPage() {
@@ -48,7 +68,7 @@ export function MockupIndexPage() {
         {MOCKUPS.map((m) => (
           <li key={m.to}>
             <Link to={m.to} className="block px-4 py-3 hover:bg-paper">
-              <p className="font-display text-ink">{m.name}</p>
+              <p className="font-display font-medium text-ink">{m.name}</p>
               <p className="text-sm text-ink-soft">{m.note}</p>
               <p className="text-xs text-ink-soft/60">{m.to}</p>
             </Link>

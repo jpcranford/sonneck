@@ -287,7 +287,10 @@ func TestDeletePiece_OrphansBookWhenLastPieceRemoved(t *testing.T) {
 	bookID, _ := uploadBook(t, h, "book.pdf", 8)
 
 	confirmRec := doJSON(t, h, http.MethodPost, apiBooksURL(bookID)+"/confirm-import", map[string]any{
-		"boundaries": []int{4},
+		"ranges": []map[string]any{
+			{"start": 1, "end": 4},
+			{"start": 5, "end": 8},
+		},
 		"pieces": []map[string]any{
 			{"title": "First", "composer": "Someone"},
 			{"title": "Second", "composer": "Someone"},
@@ -381,8 +384,8 @@ func TestReplacePieceFile_PreservesProvenanceAndSwapsHash(t *testing.T) {
 	h := newTestServer(t)
 	bookID, _ := uploadBook(t, h, "book.pdf", 4)
 	confirmRec := doJSON(t, h, http.MethodPost, apiBooksURL(bookID)+"/confirm-import", map[string]any{
-		"boundaries": []int{},
-		"pieces":     []map[string]any{{"title": "Solo", "composer": "Someone"}},
+		"ranges": []map[string]any{{"start": 1, "end": 4}},
+		"pieces": []map[string]any{{"title": "Solo", "composer": "Someone"}},
 	})
 	var result struct {
 		Pieces []pieceResponse `json:"pieces"`

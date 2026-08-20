@@ -166,7 +166,7 @@ export interface UploadBookResult {
 }
 
 export interface ConfirmImportRequest {
-  boundaries: number[]
+  ranges: { start: number; end: number }[]
   pieces: PieceWriteRequest[]
 }
 

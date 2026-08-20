@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   IconArrowLeft,
@@ -14,6 +14,8 @@ import {
 import { getPieceThumbnailUrl, uploadPiece, updatePiece } from '../api/pieces'
 import { ApiError } from '../api/client'
 import type { Piece } from '../api/types'
+import { loadWizardDraft } from '../lib/useWizardDraft'
+import { BookUploadWizard } from './BookUploadWizard'
 
 // Mirrors the backend's own cap (internal/handlers/helpers.go MaxUploadBytes)
 // so an oversized file is rejected instantly instead of after a slow upload.
@@ -39,7 +41,12 @@ type Stage = 'landing' | 'select' | 'uploading' | 'details' | 'success' | 'book'
 export function UploadPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const [stage, setStage] = useState<Stage>('landing')
+  // A hard reload mid-wizard would otherwise strand the user on the plain
+  // landing fork with no obvious way back in — BookUploadWizard itself
+  // knows how to resume a draft once mounted, but it only ever mounts
+  // when stage === 'book', so getting there in the first place is this
+  // page's own job, checked once at the lazy-init.
+  const [stage, setStage] = useState<Stage>(() => (loadWizardDraft() ? 'book' : 'landing'))
   const [fileError, setFileError] = useState<string | null>(null)
   const [progress, setProgress] = useState(0)
   const [piece, setPiece] = useState<Piece | null>(null)
@@ -109,6 +116,21 @@ export function UploadPage() {
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
+  // The book wizard's own steps are wide (max-w-4xl) and manage their own
+  // centering/padding/top-alignment — nesting them inside the narrow
+  // single-piece flow's `items-center justify-center p-8` wrapper below
+  // would both double up padding and vertically center content that's
+  // meant to sit at the top (a tall Split/Titles screen would otherwise
+  // risk being pushed above the viewport by justify-center). A plain
+  // flex-1 column, matching every other page's own root, is all it needs.
+  if (stage === 'book') {
+    return (
+      <div className="flex flex-1 flex-col">
+        <BookUploadWizard onExit={() => setStage('landing')} />
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-6 p-8">
       {/* Landing fork — "B" from the "Piece or Book?" design review
@@ -131,7 +153,9 @@ export function UploadPage() {
                 <IconFileMusic size={19} />
               </span>
               <span>
-                <span className="block font-display text-[0.98rem] font-medium text-ink">Upload a piece</span>
+                <span className="block font-display text-[0.98rem] font-medium text-ink">
+                  Upload a piece
+                </span>
                 <span className="block text-[0.8rem] text-ink-soft">
                   One PDF, one piece of music. The common case.
                 </span>
@@ -146,46 +170,15 @@ export function UploadPage() {
                 <IconBook2 size={19} />
               </span>
               <span>
-                <span className="block font-display text-[0.98rem] font-medium text-ink">Upload a book</span>
+                <span className="block font-display text-[0.98rem] font-medium text-ink">
+                  Upload a book
+                </span>
                 <span className="block text-[0.8rem] text-ink-soft">
                   One PDF containing several pieces — we'll walk you through splitting it up.
                 </span>
               </span>
             </button>
           </div>
-        </div>
-      )}
-
-      {/* Book-splitting wizard doesn't exist yet (design doc §5) — this
-          stands in for it so the fork above leads somewhere real rather
-          than a dead click, same "shell now, wire up later" treatment as
-          the Favorites/Currently Practicing nav items (ComingSoon). */}
-      {stage === 'book' && (
-        <div className="flex w-full max-w-md flex-col items-center gap-3 text-center">
-          <button
-            type="button"
-            onClick={() => setStage('landing')}
-            className="flex items-center gap-1.5 self-start text-base text-ink-soft hover:text-ink"
-          >
-            <IconArrowLeft size={24} />
-            Back
-          </button>
-          <IconBook2 size={40} className="text-ink-soft" />
-          <h1 className="font-display text-2xl font-medium text-ink">Book upload is coming soon</h1>
-          <p className="text-ink-soft">
-            Splitting a book's PDF into individual pieces isn't built yet. For now, you can{' '}
-            <Link to="/books" className="text-accent hover:underline">
-              create a book record from the Books page
-            </Link>{' '}
-            (title/composer only, no file) and upload its pieces one at a time instead.
-          </p>
-          <button
-            type="button"
-            onClick={() => setStage('select')}
-            className="rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent"
-          >
-            Upload a piece instead
-          </button>
         </div>
       )}
 

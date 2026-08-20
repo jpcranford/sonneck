@@ -50,7 +50,10 @@ func TestUpdateBook_ResyncsSearchForInheritingPieces(t *testing.T) {
 	}), nil)
 
 	confirmRec := doJSON(t, h, http.MethodPost, apiBooksURL(bookID)+"/confirm-import", map[string]any{
-		"boundaries": []int{4},
+		"ranges": []map[string]any{
+			{"start": 1, "end": 4},
+			{"start": 5, "end": 8},
+		},
 		"pieces": []map[string]any{
 			{"title": "Inherits"},
 			{"title": "Overrides", "composer": "Own Composer"},
@@ -216,7 +219,10 @@ func TestDeleteBook_CascadeDeletesAllPieces(t *testing.T) {
 	bookID, _ := uploadBook(t, h, "book.pdf", 4)
 
 	confirmRec := doJSON(t, h, http.MethodPost, apiBooksURL(bookID)+"/confirm-import", map[string]any{
-		"boundaries": []int{2},
+		"ranges": []map[string]any{
+			{"start": 1, "end": 2},
+			{"start": 3, "end": 4},
+		},
 		"pieces": []map[string]any{
 			{"title": "First", "composer": "Someone"},
 			{"title": "Second", "composer": "Someone"},
@@ -260,8 +266,8 @@ func TestDeleteBook_DoesNotRemoveFileStillReferencedOutsideTheBook(t *testing.T)
 	bookID, _ := uploadBook(t, h, "book.pdf", 2)
 
 	confirmRec := doJSON(t, h, http.MethodPost, apiBooksURL(bookID)+"/confirm-import", map[string]any{
-		"boundaries": []int{},
-		"pieces":     []map[string]any{{"title": "In The Book", "composer": "Someone"}},
+		"ranges": []map[string]any{{"start": 1, "end": 2}},
+		"pieces": []map[string]any{{"title": "In The Book", "composer": "Someone"}},
 	})
 	var result struct {
 		Pieces []pieceResponse `json:"pieces"`

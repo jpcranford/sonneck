@@ -110,7 +110,10 @@ func TestSearchPieces_FiltersByBookAndSortsByStartPageWithTieBreak(t *testing.T)
 	bookID, _ := uploadBook(t, h, "book.pdf", 5)
 
 	confirmRec := doJSON(t, h, http.MethodPost, apiBooksURL(bookID)+"/confirm-import", map[string]any{
-		"boundaries": []int{1},
+		"ranges": []map[string]any{
+			{"start": 1, "end": 1},
+			{"start": 2, "end": 5},
+		},
 		"pieces": []map[string]any{
 			{"title": "Short", "composer": "Someone"},
 			{"title": "Long", "composer": "Someone"},
@@ -203,8 +206,8 @@ func TestSearchPieces_SheetTypeAndInstrumentFiltersMatchInheritedValues(t *testi
 	}), nil)
 
 	confirmRec := doJSON(t, h, http.MethodPost, apiBooksURL(bookID)+"/confirm-import", map[string]any{
-		"boundaries": []int{},
-		"pieces":     []map[string]any{{"title": "Inherits Both", "composer": "Someone"}},
+		"ranges": []map[string]any{{"start": 1, "end": 4}},
+		"pieces": []map[string]any{{"title": "Inherits Both", "composer": "Someone"}},
 	})
 	var result struct {
 		Pieces []pieceResponse `json:"pieces"`

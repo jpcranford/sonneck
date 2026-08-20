@@ -95,12 +95,14 @@ function PieceGrid({ pieces }: { pieces: Piece[] }) {
 // (verified against the served CSS) is what actually makes the drop
 // happen *at* 500px and below.
 const THUMB_HIDE_CLASS = 'max-[501px]:hidden'
-const ROW_COLLAPSE_CLASS = 'max-[501px]:grid-cols-[60px_1fr]'
+const ROW_COLLAPSE_CLASS = 'max-[501px]:grid-cols-[84px_1fr]'
 
+// 84px (was 60px) — a two-piece range like "p. 123–145" was clipping
+// against the old width once source pages ran past double digits.
 function PieceList({ pieces }: { pieces: Piece[] }) {
   return (
     <div className="flex flex-col">
-      <div className="grid grid-cols-[60px_1fr_56px] gap-3 px-1.5 pb-2.5 text-[0.7rem] font-medium tracking-wide text-ink-soft uppercase">
+      <div className="grid grid-cols-[84px_1fr_56px] gap-3 px-1.5 pb-2.5 text-[0.7rem] font-medium tracking-wide text-ink-soft uppercase">
         <div>Page</div>
         <div>Title</div>
         <div className={THUMB_HIDE_CLASS} />
@@ -109,7 +111,7 @@ function PieceList({ pieces }: { pieces: Piece[] }) {
         <ClickableCard
           key={piece.id}
           to={`/pieces/${piece.id}`}
-          className={`grid grid-cols-[60px_1fr_56px] items-center gap-3 border-t border-border px-1.5 py-2.5 text-left first:border-t-0 hover:rounded-md hover:bg-accent-soft ${ROW_COLLAPSE_CLASS}`}
+          className={`grid grid-cols-[84px_1fr_56px] items-center gap-3 border-t border-border px-1.5 py-2.5 text-left first:border-t-0 hover:rounded-md hover:bg-accent-soft ${ROW_COLLAPSE_CLASS}`}
         >
           <div className="text-sm font-medium tabular-nums text-ink">{pageRangeLabel(piece)}</div>
           <div className="min-w-0">
