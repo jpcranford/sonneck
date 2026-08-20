@@ -312,13 +312,23 @@ export function PieceViewSample() {
     // that file's comment: this page had no bottom padding at all, so a
     // long citation string ran flush into the app footer.
     <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-6 py-6 md:px-8 md:py-8">
-      <Link
-        to="/"
-        className="inline-flex w-fit items-center gap-1.5 text-sm text-ink-soft hover:text-ink"
-      >
-        <IconArrowLeft size={24} />
-        Back to Library
-      </Link>
+      {/* Edit Piece promoted from an icon-only button next to the title
+          (still visible there in PiecePage.tsx as of this writing — port
+          the same move over once approved) to a proper labeled button in
+          this top toolbar row, matching the Title Case + icon+label
+          treatment every other action button on this page already uses
+          (Download PDF, Replace File, Use Page as Thumbnail) rather than
+          being the one icon-only, unlabeled control on the whole page. */}
+      <div className="flex items-center justify-between gap-4">
+        <Link
+          to="/"
+          className="inline-flex w-fit items-center gap-1.5 text-sm text-ink-soft hover:text-ink"
+        >
+          <IconArrowLeft size={24} />
+          Back to Library
+        </Link>
+        <ActionButton icon={<IconEditFilled size={16} />} label="Edit Piece" disabled />
+      </div>
 
       <div className="rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-4 py-2 text-sm text-ink-soft">
         Reference sample — <span className="font-medium text-ink">Piece View</span> (design doc §14).
@@ -467,15 +477,10 @@ export function PieceViewSample() {
             <div className="flex items-start justify-between gap-4">
               <h1 className="font-display text-3xl font-medium text-ink">{piece.title}</h1>
               <div className="mt-1 flex shrink-0 items-center gap-3">
-                <button
-                  type="button"
-                  disabled
-                  aria-label="Edit piece (not editable in this sample)"
-                  // Solid pre-blend, not opacity (feedback-icon-color-preblend).
-                  className="cursor-not-allowed text-[#bbb7b2]"
-                >
-                  <IconEditFilled size={21} />
-                </button>
+                {/* Edit moved to the top toolbar (a proper labeled button,
+                    not an icon-only one) — see this file's top-of-page
+                    comment. Favorite stays here; it's a one-tap toggle, not
+                    an editing action, so it doesn't belong in that toolbar. */}
                 <button
                   type="button"
                   onClick={() => setFavorite((f) => !f)}

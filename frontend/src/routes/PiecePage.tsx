@@ -214,7 +214,7 @@ export function PiecePage() {
   })
 
   // Keyboard shortcuts: E opens the edit menu, F toggles favorite — matches
-  // the header buttons right above (IconEditFilled/IconHeart), just a
+  // the Edit Piece toolbar button and the header's favorite toggle, just a
   // faster path to the same two actions. Skipped entirely while the edit
   // modal is already open (its own fields are the ones that should own
   // keystrokes then) or while focus is in any text-entry element, so typing
@@ -296,13 +296,28 @@ export function PiecePage() {
     // all, so a long citation string (or any tall page) ran flush into
     // the app footer with nothing separating them.
     <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-6 py-6 md:px-8 md:py-8">
-      <Link
-        to="/"
-        className="inline-flex w-fit items-center gap-1.5 text-sm text-ink-soft hover:text-ink"
-      >
-        <IconArrowLeft size={24} />
-        Back to Library
-      </Link>
+      {/* Edit Piece promoted from an icon-only button next to the title to
+          a proper labeled button in this top toolbar row, matching every
+          other action button on this page (Download PDF, Replace File,
+          Use Page as Thumbnail) — approved via the /mockup/piece-view
+          reference sample. Only rendered once piece has loaded, same as
+          the edit modal itself further down; nothing to edit before then. */}
+      <div className="flex items-center justify-between gap-4">
+        <Link
+          to="/"
+          className="inline-flex w-fit items-center gap-1.5 text-sm text-ink-soft hover:text-ink"
+        >
+          <IconArrowLeft size={24} />
+          Back to Library
+        </Link>
+        {piece && (
+          <ActionButton
+            icon={<IconEditFilled size={16} />}
+            label="Edit Piece"
+            onClick={() => setEditOpen(true)}
+          />
+        )}
+      </div>
 
       {isLoading && <p className="text-ink-soft">Loading…</p>}
 
@@ -507,14 +522,11 @@ export function PiecePage() {
               <div className="flex items-start justify-between gap-4">
                 <h1 className="font-display text-3xl font-medium text-ink">{piece.title}</h1>
                 <div className="mt-1 flex shrink-0 items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setEditOpen(true)}
-                    aria-label="Edit piece"
-                    className="text-ink-soft hover:text-accent"
-                  >
-                    <IconEditFilled size={21} />
-                  </button>
+                  {/* Edit moved to the top toolbar (a proper labeled
+                      button, not an icon-only one) — see this file's
+                      top-of-page comment. Favorite stays here; it's a
+                      one-tap toggle, not an editing action, so it doesn't
+                      belong in that toolbar. */}
                   <button
                     type="button"
                     onClick={() => favoriteMutation.mutate()}
