@@ -193,9 +193,12 @@ function pieceComposer(piece: SamplePiece): string | null {
   return piece.composer || sampleBook.composer
 }
 
+// Academic "p."/"pp." convention (standing rule, 2026-08-20): singular
+// "p." for one page, "pp." for a range — ported back from
+// BookDetailsPage.tsx's own fix, same as pieceMetaLine's arranger fix above.
 function pageRangeLabel(piece: SamplePiece): string {
   const end = piece.sourcePageStart + piece.pageCount - 1
-  return piece.pageCount > 1 ? `p. ${piece.sourcePageStart}–${end}` : `p. ${piece.sourcePageStart}`
+  return piece.pageCount > 1 ? `pp. ${piece.sourcePageStart}–${end}` : `p. ${piece.sourcePageStart}`
 }
 
 function pagesLabel(piece: SamplePiece): string {

@@ -32,15 +32,19 @@ function imslpReverseLookupUrl(imslpNumber: string): string {
   return `https://imslp.org/index.php?title=Special:ReverseLookup&action=submit&indexsearch=${encodeURIComponent(imslpNumber)}`
 }
 
-// "p. 22–24" / "p. 22" from the piece's own historical provenance fields
+// "pp. 22–24" / "p. 22" from the piece's own historical provenance fields
 // (design doc §14: purely cosmetic, not necessarily in sync with the
 // current file's actual pageCount after a replace) — not derived from
 // pageCount, which is the current file's real page count and can
-// legitimately diverge from this range.
+// legitimately diverge from this range. Academic "p."/"pp." convention
+// (standing rule, 2026-08-20): singular "p." for one page, "pp." for a
+// range — matches PiecePage.tsx's own "Source pages" row.
 function pageRangeLabel(piece: Piece): string {
   if (piece.sourcePageStart == null) return '—'
   const end = piece.sourcePageEnd ?? piece.sourcePageStart
-  return end > piece.sourcePageStart ? `p. ${piece.sourcePageStart}–${end}` : `p. ${piece.sourcePageStart}`
+  return end > piece.sourcePageStart
+    ? `pp. ${piece.sourcePageStart}–${end}`
+    : `p. ${piece.sourcePageStart}`
 }
 
 function pagesLabel(piece: Piece): string {
@@ -106,7 +110,7 @@ function PieceGrid({ pieces }: { pieces: Piece[] }) {
 const THUMB_HIDE_CLASS = 'max-[501px]:hidden'
 const ROW_COLLAPSE_CLASS = 'max-[501px]:grid-cols-[84px_1fr]'
 
-// 84px (was 60px) — a two-piece range like "p. 123–145" was clipping
+// 84px (was 60px) — a two-piece range like "pp. 123–145" was clipping
 // against the old width once source pages ran past double digits.
 function PieceList({ pieces }: { pieces: Piece[] }) {
   return (

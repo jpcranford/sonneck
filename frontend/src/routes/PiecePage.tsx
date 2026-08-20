@@ -701,7 +701,12 @@ export function PiecePage() {
               )}
               {piece.sourcePageStart != null && (
                 <DetailRow label="Source pages">
-                  {piece.sourcePageStart === piece.sourcePageEnd
+                  {/* sourcePageEnd is independently nullable (EditPieceModal's
+                      two fields aren't linked) — falling back to
+                      sourcePageStart here, not comparing the raw fields
+                      directly, avoids rendering "pp. 5–null" for a piece
+                      whose end page was never set. */}
+                  {(piece.sourcePageEnd ?? piece.sourcePageStart) === piece.sourcePageStart
                     ? `p. ${piece.sourcePageStart}`
                     : `pp. ${piece.sourcePageStart}–${piece.sourcePageEnd}`}
                 </DetailRow>

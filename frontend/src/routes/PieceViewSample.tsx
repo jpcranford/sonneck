@@ -625,7 +625,13 @@ export function PieceViewSample() {
             )}
             {piece.sourcePageStart != null && (
               <DetailRow label="Source pages">
-                {piece.sourcePageStart === piece.sourcePageEnd
+                {/* Ported from PiecePage.tsx's own null-safety fix: falls
+                    back to sourcePageStart rather than comparing the raw
+                    fields, so a piece with sourcePageEnd unset renders
+                    "p. N" instead of "pp. N–null". Not reachable with this
+                    file's own fixed fixture (always has both set), kept in
+                    sync anyway per this file's own standing convention. */}
+                {(piece.sourcePageEnd ?? piece.sourcePageStart) === piece.sourcePageStart
                   ? `p. ${piece.sourcePageStart}`
                   : `pp. ${piece.sourcePageStart}–${piece.sourcePageEnd}`}
               </DetailRow>
