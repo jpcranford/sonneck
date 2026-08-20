@@ -6,6 +6,12 @@ interface TagPillsProps {
   sheetType: Tag | null
   instruments: Tag[]
   userTags: Tag[]
+  // Optional spacing above the pill row itself — passed through onto the
+  // root div (which is what returns null when there's nothing to show), so
+  // a caller never ends up with a dangling top margin on a piece with no
+  // tags at all. Defaults to none, matching every caller before this prop
+  // existed.
+  className?: string
 }
 
 // Card footer pills (locked design system), fixed order: user tags, key(s),
@@ -20,13 +26,13 @@ interface TagPillsProps {
 // written in more than one key) and genuinely ordered (e.g. a piece that
 // modulates) — rendered as one merged pill with the sequence joined by a
 // small chevron, not one independent pill per key (2026-08-17).
-export function TagPills({ keys, sheetType, instruments, userTags }: TagPillsProps) {
+export function TagPills({ keys, sheetType, instruments, userTags, className = '' }: TagPillsProps) {
   if (keys.length === 0 && !sheetType && instruments.length === 0 && userTags.length === 0) {
     return null
   }
 
   return (
-    <div className="flex min-w-0 flex-wrap items-center gap-1">
+    <div className={`flex min-w-0 flex-wrap items-center gap-1 ${className}`}>
       {userTags.map((tag) => (
         <span
           key={tag.id}

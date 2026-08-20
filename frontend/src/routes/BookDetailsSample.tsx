@@ -46,6 +46,7 @@ interface SamplePiece {
   id: number
   title: string
   composer: string | null
+  arranger: string | null
   sourcePageStart: number
   pageCount: number
   favorite: boolean
@@ -83,6 +84,7 @@ const samplePieces: SamplePiece[] = [
     id: 1,
     title: 'Von fremden Ländern und Menschen',
     composer: null,
+    arranger: null,
     sourcePageStart: 1,
     pageCount: 1,
     favorite: false,
@@ -95,6 +97,7 @@ const samplePieces: SamplePiece[] = [
     id: 2,
     title: 'Kuriose Geschichte',
     composer: null,
+    arranger: null,
     sourcePageStart: 2,
     pageCount: 1,
     favorite: false,
@@ -107,6 +110,7 @@ const samplePieces: SamplePiece[] = [
     id: 3,
     title: 'Hasche-Mann',
     composer: null,
+    arranger: 'Clara Wieck',
     sourcePageStart: 3,
     pageCount: 1,
     favorite: true,
@@ -122,6 +126,7 @@ const samplePieces: SamplePiece[] = [
     id: 4,
     title: 'Bittendes Kind',
     composer: null,
+    arranger: null,
     sourcePageStart: 4,
     pageCount: 1,
     favorite: false,
@@ -134,6 +139,7 @@ const samplePieces: SamplePiece[] = [
     id: 5,
     title: 'Glückes genug',
     composer: null,
+    arranger: null,
     sourcePageStart: 5,
     pageCount: 1,
     favorite: false,
@@ -146,6 +152,7 @@ const samplePieces: SamplePiece[] = [
     id: 6,
     title: 'Kleine Studie',
     composer: null,
+    arranger: null,
     sourcePageStart: 6,
     pageCount: 1,
     favorite: false,
@@ -158,6 +165,7 @@ const samplePieces: SamplePiece[] = [
     id: 7,
     title: 'Armes Waisenkind',
     composer: null,
+    arranger: null,
     sourcePageStart: 6,
     pageCount: 2,
     favorite: true,
@@ -194,10 +202,14 @@ function pagesLabel(piece: SamplePiece): string {
   return `${piece.pageCount} ${piece.pageCount === 1 ? 'page' : 'pages'}`
 }
 
+// Arranger rides on the composer segment itself (", arr. Arranger"), same
+// convention as BookDetailsPage.tsx's own pieceMetaLine — porting that fix
+// back here too since this file is the permanent design reference for the
+// real page above it.
 function pieceMetaLine(piece: SamplePiece): string {
-  return [pieceComposer(piece), pagesLabel(piece)]
-    .filter((part): part is string => !!part)
-    .join(' • ')
+  const composer = pieceComposer(piece)
+  const composerPart = composer ? composer + (piece.arranger ? `, arr. ${piece.arranger}` : '') : null
+  return [composerPart, pagesLabel(piece)].filter((part): part is string => !!part).join(' • ')
 }
 
 // Realistic "black content on white page" placeholder — a title bar plus

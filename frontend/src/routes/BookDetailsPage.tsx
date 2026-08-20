@@ -50,8 +50,17 @@ function pagesLabel(piece: Piece): string {
 // piece.composer is already an EffectiveField — the backend has already
 // resolved the book fallback, so no client-side fallback logic is needed
 // here the way the mockup's hardcoded data required.
+//
+// Arranger rides on the composer segment itself (", arr. Arranger"), same
+// fragment as formatPieceMeta.ts/PieceGridCard.tsx's own composerPart — not
+// factored into a shared helper since those two callers also each carry
+// their own different surrounding fields (opus/sourceBook/year vs. just
+// year), same as this one carries pages instead.
 function pieceMetaLine(piece: Piece): string {
-  return [piece.composer.value, pagesLabel(piece)].filter((part): part is string => !!part).join(' • ')
+  const composerPart = piece.composer.value
+    ? piece.composer.value + (piece.arranger ? `, arr. ${piece.arranger}` : '')
+    : null
+  return [composerPart, pagesLabel(piece)].filter((part): part is string => !!part).join(' • ')
 }
 
 function PieceGrid({ pieces }: { pieces: Piece[] }) {
@@ -129,6 +138,7 @@ function PieceList({ pieces }: { pieces: Piece[] }) {
               sheetType={piece.sheetType.value}
               instruments={piece.instruments.values}
               userTags={piece.userTags}
+              className="mt-1.5"
             />
           </div>
           <div
