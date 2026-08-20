@@ -511,7 +511,7 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
             piece.publisher.inherited &&
             piece.publisherId.inherited && (
               <InheritedNote
-                bookValue={`${piece.publisher.value} · ${piece.publisherId.value}`}
+                bookValue={`${piece.publisher.value} • ${piece.publisherId.value}`}
                 onCopy={() => {
                   setValue('publisher', piece.publisher.value)
                   setValue('publisherId', piece.publisherId.value)

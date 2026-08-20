@@ -1069,7 +1069,7 @@ export function EditPieceModalMockup() {
             </div>
             {!watch('publisher') && !watch('publisherId') && (
               <InheritedNote
-                bookValue={`${mockBook.publisher} · ${mockBook.publisherId}`}
+                bookValue={`${mockBook.publisher} • ${mockBook.publisherId}`}
                 onCopy={() => {
                   setValue('publisher', mockBook.publisher)
                   setValue('publisherId', mockBook.publisherId)
