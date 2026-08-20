@@ -10,6 +10,7 @@ import { PieceViewSample } from './routes/PieceViewSample'
 import { EditPieceModalMockup } from './routes/EditPieceModalMockup'
 import { BooksLibrarySample } from './routes/BooksLibrarySample'
 import { BookDetailsSample } from './routes/BookDetailsSample'
+import { EditBookModalMockup } from './routes/EditBookModalMockup'
 import { ComposersPage } from './routes/ComposersPage'
 import { FavoritesPage } from './routes/FavoritesPage'
 import { PracticingPage } from './routes/PracticingPage'
@@ -34,6 +35,7 @@ function App() {
         <Route path="mockup/edit-piece-modal" element={<EditPieceModalMockup />} />
         <Route path="mockup/books-library" element={<BooksLibrarySample />} />
         <Route path="mockup/book-details" element={<BookDetailsSample />} />
+        <Route path="mockup/edit-book-modal" element={<EditBookModalMockup />} />
         <Route path="composers" element={<ComposersPage />} />
         <Route path="favorites" element={<FavoritesPage />} />
         <Route path="practicing" element={<PracticingPage />} />

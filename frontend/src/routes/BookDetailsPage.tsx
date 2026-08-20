@@ -16,6 +16,7 @@ import { ApiError } from '../api/client'
 import type { Piece } from '../api/types'
 import { effectiveBookComposer } from '../lib/formatBookMeta'
 import { ClickableCard } from '../components/ClickableCard'
+import { EditBookModal } from '../components/EditBookModal'
 import { TagPills } from '../components/TagPills'
 
 // Book Details page — no design-doc spec (new ground, same as the Books
@@ -149,6 +150,7 @@ export function BookDetailsPage() {
   const bookId = Number(id)
 
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  const [bookEditOpen, setBookEditOpen] = useState(false)
 
   const {
     data: book,
@@ -257,8 +259,9 @@ export function BookDetailsPage() {
                   <div className="flex shrink-0 items-stretch gap-2.5">
                     <button
                       type="button"
-                      title="Book Properties Edit Menu — not built yet"
-                      className="flex w-[38px] cursor-not-allowed items-center justify-center rounded-md border border-border bg-paper-raised text-ink-soft"
+                      onClick={() => setBookEditOpen(true)}
+                      aria-label="Edit book properties"
+                      className="flex w-[38px] items-center justify-center rounded-md border border-border bg-paper-raised text-ink-soft hover:border-accent hover:text-ink"
                     >
                       <IconPencil size={16} />
                     </button>
@@ -370,6 +373,9 @@ export function BookDetailsPage() {
             </div>
           </div>
         </div>
+      )}
+      {book && (
+        <EditBookModal book={book} open={bookEditOpen} onClose={() => setBookEditOpen(false)} />
       )}
     </div>
   )

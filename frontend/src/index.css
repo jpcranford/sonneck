@@ -104,6 +104,21 @@
      accent directly so the two can't drift out of sync if accent ever
      changes. */
   --color-focus: var(--color-accent);
+
+  /* Moving diagonal-stripe fill for a "working on it, no real percentage
+     to report" button state — first use: the Book Properties Edit Menu's
+     Save button while pieces_fts resyncs (design-review "Book Save
+     Animation" artifact, 2026-08-19, approved as-is). Registered globally
+     rather than as a component-local <style> block since Tailwind v4's
+     `@theme` is this project's one established place for custom tokens,
+     and the animate-stripe-move utility it generates is reusable if any
+     future multi-record save ever wants the same "in progress" language. */
+  --animate-stripe-move: stripe-move 0.85s linear infinite;
+}
+
+@keyframes stripe-move {
+  from { background-position: 0 0; }
+  to { background-position: 56px 0; }
 }
 
 body {

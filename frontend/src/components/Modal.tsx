@@ -13,8 +13,13 @@ interface ModalProps {
   /** 'md' (default, max-w-lg) fits the simple modals (rename, placeholder
    * confirmations). 'lg' (max-w-2xl) is for genuinely field-dense forms —
    * added for the Piece Properties Edit Menu (§15), which has far more
-   * fields than max-w-lg can lay out without feeling cramped. */
-  size?: 'md' | 'lg'
+   * fields than max-w-lg can lay out without feeling cramped. 'xl'
+   * (max-w-3xl) is for a two-column field layout specifically — added for
+   * the Book Properties Edit Menu (§16), whose "C" design (design-review
+   * artifacts, 2026-08-19) needs real room for two side-by-side columns at
+   * desktop width without cramming either one; collapses to a single
+   * column below `sm` regardless of this prop. */
+  size?: 'md' | 'lg' | 'xl'
   /** Rendered outside the scrolling body, pinned to the top of the dialog
    * — mirrors `footer` below but for content that must stay visible while
    * the rest scrolls underneath it (the Piece Properties Edit Menu's
@@ -124,7 +129,7 @@ export function Modal({ open, onClose, labelledBy, children, size = 'md', header
         aria-modal="true"
         aria-labelledby={labelledBy}
         className={`flex max-h-[90vh] w-full flex-col overflow-hidden rounded-t-2xl bg-paper-raised shadow-xl transition-[transform,opacity] duration-150 sm:rounded-2xl ${
-          size === 'lg' ? 'max-w-2xl' : 'max-w-lg'
+          size === 'xl' ? 'max-w-3xl' : size === 'lg' ? 'max-w-2xl' : 'max-w-lg'
         } ${visible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}
       >
         {header && <div className="shrink-0 px-6 pt-6">{header}</div>}

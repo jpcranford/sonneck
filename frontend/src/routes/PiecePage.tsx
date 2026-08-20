@@ -34,6 +34,7 @@ import {
 import { ApiError } from '../api/client'
 import { pieceToWriteRequest } from '../lib/pieceToWriteRequest'
 import { secondsToMMSS } from '../lib/duration'
+import { EditBookModal } from '../components/EditBookModal'
 import { EditPieceModal } from '../components/EditPieceModal'
 import { InfoTooltip } from '../components/InfoTooltip'
 import { PracticeStatusIcon } from '../components/PracticeStatusIcon'
@@ -199,6 +200,7 @@ export function PiecePage() {
   const [advancedOpen, setAdvancedOpen] = useState(false)
   const [tempoOpen, setTempoOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
+  const [bookEditOpen, setBookEditOpen] = useState(false)
   const [copyToast, setCopyToast] = useState<{ x: number; y: number } | null>(null)
   const replaceFileInputRef = useRef<HTMLInputElement>(null)
 
@@ -755,9 +757,7 @@ export function PiecePage() {
             )}
 
             {/* Book Details section — shown only when sourceBookId is
-                set. Editing writes to the Book record only (§14/§16); the
-                edit affordance is inert for now — the Book Properties
-                Edit Menu (§16) is a separate, later phase. */}
+                set. Editing writes to the Book record only (§14/§16). */}
             {piece.sourceBookId && book && (
               <div className="flex flex-col gap-2 rounded-lg border border-border bg-paper-raised px-4 py-3">
                 <div className="flex items-center justify-between gap-3">
@@ -767,9 +767,9 @@ export function PiecePage() {
                   </span>
                   <button
                     type="button"
-                    disabled
-                    aria-label="Edit book details (coming soon)"
-                    className="cursor-not-allowed text-ink-soft/40"
+                    onClick={() => setBookEditOpen(true)}
+                    aria-label="Edit book details"
+                    className="text-ink-soft/60 hover:text-ink"
                   >
                     <IconEditFilled size={16} />
                   </button>
@@ -871,6 +871,10 @@ export function PiecePage() {
       )}
 
       {piece && <EditPieceModal piece={piece} open={editOpen} onClose={() => setEditOpen(false)} />}
+
+      {book && (
+        <EditBookModal book={book} open={bookEditOpen} onClose={() => setBookEditOpen(false)} />
+      )}
 
       {copyToast && (
         <div

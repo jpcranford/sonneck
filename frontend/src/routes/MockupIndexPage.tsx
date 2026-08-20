@@ -26,6 +26,11 @@ const MOCKUPS = [
     name: 'Book Details',
     note: 'Book Details page (header card + pieces grid/list) design mockup.',
   },
+  {
+    to: '/mockup/edit-book-modal',
+    name: 'Edit Book Modal',
+    note: 'Book Properties Edit Menu (§16) design mockup, incl. the animated Save-progress button.',
+  },
 ]
 
 export function MockupIndexPage() {
