@@ -11,6 +11,7 @@ import (
 	"github.com/jpcranford/sonneck/internal/backup"
 	"github.com/jpcranford/sonneck/internal/config"
 	"github.com/jpcranford/sonneck/internal/db"
+	"github.com/jpcranford/sonneck/internal/export"
 	"github.com/jpcranford/sonneck/internal/handlers"
 	"github.com/jpcranford/sonneck/internal/repo"
 )
@@ -94,6 +95,17 @@ func runSubcommand(name string, conn *sql.DB, cfg *config.Config, logger *slog.L
 			os.Exit(1)
 		}
 		logger.Info("thumbnail regeneration completed", "count", count)
+	case "export-csv":
+		// Third instance of the CLI-subcommand admin pattern (CLAUDE.md >
+		// Search). Also safe against a live server — WAL mode lets these
+		// SELECTs run alongside real writes, and this only ever reads.
+		exportDir := filepath.Join(cfg.DataDir, "export")
+		path, err := export.RunCSV(context.Background(), conn, exportDir)
+		if err != nil {
+			logger.Error("CSV export failed", "error", err)
+			os.Exit(1)
+		}
+		logger.Info("CSV export completed", "path", path)
 	default:
 		logger.Error("unknown subcommand", "subcommand", name)
 		os.Exit(1)
