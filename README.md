@@ -2,8 +2,6 @@
 
 A self-hosted library organizer for sheet music: import, tag, browse, and download pieces and books. Made by a musician, for musicians.
 
-**Status:** the backend (Go API + SQLite) is functionally complete for v1. The frontend is in progress (Phase 0 scaffolding complete). Not yet packaged as a Docker image — for now, run it directly with the Go toolchain as described below.
-
 ## Features
 ((to be filled in))
 
@@ -71,9 +69,9 @@ DATA_DIR=./data ./sonneck <command>
 
 ## No authentication — deployment warning
 
-Sonneck has **no login, no access control of its own.** It's built for a single user, single session at a time. Anyone who can reach the server over the network can use the full API — there's no separation between "trusted operator" and "anonymous visitor."
+Sonneck has **no login, no access control of its own.** It's currently built for a single user, single session at a time. Anyone who can reach the server over the network can use the full API — there's no separation between "trusted operator" and "anonymous visitor."
 
-**Do not expose this directly to the open internet.** Deploy it behind a private network / VPN / Tailscale, or put an authenticating reverse proxy in front of it (e.g. Basic Auth, Authelia). Multi-user support with real access control is planned for a future release, not v1.
+**Do not expose this directly to the open internet.** Deploy it behind a private network / VPN / Tailscale, or put an authenticating reverse proxy in front of it (e.g. Basic Auth, Authelia). Multi-user support with real access control is planned for a future release.
 
 ## Planned features
 - **Sheet Viewer!** The practice view every app like this seems to have, with page turner support, server-saved annotations, and a built-in metronome.
