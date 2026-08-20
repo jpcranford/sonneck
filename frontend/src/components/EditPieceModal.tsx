@@ -377,7 +377,7 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
         <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-1">
             <label htmlFor="f-title" className="text-sm text-ink-soft">
-              Title
+              Title <span className="text-ink-soft/60 italic">(Required)</span>
             </label>
             <input
               id="f-title"
@@ -386,10 +386,18 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
             />
             {errors.title && <p className="text-sm text-red-700">{errors.title.message}</p>}
           </div>
-          <div className="flex flex-wrap gap-3">
-            <div className="flex min-w-[250px] flex-1 flex-col gap-1">
+          {/* min-[525px]:flex-row — the same fixed breakpoint every paired
+              row in this form uses (see the Musical Details/Personal
+              sections' own comments below for why fixed beats
+              content-driven flex-wrap): every row must split to stacked
+              layout at the same point, or the form visibly staggers as
+              the modal narrows. min-w-0 (not the old min-w-[250px] floor)
+              so Composer can shrink freely once stacked and paired
+              side-by-side above 525px alike. */}
+          <div className="flex flex-col gap-3 min-[525px]:flex-row">
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
               <label htmlFor="f-composer" className="text-sm text-ink-soft">
-                Composer
+                Composer <span className="text-ink-soft/60 italic">(Required)</span>
               </label>
               <input
                 id="f-composer"
@@ -405,7 +413,7 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
                 />
               )}
             </div>
-            <div className="flex min-w-[250px] flex-1 flex-col gap-1">
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
               <label htmlFor="f-arranger" className="text-sm text-ink-soft">
                 Arranger
               </label>
@@ -421,8 +429,10 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
         {/* Frontmatter (was "Piece Details" — renamed 2026-08-19) */}
         <div className="flex flex-col gap-3 border-t border-border pt-4">
           <SectionHeading>Frontmatter</SectionHeading>
-          <div className="flex flex-wrap gap-3">
-            <div className="flex min-w-[250px] flex-1 flex-col gap-1">
+          {/* min-[525px]:flex-row — same unified breakpoint as every other
+              paired row in this form (see Composer/Arranger above). */}
+          <div className="flex flex-col gap-3 min-[525px]:flex-row">
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
               <label htmlFor="f-opus" className="flex items-center gap-1 text-sm text-ink-soft">
                 Opus / catalog no.
                 <InfoTooltip
@@ -442,7 +452,7 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
                 {...register('workOpusNumber', { maxLength: 255 })}
               />
             </div>
-            <div className="flex min-w-[250px] flex-1 flex-col gap-1">
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
               <label htmlFor="f-year" className="text-sm text-ink-soft">
                 Year written
               </label>
@@ -472,7 +482,7 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
                 {...register('publisher', { maxLength: 255 })}
               />
             </div>
-            <div className="flex w-36 shrink-0 flex-col gap-1">
+            <div className="flex w-48 shrink-0 flex-col gap-1">
               <label htmlFor="f-publisher-id" className="flex items-center gap-1 text-sm text-ink-soft">
                 Publisher ID
                 <InfoTooltip
@@ -596,80 +606,83 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
             label, not a musical-classification fact about the piece. */}
         <div className="flex flex-col gap-3 border-t border-border pt-4">
           <SectionHeading>Musical Details</SectionHeading>
-          <Controller
-            name="keys"
-            control={control}
-            render={({ field }) => (
-              <TagComboBox
-                label="Key(s)"
-                options={keyOptions}
-                selected={field.value}
-                multiple
-                onChange={field.onChange}
-                filterOption={(o, query) => matchesKeyQuery(o.name, query)}
-                allowDuplicates
-                sequenceStyle
-              />
-            )}
-          />
-          <Controller
-            name="sheetType"
-            control={control}
-            render={({ field }) => (
-              <SingleSelect
-                label="Sheet type"
-                options={sheetTypeSelectOptions}
-                value={field.value}
-                onChange={field.onChange}
-                bookValue={piece.sheetType.inherited ? (piece.sheetType.value?.name ?? undefined) : undefined}
-                onCopy={() => field.onChange(piece.sheetType.value?.name ?? '')}
-              />
-            )}
-          />
-          <Controller
-            name="instruments"
-            control={control}
-            render={({ field }) => (
-              <TagComboBox
-                label="Instruments"
-                options={instrumentOptions}
-                selected={field.value}
-                multiple
-                onChange={field.onChange}
-                bookValue={
-                  piece.instruments.inherited
-                    ? piece.instruments.values.map((i) => i.name).join(', ')
-                    : undefined
-                }
-                onCopy={() => field.onChange(piece.instruments.values)}
-              />
-            )}
-          />
+          {/* Key(s)/Duration share a row — Key(s) grows (it can hold an
+              arbitrary-length modulation sequence), Duration keeps its
+              fixed width (w-48, matching Publisher ID's split point above)
+              on the right. Stacks to its own row at narrow widths (unlike
+              Publisher/Publisher ID, which never wraps) — Key(s) genuinely
+              needs room a phone viewport can't spare next to a fixed-width
+              Duration.
 
-          {/* Duration — manually entered as mm:ss (this input's whole
-              reason to exist), stored server-side as an integer of
-              seconds; the frontend only ever shows/accepts mm:ss. The
-              tempo-calc fields live behind a small faint disclosure below
-              the input — same chevron + text-xs/60 convention as the
-              Piece View's own "Tempo details" disclosure (PiecePage.tsx),
-              which is itself commented as matching this edit menu;
-              duration is what matters day-to-day, the calc fields are a
-              supporting, occasionally-needed alternate path to it. */}
-          <div className="flex flex-col gap-1">
-            <label htmlFor="f-duration" className="text-sm text-ink-soft">
-              Duration (mm:ss)
-            </label>
-            <input
-              id="f-duration"
-              placeholder="e.g. 3:45"
-              className="w-32 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-              {...register('duration', {
-                pattern: { value: /^\d+:[0-5]\d$/, message: 'Enter duration as mm:ss (e.g. 3:45).' },
-              })}
-            />
+              min-[525px]:flex-row (the Edit Book modal's own breakpoint,
+              also used by the Personal section's split below) instead of
+              content-driven flex-wrap — deliberately, so the disclosure
+              below can key off this exact same breakpoint to match
+              Duration's own alignment in both states. flex-wrap's wrap
+              point depends on how many keys are selected (an unrelated
+              sibling's content), which made it impossible for a plain CSS
+              rule elsewhere to reliably tell which state Duration was in;
+              a fixed breakpoint sidesteps that entirely. Below 525px,
+              Duration is a plain stacked block — flex's default
+              align-items:stretch doesn't override its own explicit width
+              (w-1/2 there, see its own div below), so it sits at the
+              column's natural start (left), matching every other stacked
+              field in this form. */}
+          <div className="flex flex-col gap-3 min-[525px]:flex-row">
+            <div className="min-w-0 flex-1">
+              <Controller
+                name="keys"
+                control={control}
+                render={({ field }) => (
+                  <TagComboBox
+                    label="Key(s)"
+                    options={keyOptions}
+                    selected={field.value}
+                    multiple
+                    onChange={field.onChange}
+                    filterOption={(o, query) => matchesKeyQuery(o.name, query)}
+                    allowDuplicates
+                    sequenceStyle
+                  />
+                )}
+              />
+            </div>
+            {/* Duration — manually entered as mm:ss (this input's whole
+                reason to exist), stored server-side as an integer of
+                seconds; the frontend only ever shows/accepts mm:ss.
+                w-1/2 while stacked on its own row below 525px (a bare
+                fixed-width box floating alone on an otherwise full-width
+                narrow form read as oddly small) — min-[525px]:w-48
+                restores the fixed width once it's paired with Key(s)
+                again, matching Publisher ID's split point. */}
+            <div className="flex w-1/2 flex-col gap-1 min-[525px]:w-48 min-[525px]:shrink-0">
+              <label htmlFor="f-duration" className="text-sm text-ink-soft">
+                Duration (mm:ss)
+              </label>
+              <input
+                id="f-duration"
+                placeholder="e.g. 3:45"
+                className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+                {...register('duration', {
+                  pattern: { value: /^\d+:[0-5]\d$/, message: 'Enter duration as mm:ss (e.g. 3:45).' },
+                })}
+              />
+              {errors.duration && <p className="text-sm text-red-700">{errors.duration.message}</p>}
+            </div>
           </div>
-          {errors.duration && <p className="text-sm text-red-700">{errors.duration.message}</p>}
-          <div>
+
+          {/* Tempo-calc disclosure — matches Duration's own alignment at
+              the same min-[525px] breakpoint the row above uses: left (the
+              default, no class needed) while Duration is stacked below
+              Key(s), right-aligned once Duration sits paired on the right
+              of that row. The revealed BPM/Measures/Beats/Calculate row
+              follows the same split. Same chevron + text-xs/60 convention
+              as the Piece View's own "Tempo details" disclosure
+              (PiecePage.tsx), which is itself commented as matching this
+              edit menu; duration is what matters day-to-day, the calc
+              fields are a supporting, occasionally-needed alternate path
+              to it. */}
+          <div className="flex flex-col items-start gap-2 min-[525px]:items-end">
             <button
               type="button"
               onClick={() => setTempoOpen((o) => !o)}
@@ -686,7 +699,7 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
               Calculate from tempo
             </button>
             {tempoOpen && (
-              <div className="mt-2 flex flex-wrap items-end gap-3 pl-5">
+              <div className="flex flex-wrap items-end gap-3 min-[525px]:justify-end">
                 <div className="flex flex-col gap-1">
                   <label htmlFor="f-bpm" className="text-sm text-ink-soft">
                     BPM
@@ -734,48 +747,108 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
               </div>
             )}
           </div>
+
+          {/* Sheet Type/Instruments share a row, same order as before.
+              min-[525px]:flex-row — same unified breakpoint as every other
+              paired row in this form (see Composer/Arranger above). */}
+          <div className="flex flex-col gap-3 min-[525px]:flex-row">
+            <div className="min-w-0 flex-1">
+              <Controller
+                name="sheetType"
+                control={control}
+                render={({ field }) => (
+                  <SingleSelect
+                    label="Sheet type"
+                    options={sheetTypeSelectOptions}
+                    value={field.value}
+                    onChange={field.onChange}
+                    bookValue={
+                      piece.sheetType.inherited ? (piece.sheetType.value?.name ?? undefined) : undefined
+                    }
+                    onCopy={() => field.onChange(piece.sheetType.value?.name ?? '')}
+                  />
+                )}
+              />
+            </div>
+            <div className="min-w-0 flex-1">
+              <Controller
+                name="instruments"
+                control={control}
+                render={({ field }) => (
+                  <TagComboBox
+                    label="Instruments"
+                    options={instrumentOptions}
+                    selected={field.value}
+                    multiple
+                    onChange={field.onChange}
+                    bookValue={
+                      piece.instruments.inherited
+                        ? piece.instruments.values.map((i) => i.name).join(', ')
+                        : undefined
+                    }
+                    onCopy={() => field.onChange(piece.instruments.values)}
+                  />
+                )}
+              />
+            </div>
+          </div>
         </div>
 
         {/* Personal — Your Tags moved here from Musical Details above
             (it's the user's own organizational label, not a musical fact
-            about the piece). */}
+            about the piece). Two-column split (2026-08-19, ported from the
+            mockup), inspired by the Edit Book modal's own closing IMSLP/
+            Sheet Type/Instruments-vs-Description row: Practice status/Your
+            tags stacked on the left, Your notes spanning the same height
+            on the right — the one genuinely tall field gets the one
+            genuinely tall column, same reasoning as that row.
+            min-[525px]:flex-row/gap-3 matches that modal's breakpoint and
+            gutter exactly — this same breakpoint was later adopted
+            (2026-08-20) by every other paired row in this form too, so the
+            whole modal now splits to stacked layout at one unified point
+            instead of each row wrapping at its own content-driven
+            flex-wrap threshold. */}
         <div className="flex flex-col gap-3 border-t border-border pt-4">
           <SectionHeading>Personal</SectionHeading>
-          <Controller
-            name="practiceStatus"
-            control={control}
-            render={({ field }) => (
-              <SingleSelect
-                label="Practice status"
-                options={PRACTICE_STATUS_OPTIONS}
-                value={field.value}
-                onChange={field.onChange}
+          <div className="flex flex-col gap-3 min-[525px]:flex-row">
+            <div className="flex min-w-0 flex-1 flex-col gap-4">
+              <Controller
+                name="practiceStatus"
+                control={control}
+                render={({ field }) => (
+                  <SingleSelect
+                    label="Practice status"
+                    options={PRACTICE_STATUS_OPTIONS}
+                    value={field.value}
+                    onChange={field.onChange}
+                  />
+                )}
               />
-            )}
-          />
-          <Controller
-            name="userTags"
-            control={control}
-            render={({ field }) => (
-              <TagComboBox
-                label="Your tags"
-                options={userTagOptions}
-                selected={field.value}
-                multiple
-                onChange={field.onChange}
+              <Controller
+                name="userTags"
+                control={control}
+                render={({ field }) => (
+                  <TagComboBox
+                    label="Your tags"
+                    options={userTagOptions}
+                    selected={field.value}
+                    multiple
+                    onChange={field.onChange}
+                  />
+                )}
               />
-            )}
-          />
-          <div className="flex flex-col gap-1">
-            <label htmlFor="f-notes" className="text-sm text-ink-soft">
-              Your notes
-            </label>
-            <textarea
-              id="f-notes"
-              rows={2}
-              className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-              {...register('userNotes')}
-            />
+            </div>
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1">
+              <label htmlFor="f-notes" className="text-sm text-ink-soft">
+                Your notes
+              </label>
+              <textarea
+                id="f-notes"
+                rows={2}
+                className="min-h-[96px] flex-1 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+                {...register('userNotes')}
+              />
+            </div>
           </div>
         </div>
       </form>
