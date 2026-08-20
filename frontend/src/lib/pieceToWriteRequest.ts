@@ -17,6 +17,14 @@ export function pieceToWriteRequest(piece: Piece): PieceWriteRequest {
     composer: piece.composer.value,
     arranger: piece.arranger,
     favorite: piece.favorite,
+    // sourceBookId follows the same full-replace rule as every other
+    // field (see CLAUDE.md's "sourceBookId itself became editable" entry)
+    // — omitting it here isn't neutral, it silently clears the book link.
+    // This was previously missing, which meant any full-replace write that
+    // went through this helper (the Piece View header's favorite toggle,
+    // PieceContextMenu's favorite toggle — neither touches sourceBookId
+    // intentionally) unlinked the piece's book as a side effect.
+    sourceBookId: piece.sourceBookId,
     workOpusNumber: piece.workOpusNumber.inherited ? '' : piece.workOpusNumber.value,
     keys: piece.keys.map((k) => k.name),
     sheetTypeName: piece.sheetType.inherited ? '' : (piece.sheetType.value?.name ?? ''),
