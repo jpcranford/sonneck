@@ -433,7 +433,8 @@ function TagComboBox({
                         removeTagAt(index)
                       }}
                       aria-label={`Remove ${tag.name}`}
-                      className="text-ink-soft/70 hover:text-ink"
+                      // Solid pre-blend, not opacity (feedback-icon-color-preblend).
+                      className="text-[#8d8780] hover:text-ink"
                     >
                       <IconXFilled size={12} />
                     </button>
@@ -598,7 +599,8 @@ function SingleSelect({
           className="flex w-full items-center justify-between rounded-md border border-border bg-paper-raised px-3 py-2 text-left text-ink focus:outline focus:outline-2 focus:outline-accent focus:outline-offset-2"
         >
           <span className={value ? '' : 'text-ink-soft/50'}>{selected?.label ?? '—'}</span>
-          <IconChevronDown size={16} className="text-ink-soft/60" />
+          {/* Solid pre-blend, not opacity (feedback-icon-color-preblend). */}
+          <IconChevronDown size={16} className="text-[#9d9892]" />
         </button>
         {open && (
           <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border border-border bg-paper-raised py-1 shadow-lg">
@@ -689,7 +691,8 @@ function SourceBookField({
         <InfoTooltip
           message="Use this to match with an existing book. If the book hasn't been created yet, go do that and come back here."
           ariaLabel="What Source book means"
-          triggerClassName="text-ink-soft/60 hover:text-ink-soft"
+          // Solid pre-blend, not opacity (feedback-icon-color-preblend).
+          triggerClassName="text-[#9d9892] hover:text-ink-soft"
         >
           <IconInfoCircle size={13} />
         </InfoTooltip>
@@ -697,7 +700,7 @@ function SourceBookField({
       <div className="relative">
         <IconSearch
           size={15}
-          className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-soft/60"
+          className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[#9d9892]"
         />
         <input
           ref={inputRef}
@@ -989,7 +992,8 @@ export function EditPieceModalMockup() {
                   <InfoTooltip
                     message="If this piece is part of a larger work which has a number assigned, enter that number."
                     ariaLabel="What Opus / catalog no. means"
-                    triggerClassName="text-ink-soft/60 hover:text-ink-soft"
+                    // Solid pre-blend, not opacity (feedback-icon-color-preblend).
+                    triggerClassName="text-[#9d9892] hover:text-ink-soft"
                   >
                     <IconInfoCircle size={13} />
                   </InfoTooltip>
@@ -1042,7 +1046,8 @@ export function EditPieceModalMockup() {
                   <InfoTooltip
                     message="Publisher serial or engraving plate number. Typically found in bottom margin notes."
                     ariaLabel="What Publisher ID means"
-                    triggerClassName="text-ink-soft/60 hover:text-ink-soft"
+                    // Solid pre-blend, not opacity (feedback-icon-color-preblend).
+                    triggerClassName="text-[#9d9892] hover:text-ink-soft"
                   >
                     <IconInfoCircle size={13} />
                   </InfoTooltip>
@@ -1228,7 +1233,9 @@ export function EditPieceModalMockup() {
               <button
                 type="button"
                 onClick={() => setTempoOpen((o) => !o)}
-                className="flex items-center gap-1 text-xs text-ink-soft/60 hover:text-ink-soft"
+                // Solid pre-blend (icon + label share one color) —
+                // feedback-icon-color-preblend.
+                className="flex items-center gap-1 text-xs text-[#9d9892] hover:text-ink-soft"
               >
                 <IconChevronRight
                   size={12}

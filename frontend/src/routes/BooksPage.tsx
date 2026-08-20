@@ -74,10 +74,16 @@ export function BooksPage() {
             <IconLayoutListFilled size={16} />
           </button>
         </div>
+        {/* Bordered/neutral treatment, matching the grid/list toggle right
+            next to it (border-border, bg-paper-raised, text-ink) — was
+            solid bg-accent, a deliberate earlier choice (design-system
+            memory: settled on after a round-trip through bg-ink and a
+            5-option comparison gallery) revisited and replaced here per
+            direct instruction, design-review/books-new-book-button-bordered.png. */}
         <button
           type="button"
           onClick={() => setNewBookOpen(true)}
-          className="flex shrink-0 items-center gap-1.5 rounded-md bg-accent px-3 py-2 font-display text-sm text-white hover:bg-accent/90"
+          className="flex shrink-0 items-center gap-1.5 rounded-md border border-border bg-paper-raised px-3 py-2 font-display text-sm text-ink hover:border-accent"
         >
           <IconPlus size={16} />
           New Book

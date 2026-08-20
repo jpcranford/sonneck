@@ -471,7 +471,8 @@ export function PieceViewSample() {
                   type="button"
                   disabled
                   aria-label="Edit piece (not editable in this sample)"
-                  className="cursor-not-allowed text-ink-soft/40"
+                  // Solid pre-blend, not opacity (feedback-icon-color-preblend).
+                  className="cursor-not-allowed text-[#bbb7b2]"
                 >
                   <IconEditFilled size={21} />
                 </button>
@@ -559,7 +560,8 @@ export function PieceViewSample() {
                   <InfoTooltip
                     message="Public domain status — coming soon"
                     ariaLabel="Public domain status info"
-                    triggerClassName="flex size-5 shrink-0 items-center justify-center rounded-full border border-dashed border-border text-ink-soft/50 hover:text-ink-soft"
+                    // Solid pre-blend, not opacity (feedback-icon-color-preblend).
+                    triggerClassName="flex size-5 shrink-0 items-center justify-center rounded-full border border-dashed border-border text-[#aca7a1] hover:text-ink-soft"
                   >
                     <IconShieldCheck size={11} />
                   </InfoTooltip>
@@ -574,7 +576,8 @@ export function PieceViewSample() {
                     <InfoTooltip
                       message="If this piece is part of a larger work which has a number assigned, enter that number."
                       ariaLabel="What Opus / catalog no. means"
-                      triggerClassName="text-ink-soft/60 hover:text-ink-soft"
+                      // Solid pre-blend, not opacity (feedback-icon-color-preblend).
+                      triggerClassName="text-[#9c968f] hover:text-ink-soft"
                     >
                       <IconInfoCircle size={13} />
                     </InfoTooltip>
@@ -602,7 +605,8 @@ export function PieceViewSample() {
                     target="_blank"
                     rel="noreferrer"
                     aria-label="View on IMSLP"
-                    className="text-ink-soft/60 hover:text-ink-soft"
+                    // Solid pre-blend, not opacity (feedback-icon-color-preblend).
+                    className="text-[#9c968f] hover:text-ink-soft"
                   >
                     <IconExternalLink size={13} />
                   </a>
@@ -635,7 +639,9 @@ export function PieceViewSample() {
                 <button
                   type="button"
                   onClick={() => setTempoOpen((o) => !o)}
-                  className="flex items-center gap-1 text-xs text-ink-soft/75 hover:text-ink-soft"
+                  // Solid pre-blend (icon + label share one color) —
+                  // feedback-icon-color-preblend.
+                  className="flex items-center gap-1 text-xs text-[#847d75] hover:text-ink-soft"
                 >
                   <IconChevronRight
                     size={12}
@@ -683,7 +689,8 @@ export function PieceViewSample() {
                   type="button"
                   disabled
                   aria-label="Edit book details (coming soon)"
-                  className="cursor-not-allowed text-ink-soft/40"
+                  // Solid pre-blend, not opacity (feedback-icon-color-preblend).
+                  className="cursor-not-allowed text-[#bebab6]"
                 >
                   <IconEditFilled size={16} />
                 </button>
@@ -706,7 +713,9 @@ export function PieceViewSample() {
             <button
               type="button"
               onClick={() => setAdvancedOpen((o) => !o)}
-              className="flex w-fit items-center gap-1 text-ink-soft/75 hover:text-ink-soft"
+              // Solid pre-blend (icon + label share one color) —
+              // feedback-icon-color-preblend.
+              className="flex w-fit items-center gap-1 text-[#847d75] hover:text-ink-soft"
             >
               <IconChevronRight
                 size={13}
@@ -723,7 +732,8 @@ export function PieceViewSample() {
                       type="button"
                       onClick={(event) => handleCopy(piece.fileHash, event)}
                       aria-label="Copy full file hash"
-                      className="text-ink-soft/50 hover:text-ink-soft"
+                      // Solid pre-blend, not opacity (feedback-icon-color-preblend).
+                      className="text-[#aca7a1] hover:text-ink-soft"
                     >
                       <IconCopy size={12} />
                     </button>

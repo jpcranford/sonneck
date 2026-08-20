@@ -85,7 +85,7 @@ export function SourceBookField({
         <InfoTooltip
           message="Use this to match with an existing book. If the book hasn't been created yet, go do that and come back here."
           ariaLabel="What Source book means"
-          triggerClassName="text-ink-soft/60 hover:text-ink-soft"
+          triggerClassName="text-[#9d9892] hover:text-ink-soft"
         >
           <IconInfoCircle size={13} />
         </InfoTooltip>
@@ -93,7 +93,7 @@ export function SourceBookField({
       <div className="relative">
         <IconSearch
           size={15}
-          className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-soft/60"
+          className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[#9d9892]"
         />
         <input
           ref={inputRef}

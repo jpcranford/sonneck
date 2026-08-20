@@ -428,7 +428,10 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
                 <InfoTooltip
                   message="If this piece is part of a larger work which has a number assigned, enter that number."
                   ariaLabel="What Opus / catalog no. means"
-                  triggerClassName="text-ink-soft/60 hover:text-ink-soft"
+                  // Solid pre-blend, not opacity — IconInfoCircle is
+                  // multi-path, a translucent color double-blends at the
+                  // overlaps (memory: feedback-icon-color-preblend).
+                  triggerClassName="text-[#9d9892] hover:text-ink-soft"
                 >
                   <IconInfoCircle size={13} />
                 </InfoTooltip>
@@ -475,7 +478,10 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
                 <InfoTooltip
                   message="Publisher serial or engraving plate number. Typically found in bottom margin notes."
                   ariaLabel="What Publisher ID means"
-                  triggerClassName="text-ink-soft/60 hover:text-ink-soft"
+                  // Solid pre-blend, not opacity — IconInfoCircle is
+                  // multi-path, a translucent color double-blends at the
+                  // overlaps (memory: feedback-icon-color-preblend).
+                  triggerClassName="text-[#9d9892] hover:text-ink-soft"
                 >
                   <IconInfoCircle size={13} />
                 </InfoTooltip>
@@ -667,7 +673,11 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
             <button
               type="button"
               onClick={() => setTempoOpen((o) => !o)}
-              className="flex items-center gap-1 text-xs text-ink-soft/60 hover:text-ink-soft"
+              // Solid pre-blend (icon + label share one color) — see
+              // feedback-icon-color-preblend; identical against a static
+              // background either way for the text half, but the chevron
+              // icon needs it.
+              className="flex items-center gap-1 text-xs text-[#9d9892] hover:text-ink-soft"
             >
               <IconChevronRight
                 size={12}

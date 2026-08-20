@@ -182,7 +182,8 @@ export function TagComboBox({
                         removeTagAt(index)
                       }}
                       aria-label={`Remove ${tag.name}`}
-                      className="text-ink-soft/70 hover:text-ink"
+                      // Solid pre-blend, not opacity (feedback-icon-color-preblend).
+                      className="text-[#8d8780] hover:text-ink"
                     >
                       <IconXFilled size={12} />
                     </button>

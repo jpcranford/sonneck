@@ -81,7 +81,8 @@ export function SingleSelect({
           className="flex w-full items-center justify-between rounded-md border border-border bg-paper-raised px-3 py-2 text-left text-ink focus:outline focus:outline-2 focus:outline-accent focus:outline-offset-2"
         >
           <span className={value ? '' : 'text-ink-soft/50'}>{selected?.label ?? '—'}</span>
-          <IconChevronDown size={16} className="text-ink-soft/60" />
+          {/* Solid pre-blend, not opacity (feedback-icon-color-preblend). */}
+          <IconChevronDown size={16} className="text-[#9d9892]" />
         </button>
         {open && (
           <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border border-border bg-paper-raised py-1 shadow-lg">

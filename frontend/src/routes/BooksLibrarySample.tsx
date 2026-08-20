@@ -202,7 +202,8 @@ function BookCatalogRow({ book }: { book: MockBook }) {
         <span className="font-display text-xl leading-none text-accent">{book.pieceCount}</span>
         <span className="mt-1 text-[0.6rem] tracking-wide text-ink-soft uppercase">pieces</span>
       </div>
-      <IconChevronRight size={18} className="shrink-0 text-ink-soft/50" />
+      {/* Solid pre-blend, not opacity (feedback-icon-color-preblend). */}
+      <IconChevronRight size={18} className="shrink-0 text-[#aca7a1]" />
     </div>
   )
 }

@@ -394,7 +394,8 @@ function bookFields(): { label: string; value: ReactNode }[] {
       value: (
         <>
           {sampleBook.imslpNumber}
-          <IconExternalLink size={12} className="ml-0.5 inline opacity-70" />
+          {/* Solid pre-blend, not opacity (feedback-icon-color-preblend). */}
+          <IconExternalLink size={12} className="ml-0.5 inline text-[#605d5b]" />
         </>
       ),
     })

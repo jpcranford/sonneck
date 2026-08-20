@@ -62,9 +62,12 @@ function NavItemsList({ items, collapsed }: { items: NavItem[]; collapsed: boole
         >
           {({ isActive }) => (
             <>
+              {/* Inactive state is a solid pre-blend (sidebar-text at 85%
+                  over sidebar-bg), not an opacity utility on the icon
+                  itself — feedback-icon-color-preblend. */}
               <Icon
                 size={22}
-                className={isActive ? 'text-accent-on-dark opacity-100' : 'opacity-[0.85]'}
+                className={isActive ? 'text-accent-on-dark opacity-100' : 'text-[#bbb3a7]'}
               />
               {!collapsed && <span className="truncate">{label}</span>}
             </>

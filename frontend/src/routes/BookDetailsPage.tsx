@@ -278,7 +278,12 @@ export function BookDetailsPage() {
                     ) : (
                       <span
                         title="No original file on record"
-                        className="flex cursor-not-allowed items-center gap-1.5 rounded-md bg-accent/40 px-4 py-2 font-display text-sm text-white/70"
+                        // text-[#e8ece8] is a solid pre-blend of white/70
+                        // against this span's own bg-accent/40-over-card
+                        // background (not the icon's opacity alone) — see
+                        // feedback-icon-color-preblend; icon+text share one
+                        // color here since IconExternalLink is multi-path.
+                        className="flex cursor-not-allowed items-center gap-1.5 rounded-md bg-accent/40 px-4 py-2 font-display text-sm text-[#e8ece8]"
                       >
                         <IconExternalLink size={16} />
                         Open Book PDF
