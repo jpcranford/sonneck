@@ -26,7 +26,7 @@ export function PieceListCard({ piece }: PieceListCardProps) {
         <div className="flex items-start justify-between gap-4">
           <div className="flex min-w-0 flex-col gap-1">
             <p className="truncate font-display text-lg font-medium text-ink">{piece.title}</p>
-            {meta && <p className="truncate text-sm text-ink-soft">{meta}</p>}
+            {meta && <p className="text-sm text-ink-soft">{meta}</p>}
           </div>
           <div className="flex w-[134px] shrink-0 justify-center">
             <img
