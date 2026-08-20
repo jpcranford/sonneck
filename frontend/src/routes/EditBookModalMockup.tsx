@@ -208,7 +208,7 @@ export function EditBookModalMockup() {
           <div className="flex flex-col gap-3 min-[525px]:flex-row">
             <div className="flex min-w-0 flex-1 flex-col gap-1">
               <label htmlFor="f-book-title" className="text-sm text-ink-soft">
-                Book Title <span className="text-ink-soft/60 italic">(Required)</span>
+                Book title <span className="text-ink-soft/60 italic">(Required)</span>
               </label>
               <input
                 id="f-book-title"
@@ -232,7 +232,7 @@ export function EditBookModalMockup() {
           <div className="flex flex-col gap-3 min-[525px]:flex-row">
             <div className="flex min-w-0 flex-1 flex-col gap-1">
               <label htmlFor="f-year" className="text-sm text-ink-soft">
-                Year Written
+                Year written
               </label>
               <input
                 id="f-year"
@@ -242,7 +242,7 @@ export function EditBookModalMockup() {
             </div>
             <div className="flex min-w-0 flex-1 flex-col gap-1">
               <label htmlFor="f-opus" className="text-sm text-ink-soft">
-                Work/Opus Number
+                Work/opus number
               </label>
               <input
                 id="f-opus"
@@ -298,7 +298,7 @@ export function EditBookModalMockup() {
             <div className="flex min-w-0 flex-1 flex-col gap-4">
               <div className="flex flex-col gap-1">
                 <label htmlFor="f-imslp" className="text-sm text-ink-soft">
-                  IMSLP No.
+                  IMSLP number
                 </label>
                 <input
                   id="f-imslp"
@@ -311,7 +311,7 @@ export function EditBookModalMockup() {
                 control={control}
                 render={({ field }) => (
                   <SingleSelect
-                    label="Sheet Type"
+                    label="Sheet type"
                     options={SHEET_TYPE_SELECT_OPTIONS}
                     value={field.value}
                     onChange={field.onChange}
@@ -340,7 +340,11 @@ export function EditBookModalMockup() {
               <textarea
                 id="f-description"
                 rows={4}
-                className="min-h-[96px] flex-1 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+                // resize-none — the drag handle had no real effect anyway:
+                // flex-1/min-h-0 on this column drive the textarea's actual
+                // height, so a manual resize either got fought back to the
+                // flex-derived height or fought the layout around it.
+                className="min-h-[96px] flex-1 resize-none rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
                 {...register('description')}
               />
             </div>
