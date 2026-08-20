@@ -136,7 +136,7 @@ export function EditBookModalMockup() {
           // language instead of introducing a second pattern.
           <div className="-mx-6 flex items-start justify-between gap-4 border-b border-border px-6 pb-4">
             <div>
-              <h2 id="edit-book-mockup-title" className="font-display text-2xl text-ink">
+              <h2 id="edit-book-mockup-title" className="font-display text-2xl font-medium text-ink">
                 Edit book
               </h2>
               <p className="text-sm text-ink-soft">{MOCK_BOOK_TITLE}</p>

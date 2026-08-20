@@ -120,7 +120,7 @@ export function UploadPage() {
           pill someone might not notice has two settings. */}
       {stage === 'landing' && (
         <div className="flex w-full max-w-md flex-col gap-4">
-          <h1 className="font-display text-2xl text-ink">What are you uploading?</h1>
+          <h1 className="font-display text-2xl font-medium text-ink">What are you uploading?</h1>
           <div className="flex flex-col gap-3">
             <button
               type="button"
@@ -131,7 +131,7 @@ export function UploadPage() {
                 <IconFileMusic size={19} />
               </span>
               <span>
-                <span className="block font-display text-[0.98rem] text-ink">Upload a piece</span>
+                <span className="block font-display text-[0.98rem] font-medium text-ink">Upload a piece</span>
                 <span className="block text-[0.8rem] text-ink-soft">
                   One PDF, one piece of music. The common case.
                 </span>
@@ -146,7 +146,7 @@ export function UploadPage() {
                 <IconBook2 size={19} />
               </span>
               <span>
-                <span className="block font-display text-[0.98rem] text-ink">Upload a book</span>
+                <span className="block font-display text-[0.98rem] font-medium text-ink">Upload a book</span>
                 <span className="block text-[0.8rem] text-ink-soft">
                   One PDF containing several pieces — we'll walk you through splitting it up.
                 </span>
@@ -171,7 +171,7 @@ export function UploadPage() {
             Back
           </button>
           <IconBook2 size={40} className="text-ink-soft" />
-          <h1 className="font-display text-2xl text-ink">Book upload is coming soon</h1>
+          <h1 className="font-display text-2xl font-medium text-ink">Book upload is coming soon</h1>
           <p className="text-ink-soft">
             Splitting a book's PDF into individual pieces isn't built yet. For now, you can{' '}
             <Link to="/books" className="text-accent hover:underline">
@@ -220,7 +220,7 @@ export function UploadPage() {
             }`}
           >
             <IconCloudUpload size={40} className="text-ink-soft" />
-            <span className="font-display text-lg text-ink">
+            <span className="font-display text-lg font-medium text-ink">
               Drag a PDF here, or tap to choose a file
             </span>
             <span className="text-sm text-ink-soft">Up to 500 MB</span>
@@ -270,7 +270,7 @@ export function UploadPage() {
           onSubmit={handleSubmit((data) => saveMutation.mutate(data))}
           className="flex w-full max-w-2xl flex-col gap-4"
         >
-          <h1 className="font-display text-2xl text-ink">Piece details</h1>
+          <h1 className="font-display text-2xl font-medium text-ink">Piece details</h1>
           {/* Large first-page thumbnail so what's about to be saved is
               visually confirmed, not just taken on faith from the
               filename — locked design (design-review/upload-details-thumb-
@@ -333,7 +333,14 @@ export function UploadPage() {
       {stage === 'success' && piece && (
         <div className="flex w-full max-w-md flex-col items-center gap-3 text-center">
           <IconCircleCheckFilled size={40} className="text-accent" />
-          <h1 className="font-display text-2xl text-ink">
+          {/* font-medium on the h1 itself now (added under the app-wide
+              "every serifed heading is at least 500 weight" rule) — this
+              supersedes the earlier deliberate choice to keep the
+              surrounding "…" uploaded text at regular weight, contrasting
+              it against the piece-title span. The inner span's own
+              font-medium is now redundant but harmless; left in place
+              rather than touched for an unrelated reason. */}
+          <h1 className="font-display text-2xl font-medium text-ink">
             "<span className="font-medium">{piece.title}</span>" uploaded
           </h1>
           <button

@@ -68,7 +68,7 @@ export function NewBookModal({ open, onClose }: NewBookModalProps) {
       labelledBy="new-book-title"
       header={
         <div className="flex items-start justify-between gap-4">
-          <h2 id="new-book-title" className="font-display text-2xl text-ink">
+          <h2 id="new-book-title" className="font-display text-2xl font-medium text-ink">
             New book
           </h2>
           <button

@@ -169,7 +169,7 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
         // own footer border-t), so a line here matches existing language.
         <div className="-mx-6 flex items-start justify-between gap-4 border-b border-border px-6 pb-4">
           <div>
-            <h2 id="edit-book-title" className="font-display text-2xl text-ink">
+            <h2 id="edit-book-title" className="font-display text-2xl font-medium text-ink">
               Edit book
             </h2>
             <p className="text-sm text-ink-soft">{book.bookTitle}</p>

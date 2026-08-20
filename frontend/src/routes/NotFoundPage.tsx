@@ -6,7 +6,7 @@ import { Link } from 'react-router-dom'
 export function NotFoundPage() {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-2 p-8 text-center">
-      <h1 className="font-display text-3xl text-ink">Page not found</h1>
+      <h1 className="font-display text-3xl font-medium text-ink">Page not found</h1>
       <p className="text-ink-soft">There's nothing at this address.</p>
       <Link to="/" className="mt-4 text-accent underline">
         Back to Library

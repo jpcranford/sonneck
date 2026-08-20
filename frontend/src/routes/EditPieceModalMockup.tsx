@@ -828,7 +828,7 @@ export function EditPieceModalMockup() {
           <div className="flex flex-col gap-3">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h2 id="edit-piece-mockup-title" className="font-display text-2xl text-ink">
+                <h2 id="edit-piece-mockup-title" className="font-display text-2xl font-medium text-ink">
                   Edit piece
                 </h2>
                 <p className="text-sm text-ink-soft">{defaultValues.title}</p>

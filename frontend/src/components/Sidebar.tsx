@@ -53,7 +53,7 @@ function NavItemsList({ items, collapsed }: { items: NavItem[]; collapsed: boole
           end={to === '/'}
           title={collapsed ? label : undefined}
           className={({ isActive }) =>
-            `flex h-10 items-center gap-3 rounded-md px-2 font-display text-[0.95rem] ${
+            `flex h-10 items-center gap-3 rounded-md px-2 font-display text-[0.95rem] font-medium ${
               collapsed ? 'justify-center' : ''
             } ${
               isActive ? 'bg-sidebar-panel text-sidebar-text' : 'text-sidebar-text hover:bg-white/5'
@@ -134,12 +134,12 @@ export function Sidebar() {
             (collapsed ? (
               <span
                 title="Coming soon"
-                className="flex size-10 items-center justify-center rounded-md font-display text-[0.95rem] text-sidebar-text"
+                className="flex size-10 items-center justify-center rounded-md font-display text-[0.95rem] font-medium text-sidebar-text"
               >
                 C
               </span>
             ) : (
-              <span className="truncate rounded-md px-2 py-1.5 font-display text-[0.95rem] text-sidebar-text">
+              <span className="truncate rounded-md px-2 py-1.5 font-display text-[0.95rem] font-medium text-sidebar-text">
                 Coming soon
               </span>
             ))}
@@ -150,7 +150,7 @@ export function Sidebar() {
                 to={`/setlists/${setlist.id}`}
                 title={setlist.name}
                 className={({ isActive }) =>
-                  `flex size-10 items-center justify-center rounded-md font-display text-[0.95rem] ${
+                  `flex size-10 items-center justify-center rounded-md font-display text-[0.95rem] font-medium ${
                     isActive
                       ? 'bg-sidebar-panel text-sidebar-text'
                       : 'text-sidebar-text hover:bg-white/5'
@@ -164,7 +164,7 @@ export function Sidebar() {
                 key={setlist.id}
                 to={`/setlists/${setlist.id}`}
                 className={({ isActive }) =>
-                  `mt-1 truncate rounded-md px-2 py-1.5 font-display text-[0.95rem] first:mt-0 ${
+                  `mt-1 truncate rounded-md px-2 py-1.5 font-display text-[0.95rem] font-medium first:mt-0 ${
                     isActive
                       ? 'bg-sidebar-panel text-sidebar-text'
                       : 'text-sidebar-text hover:bg-white/5'

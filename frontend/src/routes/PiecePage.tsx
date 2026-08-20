@@ -308,7 +308,7 @@ export function PiecePage() {
 
       {isError && notFound && (
         <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
-          <h1 className="font-display text-3xl text-ink">Piece not found</h1>
+          <h1 className="font-display text-3xl font-medium text-ink">Piece not found</h1>
           <p className="text-ink-soft">It may have been deleted or moved.</p>
         </div>
       )}
