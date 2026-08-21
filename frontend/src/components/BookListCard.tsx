@@ -22,9 +22,16 @@ export function BookListCard({ book }: BookListCardProps) {
     // Right-click (desktop) + long-press (touch), no visible "⋯" trigger —
     // same convention as PieceListCard.
     <BookContextMenu book={book} hideTriggerButton>
+      {/* No border-t/first:border-t-0 here (2026-08-21 bug fix, same root
+          cause as BookDetailsPage.tsx's PieceList) — this card is wrapped
+          in BookContextMenu's own div (right-click/long-press), making it
+          the sole child of its own per-row wrapper, so CSS `first:`
+          matched every row instead of just the actual first one, deleting
+          every divider. The list container (BooksPage.tsx) now applies
+          `divide-y divide-border` across the real siblings instead. */}
       <ClickableCard
         to={`/books/${book.id}`}
-        className="flex w-full items-center gap-5 rounded-md border-t border-border px-2 py-3 text-left first:border-t-0 hover:bg-accent-soft"
+        className="flex w-full items-center gap-5 rounded-md px-2 py-3 text-left hover:bg-accent-soft"
       >
         <div className="min-w-0 flex-1">
           <p className="truncate font-display text-base font-medium text-ink">{book.bookTitle}</p>

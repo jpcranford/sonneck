@@ -121,7 +121,7 @@ export function BooksPage() {
         )}
 
         {books && books.length > 0 && viewMode === 'list' && (
-          <div className="flex flex-col">
+          <div className="flex flex-col divide-y divide-border">
             {books.map((book) => (
               <BookListCard key={book.id} book={book} />
             ))}

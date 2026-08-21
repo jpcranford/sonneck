@@ -399,12 +399,12 @@ function PieceGrid({ pieces }: { pieces: SamplePiece[] }) {
 // is what actually makes the drop happen *at* 500px and below, matching
 // "narrow widths ≤500px" rather than silently requiring 499px first.
 const THUMB_HIDE_CLASS = 'max-[501px]:hidden'
-const ROW_COLLAPSE_CLASS = 'max-[501px]:grid-cols-[60px_1fr]'
+const ROW_COLLAPSE_CLASS = 'max-[501px]:grid-cols-[96px_1fr]'
 
 function PieceList({ pieces }: { pieces: SamplePiece[] }) {
   return (
     <div className="flex flex-col">
-      <div className="grid grid-cols-[60px_1fr_56px] gap-3 px-1.5 pb-2.5 text-[0.7rem] font-medium tracking-wide text-ink-soft uppercase">
+      <div className="grid grid-cols-[96px_1fr_56px] gap-3 px-1.5 pb-2.5 text-[0.7rem] font-medium tracking-wide text-ink-soft uppercase">
         <div>Page</div>
         <div>Title</div>
         <div className={THUMB_HIDE_CLASS} />
@@ -412,7 +412,7 @@ function PieceList({ pieces }: { pieces: SamplePiece[] }) {
       {pieces.map((piece) => (
         <div
           key={piece.id}
-          className={`grid grid-cols-[60px_1fr_56px] items-center gap-3 border-t border-border px-1.5 py-2.5 first:border-t-0 hover:rounded-md hover:bg-accent-soft ${ROW_COLLAPSE_CLASS}`}
+          className={`grid grid-cols-[96px_1fr_56px] items-center gap-3 border-t border-border px-1.5 py-2.5 first:border-t-0 hover:rounded-md hover:bg-accent-soft ${ROW_COLLAPSE_CLASS}`}
         >
           <div className="text-sm font-medium tabular-nums text-ink">{pageRangeLabel(piece)}</div>
           <div className="min-w-0">

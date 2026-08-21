@@ -135,67 +135,87 @@ function PieceGrid({ pieces }: { pieces: Piece[] }) {
 // (verified against the served CSS) is what actually makes the drop
 // happen *at* 500px and below.
 const THUMB_HIDE_CLASS = 'max-[501px]:hidden'
-const ROW_COLLAPSE_CLASS = 'max-[501px]:grid-cols-[84px_1fr]'
+const ROW_COLLAPSE_CLASS = 'max-[501px]:grid-cols-[96px_1fr]'
 
-// 84px (was 60px) — a two-piece range like "pp. 123–145" was clipping
-// against the old width once source pages ran past double digits.
+// 96px (was 84px, was 60px originally) — a two-piece range like
+// "pp. 123–145" was clipping against the old width once source pages ran
+// past double digits; widened again (direct instruction, 2026-08-21) for
+// a bit more breathing room around three-digit ranges like "pp. 159–161".
+// BUG FIX (2026-08-21): rows used to carry their own `border-t
+// border-border … first:border-t-0`, matching BookDetailsSample.tsx's
+// mockup verbatim — but that `first:` was never doing what it looked like
+// it did, in either file: the "PAGE / TITLE" header row above the mapped
+// pieces is *also* a child of the same flex-col container, so it — not the
+// first piece — is the one that actually holds the `:first-child` slot.
+// The mockup's own first piece row was already getting a real border-top
+// (a visible line under the header) precisely because `first:border-t-0`
+// never matched anything there; the real page just had the *other*,
+// unrelated bug on top of it (each row separately wrapped in
+// PieceContextMenu's own div for right-click/long-press, so `:first-child`
+// matched every row's own sole-child wrapper, deleting every line
+// instead). Net fix here: every row gets a plain, unconditional
+// `border-t border-border` — no `first:` exception at all, which is what
+// actually reproduces the mockup's real rendered result (a line under the
+// header too, not just between pieces).
 function PieceList({ pieces }: { pieces: Piece[] }) {
   return (
     <div className="flex flex-col">
-      <div className="grid grid-cols-[84px_1fr_56px] gap-3 px-1.5 pb-2.5 text-[0.7rem] font-medium tracking-wide text-ink-soft uppercase">
+      <div className="grid grid-cols-[96px_1fr_56px] gap-3 px-1.5 pb-2.5 text-[0.7rem] font-medium tracking-wide text-ink-soft uppercase">
         <div>Page</div>
         <div>Title</div>
         <div className={THUMB_HIDE_CLASS} />
       </div>
-      {pieces.map((piece) => (
-        <PieceContextMenu key={piece.id} piece={piece} hideTriggerButton>
-          <ClickableCard
-            to={`/pieces/${piece.id}`}
-            className={`grid grid-cols-[84px_1fr_56px] items-center gap-3 border-t border-border px-1.5 py-2.5 text-left first:border-t-0 hover:rounded-md hover:bg-accent-soft ${ROW_COLLAPSE_CLASS}`}
-          >
-            <div className="text-sm font-medium tabular-nums text-ink">{pageRangeLabel(piece)}</div>
-            <div className="min-w-0">
-              <p className="flex flex-wrap items-center gap-1.5 font-display text-[0.92rem] font-medium text-ink">
-                {piece.title}
-                {piece.favorite && (
-                  <span className="text-accent" title="Favorite">
-                    <IconHeartFilled size={13} />
-                  </span>
-                )}
-              </p>
-              <p className="mt-0.5 text-xs text-ink-soft">{pieceMetaLine(piece)}</p>
-              {/* sheetType/instruments only shown when they're this piece's
-                  own override, not the resolved/effective (book-inherited)
-                  value (2026-08-20, direct instruction: "don't show pills
-                  from inherited information, they'll just clutter the
-                  view") — every piece in a book sharing the same inherited
-                  sheet type/instruments would otherwise repeat the
-                  identical pill on every single row, adding nothing the
-                  book header above the piece list hasn't already shown
-                  once. Keys/userTags were never book-inheritable to begin
-                  with (design doc §3), so passing them through unfiltered
-                  is unchanged. */}
-              <TagPills
-                keys={piece.keys}
-                sheetType={piece.sheetType.inherited ? null : piece.sheetType.value}
-                instruments={piece.instruments.inherited ? [] : piece.instruments.values}
-                userTags={piece.userTags}
-                className="mt-1.5"
-              />
-            </div>
-            <div
-              className={`relative h-[42px] w-14 overflow-hidden rounded-md border border-border ${THUMB_HIDE_CLASS}`}
+      <div>
+        {pieces.map((piece) => (
+          <PieceContextMenu key={piece.id} piece={piece} hideTriggerButton>
+            <ClickableCard
+              to={`/pieces/${piece.id}`}
+              className={`grid grid-cols-[96px_1fr_56px] items-center gap-3 border-t border-border px-1.5 py-2.5 text-left hover:rounded-md hover:bg-accent-soft ${ROW_COLLAPSE_CLASS}`}
             >
-              <img
-                src={getPieceThumbnailUrl(piece.id, piece.thumbnailPage)}
-                alt=""
-                loading="lazy"
-                className="h-full w-full object-cover object-top"
-              />
-            </div>
-          </ClickableCard>
-        </PieceContextMenu>
-      ))}
+              <div className="text-sm font-medium tabular-nums text-ink">{pageRangeLabel(piece)}</div>
+              <div className="min-w-0">
+                <p className="flex flex-wrap items-center gap-1.5 font-display text-[0.92rem] font-medium text-ink">
+                  {piece.title}
+                  {piece.favorite && (
+                    <span className="text-accent" title="Favorite">
+                      <IconHeartFilled size={13} />
+                    </span>
+                  )}
+                </p>
+                <p className="mt-0.5 text-xs text-ink-soft">{pieceMetaLine(piece)}</p>
+                {/* sheetType/instruments only shown when they're this piece's
+                    own override, not the resolved/effective (book-inherited)
+                    value (2026-08-20, direct instruction: "don't show pills
+                    from inherited information, they'll just clutter the
+                    view") — every piece in a book sharing the same inherited
+                    sheet type/instruments would otherwise repeat the
+                    identical pill on every single row, adding nothing the
+                    book header above the piece list hasn't already shown
+                    once. Keys/userTags were never book-inheritable to begin
+                    with (design doc §3), so passing them through unfiltered
+                    is unchanged. */}
+                <TagPills
+                  keys={piece.keys}
+                  sheetType={piece.sheetType.inherited ? null : piece.sheetType.value}
+                  instruments={piece.instruments.inherited ? [] : piece.instruments.values}
+                  userTags={piece.userTags}
+                  className="mt-1.5"
+                />
+              </div>
+              <div
+                className={`relative h-[42px] w-14 overflow-hidden rounded-md border border-border ${THUMB_HIDE_CLASS}`}
+              >
+                <img
+                  src={getPieceThumbnailUrl(piece.id, piece.thumbnailPage)}
+                  alt=""
+                  loading="lazy"
+                  className="h-full w-full object-cover object-top"
+                />
+              </div>
+            </ClickableCard>
+          </PieceContextMenu>
+        ))}
+      </div>
     </div>
   )
 }
