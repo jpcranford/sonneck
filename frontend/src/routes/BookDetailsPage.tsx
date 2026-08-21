@@ -18,6 +18,7 @@ import { bookComposerPart } from '../lib/formatBookMeta'
 import { hyphenateISBN } from '../lib/isbn'
 import { ClickableCard } from '../components/ClickableCard'
 import { EditBookModal } from '../components/EditBookModal'
+import { PieceContextMenu } from '../components/PieceContextMenu'
 import { TagPills } from '../components/TagPills'
 
 // Book Details page — no design-doc spec (new ground, same as the Books
@@ -84,35 +85,42 @@ function pieceMetaLine(piece: Piece): string {
   return [composerPart, pagesLabel(piece)].filter((part): part is string => !!part).join(' • ')
 }
 
+// Right-click/long-press menu (2026-08-20, direct instruction): shares
+// PieceContextMenu with the Piece Library's own cards (PieceGridCard/
+// PieceListCard) rather than a separate copy — same favorite/edit/delete
+// items, same hideTriggerButton convention (no visible "⋯" trigger; touch
+// users get ContextMenu's built-in long-press instead, same as the
+// library's own cards).
 function PieceGrid({ pieces }: { pieces: Piece[] }) {
   return (
     <div className="grid grid-cols-[repeat(auto-fill,minmax(112px,1fr))] gap-3">
       {pieces.map((piece) => (
-        <ClickableCard
-          key={piece.id}
-          to={`/pieces/${piece.id}`}
-          className="overflow-hidden rounded-lg border border-border bg-paper-raised text-left transition-colors hover:border-accent"
-        >
-          {/* 2026-08-20 (direct instruction): the page-range badge that
-              used to overlay the thumbnail is gone — its content moved
-              down to the bottom line in its place (below), and the
-              composer/arranger row is gone entirely. Too little room in a
-              112px-wide card for three lines of text plus a badge; the
-              page range is the one fact worth keeping over the piece
-              count pagesLabel used to show. */}
-          <div className="relative aspect-[180/132] bg-border">
-            <img
-              src={getPieceThumbnailUrl(piece.id, piece.thumbnailPage)}
-              alt=""
-              loading="lazy"
-              className="h-full w-full object-cover object-top"
-            />
-          </div>
-          <div className="flex flex-col gap-0.5 px-2 py-1.5">
-            <p className="truncate font-display text-[0.8rem] font-medium text-ink">{piece.title}</p>
-            <p className="text-[0.65rem] text-ink-soft/80">{pageRangeLabel(piece)}</p>
-          </div>
-        </ClickableCard>
+        <PieceContextMenu key={piece.id} piece={piece} hideTriggerButton>
+          <ClickableCard
+            to={`/pieces/${piece.id}`}
+            className="overflow-hidden rounded-lg border border-border bg-paper-raised text-left transition-colors hover:border-accent"
+          >
+            {/* 2026-08-20 (direct instruction): the page-range badge that
+                used to overlay the thumbnail is gone — its content moved
+                down to the bottom line in its place (below), and the
+                composer/arranger row is gone entirely. Too little room in a
+                112px-wide card for three lines of text plus a badge; the
+                page range is the one fact worth keeping over the piece
+                count pagesLabel used to show. */}
+            <div className="relative aspect-[180/132] bg-border">
+              <img
+                src={getPieceThumbnailUrl(piece.id, piece.thumbnailPage)}
+                alt=""
+                loading="lazy"
+                className="h-full w-full object-cover object-top"
+              />
+            </div>
+            <div className="flex flex-col gap-0.5 px-2 py-1.5">
+              <p className="truncate font-display text-[0.8rem] font-medium text-ink">{piece.title}</p>
+              <p className="text-[0.65rem] text-ink-soft/80">{pageRangeLabel(piece)}</p>
+            </div>
+          </ClickableCard>
+        </PieceContextMenu>
       ))}
     </div>
   )
@@ -137,52 +145,53 @@ function PieceList({ pieces }: { pieces: Piece[] }) {
         <div className={THUMB_HIDE_CLASS} />
       </div>
       {pieces.map((piece) => (
-        <ClickableCard
-          key={piece.id}
-          to={`/pieces/${piece.id}`}
-          className={`grid grid-cols-[84px_1fr_56px] items-center gap-3 border-t border-border px-1.5 py-2.5 text-left first:border-t-0 hover:rounded-md hover:bg-accent-soft ${ROW_COLLAPSE_CLASS}`}
-        >
-          <div className="text-sm font-medium tabular-nums text-ink">{pageRangeLabel(piece)}</div>
-          <div className="min-w-0">
-            <p className="flex flex-wrap items-center gap-1.5 font-display text-[0.92rem] font-medium text-ink">
-              {piece.title}
-              {piece.favorite && (
-                <span className="text-accent" title="Favorite">
-                  <IconHeartFilled size={13} />
-                </span>
-              )}
-            </p>
-            <p className="mt-0.5 text-xs text-ink-soft">{pieceMetaLine(piece)}</p>
-            {/* sheetType/instruments only shown when they're this piece's
-                own override, not the resolved/effective (book-inherited)
-                value (2026-08-20, direct instruction: "don't show pills
-                from inherited information, they'll just clutter the
-                view") — every piece in a book sharing the same inherited
-                sheet type/instruments would otherwise repeat the
-                identical pill on every single row, adding nothing the
-                book header above the piece list hasn't already shown
-                once. Keys/userTags were never book-inheritable to begin
-                with (design doc §3), so passing them through unfiltered
-                is unchanged. */}
-            <TagPills
-              keys={piece.keys}
-              sheetType={piece.sheetType.inherited ? null : piece.sheetType.value}
-              instruments={piece.instruments.inherited ? [] : piece.instruments.values}
-              userTags={piece.userTags}
-              className="mt-1.5"
-            />
-          </div>
-          <div
-            className={`relative h-[42px] w-14 overflow-hidden rounded-md border border-border ${THUMB_HIDE_CLASS}`}
+        <PieceContextMenu key={piece.id} piece={piece} hideTriggerButton>
+          <ClickableCard
+            to={`/pieces/${piece.id}`}
+            className={`grid grid-cols-[84px_1fr_56px] items-center gap-3 border-t border-border px-1.5 py-2.5 text-left first:border-t-0 hover:rounded-md hover:bg-accent-soft ${ROW_COLLAPSE_CLASS}`}
           >
-            <img
-              src={getPieceThumbnailUrl(piece.id, piece.thumbnailPage)}
-              alt=""
-              loading="lazy"
-              className="h-full w-full object-cover object-top"
-            />
-          </div>
-        </ClickableCard>
+            <div className="text-sm font-medium tabular-nums text-ink">{pageRangeLabel(piece)}</div>
+            <div className="min-w-0">
+              <p className="flex flex-wrap items-center gap-1.5 font-display text-[0.92rem] font-medium text-ink">
+                {piece.title}
+                {piece.favorite && (
+                  <span className="text-accent" title="Favorite">
+                    <IconHeartFilled size={13} />
+                  </span>
+                )}
+              </p>
+              <p className="mt-0.5 text-xs text-ink-soft">{pieceMetaLine(piece)}</p>
+              {/* sheetType/instruments only shown when they're this piece's
+                  own override, not the resolved/effective (book-inherited)
+                  value (2026-08-20, direct instruction: "don't show pills
+                  from inherited information, they'll just clutter the
+                  view") — every piece in a book sharing the same inherited
+                  sheet type/instruments would otherwise repeat the
+                  identical pill on every single row, adding nothing the
+                  book header above the piece list hasn't already shown
+                  once. Keys/userTags were never book-inheritable to begin
+                  with (design doc §3), so passing them through unfiltered
+                  is unchanged. */}
+              <TagPills
+                keys={piece.keys}
+                sheetType={piece.sheetType.inherited ? null : piece.sheetType.value}
+                instruments={piece.instruments.inherited ? [] : piece.instruments.values}
+                userTags={piece.userTags}
+                className="mt-1.5"
+              />
+            </div>
+            <div
+              className={`relative h-[42px] w-14 overflow-hidden rounded-md border border-border ${THUMB_HIDE_CLASS}`}
+            >
+              <img
+                src={getPieceThumbnailUrl(piece.id, piece.thumbnailPage)}
+                alt=""
+                loading="lazy"
+                className="h-full w-full object-cover object-top"
+              />
+            </div>
+          </ClickableCard>
+        </PieceContextMenu>
       ))}
     </div>
   )

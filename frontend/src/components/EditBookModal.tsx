@@ -61,14 +61,27 @@ function bookToFormValues(book: Book): FormValues {
   }
 }
 
+// Strips a leading "IMSLP" label (with or without a following
+// space/colon/hash/dash, any case) before the value is ever sent to the
+// backend — same rule and same independently-implemented copy as
+// EditPieceModal.tsx's own stripImslpPrefix (not shared code across the
+// Go/TS boundary, per that file's own comment): the citation adds its own
+// "IMSLP #" label (buildCitation, internal/handlers/citation.go), so a
+// value typed in as "IMSLP04154" would otherwise render doubled ("IMSLP
+// #IMSLP04154"). Only strips an actual prefix match; a value with no
+// "IMSLP" text is returned as-is.
+function stripImslpPrefix(value: string): string {
+  return value.replace(/^\s*imslp[\s:#-]*/i, '')
+}
+
 // Book has no inheritance to preserve (unlike PieceWriteRequest, which
 // blanks inherited fields so a full-replace write can't accidentally
 // convert an inherited value into a permanent override) — every field here
 // is the book's own, so this is a plain, direct mapping. isbn isn't
-// stripped/normalized client-side the way EditPieceModal.tsx strips
-// imslpNumber before saving — unlike imslpNumber, isbn is already
-// normalized server-side on every write (handleUpdateBook's
-// normalizeISBN), so there's nothing left for the client to do.
+// stripped/normalized client-side the way imslpNumber is above — unlike
+// imslpNumber, isbn is already normalized server-side on every write
+// (handleUpdateBook's normalizeISBN), so there's nothing left for the
+// client to do.
 function formValuesToWriteRequest(data: FormValues): BookWriteRequest {
   return {
     bookTitle: data.bookTitle,
@@ -80,7 +93,7 @@ function formValuesToWriteRequest(data: FormValues): BookWriteRequest {
     publisher: data.publisher || null,
     publisherId: data.publisherId || null,
     description: data.description || null,
-    imslpNumber: data.imslpNumber || null,
+    imslpNumber: stripImslpPrefix(data.imslpNumber) || null,
     isbn: data.isbn || null,
     instruments: data.instruments.map((i) => i.name),
   }
