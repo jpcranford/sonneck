@@ -79,11 +79,16 @@ export function BooksPage() {
             solid bg-accent, a deliberate earlier choice (design-system
             memory: settled on after a round-trip through bg-ink and a
             5-option comparison gallery) revisited and replaced here per
-            direct instruction, design-review/books-new-book-button-bordered.png. */}
+            direct instruction, design-review/books-new-book-button-bordered.png.
+            hover/active now also tint the label+icon accent (not just the
+            border) — text-accent on the button carries through to IconPlus
+            automatically via currentColor. active: alongside hover: so a
+            tap gets the same feedback a mouse hover does, not just the
+            border (direct instruction, 2026-08-20). */}
         <button
           type="button"
           onClick={() => setNewBookOpen(true)}
-          className="flex shrink-0 items-center gap-1.5 rounded-md border border-border bg-paper-raised px-3 py-2 font-display text-sm text-ink hover:border-accent"
+          className="flex shrink-0 items-center gap-1.5 rounded-md border border-border bg-paper-raised px-3 py-2 font-display text-sm text-ink hover:border-accent hover:text-accent active:border-accent active:text-accent"
         >
           <IconPlus size={16} />
           New Book
