@@ -227,8 +227,13 @@ export function EditBookModalMockup() {
 
           <div className="flex flex-col gap-3 min-[525px]:flex-row">
             <div className="flex min-w-0 flex-1 flex-col gap-1">
+              {/* No persistent "one of these three required" hint here
+                  (direct instruction, 2026-08-21) — see EditBookModal.tsx's
+                  own comment: this is a backend-enforced cross-field rule,
+                  surfaced via the footer's error banner on a failed save
+                  rather than an always-on label hint. */}
               <label htmlFor="f-composer" className="text-sm text-ink-soft">
-                Composer <span className="text-ink-soft/60 italic">(Composer or Arranger required)</span>
+                Composer
               </label>
               <input
                 id="f-composer"

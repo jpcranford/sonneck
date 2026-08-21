@@ -287,8 +287,18 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
 
         <div className="flex flex-col gap-3 min-[525px]:flex-row">
           <div className="flex min-w-0 flex-1 flex-col gap-1">
+            {/* No persistent "one of these three required" hint here
+                (direct instruction, 2026-08-21 — replaced a too-long inline
+                parenthetical): composer-or-arranger-or-publisher is a
+                cross-field rule the backend already enforces and reports
+                (ValidateBook), and the footer below already surfaces
+                whatever error a failed save returns — same "validation-
+                error only" treatment already given every other backend-only
+                rule in this app's forms (CLAUDE.md > Frontend: light
+                client-side validation, "surface whatever error the backend
+                returns" for anything beyond the cheap checks). */}
             <label htmlFor="f-composer" className="text-sm text-ink-soft">
-              Composer <span className="text-ink-soft/60 italic">(Composer or Arranger required)</span>
+              Composer
             </label>
             <input
               id="f-composer"
