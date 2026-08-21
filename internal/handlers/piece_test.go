@@ -639,6 +639,36 @@ func TestDownloadPieceFile_SuggestsFilenameWithoutForcingDownload(t *testing.T) 
 	}
 }
 
+// TestGetRandomPiece_ReturnsAPiece covers the Piece View dice button's
+// backend: GET /api/pieces/random must resolve as the literal route, not
+// fall through to handleGetPiece and get parsed as an id of "random".
+func TestGetRandomPiece_ReturnsAPiece(t *testing.T) {
+	h := newTestServer(t)
+	dir := t.TempDir()
+	path := dir + "/piece.pdf"
+	writeFixturePDF(t, path, 1)
+	var uploaded pieceResponse
+	decodeData(t, recordRequest(h, multipartUpload(t, "/api/pieces", "piece.pdf", readAll(t, path))), &uploaded)
+
+	rec := doJSON(t, h, http.MethodGet, "/api/pieces/random", nil)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET /api/pieces/random: status %d, want 200", rec.Code)
+	}
+	var got pieceResponse
+	decodeData(t, rec, &got)
+	if got.ID != uploaded.ID {
+		t.Errorf("random piece id = %d, want the only piece in the library (%d)", got.ID, uploaded.ID)
+	}
+}
+
+func TestGetRandomPiece_404WhenLibraryEmpty(t *testing.T) {
+	h := newTestServer(t)
+	rec := doJSON(t, h, http.MethodGet, "/api/pieces/random", nil)
+	if rec.Code != http.StatusNotFound {
+		t.Errorf("GET /api/pieces/random on an empty library: status %d, want 404", rec.Code)
+	}
+}
+
 func TestGetPiece_404ForNonexistentID(t *testing.T) {
 	h := newTestServer(t)
 	rec := doJSON(t, h, http.MethodGet, apiPiecesURL(99999), nil)

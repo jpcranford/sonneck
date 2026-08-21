@@ -166,3 +166,22 @@ func GetPieceByFileHash(ctx context.Context, q Queryer, hash string) (*models.Pi
 	}
 	return GetPieceByID(ctx, q, id)
 }
+
+// GetRandomPiece supports the Piece View's "random piece" dice button.
+// SQLite's ORDER BY RANDOM() LIMIT 1 is fine at this project's scale (a
+// personal library, not a catalog needing an index-friendly random-row
+// trick) — a full table scan per roll is cheap here. Returns ErrNotFound
+// if the library is empty. Doesn't exclude the piece currently being
+// viewed — occasionally re-rolling the same piece is an acceptable, minor
+// quirk, not something worth a second query parameter for.
+func GetRandomPiece(ctx context.Context, q Queryer) (*models.Piece, error) {
+	var id int64
+	err := q.QueryRowContext(ctx, `SELECT id FROM pieces ORDER BY RANDOM() LIMIT 1`).Scan(&id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return GetPieceByID(ctx, q, id)
+}

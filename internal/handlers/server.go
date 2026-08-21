@@ -30,6 +30,7 @@ func New(db *sql.DB, cfg *config.Config, logger *slog.Logger) http.Handler {
 
 	mux.HandleFunc("POST /api/pieces", s.handleCreatePiece)
 	mux.HandleFunc("GET /api/pieces", s.handleSearchPieces)
+	mux.HandleFunc("GET /api/pieces/random", s.handleGetRandomPiece)
 	mux.HandleFunc("GET /api/pieces/{id}", s.handleGetPiece)
 	mux.HandleFunc("PATCH /api/pieces/{id}", s.handleUpdatePiece)
 	mux.HandleFunc("DELETE /api/pieces/{id}", s.handleDeletePiece)

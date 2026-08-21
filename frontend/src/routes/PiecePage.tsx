@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   IconArrowLeft,
@@ -9,6 +9,7 @@ import {
   IconChevronRight,
   IconChevronRightFilled,
   IconCopy,
+  IconDice5,
   IconEditFilled,
   IconDownload,
   IconExternalLink,
@@ -28,6 +29,7 @@ import {
   getPiece,
   getPieceFileUrl,
   getPieceThumbnailUrl,
+  getRandomPiece,
   replacePieceFile,
   setPieceThumbnailPage,
   updatePiece,
@@ -173,6 +175,7 @@ export function PiecePage() {
   const { id } = useParams<{ id: string }>()
   const pieceId = Number(id)
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
 
   const {
     data: piece,
@@ -287,6 +290,18 @@ export function PiecePage() {
     },
   })
 
+  // The dice button — a fresh mutation each click rather than a query, since
+  // this is an action ("roll again"), not data this page reads on its own;
+  // navigating seeds ['piece', <new id>] fresh the normal way (Piece View's
+  // own useQuery above), so there's no need to also populate the cache here.
+  const randomPieceMutation = useMutation({
+    mutationFn: getRandomPiece,
+    onSuccess: (randomPiece) => navigate(`/pieces/${randomPiece.id}`),
+    onError: (error) => {
+      window.alert(error instanceof ApiError ? error.message : 'Could not find a random piece.')
+    },
+  })
+
   function handleReplaceFileChosen(file: File) {
     const validationError = validateReplacementFile(file)
     if (validationError) {
@@ -330,11 +345,29 @@ export function PiecePage() {
           Back to Library
         </Link>
         {piece && (
-          <ActionButton
-            icon={<IconEditFilled size={16} />}
-            label="Edit Piece"
-            onClick={() => setEditOpen(true)}
-          />
+          <div className="flex items-center gap-2">
+            {/* Icon-only, no label — this is a "roll again" action, not a
+                page-editing one, so it doesn't belong grouped visually with
+                Edit Piece as if it were another labeled action of the same
+                kind (direct instruction, 2026-08-20: top toolbar, dice icon
+                only). Same bordered-square treatment as other icon-only
+                buttons elsewhere (e.g. Book Details' edit-pencil button). */}
+            <button
+              type="button"
+              onClick={() => randomPieceMutation.mutate()}
+              disabled={randomPieceMutation.isPending}
+              aria-label="Random Piece"
+              title="Random Piece"
+              className="flex size-9 items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <IconDice5 size={18} />
+            </button>
+            <ActionButton
+              icon={<IconEditFilled size={16} />}
+              label="Edit Piece"
+              onClick={() => setEditOpen(true)}
+            />
+          </div>
         )}
       </div>
 

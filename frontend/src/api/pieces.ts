@@ -22,6 +22,15 @@ export function getPiece(id: number): Promise<Piece> {
   return apiGet<Piece>(`/api/pieces/${id}`)
 }
 
+// Piece View's dice button. Backend registers this as a literal
+// "GET /api/pieces/random" route ahead of "GET /api/pieces/{id}" — see
+// handleGetRandomPiece's own comment for why the wildcard route doesn't
+// swallow it. 404s (NOT_FOUND) when the library is empty, same as any
+// other missing-piece lookup.
+export function getRandomPiece(): Promise<Piece> {
+  return apiGet<Piece>('/api/pieces/random')
+}
+
 export function updatePiece(id: number, req: PieceWriteRequest): Promise<Piece> {
   return apiPatch<Piece>(`/api/pieces/${id}`, req)
 }

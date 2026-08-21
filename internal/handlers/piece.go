@@ -100,6 +100,25 @@ func (s *Server) handleCreatePiece(w http.ResponseWriter, r *http.Request) {
 	api.WriteData(w, http.StatusCreated, resp)
 }
 
+// handleGetRandomPiece backs the Piece View's dice button. Registered as a
+// literal "GET /api/pieces/random" alongside "GET /api/pieces/{id}" — Go's
+// enhanced ServeMux (1.22+) resolves a literal path segment over a wildcard
+// one regardless of registration order, so "random" never falls through to
+// handleGetPiece and gets parsed as an id.
+func (s *Server) handleGetRandomPiece(w http.ResponseWriter, r *http.Request) {
+	p, err := repo.GetRandomPiece(r.Context(), s.DB)
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+	resp, err := api.BuildPieceResponse(r.Context(), s.DB, p)
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+	api.WriteData(w, http.StatusOK, resp)
+}
+
 func (s *Server) handleGetPiece(w http.ResponseWriter, r *http.Request) {
 	id, ok := pathID(r, "id")
 	if !ok {

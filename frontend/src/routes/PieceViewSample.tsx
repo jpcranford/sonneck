@@ -8,6 +8,7 @@ import {
   IconChevronRight,
   IconChevronRightFilled,
   IconCopy,
+  IconDice5,
   IconEditFilled,
   IconDownload,
   IconExternalLink,
@@ -370,7 +371,24 @@ export function PieceViewSample() {
           <IconArrowLeft size={24} />
           Back to Library
         </Link>
-        <ActionButton icon={<IconEditFilled size={16} />} label="Edit Piece" disabled />
+        <div className="flex items-center gap-2">
+          {/* Icon-only, no label — a "roll again" action, kept visually
+              distinct from Edit Piece rather than styled as another labeled
+              action of the same kind (direct instruction, 2026-08-20: top
+              toolbar, dice icon only). No real library to pick from in this
+              fixture-data mockup, so disabled here the same as Edit Piece
+              is on this page — real build (PiecePage.tsx) wires it live. */}
+          <button
+            type="button"
+            disabled
+            aria-label="Random Piece"
+            title="Random Piece"
+            className="flex size-9 items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <IconDice5 size={18} />
+          </button>
+          <ActionButton icon={<IconEditFilled size={16} />} label="Edit Piece" disabled />
+        </div>
       </div>
 
       <div className="rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-4 py-2 text-sm text-ink-soft">
