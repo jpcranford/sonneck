@@ -1,3 +1,4 @@
+import { IconHeartFilled } from '@tabler/icons-react'
 import { getPieceThumbnailUrl } from '../api/pieces'
 import type { Piece } from '../api/types'
 import { ClickableCard } from './ClickableCard'
@@ -85,7 +86,14 @@ export function PieceGridCard({ piece }: PieceGridCardProps) {
           )}
         </div>
         <div className="flex flex-col gap-1 p-3">
-          <p className="truncate font-display text-sm font-medium text-ink">{piece.title}</p>
+          <p className="flex min-w-0 items-center gap-1.5 font-display text-sm font-medium text-ink">
+            <span className="truncate">{piece.title}</span>
+            {piece.favorite && (
+              <span className="shrink-0 text-accent" title="Favorite">
+                <IconHeartFilled size={13} />
+              </span>
+            )}
+          </p>
           {meta && <p className="truncate text-xs text-ink-soft">{meta}</p>}
         </div>
       </ClickableCard>
