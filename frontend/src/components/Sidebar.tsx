@@ -60,18 +60,16 @@ function NavItemsList({ items, collapsed }: { items: NavItem[]; collapsed: boole
             }`
           }
         >
-          {({ isActive }) => (
-            <>
-              {/* Inactive state is a solid pre-blend (sidebar-text at 85%
-                  over sidebar-bg), not an opacity utility on the icon
-                  itself — feedback-icon-color-preblend. */}
-              <Icon
-                size={22}
-                className={isActive ? 'text-accent-on-dark opacity-100' : 'text-[#bbb3a7]'}
-              />
-              {!collapsed && <span className="truncate">{label}</span>}
-            </>
-          )}
+          {/* Icon always matches the adjacent label's own color
+              (text-sidebar-text, same in both nav states — only the
+              background changes on active) rather than a dimmed pre-blend
+              or an accent tint of its own; a visibly different icon color
+              next to same-colored text read as a mismatch, not a
+              deliberate highlight (direct instruction, 2026-08-20). No
+              longer needs the isActive render-prop now that the icon
+              doesn't vary by nav state either. */}
+          <Icon size={22} className="text-sidebar-text" />
+          {!collapsed && <span className="truncate">{label}</span>}
         </NavLink>
       ))}
     </nav>
@@ -181,7 +179,11 @@ export function Sidebar() {
       <div
         className={`m-2 flex items-center gap-2 rounded-lg border border-sidebar-border bg-sidebar-panel p-2 ${collapsed ? 'justify-center' : ''}`}
       >
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-full border border-sidebar-border bg-sidebar-bg text-sidebar-text-dim">
+        {/* Icon matches the "Local Library" label's own color
+            (text-sidebar-text) — was text-sidebar-text-dim, a visibly
+            different, more muted color than the text beside it (direct
+            instruction, 2026-08-20; same fix as the nav icons above). */}
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-full border border-sidebar-border bg-sidebar-bg text-sidebar-text">
           <IconUserFilled size={16} />
         </span>
         {!collapsed && (
