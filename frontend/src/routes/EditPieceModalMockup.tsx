@@ -802,6 +802,15 @@ export function EditPieceModalMockup() {
     setOpen(false)
   }
 
+  // Shift+Enter saves from anywhere in the form (2026-08-21) — kept in
+  // sync with the real EditPieceModal.tsx; see that file's own comment.
+  function handleFormKeyDown(event: KeyboardEvent<HTMLFormElement>) {
+    if (event.key === 'Enter' && event.shiftKey) {
+      event.preventDefault()
+      handleSubmit(onSubmit)()
+    }
+  }
+
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6 md:p-8">
       <div className="rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-4 py-2 text-sm text-ink-soft">
@@ -932,7 +941,12 @@ export function EditPieceModalMockup() {
           </div>
         }
       >
-        <form id="edit-piece-form" onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6">
+        <form
+          id="edit-piece-form"
+          onSubmit={handleSubmit(onSubmit)}
+          onKeyDown={handleFormKeyDown}
+          className="flex flex-col gap-6"
+        >
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-1">
               <label htmlFor="f-title" className="text-sm text-ink-soft">

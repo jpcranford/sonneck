@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -239,6 +239,21 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
     saveMutation.mutate(data)
   }
 
+  // Shift+Enter saves from anywhere in the form (direct instruction,
+  // 2026-08-21) — including a field with its own open dropdown (Key,
+  // Sheet Type, Instruments, Your Tags, Source Book), which would
+  // otherwise treat plain Enter as "pick the highlighted row" and never
+  // reach a submit at all. Those fields' own handlers (TagComboBox/
+  // SingleSelect/SourceBookField) explicitly skip Shift+Enter rather than
+  // acting on it, so this handler is the only thing that fires — no
+  // double effect of both picking an option and saving.
+  function handleFormKeyDown(event: ReactKeyboardEvent<HTMLFormElement>) {
+    if (event.key === 'Enter' && event.shiftKey) {
+      event.preventDefault()
+      handleSubmit(onSubmit)()
+    }
+  }
+
   return (
     <Modal
       open={open}
@@ -376,7 +391,12 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
         </div>
       }
     >
-      <form id="edit-piece-form" onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6">
+      <form
+        id="edit-piece-form"
+        onSubmit={handleSubmit(onSubmit)}
+        onKeyDown={handleFormKeyDown}
+        className="flex flex-col gap-6"
+      >
         <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-1">
             <label htmlFor="f-title" className="text-sm text-ink-soft">

@@ -101,7 +101,15 @@ export function TagComboBox({
     } else if (event.key === 'ArrowUp') {
       event.preventDefault()
       setHighlightedIndex((i) => (i - 1 + menuItemCount) % menuItemCount)
-    } else if (event.key === 'Enter') {
+    } else if (event.key === 'Enter' && !event.shiftKey) {
+      // Shift+Enter is excluded deliberately (direct instruction,
+      // 2026-08-21): it's this app's "save the form" shortcut everywhere
+      // (EditPieceModal/EditBookModal), even while a dropdown is open and
+      // would otherwise treat plain Enter as "pick the highlighted row."
+      // preventDefault() alone doesn't stop the keydown from bubbling up to
+      // the form's own Shift+Enter handler — only skipping this branch
+      // entirely does, so Shift+Enter here does nothing but let that outer
+      // handler fire.
       if (highlightedIndex < visibleOptions.length) {
         event.preventDefault()
         selectOption(visibleOptions[highlightedIndex])

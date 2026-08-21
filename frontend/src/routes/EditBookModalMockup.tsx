@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { IconCheck, IconXFilled } from '@tabler/icons-react'
 import type { Tag } from '../api/types'
@@ -110,6 +110,15 @@ export function EditBookModalMockup() {
     setTimeout(() => setSaveState('idle'), SAVING_MS + SAVED_MS)
   }
 
+  // Shift+Enter saves from anywhere in the form (2026-08-21) — kept in
+  // sync with the real EditBookModal.tsx; see that file's own comment.
+  function handleFormKeyDown(event: ReactKeyboardEvent<HTMLFormElement>) {
+    if (event.key === 'Enter' && event.shiftKey) {
+      event.preventDefault()
+      handleSubmit(onSubmit)()
+    }
+  }
+
   const saving = saveState !== 'idle'
 
   return (
@@ -206,7 +215,12 @@ export function EditBookModalMockup() {
           </div>
         }
       >
-        <form id="edit-book-form" onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+        <form
+          id="edit-book-form"
+          onSubmit={handleSubmit(onSubmit)}
+          onKeyDown={handleFormKeyDown}
+          className="flex flex-col gap-4"
+        >
           {/* Book title now stands alone, full width — no longer paired
               with Composer (2026-08-20, direct instruction: reordered to
               Title / Composer-Arranger / Year-Opus / Publisher-PublisherID

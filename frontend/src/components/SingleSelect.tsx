@@ -58,7 +58,10 @@ export function SingleSelect({
       event.preventDefault()
       if (!open) openMenu()
       else setHighlightedIndex((i) => (i - 1 + options.length) % options.length)
-    } else if (event.key === 'Enter' || event.key === ' ') {
+    } else if ((event.key === 'Enter' && !event.shiftKey) || event.key === ' ') {
+      // Shift+Enter excluded (direct instruction, 2026-08-21) — see
+      // TagComboBox's matching comment: it's this app's form-save
+      // shortcut, even from a field with an open dropdown.
       if (open) {
         event.preventDefault()
         const opt = options[highlightedIndex]

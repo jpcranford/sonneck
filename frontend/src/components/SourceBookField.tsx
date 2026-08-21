@@ -72,7 +72,10 @@ export function SourceBookField({
     } else if (event.key === 'ArrowUp') {
       event.preventDefault()
       setHighlightedIndex((i) => (i - 1 + results.length) % results.length)
-    } else if (event.key === 'Enter') {
+    } else if (event.key === 'Enter' && !event.shiftKey) {
+      // Shift+Enter excluded (direct instruction, 2026-08-21) — see
+      // TagComboBox's matching comment: it's this app's form-save
+      // shortcut, even from a field with an open dropdown.
       event.preventDefault()
       selectBook(results[highlightedIndex])
     }
