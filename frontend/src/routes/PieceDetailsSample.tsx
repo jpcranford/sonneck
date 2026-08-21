@@ -18,6 +18,7 @@ import {
   IconMusic,
   IconRefresh,
   IconShieldCheck,
+  IconTrash,
 } from '@tabler/icons-react'
 import type { PracticeStatus } from '../api/types'
 import { InfoTooltip } from '../components/InfoTooltip'
@@ -298,7 +299,7 @@ function ActionButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`flex items-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-sm text-ink hover:border-accent disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border ${className}`}
+      className={`flex items-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-sm whitespace-nowrap text-ink hover:border-accent disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border ${className}`}
     >
       {icon}
       {label}
@@ -368,15 +369,50 @@ export function PieceDetailsSample() {
           treatment every other action button on this page already uses
           (Download PDF, Replace File, Use Page as Thumbnail) rather than
           being the one icon-only, unlabeled control on the whole page. */}
-      <div className="flex items-center justify-between gap-4">
+      {/* flex-wrap (added 2026-08-21, narrow-viewport bug found via a
+          screenshot at 375px): at phone widths, "Back to Library" and the
+          button group no longer fit on one row even with nothing wrapping
+          internally (measured: 125px + 227px + 16px gap > the 311px
+          content area available once the sidebar's collapsed rail is
+          accounted for) — before this fix, items-center's default nowrap
+          instead let "Back to Library" break mid-phrase and let "Edit
+          Piece" wrap inside its own button, growing it much taller than
+          its icon-only siblings. Now the row itself wraps: the back link
+          gets its own line, the button group (whitespace-nowrap below,
+          confirmed to fit its line on its own) drops to a second line
+          below it, left-aligned. */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <Link
           to="/"
-          className="inline-flex w-fit items-center gap-1.5 text-sm text-ink-soft hover:text-ink"
+          className="inline-flex w-fit items-center gap-1.5 text-sm whitespace-nowrap text-ink-soft hover:text-ink"
         >
           <IconArrowLeft size={24} />
           Back to Library
         </Link>
         <div className="flex items-center gap-2">
+          {/* Delete Piece, icon-only, leftmost in the group (moved
+              2026-08-21, direct instruction — was rightmost with a divider
+              before it; now leads the group with the divider after it
+              instead, same separation from Random Piece/Edit Piece, just
+              on the other side). The same destructive action already
+              reachable via right-click on a library card (PieceContextMenu's
+              "Delete Piece"), now also given a direct entry point from the
+              page itself. Permanently red (text-red-700, matching
+              ContextMenu's own destructive-item color exactly — that color
+              is always-on there too, not a hover-only reveal) rather than
+              red-on-hover as in the first pass — direct instruction,
+              2026-08-21. Disabled here like Random Piece/Edit Piece below:
+              this fixture has nothing real to delete. */}
+          <button
+            type="button"
+            disabled
+            aria-label="Delete Piece"
+            title="Delete Piece"
+            className="flex size-9 items-center justify-center rounded-md border border-border bg-paper-raised text-red-700 hover:border-red-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border"
+          >
+            <IconTrash size={18} />
+          </button>
+          <span aria-hidden="true" className="h-6 w-px bg-border" />
           {/* Icon-only, no label — a "roll again" action, kept visually
               distinct from Edit Piece rather than styled as another labeled
               action of the same kind (direct instruction, 2026-08-20: top

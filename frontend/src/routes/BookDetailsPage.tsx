@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   IconArrowLeft,
-  IconCamera,
   IconEditFilled,
   IconExternalLink,
   IconFileTypePdf,
@@ -11,8 +10,17 @@ import {
   IconHeartFilled,
   IconLayoutGridFilled,
   IconLayoutListFilled,
+  IconPhotoUp,
+  IconTrash,
 } from '@tabler/icons-react'
-import { getBook, getBookCoverUrl, getBookFileUrl, removeBookCover, uploadBookCover } from '../api/books'
+import {
+  deleteBook,
+  getBook,
+  getBookCoverUrl,
+  getBookFileUrl,
+  removeBookCover,
+  uploadBookCover,
+} from '../api/books'
 import { getPieceThumbnailUrl, searchPieces } from '../api/pieces'
 import { ApiError } from '../api/client'
 import type { Piece } from '../api/types'
@@ -224,6 +232,7 @@ export function BookDetailsPage() {
   const { id } = useParams<{ id: string }>()
   const bookId = Number(id)
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
 
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [bookEditOpen, setBookEditOpen] = useState(false)
@@ -272,6 +281,41 @@ export function BookDetailsPage() {
       window.alert(error instanceof ApiError ? error.message : 'Could not remove this cover image.')
     },
   })
+
+  // Same cascade-delete mutation as BookContextMenu's own "Delete Book"
+  // (library right-click menu) — this toolbar button is a second entry
+  // point to the identical action, not a different one, so it reuses the
+  // exact confirm() wording (confirmMessage below, copied from
+  // BookContextMenu.tsx). Unlike the context menu (which deletes a card out
+  // of a list the user stays on), deleting from this page removes the very
+  // book being viewed (and every piece in it), so success navigates back to
+  // the Books library instead of just invalidating queries in place.
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteBook(bookId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['books'] })
+      queryClient.invalidateQueries({ queryKey: ['pieces'] })
+      navigate('/books')
+    },
+    onError: (error) => {
+      window.alert(error instanceof ApiError ? error.message : 'Could not delete this book.')
+    },
+  })
+
+  function confirmDeleteMessage(): string {
+    if (!book) return ''
+    if (book.pieceCount === 0) {
+      return `Delete "${book.bookTitle}"? This can't be undone.`
+    }
+    const pieceWord = book.pieceCount === 1 ? 'the 1 piece' : `all ${book.pieceCount} pieces`
+    return `Delete "${book.bookTitle}"? This will also permanently delete ${pieceWord} in this book. This can't be undone.`
+  }
+
+  function handleDelete() {
+    if (book && window.confirm(confirmDeleteMessage())) {
+      deleteMutation.mutate()
+    }
+  }
 
   function openCoverFilePicker() {
     coverFileInputRef.current?.click()
@@ -366,14 +410,49 @@ export function BookDetailsPage() {
           (2026-08-21, direct instruction) — moved up from the header card,
           mirroring Piece Details page's own toolbar (PiecePage.tsx): icon-only
           buttons first (Open Book PDF, Change Cover — identical
-          bordered-square treatment), one labeled button last (Edit Book). */}
-      <div className="flex items-center justify-between gap-4">
-        <Link to="/books" className="inline-flex w-fit items-center gap-1.5 text-sm text-ink-soft hover:text-ink">
+          bordered-square treatment), one labeled button last (Edit Book).
+          flex-wrap + whitespace-nowrap below (built out 2026-08-21 from the
+          mockup's own fix — see BookDetailsSample.tsx's toolbar comment for
+          the full measurement-backed reasoning): at phone widths, "Back to
+          Books" and the button group don't both fit one row, and without
+          this the back link broke mid-phrase while the group held its full
+          width and got silently clipped by an ancestor's overflow. Now the
+          row wraps instead: the back link gets its own line, the group
+          drops to a second line below it. */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <Link
+          to="/books"
+          className="inline-flex w-fit items-center gap-1.5 text-sm whitespace-nowrap text-ink-soft hover:text-ink"
+        >
           <IconArrowLeft size={24} />
           Back to Books
         </Link>
         {book && (
           <div className="flex shrink-0 items-stretch gap-2.5">
+            {/* Delete Book, icon-only, leftmost in the group, permanently
+                red (built out 2026-08-21 from the /mockup/book-details
+                reference sample — see that file's toolbar comment for the
+                full design reasoning). Same cascade-delete action as
+                BookContextMenu's "Delete Book" (library right-click menu) —
+                handleDelete above reuses its exact confirm() wording — now
+                also reachable directly from the page. self-center on the
+                divider overrides this row's items-stretch (needed so the
+                icon-only buttons, which set no height of their own,
+                stretch to match Edit Book's taller px-4 py-2 box) — without
+                it the divider's explicit h-6 would opt it out of stretch
+                and fall back to flex-start, pinning it to the top instead
+                of centering it. */}
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={deleteMutation.isPending}
+              aria-label="Delete Book"
+              title="Delete Book"
+              className="flex w-[38px] items-center justify-center rounded-md border border-border bg-paper-raised text-red-700 hover:border-red-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border"
+            >
+              <IconTrash size={16} />
+            </button>
+            <span aria-hidden="true" className="h-6 w-px self-center bg-border" />
             {book.fileHash ? (
               <a
                 href={getBookFileUrl(book.id)}
@@ -406,7 +485,7 @@ export function BookDetailsPage() {
               title="Change cover image"
               className="flex w-[38px] items-center justify-center rounded-md border border-border bg-paper-raised text-ink-soft hover:border-accent hover:text-ink"
             >
-              <IconCamera size={16} />
+              <IconPhotoUp size={16} />
             </button>
             <input
               ref={coverFileInputRef}
@@ -415,13 +494,23 @@ export function BookDetailsPage() {
               className="hidden"
               onChange={handleCoverFileChosen}
             />
+            {/* Collapses to icon-only below 360px (built out 2026-08-21 from
+                the mockup's own fix) — even after the outer row's flex-wrap
+                above, this group's own natural width still doesn't fit the
+                content area on the very narrowest real phone widths
+                (measured on the mockup: breaks below ~348px), and unlike
+                the outer row this group has no second line to drop to
+                without the divider ending up orphaned. Dropping the label
+                instead — same icon-only treatment its siblings already
+                use — shrinks it enough to fit down to 320px. */}
             <button
               type="button"
               onClick={() => setBookEditOpen(true)}
-              className="flex items-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-sm text-ink hover:border-accent"
+              aria-label="Edit Book"
+              className="flex items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-sm whitespace-nowrap text-ink hover:border-accent max-[360px]:w-[38px] max-[360px]:px-0"
             >
               <IconEditFilled size={16} />
-              Edit Book
+              <span className="max-[360px]:hidden">Edit Book</span>
             </button>
           </div>
         )}

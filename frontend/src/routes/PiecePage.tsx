@@ -19,12 +19,14 @@ import {
   IconMusic,
   IconRefresh,
   IconShieldCheck,
+  IconTrash,
 } from '@tabler/icons-react'
 import { getBook } from '../api/books'
 import type { Book } from '../api/types'
 import { formatBookMeta } from '../lib/formatBookMeta'
 import { hyphenateISBN } from '../lib/isbn'
 import {
+  deletePiece,
   getCitation,
   getPiece,
   getPieceFileUrl,
@@ -163,7 +165,7 @@ function ActionButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`flex items-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-sm text-ink hover:border-accent disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border ${className}`}
+      className={`flex items-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-sm whitespace-nowrap text-ink hover:border-accent disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border ${className}`}
     >
       {icon}
       {label}
@@ -302,6 +304,30 @@ export function PiecePage() {
     },
   })
 
+  // Same hard-delete-with-confirm mutation as PieceContextMenu's own
+  // "Delete Piece" (library right-click menu) — this toolbar button is a
+  // second entry point to the identical action, not a different one, so it
+  // reuses the exact confirm() wording. Unlike the context menu (which
+  // deletes a card out of a list the user stays on), deleting from this
+  // page removes the very piece being viewed, so success navigates back to
+  // the library instead of just invalidating queries in place.
+  const deleteMutation = useMutation({
+    mutationFn: () => deletePiece(piece!.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pieces'] })
+      navigate('/')
+    },
+    onError: (error) => {
+      window.alert(error instanceof ApiError ? error.message : 'Could not delete this piece.')
+    },
+  })
+
+  function handleDelete() {
+    if (piece && window.confirm(`Delete "${piece.title}"? This can't be undone.`)) {
+      deleteMutation.mutate()
+    }
+  }
+
   function handleReplaceFileChosen(file: File) {
     const validationError = validateReplacementFile(file)
     if (validationError) {
@@ -335,17 +361,43 @@ export function PiecePage() {
           other action button on this page (Download PDF, Replace File,
           Use Page as Thumbnail) — approved via the /mockup/piece-details
           reference sample. Only rendered once piece has loaded, same as
-          the edit modal itself further down; nothing to edit before then. */}
-      <div className="flex items-center justify-between gap-4">
+          the edit modal itself further down; nothing to edit before then.
+          flex-wrap + whitespace-nowrap below (built out 2026-08-21 from the
+          mockup's own fix — see PieceDetailsSample.tsx's toolbar comment for
+          the full measurement-backed reasoning): at phone widths, "Back to
+          Library" and the button group don't both fit on one row, and
+          without this the back link broke mid-phrase while "Edit Piece"
+          wrapped inside its own button. Now the row wraps instead: the back
+          link gets its own line, the button group drops to a second line
+          below it. */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <Link
           to="/"
-          className="inline-flex w-fit items-center gap-1.5 text-sm text-ink-soft hover:text-ink"
+          className="inline-flex w-fit items-center gap-1.5 text-sm whitespace-nowrap text-ink-soft hover:text-ink"
         >
           <IconArrowLeft size={24} />
           Back to Library
         </Link>
         {piece && (
           <div className="flex items-center gap-2">
+            {/* Delete Piece, icon-only, leftmost in the group, permanently
+                red (built out 2026-08-21 from the /mockup/piece-details
+                reference sample — see that file's toolbar comment for the
+                full design reasoning). Same destructive action as
+                PieceContextMenu's "Delete Piece" (library right-click
+                menu) — handleDelete above reuses its exact confirm()
+                wording — now also reachable directly from the page. */}
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={deleteMutation.isPending}
+              aria-label="Delete Piece"
+              title="Delete Piece"
+              className="flex size-9 items-center justify-center rounded-md border border-border bg-paper-raised text-red-700 hover:border-red-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border"
+            >
+              <IconTrash size={18} />
+            </button>
+            <span aria-hidden="true" className="h-6 w-px bg-border" />
             {/* Icon-only, no label — this is a "roll again" action, not a
                 page-editing one, so it doesn't belong grouped visually with
                 Edit Piece as if it were another labeled action of the same

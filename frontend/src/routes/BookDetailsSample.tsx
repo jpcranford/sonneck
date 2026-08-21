@@ -2,7 +2,6 @@ import { useRef, useState, type ChangeEvent, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import {
   IconArrowLeft,
-  IconCamera,
   IconEditFilled,
   IconExternalLink,
   IconFileTypePdf,
@@ -10,6 +9,8 @@ import {
   IconLayoutGridFilled,
   IconLayoutListFilled,
   IconMusic,
+  IconPhotoUp,
+  IconTrash,
 } from '@tabler/icons-react'
 import { hyphenateISBN } from '../lib/isbn'
 import { useMockupTitle } from '../lib/useMockupTitle'
@@ -544,10 +545,11 @@ export function BookDetailsSample() {
     <div className="flex flex-1 flex-col gap-6 p-6 md:p-8">
       <div className="rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-4 py-2 text-sm text-ink-soft">
         Design mockup — <span className="font-medium text-ink">Book Details page</span>. Not wired
-        to real data; Open Book PDF and Edit are inert (no backend endpoint / Book Properties Edit
-        Menu exists yet). Custom cover upload <em>is</em> genuinely interactive though — try the new
-        camera icon in the top toolbar, or right-click/long-press the cover itself (proposed, not yet
-        built).
+        to real data; Open Book PDF, Edit Book, and Delete Book stay inert here on purpose — this
+        fixture's data doesn't correspond to any real record, so wiring these to a real API call could
+        edit or delete whatever real book happens to share its id. Custom cover upload{' '}
+        <em>is</em> genuinely interactive though (same for the right-click/long-press cover menu) — try
+        the photo-upload icon in the top toolbar, or right-click/long-press the cover itself.
       </div>
 
       {/* Edit / Change Cover / Open Book PDF live in this top toolbar row
@@ -558,19 +560,67 @@ export function BookDetailsSample() {
           treatment for the same bordered-square icon-only look as Change
           Cover, and Edit Book gains a label instead of being the odd
           icon-only one out. */}
-      <div className="flex items-center justify-between gap-4">
+      {/* flex-wrap (added 2026-08-21, narrow-viewport bug found via a
+          screenshot at 375px — same fix as PieceDetailsSample's own toolbar,
+          see that file's comment for the full measurement-backed reasoning):
+          at phone widths "Back to Books" and the button group don't fit on
+          one row (122px + 284px + 16px gap > the 311px content area), and
+          the button group's own shrink-0 (needed so the icon-only buttons
+          stretch to Edit Book's height, see the divider comment below) was
+          making it worse — instead of shrinking or wrapping, it held its
+          full width and got silently clipped by an ancestor's overflow,
+          cutting "Edit Book" down to just "E" with no scrollbar to reveal
+          the rest. Wrapping the outer row fixes both at once: the button
+          group still won't shrink internally, but now it's not competing
+          with the back link for the same line, so it just drops to its own
+          full line below (adequate room there — 284px fits in 311px). */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <Link
           to="/books"
-          className="inline-flex w-fit items-center gap-1.5 text-sm text-ink-soft hover:text-ink"
+          className="inline-flex w-fit items-center gap-1.5 text-sm whitespace-nowrap text-ink-soft hover:text-ink"
         >
           <IconArrowLeft size={24} />
           Back to Books
         </Link>
         <div className="flex shrink-0 items-stretch gap-2.5">
+          {/* Delete Book, icon-only, leftmost in the group (moved
+              2026-08-21, direct instruction — was rightmost with a divider
+              before it; now leads the group with the divider after it
+              instead). The same cascade-delete action already reachable via
+              right-click on a library card (BookContextMenu's "Delete
+              Book", which also deletes every Piece in the book), now also
+              given a direct entry point from the page itself — this app's
+              single largest-blast-radius action (whole book + every piece
+              in it), so it earns visual distance from the other three via
+              the divider. Permanently red (text-red-700, matching
+              ContextMenu's own destructive-item color exactly — that color
+              is always-on there too, not a hover-only reveal) rather than
+              red-on-hover as in the first pass — direct instruction,
+              2026-08-21. Built out for real on BookDetailsPage.tsx the same
+              day; stays inert here on purpose, same as its siblings below —
+              see the disclaimer banner above for why (this mockup is never
+              wired to a real API call, delete included). */}
+          <button
+            type="button"
+            aria-label="Delete Book"
+            title="Delete Book — not wired in this mockup"
+            className="flex w-[38px] cursor-not-allowed items-center justify-center rounded-md border border-border bg-paper-raised text-red-700"
+          >
+            <IconTrash size={16} />
+          </button>
+          {/* self-center overrides the container's items-stretch (needed so
+              the icon-only buttons, which set no height of their own,
+              stretch to match Edit Book's taller px-4 py-2 box) — without
+              it, this span's explicit h-6 opts it out of stretch and falls
+              back to flex-start, pinning it to the top instead of centering
+              it. PieceDetailsSample's own divider doesn't need this since
+              that toolbar uses items-center instead of items-stretch. */}
+          <span aria-hidden="true" className="h-6 w-px self-center bg-border" />
           <button
             type="button"
             onClick={(event) => event.preventDefault()}
-            title="Open Book PDF — backend endpoint not built yet"
+            aria-label="Open Book PDF"
+            title="Open Book PDF — no real file in this mockup"
             className="flex w-[38px] items-center justify-center rounded-md border border-border bg-paper-raised text-ink-soft hover:border-accent hover:text-ink"
           >
             <IconFileTypePdf size={16} />
@@ -584,15 +634,29 @@ export function BookDetailsSample() {
             title="Change cover image"
             className="flex w-[38px] items-center justify-center rounded-md border border-border bg-paper-raised text-ink-soft hover:border-accent hover:text-ink"
           >
-            <IconCamera size={16} />
+            <IconPhotoUp size={16} />
           </button>
+          {/* Collapses to icon-only below 360px (added 2026-08-21) — even
+              after the outer row's flex-wrap fix above, this button group's
+              own natural width (284px) still doesn't fit the content area
+              on the very narrowest real phone widths (measured: breaks
+              below ~348px), and unlike the outer row this group has no
+              second line to drop to without the divider ending up
+              orphaned. Dropping the label instead — same icon-only
+              treatment its siblings (Delete/Open PDF/Change Cover) already
+              use — shrinks it enough to fit down to 320px. max-[360px], not
+              max-[348px]: per this project's own documented arbitrary-
+              breakpoint gotcha (max-[Npx] is exclusive, so max-[Npx] alone
+              would need N+1 to mean "≤N") this picks a round number with a
+              little headroom rather than the exact measured threshold. */}
           <button
             type="button"
-            title="Book Properties Edit Menu — not built yet"
-            className="flex cursor-not-allowed items-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-sm text-ink"
+            aria-label="Edit Book"
+            title="Edit Book — not wired in this mockup"
+            className="flex cursor-not-allowed items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-sm whitespace-nowrap text-ink max-[360px]:w-[38px] max-[360px]:px-0"
           >
             <IconEditFilled size={16} />
-            Edit Book
+            <span className="max-[360px]:hidden">Edit Book</span>
           </button>
         </div>
       </div>
