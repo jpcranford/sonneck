@@ -3,15 +3,18 @@
 A self-hosted library organizer for sheet music: import, tag, browse, and download pieces and books. Made by a musician, for musicians.
 
 ## Features
-((to be filled in))
+((to be filled in and styled consistently))
+- **Upload your music.** Upload individual pieces or entire books! Built-in book splitter and metadata inheritance makes quick work of prepping pieces to be found later.
+- **Track your practice.** Ever forget you were learning a piece and rediscover it weeks later at the bottom of your bag? No more! Use the practice status to track want to play, in progress, and even the stuff you never want to touch again! Take *that*, [Sorabji](https://www.youtube.com/watch?v=_OrAewTxBrc)!
+- **Full CSV export.** Even if Sonneck isn't the right place for your music, the information you enter (and the time you take doing so) is still yours.
 
 ## Installation
 I hope it goes without saying that this runs **on your own hardware** at your own assumed risk. No code is infallible; in case of breakage, open an issue and I’ll take a look.
 
 ### Docker Compose (recommended)
-There's a `docker-compose.yml` file in this repo for you to use, complete with helpful comments. Download the file, tailor it how you want, then run `docker compose up -d` in the directory containing it. The compose file takes care of the fiddly bits like persistent data folder.
+There's a `docker-compose.yml` file in this repo for you to use, complete with helpful comments. Download the file, tailor it how you want, then run `docker compose up -d` in the directory containing it. The compose file takes care of the fiddly bits like remembering where you put your data folder and mounting it to the right place in the container.
 
-**But what about `docker run`?** I'm sure there's some web tool out there that can helpfully convert the docker compose to a run command. Said tool would be more accurate than I.
+***But what about `docker run`?*** I'm sure there's some web tool out there that can helpfully convert the docker compose to a run command. Said tool would be more accurate than I.
 
 ### Running locally
 Check the `CONTRIBUTING.md` file for full local run instructions. Here's the TL;DR for those that understand what it means.
@@ -30,7 +33,6 @@ npm run dev
 
 ## Advanced options
 ### Configuration
-
 All configuration is via environment variables, validated at startup — the process exits immediately with a clear error if something's invalid (e.g. an unparseable cron expression), rather than failing later mid-request.
 
 | Variable | Default | Notes |
@@ -44,7 +46,6 @@ All configuration is via environment variables, validated at startup — the pro
 | `LOG_LEVEL` | `info` | One of `debug`, `info`, `warn`, `error` (case-insensitive). Turn this up to `debug` on a deployed instance if you need more detail while diagnosing an issue |
 
 ### Backup & restore
-
 **Backup:** a scheduled job, automatically done by the database using the above environment variables. Backups still retained can be found at `$BACKUP_DIR/sonneck-YYYY-MM-DD.sqlite`.
 
 This backs up the **database only**. The `library/` folder (original book PDFs and extracted piece PDFs) is not included — it's on you to back that up separately via your own volume/NAS snapshot mechanism.
@@ -55,8 +56,7 @@ This backs up the **database only**. The `library/` folder (original book PDFs a
 3. Start the server again.
 
 ## Admin CLI commands
-
-Maintenance actions are exposed as subcommands on the same binary — `./sonneck <command>` — rather than HTTP endpoints, since there's no authentication to protect an endpoint with (see "No authentication" below). Each one is safe to run against a live server: they rely on SQLite's WAL mode (already enabled) and, where they touch on-disk files, write via a temp-file-then-atomic-rename so a concurrent request never sees a partial result.
+Maintenance actions are exposed as subcommands on the same binary — `./sonneck <command>` — rather than HTTP endpoints, since there's no authentication to protect an endpoint with (see "No authentication" below). They're safe to run against a live server; they rely on SQLite's WAL mode (already enabled) and, where they touch on-disk files, write via a temp-file-then-atomic-rename so a concurrent request never sees a partial result.
 
 ```sh
 DATA_DIR=./data ./sonneck <command>
@@ -66,16 +66,16 @@ DATA_DIR=./data ./sonneck <command>
 |---|---|---|
 | `rebuild-search-index` | Drops and repopulates the full-text search index (`pieces_fts`) from the database's core tables. | The index is derived data — safe to rebuild any time it's suspected out of sync. |
 | `regenerate-thumbnails` | Clears `$DATA_DIR/cache/thumbnails` and re-renders every page of every piece from scratch, also sweeping up any orphaned entries left over from deleted pieces. | If a cached thumbnail is ever suspected corrupted or stale — no need to know which cache entries are actually bad. |
+| `export-csv` | Writes a full export of your library data to `$DATA_DIR/export/<timestamp>/` — one CSV file per database table (books, pieces, tags, keys, and so on). Read-only; doesn't touch the database or any existing files. | Any time you want your data out of Sonneck as plain CSV — a one-off backup in a format other tools can read, or just to take it with you. |
 
 ## No authentication — deployment warning
-
 Sonneck has **no login, no access control of its own.** It's currently built for a single user, single session at a time. Anyone who can reach the server over the network can use the full API — there's no separation between "trusted operator" and "anonymous visitor."
 
 **Do not expose this directly to the open internet.** Deploy it behind a private network / VPN / Tailscale, or put an authenticating reverse proxy in front of it (e.g. Basic Auth, Authelia). Multi-user support with real access control is planned for a future release.
 
 ## Planned features
 - **Sheet Viewer!** The practice view every app like this seems to have, with page turner support, server-saved annotations, and a built-in metronome.
-- **Setlists!** Plan out sets with the piece duration and tempo values
+- **Setlists!** Plan out sets with the piece duration and tempo values.
 - **Auth support.** Lock your collection behind a simple password, or utilize a separate OIDC system for multi-user support. User notes, annotations, and tags stay saved per-user.
 - **Public domain badge.** Set your country as an env var and the likely PD/copyright status will be calculated per-piece, with the ability to manually set it yourself. Scaffolding for this is already in place.
 - **Dark mode.** Dear God, my eyes.
@@ -84,16 +84,14 @@ Sonneck has **no login, no access control of its own.** It's currently built for
 - Server-side printer support? Unsure of this one, but essentially the server would have a dedicated printer with the same settings saved, boiling a whole process down into a simple "Send to Printer" button.
 
 ## About the name
-
-Sonneck is named after **Oscar Sonneck** (1873–1928), an American musicologist and librarian. In 1902 he became the first chief of the new Music Division at the Library of Congress, a post he held until 1917; there he built the division's holdings into one of the world's great music collections and devised a classification scheme still in use today, with modifications. A few years later in 1921, he was appointed vice president of the music publisher G. Schirmer, Inc.. He's regarded as the founding figure of American musicology — his bibliographic work on early American music laid the groundwork for the field. 
+Sonneck is named after **Oscar Sonneck** (1873–1928), an American musicologist and librarian. In 1902 he became the first chief of the new Music Division at the Library of Congress, a post he held until 1917; there he built the division's holdings into one of the world's great music collections and devised a classification scheme still in use today, with modifications. After leaving that post, he joined the music publisher G. Schirmer, Inc. (still around today!) and become its vice president in 1921. He's regarded as the founding figure of American musicology — his bibliographic work on early American music laid the groundwork for the field. 
 
 And most importantly, his last name sounded great for an app. :wink:
 
 ## AI disclaimer
+This has been a series of learning exercises for me while I build a desperately-needed toolkit for my own use. While I had a quite a lot of ideas and built out a meticulously detailed framework, specifications, and guardrails, and contributed code and designed assets as I went, I did use AI, most notably for much of the raw building-from-scratch gruntwork and bug-finding (hours of work became mere *seconds!*). 
 
-This has been a series of learning exercises for me while I build a desperately-needed toolkit for my own use. While I had a quite a lot of ideas and built out a meticulously detailed framework, specifications, and guardrails — and contributed code and designed assets as I went — I did use AI, most notably for much of the raw building-from-scratch and bug-finding (hours of work became mere *seconds*!). 
-
-All that being said, I still don’t trust it– I’ll gladly welcome the help of any human that wants to make this project more secure, reliable, robust, or just plain cleaner.
+I still don’t trust it– I’ll gladly welcome the contributions of any human that wants to make this project more secure, reliable, robust, or just plain cleaner.
 
 ## Acknowledgements
 - My beautiful girlfriend, for helping design the logo
