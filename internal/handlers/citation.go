@@ -138,6 +138,14 @@ func (s *Server) handleGetCitation(w http.ResponseWriter, r *http.Request) {
 //     when both are known; showing every identifier at once would clutter
 //     the citation more than it'd help).
 //
+// Seventh deviation, added 2026-08-21 (direct instruction): publisher (and
+// publisherId, fused onto it) is now dropped from the citation entirely
+// whenever imslpNumber is present — previously only publisherId and ISBN
+// deferred to imslpNumber this way; publisher itself still rendered
+// alongside "IMSLP #...". Same "IMSLP is the more useful identifier when
+// both are known" reasoning as the ISBN/publisherId fallback above,
+// extended to cover publisher too.
+//
 // This is deliberately not generic CITATION_FORMAT token substitution:
 // blank-field omission doesn't fit a plain-substitution model, and the
 // design doc explicitly defers a configurable conditional template engine
@@ -168,19 +176,21 @@ func buildCitation(eff *repo.EffectivePiece, title, bookTitle, bookWorkOpusNumbe
 	}
 	parts = append(parts, titlePart)
 
-	// publisherId only renders (fused onto publisher, "#" prefixed) when
-	// it's the one actually in use — i.e. imslpNumber is blank. When
-	// imslpNumber is present, publisherId is dropped from the citation
-	// entirely, same as before this change (imslpNumber always wins the
-	// fallback; the two were never both shown).
-	usingPublisherID := eff.ImslpNumber.Value == "" && eff.PublisherID.Value != ""
-	switch {
-	case eff.Publisher.Value != "" && usingPublisherID:
-		parts = append(parts, fmt.Sprintf("%s #%s", eff.Publisher.Value, eff.PublisherID.Value))
-	case eff.Publisher.Value != "":
-		parts = append(parts, eff.Publisher.Value)
-	case usingPublisherID:
-		parts = append(parts, fmt.Sprintf("#%s", eff.PublisherID.Value))
+	// Publisher (and publisherId, fused on as "#" prefixed) only render
+	// when imslpNumber is blank — same "IMSLP wins the fallback entirely"
+	// rule already applied to ISBN below. Added 2026-08-21, direct
+	// instruction: an IMSLP catalog number is the more useful identifier
+	// when both are known, so publisher is dropped from the citation
+	// entirely rather than shown alongside it.
+	if eff.ImslpNumber.Value == "" {
+		switch {
+		case eff.Publisher.Value != "" && eff.PublisherID.Value != "":
+			parts = append(parts, fmt.Sprintf("%s #%s", eff.Publisher.Value, eff.PublisherID.Value))
+		case eff.Publisher.Value != "":
+			parts = append(parts, eff.Publisher.Value)
+		case eff.PublisherID.Value != "":
+			parts = append(parts, fmt.Sprintf("#%s", eff.PublisherID.Value))
+		}
 	}
 
 	// Same "IMSLP wins the fallback entirely" rule as publisherId above —

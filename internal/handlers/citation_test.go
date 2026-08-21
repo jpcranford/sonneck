@@ -98,7 +98,11 @@ func TestCitation_PublisherIdFusesOntoPublisherName(t *testing.T) {
 // IMSLP number still wins the fallback entirely over publisherId
 // (publisherId is dropped, not shown alongside it) — unaffected by the
 // "IMSLP #" formatting change covered separately below.
-func TestCitation_ImslpNumberWinsOverPublisherId(t *testing.T) {
+// TestCitation_ImslpNumberSuppressesPublisherAndPublisherId locks in the
+// 2026-08-21 rule: when imslpNumber is present, publisher (and the
+// publisherId fused onto it) are dropped from the citation entirely, not
+// just the publisherId half of that pair as before.
+func TestCitation_ImslpNumberSuppressesPublisherAndPublisherId(t *testing.T) {
 	h := newTestServer(t)
 	dir := t.TempDir()
 	path := dir + "/piece.pdf"
@@ -121,7 +125,7 @@ func TestCitation_ImslpNumberWinsOverPublisherId(t *testing.T) {
 	}
 	decodeData(t, citeRec, &citation)
 
-	want := `Someone, "Solo", G. Schirmer, IMSLP #04154`
+	want := `Someone, "Solo", IMSLP #04154`
 	if citation.Citation != want {
 		t.Errorf("citation = %q, want %q", citation.Citation, want)
 	}

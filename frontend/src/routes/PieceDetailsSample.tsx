@@ -175,9 +175,13 @@ const samplePiece = {
 // below deliberately keeps the old-style "IMSLP04154" raw value (prefix
 // still baked in, as real pre-2026-08-17 data would have it) specifically
 // to demonstrate that buildCitation strips it at render time regardless
-// of what's actually stored.
+// of what's actually stored. Also demonstrates the 2026-08-21 deviation:
+// samplePiece.publisher ("G. Schirmer") is deliberately set but does NOT
+// appear below — imslpNumber being present suppresses publisher (and
+// publisherId) from the citation entirely now, not just publisherId as
+// before.
 const sampleCitation =
-  'Robert Schumann, arr. Louis Köhler, Album für die Jugend, "No. 9, Volksliedchen (Little Folk Song)" (Op. 68, No. 9), G. Schirmer, IMSLP #04154, 1848'
+  'Robert Schumann, arr. Louis Köhler, Album für die Jugend, "No. 9, Volksliedchen (Little Folk Song)" (Op. 68, No. 9), IMSLP #04154, 1848'
 
 function SheetPagePlaceholder({ page }: { page: number }) {
   return (
