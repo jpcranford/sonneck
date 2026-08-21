@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { Controller, useForm } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
@@ -16,6 +16,7 @@ import { getPieceThumbnailUrl, uploadPiece, updatePiece } from '../api/pieces'
 import { ApiError } from '../api/client'
 import type { Piece } from '../api/types'
 import { loadWizardDraft } from '../lib/useWizardDraft'
+import { SourceBookField } from '../components/SourceBookField'
 import { BookUploadWizard } from './BookUploadWizard'
 
 // Mirrors the backend's own cap (internal/handlers/helpers.go MaxUploadBytes)
@@ -35,6 +36,7 @@ function validateFile(file: File): string | null {
 interface DetailsForm {
   title: string
   composer: string
+  sourceBookId: number | null
 }
 
 type Stage = 'landing' | 'select' | 'uploading' | 'details' | 'success' | 'book'
@@ -58,6 +60,7 @@ export function UploadPage() {
     register,
     handleSubmit,
     reset: resetDetailsForm,
+    control,
     formState: { errors },
   } = useForm<DetailsForm>()
 
@@ -73,7 +76,11 @@ export function UploadPage() {
       }
       queryClient.invalidateQueries({ queryKey: ['pieces'] })
       setPiece(uploaded)
-      resetDetailsForm({ title: uploaded.title, composer: uploaded.composer.value })
+      resetDetailsForm({
+        title: uploaded.title,
+        composer: uploaded.composer.value,
+        sourceBookId: null,
+      })
       setStage('details')
     },
     onError: () => setStage('select'),
@@ -84,6 +91,7 @@ export function UploadPage() {
       updatePiece(piece!.id, {
         title: data.title,
         composer: data.composer,
+        sourceBookId: data.sourceBookId,
         favorite: false,
         keys: [],
         instruments: [],
@@ -264,7 +272,16 @@ export function UploadPage() {
           onSubmit={handleSubmit((data) => saveMutation.mutate(data))}
           className="flex w-full max-w-2xl flex-col gap-4"
         >
-          <h1 className="font-display text-2xl font-medium text-ink">Piece details</h1>
+          {/* "About this piece" (renamed 2026-08-21, direct instruction) —
+              was "Piece details," a bare noun-phrase label. Picked to
+              directly mirror the book wizard's own metadata-fill step
+              heading ("About this book," BookUploadAboutStep.tsx) since
+              this screen does the identical job for the single-piece path;
+              chosen over two other wizard-inspired options ("Tell us about
+              this piece," mirroring the Split/Titles steps' imperative
+              voice; "Ready to save," mirroring the Confirm step's
+              declarative framing). */}
+          <h1 className="font-display text-2xl font-medium text-ink">About this piece</h1>
           {/* Large first-page thumbnail so what's about to be saved is
               visually confirmed, not just taken on faith from the
               filename — locked design (design-review/upload-details-thumb-
@@ -315,6 +332,33 @@ export function UploadPage() {
                 {errors.composer && (
                   <p className="text-sm text-red-700">{errors.composer.message}</p>
                 )}
+              </div>
+              {/* Book link prompt (added 2026-08-21, direct instruction) —
+                  the single-piece path never gets a chance to associate a
+                  sourceBookId at all otherwise, unlike the book wizard
+                  (whose confirm-import step sets it automatically) or
+                  editing later (EditPieceModal's own Book Details section).
+                  Reuses SourceBookField as-is — the exact same search-as-
+                  you-type component and copy already established there —
+                  rather than inventing a one-off variant; the one-line
+                  question above it is what turns a bare field into a
+                  prompt, since "come back and link it later if you want"
+                  is the point being made, not just "here's a field." Fully
+                  optional: omitted validation rules, and the write below
+                  passes sourceBookId through as-is (null unless a book was
+                  picked). */}
+              <div className="flex flex-col gap-1">
+                <p className="text-sm text-ink-soft">
+                  Is this piece from a book already in your library?
+                </p>
+                <Controller
+                  name="sourceBookId"
+                  control={control}
+                  defaultValue={null}
+                  render={({ field }) => (
+                    <SourceBookField value={field.value} onChange={field.onChange} initialTitle={null} />
+                  )}
+                />
               </div>
               {saveMutation.isError && (
                 <p className="flex items-center gap-2 text-sm text-red-700">
