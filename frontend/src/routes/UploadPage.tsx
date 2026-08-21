@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   IconArrowLeft,
@@ -10,6 +10,7 @@ import {
   IconFileTypePdf,
   IconCircleCheckFilled,
   IconAlertTriangle,
+  IconMusic,
 } from '@tabler/icons-react'
 import { getPieceThumbnailUrl, uploadPiece, updatePiece } from '../api/pieces'
 import { ApiError } from '../api/client'
@@ -271,7 +272,19 @@ export function UploadPage() {
               Save stacked on the right rather than spanning the full row
               under it. */}
           <div className="flex flex-col items-start gap-7 sm:flex-row">
-            <div className="w-full max-w-[340px] shrink-0 overflow-hidden rounded-lg border border-border shadow-sm sm:w-[340px]">
+            {/* Same reserved-frame fix as the Book Upload Wizard's cover
+                preview (BookUploadAboutStep.tsx): thumbnail generation is
+                synchronous and can take a real moment right after upload
+                (internal/handlers/piece.go's handlePieceThumbnail), so
+                without a reserved box this panel read as empty during that
+                gap. min-h (not a fixed aspect-ratio box like the book
+                cover's) — this thumb deliberately shows the full,
+                uncropped page rather than a cropped "cover" treatment, so
+                the box must be free to grow taller than the placeholder
+                once the real image loads, not clipped to a fixed ratio.
+                440px ≈ this wrapper's 340px width at a typical US Letter
+                page's aspect ratio, just a reasonable placeholder guess. */}
+            <div className="w-full max-w-[340px] min-h-[440px] shrink-0 overflow-hidden rounded-lg border border-border bg-paper-sunken shadow-sm sm:w-[340px]">
               <img
                 src={getPieceThumbnailUrl(piece.id, piece.thumbnailPage)}
                 alt=""
@@ -336,13 +349,26 @@ export function UploadPage() {
           <h1 className="font-display text-2xl font-medium text-ink">
             "<span className="font-medium">{piece.title}</span>" uploaded
           </h1>
-          <button
-            type="button"
-            onClick={reset}
-            className="rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent"
-          >
-            Upload another file
-          </button>
+          {/* "View piece" added alongside "Upload another file" (direct
+              instruction, 2026-08-20) — same accent-filled/bordered pairing
+              as the Book Upload Wizard's own success screen ("Open book"
+              next to "Upload another file", BookUploadWizard.tsx). */}
+          <div className="mt-1 flex items-center gap-3">
+            <button
+              type="button"
+              onClick={reset}
+              className="rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent"
+            >
+              Upload another file
+            </button>
+            <Link
+              to={`/pieces/${piece.id}`}
+              className="flex items-center gap-1.5 rounded-md bg-accent px-4 py-2 font-display text-white hover:bg-accent/90"
+            >
+              <IconMusic size={16} />
+              View Piece
+            </Link>
+          </div>
         </div>
       )}
     </div>
