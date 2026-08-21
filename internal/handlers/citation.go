@@ -28,7 +28,7 @@ func (s *Server) handleGetCitation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var bookTitle, bookWorkOpusNumber string
+	var bookTitle, bookWorkOpusNumber, bookISBN string
 	if p.SourceBookID != nil {
 		book, err := repo.GetBookByID(r.Context(), s.DB, *p.SourceBookID)
 		if err != nil {
@@ -39,15 +39,13 @@ func (s *Server) handleGetCitation(w http.ResponseWriter, r *http.Request) {
 		if book.WorkOpusNumber != nil {
 			bookWorkOpusNumber = *book.WorkOpusNumber
 		}
-	}
-
-	var arranger string
-	if p.Arranger != nil {
-		arranger = *p.Arranger
+		if book.ISBN != nil {
+			bookISBN = *book.ISBN
+		}
 	}
 
 	api.WriteData(w, http.StatusOK, map[string]string{
-		"citation": buildCitation(eff, p.Title, arranger, bookTitle, bookWorkOpusNumber),
+		"citation": buildCitation(eff, p.Title, bookTitle, bookWorkOpusNumber, bookISBN),
 	})
 }
 
@@ -119,19 +117,41 @@ func (s *Server) handleGetCitation(w http.ResponseWriter, r *http.Request) {
 // costs nothing here since titles containing a literal double quote at
 // all are rare and this only ever touches that character.
 //
+// Fifth and sixth deviations, added 2026-08-20 (direct instruction):
+//
+//  5. Arranger is now book-inheritable (ResolveEffective), read via
+//     eff.Arranger rather than a separately passed raw Piece column — and a
+//     piece/book may now legitimately have an arranger with no composer at
+//     all (ValidatePiece/ValidateBook require one of the two, not composer
+//     specifically). When composer is blank but arranger isn't, the
+//     composer segment renders as just "arr. {arranger}" instead of
+//     disappearing entirely, which is what the old "only append arranger
+//     onto an existing composer" logic would otherwise do.
+//
+//  6. ISBN (a Book-only field, no Piece-level override or inheritance —
+//     see models.Book.ISBN) renders as its own comma-joined part right
+//     after the publisher/publisherId segment, hyphenated via
+//     hyphenateISBN: "{Publisher} #{PublisherID}, ISBN {hyphenated}". Only
+//     when imslpNumber is blank — same "IMSLP always wins the fallback"
+//     rule already applied to publisherId above, extended to ISBN for the
+//     same reason (an IMSLP catalog number is the more useful identifier
+//     when both are known; showing every identifier at once would clutter
+//     the citation more than it'd help).
+//
 // This is deliberately not generic CITATION_FORMAT token substitution:
 // blank-field omission doesn't fit a plain-substitution model, and the
 // design doc explicitly defers a configurable conditional template engine
 // (§6, §13) rather than asking for one here.
-func buildCitation(eff *repo.EffectivePiece, title, arranger, bookTitle, bookWorkOpusNumber string) string {
+func buildCitation(eff *repo.EffectivePiece, title, bookTitle, bookWorkOpusNumber, isbn string) string {
 	var parts []string
 
-	composerPart := eff.Composer.Value
-	if composerPart != "" && arranger != "" {
-		composerPart += fmt.Sprintf(", arr. %s", arranger)
-	}
-	if composerPart != "" {
-		parts = append(parts, composerPart)
+	switch {
+	case eff.Composer.Value != "" && eff.Arranger.Value != "":
+		parts = append(parts, fmt.Sprintf("%s, arr. %s", eff.Composer.Value, eff.Arranger.Value))
+	case eff.Composer.Value != "":
+		parts = append(parts, eff.Composer.Value)
+	case eff.Arranger.Value != "":
+		parts = append(parts, fmt.Sprintf("arr. %s", eff.Arranger.Value))
 	}
 
 	bookPart := bookTitle
@@ -163,6 +183,14 @@ func buildCitation(eff *repo.EffectivePiece, title, arranger, bookTitle, bookWor
 		parts = append(parts, fmt.Sprintf("#%s", eff.PublisherID.Value))
 	}
 
+	// Same "IMSLP wins the fallback entirely" rule as publisherId above —
+	// isbn is only book-sourced (never a Piece-level field), so there's no
+	// effective-value resolution to do here, just the blank/imslpNumber
+	// gate.
+	if eff.ImslpNumber.Value == "" && isbn != "" {
+		parts = append(parts, fmt.Sprintf("ISBN %s", hyphenateISBN(isbn)))
+	}
+
 	if eff.ImslpNumber.Value != "" {
 		parts = append(parts, fmt.Sprintf("IMSLP #%s", stripImslpPrefix(eff.ImslpNumber.Value)))
 	}
@@ -182,6 +210,46 @@ var imslpPrefixPattern = regexp.MustCompile(`(?i)^\s*imslp[\s:#-]*`)
 // doubles up with one already baked into the data.
 func stripImslpPrefix(s string) string {
 	return imslpPrefixPattern.ReplaceAllString(s, "")
+}
+
+// hyphenateISBN formats a clean digit(+X) ISBN for display, detecting
+// ISBN-10 vs ISBN-13 by length (10 vs 13 characters) and splitting off the
+// registration group via a simplified heuristic (approved 2026-08-20):
+// registration groups 0/1/2/3/4/5/7 are single-digit under the real ISBN
+// Agency spec (respectively English, English, French, German, Japan,
+// Russian/CIS, and Chinese — among the registration groups this app is
+// most likely to actually see); every other leading digit gets a 2-digit
+// group instead. This is NOT officially correct hyphenation — true
+// correctness needs the Agency's own range tables (exactly which
+// group/publisher-prefix boundaries exist, and how many digits each
+// occupies), which this project deliberately isn't embedding or
+// maintaining. The registration-group and publisher/title segments are
+// further lumped into a single block rather than also guessing a
+// publisher-prefix boundary — that guess would be even less reliable than
+// the group-length one, and compounding two approximations isn't worth it.
+// Anything that isn't exactly 10 or 13 characters (incomplete/malformed
+// data) is returned unhyphenated rather than guessed at.
+func hyphenateISBN(digits string) string {
+	switch len(digits) {
+	case 10:
+		group := isbnRegistrationGroupLength(digits[:1])
+		return digits[:group] + "-" + digits[group:9] + "-" + digits[9:]
+	case 13:
+		ean, rest := digits[:3], digits[3:]
+		group := isbnRegistrationGroupLength(rest[:1])
+		return ean + "-" + rest[:group] + "-" + rest[group:9] + "-" + rest[9:]
+	default:
+		return digits
+	}
+}
+
+func isbnRegistrationGroupLength(firstDigit string) int {
+	switch firstDigit {
+	case "0", "1", "2", "3", "4", "5", "7":
+		return 1
+	default:
+		return 2
+	}
 }
 
 // containsIgnoringSpaces reports whether needle appears in haystack once

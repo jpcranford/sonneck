@@ -188,6 +188,151 @@ func TestCitation_ArrangerFusesOntoComposer(t *testing.T) {
 	}
 }
 
+// TestCitation_ArrangerAloneWithNoComposer covers the composer-OR-arranger
+// rule's effect on the citation specifically (2026-08-20, direct
+// instruction): with no composer at all, the composer segment renders as
+// just "arr. {arranger}" instead of disappearing — the old logic only ever
+// appended arranger onto an already-non-blank composer.
+func TestCitation_ArrangerAloneWithNoComposer(t *testing.T) {
+	h := newTestServer(t)
+	dir := t.TempDir()
+	path := dir + "/piece.pdf"
+	writeFixturePDF(t, path, 1)
+	rec := recordRequest(h, multipartUpload(t, "/api/pieces", "piece.pdf", readAll(t, path)))
+	var uploaded pieceResponse
+	decodeData(t, rec, &uploaded)
+
+	decodeData(t, doJSON(t, h, http.MethodPatch, apiPiecesURL(uploaded.ID), map[string]any{
+		"title":    "Traditional Tune",
+		"arranger": "J. Someone",
+	}), nil)
+
+	citeRec := doJSON(t, h, http.MethodGet, apiPiecesURL(uploaded.ID)+"/citation", nil)
+	var citation struct {
+		Citation string `json:"citation"`
+	}
+	decodeData(t, citeRec, &citation)
+
+	want := `arr. J. Someone, "Traditional Tune"`
+	if citation.Citation != want {
+		t.Errorf("citation = %q, want %q", citation.Citation, want)
+	}
+}
+
+// TestCitation_ISBNAppearsAfterPublisherWhenImslpBlank covers the new ISBN
+// citation component (2026-08-20, direct instruction): its own comma-joined
+// part, right after the publisher/publisherId segment, hyphenated via the
+// simplified heuristic (hyphenateISBN's own doc comment). The digits here
+// are a real, well-known ISBN-13 ("Clean Code" by Robert C. Martin,
+// publicly documented as 978-0-13-235088-4) chosen for recognizability —
+// the *expected* hyphenation below is this project's own simplified
+// 4-segment output (EAN-group-lumped-check), not that fully-correct 5-segment
+// form: this heuristic doesn't attempt the publisher/title split at all
+// (see hyphenateISBN), so "13" (publisher) and "235088" (title) come out as
+// one lumped "13235088" block rather than split.
+func TestCitation_ISBNAppearsAfterPublisherWhenImslpBlank(t *testing.T) {
+	h := newTestServer(t)
+	bookID, _ := uploadBook(t, h, "book.pdf", 4)
+	decodeData(t, doJSON(t, h, http.MethodPatch, apiBooksURL(bookID), map[string]any{
+		"bookTitle": "Six Symphonies",
+		"composer":  "Charles-Marie Widor",
+		"publisher": "G. Schirmer",
+		"isbn":      "9780132350884",
+	}), nil)
+
+	confirmRec := doJSON(t, h, http.MethodPost, apiBooksURL(bookID)+"/confirm-import", map[string]any{
+		"ranges": []map[string]any{{"start": 1, "end": 4}},
+		"pieces": []map[string]any{{"title": "Toccata"}},
+	})
+	var result struct {
+		Pieces []pieceResponse `json:"pieces"`
+	}
+	decodeData(t, confirmRec, &result)
+	pieceID := result.Pieces[0].ID
+
+	rec := doJSON(t, h, http.MethodGet, apiPiecesURL(pieceID)+"/citation", nil)
+	var citation struct {
+		Citation string `json:"citation"`
+	}
+	decodeData(t, rec, &citation)
+
+	want := `Charles-Marie Widor, Six Symphonies, "Toccata", G. Schirmer, ISBN 978-0-13235088-4`
+	if citation.Citation != want {
+		t.Errorf("citation = %q, want %q", citation.Citation, want)
+	}
+}
+
+// TestCitation_ISBNHiddenWhenImslpPresent locks in the "IMSLP always wins
+// the fallback" rule extended to ISBN, same treatment publisherId already
+// gets when imslpNumber is present.
+func TestCitation_ISBNHiddenWhenImslpPresent(t *testing.T) {
+	h := newTestServer(t)
+	bookID, _ := uploadBook(t, h, "book.pdf", 4)
+	decodeData(t, doJSON(t, h, http.MethodPatch, apiBooksURL(bookID), map[string]any{
+		"bookTitle": "Six Symphonies",
+		"composer":  "Charles-Marie Widor",
+		"isbn":      "9780132350884",
+	}), nil)
+
+	confirmRec := doJSON(t, h, http.MethodPost, apiBooksURL(bookID)+"/confirm-import", map[string]any{
+		"ranges": []map[string]any{{"start": 1, "end": 4}},
+		"pieces": []map[string]any{{"title": "Toccata", "imslpNumber": "04154"}},
+	})
+	var result struct {
+		Pieces []pieceResponse `json:"pieces"`
+	}
+	decodeData(t, confirmRec, &result)
+	pieceID := result.Pieces[0].ID
+
+	rec := doJSON(t, h, http.MethodGet, apiPiecesURL(pieceID)+"/citation", nil)
+	var citation struct {
+		Citation string `json:"citation"`
+	}
+	decodeData(t, rec, &citation)
+
+	want := `Charles-Marie Widor, Six Symphonies, "Toccata", IMSLP #04154`
+	if citation.Citation != want {
+		t.Errorf("citation = %q, want %q", citation.Citation, want)
+	}
+}
+
+// TestCitation_ISBN10Hyphenation covers the ISBN-10 branch specifically
+// (distinct from the ISBN-13 case covered above) — "0132350882" is the
+// ISBN-10 counterpart of the same "Clean Code" ISBN used above. Same
+// caveat as that test: the expected value is this heuristic's own
+// 3-segment output (group-lumped-check), not the fully-correct
+// publicly-documented "0-13-235088-2" (which splits publisher from title).
+func TestCitation_ISBN10Hyphenation(t *testing.T) {
+	h := newTestServer(t)
+	bookID, _ := uploadBook(t, h, "book.pdf", 4)
+	decodeData(t, doJSON(t, h, http.MethodPatch, apiBooksURL(bookID), map[string]any{
+		"bookTitle": "Six Symphonies",
+		"composer":  "Charles-Marie Widor",
+		"isbn":      "0132350882",
+	}), nil)
+
+	confirmRec := doJSON(t, h, http.MethodPost, apiBooksURL(bookID)+"/confirm-import", map[string]any{
+		"ranges": []map[string]any{{"start": 1, "end": 4}},
+		"pieces": []map[string]any{{"title": "Toccata"}},
+	})
+	var result struct {
+		Pieces []pieceResponse `json:"pieces"`
+	}
+	decodeData(t, confirmRec, &result)
+	pieceID := result.Pieces[0].ID
+
+	rec := doJSON(t, h, http.MethodGet, apiPiecesURL(pieceID)+"/citation", nil)
+	var citation struct {
+		Citation string `json:"citation"`
+	}
+	decodeData(t, rec, &citation)
+
+	want := `Charles-Marie Widor, Six Symphonies, "Toccata", ISBN 0-13235088-2`
+	if citation.Citation != want {
+		t.Errorf("citation = %q, want %q", citation.Citation, want)
+	}
+}
+
 // Book's own opus number is suppressed from the book-title segment when
 // it's already contained (spaces ignored) in the piece's own effective
 // opus number — otherwise the same opus number would appear twice in one

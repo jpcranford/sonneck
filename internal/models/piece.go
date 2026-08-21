@@ -22,7 +22,7 @@ type Piece struct {
 	Title string // never book-inheritable
 
 	Composer       *string // book-inheritable
-	Arranger       *string
+	Arranger       *string // book-inheritable
 	Favorite       bool
 	WorkOpusNumber *string // book-inheritable
 	SheetTypeID    *int64  // book-inheritable

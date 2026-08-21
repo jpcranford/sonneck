@@ -14,7 +14,6 @@ import {
   IconHeart,
   IconHeartFilled,
   IconImageInPicture,
-  IconInfoCircle,
   IconMusic,
   IconRefresh,
   IconShieldCheck,
@@ -22,6 +21,7 @@ import {
 import type { PracticeStatus } from '../api/types'
 import { InfoTooltip } from '../components/InfoTooltip'
 import { PracticeStatusIcon } from '../components/PracticeStatusIcon'
+import { hyphenateISBN } from '../lib/isbn'
 import { useMockupTitle } from '../lib/useMockupTitle'
 
 // ---------------------------------------------------------------------
@@ -71,12 +71,53 @@ const sampleBook = {
   id: 1,
   bookTitle: 'Album für die Jugend',
   composer: 'Robert Schumann',
-  // Only here to mirror the real Book shape for the composer→publisher
-  // fallback below (lib/formatBookMeta.ts's effectiveBookComposer) — never
-  // actually exercised in this mock since composer above is always set.
+  // arranger/publisher are both never actually exercised in this fixture
+  // (composer above is always set, and takes priority over both) — present
+  // purely to mirror the real Book shape for bookComposerPart's fallback
+  // chain and lib/formatBookMeta.ts's effectiveBookComposer.
+  arranger: null as string | null,
   publisher: null as string | null,
   workOpusNumber: 'Op. 68',
   yearWritten: '1848',
+  // Same value the piece's own (inherited) IMSLP no. row shows below —
+  // not programmatically derived from it in this simplified fixture, but
+  // narratively the same source. Drives the ISBN-vs-IMSLP substitution
+  // right below (2026-08-20, direct instruction): IMSLP always wins.
+  imslpNumber: 'IMSLP04154' as string | null,
+  // Stored digits-only, matching the backend (models.Book.ISBN) — hyphenated
+  // for display via lib/isbn.ts's hyphenateISBN, same as the real page.
+  // Currently hidden by imslpNumber above being set — see the book card's
+  // own comment for why, and how to preview this instead.
+  isbn: '9783795345352' as string | null,
+}
+
+// Book's own composer/arranger fallback chain for the Source Book card's
+// meta line — composer+arranger fused (", arr. Arranger") when both are
+// set, arranger alone when composer is blank (composer-or-arranger,
+// 2026-08-20 — a Book can now have neither/either), falling back further
+// to publisher only when the book has neither (effectiveBookComposer's own
+// existing pre-arranger fallback, lib/formatBookMeta.ts).
+function bookComposerPart(book: typeof sampleBook): string | null {
+  if (book.composer && book.arranger) return `${book.composer}, arr. ${book.arranger}`
+  if (book.composer) return book.composer
+  if (book.arranger) return `arr. ${book.arranger}`
+  return book.publisher
+}
+
+// The book card's right-hand identifier slot (design option D) shows
+// either ISBN or IMSLP no. — never both. IMSLP always wins when both are
+// set (2026-08-20, direct instruction, same "IMSLP wins the fallback"
+// rule buildCitation already applies to publisherId/ISBN in the citation
+// string): "IMSLP #{number}" takes the ISBN's own slot rather than the
+// ISBN just being hidden with nothing replacing it, since this is a
+// single-line summary that always wants exactly one identifier shown, not
+// a full field list like Book Details (where the row simply doesn't
+// render at all — a details list has room to just omit a field, this
+// slot doesn't have a second row to fall back to).
+function bookIdentifierLabel(book: typeof sampleBook): string | null {
+  if (book.imslpNumber) return `IMSLP #${book.imslpNumber.replace(/^\s*imslp[\s:#-]*/i, '')}`
+  if (book.isbn) return hyphenateISBN(book.isbn)
+  return null
 }
 
 // Deliberately mixes inherited and overridden book-inheritable fields —
@@ -87,7 +128,9 @@ const sampleBook = {
 const samplePiece = {
   title: 'No. 9, Volksliedchen (Little Folk Song)',
   composer: { value: 'Robert Schumann', inherited: true },
-  arranger: 'Louis Köhler',
+  // Book-inheritable as of 2026-08-20 (backend: ResolveEffective) — was a
+  // plain string here before, matching the real API's old shape.
+  arranger: { value: 'Louis Köhler', inherited: false },
   favorite: true,
   workOpusNumber: { value: 'Op. 68, No. 9', inherited: false },
   keys: [
@@ -497,9 +540,24 @@ export function PieceViewSample() {
               </div>
             </div>
 
+            {/* Dot separator only renders when composer is actually
+                present — composer-or-arranger (2026-08-20) means a piece
+                can now have an arranger with no composer at all, and the
+                dot must not render with nothing on its left to separate. */}
             <p className="flex flex-wrap items-center gap-1.5 text-ink-soft">
-              <EffectiveValue value={piece.composer.value} inherited={piece.composer.inherited} />
-              {piece.arranger && <span>• arr. {piece.arranger}</span>}
+              {piece.composer.value ? (
+                <>
+                  <EffectiveValue value={piece.composer.value} inherited={piece.composer.inherited} />
+                  {piece.arranger.value && <span>• arr. {piece.arranger.value}</span>}
+                </>
+              ) : piece.arranger.value ? (
+                <span className="inline-flex items-center gap-1.5">
+                  arr. {piece.arranger.value}
+                  {piece.arranger.inherited && <InheritedNote />}
+                </span>
+              ) : (
+                <span className="text-ink-soft/50">—</span>
+              )}
             </p>
 
             <div className="mt-1 flex flex-wrap items-center gap-2">
@@ -574,21 +632,7 @@ export function PieceViewSample() {
               </DetailRow>
             )}
             {piece.workOpusNumber.value && (
-              <DetailRow
-                label={
-                  <span className="flex items-center gap-1">
-                    Opus / catalog no.
-                    <InfoTooltip
-                      message="If this piece is part of a larger work which has a number assigned, enter that number."
-                      ariaLabel="What Opus / catalog no. means"
-                      // Solid pre-blend, not opacity (feedback-icon-color-preblend).
-                      triggerClassName="text-[#9c968f] hover:text-ink-soft"
-                    >
-                      <IconInfoCircle size={13} />
-                    </InfoTooltip>
-                  </span>
-                }
-              >
+              <DetailRow label="Opus / catalog no.">
                 <EffectiveValue
                   value={piece.workOpusNumber.value}
                   inherited={piece.workOpusNumber.inherited}
@@ -712,11 +756,30 @@ export function PieceViewSample() {
               >
                 {book.bookTitle}
               </Link>
-              <p className="text-sm text-ink-soft">
-                {[book.composer || book.publisher, book.yearWritten].filter(Boolean).join(' • ') || (
-                  <span className="text-ink-soft/60 italic">No composer or publisher on file</span>
+              {/* ISBN (2026-08-20, design option D — locked over A/B/C/E/F,
+                  see the "ISBN Placement" design review): right-aligned
+                  opposite composer/year on the same line, quiet and
+                  catalog-number-styled rather than competing with composer
+                  for reading order. Book-only — no per-piece override or
+                  inheritance, so it's read straight off the book. Shows
+                  "IMSLP #{number}" in this exact slot instead whenever
+                  IMSLP is set — see bookIdentifierLabel's own comment.
+                  With this fixture's current imslpNumber set, that's the
+                  state actually visible by default; blank sampleBook's
+                  imslpNumber locally to preview the raw-ISBN state
+                  instead. */}
+              <div className="flex items-baseline justify-between gap-3">
+                <p className="text-sm text-ink-soft">
+                  {[bookComposerPart(book), book.yearWritten].filter(Boolean).join(' • ') || (
+                    <span className="text-ink-soft/60 italic">No composer or publisher on file</span>
+                  )}
+                </p>
+                {bookIdentifierLabel(book) && (
+                  <span className="shrink-0 font-mono text-xs whitespace-nowrap text-ink-soft/75 tabular-nums">
+                    {bookIdentifierLabel(book)}
+                  </span>
                 )}
-              </p>
+              </div>
             </div>
           )}
 

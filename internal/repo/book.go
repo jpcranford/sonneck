@@ -11,12 +11,12 @@ import (
 func CreateBook(ctx context.Context, q Queryer, b *models.Book) (int64, error) {
 	res, err := q.ExecContext(ctx, `
 		INSERT INTO books (
-			book_title, composer, year_written, work_opus_number, sheet_type_id,
-			publisher, publisher_id, description, imslp_number,
+			book_title, composer, arranger, year_written, work_opus_number, sheet_type_id,
+			publisher, publisher_id, description, imslp_number, isbn,
 			original_filename, file_path, file_hash
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		b.BookTitle, b.Composer, b.YearWritten, b.WorkOpusNumber, b.SheetTypeID,
-		b.Publisher, b.PublisherID, b.Description, b.ImslpNumber,
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		b.BookTitle, b.Composer, b.Arranger, b.YearWritten, b.WorkOpusNumber, b.SheetTypeID,
+		b.Publisher, b.PublisherID, b.Description, b.ImslpNumber, b.ISBN,
 		b.OriginalFilename, b.FilePath, b.FileHash,
 	)
 	if err != nil {
@@ -43,13 +43,13 @@ func GetBookByHash(ctx context.Context, q Queryer, hash string) (*models.Book, e
 func GetBookByID(ctx context.Context, q Queryer, id int64) (*models.Book, error) {
 	b := &models.Book{}
 	err := q.QueryRowContext(ctx, `
-		SELECT id, book_title, composer, year_written, work_opus_number, sheet_type_id,
-			publisher, publisher_id, description, imslp_number,
+		SELECT id, book_title, composer, arranger, year_written, work_opus_number, sheet_type_id,
+			publisher, publisher_id, description, imslp_number, isbn,
 			original_filename, file_path, file_hash, imported_at
 		FROM books WHERE id = ?`, id,
 	).Scan(
-		&b.ID, &b.BookTitle, &b.Composer, &b.YearWritten, &b.WorkOpusNumber, &b.SheetTypeID,
-		&b.Publisher, &b.PublisherID, &b.Description, &b.ImslpNumber,
+		&b.ID, &b.BookTitle, &b.Composer, &b.Arranger, &b.YearWritten, &b.WorkOpusNumber, &b.SheetTypeID,
+		&b.Publisher, &b.PublisherID, &b.Description, &b.ImslpNumber, &b.ISBN,
 		&b.OriginalFilename, &b.FilePath, &b.FileHash, &b.ImportedAt,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -76,11 +76,11 @@ func GetBookByID(ctx context.Context, q Queryer, id int64) (*models.Book, error)
 func UpdateBook(ctx context.Context, q Queryer, b *models.Book) error {
 	_, err := q.ExecContext(ctx, `
 		UPDATE books SET
-			book_title = ?, composer = ?, year_written = ?, work_opus_number = ?, sheet_type_id = ?,
-			publisher = ?, publisher_id = ?, description = ?, imslp_number = ?
+			book_title = ?, composer = ?, arranger = ?, year_written = ?, work_opus_number = ?, sheet_type_id = ?,
+			publisher = ?, publisher_id = ?, description = ?, imslp_number = ?, isbn = ?
 		WHERE id = ?`,
-		b.BookTitle, b.Composer, b.YearWritten, b.WorkOpusNumber, b.SheetTypeID,
-		b.Publisher, b.PublisherID, b.Description, b.ImslpNumber,
+		b.BookTitle, b.Composer, b.Arranger, b.YearWritten, b.WorkOpusNumber, b.SheetTypeID,
+		b.Publisher, b.PublisherID, b.Description, b.ImslpNumber, b.ISBN,
 		b.ID,
 	)
 	return err

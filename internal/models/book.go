@@ -14,16 +14,24 @@ import "time"
 // real file is attached some other way. All three are nil together or not
 // at all; there's no state where only one of them is set.
 type Book struct {
-	ID               int64
-	BookTitle        string
-	Composer         *string
-	YearWritten      *string
-	WorkOpusNumber   *string
-	SheetTypeID      *int64
-	Publisher        *string
-	PublisherID      *string
-	Description      *string
-	ImslpNumber      *string
+	ID             int64
+	BookTitle      string
+	Composer       *string
+	Arranger       *string
+	YearWritten    *string
+	WorkOpusNumber *string
+	SheetTypeID    *int64
+	Publisher      *string
+	PublisherID    *string
+	Description    *string
+	ImslpNumber    *string
+	// ISBN (migration 00017): plain digits only, no hyphens — a possible
+	// trailing "X" check digit (ISBN-10) is the one non-digit character it
+	// can legitimately hold. Hyphenation for display is computed from this
+	// at read time (frontend, and buildCitation's own formatter), never
+	// stored. Book-only — there's no per-Piece ISBN or inheritance concept
+	// for it, unlike composer/publisher/imslpNumber etc.
+	ISBN             *string
 	OriginalFilename *string
 	FilePath         *string
 	FileHash         *string

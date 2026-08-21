@@ -14,7 +14,8 @@ import { getBook, getBookFileUrl, getBookPageThumbnailUrl } from '../api/books'
 import { getPieceThumbnailUrl, searchPieces } from '../api/pieces'
 import { ApiError } from '../api/client'
 import type { Piece } from '../api/types'
-import { effectiveBookComposer } from '../lib/formatBookMeta'
+import { bookComposerPart } from '../lib/formatBookMeta'
+import { hyphenateISBN } from '../lib/isbn'
 import { ClickableCard } from '../components/ClickableCard'
 import { EditBookModal } from '../components/EditBookModal'
 import { TagPills } from '../components/TagPills'
@@ -60,10 +61,26 @@ function pagesLabel(piece: Piece): string {
 // factored into a shared helper since those two callers also each carry
 // their own different surrounding fields (opus/sourceBook/year vs. just
 // year), same as this one carries pages instead.
+//
+// Three-way fallback (composer-or-arranger, 2026-08-20): falls back to
+// "arr. Arranger" when only an arranger is set — this is a case that comes
+// up specifically here, since a book with only an arranger set is common
+// (composer-or-arranger is required at the book level too) and every piece
+// without its own override inherits exactly that arranger-only value. The
+// old two-way ternary rendered a blank composer line (pages only) for
+// every such piece — an exception to "don't show inherited data" (unlike
+// the TagPills gating below): the composer/arranger line is this row's one
+// piece of identifying information, not decorative clutter, so it must
+// show the inherited value rather than hide it.
 function pieceMetaLine(piece: Piece): string {
-  const composerPart = piece.composer.value
-    ? piece.composer.value + (piece.arranger ? `, arr. ${piece.arranger}` : '')
-    : null
+  const composerPart =
+    piece.composer.value && piece.arranger.value
+      ? `${piece.composer.value}, arr. ${piece.arranger.value}`
+      : piece.composer.value
+        ? piece.composer.value
+        : piece.arranger.value
+          ? `arr. ${piece.arranger.value}`
+          : null
   return [composerPart, pagesLabel(piece)].filter((part): part is string => !!part).join(' • ')
 }
 
@@ -76,6 +93,13 @@ function PieceGrid({ pieces }: { pieces: Piece[] }) {
           to={`/pieces/${piece.id}`}
           className="overflow-hidden rounded-lg border border-border bg-paper-raised text-left transition-colors hover:border-accent"
         >
+          {/* 2026-08-20 (direct instruction): the page-range badge that
+              used to overlay the thumbnail is gone — its content moved
+              down to the bottom line in its place (below), and the
+              composer/arranger row is gone entirely. Too little room in a
+              112px-wide card for three lines of text plus a badge; the
+              page range is the one fact worth keeping over the piece
+              count pagesLabel used to show. */}
           <div className="relative aspect-[180/132] bg-border">
             <img
               src={getPieceThumbnailUrl(piece.id, piece.thumbnailPage)}
@@ -83,18 +107,10 @@ function PieceGrid({ pieces }: { pieces: Piece[] }) {
               loading="lazy"
               className="h-full w-full object-cover object-top"
             />
-            {piece.sourcePageStart != null && (
-              <span className="absolute bottom-1.5 left-1.5 rounded-full bg-ink/85 px-2 py-0.5 text-[0.65rem] font-medium tabular-nums text-white">
-                {pageRangeLabel(piece)}
-              </span>
-            )}
           </div>
           <div className="flex flex-col gap-0.5 px-2 py-1.5">
             <p className="truncate font-display text-[0.8rem] font-medium text-ink">{piece.title}</p>
-            {piece.composer.value && (
-              <p className="truncate text-[0.7rem] text-ink-soft">{piece.composer.value}</p>
-            )}
-            <p className="text-[0.65rem] text-ink-soft/80">{pagesLabel(piece)}</p>
+            <p className="text-[0.65rem] text-ink-soft/80">{pageRangeLabel(piece)}</p>
           </div>
         </ClickableCard>
       ))}
@@ -137,10 +153,21 @@ function PieceList({ pieces }: { pieces: Piece[] }) {
               )}
             </p>
             <p className="mt-0.5 text-xs text-ink-soft">{pieceMetaLine(piece)}</p>
+            {/* sheetType/instruments only shown when they're this piece's
+                own override, not the resolved/effective (book-inherited)
+                value (2026-08-20, direct instruction: "don't show pills
+                from inherited information, they'll just clutter the
+                view") — every piece in a book sharing the same inherited
+                sheet type/instruments would otherwise repeat the
+                identical pill on every single row, adding nothing the
+                book header above the piece list hasn't already shown
+                once. Keys/userTags were never book-inheritable to begin
+                with (design doc §3), so passing them through unfiltered
+                is unchanged. */}
             <TagPills
               keys={piece.keys}
-              sheetType={piece.sheetType.value}
-              instruments={piece.instruments.values}
+              sheetType={piece.sheetType.inherited ? null : piece.sheetType.value}
+              instruments={piece.instruments.inherited ? [] : piece.instruments.values}
               userTags={piece.userTags}
               className="mt-1.5"
             />
@@ -210,6 +237,19 @@ export function BookDetailsPage() {
         ),
       })
     }
+    // ISBN sits between IMSLP no. and Original filename (2026-08-20,
+    // direct instruction) — but only when imslpNumber is blank. IMSLP
+    // always wins the fallback over ISBN, same rule buildCitation applies
+    // to ISBN in the citation string: showing both identifiers on a
+    // details page that already has a dedicated IMSLP row would be
+    // redundant, not additive. Unlike Piece View's book card (which
+    // substitutes "IMSLP #{number}" in ISBN's place when hidden), this is
+    // a full field-per-row details list that already has its own IMSLP
+    // no. row above — nothing to substitute, the row simply doesn't
+    // render.
+    if (!book.imslpNumber && book.isbn) {
+      fields.push({ label: 'ISBN', value: hyphenateISBN(book.isbn) })
+    }
     if (book.originalFilename) {
       fields.push({ label: 'Original filename', value: book.originalFilename })
     }
@@ -269,7 +309,7 @@ export function BookDetailsPage() {
                       {book.workOpusNumber ? ` (${book.workOpusNumber})` : ''}
                     </h1>
                     <p className="text-[0.92rem] text-ink-soft">
-                      {[effectiveBookComposer(book), book.yearWritten].filter(Boolean).join(' • ')}
+                      {[bookComposerPart(book), book.yearWritten].filter(Boolean).join(' • ')}
                     </p>
                   </div>
                   <div className="flex shrink-0 items-stretch gap-2.5">

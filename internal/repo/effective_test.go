@@ -169,6 +169,99 @@ func TestResolveEffective_WhitespaceOnlyPieceValueFallsBackToBook(t *testing.T) 
 	}
 }
 
+// TestResolveEffective_ArrangerInheritsFromBook mirrors
+// TestResolveEffective_InheritsFromBook for Arranger, which joined the
+// book-inheritable list 2026-08-20 (direct instruction) — it used to be
+// excluded from EffectivePiece entirely.
+func TestResolveEffective_ArrangerInheritsFromBook(t *testing.T) {
+	ctx := context.Background()
+	dbConn := newTestDB(t)
+
+	bookID, err := repo.CreateBook(ctx, dbConn, &models.Book{
+		BookTitle:        "Anthology",
+		Arranger:         strPtr("Book Arranger"),
+		OriginalFilename: strPtr("anthology.pdf"),
+		FilePath:         strPtr("/data/library/books/arr.pdf"),
+		FileHash:         strPtr("arr-hash"),
+	})
+	if err != nil {
+		t.Fatalf("CreateBook: %v", err)
+	}
+
+	pieceID, err := repo.CreatePiece(ctx, dbConn, &models.Piece{
+		Title:        "Movement I",
+		SourceBookID: &bookID,
+		FilePath:     "/data/library/pieces/arr.pdf",
+		FileHash:     "arr-piece-hash",
+	})
+	if err != nil {
+		t.Fatalf("CreatePiece: %v", err)
+	}
+
+	piece, err := repo.GetPieceByID(ctx, dbConn, pieceID)
+	if err != nil {
+		t.Fatalf("GetPieceByID: %v", err)
+	}
+
+	eff, err := repo.ResolveEffective(ctx, dbConn, piece)
+	if err != nil {
+		t.Fatalf("ResolveEffective: %v", err)
+	}
+
+	if eff.Arranger.Value != "Book Arranger" {
+		t.Errorf("Arranger.Value = %q, want %q", eff.Arranger.Value, "Book Arranger")
+	}
+	if !eff.Arranger.Inherited {
+		t.Errorf("Arranger.Inherited = false, want true (piece has no arranger of its own)")
+	}
+}
+
+// TestResolveEffective_ArrangerPieceOwnValueWins mirrors
+// TestResolveEffective_PieceOwnValueWins for Arranger.
+func TestResolveEffective_ArrangerPieceOwnValueWins(t *testing.T) {
+	ctx := context.Background()
+	dbConn := newTestDB(t)
+
+	bookID, err := repo.CreateBook(ctx, dbConn, &models.Book{
+		BookTitle:        "Anthology",
+		Arranger:         strPtr("Book Arranger"),
+		OriginalFilename: strPtr("anthology2.pdf"),
+		FilePath:         strPtr("/data/library/books/arr2.pdf"),
+		FileHash:         strPtr("arr-hash-2"),
+	})
+	if err != nil {
+		t.Fatalf("CreateBook: %v", err)
+	}
+
+	pieceID, err := repo.CreatePiece(ctx, dbConn, &models.Piece{
+		Title:        "Movement II",
+		Arranger:     strPtr("Piece Arranger"),
+		SourceBookID: &bookID,
+		FilePath:     "/data/library/pieces/arr2.pdf",
+		FileHash:     "arr-piece-hash-2",
+	})
+	if err != nil {
+		t.Fatalf("CreatePiece: %v", err)
+	}
+
+	piece, err := repo.GetPieceByID(ctx, dbConn, pieceID)
+	if err != nil {
+		t.Fatalf("GetPieceByID: %v", err)
+	}
+
+	eff, err := repo.ResolveEffective(ctx, dbConn, piece)
+	if err != nil {
+		t.Fatalf("ResolveEffective: %v", err)
+	}
+
+	if eff.Arranger.Value != "Piece Arranger" {
+		t.Errorf("Arranger.Value = %q, want %q", eff.Arranger.Value, "Piece Arranger")
+	}
+	if eff.Arranger.Inherited {
+		t.Errorf("Arranger.Inherited = true, want false (piece has its own arranger)")
+	}
+}
+
 func TestResolveEffective_InstrumentsFallBackAsWholeSet(t *testing.T) {
 	ctx := context.Background()
 	dbConn := newTestDB(t)

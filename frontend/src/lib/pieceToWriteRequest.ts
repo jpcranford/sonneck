@@ -15,7 +15,14 @@ export function pieceToWriteRequest(piece: Piece): PieceWriteRequest {
   return {
     title: piece.title,
     composer: piece.composer.value,
-    arranger: piece.arranger,
+    // Book-inheritable as of 2026-08-20 — same inherited-blank convention
+    // as every other field below now, not a raw echo of the resolved
+    // value. Previously a plain string, so this used to be a correct
+    // direct assignment; left as one after arranger's type changed, this
+    // silently sent a {value, inherited} object as the write body's
+    // arranger field, which the backend can't decode as its expected
+    // string — every favorite toggle failed outright.
+    arranger: piece.arranger.inherited ? '' : piece.arranger.value,
     favorite: piece.favorite,
     // sourceBookId follows the same full-replace rule as every other
     // field (see CLAUDE.md's "sourceBookId itself became editable" entry)

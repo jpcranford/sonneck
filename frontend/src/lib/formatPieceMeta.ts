@@ -10,13 +10,23 @@ import type { Piece } from '../api/types'
 // Arranger rides on the composer segment itself ("Composer, arr.
 // Arranger"), not as its own bullet-separated part — same reasoning as
 // PieceGridCard's own composerPart logic (it qualifies the composer, it
-// isn't a peer fact like the year), and this was the one real gap: list
-// view cards (the only caller of this helper) were dropping arranger
-// entirely, unlike the grid cards and the Piece View itself.
+// isn't a peer fact like the year).
+//
+// Three-way fallback (composer-or-arranger, 2026-08-20): a piece can
+// legitimately have only an arranger (own or book-inherited) and no
+// composer at all — the naive "composer ? composer+arranger : null" this
+// used to be dropped that case's arranger entirely instead of falling back
+// to "arr. Arranger", same bug already fixed in PiecePage.tsx's own
+// composer/arranger row.
 export function formatPieceMeta(piece: Piece): string {
-  const composerPart = piece.composer.value
-    ? piece.composer.value + (piece.arranger ? `, arr. ${piece.arranger}` : '')
-    : null
+  const composerPart =
+    piece.composer.value && piece.arranger.value
+      ? `${piece.composer.value}, arr. ${piece.arranger.value}`
+      : piece.composer.value
+        ? piece.composer.value
+        : piece.arranger.value
+          ? `arr. ${piece.arranger.value}`
+          : null
   return [
     composerPart,
     piece.workOpusNumber.value,

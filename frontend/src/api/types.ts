@@ -32,7 +32,9 @@ export interface Piece {
   id: number
   title: string
   composer: EffectiveField
-  arranger: string | null
+  /** Book-inheritable as of 2026-08-20 (backend: ResolveEffective) — was a
+   * plain nullable string before. */
+  arranger: EffectiveField
   favorite: boolean
   workOpusNumber: EffectiveField
   /** Many-to-many, not book-inheritable — a piece can genuinely be written
@@ -72,6 +74,9 @@ export interface Book {
   id: number
   bookTitle: string
   composer: string | null
+  /** Book-inheritable-source field as of 2026-08-20 (backend:
+   * ResolveEffective) — a Piece's own arranger falls back to this. */
+  arranger: string | null
   yearWritten: string | null
   workOpusNumber: string | null
   sheetType: Tag | null
@@ -79,6 +84,9 @@ export interface Book {
   publisherId: string | null
   description: string | null
   imslpNumber: string | null
+  /** Plain digits, no hyphens (backend: models.Book.ISBN) — hyphenated for
+   * display via lib/isbn.ts's hyphenateISBN. */
+  isbn: string | null
   instruments: Tag[]
   // Nullable (backend migration 00014) — a manually created book (Books
   // library view's "New Book" button) has no underlying file.
@@ -98,6 +106,11 @@ export interface Book {
 export interface BookCreateRequest {
   bookTitle: string
   composer?: string | null
+  /** Included alongside composer (unlike publisher/yearWritten below) since
+   * ValidateBook requires one of composer/arranger — leaving it out here
+   * would make that requirement satisfiable only via composer at creation
+   * time. */
+  arranger?: string | null
   publisher?: string | null
   yearWritten?: string | null
 }
@@ -150,6 +163,7 @@ export interface PieceWriteRequest {
 export interface BookWriteRequest {
   bookTitle: string
   composer?: string | null
+  arranger?: string | null
   yearWritten?: string | null
   workOpusNumber?: string | null
   sheetTypeName?: string | null
@@ -157,6 +171,10 @@ export interface BookWriteRequest {
   publisherId?: string | null
   description?: string | null
   imslpNumber?: string | null
+  /** Normalized server-side on save (handleUpdateBook's normalizeISBN) —
+   * whatever punctuation/label is typed here, only digits (+ a possible
+   * trailing check-digit X) are actually stored. */
+  isbn?: string | null
   instruments: string[]
 }
 

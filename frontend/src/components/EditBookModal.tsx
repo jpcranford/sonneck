@@ -32,12 +32,14 @@ interface EditBookModalProps {
 interface FormValues {
   bookTitle: string
   composer: string
+  arranger: string
   yearWritten: string
   workOpusNumber: string
   instruments: Tag[]
   sheetType: string
   publisher: string
   publisherId: string
+  isbn: string
   imslpNumber: string
   description: string
 }
@@ -46,12 +48,14 @@ function bookToFormValues(book: Book): FormValues {
   return {
     bookTitle: book.bookTitle,
     composer: book.composer ?? '',
+    arranger: book.arranger ?? '',
     yearWritten: book.yearWritten ?? '',
     workOpusNumber: book.workOpusNumber ?? '',
     instruments: book.instruments,
     sheetType: book.sheetType?.name ?? '',
     publisher: book.publisher ?? '',
     publisherId: book.publisherId ?? '',
+    isbn: book.isbn ?? '',
     imslpNumber: book.imslpNumber ?? '',
     description: book.description ?? '',
   }
@@ -60,11 +64,16 @@ function bookToFormValues(book: Book): FormValues {
 // Book has no inheritance to preserve (unlike PieceWriteRequest, which
 // blanks inherited fields so a full-replace write can't accidentally
 // convert an inherited value into a permanent override) — every field here
-// is the book's own, so this is a plain, direct mapping.
+// is the book's own, so this is a plain, direct mapping. isbn isn't
+// stripped/normalized client-side the way EditPieceModal.tsx strips
+// imslpNumber before saving — unlike imslpNumber, isbn is already
+// normalized server-side on every write (handleUpdateBook's
+// normalizeISBN), so there's nothing left for the client to do.
 function formValuesToWriteRequest(data: FormValues): BookWriteRequest {
   return {
     bookTitle: data.bookTitle,
     composer: data.composer || null,
+    arranger: data.arranger || null,
     yearWritten: data.yearWritten || null,
     workOpusNumber: data.workOpusNumber || null,
     sheetTypeName: data.sheetType || null,
@@ -72,6 +81,7 @@ function formValuesToWriteRequest(data: FormValues): BookWriteRequest {
     publisherId: data.publisherId || null,
     description: data.description || null,
     imslpNumber: data.imslpNumber || null,
+    isbn: data.isbn || null,
     instruments: data.instruments.map((i) => i.name),
   }
 }
@@ -243,33 +253,44 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
       }
     >
       <form id="edit-book-form" onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-        {/* Four paired/split rows — Title/Composer, Year Written/Opus
-            Number, Publisher/Publisher ID, then the closing IMSLP+Sheet
-            Type+Instruments/Description split — each a full-modal-width
-            row, same "share a row" treatment throughout (not one field
-            nested inside a narrower column). All collapse to stacked
-            single fields below ~525px. Locked design, see the mockup's own
-            file comment for the design-review provenance. */}
+        {/* Book title stands alone, full width — no longer paired with
+            Composer (2026-08-20, direct instruction: reordered to Title /
+            Composer-Arranger / Year-Opus / Publisher-PublisherID /
+            ISBN-IMSLP / Sheet+Instruments-Description). Every paired row
+            below still collapses to stacked single fields below ~525px.
+            Locked design, see the mockup's own file comment for the
+            design-review provenance. */}
+        <div className="flex min-w-0 flex-col gap-1">
+          <label htmlFor="f-book-title" className="text-sm text-ink-soft">
+            Book title <span className="text-ink-soft/60 italic">(Required)</span>
+          </label>
+          <input
+            id="f-book-title"
+            className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+            {...register('bookTitle', { required: 'Book title is required.', maxLength: 255 })}
+          />
+          {errors.bookTitle && <p className="text-sm text-red-700">{errors.bookTitle.message}</p>}
+        </div>
+
         <div className="flex flex-col gap-3 min-[525px]:flex-row">
           <div className="flex min-w-0 flex-1 flex-col gap-1">
-            <label htmlFor="f-book-title" className="text-sm text-ink-soft">
-              Book title <span className="text-ink-soft/60 italic">(Required)</span>
-            </label>
-            <input
-              id="f-book-title"
-              className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-              {...register('bookTitle', { required: 'Book title is required.', maxLength: 255 })}
-            />
-            {errors.bookTitle && <p className="text-sm text-red-700">{errors.bookTitle.message}</p>}
-          </div>
-          <div className="flex min-w-0 flex-1 flex-col gap-1">
             <label htmlFor="f-composer" className="text-sm text-ink-soft">
-              Composer
+              Composer <span className="text-ink-soft/60 italic">(Composer or Arranger required)</span>
             </label>
             <input
               id="f-composer"
               className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
               {...register('composer', { maxLength: 255 })}
+            />
+          </div>
+          <div className="flex min-w-0 flex-1 flex-col gap-1">
+            <label htmlFor="f-arranger" className="text-sm text-ink-soft">
+              Arranger
+            </label>
+            <input
+              id="f-arranger"
+              className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+              {...register('arranger', { maxLength: 255 })}
             />
           </div>
         </div>
@@ -326,26 +347,42 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
           </div>
         </div>
 
-        {/* Closing two-column row: IMSLP No./Sheet Type/Instruments
-            stacked on the left, Description spanning the same height on
-            the right — the one genuinely tall field gets the one
-            genuinely tall column. gap-3 here too (not gap-5) — every
-            multi-column row in this form uses the same gutter width, a
-            direct fix from design review (a 20px gutter here against 12px
-            everywhere else visibly narrowed this column against its
-            neighbors). */}
+        {/* ISBN/IMSLP number — moved IMSLP out of the closing stacked
+            column below (2026-08-20, direct instruction) and paired it
+            with the new ISBN field instead, same split-row treatment as
+            every row above it. */}
+        <div className="flex flex-col gap-3 min-[525px]:flex-row">
+          <div className="flex min-w-0 flex-1 flex-col gap-1">
+            <label htmlFor="f-isbn" className="text-sm text-ink-soft">
+              ISBN number
+            </label>
+            <input
+              id="f-isbn"
+              className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+              {...register('isbn', { maxLength: 255 })}
+            />
+          </div>
+          <div className="flex min-w-0 flex-1 flex-col gap-1">
+            <label htmlFor="f-imslp" className="text-sm text-ink-soft">
+              IMSLP number
+            </label>
+            <input
+              id="f-imslp"
+              className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+              {...register('imslpNumber', { maxLength: 255 })}
+            />
+          </div>
+        </div>
+
+        {/* Closing two-column row: Sheet Type/Instruments stacked on the
+            left, Description spanning the same height on the right — the
+            one genuinely tall field gets the one genuinely tall column.
+            gap-3 here too (not gap-5) — every multi-column row in this
+            form uses the same gutter width, a direct fix from design
+            review (a 20px gutter here against 12px everywhere else
+            visibly narrowed this column against its neighbors). */}
         <div className="flex flex-col gap-3 min-[525px]:flex-row">
           <div className="flex min-w-0 flex-1 flex-col gap-4">
-            <div className="flex flex-col gap-1">
-              <label htmlFor="f-imslp" className="text-sm text-ink-soft">
-                IMSLP number
-              </label>
-              <input
-                id="f-imslp"
-                className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-                {...register('imslpNumber', { maxLength: 255 })}
-              />
-            </div>
             <Controller
               name="sheetType"
               control={control}

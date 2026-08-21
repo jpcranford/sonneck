@@ -64,7 +64,7 @@ func ResyncSearchIndex(ctx context.Context, q Queryer, pieceID int64) error {
 			imslp_number, year_written, work_opus_number, description, user_notes,
 			key_name, sheet_type_name, instruments, user_tags
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		p.ID, p.Title, eff.Composer.Value, strOrEmpty(p.Arranger), eff.Publisher.Value, eff.PublisherID.Value,
+		p.ID, p.Title, eff.Composer.Value, eff.Arranger.Value, eff.Publisher.Value, eff.PublisherID.Value,
 		eff.ImslpNumber.Value, eff.YearWritten.Value, eff.WorkOpusNumber.Value, eff.Description.Value, strOrEmpty(p.UserNotes),
 		strings.Join(keyNames, " "), sheetTypeName, strings.Join(instrumentNames, " "), strings.Join(userTagNames, " "),
 	)

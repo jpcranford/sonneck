@@ -25,10 +25,23 @@ const CURRENT_STEP = 6
 export interface NamedPiece extends Piece {
   title: string
   composer: string
+  arranger: string
 }
 
 function formatPageRange(piece: Piece): string {
   return piece.end !== piece.start ? `pp ${piece.start}–${piece.end}` : `pp ${piece.start}`
+}
+
+// Composer-or-arranger (2026-08-20): fuses arranger onto composer
+// (", arr. Arranger"), same convention as everywhere else in this app —
+// arranger alone renders as "arr. Arranger" rather than disappearing when
+// composer is blank (composer-or-arranger means a piece can legitimately
+// have only one of the two).
+function composerArrangerLabel(piece: NamedPiece): string {
+  if (piece.composer && piece.arranger) return `${piece.composer}, arr. ${piece.arranger}`
+  if (piece.composer) return piece.composer
+  if (piece.arranger) return `arr. ${piece.arranger}`
+  return ''
 }
 
 // Compacts a sorted page list into ranges — same convention as the Split
@@ -92,6 +105,7 @@ export function BookUploadConfirmStep({
         pieces: pieces.map((p) => ({
           title: p.title,
           composer: p.composer || null,
+          arranger: p.arranger || null,
           favorite: false,
           keys: [],
           instruments: [],
@@ -181,7 +195,7 @@ export function BookUploadConfirmStep({
               <p className="truncate font-display text-[0.8rem] font-medium text-ink">
                 {piece.title}
               </p>
-              <p className="truncate text-[0.7rem] text-ink-soft">{piece.composer}</p>
+              <p className="truncate text-[0.7rem] text-ink-soft">{composerArrangerLabel(piece)}</p>
               <p className="truncate text-[0.7rem] text-ink-soft">{formatPageRange(piece)}</p>
             </div>
           </div>

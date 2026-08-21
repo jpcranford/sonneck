@@ -15,13 +15,14 @@ import {
   IconHeart,
   IconHeartFilled,
   IconImageInPicture,
-  IconInfoCircle,
   IconMusic,
   IconRefresh,
   IconShieldCheck,
 } from '@tabler/icons-react'
 import { getBook } from '../api/books'
+import type { Book } from '../api/types'
 import { formatBookMeta } from '../lib/formatBookMeta'
+import { hyphenateISBN } from '../lib/isbn'
 import {
   getCitation,
   getPiece,
@@ -72,6 +73,24 @@ function formatDate(iso: string): string {
 // applies at citation-format time.
 function imslpReverseLookupUrl(imslpNumber: string): string {
   return `https://imslp.org/index.php?title=Special:ReverseLookup&action=submit&indexsearch=${encodeURIComponent(imslpNumber)}`
+}
+
+// The Source Book card's right-hand identifier slot (design option D,
+// locked over A/B/C/E/F — see the "ISBN Placement" design review) shows
+// either ISBN or IMSLP no. — never both. IMSLP always wins when both are
+// set (2026-08-20, direct instruction, same "IMSLP wins the fallback"
+// rule buildCitation already applies to publisherId/ISBN in the citation
+// string): "IMSLP #{number}" takes the ISBN's own slot rather than the
+// ISBN just being hidden with nothing replacing it, since this is a
+// single-line summary that always wants exactly one identifier shown, not
+// a full field list like Book Details (where the row simply doesn't
+// render at all). Strips any "IMSLP" label already baked into the stored
+// value (legacy data, same as the backend's own stripImslpPrefix) so the
+// "IMSLP #" prefix here never doubles up.
+function bookIdentifierLabel(book: Book): string | null {
+  if (book.imslpNumber) return `IMSLP #${book.imslpNumber.replace(/^\s*imslp[\s:#-]*/i, '')}`
+  if (book.isbn) return hyphenateISBN(book.isbn)
+  return null
 }
 
 function InheritedNote({ compact }: { compact?: boolean }) {
@@ -547,11 +566,25 @@ export function PiecePage() {
               {/* Arranger folded into the composer line ("X • arr. Y")
                   instead of its own details-list row — omitted entirely,
                   same as every other row, when not set. Dot separator
-                  matches the Publisher row's publisher/publisherId
-                  pairing below. */}
+                  matches the Publisher row's publisher/publisherId pairing
+                  below — but only when composer is actually present:
+                  composer-or-arranger (2026-08-20) means a piece can now
+                  have an arranger with no composer at all, and the dot
+                  must not render with nothing on its left to separate. */}
               <p className="flex flex-wrap items-center gap-1.5 text-ink-soft">
-                <EffectiveValue value={piece.composer.value} inherited={piece.composer.inherited} />
-                {piece.arranger && <span>• arr. {piece.arranger}</span>}
+                {piece.composer.value ? (
+                  <>
+                    <EffectiveValue value={piece.composer.value} inherited={piece.composer.inherited} />
+                    {piece.arranger.value && <span>• arr. {piece.arranger.value}</span>}
+                  </>
+                ) : piece.arranger.value ? (
+                  <span className="inline-flex items-center gap-1.5">
+                    arr. {piece.arranger.value}
+                    {piece.arranger.inherited && <InheritedNote />}
+                  </span>
+                ) : (
+                  <span className="text-ink-soft/50">—</span>
+                )}
               </p>
 
               {/* Practice status + remaining metadata pills (key, sheet
@@ -655,21 +688,7 @@ export function PiecePage() {
                 </DetailRow>
               )}
               {piece.workOpusNumber.value && (
-                <DetailRow
-                  label={
-                    <span className="flex items-center gap-1">
-                      Opus / catalog no.
-                      <InfoTooltip
-                        message="If this piece is part of a larger work which has a number assigned, enter that number."
-                        ariaLabel="What Opus / catalog no. means"
-                        // Solid pre-blend, not opacity (feedback-icon-color-preblend).
-                        triggerClassName="text-[#9c968f] hover:text-ink-soft"
-                      >
-                        <IconInfoCircle size={13} />
-                      </InfoTooltip>
-                    </span>
-                  }
-                >
+                <DetailRow label="Opus / catalog no.">
                   <EffectiveValue
                     value={piece.workOpusNumber.value}
                     inherited={piece.workOpusNumber.inherited}
@@ -803,11 +822,25 @@ export function PiecePage() {
                 >
                   {book.bookTitle}
                 </Link>
-                <p className="text-sm text-ink-soft">
-                  {formatBookMeta(book) || (
-                    <span className="text-ink-soft/60 italic">No composer or publisher on file</span>
+                {/* ISBN (2026-08-20, design option D — locked over
+                    A/B/C/E/F, see the "ISBN Placement" design review):
+                    right-aligned opposite composer/year on the same line,
+                    quiet and catalog-number-styled rather than competing
+                    with composer for reading order. Shows "IMSLP
+                    #{number}" in this exact slot instead whenever IMSLP is
+                    set — see bookIdentifierLabel's own comment. */}
+                <div className="flex items-baseline justify-between gap-3">
+                  <p className="text-sm text-ink-soft">
+                    {formatBookMeta(book) || (
+                      <span className="text-ink-soft/60 italic">No composer or publisher on file</span>
+                    )}
+                  </p>
+                  {bookIdentifierLabel(book) && (
+                    <span className="shrink-0 font-mono text-xs whitespace-nowrap text-ink-soft/75 tabular-nums">
+                      {bookIdentifierLabel(book)}
+                    </span>
                   )}
-                </p>
+                </div>
               </div>
             )}
 

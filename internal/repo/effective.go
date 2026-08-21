@@ -38,6 +38,7 @@ type EffectiveTagsField struct {
 // to the user (CLAUDE.md > Book-level soft inheritance).
 type EffectivePiece struct {
 	Composer       EffectiveField
+	Arranger       EffectiveField
 	Publisher      EffectiveField
 	PublisherID    EffectiveField
 	ImslpNumber    EffectiveField
@@ -50,9 +51,10 @@ type EffectivePiece struct {
 
 // ResolveEffective computes p's effective values, loading its source Book
 // (if any) as needed. Fields not in the book-inheritable list (title, key,
-// arranger, userNotes, userTags, favorite, practiceStatus, etc.) are not
-// part of this struct — read them directly off Piece, since they never
-// fall back to anything.
+// userNotes, userTags, favorite, practiceStatus, etc.) are not part of this
+// struct — read them directly off Piece, since they never fall back to
+// anything. Arranger joined the inheritable list 2026-08-20 (direct
+// instruction) — it used to be excluded here.
 func ResolveEffective(ctx context.Context, q Queryer, p *models.Piece) (*EffectivePiece, error) {
 	var book *models.Book
 	if p.SourceBookID != nil {
@@ -63,11 +65,12 @@ func ResolveEffective(ctx context.Context, q Queryer, p *models.Piece) (*Effecti
 		book = b
 	}
 
-	var bookComposer, bookPublisher, bookPublisherID, bookImslpNumber, bookYearWritten, bookWorkOpusNumber, bookDescription *string
+	var bookComposer, bookArranger, bookPublisher, bookPublisherID, bookImslpNumber, bookYearWritten, bookWorkOpusNumber, bookDescription *string
 	var bookSheetTypeID *int64
 	var bookInstrumentIDs []int64
 	if book != nil {
 		bookComposer = book.Composer
+		bookArranger = book.Arranger
 		bookPublisher = book.Publisher
 		bookPublisherID = book.PublisherID
 		bookImslpNumber = book.ImslpNumber
@@ -80,6 +83,7 @@ func ResolveEffective(ctx context.Context, q Queryer, p *models.Piece) (*Effecti
 
 	return &EffectivePiece{
 		Composer:       resolveStringField(p.Composer, bookComposer),
+		Arranger:       resolveStringField(p.Arranger, bookArranger),
 		Publisher:      resolveStringField(p.Publisher, bookPublisher),
 		PublisherID:    resolveStringField(p.PublisherID, bookPublisherID),
 		ImslpNumber:    resolveStringField(p.ImslpNumber, bookImslpNumber),

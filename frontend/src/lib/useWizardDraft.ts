@@ -22,7 +22,7 @@ export interface WizardDraftData {
   step: WizardDraftStep
   pageCount: number
   pageAssignments: { starts: number[]; skips: number[]; shared: number[] }
-  pieceFields: { title: string; composer: string }[]
+  pieceFields: { title: string; composer: string; arranger: string }[]
 }
 
 function isWizardDraftData(value: unknown): value is WizardDraftData {

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -15,6 +16,33 @@ import (
 	"github.com/jpcranford/sonneck/internal/repo"
 	"github.com/jpcranford/sonneck/internal/storage"
 )
+
+var (
+	isbnPrefixPattern   = regexp.MustCompile(`(?i)^\s*isbn[\s:#-]*`)
+	isbnNonDigitPattern = regexp.MustCompile(`[^0-9Xx]`)
+)
+
+// normalizeISBN strips a redundant "ISBN" label (same separator set as
+// citation.go's stripImslpPrefix — space/colon/hash/dash, any case) plus any
+// other punctuation/whitespace a user might have typed (e.g. a
+// pre-hyphenated "978-1-56619-909-4"), leaving only digits and a possible
+// trailing check-digit "X" (ISBN-10, uppercased).
+//
+// Unlike imslpNumber — which only ever gets its label stripped client-side,
+// needing citation.go's own defensive stripImslpPrefix for legacy data at
+// render time — this runs server-side on every write. Nothing downstream
+// (citation formatting, the frontend's hyphenation display) ever needs to
+// re-normalize what's already stored: migration 00017 did the same cleanup
+// for data that predates this column existing at all, so isbn is guaranteed
+// clean everywhere it's read, without a citation-time defensive step.
+func normalizeISBN(raw *string) *string {
+	if raw == nil {
+		return nil
+	}
+	stripped := isbnPrefixPattern.ReplaceAllString(*raw, "")
+	digits := strings.ToUpper(isbnNonDigitPattern.ReplaceAllString(stripped, ""))
+	return &digits
+}
 
 // handleUploadBook is the import wizard's step 1 (design doc §5): upload
 // the book PDF, dedupe on hash match, render nothing yet (thumbnails are
@@ -103,6 +131,7 @@ func (s *Server) handleCreateBookManual(w http.ResponseWriter, r *http.Request) 
 		b := &models.Book{
 			BookTitle:   req.BookTitle,
 			Composer:    req.Composer,
+			Arranger:    req.Arranger,
 			Publisher:   req.Publisher,
 			YearWritten: req.YearWritten,
 		}
@@ -255,12 +284,14 @@ func (s *Server) handleUpdateBook(w http.ResponseWriter, r *http.Request) {
 
 		b.BookTitle = req.BookTitle
 		b.Composer = req.Composer
+		b.Arranger = req.Arranger
 		b.YearWritten = req.YearWritten
 		b.WorkOpusNumber = req.WorkOpusNumber
 		b.Publisher = req.Publisher
 		b.PublisherID = req.PublisherID
 		b.Description = req.Description
 		b.ImslpNumber = req.ImslpNumber
+		b.ISBN = normalizeISBN(req.ISBN)
 
 		sheetTypeID, err := resolveOptionalTagName(r.Context(), tx, repo.FindOrCreateSheetType, req.SheetTypeName, "sheetTypeName")
 		if err != nil {

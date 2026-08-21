@@ -76,6 +76,52 @@ func TestUpdateBook_ResyncsSearchForInheritingPieces(t *testing.T) {
 	assertSearchCount(t, h, "Own", 1) // the override is untouched by the book edit
 }
 
+// TestUpdateBook_NormalizesISBNOnSave covers normalizeISBN end to end
+// through the real handler: a value with a redundant "ISBN" label and
+// hyphens comes back as bare digits, matching the same "strip on save"
+// treatment IMSLP number already gets client-side (CLAUDE.md), just done
+// server-side here since the digit-only invariant matters for
+// hyphenation/version detection downstream, not just cosmetics.
+func TestUpdateBook_NormalizesISBNOnSave(t *testing.T) {
+	h := newTestServer(t)
+	bookID, _ := uploadBook(t, h, "book.pdf", 4)
+
+	decodeData(t, doJSON(t, h, http.MethodPatch, apiBooksURL(bookID), map[string]any{
+		"bookTitle": "Six Symphonies",
+		"composer":  "Charles-Marie Widor",
+		"isbn":      "ISBN 978-0-13-235088-4",
+	}), nil)
+
+	rec := doJSON(t, h, http.MethodGet, apiBooksURL(bookID), nil)
+	var book bookResponse
+	decodeData(t, rec, &book)
+
+	if book.ISBN == nil || *book.ISBN != "9780132350884" {
+		t.Errorf("isbn = %v, want %q (label and hyphens stripped)", book.ISBN, "9780132350884")
+	}
+}
+
+// TestUpdateBook_ArrangerRoundTrips is a minimal smoke test for the new
+// field itself (the composer-or-arranger requirement is covered at the
+// api.ValidateBook unit-test level, not re-tested here).
+func TestUpdateBook_ArrangerRoundTrips(t *testing.T) {
+	h := newTestServer(t)
+	bookID, _ := uploadBook(t, h, "book.pdf", 4)
+
+	decodeData(t, doJSON(t, h, http.MethodPatch, apiBooksURL(bookID), map[string]any{
+		"bookTitle": "Anthology",
+		"arranger":  "J. Someone",
+	}), nil)
+
+	rec := doJSON(t, h, http.MethodGet, apiBooksURL(bookID), nil)
+	var book bookResponse
+	decodeData(t, rec, &book)
+
+	if book.Arranger == nil || *book.Arranger != "J. Someone" {
+		t.Errorf("arranger = %v, want %q", book.Arranger, "J. Someone")
+	}
+}
+
 func TestBookPageThumbnail_ReturnsPNG(t *testing.T) {
 	h := newTestServer(t)
 	bookID, _ := uploadBook(t, h, "book.pdf", 3)
@@ -173,6 +219,7 @@ func TestDownloadBookFile_FilelessBookReturns404(t *testing.T) {
 	h := newTestServer(t)
 	rec := doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
 		"bookTitle": "Christmas Medleys",
+		"composer":  "Traditional",
 	})
 	var book bookResponse
 	decodeData(t, rec, &book)

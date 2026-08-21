@@ -157,6 +157,7 @@ type pieceResponse struct {
 	ID              int64           `json:"id"`
 	Title           string          `json:"title"`
 	Composer        effectiveString `json:"composer"`
+	Arranger        effectiveString `json:"arranger"`
 	Keys            []tagStub       `json:"keys"`
 	SourcePageStart *int            `json:"sourcePageStart"`
 	SourcePageEnd   *int            `json:"sourcePageEnd"`
@@ -179,6 +180,8 @@ type bookResponse struct {
 	ID               int64   `json:"id"`
 	BookTitle        string  `json:"bookTitle"`
 	Composer         *string `json:"composer"`
+	Arranger         *string `json:"arranger"`
+	ISBN             *string `json:"isbn"`
 	OriginalFilename *string `json:"originalFilename"`
 	FileHash         *string `json:"fileHash"`
 	PieceCount       int     `json:"pieceCount"`

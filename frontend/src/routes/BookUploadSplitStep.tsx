@@ -383,7 +383,6 @@ export function BookUploadSplitStep({
             <span className="size-1.5 rounded-full" style={{ backgroundColor: piece.color }} />
             Piece {index + 1} • pp {piece.start}
             {piece.end !== piece.start ? `–${piece.end}` : ''}
-            {piece.isLast && '+'}
           </span>
         ))}
         {state.skips.size > 0 && (

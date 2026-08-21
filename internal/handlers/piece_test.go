@@ -663,6 +663,39 @@ func TestGetPiece_404ForNonexistentID(t *testing.T) {
 // name used to always report a hardcoded, ambiguous field label ("tags" or
 // "key/sheetType") regardless of which actual field failed, making it
 // impossible for a frontend to highlight the right input.
+// TestGetPiece_ArrangerInheritsFromBook covers the full API contract for
+// arranger becoming book-inheritable (2026-08-20): PieceResponse.Arranger
+// is now {value, inherited} like every other book-inheritable field, not
+// the plain nullable string it used to be. Repo-level resolution logic is
+// already covered by TestResolveEffective_ArrangerInheritsFromBook — this
+// confirms the HTTP layer actually wires eff.Arranger through, not a raw
+// Piece column.
+func TestGetPiece_ArrangerInheritsFromBook(t *testing.T) {
+	h := newTestServer(t)
+	bookID, _ := uploadBook(t, h, "book.pdf", 4)
+	decodeData(t, doJSON(t, h, http.MethodPatch, apiBooksURL(bookID), map[string]any{
+		"bookTitle": "Anthology",
+		"arranger":  "Book Arranger",
+	}), nil)
+
+	confirmRec := doJSON(t, h, http.MethodPost, apiBooksURL(bookID)+"/confirm-import", map[string]any{
+		"ranges": []map[string]any{{"start": 1, "end": 4}},
+		"pieces": []map[string]any{{"title": "Inherits"}},
+	})
+	var result struct {
+		Pieces []pieceResponse `json:"pieces"`
+	}
+	decodeData(t, confirmRec, &result)
+
+	rec := doJSON(t, h, http.MethodGet, apiPiecesURL(result.Pieces[0].ID), nil)
+	var piece pieceResponse
+	decodeData(t, rec, &piece)
+
+	if piece.Arranger.Value != "Book Arranger" || !piece.Arranger.Inherited {
+		t.Errorf("arranger = %+v, want {value: %q, inherited: true}", piece.Arranger, "Book Arranger")
+	}
+}
+
 func TestUpdatePiece_TagValidationErrorNamesTheRealField(t *testing.T) {
 	h := newTestServer(t)
 	dir := t.TempDir()
@@ -720,6 +753,7 @@ func TestUpdatePiece_SetsAndClearsSourceBookID(t *testing.T) {
 
 	bookRec := doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
 		"bookTitle": "Album für die Jugend, Op. 68",
+		"composer":  "Robert Schumann",
 	})
 	var book bookResponse
 	decodeData(t, bookRec, &book)

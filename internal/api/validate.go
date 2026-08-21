@@ -50,10 +50,11 @@ func (v ValidationErrors) Error() string {
 // everywhere a piece's fields are edited (the wizard's per-piece fill step
 // and the standalone piece edit menu) rather than duplicated per handler.
 //
-// The composer check needs DB access: "required" means the *effective*
-// value (piece's own, falling back to the book's) must be non-empty, so
-// this calls repo.ResolveEffective — the same resolver display/citation/
-// search use — rather than re-deriving that fallback logic here.
+// The composer/arranger check needs DB access: "required" means the
+// *effective* value (piece's own, falling back to the book's) must be
+// non-empty, so this calls repo.ResolveEffective — the same resolver
+// display/citation/search use — rather than re-deriving that fallback
+// logic here.
 //
 // The returned error is a real infrastructure failure (e.g. a DB error
 // resolving the source book), distinct from the returned ValidationErrors,
@@ -70,8 +71,13 @@ func ValidatePiece(ctx context.Context, q repo.Queryer, p *models.Piece) (Valida
 	if err != nil {
 		return nil, err
 	}
-	if eff.Composer.Value == "" {
-		errs = append(errs, FieldError{"composer", "is required (set directly, or via the piece's book)"})
+	// Composer OR arranger, not composer alone (direct instruction,
+	// 2026-08-20) — a piece crediting only an arranger (no named composer)
+	// is a real, legitimate case (e.g. a traditional/folk tune), not
+	// missing data. Both are book-inheritable, so either one supplied by
+	// the piece's book satisfies this too.
+	if eff.Composer.Value == "" && eff.Arranger.Value == "" {
+		errs = append(errs, FieldError{"composer", "or arranger is required (set directly, or via the piece's book)"})
 	}
 	// Only the piece's own typed value can be too long — an inherited
 	// value was already validated when the Book itself was saved.
@@ -96,24 +102,44 @@ func ValidatePiece(ctx context.Context, q repo.Queryer, p *models.Piece) (Valida
 	return errs, nil
 }
 
-// ValidateBook checks b against design doc §16: no field is required at
-// the Book level except bookTitle. No DB access needed — Book is the
-// inheritance source, never itself a fallback target.
+// ValidateBook checks b against design doc §16: bookTitle is required, and
+// (2026-08-20, direct instruction) so is one of composer/arranger/publisher
+// — a Book with none of the three is missing the one piece of attribution
+// every other bibliographic field on it is meant to be attached to.
+// Publisher joined this requirement as a same-day follow-on (also direct
+// instruction) after the wizard's About step surfaced a real case: a book
+// whose only known attribution is its publisher (no composer/arranger on
+// record at all) was blocked from being saved even though publisher alone
+// is a legitimate identifying fact for a Book. No DB access needed — Book
+// is the inheritance source, never itself a fallback target, so unlike
+// ValidatePiece this never needs to resolve an effective value.
 func ValidateBook(b *models.Book) ValidationErrors {
 	var errs ValidationErrors
 
 	if strings.TrimSpace(b.BookTitle) == "" {
 		errs = append(errs, FieldError{"bookTitle", "is required"})
 	}
+	if isBlankOptional(b.Composer) && isBlankOptional(b.Arranger) && isBlankOptional(b.Publisher) {
+		errs = append(errs, FieldError{"composer", "or arranger or publisher is required"})
+	}
 	checkLineLength(&errs, "bookTitle", &b.BookTitle)
 	checkLineLength(&errs, "composer", b.Composer)
+	checkLineLength(&errs, "arranger", b.Arranger)
 	checkLineLength(&errs, "yearWritten", b.YearWritten)
 	checkLineLength(&errs, "workOpusNumber", b.WorkOpusNumber)
 	checkLineLength(&errs, "publisher", b.Publisher)
 	checkLineLength(&errs, "publisherId", b.PublisherID)
 	checkLineLength(&errs, "imslpNumber", b.ImslpNumber)
+	checkLineLength(&errs, "isbn", b.ISBN)
 
 	return errs
+}
+
+// isBlankOptional treats a nil pointer the same as a whitespace-only value
+// — both count as "not really set" for the composer-or-arranger check
+// above, same convention as ResolveEffective's own isBlank.
+func isBlankOptional(s *string) bool {
+	return s == nil || strings.TrimSpace(*s) == ""
 }
 
 // ValidateTagName checks a proposed Key/SheetType/Instrument/UserTag name

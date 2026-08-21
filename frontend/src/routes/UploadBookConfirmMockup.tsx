@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { IconArrowLeft, IconBook, IconCheck, IconCircleCheckFilled, IconEyeOff } from '@tabler/icons-react'
+import { IconArrowLeft, IconBook, IconBook2, IconCheck, IconCircleCheckFilled, IconEyeOff } from '@tabler/icons-react'
 import { useMockupTitle } from '../lib/useMockupTitle'
 
 // ---------------------------------------------------------------------
@@ -242,13 +242,24 @@ export function UploadBookConfirmMockup() {
           <IconCircleCheckFilled size={40} className="text-accent" />
           <h1 className="font-display text-2xl font-medium text-ink">{PIECES.length} pieces imported</h1>
           <p className="text-sm text-ink-soft">{formatImportedTitlesSentence(PIECES.map((p) => p.title))}</p>
-          <button
-            type="button"
-            onClick={() => setStage('confirm')}
-            className="mt-1 rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent"
-          >
-            Upload another file
-          </button>
+          <div className="mt-1 flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setStage('confirm')}
+              className="rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent"
+            >
+              Upload another file
+            </button>
+            {/* No real book to link to in this fixture-data mockup — real
+                build (BookUploadWizard.tsx) links to /books/:id instead. */}
+            <button
+              type="button"
+              className="flex items-center gap-1.5 rounded-md bg-accent px-4 py-2 font-display text-white hover:bg-accent/90"
+            >
+              <IconBook2 size={16} />
+              Open book
+            </button>
+          </div>
         </div>
       )}
     </div>

@@ -81,7 +81,10 @@ function pieceToFormValues(piece: Piece): FormValues {
   return {
     title: piece.title,
     composer: ownValue(piece.composer),
-    arranger: piece.arranger ?? '',
+    // Book-inheritable as of 2026-08-20 — same ownValue treatment as every
+    // other field here now (blank when inherited, so leaving it blank on
+    // save keeps inheriting), not a raw echo of the resolved value.
+    arranger: ownValue(piece.arranger),
     keys: piece.keys,
     sheetType: piece.sheetType.inherited ? '' : (piece.sheetType.value?.name ?? ''),
     instruments: piece.instruments.inherited ? [] : piece.instruments.values,
@@ -419,9 +422,16 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
               </label>
               <input
                 id="f-arranger"
-                className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+                placeholder={!watch('arranger') && piece.arranger.inherited ? piece.arranger.value : undefined}
+                className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
                 {...register('arranger', { maxLength: 255 })}
               />
+              {!watch('arranger') && piece.arranger.inherited && (
+                <InheritedNote
+                  bookValue={piece.arranger.value}
+                  onCopy={() => setValue('arranger', piece.arranger.value)}
+                />
+              )}
             </div>
           </div>
         </div>

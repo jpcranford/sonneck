@@ -19,9 +19,18 @@ export function PieceGridCard({ piece }: PieceGridCardProps) {
   // rides on the composer segment itself ("Author, arr. Arranger"), not
   // as its own bullet-separated part — it qualifies the composer, it
   // isn't a peer fact like the year.
-  const composerPart = piece.composer.value
-    ? piece.composer.value + (piece.arranger ? `, arr. ${piece.arranger}` : '')
-    : null
+  //
+  // Three-way fallback (composer-or-arranger, 2026-08-20): falls back to
+  // "arr. Arranger" when only an arranger is set (own or book-inherited) —
+  // the old two-way ternary silently dropped that case entirely.
+  const composerPart =
+    piece.composer.value && piece.arranger.value
+      ? `${piece.composer.value}, arr. ${piece.arranger.value}`
+      : piece.composer.value
+        ? piece.composer.value
+        : piece.arranger.value
+          ? `arr. ${piece.arranger.value}`
+          : null
   const meta = [composerPart, piece.yearWritten.value]
     .filter((part): part is string => !!part)
     .join(' • ')

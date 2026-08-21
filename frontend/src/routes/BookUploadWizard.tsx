@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { IconCircleCheckFilled } from '@tabler/icons-react'
+import { Link } from 'react-router-dom'
+import { IconBook2, IconCircleCheckFilled } from '@tabler/icons-react'
 import { getBook } from '../api/books'
 import type { Book, Piece as ApiPiece } from '../api/types'
 import { computeLayout, type PageAssignments } from '../lib/pieceSplitLogic'
@@ -54,7 +55,15 @@ function formatImportedTitlesSentence(titles: string[]): string {
 // generalized here for N pieces via the truncation rule above, since that
 // single-piece screen's own JSX is typed around exactly one Piece and
 // doesn't generalize cleanly without changing its own behavior.
-function ImportSuccessScreen({ pieces, onDone }: { pieces: ApiPiece[]; onDone: () => void }) {
+function ImportSuccessScreen({
+  pieces,
+  bookId,
+  onDone,
+}: {
+  pieces: ApiPiece[]
+  bookId: number
+  onDone: () => void
+}) {
   return (
     <div className="flex w-full flex-1 flex-col items-center justify-center gap-6 p-8">
       <div className="flex w-full max-w-md flex-col items-center gap-3 text-center">
@@ -65,13 +74,22 @@ function ImportSuccessScreen({ pieces, onDone }: { pieces: ApiPiece[]; onDone: (
         <p className="text-sm text-ink-soft">
           {formatImportedTitlesSentence(pieces.map((p) => p.title))}
         </p>
-        <button
-          type="button"
-          onClick={onDone}
-          className="rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent"
-        >
-          Upload another file
-        </button>
+        <div className="mt-1 flex items-center gap-3">
+          <button
+            type="button"
+            onClick={onDone}
+            className="rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent"
+          >
+            Upload another file
+          </button>
+          <Link
+            to={`/books/${bookId}`}
+            className="flex items-center gap-1.5 rounded-md bg-accent px-4 py-2 font-display text-white hover:bg-accent/90"
+          >
+            <IconBook2 size={16} />
+            Open book
+          </Link>
+        </div>
       </div>
     </div>
   )
@@ -87,7 +105,9 @@ export function BookUploadWizard({ onExit }: BookUploadWizardProps) {
   const [pageCount, setPageCount] = useState(0)
   const [fileSizeBytes, setFileSizeBytes] = useState<number | null>(null)
   const [pageAssignments, setPageAssignments] = useState<PageAssignments>(EMPTY_ASSIGNMENTS)
-  const [pieceFields, setPieceFields] = useState<{ title: string; composer: string }[]>([])
+  const [pieceFields, setPieceFields] = useState<
+    { title: string; composer: string; arranger: string }[]
+  >([])
   const [importedPieces, setImportedPieces] = useState<ApiPiece[] | null>(null)
   // Owned here, not inside BookUploadSplitStep, specifically so it
   // survives that step unmounting on Back navigation — see that
@@ -225,8 +245,8 @@ export function BookUploadWizard({ onExit }: BookUploadWizardProps) {
     )
   }
 
-  if (importedPieces) {
-    return <ImportSuccessScreen pieces={importedPieces} onDone={onExit} />
+  if (importedPieces && book) {
+    return <ImportSuccessScreen pieces={importedPieces} bookId={book.id} onDone={onExit} />
   }
 
   if (step === 'file' || !book) {
@@ -266,7 +286,7 @@ export function BookUploadWizard({ onExit }: BookUploadWizardProps) {
           // piece's identity here is its array position, not something
           // stabler to diff against.
           if (pieceFields.length !== pieces.length) {
-            setPieceFields(pieces.map(() => ({ title: '', composer: '' })))
+            setPieceFields(pieces.map(() => ({ title: '', composer: '', arranger: '' })))
           }
           setStep('titles')
         }}
@@ -280,7 +300,7 @@ export function BookUploadWizard({ onExit }: BookUploadWizardProps) {
     return (
       <BookUploadTitlesStep
         bookId={book.id}
-        bookHasComposer={!!book.composer}
+        bookHasComposerOrArranger={!!book.composer || !!book.arranger}
         pieces={pieces}
         pieceFields={pieceFields}
         onChange={setPieceFields}
@@ -294,6 +314,7 @@ export function BookUploadWizard({ onExit }: BookUploadWizardProps) {
     ...piece,
     title: pieceFields[i]?.title ?? '',
     composer: pieceFields[i]?.composer ?? '',
+    arranger: pieceFields[i]?.arranger ?? '',
   }))
   return (
     <BookUploadConfirmStep

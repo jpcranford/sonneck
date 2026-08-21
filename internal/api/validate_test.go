@@ -96,6 +96,56 @@ func TestValidatePiece_ComposerMissingWithNoBook(t *testing.T) {
 	}
 }
 
+// TestValidatePiece_ArrangerAloneSatisfiesRequirement covers the
+// composer-OR-arranger rule (2026-08-20, direct instruction): a piece
+// crediting only an arranger — a traditional/folk tune with no named
+// composer, for instance — is legitimate, not missing data.
+func TestValidatePiece_ArrangerAloneSatisfiesRequirement(t *testing.T) {
+	ctx := context.Background()
+	dbConn := newTestDB(t)
+
+	errs, err := api.ValidatePiece(ctx, dbConn, &models.Piece{
+		Title:    "Traditional Tune",
+		Arranger: strPtr("J. Someone"),
+	})
+	if err != nil {
+		t.Fatalf("ValidatePiece: %v", err)
+	}
+	if hasField(errs, "composer") {
+		t.Errorf("errs = %v, want no composer error (arranger alone satisfies the requirement)", errs)
+	}
+}
+
+// TestValidatePiece_InheritedArrangerSatisfiesRequirement covers the same
+// rule via book inheritance, mirroring
+// TestValidatePiece_ComposerRequiredButInheritedSatisfiesIt.
+func TestValidatePiece_InheritedArrangerSatisfiesRequirement(t *testing.T) {
+	ctx := context.Background()
+	dbConn := newTestDB(t)
+
+	bookID, err := repo.CreateBook(ctx, dbConn, &models.Book{
+		BookTitle:        "Anthology",
+		Arranger:         strPtr("Book Arranger"),
+		OriginalFilename: strPtr("anthology3.pdf"),
+		FilePath:         strPtr("/data/library/books/anthology3.pdf"),
+		FileHash:         strPtr("anthology3-hash"),
+	})
+	if err != nil {
+		t.Fatalf("CreateBook: %v", err)
+	}
+
+	errs, err := api.ValidatePiece(ctx, dbConn, &models.Piece{
+		Title:        "Movement I",
+		SourceBookID: &bookID,
+	})
+	if err != nil {
+		t.Fatalf("ValidatePiece: %v", err)
+	}
+	if hasField(errs, "composer") {
+		t.Errorf("errs = %v, want no composer error (book supplies an arranger)", errs)
+	}
+}
+
 func TestValidatePiece_LineLengthCap(t *testing.T) {
 	ctx := context.Background()
 	dbConn := newTestDB(t)
@@ -148,17 +198,46 @@ func TestValidatePiece_BPMMustBePositive(t *testing.T) {
 	}
 }
 
-func TestValidateBook_OnlyBookTitleRequired(t *testing.T) {
-	errs := api.ValidateBook(&models.Book{BookTitle: "Just a Title"})
-	if len(errs) != 0 {
-		t.Errorf("errs = %v, want none (design doc §16: no field required except bookTitle)", errs)
+// TestValidateBook_OnlyBookTitleRequired used to assert bookTitle alone was
+// enough (design doc §16's original "no field required except bookTitle").
+// Superseded 2026-08-20 (direct instruction): a Book now also needs one of
+// composer/arranger/publisher — see TestValidateBook_ComposerOrArrangerOrPublisherRequired
+// and its companions below.
+func TestValidateBook_RequiresBookTitle(t *testing.T) {
+	errs := api.ValidateBook(&models.Book{Composer: strPtr("Someone")})
+	if !hasField(errs, "bookTitle") {
+		t.Errorf("errs = %v, want a bookTitle error", errs)
 	}
 }
 
-func TestValidateBook_RequiresBookTitle(t *testing.T) {
-	errs := api.ValidateBook(&models.Book{})
-	if !hasField(errs, "bookTitle") {
-		t.Errorf("errs = %v, want a bookTitle error", errs)
+func TestValidateBook_ComposerOrArrangerOrPublisherRequired(t *testing.T) {
+	errs := api.ValidateBook(&models.Book{BookTitle: "Just a Title"})
+	if !hasField(errs, "composer") {
+		t.Errorf("errs = %v, want a composer error (none of composer/arranger/publisher is set)", errs)
+	}
+}
+
+func TestValidateBook_ComposerAloneSatisfiesRequirement(t *testing.T) {
+	errs := api.ValidateBook(&models.Book{BookTitle: "Just a Title", Composer: strPtr("Someone")})
+	if hasField(errs, "composer") {
+		t.Errorf("errs = %v, want no composer error", errs)
+	}
+}
+
+func TestValidateBook_ArrangerAloneSatisfiesRequirement(t *testing.T) {
+	errs := api.ValidateBook(&models.Book{BookTitle: "Just a Title", Arranger: strPtr("Someone")})
+	if hasField(errs, "composer") {
+		t.Errorf("errs = %v, want no composer error (arranger alone satisfies the requirement)", errs)
+	}
+}
+
+// PublisherAloneSatisfiesRequirement (2026-08-20, same-day follow-on):
+// added after the wizard's About step surfaced a book whose only known
+// attribution was its publisher, with no composer/arranger on record.
+func TestValidateBook_PublisherAloneSatisfiesRequirement(t *testing.T) {
+	errs := api.ValidateBook(&models.Book{BookTitle: "Just a Title", Publisher: strPtr("Someone Music Co.")})
+	if hasField(errs, "composer") {
+		t.Errorf("errs = %v, want no composer error (publisher alone satisfies the requirement)", errs)
 	}
 }
 

@@ -31,7 +31,7 @@ type PieceResponse struct {
 	ID              int64               `json:"id"`
 	Title           string              `json:"title"`
 	Composer        repo.EffectiveField `json:"composer"`
-	Arranger        *string             `json:"arranger"`
+	Arranger        repo.EffectiveField `json:"arranger"`
 	Favorite        bool                `json:"favorite"`
 	WorkOpusNumber  repo.EffectiveField `json:"workOpusNumber"`
 	Keys            []repo.Tag          `json:"keys"`
@@ -74,7 +74,7 @@ func BuildPieceResponse(ctx context.Context, q repo.Queryer, p *models.Piece) (*
 		ID:              p.ID,
 		Title:           p.Title,
 		Composer:        eff.Composer,
-		Arranger:        p.Arranger,
+		Arranger:        eff.Arranger,
 		Favorite:        p.Favorite,
 		WorkOpusNumber:  eff.WorkOpusNumber,
 		Publisher:       eff.Publisher,
@@ -156,16 +156,20 @@ func BuildPieceResponse(ctx context.Context, q repo.Queryer, p *models.Piece) (*
 // nullable (migration 00014) — a manually created Book (Books library
 // view's "New Book" button) has no underlying file.
 type BookResponse struct {
-	ID               int64      `json:"id"`
-	BookTitle        string     `json:"bookTitle"`
-	Composer         *string    `json:"composer"`
-	YearWritten      *string    `json:"yearWritten"`
-	WorkOpusNumber   *string    `json:"workOpusNumber"`
-	SheetType        *repo.Tag  `json:"sheetType"`
-	Publisher        *string    `json:"publisher"`
-	PublisherID      *string    `json:"publisherId"`
-	Description      *string    `json:"description"`
-	ImslpNumber      *string    `json:"imslpNumber"`
+	ID             int64     `json:"id"`
+	BookTitle      string    `json:"bookTitle"`
+	Composer       *string   `json:"composer"`
+	Arranger       *string   `json:"arranger"`
+	YearWritten    *string   `json:"yearWritten"`
+	WorkOpusNumber *string   `json:"workOpusNumber"`
+	SheetType      *repo.Tag `json:"sheetType"`
+	Publisher      *string   `json:"publisher"`
+	PublisherID    *string   `json:"publisherId"`
+	Description    *string   `json:"description"`
+	ImslpNumber    *string   `json:"imslpNumber"`
+	// ISBN (migration 00017): plain digits, no hyphens — see models.Book's
+	// own doc comment. The frontend hyphenates for display.
+	ISBN             *string    `json:"isbn"`
 	Instruments      []repo.Tag `json:"instruments"`
 	OriginalFilename *string    `json:"originalFilename"`
 	FileHash         *string    `json:"fileHash"`
@@ -178,12 +182,14 @@ func BuildBookResponse(ctx context.Context, q repo.Queryer, b *models.Book) (*Bo
 		ID:               b.ID,
 		BookTitle:        b.BookTitle,
 		Composer:         b.Composer,
+		Arranger:         b.Arranger,
 		YearWritten:      b.YearWritten,
 		WorkOpusNumber:   b.WorkOpusNumber,
 		Publisher:        b.Publisher,
 		PublisherID:      b.PublisherID,
 		Description:      b.Description,
 		ImslpNumber:      b.ImslpNumber,
+		ISBN:             b.ISBN,
 		Instruments:      []repo.Tag{},
 		OriginalFilename: b.OriginalFilename,
 		FileHash:         b.FileHash,
@@ -259,26 +265,35 @@ type PieceWriteRequest struct {
 // from the upload/import wizard's POST /api/books (which always requires
 // a real PDF). Deliberately narrower than BookWriteRequest: only the
 // fields a book can meaningfully have before any pieces exist to classify
-// it by (no sheet type/instruments/opus/IMSLP/description here). Only
-// BookTitle is required, same reasoning as BookWriteRequest/ValidateBook.
+// it by (no sheet type/instruments/opus/IMSLP/description/ISBN here).
+// Arranger is included alongside Composer, unlike those others — since
+// ValidateBook now requires one of the two, leaving arranger out here would
+// make that requirement satisfiable only via composer at creation time.
 type BookCreateRequest struct {
 	BookTitle   string  `json:"bookTitle"`
 	Composer    *string `json:"composer"`
+	Arranger    *string `json:"arranger"`
 	Publisher   *string `json:"publisher"`
 	YearWritten *string `json:"yearWritten"`
 }
 
 // BookWriteRequest is the Book Properties Edit Menu's submission shape
-// (design doc §16). No field is required except BookTitle.
+// (design doc §16). BookTitle is required, and so is one of
+// Composer/Arranger (ValidateBook) — no other field is.
 type BookWriteRequest struct {
-	BookTitle      string   `json:"bookTitle"`
-	Composer       *string  `json:"composer"`
-	YearWritten    *string  `json:"yearWritten"`
-	WorkOpusNumber *string  `json:"workOpusNumber"`
-	SheetTypeName  *string  `json:"sheetTypeName"`
-	Publisher      *string  `json:"publisher"`
-	PublisherID    *string  `json:"publisherId"`
-	Description    *string  `json:"description"`
-	ImslpNumber    *string  `json:"imslpNumber"`
-	Instruments    []string `json:"instruments"`
+	BookTitle      string  `json:"bookTitle"`
+	Composer       *string `json:"composer"`
+	Arranger       *string `json:"arranger"`
+	YearWritten    *string `json:"yearWritten"`
+	WorkOpusNumber *string `json:"workOpusNumber"`
+	SheetTypeName  *string `json:"sheetTypeName"`
+	Publisher      *string `json:"publisher"`
+	PublisherID    *string `json:"publisherId"`
+	Description    *string `json:"description"`
+	ImslpNumber    *string `json:"imslpNumber"`
+	// ISBN follows the same normalize-on-write treatment as IMSLP number's
+	// prefix (handleUpdateBook's normalizeISBN) — plain digits stored,
+	// whatever punctuation/label the user typed.
+	ISBN        *string  `json:"isbn"`
+	Instruments []string `json:"instruments"`
 }

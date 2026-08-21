@@ -51,12 +51,14 @@ const MOCK_PIECE_COUNT = 6
 interface FormValues {
   bookTitle: string
   composer: string
+  arranger: string
   yearWritten: string
   workOpusNumber: string
   instruments: Tag[]
   sheetType: string
   publisher: string
   publisherId: string
+  isbn: string
   imslpNumber: string
   description: string
 }
@@ -64,12 +66,19 @@ interface FormValues {
 const defaultValues: FormValues = {
   bookTitle: MOCK_BOOK_TITLE,
   composer: 'Robert Schumann',
+  // Blank by default — Composer alone already satisfies the composer-or-
+  // arranger requirement (ValidateBook) for this fixture, same as it does
+  // for most pieces throughout the other mockups' own fixtures.
+  arranger: '',
   yearWritten: '1848',
   workOpusNumber: 'Op. 68',
   instruments: [{ id: 1, name: 'Piano' }],
   sheetType: 'Solo Piece',
   publisher: 'G. Schirmer',
   publisherId: 'HL50253670',
+  // Digits only, no hyphens — matches how it's actually stored
+  // (models.Book.ISBN), same convention imslpNumber already follows.
+  isbn: '9780132350884',
   imslpNumber: 'IMSLP04154',
   description: "Schumann's collection of 43 short pieces for young pianists, composed for his own children.",
 }
@@ -198,33 +207,43 @@ export function EditBookModalMockup() {
         }
       >
         <form id="edit-book-form" onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-          {/* Four paired/split rows — Title/Composer, Year Written/Opus
-              Number, Publisher/Publisher ID, then the closing IMSLP+Sheet
-              Type+Instruments/Description split — each a full-modal-width
-              row, same "share a row" treatment throughout (not one field
-              nested inside a narrower column). All collapse to stacked
-              single fields below ~525px. Reordered per direct feedback,
-              approved via design-review/edit-book-modal-reshuffle-*.png. */}
+          {/* Book title now stands alone, full width — no longer paired
+              with Composer (2026-08-20, direct instruction: reordered to
+              Title / Composer-Arranger / Year-Opus / Publisher-PublisherID
+              / ISBN-IMSLP / Sheet+Instruments-Description). Every paired
+              row below still collapses to stacked single fields below
+              ~525px, same as before. */}
+          <div className="flex min-w-0 flex-col gap-1">
+            <label htmlFor="f-book-title" className="text-sm text-ink-soft">
+              Book title <span className="text-ink-soft/60 italic">(Required)</span>
+            </label>
+            <input
+              id="f-book-title"
+              className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+              {...register('bookTitle', { required: 'Book title is required.', maxLength: 255 })}
+            />
+            {errors.bookTitle && <p className="text-sm text-red-700">{errors.bookTitle.message}</p>}
+          </div>
+
           <div className="flex flex-col gap-3 min-[525px]:flex-row">
             <div className="flex min-w-0 flex-1 flex-col gap-1">
-              <label htmlFor="f-book-title" className="text-sm text-ink-soft">
-                Book title <span className="text-ink-soft/60 italic">(Required)</span>
-              </label>
-              <input
-                id="f-book-title"
-                className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-                {...register('bookTitle', { required: 'Book title is required.', maxLength: 255 })}
-              />
-              {errors.bookTitle && <p className="text-sm text-red-700">{errors.bookTitle.message}</p>}
-            </div>
-            <div className="flex min-w-0 flex-1 flex-col gap-1">
               <label htmlFor="f-composer" className="text-sm text-ink-soft">
-                Composer
+                Composer <span className="text-ink-soft/60 italic">(Composer or Arranger required)</span>
               </label>
               <input
                 id="f-composer"
                 className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
                 {...register('composer', { maxLength: 255 })}
+              />
+            </div>
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              <label htmlFor="f-arranger" className="text-sm text-ink-soft">
+                Arranger
+              </label>
+              <input
+                id="f-arranger"
+                className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+                {...register('arranger', { maxLength: 255 })}
               />
             </div>
           </div>
@@ -281,31 +300,48 @@ export function EditBookModalMockup() {
             </div>
           </div>
 
-          {/* Closing two-column row: IMSLP No./Sheet Type/Instruments
-              stacked on the left, Description spanning the same height on
-              the right — the one genuinely tall field gets the one
-              genuinely tall column. gap-3 here too (was gap-5) — with
-              flex-1 on both sides the right edge always reaches the
-              dialog's padding regardless of gap size, so the visible bug
-              wasn't misalignment at the edge, it was the *gutter itself*:
-              20px between these two columns vs. 12px in every double-field
-              row above, measured directly (Description's left edge sat 4px
+          {/* ISBN/IMSLP number — moved IMSLP out of the closing stacked
+              column below (2026-08-20, direct instruction) and paired it
+              with the new ISBN field instead, same split-row treatment as
+              every row above it. */}
+          <div className="flex flex-col gap-3 min-[525px]:flex-row">
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              <label htmlFor="f-isbn" className="text-sm text-ink-soft">
+                ISBN number
+              </label>
+              <input
+                id="f-isbn"
+                className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+                {...register('isbn', { maxLength: 255 })}
+              />
+            </div>
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              <label htmlFor="f-imslp" className="text-sm text-ink-soft">
+                IMSLP number
+              </label>
+              <input
+                id="f-imslp"
+                className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+                {...register('imslpNumber', { maxLength: 255 })}
+              />
+            </div>
+          </div>
+
+          {/* Closing two-column row: Sheet Type/Instruments stacked on the
+              left, Description spanning the same height on the right —
+              the one genuinely tall field gets the one genuinely tall
+              column. gap-3 here too (was gap-5) — with flex-1 on both
+              sides the right edge always reaches the dialog's padding
+              regardless of gap size, so the visible bug wasn't
+              misalignment at the edge, it was the *gutter itself*: 20px
+              between these two columns vs. 12px in every double-field row
+              above, measured directly (Description's left edge sat 4px
               further right, its column 4px narrower, than Composer/Opus/
               Publisher ID's). Same fix category as the earlier Publisher
               ID split-point request — one consistent gutter width for
               every multi-column row, not just the split *position*. */}
           <div className="flex flex-col gap-3 min-[525px]:flex-row">
             <div className="flex min-w-0 flex-1 flex-col gap-4">
-              <div className="flex flex-col gap-1">
-                <label htmlFor="f-imslp" className="text-sm text-ink-soft">
-                  IMSLP number
-                </label>
-                <input
-                  id="f-imslp"
-                  className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-                  {...register('imslpNumber', { maxLength: 255 })}
-                />
-              </div>
               <Controller
                 name="sheetType"
                 control={control}

@@ -201,6 +201,7 @@ func TestSearchPieces_SheetTypeAndInstrumentFiltersMatchInheritedValues(t *testi
 	bookID, _ := uploadBook(t, h, "book.pdf", 4)
 	decodeData(t, doJSON(t, h, http.MethodPatch, apiBooksURL(bookID), map[string]any{
 		"bookTitle":     "Anthology",
+		"composer":      "Someone",
 		"sheetTypeName": "Ensemble Piece – Full Score",
 		"instruments":   []string{"Violin"},
 	}), nil)

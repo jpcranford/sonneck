@@ -55,10 +55,12 @@ const CURRENT_STEP = 3
 interface FormValues {
   bookTitle: string
   composer: string
+  arranger: string
   yearWritten: string
   workOpusNumber: string
   publisher: string
   publisherId: string
+  isbn: string
   imslpNumber: string
   sheetType: string
   instruments: Tag[]
@@ -68,14 +70,19 @@ interface FormValues {
 // bookTitle pre-filled from the uploaded filename, imslpNumber
 // auto-detected from it (design doc §5) — both real behaviors already
 // established at the upload step, just shown here as their result.
-// Everything else starts blank; nothing but bookTitle is required.
+// Everything else starts blank, including arranger/isbn (2026-08-20) —
+// nothing gets auto-detected for either. Composer or arranger is required
+// (ValidateBook), but neither is pre-filled here any more than composer
+// ever was — same "starts blank, user fills it in" treatment.
 const defaultValues: FormValues = {
   bookTitle: 'Album für die Jugend, Op. 68',
   composer: '',
+  arranger: '',
   yearWritten: '',
   workOpusNumber: '',
   publisher: '',
   publisherId: '',
+  isbn: '',
   imslpNumber: 'IMSLP04154',
   sheetType: '',
   instruments: [],
@@ -218,24 +225,33 @@ export function UploadBookAboutMockup() {
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col gap-3">
+          {/* Book title now stands alone, full width — same restructure as
+              EditBookModalMockup.tsx (2026-08-20): Title / Composer-
+              Arranger / Year-Opus / Publisher-PublisherID / ISBN-IMSLP /
+              SheetType+Instruments-Description. Kept in sync deliberately
+              — this screen and the Edit Book Modal cover nearly the same
+              field set, so a user shouldn't have to relearn field
+              positions between first entering a book's info here and
+              editing it again later. */}
+          <div className="flex min-w-0 flex-col gap-1">
+            <label htmlFor="f-book-title" className="text-sm text-ink-soft">
+              Book Title <span className="text-ink-soft/60 italic">(Required)</span>
+            </label>
+            <input
+              id="f-book-title"
+              className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+              {...register('bookTitle', { required: 'Book title is required.', maxLength: 255 })}
+            />
+            {errors.bookTitle && <p className="text-sm text-red-700">{errors.bookTitle.message}</p>}
+          </div>
+
           <div className="flex flex-col gap-3 min-[525px]:flex-row">
-            <div className="flex min-w-0 flex-1 flex-col gap-1">
-              <label htmlFor="f-book-title" className="text-sm text-ink-soft">
-                Book Title <span className="text-ink-soft/60 italic">(Required)</span>
-              </label>
-              <input
-                id="f-book-title"
-                className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-                {...register('bookTitle', { required: 'Book title is required.', maxLength: 255 })}
-              />
-              {errors.bookTitle && <p className="text-sm text-red-700">{errors.bookTitle.message}</p>}
-            </div>
             <div className="flex min-w-0 flex-1 flex-col gap-1">
               <label htmlFor="f-composer" className="flex items-center gap-1 text-sm text-ink-soft">
                 Composer
                 <InfoTooltip
-                  message="If no composer is set here, you will be later prompted to enter one for each piece."
-                  ariaLabel="What happens if Composer is left blank"
+                  message="If neither composer nor arranger is set here, you will be later prompted to enter one for each piece."
+                  ariaLabel="What happens if Composer and Arranger are both left blank"
                   triggerClassName="text-[#9d9892] hover:text-ink-soft"
                 >
                   <IconInfoCircle size={13} />
@@ -246,6 +262,17 @@ export function UploadBookAboutMockup() {
                 placeholder="e.g. Robert Schumann"
                 className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
                 {...register('composer', { maxLength: 255 })}
+              />
+            </div>
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              <label htmlFor="f-arranger" className="text-sm text-ink-soft">
+                Arranger
+              </label>
+              <input
+                id="f-arranger"
+                placeholder="e.g. Louis Köhler"
+                className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                {...register('arranger', { maxLength: 255 })}
               />
             </div>
           </div>
@@ -300,7 +327,24 @@ export function UploadBookAboutMockup() {
             </div>
           </div>
 
+          {/* ISBN/IMSLP — moved IMSLP out of the row it used to share with
+              Sheet Type and paired it with the new ISBN field instead,
+              same reasoning as EditBookModalMockup.tsx: Sheet Type moves
+              down to join Instruments in the closing stacked column below,
+              freeing this row for the two identifier fields to sit
+              together. */}
           <div className="flex flex-col gap-3 min-[525px]:flex-row">
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              <label htmlFor="f-isbn" className="text-sm text-ink-soft">
+                ISBN Number
+              </label>
+              <input
+                id="f-isbn"
+                placeholder="e.g. 978-0-13-235088-4"
+                className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                {...register('isbn', { maxLength: 255 })}
+              />
+            </div>
             <div className="flex min-w-0 flex-1 flex-col gap-1">
               <div className="flex items-center justify-between gap-2">
                 <label htmlFor="f-imslp" className="text-sm text-ink-soft">
@@ -319,52 +363,68 @@ export function UploadBookAboutMockup() {
                 {...register('imslpNumber', { maxLength: 255 })}
               />
             </div>
-            <Controller
-              name="sheetType"
-              control={control}
-              render={({ field }) => (
-                <div className="min-w-0 flex-1">
+          </div>
+
+          {/* Closing two-column row: Sheet Type/Instruments stacked on the
+              left, Description spanning the same height on the right —
+              the one genuinely tall field gets the one genuinely tall
+              column, same treatment as EditBookModalMockup.tsx. Description
+              becomes a real multi-line textarea here (was a single-line
+              input) specifically because it now needs to visually balance
+              a two-field-tall left column, not just sit beside Instruments
+              alone. */}
+          <div className="flex flex-col gap-3 min-[525px]:flex-row">
+            <div className="flex min-w-0 flex-1 flex-col gap-4">
+              <Controller
+                name="sheetType"
+                control={control}
+                render={({ field }) => (
                   <SingleSelect
                     label="Sheet Type"
                     options={SHEET_TYPE_SELECT_OPTIONS}
                     value={field.value}
                     onChange={field.onChange}
                   />
-                </div>
-              )}
-            />
-          </div>
+                )}
+              />
+              <Controller
+                name="instruments"
+                control={control}
+                render={({ field }) => (
+                  // TagComboBox's own internal input has no placeholder
+                  // styling of its own (a shared component used all over
+                  // the app — not changing its global default for one
+                  // page's request). Scoped here instead via an arbitrary
+                  // variant targeting just this instance's input, matching
+                  // every other placeholder on this page (italic,
+                  // ink-soft/40).
+                  <div className="[&_input::placeholder]:text-ink-soft/40 [&_input::placeholder]:italic">
+                    <TagComboBox
+                      label="Instruments"
+                      options={INSTRUMENT_OPTIONS}
+                      selected={field.value}
+                      multiple
+                      onChange={field.onChange}
+                    />
+                  </div>
+                )}
+              />
+            </div>
 
-          <div className="flex flex-col gap-3 min-[525px]:flex-row">
-            <Controller
-              name="instruments"
-              control={control}
-              render={({ field }) => (
-                // TagComboBox's own internal input has no placeholder
-                // styling of its own (a shared component used all over the
-                // app — not changing its global default for one page's
-                // request). Scoped here instead via an arbitrary variant
-                // targeting just this instance's input, matching every
-                // other placeholder on this page (italic, ink-soft/40).
-                <div className="min-w-0 flex-1 [&_input::placeholder]:text-ink-soft/40 [&_input::placeholder]:italic">
-                  <TagComboBox
-                    label="Instruments"
-                    options={INSTRUMENT_OPTIONS}
-                    selected={field.value}
-                    multiple
-                    onChange={field.onChange}
-                  />
-                </div>
-              )}
-            />
-            <div className="flex min-w-0 flex-1 flex-col gap-1">
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1">
               <label htmlFor="f-description" className="text-sm text-ink-soft">
                 Description
               </label>
-              <input
+              <textarea
                 id="f-description"
+                rows={4}
                 placeholder="Optional notes about this book…"
-                className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                // resize-none, same reasoning as EditBookModalMockup.tsx's
+                // own fix: flex-1/min-h-0 on this column drive the
+                // textarea's actual height, so a manual resize handle
+                // would either get fought back to the flex-derived height
+                // or fight the layout around it.
+                className="min-h-[96px] flex-1 resize-none rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
                 {...register('description')}
               />
             </div>

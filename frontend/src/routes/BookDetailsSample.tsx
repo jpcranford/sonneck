@@ -7,6 +7,7 @@ import {
   IconMusic,
   IconPencil,
 } from '@tabler/icons-react'
+import { hyphenateISBN } from '../lib/isbn'
 import { useMockupTitle } from '../lib/useMockupTitle'
 
 // ---------------------------------------------------------------------
@@ -59,6 +60,10 @@ interface SamplePiece {
 const sampleBook = {
   bookTitle: 'Album für die Jugend',
   composer: 'Robert Schumann',
+  // Set (2026-08-20, direct instruction) specifically to demonstrate the
+  // composer/arranger fusion on the book header line — previously null
+  // and therefore never exercised here.
+  arranger: 'Theodor Kirchner' as string | null,
   yearWritten: '1848',
   workOpusNumber: 'Op. 68',
   sheetType: 'PVG Score',
@@ -68,6 +73,12 @@ const sampleBook = {
   description:
     'A collection of 43 short character pieces for piano, composed for Schumann’s own children — arranged roughly in order of difficulty.',
   imslpNumber: 'IMSLP04154',
+  // Stored digits-only, matching the backend (models.Book.ISBN) — see
+  // bookFields' own comment for why this doesn't actually render in this
+  // fixture's current committed state (imslpNumber above is set, and
+  // IMSLP always wins the fallback over ISBN, same rule as
+  // buildCitation's publisherId/ISBN handling).
+  isbn: '9783795345352' as string | null,
   originalFilename: 'album-fur-die-jugend.pdf',
   importedAt: 'Aug 12, 2026',
 }
@@ -185,12 +196,33 @@ function sortedPieces(pieces: SamplePiece[]): SamplePiece[] {
   })
 }
 
+// Composer-or-arranger (2026-08-20): a piece/book can now have an arranger
+// with no composer at all, so this can't just append arranger onto
+// composer whenever it's set — composer blank + arranger set must still
+// show "arr. Arranger" alone, not disappear entirely. Same three-way
+// fallback as PieceViewSample.tsx's bookComposerPart and the backend's
+// buildCitation. Factored out here (unlike those files) since this one
+// file needs it in three places: the book header, the piece grid, and the
+// piece list.
+function composerArrangerPart(composer: string | null, arranger: string | null): string | null {
+  if (composer && arranger) return `${composer}, arr. ${arranger}`
+  if (composer) return composer
+  if (arranger) return `arr. ${arranger}`
+  return null
+}
+
 // Book falls back to its own publisher when composer is blank (same
 // silent-substitution convention as formatBookMeta.ts) — not shown here
 // since sampleBook always has a composer, but pieceComposer below
 // exercises the equivalent piece-falls-back-to-book case instead.
 function pieceComposer(piece: SamplePiece): string | null {
   return piece.composer || sampleBook.composer
+}
+
+// Arranger is book-inheritable too (2026-08-20) — a piece with no arranger
+// of its own falls back to the book's, same treatment as pieceComposer.
+function pieceArranger(piece: SamplePiece): string | null {
+  return piece.arranger || sampleBook.arranger
 }
 
 // Academic "p."/"pp." convention (standing rule, 2026-08-20): singular
@@ -208,10 +240,13 @@ function pagesLabel(piece: SamplePiece): string {
 // Arranger rides on the composer segment itself (", arr. Arranger"), same
 // convention as BookDetailsPage.tsx's own pieceMetaLine — porting that fix
 // back here too since this file is the permanent design reference for the
-// real page above it.
+// real page above it. Uses pieceArranger (book-inheritable), not the raw
+// piece.arranger field directly, and composerArrangerPart's three-way
+// fallback so an arranger-only piece still renders "arr. Arranger" instead
+// of dropping arranger entirely (the old bug: appending arranger only ever
+// happened onto an already-non-blank composer).
 function pieceMetaLine(piece: SamplePiece): string {
-  const composer = pieceComposer(piece)
-  const composerPart = composer ? composer + (piece.arranger ? `, arr. ${piece.arranger}` : '') : null
+  const composerPart = composerArrangerPart(pieceComposer(piece), pieceArranger(piece))
   return [composerPart, pagesLabel(piece)].filter((part): part is string => !!part).join(' • ')
 }
 
@@ -255,6 +290,21 @@ function SheetThumb() {
 // merged key pill (music icon, chevron-joined sequence) → sheet type →
 // instruments. User tags render with no border, solid accent-soft fill,
 // since they're the one genuinely user-authored category here.
+//
+// Deliberately reads piece.sheetType/piece.instruments directly — a
+// piece's OWN value, never a book-inherited fallback (2026-08-20, direct
+// instruction: "don't show pills from inherited information, they'll just
+// clutter the view"). Every piece in a book sharing the same inherited
+// sheet type/instruments would otherwise repeat the identical pill on
+// every single row, adding nothing the book header (above the piece list)
+// hasn't already shown once. Keys and userTags were never book-inheritable
+// to begin with (design doc §3), so this only actually changes behavior
+// for sheetType/instruments. This is a real, currently-unfixed gap in the
+// live app: BookDetailsPage.tsx's TagPills call passes
+// piece.sheetType.value/piece.instruments.values — the *effective*
+// (fallback-resolved) value, not gated on `.inherited` — so it currently
+// shows exactly the repeated-pill clutter this mockup is deliberately
+// avoiding. Needs the equivalent gate added when this ports over (step 6).
 function PiecePills({ piece }: { piece: SamplePiece }) {
   if (
     !piece.keys.length &&
@@ -317,23 +367,19 @@ function PieceGrid({ pieces }: { pieces: SamplePiece[] }) {
           key={piece.id}
           className="overflow-hidden rounded-lg border border-border bg-paper-raised transition-colors hover:border-accent"
         >
+          {/* 2026-08-20 (direct instruction): the page-range badge that
+              used to overlay the thumbnail is gone — its content moved
+              down to the bottom line in its place (below), and the
+              composer/arranger row is gone entirely. Too little room in a
+              112px-wide card for three lines of text plus a badge; the
+              page range is the one fact worth keeping over the piece
+              count pagesLabel used to show. */}
           <div className="relative aspect-[180/132] bg-white">
             <SheetThumb />
-            {/* Solid ~85%-opacity fill, not a translucent scrim — proven
-                on the Library grid card's practice-status badge for the
-                same reason: must read reliably over busy scan content.
-                Bottom-left, clear of a page's own title text near the
-                top. */}
-            <span className="absolute bottom-1.5 left-1.5 rounded-full bg-ink/85 px-2 py-0.5 text-[0.65rem] font-medium tabular-nums text-white">
-              {pageRangeLabel(piece)}
-            </span>
           </div>
           <div className="flex flex-col gap-0.5 px-2 py-1.5">
             <p className="truncate font-display text-[0.8rem] font-medium text-ink">{piece.title}</p>
-            {pieceComposer(piece) && (
-              <p className="truncate text-[0.7rem] text-ink-soft">{pieceComposer(piece)}</p>
-            )}
-            <p className="text-[0.65rem] text-ink-soft/80">{pagesLabel(piece)}</p>
+            <p className="text-[0.65rem] text-ink-soft/80">{pageRangeLabel(piece)}</p>
           </div>
         </div>
       ))}
@@ -415,6 +461,18 @@ function bookFields(): { label: string; value: ReactNode }[] {
       ),
     })
   }
+  // ISBN sits between IMSLP no. and Original filename (2026-08-20, direct
+  // instruction) — but only when imslpNumber is blank. IMSLP always wins
+  // the fallback over ISBN, same rule buildCitation applies to ISBN in the
+  // citation string: showing both identifiers on a details page that
+  // already has a dedicated IMSLP row would be redundant, not additive.
+  // Unlike Piece View's book card (which substitutes "IMSLP #{number}" in
+  // ISBN's place when hidden), this is a full field-per-row details list
+  // that already has its own IMSLP no. row above — nothing to substitute,
+  // the row simply doesn't render.
+  if (!sampleBook.imslpNumber && sampleBook.isbn) {
+    fields.push({ label: 'ISBN', value: hyphenateISBN(sampleBook.isbn) })
+  }
   if (sampleBook.originalFilename) {
     fields.push({ label: 'Original filename', value: sampleBook.originalFilename })
   }
@@ -430,7 +488,13 @@ export function BookDetailsSample() {
   const title = sampleBook.workOpusNumber
     ? `${sampleBook.bookTitle} (${sampleBook.workOpusNumber})`
     : sampleBook.bookTitle
-  const metaLine = [sampleBook.composer, sampleBook.yearWritten].filter(Boolean).join(' • ')
+  // composerArrangerPart's fallback, then the book's own composer→publisher
+  // fallback (effectiveBookComposer, lib/formatBookMeta.ts) if neither
+  // composer nor arranger is set — unexercised here since sampleBook always
+  // has a composer, same as pieceComposer's own equivalent fallback.
+  const bookComposerPart =
+    composerArrangerPart(sampleBook.composer, sampleBook.arranger) || sampleBook.publisher
+  const metaLine = [bookComposerPart, sampleBook.yearWritten].filter(Boolean).join(' • ')
   const fields = bookFields()
 
   return (
