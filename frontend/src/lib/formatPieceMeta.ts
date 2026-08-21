@@ -4,7 +4,7 @@ import type { Piece } from '../api/types'
 // number • source book • year") — blank fields omitted entirely rather than
 // shown as empty punctuation, same principle as the backend's citation
 // format (design doc §6). Bullet (•), not a thin interpunct (·) — the
-// latter read too faint as a separator (Piece View mockup review,
+// latter read too faint as a separator (Piece Details mockup review,
 // 2026-08-16), applied consistently everywhere this pattern appears.
 //
 // Arranger rides on the composer segment itself ("Composer, arr.

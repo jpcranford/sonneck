@@ -76,7 +76,7 @@ export function PieceGridCard({ piece }: PieceGridCardProps) {
             // — the translucent version still had a hard time standing out
             // against busy scan artwork; solid + no blur reads clearly
             // regardless of what's underneath. Icon size unified to 13px
-            // (was 11px) to match the Piece View pill exactly — the two
+            // (was 11px) to match the Piece Details pill exactly — the two
             // are now the same icon/text size everywhere a status shows.
             <span className="absolute bottom-2 left-2 z-10 flex max-w-[calc(100%-3rem)] items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent shadow-sm">
               <PracticeStatusIcon status={piece.practiceStatus} size={13} className="shrink-0" />

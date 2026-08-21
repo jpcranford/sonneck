@@ -15,7 +15,7 @@ import { SingleSelect } from './SingleSelect'
 // /mockup/edit-book-modal, left intact as a standing reference) deliberately
 // — if the two ever look different, that's either a bug or a change that
 // needs porting to both, not a sign this file is free to diverge. Reached
-// from Book View's header pencil (BookDetailsPage.tsx) and Piece View's
+// from Book View's header pencil (BookDetailsPage.tsx) and Piece Details'
 // Source Book card pencil (PiecePage.tsx), both previously inert.
 //
 // No book-inheritance UI here, unlike EditPieceModal — Book is the

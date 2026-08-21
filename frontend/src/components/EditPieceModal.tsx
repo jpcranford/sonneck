@@ -128,7 +128,7 @@ function formValuesToWriteRequest(data: FormValues, piece: Piece): PieceWriteReq
     title: data.title,
     composer: data.composer,
     arranger: data.arranger || null,
-    // Favorite lives on the Piece View's own header (a real toggle there
+    // Favorite lives on the Piece Details page's own header (a real toggle there
     // already) — editing it a second time from here would be redundant,
     // so this form doesn't surface it at all. Passed through unchanged so
     // this full-replace write doesn't clobber it.
@@ -288,7 +288,7 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
               changes the modal's width. Full-width image in its own capped-
               height scroll box (a portrait page at full modal width is
               taller than any reasonable fixed strip) with the plain below-
-              image PageCycleControl underneath — not the Piece View's
+              image PageCycleControl underneath — not the Piece Details page's
               floating-capsule cycler, which overlaps the bottom of the page
               itself and could cover exactly the content (final measures, a
               signature, page numbers) someone opened the preview to check. */}
@@ -707,7 +707,7 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
               Key(s), right-aligned once Duration sits paired on the right
               of that row. The revealed BPM/Measures/Beats/Calculate row
               follows the same split. Same chevron + text-xs/60 convention
-              as the Piece View's own "Tempo details" disclosure
+              as the Piece Details page's own "Tempo details" disclosure
               (PiecePage.tsx), which is itself commented as matching this
               edit menu; duration is what matters day-to-day, the calc
               fields are a supporting, occasionally-needed alternate path

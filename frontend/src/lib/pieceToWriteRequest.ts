@@ -28,7 +28,7 @@ export function pieceToWriteRequest(piece: Piece): PieceWriteRequest {
     // field (see CLAUDE.md's "sourceBookId itself became editable" entry)
     // — omitting it here isn't neutral, it silently clears the book link.
     // This was previously missing, which meant any full-replace write that
-    // went through this helper (the Piece View header's favorite toggle,
+    // went through this helper (the Piece Details header's favorite toggle,
     // PieceContextMenu's favorite toggle — neither touches sourceBookId
     // intentionally) unlinked the piece's book as a side effect.
     sourceBookId: piece.sourceBookId,

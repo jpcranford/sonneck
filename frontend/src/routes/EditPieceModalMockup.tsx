@@ -190,7 +190,7 @@ function SectionHeading({ children }: { children: ReactNode }) {
 
 // Stand-in for a real page image (this mockup has no piece.id to build a
 // real getPieceThumbnailUrl(...) call against) — same drawn-SVG-page
-// pattern PieceViewSample.tsx uses for its own preview, kept as its own
+// pattern PieceDetailsSample.tsx uses for its own preview, kept as its own
 // local copy rather than a shared import since every mockup route here is
 // self-contained.
 function SheetPagePlaceholder({ page }: { page: number }) {
@@ -282,7 +282,7 @@ function TagComboBox({
   allowDuplicates?: boolean
   // Renders the selected values as one merged, ordered sequence ("›"
   // chevron between entries) instead of one independent pill per value —
-  // matches how the Piece View / TagPills already display a piece's key
+  // matches how the Piece Details page / TagPills already display a piece's key
   // sequence (PiecePage.tsx, TagPills.tsx), so the input looks like the
   // thing it's editing. Each key keeps its own remove button; only the
   // pill-per-key wrapper is replaced, not the removability. Key(s)-only —
@@ -406,7 +406,7 @@ function TagComboBox({
                     // to render above the modal). Deliberately scoped to
                     // this *editable* field only: the read-only pill
                     // displays elsewhere (TagPills.tsx, PiecePage.tsx/
-                    // PieceViewSample.tsx's own key sequence) keep their
+                    // PieceDetailsSample.tsx's own key sequence) keep their
                     // existing plain "›" text-glyph separator, untouched —
                     // a distinct, simpler treatment for a non-interactive
                     // context, not something this decision overrides.
@@ -842,7 +842,7 @@ export function EditPieceModalMockup() {
                 </h2>
                 <p className="text-sm text-ink-soft">{defaultValues.title}</p>
               </div>
-              {/* Favorite lives on the Piece View's own header now (that
+              {/* Favorite lives on the Piece Details page's own header now (that
                   page already has its own real toggle) — editing it a
                   second time from here was redundant. A close button here
                   instead, now that Cancel/Save live in the sticky footer
@@ -1246,7 +1246,7 @@ export function EditPieceModalMockup() {
                 below Key(s), right-aligned once Duration sits paired on
                 the right of that row. The revealed BPM/Measures/Beats/
                 Calculate row follows the same split. Same chevron +
-                text-xs/60 convention as the Piece View's own "Tempo
+                text-xs/60 convention as the Piece Details page's own "Tempo
                 details" disclosure (PiecePage.tsx), which is itself
                 commented as matching this edit menu; duration is what
                 matters day-to-day, the calc fields are a supporting,

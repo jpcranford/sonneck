@@ -85,7 +85,7 @@ func (s *Server) stageUpload(w http.ResponseWriter, r *http.Request, stagingDir 
 // Renders to a private temp file first and atomically renames it into
 // place with storage.MoveIntoPlace, rather than having pdftoppm write
 // straight to the final cache path. Two concurrent first-requests for the
-// same not-yet-cached page (e.g. the Piece View and a Library card
+// same not-yet-cached page (e.g. the Piece Details page and a Library card
 // prefetching the same thumbnail at once) would otherwise both pass the
 // existence check and both invoke pdftoppm with the *same* output path,
 // racing to write the same file — the loser's partial/interleaved write

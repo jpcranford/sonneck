@@ -17,7 +17,7 @@ export function AppShell() {
           computes a bare/unset overflow-x to auto too, not visible — this
           container was quietly horizontally scrollable as a result, with
           nothing intentionally using that space. Real instance found on
-          the Piece View: InfoTooltip's bubble (e.g. the public-domain
+          the Piece Details page: InfoTooltip's bubble (e.g. the public-domain
           badge, positioned at the right edge of the info column) is
           centered on its trigger and can extend past this container's
           right edge while still invisible (opacity-0 until hovered) —

@@ -1,6 +1,6 @@
 // Shared mm:ss <-> seconds conversion for Piece.duration (stored server-side
 // as an integer of seconds, shown/entered in the UI as mm:ss — CLAUDE.md >
-// Frontend > Computed fields). Used by both the Piece View's read-only
+// Frontend > Computed fields). Used by both the Piece Details page's read-only
 // display and the Edit Piece Menu's manual duration input.
 
 export function secondsToMMSS(seconds: number): string {

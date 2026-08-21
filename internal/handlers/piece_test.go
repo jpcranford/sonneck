@@ -639,7 +639,7 @@ func TestDownloadPieceFile_SuggestsFilenameWithoutForcingDownload(t *testing.T) 
 	}
 }
 
-// TestGetRandomPiece_ReturnsAPiece covers the Piece View dice button's
+// TestGetRandomPiece_ReturnsAPiece covers the Piece Details page dice button's
 // backend: GET /api/pieces/random must resolve as the literal route, not
 // fall through to handleGetPiece and get parsed as an id of "random".
 func TestGetRandomPiece_ReturnsAPiece(t *testing.T) {

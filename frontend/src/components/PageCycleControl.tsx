@@ -11,7 +11,7 @@ interface PageCycleControlProps {
 // on its card without opening it. Renders nothing for a single-page piece,
 // the common case for a standalone upload of one sheet. Stops and greys
 // out at the first/last page rather than wrapping around — wrapping
-// silently past the end read as a bug, not a feature (Piece View mockup
+// silently past the end read as a bug, not a feature (Piece Details mockup
 // review, 2026-08-16), applied here too for consistency.
 export function PageCycleControl({ page, pageCount, onChange }: PageCycleControlProps) {
   if (pageCount <= 1) return null

@@ -27,11 +27,12 @@ import { useMockupTitle } from '../lib/useMockupTitle'
 
 // ---------------------------------------------------------------------
 // REFERENCE SAMPLE — unlinked from nav, not wired to the API. Ported
-// straight from PiecePage.tsx (the real Piece View, §14) with hardcoded
-// data standing in for real query results, so this stays a faithful,
-// always-available reference for the complete design without needing a
-// real piece seeded in the dev database. Visit /mockup/piece-view
-// directly. Keep this in sync by hand whenever PiecePage.tsx's rendering
+// straight from PiecePage.tsx (the real Piece Details page, §14) with
+// hardcoded data standing in for real query results, so this stays a
+// faithful, always-available reference for the complete design without
+// needing a real piece seeded in the dev database. Visit
+// /mockup/piece-details directly. Keep this in sync by hand whenever
+// PiecePage.tsx's rendering
 // changes — there's no shared component between them (a deliberate
 // call: this file's whole reason to exist is being simple/self-contained,
 // not a second data-fetching surface to keep correct).
@@ -301,8 +302,8 @@ function ActionButton({
   )
 }
 
-export function PieceViewSample() {
-  useMockupTitle('Piece View')
+export function PieceDetailsSample() {
+  useMockupTitle('Piece Details')
 
   const piece = samplePiece
   const book = sampleBook
@@ -392,7 +393,7 @@ export function PieceViewSample() {
       </div>
 
       <div className="rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-4 py-2 text-sm text-ink-soft">
-        Reference sample — <span className="font-medium text-ink">Piece View</span> (design doc §14).
+        Reference sample — <span className="font-medium text-ink">Piece Details</span> (design doc §14).
         Not wired to real data; Edit is inert here on purpose.
       </div>
 

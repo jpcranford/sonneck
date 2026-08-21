@@ -100,7 +100,7 @@ func (s *Server) handleCreatePiece(w http.ResponseWriter, r *http.Request) {
 	api.WriteData(w, http.StatusCreated, resp)
 }
 
-// handleGetRandomPiece backs the Piece View's dice button. Registered as a
+// handleGetRandomPiece backs the Piece Details page's dice button. Registered as a
 // literal "GET /api/pieces/random" alongside "GET /api/pieces/{id}" — Go's
 // enhanced ServeMux (1.22+) resolves a literal path segment over a wildcard
 // one regardless of registration order, so "random" never falls through to
@@ -480,7 +480,7 @@ type setThumbnailPageRequest struct {
 
 // handleSetPieceThumbnailPage lets the user manually pick which rendered
 // page becomes this piece's Library card thumbnail — a design doc §14
-// addition made during the Piece View's build, not in the original spec.
+// addition made during the Piece Details page's build, not in the original spec.
 // A small, single-purpose action endpoint (same shape as replace-file),
 // not folded into PieceWriteRequest/handleUpdatePiece: that's a full-form
 // replace meant for the (not-yet-built) Piece Properties Edit Menu, and

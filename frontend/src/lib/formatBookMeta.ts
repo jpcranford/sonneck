@@ -3,7 +3,7 @@ import type { Book } from '../api/types'
 // Composer-or-arranger (2026-08-20): a Book can now have an arranger with
 // no composer at all (ValidateBook requires one of the two, not composer
 // specifically), fused onto composer (", arr. Arranger") when both are
-// set — same three-way fallback as PieceViewSample.tsx's bookComposerPart
+// set — same three-way fallback as PieceDetailsSample.tsx's bookComposerPart
 // and the backend's buildCitation. Falls back further to publisher only
 // when the book has neither composer nor arranger (the pre-existing
 // composer→publisher fallback, unchanged).

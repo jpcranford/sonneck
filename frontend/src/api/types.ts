@@ -61,7 +61,7 @@ export interface Piece {
   fileHash: string
   pageCount: number
   /** Which rendered page is used as this piece's Library card thumbnail
-   * (design doc §14 addition) — user-selectable from the Piece View,
+   * (design doc §14 addition) — user-selectable from the Piece Details page,
    * defaults to 1. */
   thumbnailPage: number
   copyrightYear: number | null

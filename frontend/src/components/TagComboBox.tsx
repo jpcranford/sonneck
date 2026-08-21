@@ -40,7 +40,7 @@ export function TagComboBox({
   allowDuplicates?: boolean
   // Renders the selected values as one merged, ordered sequence ("›"
   // between entries, plain typed-text styling) instead of one independent
-  // accent pill per value — matches how the Piece View / TagPills already
+  // accent pill per value — matches how the Piece Details page / TagPills already
   // display a piece's key sequence (PiecePage.tsx, TagPills.tsx), so the
   // input looks like the thing it's editing. Each key keeps its own
   // remove button; only the pill-per-key wrapper is replaced. Key(s)-only
@@ -172,7 +172,7 @@ export function TagComboBox({
                     // change), so it doesn't need to be faint to read as
                     // inert. Deliberately scoped to this editable field
                     // only — the read-only key-sequence pills elsewhere
-                    // (TagPills.tsx, PiecePage.tsx/PieceViewSample.tsx)
+                    // (TagPills.tsx, PiecePage.tsx/PieceDetailsSample.tsx)
                     // keep their own plain "›" text-glyph separator,
                     // untouched.
                     <IconArrowRight

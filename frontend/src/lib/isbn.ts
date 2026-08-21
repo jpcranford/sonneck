@@ -6,7 +6,7 @@
 // mockup/component — same "tested, correctness-critical, needed in
 // multiple places" exception to the usual per-file self-containment
 // convention that pieceSplitLogic.ts already established, since this exact
-// formatting needs to match across Piece View, Book Details, Edit Book
+// formatting needs to match across Piece Details, Book Details, Edit Book
 // Modal, and the Book Upload Wizard's About step.
 //
 // NOT officially correct ISBN hyphenation — true correctness needs the

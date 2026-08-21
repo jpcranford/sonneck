@@ -167,7 +167,7 @@ func GetPieceByFileHash(ctx context.Context, q Queryer, hash string) (*models.Pi
 	return GetPieceByID(ctx, q, id)
 }
 
-// GetRandomPiece supports the Piece View's "random piece" dice button.
+// GetRandomPiece supports the Piece Details page's "random piece" dice button.
 // SQLite's ORDER BY RANDOM() LIMIT 1 is fine at this project's scale (a
 // personal library, not a catalog needing an index-friendly random-row
 // trick) — a full table scan per roll is cheap here. Returns ErrNotFound

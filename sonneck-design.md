@@ -51,7 +51,7 @@ Everything intentionally left out of v1 is consolidated in §13, “Features to 
 | `userTags`                         | tags (many-to-many)           | User-authored tags, as opposed to the system-seeded `Key`/`SheetType` lookups — not account-scoped for the same reason as `userNotes` above. Not book-inheritable. |
 | `practiceStatus`                   | string, nullable (enum)       | One of: `Want to Learn`, `Learning`, `Learned`, `Stalled`, `Dropped`. Nullable — "no status set" is a valid, distinct state from any of the five. Same per-user-eventually treatment as `favorite` above. Not a relational lookup table like `Key`/`SheetType`, since there's no indication these five values need runtime editing/expansion the way `SheetType` definitions do (§13) — a fixed, app-level enum is enough. Not book-inheritable. |
 | `imslpNumber`                      | string, nullable              | **Book-inheritable.** Filename-based detection (simple regex, e.g. `IMSLP\d+`) runs against `Book.originalFilename` and is stored on `Book.imslpNumber` (§3's `Book` table) as the inheritance source — not detected-then-copied per piece anymore, superseded by the general inheritance mechanism below. Only the *live autofill from IMSLP* stays deferred, see §13. |
-| `sourceBookId`                     | FK to `Book`, nullable        | Null if not imported via the book wizard. **Not paired with a denormalized `sourceBookTitle` on `Piece`** — anywhere the book title needs displaying (e.g. Piece View, §14), look it up live via `sourceBookId → Book.bookTitle`, rather than storing a copy. Editing writes to exactly one record, `Book` itself — nothing on any `Piece` row changes. What changes is what gets *read* wherever a piece's book title is resolved, since every piece with that `sourceBookId` looks it up live rather than from a stored copy. |
+| `sourceBookId`                     | FK to `Book`, nullable        | Null if not imported via the book wizard. **Not paired with a denormalized `sourceBookTitle` on `Piece`** — anywhere the book title needs displaying (e.g. Piece Details, §14), look it up live via `sourceBookId → Book.bookTitle`, rather than storing a copy. Editing writes to exactly one record, `Book` itself — nothing on any `Piece` row changes. What changes is what gets *read* wherever a piece's book title is resolved, since every piece with that `sourceBookId` looks it up live rather than from a stored copy. |
 | `sourcePageStart`, `sourcePageEnd` | int, nullable                 | **Editable, purely cosmetic** — used for citation/reference display only, not tied to any backend operation (the actual file splitting is permanent and already done at import time; changing these numbers doesn't re-slice anything). Seeded from the actual PDF page range extracted at import, but expected to often need correcting afterward: PDF page indices and a scanned book's *printed* page numbers frequently don't match (front matter, unnumbered pages, etc.), and the printed numbers are usually what's actually useful to show. |
 | `duration`                         | int, nullable (seconds)       | Computed as `(measureCount × beatsPerMeasure ÷ bpm) × 60`, recalculated whenever those three inputs change. Rendered client-side as `mm:ss`. Null if any of the three inputs is missing. |
 | `bpm`, `measureCount`, `beatsPerMeasure` | int, nullable            | Supporting inputs for the `duration` calculation above. All optional — a piece can have none of these set. In the edit menu UI, tucked behind an "advanced" disclosure since `duration` is the field that actually matters day-to-day (per your notes). |
@@ -83,7 +83,7 @@ A revision of an earlier decision worth being explicit about: this doc originall
 | Field              | Type      | Notes                              |
 |--------------------|-----------|------------------------------------|
 | `id`               | PK        |                                    |
-| `bookTitle`        | string    | Edited through the Book Properties Edit Menu (§16), reached from the Piece View's Book Details section (§14). |
+| `bookTitle`        | string    | Edited through the Book Properties Edit Menu (§16), reached from the Piece Details page's Book Details section (§14). |
 | `composer`         | string, nullable | Inheritance source for `Piece.composer` — see "Book-level soft inheritance" above. Was previously a wizard-step-1 prefill value; now edited through §16 like any other `Book` field. |
 | `yearWritten`      | string, nullable | Renamed from `publishYear` for consistency with `Piece.yearWritten`, now that the parallel structure between `Book` and `Piece` is a real, general pattern rather than a one-off prefill. Inheritance source for `Piece.yearWritten`. |
 | `workOpusNumber`   | string, nullable | Inheritance source for `Piece.workOpusNumber` — added for multi-movement works where the opus number belongs at the book/symphony level (e.g. Widor's symphonies), not the individual movement/piece. |
@@ -163,7 +163,7 @@ A separate, simpler path alongside the wizard above — not a special case of it
 - Upload a PDF directly → compute SHA-256 hash, store under `library/pieces/` (not `library/books/` — there's no `Book` involved at all), create the `Piece` record directly. `sourceBookId`, `sourcePageStart`, `sourcePageEnd` all stay null.
 - Fill in fields — same field set as any piece (§3), but since there's no `Book` to inherit from, the book-inheritable fields (`composer`, `instruments`, `sheetType`, `publisher`, `publisherId`, `yearWritten`, `description`, `imslpNumber`, `workOpusNumber`) are just ordinary piece-level entry here, no inheritance/display-fallback applies. `imslpNumber` filename-detection (§3) still runs against the uploaded file's original name.
 - Same validation rules apply (below) — `title`/effective-`composer` required, same as any piece.
-- **This is the capability a future richer "drag and drop anywhere in the app" entry point (§13) would sit on top of** — the underlying single-piece upload path needs to exist regardless of when that nicer frontend wrapper gets built, since Piece View's file-replace (§14) needs the same "take a raw upload and attach it to a piece" mechanism anyway.
+- **This is the capability a future richer "drag and drop anywhere in the app" entry point (§13) would sit on top of** — the underlying single-piece upload path needs to exist regardless of when that nicer frontend wrapper gets built, since the Piece Details page's file-replace (§14) needs the same "take a raw upload and attach it to a piece" mechanism anyway.
 
 ### Field validation
 
@@ -232,7 +232,7 @@ One thing worth being explicit about regardless: **this means the app has no acc
 
 Formal accessibility engineering (WCAG auditing, comprehensive ARIA coverage, screen-reader testing) is a **tertiary concern for v1** — not a target to hit. What *is* a first-order design driver, per your original spec and this conversation: a clean, non-distracting, intuitive interface, with the high-contrast palette (§2) serving both visual clarity during performance and general low-clutter design.
 
-**Simple, but not necessarily minimal** — your own framing, worth stating explicitly: this isn't a mandate to strip features in pursuit of a bare-bones look. It's about avoiding clutter and unnecessary cognitive load, not about withholding useful functionality that a real feature (like the Piece view's advanced/Get-Info panel, §14) genuinely calls for.
+**Simple, but not necessarily minimal** — your own framing, worth stating explicitly: this isn't a mandate to strip features in pursuit of a bare-bones look. It's about avoiding clutter and unnecessary cognitive load, not about withholding useful functionality that a real feature (like the Piece Details page's advanced/Get-Info panel, §14) genuinely calls for.
 
 In practice, this means: prefer the simpler/calmer option when a UI decision has one (fewer simultaneous choices in the wizard, a wizard step showing one thing at a time rather than a dense all-at-once form, restrained use of notifications/animation). Where an accessible pattern is *also* just better UX — the earlier example of an accessible combobox for tag entry over a bare `<input>` with a dropdown — keep making that call, since it's not extra work done for compliance's sake, it's the better component either way. What this deprioritizes is the *additional* work that's accessibility-only with no general-UX upside (full keyboard-nav auditing across every interaction, ARIA-role completeness as its own checklist item).
 
@@ -312,7 +312,7 @@ Ordered collections of pieces, similar to a playlist — per-account owned (see 
 ### Research problems (not planned)
 - Automatic detection of chord symbols, instrumentation, or title. This is Optical Music Recognition territory: an open research problem, not an engineering task.
 
-## 14. Piece View
+## 14. Piece Details
 
 The page a single piece opens to. Desktop/tablet-width layout: the piece preview (§7) dominates roughly half the view, with clickable buttons to cycle through pages — not swipe/drag-only, consistent with §12's device-aware conventions.
 
@@ -344,7 +344,7 @@ All other field-level detail (types, validation, 255-char limits) is in §5's Fi
 
 ## 16. Book Properties Edit Menu
 
-Reached from the Piece View's Book Details section (§14). Same presentation pattern as §15 (modal/popup desktop, slide-up popover mobile) — this isn't a separate standalone page/view, just a `Book`-scoped counterpart to the piece edit menu.
+Reached from the Piece Details page's Book Details section (§14). Same presentation pattern as §15 (modal/popup desktop, slide-up popover mobile) — this isn't a separate standalone page/view, just a `Book`-scoped counterpart to the piece edit menu.
 
 Shows and allows editing every editable `Book` field (§3): `bookTitle`, `composer`, `yearWritten`, `workOpusNumber`, `instruments`, `sheetType`, `publisher`, `publisherId`, `imslpNumber`, `description`. No required fields at the `Book` level (unlike `Piece`, where `title`/`composer` are required) — a book can exist with only `bookTitle` set and nothing else, since none of its pieces strictly depend on any single book-level field being present.
 

@@ -15,7 +15,7 @@ interface TagPillsProps {
 }
 
 // Card footer pills (locked design system), fixed order: user tags, key(s),
-// sheet type, instruments — matches the Piece View's locked pill line
+// sheet type, instruments — matches the Piece Details page's locked pill line
 // (design doc §14: practice status, user tags, key, sheet type; instruments
 // moved into that page's details list). Cards have no practice-status pill,
 // so user tags lead here. Color is reserved for genuinely user-specific
@@ -44,7 +44,7 @@ export function TagPills({ keys, sheetType, instruments, userTags, className = '
       {/* One merged pill for the whole key sequence, not one pill per key
           — a piece's keys are ordered (e.g. a piece that modulates), and a
           separate pill per key gives no indication of that order. Same
-          treatment as the Piece View (PiecePage.tsx/PieceViewSample.tsx):
+          treatment as the Piece Details page (PiecePage.tsx/PieceDetailsSample.tsx):
           neutral bordered pill, single IconMusic prefix, keys joined by a
           small de-emphasized chevron rather than shown as independent tags. */}
       {keys.length > 0 && (

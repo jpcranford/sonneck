@@ -38,7 +38,7 @@ import { ContextMenu } from '../components/ContextMenu'
 // Not wired to the API: no GET /api/books/:id/file (Open Book PDF) and
 // no per-book piece-listing endpoint exist yet — both are new backend
 // work for the real build (Phase 4). The Edit affordance stays inert for
-// the same reason the Piece View's own Source Book card's Edit icon
+// the same reason the Piece Details page's own Source Book card's Edit icon
 // does — the Book Properties Edit Menu (§16) doesn't exist yet either.
 // The grid/list toggle is real local state.
 // ---------------------------------------------------------------------
@@ -205,7 +205,7 @@ function sortedPieces(pieces: SamplePiece[]): SamplePiece[] {
 // with no composer at all, so this can't just append arranger onto
 // composer whenever it's set — composer blank + arranger set must still
 // show "arr. Arranger" alone, not disappear entirely. Same three-way
-// fallback as PieceViewSample.tsx's bookComposerPart and the backend's
+// fallback as PieceDetailsSample.tsx's bookComposerPart and the backend's
 // buildCitation. Factored out here (unlike those files) since this one
 // file needs it in three places: the book header, the piece grid, and the
 // piece list.
@@ -471,7 +471,7 @@ function bookFields(): { label: string; value: ReactNode }[] {
   // the fallback over ISBN, same rule buildCitation applies to ISBN in the
   // citation string: showing both identifiers on a details page that
   // already has a dedicated IMSLP row would be redundant, not additive.
-  // Unlike Piece View's book card (which substitutes "IMSLP #{number}" in
+  // Unlike Piece Details page's book card (which substitutes "IMSLP #{number}" in
   // ISBN's place when hidden), this is a full field-per-row details list
   // that already has its own IMSLP no. row above — nothing to substitute,
   // the row simply doesn't render.
@@ -551,7 +551,7 @@ export function BookDetailsSample() {
       </div>
 
       {/* Edit / Change Cover / Open Book PDF live in this top toolbar row
-          (2026-08-21), now re-ordered and re-styled to mirror Piece View's
+          (2026-08-21), now re-ordered and re-styled to mirror Piece Details page's
           own toolbar exactly (PiecePage.tsx: icon-only buttons first, one
           labeled ActionButton-style button last) rather than the earlier
           pass's mixed styling — Open Book PDF drops its accent-filled

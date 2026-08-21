@@ -292,7 +292,7 @@ export function PiecePage() {
 
   // The dice button — a fresh mutation each click rather than a query, since
   // this is an action ("roll again"), not data this page reads on its own;
-  // navigating seeds ['piece', <new id>] fresh the normal way (Piece View's
+  // navigating seeds ['piece', <new id>] fresh the normal way (Piece Details page's
   // own useQuery above), so there's no need to also populate the cache here.
   const randomPieceMutation = useMutation({
     mutationFn: getRandomPiece,
@@ -333,7 +333,7 @@ export function PiecePage() {
       {/* Edit Piece promoted from an icon-only button next to the title to
           a proper labeled button in this top toolbar row, matching every
           other action button on this page (Download PDF, Replace File,
-          Use Page as Thumbnail) — approved via the /mockup/piece-view
+          Use Page as Thumbnail) — approved via the /mockup/piece-details
           reference sample. Only rendered once piece has loaded, same as
           the edit modal itself further down; nothing to edit before then. */}
       <div className="flex items-center justify-between gap-4">

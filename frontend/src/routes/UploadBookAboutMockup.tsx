@@ -19,7 +19,7 @@ import { useMockupTitle } from '../lib/useMockupTitle'
 // (design doc §5 step 1's book-metadata entry). Not wired to the API —
 // local mock state only, same convention as EditBookModalMockup.tsx.
 // Locked design: https://claude.ai/code/artifact/6feed451-b077-4922-a810-7682faf48144
-// (Option C — persistent left cover column, sticky, carrying Piece View's
+// (Option C — persistent left cover column, sticky, carrying Piece Details page's
 // own floating page-cycler capsule). Full decision history for all 6
 // wizard screens is in the frontend-book-upload-wizard memory, not
 // repeated here.
@@ -92,7 +92,7 @@ const defaultValues: FormValues = {
 // Stand-in for a real book-cover page image (this mockup has no real
 // bookId to build a getBookPageThumbnailUrl(...) call against) — same
 // drawn-SVG-page convention every other design-phase mockup in this app
-// uses (PieceViewSample.tsx, EditPieceModalMockup.tsx).
+// uses (PieceDetailsSample.tsx, EditPieceModalMockup.tsx).
 function CoverPagePlaceholder({ page }: { page: number }) {
   return (
     <svg viewBox="0 0 200 260" className="h-auto w-full" role="img" aria-label={`Page ${page} preview`}>
@@ -180,7 +180,7 @@ export function UploadBookAboutMockup() {
         <div className="flex w-full shrink-0 flex-col gap-2.5 sm:sticky sm:top-5 sm:w-[210px]">
           <div className="relative overflow-hidden rounded-lg border border-border bg-paper-raised shadow-sm">
             <CoverPagePlaceholder page={previewPage} />
-            {/* Piece View's own floating capsule cycler (PiecePage.tsx),
+            {/* Piece Details page's own floating capsule cycler (PiecePage.tsx),
                 reused verbatim — a static page-1 cover doesn't always show
                 what a book actually is (title pages, blanks, dedications),
                 so being able to flip through it right here answers that

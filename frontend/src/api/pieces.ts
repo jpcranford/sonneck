@@ -22,7 +22,7 @@ export function getPiece(id: number): Promise<Piece> {
   return apiGet<Piece>(`/api/pieces/${id}`)
 }
 
-// Piece View's dice button. Backend registers this as a literal
+// Piece Details page's dice button. Backend registers this as a literal
 // "GET /api/pieces/random" route ahead of "GET /api/pieces/{id}" — see
 // handleGetRandomPiece's own comment for why the wildcard route doesn't
 // swallow it. 404s (NOT_FOUND) when the library is empty, same as any

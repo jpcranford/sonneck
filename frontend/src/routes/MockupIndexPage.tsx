@@ -7,9 +7,9 @@ import { useMockupTitle } from '../lib/useMockupTitle'
 // whatever they were mocking gets built for real.
 const MOCKUPS = [
   {
-    to: '/mockup/piece-view',
-    name: 'Piece View',
-    note: 'Reference sample for the Piece View (§14) — kept as a standing design reference.',
+    to: '/mockup/piece-details',
+    name: 'Piece Details',
+    note: 'Reference sample for the Piece Details page (§14) — kept as a standing design reference.',
   },
   {
     to: '/mockup/edit-piece-modal',

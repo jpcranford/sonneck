@@ -347,7 +347,7 @@ export function BookDetailsPage() {
     // always wins the fallback over ISBN, same rule buildCitation applies
     // to ISBN in the citation string: showing both identifiers on a
     // details page that already has a dedicated IMSLP row would be
-    // redundant, not additive. Unlike Piece View's book card (which
+    // redundant, not additive. Unlike Piece Details page's book card (which
     // substitutes "IMSLP #{number}" in ISBN's place when hidden), this is
     // a full field-per-row details list that already has its own IMSLP
     // no. row above — nothing to substitute, the row simply doesn't
@@ -364,7 +364,7 @@ export function BookDetailsPage() {
     <div className="flex flex-1 flex-col gap-6 p-6 md:p-8">
       {/* Edit / Change Cover / Open Book PDF live in this top toolbar row
           (2026-08-21, direct instruction) — moved up from the header card,
-          mirroring Piece View's own toolbar (PiecePage.tsx): icon-only
+          mirroring Piece Details page's own toolbar (PiecePage.tsx): icon-only
           buttons first (Open Book PDF, Change Cover — identical
           bordered-square treatment), one labeled button last (Edit Book). */}
       <div className="flex items-center justify-between gap-4">

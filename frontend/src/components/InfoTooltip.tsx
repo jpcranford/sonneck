@@ -11,9 +11,10 @@ interface InfoTooltipProps {
  * Hover-or-tap info bubble: hover reveals it on desktop, click/tap toggles
  * it open on touch (design doc §12's "no hover-dependent interactions").
  * Each instance owns its own open state, so several can appear on one page
- * independently. Originally built inline for the Piece View's "inherited"
- * badges and public domain badge — pulled out here once a third/fourth use
- * (the Piece View's opus-number info icon, the Edit Piece modal's own copy
+ * independently. Originally built inline for the Piece Details page's
+ * "inherited" badges and public domain badge — pulled out here once a
+ * third/fourth use (the Piece Details page's opus-number info icon, the
+ * Edit Piece modal's own copy
  * of it) made the duplication worth naming.
  *
  * Horizontally clamps to its nearest clipping ancestor (added 2026-08-17,

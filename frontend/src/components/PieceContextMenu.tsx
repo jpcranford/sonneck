@@ -26,7 +26,7 @@ export const PieceContextMenu = forwardRef<ContextMenuHandle, PieceContextMenuPr
     // Same full-replace PATCH pattern as PiecePage's own favorite toggle
     // (its keyboard-shortcut "F" and header heart button) — kept here as a
     // separate mutation rather than a shared hook since there's nowhere
-    // else yet that both need it from outside a piece-view context.
+    // else yet that both need it from outside a piece-details context.
     const favoriteMutation = useMutation({
       mutationFn: () => updatePiece(piece.id, { ...pieceToWriteRequest(piece), favorite: !piece.favorite }),
       onSuccess: (updated) => {

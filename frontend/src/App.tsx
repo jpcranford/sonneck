@@ -6,7 +6,7 @@ import { UploadPage } from './routes/UploadPage'
 import { PiecePage } from './routes/PiecePage'
 import { BookDetailsPage } from './routes/BookDetailsPage'
 import { MockupIndexPage } from './routes/MockupIndexPage'
-import { PieceViewSample } from './routes/PieceViewSample'
+import { PieceDetailsSample } from './routes/PieceDetailsSample'
 import { EditPieceModalMockup } from './routes/EditPieceModalMockup'
 import { BooksLibrarySample } from './routes/BooksLibrarySample'
 import { BookDetailsSample } from './routes/BookDetailsSample'
@@ -35,7 +35,7 @@ function App() {
             for future reference/experimentation, not deleted once whatever
             they were mocking is locked in and built for real. */}
         <Route path="mockup" element={<MockupIndexPage />} />
-        <Route path="mockup/piece-view" element={<PieceViewSample />} />
+        <Route path="mockup/piece-details" element={<PieceDetailsSample />} />
         <Route path="mockup/edit-piece-modal" element={<EditPieceModalMockup />} />
         <Route path="mockup/books-library" element={<BooksLibrarySample />} />
         <Route path="mockup/book-details" element={<BookDetailsSample />} />
