@@ -65,6 +65,29 @@ func TestSearchPieces_FiltersByPracticeStatus(t *testing.T) {
 	}
 }
 
+// TestSearchPieces_FiltersByMultiplePracticeStatuses covers the sidebar's
+// "Currently Practicing" view (Learning OR Stalled): a comma-separated
+// practiceStatus value must OR-match, not require an exact single status.
+func TestSearchPieces_FiltersByMultiplePracticeStatuses(t *testing.T) {
+	h := newTestServer(t)
+	learning := createTestPiece(t, h, map[string]any{"title": "Learning Piece", "practiceStatus": "Learning"})
+	stalled := createTestPiece(t, h, map[string]any{"title": "Stalled Piece", "practiceStatus": "Stalled"})
+	createTestPiece(t, h, map[string]any{"title": "Learned Piece", "practiceStatus": "Learned"})
+	createTestPiece(t, h, map[string]any{"title": "Dropped Piece", "practiceStatus": "Dropped"})
+
+	rec := doJSON(t, h, http.MethodGet, "/api/pieces?practiceStatus=Learning,Stalled", nil)
+	var results []pieceResponse
+	decodeData(t, rec, &results)
+
+	gotIDs := map[int64]bool{}
+	for _, r := range results {
+		gotIDs[r.ID] = true
+	}
+	if len(results) != 2 || !gotIDs[learning.ID] || !gotIDs[stalled.ID] {
+		t.Errorf("practiceStatus=Learning,Stalled returned %+v, want exactly [%d %d]", results, learning.ID, stalled.ID)
+	}
+}
+
 func TestSearchPieces_FiltersByKeyId(t *testing.T) {
 	h := newTestServer(t)
 	inC := createTestPiece(t, h, map[string]any{"title": "In C", "keys": []string{"C Major"}})

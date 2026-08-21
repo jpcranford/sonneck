@@ -1,5 +1,12 @@
-import { ComingSoon } from '../components/ComingSoon'
+import { PieceBrowseView } from '../components/PieceBrowseView'
 
 export function FavoritesPage() {
-  return <ComingSoon title="Favorites" />
+  return (
+    <PieceBrowseView
+      filters={{ favorite: true }}
+      searchPlaceholder="Search your favorites…"
+      emptyMessage="You haven't favorited any pieces yet."
+      noMatchMessage="No favorites match your search."
+    />
+  )
 }

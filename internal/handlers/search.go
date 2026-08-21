@@ -85,9 +85,18 @@ func (s *Server) handleSearchPieces(w http.ResponseWriter, r *http.Request) {
 		where = append(where, "p.favorite = ?")
 		args = append(args, fav)
 	}
+	// practiceStatus: comma-separated for an OR match against several
+	// statuses at once (the sidebar's "Currently Practicing" view — Learning
+	// OR Stalled — is the first caller of this; a single value still works
+	// the same as before, IN (?) with one placeholder behaves like = ?).
 	if v := q.Get("practiceStatus"); v != "" {
-		where = append(where, "p.practice_status = ?")
-		args = append(args, v)
+		statuses := strings.Split(v, ",")
+		placeholders := make([]string, len(statuses))
+		for i, status := range statuses {
+			placeholders[i] = "?"
+			args = append(args, strings.TrimSpace(status))
+		}
+		where = append(where, "p.practice_status IN ("+strings.Join(placeholders, ",")+")")
 	}
 
 	// sourceBookId: the Book Details page's pieces grid/list — every piece
