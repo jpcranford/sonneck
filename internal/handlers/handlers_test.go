@@ -55,6 +55,11 @@ func writeFixturePDF(t *testing.T, path string, pageCount int) {
 	testutil.WriteFixturePDF(t, path, pageCount)
 }
 
+// writeFixturePNG mirrors writeFixturePDF's own thin-wrapper convention.
+func writeFixturePNG(t *testing.T, path string, rgb [3]byte) {
+	testutil.WriteFixturePNG(t, path, rgb)
+}
+
 func multipartUpload(t *testing.T, url, filename string, content []byte) *http.Request {
 	t.Helper()
 	var body bytes.Buffer
@@ -184,6 +189,7 @@ type bookResponse struct {
 	ISBN             *string `json:"isbn"`
 	OriginalFilename *string `json:"originalFilename"`
 	FileHash         *string `json:"fileHash"`
+	HasCustomCover   bool    `json:"hasCustomCover"`
 	PieceCount       int     `json:"pieceCount"`
 }
 

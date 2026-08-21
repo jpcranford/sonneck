@@ -173,8 +173,24 @@ type BookResponse struct {
 	Instruments      []repo.Tag `json:"instruments"`
 	OriginalFilename *string    `json:"originalFilename"`
 	FileHash         *string    `json:"fileHash"`
-	ImportedAt       time.Time  `json:"importedAt"`
-	PieceCount       int        `json:"pieceCount"`
+	// HasCustomCover (migration 00018): true when a manually uploaded cover
+	// image overrides the derived first-page-of-PDF thumbnail. The frontend
+	// always fetches the actual image from GET /api/books/{id}/cover (which
+	// resolves the fallback chain itself) — this field exists only so the
+	// frontend can decide whether to render an <img> at all (custom cover OR
+	// a real file) vs. the "No-File Cover" placeholder, and whether a
+	// "Remove Cover Image" action has anything to do.
+	HasCustomCover bool `json:"hasCustomCover"`
+	// CoverImageHash: exposed (same precedent as FileHash) so the frontend
+	// can cache-bust getBookCoverUrl — that URL is otherwise the same
+	// string before and after a cover upload/replace/removal, and neither
+	// React (unchanged src prop) nor the browser has any other signal that
+	// the underlying image actually changed. nil when there's no custom
+	// cover (the frontend falls back to FileHash as the version key then,
+	// since that's what drives the derived thumbnail changing instead).
+	CoverImageHash *string   `json:"coverImageHash"`
+	ImportedAt     time.Time `json:"importedAt"`
+	PieceCount     int       `json:"pieceCount"`
 }
 
 func BuildBookResponse(ctx context.Context, q repo.Queryer, b *models.Book) (*BookResponse, error) {
@@ -193,6 +209,8 @@ func BuildBookResponse(ctx context.Context, q repo.Queryer, b *models.Book) (*Bo
 		Instruments:      []repo.Tag{},
 		OriginalFilename: b.OriginalFilename,
 		FileHash:         b.FileHash,
+		HasCustomCover:   b.CoverImageHash != nil,
+		CoverImageHash:   b.CoverImageHash,
 		ImportedAt:       b.ImportedAt,
 	}
 

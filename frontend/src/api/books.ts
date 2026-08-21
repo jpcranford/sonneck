@@ -58,6 +58,38 @@ export function getBookPageThumbnailUrl(bookId: number, page: number): string {
   return `/api/books/${bookId}/pages/${page}/thumbnail`
 }
 
+// The one URL every part of the frontend should use to render "this book's
+// cover" (Book Details header, Books library cards) — the backend resolves
+// the fallback chain itself (custom cover, then the derived first-page
+// thumbnail, then 404), so no call site needs its own conditional between
+// getBookPageThumbnailUrl(id, 1) and a separate custom-cover URL. Callers
+// still gate whether to render an <img> at all on `book.hasCustomCover ||
+// book.fileHash` (this URL 404s when neither is true — the "No-File Cover"
+// placeholder case).
+//
+// `version` should be `book.coverImageHash ?? book.fileHash` — this URL is
+// otherwise the exact same string before and after a cover upload/replace/
+// removal, and nothing else forces a re-fetch: React doesn't reload an
+// <img> whose src prop didn't change, and the browser has no other signal
+// the underlying image is different now. Found live: a cover upload's own
+// success screen kept showing the *old* image until a hard refresh, with
+// the backend already correctly serving the new one (confirmed via curl)
+// — a version-less URL, not a caching-headers issue.
+export function getBookCoverUrl(bookId: number, version?: string | null): string {
+  return version ? `/api/books/${bookId}/cover?v=${version}` : `/api/books/${bookId}/cover`
+}
+
+// Manual cover image upload (2026-08-21, direct instruction) — independent
+// of whether the book already has a real PDF file. Applies regardless:
+// overrides the derived thumbnail either way.
+export function uploadBookCover(bookId: number, file: File): Promise<Book> {
+  return apiUpload<Book>(`/api/books/${bookId}/cover`, file)
+}
+
+export function removeBookCover(bookId: number): Promise<Book> {
+  return apiDelete<Book>(`/api/books/${bookId}/cover`)
+}
+
 // Book Details page's "Open Book PDF" button — inline Content-Disposition
 // (handleDownloadBookFile), so opened with target="_blank" this renders in
 // a new tab instead of forcing a download, same convention as the piece

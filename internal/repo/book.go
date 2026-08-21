@@ -45,12 +45,14 @@ func GetBookByID(ctx context.Context, q Queryer, id int64) (*models.Book, error)
 	err := q.QueryRowContext(ctx, `
 		SELECT id, book_title, composer, arranger, year_written, work_opus_number, sheet_type_id,
 			publisher, publisher_id, description, imslp_number, isbn,
-			original_filename, file_path, file_hash, imported_at
+			original_filename, file_path, file_hash,
+			cover_image_hash, cover_image_content_type, imported_at
 		FROM books WHERE id = ?`, id,
 	).Scan(
 		&b.ID, &b.BookTitle, &b.Composer, &b.Arranger, &b.YearWritten, &b.WorkOpusNumber, &b.SheetTypeID,
 		&b.Publisher, &b.PublisherID, &b.Description, &b.ImslpNumber, &b.ISBN,
-		&b.OriginalFilename, &b.FilePath, &b.FileHash, &b.ImportedAt,
+		&b.OriginalFilename, &b.FilePath, &b.FileHash,
+		&b.CoverImageHash, &b.CoverImageContentType, &b.ImportedAt,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
@@ -89,6 +91,32 @@ func UpdateBook(ctx context.Context, q Queryer, b *models.Book) error {
 func DeleteBook(ctx context.Context, q Queryer, id int64) error {
 	_, err := q.ExecContext(ctx, `DELETE FROM books WHERE id = ?`, id)
 	return err
+}
+
+// UpdateBookCoverImage is a small, single-purpose action separate from the
+// general UpdateBook write path (design doc §16's Book Properties Edit
+// Menu never touches this) — same "dedicated small endpoint" treatment as
+// Piece.ThumbnailPage's own UpdatePieceThumbnailPage. hash/contentType nil
+// together clears the custom cover, reverting to the derived thumbnail (or
+// the "No-File Cover" placeholder).
+func UpdateBookCoverImage(ctx context.Context, q Queryer, bookID int64, hash, contentType *string) error {
+	_, err := q.ExecContext(ctx,
+		`UPDATE books SET cover_image_hash = ?, cover_image_content_type = ? WHERE id = ?`,
+		hash, contentType, bookID,
+	)
+	return err
+}
+
+// CountBooksWithCoverImageHash supports the same orphan-cleanup rule as
+// CountPiecesWithFileHash/CountPiecesForBook: cover images are
+// content-addressed (storage.CoverImagePath), so two different books
+// legitimately sharing the identical cover image file is possible (e.g. two
+// volumes of the same edition), and the file must only be removed from disk
+// once nothing references it anymore.
+func CountBooksWithCoverImageHash(ctx context.Context, q Queryer, hash string) (int, error) {
+	var count int
+	err := q.QueryRowContext(ctx, `SELECT COUNT(*) FROM books WHERE cover_image_hash = ?`, hash).Scan(&count)
+	return count, err
 }
 
 // CountPiecesForBook supports the orphan-cleanup rule (CLAUDE.md > File

@@ -4,6 +4,10 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"image"
+	_ "image/gif"  // format registration for image.DecodeConfig — handleUploadBookCover
+	_ "image/jpeg" // format registration for image.DecodeConfig — handleUploadBookCover
+	_ "image/png"  // format registration for image.DecodeConfig — handleUploadBookCover
 	"net/http"
 	"os"
 	"path/filepath"
@@ -475,6 +479,219 @@ func (s *Server) handleBookPageThumbnail(w http.ResponseWriter, r *http.Request)
 	}
 
 	http.ServeFile(w, r, thumbPath)
+}
+
+// detectImageContentType validates that path is a real, decodable image and
+// returns its MIME type — sniffed once at upload time (image.DecodeConfig
+// only reads the header, not the full image, so this is cheap regardless of
+// file size) rather than trusting the client-supplied filename/Content-Type,
+// same "don't trust the upload, verify it" posture as stageUpload's own
+// pdf.PageCount check for book/piece PDFs. Only the three formats the Go
+// standard library decodes without a third-party dependency are accepted.
+func detectImageContentType(path string) (string, bool) {
+	f, err := os.Open(path)
+	if err != nil {
+		return "", false
+	}
+	defer f.Close()
+
+	_, format, err := image.DecodeConfig(f)
+	if err != nil {
+		return "", false
+	}
+	switch format {
+	case "png":
+		return "image/png", true
+	case "jpeg":
+		return "image/jpeg", true
+	case "gif":
+		return "image/gif", true
+	default:
+		return "", false
+	}
+}
+
+// handleGetBookCover is the one URL every part of the frontend uses to show
+// "this book's cover" (Book Details header, Books library cards) — it
+// decides the fallback chain server-side (custom cover, then the derived
+// first-page-of-PDF thumbnail, then 404) so no call site needs to
+// special-case which source a given book's cover actually comes from.
+func (s *Server) handleGetBookCover(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathID(r, "id")
+	if !ok {
+		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid book id")
+		return
+	}
+	b, err := repo.GetBookByID(r.Context(), s.DB, id)
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+
+	if b.CoverImageHash != nil {
+		// Set explicitly before ServeFile: http.ServeContent only falls
+		// back to extension/content-sniffing when the Content-Type header
+		// isn't already present, and CoverImagePath has no extension to
+		// sniff from (see that function's own comment).
+		w.Header().Set("Content-Type", *b.CoverImageContentType)
+		http.ServeFile(w, r, storage.CoverImagePath(s.Cfg.DataDir, *b.CoverImageHash))
+		return
+	}
+	if b.FilePath != nil {
+		thumbPath, err := s.cachedThumbnail(r.Context(), *b.FilePath, 1, 100, fmt.Sprintf("book-%d-page-1", id))
+		if err != nil {
+			s.writeError(w, err)
+			return
+		}
+		http.ServeFile(w, r, thumbPath)
+		return
+	}
+	api.WriteError(w, http.StatusNotFound, api.CodeNotFound, "this book has no cover")
+}
+
+// handleUploadBookCover sets/replaces a Book's manually uploaded custom
+// cover image (migration 00018, direct instruction, 2026-08-21) —
+// independent of whether the book already has a real PDF file: a book with
+// a perfectly good derived thumbnail can still have it overridden, not just
+// a book with no cover to begin with. Same move-into-place-then-transaction-
+// then-orphan-cleanup shape as handleReplacePieceFile.
+func (s *Server) handleUploadBookCover(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathID(r, "id")
+	if !ok {
+		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid book id")
+		return
+	}
+
+	file, _, ok := requireMultipartFile(w, r)
+	if !ok {
+		return
+	}
+	defer file.Close()
+
+	stagingDir := filepath.Join(s.Cfg.DataDir, "library", "covers")
+	tempPath, hash, _, err := storage.SaveStreamed(stagingDir, file)
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+
+	contentType, valid := detectImageContentType(tempPath)
+	if !valid {
+		os.Remove(tempPath)
+		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError,
+			"uploaded file is not a valid image (PNG, JPEG, or GIF)")
+		return
+	}
+
+	newPath := storage.CoverImagePath(s.Cfg.DataDir, hash)
+	// Content-addressed storage means newPath may already exist (this
+	// upload happens to match another book's cover, or this book's own
+	// previous cover being re-uploaded) — remember that before moving, same
+	// caveat as handleReplacePieceFile.
+	_, statErr := os.Stat(newPath)
+	newPathPreexisted := statErr == nil
+	if err := storage.MoveIntoPlace(tempPath, newPath); err != nil {
+		s.writeError(w, err)
+		return
+	}
+
+	var oldHash *string
+	var resp *api.BookResponse
+	err = s.withTx(r.Context(), func(tx *sql.Tx) error {
+		b, err := repo.GetBookByID(r.Context(), tx, id)
+		if err != nil {
+			return err
+		}
+		oldHash = b.CoverImageHash
+
+		if err := repo.UpdateBookCoverImage(r.Context(), tx, id, &hash, &contentType); err != nil {
+			return err
+		}
+		b.CoverImageHash = &hash
+		b.CoverImageContentType = &contentType
+
+		resp, err = api.BuildBookResponse(r.Context(), tx, b)
+		return err
+	})
+	if err != nil {
+		if !newPathPreexisted {
+			os.Remove(newPath)
+		}
+		s.writeError(w, err)
+		return
+	}
+
+	if oldHash != nil && *oldHash != hash {
+		remaining, err := repo.CountBooksWithCoverImageHash(r.Context(), s.DB, *oldHash)
+		if err != nil {
+			s.Logger.Error("failed to check old cover image hash reference count after replace",
+				"error", err, "bookId", id, "coverImageHash", *oldHash)
+		} else if remaining == 0 {
+			oldPath := storage.CoverImagePath(s.Cfg.DataDir, *oldHash)
+			if err := os.Remove(oldPath); err != nil && !os.IsNotExist(err) {
+				s.Logger.Error("failed to remove old book cover image after replace",
+					"error", err, "bookId", id, "filePath", oldPath)
+			}
+		}
+	}
+
+	s.Logger.Info("book cover image set", "bookId", id, "coverImageHash", hash)
+
+	api.WriteData(w, http.StatusOK, resp)
+}
+
+// handleDeleteBookCover clears a Book's custom cover image, reverting to
+// the derived first-page-of-PDF thumbnail (or the "No-File Cover"
+// placeholder). Same orphan-cleanup-then-log shape as the piece/book file
+// deletion paths elsewhere in this file.
+func (s *Server) handleDeleteBookCover(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathID(r, "id")
+	if !ok {
+		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid book id")
+		return
+	}
+
+	var oldHash *string
+	var resp *api.BookResponse
+	err := s.withTx(r.Context(), func(tx *sql.Tx) error {
+		b, err := repo.GetBookByID(r.Context(), tx, id)
+		if err != nil {
+			return err
+		}
+		oldHash = b.CoverImageHash
+
+		if oldHash != nil {
+			if err := repo.UpdateBookCoverImage(r.Context(), tx, id, nil, nil); err != nil {
+				return err
+			}
+			b.CoverImageHash = nil
+			b.CoverImageContentType = nil
+		}
+
+		resp, err = api.BuildBookResponse(r.Context(), tx, b)
+		return err
+	})
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+
+	if oldHash != nil {
+		remaining, err := repo.CountBooksWithCoverImageHash(r.Context(), s.DB, *oldHash)
+		if err != nil {
+			s.Logger.Error("failed to check cover image hash reference count after remove",
+				"error", err, "bookId", id, "coverImageHash", *oldHash)
+		} else if remaining == 0 {
+			oldPath := storage.CoverImagePath(s.Cfg.DataDir, *oldHash)
+			if err := os.Remove(oldPath); err != nil && !os.IsNotExist(err) {
+				s.Logger.Error("failed to remove book cover image after remove",
+					"error", err, "bookId", id, "filePath", oldPath)
+			}
+		}
+		s.Logger.Info("book cover image removed", "bookId", id, "coverImageHash", *oldHash)
+	}
+
+	api.WriteData(w, http.StatusOK, resp)
 }
 
 // handleDownloadBookFile is the Book Details page's "Open Book PDF"

@@ -35,7 +35,17 @@ type Book struct {
 	OriginalFilename *string
 	FilePath         *string
 	FileHash         *string
-	ImportedAt       time.Time
+	// CoverImageHash/CoverImageContentType (migration 00018): a manually
+	// uploaded custom cover, independent of FilePath/FileHash — set via a
+	// dedicated endpoint (handleUploadBookCover), not the general Book edit
+	// write path, same "separate small action endpoint" treatment as
+	// Piece.ThumbnailPage. Overrides the derived first-page-of-PDF
+	// thumbnail when present; both nil means "no custom cover," which is
+	// the common case. Independent of FilePath being nil or not — a book
+	// with no original PDF at all can still have a custom cover.
+	CoverImageHash        *string
+	CoverImageContentType *string
+	ImportedAt            time.Time
 
 	// Loaded separately via the book_instruments join table.
 	InstrumentIDs []int64

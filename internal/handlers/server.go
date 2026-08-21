@@ -49,6 +49,9 @@ func New(db *sql.DB, cfg *config.Config, logger *slog.Logger) http.Handler {
 	mux.HandleFunc("GET /api/books/{id}/file", s.handleDownloadBookFile)
 	mux.HandleFunc("GET /api/books/{id}/pages/{page}/thumbnail", s.handleBookPageThumbnail)
 	mux.HandleFunc("POST /api/books/{id}/confirm-import", s.handleConfirmImport)
+	mux.HandleFunc("GET /api/books/{id}/cover", s.handleGetBookCover)
+	mux.HandleFunc("POST /api/books/{id}/cover", s.handleUploadBookCover)
+	mux.HandleFunc("DELETE /api/books/{id}/cover", s.handleDeleteBookCover)
 
 	// Catch-all: any path not matched by a pattern above (CLAUDE.md > API
 	// response contract — every endpoint returns {data}/{error}, and that

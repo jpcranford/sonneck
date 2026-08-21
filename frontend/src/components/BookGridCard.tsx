@@ -1,5 +1,5 @@
 import { IconFileX, IconMusic } from '@tabler/icons-react'
-import { getBookPageThumbnailUrl } from '../api/books'
+import { getBookCoverUrl } from '../api/books'
 import type { Book } from '../api/types'
 import { formatBookMeta } from '../lib/formatBookMeta'
 import { BookContextMenu } from './BookContextMenu'
@@ -30,9 +30,13 @@ export function BookGridCard({ book }: BookGridCardProps) {
     <BookContextMenu book={book} hideTriggerButton>
       <ClickableCard to={`/books/${book.id}`} className="flex flex-col gap-2 text-left">
         <div className="relative aspect-[2/3] overflow-hidden rounded-md border border-border bg-paper-sunken shadow-sm transition-shadow hover:shadow-lg">
-          {book.fileHash ? (
+          {/* hasCustomCover (2026-08-21) joins fileHash as a second source
+              a cover can come from — getBookCoverUrl resolves which one
+              server-side, so this gate only needs to know whether *either*
+              exists, not which. */}
+          {book.hasCustomCover || book.fileHash ? (
             <img
-              src={getBookPageThumbnailUrl(book.id, 1)}
+              src={getBookCoverUrl(book.id, book.coverImageHash ?? book.fileHash)}
               alt=""
               loading="lazy"
               className="h-full w-full object-cover object-top"

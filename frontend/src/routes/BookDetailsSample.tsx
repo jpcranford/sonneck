@@ -1,14 +1,19 @@
-import { useState, type ReactNode } from 'react'
+import { useRef, useState, type ChangeEvent, type ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import {
+  IconArrowLeft,
+  IconCamera,
+  IconEditFilled,
   IconExternalLink,
+  IconFileTypePdf,
   IconHeartFilled,
   IconLayoutGridFilled,
   IconLayoutListFilled,
   IconMusic,
-  IconPencil,
 } from '@tabler/icons-react'
 import { hyphenateISBN } from '../lib/isbn'
 import { useMockupTitle } from '../lib/useMockupTitle'
+import { ContextMenu } from '../components/ContextMenu'
 
 // ---------------------------------------------------------------------
 // DESIGN MOCKUP — Phase 3 of the new Book Details page (no design-doc
@@ -484,6 +489,44 @@ export function BookDetailsSample() {
 
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
 
+  // NEW CAPABILITY (2026-08-21, for approval — third revision, combining
+  // "D" (header toolbar button) and "E" (right-click/long-press context
+  // menu) from the 6-option comparison, per direct instruction). Applies
+  // regardless of whether the book already has a real file — unlike the
+  // previous "no-file only" revision, a book with a perfectly good
+  // first-page thumbnail can still have it manually overridden. Neither D
+  // nor E touches the cover's own visual chrome (no corner button, no
+  // dropzone styling) — the cover renders exactly as it already does
+  // either way, which is what makes layering two independent trigger
+  // paths onto the same action reasonable instead of redundant-looking.
+  const [customCoverUrl, setCustomCoverUrl] = useState<string | null>(null)
+  const coverFileInputRef = useRef<HTMLInputElement>(null)
+
+  function openCoverFilePicker() {
+    coverFileInputRef.current?.click()
+  }
+
+  function handleCoverFileChosen(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    if (file) {
+      if (customCoverUrl) URL.revokeObjectURL(customCoverUrl)
+      setCustomCoverUrl(URL.createObjectURL(file))
+    }
+    event.target.value = ''
+  }
+
+  function handleRemoveCustomCover() {
+    if (customCoverUrl) URL.revokeObjectURL(customCoverUrl)
+    setCustomCoverUrl(null)
+  }
+
+  const coverContextMenuItems = [
+    { label: 'Change Cover Image', onSelect: openCoverFilePicker },
+    ...(customCoverUrl
+      ? [{ label: 'Remove Cover Image', onSelect: handleRemoveCustomCover, destructive: true }]
+      : []),
+  ]
+
   const pieces = sortedPieces(samplePieces)
   const title = sampleBook.workOpusNumber
     ? `${sampleBook.bookTitle} (${sampleBook.workOpusNumber})`
@@ -502,7 +545,56 @@ export function BookDetailsSample() {
       <div className="rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-4 py-2 text-sm text-ink-soft">
         Design mockup — <span className="font-medium text-ink">Book Details page</span>. Not wired
         to real data; Open Book PDF and Edit are inert (no backend endpoint / Book Properties Edit
-        Menu exists yet).
+        Menu exists yet). Custom cover upload <em>is</em> genuinely interactive though — try the new
+        camera icon in the top toolbar, or right-click/long-press the cover itself (proposed, not yet
+        built).
+      </div>
+
+      {/* Edit / Change Cover / Open Book PDF live in this top toolbar row
+          (2026-08-21), now re-ordered and re-styled to mirror Piece View's
+          own toolbar exactly (PiecePage.tsx: icon-only buttons first, one
+          labeled ActionButton-style button last) rather than the earlier
+          pass's mixed styling — Open Book PDF drops its accent-filled
+          treatment for the same bordered-square icon-only look as Change
+          Cover, and Edit Book gains a label instead of being the odd
+          icon-only one out. */}
+      <div className="flex items-center justify-between gap-4">
+        <Link
+          to="/books"
+          className="inline-flex w-fit items-center gap-1.5 text-sm text-ink-soft hover:text-ink"
+        >
+          <IconArrowLeft size={24} />
+          Back to Books
+        </Link>
+        <div className="flex shrink-0 items-stretch gap-2.5">
+          <button
+            type="button"
+            onClick={(event) => event.preventDefault()}
+            title="Open Book PDF — backend endpoint not built yet"
+            className="flex w-[38px] items-center justify-center rounded-md border border-border bg-paper-raised text-ink-soft hover:border-accent hover:text-ink"
+          >
+            <IconFileTypePdf size={16} />
+          </button>
+          {/* "D" from the cover-upload comparison — identical bordered-
+              square treatment to Open Book PDF right beside it. */}
+          <button
+            type="button"
+            onClick={openCoverFilePicker}
+            aria-label="Change cover image"
+            title="Change cover image"
+            className="flex w-[38px] items-center justify-center rounded-md border border-border bg-paper-raised text-ink-soft hover:border-accent hover:text-ink"
+          >
+            <IconCamera size={16} />
+          </button>
+          <button
+            type="button"
+            title="Book Properties Edit Menu — not built yet"
+            className="flex cursor-not-allowed items-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-sm text-ink"
+          >
+            <IconEditFilled size={16} />
+            Edit Book
+          </button>
+        </div>
       </div>
 
       {/* Header is its own card (full border + radius + shadow). The
@@ -520,33 +612,41 @@ export function BookDetailsSample() {
       <div>
         <div className="overflow-hidden rounded-2xl border border-border bg-paper-raised shadow-sm">
           <div className="flex items-start gap-6 p-7">
-            <div className="aspect-[2/3] w-[110px] shrink-0 overflow-hidden rounded-md border border-border bg-white">
-              <SheetThumb />
-            </div>
+            {/* Custom cover upload (2026-08-21, proposed) — "D" + "E" from
+                the 6-option comparison, combined per direct instruction.
+                The cover itself renders exactly as it already does either
+                way (no corner button, no dropzone styling) — "E" wraps it
+                in the same ContextMenu component piece cards already use
+                (right-click on desktop, long-press on touch), with
+                hideTriggerButton so no "⋯" icon competes with "D"'s
+                always-visible header button for the same action. Applies
+                regardless of file status — a book with a real PDF and a
+                perfectly good thumbnail can still have it overridden, not
+                just a book with no cover to begin with. */}
+            <ContextMenu items={coverContextMenuItems} hideTriggerButton>
+              <div className="aspect-[2/3] w-[110px] shrink-0 overflow-hidden rounded-md border border-border bg-white">
+                {customCoverUrl ? (
+                  <img src={customCoverUrl} alt="" className="h-full w-full object-cover object-top" />
+                ) : (
+                  <SheetThumb />
+                )}
+              </div>
+            </ContextMenu>
+            <input
+              ref={coverFileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleCoverFileChosen}
+            />
             <div className="min-w-0 flex-1">
-              <div className="mb-2 flex items-start justify-between gap-4">
-                <div>
-                  <h1 className="font-display text-[1.35rem] font-medium text-ink">{title}</h1>
-                  <p className="text-[0.92rem] text-ink-soft">{metaLine}</p>
-                </div>
-                <div className="flex shrink-0 items-stretch gap-2.5">
-                  <button
-                    type="button"
-                    title="Book Properties Edit Menu — not built yet"
-                    className="flex w-[38px] cursor-not-allowed items-center justify-center rounded-md border border-border bg-paper-raised text-ink-soft"
-                  >
-                    <IconPencil size={16} />
-                  </button>
-                  <a
-                    href="#"
-                    onClick={(event) => event.preventDefault()}
-                    title="Backend endpoint not built yet"
-                    className="flex items-center gap-1.5 rounded-md bg-accent px-4 py-2 font-display text-sm text-white hover:bg-accent/90"
-                  >
-                    <IconExternalLink size={16} />
-                    Open Book PDF
-                  </a>
-                </div>
+              {/* Edit/Change Cover/Open Book PDF moved to the top toolbar
+                  above (2026-08-21) — this row is now just the title, no
+                  longer needs its own justify-between wrapper since there's
+                  nothing left to push to the opposite side. */}
+              <div className="mb-2">
+                <h1 className="font-display text-[1.35rem] font-medium text-ink">{title}</h1>
+                <p className="text-[0.92rem] text-ink-soft">{metaLine}</p>
               </div>
 
               {(sampleBook.sheetType || sampleBook.instruments.length > 0) && (

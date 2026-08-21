@@ -1,6 +1,7 @@
 package handlers_test
 
 import (
+	"bytes"
 	"context"
 	"net/http"
 	"strings"
@@ -344,6 +345,148 @@ func TestDeleteBook_DoesNotRemoveFileStillReferencedOutsideTheBook(t *testing.T)
 	}
 	if downloadRec.Body.Len() == 0 {
 		t.Error("outside piece's file is empty after the book's deletion")
+	}
+}
+
+// TestUploadBookCover_OverridesDerivedThumbnail covers the core contract of
+// the custom cover feature (2026-08-21, direct instruction): once set, GET
+// /api/books/{id}/cover must serve the custom image, not the first-page-of-
+// PDF thumbnail — even though this book has a perfectly good real file.
+func TestUploadBookCover_OverridesDerivedThumbnail(t *testing.T) {
+	h := newTestServer(t)
+	bookID, _ := uploadBook(t, h, "book.pdf", 3)
+
+	var before bookResponse
+	decodeData(t, doJSON(t, h, http.MethodGet, apiBooksURL(bookID), nil), &before)
+	if before.HasCustomCover {
+		t.Fatalf("hasCustomCover = true before any cover was uploaded")
+	}
+
+	pngRec := recordRequest(h, httptestGet(t, apiBooksURL(bookID)+"/cover"))
+	if pngRec.Code != http.StatusOK {
+		t.Fatalf("GET cover before upload (should fall back to page-1 thumbnail): status %d", pngRec.Code)
+	}
+	derivedThumbnailBytes := pngRec.Body.Bytes()
+
+	dir := t.TempDir()
+	coverPath := dir + "/cover.png"
+	writeFixturePNG(t, coverPath, [3]byte{63, 92, 63})
+	uploadRec := recordRequest(h, multipartUpload(t, apiBooksURL(bookID)+"/cover", "cover.png", readAll(t, coverPath)))
+	if uploadRec.Code != http.StatusOK {
+		t.Fatalf("upload cover: status %d, body %s", uploadRec.Code, uploadRec.Body.String())
+	}
+	var after bookResponse
+	decodeData(t, uploadRec, &after)
+	if !after.HasCustomCover {
+		t.Errorf("hasCustomCover = false after uploading a cover, want true")
+	}
+
+	coverRec := recordRequest(h, httptestGet(t, apiBooksURL(bookID)+"/cover"))
+	if coverRec.Code != http.StatusOK {
+		t.Fatalf("GET cover after upload: status %d", coverRec.Code)
+	}
+	if ct := coverRec.Header().Get("Content-Type"); ct != "image/png" {
+		t.Errorf("cover Content-Type = %q, want image/png", ct)
+	}
+	if bytes.Equal(coverRec.Body.Bytes(), derivedThumbnailBytes) {
+		t.Error("cover after upload is byte-identical to the derived page-1 thumbnail — the custom cover isn't actually being served")
+	}
+	if !bytes.Equal(coverRec.Body.Bytes(), readAll(t, coverPath)) {
+		t.Error("cover after upload doesn't match the uploaded image's own bytes")
+	}
+}
+
+// TestUploadBookCover_RejectsNonImageFile mirrors stageUpload's own
+// "verify, don't trust the upload" posture for book/piece PDFs — a
+// non-image file must be rejected with a validation error, not silently
+// stored as an unreadable "cover".
+func TestUploadBookCover_RejectsNonImageFile(t *testing.T) {
+	h := newTestServer(t)
+	bookID, _ := uploadBook(t, h, "book.pdf", 1)
+
+	rec := recordRequest(h, multipartUpload(t, apiBooksURL(bookID)+"/cover", "not-an-image.txt", []byte("hello, this is not an image")))
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("uploading a non-image as a cover: status %d, want 400", rec.Code)
+	}
+
+	var book bookResponse
+	decodeData(t, doJSON(t, h, http.MethodGet, apiBooksURL(bookID), nil), &book)
+	if book.HasCustomCover {
+		t.Error("hasCustomCover = true after a rejected non-image upload")
+	}
+}
+
+// TestGetBookCover_404sWhenNoFileAndNoCustomCover covers a manually created
+// book (migration 00014, no original PDF) with no custom cover set either —
+// the frontend's "No-File Cover" placeholder case.
+func TestGetBookCover_404sWhenNoFileAndNoCustomCover(t *testing.T) {
+	h := newTestServer(t)
+	createRec := doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
+		"bookTitle": "No File Book",
+		"composer":  "Someone",
+	})
+	var created bookResponse
+	decodeData(t, createRec, &created)
+
+	rec := recordRequest(h, httptestGet(t, apiBooksURL(created.ID)+"/cover"))
+	if rec.Code != http.StatusNotFound {
+		t.Errorf("GET cover for a fileless book with no custom cover: status %d, want 404", rec.Code)
+	}
+}
+
+// TestDeleteBookCover_RevertsToDerivedThumbnail covers removal: after
+// deleting the custom cover, hasCustomCover flips back to false and GET
+// /cover falls back to the page-1 thumbnail again — not a 404.
+func TestDeleteBookCover_RevertsToDerivedThumbnail(t *testing.T) {
+	h := newTestServer(t)
+	bookID, _ := uploadBook(t, h, "book.pdf", 2)
+
+	dir := t.TempDir()
+	coverPath := dir + "/cover.png"
+	writeFixturePNG(t, coverPath, [3]byte{200, 50, 50})
+	recordRequest(h, multipartUpload(t, apiBooksURL(bookID)+"/cover", "cover.png", readAll(t, coverPath)))
+
+	deleteRec := doJSON(t, h, http.MethodDelete, apiBooksURL(bookID)+"/cover", nil)
+	if deleteRec.Code != http.StatusOK {
+		t.Fatalf("delete cover: status %d, body %s", deleteRec.Code, deleteRec.Body.String())
+	}
+	var after bookResponse
+	decodeData(t, deleteRec, &after)
+	if after.HasCustomCover {
+		t.Error("hasCustomCover = true after deleting the cover")
+	}
+
+	coverRec := recordRequest(h, httptestGet(t, apiBooksURL(bookID)+"/cover"))
+	if coverRec.Code != http.StatusOK {
+		t.Errorf("GET cover after delete (should fall back to page-1 thumbnail): status %d", coverRec.Code)
+	}
+	if bytes.Equal(coverRec.Body.Bytes(), readAll(t, coverPath)) {
+		t.Error("cover after delete still matches the removed custom image")
+	}
+}
+
+// TestUploadBookCover_ReplaceSwapsContent covers uploading a second cover
+// over an already-set one: the newer image must be what's served, not the
+// first.
+func TestUploadBookCover_ReplaceSwapsContent(t *testing.T) {
+	h := newTestServer(t)
+	bookID, _ := uploadBook(t, h, "book.pdf", 1)
+
+	dir := t.TempDir()
+	firstPath := dir + "/first.png"
+	secondPath := dir + "/second.png"
+	writeFixturePNG(t, firstPath, [3]byte{10, 20, 30})
+	writeFixturePNG(t, secondPath, [3]byte{200, 210, 220})
+
+	recordRequest(h, multipartUpload(t, apiBooksURL(bookID)+"/cover", "first.png", readAll(t, firstPath)))
+	recordRequest(h, multipartUpload(t, apiBooksURL(bookID)+"/cover", "second.png", readAll(t, secondPath)))
+
+	coverRec := recordRequest(h, httptestGet(t, apiBooksURL(bookID)+"/cover"))
+	if coverRec.Code != http.StatusOK {
+		t.Fatalf("GET cover after replace: status %d", coverRec.Code)
+	}
+	if !bytes.Equal(coverRec.Body.Bytes(), readAll(t, secondPath)) {
+		t.Error("cover after replace doesn't match the second (newest) uploaded image")
 	}
 }
 

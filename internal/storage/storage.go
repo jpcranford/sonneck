@@ -70,6 +70,16 @@ func PiecePath(dataDir, hash string) string {
 	return filepath.Join(dataDir, "library", "pieces", hash+".pdf")
 }
 
+// CoverImagePath returns the permanent path for a Book's custom cover image
+// (migration 00018: library/covers/<sha256-hash>). No extension, unlike
+// Book/PiecePath — a cover image's format varies (PNG/JPEG/GIF) and is
+// never served as a raw static file (always through handleGetBookCover,
+// which sets Content-Type from the book's own stored coverImageContentType
+// column), so there's nothing an extension would need to communicate here.
+func CoverImagePath(dataDir, hash string) string {
+	return filepath.Join(dataDir, "library", "covers", hash)
+}
+
 // MoveIntoPlace renames tempPath to finalPath, creating parent directories
 // as needed. Storage is content-addressed by hash, so if finalPath already
 // exists, its content is already identical by construction — the temp file

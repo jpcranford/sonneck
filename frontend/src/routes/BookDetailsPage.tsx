@@ -1,22 +1,25 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   IconArrowLeft,
+  IconCamera,
+  IconEditFilled,
   IconExternalLink,
+  IconFileTypePdf,
   IconFileX,
   IconHeartFilled,
   IconLayoutGridFilled,
   IconLayoutListFilled,
-  IconPencil,
 } from '@tabler/icons-react'
-import { getBook, getBookFileUrl, getBookPageThumbnailUrl } from '../api/books'
+import { getBook, getBookCoverUrl, getBookFileUrl, removeBookCover, uploadBookCover } from '../api/books'
 import { getPieceThumbnailUrl, searchPieces } from '../api/pieces'
 import { ApiError } from '../api/client'
 import type { Piece } from '../api/types'
 import { bookComposerPart } from '../lib/formatBookMeta'
 import { hyphenateISBN } from '../lib/isbn'
 import { ClickableCard } from '../components/ClickableCard'
+import { ContextMenu } from '../components/ContextMenu'
 import { EditBookModal } from '../components/EditBookModal'
 import { PieceContextMenu } from '../components/PieceContextMenu'
 import { TagPills } from '../components/TagPills'
@@ -200,9 +203,11 @@ function PieceList({ pieces }: { pieces: Piece[] }) {
 export function BookDetailsPage() {
   const { id } = useParams<{ id: string }>()
   const bookId = Number(id)
+  const queryClient = useQueryClient()
 
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [bookEditOpen, setBookEditOpen] = useState(false)
+  const coverFileInputRef = useRef<HTMLInputElement>(null)
 
   const {
     data: book,
@@ -219,6 +224,77 @@ export function BookDetailsPage() {
     queryFn: () => searchPieces({ sourceBookId: bookId }),
     enabled: !!book,
   })
+
+  // Custom cover upload (2026-08-21, direct instruction) — "D" (header
+  // toolbar button) and "E" (right-click/long-press the cover) both call
+  // openCoverFilePicker, same shared-trigger shape the mockup review
+  // settled on. Applies regardless of whether the book already has a real
+  // file. Invalidates ['books'] too, not just this one ['book', bookId] —
+  // the Books library grid reads the same cover via getBookCoverUrl.
+  const uploadCoverMutation = useMutation({
+    mutationFn: (file: File) => uploadBookCover(bookId, file),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(['book', bookId], updated)
+      queryClient.invalidateQueries({ queryKey: ['books'] })
+    },
+    onError: (error) => {
+      window.alert(error instanceof ApiError ? error.message : 'Could not upload this cover image.')
+    },
+  })
+
+  const removeCoverMutation = useMutation({
+    mutationFn: () => removeBookCover(bookId),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(['book', bookId], updated)
+      queryClient.invalidateQueries({ queryKey: ['books'] })
+    },
+    onError: (error) => {
+      window.alert(error instanceof ApiError ? error.message : 'Could not remove this cover image.')
+    },
+  })
+
+  function openCoverFilePicker() {
+    coverFileInputRef.current?.click()
+  }
+
+  function handleCoverFileChosen(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    if (file) uploadCoverMutation.mutate(file)
+    event.target.value = ''
+  }
+
+  const coverContextMenuItems = [
+    { label: 'Change Cover Image', onSelect: openCoverFilePicker },
+    ...(book?.hasCustomCover
+      ? [{ label: 'Remove Cover Image', onSelect: () => removeCoverMutation.mutate(), destructive: true }]
+      : []),
+  ]
+
+  // Keyboard shortcut: E opens the edit menu — same convention as
+  // PiecePage.tsx's own E/F shortcuts (matches the header pencil button,
+  // just a faster path to it). No favorite-toggle equivalent here since
+  // Book has no favorite field. Skipped while the modal is already open
+  // (its own fields should own keystrokes then) or while focus is in any
+  // text-entry element, so typing "e" elsewhere on the page is never
+  // intercepted. `repeat` guards against a held-down key re-opening the
+  // (already-open, so harmless, but pointless) modal on every repeat tick.
+  useEffect(() => {
+    if (!book || bookEditOpen) return
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return
+      const target = event.target as HTMLElement | null
+      const tag = target?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target?.isContentEditable) {
+        return
+      }
+      if (event.key.toLowerCase() === 'e') {
+        event.preventDefault()
+        setBookEditOpen(true)
+      }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [book, bookEditOpen])
 
   const notFound = bookError instanceof ApiError && bookError.code === 'NOT_FOUND'
 
@@ -266,10 +342,70 @@ export function BookDetailsPage() {
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-6 md:p-8">
-      <Link to="/books" className="inline-flex w-fit items-center gap-1.5 text-sm text-ink-soft hover:text-ink">
-        <IconArrowLeft size={24} />
-        Back to Books
-      </Link>
+      {/* Edit / Change Cover / Open Book PDF live in this top toolbar row
+          (2026-08-21, direct instruction) — moved up from the header card,
+          mirroring Piece View's own toolbar (PiecePage.tsx): icon-only
+          buttons first (Open Book PDF, Change Cover — identical
+          bordered-square treatment), one labeled button last (Edit Book). */}
+      <div className="flex items-center justify-between gap-4">
+        <Link to="/books" className="inline-flex w-fit items-center gap-1.5 text-sm text-ink-soft hover:text-ink">
+          <IconArrowLeft size={24} />
+          Back to Books
+        </Link>
+        {book && (
+          <div className="flex shrink-0 items-stretch gap-2.5">
+            {book.fileHash ? (
+              <a
+                href={getBookFileUrl(book.id)}
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Open Book PDF"
+                title="Open Book PDF"
+                className="flex w-[38px] items-center justify-center rounded-md border border-border bg-paper-raised text-ink-soft hover:border-accent hover:text-ink"
+              >
+                <IconFileTypePdf size={16} />
+              </a>
+            ) : (
+              <span
+                title="No original file on record"
+                // text-[#aea9a4] is a solid pre-blend of ink-soft at 50%
+                // over this span's own bg-paper-raised (white) background —
+                // not a translucent text-ink-soft/50 utility. Standing rule
+                // (feedback-icon-color-preblend): IconFileTypePdf is a
+                // multi-path icon, so a translucent color would re-blend
+                // (and visibly darken) at every path overlap.
+                className="flex w-[38px] cursor-not-allowed items-center justify-center rounded-md border border-border bg-paper-raised text-[#aea9a4]"
+              >
+                <IconFileTypePdf size={16} />
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={openCoverFilePicker}
+              aria-label="Change cover image"
+              title="Change cover image"
+              className="flex w-[38px] items-center justify-center rounded-md border border-border bg-paper-raised text-ink-soft hover:border-accent hover:text-ink"
+            >
+              <IconCamera size={16} />
+            </button>
+            <input
+              ref={coverFileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleCoverFileChosen}
+            />
+            <button
+              type="button"
+              onClick={() => setBookEditOpen(true)}
+              className="flex items-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-sm text-ink hover:border-accent"
+            >
+              <IconEditFilled size={16} />
+              Edit Book
+            </button>
+          </div>
+        )}
+      </div>
 
       {bookLoading && <p className="text-ink-soft">Loading…</p>}
 
@@ -294,67 +430,46 @@ export function BookDetailsPage() {
               taller than the cover, distorting its shape. */}
           <div className="overflow-hidden rounded-2xl border border-border bg-paper-raised shadow-sm">
             <div className="flex items-start gap-6 p-7">
-              <div className="aspect-[2/3] w-[110px] shrink-0 overflow-hidden rounded-md border border-border bg-paper-sunken">
-                {book.fileHash ? (
-                  <img
-                    src={getBookPageThumbnailUrl(book.id, 1)}
-                    alt=""
-                    className="h-full w-full object-cover object-top"
-                  />
-                ) : (
-                  // file-x on flat-sunken, locked in the "No-File Cover" design
-                  // review. Solid pre-blended hex, not a translucent opacity
-                  // utility — see the matching comment in BookGridCard.tsx.
-                  <div className="flex h-full w-full items-center justify-center">
-                    <IconFileX size={28} className="text-[#aea8a0]" />
-                  </div>
-                )}
-              </div>
+              {/* Custom cover upload (2026-08-21, direct instruction) — "E"
+                  from the 6-option comparison: right-click (desktop) or
+                  long-press (touch) the cover to change/remove it, same
+                  ContextMenu component pieces already use. hideTriggerButton
+                  since "D" (the top toolbar's camera button) already covers
+                  the always-visible/discoverable path for the same action —
+                  no "⋯" icon needed here too. hasCustomCover joins fileHash
+                  as a second possible cover source; getBookCoverUrl resolves
+                  which one server-side. */}
+              <ContextMenu items={coverContextMenuItems} hideTriggerButton>
+                <div className="aspect-[2/3] w-[110px] shrink-0 overflow-hidden rounded-md border border-border bg-paper-sunken">
+                  {book.hasCustomCover || book.fileHash ? (
+                    <img
+                      src={getBookCoverUrl(book.id, book.coverImageHash ?? book.fileHash)}
+                      alt=""
+                      className="h-full w-full object-cover object-top"
+                    />
+                  ) : (
+                    // file-x on flat-sunken, locked in the "No-File Cover" design
+                    // review. Solid pre-blended hex, not a translucent opacity
+                    // utility — see the matching comment in BookGridCard.tsx.
+                    <div className="flex h-full w-full items-center justify-center">
+                      <IconFileX size={28} className="text-[#aea8a0]" />
+                    </div>
+                  )}
+                </div>
+              </ContextMenu>
               <div className="min-w-0 flex-1">
-                <div className="mb-2 flex items-start justify-between gap-4">
-                  <div>
-                    <h1 className="font-display text-[1.35rem] font-medium text-ink">
-                      {book.bookTitle}
-                      {book.workOpusNumber ? ` (${book.workOpusNumber})` : ''}
-                    </h1>
-                    <p className="text-[0.92rem] text-ink-soft">
-                      {[bookComposerPart(book), book.yearWritten].filter(Boolean).join(' • ')}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 items-stretch gap-2.5">
-                    <button
-                      type="button"
-                      onClick={() => setBookEditOpen(true)}
-                      aria-label="Edit book properties"
-                      className="flex w-[38px] items-center justify-center rounded-md border border-border bg-paper-raised text-ink-soft hover:border-accent hover:text-ink"
-                    >
-                      <IconPencil size={16} />
-                    </button>
-                    {book.fileHash ? (
-                      <a
-                        href={getBookFileUrl(book.id)}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex items-center gap-1.5 rounded-md bg-accent px-4 py-2 font-display text-sm text-white hover:bg-accent/90"
-                      >
-                        <IconExternalLink size={16} />
-                        Open Book PDF
-                      </a>
-                    ) : (
-                      <span
-                        title="No original file on record"
-                        // text-[#e8ece8] is a solid pre-blend of white/70
-                        // against this span's own bg-accent/40-over-card
-                        // background (not the icon's opacity alone) — see
-                        // feedback-icon-color-preblend; icon+text share one
-                        // color here since IconExternalLink is multi-path.
-                        className="flex cursor-not-allowed items-center gap-1.5 rounded-md bg-accent/40 px-4 py-2 font-display text-sm text-[#e8ece8]"
-                      >
-                        <IconExternalLink size={16} />
-                        Open Book PDF
-                      </span>
-                    )}
-                  </div>
+                {/* Edit/Change Cover/Open Book PDF moved to the top toolbar
+                    above (2026-08-21) — this row is now just the title, no
+                    longer needs its own justify-between wrapper since
+                    there's nothing left to push to the opposite side. */}
+                <div className="mb-2">
+                  <h1 className="font-display text-[1.35rem] font-medium text-ink">
+                    {book.bookTitle}
+                    {book.workOpusNumber ? ` (${book.workOpusNumber})` : ''}
+                  </h1>
+                  <p className="text-[0.92rem] text-ink-soft">
+                    {[bookComposerPart(book), book.yearWritten].filter(Boolean).join(' • ')}
+                  </p>
                 </div>
 
                 {(book.sheetType || book.instruments.length > 0) && (

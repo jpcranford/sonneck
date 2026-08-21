@@ -8,6 +8,9 @@ package testutil
 import (
 	"bytes"
 	"fmt"
+	"image"
+	"image/color"
+	"image/png"
 	"os"
 	"strings"
 	"testing"
@@ -52,5 +55,32 @@ func WriteFixturePDF(t *testing.T, path string, pageCount int) {
 
 	if err := os.WriteFile(path, buf.Bytes(), 0o644); err != nil {
 		t.Fatalf("writing fixture PDF: %v", err)
+	}
+}
+
+// WriteFixturePNG writes a tiny real PNG (solid fill, r/g/b as given) to
+// path — for the book cover-image upload tests (handleUploadBookCover),
+// which validate the upload via image.DecodeConfig and so need a file that
+// actually decodes as an image, not just PNG-shaped bytes. rgb varies the
+// fill color between calls so two fixture images produce different SHA-256
+// hashes (content-addressed storage, same "distinct content per fixture"
+// reasoning as WriteFixturePDF's own per-page marker).
+func WriteFixturePNG(t *testing.T, path string, rgb [3]byte) {
+	t.Helper()
+
+	img := image.NewRGBA(image.Rect(0, 0, 4, 4))
+	fill := color.RGBA{R: rgb[0], G: rgb[1], B: rgb[2], A: 255}
+	for y := 0; y < 4; y++ {
+		for x := 0; x < 4; x++ {
+			img.Set(x, y, fill)
+		}
+	}
+
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		t.Fatalf("encoding fixture PNG: %v", err)
+	}
+	if err := os.WriteFile(path, buf.Bytes(), 0o644); err != nil {
+		t.Fatalf("writing fixture PNG: %v", err)
 	}
 }

@@ -92,6 +92,15 @@ export interface Book {
   // library view's "New Book" button) has no underlying file.
   originalFilename: string | null
   fileHash: string | null
+  // True when a manually uploaded cover image (backend migration 00018)
+  // overrides the derived first-page-of-PDF thumbnail — independent of
+  // fileHash. Render an <img src={getBookCoverUrl(id, ...)}> when this OR
+  // fileHash is set, the "No-File Cover" placeholder otherwise; the
+  // backend resolves which source to actually serve.
+  hasCustomCover: boolean
+  // Exposed so getBookCoverUrl can be cache-busted — see that function's
+  // own comment for why the URL needs a version key at all.
+  coverImageHash: string | null
   importedAt: string
   pieceCount: number
 }
