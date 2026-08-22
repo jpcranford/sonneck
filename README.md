@@ -41,7 +41,6 @@
   wanting a badge to light up.
 -->
 <p align="center">
-  <a href="https://github.com/jpcranford/sonneck/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/jpcranford/sonneck"></a>
   <a href="https://github.com/jpcranford/sonneck/blob/main/go.mod"><img alt="Go version" src="https://img.shields.io/github/go-mod/go-version/jpcranford/sonneck"></a>
   <a href="https://github.com/jpcranford/sonneck/actions/workflows/docker-publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/jpcranford/sonneck/docker-publish.yml"></a>
   <a href="https://github.com/jpcranford/sonneck/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/jpcranford/sonneck"></a>
