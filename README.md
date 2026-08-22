@@ -1,18 +1,75 @@
-# Sonneck
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset=".github/assets/wordmark-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset=".github/assets/wordmark-light.svg">
+    <img alt="Sonneck" src=".github/assets/wordmark-light.svg" width="360">
+  </picture>
+</p>
+
+<!--
+  Badge row (2026-08-22, direct instruction). ALL FIVE currently render as
+  broken/"invalid" shields, for two independent reasons — worth
+  distinguishing so this comment doesn't read as stale once the first
+  reason goes away:
+    1. The repo is private (confirmed directly, 2026-08-22). shields.io's
+       badge requests are unauthenticated — they can't read ANYTHING off a
+       private GitHub repo, so even License and Go version (which need
+       nothing but LICENSE / go.mod to exist, both already true) won't
+       resolve until this repo goes public. This affects all five badges
+       equally.
+    2. Independent of (1), the last three are also forward-looking
+       placeholders for the eventual Docker/CI setup described in
+       CLAUDE.md (single multi-arch image, built via GitHub Actions) — they
+       won't resolve even after this repo is public, until that
+       infrastructure exists too:
+         - Build status needs a workflow at
+           .github/workflows/docker-publish.yml (rename this badge's URL to
+           match if the real workflow ends up named differently).
+         - Latest release needs at least one GitHub Release/tag to exist.
+         - Downloads needs a Release with a real file attached — GHCR
+           doesn't expose pull counts via any public API, so this is the
+           closest thing to a live counter GHCR-based distribution can
+           offer. The natural fit: publish docker-compose.yml (which the
+           Installation section below already tells people to download) as
+           a Release asset instead of linking the raw main-branch file,
+           giving it a stable versioned URL *and* making this badge real at
+           the same time.
+  Don't build the Dockerfile/workflow/release just to make these resolve —
+  that's real Docker/CI work, gated separately (see project memory: hold
+  off until v1 is prod-ready and human-reviewed). Making the repo public is
+  an even bigger, separate call — not something to do as a side effect of
+  wanting a badge to light up.
+-->
+<p align="center">
+  <a href="https://github.com/jpcranford/sonneck/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/jpcranford/sonneck"></a>
+  <a href="https://github.com/jpcranford/sonneck/blob/main/go.mod"><img alt="Go version" src="https://img.shields.io/github/go-mod/go-version/jpcranford/sonneck"></a>
+  <a href="https://github.com/jpcranford/sonneck/actions/workflows/docker-publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/jpcranford/sonneck/docker-publish.yml"></a>
+  <a href="https://github.com/jpcranford/sonneck/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/jpcranford/sonneck"></a>
+  <a href="https://github.com/jpcranford/sonneck/releases"><img alt="Downloads" src="https://img.shields.io/github/downloads/jpcranford/sonneck/total"></a>
+</p>
 
 A self-hosted library organizer for sheet music: import, tag, browse, and download pieces and books. Made by a musician, for musicians.
 
 ## Features
 ((to be filled in and styled consistently))
 - **Upload your music.** Upload individual pieces or entire books! Built-in book splitter and metadata inheritance makes quick work of prepping pieces to be found later.
-- **Track your practice.** Ever forget you were learning a piece and rediscover it weeks later at the bottom of your bag? No more! Use the practice status to track want to play, in progress, and even the stuff you never want to touch again! Take *that*, [Sorabji](https://www.youtube.com/watch?v=_OrAewTxBrc)!
+- **Track your practice.** Ever forget you were learning a piece and rediscover it weeks later at the bottom of your bag? No more! Use the practice status and filter views to track what you want to play, what you have in progress, and even the stuff you never want to touch again! Take *that*, [Sorabji](https://www.youtube.com/watch?v=_OrAewTxBrc)!
 - **Full CSV export.** Even if Sonneck isn't the right place for your music, the information you enter (and the time you take doing so) is still yours.
 
 ## Installation
-I hope it goes without saying that this runs **on your own hardware** at your own assumed risk. No code is infallible; in case of breakage, open an issue and I’ll take a look.
-
 ### Docker Compose (recommended)
-There's a `docker-compose.yml` file in this repo for you to use, complete with helpful comments. Download the file, tailor it how you want, then run `docker compose up -d` in the directory containing it. The compose file takes care of the fiddly bits like remembering where you put your data folder and mounting it to the right place in the container.
+There's a `docker-compose.yml` file in this repo, complete with helpful comments explaining things.
+
+Download the file, tailor it how you want, then run:
+
+```sh
+cd /wherever # containing folder of docker-compose.yml
+docker compose up -d
+```
+
+The compose file takes care of the fiddly bits like remembering where you put your data folder and mounting it to the right place in the container.
+
+To quit the program, just use `docker compose down`. Easy peasy.
 
 ***But what about `docker run`?*** I'm sure there's some web tool out there that can helpfully convert the docker compose to a run command. Said tool would be more accurate than I.
 
@@ -79,6 +136,8 @@ Sonneck has **no login, no access control of its own.** It's currently built for
 - **Auth support.** Lock your collection behind a simple password, or utilize a separate OIDC system for multi-user support. User notes, annotations, and tags stay saved per-user.
 - **Public domain badge.** Set your country as an env var and the likely PD/copyright status will be calculated per-piece, with the ability to manually set it yourself. Scaffolding for this is already in place.
 - **Dark mode.** Dear God, my eyes.
+- **IMSLP metadata import.** Why spend the effort to manually input the info when you can just autofill from the website?
+- **Configurable citation format.** Just in case you don't like the defaults.
 - Support for a folder of image files to be uploaded/assembled into pieces
 - Offline mode? for remote gigs? Still thinking about how to accomplish this one, contributions would be welcome.
 - Server-side printer support? Unsure of this one, but essentially the server would have a dedicated printer with the same settings saved, boiling a whole process down into a simple "Send to Printer" button.
