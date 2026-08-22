@@ -15,6 +15,7 @@ import { UploadBookAboutMockup } from './routes/UploadBookAboutMockup'
 import { UploadBookSplitMockup } from './routes/UploadBookSplitMockup'
 import { UploadBookTitlesMockup } from './routes/UploadBookTitlesMockup'
 import { UploadBookConfirmMockup } from './routes/UploadBookConfirmMockup'
+import { MobileNavDrawerMockup } from './routes/MobileNavDrawerMockup'
 import { ComposersPage } from './routes/ComposersPage'
 import { FavoritesPage } from './routes/FavoritesPage'
 import { PracticingPage } from './routes/PracticingPage'
@@ -50,6 +51,12 @@ function App() {
         <Route path="setlists/:id" element={<SetlistPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
+      {/* Not nested inside <AppShell /> — this mockup replaces AppShell's
+          own mobile chrome (the sidebar rail), so nesting it inside the
+          real AppShell would show the old rail wrapped around it. It
+          renders the real <Sidebar /> itself for desktop, so nothing about
+          desktop rendering is duplicated or at risk of drifting. */}
+      <Route path="mockup/mobile-nav-drawer" element={<MobileNavDrawerMockup />} />
     </Routes>
   )
 }

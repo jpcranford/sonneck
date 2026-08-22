@@ -1,11 +1,22 @@
+import { useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
+import { MobileNavDrawer, MobileNavTopBar } from './MobileNav'
 import { SonneckMark } from './SonneckMark'
 
 export function AppShell() {
+  // Owned here, not inside MobileNav itself, because the top bar and the
+  // drawer/scrim render in two different places in this tree (see
+  // MobileNav.tsx's own comment for why) and need to share one state.
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
+
   return (
     <div className="flex h-screen overflow-hidden bg-paper text-ink">
-      <Sidebar />
+      {/* Desktop only — MobileNav (top bar + drawer, its own `md:hidden`
+          guards) covers everything below the md breakpoint instead. */}
+      <div className="hidden md:block">
+        <Sidebar />
+      </div>
       {/* This div, not <main>, is the scroll container — footer scrolls
           along with the routed content as one unit (reaches it at the end
           of a long list), while the sidebar (a flex sibling, not inside
@@ -27,6 +38,7 @@ export function AppShell() {
           calls for horizontal scrolling anywhere in the main content
           column, so hidden is correct here, not auto. */}
       <div className="flex min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto">
+        <MobileNavTopBar onOpen={() => setMobileNavOpen(true)} />
         <main className="flex flex-1 flex-col">
           <Outlet />
         </main>
@@ -118,6 +130,7 @@ export function AppShell() {
           </a>
         </footer>
       </div>
+      <MobileNavDrawer open={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
     </div>
   )
 }

@@ -1,44 +1,11 @@
-import { useState, type ComponentType } from 'react'
+import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import {
-  IconLibrary,
-  IconBooks,
-  IconUser,
   IconUserFilled,
-  IconCloudUpload,
-  IconHeart,
-  IconCircleHalf2,
   IconLayoutSidebarLeftCollapseFilled,
   IconLayoutSidebarLeftExpandFilled,
 } from '@tabler/icons-react'
-
-interface NavItem {
-  to: string
-  label: string
-  icon: ComponentType<{ size?: number; className?: string }>
-}
-
-const NAV_ITEMS: NavItem[] = [
-  { to: '/', label: 'Library', icon: IconLibrary },
-  { to: '/composers', label: 'Composers', icon: IconUser },
-  { to: '/books', label: 'Books', icon: IconBooks },
-  { to: '/upload', label: 'Upload', icon: IconCloudUpload },
-]
-
-// Personal/filtered views of the library, not browsing surfaces in their
-// own right — split below the divider from the primary nav above.
-const SECONDARY_NAV_ITEMS: NavItem[] = [
-  { to: '/favorites', label: 'Favorites', icon: IconHeart },
-  // Same icon as the "Learning" practice-status pill (PracticeStatusIcon,
-  // 2026-08-18 icon pass) — this nav item is literally about practicing
-  // pieces, so it borrows that icon rather than the generic IconProgress
-  // it used before.
-  { to: '/practicing', label: 'Currently Practicing', icon: IconCircleHalf2 },
-]
-
-// No setlist backend yet (design doc §13) — this stays empty until that lands,
-// but the section itself is scaffolded now per the locked shell scope.
-const SETLISTS: { id: string; name: string }[] = []
+import { NAV_ITEMS, SECONDARY_NAV_ITEMS, SETLISTS, type NavItem } from '../lib/navItems'
 
 // Shared between the primary nav group and the secondary (Favorites/
 // Currently Practicing) group below the divider — same link styling
@@ -77,12 +44,13 @@ function NavItemsList({ items, collapsed }: { items: NavItem[]; collapsed: boole
 }
 
 export function Sidebar() {
-  // Defaults collapsed on narrow viewports — expanded (256px) eats most of a
-  // phone screen otherwise. One-time check on mount, not a resize listener:
-  // this is a v1 "cheap habit" per CLAUDE.md's device-aware conventions, not
-  // a fully responsive redesign — desktop windows aren't typically resized
-  // across this breakpoint mid-session.
-  const [collapsed, setCollapsed] = useState(() => window.innerWidth < 768)
+  // Always starts expanded — this component is desktop-only now (2026-08-22:
+  // AppShell renders it inside a `hidden md:block` wrapper, with MobileNav
+  // handling everything below the md breakpoint instead), so there's no
+  // longer a narrow-viewport case to default away from. The collapse
+  // toggle below is a separate, persistent desktop preference, unrelated
+  // to this.
+  const [collapsed, setCollapsed] = useState(false)
 
   return (
     <aside

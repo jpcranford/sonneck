@@ -25,6 +25,29 @@
 // Unlike SonneckMark, no per-size weight variants exist here — this has
 // only ever been shown at one size/weight (plain fill) so there's nothing
 // to parameterize until a second real use case needs one.
+//
+// KNOWN ISSUE, confirmed 2026-08-22, not yet fixed: this filter rasterizes
+// at the element's actual on-screen pixel size, so at small display sizes
+// (e.g. the mobile nav's 32-36px-tall wordmark) the dilate over-thickens
+// already-thin strokes into a blobby smudge — confirmed via a size sweep,
+// visible under ~48px. A same-day attempt to fix this by flattening the
+// filter into real vector path geometry (rendering at high resolution,
+// tracing back to a path with potrace, or — after that produced a real
+// defect: a solid wedge closing off the k's loop counter — computing an
+// exact polygon offset via js-angusj-clipper/Clipper2 instead of
+// raster-tracing) was reverted, direct instruction, after discovering via
+// rigorous flood-fill pixel analysis (not visual inspection, which proved
+// unreliable for this specific detail across multiple rounds) that the
+// k's loop has never been a true fully-enclosed hole in this letterform —
+// not in either flattening attempt, and not even in the original,
+// completely unprocessed source path. It's an extremely tight "bay" that
+// reads as a closed loop but isn't topologically separate from the
+// surrounding background, and two different automated surgical fixes
+// (pushing the boundary points apart, boolean-subtracting a wedge at the
+// pinch point) produced inconsistent results under pixel-level
+// verification. Revisit as a deliberate, hand-drawn edit to the k's path
+// specifically, checked with flood-fill pixel analysis at every attempt —
+// not another automated pass over the whole glyph.
 export function SonneckWordmark({ className }: { className?: string }) {
   return (
     <svg

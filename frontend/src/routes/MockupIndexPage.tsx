@@ -51,6 +51,11 @@ const MOCKUPS = [
     name: 'Upload — Ready to Import',
     note: 'Book Upload Wizard (§5), screen 6 of 6 — read-only review, real stripe-animation import, and the success screen.',
   },
+  {
+    to: '/mockup/mobile-nav-drawer',
+    name: 'Mobile Nav — Left Drawer',
+    note: 'Replaces the sidebar’s permanent mobile icon rail with a top bar + slide-in drawer below 768px. Not nested in AppShell — renders the real Sidebar for desktop, a new top bar + drawer for mobile.',
+  },
 ]
 
 export function MockupIndexPage() {
