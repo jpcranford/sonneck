@@ -5,7 +5,13 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <meta name="theme-color" content="#3f5c3f" />
+    <!-- Matches --color-paper (see index.css's design tokens) so Safari's
+         chrome (status bar / home-indicator area) blends into the page
+         background instead of reading as a separate colored band —
+         confirmed via live testing, 2026-08-22: the accent green this was
+         previously set to created a visible seam against the app's
+         actual off-white body. -->
+    <meta name="theme-color" content="#fbfaf8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Sonneck</title>
   </head>
