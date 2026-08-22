@@ -48,7 +48,13 @@ export function PieceGridCard({ piece }: PieceGridCardProps) {
         to={`/pieces/${piece.id}`}
         className="flex flex-col overflow-hidden rounded-lg border border-border bg-paper-raised text-left transition-colors hover:border-accent"
       >
-        <div className="relative aspect-[180/132] w-full overflow-hidden bg-border">
+        {/* border-b hairline between thumbnail and info text (2026-08-21,
+            direct instruction) — tested first on Book Details' own grid
+            card (BookDetailsSample.tsx/BookDetailsPage.tsx), approved,
+            ported here. Previously nothing but whitespace separated the
+            two; relied entirely on the outer card border to read as "one
+            card." */}
+        <div className="relative aspect-[180/132] w-full overflow-hidden border-b border-border bg-border">
           <img
             src={getPieceThumbnailUrl(piece.id, piece.thumbnailPage)}
             alt=""

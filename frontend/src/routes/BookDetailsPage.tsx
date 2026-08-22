@@ -118,7 +118,11 @@ function PieceGrid({ pieces }: { pieces: Piece[] }) {
                 112px-wide card for three lines of text plus a badge; the
                 page range is the one fact worth keeping over the piece
                 count pagesLabel used to show. */}
-            <div className="relative aspect-[180/132] bg-border">
+            {/* border-b hairline between thumbnail and info text (2026-08-21,
+                direct instruction) — tested first on the mockup
+                (BookDetailsSample.tsx), approved, ported here and to the
+                Piece Library's own grid card (PieceGridCard.tsx). */}
+            <div className="relative aspect-[180/132] border-b border-border bg-border">
               <img
                 src={getPieceThumbnailUrl(piece.id, piece.thumbnailPage)}
                 alt=""

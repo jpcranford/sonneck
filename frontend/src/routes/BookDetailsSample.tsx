@@ -380,7 +380,14 @@ function PieceGrid({ pieces }: { pieces: SamplePiece[] }) {
               112px-wide card for three lines of text plus a badge; the
               page range is the one fact worth keeping over the piece
               count pagesLabel used to show. */}
-          <div className="relative aspect-[180/132] bg-white">
+          {/* border-b test (2026-08-21, direct instruction): a hairline
+              between the thumbnail and the info text below it — previously
+              nothing but whitespace separated the two, relying entirely on
+              the outer card border to read as "one card." Testing here
+              first (Book Details' own grid card) before touching the real
+              Piece Library cards (PieceGridCard.tsx) or Book Details'
+              real PieceGrid, per direct instruction. */}
+          <div className="relative aspect-[180/132] border-b border-border bg-white">
             <SheetThumb />
           </div>
           <div className="flex flex-col gap-0.5 px-2 py-1.5">
