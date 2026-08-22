@@ -30,15 +30,46 @@ export function AppShell() {
         <main className="flex flex-1 flex-col">
           <Outlet />
         </main>
-        <footer className="shrink-0 border-t border-border px-6 py-3">
+        {/* Swapped from a left-aligned, border-topped bar to an understated
+            centered block (2026-08-21, direct instruction) — chosen from a
+            6-option comparison (https://claude.ai/code/artifact/51d2a939-267c-4d66-a597-f6038ddcc830,
+            favicon 🪶). Went through Option E, then Option D (the wordmark
+            logo — reverted, felt "too much" even after lightening its
+            color twice), now Option C ("Inline mark + whisper-thin rule"):
+            a 32px hairline above a centered icon+text lockup — the S mark
+            (32px, "Light") vertically centered against the two wrapped
+            text lines beside it, the whole cluster centered as one unit
+            under the rule. No full-width border-top — just this one short
+            32px hairline plus generous whitespace (pt-10/pb-[38px], gap-3.5
+            between the rule and the lockup below it) does the separating
+            now.
+            Color: neither the artifact's plain ink-soft (judged too heavy
+            once seen live) nor the even-lighter #a49e98 tried for Option D
+            (judged too faint the other direction) — #847d75 below is a
+            solid pre-blend of ink-soft at 75% over this footer's actual
+            background (--color-paper #fbfaf8), landing deliberately between
+            those two rather than reusing either. Solid hex, not a
+            translucent text-ink-soft/75 utility, for the same reason as
+            the #a49e98 case before it: the S mark's stroke+fill layering
+            would re-blend unevenly at its own overlaps under real
+            translucency. color lives on the <a> itself with the mark/text
+            inheriting it (fill="currentColor" / plain color inheritance)
+            rather than each hardcoding its own color like the artifact
+            does — that's what makes hover:text-ink below actually take
+            effect on both at once, which the artifact's own CSS doesn't
+            (its child elements set color directly, so the hover rule on
+            its <a> is a no-op there — not worth carrying that bug into the
+            real build). */}
+        <footer className="flex shrink-0 flex-col items-center gap-3.5 px-6 pt-10 pb-[38px]">
+          <span aria-hidden="true" className="h-px w-8 bg-border" />
           <a
             href="https://github.com/jpcranford/sonneck"
             target="_blank"
             rel="noreferrer"
-            className="flex items-center gap-2 text-ink-soft hover:text-ink"
+            className="flex max-w-[240px] items-center gap-4 text-[#847d75] hover:text-ink"
           >
-            <SonneckMark weight="medium" className="size-[15px] shrink-0" />
-            <span className="font-display text-[0.72rem] italic">
+            <SonneckMark weight="light" className="size-8 shrink-0" />
+            <span className="font-display text-left text-[0.78rem] italic leading-[1.55]">
               Powered by Sonneck, an open-source music library
             </span>
           </a>
