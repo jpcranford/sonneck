@@ -338,11 +338,21 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
             </button>
             <div
               className={`overflow-hidden transition-[max-height] duration-200 ease-in-out ${
-                previewOpen ? 'max-h-[420px]' : 'max-h-0'
+                previewOpen ? 'max-h-[340px]' : 'max-h-0'
               }`}
             >
+              {/* Dialed back from 420px/280px (2026-08-21, direct instruction:
+                  "takes up too much of the modal") — the header sits in
+                  Modal's shrink-0 header slot, so its full open height comes
+                  straight out of the scrollable form body's share of the
+                  90vh dialog cap. 280px for the image alone was eating over
+                  a third of a typical viewport's available height before the
+                  fields (Title, Composer, everything else) got any room at
+                  all; 200px still reads a page clearly (it has its own
+                  overflow-y-auto if more detail is needed) without dominating
+                  the modal the way the original size did. */}
               <div className="flex flex-col gap-2 pt-3 pb-1">
-                <div className="max-h-[280px] overflow-y-auto rounded-md border border-border bg-paper-sunken">
+                <div className="max-h-[200px] overflow-y-auto rounded-md border border-border bg-paper-sunken">
                   <img
                     src={getPieceThumbnailUrl(piece.id, previewPage)}
                     alt={`Page ${previewPage} of ${piece.title}`}

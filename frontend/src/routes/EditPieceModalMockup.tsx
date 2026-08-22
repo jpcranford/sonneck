@@ -903,11 +903,14 @@ export function EditPieceModalMockup() {
               </button>
               <div
                 className={`overflow-hidden transition-[max-height] duration-200 ease-in-out ${
-                  previewOpen ? 'max-h-[420px]' : 'max-h-0'
+                  previewOpen ? 'max-h-[340px]' : 'max-h-0'
                 }`}
               >
+                {/* Dialed back from 420px/280px (2026-08-21) — kept in sync
+                    with the real EditPieceModal.tsx; see that file's comment
+                    for the full reasoning. */}
                 <div className="flex flex-col gap-2 pt-3 pb-1">
-                  <div className="max-h-[280px] overflow-y-auto rounded-md border border-border bg-paper-sunken">
+                  <div className="max-h-[200px] overflow-y-auto rounded-md border border-border bg-paper-sunken">
                     <SheetPagePlaceholder page={previewPage} />
                   </div>
                   <div className="flex justify-center">
