@@ -59,16 +59,21 @@ export function AppShell() {
             effect on both at once, which the artifact's own CSS doesn't
             (its child elements set color directly, so the hover rule on
             its <a> is a no-op there — not worth carrying that bug into the
-            real build). */}
+            real build).
+            SonneckMark's glyph itself swapped from Imperial Script to
+            Gwendolyn 700 (bold) the same day — see that component's own
+            comment for the full reasoning. The old weight="light" prop is
+            gone along with the stroke-width faking it drove, so this call
+            site no longer passes one. */}
         <footer className="flex shrink-0 flex-col items-center gap-3.5 px-6 pt-10 pb-[38px]">
           <span aria-hidden="true" className="h-px w-8 bg-border" />
           <a
             href="https://github.com/jpcranford/sonneck"
             target="_blank"
             rel="noreferrer"
-            className="flex max-w-[240px] items-center gap-4 text-[#847d75] hover:text-ink"
+            className="flex max-w-[240px] items-center gap-2 text-[#847d75] hover:text-ink"
           >
-            <SonneckMark weight="light" className="size-8 shrink-0" />
+            <SonneckMark className="size-8 shrink-0" />
             <span className="font-display text-left text-[0.78rem] italic leading-[1.55]">
               Powered by Sonneck, an open-source music library
             </span>

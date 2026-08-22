@@ -1,9 +1,24 @@
 <!--
-  Sonneck S mark — the standalone S from the wordmark, the opaque, full-bleed app-icon tile (Regular weight, 75% fill, Diagonal Light gradient) — no corner rounding baked in, since iOS/Android apply their own mask on top of whatever is provided.
-  Construction + the whole per-size weight/fill decision documented in the
+  Sonneck S mark — the standalone S from the wordmark, the opaque, full-bleed app-icon tile (75% fill, Diagonal Light gradient) — no corner rounding baked in, since iOS/Android apply their own mask on top of whatever is provided.
+  Glyph swapped from Imperial Script to Gwendolyn's 700 (bold) cut
+  (2026-08-21, direct instruction); see sonneck-s-mark.svg's own comment for
+  the full reasoning. No stroke needed here — Gwendolyn 700 is a real bold
+  weight on its own, unlike the old Imperial-Script-derived mark which
+  needed the "Regular (stroke 0)" decision documented in the
   "frontend-logo-exploration" memory entry; originally derived at
   https://claude.ai/code/artifact/efba43e3-7db7-4581-ba14-7bd75350403d
+
+  Regenerating public/icon-192.png, icon-512.png, apple-touch-icon.png from
+  this file (2026-08-21) — no in-repo tooling for this existed before now,
+  confirmed by searching the whole repo first: load this SVG's content
+  (minus this comment) into an HTML page sized exactly to the target pixel
+  dimensions (192/512/180), screenshot via Playwright at deviceScaleFactor 1
+  with omitBackground:false. Produces flat 8-bit RGB PNGs (no alpha),
+  matching what these three files have always been — this SVG has no
+  transparent regions (the #3f5c3f rect is full-bleed), so there's nothing
+  an alpha channel would add.
 -->
+
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
 <defs>
   <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
@@ -14,7 +29,7 @@
 </defs>
 <rect width="512" height="512" fill="#3f5c3f"/>
 <rect width="512" height="512" fill="url(#g)"/>
-<svg x="64.00" y="64.00" width="384.00" height="384.00" viewBox="-75.48 -686.48 735.96 847.96">
-  <path d="M260 103Q256 101 252 100Q248 99 243 97Q190 79 167 40Q85 28 35-19Q-17-70-17-152Q-17-262 63-342Q142-421 253-421Q331-421 376-380Q398-397 430.50-422.50Q463-448 506-482L506-501Q506-628 565-628Q579-628 590-617Q602-607 602-593Q602-553 521-482Q523-468 530-439.50Q537-411 550-369Q571-299 571-253Q571-123 455-36Q347 43 214 43Q206 43 197 42.50Q188 42 180 41Q200 74 241 88Q250 92 254 92Q257 92 266 89Q274 86 277 86Q283 86 283 92Q283 103 260 103M519-494Q593-559 593-598Q593-618 567-618Q518-618 518-522Q518-515 518-508.50Q518-502 519-494M172 25Q233 25 303-11Q334-27 362.50-46.50Q391-66 416-90Q453-125 466-153Q515-248 515-349Q515-342 513-372Q511-402 507-470Q486-454 455.50-429.50Q425-405 384-372Q418-338 418-288Q418-221 370-174Q321-126 254-126Q216-126 191-143Q162-77 162-28Q162-13 165 0.50Q168 14 172 25M161 25Q152 4 152-24Q152-79 182-151Q158-174 158-207Q158-219 164-235Q172-256 180-256Q182-256 184-254Q182-248 179-247L180-247Q166-227 166-205Q166-179 185-159Q230-260 359-366Q315-407 248-407Q154-407 77-323Q2-242 2-146Q2-79 48-29Q71-4 99 9.50Q127 23 161 25M250-133Q304-133 350-182Q396-231 396-284Q396-324 367-358Q305-306 262-253.50Q219-201 195-150Q218-133 250-133" fill="#fbfaf8"/>
+<svg x="64.00" y="64.00" width="384.00" height="384.00" viewBox="-59.96 -716.89 680.92 926.45">
+  <path d="M222 144Q179 130 159 102Q139 74 135 31Q82 16 49-14.50Q16-45 1.50-84.50Q-13-124-13-167Q-13-215 5.50-257Q24-299 56-331.50Q88-364 128-382.50Q168-401 211-401Q250-401 280-389.50Q310-378 329-360Q363-395 396-426Q429-457 457-488Q451-506 445.50-527Q440-548 440-571Q440-611 464-632Q488-653 511-653Q528-653 539.50-643Q551-633 551-612Q551-591 537-563Q521-530 495-500Q503-482 516-452.50Q529-423 542.50-388.50Q556-354 565-319.50Q574-285 574-256Q574-188 544.50-132.50Q515-77 465-37.50Q415 2 352.50 23Q290 44 225 44Q192 44 160 38Q166 78 185.50 99.50Q205 121 224 127Q239 131 239 139Q239 149 222 144M487-524Q505-548 518-574Q525-588 527.50-598.50Q530-609 530-616Q530-634 518-634Q508-634 496-618Q479-595 479-563Q479-543 487-524M215 27Q272 27 326-1Q380-29 421-74Q462-119 478-169Q496-223 496-284Q496-328 487.50-374Q479-420 464-465Q438-437 407.50-408Q377-379 345-346Q367-324 377-299Q387-274 387-248Q387-212 369-179.50Q351-147 318.50-127Q286-107 242-107Q229-107 216-109Q203-111 189-115Q177-87 168-49Q159-11 158 19Q172 23 186.50 25Q201 27 215 27M135 12Q137-21 146.50-57Q156-93 168-124Q149-135 139-152Q129-169 129-186Q129-219 156-235Q161-238 166-238Q174-238 174-232Q174-227 167-220Q152-207 152-188Q152-162 177-146Q203-205 241.50-256.50Q280-308 317-348Q296-364 274.50-369.50Q253-375 232-375Q196-375 163.50-356Q131-337 105-306Q79-275 63-238.50Q47-202 44-168Q44-164 43.50-159.50Q43-155 43-150Q43-118 52-85.50Q61-53 81.50-27Q102-1 135 12M226-131Q260-131 289.50-150.50Q319-170 338-201Q357-232 357-266Q357-283 351.50-300Q346-317 333-333Q297-294 260-244Q223-194 197-135Q209-131 226-131" fill="#fbfaf8"/>
 </svg>
 </svg>
