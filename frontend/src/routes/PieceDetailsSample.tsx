@@ -1,7 +1,8 @@
-import { useRef, useState, type MouseEvent, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import {
   IconArrowLeft,
+  IconArrowsDiagonal,
   IconBook2,
   IconChevronDownFilled,
   IconChevronLeft,
@@ -19,6 +20,7 @@ import {
   IconRefresh,
   IconShieldCheck,
   IconTrash,
+  IconXFilled,
 } from '@tabler/icons-react'
 import type { PracticeStatus } from '../api/types'
 import { InfoTooltip } from '../components/InfoTooltip'
@@ -212,6 +214,134 @@ function SheetPagePlaceholder({ page }: { page: number }) {
   )
 }
 
+// Lightbox for the page preview thumbnail (design review, 2026-08-22 —
+// picked from 3 alternatives: this full-screen overlay, an inline-expand
+// variant, and a slide-in side panel; overlay won for matching the
+// requested spec directly and for reusing the app's existing
+// backdrop/close conventions almost as-is). Deliberately its own small
+// component rather than reusing Modal.tsx: Modal is a bounded-width
+// dialog with padded header/body/footer slots, not a full-bleed image
+// viewer — forcing this into Modal would mean fighting that padding on
+// every side rather than reusing it. Kept close to Modal's own backdrop
+// treatment (bg-ink/NN + backdrop-blur-sm, click-target-is-currentTarget
+// to close, Escape closes) so it still feels like the same app, just
+// without Modal's mount/unmount fade choreography — not load-bearing for
+// a design-approval mockup, and worth porting over from Modal.tsx
+// verbatim (not reimplementing) once this is built for real.
+function PageLightbox({
+  page,
+  pageCount,
+  onClose,
+  onPrev,
+  onNext,
+}: {
+  page: number
+  pageCount: number
+  onClose: () => void
+  onPrev: () => void
+  onNext: () => void
+}) {
+  // 'fit' shows the whole page within the screen; 'actual' shows it
+  // larger, in a scrollable box — this mockup's placeholder is a vector
+  // SVG with no real pixel size to be "1:1" against, so 'actual' stands
+  // in for what would be the real page image's true native size in the
+  // real build. Resets to 'fit' on every page change, same as an image
+  // viewer resetting zoom when you flip photos — done by remounting this
+  // whole component on `key={page}` from the caller (React's own
+  // recommended pattern for "reset state when a prop changes") rather
+  // than an effect calling setState, which would just cause an extra
+  // render for the same result.
+  const [zoom, setZoom] = useState<'fit' | 'actual'>('fit')
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [onClose])
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/80 backdrop-blur-sm"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose()
+      }}
+    >
+      {/* Upper-left of the popup itself, not the viewport corner — direct
+          instruction. Same chip treatment (bg-ink/80 + blur, white icon)
+          as the page-cycle capsule below, so the whole feature reads as
+          one piece. */}
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label="Close"
+        className="absolute top-6 left-6 flex size-10 items-center justify-center rounded-full bg-ink/80 text-white shadow-md backdrop-blur-sm hover:bg-white/15 focus-visible:outline-accent-on-dark"
+      >
+        <IconXFilled size={20} />
+      </button>
+
+      {/* Persistent, not hover-revealed (device-aware convention: this
+          page's affordances are tap-triggered, never hover-dependent) —
+          without this, "click the image to zoom" has no way to announce
+          itself on a touch device that has no hover state at all. */}
+      <div className="pointer-events-none absolute top-6 right-6 rounded-full bg-ink/80 px-3 py-1.5 text-xs text-white/90 shadow-md backdrop-blur-sm">
+        Click image to {zoom === 'fit' ? 'zoom in' : 'fit to screen'}
+      </div>
+
+      <button
+        type="button"
+        onClick={() => setZoom((z) => (z === 'fit' ? 'actual' : 'fit'))}
+        aria-label={zoom === 'fit' ? 'Zoom in to actual size' : 'Zoom out to fit screen'}
+        className={
+          zoom === 'fit'
+            ? 'flex max-h-[85vh] max-w-[90vw] cursor-zoom-in items-center justify-center'
+            : 'max-h-[85vh] max-w-[90vw] cursor-zoom-out overflow-auto rounded-md'
+        }
+      >
+        <div
+          className={
+            zoom === 'fit'
+              ? 'w-[70vw] max-w-[440px] overflow-hidden rounded-md bg-paper-raised shadow-2xl sm:w-[420px]'
+              : 'w-[820px] overflow-hidden rounded-md bg-paper-raised shadow-2xl'
+          }
+        >
+          <SheetPagePlaceholder page={page} />
+        </div>
+      </button>
+
+      {/* Same page-cycle capsule as the inline preview, carried into the
+          overlay so you don't have to close the lightbox just to look at
+          an adjacent page. */}
+      {pageCount > 1 && (
+        <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-ink/80 py-1 pr-1 pl-3 shadow-md backdrop-blur-sm">
+          <button
+            type="button"
+            onClick={onPrev}
+            disabled={page === 1}
+            aria-label="Previous page"
+            className="flex size-7 items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline-accent-on-dark disabled:pointer-events-none disabled:opacity-35"
+          >
+            <IconChevronLeft size={16} />
+          </button>
+          <span className="text-xs tabular-nums text-white/90">
+            {page} / {pageCount}
+          </span>
+          <button
+            type="button"
+            onClick={onNext}
+            disabled={page === pageCount}
+            aria-label="Next page"
+            className="flex size-7 items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline-accent-on-dark disabled:pointer-events-none disabled:opacity-35"
+          >
+            <IconChevronRightFilled size={16} />
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function formatDuration(seconds: number | null): string | null {
   if (seconds == null) return null
   const m = Math.floor(seconds / 60)
@@ -315,6 +445,7 @@ export function PieceDetailsSample() {
 
   const [page, setPage] = useState(1)
   const [thumbnailPage, setThumbnailPage] = useState(1)
+  const [lightboxOpen, setLightboxOpen] = useState(false)
   const [favorite, setFavorite] = useState(piece.favorite)
   const [downloadOpen, setDownloadOpen] = useState(false)
   const [replaceConfirming, setReplaceConfirming] = useState(false)
@@ -444,7 +575,31 @@ export function PieceDetailsSample() {
               structurally even though this sample's SVG placeholder is
               always portrait-shaped by construction. */}
           <div className="relative mx-auto flex w-full max-w-md items-center justify-center overflow-hidden rounded-lg border border-border bg-paper-raised shadow-sm">
-            <SheetPagePlaceholder page={page} />
+            {/* Lightbox trigger (design review, 2026-08-22 — see
+                PageLightbox's own comment for the 3 alternatives this was
+                chosen over). The whole thumbnail is clickable, not just a
+                corner badge — the badge below is a discoverability hint,
+                not the only hit target. */}
+            <button
+              type="button"
+              onClick={() => setLightboxOpen(true)}
+              aria-label={`View page ${page} larger`}
+              className="block w-full cursor-zoom-in"
+            >
+              <SheetPagePlaceholder page={page} />
+            </button>
+
+            {/* Always-visible "view larger" hint, not a hover reveal —
+                same device-aware reasoning as the lightbox's own zoom
+                hint: this has to be discoverable by tap alone. Top-right
+                since the page-cycle capsule already owns the bottom
+                edge. */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute top-2.5 right-2.5 flex items-center justify-center rounded-full bg-ink/80 p-1.5 text-white shadow-md backdrop-blur-sm"
+            >
+              <IconArrowsDiagonal size={14} />
+            </div>
 
             {/* Page cycle control, floating over the bottom edge of the
                 preview itself rather than as a separate row underneath
@@ -476,6 +631,17 @@ export function PieceDetailsSample() {
               </div>
             )}
           </div>
+
+          {lightboxOpen && (
+            <PageLightbox
+              key={page}
+              page={page}
+              pageCount={piece.pageCount}
+              onClose={() => setLightboxOpen(false)}
+              onPrev={() => setPage((p) => Math.max(1, p - 1))}
+              onNext={() => setPage((p) => Math.min(piece.pageCount, p + 1))}
+            />
+          )}
 
           <div className="flex flex-wrap items-center justify-center gap-2">
             <div className="relative flex overflow-hidden rounded-md">
