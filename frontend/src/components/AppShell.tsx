@@ -62,7 +62,25 @@ export function AppShell() {
             SonneckMark is Gwendolyn 700 (bold) — see that component's own
             comment for the full reasoning; no weight prop to pass since
             the old per-size stroke-width faking is gone. */}
-        <footer className="flex shrink-0 flex-col items-center gap-3.5 px-6 pt-8 pb-10">
+        <footer className="flex shrink-0 flex-col items-center px-6 pt-8 pb-10">
+          {/* Understated separator from the routed content above — short
+              on purpose (not the width of the credit line below it), just
+              enough of a mark to read as "footer starts here" without
+              being a full border-t rule across the whole width. Same
+              --color-border token as every other subtle divider in the
+              app (e.g. the toolbar dividers on Piece/Book Details), not a
+              new color invented for this.
+              Spacing below it is this span's own mb-5, not the footer's
+              flex gap (removed from the footer element itself, now that
+              it would otherwise stack with this margin) — mb-5 reads as
+              visually equal to the gap-3.5 between text and logo further
+              down, even though that's fewer raw pixels: a 1px hairline
+              sitting flush against the credit text's own line-box reads
+              tighter than the same pixel gap does against the logo mark,
+              which has no line-box leading eating into it. Tuned by eye
+              via zoomed screenshots, not left at the identical class
+              value the two gaps started from. */}
+          <span aria-hidden="true" className="mb-5 h-px w-10 bg-border" />
           <a
             href="https://github.com/jpcranford/sonneck"
             target="_blank"
@@ -79,8 +97,21 @@ export function AppShell() {
                 further up), so a forced nowrap would silently clip the text
                 on narrow screens rather than scroll or wrap — leaving
                 default wrapping in place lets it degrade to two lines only
-                when genuinely too narrow, which is the safer failure mode. */}
-            <span className="font-display text-[0.78rem] italic">
+                when genuinely too narrow, which is the safer failure mode.
+                text-center is required here, not redundant with the
+                column's own items-center: once this span wraps, its box
+                sizes to the *available* width (CSS's fit-content formula:
+                max(min-content, available) when max-content > available),
+                not to its own longest rendered line — so items-center
+                (which only centers that box within the column) leaves the
+                ragged lines flush-left inside a box that's already full
+                width. Same failure mode already diagnosed for the old
+                Option C icon+text row (frontend-footer-redesign memory),
+                just missing here because this span has no sibling to stay
+                paired against — text-align:center on the span itself is
+                the direct fix, simpler than Option C's saga since there's
+                no icon position to keep synced with a ragged box. */}
+            <span className="text-center font-display text-[0.78rem] italic">
               Powered by Sonneck, an open-source music library
             </span>
             <SonneckMark className="size-8 shrink-0" />
