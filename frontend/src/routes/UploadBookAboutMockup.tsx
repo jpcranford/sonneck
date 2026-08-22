@@ -194,7 +194,7 @@ export function UploadBookAboutMockup() {
                 less than "N / NN" needs, wrapping the count onto two
                 lines. w-max forces sizing to content instead, sidestepping
                 that calculation entirely. */}
-            <div className="absolute bottom-2.5 left-1/2 flex w-max -translate-x-1/2 items-center gap-1 rounded-full bg-ink/80 py-1 pr-1 pl-3 shadow-md backdrop-blur-sm">
+            <div className="absolute bottom-2.5 left-1/2 flex w-max -translate-x-1/2 items-center gap-1 rounded-full bg-ink/80 px-2 py-1 shadow-md backdrop-blur-sm">
               <button
                 type="button"
                 onClick={() => setPreviewPage((p) => Math.max(1, p - 1))}

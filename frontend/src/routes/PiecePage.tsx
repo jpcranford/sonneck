@@ -153,9 +153,15 @@ function PageLightbox({
 
       {/* Same page-cycle capsule as the inline preview, carried into the
           overlay so you don't have to close the lightbox just to look at
-          an adjacent page. */}
+          an adjacent page. px-2 (not the original pr-1 pl-3) — that
+          asymmetric padding read as visibly off-center around the "n / N"
+          label once seen at this larger lightbox scale (user-reported,
+          2026-08-22); px-2 keeps the same total 16px horizontal padding
+          budget the capsule always had, just split evenly instead of
+          12px/4px. Same fix applied everywhere else this capsule is
+          copied (no shared component across these instances). */}
       {pageCount > 1 && (
-        <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-ink/80 py-1 pr-1 pl-3 shadow-md backdrop-blur-sm">
+        <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-ink/80 px-2 py-1 shadow-md backdrop-blur-sm">
           <button
             type="button"
             onClick={onPrev}
@@ -622,7 +628,7 @@ export function PiecePage() {
                   Hidden entirely for a single-page piece, same convention
                   as the shared PageCycleControl on library cards. */}
               {piece.pageCount > 1 && (
-                <div className="absolute bottom-2.5 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-ink/80 py-1 pr-1 pl-3 shadow-md backdrop-blur-sm">
+                <div className="absolute bottom-2.5 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-ink/80 px-2 py-1 shadow-md backdrop-blur-sm">
                   <button
                     type="button"
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
