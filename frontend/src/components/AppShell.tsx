@@ -33,50 +33,57 @@ export function AppShell() {
         {/* Swapped from a left-aligned, border-topped bar to an understated
             centered block (2026-08-21, direct instruction) — chosen from a
             6-option comparison (https://claude.ai/code/artifact/51d2a939-267c-4d66-a597-f6038ddcc830,
-            favicon 🪶). Went through Option E, then Option D (the wordmark
-            logo — reverted, felt "too much" even after lightening its
-            color twice), now Option C ("Inline mark + whisper-thin rule"):
-            a 32px hairline above a centered icon+text lockup — the S mark
-            (32px, "Light") vertically centered against the two wrapped
-            text lines beside it, the whole cluster centered as one unit
-            under the rule. No full-width border-top — just this one short
-            32px hairline plus generous whitespace (pt-10/pb-[38px], gap-3.5
-            between the rule and the lockup below it) does the separating
-            now.
-            Color: neither the artifact's plain ink-soft (judged too heavy
-            once seen live) nor the even-lighter #a49e98 tried for Option D
-            (judged too faint the other direction) — #847d75 below is a
-            solid pre-blend of ink-soft at 75% over this footer's actual
-            background (--color-paper #fbfaf8), landing deliberately between
-            those two rather than reusing either. Solid hex, not a
-            translucent text-ink-soft/75 utility, for the same reason as
-            the #a49e98 case before it: the S mark's stroke+fill layering
-            would re-blend unevenly at its own overlaps under real
-            translucency. color lives on the <a> itself with the mark/text
-            inheriting it (fill="currentColor" / plain color inheritance)
-            rather than each hardcoding its own color like the artifact
-            does — that's what makes hover:text-ink below actually take
-            effect on both at once, which the artifact's own CSS doesn't
-            (its child elements set color directly, so the hover rule on
-            its <a> is a no-op there — not worth carrying that bug into the
-            real build).
-            SonneckMark's glyph itself swapped from Imperial Script to
-            Gwendolyn 700 (bold) the same day — see that component's own
-            comment for the full reasoning. The old weight="light" prop is
-            gone along with the stroke-width faking it drove, so this call
-            site no longer passes one. */}
-        <footer className="flex shrink-0 flex-col items-center gap-3.5 px-6 pt-10 pb-[38px]">
-          <span aria-hidden="true" className="h-px w-8 bg-border" />
+            favicon 🪶). Went through Option E (wrapped text + mark below),
+            Option D (the wordmark logo — reverted, felt "too much" even
+            after lightening its color twice), Option C (inline mark +
+            whisper-thin rule — reverted 2026-08-22 after two rounds of
+            "tighten the spacing" still didn't read right; root cause was
+            structural, not a spacing number: the wrapped-text box was
+            always wider than its own ragged rendered lines, so no gap
+            value could make a wrapped-row layout truly centered — see the
+            git history for that whole saga), now Option E's "one-line"
+            variant: the sentence NOT forced to wrap (no max-width on it at
+            all — one line, however wide that ends up being) with the mark
+            centered below it. A plain flex-col with align-items:center
+            centers both children exactly, regardless of content width,
+            because there's no wrapped/ragged text box to fight — this
+            sidesteps the whole class of centering bug Option C kept
+            running into.
+            Color #847d75 — a solid pre-blend of ink-soft at 75% over this
+            footer's actual background (--color-paper #fbfaf8), landing
+            deliberately between the artifact's plain ink-soft (judged too
+            heavy once seen live) and the even-lighter #a49e98 tried for
+            Option D (judged too faint). Solid hex, not a translucent
+            text-ink-soft/75 utility — the S mark's overlapping strokes
+            would re-blend unevenly under real translucency
+            (feedback-icon-color-preblend). Lives on the <a> itself with
+            the mark/text inheriting it, so hover:text-ink below actually
+            applies to both at once.
+            SonneckMark is Gwendolyn 700 (bold) — see that component's own
+            comment for the full reasoning; no weight prop to pass since
+            the old per-size stroke-width faking is gone. */}
+        <footer className="flex shrink-0 flex-col items-center gap-3.5 px-6 pt-8 pb-10">
           <a
             href="https://github.com/jpcranford/sonneck"
             target="_blank"
             rel="noreferrer"
-            className="flex max-w-[240px] items-center gap-2 text-[#847d75] hover:text-ink"
+            className="flex flex-col items-center gap-3.5 text-[#847d75] hover:text-ink"
           >
-            <SonneckMark className="size-8 shrink-0" />
-            <span className="font-display text-left text-[0.78rem] italic leading-[1.55]">
+            {/* No whitespace-nowrap here on purpose, even though the design
+                intent is "one line" — the sentence's natural width (~288px)
+                comfortably fits one line on any normal desktop/tablet width,
+                but is wider than the available content area on a narrow
+                phone (e.g. ~263px on a 375px-wide screen once the sidebar
+                rail and padding are subtracted). This container scrolls
+                with overflow-x-hidden (see this file's own comment on that
+                further up), so a forced nowrap would silently clip the text
+                on narrow screens rather than scroll or wrap — leaving
+                default wrapping in place lets it degrade to two lines only
+                when genuinely too narrow, which is the safer failure mode. */}
+            <span className="font-display text-[0.78rem] italic">
               Powered by Sonneck, an open-source music library
             </span>
+            <SonneckMark className="size-8 shrink-0" />
           </a>
         </footer>
       </div>
