@@ -12,6 +12,14 @@ export default defineConfig({
     include: ['src/**/*.test.ts'],
   },
   server: {
+    // Bind to all interfaces, not just localhost — needed to reach the
+    // dev server from a phone/tablet on the same network (design doc
+    // §12/CLAUDE.md: mobile testing, especially the import wizard's
+    // touch interactions, is an explicit v1 requirement, not a nice-to-
+    // have). The Go backend already binds to all interfaces
+    // (ListenAndServe(":"+cfg.Port, ...) in cmd/sonneck/main.go); Vite
+    // was the one piece still defaulting to loopback-only.
+    host: true,
     proxy: {
       // Design doc §2: relative-path, same-origin API calls in production
       // (single Docker image serving both). In dev, Vite proxies /api to
