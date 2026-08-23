@@ -9,11 +9,10 @@
 // tested algorithm code. One implementation is safer than two hand-synced
 // copies of logic this load-bearing.
 //
-// Every invariant here was exhaustively brute-force-verified live during
-// this session before being formalized into pieceSplitLogic.test.ts —
-// see that file and frontend-book-upload-wizard memory for the bugs this
-// caught along the way (a React key-collision bug, a setState/ref race,
-// several off-by-one and bridge-piece edge cases).
+// Every invariant here was exhaustively brute-force-verified live before
+// being formalized into pieceSplitLogic.test.ts — see that file for real
+// bugs this caught along the way (a React key-collision bug, a
+// setState/ref race, several off-by-one and bridge-piece edge cases).
 
 // Garden Variety, trimmed to 7 (locked) — widest hue spread, and 7 is the
 // coprime-optimal count for the Split screen's 6-column desktop grid.

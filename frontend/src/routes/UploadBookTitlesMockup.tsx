@@ -6,25 +6,22 @@ import { useMockupTitle } from '../lib/useMockupTitle'
 // ---------------------------------------------------------------------
 // DESIGN MOCKUP — Book Upload Wizard, Screen 5 of 6: "Name each piece"
 // (design doc §5's "fill fields" step). Not wired to the API — the piece
-// list below is a fixed local fixture, same book as Screens 3 and 4
-// (frontend-book-upload-wizard memory's "Album für die Jugend" fixture),
-// continued here for continuity across the wizard's mockups.
-// Locked design: https://claude.ai/code/artifact/8db38350-9f5f-4e11-b227-209a64e06ede
+// list below is a fixed local fixture, same "Album für die Jugend" book as
+// Screens 3 and 4, continued here for continuity across the wizard's
+// mockups.
 //
 // Field entry is deliberately light — just Title (required) and Composer/
 // Arranger (required only because this particular book has neither set at
 // the book level; a book with either wouldn't ask for them here at all,
 // since book-level soft inheritance already covers it). Genuinely
 // interactive: clear a field and hit Next to see the real required-field
-// validation the locked artifact demonstrated with a permanently-blank
-// row — this mockup validates for real instead of hard-coding that blank
-// state.
+// validation.
 //
-// Composer-or-arranger (2026-08-20, direct instruction, ported from the
-// same rule everywhere else in this app): Arranger joined Composer as a
-// second per-piece field, and "required" now means *either* is set, not
-// Composer specifically — a piece crediting only an arranger (a
-// traditional/folk tune with no named composer) is legitimate here too.
+// Composer-or-arranger, ported from the same rule everywhere else in this
+// app: Arranger joined Composer as a second per-piece field, and
+// "required" now means *either* is set, not Composer specifically — a
+// piece crediting only an arranger (a traditional/folk tune with no named
+// composer) is legitimate here too.
 // ---------------------------------------------------------------------
 
 const TOTAL_STEPS = 6
@@ -43,8 +40,7 @@ interface PieceFixture {
 // Same 3 pieces, same colors (PALETTE[0..2] from Screen 4's Garden
 // Variety palette), same book — carried forward for continuity rather
 // than inventing a new fixture for this screen. Arranger starts blank on
-// all three — composer alone already satisfies each row, same as every
-// other mockup's own fixture defaults this session.
+// all three — composer alone already satisfies each row.
 const PIECES: PieceFixture[] = [
   {
     start: 1,
@@ -311,9 +307,8 @@ export function UploadBookTitlesMockup() {
 
       <form onSubmit={handleSubmit((data) => console.log('Mockup: advance to Confirmation', data))}>
         {/* Desktop: table-like grid, piece label first, thumbnail tucked
-            tight against Title, then Composer/Arranger — order and column
-            widths locked in the artifact for Title/Composer; Arranger
-            added as a same-width third field column (2026-08-20). */}
+            tight against Title, then Composer/Arranger as same-width
+            field columns. */}
         {isDesktop && (
           <div>
             <div className="grid grid-cols-[128px_38px_1fr_1fr_1fr] gap-2.5 px-3 pb-1.5">
@@ -338,9 +333,9 @@ export function UploadBookTitlesMockup() {
                     <span className="text-sm text-ink-soft">
                       Piece {index + 1} • {formatPieceLabel(piece)}
                     </span>
-                    {/* Desktop-only hover popover (2026-08-20, direct
-                        instruction), on top of the existing tap-to-open
-                        overlay rather than replacing it — a mouse is
+                    {/* Desktop-only hover popover, on top of the existing
+                        tap-to-open overlay rather than replacing it — a
+                        mouse is
                         guaranteed on desktop, so a hover preview doesn't
                         run into the "no hover-dependent interactions"
                         device-aware rule (CLAUDE.md): that rule exists for

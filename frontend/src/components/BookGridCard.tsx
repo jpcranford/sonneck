@@ -9,29 +9,26 @@ interface BookGridCardProps {
   book: Book
 }
 
-// Books library view, locked design (2026-08-18, see the "Books Library —
-// Design Options" artifact and design-review screenshots): portrait 2:3
-// covers, not Pieces' landscape 180:132 — the aspect ratio alone reads as
-// "different kind of object" at a glance while staying recognizably the
-// same card-grid pattern. Piece count sits as a minimal label on a dark
-// scrim in the bottom-right corner (not a pill) — real cover art is often
-// colorful/photographic, so a light label over a dark gradient holds up
-// across unpredictable art the way a pill badge wouldn't need to. Links to
-// the Book Details page (added once that page was built for real) — was
-// browsable-but-not-navigable before that page existed.
+// Portrait 2:3 covers, not Pieces' landscape 180:132 — the aspect ratio
+// alone reads as "different kind of object" at a glance while staying
+// recognizably the same card-grid pattern. Piece count sits as a minimal
+// label on a dark scrim in the bottom-right corner (not a pill) — real
+// cover art is often colorful/photographic, so a light label over a dark
+// gradient holds up across unpredictable art the way a pill badge
+// wouldn't need to.
 export function BookGridCard({ book }: BookGridCardProps) {
   const meta = formatBookMeta(book)
 
   return (
     // Right-click (desktop) + long-press (touch) via ContextMenu's own
     // built-in handling, no visible "⋯" trigger — same convention as
-    // PieceGridCard (2026-08-18): a permanently-visible button on every
-    // card in a dense grid reads as clutter.
+    // PieceGridCard: a permanently-visible button on every card in a
+    // dense grid reads as clutter.
     <BookContextMenu book={book} hideTriggerButton>
       <ClickableCard to={`/books/${book.id}`} className="flex flex-col gap-2 text-left">
         <div className="relative aspect-[2/3] overflow-hidden rounded-md border border-border bg-paper-sunken shadow-sm transition-shadow hover:shadow-lg">
-          {/* hasCustomCover (2026-08-21) joins fileHash as a second source
-              a cover can come from — getBookCoverUrl resolves which one
+          {/* hasCustomCover and fileHash are two independent sources a
+              cover can come from — getBookCoverUrl resolves which one
               server-side, so this gate only needs to know whether *either*
               exists, not which. */}
           {book.hasCustomCover || book.fileHash ? (
@@ -43,9 +40,8 @@ export function BookGridCard({ book }: BookGridCardProps) {
             />
           ) : (
             // A manually created book (migration 00014) has no file to
-            // render a cover from — file-x on flat-sunken, locked in the
-            // "No-File Cover" design review over book-off/file-unknown/
-            // file-alert. Icon color is a solid pre-blended hex, not a
+            // render a cover from — file-x on flat-sunken. Icon color is
+            // a solid pre-blended hex, not a
             // translucent text-ink-soft/* opacity utility: Tabler icons are
             // several overlapping <path> strokes, so a translucent color
             // re-blends at every overlap (e.g. file-x's corners), leaving

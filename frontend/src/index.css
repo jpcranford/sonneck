@@ -2,8 +2,8 @@
 
 /* Libre Baskerville, self-hosted (SIL OFL 1.1, Google Fonts) rather than
    loaded from Google's CDN at runtime — see README > Acknowledgements. Used
-   only for display text (headings, piece/card titles, sidebar nav) per the
-   locked design system; general UI chrome stays on the sans stack. */
+   only for display text (headings, piece/card titles, sidebar nav); general
+   UI chrome stays on the sans stack. */
 @font-face {
   font-family: 'Libre Baskerville';
   font-style: normal;
@@ -76,9 +76,8 @@
     U+A720-A7FF;
 }
 
-/* Design tokens — locked design system (see project memory / the "Library
-   Shell" mockup this was approved from). Tailwind v4's CSS-first config:
-   these become usable as e.g. bg-paper, text-ink, font-display utilities. */
+/* Design tokens. Tailwind v4's CSS-first config: these become usable as
+   e.g. bg-paper, text-ink, font-display utilities. */
 @theme {
   --font-display: 'Libre Baskerville', Georgia, 'Times New Roman', serif;
   --font-sans: -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -107,12 +106,11 @@
 
   /* Moving diagonal-stripe fill for a "working on it, no real percentage
      to report" button state — first use: the Book Properties Edit Menu's
-     Save button while pieces_fts resyncs (design-review "Book Save
-     Animation" artifact, 2026-08-19, approved as-is). Registered globally
-     rather than as a component-local <style> block since Tailwind v4's
-     `@theme` is this project's one established place for custom tokens,
-     and the animate-stripe-move utility it generates is reusable if any
-     future multi-record save ever wants the same "in progress" language. */
+     Save button while pieces_fts resyncs. Registered globally rather than
+     as a component-local <style> block since Tailwind v4's `@theme` is
+     this project's one established place for custom tokens, and the
+     animate-stripe-move utility it generates is reusable if any future
+     multi-record save ever wants the same "in progress" language. */
   --animate-stripe-move: stripe-move 0.85s linear infinite;
 }
 

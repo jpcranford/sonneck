@@ -54,9 +54,9 @@ const LONG_PRESS_MOVE_CANCEL_PX = 10
  * the visible button can instead be a caller-owned custom-positioned
  * trigger via `hideTriggerButton` + the forwarded ref, or omitted
  * entirely when long-press is meant to be the only touch affordance (see
- * PieceGridCard, 2026-08-18 — removed its own thumbnail-anchored button
- * in favor of long-press, since a permanently-visible "⋯" read as clutter
- * on the grid's already-dense card).
+ * PieceGridCard — no thumbnail-anchored button at all, since a
+ * permanently-visible "⋯" reads as clutter on the grid's already-dense
+ * card).
  */
 export const ContextMenu = forwardRef<ContextMenuHandle, ContextMenuProps>(function ContextMenu(
   { items, children, hideTriggerButton },

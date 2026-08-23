@@ -81,9 +81,9 @@ function pieceToFormValues(piece: Piece): FormValues {
   return {
     title: piece.title,
     composer: ownValue(piece.composer),
-    // Book-inheritable as of 2026-08-20 — same ownValue treatment as every
-    // other field here now (blank when inherited, so leaving it blank on
-    // save keeps inheriting), not a raw echo of the resolved value.
+    // Book-inheritable — same ownValue treatment as every other field
+    // here (blank when inherited, so leaving it blank on save keeps
+    // inheriting), not a raw echo of the resolved value.
     arranger: ownValue(piece.arranger),
     keys: piece.keys,
     sheetType: piece.sheetType.inherited ? '' : (piece.sheetType.value?.name ?? ''),
@@ -239,9 +239,9 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
     saveMutation.mutate(data)
   }
 
-  // Shift+Enter saves from anywhere in the form (direct instruction,
-  // 2026-08-21) — including a field with its own open dropdown (Key,
-  // Sheet Type, Instruments, Your Tags, Source Book), which would
+  // Shift+Enter saves from anywhere in the form — including a field with
+  // its own open dropdown (Key, Sheet Type, Instruments, Your Tags,
+  // Source Book), which would
   // otherwise treat plain Enter as "pick the highlighted row" and never
   // reach a submit at all. Those fields' own handlers (TagComboBox/
   // SingleSelect/SourceBookField) explicitly skip Shift+Enter rather than
@@ -281,11 +281,9 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
 
           {/* Page preview — pinned here (Modal's `header` slot) rather than
               inside the scrolling form, specifically so it can't scroll out
-              of view while the fields below it do (design review,
-              2026-08-17: "the preview should remain fixed while the fields
-              freely scroll"). Starts closed, same footprint as before this
-              feature existed; toggling it open only adds height here, never
-              changes the modal's width. Full-width image in its own capped-
+              of view while the fields below it do. Starts closed; toggling
+              it open only adds height here, never changes the modal's
+              width. Full-width image in its own capped-
               height scroll box (a portrait page at full modal width is
               taller than any reasonable fixed strip) with the plain below-
               image PageCycleControl underneath — not the Piece Details page's
@@ -315,11 +313,9 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
               adding it straight back as this element's own padding)
               full-bleeds the line to the dialog's true edges instead of
               stopping at the same content width as the fields below.
-              Standard 1px weight (tried 1.5px briefly to make it read as
-              more of a structural divider; reverted — 1px plus the
-              full-bleed already does that job). Locked design: mockup at
-              /mockup/edit-piece-modal, approved 2026-08-18, revised
-              2026-08-19. */}
+              Standard 1px weight (1.5px reads as more of a structural
+              divider than intended; 1px plus the full-bleed already does
+              that job). */}
           <div className="-mx-6 border-b border-border px-6 pb-3">
             <button
               type="button"
@@ -341,16 +337,13 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
                 previewOpen ? 'max-h-[340px]' : 'max-h-0'
               }`}
             >
-              {/* Dialed back from 420px/280px (2026-08-21, direct instruction:
-                  "takes up too much of the modal") — the header sits in
-                  Modal's shrink-0 header slot, so its full open height comes
-                  straight out of the scrollable form body's share of the
-                  90vh dialog cap. 280px for the image alone was eating over
-                  a third of a typical viewport's available height before the
-                  fields (Title, Composer, everything else) got any room at
-                  all; 200px still reads a page clearly (it has its own
-                  overflow-y-auto if more detail is needed) without dominating
-                  the modal the way the original size did. */}
+              {/* The header sits in Modal's shrink-0 header slot, so its
+                  full open height comes straight out of the scrollable
+                  form body's share of the 90vh dialog cap — a tall preview
+                  eats into the fields' (Title, Composer, everything else)
+                  own room. 200px still reads a page clearly (it has its
+                  own overflow-y-auto if more detail is needed) without
+                  dominating the modal. */}
               <div className="flex flex-col gap-2 pt-3 pb-1">
                 <div className="max-h-[200px] overflow-y-auto rounded-md border border-border bg-paper-sunken">
                   <img
@@ -466,7 +459,6 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
           </div>
         </div>
 
-        {/* Frontmatter (was "Piece Details" — renamed 2026-08-19) */}
         <div className="flex flex-col gap-3 border-t border-border pt-4">
           <SectionHeading>Frontmatter</SectionHeading>
           {/* min-[525px]:flex-row — same unified breakpoint as every other
@@ -480,7 +472,7 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
                   ariaLabel="What Opus / catalog no. means"
                   // Solid pre-blend, not opacity — IconInfoCircle is
                   // multi-path, a translucent color double-blends at the
-                  // overlaps (memory: feedback-icon-color-preblend).
+                  // overlaps.
                   triggerClassName="text-[#9d9892] hover:text-ink-soft"
                 >
                   <IconInfoCircle size={13} />
@@ -530,7 +522,7 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
                   ariaLabel="What Publisher ID means"
                   // Solid pre-blend, not opacity — IconInfoCircle is
                   // multi-path, a translucent color double-blends at the
-                  // overlaps (memory: feedback-icon-color-preblend).
+                  // overlaps.
                   triggerClassName="text-[#9d9892] hover:text-ink-soft"
                 >
                   <IconInfoCircle size={13} />
@@ -588,9 +580,9 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
           </div>
         </div>
 
-        {/* Book Details (new 2026-08-19, was "Source Details") — the Source
-            Book search field, plus the page range split out of
-            Frontmatter into its own section so it reads as "where this
+        {/* Book Details — the Source Book search field, plus the page
+            range split out of Frontmatter into its own section so it
+            reads as "where this
             piece lives inside its source book" rather than bundled with
             the piece's own bibliographic fields. Source Book sits above
             the page range — picking a different book is the thing that
@@ -638,12 +630,10 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
           </div>
         </div>
 
-        {/* Musical Details (was "Classification", then briefly "Piece
-            Details" mid-rename — renamed twice 2026-08-19). Key(s)/Sheet
-            type/Instruments, plus Duration moved down to the end of this
-            section (was its own top-level "Duration" section). Your Tags
-            moved out to Personal — it's the user's own organizational
-            label, not a musical-classification fact about the piece. */}
+        {/* Musical Details: Key(s)/Sheet type/Instruments, plus Duration
+            at the end of this section. Your Tags lives in Personal
+            instead — it's the user's own organizational label, not a
+            musical-classification fact about the piece. */}
         <div className="flex flex-col gap-3 border-t border-border pt-4">
           <SectionHeading>Musical Details</SectionHeading>
           {/* Key(s)/Duration share a row — Key(s) grows (it can hold an
@@ -726,10 +716,9 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
             <button
               type="button"
               onClick={() => setTempoOpen((o) => !o)}
-              // Solid pre-blend (icon + label share one color) — see
-              // feedback-icon-color-preblend; identical against a static
-              // background either way for the text half, but the chevron
-              // icon needs it.
+              // Solid pre-blend (icon + label share one color) — identical
+              // against a static background either way for the text half,
+              // but the chevron icon needs it.
               className="flex items-center gap-1 text-xs text-[#9d9892] hover:text-ink-soft"
             >
               <IconChevronRight
@@ -834,20 +823,17 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
           </div>
         </div>
 
-        {/* Personal — Your Tags moved here from Musical Details above
-            (it's the user's own organizational label, not a musical fact
-            about the piece). Two-column split (2026-08-19, ported from the
-            mockup), inspired by the Edit Book modal's own closing IMSLP/
-            Sheet Type/Instruments-vs-Description row: Practice status/Your
-            tags stacked on the left, Your notes spanning the same height
-            on the right — the one genuinely tall field gets the one
-            genuinely tall column, same reasoning as that row.
-            min-[525px]:flex-row/gap-3 matches that modal's breakpoint and
-            gutter exactly — this same breakpoint was later adopted
-            (2026-08-20) by every other paired row in this form too, so the
-            whole modal now splits to stacked layout at one unified point
+        {/* Personal — Your Tags lives here, not Musical Details (it's the
+            user's own organizational label, not a musical fact about the
+            piece). Two-column split inspired by the Edit Book modal's own
+            closing IMSLP/Sheet Type/Instruments-vs-Description row:
+            Practice status/Your tags stacked on the left, Your notes
+            spanning the same height on the right — the one genuinely tall
+            field gets the one genuinely tall column. min-[525px]:flex-row
+            matches every other paired row in this form, so the whole
+            modal splits to stacked layout at one unified breakpoint
             instead of each row wrapping at its own content-driven
-            flex-wrap threshold. */}
+            threshold. */}
         <div className="flex flex-col gap-3 border-t border-border pt-4">
           <SectionHeading>Personal</SectionHeading>
           <div className="flex flex-col gap-3 min-[525px]:flex-row">

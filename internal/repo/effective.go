@@ -53,8 +53,7 @@ type EffectivePiece struct {
 // (if any) as needed. Fields not in the book-inheritable list (title, key,
 // userNotes, userTags, favorite, practiceStatus, etc.) are not part of this
 // struct — read them directly off Piece, since they never fall back to
-// anything. Arranger joined the inheritable list 2026-08-20 (direct
-// instruction) — it used to be excluded here.
+// anything.
 func ResolveEffective(ctx context.Context, q Queryer, p *models.Piece) (*EffectivePiece, error) {
 	var book *models.Book
 	if p.SourceBookID != nil {

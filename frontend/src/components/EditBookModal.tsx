@@ -175,9 +175,9 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
     saveMutation.mutate(data)
   }
 
-  // Shift+Enter saves from anywhere in the form (direct instruction,
-  // 2026-08-21) — including a field with its own open dropdown (Sheet
-  // Type, Instruments), which would otherwise treat plain Enter as "pick
+  // Shift+Enter saves from anywhere in the form — including a field with
+  // its own open dropdown (Sheet Type, Instruments), which would
+  // otherwise treat plain Enter as "pick
   // the highlighted row" and never reach a submit at all. Those fields'
   // own handlers (SingleSelect/TagComboBox) explicitly skip Shift+Enter
   // rather than acting on it, so this handler is the only thing that
@@ -247,10 +247,9 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
             >
               Cancel
             </button>
-            {/* Save carries the progress state itself (locked "A" footer,
-                approved via the "Book Save Animation" artifact) — fixed
-                width so the button doesn't change size as its label goes
-                Save -> "Updating N pieces…" -> Saved. */}
+            {/* Save carries the progress state itself — fixed width so
+                the button doesn't change size as its label goes Save ->
+                "Updating N pieces…" -> Saved. */}
             <button
               type="submit"
               form="edit-book-form"
@@ -285,13 +284,11 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
         onKeyDown={handleFormKeyDown}
         className="flex flex-col gap-4"
       >
-        {/* Book title stands alone, full width — no longer paired with
-            Composer (2026-08-20, direct instruction: reordered to Title /
-            Composer-Arranger / Year-Opus / Publisher-PublisherID /
-            ISBN-IMSLP / Sheet+Instruments-Description). Every paired row
-            below still collapses to stacked single fields below ~525px.
-            Locked design, see the mockup's own file comment for the
-            design-review provenance. */}
+        {/* Book title stands alone, full width — not paired with Composer.
+            Row order: Title / Composer-Arranger / Year-Opus /
+            Publisher-PublisherID / ISBN-IMSLP / Sheet+Instruments-
+            Description. Every paired row below collapses to stacked
+            single fields below ~525px. */}
         <div className="flex min-w-0 flex-col gap-1">
           <label htmlFor="f-book-title" className="text-sm text-ink-soft">
             Book title <span className="text-ink-soft/60 italic">(Required)</span>
@@ -306,9 +303,8 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
 
         <div className="flex flex-col gap-3 min-[525px]:flex-row">
           <div className="flex min-w-0 flex-1 flex-col gap-1">
-            {/* No persistent "one of these three required" hint here
-                (direct instruction, 2026-08-21 — replaced a too-long inline
-                parenthetical): composer-or-arranger-or-publisher is a
+            {/* No persistent "one of these three required" hint here:
+                composer-or-arranger-or-publisher is a
                 cross-field rule the backend already enforces and reports
                 (ValidateBook), and the footer below already surfaces
                 whatever error a failed save returns — same "validation-
@@ -389,10 +385,8 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
           </div>
         </div>
 
-        {/* ISBN/IMSLP number — moved IMSLP out of the closing stacked
-            column below (2026-08-20, direct instruction) and paired it
-            with the new ISBN field instead, same split-row treatment as
-            every row above it. */}
+        {/* ISBN/IMSLP number, paired together — same split-row treatment
+            as every row above it. */}
         <div className="flex flex-col gap-3 min-[525px]:flex-row">
           <div className="flex min-w-0 flex-1 flex-col gap-1">
             <label htmlFor="f-isbn" className="text-sm text-ink-soft">

@@ -49,9 +49,9 @@ function imslpReverseLookupUrl(imslpNumber: string): string {
 // (design doc §14: purely cosmetic, not necessarily in sync with the
 // current file's actual pageCount after a replace) — not derived from
 // pageCount, which is the current file's real page count and can
-// legitimately diverge from this range. Academic "p."/"pp." convention
-// (standing rule, 2026-08-20): singular "p." for one page, "pp." for a
-// range — matches PiecePage.tsx's own "Source pages" row.
+// legitimately diverge from this range. Academic "p."/"pp." convention:
+// singular "p." for one page, "pp." for a range — matches PiecePage.tsx's
+// own "Source pages" row.
 function pageRangeLabel(piece: Piece): string {
   if (piece.sourcePageStart == null) return '—'
   const end = piece.sourcePageEnd ?? piece.sourcePageStart
@@ -74,7 +74,7 @@ function pagesLabel(piece: Piece): string {
 // their own different surrounding fields (opus/sourceBook/year vs. just
 // year), same as this one carries pages instead.
 //
-// Three-way fallback (composer-or-arranger, 2026-08-20): falls back to
+// Three-way fallback (composer-or-arranger): falls back to
 // "arr. Arranger" when only an arranger is set — this is a case that comes
 // up specifically here, since a book with only an arranger set is common
 // (composer-or-arranger is required at the book level too) and every piece
@@ -96,7 +96,7 @@ function pieceMetaLine(piece: Piece): string {
   return [composerPart, pagesLabel(piece)].filter((part): part is string => !!part).join(' • ')
 }
 
-// Right-click/long-press menu (2026-08-20, direct instruction): shares
+// Right-click/long-press menu: shares
 // PieceContextMenu with the Piece Library's own cards (PieceGridCard/
 // PieceListCard) rather than a separate copy — same favorite/edit/delete
 // items, same hideTriggerButton convention (no visible "⋯" trigger; touch
@@ -112,17 +112,15 @@ function PieceGrid({ pieces }: { pieces: Piece[] }) {
             state={{ backLabel: 'Book' }}
             className="overflow-hidden rounded-lg border border-border bg-paper-raised text-left transition-colors hover:border-accent"
           >
-            {/* 2026-08-20 (direct instruction): the page-range badge that
-                used to overlay the thumbnail is gone — its content moved
-                down to the bottom line in its place (below), and the
+            {/* No page-range badge overlaying the thumbnail — its content
+                moved down to the bottom line in its place (below), and the
                 composer/arranger row is gone entirely. Too little room in a
                 112px-wide card for three lines of text plus a badge; the
                 page range is the one fact worth keeping over the piece
                 count pagesLabel used to show. */}
-            {/* border-b hairline between thumbnail and info text (2026-08-21,
-                direct instruction) — tested first on the mockup
-                (BookDetailsSample.tsx), approved, ported here and to the
-                Piece Library's own grid card (PieceGridCard.tsx). */}
+            {/* border-b hairline between thumbnail and info text — same
+                treatment as the Piece Library's own grid card
+                (PieceGridCard.tsx). */}
             <div className="relative aspect-[180/132] border-b border-border bg-border">
               <img
                 src={getPieceThumbnailUrl(piece.id, piece.thumbnailPage)}
@@ -150,26 +148,19 @@ function PieceGrid({ pieces }: { pieces: Piece[] }) {
 const THUMB_HIDE_CLASS = 'max-[501px]:hidden'
 const ROW_COLLAPSE_CLASS = 'max-[501px]:grid-cols-[96px_1fr]'
 
-// 96px (was 84px, was 60px originally) — a two-piece range like
-// "pp. 123–145" was clipping against the old width once source pages ran
-// past double digits; widened again (direct instruction, 2026-08-21) for
-// a bit more breathing room around three-digit ranges like "pp. 159–161".
-// BUG FIX (2026-08-21): rows used to carry their own `border-t
-// border-border … first:border-t-0`, matching BookDetailsSample.tsx's
-// mockup verbatim — but that `first:` was never doing what it looked like
-// it did, in either file: the "PAGE / TITLE" header row above the mapped
-// pieces is *also* a child of the same flex-col container, so it — not the
-// first piece — is the one that actually holds the `:first-child` slot.
-// The mockup's own first piece row was already getting a real border-top
-// (a visible line under the header) precisely because `first:border-t-0`
-// never matched anything there; the real page just had the *other*,
-// unrelated bug on top of it (each row separately wrapped in
-// PieceContextMenu's own div for right-click/long-press, so `:first-child`
-// matched every row's own sole-child wrapper, deleting every line
-// instead). Net fix here: every row gets a plain, unconditional
-// `border-t border-border` — no `first:` exception at all, which is what
-// actually reproduces the mockup's real rendered result (a line under the
-// header too, not just between pieces).
+// 96px gives a two-piece range like "pp. 123–145" enough room once source
+// pages run past double digits, with breathing room around three-digit
+// ranges like "pp. 159–161" too.
+// A real CSS gotcha worth remembering here: a `first:border-t-0` on these
+// rows does NOT do what it looks like — the "PAGE / TITLE" header row
+// above the mapped pieces is also a child of the same flex-col container,
+// so it, not the first piece, holds the `:first-child` slot. Each row is
+// also separately wrapped in PieceContextMenu's own div for right-click/
+// long-press, so `:first-child` there matches every row's own sole-child
+// wrapper — deleting every divider, not just the first. Every row gets a
+// plain, unconditional `border-t border-border` instead, no `first:`
+// exception, which is what actually produces a line under the header too,
+// not just between pieces.
 function PieceList({ pieces }: { pieces: Piece[] }) {
   return (
     <div className="flex flex-col">
@@ -199,9 +190,9 @@ function PieceList({ pieces }: { pieces: Piece[] }) {
                 <p className="mt-0.5 text-xs text-ink-soft">{pieceMetaLine(piece)}</p>
                 {/* sheetType/instruments only shown when they're this piece's
                     own override, not the resolved/effective (book-inherited)
-                    value (2026-08-20, direct instruction: "don't show pills
-                    from inherited information, they'll just clutter the
-                    view") — every piece in a book sharing the same inherited
+                    value — showing pills from inherited information would
+                    just clutter the view: every piece in a book sharing the
+                    same inherited
                     sheet type/instruments would otherwise repeat the
                     identical pill on every single row, adding nothing the
                     book header above the piece list hasn't already shown
@@ -260,11 +251,10 @@ export function BookDetailsPage() {
     enabled: !!book,
   })
 
-  // Custom cover upload (2026-08-21, direct instruction) — "D" (header
-  // toolbar button) and "E" (right-click/long-press the cover) both call
-  // openCoverFilePicker, same shared-trigger shape the mockup review
-  // settled on. Applies regardless of whether the book already has a real
-  // file. Invalidates ['books'] too, not just this one ['book', bookId] —
+  // Custom cover upload — both the header toolbar button and right-click/
+  // long-press the cover call openCoverFilePicker, same shared trigger.
+  // Applies regardless of whether the book already has a real file.
+  // Invalidates ['books'] too, not just this one ['book', bookId] —
   // the Books library grid reads the same cover via getBookCoverUrl.
   const uploadCoverMutation = useMutation({
     mutationFn: (file: File) => uploadBookCover(bookId, file),
@@ -392,8 +382,8 @@ export function BookDetailsPage() {
         ),
       })
     }
-    // ISBN sits between IMSLP no. and Original filename (2026-08-20,
-    // direct instruction) — but only when imslpNumber is blank. IMSLP
+    // ISBN sits between IMSLP no. and Original filename, but only when
+    // imslpNumber is blank. IMSLP
     // always wins the fallback over ISBN, same rule buildCitation applies
     // to ISBN in the citation string: showing both identifiers on a
     // details page that already has a dedicated IMSLP row would be
@@ -412,14 +402,11 @@ export function BookDetailsPage() {
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-6 md:p-8">
-      {/* Edit / Change Cover / Open Book PDF live in this top toolbar row
-          (2026-08-21, direct instruction) — moved up from the header card,
+      {/* Edit / Change Cover / Open Book PDF live in this top toolbar row,
           mirroring Piece Details page's own toolbar (PiecePage.tsx): icon-only
           buttons first (Open Book PDF, Change Cover — identical
           bordered-square treatment), one labeled button last (Edit Book).
-          flex-wrap + whitespace-nowrap below (built out 2026-08-21 from the
-          mockup's own fix — see BookDetailsSample.tsx's toolbar comment for
-          the full measurement-backed reasoning): at phone widths, "Back to
+          flex-wrap + whitespace-nowrap below: at phone widths, "Back to
           Books" and the button group don't both fit one row, and without
           this the back link broke mid-phrase while the group held its full
           width and got silently clipped by an ancestor's overflow. Now the
@@ -436,9 +423,7 @@ export function BookDetailsPage() {
         {book && (
           <div className="flex shrink-0 items-stretch gap-2.5">
             {/* Delete Book, icon-only, leftmost in the group, permanently
-                red (built out 2026-08-21 from the /mockup/book-details
-                reference sample — see that file's toolbar comment for the
-                full design reasoning). Same cascade-delete action as
+                red. Same cascade-delete action as
                 BookContextMenu's "Delete Book" (library right-click menu) —
                 handleDelete above reuses its exact confirm() wording — now
                 also reachable directly from the page. self-center on the
@@ -475,10 +460,9 @@ export function BookDetailsPage() {
                 title="No original file on record"
                 // text-[#aea9a4] is a solid pre-blend of ink-soft at 50%
                 // over this span's own bg-paper-raised (white) background —
-                // not a translucent text-ink-soft/50 utility. Standing rule
-                // (feedback-icon-color-preblend): IconFileTypePdf is a
-                // multi-path icon, so a translucent color would re-blend
-                // (and visibly darken) at every path overlap.
+                // not a translucent text-ink-soft/50 utility. IconFileTypePdf
+                // is a multi-path icon, so a translucent color would
+                // re-blend (and visibly darken) at every path overlap.
                 className="flex w-[38px] cursor-not-allowed items-center justify-center rounded-md border border-border bg-paper-raised text-[#aea9a4]"
               >
                 <IconFileTypePdf size={16} />
@@ -500,12 +484,11 @@ export function BookDetailsPage() {
               className="hidden"
               onChange={handleCoverFileChosen}
             />
-            {/* Collapses to icon-only below 360px (built out 2026-08-21 from
-                the mockup's own fix) — even after the outer row's flex-wrap
-                above, this group's own natural width still doesn't fit the
-                content area on the very narrowest real phone widths
-                (measured on the mockup: breaks below ~348px), and unlike
-                the outer row this group has no second line to drop to
+            {/* Collapses to icon-only below 360px — even after the outer
+                row's flex-wrap above, this group's own natural width still
+                doesn't fit the content area on the very narrowest real
+                phone widths, and unlike the outer row this group has no
+                second line to drop to
                 without the divider ending up orphaned. Dropping the label
                 instead — same icon-only treatment its siblings already
                 use — shrinks it enough to fit down to 320px. */}
@@ -545,8 +528,7 @@ export function BookDetailsPage() {
               taller than the cover, distorting its shape. */}
           <div className="overflow-hidden rounded-2xl border border-border bg-paper-raised shadow-sm">
             <div className="flex items-start gap-6 p-7">
-              {/* Custom cover upload (2026-08-21, direct instruction) — "E"
-                  from the 6-option comparison: right-click (desktop) or
+              {/* Custom cover upload — right-click (desktop) or
                   long-press (touch) the cover to change/remove it, same
                   ContextMenu component pieces already use. hideTriggerButton
                   since "D" (the top toolbar's camera button) already covers
@@ -573,8 +555,8 @@ export function BookDetailsPage() {
                 </div>
               </ContextMenu>
               <div className="min-w-0 flex-1">
-                {/* Edit/Change Cover/Open Book PDF moved to the top toolbar
-                    above (2026-08-21) — this row is now just the title, no
+                {/* Edit/Change Cover/Open Book PDF live in the top toolbar
+                    above — this row is now just the title, no
                     longer needs its own justify-between wrapper since
                     there's nothing left to push to the opposite side. */}
                 <div className="mb-2">

@@ -42,38 +42,20 @@ export function AppShell() {
         <main className="flex flex-1 flex-col">
           <Outlet />
         </main>
-        {/* Swapped from a left-aligned, border-topped bar to an understated
-            centered block (2026-08-21, direct instruction) — chosen from a
-            6-option comparison (https://claude.ai/code/artifact/51d2a939-267c-4d66-a597-f6038ddcc830,
-            favicon 🪶). Went through Option E (wrapped text + mark below),
-            Option D (the wordmark logo — reverted, felt "too much" even
-            after lightening its color twice), Option C (inline mark +
-            whisper-thin rule — reverted 2026-08-22 after two rounds of
-            "tighten the spacing" still didn't read right; root cause was
-            structural, not a spacing number: the wrapped-text box was
-            always wider than its own ragged rendered lines, so no gap
-            value could make a wrapped-row layout truly centered — see the
-            git history for that whole saga), now Option E's "one-line"
-            variant: the sentence NOT forced to wrap (no max-width on it at
-            all — one line, however wide that ends up being) with the mark
-            centered below it. A plain flex-col with align-items:center
-            centers both children exactly, regardless of content width,
-            because there's no wrapped/ragged text box to fight — this
-            sidesteps the whole class of centering bug Option C kept
-            running into.
-            Color #847d75 — a solid pre-blend of ink-soft at 75% over this
-            footer's actual background (--color-paper #fbfaf8), landing
-            deliberately between the artifact's plain ink-soft (judged too
-            heavy once seen live) and the even-lighter #a49e98 tried for
-            Option D (judged too faint). Solid hex, not a translucent
-            text-ink-soft/75 utility — the S mark's overlapping strokes
-            would re-blend unevenly under real translucency
-            (feedback-icon-color-preblend). Lives on the <a> itself with
-            the mark/text inheriting it, so hover:text-ink below actually
-            applies to both at once.
+        {/* flex-col + items-center, not justify-center on a wrapped text
+            box: a wrapped text child sizes to its own available width, not
+            its rendered line width, so bounding-box centering alone
+            doesn't visually center ragged wrapped text against a
+            fixed-position icon. This layout has no such box to fight —
+            centering is exact regardless of content width.
+            Color #847d75 is a solid pre-blend of ink-soft at 75% over this
+            footer's own paper background, not a translucent opacity
+            utility — the S mark's overlapping strokes would re-blend
+            unevenly under real translucency (CLAUDE.md > Frontend's icon
+            pre-blend rule). Lives on the <a> itself with the mark/text
+            inheriting it, so hover:text-ink below applies to both at once.
             SonneckMark is Gwendolyn 700 (bold) — see that component's own
-            comment for the full reasoning; no weight prop to pass since
-            the old per-size stroke-width faking is gone. */}
+            comment for the full reasoning. */}
         <footer className="flex shrink-0 flex-col items-center px-6 pt-8 pb-10">
           {/* Understated separator from the routed content above — short
               on purpose (not the width of the credit line below it), just
@@ -117,13 +99,10 @@ export function AppShell() {
                 not to its own longest rendered line — so items-center
                 (which only centers that box within the column) leaves the
                 ragged lines flush-left inside a box that's already full
-                width. Same failure mode already diagnosed for the old
-                Option C icon+text row (frontend-footer-redesign memory),
-                just missing here because this span has no sibling to stay
-                paired against — text-align:center on the span itself is
-                the direct fix, simpler than Option C's saga since there's
-                no icon position to keep synced with a ragged box. */}
             <span className="text-center font-display text-[0.78rem] italic">
+                width — text-align:center on the span itself is the direct
+                fix, since there's no icon position here that needs to
+                stay synced with a ragged box. */}
               Powered by Sonneck, an open-source music library
             </span>
             <SonneckMark className="size-8 shrink-0" />

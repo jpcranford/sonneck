@@ -24,18 +24,15 @@ import {
 // DESIGN MOCKUP — Book Upload Wizard, Screen 4 of 6: "Mark where each
 // piece begins" (design doc §5's "split" step). Not wired to the API —
 // all page-assignment state lives client-side in this component.
-// Locked design: https://claude.ai/code/artifact/28226f28-968a-427e-b233-63deabc74e48
-// (full decision history — the tap-marks-start model, Option 4i's tinted
-// open-piece indicator, the 7-color Garden Variety palette — is in the
-// frontend-book-upload-wizard memory, not repeated here).
+// Design: the tap-marks-start model, a tinted open-piece indicator, and
+// the 7-color Garden Variety palette.
 //
-// Unlike the static artifact, this is genuinely interactive: tap a page to
-// cycle its state, press-hold and drag across pages to range-select. This
-// is the real reason to build a mockup instead of stopping at the
-// artifact — a static comparison can describe a gesture, it can't prove
-// it feels right (this file's own revision history is proof: five real
-// bugs surfaced by actually using it that a static comparison never
-// would have caught).
+// Genuinely interactive: tap a page to cycle its state, press-hold and
+// drag across pages to range-select. This is the real reason to build a
+// mockup instead of stopping at a static comparison — a static comparison
+// can describe a gesture, it can't prove it feels right (this file's own
+// revision history is proof: five real bugs surfaced by actually using it
+// that a static comparison never would have caught).
 // ---------------------------------------------------------------------
 
 const PAGE_COUNT = 8

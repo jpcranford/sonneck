@@ -2,23 +2,20 @@ import { NavLink } from 'react-router-dom'
 import { IconMenu2, IconUserFilled, IconX } from '@tabler/icons-react'
 import { NAV_ITEMS, SECONDARY_NAV_ITEMS, SETLISTS, type NavItem } from '../lib/navItems'
 
-// Mobile-only top bar + left drawer (design review, 2026-08-22 — Option B
-// from a 4-way artifact comparison: the classic hamburger-drawer pattern,
-// chosen over a top-fold panel, a bottom sheet, and a bottom tab bar).
-// Replaces the permanently-docked icon-only rail Sidebar.tsx used to fall
-// back to below 768px with a slim top bar + a slide-in drawer that's
-// entirely absent from the screen until asked for. Ported from
-// MobileNavDrawerMockup.tsx once approved, sharing Sidebar.tsx's real
-// NAV_ITEMS/SECONDARY_NAV_ITEMS/SETLISTS data directly rather than a
-// hand-copied mockup list.
+// Mobile-only top bar + left drawer — the classic hamburger-drawer
+// pattern, chosen over a top-fold panel, a bottom sheet, and a bottom tab
+// bar. Replaces the permanently-docked icon-only rail Sidebar.tsx used to
+// fall back to below 768px with a slim top bar + a slide-in drawer that's
+// entirely absent from the screen until asked for. Shares Sidebar.tsx's
+// real NAV_ITEMS/SECONDARY_NAV_ITEMS/SETLISTS data directly.
 //
-// Deliberately logo-less (direct instruction, 2026-08-22) — went through
-// the full wordmark, then mark-plus-text, then mark-only, before landing
-// here. The wordmark specifically hit a real, still-unresolved small-size
-// rendering defect in the k glyph (see SonneckWordmark.tsx's own comment)
-// and was dropped for that reason; going logo-less entirely rather than
-// falling back to the S mark was a separate, direct simplification call
-// on top of that, not a workaround for it.
+// Deliberately logo-less — went through the full wordmark, then
+// mark-plus-text, then mark-only, before landing here. The wordmark
+// specifically hit a real, still-unresolved small-size rendering defect
+// in the k glyph (see SonneckWordmark.tsx's own comment) and was dropped
+// for that reason; going logo-less entirely rather than falling back to
+// the S mark was a separate simplification call on top of that, not a
+// workaround for it.
 //
 // Split into two components, not one, because the mockup's own layout
 // puts them in two different places in the tree: the top bar is a normal

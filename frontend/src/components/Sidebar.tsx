@@ -31,10 +31,10 @@ function NavItemsList({ items, collapsed }: { items: NavItem[]; collapsed: boole
               (text-sidebar-text, same in both nav states — only the
               background changes on active) rather than a dimmed pre-blend
               or an accent tint of its own; a visibly different icon color
-              next to same-colored text read as a mismatch, not a
-              deliberate highlight (direct instruction, 2026-08-20). No
-              longer needs the isActive render-prop now that the icon
-              doesn't vary by nav state either. */}
+              next to same-colored text reads as a mismatch, not a
+              deliberate highlight. No longer needs the isActive
+              render-prop now that the icon doesn't vary by nav state
+              either. */}
           <Icon size={22} className="text-sidebar-text" />
           {!collapsed && <span className="truncate">{label}</span>}
         </NavLink>
@@ -44,8 +44,8 @@ function NavItemsList({ items, collapsed }: { items: NavItem[]; collapsed: boole
 }
 
 export function Sidebar() {
-  // Always starts expanded — this component is desktop-only now (2026-08-22:
-  // AppShell renders it inside a `hidden md:block` wrapper, with MobileNav
+  // Always starts expanded — this component is desktop-only (AppShell
+  // renders it inside a `hidden md:block` wrapper, with MobileNav
   // handling everything below the md breakpoint instead), so there's no
   // longer a narrow-viewport case to default away from. The collapse
   // toggle below is a separate, persistent desktop preference, unrelated
@@ -148,9 +148,9 @@ export function Sidebar() {
         className={`m-2 flex items-center gap-2 rounded-lg border border-sidebar-border bg-sidebar-panel p-2 ${collapsed ? 'justify-center' : ''}`}
       >
         {/* Icon matches the "Local Library" label's own color
-            (text-sidebar-text) — was text-sidebar-text-dim, a visibly
-            different, more muted color than the text beside it (direct
-            instruction, 2026-08-20; same fix as the nav icons above). */}
+            (text-sidebar-text) — not text-sidebar-text-dim, a visibly
+            more muted color than the text beside it (same fix as the
+            nav icons above). */}
         <span className="flex size-8 shrink-0 items-center justify-center rounded-full border border-sidebar-border bg-sidebar-bg text-sidebar-text">
           <IconUserFilled size={16} />
         </span>

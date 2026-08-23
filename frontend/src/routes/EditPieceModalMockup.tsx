@@ -20,25 +20,12 @@ import { useMockupTitle } from '../lib/useMockupTitle'
 // built to lock in the Piece Properties Edit Menu's visual design (design
 // doc §15) before the real EditPieceModal.tsx existed; kept as its own
 // standalone route since (no API/local dev data needed to view the
-// design), and manually resynced to the real build on 2026-08-18 after
-// several rounds of real-build changes had drifted from it — section
-// order (the first section before the second), the collapsible page
-// preview, key search aliasing, repeated keys, and current Sheet Type
-// values. Its own TagComboBox/SingleSelect/InheritedNote stay local
+// design). Its own TagComboBox/SingleSelect/InheritedNote stay local
 // duplicates rather than importing the real shared components (this page
 // has always been self-contained), but small pure-logic pieces — page
 // preview's PageCycleControl, key search's matchesKeyQuery — get imported
 // directly, since duplicating actual logic (not just markup) is exactly
-// the kind of drift risk this resync exists to avoid repeating.
-//
-// 2026-08-18 (later same day) — section headings renamed, MOCKUP ONLY,
-// pending approval before porting to the real EditPieceModal.tsx: the
-// section formerly called "Piece Details" is now "Frontmatter"; the
-// section formerly called "Classification" is now "Piece Details". The
-// real modal still uses the old names ("Piece Details" / "Classification")
-// until this is explicitly approved — don't let the shared name "Piece
-// Details" between the old real-modal section and the new mockup section
-// cause confusion; they refer to different form sections.
+// the kind of drift risk keeping this in sync by hand is meant to avoid.
 // ---------------------------------------------------------------------
 
 interface TagOption {
@@ -433,7 +420,7 @@ function TagComboBox({
                         removeTagAt(index)
                       }}
                       aria-label={`Remove ${tag.name}`}
-                      // Solid pre-blend, not opacity (feedback-icon-color-preblend).
+                      // Solid pre-blend, not opacity — overlapping icon strokes would re-blend unevenly under real translucency.
                       className="text-[#8d8780] hover:text-ink"
                     >
                       <IconXFilled size={12} />
@@ -599,7 +586,7 @@ function SingleSelect({
           className="flex w-full items-center justify-between rounded-md border border-border bg-paper-raised px-3 py-2 text-left text-ink focus:outline focus:outline-2 focus:outline-accent focus:outline-offset-2"
         >
           <span className={value ? '' : 'text-ink-soft/50'}>{selected?.label ?? '—'}</span>
-          {/* Solid pre-blend, not opacity (feedback-icon-color-preblend). */}
+          {/* Solid pre-blend, not opacity — overlapping icon strokes would re-blend unevenly under real translucency. */}
           <IconChevronDown size={16} className="text-[#9d9892]" />
         </button>
         {open && (
@@ -691,7 +678,7 @@ function SourceBookField({
         <InfoTooltip
           message="Use this to match with an existing book. If the book hasn't been created yet, go do that and come back here."
           ariaLabel="What Source book means"
-          // Solid pre-blend, not opacity (feedback-icon-color-preblend).
+          // Solid pre-blend, not opacity — overlapping icon strokes would re-blend unevenly under real translucency.
           triggerClassName="text-[#9d9892] hover:text-ink-soft"
         >
           <IconInfoCircle size={13} />
@@ -802,8 +789,8 @@ export function EditPieceModalMockup() {
     setOpen(false)
   }
 
-  // Shift+Enter saves from anywhere in the form (2026-08-21) — kept in
-  // sync with the real EditPieceModal.tsx; see that file's own comment.
+  // Shift+Enter saves from anywhere in the form — kept in sync with the
+  // real EditPieceModal.tsx; see that file's own comment.
   function handleFormKeyDown(event: KeyboardEvent<HTMLFormElement>) {
     if (event.key === 'Enter' && event.shiftKey) {
       event.preventDefault()
@@ -906,7 +893,7 @@ export function EditPieceModalMockup() {
                   previewOpen ? 'max-h-[340px]' : 'max-h-0'
                 }`}
               >
-                {/* Dialed back from 420px/280px (2026-08-21) — kept in sync
+                {/* Dialed back from 420px/280px — kept in sync
                     with the real EditPieceModal.tsx; see that file's comment
                     for the full reasoning. */}
                 <div className="flex flex-col gap-2 pt-3 pb-1">
@@ -964,11 +951,11 @@ export function EditPieceModalMockup() {
             </div>
             {/* Composer/Arranger share a row — min-[525px]:flex-row, the
                 same fixed breakpoint every paired row in this form uses
-                now (unified 2026-08-20; previously each row wrapped at
-                its own content-driven flex-wrap point, so the form
-                visibly staggered as the modal narrowed — see Key(s)/
-                Duration and Personal below, which established this
-                breakpoint first). min-w-0 (not the old min-w-[250px]
+                (rather than each row wrapping at its own content-driven
+                flex-wrap point, which made the form visibly stagger as the
+                modal narrowed — see Key(s)/Duration and Personal below,
+                which established this breakpoint first). min-w-0 (not the
+                old min-w-[250px]
                 floor) so Composer can shrink freely once paired
                 side-by-side above 525px. */}
             <div className="flex flex-col gap-3 min-[525px]:flex-row">
@@ -1016,7 +1003,7 @@ export function EditPieceModalMockup() {
                   <InfoTooltip
                     message="If this piece is part of a larger work which has a number assigned, enter that number."
                     ariaLabel="What Opus / catalog no. means"
-                    // Solid pre-blend, not opacity (feedback-icon-color-preblend).
+                    // Solid pre-blend, not opacity — overlapping icon strokes would re-blend unevenly under real translucency.
                     triggerClassName="text-[#9d9892] hover:text-ink-soft"
                   >
                     <IconInfoCircle size={13} />
@@ -1070,7 +1057,7 @@ export function EditPieceModalMockup() {
                   <InfoTooltip
                     message="Publisher serial or engraving plate number. Typically found in bottom margin notes."
                     ariaLabel="What Publisher ID means"
-                    // Solid pre-blend, not opacity (feedback-icon-color-preblend).
+                    // Solid pre-blend, not opacity — overlapping icon strokes would re-blend unevenly under real translucency.
                     triggerClassName="text-[#9d9892] hover:text-ink-soft"
                   >
                     <IconInfoCircle size={13} />
@@ -1258,8 +1245,7 @@ export function EditPieceModalMockup() {
               <button
                 type="button"
                 onClick={() => setTempoOpen((o) => !o)}
-                // Solid pre-blend (icon + label share one color) —
-                // feedback-icon-color-preblend.
+                // Solid pre-blend (icon + label share one color).
                 className="flex items-center gap-1 text-xs text-[#9d9892] hover:text-ink-soft"
               >
                 <IconChevronRight
@@ -1371,9 +1357,9 @@ export function EditPieceModalMockup() {
               spanning the same height on the right — the one genuinely tall
               field gets the one genuinely tall column, same reasoning as
               that row. min-[525px]:flex-row/gap-3, matching that modal's
-              breakpoint and gutter exactly — this same breakpoint was later
-              adopted (2026-08-20) by every other paired row in this form
-              too, so the whole modal now splits to stacked layout at one
+              breakpoint and gutter exactly — this same breakpoint is
+              adopted by every other paired row in this form too, so the
+              whole modal splits to stacked layout at one
               unified point instead of each row wrapping at its own
               content-driven flex-wrap threshold. */}
           <div className="flex flex-col gap-3 border-t border-border pt-4">

@@ -1,54 +1,21 @@
 <!--
-  Sonneck S mark — the standalone S from the wordmark, the opaque, full-bleed app-icon tile — no corner rounding baked in, since iOS/Android apply their own mask on top of whatever is provided.
-  Glyph swapped from Imperial Script to Gwendolyn's 700 (bold) cut
-  (2026-08-21, direct instruction); see sonneck-s-mark.svg's own comment for
-  the full reasoning. No stroke needed here — Gwendolyn 700 is a real bold
-  weight on its own, unlike the old Imperial-Script-derived mark which
-  needed the "Regular (stroke 0)" decision documented in the
-  "frontend-logo-exploration" memory entry; originally derived at
-  https://claude.ai/code/artifact/efba43e3-7db7-4581-ba14-7bd75350403d
+  Sonneck app icon — the full-bleed, opaque tile version of the S mark.
+  No corner rounding baked in: iOS/Android apply their own mask on top of
+  whatever is provided. Traced from Gwendolyn's 700 (bold) cut; no stroke
+  needed since it's a genuine bold weight already.
 
-  Regenerating public/icon-192.png, icon-512.png, apple-touch-icon.png from
-  this file (2026-08-21) — no in-repo tooling for this existed before now,
-  confirmed by searching the whole repo first: load this SVG's content
-  (minus this comment) into an HTML page sized exactly to the target pixel
-  dimensions (192/512/180), screenshot via Playwright at deviceScaleFactor 1
-  with omitBackground:false. Produces flat 8-bit RGB PNGs (no alpha),
-  matching what these three files have always been — this SVG has no
-  transparent regions (the tile rect is full-bleed), so there's nothing
-  an alpha channel would add.
+  Tile fill and S-mark knockout colors match the sidebar's background and
+  text colors respectively, for consistency with the rest of the app chrome.
 
-  Recolored to a Near-Black Badge, 2026-08-22, matching favicon.svg's own
-  treatment — chosen from a 6-option comparison run for the favicon
-  redesign, then carried over here for icon/favicon consistency. Tile
-  fill matches the sidebar background token; the S mark's knockout fill
-  matches the sidebar text token — see favicon.svg's own comment for the
-  exact token names (naming them here in full would hit the same
-  literal-double-hyphen XML comment restriction documented in the
-  feedback-xml-comment-double-hyphen memory entry).
+  The diagonal highlight gradient is two solid opaque colors, not an
+  alpha-blended overlay: alpha interpolation between a transparent-white
+  stop and an opaque-black stop produces a non-monotonic brightness dip at
+  the midpoint (a visible light fringe), so the gradient bakes both ends
+  into solid RGB values and interpolates directly between them instead.
 
-  The tile's diagonal light gradient went through three corrections this
-  same round, each verified with actual pixel sampling rather than visual
-  inspection: (1) the original 20%-white / 14%-black overlay opacity read
-  far more extreme against this near-black base than it did against the
-  old forest-green tile, since alpha blending moves a color a fixed
-  fraction of the *remaining* distance to white or black, and near-black
-  has much more remaining distance to white — dialed the white stop down
-  to keep the highlight's absolute shift in line with the old tile's; (2)
-  the three-stop opacity gradient (white-alpha to zero-alpha to
-  black-alpha) had a genuine non-monotonic dip at its middle stop, a light
-  fringe from interpolating alpha and color separately between a
-  transparent-white stop and an opaque-black one — fixed by baking both
-  ends into solid opaque colors and gradienting directly between them,
-  eliminating the interpolation entirely; (3) the black end of that
-  gradient only ever pushed 2-3 RGB units past the base color, invisible
-  on a base this dark, yet left a third of the tile reading as a flat dark
-  "spot" — dropped it, so the gradient now ends exactly at the base color
-  instead of past it; (4) even after all three fixes, the highlight
-  corner still sat far enough from the base color to read as a visibly
-  separate lighter tile rather than a subtle sheen on the sidebar's own
-  tone — cut the highlight opacity again (15% down to 6%) so the tile
-  reads close to flat except for a faint corner glint.
+  icon-192.png, icon-512.png, and apple-touch-icon.png are rendered from
+  this file at their respective target sizes (the nested <svg> width/height
+  are swapped in per target, viewBox left unchanged), not hand-exported.
 -->
 
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">

@@ -45,8 +45,7 @@ export function TagComboBox({
   // input looks like the thing it's editing. Each key keeps its own
   // remove button; only the pill-per-key wrapper is replaced. Key(s)-only
   // — Instruments/Your Tags aren't ordered, so they keep the
-  // independent-pill treatment. Locked design: mockup at
-  // /mockup/edit-piece-modal, approved 2026-08-18.
+  // independent-pill treatment.
   sequenceStyle?: boolean
 }) {
   const [query, setQuery] = useState('')
@@ -102,9 +101,9 @@ export function TagComboBox({
       event.preventDefault()
       setHighlightedIndex((i) => (i - 1 + menuItemCount) % menuItemCount)
     } else if (event.key === 'Enter' && !event.shiftKey) {
-      // Shift+Enter is excluded deliberately (direct instruction,
-      // 2026-08-21): it's this app's "save the form" shortcut everywhere
-      // (EditPieceModal/EditBookModal), even while a dropdown is open and
+      // Shift+Enter is excluded deliberately: it's this app's "save the
+      // form" shortcut everywhere (EditPieceModal/EditBookModal), even
+      // while a dropdown is open and
       // would otherwise treat plain Enter as "pick the highlighted row."
       // preventDefault() alone doesn't stop the keydown from bubbling up to
       // the form's own Shift+Enter handler — only skipping this branch
@@ -190,7 +189,7 @@ export function TagComboBox({
                         removeTagAt(index)
                       }}
                       aria-label={`Remove ${tag.name}`}
-                      // Solid pre-blend, not opacity (feedback-icon-color-preblend).
+                      // Solid pre-blend, not opacity — overlapping icon strokes would re-blend unevenly under real translucency.
                       className="text-[#8d8780] hover:text-ink"
                     >
                       <IconXFilled size={12} />

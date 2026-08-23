@@ -44,8 +44,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # dedicated Go subcommand for it — debian-slim ships neither wget nor curl
 # by default.
 
-# Non-root by default (security assessment SNK-03, 2026-08-23) — a fixed
-# UID/GID (1000, the common first-user default on most Linux distros) so a
+# Non-root by default — a fixed UID/GID (1000, the common first-user
+# default on most Linux distros) so a
 # host bind-mount at /data "just works" without extra configuration for the
 # common case; document chown-ing to 1000:1000 if someone's host directory
 # was created under a different UID. Creating /data here (owned by the new

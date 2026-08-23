@@ -14,8 +14,8 @@ interface TagPillsProps {
   className?: string
 }
 
-// Card footer pills (locked design system), fixed order: user tags, key(s),
-// sheet type, instruments — matches the Piece Details page's locked pill line
+// Card footer pills, fixed order: user tags, key(s), sheet type,
+// instruments — matches the Piece Details page's pill line
 // (design doc §14: practice status, user tags, key, sheet type; instruments
 // moved into that page's details list). Cards have no practice-status pill,
 // so user tags lead here. Color is reserved for genuinely user-specific
@@ -25,7 +25,7 @@ interface TagPillsProps {
 // also carries a music-note icon. Keys are many-to-many (a piece can be
 // written in more than one key) and genuinely ordered (e.g. a piece that
 // modulates) — rendered as one merged pill with the sequence joined by a
-// small chevron, not one independent pill per key (2026-08-17).
+// small chevron, not one independent pill per key.
 export function TagPills({ keys, sheetType, instruments, userTags, className = '' }: TagPillsProps) {
   if (keys.length === 0 && !sheetType && instruments.length === 0 && userTags.length === 0) {
     return null

@@ -17,9 +17,9 @@ interface NewBookFormValues {
   yearWritten: string
 }
 
-// Books library view's "New Book" button (design mockup locked in
-// 2026-08-18) — creates a Book with no underlying file (backend migration
-// 00014), for a piece of sheet music you own but haven't scanned/uploaded
+// Books library view's "New Book" button — creates a Book with no
+// underlying file (backend migration 00014), for a piece of sheet music
+// you own but haven't scanned/uploaded
 // yet. Deliberately minimal: only the four fields a book can meaningfully
 // have before any pieces are attached to it — no sheet type/instruments/
 // opus/IMSLP/description here, those only make sense once there's real

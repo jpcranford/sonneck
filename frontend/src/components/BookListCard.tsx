@@ -8,13 +8,10 @@ interface BookListCardProps {
   book: Book
 }
 
-// Books library view, locked design (2026-08-18) — Option C, "catalog
-// list": no thumbnails at all, a call-number-style piece count instead of
-// Pieces' tag-pills-and-page-cycler footer. Piece count sits at the end of
-// the row (design review: moved from the left, reads cleaner against long
-// titles) rather than as its own leading column. The trailing chevron
-// always implied a destination — links to the Book Details page now that
-// it exists.
+// "Catalog list" style: no thumbnails at all, a call-number-style piece
+// count instead of Pieces' tag-pills-and-page-cycler footer. Piece count
+// sits at the end of the row (reads cleaner against long titles) rather
+// than as its own leading column.
 export function BookListCard({ book }: BookListCardProps) {
   const meta = formatBookMeta(book)
 
@@ -22,8 +19,8 @@ export function BookListCard({ book }: BookListCardProps) {
     // Right-click (desktop) + long-press (touch), no visible "⋯" trigger —
     // same convention as PieceListCard.
     <BookContextMenu book={book} hideTriggerButton>
-      {/* No border-t/first:border-t-0 here (2026-08-21 bug fix, same root
-          cause as BookDetailsPage.tsx's PieceList) — this card is wrapped
+      {/* No border-t/first:border-t-0 here (same root cause as
+          BookDetailsPage.tsx's PieceList) — this card is wrapped
           in BookContextMenu's own div (right-click/long-press), making it
           the sole child of its own per-row wrapper, so CSS `first:`
           matched every row instead of just the actual first one, deleting
@@ -43,7 +40,7 @@ export function BookListCard({ book }: BookListCardProps) {
           <span className="font-display text-xl leading-none text-accent">{book.pieceCount}</span>
           <span className="mt-1 text-[0.6rem] tracking-wide text-ink-soft uppercase">pieces</span>
         </div>
-        {/* Solid pre-blend, not opacity (feedback-icon-color-preblend). */}
+        {/* Solid pre-blend, not opacity — overlapping icon strokes would re-blend unevenly under real translucency. */}
         <IconChevronRight size={18} className="shrink-0 text-[#aca7a1]" />
       </ClickableCard>
     </BookContextMenu>

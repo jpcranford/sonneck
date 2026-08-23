@@ -67,9 +67,8 @@ function DrawerNavList({ items }: { items: NavItem[] }) {
   )
 }
 
-// Mobile-only left drawer (design review, 2026-08-22 — Option B from a
-// 4-way artifact comparison: the classic hamburger-drawer pattern, chosen
-// over a top-fold panel, a bottom sheet, and a bottom tab bar). Replaces
+// Mobile-only left drawer: the classic hamburger-drawer pattern, chosen
+// over a top-fold panel, a bottom sheet, and a bottom tab bar. Replaces
 // the permanently-docked icon-only rail Sidebar.tsx currently falls back
 // to below 768px with a slim top bar + a slide-in drawer that's entirely
 // absent from the screen until asked for.

@@ -98,10 +98,10 @@ func TestCitation_PublisherIdFusesOntoPublisherName(t *testing.T) {
 // IMSLP number still wins the fallback entirely over publisherId
 // (publisherId is dropped, not shown alongside it) — unaffected by the
 // "IMSLP #" formatting change covered separately below.
-// TestCitation_ImslpNumberSuppressesPublisherAndPublisherId locks in the
-// 2026-08-21 rule: when imslpNumber is present, publisher (and the
-// publisherId fused onto it) are dropped from the citation entirely, not
-// just the publisherId half of that pair as before.
+// TestCitation_ImslpNumberSuppressesPublisherAndPublisherId locks in: when
+// imslpNumber is present, publisher (and the publisherId fused onto it)
+// are dropped from the citation entirely, not just the publisherId half
+// of that pair.
 func TestCitation_ImslpNumberSuppressesPublisherAndPublisherId(t *testing.T) {
 	h := newTestServer(t)
 	dir := t.TempDir()
@@ -131,10 +131,10 @@ func TestCitation_ImslpNumberSuppressesPublisherAndPublisherId(t *testing.T) {
 	}
 }
 
-// IMSLP renders with an explicit "IMSLP #" label, 2026-08-17 — and strips
-// any "IMSLP" text already baked into the stored value (common in
-// existing data, and in data written before EditPieceModal started
-// stripping it on save) so the label never doubles up.
+// IMSLP renders with an explicit "IMSLP #" label, and strips any "IMSLP"
+// text already baked into the stored value (common in existing data,
+// entered before EditPieceModal started stripping it on save) so the
+// label never doubles up.
 func TestCitation_ImslpNumberGetsHashLabelAndStripsExistingPrefix(t *testing.T) {
 	h := newTestServer(t)
 	dir := t.TempDir()
@@ -163,8 +163,8 @@ func TestCitation_ImslpNumberGetsHashLabelAndStripsExistingPrefix(t *testing.T) 
 }
 
 // Arranger fuses onto the composer ("Author, arr. Arranger", no comma
-// before "arr.") — a direct instruction overriding design doc §6's
-// original exclusion of arranger from the citation format.
+// before "arr.") — a deliberate reversal of design doc §6's original
+// exclusion of arranger from the citation format (CLAUDE.md > Config).
 func TestCitation_ArrangerFusesOntoComposer(t *testing.T) {
 	h := newTestServer(t)
 	dir := t.TempDir()
@@ -193,10 +193,10 @@ func TestCitation_ArrangerFusesOntoComposer(t *testing.T) {
 }
 
 // TestCitation_ArrangerAloneWithNoComposer covers the composer-OR-arranger
-// rule's effect on the citation specifically (2026-08-20, direct
-// instruction): with no composer at all, the composer segment renders as
-// just "arr. {arranger}" instead of disappearing — the old logic only ever
-// appended arranger onto an already-non-blank composer.
+// rule's effect on the citation specifically: with no composer at all,
+// the composer segment renders as just "arr. {arranger}" instead of
+// disappearing — the old logic only ever appended arranger onto an
+// already-non-blank composer.
 func TestCitation_ArrangerAloneWithNoComposer(t *testing.T) {
 	h := newTestServer(t)
 	dir := t.TempDir()
@@ -223,10 +223,10 @@ func TestCitation_ArrangerAloneWithNoComposer(t *testing.T) {
 	}
 }
 
-// TestCitation_ISBNAppearsAfterPublisherWhenImslpBlank covers the new ISBN
-// citation component (2026-08-20, direct instruction): its own comma-joined
-// part, right after the publisher/publisherId segment, hyphenated via the
-// simplified heuristic (hyphenateISBN's own doc comment). The digits here
+// TestCitation_ISBNAppearsAfterPublisherWhenImslpBlank covers the ISBN
+// citation component: its own comma-joined part, right after the
+// publisher/publisherId segment, hyphenated via the simplified heuristic
+// (hyphenateISBN's own doc comment). The digits here
 // are a real, well-known ISBN-13 ("Clean Code" by Robert C. Martin,
 // publicly documented as 978-0-13-235088-4) chosen for recognizability —
 // the *expected* hyphenation below is this project's own simplified

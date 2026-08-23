@@ -5,9 +5,9 @@ import { uploadBook } from '../api/books'
 import { ApiError } from '../api/client'
 import type { Book } from '../api/types'
 
-// Book Upload Wizard, "drag-and-drop the book file" step — per this
-// session's own design memory, this is deliberately just the existing
-// single-piece dropzone (UploadPage.tsx's `stage === 'select'` block)
+// Book Upload Wizard, "drag-and-drop the book file" step — deliberately
+// just the existing single-piece dropzone (UploadPage.tsx's `stage ===
+// 'select'` block)
 // reused verbatim, pointed at uploadBook instead of uploadPiece, not a
 // designed screen of its own — no wizard step-counter chrome here, same
 // as the piece flow's own dropzone doesn't have one.

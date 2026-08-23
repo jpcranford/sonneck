@@ -5,11 +5,9 @@ import { useMockupTitle } from '../lib/useMockupTitle'
 // ---------------------------------------------------------------------
 // DESIGN MOCKUP — Book Upload Wizard, Screen 6 of 6: "Ready to import"
 // (design doc §5's "Confirm" step, the final screen). Not wired to the
-// API — the piece list is the same fixed fixture used throughout the
-// wizard's mockups (frontend-book-upload-wizard memory's "Album für die
-// Jugend" book). Read-only review, not editable — nothing here is a
-// form field.
-// Locked design: https://claude.ai/code/artifact/789756e5-4fcd-44d4-9783-64ba3ed94d86
+// API — the piece list is the same fixed "Album für die Jugend" fixture
+// used throughout the wizard's mockups. Read-only review, not editable —
+// nothing here is a form field.
 //
 // Genuinely interactive: clicking "Import" runs a real (if simulated —
 // there's no backend to actually call from a mockup) idle -> importing ->
@@ -17,10 +15,10 @@ import { useMockupTitle } from '../lib/useMockupTitle'
 // animation button pattern (`animate-stripe-move`) rather than a static
 // comparison of the two states. The success screen reuses UploadPage.tsx's
 // exact "done" convention (IconCircleCheckFilled, "Upload another file"
-// resets back to the start) and demonstrates the locked truncation rule
-// for the imported-titles sentence — verified for both the ≤3 and >3
-// cases via a standalone script before wiring it in, since this fixed
-// 3-piece fixture only ever exercises the ≤3 branch live.
+// resets back to the start) and demonstrates the imported-titles
+// sentence's truncation rule — verified for both the ≤3 and >3 cases via
+// a standalone script before wiring it in, since this fixed 3-piece
+// fixture only ever exercises the ≤3 branch live.
 // ---------------------------------------------------------------------
 
 const TOTAL_STEPS = 6

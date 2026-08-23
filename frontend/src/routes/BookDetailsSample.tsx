@@ -17,31 +17,23 @@ import { useMockupTitle } from '../lib/useMockupTitle'
 import { ContextMenu } from '../components/ContextMenu'
 
 // ---------------------------------------------------------------------
-// DESIGN MOCKUP — Phase 3 of the new Book Details page (no design-doc
-// spec to start from, same as the Books library view before it — see
-// BooksLibrarySample.tsx). Built once both the header card (Phase 1) and
-// the pieces grid/list (Phase 2) were locked in the "Book Details —
-// Consolidated Design" artifact. Visit /mockup/book-details directly.
+// DESIGN MOCKUP — Book Details page, kept as a standing design reference
+// (no design-doc spec to start from, same as the Books library view
+// before it — see BooksLibrarySample.tsx). Visit /mockup/book-details
+// directly; not wired to the real API, so Edit/Open PDF stay inert here.
 //
 // The header band is its own card (full border/radius/shadow). The
 // pieces grid/list below is deliberately NOT a card — no border, no
 // radius, no shadow, just a border-top hairline flush against the
-// header card's bottom edge, same bg-paper tint as the page itself —
-// matching the artifact exactly (two real regressions fixed along the
-// way: an early pass rendered them as two separate floating cards, a
-// later one wrongly fused them into one shared rounded box instead).
+// header card's bottom edge, same bg-paper tint as the page itself (two
+// real regressions fixed along the way: an early pass rendered them as
+// two separate floating cards, a later one wrongly fused them into one
+// shared rounded box instead).
 // No Advanced disclosure and no corner collapse toggle — Publisher/
-// IMSLP no./Original filename now render as one always-visible
-// horizontal row of fields under the description, in the same over/
-// under (small-caps label, value below) styling used everywhere else on
-// this card.
-//
-// Not wired to the API: no GET /api/books/:id/file (Open Book PDF) and
-// no per-book piece-listing endpoint exist yet — both are new backend
-// work for the real build (Phase 4). The Edit affordance stays inert for
-// the same reason the Piece Details page's own Source Book card's Edit icon
-// does — the Book Properties Edit Menu (§16) doesn't exist yet either.
-// The grid/list toggle is real local state.
+// IMSLP no./Original filename render as one always-visible horizontal
+// row of fields under the description, in the same over/under
+// (small-caps label, value below) styling used everywhere else on this
+// card. The grid/list toggle is real local state.
 // ---------------------------------------------------------------------
 
 interface SampleKey {
@@ -66,9 +58,8 @@ interface SamplePiece {
 const sampleBook = {
   bookTitle: 'Album für die Jugend',
   composer: 'Robert Schumann',
-  // Set (2026-08-20, direct instruction) specifically to demonstrate the
-  // composer/arranger fusion on the book header line — previously null
-  // and therefore never exercised here.
+  // Set specifically to demonstrate the composer/arranger fusion on the
+  // book header line.
   arranger: 'Theodor Kirchner' as string | null,
   yearWritten: '1848',
   workOpusNumber: 'Op. 68',
@@ -202,8 +193,8 @@ function sortedPieces(pieces: SamplePiece[]): SamplePiece[] {
   })
 }
 
-// Composer-or-arranger (2026-08-20): a piece/book can now have an arranger
-// with no composer at all, so this can't just append arranger onto
+// Composer-or-arranger: a piece/book can have an arranger with no
+// composer at all, so this can't just append arranger onto
 // composer whenever it's set — composer blank + arranger set must still
 // show "arr. Arranger" alone, not disappear entirely. Same three-way
 // fallback as PieceDetailsSample.tsx's bookComposerPart and the backend's
@@ -225,15 +216,15 @@ function pieceComposer(piece: SamplePiece): string | null {
   return piece.composer || sampleBook.composer
 }
 
-// Arranger is book-inheritable too (2026-08-20) — a piece with no arranger
-// of its own falls back to the book's, same treatment as pieceComposer.
+// Arranger is book-inheritable too — a piece with no arranger of its own
+// falls back to the book's, same treatment as pieceComposer.
 function pieceArranger(piece: SamplePiece): string | null {
   return piece.arranger || sampleBook.arranger
 }
 
-// Academic "p."/"pp." convention (standing rule, 2026-08-20): singular
-// "p." for one page, "pp." for a range — ported back from
-// BookDetailsPage.tsx's own fix, same as pieceMetaLine's arranger fix above.
+// Academic "p."/"pp." convention: singular "p." for one page, "pp." for a
+// range — ported back from BookDetailsPage.tsx's own fix, same as
+// pieceMetaLine's arranger fix above.
 function pageRangeLabel(piece: SamplePiece): string {
   const end = piece.sourcePageStart + piece.pageCount - 1
   return piece.pageCount > 1 ? `pp. ${piece.sourcePageStart}–${end}` : `p. ${piece.sourcePageStart}`
@@ -298,9 +289,9 @@ function SheetThumb() {
 // since they're the one genuinely user-authored category here.
 //
 // Deliberately reads piece.sheetType/piece.instruments directly — a
-// piece's OWN value, never a book-inherited fallback (2026-08-20, direct
-// instruction: "don't show pills from inherited information, they'll just
-// clutter the view"). Every piece in a book sharing the same inherited
+// piece's OWN value, never a book-inherited fallback: showing pills from
+// inherited information would just clutter the view. Every piece in a book
+// sharing the same inherited
 // sheet type/instruments would otherwise repeat the identical pill on
 // every single row, adding nothing the book header (above the piece list)
 // hasn't already shown once. Keys and userTags were never book-inheritable
@@ -373,20 +364,14 @@ function PieceGrid({ pieces }: { pieces: SamplePiece[] }) {
           key={piece.id}
           className="overflow-hidden rounded-lg border border-border bg-paper-raised transition-colors hover:border-accent"
         >
-          {/* 2026-08-20 (direct instruction): the page-range badge that
-              used to overlay the thumbnail is gone — its content moved
-              down to the bottom line in its place (below), and the
-              composer/arranger row is gone entirely. Too little room in a
-              112px-wide card for three lines of text plus a badge; the
-              page range is the one fact worth keeping over the piece
-              count pagesLabel used to show. */}
-          {/* border-b test (2026-08-21, direct instruction): a hairline
-              between the thumbnail and the info text below it — previously
-              nothing but whitespace separated the two, relying entirely on
-              the outer card border to read as "one card." Testing here
-              first (Book Details' own grid card) before touching the real
-              Piece Library cards (PieceGridCard.tsx) or Book Details'
-              real PieceGrid, per direct instruction. */}
+          {/* No page-range badge overlaying the thumbnail, and no
+              composer/arranger row — too little room in a 112px-wide card
+              for three lines of text plus a badge; the page range (shown
+              on the bottom line below) is the one fact worth keeping. */}
+          {/* border-b: a hairline between the thumbnail and the info text
+              below it — without it, nothing but whitespace separates the
+              two, relying entirely on the outer card border to read as
+              "one card." */}
           <div className="relative aspect-[180/132] border-b border-border bg-white">
             <SheetThumb />
           </div>
@@ -468,14 +453,14 @@ function bookFields(): { label: string; value: ReactNode }[] {
       value: (
         <>
           {sampleBook.imslpNumber}
-          {/* Solid pre-blend, not opacity (feedback-icon-color-preblend). */}
+          {/* Solid pre-blend, not opacity — overlapping icon strokes would re-blend unevenly under real translucency. */}
           <IconExternalLink size={12} className="ml-0.5 inline text-[#605d5b]" />
         </>
       ),
     })
   }
-  // ISBN sits between IMSLP no. and Original filename (2026-08-20, direct
-  // instruction) — but only when imslpNumber is blank. IMSLP always wins
+  // ISBN sits between IMSLP no. and Original filename, but only when
+  // imslpNumber is blank. IMSLP always wins
   // the fallback over ISBN, same rule buildCitation applies to ISBN in the
   // citation string: showing both identifiers on a details page that
   // already has a dedicated IMSLP row would be redundant, not additive.
@@ -497,16 +482,15 @@ export function BookDetailsSample() {
 
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
 
-  // NEW CAPABILITY (2026-08-21, for approval — third revision, combining
-  // "D" (header toolbar button) and "E" (right-click/long-press context
-  // menu) from the 6-option comparison, per direct instruction). Applies
-  // regardless of whether the book already has a real file — unlike the
-  // previous "no-file only" revision, a book with a perfectly good
-  // first-page thumbnail can still have it manually overridden. Neither D
-  // nor E touches the cover's own visual chrome (no corner button, no
-  // dropzone styling) — the cover renders exactly as it already does
-  // either way, which is what makes layering two independent trigger
-  // paths onto the same action reasonable instead of redundant-looking.
+  // Custom cover upload, combining trigger "D" (header toolbar button)
+  // and trigger "E" (right-click/long-press context menu) for the same
+  // action. Applies regardless of whether the book already has a real
+  // file — a book with a perfectly good first-page thumbnail can still
+  // have it manually overridden. Neither D nor E touches the cover's own
+  // visual chrome (no corner button, no dropzone styling) — the cover
+  // renders exactly as it already does either way, which is what makes
+  // layering two independent trigger paths onto the same action
+  // reasonable instead of redundant-looking.
   const [customCoverUrl, setCustomCoverUrl] = useState<string | null>(null)
   const coverFileInputRef = useRef<HTMLInputElement>(null)
 
@@ -559,18 +543,16 @@ export function BookDetailsSample() {
         the photo-upload icon in the top toolbar, or right-click/long-press the cover itself.
       </div>
 
-      {/* Edit / Change Cover / Open Book PDF live in this top toolbar row
-          (2026-08-21), now re-ordered and re-styled to mirror Piece Details page's
-          own toolbar exactly (PiecePage.tsx: icon-only buttons first, one
-          labeled ActionButton-style button last) rather than the earlier
-          pass's mixed styling — Open Book PDF drops its accent-filled
-          treatment for the same bordered-square icon-only look as Change
-          Cover, and Edit Book gains a label instead of being the odd
-          icon-only one out. */}
-      {/* flex-wrap (added 2026-08-21, narrow-viewport bug found via a
-          screenshot at 375px — same fix as PieceDetailsSample's own toolbar,
-          see that file's comment for the full measurement-backed reasoning):
-          at phone widths "Back to Books" and the button group don't fit on
+      {/* Edit / Change Cover / Open Book PDF live in this top toolbar row,
+          styled to mirror Piece Details page's own toolbar exactly
+          (PiecePage.tsx: icon-only buttons first, one labeled
+          ActionButton-style button last) rather than mixed styling — Open
+          Book PDF uses the same bordered-square icon-only look as Change
+          Cover instead of an accent-filled treatment, and Edit Book gets a
+          label instead of being the odd icon-only one out. */}
+      {/* flex-wrap (same fix as PieceDetailsSample's own toolbar, see that
+          file's comment for the full measurement-backed reasoning): at
+          phone widths "Back to Books" and the button group don't fit on
           one row (122px + 284px + 16px gap > the 311px content area), and
           the button group's own shrink-0 (needed so the icon-only buttons
           stretch to Edit Book's height, see the divider comment below) was
@@ -590,23 +572,20 @@ export function BookDetailsSample() {
           Back to Books
         </Link>
         <div className="flex shrink-0 items-stretch gap-2.5">
-          {/* Delete Book, icon-only, leftmost in the group (moved
-              2026-08-21, direct instruction — was rightmost with a divider
-              before it; now leads the group with the divider after it
-              instead). The same cascade-delete action already reachable via
+          {/* Delete Book, icon-only, leftmost in the group, divider after
+              it. The same cascade-delete action already reachable via
               right-click on a library card (BookContextMenu's "Delete
-              Book", which also deletes every Piece in the book), now also
+              Book", which also deletes every Piece in the book), also
               given a direct entry point from the page itself — this app's
               single largest-blast-radius action (whole book + every piece
               in it), so it earns visual distance from the other three via
               the divider. Permanently red (text-red-700, matching
               ContextMenu's own destructive-item color exactly — that color
-              is always-on there too, not a hover-only reveal) rather than
-              red-on-hover as in the first pass — direct instruction,
-              2026-08-21. Built out for real on BookDetailsPage.tsx the same
-              day; stays inert here on purpose, same as its siblings below —
-              see the disclaimer banner above for why (this mockup is never
-              wired to a real API call, delete included). */}
+              is always-on there too, not a hover-only reveal), not
+              red-on-hover. Stays inert here on purpose, same as its
+              siblings below — see the disclaimer banner above for why
+              (this mockup is never wired to a real API call, delete
+              included). */}
           <button
             type="button"
             aria-label="Delete Book"
@@ -643,7 +622,7 @@ export function BookDetailsSample() {
           >
             <IconPhotoUp size={16} />
           </button>
-          {/* Collapses to icon-only below 360px (added 2026-08-21) — even
+          {/* Collapses to icon-only below 360px — even
               after the outer row's flex-wrap fix above, this button group's
               own natural width (284px) still doesn't fit the content area
               on the very narrowest real phone widths (measured: breaks
@@ -671,11 +650,10 @@ export function BookDetailsSample() {
       {/* Header is its own card (full border + radius + shadow). The
           pieces section below is deliberately NOT a card — no border,
           no radius, no shadow, just a border-top hairline sitting flush
-          against the header card's bottom edge (verified against the
-          artifact directly: the previous pass had wrongly given the
-          pieces area full card chrome of its own, either as a separate
-          floating card or fused into one shared rounded box with the
-          header — neither matches the locked design). items-start on
+          against the header card's bottom edge (an earlier pass had
+          wrongly given the pieces area full card chrome of its own,
+          either as a separate floating card or fused into one shared
+          rounded box with the header). items-start on
           the header row specifically: without it, the cover's flex
           cross-axis defaults to stretch, which fights its own
           aspect-[2/3] the moment a sibling column grows taller than the
@@ -683,8 +661,8 @@ export function BookDetailsSample() {
       <div>
         <div className="overflow-hidden rounded-2xl border border-border bg-paper-raised shadow-sm">
           <div className="flex items-start gap-6 p-7">
-            {/* Custom cover upload (2026-08-21, proposed) — "D" + "E" from
-                the 6-option comparison, combined per direct instruction.
+            {/* Custom cover upload, combining trigger "D" (header toolbar
+                button, below) with trigger "E" (this context menu).
                 The cover itself renders exactly as it already does either
                 way (no corner button, no dropzone styling) — "E" wraps it
                 in the same ContextMenu component piece cards already use
@@ -711,10 +689,10 @@ export function BookDetailsSample() {
               onChange={handleCoverFileChosen}
             />
             <div className="min-w-0 flex-1">
-              {/* Edit/Change Cover/Open Book PDF moved to the top toolbar
-                  above (2026-08-21) — this row is now just the title, no
-                  longer needs its own justify-between wrapper since there's
-                  nothing left to push to the opposite side. */}
+              {/* Edit/Change Cover/Open Book PDF live in the top toolbar
+                  above — this row is now just the title, no longer needs
+                  its own justify-between wrapper since there's nothing
+                  left to push to the opposite side. */}
               <div className="mb-2">
                 <h1 className="font-display text-[1.35rem] font-medium text-ink">{title}</h1>
                 <p className="text-[0.92rem] text-ink-soft">{metaLine}</p>

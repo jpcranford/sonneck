@@ -21,9 +21,9 @@ interface PieceBrowseViewProps {
    * defaults to the same wording every filtered/unfiltered view already
    * used before this component existed. */
   noMatchMessage?: string
-  /** Grid-view card size — 'compact' for the main Library (2026-08-20,
-   * direct instruction: "slightly smaller", filtered views unchanged) vs.
-   * the original size everywhere else. A literal class per size rather
+  /** Grid-view card size — 'compact' for the main Library (slightly
+   * smaller, filtered views unchanged) vs. the original size everywhere
+   * else. A literal class per size rather
    * than an interpolated width: Tailwind's build-time scanner only picks
    * up arbitrary-value classes that appear as literal strings in source,
    * so a runtime-computed `minmax(${n}px,1fr)` wouldn't actually generate

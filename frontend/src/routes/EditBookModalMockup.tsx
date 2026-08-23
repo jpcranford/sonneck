@@ -10,16 +10,11 @@ import { useMockupTitle } from '../lib/useMockupTitle'
 // ---------------------------------------------------------------------
 // DESIGN MOCKUP — Book Properties Edit Menu (design doc §16). Not wired
 // to the API (Save just runs the animation below against fixed mock
-// data). Locked design, from two design-review artifacts (2026-08-19):
-//   - "Edit Book Properties" (3-option gallery) — body layout "C" (two
-//     columns, Book Title full-width above) + footer "A" (Save button
-//     itself carries the progress state) picked over the other options.
-//   - "Book Save Animation" (interactive C+A preview) — the moving-stripe
-//     Save-button treatment approved as-is, then two fixes requested here:
-//     Publisher/Publisher ID share one row (they didn't in that preview —
-//     an inconsistency with the original gallery's own "C", now
-//     corrected), and every multi-field row collapses to single-column
-//     below `sm` with nothing clipping.
+// data). Body layout: two columns, Book Title full-width above. Footer:
+// the Save button itself carries the moving-stripe progress state rather
+// than a separate progress indicator. Publisher/Publisher ID share one
+// row, and every multi-field row collapses to single-column below `sm`
+// with nothing clipping.
 // Reuses the real Modal/TagComboBox/SingleSelect components (unlike the
 // older EditPieceModalMockup.tsx, which predates those being extracted as
 // standalone components and so reimplements its own local versions) —
@@ -110,8 +105,8 @@ export function EditBookModalMockup() {
     setTimeout(() => setSaveState('idle'), SAVING_MS + SAVED_MS)
   }
 
-  // Shift+Enter saves from anywhere in the form (2026-08-21) — kept in
-  // sync with the real EditBookModal.tsx; see that file's own comment.
+  // Shift+Enter saves from anywhere in the form — kept in sync with the
+  // real EditBookModal.tsx; see that file's own comment.
   function handleFormKeyDown(event: ReactKeyboardEvent<HTMLFormElement>) {
     if (event.key === 'Enter' && event.shiftKey) {
       event.preventDefault()
@@ -221,12 +216,11 @@ export function EditBookModalMockup() {
           onKeyDown={handleFormKeyDown}
           className="flex flex-col gap-4"
         >
-          {/* Book title now stands alone, full width — no longer paired
-              with Composer (2026-08-20, direct instruction: reordered to
-              Title / Composer-Arranger / Year-Opus / Publisher-PublisherID
-              / ISBN-IMSLP / Sheet+Instruments-Description). Every paired
-              row below still collapses to stacked single fields below
-              ~525px, same as before. */}
+          {/* Book title stands alone, full width — not paired with
+              Composer. Field order: Title / Composer-Arranger / Year-Opus /
+              Publisher-PublisherID / ISBN-IMSLP /
+              Sheet+Instruments-Description. Every paired row below
+              collapses to stacked single fields below ~525px. */}
           <div className="flex min-w-0 flex-col gap-1">
             <label htmlFor="f-book-title" className="text-sm text-ink-soft">
               Book title <span className="text-ink-soft/60 italic">(Required)</span>
@@ -241,11 +235,11 @@ export function EditBookModalMockup() {
 
           <div className="flex flex-col gap-3 min-[525px]:flex-row">
             <div className="flex min-w-0 flex-1 flex-col gap-1">
-              {/* No persistent "one of these three required" hint here
-                  (direct instruction, 2026-08-21) — see EditBookModal.tsx's
-                  own comment: this is a backend-enforced cross-field rule,
-                  surfaced via the footer's error banner on a failed save
-                  rather than an always-on label hint. */}
+              {/* No persistent "one of these three required" hint here —
+                  see EditBookModal.tsx's own comment: this is a
+                  backend-enforced cross-field rule, surfaced via the
+                  footer's error banner on a failed save rather than an
+                  always-on label hint. */}
               <label htmlFor="f-composer" className="text-sm text-ink-soft">
                 Composer
               </label>
@@ -319,10 +313,8 @@ export function EditBookModalMockup() {
             </div>
           </div>
 
-          {/* ISBN/IMSLP number — moved IMSLP out of the closing stacked
-              column below (2026-08-20, direct instruction) and paired it
-              with the new ISBN field instead, same split-row treatment as
-              every row above it. */}
+          {/* ISBN/IMSLP number — paired together, same split-row treatment
+              as every row above it. */}
           <div className="flex flex-col gap-3 min-[525px]:flex-row">
             <div className="flex min-w-0 flex-1 flex-col gap-1">
               <label htmlFor="f-isbn" className="text-sm text-ink-soft">

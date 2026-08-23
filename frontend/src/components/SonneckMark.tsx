@@ -4,19 +4,12 @@
 // because inlining is required for currentColor to resolve against the
 // surrounding text color — an <img src> reference can't do that).
 //
-// Glyph swapped from Imperial Script to Gwendolyn's 700 (bold) cut
-// (2026-08-21, direct instruction) — chosen from a side-by-side comparison
-// (https://claude.ai/code/artifact/8de913aa-fbf7-433c-bfce-72574a2d416d,
-// favicon 🔍) after noticing Gwendolyn's S looked close to the original
-// mark and, unlike Imperial Script, ships a real distinct bold TTF file
-// rather than a browser-synthesized one. That real weight is why the old
-// per-size stroke-width faking (STROKE_WIDTH regular/light/medium, "the
-// locked per-size spec") is gone entirely here — the artifact's own
-// favicon comparison found Gwendolyn 700 plain (no added stroke) already
-// read clearly at every size that used to need a different synthetic
-// weight, 16px included. If a future context genuinely needs a lighter
-// weight, that's Gwendolyn's own 400 cut (a real file too), not a stroke
-// hack layered on top of 700.
+// Glyph is Gwendolyn's 700 (bold) cut, chosen for shipping a real distinct
+// bold TTF file rather than a browser-synthesized one. That real weight
+// is why there's no per-size stroke-width faking here — Gwendolyn 700
+// plain (no added stroke) reads clearly at every size, 16px included. If
+// a future context genuinely needs a lighter weight, that's Gwendolyn's
+// own 400 cut (a real file too), not a stroke hack layered on top of 700.
 export function SonneckMark({ className }: { className?: string }) {
   return (
     <svg

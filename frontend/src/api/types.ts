@@ -32,8 +32,7 @@ export interface Piece {
   id: number
   title: string
   composer: EffectiveField
-  /** Book-inheritable as of 2026-08-20 (backend: ResolveEffective) — was a
-   * plain nullable string before. */
+  /** Book-inheritable (backend: ResolveEffective). */
   arranger: EffectiveField
   favorite: boolean
   workOpusNumber: EffectiveField
@@ -74,8 +73,8 @@ export interface Book {
   id: number
   bookTitle: string
   composer: string | null
-  /** Book-inheritable-source field as of 2026-08-20 (backend:
-   * ResolveEffective) — a Piece's own arranger falls back to this. */
+  /** Book-inheritable-source field (backend: ResolveEffective) — a
+   * Piece's own arranger falls back to this. */
   arranger: string | null
   yearWritten: string | null
   workOpusNumber: string | null

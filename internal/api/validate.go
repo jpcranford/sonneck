@@ -71,11 +71,10 @@ func ValidatePiece(ctx context.Context, q repo.Queryer, p *models.Piece) (Valida
 	if err != nil {
 		return nil, err
 	}
-	// Composer OR arranger, not composer alone (direct instruction,
-	// 2026-08-20) — a piece crediting only an arranger (no named composer)
-	// is a real, legitimate case (e.g. a traditional/folk tune), not
-	// missing data. Both are book-inheritable, so either one supplied by
-	// the piece's book satisfies this too.
+	// Composer OR arranger, not composer alone — a piece crediting only an
+	// arranger (no named composer) is a real, legitimate case (e.g. a
+	// traditional/folk tune), not missing data. Both are book-inheritable,
+	// so either one supplied by the piece's book satisfies this too.
 	if eff.Composer.Value == "" && eff.Arranger.Value == "" {
 		errs = append(errs, FieldError{"composer", "or arranger is required (set directly, or via the piece's book)"})
 	}
@@ -103,16 +102,12 @@ func ValidatePiece(ctx context.Context, q repo.Queryer, p *models.Piece) (Valida
 }
 
 // ValidateBook checks b against design doc §16: bookTitle is required, and
-// (2026-08-20, direct instruction) so is one of composer/arranger/publisher
-// — a Book with none of the three is missing the one piece of attribution
-// every other bibliographic field on it is meant to be attached to.
-// Publisher joined this requirement as a same-day follow-on (also direct
-// instruction) after the wizard's About step surfaced a real case: a book
-// whose only known attribution is its publisher (no composer/arranger on
-// record at all) was blocked from being saved even though publisher alone
-// is a legitimate identifying fact for a Book. No DB access needed — Book
-// is the inheritance source, never itself a fallback target, so unlike
-// ValidatePiece this never needs to resolve an effective value.
+// so is one of composer/arranger/publisher — a Book with none of the
+// three is missing the one piece of attribution every other bibliographic
+// field on it is meant to be attached to (CLAUDE.md > Book-level soft
+// inheritance covers why these three specifically). No DB access needed —
+// Book is the inheritance source, never itself a fallback target, so
+// unlike ValidatePiece this never needs to resolve an effective value.
 func ValidateBook(b *models.Book) ValidationErrors {
 	var errs ValidationErrors
 

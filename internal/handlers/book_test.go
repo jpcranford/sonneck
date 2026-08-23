@@ -258,10 +258,10 @@ func TestListBooks_ReturnsAllAndFiltersByQuery(t *testing.T) {
 }
 
 // TestDeleteBook_CascadeDeletesAllPieces is the Book Library context menu's
-// "Delete Book" action end to end — confirmed direct instruction: this
-// removes the Book *and* every Piece referencing it in one action, not the
-// existing orphan-cleanup path (which only ever fires once a book's last
-// piece is already gone via individual piece deletes).
+// "Delete Book" action end to end: this removes the Book *and* every
+// Piece referencing it in one action, not the existing orphan-cleanup
+// path (which only ever fires once a book's last piece is already gone
+// via individual piece deletes).
 func TestDeleteBook_CascadeDeletesAllPieces(t *testing.T) {
 	h := newTestServer(t)
 	bookID, _ := uploadBook(t, h, "book.pdf", 4)
@@ -349,9 +349,9 @@ func TestDeleteBook_DoesNotRemoveFileStillReferencedOutsideTheBook(t *testing.T)
 }
 
 // TestUploadBookCover_OverridesDerivedThumbnail covers the core contract of
-// the custom cover feature (2026-08-21, direct instruction): once set, GET
-// /api/books/{id}/cover must serve the custom image, not the first-page-of-
-// PDF thumbnail — even though this book has a perfectly good real file.
+// the custom cover feature: once set, GET /api/books/{id}/cover must
+// serve the custom image, not the first-page-of-PDF thumbnail — even
+// though this book has a perfectly good real file.
 func TestUploadBookCover_OverridesDerivedThumbnail(t *testing.T) {
 	h := newTestServer(t)
 	bookID, _ := uploadBook(t, h, "book.pdf", 3)

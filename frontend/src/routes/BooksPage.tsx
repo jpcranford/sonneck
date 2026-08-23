@@ -12,12 +12,10 @@ type ViewMode = 'grid' | 'list'
 
 // Books library view (design doc §3's Book data model gets its own
 // browsing surface, separate from the piece-level Library view) — same
-// shell/search/grid-list-toggle chrome as LibraryPage.tsx, on purpose
-// (design review, 2026-08-18: "recognizably a library view"), with a
-// deliberately different card design in the content area itself. See the
-// "Books Library — Design Options" artifact for the full design
-// rationale — this combines Option B (cover grid) and Option C (catalog
-// list) behind the toggle.
+// shell/search/grid-list-toggle chrome as LibraryPage.tsx on purpose, so
+// it reads as recognizably a library view, with a deliberately different
+// card design in the content area itself (combines a cover grid and a
+// catalog list behind the view toggle).
 export function BooksPage() {
   const [query, setQuery] = useState('')
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
@@ -75,16 +73,11 @@ export function BooksPage() {
           </button>
         </div>
         {/* Bordered/neutral treatment, matching the grid/list toggle right
-            next to it (border-border, bg-paper-raised, text-ink) — was
-            solid bg-accent, a deliberate earlier choice (design-system
-            memory: settled on after a round-trip through bg-ink and a
-            5-option comparison gallery) revisited and replaced here per
-            direct instruction, design-review/books-new-book-button-bordered.png.
-            hover/active now also tint the label+icon accent (not just the
-            border) — text-accent on the button carries through to IconPlus
-            automatically via currentColor. active: alongside hover: so a
-            tap gets the same feedback a mouse hover does, not just the
-            border (direct instruction, 2026-08-20). */}
+            next to it (border-border, bg-paper-raised, text-ink), not a
+            solid accent fill. hover/active tint the label+icon accent (not
+            just the border) — text-accent on the button carries through to
+            IconPlus automatically via currentColor. active: alongside
+            hover: so a tap gets the same feedback a mouse hover does. */}
         <button
           type="button"
           onClick={() => setNewBookOpen(true)}

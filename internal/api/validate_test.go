@@ -97,9 +97,9 @@ func TestValidatePiece_ComposerMissingWithNoBook(t *testing.T) {
 }
 
 // TestValidatePiece_ArrangerAloneSatisfiesRequirement covers the
-// composer-OR-arranger rule (2026-08-20, direct instruction): a piece
-// crediting only an arranger — a traditional/folk tune with no named
-// composer, for instance — is legitimate, not missing data.
+// composer-OR-arranger rule: a piece crediting only an arranger — a
+// traditional/folk tune with no named composer, for instance — is
+// legitimate, not missing data.
 func TestValidatePiece_ArrangerAloneSatisfiesRequirement(t *testing.T) {
 	ctx := context.Background()
 	dbConn := newTestDB(t)
@@ -198,11 +198,6 @@ func TestValidatePiece_BPMMustBePositive(t *testing.T) {
 	}
 }
 
-// TestValidateBook_OnlyBookTitleRequired used to assert bookTitle alone was
-// enough (design doc §16's original "no field required except bookTitle").
-// Superseded 2026-08-20 (direct instruction): a Book now also needs one of
-// composer/arranger/publisher — see TestValidateBook_ComposerOrArrangerOrPublisherRequired
-// and its companions below.
 func TestValidateBook_RequiresBookTitle(t *testing.T) {
 	errs := api.ValidateBook(&models.Book{Composer: strPtr("Someone")})
 	if !hasField(errs, "bookTitle") {
@@ -231,9 +226,6 @@ func TestValidateBook_ArrangerAloneSatisfiesRequirement(t *testing.T) {
 	}
 }
 
-// PublisherAloneSatisfiesRequirement (2026-08-20, same-day follow-on):
-// added after the wizard's About step surfaced a book whose only known
-// attribution was its publisher, with no composer/arranger on record.
 func TestValidateBook_PublisherAloneSatisfiesRequirement(t *testing.T) {
 	errs := api.ValidateBook(&models.Book{BookTitle: "Just a Title", Publisher: strPtr("Someone Music Co.")})
 	if hasField(errs, "composer") {

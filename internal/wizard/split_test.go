@@ -92,9 +92,8 @@ func TestValidateRanges_AcceptsGapForSkippedPages(t *testing.T) {
 }
 
 func TestValidateRanges_AcceptsSkipImmediatelyBeforeASharedBoundary(t *testing.T) {
-	// The "bridge" scenario found and fixed in this session's Split-screen
-	// mockup: page 2 skipped, page 3 is both a synthetic single-page
-	// "bridge" piece AND the start of the next piece.
+	// The "bridge" scenario: page 2 skipped, page 3 is both a synthetic
+	// single-page "bridge" piece AND the start of the next piece.
 	err := wizard.ValidateRanges(8, []wizard.PageRange{
 		{Start: 1, End: 1},
 		{Start: 3, End: 3},

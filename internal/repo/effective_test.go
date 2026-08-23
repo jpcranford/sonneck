@@ -170,9 +170,7 @@ func TestResolveEffective_WhitespaceOnlyPieceValueFallsBackToBook(t *testing.T) 
 }
 
 // TestResolveEffective_ArrangerInheritsFromBook mirrors
-// TestResolveEffective_InheritsFromBook for Arranger, which joined the
-// book-inheritable list 2026-08-20 (direct instruction) — it used to be
-// excluded from EffectivePiece entirely.
+// TestResolveEffective_InheritsFromBook for Arranger.
 func TestResolveEffective_ArrangerInheritsFromBook(t *testing.T) {
 	ctx := context.Background()
 	dbConn := newTestDB(t)

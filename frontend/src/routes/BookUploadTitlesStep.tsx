@@ -5,11 +5,10 @@ import { getBookPageThumbnailUrl } from '../api/books'
 import type { Piece } from '../lib/pieceSplitLogic'
 import { TOTAL_WIZARD_STEPS } from './BookUploadWizard'
 
-// Composer-or-arranger (2026-08-20, direct instruction, ported from the
-// same rule everywhere else in this app): Arranger joined Composer as a
-// second per-piece field, and "required" now means *either* is set, not
-// Composer specifically — a piece crediting only an arranger (a
-// traditional/folk tune with no named composer) is legitimate here too.
+// Composer-or-arranger, same rule as everywhere else in this app:
+// "required" means *either* Composer or Arranger is set, not Composer
+// specifically — a piece crediting only an arranger (a traditional/folk
+// tune with no named composer) is legitimate here too.
 
 // Book Upload Wizard, Screen 5 of 6: "Name each piece" (design doc §5's
 // "fill fields" step). Real build of UploadBookTitlesMockup.tsx
@@ -241,9 +240,9 @@ export function BookUploadTitlesStep({
                     <span className="text-sm text-ink-soft">
                       Piece {index + 1} • {formatPieceLabel(piece)}
                     </span>
-                    {/* Desktop-only hover popover (2026-08-20, direct
-                        instruction), on top of the existing tap-to-open
-                        overlay rather than replacing it — a mouse is
+                    {/* Desktop-only hover popover, on top of the existing
+                        tap-to-open overlay rather than replacing it — a
+                        mouse is
                         guaranteed on desktop, so a hover preview doesn't
                         run into the "no hover-dependent interactions"
                         device-aware rule (CLAUDE.md): that rule exists for

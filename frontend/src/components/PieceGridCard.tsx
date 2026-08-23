@@ -25,9 +25,9 @@ export function PieceGridCard({ piece, backLabel }: PieceGridCardProps) {
   // as its own bullet-separated part — it qualifies the composer, it
   // isn't a peer fact like the year.
   //
-  // Three-way fallback (composer-or-arranger, 2026-08-20): falls back to
-  // "arr. Arranger" when only an arranger is set (own or book-inherited) —
-  // the old two-way ternary silently dropped that case entirely.
+  // Three-way fallback (composer-or-arranger): falls back to "arr.
+  // Arranger" when only an arranger is set (own or book-inherited) — a
+  // naive two-way ternary would silently drop that case entirely.
   const composerPart =
     piece.composer.value && piece.arranger.value
       ? `${piece.composer.value}, arr. ${piece.arranger.value}`
@@ -41,9 +41,9 @@ export function PieceGridCard({ piece, backLabel }: PieceGridCardProps) {
     .join(' • ')
 
   return (
-    // No visible "⋯" trigger on grid cards (removed 2026-08-18 — a
-    // permanently-visible button on every card in a dense grid read as
-    // clutter, and it only ever existed for touch users anyway since
+    // No visible "⋯" trigger on grid cards — a permanently-visible
+    // button on every card in a dense grid reads as clutter, and it only
+    // ever existed for touch users anyway since
     // desktop already has right-click). Touch users get the menu via
     // ContextMenu's built-in long-press instead; hideTriggerButton stays
     // true so the button doesn't fall back in.
@@ -53,12 +53,11 @@ export function PieceGridCard({ piece, backLabel }: PieceGridCardProps) {
         state={{ backLabel }}
         className="flex flex-col overflow-hidden rounded-lg border border-border bg-paper-raised text-left transition-colors hover:border-accent"
       >
-        {/* border-b hairline between thumbnail and info text (2026-08-21,
-            direct instruction) — tested first on Book Details' own grid
-            card (BookDetailsSample.tsx/BookDetailsPage.tsx), approved,
-            ported here. Previously nothing but whitespace separated the
-            two; relied entirely on the outer card border to read as "one
-            card." */}
+        {/* border-b hairline between thumbnail and info text — same
+            treatment as Book Details' own grid card
+            (BookDetailsSample.tsx/BookDetailsPage.tsx). Without it,
+            nothing but whitespace separates the two, relying entirely on
+            the outer card border to read as "one card." */}
         <div className="relative aspect-[180/132] w-full overflow-hidden border-b border-border bg-border">
           <img
             src={getPieceThumbnailUrl(piece.id, piece.thumbnailPage)}
@@ -70,8 +69,8 @@ export function PieceGridCard({ piece, backLabel }: PieceGridCardProps) {
               real scans vary (a plain white notation page vs. a dark cover
               photo), and this gives the badge something consistent to sit
               on without visibly washing out the artwork above it. "Light"
-              strength chosen from a 4-step comparison (design review,
-              2026-08-17, upgraded from "Subtle" same day): https://claude.ai/code/artifact/be28d110-28a2-4459-ae73-3bdcdced142a */}
+              strength, not "Subtle" — chosen for badge legibility across
+              real practice-status artwork. */}
           {piece.practiceStatus && (
             <div
               aria-hidden="true"
@@ -81,8 +80,7 @@ export function PieceGridCard({ piece, backLabel }: PieceGridCardProps) {
           {/* Practice status as a badge over the thumbnail, not a footer
               pill — keeps every grid card the same height regardless of
               whether a status is set, instead of the text block growing by
-              a row when one is present (design review, 2026-08-17: "Option
-              B" from a 5-way comparison). Bottom-left. */}
+              a row when one is present. Bottom-left. */}
           {piece.practiceStatus && (
             // Opaque background (was bg-accent-soft/90 + backdrop-blur-sm)
             // — the translucent version still had a hard time standing out

@@ -1,6 +1,6 @@
 // Mirrors the backend's hyphenateISBN (internal/handlers/citation.go) —
-// same simplified heuristic approved 2026-08-20, kept in sync by hand since
-// there's no shared code across the Go/TS boundary in this project (see
+// same simplified heuristic, kept in sync by hand since there's no shared
+// code across the Go/TS boundary in this project (see
 // citation.go's own stripImslpPrefix, independently implemented on both
 // sides). Extracted as a shared frontend module rather than duplicated per
 // mockup/component — same "tested, correctness-critical, needed in

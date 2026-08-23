@@ -142,12 +142,10 @@ export function UploadPage() {
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-6 p-8">
-      {/* Landing fork — "B" from the "Piece or Book?" design review
-          (https://claude.ai/code/artifact/9152253a-3609-40a0-8fef-d17bcda72dba),
-          locked in over a segmented toggle/tabs: these two paths diverge
-          into structurally different flows (one file field vs. the future
-          book-splitting wizard below), not just a different layout of the
-          same data, so it's worth a beat of real explanation rather than a
+      {/* Landing fork, not a segmented toggle/tabs: these two paths diverge
+          into structurally different flows (one file field vs. the book-
+          splitting wizard below), not just a different layout of the same
+          data, so it's worth a beat of real explanation rather than a
           pill someone might not notice has two settings. */}
       {stage === 'landing' && (
         <div className="flex w-full max-w-md flex-col gap-4">
@@ -272,22 +270,15 @@ export function UploadPage() {
           onSubmit={handleSubmit((data) => saveMutation.mutate(data))}
           className="flex w-full max-w-2xl flex-col gap-4"
         >
-          {/* "About this piece" (renamed 2026-08-21, direct instruction) —
-              was "Piece details," a bare noun-phrase label. Picked to
-              directly mirror the book wizard's own metadata-fill step
-              heading ("About this book," BookUploadAboutStep.tsx) since
-              this screen does the identical job for the single-piece path;
-              chosen over two other wizard-inspired options ("Tell us about
-              this piece," mirroring the Split/Titles steps' imperative
-              voice; "Ready to save," mirroring the Confirm step's
-              declarative framing). */}
+          {/* "About this piece" directly mirrors the book wizard's own
+              metadata-fill step heading ("About this book,"
+              BookUploadAboutStep.tsx), since this screen does the
+              identical job for the single-piece path. */}
           <h1 className="font-display text-2xl font-medium text-ink">About this piece</h1>
           {/* Large first-page thumbnail so what's about to be saved is
               visually confirmed, not just taken on faith from the
-              filename — locked design (design-review/upload-details-thumb-
-              preview-v4.png, 2026-08-19): thumb on the left, fields +
-              Save stacked on the right rather than spanning the full row
-              under it. */}
+              filename — thumb on the left, fields + Save stacked on the
+              right rather than spanning the full row under it. */}
           <div className="flex flex-col items-start gap-7 sm:flex-row">
             {/* Same reserved-frame fix as the Book Upload Wizard's cover
                 preview (BookUploadAboutStep.tsx): thumbnail generation is
@@ -333,7 +324,7 @@ export function UploadPage() {
                   <p className="text-sm text-red-700">{errors.composer.message}</p>
                 )}
               </div>
-              {/* Book link prompt (added 2026-08-21, direct instruction) —
+              {/* Book link prompt —
                   the single-piece path never gets a chance to associate a
                   sourceBookId at all otherwise, unlike the book wizard
                   (whose confirm-import step sets it automatically) or
@@ -393,10 +384,10 @@ export function UploadPage() {
           <h1 className="font-display text-2xl font-medium text-ink">
             "<span className="font-medium">{piece.title}</span>" uploaded
           </h1>
-          {/* "View piece" added alongside "Upload another file" (direct
-              instruction, 2026-08-20) — same accent-filled/bordered pairing
-              as the Book Upload Wizard's own success screen ("Open book"
-              next to "Upload another file", BookUploadWizard.tsx). */}
+          {/* "View piece" alongside "Upload another file" — same
+              accent-filled/bordered pairing as the Book Upload Wizard's
+              own success screen ("Open book" next to "Upload another
+              file", BookUploadWizard.tsx). */}
           <div className="mt-1 flex items-center gap-3">
             <button
               type="button"

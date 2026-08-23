@@ -32,7 +32,7 @@ function formatPageRange(piece: Piece): string {
   return piece.end !== piece.start ? `pp ${piece.start}–${piece.end}` : `pp ${piece.start}`
 }
 
-// Composer-or-arranger (2026-08-20): fuses arranger onto composer
+// Composer-or-arranger: fuses arranger onto composer
 // (", arr. Arranger"), same convention as everywhere else in this app —
 // arranger alone renders as "arr. Arranger" rather than disappearing when
 // composer is blank (composer-or-arranger means a piece can legitimately

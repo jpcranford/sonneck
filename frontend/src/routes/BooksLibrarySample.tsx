@@ -13,15 +13,13 @@ import { Modal } from '../components/Modal'
 import { useMockupTitle } from '../lib/useMockupTitle'
 
 // ---------------------------------------------------------------------
-// DESIGN MOCKUP — not wired to the API (no books-list endpoint exists yet
-// — see the "Books Library — Design Options" artifact this was built
-// from), no real navigation (no Book View page exists yet either, so
-// cards are hover-only, not real links). Visit /mockup/books-library
-// directly. Combines the two directions picked from that artifact —
-// Option B (cover grid) and Option C (catalog list) — behind the same
-// grid/list toggle the real Pieces Library already uses (LibraryPage.tsx),
-// so switching between them reads as "the same kind of choice" a user
-// already knows from the Pieces view, not a new concept.
+// DESIGN MOCKUP for the Books Library page — a standing reference showing
+// two competing layouts side by side: Option B (cover grid) and Option C
+// (catalog list), behind the same grid/list toggle the real Pieces
+// Library already uses (LibraryPage.tsx), so switching between them reads
+// as "the same kind of choice" a user already knows from the Pieces view,
+// not a new concept. Visit /mockup/books-library directly; not wired to
+// real data or navigation, so cards are hover-only, not real links.
 // ---------------------------------------------------------------------
 
 interface MockBook {
@@ -69,8 +67,8 @@ const MOCK_BOOKS: MockBook[] = [
 // page, which is exactly why the piece-count scrim needed testing against
 // something other than this mockup's old uniform cream placeholder.
 // Deliberately spans light/medium/dark so the white-on-dark-scrim choice
-// (2026-08-18) gets checked against the full brightness range real covers
-// could throw at it, not just a favorable middle case.
+// gets checked against the full brightness range real covers could throw
+// at it, not just a favorable middle case.
 const COVER_PALETTE: { bg: string; text: string }[] = [
   { bg: '#a8462f', text: '#fbf4ee' }, // terracotta
   { bg: '#1c2b4a', text: '#eef1f6' }, // navy
@@ -154,9 +152,9 @@ function CoverPlaceholder({ book }: { book: MockBook }) {
 }
 
 // ---- Option B: cover grid ----
-// Piece count treatment: locked in as "minimal scrim label" (one of six
-// compared, 2026-08-18) — no pill shape, count+icon sit directly on a
-// dark gradient scrim. Dark, not light: real book cover art is often
+// Piece count treatment: "minimal scrim label" — no pill shape, count+icon
+// sit directly on a dark gradient scrim. Dark, not light: real book cover
+// art is often
 // colorful/photographic rather than a plain cream sheet-music page, so a
 // light label over a dark gradient holds up across unpredictable cover
 // art the way it does for any media app overlaying metadata on artwork —
@@ -202,7 +200,7 @@ function BookCatalogRow({ book }: { book: MockBook }) {
         <span className="font-display text-xl leading-none text-accent">{book.pieceCount}</span>
         <span className="mt-1 text-[0.6rem] tracking-wide text-ink-soft uppercase">pieces</span>
       </div>
-      {/* Solid pre-blend, not opacity (feedback-icon-color-preblend). */}
+      {/* Solid pre-blend, not opacity — overlapping icon strokes would re-blend unevenly under real translucency. */}
       <IconChevronRight size={18} className="shrink-0 text-[#aca7a1]" />
     </div>
   )
@@ -425,8 +423,7 @@ export function BooksLibrarySample() {
       <div className="p-4 pb-0">
         <div className="rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-4 py-2 text-sm text-ink-soft">
           Design mockup — <span className="font-medium text-ink">Books library view</span>. Grid = Option
-          B (cover grid), List = Option C (catalog list). Not wired to real data; cards aren't real links
-          (no Book View page exists yet).
+          B (cover grid), List = Option C (catalog list). Not wired to real data; cards aren't real links.
         </div>
       </div>
 

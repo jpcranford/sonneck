@@ -335,11 +335,10 @@ func (s *Server) handleUpdateBook(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleDeleteBook implements the Book Library's context menu "Delete Book"
-// action (frontend, 2026-08-20) — a direct, user-initiated cascade delete:
-// removes the Book and every Piece that references it in one action.
-// Confirmed via direct instruction (cascade, not unlink-and-keep) — this is
-// the single largest blast-radius action in the app, gated by a strong
-// frontend confirmation naming the piece count.
+// action — a cascade delete: removes the Book and every Piece that
+// references it in one action, not an unlink-and-keep. This is the single
+// largest blast-radius action in the app, gated by a strong frontend
+// confirmation naming the piece count.
 //
 // Distinct from the existing orphan-cleanup path (handleDeletePiece, which
 // only ever deletes a Book once its *last* referencing Piece is gone one at
@@ -550,11 +549,11 @@ func (s *Server) handleGetBookCover(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleUploadBookCover sets/replaces a Book's manually uploaded custom
-// cover image (migration 00018, direct instruction, 2026-08-21) —
-// independent of whether the book already has a real PDF file: a book with
-// a perfectly good derived thumbnail can still have it overridden, not just
-// a book with no cover to begin with. Same move-into-place-then-transaction-
-// then-orphan-cleanup shape as handleReplacePieceFile.
+// cover image (migration 00018) — independent of whether the book already
+// has a real PDF file: a book with a perfectly good derived thumbnail can
+// still have it overridden, not just a book with no cover to begin with.
+// Same move-into-place-then-transaction-then-orphan-cleanup shape as
+// handleReplacePieceFile.
 func (s *Server) handleUploadBookCover(w http.ResponseWriter, r *http.Request) {
 	id, ok := pathID(r, "id")
 	if !ok {

@@ -32,9 +32,9 @@ var MaxUploadBytes int64 = 500 << 20 // 500MB
 // every upload handler (single-piece, book, replace-file) needs, written
 // once here instead of three times.
 //
-// The X-Requested-With check below closes a real CSRF gap (security
-// assessment SNK-02, 2026-08-23): multipart/form-data is one of the fetch
-// spec's CORS-safelisted content types, so a plain cross-origin HTML form
+// The X-Requested-With check below closes a real CSRF gap: multipart/
+// form-data is one of the fetch spec's CORS-safelisted content types, so
+// a plain cross-origin HTML form
 // targeting this endpoint was never preflighted by the browser — CORS only
 // stops attacker JS from *reading* the response, not from the request
 // executing server-side. There's no auth to check an Origin/Referer

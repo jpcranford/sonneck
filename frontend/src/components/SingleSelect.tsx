@@ -59,9 +59,9 @@ export function SingleSelect({
       if (!open) openMenu()
       else setHighlightedIndex((i) => (i - 1 + options.length) % options.length)
     } else if ((event.key === 'Enter' && !event.shiftKey) || event.key === ' ') {
-      // Shift+Enter excluded (direct instruction, 2026-08-21) — see
-      // TagComboBox's matching comment: it's this app's form-save
-      // shortcut, even from a field with an open dropdown.
+      // Shift+Enter excluded — see TagComboBox's matching comment: it's
+      // this app's form-save shortcut, even from a field with an open
+      // dropdown.
       if (open) {
         event.preventDefault()
         const opt = options[highlightedIndex]
@@ -84,7 +84,7 @@ export function SingleSelect({
           className="flex w-full items-center justify-between rounded-md border border-border bg-paper-raised px-3 py-2 text-left text-ink focus:outline focus:outline-2 focus:outline-accent focus:outline-offset-2"
         >
           <span className={value ? '' : 'text-ink-soft/50'}>{selected?.label ?? '—'}</span>
-          {/* Solid pre-blend, not opacity (feedback-icon-color-preblend). */}
+          {/* Solid pre-blend, not opacity — overlapping icon strokes would re-blend unevenly under real translucency. */}
           <IconChevronDown size={16} className="text-[#9d9892]" />
         </button>
         {open && (

@@ -9,8 +9,8 @@ import {
 } from '@tabler/icons-react'
 
 // Shared between Sidebar.tsx (desktop rail) and MobileNav.tsx (mobile top
-// bar + drawer, added 2026-08-22) — split into its own module rather than
-// exported alongside the Sidebar component itself, since a component file
+// bar + drawer) — split into its own module rather than exported
+// alongside the Sidebar component itself, since a component file
 // exporting non-component constants breaks React Fast Refresh for that
 // file (react-refresh/only-export-components).
 export interface NavItem {
@@ -30,10 +30,9 @@ export const NAV_ITEMS: NavItem[] = [
 // own right — split below the divider from the primary nav above.
 export const SECONDARY_NAV_ITEMS: NavItem[] = [
   { to: '/favorites', label: 'Favorites', icon: IconHeart },
-  // Same icon as the "Learning" practice-status pill (PracticeStatusIcon,
-  // 2026-08-18 icon pass) — this nav item is literally about practicing
-  // pieces, so it borrows that icon rather than the generic IconProgress
-  // it used before.
+  // Same icon as the "Learning" practice-status pill (PracticeStatusIcon)
+  // — this nav item is literally about practicing pieces, so it borrows
+  // that icon rather than a generic progress one.
   { to: '/practicing', label: 'Currently Practicing', icon: IconCircleHalf2 },
 ]
 

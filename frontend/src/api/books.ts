@@ -19,8 +19,8 @@ interface ListBooksParams {
   query?: string
 }
 
-// Books library view's browse/search (design mockup locked in
-// 2026-08-18) — mirrors searchPieces's query-param shape in pieces.ts.
+// Books library view's browse/search — mirrors searchPieces's
+// query-param shape in pieces.ts.
 export function listBooks(params: ListBooksParams = {}): Promise<Book[]> {
   const search = new URLSearchParams()
   for (const [key, value] of Object.entries(params)) {
@@ -45,9 +45,9 @@ export function updateBook(id: number, req: BookWriteRequest): Promise<Book> {
   return apiPatch<Book>(`/api/books/${id}`, req)
 }
 
-// Book Library context menu's "Delete Book" — a direct cascade delete
-// (confirmed via direct instruction): removes the Book *and* every Piece
-// referencing it in one action, unlike deletePiece's own orphan-cleanup
+// Book Library context menu's "Delete Book" — a cascade delete: removes
+// the Book *and* every Piece referencing it in one action, unlike
+// deletePiece's own orphan-cleanup
 // side effect (which only ever removes a Book once its last piece is
 // already gone, one piece at a time).
 export function deleteBook(id: number): Promise<{ deleted: boolean; id: number }> {
@@ -79,8 +79,8 @@ export function getBookCoverUrl(bookId: number, version?: string | null): string
   return version ? `/api/books/${bookId}/cover?v=${version}` : `/api/books/${bookId}/cover`
 }
 
-// Manual cover image upload (2026-08-21, direct instruction) — independent
-// of whether the book already has a real PDF file. Applies regardless:
+// Manual cover image upload — independent of whether the book already has
+// a real PDF file. Applies regardless:
 // overrides the derived thumbnail either way.
 export function uploadBookCover(bookId: number, file: File): Promise<Book> {
   return apiUpload<Book>(`/api/books/${bookId}/cover`, file)

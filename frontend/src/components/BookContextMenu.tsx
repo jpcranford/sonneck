@@ -23,9 +23,9 @@ export const BookContextMenu = forwardRef<ContextMenuHandle, BookContextMenuProp
     const [editOpen, setEditOpen] = useState(false)
     const queryClient = useQueryClient()
 
-    // Cascade delete (confirmed via direct instruction, not the lighter
-    // unlink-pieces or empty-books-only alternatives): removes the Book
-    // *and* every Piece referencing it in one action — the single
+    // Cascade delete, not the lighter unlink-pieces or empty-books-only
+    // alternatives: removes the Book *and* every Piece referencing it in
+    // one action — the single
     // largest-blast-radius action in the app, so the confirm() message
     // names the piece count explicitly rather than reusing Piece's plain
     // "this can't be undone." Hard delete, no undo either way (CLAUDE.md >

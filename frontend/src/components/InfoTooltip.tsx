@@ -17,12 +17,12 @@ interface InfoTooltipProps {
  * Edit Piece modal's own copy
  * of it) made the duplication worth naming.
  *
- * Horizontally clamps to its nearest clipping ancestor (added 2026-08-17,
- * widened 2026-08-18): the bubble is centered on its trigger by default,
- * but a trigger sitting near a container's edge (e.g. the public-domain
- * badge, the rightmost element in its row) would center a bubble that
- * extends past the visible area. Originally clamped against the browser
- * viewport only — correct for a page-level trigger, but wrong for one
+ * Horizontally clamps to its nearest clipping ancestor: the bubble is
+ * centered on its trigger by default, but a trigger sitting near a
+ * container's edge (e.g. the public-domain badge, the rightmost element
+ * in its row) would center a bubble that extends past the visible area.
+ * Clamping against just the browser viewport is correct for a page-level
+ * trigger, but wrong for one
  * inside Modal.tsx's dialog: that dialog is `overflow-hidden` (for its
  * rounded corners) and narrower than the viewport, so a bubble could stay
  * within the viewport's bounds yet still get silently clipped by the

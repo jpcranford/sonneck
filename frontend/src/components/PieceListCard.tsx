@@ -20,7 +20,7 @@ export function PieceListCard({ piece, backLabel }: PieceListCardProps) {
   const meta = formatPieceMeta(piece)
 
   return (
-    // No visible "⋯" trigger, same as PieceGridCard (2026-08-18) — right-click
+    // No visible "⋯" trigger, same as PieceGridCard — right-click
     // (desktop) and ContextMenu's built-in long-press (touch) cover it instead.
     <PieceContextMenu piece={piece} hideTriggerButton>
       <ClickableCard

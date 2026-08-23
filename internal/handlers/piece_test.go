@@ -694,9 +694,9 @@ func TestGetPiece_404ForNonexistentID(t *testing.T) {
 // "key/sheetType") regardless of which actual field failed, making it
 // impossible for a frontend to highlight the right input.
 // TestGetPiece_ArrangerInheritsFromBook covers the full API contract for
-// arranger becoming book-inheritable (2026-08-20): PieceResponse.Arranger
-// is now {value, inherited} like every other book-inheritable field, not
-// the plain nullable string it used to be. Repo-level resolution logic is
+// arranger being book-inheritable: PieceResponse.Arranger is {value,
+// inherited} like every other book-inheritable field, not a plain
+// nullable string. Repo-level resolution logic is
 // already covered by TestResolveEffective_ArrangerInheritsFromBook — this
 // confirms the HTTP layer actually wires eff.Arranger through, not a raw
 // Piece column.

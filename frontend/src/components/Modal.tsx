@@ -14,18 +14,17 @@ interface ModalProps {
    * confirmations). 'lg' (max-w-2xl) is for genuinely field-dense forms —
    * added for the Piece Properties Edit Menu (§15), which has far more
    * fields than max-w-lg can lay out without feeling cramped. 'xl'
-   * (max-w-3xl) is for a two-column field layout specifically — added for
-   * the Book Properties Edit Menu (§16), whose "C" design (design-review
-   * artifacts, 2026-08-19) needs real room for two side-by-side columns at
-   * desktop width without cramming either one; collapses to a single
-   * column below `sm` regardless of this prop. */
+   * (max-w-3xl) is for a two-column field layout specifically — the Book
+   * Properties Edit Menu (§16) needs real room for two side-by-side
+   * columns at desktop width without cramming either one; collapses to a
+   * single column below `sm` regardless of this prop. */
   size?: 'md' | 'lg' | 'xl'
   /** Rendered outside the scrolling body, pinned to the top of the dialog
    * — mirrors `footer` below but for content that must stay visible while
    * the rest scrolls underneath it (the Piece Properties Edit Menu's
-   * title/close row plus its collapsible page preview, added 2026-08-17 —
-   * a preview that scrolled away with the fields it's meant to be
-   * referenced against would defeat the point of having it). Short modals
+   * title/close row plus its collapsible page preview — a preview that
+   * scrolled away with the fields it's meant to be referenced against
+   * would defeat the point of having it). Short modals
    * with nothing that needs pinning above the fields can leave this unset
    * and put everything in `children` as before. */
   header?: ReactNode

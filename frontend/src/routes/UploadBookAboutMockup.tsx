@@ -18,11 +18,8 @@ import { useMockupTitle } from '../lib/useMockupTitle'
 // DESIGN MOCKUP — Book Upload Wizard, Screen 3 of 6: "About this book"
 // (design doc §5 step 1's book-metadata entry). Not wired to the API —
 // local mock state only, same convention as EditBookModalMockup.tsx.
-// Locked design: https://claude.ai/code/artifact/6feed451-b077-4922-a810-7682faf48144
-// (Option C — persistent left cover column, sticky, carrying Piece Details page's
-// own floating page-cycler capsule). Full decision history for all 6
-// wizard screens is in the frontend-book-upload-wizard memory, not
-// repeated here.
+// Option C: persistent left cover column, sticky, carrying Piece Details
+// page's own floating page-cycler capsule.
 //
 // The wizard chrome built here (Back top-left, step-counter + progress
 // dots top-right, Next bottom-right) is locked to carry unchanged through
@@ -70,8 +67,8 @@ interface FormValues {
 // bookTitle pre-filled from the uploaded filename, imslpNumber
 // auto-detected from it (design doc §5) — both real behaviors already
 // established at the upload step, just shown here as their result.
-// Everything else starts blank, including arranger/isbn (2026-08-20) —
-// nothing gets auto-detected for either. Composer or arranger is required
+// Everything else starts blank, including arranger/isbn — nothing gets
+// auto-detected for either. Composer or arranger is required
 // (ValidateBook), but neither is pre-filled here any more than composer
 // ever was — same "starts blank, user fills it in" treatment.
 const defaultValues: FormValues = {
@@ -225,8 +222,8 @@ export function UploadBookAboutMockup() {
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col gap-3">
-          {/* Book title now stands alone, full width — same restructure as
-              EditBookModalMockup.tsx (2026-08-20): Title / Composer-
+          {/* Book title stands alone, full width — same field order as
+              EditBookModalMockup.tsx: Title / Composer-
               Arranger / Year-Opus / Publisher-PublisherID / ISBN-IMSLP /
               SheetType+Instruments-Description. Kept in sync deliberately
               — this screen and the Edit Book Modal cover nearly the same

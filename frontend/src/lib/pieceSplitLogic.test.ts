@@ -12,9 +12,9 @@ import {
 // exact logic out by name: "the wizard's own page-range calculation/
 // display logic ... should have unit tests — same 'silent, permanent
 // correctness bug' risk as the backend's PDF-extraction logic." Every
-// case here was originally verified live, by hand, during this session
-// (a brute-force script over every reachable page-assignment state, plus
-// live Playwright checks) before being formalized here.
+// case here was verified live, by hand (a brute-force script over every
+// reachable page-assignment state, plus live Playwright checks) before
+// being formalized here.
 
 function emptyAssignments(): PageAssignments {
   return { starts: new Set(), skips: new Set(), shared: new Set() }

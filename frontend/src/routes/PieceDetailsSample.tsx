@@ -45,16 +45,6 @@ import { useMockupTitle } from '../lib/useMockupTitle'
 // calls a real API. Edit (piece and book) stay inert/disabled: wiring the
 // real EditPieceModal to this fake data could fire a real PATCH request
 // against whatever ID happens to collide with this page's fake one.
-//
-// Resynced to the real build 2026-08-18: three text-ink-soft opacity
-// values that had drifted from PiecePage.tsx (Tempo details/Advanced
-// disclosures were /60, citation was /25 — real page uses /75 for all
-// three), ActionButton's unused-but-present className prop, and a whole
-// missing UI state — the "Replacing… N%" progress bar has been in
-// PiecePage.tsx since its very first commit but was never ported here.
-// "Choose File…" below now fakes a short progress ramp via setInterval
-// (simulateReplace) instead of just closing the confirm box, so that
-// state is actually reachable in this reference too.
 // ---------------------------------------------------------------------
 
 interface Tag {
@@ -64,10 +54,10 @@ interface Tag {
 
 // bookTitle and workOpusNumber deliberately kept as two separate fields
 // (not "Album für die Jugend, Op. 68" baked into one title string) to
-// exercise buildCitation's book-opus dedup logic (citation.go,
-// 2026-08-17) the way it's actually meant to be used: the book's own
-// opus number is a structured field the citation composes in, not free
-// text a user has to remember to type into the title itself.
+// exercise buildCitation's book-opus dedup logic (citation.go) the way
+// it's actually meant to be used: the book's own opus number is a
+// structured field the citation composes in, not free text a user has to
+// remember to type into the title itself.
 const sampleBook = {
   // Fake id, purely so the Source Book title can link to /books/1 like
   // the real page does — a harmless dead end if no book with that id
@@ -87,7 +77,7 @@ const sampleBook = {
   // Same value the piece's own (inherited) IMSLP no. row shows below —
   // not programmatically derived from it in this simplified fixture, but
   // narratively the same source. Drives the ISBN-vs-IMSLP substitution
-  // right below (2026-08-20, direct instruction): IMSLP always wins.
+  // right below: IMSLP always wins.
   imslpNumber: 'IMSLP04154' as string | null,
   // Stored digits-only, matching the backend (models.Book.ISBN) — hyphenated
   // for display via lib/isbn.ts's hyphenateISBN, same as the real page.
@@ -98,10 +88,10 @@ const sampleBook = {
 
 // Book's own composer/arranger fallback chain for the Source Book card's
 // meta line — composer+arranger fused (", arr. Arranger") when both are
-// set, arranger alone when composer is blank (composer-or-arranger,
-// 2026-08-20 — a Book can now have neither/either), falling back further
-// to publisher only when the book has neither (effectiveBookComposer's own
-// existing pre-arranger fallback, lib/formatBookMeta.ts).
+// set, arranger alone when composer is blank (composer-or-arranger means a
+// Book can have neither/either), falling back further to publisher only
+// when the book has neither (effectiveBookComposer's own existing
+// pre-arranger fallback, lib/formatBookMeta.ts).
 function bookComposerPart(book: typeof sampleBook): string | null {
   if (book.composer && book.arranger) return `${book.composer}, arr. ${book.arranger}`
   if (book.composer) return book.composer
@@ -109,12 +99,11 @@ function bookComposerPart(book: typeof sampleBook): string | null {
   return book.publisher
 }
 
-// The book card's right-hand identifier slot (design option D) shows
-// either ISBN or IMSLP no. — never both. IMSLP always wins when both are
-// set (2026-08-20, direct instruction, same "IMSLP wins the fallback"
-// rule buildCitation already applies to publisherId/ISBN in the citation
-// string): "IMSLP #{number}" takes the ISBN's own slot rather than the
-// ISBN just being hidden with nothing replacing it, since this is a
+// The book card's right-hand identifier slot shows either ISBN or IMSLP
+// no. — never both. IMSLP always wins when both are set (same "IMSLP wins
+// the fallback" rule buildCitation already applies to publisherId/ISBN in
+// the citation string): "IMSLP #{number}" takes the ISBN's own slot rather
+// than the ISBN just being hidden with nothing replacing it, since this is a
 // single-line summary that always wants exactly one identifier shown, not
 // a full field list like Book Details (where the row simply doesn't
 // render at all — a details list has room to just omit a field, this
@@ -133,8 +122,7 @@ function bookIdentifierLabel(book: typeof sampleBook): string | null {
 const samplePiece = {
   title: 'No. 9, Volksliedchen (Little Folk Song)',
   composer: { value: 'Robert Schumann', inherited: true },
-  // Book-inheritable as of 2026-08-20 (backend: ResolveEffective) — was a
-  // plain string here before, matching the real API's old shape.
+  // Book-inheritable, matching the real API shape (backend: ResolveEffective).
   arranger: { value: 'Louis Köhler', inherited: false },
   favorite: true,
   workOpusNumber: { value: 'Op. 68, No. 9', inherited: false },
@@ -170,19 +158,17 @@ const samplePiece = {
 }
 
 // Matches buildCitation's current logic exactly (internal/handlers/
-// citation.go), including the three 2026-08-17 deviations: arranger
-// fused onto composer ("Robert Schumann, arr. Louis Köhler"); the book's
-// own "Op. 68" dropped from the book-title segment because it's already
-// contained (spaces ignored) in the piece's own "Op. 68, No. 9"; and
-// imslpNumber rendered as "IMSLP #04154" — note samplePiece.imslpNumber
-// below deliberately keeps the old-style "IMSLP04154" raw value (prefix
-// still baked in, as real pre-2026-08-17 data would have it) specifically
-// to demonstrate that buildCitation strips it at render time regardless
-// of what's actually stored. Also demonstrates the 2026-08-21 deviation:
-// samplePiece.publisher ("G. Schirmer") is deliberately set but does NOT
-// appear below — imslpNumber being present suppresses publisher (and
-// publisherId) from the citation entirely now, not just publisherId as
-// before.
+// citation.go), including: arranger fused onto composer ("Robert
+// Schumann, arr. Louis Köhler"); the book's own "Op. 68" dropped from the
+// book-title segment because it's already contained (spaces ignored) in
+// the piece's own "Op. 68, No. 9"; and imslpNumber rendered as
+// "IMSLP #04154" — note samplePiece.imslpNumber below deliberately keeps
+// the old-style "IMSLP04154" raw value (prefix still baked in, as older
+// stored data would have it) specifically to demonstrate that
+// buildCitation strips it at render time regardless of what's actually
+// stored. Also demonstrates: samplePiece.publisher ("G. Schirmer") is
+// deliberately set but does NOT appear below — imslpNumber being present
+// suppresses publisher (and publisherId) from the citation entirely.
 const sampleCitation =
   'Robert Schumann, arr. Louis Köhler, Album für die Jugend, "No. 9, Volksliedchen (Little Folk Song)" (Op. 68, No. 9), IMSLP #04154, 1848'
 
@@ -214,11 +200,10 @@ function SheetPagePlaceholder({ page }: { page: number }) {
   )
 }
 
-// Lightbox for the page preview thumbnail (design review, 2026-08-22 —
-// picked from 3 alternatives: this full-screen overlay, an inline-expand
-// variant, and a slide-in side panel; overlay won for matching the
-// requested spec directly and for reusing the app's existing
-// backdrop/close conventions almost as-is). Deliberately its own small
+// Lightbox for the page preview thumbnail — picked over an inline-expand
+// variant and a slide-in side panel; this full-screen overlay won for
+// matching the requested spec directly and for reusing the app's existing
+// backdrop/close conventions almost as-is. Deliberately its own small
 // component rather than reusing Modal.tsx: Modal is a bounded-width
 // dialog with padded header/body/footer slots, not a full-bleed image
 // viewer — forcing this into Modal would mean fighting that padding on
@@ -500,18 +485,16 @@ export function PieceDetailsSample() {
           treatment every other action button on this page already uses
           (Download PDF, Replace File, Use Page as Thumbnail) rather than
           being the one icon-only, unlabeled control on the whole page. */}
-      {/* flex-wrap (added 2026-08-21, narrow-viewport bug found via a
-          screenshot at 375px): at phone widths, "Back to Library" and the
-          button group no longer fit on one row even with nothing wrapping
-          internally (measured: 125px + 227px + 16px gap > the 311px
-          content area available once the sidebar's collapsed rail is
-          accounted for) — before this fix, items-center's default nowrap
-          instead let "Back to Library" break mid-phrase and let "Edit
-          Piece" wrap inside its own button, growing it much taller than
-          its icon-only siblings. Now the row itself wraps: the back link
-          gets its own line, the button group (whitespace-nowrap below,
-          confirmed to fit its line on its own) drops to a second line
-          below it, left-aligned. */}
+      {/* flex-wrap: at phone widths, "Back to Library" and the button group
+          no longer fit on one row even with nothing wrapping internally
+          (measured: 125px + 227px + 16px gap > the 311px content area
+          available once the sidebar's collapsed rail is accounted for) —
+          without this, items-center's default nowrap instead lets "Back to
+          Library" break mid-phrase and lets "Edit Piece" wrap inside its
+          own button, growing it much taller than its icon-only siblings.
+          The row itself wraps instead: the back link gets its own line,
+          the button group (whitespace-nowrap below, fits its line on its
+          own) drops to a second line, left-aligned. */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <Link
           to="/"
@@ -521,19 +504,16 @@ export function PieceDetailsSample() {
           Back to Library
         </Link>
         <div className="flex items-center gap-2">
-          {/* Delete Piece, icon-only, leftmost in the group (moved
-              2026-08-21, direct instruction — was rightmost with a divider
-              before it; now leads the group with the divider after it
-              instead, same separation from Random Piece/Edit Piece, just
-              on the other side). The same destructive action already
-              reachable via right-click on a library card (PieceContextMenu's
-              "Delete Piece"), now also given a direct entry point from the
-              page itself. Permanently red (text-red-700, matching
-              ContextMenu's own destructive-item color exactly — that color
-              is always-on there too, not a hover-only reveal) rather than
-              red-on-hover as in the first pass — direct instruction,
-              2026-08-21. Disabled here like Random Piece/Edit Piece below:
-              this fixture has nothing real to delete. */}
+          {/* Delete Piece, icon-only, leftmost in the group, divider after
+              it separating it from Random Piece/Edit Piece. The same
+              destructive action already reachable via right-click on a
+              library card (PieceContextMenu's "Delete Piece"), also given a
+              direct entry point from the page itself. Permanently red
+              (text-red-700, matching ContextMenu's own destructive-item
+              color exactly — that color is always-on there too, not a
+              hover-only reveal), not red-on-hover. Disabled here like
+              Random Piece/Edit Piece below: this fixture has nothing real
+              to delete. */}
           <button
             type="button"
             disabled
@@ -546,8 +526,7 @@ export function PieceDetailsSample() {
           <span aria-hidden="true" className="h-6 w-px bg-border" />
           {/* Icon-only, no label — a "roll again" action, kept visually
               distinct from Edit Piece rather than styled as another labeled
-              action of the same kind (direct instruction, 2026-08-20: top
-              toolbar, dice icon only). No real library to pick from in this
+              action of the same kind. No real library to pick from in this
               fixture-data mockup, so disabled here the same as Edit Piece
               is on this page — real build (PiecePage.tsx) wires it live. */}
           <button
@@ -575,11 +554,10 @@ export function PieceDetailsSample() {
               structurally even though this sample's SVG placeholder is
               always portrait-shaped by construction. */}
           <div className="relative mx-auto flex w-full max-w-md items-center justify-center overflow-hidden rounded-lg border border-border bg-paper-raised shadow-sm">
-            {/* Lightbox trigger (design review, 2026-08-22 — see
-                PageLightbox's own comment for the 3 alternatives this was
-                chosen over). The whole thumbnail is clickable, not just a
-                corner badge — the badge below is a discoverability hint,
-                not the only hit target. */}
+            {/* Lightbox trigger — see PageLightbox's own comment for the
+                alternatives this was chosen over. The whole thumbnail is
+                clickable, not just a corner badge — the badge below is a
+                discoverability hint, not the only hit target. */}
             <button
               type="button"
               onClick={() => setLightboxOpen(true)}
@@ -602,8 +580,7 @@ export function PieceDetailsSample() {
             </div>
 
             {/* Page cycle control, floating over the bottom edge of the
-                preview itself rather than as a separate row underneath
-                (design review 2026-08-16, "integrated capsule" option) —
+                preview itself rather than as a separate row underneath —
                 kept in sync with PiecePage.tsx's real version. */}
             {piece.pageCount > 1 && (
               <div className="absolute bottom-2.5 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-ink/80 px-2 py-1 shadow-md backdrop-blur-sm">
@@ -766,9 +743,9 @@ export function PieceDetailsSample() {
             </div>
 
             {/* Dot separator only renders when composer is actually
-                present — composer-or-arranger (2026-08-20) means a piece
-                can now have an arranger with no composer at all, and the
-                dot must not render with nothing on its left to separate. */}
+                present — composer-or-arranger means a piece can have an
+                arranger with no composer at all, and the dot must not
+                render with nothing on its left to separate. */}
             <p className="flex flex-wrap items-center gap-1.5 text-ink-soft">
               {piece.composer.value ? (
                 <>
@@ -848,7 +825,7 @@ export function PieceDetailsSample() {
                   <InfoTooltip
                     message="Public domain status — coming soon"
                     ariaLabel="Public domain status info"
-                    // Solid pre-blend, not opacity (feedback-icon-color-preblend).
+                    // Solid pre-blend, not opacity — overlapping icon strokes would re-blend unevenly under real translucency.
                     triggerClassName="flex size-5 shrink-0 items-center justify-center rounded-full border border-dashed border-border text-[#aca7a1] hover:text-ink-soft"
                   >
                     <IconShieldCheck size={11} />
@@ -879,7 +856,7 @@ export function PieceDetailsSample() {
                     target="_blank"
                     rel="noreferrer"
                     aria-label="View on IMSLP"
-                    // Solid pre-blend, not opacity (feedback-icon-color-preblend).
+                    // Solid pre-blend, not opacity — overlapping icon strokes would re-blend unevenly under real translucency.
                     className="text-[#9c968f] hover:text-ink-soft"
                   >
                     <IconExternalLink size={13} />
@@ -919,8 +896,7 @@ export function PieceDetailsSample() {
                 <button
                   type="button"
                   onClick={() => setTempoOpen((o) => !o)}
-                  // Solid pre-blend (icon + label share one color) —
-                  // feedback-icon-color-preblend.
+                  // Solid pre-blend (icon + label share one color).
                   className="flex items-center gap-1 text-xs text-[#847d75] hover:text-ink-soft"
                 >
                   <IconChevronRight
@@ -969,7 +945,7 @@ export function PieceDetailsSample() {
                   type="button"
                   disabled
                   aria-label="Edit book details (coming soon)"
-                  // Solid pre-blend, not opacity (feedback-icon-color-preblend).
+                  // Solid pre-blend, not opacity — overlapping icon strokes would re-blend unevenly under real translucency.
                   className="cursor-not-allowed text-[#bebab6]"
                 >
                   <IconEditFilled size={16} />
@@ -981,9 +957,8 @@ export function PieceDetailsSample() {
               >
                 {book.bookTitle}
               </Link>
-              {/* ISBN (2026-08-20, design option D — locked over A/B/C/E/F,
-                  see the "ISBN Placement" design review): right-aligned
-                  opposite composer/year on the same line, quiet and
+              {/* ISBN: right-aligned opposite composer/year on the same
+                  line, quiet and
                   catalog-number-styled rather than competing with composer
                   for reading order. Book-only — no per-piece override or
                   inheritance, so it's read straight off the book. Shows
@@ -1012,8 +987,7 @@ export function PieceDetailsSample() {
             <button
               type="button"
               onClick={() => setAdvancedOpen((o) => !o)}
-              // Solid pre-blend (icon + label share one color) —
-              // feedback-icon-color-preblend.
+              // Solid pre-blend (icon + label share one color).
               className="flex w-fit items-center gap-1 text-[#847d75] hover:text-ink-soft"
             >
               <IconChevronRight
@@ -1031,7 +1005,7 @@ export function PieceDetailsSample() {
                       type="button"
                       onClick={(event) => handleCopy(piece.fileHash, event)}
                       aria-label="Copy full file hash"
-                      // Solid pre-blend, not opacity (feedback-icon-color-preblend).
+                      // Solid pre-blend, not opacity — overlapping icon strokes would re-blend unevenly under real translucency.
                       className="text-[#aca7a1] hover:text-ink-soft"
                     >
                       <IconCopy size={12} />

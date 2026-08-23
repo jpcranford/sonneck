@@ -14,11 +14,10 @@ interface ClickableCardProps {
 // Card root for PieceGridCard/PieceListCard/BookGridCard/BookListCard.
 // Renders a real <a> (via react-router's Link) rather than a div with a
 // click handler — a plain onClick-driven div can't be cmd/ctrl/middle-
-// clicked into a new tab, since there's no href for the browser to act on
-// (2026-08-22, direct instruction: "allow cmd+click/ctrl+click to open in
-// a new tab... app-wide" — this is the one shared root every card-style
-// nav link in the app goes through, so fixing it here fixes it
-// everywhere). Link already implements exactly this: a plain left-click
+// clicked into a new tab, since there's no href for the browser to act
+// on. This is the one shared root every card-style nav link in the app
+// goes through, so this fixes it everywhere at once. Link already
+// implements exactly this: a plain left-click
 // gets intercepted for client-side routing, but a modified click (cmd/
 // ctrl/shift) or middle-click is left alone so the browser's native
 // open-in-new-tab/new-window behavior takes over.

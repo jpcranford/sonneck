@@ -227,7 +227,7 @@ export function BookUploadAboutStep({
 
         <div className="flex min-w-0 flex-1 flex-col gap-3">
           {/* Book title stands alone, full width — same restructure as
-              EditBookModal.tsx (2026-08-20): Title / Composer-Arranger /
+              EditBookModal.tsx: Title / Composer-Arranger /
               Year-Opus / Publisher-PublisherID / ISBN-IMSLP / SheetType+
               Instruments-Description. Kept in sync deliberately — this
               screen and the Edit Book Modal cover nearly the same field

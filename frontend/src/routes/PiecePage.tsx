@@ -57,11 +57,10 @@ function validateReplacementFile(file: File): string | null {
   return null
 }
 
-// Lightbox for the page preview thumbnail — design reviewed and approved
-// in the PieceDetailsSample.tsx mockup (2026-08-22) before landing here;
-// see that file's own comment for the 3 alternatives (inline-expand,
-// slide-in panel) this full-screen overlay was chosen over. Its own small
-// component rather than reusing Modal.tsx: Modal is a bounded-width
+// Lightbox for the page preview thumbnail — see PieceDetailsSample.tsx's
+// own comment for the 3 alternatives (inline-expand, slide-in panel) this
+// full-screen overlay was chosen over. Its own small component rather
+// than reusing Modal.tsx: Modal is a bounded-width
 // dialog with padded header/body/footer slots, not a full-bleed image
 // viewer. Kept close to Modal's own backdrop treatment (bg-ink/NN +
 // backdrop-blur-sm, click-target-is-currentTarget to close, Escape
@@ -153,12 +152,10 @@ function PageLightbox({
 
       {/* Same page-cycle capsule as the inline preview, carried into the
           overlay so you don't have to close the lightbox just to look at
-          an adjacent page. px-2 (not the original pr-1 pl-3) — that
-          asymmetric padding read as visibly off-center around the "n / N"
-          label once seen at this larger lightbox scale (user-reported,
-          2026-08-22); px-2 keeps the same total 16px horizontal padding
-          budget the capsule always had, just split evenly instead of
-          12px/4px. Same fix applied everywhere else this capsule is
+          an adjacent page. px-2 (not an asymmetric pr-1 pl-3) keeps the
+          "n / N" label visually centered — same total 16px horizontal
+          padding budget the capsule always had, just split evenly instead
+          of 12px/4px. Same fix applied everywhere else this capsule is
           copied (no shared component across these instances). */}
       {pageCount > 1 && (
         <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-ink/80 px-2 py-1 shadow-md backdrop-blur-sm">
@@ -213,12 +210,11 @@ function imslpReverseLookupUrl(imslpNumber: string): string {
   return `https://imslp.org/index.php?title=Special:ReverseLookup&action=submit&indexsearch=${encodeURIComponent(imslpNumber)}`
 }
 
-// The Source Book card's right-hand identifier slot (design option D,
-// locked over A/B/C/E/F — see the "ISBN Placement" design review) shows
-// either ISBN or IMSLP no. — never both. IMSLP always wins when both are
-// set (2026-08-20, direct instruction, same "IMSLP wins the fallback"
-// rule buildCitation already applies to publisherId/ISBN in the citation
-// string): "IMSLP #{number}" takes the ISBN's own slot rather than the
+// The Source Book card's right-hand identifier slot shows either ISBN or
+// IMSLP no. — never both. IMSLP always wins when both are
+// set (same "IMSLP wins the fallback" rule buildCitation already applies
+// to publisherId/ISBN in the citation string): "IMSLP #{number}" takes
+// the ISBN's own slot rather than the
 // ISBN just being hidden with nothing replacing it, since this is a
 // single-line summary that always wants exactly one identifier shown, not
 // a full field list like Book Details (where the row simply doesn't
@@ -314,10 +310,10 @@ export function PiecePage() {
   const navigate = useNavigate()
   const location = useLocation()
 
-  // "Back to X" (added 2026-08-22, direct instruction): every entry point
-  // into this page (Library/Favorites/Currently Practicing's cards, Book
-  // Details' pieces list, Upload's post-upload views) now passes
-  // `state: { backLabel }` when it navigates here — see ClickableCard.tsx's
+  // "Back to X": every entry point into this page (Library/Favorites/
+  // Currently Practicing's cards, Book Details' pieces list, Upload's
+  // post-upload views) passes `state: { backLabel }` when it navigates
+  // here — see ClickableCard.tsx's
   // own `state` prop and each of those call sites. `location.key ===
   // 'default'` is React Router's own signal that there's no real history
   // entry behind this one (a hard refresh, or the piece URL opened
@@ -517,18 +513,14 @@ export function PiecePage() {
     // all, so a long citation string (or any tall page) ran flush into
     // the app footer with nothing separating them.
     <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-6 py-6 md:px-8 md:py-8">
-      {/* Edit Piece promoted from an icon-only button next to the title to
-          a proper labeled button in this top toolbar row, matching every
-          other action button on this page (Download PDF, Replace File,
-          Use Page as Thumbnail) — approved via the /mockup/piece-details
-          reference sample. Only rendered once piece has loaded, same as
-          the edit modal itself further down; nothing to edit before then.
-          flex-wrap + whitespace-nowrap below (built out 2026-08-21 from the
-          mockup's own fix — see PieceDetailsSample.tsx's toolbar comment for
-          the full measurement-backed reasoning): at phone widths, the back
+      {/* Edit Piece is a proper labeled button in this top toolbar row,
+          matching every other action button on this page (Download PDF,
+          Replace File, Use Page as Thumbnail). Only rendered once piece
+          has loaded; nothing to edit before then.
+          flex-wrap + whitespace-nowrap below: at phone widths, the back
           link and the button group don't both fit on one row, and without
-          this the back link broke mid-phrase while "Edit Piece" wrapped
-          inside its own button. Now the row wraps instead: the back link
+          this the back link breaks mid-phrase while "Edit Piece" wraps
+          inside its own button. The row wraps instead: the back link
           gets its own line, the button group drops to a second line below
           it. */}
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -543,12 +535,10 @@ export function PiecePage() {
         {piece && (
           <div className="flex items-center gap-2">
             {/* Delete Piece, icon-only, leftmost in the group, permanently
-                red (built out 2026-08-21 from the /mockup/piece-details
-                reference sample — see that file's toolbar comment for the
-                full design reasoning). Same destructive action as
-                PieceContextMenu's "Delete Piece" (library right-click
-                menu) — handleDelete above reuses its exact confirm()
-                wording — now also reachable directly from the page. */}
+                red. Same destructive action as PieceContextMenu's "Delete
+                Piece" (library right-click menu) — handleDelete above
+                reuses its exact confirm() wording — now also reachable
+                directly from the page. */}
             <button
               type="button"
               onClick={handleDelete}
@@ -563,8 +553,7 @@ export function PiecePage() {
             {/* Icon-only, no label — this is a "roll again" action, not a
                 page-editing one, so it doesn't belong grouped visually with
                 Edit Piece as if it were another labeled action of the same
-                kind (direct instruction, 2026-08-20: top toolbar, dice icon
-                only). Same bordered-square treatment as other icon-only
+                kind. Same bordered-square treatment as other icon-only
                 buttons elsewhere (e.g. Book Details' edit-pencil button). */}
             <button
               type="button"
@@ -615,8 +604,7 @@ export function PiecePage() {
                 instead of shrinking to whatever size the image happens to
                 render at. */}
             <div className="relative mx-auto flex w-full max-w-md items-center justify-center overflow-hidden rounded-lg border border-border bg-paper-raised shadow-sm">
-              {/* Lightbox trigger — design reviewed and approved in the
-                  PieceDetailsSample.tsx mockup before landing here; see
+              {/* Lightbox trigger — see
                   PageLightbox's own comment above for the 3 alternatives
                   this was chosen over. The whole thumbnail is clickable,
                   not just the corner badge — the badge is a
@@ -647,8 +635,7 @@ export function PiecePage() {
               </div>
 
               {/* Page cycle control, floating over the bottom edge of the
-                  preview itself rather than as a separate row underneath
-                  (design review 2026-08-16, "integrated capsule" option) —
+                  preview itself rather than as a separate row underneath —
                   keeps the preview column shorter and reads as one piece of
                   chrome instead of two. Stops and greys out at the
                   first/last page rather than wrapping around, per §12.
@@ -853,8 +840,8 @@ export function PiecePage() {
                   same as every other row, when not set. Dot separator
                   matches the Publisher row's publisher/publisherId pairing
                   below — but only when composer is actually present:
-                  composer-or-arranger (2026-08-20) means a piece can now
-                  have an arranger with no composer at all, and the dot
+                  composer-or-arranger means a piece can have an arranger
+                  with no composer at all, and the dot
                   must not render with nothing on its left to separate. */}
               <p className="flex flex-wrap items-center gap-1.5 text-ink-soft">
                 {piece.composer.value ? (
@@ -897,11 +884,8 @@ export function PiecePage() {
                     tags — a piece that modulates (e.g. A Minor → C Major)
                     needs that order to survive the display. One merged
                     pill, keys joined by a small de-emphasized chevron
-                    (design review: "option A, with the small arrows from
-                    option E" — A's neutral bordered pill styling, E's
-                    subtler opacity-based separator instead of A's own
-                    "→"), rather than one separate pill per key with no
-                    indication of order at all. */}
+                    separator, rather than one separate pill per key with
+                    no indication of order at all. */}
                 {piece.keys.length > 0 && (
                   <span className="flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-xs font-medium text-ink-soft">
                     <IconMusic size={12} className="shrink-0" />
@@ -964,7 +948,7 @@ export function PiecePage() {
                     <InfoTooltip
                       message="Public domain status — coming soon"
                       ariaLabel="Public domain status info"
-                      // Solid pre-blend, not opacity (feedback-icon-color-preblend).
+                      // Solid pre-blend, not opacity — overlapping icon strokes would re-blend unevenly under real translucency.
                       triggerClassName="flex size-5 shrink-0 items-center justify-center rounded-full border border-dashed border-border text-[#aca7a1] hover:text-ink-soft"
                     >
                       <IconShieldCheck size={11} />
@@ -997,7 +981,7 @@ export function PiecePage() {
                       target="_blank"
                       rel="noreferrer"
                       aria-label="View on IMSLP"
-                      // Solid pre-blend, not opacity (feedback-icon-color-preblend).
+                      // Solid pre-blend, not opacity — overlapping icon strokes would re-blend unevenly under real translucency.
                       className="text-[#9c968f] hover:text-ink-soft"
                     >
                       <IconExternalLink size={13} />
@@ -1042,8 +1026,7 @@ export function PiecePage() {
                   <button
                     type="button"
                     onClick={() => setTempoOpen((o) => !o)}
-                    // Solid pre-blend (icon + label share one color) —
-                    // feedback-icon-color-preblend.
+                    // Solid pre-blend (icon + label share one color).
                     className="flex items-center gap-1 text-xs text-[#847d75] hover:text-ink-soft"
                   >
                     <IconChevronRight
@@ -1095,7 +1078,7 @@ export function PiecePage() {
                     type="button"
                     onClick={() => setBookEditOpen(true)}
                     aria-label="Edit book details"
-                    // Solid pre-blend, not opacity (feedback-icon-color-preblend).
+                    // Solid pre-blend, not opacity — overlapping icon strokes would re-blend unevenly under real translucency.
                     className="text-[#9d9892] hover:text-ink"
                   >
                     <IconEditFilled size={16} />
@@ -1107,10 +1090,8 @@ export function PiecePage() {
                 >
                   {book.bookTitle}
                 </Link>
-                {/* ISBN (2026-08-20, design option D — locked over
-                    A/B/C/E/F, see the "ISBN Placement" design review):
-                    right-aligned opposite composer/year on the same line,
-                    quiet and catalog-number-styled rather than competing
+                {/* ISBN: right-aligned opposite composer/year on the same
+                    line, quiet and catalog-number-styled rather than competing
                     with composer for reading order. Shows "IMSLP
                     #{number}" in this exact slot instead whenever IMSLP is
                     set — see bookIdentifierLabel's own comment. */}
@@ -1134,8 +1115,7 @@ export function PiecePage() {
               <button
                 type="button"
                 onClick={() => setAdvancedOpen((o) => !o)}
-                // Solid pre-blend (icon + label share one color) —
-                // feedback-icon-color-preblend.
+                // Solid pre-blend (icon + label share one color).
                 className="flex w-fit items-center gap-1 text-[#847d75] hover:text-ink-soft"
               >
                 <IconChevronRight
@@ -1166,7 +1146,7 @@ export function PiecePage() {
                         type="button"
                         onClick={(event) => handleCopy(piece.fileHash, event)}
                         aria-label="Copy full file hash"
-                        // Solid pre-blend, not opacity (feedback-icon-color-preblend).
+                        // Solid pre-blend, not opacity — overlapping icon strokes would re-blend unevenly under real translucency.
                         className="text-[#aca7a1] hover:text-ink-soft"
                       >
                         <IconCopy size={12} />

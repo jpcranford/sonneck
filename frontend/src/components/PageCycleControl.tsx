@@ -6,13 +6,12 @@ interface PageCycleControlProps {
   onChange: (page: number) => void
 }
 
-// Card footer control (locked design system: "both card styles show a
-// page-cycle control") — lets the user flip through a piece's pages right
+// Card footer control, shared by both card styles — lets the user flip
+// through a piece's pages right
 // on its card without opening it. Renders nothing for a single-page piece,
 // the common case for a standalone upload of one sheet. Stops and greys
 // out at the first/last page rather than wrapping around — wrapping
-// silently past the end read as a bug, not a feature (Piece Details mockup
-// review, 2026-08-16), applied here too for consistency.
+// silently past the end reads as a bug, not a feature.
 export function PageCycleControl({ page, pageCount, onChange }: PageCycleControlProps) {
   if (pageCount <= 1) return null
 

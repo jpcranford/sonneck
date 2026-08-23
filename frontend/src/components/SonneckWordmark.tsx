@@ -4,50 +4,36 @@
 // is required for currentColor to resolve against the surrounding text
 // color — an <img src> reference can't do that).
 //
-// S swapped from Imperial Script to Gwendolyn's 700 (bold) cut, "onneck"
-// bolded to match (2026-08-21, direct instruction) — same decision and
-// artifact as SonneckMark.tsx's own comment
-// (https://claude.ai/code/artifact/8de913aa-fbf7-433c-bfce-72574a2d416d).
-// "onneck" is still Mea Culpa, which has no real bold cut of its own either
-// (confirmed the same way as Gwendolyn: requesting wght@700 directly
-// returns "400: Font family not found") — so it's bolded via an SVG
-// feMorphology dilate filter (radius 1) on the flattened path rather than
-// a stroke-width hack: stroke-width blobbed together at Mea Culpa's thin
-// connecting joints in a side-by-side test; dilate's more even, rounded
-// thickening didn't. Radius landed on 1 after trying 5, 3, 2, and 1 head to
-// head — the lightest of the four that still read as genuinely bolder than
-// the plain regular weight, without overpowering the script's delicacy.
-// Baseline/pairing method unchanged from the original construction: the S
-// sits at x=0, "onneck" starts flush at the S's own advance width, both at
-// a 1000:890 font-size pairing (the two script fonts' original 107pt:96pt
-// ratio from the source design sheet).
+// S is Gwendolyn's 700 (bold) cut, "onneck" bolded to match. "onneck" is
+// still Mea Culpa, which has no real bold cut of its own — so it's bolded
+// via an SVG feMorphology dilate filter (radius 1) on the flattened path
+// rather than a stroke-width hack: stroke-width blobs together at Mea
+// Culpa's thin connecting joints; dilate's more even, rounded thickening
+// doesn't. Radius 1 is the lightest weight that still reads as genuinely
+// bolder than plain regular without overpowering the script's delicacy.
+// Baseline/pairing: the S sits at x=0, "onneck" starts flush at the S's
+// own advance width, both at a 1000:890 font-size pairing (the two script
+// fonts' original 107pt:96pt ratio from the source design sheet).
 //
 // Unlike SonneckMark, no per-size weight variants exist here — this has
 // only ever been shown at one size/weight (plain fill) so there's nothing
 // to parameterize until a second real use case needs one.
 //
-// KNOWN ISSUE, confirmed 2026-08-22, not yet fixed: this filter rasterizes
-// at the element's actual on-screen pixel size, so at small display sizes
-// (e.g. the mobile nav's 32-36px-tall wordmark) the dilate over-thickens
-// already-thin strokes into a blobby smudge — confirmed via a size sweep,
-// visible under ~48px. A same-day attempt to fix this by flattening the
-// filter into real vector path geometry (rendering at high resolution,
-// tracing back to a path with potrace, or — after that produced a real
-// defect: a solid wedge closing off the k's loop counter — computing an
-// exact polygon offset via js-angusj-clipper/Clipper2 instead of
-// raster-tracing) was reverted, direct instruction, after discovering via
-// rigorous flood-fill pixel analysis (not visual inspection, which proved
-// unreliable for this specific detail across multiple rounds) that the
-// k's loop has never been a true fully-enclosed hole in this letterform —
-// not in either flattening attempt, and not even in the original,
-// completely unprocessed source path. It's an extremely tight "bay" that
+// KNOWN ISSUE, not yet fixed: this filter rasterizes at the element's
+// actual on-screen pixel size, so at small display sizes (e.g. a 32-36px
+// mobile-nav wordmark) the dilate over-thickens already-thin strokes into
+// a blobby smudge, visible under ~48px. Several attempts to flatten the
+// filter into real vector path geometry were tried and reverted — flood-
+// fill pixel analysis (not visual inspection, which proved unreliable for
+// this specific detail) confirmed the k's loop has never been a true
+// fully-enclosed hole in this letterform, not even in the original,
+// completely unprocessed source path — it's an extremely tight "bay" that
 // reads as a closed loop but isn't topologically separate from the
-// surrounding background, and two different automated surgical fixes
-// (pushing the boundary points apart, boolean-subtracting a wedge at the
-// pinch point) produced inconsistent results under pixel-level
-// verification. Revisit as a deliberate, hand-drawn edit to the k's path
-// specifically, checked with flood-fill pixel analysis at every attempt —
-// not another automated pass over the whole glyph.
+// surrounding background, and automated surgical fixes at that pinch
+// point produced inconsistent results under pixel-level verification.
+// Revisit as a deliberate, hand-drawn edit to the k's path specifically,
+// checked with flood-fill pixel analysis at every attempt — not another
+// automated pass over the whole glyph.
 export function SonneckWordmark({ className }: { className?: string }) {
   return (
     <svg

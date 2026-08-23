@@ -4,20 +4,19 @@ import type { Piece } from '../api/types'
 // number • source book • year") — blank fields omitted entirely rather than
 // shown as empty punctuation, same principle as the backend's citation
 // format (design doc §6). Bullet (•), not a thin interpunct (·) — the
-// latter read too faint as a separator (Piece Details mockup review,
-// 2026-08-16), applied consistently everywhere this pattern appears.
+// latter reads too faint as a separator; applied consistently everywhere
+// this pattern appears.
 //
 // Arranger rides on the composer segment itself ("Composer, arr.
 // Arranger"), not as its own bullet-separated part — same reasoning as
 // PieceGridCard's own composerPart logic (it qualifies the composer, it
 // isn't a peer fact like the year).
 //
-// Three-way fallback (composer-or-arranger, 2026-08-20): a piece can
-// legitimately have only an arranger (own or book-inherited) and no
-// composer at all — the naive "composer ? composer+arranger : null" this
-// used to be dropped that case's arranger entirely instead of falling back
-// to "arr. Arranger", same bug already fixed in PiecePage.tsx's own
-// composer/arranger row.
+// Three-way fallback (composer-or-arranger): a piece can legitimately
+// have only an arranger (own or book-inherited) and no composer at all —
+// a naive "composer ? composer+arranger : null" would drop that case's
+// arranger entirely instead of falling back to "arr. Arranger", same
+// pattern PiecePage.tsx's own composer/arranger row follows.
 export function formatPieceMeta(piece: Piece): string {
   const composerPart =
     piece.composer.value && piece.arranger.value
