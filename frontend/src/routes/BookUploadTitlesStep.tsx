@@ -1,95 +1,30 @@
 import { useEffect, useState, type FocusEvent } from 'react'
 import { useForm } from 'react-hook-form'
-import { IconAlertTriangle, IconArrowLeft, IconArrowRight, IconX } from '@tabler/icons-react'
+import { IconAlertTriangle, IconArrowLeft, IconArrowRight } from '@tabler/icons-react'
 import { getBookPageThumbnailUrl } from '../api/books'
+import { PageLightbox } from '../components/PageLightbox'
 import type { Piece } from '../lib/pieceSplitLogic'
 import { TOTAL_WIZARD_STEPS } from './BookUploadWizard'
-
-// Composer-or-arranger, same rule as everywhere else in this app:
-// "required" means *either* Composer or Arranger is set, not Composer
-// specifically — a piece crediting only an arranger (a traditional/folk
-// tune with no named composer) is legitimate here too.
 
 // Book Upload Wizard, Screen 5 of 6: "Name each piece" (design doc §5's
 // "fill fields" step). Real build of UploadBookTitlesMockup.tsx
 // (/mockup/upload-book-titles, kept as a standing design reference) —
 // same layout/validation/preview behavior, operating on the real pieces
-// computed by the Split step instead of a fixed fixture. No synthetic
-// PieceThumb placeholder needed here (unlike the mockup) — a piece's own
-// thumbnail is just the book's real page image at that piece's start
-// page (getBookPageThumbnailUrl), since real pieces don't exist as their
-// own DB rows yet at this stage (not created until confirm-import).
+// computed by the Split step instead of a fixed fixture.
+//
+// Composer always shows; Arranger shows only when the book itself doesn't
+// already have one of its own (book-level soft inheritance otherwise
+// covers it). Neither is actually required unless the book supplies
+// neither composer nor arranger — see requireComposerOrArranger below.
+// Uses the shared PageLightbox (components/PageLightbox.tsx) for the tap-
+// to-preview overlay, cycling between pieces rather than pages within one
+// piece — this screen only ever shows a piece's own start page.
 
 const CURRENT_STEP = 5
 const DESKTOP_BREAKPOINT_PX = 768
 
 function formatPieceLabel(piece: Piece) {
   return `pp ${piece.start}${piece.end !== piece.start ? `–${piece.end}` : ''}`
-}
-
-// Full-page preview overlay — tap a thumbnail to see the page larger,
-// dismiss via the close button, clicking the backdrop, or Escape.
-function PagePreviewOverlay({
-  bookId,
-  piece,
-  onClose,
-}: {
-  bookId: number
-  piece: Piece
-  onClose: () => void
-}) {
-  const [visible, setVisible] = useState(false)
-
-  useEffect(() => {
-    const raf1 = requestAnimationFrame(() => {
-      requestAnimationFrame(() => setVisible(true))
-    })
-    return () => cancelAnimationFrame(raf1)
-  }, [])
-
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
-  }, [onClose])
-
-  return (
-    <div
-      className={`fixed inset-0 z-50 flex items-center justify-center bg-ink/60 backdrop-blur-sm transition-opacity duration-150 ${
-        visible ? 'opacity-100' : 'opacity-0'
-      }`}
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose()
-      }}
-    >
-      <div
-        className={`flex w-full max-w-xs flex-col items-center gap-3 px-6 transition-[transform,opacity] duration-150 ${
-          visible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
-        }`}
-      >
-        <div
-          className="w-full overflow-hidden rounded-md shadow-2xl"
-          style={{ border: `2px solid ${piece.color}` }}
-        >
-          <img
-            src={getBookPageThumbnailUrl(bookId, piece.start)}
-            alt=""
-            className="block h-auto w-full"
-          />
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close preview"
-          className="flex size-9 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20"
-        >
-          <IconX size={18} />
-        </button>
-      </div>
-    </div>
-  )
 }
 
 interface FormValues {
@@ -116,7 +51,8 @@ function useIsDesktop() {
 
 interface BookUploadTitlesStepProps {
   bookId: number
-  bookHasComposerOrArranger: boolean
+  bookComposer: string | null
+  bookArranger: string | null
   pieces: Piece[]
   pieceFields: { title: string; composer: string; arranger: string }[]
   onChange: (fields: { title: string; composer: string; arranger: string }[]) => void
@@ -126,7 +62,8 @@ interface BookUploadTitlesStepProps {
 
 export function BookUploadTitlesStep({
   bookId,
-  bookHasComposerOrArranger,
+  bookComposer,
+  bookArranger,
   pieces,
   pieceFields,
   onChange,
@@ -143,24 +80,40 @@ export function BookUploadTitlesStep({
     formState: { errors },
   } = useForm<FormValues>({ defaultValues: { pieces: pieceFields } })
 
+  const bookHasArranger = !!bookArranger
+  const showArrangerField = !bookHasArranger
+  // Neither field is actually required unless the book supplies neither
+  // composer nor arranger of its own — whichever one it does have already
+  // satisfies the backend's composer-or-arranger rule via inheritance
+  // regardless of what (if anything) gets typed on this screen.
+  const requireComposerOrArranger = !bookComposer && !bookArranger
+  const desktopGridCols = showArrangerField
+    ? 'grid-cols-[128px_88px_1fr_1fr_1fr]'
+    : 'grid-cols-[128px_88px_1fr_1fr]'
+
   function onSubmit(data: FormValues) {
     onChange(data.pieces)
     onNext()
   }
 
   // Composer and Arranger validate each other: either one being non-blank
-  // satisfies both. Wraps register's own onBlur to also re-trigger the
-  // sibling field's validation, so blurring Arranger after typing into it
-  // clears a Composer error that was showing (not just the reverse) — RHF's
-  // own validate function reads the sibling's current value fine on its
-  // own, but doesn't know to *re-run* the sibling's validation when a
+  // satisfies both — but only when requireComposerOrArranger is true in
+  // the first place. When Arranger is hidden (showArrangerField false),
+  // requireComposerOrArranger is always false too — the book's own
+  // arranger already satisfies the requirement via inheritance — so this
+  // never blocks submission on a field the user can no longer even see.
+  // Wraps register's own onBlur to also re-trigger the sibling field's
+  // validation, so blurring Arranger after typing into it clears a
+  // Composer error that was showing (not just the reverse) — RHF's own
+  // validate function reads the sibling's current value fine on its own,
+  // but doesn't know to *re-run* the sibling's validation when a
   // different field changes without this nudge.
   function composerOrArrangerField(field: 'composer' | 'arranger', index: number) {
     const other = field === 'composer' ? 'arranger' : 'composer'
     const registered = register(`pieces.${index}.${field}`, {
       maxLength: 255,
       validate: (value) =>
-        bookHasComposerOrArranger ||
+        !requireComposerOrArranger ||
         !!value.trim() ||
         !!getValues(`pieces.${index}.${other}`).trim() ||
         'Composer or arranger required',
@@ -209,8 +162,10 @@ export function BookUploadTitlesStep({
       <div>
         <h1 className="font-display text-2xl font-medium text-ink">Name each piece</h1>
         <p className="text-sm text-ink-soft">
-          Tap a thumbnail to see the page larger.
-          {!bookHasComposerOrArranger &&
+          Tap a thumbnail to see the page larger.{' '}
+          {bookHasArranger &&
+            `This book already credits arranger ${bookArranger}, so there's no per-piece Arranger field below — set a Composer per piece if you'd like one on record.`}
+          {requireComposerOrArranger &&
             ' This book has no composer or arranger set, so enter at least one of the two for each piece below.'}
         </p>
       </div>
@@ -218,12 +173,14 @@ export function BookUploadTitlesStep({
       <form onSubmit={handleSubmit(onSubmit)}>
         {isDesktop && (
           <div>
-            <div className="grid grid-cols-[128px_38px_1fr_1fr_1fr] gap-2.5 px-3 pb-1.5">
+            <div className={`grid ${desktopGridCols} gap-2.5 px-3 pb-1.5`}>
               <span />
               <span />
               <span className="text-xs font-semibold text-ink-soft">Title *</span>
               <span className="text-xs font-semibold text-ink-soft">Composer</span>
-              <span className="text-xs font-semibold text-ink-soft">Arranger</span>
+              {showArrangerField && (
+                <span className="text-xs font-semibold text-ink-soft">Arranger</span>
+              )}
             </div>
             <div className="flex flex-col border-t border-border">
               {pieces.map((piece, index) => {
@@ -233,7 +190,7 @@ export function BookUploadTitlesStep({
                 return (
                   <div
                     key={index}
-                    className={`grid grid-cols-[128px_38px_1fr_1fr_1fr] items-center gap-2.5 px-3 py-1.5 ${
+                    className={`grid ${desktopGridCols} items-center gap-2.5 px-3 py-1.5 ${
                       index % 2 === 0 ? 'bg-paper-sunken' : ''
                     }`}
                   >
@@ -251,18 +208,27 @@ export function BookUploadTitlesStep({
                         CSS-only via group/group-hover — no state needed
                         for a purely transient, no-persistence preview. */}
                     <div className="group relative">
+                      {/* Masked to the same aspect-[180/132] top-of-page
+                          crop the Piece Library grid cards use
+                          (PieceGridCard.tsx) — same treatment as the
+                          mobile thumb below, just a different fixed width
+                          (88px column here vs. mobile's own 115px). The
+                          per-piece color border stays: it's this wizard's
+                          own continuity cue tying a piece back to its
+                          Split-step color, not decorative chrome to drop
+                          for the sake of matching. */}
                       <button
                         type="button"
                         onClick={() => setPreviewIndex(index)}
                         title="Tap to preview page"
-                        className="overflow-hidden rounded"
+                        className="relative block aspect-[180/132] w-full overflow-hidden rounded-lg"
                         style={{ border: `1.5px solid ${piece.color}` }}
                       >
                         <img
                           src={getBookPageThumbnailUrl(bookId, piece.start)}
                           alt=""
                           loading="lazy"
-                          className="block h-auto w-full"
+                          className="h-full w-full object-cover object-top"
                         />
                       </button>
                       <div
@@ -306,21 +272,23 @@ export function BookUploadTitlesStep({
                         </span>
                       )}
                     </div>
-                    <div>
-                      <input
-                        className={`w-full rounded-md border bg-paper-raised px-2.5 py-1.5 text-sm text-ink ${
-                          arrangerError ? 'border-red-700' : 'border-border'
-                        }`}
-                        placeholder="Arranger"
-                        {...composerOrArrangerField('arranger', index)}
-                      />
-                      {arrangerError && (
-                        <span className="mt-0.5 flex items-center gap-1 text-xs text-red-700">
-                          <IconAlertTriangle size={10} />
-                          {arrangerError.message}
-                        </span>
-                      )}
-                    </div>
+                    {showArrangerField && (
+                      <div>
+                        <input
+                          className={`w-full rounded-md border bg-paper-raised px-2.5 py-1.5 text-sm text-ink ${
+                            arrangerError ? 'border-red-700' : 'border-border'
+                          }`}
+                          placeholder="Arranger"
+                          {...composerOrArrangerField('arranger', index)}
+                        />
+                        {arrangerError && (
+                          <span className="mt-0.5 flex items-center gap-1 text-xs text-red-700">
+                            <IconAlertTriangle size={10} />
+                            {arrangerError.message}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )
               })}
@@ -343,14 +311,14 @@ export function BookUploadTitlesStep({
                     type="button"
                     onClick={() => setPreviewIndex(index)}
                     title="Tap to preview page"
-                    className="w-[115px] shrink-0 overflow-hidden rounded"
+                    className="relative aspect-[180/132] w-[115px] shrink-0 overflow-hidden rounded-lg"
                     style={{ border: `1.5px solid ${piece.color}` }}
                   >
                     <img
                       src={getBookPageThumbnailUrl(bookId, piece.start)}
                       alt=""
                       loading="lazy"
-                      className="block h-auto w-full"
+                      className="h-full w-full object-cover object-top"
                     />
                   </button>
                   <div className="flex min-w-0 flex-1 flex-col gap-2.5">
@@ -391,22 +359,24 @@ export function BookUploadTitlesStep({
                         </span>
                       )}
                     </div>
-                    <div>
-                      <label className="mb-1 block text-sm text-ink-soft">Arranger</label>
-                      <input
-                        className={`w-full rounded-md border bg-paper-raised px-3 py-2 text-base text-ink ${
-                          arrangerError ? 'border-red-700' : 'border-border'
-                        }`}
-                        placeholder="Arranger"
-                        {...composerOrArrangerField('arranger', index)}
-                      />
-                      {arrangerError && (
-                        <span className="mt-1 flex items-center gap-1 text-xs text-red-700">
-                          <IconAlertTriangle size={10} />
-                          {arrangerError.message}
-                        </span>
-                      )}
-                    </div>
+                    {showArrangerField && (
+                      <div>
+                        <label className="mb-1 block text-sm text-ink-soft">Arranger</label>
+                        <input
+                          className={`w-full rounded-md border bg-paper-raised px-3 py-2 text-base text-ink ${
+                            arrangerError ? 'border-red-700' : 'border-border'
+                          }`}
+                          placeholder="Arranger"
+                          {...composerOrArrangerField('arranger', index)}
+                        />
+                        {arrangerError && (
+                          <span className="mt-1 flex items-center gap-1 text-xs text-red-700">
+                            <IconAlertTriangle size={10} />
+                            {arrangerError.message}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               )
@@ -426,10 +396,15 @@ export function BookUploadTitlesStep({
       </form>
 
       {previewIndex !== null && (
-        <PagePreviewOverlay
-          bookId={bookId}
-          piece={pieces[previewIndex]}
+        <PageLightbox
+          key={previewIndex}
+          imageUrl={getBookPageThumbnailUrl(bookId, pieces[previewIndex].start)}
+          alt={`Page ${pieces[previewIndex].start} of ${pieceFields[previewIndex]?.title || `piece ${previewIndex + 1}`}`}
+          page={previewIndex + 1}
+          pageCount={pieces.length}
           onClose={() => setPreviewIndex(null)}
+          onPrev={() => setPreviewIndex((i) => Math.max(0, (i ?? 0) - 1))}
+          onNext={() => setPreviewIndex((i) => Math.min(pieces.length - 1, (i ?? 0) + 1))}
         />
       )}
     </div>

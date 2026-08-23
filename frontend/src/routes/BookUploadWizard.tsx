@@ -300,7 +300,8 @@ export function BookUploadWizard({ onExit }: BookUploadWizardProps) {
     return (
       <BookUploadTitlesStep
         bookId={book.id}
-        bookHasComposerOrArranger={!!book.composer || !!book.arranger}
+        bookComposer={book.composer}
+        bookArranger={book.arranger}
         pieces={pieces}
         pieceFields={pieceFields}
         onChange={setPieceFields}
