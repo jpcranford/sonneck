@@ -1,4 +1,10 @@
-import { useEffect, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -161,11 +167,110 @@ function SectionHeading({ children }: { children: React.ReactNode }) {
   )
 }
 
+// Measures an element's real layout height via ResizeObserver's own entry
+// data (entry.borderBoxSize), not getBoundingClientRect() — confirmed via
+// direct measurement that getBoundingClientRect() was a real source of
+// error: Modal's dialog pops in with a CSS `scale-95 -> scale-100`
+// transform, and the very first observer callback fires while that
+// transform is still mid-animation. getBoundingClientRect() reports the
+// *visually rendered* (transform-affected) box, quietly undershooting by
+// however much the transform hadn't finished animating yet.
+// entry.borderBoxSize is layout size, unaffected by CSS transforms, so
+// it's correct from the very first callback. `active` gates whether a
+// given resize is actually recorded — used to freeze a measurement (e.g.
+// the toggle row's own height should only be captured while the preview
+// panel below it is collapsed, not mid-expansion).
+function useMeasuredHeight(active = true) {
+  const [el, setEl] = useState<Element | null>(null)
+  const [height, setHeight] = useState(0)
+  const ref = useCallback((node: HTMLElement | null) => setEl(node), [])
+  useLayoutEffect(() => {
+    if (!el) return
+    const observer = new ResizeObserver((entries) => {
+      if (!active) return
+      const entry = entries[0]
+      setHeight(entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height)
+    })
+    observer.observe(el, { box: 'border-box' })
+    return () => observer.disconnect()
+  }, [el, active])
+  return [ref, height] as const
+}
+
 export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
   const queryClient = useQueryClient()
   const [tempoOpen, setTempoOpen] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
   const [previewPage, setPreviewPage] = useState(piece.thumbnailPage)
+
+  // "At most 50% of the modal" has to mean 50% of the dialog's actual
+  // rendered height, not an approximation — a first vh-based version
+  // drifted badly whenever the dialog wasn't sitting at its own
+  // max-h-[90vh] cap (the common case: most content auto-sizes down
+  // below 90vh), confirmed wrong in practice on a real 1118px-tall
+  // dialog. CSS percentage-height can't solve this either — Modal's
+  // dialog is auto-height, not a definite height, so a plain `%` has
+  // nothing to resolve against.
+  //
+  // A second version measured the closed dialog's own rendered height
+  // and still overshot 50% on real devices — two separate real bugs, not
+  // just tuning:
+  //
+  // (1) Self-reference: opening the preview doesn't shrink anything else
+  // to make room — Modal's header slot is shrink-0, so the dialog simply
+  // grows by however tall the panel is. Sizing the panel to half of the
+  // dialog as it existed *before* being added makes it a third of the
+  // *grown* total, not a half (T = rest + panel; panel = rest/2 gives
+  // panel/T = (rest/2)/(1.5*rest) = 1/3). Making the panel equal to
+  // "rest" (not half of it) is what actually produces a 50/50 split of
+  // the grown total: T = rest + panel = 2*rest, panel/T = 0.5.
+  //
+  // (2) The closed dialog's rendered height is frequently already less
+  // than the true content it's showing — confirmed directly: on a dialog
+  // whose fields alone already exceed Modal's max-h-[90vh] cap, the body
+  // is already internally scrolling even with the preview collapsed, so
+  // "closed dialog height" reads as the 90vh cap itself, not the fields'
+  // real (larger) height. Sizing the panel off that number silently
+  // treats an already-clipped quantity as if it were the true total, and
+  // materially overshoots 50% of the actually-rendered dialog once
+  // opened.
+  //
+  // The fix measures the pieces that make up "rest" directly, each
+  // unclipped by Modal's own overflow ancestor (a plain child of an
+  // overflow:auto parent still reports its own true natural height via
+  // ResizeObserver, regardless of whether the *ancestor* is currently
+  // clipping/scrolling it) — title block, the toggle row itself (only
+  // while collapsed, so the panel's own height never feeds back into the
+  // measurement), the scrollable fields area, and the footer:
+  const [titleBlockRef, titleBlockHeight] = useMeasuredHeight()
+  const [toggleRowRef, toggleRowHeight] = useMeasuredHeight(!previewOpen)
+  const [fieldsRef, fieldsHeight] = useMeasuredHeight()
+  const [footerRef, footerHeight] = useMeasuredHeight()
+
+  const [viewportHeight, setViewportHeight] = useState(
+    () => (typeof window === 'undefined' ? 800 : window.innerHeight),
+  )
+  useEffect(() => {
+    const onResize = () => setViewportHeight(window.innerHeight)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+  const dialogCapHeight = viewportHeight * 0.9 // matches Modal.tsx's max-h-[90vh]
+  const preambleHeight = titleBlockHeight + toggleRowHeight
+  const restHeight = preambleHeight + fieldsHeight + footerHeight
+  // Uncapped case: panel = restHeight (see (1) above) gives an exact 50%
+  // split of a grown-but-still-under-the-cap total (2*restHeight).
+  // Capped case (2*restHeight would exceed the dialog's own ceiling):
+  // the dialog pins at dialogCapHeight regardless — shrink-0 elements
+  // (preamble, panel, footer) never compress to absorb the overflow, only
+  // the scrollable fields area does — so hitting 50% of *that* fixed
+  // total means solving preambleHeight + panel = 0.5 * dialogCapHeight
+  // for panel directly, not deriving it from restHeight at all.
+  const previewWrapperMaxHeight =
+    restHeight * 2 <= dialogCapHeight
+      ? restHeight
+      : Math.max(0, dialogCapHeight / 2 - preambleHeight)
+  const previewImageMaxHeight = Math.max(0, previewWrapperMaxHeight - 80)
   const {
     register,
     handleSubmit,
@@ -262,7 +367,7 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
       size="lg"
       header={
         <div className="flex flex-col gap-3">
-          <div className="flex items-start justify-between gap-4">
+          <div ref={titleBlockRef} className="flex items-start justify-between gap-4">
             <div>
               <h2 id="edit-piece-title" className="font-display text-2xl font-medium text-ink">
                 Edit piece
@@ -316,7 +421,7 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
               Standard 1px weight (1.5px reads as more of a structural
               divider than intended; 1px plus the full-bleed already does
               that job). */}
-          <div className="-mx-6 border-b border-border px-6 pb-3">
+          <div ref={toggleRowRef} className="-mx-6 border-b border-border px-6 pb-3">
             <button
               type="button"
               onClick={() => setPreviewOpen((o) => !o)}
@@ -333,19 +438,24 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
               {previewOpen ? 'Hide page preview' : 'Show page preview'}
             </button>
             <div
-              className={`overflow-hidden transition-[max-height] duration-200 ease-in-out ${
-                previewOpen ? 'max-h-[340px]' : 'max-h-0'
-              }`}
+              className="overflow-hidden transition-[max-height] duration-200 ease-in-out"
+              style={{ maxHeight: previewOpen ? `${previewWrapperMaxHeight}px` : '0px' }}
             >
               {/* The header sits in Modal's shrink-0 header slot, so its
                   full open height comes straight out of the scrollable
                   form body's share of the 90vh dialog cap — a tall preview
                   eats into the fields' (Title, Composer, everything else)
-                  own room. 200px still reads a page clearly (it has its
-                  own overflow-y-auto if more detail is needed) without
-                  dominating the modal. */}
+                  own room. Image box capped at previewImageMaxHeight (see
+                  the sizing block above this component for the full
+                  derivation) — still has its own overflow-y-auto if more
+                  detail is needed. Wrapper's own cap stays 80px above the
+                  image box's, for the PageCycleControl row and padding
+                  underneath. */}
               <div className="flex flex-col gap-2 pt-3 pb-1">
-                <div className="max-h-[200px] overflow-y-auto rounded-md border border-border bg-paper-sunken">
+                <div
+                  className="overflow-y-auto rounded-md border border-border bg-paper-sunken"
+                  style={{ maxHeight: `${previewImageMaxHeight}px` }}
+                >
                   <img
                     src={getPieceThumbnailUrl(piece.id, previewPage)}
                     alt={`Page ${previewPage} of ${piece.title}`}
@@ -365,7 +475,7 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
         </div>
       }
       footer={
-        <div className="flex flex-col gap-2">
+        <div ref={footerRef} className="flex flex-col gap-2">
           {saveMutation.isError && (
             <p className="flex items-center gap-2 text-sm text-red-700">
               <IconAlertTriangle size={16} />
@@ -395,6 +505,7 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
       }
     >
       <form
+        ref={fieldsRef}
         id="edit-piece-form"
         onSubmit={handleSubmit(onSubmit)}
         onKeyDown={handleFormKeyDown}
