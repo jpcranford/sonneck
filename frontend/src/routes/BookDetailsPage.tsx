@@ -110,7 +110,7 @@ function PieceGrid({ pieces }: { pieces: Piece[] }) {
           <ClickableCard
             to={`/pieces/${piece.id}`}
             state={{ backLabel: 'Book' }}
-            className="overflow-hidden rounded-lg border border-border bg-paper-raised text-left transition-colors hover:border-accent"
+            className="flex flex-col overflow-hidden rounded-lg border border-border bg-paper-raised text-left transition-colors hover:border-accent"
           >
             {/* No page-range badge overlaying the thumbnail — its content
                 moved down to the bottom line in its place (below), and the
