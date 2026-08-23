@@ -29,6 +29,10 @@ interface PieceBrowseViewProps {
    * so a runtime-computed `minmax(${n}px,1fr)` wouldn't actually generate
    * the CSS. */
   gridCardSize?: 'default' | 'compact'
+  /** This view's own nav label (e.g. "Library", "Favorites") — forwarded
+   * to every card so Piece Details' Back control can say "Back to X"
+   * once navigated to from here. */
+  backLabel: string
 }
 
 const GRID_COLS_CLASS: Record<'default' | 'compact', string> = {
@@ -48,6 +52,7 @@ export function PieceBrowseView({
   emptyMessage,
   noMatchMessage = 'No pieces match your search.',
   gridCardSize = 'default',
+  backLabel,
 }: PieceBrowseViewProps) {
   const [query, setQuery] = useState('')
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
@@ -121,7 +126,7 @@ export function PieceBrowseView({
         {pieces && pieces.length > 0 && viewMode === 'grid' && (
           <div className={`grid gap-4 ${GRID_COLS_CLASS[gridCardSize]}`}>
             {pieces.map((piece) => (
-              <PieceGridCard key={piece.id} piece={piece} />
+              <PieceGridCard key={piece.id} piece={piece} backLabel={backLabel} />
             ))}
           </div>
         )}
@@ -129,7 +134,7 @@ export function PieceBrowseView({
         {pieces && pieces.length > 0 && viewMode === 'list' && (
           <div className="flex flex-col gap-3">
             {pieces.map((piece) => (
-              <PieceListCard key={piece.id} piece={piece} />
+              <PieceListCard key={piece.id} piece={piece} backLabel={backLabel} />
             ))}
           </div>
         )}

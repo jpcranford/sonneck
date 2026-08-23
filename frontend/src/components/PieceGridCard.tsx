@@ -7,11 +7,15 @@ import { PracticeStatusIcon } from './PracticeStatusIcon'
 
 interface PieceGridCardProps {
   piece: Piece
+  /** Shown by the Piece Details page's own Back control as "Back to
+   * {backLabel}" once it's navigated to from here — see PiecePage.tsx's
+   * back-button section for the full mechanism. */
+  backLabel: string
 }
 
 // No page-cycle control here — the locked mockup only shows it on list
 // cards (see PieceListCard). Grid always shows the piece's first page.
-export function PieceGridCard({ piece }: PieceGridCardProps) {
+export function PieceGridCard({ piece, backLabel }: PieceGridCardProps) {
   // Composer (+ arranger) • year written only — narrower than
   // PieceListCard's formatPieceMeta (which also folds in opus number/
   // source book), since the grid card's tighter layout only has room for
@@ -46,6 +50,7 @@ export function PieceGridCard({ piece }: PieceGridCardProps) {
     <PieceContextMenu piece={piece} hideTriggerButton>
       <ClickableCard
         to={`/pieces/${piece.id}`}
+        state={{ backLabel }}
         className="flex flex-col overflow-hidden rounded-lg border border-border bg-paper-raised text-left transition-colors hover:border-accent"
       >
         {/* border-b hairline between thumbnail and info text (2026-08-21,

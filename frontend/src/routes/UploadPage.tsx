@@ -71,7 +71,7 @@ export function UploadPage() {
     },
     onSuccess: ({ piece: uploaded, alreadyExists }) => {
       if (alreadyExists) {
-        navigate(`/pieces/${uploaded.id}`)
+        navigate(`/pieces/${uploaded.id}`, { state: { backLabel: 'Upload' } })
         return
       }
       queryClient.invalidateQueries({ queryKey: ['pieces'] })
@@ -407,6 +407,7 @@ export function UploadPage() {
             </button>
             <Link
               to={`/pieces/${piece.id}`}
+              state={{ backLabel: 'Upload' }}
               className="flex items-center gap-1.5 rounded-md bg-accent px-4 py-2 font-display text-white hover:bg-accent/90"
             >
               <IconMusic size={16} />

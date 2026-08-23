@@ -5,6 +5,7 @@ export function LibraryPage() {
     <PieceBrowseView
       emptyMessage="Your library is empty — upload a piece to get started."
       gridCardSize="compact"
+      backLabel="Library"
     />
   )
 }

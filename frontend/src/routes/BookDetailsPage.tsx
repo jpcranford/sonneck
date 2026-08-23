@@ -109,6 +109,7 @@ function PieceGrid({ pieces }: { pieces: Piece[] }) {
         <PieceContextMenu key={piece.id} piece={piece} hideTriggerButton>
           <ClickableCard
             to={`/pieces/${piece.id}`}
+            state={{ backLabel: 'Book' }}
             className="overflow-hidden rounded-lg border border-border bg-paper-raised text-left transition-colors hover:border-accent"
           >
             {/* 2026-08-20 (direct instruction): the page-range badge that
@@ -182,6 +183,7 @@ function PieceList({ pieces }: { pieces: Piece[] }) {
           <PieceContextMenu key={piece.id} piece={piece} hideTriggerButton>
             <ClickableCard
               to={`/pieces/${piece.id}`}
+              state={{ backLabel: 'Book' }}
               className={`grid grid-cols-[96px_1fr_56px] items-center gap-3 border-t border-border px-1.5 py-2.5 text-left hover:rounded-md hover:bg-accent-soft ${ROW_COLLAPSE_CLASS}`}
             >
               <div className="text-sm font-medium tabular-nums text-ink">{pageRangeLabel(piece)}</div>

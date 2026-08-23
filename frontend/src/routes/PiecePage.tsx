@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   IconArrowLeft,
@@ -312,6 +312,28 @@ export function PiecePage() {
   const pieceId = Number(id)
   const queryClient = useQueryClient()
   const navigate = useNavigate()
+  const location = useLocation()
+
+  // "Back to X" (added 2026-08-22, direct instruction): every entry point
+  // into this page (Library/Favorites/Currently Practicing's cards, Book
+  // Details' pieces list, Upload's post-upload views) now passes
+  // `state: { backLabel }` when it navigates here — see ClickableCard.tsx's
+  // own `state` prop and each of those call sites. `location.key ===
+  // 'default'` is React Router's own signal that there's no real history
+  // entry behind this one (a hard refresh, or the piece URL opened
+  // directly) — in that case there's nothing for a real "back" to do, so
+  // fall back to the Library rather than leaving the button inert or
+  // navigating the browser out of the app entirely.
+  const backLabel = (location.state as { backLabel?: string } | null)?.backLabel
+  const hasBackHistory = location.key !== 'default'
+
+  function handleBack() {
+    if (hasBackHistory) {
+      navigate(-1)
+    } else {
+      navigate('/')
+    }
+  }
 
   const {
     data: piece,
@@ -433,7 +455,11 @@ export function PiecePage() {
   // own useQuery above), so there's no need to also populate the cache here.
   const randomPieceMutation = useMutation({
     mutationFn: getRandomPiece,
-    onSuccess: (randomPiece) => navigate(`/pieces/${randomPiece.id}`),
+    // Forwards this page's own location.state along the chain — so
+    // repeatedly rolling a new random piece still reports "Back to
+    // Library" (or wherever the chain actually started), not "Back to"
+    // the piece just left behind.
+    onSuccess: (randomPiece) => navigate(`/pieces/${randomPiece.id}`, { state: location.state }),
     onError: (error) => {
       window.alert(error instanceof ApiError ? error.message : 'Could not find a random piece.')
     },
@@ -499,20 +525,21 @@ export function PiecePage() {
           the edit modal itself further down; nothing to edit before then.
           flex-wrap + whitespace-nowrap below (built out 2026-08-21 from the
           mockup's own fix — see PieceDetailsSample.tsx's toolbar comment for
-          the full measurement-backed reasoning): at phone widths, "Back to
-          Library" and the button group don't both fit on one row, and
-          without this the back link broke mid-phrase while "Edit Piece"
-          wrapped inside its own button. Now the row wraps instead: the back
-          link gets its own line, the button group drops to a second line
-          below it. */}
+          the full measurement-backed reasoning): at phone widths, the back
+          link and the button group don't both fit on one row, and without
+          this the back link broke mid-phrase while "Edit Piece" wrapped
+          inside its own button. Now the row wraps instead: the back link
+          gets its own line, the button group drops to a second line below
+          it. */}
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <Link
-          to="/"
-          className="inline-flex w-fit items-center gap-1.5 text-sm whitespace-nowrap text-ink-soft hover:text-ink"
+        <button
+          type="button"
+          onClick={handleBack}
+          className="inline-flex w-fit cursor-pointer items-center gap-1.5 text-sm whitespace-nowrap text-ink-soft hover:text-ink"
         >
           <IconArrowLeft size={24} />
-          Back to Library
-        </Link>
+          Back{backLabel ? ` to ${backLabel}` : hasBackHistory ? '' : ' to Library'}
+        </button>
         {piece && (
           <div className="flex items-center gap-2">
             {/* Delete Piece, icon-only, leftmost in the group, permanently

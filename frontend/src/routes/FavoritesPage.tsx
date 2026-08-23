@@ -7,6 +7,7 @@ export function FavoritesPage() {
       searchPlaceholder="Search your favorites…"
       emptyMessage="You haven't favorited any pieces yet."
       noMatchMessage="No favorites match your search."
+      backLabel="Favorites"
     />
   )
 }

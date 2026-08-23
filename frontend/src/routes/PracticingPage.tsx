@@ -16,6 +16,7 @@ export function PracticingPage() {
       searchPlaceholder="Search pieces you're practicing…"
       emptyMessage="No pieces marked Learning or Stalled yet."
       noMatchMessage="No matching pieces in Currently Practicing."
+      backLabel="Currently Practicing"
     />
   )
 }

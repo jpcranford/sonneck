@@ -9,9 +9,13 @@ import { TagPills } from './TagPills'
 
 interface PieceListCardProps {
   piece: Piece
+  /** Shown by the Piece Details page's own Back control as "Back to
+   * {backLabel}" once it's navigated to from here — see PiecePage.tsx's
+   * back-button section for the full mechanism. */
+  backLabel: string
 }
 
-export function PieceListCard({ piece }: PieceListCardProps) {
+export function PieceListCard({ piece, backLabel }: PieceListCardProps) {
   const [page, setPage] = useState(piece.thumbnailPage)
   const meta = formatPieceMeta(piece)
 
@@ -21,6 +25,7 @@ export function PieceListCard({ piece }: PieceListCardProps) {
     <PieceContextMenu piece={piece} hideTriggerButton>
       <ClickableCard
         to={`/pieces/${piece.id}`}
+        state={{ backLabel }}
         className="flex w-full flex-col overflow-hidden rounded-lg border border-border bg-paper-raised p-3 text-left transition-colors hover:border-accent"
       >
         <div className="flex items-start justify-between gap-4">

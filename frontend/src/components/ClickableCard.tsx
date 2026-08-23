@@ -1,31 +1,39 @@
 import type { ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 
 interface ClickableCardProps {
   to: string
+  /** Forwarded to Link's own `state` prop — e.g. `{ backLabel: 'Library'
+   * }`, so the destination page's own Back control (PiecePage's "Back to
+   * X") can name where it was reached from. */
+  state?: unknown
   className: string
   children: ReactNode
 }
 
-// Card root for PieceGridCard/PieceListCard. A plain <button> won't work
-// here — PageCycleControl and TagPills render their own interactive
-// elements inside the card, and nesting a <button> inside a <button> is
-// invalid HTML (React warns and it breaks click targeting). This gives the
-// same click/keyboard-activatable behavior via a div with role="button".
-export function ClickableCard({ to, className, children }: ClickableCardProps) {
-  const navigate = useNavigate()
-
+// Card root for PieceGridCard/PieceListCard/BookGridCard/BookListCard.
+// Renders a real <a> (via react-router's Link) rather than a div with a
+// click handler — a plain onClick-driven div can't be cmd/ctrl/middle-
+// clicked into a new tab, since there's no href for the browser to act on
+// (2026-08-22, direct instruction: "allow cmd+click/ctrl+click to open in
+// a new tab... app-wide" — this is the one shared root every card-style
+// nav link in the app goes through, so fixing it here fixes it
+// everywhere). Link already implements exactly this: a plain left-click
+// gets intercepted for client-side routing, but a modified click (cmd/
+// ctrl/shift) or middle-click is left alone so the browser's native
+// open-in-new-tab/new-window behavior takes over.
+//
+// PageCycleControl's and TagPills'/ContextMenu's own interactive children
+// nested inside a card both already call stopPropagation() on their own
+// click/mousedown handlers (that's what has kept them from triggering the
+// card's own navigation all along, not the div-vs-anchor choice), so an
+// interactive element nested inside this <a> behaves the same as it did
+// nested inside the old div — clicking one of those still doesn't
+// navigate the card away.
+export function ClickableCard({ to, state, className, children }: ClickableCardProps) {
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={() => navigate(to)}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter' || event.key === ' ') navigate(to)
-      }}
-      className={`cursor-pointer ${className}`}
-    >
+    <Link to={to} state={state} className={`cursor-pointer ${className}`}>
       {children}
-    </div>
+    </Link>
   )
 }
