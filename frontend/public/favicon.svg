@@ -1,22 +1,25 @@
 <!--
-  Sonneck favicon — Forest Badge treatment: accent-green circle, the S
-  knocked out in paper. Self-contained background fixes low-contrast
-  readouts some raw/transparent favicons had against certain browser tab
-  themes.
-  Glyph swapped from Imperial Script to Gwendolyn's 700 (bold) cut
-  (2026-08-21, direct instruction); see
-  frontend/src/assets/brand/sonneck-s-mark.svg's own comment for the full
-  reasoning. Plain fill, no stroke — the old per-size stroke-width faking
-  (Medium/stroke 26 at this 16px size) is gone: Gwendolyn 700 is a real
-  bold weight that read clearly at every favicon size tested, 16px
-  included, with nothing added.
-  Construction otherwise unchanged, documented in the "frontend-logo-
-  exploration" memory entry; originally derived at
-  https://claude.ai/code/artifact/efba43e3-7db7-4581-ba14-7bd75350403d
+  Sonneck favicon — Near-Black Badge treatment (2026-08-22, direct
+  instruction — replaces the earlier Forest Badge): near-black circle
+  (the sidebar-bg token, #0f0c0b), the S knocked out in the sidebar's own
+  warm cream (the sidebar-text token, #d9d0c3), rather than the accent
+  green + paper pairing. Chosen from a 6-option comparison
+  (https://claude.ai/code/artifact/7758ed6a-aefa-40ed-911c-3adb5bbdae69,
+  favicon 🎨) after the Forest Badge was flagged as "doesn't look good" —
+  ties the favicon to the sidebar's dark palette instead, and reads with
+  very high contrast against both light and dark real browser tab bars
+  (verified in that comparison's tab mockups), unlike a couple of the
+  other options tried there (a light paper badge nearly disappeared on a
+  light tab bar — the same low-visibility problem a raw/transparent
+  lettermark had, just relocated).
+  Glyph itself unchanged: Gwendolyn 700 (bold) cut, plain fill, no stroke
+  — see frontend/src/assets/brand/sonneck-s-mark.svg's own comment for
+  the full font-weight reasoning, and the "frontend-logo-exploration"
+  memory entry for the mark's original construction history.
 -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-<circle cx="50.0" cy="50.0" r="50.0" fill="#3f5c3f"/>
+<circle cx="50.0" cy="50.0" r="50.0" fill="#0f0c0b"/>
 <svg x="12.50" y="12.50" width="75.00" height="75.00" viewBox="-59.96 -716.89 680.92 926.45">
-  <path d="M222 144Q179 130 159 102Q139 74 135 31Q82 16 49-14.50Q16-45 1.50-84.50Q-13-124-13-167Q-13-215 5.50-257Q24-299 56-331.50Q88-364 128-382.50Q168-401 211-401Q250-401 280-389.50Q310-378 329-360Q363-395 396-426Q429-457 457-488Q451-506 445.50-527Q440-548 440-571Q440-611 464-632Q488-653 511-653Q528-653 539.50-643Q551-633 551-612Q551-591 537-563Q521-530 495-500Q503-482 516-452.50Q529-423 542.50-388.50Q556-354 565-319.50Q574-285 574-256Q574-188 544.50-132.50Q515-77 465-37.50Q415 2 352.50 23Q290 44 225 44Q192 44 160 38Q166 78 185.50 99.50Q205 121 224 127Q239 131 239 139Q239 149 222 144M487-524Q505-548 518-574Q525-588 527.50-598.50Q530-609 530-616Q530-634 518-634Q508-634 496-618Q479-595 479-563Q479-543 487-524M215 27Q272 27 326-1Q380-29 421-74Q462-119 478-169Q496-223 496-284Q496-328 487.50-374Q479-420 464-465Q438-437 407.50-408Q377-379 345-346Q367-324 377-299Q387-274 387-248Q387-212 369-179.50Q351-147 318.50-127Q286-107 242-107Q229-107 216-109Q203-111 189-115Q177-87 168-49Q159-11 158 19Q172 23 186.50 25Q201 27 215 27M135 12Q137-21 146.50-57Q156-93 168-124Q149-135 139-152Q129-169 129-186Q129-219 156-235Q161-238 166-238Q174-238 174-232Q174-227 167-220Q152-207 152-188Q152-162 177-146Q203-205 241.50-256.50Q280-308 317-348Q296-364 274.50-369.50Q253-375 232-375Q196-375 163.50-356Q131-337 105-306Q79-275 63-238.50Q47-202 44-168Q44-164 43.50-159.50Q43-155 43-150Q43-118 52-85.50Q61-53 81.50-27Q102-1 135 12M226-131Q260-131 289.50-150.50Q319-170 338-201Q357-232 357-266Q357-283 351.50-300Q346-317 333-333Q297-294 260-244Q223-194 197-135Q209-131 226-131" fill="#fbfaf8"/>
+  <path d="M222 144Q179 130 159 102Q139 74 135 31Q82 16 49-14.50Q16-45 1.50-84.50Q-13-124-13-167Q-13-215 5.50-257Q24-299 56-331.50Q88-364 128-382.50Q168-401 211-401Q250-401 280-389.50Q310-378 329-360Q363-395 396-426Q429-457 457-488Q451-506 445.50-527Q440-548 440-571Q440-611 464-632Q488-653 511-653Q528-653 539.50-643Q551-633 551-612Q551-591 537-563Q521-530 495-500Q503-482 516-452.50Q529-423 542.50-388.50Q556-354 565-319.50Q574-285 574-256Q574-188 544.50-132.50Q515-77 465-37.50Q415 2 352.50 23Q290 44 225 44Q192 44 160 38Q166 78 185.50 99.50Q205 121 224 127Q239 131 239 139Q239 149 222 144M487-524Q505-548 518-574Q525-588 527.50-598.50Q530-609 530-616Q530-634 518-634Q508-634 496-618Q479-595 479-563Q479-543 487-524M215 27Q272 27 326-1Q380-29 421-74Q462-119 478-169Q496-223 496-284Q496-328 487.50-374Q479-420 464-465Q438-437 407.50-408Q377-379 345-346Q367-324 377-299Q387-274 387-248Q387-212 369-179.50Q351-147 318.50-127Q286-107 242-107Q229-107 216-109Q203-111 189-115Q177-87 168-49Q159-11 158 19Q172 23 186.50 25Q201 27 215 27M135 12Q137-21 146.50-57Q156-93 168-124Q149-135 139-152Q129-169 129-186Q129-219 156-235Q161-238 166-238Q174-238 174-232Q174-227 167-220Q152-207 152-188Q152-162 177-146Q203-205 241.50-256.50Q280-308 317-348Q296-364 274.50-369.50Q253-375 232-375Q196-375 163.50-356Q131-337 105-306Q79-275 63-238.50Q47-202 44-168Q44-164 43.50-159.50Q43-155 43-150Q43-118 52-85.50Q61-53 81.50-27Q102-1 135 12M226-131Q260-131 289.50-150.50Q319-170 338-201Q357-232 357-266Q357-283 351.50-300Q346-317 333-333Q297-294 260-244Q223-194 197-135Q209-131 226-131" fill="#d9d0c3"/>
 </svg>
 </svg>
