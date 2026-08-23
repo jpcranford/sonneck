@@ -99,12 +99,12 @@ export function AppShell() {
                 not to its own longest rendered line — so items-center
                 (which only centers that box within the column) leaves the
                 ragged lines flush-left inside a box that's already full
-            <span className="text-center font-display text-[0.78rem] italic">
                 width — text-align:center on the span itself is the direct
                 fix, since there's no icon position here that needs to
                 stay synced with a ragged box. */}
+            {/* <span className="text-center font-display text-[0.78rem] italic">
               Powered by Sonneck, an open-source music library
-            </span>
+            </span> */}
             <SonneckMark className="size-8 shrink-0" />
           </a>
         </footer>
