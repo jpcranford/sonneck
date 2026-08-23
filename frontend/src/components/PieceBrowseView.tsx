@@ -1,11 +1,16 @@
-import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useEffect, useRef, useState } from 'react'
+import { useInfiniteQuery } from '@tanstack/react-query'
 import { IconSearch, IconLayoutGridFilled, IconLayoutListFilled } from '@tabler/icons-react'
 import { searchPieces, type SearchPiecesParams } from '../api/pieces'
 import { ApiError } from '../api/client'
 import { useDebouncedValue } from '../hooks/useDebouncedValue'
 import { PieceGridCard } from './PieceGridCard'
 import { PieceListCard } from './PieceListCard'
+
+// Matches the backend's own default (internal/handlers/search.go) — passed
+// explicitly here rather than relying on that default, since this is also
+// the page size `getNextPageParam` below uses to detect the last page.
+const PAGE_SIZE = 50
 
 type ViewMode = 'grid' | 'list'
 
@@ -59,14 +64,45 @@ export function PieceBrowseView({
   const debouncedQuery = useDebouncedValue(query)
 
   const {
-    data: pieces,
+    data,
     isLoading,
     isError,
     error,
-  } = useQuery({
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
     queryKey: ['pieces', { query: debouncedQuery, ...filters }],
-    queryFn: () => searchPieces({ query: debouncedQuery || undefined, ...filters }),
+    queryFn: ({ pageParam }) =>
+      searchPieces({ query: debouncedQuery || undefined, ...filters, limit: PAGE_SIZE, offset: pageParam }),
+    initialPageParam: 0,
+    // The backend returns a bare array, no total count — a page shorter
+    // than PAGE_SIZE is the only signal that it was the last one.
+    getNextPageParam: (lastPage, allPages) =>
+      lastPage.length === PAGE_SIZE ? allPages.length * PAGE_SIZE : undefined,
   })
+  const pieces = data?.pages.flat()
+
+  // Fires fetchNextPage once the sentinel below the results scrolls near
+  // into view — rootMargin gives it a head start so the next page is
+  // already loading before the user hits the literal bottom, not a
+  // visible pause once they do. Default root (the browser viewport, not
+  // AppShell's own scroll container) still works here: the sentinel's
+  // position relative to the viewport changes as AppShell's container
+  // scrolls its content past it, same as it would for window-level scroll.
+  const sentinelRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const sentinel = sentinelRef.current
+    if (!sentinel || !hasNextPage) return
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !isFetchingNextPage) fetchNextPage()
+      },
+      { rootMargin: '400px' },
+    )
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage])
 
   return (
     <div className="flex flex-1 flex-col">
@@ -136,6 +172,12 @@ export function PieceBrowseView({
             {pieces.map((piece) => (
               <PieceListCard key={piece.id} piece={piece} backLabel={backLabel} />
             ))}
+          </div>
+        )}
+
+        {pieces && pieces.length > 0 && (
+          <div ref={sentinelRef} className="p-4 text-center text-sm text-ink-soft">
+            {isFetchingNextPage && 'Loading more…'}
           </div>
         )}
       </div>
