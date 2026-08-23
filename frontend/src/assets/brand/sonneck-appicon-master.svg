@@ -1,5 +1,5 @@
 <!--
-  Sonneck S mark — the standalone S from the wordmark, the opaque, full-bleed app-icon tile (75% fill, Diagonal Light gradient) — no corner rounding baked in, since iOS/Android apply their own mask on top of whatever is provided.
+  Sonneck S mark — the standalone S from the wordmark, the opaque, full-bleed app-icon tile — no corner rounding baked in, since iOS/Android apply their own mask on top of whatever is provided.
   Glyph swapped from Imperial Script to Gwendolyn's 700 (bold) cut
   (2026-08-21, direct instruction); see sonneck-s-mark.svg's own comment for
   the full reasoning. No stroke needed here — Gwendolyn 700 is a real bold
@@ -15,21 +15,51 @@
   dimensions (192/512/180), screenshot via Playwright at deviceScaleFactor 1
   with omitBackground:false. Produces flat 8-bit RGB PNGs (no alpha),
   matching what these three files have always been — this SVG has no
-  transparent regions (the #3f5c3f rect is full-bleed), so there's nothing
+  transparent regions (the tile rect is full-bleed), so there's nothing
   an alpha channel would add.
+
+  Recolored to a Near-Black Badge, 2026-08-22, matching favicon.svg's own
+  treatment — chosen from a 6-option comparison run for the favicon
+  redesign, then carried over here for icon/favicon consistency. Tile
+  fill matches the sidebar background token; the S mark's knockout fill
+  matches the sidebar text token — see favicon.svg's own comment for the
+  exact token names (naming them here in full would hit the same
+  literal-double-hyphen XML comment restriction documented in the
+  feedback-xml-comment-double-hyphen memory entry).
+
+  The tile's diagonal light gradient went through three corrections this
+  same round, each verified with actual pixel sampling rather than visual
+  inspection: (1) the original 20%-white / 14%-black overlay opacity read
+  far more extreme against this near-black base than it did against the
+  old forest-green tile, since alpha blending moves a color a fixed
+  fraction of the *remaining* distance to white or black, and near-black
+  has much more remaining distance to white — dialed the white stop down
+  to keep the highlight's absolute shift in line with the old tile's; (2)
+  the three-stop opacity gradient (white-alpha to zero-alpha to
+  black-alpha) had a genuine non-monotonic dip at its middle stop, a light
+  fringe from interpolating alpha and color separately between a
+  transparent-white stop and an opaque-black one — fixed by baking both
+  ends into solid opaque colors and gradienting directly between them,
+  eliminating the interpolation entirely; (3) the black end of that
+  gradient only ever pushed 2-3 RGB units past the base color, invisible
+  on a base this dark, yet left a third of the tile reading as a flat dark
+  "spot" — dropped it, so the gradient now ends exactly at the base color
+  instead of past it; (4) even after all three fixes, the highlight
+  corner still sat far enough from the base color to read as a visibly
+  separate lighter tile rather than a subtle sheen on the sidebar's own
+  tone — cut the highlight opacity again (15% down to 6%) so the tile
+  reads close to flat except for a faint corner glint.
 -->
 
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
 <defs>
   <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-    <stop offset="0%" stop-color="#ffffff" stop-opacity="0.20"/>
-    <stop offset="50%" stop-color="#ffffff" stop-opacity="0"/>
-    <stop offset="100%" stop-color="#000000" stop-opacity="0.14"/>
+    <stop offset="0%" stop-color="#1d1b1a"/>
+    <stop offset="100%" stop-color="#0f0c0b"/>
   </linearGradient>
 </defs>
-<rect width="512" height="512" fill="#3f5c3f"/>
 <rect width="512" height="512" fill="url(#g)"/>
 <svg x="64.00" y="64.00" width="384.00" height="384.00" viewBox="-59.96 -716.89 680.92 926.45">
-  <path d="M222 144Q179 130 159 102Q139 74 135 31Q82 16 49-14.50Q16-45 1.50-84.50Q-13-124-13-167Q-13-215 5.50-257Q24-299 56-331.50Q88-364 128-382.50Q168-401 211-401Q250-401 280-389.50Q310-378 329-360Q363-395 396-426Q429-457 457-488Q451-506 445.50-527Q440-548 440-571Q440-611 464-632Q488-653 511-653Q528-653 539.50-643Q551-633 551-612Q551-591 537-563Q521-530 495-500Q503-482 516-452.50Q529-423 542.50-388.50Q556-354 565-319.50Q574-285 574-256Q574-188 544.50-132.50Q515-77 465-37.50Q415 2 352.50 23Q290 44 225 44Q192 44 160 38Q166 78 185.50 99.50Q205 121 224 127Q239 131 239 139Q239 149 222 144M487-524Q505-548 518-574Q525-588 527.50-598.50Q530-609 530-616Q530-634 518-634Q508-634 496-618Q479-595 479-563Q479-543 487-524M215 27Q272 27 326-1Q380-29 421-74Q462-119 478-169Q496-223 496-284Q496-328 487.50-374Q479-420 464-465Q438-437 407.50-408Q377-379 345-346Q367-324 377-299Q387-274 387-248Q387-212 369-179.50Q351-147 318.50-127Q286-107 242-107Q229-107 216-109Q203-111 189-115Q177-87 168-49Q159-11 158 19Q172 23 186.50 25Q201 27 215 27M135 12Q137-21 146.50-57Q156-93 168-124Q149-135 139-152Q129-169 129-186Q129-219 156-235Q161-238 166-238Q174-238 174-232Q174-227 167-220Q152-207 152-188Q152-162 177-146Q203-205 241.50-256.50Q280-308 317-348Q296-364 274.50-369.50Q253-375 232-375Q196-375 163.50-356Q131-337 105-306Q79-275 63-238.50Q47-202 44-168Q44-164 43.50-159.50Q43-155 43-150Q43-118 52-85.50Q61-53 81.50-27Q102-1 135 12M226-131Q260-131 289.50-150.50Q319-170 338-201Q357-232 357-266Q357-283 351.50-300Q346-317 333-333Q297-294 260-244Q223-194 197-135Q209-131 226-131" fill="#fbfaf8"/>
+  <path d="M222 144Q179 130 159 102Q139 74 135 31Q82 16 49-14.50Q16-45 1.50-84.50Q-13-124-13-167Q-13-215 5.50-257Q24-299 56-331.50Q88-364 128-382.50Q168-401 211-401Q250-401 280-389.50Q310-378 329-360Q363-395 396-426Q429-457 457-488Q451-506 445.50-527Q440-548 440-571Q440-611 464-632Q488-653 511-653Q528-653 539.50-643Q551-633 551-612Q551-591 537-563Q521-530 495-500Q503-482 516-452.50Q529-423 542.50-388.50Q556-354 565-319.50Q574-285 574-256Q574-188 544.50-132.50Q515-77 465-37.50Q415 2 352.50 23Q290 44 225 44Q192 44 160 38Q166 78 185.50 99.50Q205 121 224 127Q239 131 239 139Q239 149 222 144M487-524Q505-548 518-574Q525-588 527.50-598.50Q530-609 530-616Q530-634 518-634Q508-634 496-618Q479-595 479-563Q479-543 487-524M215 27Q272 27 326-1Q380-29 421-74Q462-119 478-169Q496-223 496-284Q496-328 487.50-374Q479-420 464-465Q438-437 407.50-408Q377-379 345-346Q367-324 377-299Q387-274 387-248Q387-212 369-179.50Q351-147 318.50-127Q286-107 242-107Q229-107 216-109Q203-111 189-115Q177-87 168-49Q159-11 158 19Q172 23 186.50 25Q201 27 215 27M135 12Q137-21 146.50-57Q156-93 168-124Q149-135 139-152Q129-169 129-186Q129-219 156-235Q161-238 166-238Q174-238 174-232Q174-227 167-220Q152-207 152-188Q152-162 177-146Q203-205 241.50-256.50Q280-308 317-348Q296-364 274.50-369.50Q253-375 232-375Q196-375 163.50-356Q131-337 105-306Q79-275 63-238.50Q47-202 44-168Q44-164 43.50-159.50Q43-155 43-150Q43-118 52-85.50Q61-53 81.50-27Q102-1 135 12M226-131Q260-131 289.50-150.50Q319-170 338-201Q357-232 357-266Q357-283 351.50-300Q346-317 333-333Q297-294 260-244Q223-194 197-135Q209-131 226-131" fill="#d9d0c3"/>
 </svg>
 </svg>
