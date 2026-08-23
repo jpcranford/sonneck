@@ -451,11 +451,16 @@ export function PiecePage() {
   // own useQuery above), so there's no need to also populate the cache here.
   const randomPieceMutation = useMutation({
     mutationFn: getRandomPiece,
-    // Forwards this page's own location.state along the chain — so
-    // repeatedly rolling a new random piece still reports "Back to
-    // Library" (or wherever the chain actually started), not "Back to"
-    // the piece just left behind.
-    onSuccess: (randomPiece) => navigate(`/pieces/${randomPiece.id}`, { state: location.state }),
+    // Deliberately does NOT forward this page's own location.state: each
+    // roll pushes a real new history entry (no `replace`), so a real
+    // "back" only ever undoes one roll, landing on the piece just left
+    // behind — not on wherever the chain originally started. Forwarding
+    // the old backLabel here would make the button claim "Back to
+    // Library"/"Back to Book" while actually navigating to the previous
+    // random piece, a real label/behavior mismatch. Leaving state unset
+    // instead falls back to the plain "Back" label (hasBackHistory is
+    // still true), which matches what the button actually does.
+    onSuccess: (randomPiece) => navigate(`/pieces/${randomPiece.id}`),
     onError: (error) => {
       window.alert(error instanceof ApiError ? error.message : 'Could not find a random piece.')
     },
