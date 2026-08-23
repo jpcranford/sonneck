@@ -1,0 +1,27 @@
+# Keeps the build context small and, more importantly, keeps stale local
+# artifacts from ever leaking into an image — everything here gets rebuilt
+# fresh inside the relevant build stage instead.
+
+.git
+.github
+
+# Dev library / local scratch — never belongs in an image (CLAUDE.md's
+# dev-data-readonly convention is about live verification, but the same
+# "this is local, not shippable" reasoning applies here too).
+data/
+design-review/
+
+# Frontend: node_modules and dist get rebuilt fresh in frontend-builder
+frontend/node_modules
+frontend/dist
+
+# SQLite files anywhere (e.g. a locally-built ./sonneck binary's own run)
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
+# The loose locally-built binary at repo root, if present
+/sonneck
+/bin/
+
+*.DS_Store

@@ -14,6 +14,7 @@ import (
 	"github.com/jpcranford/sonneck/internal/export"
 	"github.com/jpcranford/sonneck/internal/handlers"
 	"github.com/jpcranford/sonneck/internal/repo"
+	"github.com/jpcranford/sonneck/internal/webui"
 )
 
 func main() {
@@ -63,7 +64,13 @@ func main() {
 	}
 	defer scheduler.Stop()
 
-	handler := handlers.New(conn, cfg, logger)
+	frontend, err := webui.FS()
+	if err != nil {
+		logger.Error("failed to load embedded frontend", "error", err)
+		os.Exit(1)
+	}
+
+	handler := handlers.New(conn, cfg, logger, frontend)
 
 	logger.Info("starting server", "port", cfg.Port)
 	if err := http.ListenAndServe(":"+cfg.Port, handler); err != nil {

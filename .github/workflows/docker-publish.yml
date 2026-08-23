@@ -1,0 +1,183 @@
+# Builds and publishes Sonneck's Docker image to GHCR.
+#
+# Three distinct paths, gated by how the workflow was triggered:
+#
+#   1. push to main       -> validation build only, no push. This is what
+#                             keeps the README's "Build status" badge
+#                             meaningful day to day, separate from actual
+#                             releases.
+#   2. a release is published (or a prerelease becomes a real release)
+#                          -> the real publish path: build linux/amd64 and
+#                             linux/arm64 natively (CLAUDE.md > Docker/build
+#                             — native runners, not QEMU emulation), merge
+#                             into one multi-arch manifest tagged with the
+#                             release's own tag, and ALSO tag :latest, but
+#                             only if this release is actually what GitHub
+#                             currently considers the latest release
+#                             (GET /repos/.../releases/latest) — not just
+#                             "the most recently published one". A release
+#                             published for an older branch, or with "Set as
+#                             the latest release" unchecked, must not
+#                             clobber :latest.
+#   3. manual (workflow_dispatch)
+#                          -> no build at all. Just re-checks
+#                             releases/latest and re-points :latest at
+#                             whichever version tag that now names — for
+#                             "I changed which release is marked latest
+#                             after the fact" without wanting to cut a
+#                             whole new release to fix it.
+
+name: Docker Publish
+
+on:
+  push:
+    branches: [main]
+  release:
+    types: [released]
+  workflow_dispatch:
+
+env:
+  IMAGE: ghcr.io/${{ github.repository }}
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    if: github.event_name != 'workflow_dispatch'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-latest
+            arch: amd64
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        if: github.event_name == 'release'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build (validation only, no push)
+        if: github.event_name != 'release'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: ${{ matrix.platform }}
+          push: false
+
+      # Pushed by digest only (no final tag yet) — the merge job below
+      # combines both architectures' digests into one multi-arch manifest.
+      # This build-by-digest-then-merge two-step is Docker's own documented
+      # pattern for multi-arch builds split across separate native runners,
+      # as opposed to a single buildx invocation emulating the other
+      # architecture under QEMU.
+      - name: Build and push by digest
+        if: github.event_name == 'release'
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: ${{ matrix.platform }}
+          outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
+
+      - name: Export digest
+        if: github.event_name == 'release'
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        if: github.event_name == 'release'
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ matrix.arch }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge:
+    needs: build
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digests-*
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create version-tagged manifest
+        working-directory: /tmp/digests
+        run: |
+          docker buildx imagetools create \
+            -t ${{ env.IMAGE }}:${{ github.event.release.tag_name }} \
+            $(printf '${{ env.IMAGE }}@sha256:%s ' *)
+
+      - name: Point :latest at this release, if GitHub agrees it's the latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          actual_latest=$(gh api "repos/${{ github.repository }}/releases/latest" --jq .tag_name)
+          this_release="${{ github.event.release.tag_name }}"
+          if [ "$actual_latest" = "$this_release" ]; then
+            echo "GitHub's current latest release is $this_release — tagging :latest"
+            docker buildx imagetools create \
+              -t ${{ env.IMAGE }}:latest \
+              ${{ env.IMAGE }}:${{ github.event.release.tag_name }}
+          else
+            echo "GitHub's current latest release is $actual_latest, not $this_release — leaving :latest alone"
+          fi
+
+  sync-latest:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # No rebuild — just re-points :latest at whichever version tag
+      # GitHub currently considers the latest release. Cheap manifest copy,
+      # not a rebuild (docker buildx imagetools create).
+      - name: Re-point :latest at GitHub's current latest release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag=$(gh api "repos/${{ github.repository }}/releases/latest" --jq .tag_name)
+          echo "GitHub's current latest release is $tag"
+          docker buildx imagetools create \
+            -t ${{ env.IMAGE }}:latest \
+            ${{ env.IMAGE }}:$tag

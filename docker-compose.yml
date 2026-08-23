@@ -1,0 +1,19 @@
+services:
+  sonneck:
+    image: ghcr.io/jpcranford/sonneck:latest
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/data
+    environment: # All optional, uncomment what you want to change. See the README's "Advanced options" for details.
+      # BACKUP_CRON: "0 3 * * *"      # standard cron expression, default = daily at 3am
+      # BACKUP_RETENTION_DAYS: "30"
+      # LOG_LEVEL: info               # debug | info | warn | error — turn up to debug if you're troubleshooting
+      TZ: UTC # set to your own timezone (e.g. America/New_York) so BACKUP_CRON fires when you expect
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3

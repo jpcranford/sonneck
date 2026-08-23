@@ -17,6 +17,7 @@ import (
 	"github.com/jpcranford/sonneck/internal/db"
 	"github.com/jpcranford/sonneck/internal/handlers"
 	"github.com/jpcranford/sonneck/internal/testutil"
+	"github.com/jpcranford/sonneck/internal/webui"
 )
 
 // newTestServer wires up a real handler against a fresh temp DB and temp
@@ -45,7 +46,12 @@ func newTestServerWithDB(t *testing.T) (http.Handler, *sql.DB) {
 	cfg := &config.Config{DataDir: dataDir}
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
 
-	return handlers.New(conn, cfg, logger), conn
+	frontend, err := webui.FS()
+	if err != nil {
+		t.Fatalf("loading embedded frontend: %v", err)
+	}
+
+	return handlers.New(conn, cfg, logger, frontend), conn
 }
 
 // writeFixturePDF is a thin wrapper over the shared fixture generator
