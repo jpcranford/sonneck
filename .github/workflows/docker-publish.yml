@@ -1,30 +1,49 @@
 # Builds and publishes Sonneck's Docker image to GHCR.
 #
-# Three distinct paths, gated by how the workflow was triggered:
+# Three triggers, one of which (release) splits into two different
+# publish channels depending on whether it's a real release or a
+# pre-release:
 #
 #   1. push to main       -> validation build only, no push. This is what
 #                             keeps the README's "Build status" badge
 #                             meaningful day to day, separate from actual
 #                             releases.
-#   2. a release is published (or a prerelease becomes a real release)
-#                          -> the real publish path: build linux/amd64 and
-#                             linux/arm64 natively (CLAUDE.md > Docker/build
-#                             — native runners, not QEMU emulation), merge
-#                             into one multi-arch manifest tagged with the
-#                             release's own tag, and ALSO tag :latest, but
-#                             only if this release is actually what GitHub
-#                             currently considers the latest release
-#                             (GET /repos/.../releases/latest) — not just
-#                             "the most recently published one". A release
-#                             published for an older branch, or with "Set as
-#                             the latest release" unchecked, must not
-#                             clobber :latest. Also attaches docker-compose.yml
-#                             to the release itself (a stable, versioned
-#                             download URL, and a real number for the
-#                             README's Downloads badge to count — GHCR has no
-#                             public pull-count API, so a release asset is the
-#                             closest thing to a live counter this setup can
-#                             offer).
+#   2. a release is published — action is either "released" (a real
+#      release, or a pre-release converted to one) or "prereleased" (a new
+#      pre-release). Both build linux/amd64 and linux/arm64 natively
+#      (CLAUDE.md > Docker/build — native runners, not QEMU emulation) and
+#      merge into one multi-arch manifest tagged with the release's own
+#      version tag (e.g. v2.0.0-beta.1) — every published build, stable or
+#      not, stays pinnable/referenceable later. From there the two actions
+#      diverge on which floating tags they also move:
+#      - both actions        -> ALWAYS also point the floating :dev tag at
+#                             whatever was just published. :dev tracks the
+#                             tip of publishing activity, period — not just
+#                             pre-releases — since a real release can
+#                             legitimately contain fixes made after the
+#                             last pre-release was cut; if :dev only moved
+#                             on pre-releases, it would go stale exactly
+#                             when someone testing against it needs it
+#                             least. No releases/latest-style check needed
+#                             here either way — GitHub has no "marked
+#                             latest pre-release" concept to compare
+#                             against, so this is unconditional.
+#      - "released" only     -> ALSO tags :latest, but only if this release
+#                             is actually what GitHub currently considers
+#                             the latest release (GET /repos/.../releases/
+#                             latest) — not just "the most recently
+#                             published one". A release published for an
+#                             older branch, or with "Set as the latest
+#                             release" unchecked, must not clobber :latest.
+#                             Also attaches docker-compose.yml to the
+#                             release itself (a stable, versioned download
+#                             URL, and a real number for the README's
+#                             Downloads badge to count — GHCR has no public
+#                             pull-count API, so a release asset is the
+#                             closest thing to a live counter this setup
+#                             can offer) — doesn't run for a pre-release,
+#                             since that's part of the polished, stable
+#                             distribution story, not a dev/testing build.
 #   3. manual (workflow_dispatch)
 #                          -> no build at all. Just re-checks
 #                             releases/latest and re-points :latest at
@@ -39,7 +58,7 @@ on:
   push:
     branches: [main]
   release:
-    types: [released]
+    types: [released, prereleased]
   workflow_dispatch:
 
 env:
@@ -122,8 +141,11 @@ jobs:
   # build. Needs contents: write specifically (the top-level permissions
   # block only grants contents: read), so this job overrides it locally
   # rather than widening the token for every other job in the workflow.
+  # Scoped to real releases only (github.event.action == 'released'), not
+  # pre-releases — this is part of the polished, stable distribution story,
+  # not something a dev/testing pre-release build needs.
   attach-assets:
-    if: github.event_name == 'release'
+    if: github.event_name == 'release' && github.event.action == 'released'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -180,6 +202,7 @@ jobs:
             $(printf '${{ env.IMAGE }}@sha256:%s ' *)
 
       - name: Point :latest at this release, if GitHub agrees it's the latest
+        if: github.event.action == 'released'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
@@ -193,6 +216,24 @@ jobs:
           else
             echo "GitHub's current latest release is $actual_latest, not $RELEASE_TAG — leaving :latest alone"
           fi
+
+      # Unconditional (no `if:` — runs for both 'released' and
+      # 'prereleased', unlike :latest above): :dev tracks the tip of
+      # publishing activity, period, not just pre-releases. A real release
+      # can legitimately contain fixes made after the last pre-release was
+      # cut, so :dev needs to move forward on a real release too, or it'd
+      # go stale exactly when someone testing against it needs it least.
+      # No releases/latest-style check needed either way — GitHub has no
+      # "marked latest pre-release" concept to compare against, so this
+      # just always points :dev at whatever was most recently published.
+      - name: Point :dev at this build
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          echo "Tagging :dev at $RELEASE_TAG"
+          docker buildx imagetools create \
+            -t "${{ env.IMAGE }}:dev" \
+            "${{ env.IMAGE }}:$RELEASE_TAG"
 
   sync-latest:
     if: github.event_name == 'workflow_dispatch'
