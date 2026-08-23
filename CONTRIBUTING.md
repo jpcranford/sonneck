@@ -9,6 +9,7 @@ If anything here is wrong, confusing, or out of date, that's itself a welcome bu
 - [Architecture summary](#architecture-summary)
 - [File structure](#file-structure)
 - [Local development setup](#local-development-setup)
+- [Docker](#docker)
 - [Database migrations](#database-migrations)
 - [Conventions & house rules](#conventions--house-rules)
 - [Testing](#testing)
@@ -70,6 +71,7 @@ sonneck/
 │   ├── repo/                   # All SQL lives here — the only layer that touches the DB
 │   ├── storage/                # File storage on disk (originals, extracted pieces)
 │   ├── testutil/               # Shared test fixtures (e.g. minimal valid PDFs)
+│   ├── webui/                  # Embeds the built frontend (//go:embed) for the single-binary/Docker deployment — see the Docker section below
 │   └── wizard/                 # Book-import wizard's page-range validation logic
 ├── frontend/
 │   └── src/
@@ -80,6 +82,9 @@ sonneck/
 │       └── routes/              # One file per page, wired up in App.tsx
 ├── data/                       # Local dev library (DB, files, cache) — gitignored
 ├── design-review/              # Local screenshot/comparison scratch space — gitignored
+├── .github/workflows/          # docker-publish.yml — see the Docker section below
+├── Dockerfile                  # 3-stage: build frontend → embed it into the Go binary → slim runtime
+├── docker-compose.yml          # What the README's Docker install path actually downloads and runs
 ├── sonneck-design.md           # Original design doc — the plan as first written
 ├── CLAUDE.md                   # Running conventions log — the plan as it actually evolved
 ├── README.md                   # User-facing docs (install, config, deployment)
@@ -111,6 +116,21 @@ npm install
 npm run dev
 ```
 Vite serves on `:5173` and proxies `/api/*` to the backend on `:8080` — you'll want both running at once for local dev. `npm run build` produces the static bundle the Go binary embeds for a real deployment.
+
+## Docker
+
+You don't need Docker for local development (see above), but if you're touching the `Dockerfile`, `docker-compose.yml`, or `internal/webui` (the package that embeds the frontend into the binary), build and run it directly:
+
+```sh
+docker build -t sonneck:local .
+docker run --rm -p 8080:8080 -v sonneck-local-data:/data sonneck:local
+```
+
+This runs the full multi-stage build (frontend build → embed into the Go binary → slim runtime with `poppler-utils`) exactly as the release pipeline does — the frontend is built fresh inside the image every time, so there's no separate "remember to rebuild the frontend first" step to forget the way there might be if you were embedding a stale local `frontend/dist`. Confirm it's actually serving the real app, not just that it built: `curl localhost:8080/healthz`, then load `http://localhost:8080/` in a browser.
+
+To test `docker-compose.yml` itself against a local build rather than the published image, temporarily point its `image:` at `sonneck:local` (don't commit that change).
+
+**CI** (`.github/workflows/docker-publish.yml`): every push to `main` runs a validation build (build only, no push — this is what the README's Build-status badge reflects day to day). Publishing to GHCR only happens when a GitHub Release is published, and `:latest` only moves if that release is genuinely what GitHub currently considers the latest one (checked via the API, not just "most recently published") — see `CLAUDE.md` > Docker/build for the full mechanics if you're changing the workflow itself.
 
 ## Database migrations
 
@@ -161,7 +181,7 @@ Beyond the split-logic requirement above, comprehensive frontend test coverage i
 ## Making a change
 
 1. Fork/branch, make your change.
-2. Run the relevant tests and linters above — there's no CI pipeline wired up yet to catch this for you, so a green local run before opening a PR is the whole safety net right now.
+2. Run the relevant tests and linters above. `.github/workflows/docker-publish.yml` validates that the Docker image still builds on every push to `main`, but it doesn't run `go test`/`npm test`/lint for you — a green local run of those before opening a PR is still the real safety net.
 3. Open a pull request with a clear description of *why*, not just *what* — the diff already shows what changed; the description is where the reasoning goes; that's genuinely more useful to a future reader than a restatement of the diff.
 4. If your change touches a documented convention or a deliberate deviation described in `CLAUDE.md`, update that file in the same PR rather than leaving it stale.
 

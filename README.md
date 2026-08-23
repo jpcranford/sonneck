@@ -6,40 +6,6 @@
   </picture>
 </p>
 
-<!--
-  Badge row (2026-08-22, direct instruction). ALL FIVE currently render as
-  broken/"invalid" shields, for two independent reasons — worth
-  distinguishing so this comment doesn't read as stale once the first
-  reason goes away:
-    1. The repo is private (confirmed directly, 2026-08-22). shields.io's
-       badge requests are unauthenticated — they can't read ANYTHING off a
-       private GitHub repo, so even License and Go version (which need
-       nothing but LICENSE / go.mod to exist, both already true) won't
-       resolve until this repo goes public. This affects all five badges
-       equally.
-    2. Independent of (1), the last three are also forward-looking
-       placeholders for the eventual Docker/CI setup described in
-       CLAUDE.md (single multi-arch image, built via GitHub Actions) — they
-       won't resolve even after this repo is public, until that
-       infrastructure exists too:
-         - Build status needs a workflow at
-           .github/workflows/docker-publish.yml (rename this badge's URL to
-           match if the real workflow ends up named differently).
-         - Latest release needs at least one GitHub Release/tag to exist.
-         - Downloads needs a Release with a real file attached — GHCR
-           doesn't expose pull counts via any public API, so this is the
-           closest thing to a live counter GHCR-based distribution can
-           offer. The natural fit: publish docker-compose.yml (which the
-           Installation section below already tells people to download) as
-           a Release asset instead of linking the raw main-branch file,
-           giving it a stable versioned URL *and* making this badge real at
-           the same time.
-  Don't build the Dockerfile/workflow/release just to make these resolve —
-  that's real Docker/CI work, gated separately (see project memory: hold
-  off until v1 is prod-ready and human-reviewed). Making the repo public is
-  an even bigger, separate call — not something to do as a side effect of
-  wanting a badge to light up.
--->
 <p align="center">
   <a href="https://github.com/jpcranford/sonneck/blob/main/go.mod"><img alt="Go version" src="https://img.shields.io/github/go-mod/go-version/jpcranford/sonneck"></a>
   <a href="https://github.com/jpcranford/sonneck/actions/workflows/docker-publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/jpcranford/sonneck/docker-publish.yml"></a>
@@ -146,8 +112,9 @@ Sonneck has **no login, no access control of its own.** It's currently built for
 - **IMSLP metadata import.** Why spend the effort to manually input the info when you can just autofill from the website?
 - **Configurable citation format.** Just in case you don't like the defaults.
 - Support for a folder of image files to be uploaded/assembled into pieces
+- A way to rename user tags, sheet types, etc. from the interface — honestly, this one's probably waiting on the auth support, when I slice off a *bunch* of user settings I have bookmarked into their own menu (dark/light mode preference, citation style choice, etc.)
 - Offline mode? for remote gigs? Still thinking about how to accomplish this one, contributions would be welcome.
-- Server-side printer support? Unsure of this one, but essentially the server would have a dedicated printer with the same settings saved, boiling a whole process down into a simple "Send to Printer" button.
+- Server-side printer support? Unsure about this one, but essentially the server would have a dedicated printer with the same settings saved, boiling a whole process down into a simple "Send to Printer" button. Dunno if this is achievable or just a fever dream.
 
 ## About the name
 Sonneck is named after **Oscar Sonneck** (1873–1928), an American musicologist and librarian. In 1902 he became the first chief of the new Music Division at the Library of Congress, a post he held until 1917; there he built the division's holdings into one of the world's great music collections and devised a classification scheme still in use today, with modifications. After leaving that post, he joined the music publisher G. Schirmer, Inc. (still around today!) and become its vice president in 1921. He's regarded as the founding figure of American musicology — his bibliographic work on early American music laid the groundwork for the field. 
