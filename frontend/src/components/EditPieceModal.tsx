@@ -512,16 +512,38 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
         className="flex flex-col gap-6"
       >
         <div className="flex flex-col gap-3">
-          <div className="flex flex-col gap-1">
-            <label htmlFor="f-title" className="text-sm text-ink-soft">
-              Title <span className="text-ink-soft/60 italic">(Required)</span>
-            </label>
-            <input
-              id="f-title"
-              className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-              {...register('title', { required: 'Title is required.', maxLength: 255 })}
-            />
-            {errors.title && <p className="text-sm text-red-700">{errors.title.message}</p>}
+          {/* Title/Year written share a row, 2/3-1/3 split (flex-[2]/
+              flex-1) — Title is the field that actually needs the room;
+              Year written is short by nature. */}
+          <div className="flex flex-col gap-3 min-[525px]:flex-row">
+            <div className="flex min-w-0 flex-[2] flex-col gap-1">
+              <label htmlFor="f-title" className="text-sm text-ink-soft">
+                Title <span className="text-ink-soft/60 italic">(Required)</span>
+              </label>
+              <input
+                id="f-title"
+                className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+                {...register('title', { required: 'Title is required.', maxLength: 255 })}
+              />
+              {errors.title && <p className="text-sm text-red-700">{errors.title.message}</p>}
+            </div>
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              <label htmlFor="f-year" className="text-sm text-ink-soft">
+                Year written
+              </label>
+              <input
+                id="f-year"
+                placeholder={!watch('yearWritten') && piece.yearWritten.inherited ? piece.yearWritten.value : undefined}
+                className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                {...register('yearWritten', { maxLength: 255 })}
+              />
+              {!watch('yearWritten') && piece.yearWritten.inherited && (
+                <InheritedNote
+                  bookValue={piece.yearWritten.value}
+                  onCopy={() => setValue('yearWritten', piece.yearWritten.value)}
+                />
+              )}
+            </div>
           </div>
           {/* min-[525px]:flex-row — the same fixed breakpoint every paired
               row in this form uses (see the Musical Details/Personal
@@ -572,8 +594,11 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
 
         <div className="flex flex-col gap-3 border-t border-border pt-4">
           <SectionHeading>Frontmatter</SectionHeading>
-          {/* min-[525px]:flex-row — same unified breakpoint as every other
-              paired row in this form (see Composer/Arranger above). */}
+          {/* Opus / IMSLP no. share a row, 50/50 — min-[525px]:flex-row,
+              same unified breakpoint as every other paired row in this
+              form (see Composer/Arranger above). Year written moved up to
+              pair with Title instead (2/3-1/3 split, see that row's own
+              comment above). */}
           <div className="flex flex-col gap-3 min-[525px]:flex-row">
             <div className="flex min-w-0 flex-1 flex-col gap-1">
               <label htmlFor="f-opus" className="flex items-center gap-1 text-sm text-ink-soft">
@@ -596,23 +621,29 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
               />
             </div>
             <div className="flex min-w-0 flex-1 flex-col gap-1">
-              <label htmlFor="f-year" className="text-sm text-ink-soft">
-                Year written
+              <label htmlFor="f-imslp" className="text-sm text-ink-soft">
+                IMSLP no.
               </label>
               <input
-                id="f-year"
-                placeholder={!watch('yearWritten') && piece.yearWritten.inherited ? piece.yearWritten.value : undefined}
+                id="f-imslp"
+                placeholder={!watch('imslpNumber') && piece.imslpNumber.inherited ? piece.imslpNumber.value : undefined}
                 className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
-                {...register('yearWritten', { maxLength: 255 })}
+                {...register('imslpNumber', { maxLength: 255 })}
               />
-              {!watch('yearWritten') && piece.yearWritten.inherited && (
+              {!watch('imslpNumber') && piece.imslpNumber.inherited && (
                 <InheritedNote
-                  bookValue={piece.yearWritten.value}
-                  onCopy={() => setValue('yearWritten', piece.yearWritten.value)}
+                  bookValue={piece.imslpNumber.value}
+                  onCopy={() => setValue('imslpNumber', piece.imslpNumber.value)}
                 />
               )}
             </div>
           </div>
+          {/* Publisher/Publisher ID deliberately never wraps to separate
+              rows, unlike the min-width-floor pairs above — both shrink
+              freely (min-w-0 overrides the flex default of refusing to
+              shrink below content width), so the pair always fits on one
+              line even on a narrow phone viewport. Plain 50/50 split
+              (flex-1/flex-1, not the old fixed-width Publisher ID). */}
           <div className="flex gap-3">
             <div className="flex min-w-0 flex-1 flex-col gap-1">
               <label htmlFor="f-publisher" className="text-sm text-ink-soft">
@@ -625,7 +656,7 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
                 {...register('publisher', { maxLength: 255 })}
               />
             </div>
-            <div className="flex w-48 shrink-0 flex-col gap-1">
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
               <label htmlFor="f-publisher-id" className="flex items-center gap-1 text-sm text-ink-soft">
                 Publisher ID
                 <InfoTooltip
@@ -644,7 +675,7 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
                 placeholder={
                   !watch('publisherId') && piece.publisherId.inherited ? piece.publisherId.value : undefined
                 }
-                className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-right text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
                 {...register('publisherId', { maxLength: 255 })}
               />
             </div>
@@ -662,23 +693,6 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
               />
             )}
           <div className="flex flex-col gap-1">
-            <label htmlFor="f-imslp" className="text-sm text-ink-soft">
-              IMSLP no.
-            </label>
-            <input
-              id="f-imslp"
-              placeholder={!watch('imslpNumber') && piece.imslpNumber.inherited ? piece.imslpNumber.value : undefined}
-              className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
-              {...register('imslpNumber', { maxLength: 255 })}
-            />
-            {!watch('imslpNumber') && piece.imslpNumber.inherited && (
-              <InheritedNote
-                bookValue={piece.imslpNumber.value}
-                onCopy={() => setValue('imslpNumber', piece.imslpNumber.value)}
-              />
-            )}
-          </div>
-          <div className="flex flex-col gap-1">
             <label htmlFor="f-description" className="text-sm text-ink-soft">
               Description
             </label>
@@ -691,62 +705,57 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
           </div>
         </div>
 
-        {/* Book Details — the Source Book search field, plus the page
-            range split out of Frontmatter into its own section so it
-            reads as "where this
-            piece lives inside its source book" rather than bundled with
-            the piece's own bibliographic fields. Source Book sits above
-            the page range — picking a different book is the thing that
-            makes "page 22–24 of what?" answerable, so it reads first.
-            key={piece.id} forces a full remount (resetting the field's
-            internal search-query text) whenever this modal is reused for
-            a different piece, rather than only when it unmounts. */}
+        {/* Musical Details: Sheet type/Instruments, then Key(s)/Duration
+            plus the tempo-calc disclosure tied to Duration. Your Tags
+            lives in Personal instead — it's the user's own organizational
+            label, not a musical-classification fact about the piece. */}
         <div className="flex flex-col gap-3 border-t border-border pt-4">
-          <SectionHeading>Book Details</SectionHeading>
-          <Controller
-            name="sourceBookId"
-            control={control}
-            render={({ field }) => (
-              <SourceBookField
-                key={piece.id}
-                value={field.value}
-                onChange={field.onChange}
-                initialTitle={piece.sourceBookTitle ?? null}
-              />
-            )}
-          />
-          <div className="flex gap-3">
-            <div className="flex flex-1 flex-col gap-1">
-              <label htmlFor="f-page-start" className="text-sm text-ink-soft">
-                Start page
-              </label>
-              <input
-                id="f-page-start"
-                type="number"
-                className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-                {...register('sourcePageStart')}
+          <SectionHeading>Musical Details</SectionHeading>
+          {/* Sheet Type/Instruments share a row, first in this section.
+              min-[525px]:flex-row — same unified breakpoint as every other
+              paired row in this form (see Composer/Arranger above). */}
+          <div className="flex flex-col gap-3 min-[525px]:flex-row">
+            <div className="min-w-0 flex-1">
+              <Controller
+                name="sheetType"
+                control={control}
+                render={({ field }) => (
+                  <SingleSelect
+                    label="Sheet type"
+                    options={sheetTypeSelectOptions}
+                    value={field.value}
+                    onChange={field.onChange}
+                    bookValue={
+                      piece.sheetType.inherited ? (piece.sheetType.value?.name ?? undefined) : undefined
+                    }
+                    onCopy={() => field.onChange(piece.sheetType.value?.name ?? '')}
+                  />
+                )}
               />
             </div>
-            <div className="flex flex-1 flex-col gap-1">
-              <label htmlFor="f-page-end" className="text-sm text-ink-soft">
-                End page
-              </label>
-              <input
-                id="f-page-end"
-                type="number"
-                className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-                {...register('sourcePageEnd')}
+            <div className="min-w-0 flex-1">
+              <Controller
+                name="instruments"
+                control={control}
+                render={({ field }) => (
+                  <TagComboBox
+                    label="Instruments"
+                    options={instrumentOptions}
+                    selected={field.value}
+                    multiple
+                    onChange={field.onChange}
+                    bookValue={
+                      piece.instruments.inherited
+                        ? piece.instruments.values.map((i) => i.name).join(', ')
+                        : undefined
+                    }
+                    onCopy={() => field.onChange(piece.instruments.values)}
+                  />
+                )}
               />
             </div>
           </div>
-        </div>
 
-        {/* Musical Details: Key(s)/Sheet type/Instruments, plus Duration
-            at the end of this section. Your Tags lives in Personal
-            instead — it's the user's own organizational label, not a
-            musical-classification fact about the piece. */}
-        <div className="flex flex-col gap-3 border-t border-border pt-4">
-          <SectionHeading>Musical Details</SectionHeading>
           {/* Key(s)/Duration share a row — Key(s) grows (it can hold an
               arbitrary-length modulation sequence), Duration keeps its
               fixed width (w-48, matching Publisher ID's split point above)
@@ -887,51 +896,6 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
               </div>
             )}
           </div>
-
-          {/* Sheet Type/Instruments share a row, same order as before.
-              min-[525px]:flex-row — same unified breakpoint as every other
-              paired row in this form (see Composer/Arranger above). */}
-          <div className="flex flex-col gap-3 min-[525px]:flex-row">
-            <div className="min-w-0 flex-1">
-              <Controller
-                name="sheetType"
-                control={control}
-                render={({ field }) => (
-                  <SingleSelect
-                    label="Sheet type"
-                    options={sheetTypeSelectOptions}
-                    value={field.value}
-                    onChange={field.onChange}
-                    bookValue={
-                      piece.sheetType.inherited ? (piece.sheetType.value?.name ?? undefined) : undefined
-                    }
-                    onCopy={() => field.onChange(piece.sheetType.value?.name ?? '')}
-                  />
-                )}
-              />
-            </div>
-            <div className="min-w-0 flex-1">
-              <Controller
-                name="instruments"
-                control={control}
-                render={({ field }) => (
-                  <TagComboBox
-                    label="Instruments"
-                    options={instrumentOptions}
-                    selected={field.value}
-                    multiple
-                    onChange={field.onChange}
-                    bookValue={
-                      piece.instruments.inherited
-                        ? piece.instruments.values.map((i) => i.name).join(', ')
-                        : undefined
-                    }
-                    onCopy={() => field.onChange(piece.instruments.values)}
-                  />
-                )}
-              />
-            </div>
-          </div>
         </div>
 
         {/* Personal — Your Tags lives here, not Musical Details (it's the
@@ -984,6 +948,59 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
                 rows={2}
                 className="min-h-[96px] flex-1 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
                 {...register('userNotes')}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Book Details — the Source Book search field, plus the page
+            range. Moved to the very end of the form: it's about where
+            this piece lives inside its source book, not a fact about the
+            piece itself the way every section above it is, so it reads
+            last rather than competing with the piece's own bibliographic
+            fields for early attention. Source Book itself still sits
+            above the page range within this section — picking a
+            different book is the thing that makes "page 22–24 of what?"
+            answerable, so it still reads first within the section even
+            though the section itself moved. key={piece.id} forces a full
+            remount (resetting the field's internal search-query text)
+            whenever this modal is reused for a different piece, rather
+            than only when it unmounts. */}
+        <div className="flex flex-col gap-3 border-t border-border pt-4">
+          <SectionHeading>Book Details</SectionHeading>
+          <Controller
+            name="sourceBookId"
+            control={control}
+            render={({ field }) => (
+              <SourceBookField
+                key={piece.id}
+                value={field.value}
+                onChange={field.onChange}
+                initialTitle={piece.sourceBookTitle ?? null}
+              />
+            )}
+          />
+          <div className="flex gap-3">
+            <div className="flex flex-1 flex-col gap-1">
+              <label htmlFor="f-page-start" className="text-sm text-ink-soft">
+                Start page
+              </label>
+              <input
+                id="f-page-start"
+                type="number"
+                className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+                {...register('sourcePageStart')}
+              />
+            </div>
+            <div className="flex flex-1 flex-col gap-1">
+              <label htmlFor="f-page-end" className="text-sm text-ink-soft">
+                End page
+              </label>
+              <input
+                id="f-page-end"
+                type="number"
+                className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+                {...register('sourcePageEnd')}
               />
             </div>
           </div>

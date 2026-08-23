@@ -1042,16 +1042,38 @@ export function EditPieceModalMockup() {
           className="flex flex-col gap-6"
         >
           <div className="flex flex-col gap-3">
-            <div className="flex flex-col gap-1">
-              <label htmlFor="f-title" className="text-sm text-ink-soft">
-                Title <span className="text-ink-soft/60 italic">(Required)</span>
-              </label>
-              <input
-                id="f-title"
-                className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-                {...register('title', { required: 'Title is required.', maxLength: 255 })}
-              />
-              {errors.title && <p className="text-sm text-red-700">{errors.title.message}</p>}
+            {/* Title/Year written share a row, 2/3-1/3 split (flex-[2]/
+                flex-1) — Title is the field that actually needs the room;
+                Year written is short by nature. */}
+            <div className="flex flex-col gap-3 min-[525px]:flex-row">
+              <div className="flex min-w-0 flex-[2] flex-col gap-1">
+                <label htmlFor="f-title" className="text-sm text-ink-soft">
+                  Title <span className="text-ink-soft/60 italic">(Required)</span>
+                </label>
+                <input
+                  id="f-title"
+                  className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+                  {...register('title', { required: 'Title is required.', maxLength: 255 })}
+                />
+                {errors.title && <p className="text-sm text-red-700">{errors.title.message}</p>}
+              </div>
+              <div className="flex min-w-0 flex-1 flex-col gap-1">
+                <label htmlFor="f-year" className="text-sm text-ink-soft">
+                  Year written
+                </label>
+                <input
+                  id="f-year"
+                  placeholder={!watch('yearWritten') ? mockBook.yearWritten : undefined}
+                  className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                  {...register('yearWritten', { maxLength: 255 })}
+                />
+                {!watch('yearWritten') && (
+                  <InheritedNote
+                    bookValue={mockBook.yearWritten}
+                    onCopy={() => setValue('yearWritten', mockBook.yearWritten)}
+                  />
+                )}
+              </div>
             </div>
             {/* Composer/Arranger share a row — min-[525px]:flex-row, the
                 same fixed breakpoint every paired row in this form uses
@@ -1097,9 +1119,11 @@ export function EditPieceModalMockup() {
           {/* Frontmatter (was "Piece Details" — renamed, see Classification below) */}
           <div className="flex flex-col gap-3 border-t border-border pt-4">
             <SectionHeading>Frontmatter</SectionHeading>
-            {/* Opus/Year written share a row — min-[525px]:flex-row, same
-                unified breakpoint as every other paired row in this form
-                (see Composer/Arranger above). */}
+            {/* Opus / IMSLP no. share a row, 50/50 — min-[525px]:flex-row,
+                same unified breakpoint as every other paired row in this
+                form (see Composer/Arranger above). Year written moved up
+                to pair with Title instead (2/3-1/3 split, see that row's
+                own comment above). */}
             <div className="flex flex-col gap-3 min-[525px]:flex-row">
               <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <label htmlFor="f-opus" className="flex items-center gap-1 text-sm text-ink-soft">
@@ -1120,29 +1144,29 @@ export function EditPieceModalMockup() {
                 />
               </div>
               <div className="flex min-w-0 flex-1 flex-col gap-1">
-                <label htmlFor="f-year" className="text-sm text-ink-soft">
-                  Year written
+                <label htmlFor="f-imslp" className="text-sm text-ink-soft">
+                  IMSLP no.
                 </label>
                 <input
-                  id="f-year"
-                  placeholder={!watch('yearWritten') ? mockBook.yearWritten : undefined}
+                  id="f-imslp"
+                  placeholder={!watch('imslpNumber') ? mockBook.imslpNumber : undefined}
                   className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
-                  {...register('yearWritten', { maxLength: 255 })}
+                  {...register('imslpNumber', { maxLength: 255 })}
                 />
-                {!watch('yearWritten') && (
+                {!watch('imslpNumber') && (
                   <InheritedNote
-                    bookValue={mockBook.yearWritten}
-                    onCopy={() => setValue('yearWritten', mockBook.yearWritten)}
+                    bookValue={mockBook.imslpNumber}
+                    onCopy={() => setValue('imslpNumber', mockBook.imslpNumber)}
                   />
                 )}
               </div>
             </div>
             {/* Publisher/Publisher ID deliberately never wraps to separate
-                rows, unlike the min-width-floor pairs above — Publisher
-                shrinks (min-w-0 overrides the flex default of refusing to
-                shrink below its content width) while Publisher ID keeps a
-                short fixed width, so the pair always fits on one line even
-                on a narrow phone viewport. */}
+                rows, unlike the min-width-floor pairs above — both shrink
+                freely (min-w-0 overrides the flex default of refusing to
+                shrink below content width), so the pair always fits on one
+                line even on a narrow phone viewport. Plain 50/50 split
+                (flex-1/flex-1, not the old fixed-width Publisher ID). */}
             <div className="flex gap-3">
               <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <label htmlFor="f-publisher" className="text-sm text-ink-soft">
@@ -1155,7 +1179,7 @@ export function EditPieceModalMockup() {
                   {...register('publisher', { maxLength: 255 })}
                 />
               </div>
-              <div className="flex w-48 shrink-0 flex-col gap-1">
+              <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <label htmlFor="f-publisher-id" className="flex items-center gap-1 text-sm text-ink-soft">
                   Publisher ID
                   <InfoTooltip
@@ -1170,7 +1194,7 @@ export function EditPieceModalMockup() {
                 <input
                   id="f-publisher-id"
                   placeholder={!watch('publisherId') ? mockBook.publisherId : undefined}
-                  className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-right text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                  className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
                   {...register('publisherId', { maxLength: 255 })}
                 />
               </div>
@@ -1185,23 +1209,6 @@ export function EditPieceModalMockup() {
               />
             )}
             <div className="flex flex-col gap-1">
-              <label htmlFor="f-imslp" className="text-sm text-ink-soft">
-                IMSLP no.
-              </label>
-              <input
-                id="f-imslp"
-                placeholder={!watch('imslpNumber') ? mockBook.imslpNumber : undefined}
-                className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
-                {...register('imslpNumber', { maxLength: 255 })}
-              />
-              {!watch('imslpNumber') && (
-                <InheritedNote
-                  bookValue={mockBook.imslpNumber}
-                  onCopy={() => setValue('imslpNumber', mockBook.imslpNumber)}
-                />
-              )}
-            </div>
-            <div className="flex flex-col gap-1">
               <label htmlFor="f-description" className="text-sm text-ink-soft">
                 Description
               </label>
@@ -1214,56 +1221,58 @@ export function EditPieceModalMockup() {
             </div>
           </div>
 
-          {/* Book Details (new, was "Source Details") — the book page
-              range, split out of Frontmatter into its own section so it
-              reads as "where this piece lives inside its source book"
-              rather than bundled with the piece's own bibliographic
-              fields. Source Book itself (new) sits above the page range —
-              picking a different book is the thing that makes "page
-              22–24 of what?" answerable, so it reads first. */}
+          {/* Musical Details (was "Piece Details", which was itself renamed
+              from "Classification" earlier the same day — Sheet Type/
+              Instruments, then Key(s)/Duration, plus the tempo-calc
+              disclosure tied to Duration. Your Tags moved out to Personal —
+              it's the user's own organizational label, not a musical-
+              classification fact about the piece. */}
           <div className="flex flex-col gap-3 border-t border-border pt-4">
-            <SectionHeading>Book Details</SectionHeading>
-            <Controller
-              name="sourceBookId"
-              control={control}
-              render={({ field }) => (
-                <SourceBookField value={field.value} onChange={field.onChange} options={SOURCE_BOOK_OPTIONS} />
-              )}
-            />
-            <div className="flex gap-3">
-              <div className="flex flex-1 flex-col gap-1">
-                <label htmlFor="f-page-start" className="text-sm text-ink-soft">
-                  Start page
-                </label>
-                <input
-                  id="f-page-start"
-                  type="number"
-                  className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-                  {...register('sourcePageStart')}
+            <SectionHeading>Musical Details</SectionHeading>
+            {/* Sheet Type/Instruments share a row, first in this section.
+                Sheet Type is a small fixed lookup (5 seeded values) — a
+                single-select dropdown, not a searchable combobox/pill;
+                there's nothing to filter and only one value ever applies.
+                Still custom-styled (SingleSelect), same as Practice status
+                below, for visual consistency with the rest of the form.
+                min-[525px]:flex-row — same unified breakpoint as every
+                other paired row in this form. */}
+            <div className="flex flex-col gap-3 min-[525px]:flex-row">
+              <div className="min-w-0 flex-1">
+                <Controller
+                  name="sheetType"
+                  control={control}
+                  render={({ field }) => (
+                    <SingleSelect
+                      label="Sheet type"
+                      options={SHEET_TYPE_SELECT_OPTIONS}
+                      value={field.value}
+                      onChange={field.onChange}
+                      bookValue={mockBook.sheetType.name}
+                      onCopy={() => field.onChange(mockBook.sheetType.name)}
+                    />
+                  )}
                 />
               </div>
-              <div className="flex flex-1 flex-col gap-1">
-                <label htmlFor="f-page-end" className="text-sm text-ink-soft">
-                  End page
-                </label>
-                <input
-                  id="f-page-end"
-                  type="number"
-                  className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-                  {...register('sourcePageEnd')}
+              <div className="min-w-0 flex-1">
+                <Controller
+                  name="instruments"
+                  control={control}
+                  render={({ field }) => (
+                    <TagComboBox
+                      label="Instruments"
+                      options={INSTRUMENT_OPTIONS}
+                      selected={field.value}
+                      multiple
+                      onChange={field.onChange}
+                      bookValue={mockBook.instruments.map((i) => i.name).join(', ')}
+                      onCopy={() => field.onChange(mockBook.instruments)}
+                    />
+                  )}
                 />
               </div>
             </div>
-          </div>
 
-          {/* Musical Details (was "Piece Details", which was itself renamed
-              from "Classification" earlier the same day — Key(s)/Sheet
-              Type/Instruments, plus Duration moved down to the end of this
-              section below. Your Tags moved out to Personal — it's the
-              user's own organizational label, not a musical-classification
-              fact about the piece. */}
-          <div className="flex flex-col gap-3 border-t border-border pt-4">
-            <SectionHeading>Musical Details</SectionHeading>
             {/* Key(s)/Duration share a row — Key(s) grows (it can hold an
                 arbitrary-length modulation sequence), Duration keeps its
                 original fixed width on the right. Stacks to its own row at
@@ -1407,50 +1416,6 @@ export function EditPieceModalMockup() {
                 </div>
               )}
             </div>
-
-            {/* Sheet Type/Instruments now share a row, same order as
-                before. Sheet Type is a small fixed lookup (5 seeded values)
-                — a single-select dropdown, not a searchable combobox/pill;
-                there's nothing to filter and only one value ever applies.
-                Still custom-styled (SingleSelect), same as Practice status
-                below, for visual consistency with the rest of the form.
-                min-[525px]:flex-row — same unified breakpoint as every
-                other paired row in this form. */}
-            <div className="flex flex-col gap-3 min-[525px]:flex-row">
-              <div className="min-w-0 flex-1">
-                <Controller
-                  name="sheetType"
-                  control={control}
-                  render={({ field }) => (
-                    <SingleSelect
-                      label="Sheet type"
-                      options={SHEET_TYPE_SELECT_OPTIONS}
-                      value={field.value}
-                      onChange={field.onChange}
-                      bookValue={mockBook.sheetType.name}
-                      onCopy={() => field.onChange(mockBook.sheetType.name)}
-                    />
-                  )}
-                />
-              </div>
-              <div className="min-w-0 flex-1">
-                <Controller
-                  name="instruments"
-                  control={control}
-                  render={({ field }) => (
-                    <TagComboBox
-                      label="Instruments"
-                      options={INSTRUMENT_OPTIONS}
-                      selected={field.value}
-                      multiple
-                      onChange={field.onChange}
-                      bookValue={mockBook.instruments.map((i) => i.name).join(', ')}
-                      onCopy={() => field.onChange(mockBook.instruments)}
-                    />
-                  )}
-                />
-              </div>
-            </div>
           </div>
 
           {/* Personal — Your Tags moved here from Musical Details above
@@ -1505,6 +1470,51 @@ export function EditPieceModalMockup() {
                   rows={2}
                   className="min-h-[96px] flex-1 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
                   {...register('userNotes')}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Book Details (was "Source Details") — the book page range.
+              Moved to the very end of the form: it's about where this
+              piece lives inside its source book, not a fact about the
+              piece itself the way every section above it is, so it reads
+              last rather than competing with the piece's own bibliographic
+              fields for early attention. Source Book itself sits above the
+              page range within this section — picking a different book is
+              the thing that makes "page 22–24 of what?" answerable, so it
+              still reads first within the section even though the section
+              itself moved. */}
+          <div className="flex flex-col gap-3 border-t border-border pt-4">
+            <SectionHeading>Book Details</SectionHeading>
+            <Controller
+              name="sourceBookId"
+              control={control}
+              render={({ field }) => (
+                <SourceBookField value={field.value} onChange={field.onChange} options={SOURCE_BOOK_OPTIONS} />
+              )}
+            />
+            <div className="flex gap-3">
+              <div className="flex flex-1 flex-col gap-1">
+                <label htmlFor="f-page-start" className="text-sm text-ink-soft">
+                  Start page
+                </label>
+                <input
+                  id="f-page-start"
+                  type="number"
+                  className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+                  {...register('sourcePageStart')}
+                />
+              </div>
+              <div className="flex flex-1 flex-col gap-1">
+                <label htmlFor="f-page-end" className="text-sm text-ink-soft">
+                  End page
+                </label>
+                <input
+                  id="f-page-end"
+                  type="number"
+                  className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+                  {...register('sourcePageEnd')}
                 />
               </div>
             </div>
