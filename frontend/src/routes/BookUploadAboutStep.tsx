@@ -4,6 +4,7 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import {
   IconArrowLeft,
   IconArrowRight,
+  IconArrowsDiagonal,
   IconChevronLeft,
   IconChevronRightFilled,
   IconCheck,
@@ -17,6 +18,7 @@ import type { Book, BookWriteRequest, Tag } from '../api/types'
 import { TagComboBox } from '../components/TagComboBox'
 import { SingleSelect } from '../components/SingleSelect'
 import { InfoTooltip } from '../components/InfoTooltip'
+import { PageLightbox } from '../components/PageLightbox'
 import { TOTAL_WIZARD_STEPS } from './BookUploadWizard'
 
 // Book Upload Wizard, Screen 3 of 6: "About this book" (design doc §5 step
@@ -100,6 +102,7 @@ export function BookUploadAboutStep({
   onNext,
 }: BookUploadAboutStepProps) {
   const [previewPage, setPreviewPage] = useState(1)
+  const [lightboxOpen, setLightboxOpen] = useState(false)
   const {
     register,
     handleSubmit,
@@ -187,12 +190,33 @@ export function BookUploadAboutStep({
               forces a fresh <img> per page turn so the previous page's
               frame doesn't sit frozen on screen while the new one renders. */}
           <div className="relative aspect-[2/3] overflow-hidden rounded-lg border border-border bg-paper-sunken shadow-sm">
-            <img
-              key={previewPage}
-              src={getBookPageThumbnailUrl(book.id, previewPage)}
-              alt=""
-              className="h-full w-full object-cover object-top"
-            />
+            {/* Lightbox trigger — same click-to-enlarge treatment as
+                Piece Details' own preview thumbnail (PageLightbox.tsx).
+                The whole thumbnail is clickable, not just the corner
+                badge — the badge is a discoverability hint, not the only
+                hit target. */}
+            <button
+              type="button"
+              onClick={() => setLightboxOpen(true)}
+              aria-label={`View page ${previewPage} larger`}
+              className="block h-full w-full cursor-zoom-in"
+            >
+              <img
+                key={previewPage}
+                src={getBookPageThumbnailUrl(book.id, previewPage)}
+                alt=""
+                className="h-full w-full object-cover object-top"
+              />
+            </button>
+            {/* Always-visible "view larger" hint, not a hover reveal —
+                same device-aware reasoning as the lightbox's own zoom
+                hint: this has to be discoverable by tap alone. */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute top-2 right-2 flex items-center justify-center rounded-full bg-ink/80 p-1.5 text-white shadow-md backdrop-blur-sm"
+            >
+              <IconArrowsDiagonal size={14} />
+            </div>
             <div className="absolute bottom-2.5 left-1/2 flex w-max -translate-x-1/2 items-center gap-1 rounded-full bg-ink/80 px-2 py-1 shadow-md backdrop-blur-sm">
               <button
                 type="button"
@@ -217,6 +241,20 @@ export function BookUploadAboutStep({
               </button>
             </div>
           </div>
+
+          {lightboxOpen && (
+            <PageLightbox
+              key={previewPage}
+              imageUrl={getBookPageThumbnailUrl(book.id, previewPage)}
+              alt={`Page ${previewPage} of ${book.bookTitle}`}
+              page={previewPage}
+              pageCount={pageCount}
+              onClose={() => setLightboxOpen(false)}
+              onPrev={() => setPreviewPage((p) => Math.max(1, p - 1))}
+              onNext={() => setPreviewPage((p) => Math.min(pageCount, p + 1))}
+            />
+          )}
+
           <div className="text-[0.78rem] leading-relaxed text-ink-soft">
             {book.originalFilename && (
               <strong className="block text-ink">{book.originalFilename}</strong>

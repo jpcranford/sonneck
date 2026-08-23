@@ -1,12 +1,14 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import {
   IconArrowLeft,
   IconArrowRight,
+  IconArrowsDiagonal,
   IconChevronLeft,
   IconChevronRightFilled,
   IconCheck,
   IconInfoCircle,
+  IconXFilled,
 } from '@tabler/icons-react'
 import type { Tag } from '../api/types'
 import { TagComboBox } from '../components/TagComboBox'
@@ -114,10 +116,109 @@ function CoverPagePlaceholder({ page }: { page: number }) {
   )
 }
 
+// Local copy of PageLightbox.tsx, same "no shared component between a
+// mockup and the real thing" convention as every other mockup in this
+// codebase — see PieceDetailsSample.tsx's own copy for precedent. Renders
+// CoverPagePlaceholder in place of a real page image, same as this
+// mockup's inline preview above does.
+function PageLightbox({
+  page,
+  pageCount,
+  onClose,
+  onPrev,
+  onNext,
+}: {
+  page: number
+  pageCount: number
+  onClose: () => void
+  onPrev: () => void
+  onNext: () => void
+}) {
+  const [zoom, setZoom] = useState<'fit' | 'actual'>('fit')
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [onClose])
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/80 backdrop-blur-sm"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose()
+      }}
+    >
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label="Close"
+        className="absolute top-6 left-6 flex size-10 items-center justify-center rounded-full bg-ink/80 text-white shadow-md backdrop-blur-sm hover:bg-white/15 focus-visible:outline-accent-on-dark"
+      >
+        <IconXFilled size={20} />
+      </button>
+
+      <div className="pointer-events-none absolute top-6 right-6 rounded-full bg-ink/80 px-3 py-1.5 text-xs text-white/90 shadow-md backdrop-blur-sm">
+        Click image to {zoom === 'fit' ? 'zoom in' : 'fit to screen'}
+      </div>
+
+      <button
+        type="button"
+        onClick={() => setZoom((z) => (z === 'fit' ? 'actual' : 'fit'))}
+        aria-label={zoom === 'fit' ? 'Zoom in to actual size' : 'Zoom out to fit screen'}
+        className={
+          zoom === 'fit'
+            ? 'flex max-h-[85vh] max-w-[90vw] cursor-zoom-in items-center justify-center'
+            : 'max-h-[85vh] max-w-[90vw] cursor-zoom-out overflow-auto rounded-md'
+        }
+      >
+        <div
+          className={
+            zoom === 'fit'
+              ? 'w-[70vw] max-w-[440px] overflow-hidden rounded-md bg-paper-raised shadow-2xl sm:w-[420px]'
+              : 'w-[820px] overflow-hidden rounded-md bg-paper-raised shadow-2xl'
+          }
+        >
+          <CoverPagePlaceholder page={page} />
+        </div>
+      </button>
+
+      {pageCount > 1 && (
+        <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-ink/80 px-2 py-1 shadow-md backdrop-blur-sm">
+          <button
+            type="button"
+            onClick={onPrev}
+            disabled={page === 1}
+            aria-label="Previous page"
+            className="flex size-7 items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline-accent-on-dark disabled:pointer-events-none disabled:opacity-35"
+          >
+            <IconChevronLeft size={16} />
+          </button>
+          <span className="text-xs tabular-nums text-white/90">
+            {page} / {pageCount}
+          </span>
+          <button
+            type="button"
+            onClick={onNext}
+            disabled={page === pageCount}
+            aria-label="Next page"
+            className="flex size-7 items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline-accent-on-dark disabled:pointer-events-none disabled:opacity-35"
+          >
+            <IconChevronRightFilled size={16} />
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function UploadBookAboutMockup() {
   useMockupTitle('Upload — About This Book')
 
   const [previewPage, setPreviewPage] = useState(1)
+  const [lightboxOpen, setLightboxOpen] = useState(false)
   const {
     register,
     handleSubmit,
@@ -176,7 +277,23 @@ export function UploadBookAboutMockup() {
             content that one does). */}
         <div className="flex w-full shrink-0 flex-col gap-2.5 sm:sticky sm:top-5 sm:w-[210px]">
           <div className="relative overflow-hidden rounded-lg border border-border bg-paper-raised shadow-sm">
-            <CoverPagePlaceholder page={previewPage} />
+            {/* Lightbox trigger — same click-to-enlarge treatment as
+                Piece Details' own preview thumbnail. The whole cover is
+                clickable, not just the corner badge. */}
+            <button
+              type="button"
+              onClick={() => setLightboxOpen(true)}
+              aria-label={`View page ${previewPage} larger`}
+              className="block w-full cursor-zoom-in"
+            >
+              <CoverPagePlaceholder page={previewPage} />
+            </button>
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute top-2 right-2 flex items-center justify-center rounded-full bg-ink/80 p-1.5 text-white shadow-md backdrop-blur-sm"
+            >
+              <IconArrowsDiagonal size={14} />
+            </div>
             {/* Piece Details page's own floating capsule cycler (PiecePage.tsx),
                 reused verbatim — a static page-1 cover doesn't always show
                 what a book actually is (title pages, blanks, dedications),
@@ -220,6 +337,17 @@ export function UploadBookAboutMockup() {
             {MOCK_PAGE_COUNT} pages • 18.4 MB
           </div>
         </div>
+
+        {lightboxOpen && (
+          <PageLightbox
+            key={previewPage}
+            page={previewPage}
+            pageCount={MOCK_PAGE_COUNT}
+            onClose={() => setLightboxOpen(false)}
+            onPrev={() => setPreviewPage((p) => Math.max(1, p - 1))}
+            onNext={() => setPreviewPage((p) => Math.min(MOCK_PAGE_COUNT, p + 1))}
+          />
+        )}
 
         <div className="flex min-w-0 flex-1 flex-col gap-3">
           {/* Book title stands alone, full width — same field order as

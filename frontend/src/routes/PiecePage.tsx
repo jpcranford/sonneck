@@ -21,7 +21,6 @@ import {
   IconRefresh,
   IconShieldCheck,
   IconTrash,
-  IconXFilled,
 } from '@tabler/icons-react'
 import { getBook } from '../api/books'
 import type { Book } from '../api/types'
@@ -44,6 +43,7 @@ import { secondsToMMSS } from '../lib/duration'
 import { EditBookModal } from '../components/EditBookModal'
 import { EditPieceModal } from '../components/EditPieceModal'
 import { InfoTooltip } from '../components/InfoTooltip'
+import { PageLightbox } from '../components/PageLightbox'
 import { PracticeStatusIcon } from '../components/PracticeStatusIcon'
 
 // Mirrors UploadPage's own cap (backend's MaxUploadBytes) — same reasoning
@@ -55,135 +55,6 @@ function validateReplacementFile(file: File): string | null {
   if (!file.name.toLowerCase().endsWith('.pdf')) return 'Only PDF files are supported.'
   if (file.size > MAX_UPLOAD_BYTES) return 'File exceeds the 500 MB upload limit.'
   return null
-}
-
-// Lightbox for the page preview thumbnail — see PieceDetailsSample.tsx's
-// own comment for the 3 alternatives (inline-expand, slide-in panel) this
-// full-screen overlay was chosen over. Its own small component rather
-// than reusing Modal.tsx: Modal is a bounded-width
-// dialog with padded header/body/footer slots, not a full-bleed image
-// viewer. Kept close to Modal's own backdrop treatment (bg-ink/NN +
-// backdrop-blur-sm, click-target-is-currentTarget to close, Escape
-// closes) so it still feels like the same app, just without Modal's
-// mount/unmount fade choreography.
-function PageLightbox({
-  imageUrl,
-  alt,
-  page,
-  pageCount,
-  onClose,
-  onPrev,
-  onNext,
-}: {
-  imageUrl: string
-  alt: string
-  page: number
-  pageCount: number
-  onClose: () => void
-  onPrev: () => void
-  onNext: () => void
-}) {
-  // 'fit' scales the image down to fit the screen (object-contain, no
-  // scroll needed). 'actual' renders the image at its real native pixel
-  // size — no width/height constraint on the <img> itself, just a
-  // scrollable box around it, since that's the literal definition of
-  // "1:1" for a raster image. Resets to 'fit' on every page change by
-  // remounting this component on `key={page}` from the caller (React's
-  // own recommended pattern for "reset state when a prop changes"),
-  // rather than an effect calling setState for the same result.
-  const [zoom, setZoom] = useState<'fit' | 'actual'>('fit')
-
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
-  }, [onClose])
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/80 backdrop-blur-sm"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose()
-      }}
-    >
-      {/* Upper-left of the popup itself, not the viewport corner — direct
-          instruction. Same chip treatment (bg-ink/80 + blur, white icon)
-          as the page-cycle capsule below, so the whole feature reads as
-          one piece. */}
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label="Close"
-        className="absolute top-6 left-6 flex size-10 items-center justify-center rounded-full bg-ink/80 text-white shadow-md backdrop-blur-sm hover:bg-white/15 focus-visible:outline-accent-on-dark"
-      >
-        <IconXFilled size={20} />
-      </button>
-
-      {/* Persistent, not hover-revealed (device-aware convention: this
-          page's affordances are tap-triggered, never hover-dependent) —
-          without this, "click the image to zoom" has no way to announce
-          itself on a touch device that has no hover state at all. */}
-      <div className="pointer-events-none absolute top-6 right-6 rounded-full bg-ink/80 px-3 py-1.5 text-xs text-white/90 shadow-md backdrop-blur-sm">
-        Click image to {zoom === 'fit' ? 'zoom in' : 'fit to screen'}
-      </div>
-
-      <button
-        type="button"
-        onClick={() => setZoom((z) => (z === 'fit' ? 'actual' : 'fit'))}
-        aria-label={zoom === 'fit' ? 'Zoom in to actual size' : 'Zoom out to fit screen'}
-        className={
-          zoom === 'fit'
-            ? 'flex max-h-[85vh] max-w-[90vw] cursor-zoom-in items-center justify-center'
-            : 'max-h-[85vh] max-w-[90vw] cursor-zoom-out overflow-auto rounded-md'
-        }
-      >
-        <img
-          src={imageUrl}
-          alt={alt}
-          className={
-            zoom === 'fit'
-              ? 'max-h-[85vh] max-w-[90vw] rounded-md object-contain shadow-2xl'
-              : 'block rounded-md shadow-2xl'
-          }
-        />
-      </button>
-
-      {/* Same page-cycle capsule as the inline preview, carried into the
-          overlay so you don't have to close the lightbox just to look at
-          an adjacent page. px-2 (not an asymmetric pr-1 pl-3) keeps the
-          "n / N" label visually centered — same total 16px horizontal
-          padding budget the capsule always had, just split evenly instead
-          of 12px/4px. Same fix applied everywhere else this capsule is
-          copied (no shared component across these instances). */}
-      {pageCount > 1 && (
-        <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-ink/80 px-2 py-1 shadow-md backdrop-blur-sm">
-          <button
-            type="button"
-            onClick={onPrev}
-            disabled={page === 1}
-            aria-label="Previous page"
-            className="flex size-7 items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline-accent-on-dark disabled:pointer-events-none disabled:opacity-35"
-          >
-            <IconChevronLeft size={16} />
-          </button>
-          <span className="text-xs tabular-nums text-white/90">
-            {page} / {pageCount}
-          </span>
-          <button
-            type="button"
-            onClick={onNext}
-            disabled={page === pageCount}
-            aria-label="Next page"
-            className="flex size-7 items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline-accent-on-dark disabled:pointer-events-none disabled:opacity-35"
-          >
-            <IconChevronRightFilled size={16} />
-          </button>
-        </div>
-      )}
-    </div>
-  )
 }
 
 function formatDuration(seconds: number | null): string | null {
@@ -609,11 +480,11 @@ export function PiecePage() {
                 instead of shrinking to whatever size the image happens to
                 render at. */}
             <div className="relative mx-auto flex w-full max-w-md items-center justify-center overflow-hidden rounded-lg border border-border bg-paper-raised shadow-sm">
-              {/* Lightbox trigger — see
-                  PageLightbox's own comment above for the 3 alternatives
-                  this was chosen over. The whole thumbnail is clickable,
-                  not just the corner badge — the badge is a
-                  discoverability hint, not the only hit target. */}
+              {/* Lightbox trigger — see PageLightbox.tsx's own comment for
+                  why it's a standalone component rather than reusing
+                  Modal. The whole thumbnail is clickable, not just the
+                  corner badge — the badge is a discoverability hint, not
+                  the only hit target. */}
               <button
                 type="button"
                 onClick={() => setLightboxOpen(true)}
