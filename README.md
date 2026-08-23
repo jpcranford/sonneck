@@ -50,10 +50,12 @@
 A self-hosted library organizer for sheet music: import, tag, browse, and download pieces and books. Made by a musician, for musicians.
 
 ## Features
-((to be filled in and styled consistently))
-- **Upload your music.** Upload individual pieces or entire books! Built-in book splitter and metadata inheritance makes quick work of prepping pieces to be found later.
-- **Track your practice.** Ever forget you were learning a piece and rediscover it weeks later at the bottom of your bag? No more! Use the practice status and filter views to track what you want to play, what you have in progress, and even the stuff you never want to touch again! Take *that*, [Sorabji](https://www.youtube.com/watch?v=_OrAewTxBrc)!
-- **Full CSV export.** Even if Sonneck isn't the right place for your music, the information you enter (and the time you take doing so) is still yours.
+- **Upload your music.** Individual pieces or entire books — the built-in book splitter and metadata inheritance make quick work of prepping a whole book's worth of pieces to be found later.
+- **Real cataloging, not just a folder of PDFs.** Composer, arranger, key(s), instruments, sheet type, opus number, ISBN, and your own tags, plus a one-click citation generator that formats it all for you, ready to be copied into a program template or group chat.
+- **Books stay organized as books.** Set a book's composer, publisher, and year once — every piece inside it inherits automatically, and you only ever need to override the pieces that are actually different.
+- **Search that keeps up with you.** Full-text search across your whole library as you type, not a slow client-side filter over everything you own.
+- **Track your practice bag.** Ever forget you were learning a piece only to rediscover it weeks later at the bottom of your bag? Or have you ever lost the whole backpack and can't remember what you had in it? No more! Use the practice status and filter views to track what you want to play, what you have in progress, and even the stuff you never want to touch again! Take *that*, [Sorabji](https://www.youtube.com/watch?v=_OrAewTxBrc)!
+- **It's actually yours.** Self-hosted, one SQLite file, daily automatic backups. And full CSV export any time — even if it turns out Sonneck isn't the right place for your music, the information you enter (and the time you take doing so) is still yours.
 
 ## Installation
 ### Docker Compose (recommended)
@@ -62,7 +64,7 @@ There's a `docker-compose.yml` file in this repo, complete with helpful comments
 Download the file, tailor it how you want, then run:
 
 ```sh
-cd /wherever # containing folder of docker-compose.yml
+cd ./wherever # containing folder of docker-compose.yml
 docker compose up -d
 ```
 
@@ -77,7 +79,7 @@ Check the `CONTRIBUTING.md` file for full local run instructions. Here's the TL;
 
 Start the backend:
 ```sh
-cd /sonneck                            # wherever the repo is
+cd ./sonneck                            # wherever the repo is
 DATA_DIR=./data go run ./cmd/sonneck   # DATA_DIR *must* be passed somehow or it'll fail
 ```
 
@@ -114,6 +116,12 @@ This backs up the **database only**. The `library/` folder (original book PDFs a
 ## Admin CLI commands
 Maintenance actions are exposed as subcommands on the same binary — `./sonneck <command>` — rather than HTTP endpoints, since there's no authentication to protect an endpoint with (see "No authentication" below). They're safe to run against a live server; they rely on SQLite's WAL mode (already enabled) and, where they touch on-disk files, write via a temp-file-then-atomic-rename so a concurrent request never sees a partial result.
 
+If you're using Docker, do
+```sh
+docker exec -it <container-name> ./sonneck <command>
+```
+
+Or if you're running locally:
 ```sh
 DATA_DIR=./data ./sonneck <command>
 ```
@@ -153,6 +161,6 @@ I still don’t trust it– I’ll gladly welcome the contributions of any human
 
 ## Acknowledgements
 - My beautiful girlfriend, for helping design the logo
-- The frontend typeface is [Libre Baskerville](https://github.com/impallari/Libre-Baskerville) by Pablo Impallari, [Google Fonts](https://fonts.google.com/), licensed under the [SIL Open Font License 1.1](https://fonts.google.com/specimen/Libre+Baskerville/license). Self-hosted rather than loaded from Google Fonts at runtime.
+- The frontend serif typeface is [Libre Baskerville](https://github.com/impallari/Libre-Baskerville) by Pablo Impallari, [Google Fonts](https://fonts.google.com/), licensed under the [SIL Open Font License 1.1](https://fonts.google.com/specimen/Libre+Baskerville/license). Self-hosted rather than loaded from Google Fonts at runtime.
 - The cursive S logo is taken from the [Gwendolyn](https://github.com/googlefonts/gwendolyn) font's capital S (what luck, it looking like a treble clef!) and the rest of the wordmark was built with [Mea Culpa](https://github.com/googlefonts/mea-culpa). Both fonts were designed by Robert Leuschke for Google Fonts and licensed under the SIL Open Font License 1.1. Logo and wordmark rendered as SVG and self-hosted.
 - Despite some passing resemblance in name, we are in no way affiliated with a certain blue runs-fast creature. Whatever species it claims to be.
