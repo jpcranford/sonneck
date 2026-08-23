@@ -51,15 +51,15 @@ A self-hosted library organizer for sheet music: import, tag, browse, and downlo
 
 ## Features
 - **Upload your music.** Individual pieces or entire books — the built-in book splitter and metadata inheritance make quick work of prepping a whole book's worth of pieces to be found later.
-- **Real cataloging, not just a folder of PDFs.** Composer, arranger, key(s), instruments, sheet type, opus number, ISBN, and your own tags, plus a one-click citation generator that formats it all for you, ready to be copied into a program template or group chat.
-- **Books stay organized as books.** Set a book's composer, publisher, and year once — every piece inside it inherits automatically, and you only ever need to override the pieces that are actually different.
-- **Search that keeps up with you.** Full-text search across your whole library as you type, not a slow client-side filter over everything you own.
+- **Real cataloging, not a folder of PDFs.** Composer, arranger, key(s), instruments, sheet type, opus number, ISBN, and your own tags, plus a one-click citation generator that formats it all for you, ready to be copied into a program template or group chat.
+- **Books stay organized as books.** Set a book's composer, publisher, and year once. Every piece inside it inherits the information automatically, you only ever need to override the pieces that are actually different.
+- **Search that keeps up with you.** Full-text search across your whole library as you type.
 - **Track your practice bag.** Ever forget you were learning a piece only to rediscover it weeks later at the bottom of your bag? Or have you ever lost the whole backpack and can't remember what you had in it? No more! Use the practice status and filter views to track what you want to play, what you have in progress, and even the stuff you never want to touch again! Take *that*, [Sorabji](https://www.youtube.com/watch?v=_OrAewTxBrc)!
 - **It's actually yours.** Self-hosted, one SQLite file, daily automatic backups. And full CSV export any time — even if it turns out Sonneck isn't the right place for your music, the information you enter (and the time you take doing so) is still yours.
 
 ## Installation
 ### Docker Compose (recommended)
-There's a `docker-compose.yml` file in this repo, complete with helpful comments explaining things.
+There's a [`docker-compose.yml`](docker-compose.yml) file in this repo, complete with helpful comments explaining things.
 
 Download the file, tailor it how you want, then run:
 
@@ -79,7 +79,7 @@ Check the `CONTRIBUTING.md` file for full local run instructions. Here's the TL;
 
 Start the backend:
 ```sh
-cd ./sonneck                            # wherever the repo is
+cd ./sonneck                           # wherever the repo is
 DATA_DIR=./data go run ./cmd/sonneck   # DATA_DIR *must* be passed somehow or it'll fail
 ```
 
@@ -95,7 +95,7 @@ All configuration is via environment variables, validated at startup — the pro
 
 | Variable | Default | Notes |
 |---|---|---|
-| `PORT` | `8080` | HTTP listen port |
+| `PORT` | `8080` | HTTP listen port. If you're using Docker, use port remapping instead. |
 | `DATA_DIR` | `/data` | Root of the database, library files, and backups |
 | `BACKUP_DIR` | `$DATA_DIR/backups` | Where daily DB snapshots are written |
 | `BACKUP_CRON` | `0 3 * * *` | Standard cron expression for the daily backup job |
@@ -106,7 +106,7 @@ All configuration is via environment variables, validated at startup — the pro
 ### Backup & restore
 **Backup:** a scheduled job, automatically done by the database using the above environment variables. Backups still retained can be found at `$BACKUP_DIR/sonneck-YYYY-MM-DD.sqlite`.
 
-This backs up the **database only**. The `library/` folder (original book PDFs and extracted piece PDFs) is not included — it's on you to back that up separately via your own volume/NAS snapshot mechanism.
+This backs up the **database only**. The `library/` folder (original book PDFs and extracted piece PDFs) is not included — that's on you to back up separately via your own volume/NAS snapshot/rclone-to-Dropbox mechanism.
 
 **Restore:**
 1. Stop the server.
