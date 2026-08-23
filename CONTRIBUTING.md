@@ -1,8 +1,8 @@
 # Contributing to Sonneck
 
-Thanks for taking a look. Sonneck started as a personal tool — a self-hosted sheet music library for my own use — and quickly spiraled out of control. I'm more than happy to have other people poke at, use, and improve this thing. I said it in the README and I'll say it again here: this has involved a lot of AI-assisted development, and I'd genuinely welcome the eyes of any human who wants to make it more secure, reliable, robust, or just plain cleaner. If that's you, this file is the map.
+Thanks for taking a look. Sonneck started as a personal tool — a self-hosted sheet music library for my own use — and quickly spiraled out of control. I'm more than happy to have other people poke at, use, and improve this thing. I said it in the README and I'll say it again here: this has involved a *lot* of AI-assisted development (probably too much tbh), and I'll welcome the eyes and/or code of any human who wants to make it more secure, reliable, robust, or just plain cleaner. If that's you, this file is the map.
 
-If anything here is wrong, confusing, or out of date, that's itself a welcome bug report — open an issue, or just fix it in the same PR.
+If anything here is wrong, confusing, or out of date, that's itself a welcome bug report — open an issue, or just fix it with a PR.
 
 ## Table of contents
 
@@ -128,7 +128,7 @@ docker run --rm -p 8080:8080 -v sonneck-local-data:/data sonneck:local
 
 This runs the full multi-stage build (frontend build → embed into the Go binary → slim runtime with `poppler-utils`) exactly as the release pipeline does — the frontend is built fresh inside the image every time, so there's no separate "remember to rebuild the frontend first" step to forget the way there might be if you were embedding a stale local `frontend/dist`. Confirm it's actually serving the real app, not just that it built: `curl localhost:8080/healthz`, then load `http://localhost:8080/` in a browser.
 
-To test `docker-compose.yml` itself against a local build rather than the published image, temporarily point its `image:` at `sonneck:local` (don't commit that change).
+To test `docker-compose.yml` itself against a local build rather than the published image, temporarily point its `image:` at `sonneck:local` (don't commit that change though obvs).
 
 **CI** (`.github/workflows/docker-publish.yml`): every push to `main` runs a validation build (build only, no push — this is what the README's Build-status badge reflects day to day). Publishing to GHCR only happens when a GitHub Release is published, and `:latest` only moves if that release is genuinely what GitHub currently considers the latest one (checked via the API, not just "most recently published") — see `CLAUDE.md` > Docker/build for the full mechanics if you're changing the workflow itself.
 

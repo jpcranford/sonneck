@@ -16,12 +16,15 @@
 A self-hosted library organizer for sheet music: import, tag, browse, and download pieces and books. Made by a musician, for musicians.
 
 ## Features
-- **Upload your music.** Individual pieces or entire books — the built-in book splitter and metadata inheritance make quick work of prepping a whole book's worth of pieces to be found later.
+Sonneck is designed to live “in an office with a printer”, so to speak. There are plans to add more practice-session features later, but its core feature set is focused squarely on digital library management first and foremost.
+
+- **Organize your sheet music library.** Upload individual pieces or entire books — the built-in book splitter and metadata inheritance make quick work of prepping a whole book's worth of pieces to be found later.
 - **Real cataloging, not a folder of PDFs.** Composer, arranger, key(s), instruments, sheet type, opus number, ISBN, and your own tags, plus a one-click citation generator that formats it all for you, ready to be copied into a program template or group chat.
 - **Books stay organized as books.** Set a book's composer, publisher, and year once. Every piece inside it inherits the information automatically, you only ever need to override the pieces that are actually different.
-- **Search that keeps up with you.** Full-text search across your whole library as you type.
+- **Search that keeps up with you.** Full-text search across your whole library as you type. Grid views are optimized for number of items shown at once, while list views show you the most detail about each piece without having to open it up.
 - **Track your practice bag.** Ever forget you were learning a piece only to rediscover it weeks later at the bottom of your bag? Or have you ever lost the whole backpack and can't remember what you had in it? No more! Use the practice status and filter views to track what you want to play, what you have in progress, and even the stuff you never want to touch again! Take *that*, [Sorabji](https://www.youtube.com/watch?v=_OrAewTxBrc)!
-- **It's actually yours.** Self-hosted, one SQLite file, daily automatic backups. And full CSV export any time — even if it turns out Sonneck isn't the right place for your music, the information you enter (and the time you take doing so) is still yours.
+- **A truly *responsive* design.** None of that "resize-and-rerender-everything" lag. Resize and it's good to go, instantly.
+- **It's completely yours.** Self-hosted, one SQLite file, daily automatic backups. No algorithm, no callbacks to some centralized analytics server. It’s a tool for you, use it, break it, repurpose it, join us (or don’t) in making it better. And full CSV export any time — even if it turns out Sonneck isn't the right place for your music, the information you enter (and the time you take doing so) is still yours.
 
 ## Installation
 ### Docker Compose (recommended)
@@ -30,7 +33,8 @@ There's a [`docker-compose.yml`](docker-compose.yml) file in this repo, complete
 Download the file, tailor it how you want, then run:
 
 ```sh
-cd ./wherever # containing folder of docker-compose.yml
+cd ./wherever          # containing folder of docker-compose.yml
+mkdir data             # optional but helpful
 docker compose up -d
 ```
 
@@ -54,6 +58,9 @@ And because that needs to keep running, in a separate terminal run:
 cd /sonneck/frontend
 npm run dev
 ```
+
+> [!WARNING] No authentication — deployment warning
+> Sonneck has **no login and no access control of its own.** It's currently built for a single user, single session at a time. Anyone who can reach the server over the network can use the full API — there's no separation between "trusted operator" and "anonymous visitor." **Do not expose this directly to the open internet.** Deploy it behind a private network / VPN / Tailscale, or put an authenticating reverse proxy in front of it (e.g. Basic Auth, Authelia).
 
 ## Advanced options
 ### Configuration
@@ -97,11 +104,6 @@ DATA_DIR=./data ./sonneck <command>
 | `rebuild-search-index` | Drops and repopulates the full-text search index (`pieces_fts`) from the database's core tables. | The index is derived data — safe to rebuild any time it's suspected out of sync. |
 | `regenerate-thumbnails` | Clears `$DATA_DIR/cache/thumbnails` and re-renders every page of every piece from scratch, also sweeping up any orphaned entries left over from deleted pieces. | If a cached thumbnail is ever suspected corrupted or stale — no need to know which cache entries are actually bad. |
 | `export-csv` | Writes a full export of your library data to `$DATA_DIR/export/<timestamp>/` — one CSV file per database table (books, pieces, tags, keys, and so on). Read-only; doesn't touch the database or any existing files. | Any time you want your data out of Sonneck as plain CSV — a one-off backup in a format other tools can read, or just to take it with you. |
-
-## No authentication — deployment warning
-Sonneck has **no login, no access control of its own.** It's currently built for a single user, single session at a time. Anyone who can reach the server over the network can use the full API — there's no separation between "trusted operator" and "anonymous visitor."
-
-**Do not expose this directly to the open internet.** Deploy it behind a private network / VPN / Tailscale, or put an authenticating reverse proxy in front of it (e.g. Basic Auth, Authelia). Multi-user support with real access control is planned for a future release.
 
 ## Planned features
 - **Sheet Viewer!** The practice view every app like this seems to have, with page turner support, server-saved annotations, and a built-in metronome.
