@@ -18,7 +18,13 @@
 #                             "the most recently published one". A release
 #                             published for an older branch, or with "Set as
 #                             the latest release" unchecked, must not
-#                             clobber :latest.
+#                             clobber :latest. Also attaches docker-compose.yml
+#                             to the release itself (a stable, versioned
+#                             download URL, and a real number for the
+#                             README's Downloads badge to count — GHCR has no
+#                             public pull-count API, so a release asset is the
+#                             closest thing to a live counter this setup can
+#                             offer).
 #   3. manual (workflow_dispatch)
 #                          -> no build at all. Just re-checks
 #                             releases/latest and re-points :latest at
@@ -110,6 +116,26 @@ jobs:
           path: /tmp/digests/*
           if-no-files-found: error
           retention-days: 1
+
+  # Independent of build/merge — this is just a repo file, not the image —
+  # so it runs in parallel rather than waiting on the (slower) multi-arch
+  # build. Needs contents: write specifically (the top-level permissions
+  # block only grants contents: read), so this job overrides it locally
+  # rather than widening the token for every other job in the workflow.
+  attach-assets:
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Attach docker-compose.yml to the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" docker-compose.yml --clobber
 
   merge:
     needs: build
