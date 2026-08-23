@@ -6,6 +6,7 @@ services:
       - "8080:8080"
     volumes:
       - ./data:/data
+      # The container runs as uid/gid 1000 — if you hit a permission error on startup, it's likely an ownership mismatch — fix with `sudo chown -R 1000:1000 ./data`.
     environment: # All optional, uncomment what you want to change. See the README's "Advanced options" for details.
       # BACKUP_CRON: "0 3 * * *"      # standard cron expression, default = daily at 3am
       # BACKUP_RETENTION_DAYS: "30"

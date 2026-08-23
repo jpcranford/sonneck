@@ -44,6 +44,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # dedicated Go subcommand for it — debian-slim ships neither wget nor curl
 # by default.
 
+# Non-root by default (security assessment SNK-03, 2026-08-23) — a fixed
+# UID/GID (1000, the common first-user default on most Linux distros) so a
+# host bind-mount at /data "just works" without extra configuration for the
+# common case; document chown-ing to 1000:1000 if someone's host directory
+# was created under a different UID. Creating /data here (owned by the new
+# user) *before* anything mounts over it matters: Docker initializes a
+# fresh, empty named volume's ownership from whatever's already at that
+# path in the image, so docker-compose.yml's named volume inherits the
+# right ownership automatically — nothing else has to chown it at runtime.
+RUN groupadd -g 1000 sonneck \
+    && useradd -u 1000 -g sonneck -d /nonexistent -s /usr/sbin/nologin sonneck \
+    && mkdir -p /data \
+    && chown sonneck:sonneck /data
+
 COPY --from=backend-builder /out/sonneck /usr/local/bin/sonneck
 
 # org.opencontainers.image.source specifically: GHCR reads this label to
@@ -60,4 +74,5 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD wget -q -O- http://localhost:8080/healthz || exit 1
 
+USER sonneck
 ENTRYPOINT ["/usr/local/bin/sonneck"]

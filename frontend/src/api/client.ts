@@ -121,6 +121,14 @@ function uploadRequest<T>(
 
     xhr.onerror = () => reject(new ApiError('NETWORK_ERROR', 'Could not reach the server.', 0))
 
+    // Required by the backend (internal/handlers/helpers.go's
+    // requireMultipartFile — security assessment SNK-02, 2026-08-23): a
+    // plain HTML form can never set a custom header, so this is what lets
+    // the server tell a real XHR upload apart from a forged cross-origin
+    // form submission. A same-origin request like this one never triggers
+    // a CORS preflight regardless of the header, so it costs nothing here.
+    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest')
+
     const formData = new FormData()
     formData.append('file', file)
     xhr.send(formData)

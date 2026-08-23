@@ -83,6 +83,9 @@ func multipartUpload(t *testing.T, url, filename string, content []byte) *http.R
 
 	req := httptest.NewRequest(http.MethodPost, url, &body)
 	req.Header.Set("Content-Type", mw.FormDataContentType())
+	// Every real upload sends this (frontend/src/api/client.ts) — required
+	// as of the SNK-02 CSRF fix, see requireMultipartFile's own comment.
+	req.Header.Set("X-Requested-With", "XMLHttpRequest")
 	return req
 }
 

@@ -31,7 +31,26 @@ var MaxUploadBytes int64 = 500 << 20 // 500MB
 // form, and pulls out the required "file" field — the same three steps
 // every upload handler (single-piece, book, replace-file) needs, written
 // once here instead of three times.
+//
+// The X-Requested-With check below closes a real CSRF gap (security
+// assessment SNK-02, 2026-08-23): multipart/form-data is one of the fetch
+// spec's CORS-safelisted content types, so a plain cross-origin HTML form
+// targeting this endpoint was never preflighted by the browser — CORS only
+// stops attacker JS from *reading* the response, not from the request
+// executing server-side. There's no auth to check an Origin/Referer
+// against yet (design doc §8), so this instead requires a header a plain
+// HTML form can never set, which forces the browser to preflight — and
+// since this server sets no CORS response headers at all (single-origin by
+// design), any cross-origin preflight fails closed. The real frontend
+// (frontend/src/api/client.ts's uploadRequest) sends this on every upload;
+// a same-origin request never triggers a preflight for it regardless, so
+// this adds no real round-trip for legitimate use.
 func requireMultipartFile(w http.ResponseWriter, r *http.Request) (multipart.File, *multipart.FileHeader, bool) {
+	if r.Header.Get("X-Requested-With") != "XMLHttpRequest" {
+		api.WriteError(w, http.StatusForbidden, api.CodeValidationError, "missing required X-Requested-With header")
+		return nil, nil, false
+	}
+
 	r.Body = http.MaxBytesReader(w, r.Body, MaxUploadBytes)
 
 	if err := r.ParseMultipartForm(32 << 20); err != nil {

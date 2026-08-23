@@ -134,8 +134,16 @@ jobs:
       - name: Attach docker-compose.yml to the release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Never interpolate an event-derived value directly into a `run:`
+          # script body — ${{ }} expansion happens at the templating layer,
+          # before the shell parses anything, so a crafted tag name (git ref
+          # names allow backticks, $(), quotes, etc.) would become literal
+          # shell syntax rather than inert data. Routing it through env: and
+          # referencing it as a normal shell variable defuses that; the
+          # value is just a string to bash regardless of what it contains.
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
-          gh release upload "${{ github.event.release.tag_name }}" docker-compose.yml --clobber
+          gh release upload "$RELEASE_TAG" docker-compose.yml --clobber
 
   merge:
     needs: build
@@ -161,24 +169,29 @@ jobs:
 
       - name: Create version-tagged manifest
         working-directory: /tmp/digests
+        env:
+          # See "Attach docker-compose.yml to the release" above for why
+          # this goes through env: rather than direct ${{ }} interpolation
+          # in the script body.
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
           docker buildx imagetools create \
-            -t ${{ env.IMAGE }}:${{ github.event.release.tag_name }} \
+            -t "${{ env.IMAGE }}:$RELEASE_TAG" \
             $(printf '${{ env.IMAGE }}@sha256:%s ' *)
 
       - name: Point :latest at this release, if GitHub agrees it's the latest
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
           actual_latest=$(gh api "repos/${{ github.repository }}/releases/latest" --jq .tag_name)
-          this_release="${{ github.event.release.tag_name }}"
-          if [ "$actual_latest" = "$this_release" ]; then
-            echo "GitHub's current latest release is $this_release — tagging :latest"
+          if [ "$actual_latest" = "$RELEASE_TAG" ]; then
+            echo "GitHub's current latest release is $RELEASE_TAG — tagging :latest"
             docker buildx imagetools create \
-              -t ${{ env.IMAGE }}:latest \
-              ${{ env.IMAGE }}:${{ github.event.release.tag_name }}
+              -t "${{ env.IMAGE }}:latest" \
+              "${{ env.IMAGE }}:$RELEASE_TAG"
           else
-            echo "GitHub's current latest release is $actual_latest, not $this_release — leaving :latest alone"
+            echo "GitHub's current latest release is $actual_latest, not $RELEASE_TAG — leaving :latest alone"
           fi
 
   sync-latest:
