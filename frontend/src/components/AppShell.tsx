@@ -56,7 +56,7 @@ export function AppShell() {
             inheriting it, so hover:text-ink below applies to both at once.
             SonneckMark is Gwendolyn 700 (bold) — see that component's own
             comment for the full reasoning. */}
-        <footer className="flex shrink-0 flex-col items-center px-6 pt-8 pb-10">
+        <footer className="flex shrink-0 flex-col items-center px-6 pt-0 pb-10">
           {/* Understated separator from the routed content above — short
               on purpose (not the width of the credit line below it), just
               enough of a mark to read as "footer starts here" without
