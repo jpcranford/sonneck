@@ -23,8 +23,11 @@ import { TOTAL_WIZARD_STEPS } from './BookUploadWizard'
 const CURRENT_STEP = 5
 const DESKTOP_BREAKPOINT_PX = 768
 
+// Academic p./pp. convention app-wide (singular vs. a range), same as
+// PiecePage.tsx/BookDetailsPage.tsx — this row label had drifted to a
+// bare "pp" with no period and no singular form.
 function formatPieceLabel(piece: Piece) {
-  return `pp ${piece.start}${piece.end !== piece.start ? `–${piece.end}` : ''}`
+  return piece.end !== piece.start ? `pp. ${piece.start}–${piece.end}` : `p. ${piece.start}`
 }
 
 interface FormValues {

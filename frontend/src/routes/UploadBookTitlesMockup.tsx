@@ -103,8 +103,11 @@ const DESKTOP_GRID_COLS = SHOW_ARRANGER_FIELD
   ? 'grid-cols-[128px_88px_1fr_1fr_1fr]'
   : 'grid-cols-[128px_88px_1fr_1fr]'
 
+// Academic p./pp. convention app-wide (singular vs. a range), same as
+// PiecePage.tsx/BookDetailsPage.tsx — this row label had drifted to a
+// bare "pp" with no period and no singular form.
 function formatPieceLabel(piece: PieceFixture) {
-  return `pp ${piece.start}${piece.end !== piece.start ? `–${piece.end}` : ''}`
+  return piece.end !== piece.start ? `pp. ${piece.start}–${piece.end}` : `p. ${piece.start}`
 }
 
 // A single representative page (the piece's own start page) standing in

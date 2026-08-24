@@ -29,8 +29,11 @@ export interface NamedPiece extends Piece {
   arranger: string
 }
 
+// Academic p./pp. convention app-wide (singular vs. a range), same as
+// PiecePage.tsx/BookDetailsPage.tsx — this card grid had drifted to a
+// bare "pp" with no period and no singular form.
 function formatPageRange(piece: Piece): string {
-  return piece.end !== piece.start ? `pp ${piece.start}–${piece.end}` : `pp ${piece.start}`
+  return piece.end !== piece.start ? `pp. ${piece.start}–${piece.end}` : `p. ${piece.start}`
 }
 
 // Composer-or-arranger: fuses arranger onto composer

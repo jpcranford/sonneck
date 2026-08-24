@@ -47,15 +47,18 @@ const SKIPPED_PAGES = [4]
 // Same 3 pieces, same colors, same book as Screens 4 and 5 — carried
 // forward for continuity. No `isLast`/open-piece state here: by the
 // confirm step every piece is a final, closed range, so page ranges
-// render as plain "pp X–Y" with no trailing "+".
+// render as plain "pp. X–Y" with no trailing "+".
 const PIECES: PieceFixture[] = [
   { start: 1, end: 3, color: '#6b8a9c', title: 'Prelude in C', composer: 'J. Burgmüller' },
   { start: 5, end: 7, color: '#b8935a', title: 'Nocturne', composer: 'Fr. Chopin' },
   { start: 7, end: 8, color: '#9c7ab8', title: 'Waltz in A♭', composer: 'Fr. Chopin' },
 ]
 
+// Academic p./pp. convention app-wide (singular vs. a range), same as
+// PiecePage.tsx/BookDetailsPage.tsx — this card grid had drifted to a
+// bare "pp" with no period and no singular form.
 function formatPageRange(piece: PieceFixture): string {
-  return piece.end !== piece.start ? `pp ${piece.start}–${piece.end}` : `pp ${piece.start}`
+  return piece.end !== piece.start ? `pp. ${piece.start}–${piece.end}` : `p. ${piece.start}`
 }
 
 // Compacts a sorted page list into ranges — same convention as Screen 4's
