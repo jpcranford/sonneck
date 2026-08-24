@@ -56,18 +56,9 @@ export function AppShell() {
             inheriting it, so hover:text-ink below applies to both at once.
             SonneckMark is Gwendolyn 700 (bold) — see that component's own
             comment for the full reasoning. */}
-        <footer className="flex shrink-0 flex-col items-center px-6 pt-0 pb-5">
-          {/* Understated separator from the routed content above — short
-              on purpose (not the width of the credit line below it), just
-              enough of a mark to read as "footer starts here" without
-              being a full border-t rule across the whole width. Same
-              --color-border token as every other subtle divider in the
-              app (e.g. the toolbar dividers on Piece/Book Details), not a
-              new color invented for this.
-              Spacing below it is this span's own mb-5, matching the
-              footer's own pb-5 below the mark, so the mark sits centered
-              between the divider and the footer's bottom edge. */}
-          <span aria-hidden="true" className="mb-5 h-px w-10 bg-border" />
+        <footer className="flex shrink-0 flex-col items-center px-6 pt-0 pb-9">
+          {/* NOTE: the above's pb-8 is the space between s mark and bottom of page. The below's mb-6 is the space between s mark and line. Kept at 2:3 ratio for now 'cause it looks nice. */}
+          <span aria-hidden="true" className="mb-6 h-px w-10 bg-border" />
           <a
             href="https://github.com/jpcranford/sonneck"
             target="_blank"
