@@ -247,19 +247,6 @@ export function BookUploadAboutStep({
             </div>
           </div>
 
-          {lightboxOpen && (
-            <PageLightbox
-              key={previewPage}
-              imageUrl={getBookPageThumbnailUrl(book.id, previewPage)}
-              alt={`Page ${previewPage} of ${book.bookTitle}`}
-              page={previewPage}
-              pageCount={pageCount}
-              onClose={() => setLightboxOpen(false)}
-              onPrev={() => setPreviewPage((p) => Math.max(1, p - 1))}
-              onNext={() => setPreviewPage((p) => Math.min(pageCount, p + 1))}
-            />
-          )}
-
           <div className="text-[0.78rem] leading-relaxed text-ink-soft">
             {book.originalFilename && (
               <strong className="block text-ink">{book.originalFilename}</strong>
@@ -502,6 +489,28 @@ export function BookUploadAboutStep({
           </div>
         </div>
       </form>
+
+      {/* Rendered here, outside the sm:sticky preview column above, not
+          nested inside it — position: sticky creates its own stacking
+          context, which would trap this fixed z-50 overlay's stacking
+          authority to just that column's subtree. The result was a real,
+          visible bug: the Sheet Type/Instruments fields (a later DOM
+          sibling in the outer stacking context, with no sticky/z-index of
+          their own) painted on top of the lightbox instead of under it. A
+          fixed-position element escapes an ancestor's layout, but not its
+          stacking context — this is the general fix for that. */}
+      {lightboxOpen && (
+        <PageLightbox
+          key={previewPage}
+          imageUrl={getBookPageThumbnailUrl(book.id, previewPage)}
+          alt={`Page ${previewPage} of ${book.bookTitle}`}
+          page={previewPage}
+          pageCount={pageCount}
+          onClose={() => setLightboxOpen(false)}
+          onPrev={() => setPreviewPage((p) => Math.max(1, p - 1))}
+          onNext={() => setPreviewPage((p) => Math.min(pageCount, p + 1))}
+        />
+      )}
     </div>
   )
 }
