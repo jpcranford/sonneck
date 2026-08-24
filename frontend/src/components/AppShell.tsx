@@ -56,7 +56,7 @@ export function AppShell() {
             inheriting it, so hover:text-ink below applies to both at once.
             SonneckMark is Gwendolyn 700 (bold) — see that component's own
             comment for the full reasoning. */}
-        <footer className="flex shrink-0 flex-col items-center px-6 pt-0 pb-10">
+        <footer className="flex shrink-0 flex-col items-center px-6 pt-0 pb-5">
           {/* Understated separator from the routed content above — short
               on purpose (not the width of the credit line below it), just
               enough of a mark to read as "footer starts here" without
@@ -64,16 +64,9 @@ export function AppShell() {
               --color-border token as every other subtle divider in the
               app (e.g. the toolbar dividers on Piece/Book Details), not a
               new color invented for this.
-              Spacing below it is this span's own mb-5, not the footer's
-              flex gap (removed from the footer element itself, now that
-              it would otherwise stack with this margin) — mb-5 reads as
-              visually equal to the gap-3.5 between text and logo further
-              down, even though that's fewer raw pixels: a 1px hairline
-              sitting flush against the credit text's own line-box reads
-              tighter than the same pixel gap does against the logo mark,
-              which has no line-box leading eating into it. Tuned by eye
-              via zoomed screenshots, not left at the identical class
-              value the two gaps started from. */}
+              Spacing below it is this span's own mb-5, matching the
+              footer's own pb-5 below the mark, so the mark sits centered
+              between the divider and the footer's bottom edge. */}
           <span aria-hidden="true" className="mb-5 h-px w-10 bg-border" />
           <a
             href="https://github.com/jpcranford/sonneck"
