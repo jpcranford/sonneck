@@ -1,11 +1,17 @@
 import { IconMusic } from '@tabler/icons-react'
-import type { Tag } from '../api/types'
+import type { PracticeStatus, Tag } from '../api/types'
+import { PracticeStatusIcon } from './PracticeStatusIcon'
 
 interface TagPillsProps {
   keys: Tag[]
   sheetType: Tag | null
   instruments: Tag[]
   userTags: Tag[]
+  // Optional — omitted (or null) shows nothing, same as every caller
+  // before this prop existed (e.g. Book Details' own piece cards, which
+  // deliberately don't opt in). The Piece Library's list view is the one
+  // caller that passes this, per direct request — see PieceListCard.tsx.
+  practiceStatus?: PracticeStatus | null
   // Optional spacing above the pill row itself — passed through onto the
   // root div (which is what returns null when there's nothing to show), so
   // a caller never ends up with a dangling top margin on a piece with no
@@ -14,25 +20,44 @@ interface TagPillsProps {
   className?: string
 }
 
-// Card footer pills, fixed order: user tags, key(s), sheet type,
-// instruments — matches the Piece Details page's pill line
-// (design doc §14: practice status, user tags, key, sheet type; instruments
-// moved into that page's details list). Cards have no practice-status pill,
-// so user tags lead here. Color is reserved for genuinely user-specific
-// data (`userTags`, user-authored) — key/sheetType/instruments are
+// Card footer pills, fixed order: practice status (opt-in, see the prop's
+// own comment), user tags, key(s), sheet type, instruments — matches the
+// Piece Details page's pill line (design doc §14: practice status, user
+// tags, key, sheet type; instruments moved into that page's details list).
+// Color is reserved for genuinely user-specific data (`practiceStatus`,
+// `userTags`, both user-authored) — key/sheetType/instruments are
 // system/book-level data, so they stay neutral hollow pills, never
 // distinguished by color alone anyway (CLAUDE.md > Frontend) since key
 // also carries a music-note icon. Keys are many-to-many (a piece can be
 // written in more than one key) and genuinely ordered (e.g. a piece that
 // modulates) — rendered as one merged pill with the sequence joined by a
 // small chevron, not one independent pill per key.
-export function TagPills({ keys, sheetType, instruments, userTags, className = '' }: TagPillsProps) {
-  if (keys.length === 0 && !sheetType && instruments.length === 0 && userTags.length === 0) {
+export function TagPills({
+  keys,
+  sheetType,
+  instruments,
+  userTags,
+  practiceStatus,
+  className = '',
+}: TagPillsProps) {
+  if (
+    keys.length === 0 &&
+    !sheetType &&
+    instruments.length === 0 &&
+    userTags.length === 0 &&
+    !practiceStatus
+  ) {
     return null
   }
 
   return (
     <div className={`flex min-w-0 flex-wrap items-center gap-1 ${className}`}>
+      {practiceStatus && (
+        <span className="flex items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent">
+          <PracticeStatusIcon status={practiceStatus} size={11} className="shrink-0" />
+          {practiceStatus}
+        </span>
+      )}
       {userTags.map((tag) => (
         <span
           key={tag.id}
