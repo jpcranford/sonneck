@@ -1,5 +1,13 @@
 import { useState } from 'react'
-import { IconArrowLeft, IconBook, IconBook2, IconCheck, IconCircleCheckFilled, IconEyeOff } from '@tabler/icons-react'
+import {
+  IconArrowLeft,
+  IconBook,
+  IconBook2,
+  IconCheck,
+  IconCircleCheckFilled,
+  IconEyeOff,
+  IconX,
+} from '@tabler/icons-react'
 import { useMockupTitle } from '../lib/useMockupTitle'
 
 // ---------------------------------------------------------------------
@@ -128,6 +136,20 @@ export function UploadBookConfirmMockup() {
     setTimeout(() => setStage('success'), 1400)
   }
 
+  function handleCancelUpload() {
+    const confirmed = window.confirm(
+      "Cancel this upload? The uploaded file and its generated page previews will be permanently removed from the server.",
+    )
+    if (!confirmed) return
+    // Mockup only — see UploadBookAboutMockup.tsx's own copy of this
+    // function for the real-build notes (DELETE /api/books/{id}, thumbnail
+    // cache cleanup gap, return-to-Upload-landing). Only reachable while
+    // stage === 'confirm' here (see the chrome's own conditional below) —
+    // once a real import has actually run, pieces exist and there's
+    // nothing left to "cancel."
+    console.log('Mockup: cancel confirmed — would delete book + cached thumbnails, return to Upload landing')
+  }
+
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-6 md:p-8">
       <div className="rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-4 py-2 text-sm text-ink-soft">
@@ -202,7 +224,22 @@ export function UploadBookConfirmMockup() {
             ))}
           </div>
 
-          <div className="flex items-center justify-end border-t border-border pt-5">
+          {/* Cancel upload shares this row with Import — see
+              UploadBookAboutMockup.tsx's own comment on this same row for
+              the full placement/styling reasoning. Disabled once stage ===
+              'importing', same reasoning as the Import button's own
+              disabled state right next to it — the create request is
+              already in flight by then, nothing left to cancel. */}
+          <div className="flex items-center justify-between border-t border-border pt-5">
+            <button
+              type="button"
+              onClick={handleCancelUpload}
+              disabled={stage === 'importing'}
+              className="flex items-center gap-1.5 text-base text-red-700 hover:text-red-800 disabled:pointer-events-none disabled:opacity-40"
+            >
+              <IconX size={24} />
+              Cancel upload
+            </button>
             {/* min-w, not a fixed width — "Importing N pieces…" is longer
                 than "Import N Pieces", and should push the button wider
                 to stay on one line rather than wrap and grow taller

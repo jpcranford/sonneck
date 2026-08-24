@@ -432,6 +432,14 @@ func (s *Server) handleDeleteBook(w http.ResponseWriter, r *http.Request) {
 			s.Logger.Error("failed to remove book file after delete", "error", err, "bookId", book.ID, "filePath", *book.FilePath)
 		}
 	}
+	// Cached page thumbnails (handleBookPageThumbnail) are keyed by bookId,
+	// not tied to the piece rows just deleted above — a book cancelled out
+	// of the upload wizard before any piece exists yet still needs this,
+	// since its About/Split/Titles screens all render book-page thumbnails
+	// straight from the original file.
+	if err := purgeBookPageThumbnails(s.Cfg.DataDir, book.ID); err != nil {
+		s.Logger.Error("failed to purge cached page thumbnails after book delete", "error", err, "bookId", book.ID)
+	}
 	// Same pointer-dereference note as handleDeletePiece's orphan-cleanup
 	// logging — slog's default %v on a *string logs the pointer address.
 	fileHash := "(none)"

@@ -35,6 +35,16 @@ func newTestServer(t *testing.T) http.Handler {
 // (e.g. two Piece rows sharing a file hash — see piece_test.go).
 func newTestServerWithDB(t *testing.T) (http.Handler, *sql.DB) {
 	t.Helper()
+	h, _, conn := newTestServerWithDataDir(t)
+	return h, conn
+}
+
+// newTestServerWithDataDir is newTestServer plus the temp DATA_DIR path
+// itself, for the rare test that needs to inspect on-disk state the HTTP
+// API doesn't expose (e.g. a cached thumbnail file — see
+// TestDeleteBook_PurgesCachedPageThumbnails).
+func newTestServerWithDataDir(t *testing.T) (http.Handler, string, *sql.DB) {
+	t.Helper()
 	dataDir := t.TempDir()
 
 	conn, err := db.Open(filepath.Join(dataDir, "sonneck.sqlite"))
@@ -51,7 +61,7 @@ func newTestServerWithDB(t *testing.T) (http.Handler, *sql.DB) {
 		t.Fatalf("loading embedded frontend: %v", err)
 	}
 
-	return handlers.New(conn, cfg, logger, frontend), conn
+	return handlers.New(conn, cfg, logger, frontend), dataDir, conn
 }
 
 // writeFixturePDF is a thin wrapper over the shared fixture generator

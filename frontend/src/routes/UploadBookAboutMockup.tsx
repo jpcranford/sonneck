@@ -8,6 +8,7 @@ import {
   IconChevronRightFilled,
   IconCheck,
   IconInfoCircle,
+  IconX,
   IconXFilled,
 } from '@tabler/icons-react'
 import type { Tag } from '../api/types'
@@ -230,6 +231,21 @@ export function UploadBookAboutMockup() {
   function onSubmit(data: FormValues) {
     // Mockup only — the real build advances to Screen 4 (Page Selection).
     console.log('Mockup submit (no real save):', data)
+  }
+
+  function handleCancelUpload() {
+    const confirmed = window.confirm(
+      "Cancel this upload? The uploaded file and its generated page previews will be permanently removed from the server.",
+    )
+    if (!confirmed) return
+    // Mockup only. Real build: DELETE /api/books/{id} — already
+    // cascade-deletes the book's uploaded PDF (handleDeleteBook,
+    // internal/handlers/book.go), but that handler doesn't currently purge
+    // this book's cached page thumbnails under data/cache/thumbnails —
+    // needs a real fix alongside wiring this button up, not just a call
+    // to the existing endpoint as-is. Then returns to the Upload landing
+    // page, same "return to start" convention as UploadPage.tsx.
+    console.log('Mockup: cancel confirmed — would delete book + cached thumbnails, return to Upload landing')
   }
 
   return (
@@ -555,7 +571,29 @@ export function UploadBookAboutMockup() {
             </div>
           </div>
 
-          <div className="mt-2 flex justify-end border-t border-border pt-5">
+          {/* Cancel upload shares this row with Next rather than living up
+              in the top chrome — it's a page-level action on the same
+              footing as Next/Import (not a step-nav control like Back),
+              so it belongs where the other page-level actions are. Styled
+              as a plain text link, not a bordered button — same visual
+              weight as Back up in the chrome (same gap-1.5/text-base/icon
+              size), so it doesn't compete with Next's own primacy. Solid
+              red rather than a translucent shade — IconX is two
+              overlapping crossing lines, so a translucent color would
+              double-blend at the crossing point (the icon-preblend rule
+              elsewhere in this app, e.g. plus/book-off); permanently red
+              rather than hover-only, same reasoning as the Delete
+              Piece/Delete Book toolbar buttons — destructive should read
+              as such at a glance. */}
+          <div className="mt-2 flex items-center justify-between border-t border-border pt-5">
+            <button
+              type="button"
+              onClick={handleCancelUpload}
+              className="flex items-center gap-1.5 text-base text-red-700 hover:text-red-800"
+            >
+              <IconX size={24} />
+              Cancel upload
+            </button>
             <button
               type="submit"
               className="flex items-center gap-1.5 rounded-md bg-accent px-5 py-2.5 font-display text-white hover:bg-accent/90"

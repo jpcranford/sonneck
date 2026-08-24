@@ -1,6 +1,6 @@
 import { useEffect, useState, type FocusEvent } from 'react'
 import { useForm } from 'react-hook-form'
-import { IconAlertTriangle, IconArrowLeft, IconArrowRight } from '@tabler/icons-react'
+import { IconAlertTriangle, IconArrowLeft, IconArrowRight, IconX } from '@tabler/icons-react'
 import { getBookPageThumbnailUrl } from '../api/books'
 import { PageLightbox } from '../components/PageLightbox'
 import type { Piece } from '../lib/pieceSplitLogic'
@@ -58,6 +58,8 @@ interface BookUploadTitlesStepProps {
   onChange: (fields: { title: string; composer: string; arranger: string }[]) => void
   onBack: () => void
   onNext: () => void
+  onCancel: () => void
+  cancelPending: boolean
 }
 
 export function BookUploadTitlesStep({
@@ -69,6 +71,8 @@ export function BookUploadTitlesStep({
   onChange,
   onBack,
   onNext,
+  onCancel,
+  cancelPending,
 }: BookUploadTitlesStepProps) {
   const isDesktop = useIsDesktop()
   const [previewIndex, setPreviewIndex] = useState<number | null>(null)
@@ -384,7 +388,19 @@ export function BookUploadTitlesStep({
           </div>
         )}
 
-        <div className="flex justify-end border-t border-border pt-5">
+        {/* Cancel upload shares this row with Next — see
+            BookUploadAboutStep.tsx's own comment on this same row for the
+            full placement/styling reasoning. */}
+        <div className="flex items-center justify-between border-t border-border pt-5">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={cancelPending}
+            className="flex items-center gap-1.5 text-base text-red-700 hover:text-red-800 disabled:cursor-default disabled:opacity-45"
+          >
+            <IconX size={24} />
+            Cancel upload
+          </button>
           <button
             type="submit"
             className="flex items-center gap-1.5 rounded-md bg-accent px-5 py-2.5 font-display font-medium text-white hover:bg-accent/90"

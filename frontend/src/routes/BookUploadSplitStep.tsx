@@ -75,6 +75,8 @@ interface BookUploadSplitStepProps {
   touchedPagesRef: React.RefObject<Set<number>>
   onBack: () => void
   onNext: () => void
+  onCancel: () => void
+  cancelPending: boolean
 }
 
 export function BookUploadSplitStep({
@@ -85,6 +87,8 @@ export function BookUploadSplitStep({
   touchedPagesRef: touchedRef,
   onBack,
   onNext,
+  onCancel,
+  cancelPending,
 }: BookUploadSplitStepProps) {
   const [dragAnchor, setDragAnchor] = useState<number | null>(null)
   const [dragCurrent, setDragCurrent] = useState<number | null>(null)
@@ -422,7 +426,19 @@ export function BookUploadSplitStep({
         </div>
       )}
 
-      <div className="flex justify-end border-t border-border pt-5">
+      {/* Cancel upload shares this row with Next — see
+          BookUploadAboutStep.tsx's own comment on this same row for the
+          full placement/styling reasoning. */}
+      <div className="flex items-center justify-between border-t border-border pt-5">
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={cancelPending}
+          className="flex items-center gap-1.5 text-base text-red-700 hover:text-red-800 disabled:cursor-default disabled:opacity-45"
+        >
+          <IconX size={24} />
+          Cancel upload
+        </button>
         <button
           type="button"
           onClick={onNext}

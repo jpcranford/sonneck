@@ -10,6 +10,7 @@ import {
   IconCheck,
   IconInfoCircle,
   IconAlertTriangle,
+  IconX,
 } from '@tabler/icons-react'
 import { updateBook, getBookPageThumbnailUrl } from '../api/books'
 import { listInstruments, listSheetTypes } from '../api/lookups'
@@ -92,6 +93,8 @@ interface BookUploadAboutStepProps {
   fileSizeBytes: number | null
   onBack: () => void
   onNext: (updatedBook: Book) => void
+  onCancel: () => void
+  cancelPending: boolean
 }
 
 export function BookUploadAboutStep({
@@ -100,6 +103,8 @@ export function BookUploadAboutStep({
   fileSizeBytes,
   onBack,
   onNext,
+  onCancel,
+  cancelPending,
 }: BookUploadAboutStepProps) {
   const [previewPage, setPreviewPage] = useState(1)
   const [lightboxOpen, setLightboxOpen] = useState(false)
@@ -465,7 +470,27 @@ export function BookUploadAboutStep({
             </p>
           )}
 
-          <div className="mt-2 flex justify-end border-t border-border pt-5">
+          {/* Cancel upload shares this row with Next — a page-level action
+              on the same footing as Next, not a step-nav control like
+              Back. Plain text link, same visual weight as Back up in the
+              chrome, not a bordered button — see UploadBookAboutMockup.tsx
+              (design reference) for the full reasoning. Solid red (not a
+              translucent shade): IconX is two crossing lines, and a
+              translucent color would double-blend at the crossing point
+              (the icon-preblend rule elsewhere in this app); permanently
+              red rather than hover-only, same as the Delete Piece/Delete
+              Book toolbar buttons — destructive should read as such at a
+              glance. */}
+          <div className="mt-2 flex items-center justify-between border-t border-border pt-5">
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={cancelPending}
+              className="flex items-center gap-1.5 text-base text-red-700 hover:text-red-800 disabled:cursor-default disabled:opacity-45"
+            >
+              <IconX size={24} />
+              Cancel upload
+            </button>
             <button
               type="submit"
               disabled={saveMutation.isPending}

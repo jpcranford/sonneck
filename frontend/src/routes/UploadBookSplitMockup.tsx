@@ -233,6 +233,17 @@ export function UploadBookSplitMockup() {
     clearSelection()
   }
 
+  function handleCancelUpload() {
+    const confirmed = window.confirm(
+      "Cancel this upload? The uploaded file and its generated page previews will be permanently removed from the server.",
+    )
+    if (!confirmed) return
+    // Mockup only — see UploadBookAboutMockup.tsx's own copy of this
+    // function for the real-build notes (DELETE /api/books/{id}, thumbnail
+    // cache cleanup gap, return-to-Upload-landing).
+    console.log('Mockup: cancel confirmed — would delete book + cached thumbnails, return to Upload landing')
+  }
+
   // Dismiss-on-outside-click / Escape, same convention as the shared
   // ContextMenu component.
   useEffect(() => {
@@ -505,7 +516,18 @@ export function UploadBookSplitMockup() {
         </div>
       )}
 
-      <div className="flex justify-end border-t border-border pt-5">
+      {/* Cancel upload shares this row with Next — see
+          UploadBookAboutMockup.tsx's own comment on this same row for the
+          full placement/styling reasoning. */}
+      <div className="flex items-center justify-between border-t border-border pt-5">
+        <button
+          type="button"
+          onClick={handleCancelUpload}
+          className="flex items-center gap-1.5 text-base text-red-700 hover:text-red-800"
+        >
+          <IconX size={24} />
+          Cancel upload
+        </button>
         <button
           type="button"
           onClick={() => console.log('Mockup: advance to Piece Titles', { state, pieces })}

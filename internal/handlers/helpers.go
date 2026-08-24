@@ -227,6 +227,28 @@ func (s *Server) RegenerateThumbnails(ctx context.Context) (int, error) {
 	return count, nil
 }
 
+// purgeBookPageThumbnails removes every cached page-thumbnail PNG for
+// bookID (cacheKey pattern "book-<id>-page-<n>", set by
+// handleBookPageThumbnail) — called from handleDeleteBook so a deleted
+// book doesn't leave orphaned cache entries behind. Derived data, same
+// "safely dropped" reasoning as RegenerateThumbnails' full-cache wipe
+// above, just scoped to one book's entries instead of all of them. A book
+// with no file (FilePath nil) never had any page thumbnails rendered, but
+// this is harmless to call regardless — the glob simply matches nothing.
+func purgeBookPageThumbnails(dataDir string, bookID int64) error {
+	cacheDir := filepath.Join(dataDir, "cache", "thumbnails")
+	matches, err := filepath.Glob(filepath.Join(cacheDir, fmt.Sprintf("book-%d-page-*.png", bookID)))
+	if err != nil {
+		return err
+	}
+	for _, match := range matches {
+		if err := os.Remove(match); err != nil && !os.IsNotExist(err) {
+			return err
+		}
+	}
+	return nil
+}
+
 // withTx runs fn inside a transaction, committing on success and rolling
 // back otherwise. Callers that need to resync the search index do so
 // inside fn, in the same transaction as the mutation (CLAUDE.md > Search).

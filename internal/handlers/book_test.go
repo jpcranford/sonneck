@@ -3,7 +3,10 @@ package handlers_test
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -300,6 +303,39 @@ func TestDeleteBook_CascadeDeletesAllPieces(t *testing.T) {
 	// pieces table (CLAUDE.md > Search: resync must happen in the same
 	// transaction as the mutation).
 	assertSearchCount(t, h, "Someone", 0)
+}
+
+// TestDeleteBook_PurgesCachedPageThumbnails covers the gap found while
+// building the Book Upload Wizard's "Cancel upload" action: a cancelled
+// upload (a book with no pieces yet, deleted directly) must not leave its
+// already-rendered page thumbnails behind in data/cache/thumbnails —
+// they're keyed by bookId, not by any piece row, so the cascade-delete's
+// own piece-file cleanup never touches them on its own.
+func TestDeleteBook_PurgesCachedPageThumbnails(t *testing.T) {
+	h, dataDir, _ := newTestServerWithDataDir(t)
+	bookID, _ := uploadBook(t, h, "book.pdf", 2)
+
+	// Populate the cache entry the same way a real client would, by
+	// actually requesting the thumbnail, rather than fabricating the cache
+	// file directly — proves the cache key this test later checks for is
+	// the real one handleBookPageThumbnail uses, not a guess.
+	thumbRec := doJSON(t, h, http.MethodGet, apiBooksURL(bookID)+"/pages/1/thumbnail", nil)
+	if thumbRec.Code != http.StatusOK {
+		t.Fatalf("GET thumbnail before delete: status %d", thumbRec.Code)
+	}
+	cachePath := filepath.Join(dataDir, "cache", "thumbnails", fmt.Sprintf("book-%d-page-1.png", bookID))
+	if _, err := os.Stat(cachePath); err != nil {
+		t.Fatalf("cached thumbnail not found at %s before delete: %v", cachePath, err)
+	}
+
+	delRec := doJSON(t, h, http.MethodDelete, apiBooksURL(bookID), nil)
+	if delRec.Code != http.StatusOK {
+		t.Fatalf("delete book: status %d, body %s", delRec.Code, delRec.Body.String())
+	}
+
+	if _, err := os.Stat(cachePath); !os.IsNotExist(err) {
+		t.Errorf("cached thumbnail at %s still exists after book delete (err = %v), want removed", cachePath, err)
+	}
 }
 
 // TestDeleteBook_DoesNotRemoveFileStillReferencedOutsideTheBook mirrors

@@ -6,6 +6,7 @@ import {
   IconArrowRight,
   IconChevronLeft,
   IconChevronRightFilled,
+  IconX,
   IconXFilled,
 } from '@tabler/icons-react'
 import { useMockupTitle } from '../lib/useMockupTitle'
@@ -297,6 +298,17 @@ export function UploadBookTitlesMockup() {
 
   const isDesktop = useIsDesktop()
   const [previewIndex, setPreviewIndex] = useState<number | null>(null)
+
+  function handleCancelUpload() {
+    const confirmed = window.confirm(
+      "Cancel this upload? The uploaded file and its generated page previews will be permanently removed from the server.",
+    )
+    if (!confirmed) return
+    // Mockup only — see UploadBookAboutMockup.tsx's own copy of this
+    // function for the real-build notes (DELETE /api/books/{id}, thumbnail
+    // cache cleanup gap, return-to-Upload-landing).
+    console.log('Mockup: cancel confirmed — would delete book + cached thumbnails, return to Upload landing')
+  }
   const {
     register,
     handleSubmit,
@@ -604,7 +616,18 @@ export function UploadBookTitlesMockup() {
           </div>
         )}
 
-        <div className="flex justify-end border-t border-border pt-5">
+        {/* Cancel upload shares this row with Next — see
+            UploadBookAboutMockup.tsx's own comment on this same row for
+            the full placement/styling reasoning. */}
+        <div className="flex items-center justify-between border-t border-border pt-5">
+          <button
+            type="button"
+            onClick={handleCancelUpload}
+            className="flex items-center gap-1.5 text-base text-red-700 hover:text-red-800"
+          >
+            <IconX size={24} />
+            Cancel upload
+          </button>
           <button
             type="submit"
             className="flex items-center gap-1.5 rounded-md bg-accent px-5 py-2.5 font-display font-medium text-white hover:bg-accent/90"

@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useMutation } from '@tanstack/react-query'
 import { IconBook2, IconCircleCheckFilled } from '@tabler/icons-react'
-import { getBook } from '../api/books'
+import { deleteBook, getBook } from '../api/books'
+import { ApiError } from '../api/client'
 import type { Book, Piece as ApiPiece } from '../api/types'
 import { computeLayout, type PageAssignments } from '../lib/pieceSplitLogic'
 import { clearWizardDraft, loadWizardDraft, saveWizardDraft, type WizardDraftStep } from '../lib/useWizardDraft'
@@ -237,6 +239,34 @@ export function BookUploadWizard({ onExit }: BookUploadWizardProps) {
     setImportedPieces(pieces)
   }
 
+  // Cancel upload (design doc §5, added post-launch) — only reachable from
+  // the 'about'/'split'/'titles'/'confirm' steps below, never 'file': by
+  // the time any of those renders, handleUploaded has already run and
+  // `book` is a real, server-side row with an uploaded PDF, which is
+  // exactly the state this needs to clean up. DELETE /api/books/{id}
+  // already cascade-deletes the book's file (and, as of the same change
+  // that added this button, its cached page thumbnails too — see
+  // purgeBookPageThumbnails in internal/handlers/helpers.go); no pieces
+  // exist yet at this stage of the wizard for it to also delete.
+  const cancelUploadMutation = useMutation({
+    mutationFn: () => deleteBook(book!.id),
+    onSuccess: () => {
+      clearWizardDraft()
+      onExit()
+    },
+    onError: (error) => {
+      window.alert(error instanceof ApiError ? error.message : 'Could not cancel this upload.')
+    },
+  })
+
+  function handleCancelUpload() {
+    const confirmed = window.confirm(
+      'Cancel this upload? The uploaded file and its generated page previews will be permanently removed from the server.',
+    )
+    if (!confirmed) return
+    cancelUploadMutation.mutate()
+  }
+
   if (resuming) {
     return (
       <div className="flex flex-1 items-center justify-center p-8">
@@ -264,6 +294,8 @@ export function BookUploadWizard({ onExit }: BookUploadWizardProps) {
           setBook(updatedBook)
           setStep('split')
         }}
+        onCancel={handleCancelUpload}
+        cancelPending={cancelUploadMutation.isPending}
       />
     )
   }
@@ -277,6 +309,8 @@ export function BookUploadWizard({ onExit }: BookUploadWizardProps) {
         onChange={setPageAssignments}
         touchedPagesRef={touchedPagesRef}
         onBack={() => setStep('about')}
+        onCancel={handleCancelUpload}
+        cancelPending={cancelUploadMutation.isPending}
         onNext={() => {
           const pieces = computeLayout(pageAssignments, pageCount)
           // If the piece count changed since fields were last filled in
@@ -307,6 +341,8 @@ export function BookUploadWizard({ onExit }: BookUploadWizardProps) {
         onChange={setPieceFields}
         onBack={() => setStep('split')}
         onNext={() => setStep('confirm')}
+        onCancel={handleCancelUpload}
+        cancelPending={cancelUploadMutation.isPending}
       />
     )
   }
@@ -325,6 +361,8 @@ export function BookUploadWizard({ onExit }: BookUploadWizardProps) {
       pieces={namedPieces}
       onBack={() => setStep('titles')}
       onImported={handleImported}
+      onCancel={handleCancelUpload}
+      cancelPending={cancelUploadMutation.isPending}
     />
   )
 }

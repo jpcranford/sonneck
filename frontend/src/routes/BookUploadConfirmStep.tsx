@@ -5,6 +5,7 @@ import {
   IconBook,
   IconCheck,
   IconEyeOff,
+  IconX,
 } from '@tabler/icons-react'
 import { confirmImport, getBookPageThumbnailUrl } from '../api/books'
 import { ApiError } from '../api/client'
@@ -85,6 +86,8 @@ interface BookUploadConfirmStepProps {
   pieces: NamedPiece[]
   onBack: () => void
   onImported: (createdPieces: ApiPiece[]) => void
+  onCancel: () => void
+  cancelPending: boolean
 }
 
 export function BookUploadConfirmStep({
@@ -94,6 +97,8 @@ export function BookUploadConfirmStep({
   pieces,
   onBack,
   onImported,
+  onCancel,
+  cancelPending,
 }: BookUploadConfirmStepProps) {
   const queryClient = useQueryClient()
   const skippedPages = deriveSkippedPages(pieces, pageCount)
@@ -211,7 +216,21 @@ export function BookUploadConfirmStep({
         </p>
       )}
 
-      <div className="flex items-center justify-end border-t border-border pt-5">
+      {/* Cancel upload shares this row with Import — see
+          BookUploadAboutStep.tsx's own comment on this same row for the
+          full placement/styling reasoning. Disabled once the import
+          request is in flight, same reasoning as Import's own disabled
+          state right next to it — nothing left to cancel by then. */}
+      <div className="flex items-center justify-between border-t border-border pt-5">
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={cancelPending || importMutation.isPending}
+          className="flex items-center gap-1.5 text-base text-red-700 hover:text-red-800 disabled:cursor-default disabled:opacity-45"
+        >
+          <IconX size={24} />
+          Cancel upload
+        </button>
         <button
           type="button"
           onClick={() => importMutation.mutate()}
