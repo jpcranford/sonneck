@@ -16,15 +16,15 @@
 A self-hosted library organizer for sheet music: import, tag, browse, and download pieces and books. Made by a musician, for musicians.
 
 ## Features
-Sonneck is designed to live “in an office with a printer”, so to speak. There are plans to add more practice-session features later, but its core feature set is focused squarely on digital library management first and foremost.
+Sonneck is designed to live “in an office with a printer”, so to speak. There are [plans](#planned-features) to add more practice-session features later, but its core feature set is focused squarely on digital library management first and foremost.
 
 - **Organize your sheet music library.** Upload individual pieces or entire books — the built-in book splitter and metadata inheritance make quick work of prepping a whole book's worth of pieces to be found later.
 - **Real cataloging, not a folder of PDFs.** Composer, arranger, key(s), instruments, sheet type, opus number, ISBN, and your own tags, plus a one-click citation generator that formats it all for you, ready to be copied into a program template or group chat.
-- **Books stay organized as books.** Set a book's composer, publisher, and year once. Every piece inside it inherits the information automatically, you only ever need to override the pieces that are actually different.
+- **Pieces inherit properties from their books.** Set a book's composer, publisher, and year once. Every piece inside it inherits the information automatically, you only ever need to override the pieces that are actually different.
 - **Search that keeps up with you.** Full-text search across your whole library as you type. Grid views are optimized for number of items shown at once, while list views show you the most detail about each piece without having to open it up.
 - **Track your practice bag.** Ever forget you were learning a piece only to rediscover it weeks later at the bottom of your bag? Or have you ever lost the whole backpack and can't remember what you had in it? No more! Use the practice status and filter views to track what you want to play, what you have in progress, and even the stuff you never want to touch again! Take *that*, [Sorabji](https://www.youtube.com/watch?v=_OrAewTxBrc)!
-- **A truly *responsive* design.** None of that "resize-and-rerender-everything" lag. Resize and it's good to go, instantly.
-- **It's completely yours.** Self-hosted, one SQLite file, daily automatic backups. No algorithm, no callbacks to some centralized analytics server. It’s a tool for you, use it, break it, repurpose it, join us (or don’t) in making it better. And full CSV export any time — even if it turns out Sonneck isn't the right place for your music, the information you enter (and the time you take doing so) is still yours.
+- **A truly *responsive* workflow.** None of that "resize-and-rerender-everything" lag. Resize and it's good to go, instantly. Useful keyboard shortcuts throughout, plus right-click (desktop)/long-press (mobile) context menus for quick edits within library views.
+- **It's completely yours.** Self-hosted, one SQLite file, daily automatic backups. No algorithm, no callbacks to some centralized analytics server. It’s a tool for you: use it, break it, repurpose it, join us (or don’t) in making it better. Or even leave– a full CSV export is available at any time. If it turns out Sonneck isn't the right place for your music, the information you enter (and the time you take doing so) is still yours.
 
 ## Installation
 ### Docker Compose (recommended)
@@ -59,7 +59,7 @@ cd /sonneck/frontend
 npm run dev
 ```
 
-> [!WARNING] No authentication — deployment warning
+> [!WARNING]
 > Sonneck has **no login and no access control of its own.** It's currently built for a single user, single session at a time. Anyone who can reach the server over the network can use the full API — there's no separation between "trusted operator" and "anonymous visitor." **Do not expose this directly to the open internet.** Deploy it behind a private network / VPN / Tailscale, or put an authenticating reverse proxy in front of it (e.g. Basic Auth, Authelia).
 
 ## Advanced options
