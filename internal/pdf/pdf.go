@@ -54,8 +54,18 @@ func ExtractPages(ctx context.Context, src string, first, last int, dst string) 
 // RenderThumbnail renders a single page of src as a PNG at outPrefix+".png"
 // via pdftoppm, for the import wizard's split step and the basic piece
 // preview (design doc §5, §7).
+//
+// -cropbox renders the page's CropBox rather than pdftoppm's default
+// MediaBox. A normal PDF viewer displays CropBox; for a scanned PDF whose
+// MediaBox includes extra untrimmed scanner margin beyond CropBox (a real,
+// observed case — a Reader's Digest songbook scan with a ~520pt blank
+// strip), omitting this flag rendered thumbnails dramatically taller than
+// the page actually looks, everywhere the original book file (not yet
+// pdftocairo-extracted, which already crops to CropBox by default) is the
+// thumbnail source — i.e. every book-page thumbnail in the import wizard,
+// before a piece has been split out of it.
 func RenderThumbnail(ctx context.Context, src string, page, dpi int, outPrefix string) (string, error) {
-	cmd := exec.CommandContext(ctx, "pdftoppm", "-png",
+	cmd := exec.CommandContext(ctx, "pdftoppm", "-png", "-cropbox",
 		"-f", strconv.Itoa(page), "-l", strconv.Itoa(page),
 		"-r", strconv.Itoa(dpi), "-singlefile", src, outPrefix)
 	if out, err := cmd.CombinedOutput(); err != nil {
