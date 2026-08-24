@@ -4,7 +4,10 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   IconArrowLeft,
+  IconArrowsDiagonal,
   IconBook2,
+  IconChevronLeft,
+  IconChevronRightFilled,
   IconCloudUpload,
   IconFileMusic,
   IconFileTypePdf,
@@ -16,6 +19,7 @@ import { getPieceThumbnailUrl, uploadPiece, updatePiece } from '../api/pieces'
 import { ApiError } from '../api/client'
 import type { Piece } from '../api/types'
 import { loadWizardDraft } from '../lib/useWizardDraft'
+import { PageLightbox } from '../components/PageLightbox'
 import { SourceBookField } from '../components/SourceBookField'
 import { BookUploadWizard } from './BookUploadWizard'
 
@@ -33,10 +37,21 @@ function validateFile(file: File): string | null {
   return null
 }
 
+// Same conversion EditPieceModal.tsx uses for these same two fields — kept
+// as its own local copy rather than shared, same convention as the rest of
+// this file (SourceBookField is the one thing actually reused as-is).
+function toIntOrNull(value: string): number | null {
+  if (value.trim() === '') return null
+  const n = Number(value)
+  return Number.isFinite(n) ? n : null
+}
+
 interface DetailsForm {
   title: string
   composer: string
   sourceBookId: number | null
+  sourcePageStart: string
+  sourcePageEnd: string
 }
 
 type Stage = 'landing' | 'select' | 'uploading' | 'details' | 'success' | 'book'
@@ -55,14 +70,25 @@ export function UploadPage() {
   const [piece, setPiece] = useState<Piece | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  // Page cycler + lightbox state for the "About this piece" preview —
+  // same assembly as PiecePage.tsx's own preview column, just living here
+  // instead since this screen shows it before the piece has a page of its
+  // own to navigate to. previewPage seeds from the upload's own
+  // thumbnailPage in onSuccess below, same starting page the old static
+  // thumb always showed.
+  const [previewPage, setPreviewPage] = useState(1)
+  const [lightboxOpen, setLightboxOpen] = useState(false)
 
   const {
     register,
     handleSubmit,
     reset: resetDetailsForm,
     control,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm<DetailsForm>()
+  const watchedSourceBookId = watch('sourceBookId')
 
   const uploadMutation = useMutation({
     mutationFn: (file: File) => {
@@ -76,10 +102,14 @@ export function UploadPage() {
       }
       queryClient.invalidateQueries({ queryKey: ['pieces'] })
       setPiece(uploaded)
+      setPreviewPage(uploaded.thumbnailPage)
+      setLightboxOpen(false)
       resetDetailsForm({
         title: uploaded.title,
         composer: uploaded.composer.value,
         sourceBookId: null,
+        sourcePageStart: '',
+        sourcePageEnd: '',
       })
       setStage('details')
     },
@@ -92,6 +122,8 @@ export function UploadPage() {
         title: data.title,
         composer: data.composer,
         sourceBookId: data.sourceBookId,
+        sourcePageStart: toIntOrNull(data.sourcePageStart),
+        sourcePageEnd: toIntOrNull(data.sourcePageEnd),
         favorite: false,
         keys: [],
         instruments: [],
@@ -275,9 +307,13 @@ export function UploadPage() {
               BookUploadAboutStep.tsx), since this screen does the
               identical job for the single-piece path. */}
           <h1 className="font-display text-2xl font-medium text-ink">About this piece</h1>
-          {/* Large first-page thumbnail so what's about to be saved is
-              visually confirmed, not just taken on faith from the
-              filename — thumb on the left, fields + Save stacked on the
+          {/* Same page cycler + lightbox assembly as PiecePage.tsx's own
+              preview column (and BookUploadAboutStep.tsx's book-page
+              equivalent) — click to enlarge, prev/next through the
+              piece's own pages, rather than a single static image of just
+              the thumbnail page. Wrapper sizing (340px / min-h-[440px])
+              deliberately unchanged from the old static thumb it
+              replaces — thumb on the left, fields + Save stacked on the
               right rather than spanning the full row under it. */}
           <div className="flex flex-col items-start gap-7 sm:flex-row">
             {/* Same reserved-frame fix as the Book Upload Wizard's cover
@@ -292,13 +328,64 @@ export function UploadPage() {
                 once the real image loads, not clipped to a fixed ratio.
                 440px ≈ this wrapper's 340px width at a typical US Letter
                 page's aspect ratio, just a reasonable placeholder guess. */}
-            <div className="w-full max-w-[340px] min-h-[440px] shrink-0 overflow-hidden rounded-lg border border-border bg-paper-sunken shadow-sm sm:w-[340px]">
-              <img
-                src={getPieceThumbnailUrl(piece.id, piece.thumbnailPage)}
-                alt=""
-                className="block w-full"
-              />
+            <div className="relative w-full max-w-[340px] min-h-[440px] shrink-0 overflow-hidden rounded-lg border border-border bg-paper-sunken shadow-sm sm:w-[340px]">
+              <button
+                type="button"
+                onClick={() => setLightboxOpen(true)}
+                aria-label={`View page ${previewPage} larger`}
+                className="block w-full cursor-zoom-in"
+              >
+                <img
+                  key={previewPage}
+                  src={getPieceThumbnailUrl(piece.id, previewPage)}
+                  alt={`Page ${previewPage} of ${piece.title}`}
+                  className="h-auto w-full"
+                />
+              </button>
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute top-2.5 right-2.5 flex items-center justify-center rounded-full bg-ink/80 p-1.5 text-white shadow-md backdrop-blur-sm"
+              >
+                <IconArrowsDiagonal size={14} />
+              </div>
+              {piece.pageCount > 1 && (
+                <div className="absolute bottom-2.5 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-ink/80 px-2 py-1 shadow-md backdrop-blur-sm">
+                  <button
+                    type="button"
+                    onClick={() => setPreviewPage((p) => Math.max(1, p - 1))}
+                    disabled={previewPage === 1}
+                    aria-label="Previous page"
+                    className="flex size-6 items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline-accent-on-dark disabled:pointer-events-none disabled:opacity-35"
+                  >
+                    <IconChevronLeft size={14} />
+                  </button>
+                  <span className="text-xs tabular-nums text-white/90">
+                    {previewPage} / {piece.pageCount}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setPreviewPage((p) => Math.min(piece.pageCount, p + 1))}
+                    disabled={previewPage === piece.pageCount}
+                    aria-label="Next page"
+                    className="flex size-6 items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline-accent-on-dark disabled:pointer-events-none disabled:opacity-35"
+                  >
+                    <IconChevronRightFilled size={14} />
+                  </button>
+                </div>
+              )}
             </div>
+            {lightboxOpen && (
+              <PageLightbox
+                key={previewPage}
+                imageUrl={getPieceThumbnailUrl(piece.id, previewPage)}
+                alt={`Page ${previewPage} of ${piece.title}`}
+                page={previewPage}
+                pageCount={piece.pageCount}
+                onClose={() => setLightboxOpen(false)}
+                onPrev={() => setPreviewPage((p) => Math.max(1, p - 1))}
+                onNext={() => setPreviewPage((p) => Math.min(piece.pageCount, p + 1))}
+              />
+            )}
             <div className="flex w-full min-w-0 flex-1 flex-col gap-4">
               <div className="flex flex-col gap-1">
                 <label htmlFor="title" className="text-sm text-ink-soft">
@@ -347,10 +434,60 @@ export function UploadPage() {
                   control={control}
                   defaultValue={null}
                   render={({ field }) => (
-                    <SourceBookField value={field.value} onChange={field.onChange} initialTitle={null} />
+                    <SourceBookField
+                      value={field.value}
+                      onChange={(value) => {
+                        field.onChange(value)
+                        // Clearing the matched book hides the page fields
+                        // below (see the conditional render right after
+                        // this), but hiding them doesn't clear their form
+                        // values on its own — without this, a stale 5/7
+                        // typed in before clearing the book would still
+                        // get submitted alongside sourceBookId: null,
+                        // orphaned page numbers with no book to describe.
+                        if (value == null) {
+                          setValue('sourcePageStart', '')
+                          setValue('sourcePageEnd', '')
+                        }
+                      }}
+                      initialTitle={null}
+                    />
                   )}
                 />
               </div>
+              {/* Start/end page, shown only once a book is actually
+                  matched — offering these with no book selected would beg
+                  the question "page of what?" Fully optional (no
+                  validation rules), same treatment as sourceBookId itself
+                  and as EditPieceModal's own copy of these two fields,
+                  which this mirrors exactly (label text, input type,
+                  flex-1 two-up row) since it's the same data. */}
+              {watchedSourceBookId != null && (
+                <div className="flex gap-3">
+                  <div className="flex flex-1 flex-col gap-1">
+                    <label htmlFor="sourcePageStart" className="text-sm text-ink-soft">
+                      Start page
+                    </label>
+                    <input
+                      id="sourcePageStart"
+                      type="number"
+                      className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+                      {...register('sourcePageStart')}
+                    />
+                  </div>
+                  <div className="flex flex-1 flex-col gap-1">
+                    <label htmlFor="sourcePageEnd" className="text-sm text-ink-soft">
+                      End page
+                    </label>
+                    <input
+                      id="sourcePageEnd"
+                      type="number"
+                      className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+                      {...register('sourcePageEnd')}
+                    />
+                  </div>
+                </div>
+              )}
               {saveMutation.isError && (
                 <p className="flex items-center gap-2 text-sm text-red-700">
                   <IconAlertTriangle size={16} />
