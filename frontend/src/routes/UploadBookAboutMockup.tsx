@@ -140,10 +140,12 @@ function PageLightbox({
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onClose()
+      if (event.key === 'ArrowLeft') onPrev()
+      if (event.key === 'ArrowRight') onNext()
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
-  }, [onClose])
+  }, [onClose, onPrev, onNext])
 
   return (
     <div

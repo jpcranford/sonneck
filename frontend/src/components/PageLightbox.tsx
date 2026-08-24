@@ -44,10 +44,16 @@ export function PageLightbox({
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onClose()
+      // No pageCount > 1 guard needed — onPrev/onNext are the same
+      // Math.max(1, …)/Math.min(pageCount, …)-clamped callbacks the
+      // capsule's own buttons call, so this is a harmless no-op on a
+      // single-page piece rather than something that needs its own check.
+      if (event.key === 'ArrowLeft') onPrev()
+      if (event.key === 'ArrowRight') onNext()
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
-  }, [onClose])
+  }, [onClose, onPrev, onNext])
 
   return (
     <div
