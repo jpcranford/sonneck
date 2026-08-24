@@ -1,4 +1,4 @@
-import { useEffect, useState, type FocusEvent } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type FocusEvent } from 'react'
 import { useForm } from 'react-hook-form'
 import { IconAlertTriangle, IconArrowLeft, IconArrowRight, IconX } from '@tabler/icons-react'
 import { getBookPageThumbnailUrl } from '../api/books'
@@ -47,6 +47,147 @@ function useIsDesktop() {
     return () => mql.removeEventListener('change', onChange)
   }, [])
   return isDesktop
+}
+
+// Desktop-only hover popover trigger + popup, pulled into its own
+// component (not inlined in the row map below) specifically so each row
+// can own independent position/hover state via hooks — a plain useState
+// inside the .map() callback would be one shared value fighting over
+// every row instead of one per row.
+//
+// position: fixed with JS-computed viewport coordinates, not position:
+// absolute anchored to the trigger's own relative parent (the first,
+// simpler version of this fix, tried and reverted after two real bugs
+// surfaced building it out from the locked mockup):
+//
+// 1. An absolutely-positioned popup — even one only mounted while
+//    hovering, even one whose clamp math is provably correct — still
+//    contributes its transformed bounds to its nearest *scrolling*
+//    ancestor's scrollable-overflow region for as long as it's mounted.
+//    Confirmed directly: this wizard's row list sits inside AppShell's
+//    own scroll container, and mounting/positioning the popup measurably
+//    changed that container's scrollHeight (677px → 712px in one real
+//    trace). If the container's scrollTop needs to be re-clamped to a
+//    new, smaller max as a result, the resulting scroll adjustment can
+//    silently cancel out the popup's own on-screen position correction —
+//    or, worse, changing scroll position under a *stationary* mouse
+//    changes what element is actually under the cursor, which can
+//    trigger a mouseleave → unmount → scrollHeight-shrinks-back →
+//    mouseenter-again oscillation (confirmed directly too: the popup
+//    mounting and unmounting in a tight loop, multiple times a second,
+//    for a row positioned exactly where this could happen).
+// 2. position: fixed removes the popup from any ancestor's scrollable
+//    content entirely, regardless of size or position — the same reason
+//    PageLightbox.tsx and Modal.tsx's own backdrops (also fixed) never
+//    hit this class of bug. No portal needed to get that guarantee here:
+//    a fixed-position descendant only gets trapped by an *ancestor*
+//    establishing its own containing block (transform/filter/perspective
+//    — the exact bug BookUploadAboutStep.tsx's lightbox hit from a
+//    sticky ancestor, fixed earlier), and nothing between this component
+//    and the document root does that.
+//
+// Position is computed in two passes, both before the browser's first
+// paint of the popup (useLayoutEffect, not useEffect): the popup mounts
+// top-aligned with the trigger first (a safe placement that needs no
+// foreknowledge of the popup's own height, since a portrait-ish page
+// image's rendered height depends on its real aspect ratio), then this
+// effect measures its actual rendered height and recenters it on the
+// trigger — clamped to the viewport, nudging up/down only as much as
+// needed to clear whichever edge it would've clipped, bottom taking
+// priority over top in the (rare) case a popup taller than the viewport
+// would violate both, same precedence InfoTooltip.tsx's own left/right
+// clamp uses for right-over-left.
+function HoverPagePreview({
+  piece,
+  bookId,
+  onPreview,
+}: {
+  piece: Piece
+  bookId: number
+  onPreview: () => void
+}) {
+  const [hovering, setHovering] = useState(false)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const popupRef = useRef<HTMLDivElement>(null)
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
+
+  useLayoutEffect(() => {
+    if (!hovering) return
+    const trigger = triggerRef.current
+    if (!trigger) return
+    const triggerRect = trigger.getBoundingClientRect()
+    const left = triggerRect.right + 8
+    // First pass: top-aligned with the trigger — doesn't require knowing
+    // the popup's own height, so it's safe to render before the popup
+    // (and its image) has ever been measured.
+    if (!pos) {
+      setPos({ top: triggerRect.top, left })
+      return
+    }
+    // Second pass: the popup is now in the DOM at that first-guess
+    // position — measure its real height and recenter/clamp against it.
+    const popup = popupRef.current
+    if (!popup) return
+    const margin = 8
+    const popupHeight = popup.getBoundingClientRect().height
+    let top = triggerRect.top + triggerRect.height / 2 - popupHeight / 2
+    const viewportBottom = window.innerHeight - margin
+    if (top + popupHeight > viewportBottom) {
+      top = viewportBottom - popupHeight
+    }
+    if (top < margin) {
+      top = margin
+    }
+    if (top !== pos.top) setPos({ top, left })
+  }, [hovering, pos])
+
+  function handleLeave() {
+    setHovering(false)
+    setPos(null)
+  }
+
+  return (
+    <div onMouseEnter={() => setHovering(true)} onMouseLeave={handleLeave}>
+      {/* Masked to the same aspect-[180/132] top-of-page crop the Piece
+          Library grid cards use (PieceGridCard.tsx) — same treatment as
+          the mobile thumb elsewhere on this screen, just a different
+          fixed width (88px column here vs. mobile's own 115px). The
+          per-piece color border stays: it's this wizard's own continuity
+          cue tying a piece back to its Split-step color, not decorative
+          chrome to drop for the sake of matching. */}
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={onPreview}
+        title="Tap to preview page"
+        className="relative block aspect-[180/132] w-full overflow-hidden rounded-lg"
+        style={{ border: `1.5px solid ${piece.color}` }}
+      >
+        <img
+          src={getBookPageThumbnailUrl(bookId, piece.start)}
+          alt=""
+          loading="lazy"
+          className="h-full w-full object-cover object-top"
+        />
+      </button>
+      {/* No fade-in transition (the pre-portal version's opacity-0 ->
+          group-hover:opacity-100 is gone along with group-hover itself,
+          since visibility is now driven by the `hovering` state, not
+          CSS): mounting straight into an animated opacity change here
+          would mean a *third* render pass on top of the two the position
+          fix already needs, for a purely cosmetic touch — not worth the
+          extra fragility this component has already shown once. */}
+      {hovering && pos && (
+        <div
+          ref={popupRef}
+          style={{ border: `2px solid ${piece.color}`, top: pos.top, left: pos.left }}
+          className="pointer-events-none fixed z-20 w-[420px] overflow-hidden rounded-md shadow-xl"
+        >
+          <img src={getBookPageThumbnailUrl(bookId, piece.start)} alt="" className="block h-auto w-full" />
+        </div>
+      )}
+    </div>
+  )
 }
 
 interface BookUploadTitlesStepProps {
@@ -203,49 +344,20 @@ export function BookUploadTitlesStep({
                     </span>
                     {/* Desktop-only hover popover, on top of the existing
                         tap-to-open overlay rather than replacing it — a
-                        mouse is
-                        guaranteed on desktop, so a hover preview doesn't
-                        run into the "no hover-dependent interactions"
-                        device-aware rule (CLAUDE.md): that rule exists for
-                        touch parity, and touch users already have the
-                        tap-to-open overlay below as their equivalent path.
-                        CSS-only via group/group-hover — no state needed
-                        for a purely transient, no-persistence preview. */}
-                    <div className="group relative">
-                      {/* Masked to the same aspect-[180/132] top-of-page
-                          crop the Piece Library grid cards use
-                          (PieceGridCard.tsx) — same treatment as the
-                          mobile thumb below, just a different fixed width
-                          (88px column here vs. mobile's own 115px). The
-                          per-piece color border stays: it's this wizard's
-                          own continuity cue tying a piece back to its
-                          Split-step color, not decorative chrome to drop
-                          for the sake of matching. */}
-                      <button
-                        type="button"
-                        onClick={() => setPreviewIndex(index)}
-                        title="Tap to preview page"
-                        className="relative block aspect-[180/132] w-full overflow-hidden rounded-lg"
-                        style={{ border: `1.5px solid ${piece.color}` }}
-                      >
-                        <img
-                          src={getBookPageThumbnailUrl(bookId, piece.start)}
-                          alt=""
-                          loading="lazy"
-                          className="h-full w-full object-cover object-top"
-                        />
-                      </button>
-                      <div
-                        className="pointer-events-none invisible absolute top-1/2 left-full z-20 ml-2 w-[420px] -translate-y-1/2 overflow-hidden rounded-md opacity-0 shadow-xl transition-opacity duration-150 group-hover:visible group-hover:opacity-100"
-                        style={{ border: `2px solid ${piece.color}` }}
-                      >
-                        <img
-                          src={getBookPageThumbnailUrl(bookId, piece.start)}
-                          alt=""
-                          className="block h-auto w-full"
-                        />
-                      </div>
-                    </div>
+                        mouse is guaranteed on desktop, so a hover preview
+                        doesn't run into the "no hover-dependent
+                        interactions" device-aware rule (CLAUDE.md): that
+                        rule exists for touch parity, and touch users
+                        already have the tap-to-open overlay below as
+                        their equivalent path. See HoverPagePreview's own
+                        comment for why this needs real hover-position
+                        measurement (not pure CSS group-hover) and why
+                        it's its own component rather than inlined here. */}
+                    <HoverPagePreview
+                      piece={piece}
+                      bookId={bookId}
+                      onPreview={() => setPreviewIndex(index)}
+                    />
                     <div>
                       <input
                         className={`w-full rounded-md border bg-paper-raised px-2.5 py-1.5 text-sm text-ink ${
