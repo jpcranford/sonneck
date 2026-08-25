@@ -5,8 +5,7 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ./data:/data # default behavior is to put everything in a sibling folder to this file. If the folder doesn't exist, Sonneck will create it. If you have an existing Sonneck library somewhere else, edit the left side of the colon.
-      # NOTE: The container runs as uid/gid 1000 — if you hit a permission error on startup, it's likely an ownership mismatch — fix with `sudo chown -R 1000:1000 ./data`.
+      - ./data:/data # default behavior is to put everything in a sibling folder to this file. (Be sure to create the folder first though.) If you have an existing Sonneck library somewhere else, use the left side of the colon to point Sonneck at it.
     environment: # All optional, uncomment what you want to change. See the README's "Advanced options" for details.
       # BACKUP_CRON: "0 3 * * *"      # standard cron expression, default = daily at 3am
       # BACKUP_RETENTION_DAYS: "30"

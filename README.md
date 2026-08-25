@@ -34,11 +34,13 @@ Download the file, tailor it how you want, then run:
 
 ```sh
 cd ./wherever          # containing folder of docker-compose.yml
-mkdir data             # optional but helpful
+mkdir data             # create this yourself — see note below
 docker compose up -d
 ```
 
 The compose file takes care of the fiddly bits like remembering where you put your data folder and mounting it to the right place in the container.
+
+Create the `data` folder yourself before the first run. If you skip it, Docker will create it for you when the container starts — but as `root`, which the container (a fixed non-root user) then can't write to. If you hit a permission error on startup, it's almost always this; `sudo chown -R 1000:1000 ./data` fixes it.
 
 To quit the program, just use `docker compose down`. Easy peasy.
 
