@@ -22,13 +22,13 @@ Sonneck is designed to live “in an office with a printer”, so to speak. Ther
 - **Real cataloging, not a folder of PDFs.** Composer, arranger, key(s), instruments, sheet type, opus number, ISBN, and your own tags, plus a one-click citation generator that formats it all for you, ready to be copied into a program template or group chat.
 - **Pieces inherit properties from their books.** Set a book's composer, publisher, and year once. Every piece inside it inherits the information automatically, you only ever need to override the pieces that are actually different.
 - **Search that keeps up with you.** Full-text search across your whole library as you type. Grid views are optimized for number of items shown at once, while list views show you the most detail about each piece without having to open it up.
-- **Track your practice bag.** Ever forget you were learning a piece only to rediscover it weeks later at the bottom of your bag? Or have you ever lost the whole backpack and can't remember what you had in it? No more! Use the practice status and filter views to track what you want to play, what you have in progress, and even the stuff you never want to touch again! Take *that*, [Sorabji](https://www.youtube.com/watch?v=_OrAewTxBrc)!
+- **Track your wishlist.** Ever forget you were learning a piece only to rediscover it weeks later at the bottom of your bag? Or buy pieces to learn, only for them to get lost in the stacks? No more! Use the practice status and filter views to track what you want to play, what you have in progress, and even the stuff you never want to touch again! Take *that*, [Sorabji](https://www.youtube.com/watch?v=_OrAewTxBrc)!
 - **A truly *responsive* workflow.** None of that "resize-and-rerender-everything" lag. Resize and it's good to go, instantly. Useful keyboard shortcuts throughout, plus right-click (desktop)/long-press (mobile) context menus for quick edits within library views.
 - **It's completely yours.** Self-hosted, one SQLite file, daily automatic backups. No algorithm, no callbacks to some centralized analytics server. It’s a tool for you: use it, break it, repurpose it, join us (or don’t) in making it better. Or even leave– a full CSV export is available at any time. If it turns out Sonneck isn't the right place for your music, the information you enter (and the time you take doing so) is still yours.
 
 ## Installation
 ### Docker Compose (recommended)
-There's a [`docker-compose.yml`](docker-compose.yml) file in this repo, complete with helpful comments explaining things.
+There's a [`docker-compose.yml`](docker-compose.yml) file in this repo and linked to the releases, complete with helpful comments explaining some common options.
 
 Download the file, tailor it how you want, then run:
 
@@ -60,7 +60,7 @@ npm run dev
 ```
 
 > [!WARNING]
-> Sonneck has **no login and no access control of its own.** It's currently built for a single user, single session at a time. Anyone who can reach the server over the network can use the full API — there's no separation between "trusted operator" and "anonymous visitor." **Do not expose this directly to the open internet.** Deploy it behind a private network / VPN / Tailscale, or put an authenticating reverse proxy in front of it (e.g. Basic Auth, Authelia).
+> Sonneck has **no login and no access control of its own.** It's currently built for a single user, single session at a time. Anyone who can reach the server over the network can use the full API — there's no separation between "trusted operator" and "anonymous visitor." **Do not expose this directly to the open internet.** Deploy it behind a private network / VPN / Tailscale, or put an authenticating reverse proxy in front of it (e.g. Basic Auth, Authelia). Seriously, if you open it to the internet and a bunch of ne'er-do-wells put sketchy stuff on your server don't come crying to me.
 
 ## Advanced options
 ### Configuration
@@ -106,15 +106,15 @@ DATA_DIR=./data ./sonneck <command>
 | `export-csv` | Writes a full export of your library data to `$DATA_DIR/export/<timestamp>/` — one CSV file per database table (books, pieces, tags, keys, and so on). Read-only; doesn't touch the database or any existing files. | Any time you want your data out of Sonneck as plain CSV — a one-off backup in a format other tools can read, or just to take it with you. |
 
 ## Planned features
-- **Sheet Viewer!** The practice view every app like this seems to have, with page turner support, server-saved annotations, and a built-in metronome.
+- **Sheet Viewer!** The practice view every app like this seems to have, with Bluetooth page turner support, server-saved annotations, and a built-in metronome.
 - **Setlists!** Plan out sets with the piece duration and tempo values.
 - **Auth support.** Lock your collection behind a simple password, or utilize a separate OIDC system for multi-user support. User notes, annotations, and tags stay saved per-user.
-- **Public domain badge.** Set your country as an env var and the likely PD/copyright status will be calculated per-piece, with the ability to manually set it yourself. Scaffolding for this is already in place.
+- **Public domain badge.** Set your country as an env var and the *likely* copyright status will be calculated per-piece, with the ability to manually override it. Scaffolding for this is already in place.
 - **Dark mode.** Dear God, my eyes.
 - **IMSLP metadata import.** Why spend the effort to manually input the info when you can just autofill from the website?
 - **Configurable citation format.** Just in case you don't like the defaults.
 - Support for a folder of image files to be uploaded/assembled into pieces
-- A way to rename user tags, sheet types, etc. from the interface — honestly, this one's probably waiting on the auth support, when I slice off a *bunch* of user settings I have bookmarked into their own menu (dark/light mode preference, citation style choice, etc.)
+- A way to rename user tags, sheet types, etc. from the interface — honestly, this one's probably waiting on the auth support, when I slice off a *bunch* of user settings into their own menu (dark/light mode preference, citation style choice, etc.)
 - Offline mode? for remote gigs? Still thinking about how to accomplish this one, contributions would be welcome.
 - Server-side printer support? Unsure about this one, but essentially the server would have a dedicated printer with the same settings saved, boiling a whole process down into a simple "Send to Printer" button. Dunno if this is achievable or just a fever dream.
 
@@ -124,13 +124,13 @@ Sonneck is named after **Oscar Sonneck** (1873–1928), an American musicologist
 And most importantly, his last name sounded great for an app. :wink:
 
 ## AI disclaimer
-This has been a series of learning exercises for me while I build a desperately-needed toolkit for my own use. While I had a quite a lot of ideas and built out a meticulously detailed framework, specifications, and guardrails, and contributed code and designed assets as I went, I did use AI, most notably for much of the raw building-from-scratch gruntwork and bug-finding (hours of work became mere *seconds!*). 
+This has been a series of learning exercises for me while I build a desperately-needed toolkit for my own use. While I had a quite a lot of ideas and built out a meticulously detailed framework, specifications, and guardrails, and contributed code and designed assets as I went, I did use AI, especially for much of the raw building-from-scratch gruntwork and bug-finding (hours of work became mere *seconds!*).
 
-I still don’t trust it– I’ll gladly welcome the contributions of any human that wants to make this project more secure, reliable, robust, or just plain cleaner.
+That being said, I still don’t trust it– I’ll gladly welcome the contributions of any human that wants to make this project more secure, reliable, robust, or just plain cleaner.
 
 ## Acknowledgements
 - My beautiful girlfriend, for helping design the logo
 - The frontend serif typeface is [Libre Baskerville](https://github.com/impallari/Libre-Baskerville) by Pablo Impallari, [Google Fonts](https://fonts.google.com/), licensed under the [SIL Open Font License 1.1](https://fonts.google.com/specimen/Libre+Baskerville/license). Self-hosted rather than loaded from Google Fonts at runtime.
-- The frontend sans-serif typeface is [Rethink Sans](https://github.com/hans-thiessen/Rethink-Sans) by Hans Thiessen, built on DM Sans (Colophon Foundry) and Poppins (Jonny Pinhorn), also for Google Fonts and licensed under the SIL Open Font License 1.1. Self-hosted rather than loaded from Google Fonts at runtime.
+- The frontend sans-serif typeface is [Rethink Sans](https://github.com/hans-thiessen/Rethink-Sans) by Hans Thiessen, also for Google Fonts and licensed under the SIL Open Font License 1.1. Self-hosted rather than loaded from Google Fonts at runtime.
 - The cursive S logo is taken from the [Gwendolyn](https://github.com/googlefonts/gwendolyn) font's capital S (what luck, it looking like a treble clef!) and the rest of the wordmark was built with [Mea Culpa](https://github.com/googlefonts/mea-culpa). Both fonts were designed by Robert Leuschke for Google Fonts and licensed under the SIL Open Font License 1.1. Logo and wordmark rendered as SVG and self-hosted.
 - Despite some passing resemblance in name, we are in no way affiliated with a certain blue runs-fast creature. Whatever species it claims to be.
