@@ -376,7 +376,7 @@ export function UploadBookAboutMockup() {
             </div>
           </div>
           <div className="text-[0.78rem] leading-relaxed text-ink-soft">
-            <strong className="block text-ink">{MOCK_FILENAME}</strong>
+            <strong className="block break-words text-ink">{MOCK_FILENAME}</strong>
             {MOCK_PAGE_COUNT} pages • 18.4 MB
           </div>
 

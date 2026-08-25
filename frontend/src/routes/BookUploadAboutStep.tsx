@@ -290,7 +290,7 @@ export function BookUploadAboutStep({
 
           <div className="text-[0.78rem] leading-relaxed text-ink-soft">
             {book.originalFilename && (
-              <strong className="block text-ink">{book.originalFilename}</strong>
+              <strong className="block break-words text-ink">{book.originalFilename}</strong>
             )}
             {pageCount} pages{fileSizeBytes != null ? ` • ${formatFileSize(fileSizeBytes)}` : ''}
           </div>
