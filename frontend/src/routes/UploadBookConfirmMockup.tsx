@@ -226,7 +226,13 @@ export function UploadBookConfirmMockup() {
                 className="overflow-hidden rounded-lg border border-border bg-paper-raised"
                 style={{ borderColor: piece.color }}
               >
-                <PieceThumb title={piece.title} />
+                {/* border-b hairline between thumbnail and info text — same
+                    treatment as the Piece/Book Library grid cards
+                    (PieceGridCard.tsx/BookGridCard.tsx); this card just
+                    never had it. */}
+                <div className="border-b border-border">
+                  <PieceThumb title={piece.title} />
+                </div>
                 <div className="flex flex-col gap-px px-2 py-1.5">
                   <p className="truncate font-display text-[0.8rem] font-medium text-ink">{piece.title}</p>
                   <p className="truncate text-[0.7rem] text-ink-soft">{piece.composer}</p>

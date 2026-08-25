@@ -205,12 +205,18 @@ export function BookUploadConfirmStep({
             className="overflow-hidden rounded-lg border border-border bg-paper-raised"
             style={{ borderColor: piece.color }}
           >
-            <img
-              src={getBookPageThumbnailUrl(bookId, piece.start)}
-              alt=""
-              loading="lazy"
-              className="block h-auto w-full"
-            />
+            {/* border-b hairline between thumbnail and info text — same
+                treatment as the Piece/Book Library grid cards
+                (PieceGridCard.tsx/BookGridCard.tsx); this card just never
+                had it. */}
+            <div className="border-b border-border">
+              <img
+                src={getBookPageThumbnailUrl(bookId, piece.start)}
+                alt=""
+                loading="lazy"
+                className="block h-auto w-full"
+              />
+            </div>
             <div className="flex flex-col gap-px px-2 py-1.5">
               <p className="truncate font-display text-[0.8rem] font-medium text-ink">
                 {piece.title}
