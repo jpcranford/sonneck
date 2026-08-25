@@ -14,11 +14,14 @@ import type { Piece, PieceWriteRequest } from '../api/types'
 export function pieceToWriteRequest(piece: Piece): PieceWriteRequest {
   return {
     title: piece.title,
-    composer: piece.composer.value,
     // Book-inheritable, same inherited-blank convention as every other
     // field below — not a raw echo of the resolved {value, inherited}
     // object, which the backend can't decode as the plain string its
-    // write request expects.
+    // write request expects. (Real bug, found live: this line used to
+    // just be `piece.composer.value` with no `.inherited` check, so
+    // pressing Favorite on a piece with an inherited composer silently
+    // froze it into a permanent per-piece override.)
+    composer: piece.composer.inherited ? '' : piece.composer.value,
     arranger: piece.arranger.inherited ? '' : piece.arranger.value,
     favorite: piece.favorite,
     // sourceBookId follows the same full-replace rule as every other
