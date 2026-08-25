@@ -29,6 +29,21 @@ export interface PageAssignments {
   // the previous one (design doc §5's "page 24 has a short piece's ending
   // and the next piece's beginning" case).
   shared: Set<number>
+  // "Begin and split" (added post-launch) — a page that begins a new,
+  // immediately-closed one-page piece AND, on that same page, begins a
+  // second piece that stays open, continuing forward exactly like any
+  // other piece start would. One page legitimately belonging to two
+  // Piece entries this way isn't a new shape — computeLayout already
+  // produces it for a `shared` page whose preceding page is a skip (the
+  // "bridge" case below); `single` always forces that same two-pieces-
+  // one-start shape, not just when the page before happens to be a skip.
+  // Deliberately independent of `starts` (unlike `shared`, which is a
+  // subset of it) so it can be set on page 1 too, which never appears in
+  // `starts` itself. Optional — every function in this module treats a
+  // missing value as an empty set, so existing PageAssignments literals
+  // that predate this field (tests, the real wizard/step, which don't
+  // expose this state in their UI yet) don't need updating.
+  single?: Set<number>
 }
 
 export interface Piece {
@@ -73,13 +88,18 @@ export function normalizeSplits(state: PageAssignments, pageCount: number): Page
 // always produces the same colors, regardless of the order the taps
 // happened in — the more important invariant of the two.
 export function computeLayout(state: PageAssignments, pageCount: number): Piece[] {
-  let starts = [...state.starts].sort((a, b) => a - b)
+  const single = state.single ?? new Set<number>()
+  // Union with `single`, not just `state.starts` — a single-page piece is
+  // independent of `starts` (see PageAssignments' own comment on why,
+  // page 1 in particular) but still needs its own entry in this array for
+  // the loop below to give it a piece.
+  let starts = [...new Set([...state.starts, ...single])].sort((a, b) => a - b)
   // Page 1 implicitly starts the first piece by default (tapping it isn't
   // required) — but only while it isn't explicitly skipped. A skipped
   // page 1 must not silently remain "part of a piece" just because of
   // that default.
   if (!state.skips.has(1)) {
-    starts = [1, ...starts]
+    if (!starts.includes(1)) starts = [1, ...starts]
   } else if (starts.length === 0) {
     let firstPage = 2
     while (firstPage <= pageCount && state.skips.has(firstPage)) firstPage++
@@ -102,6 +122,23 @@ export function computeLayout(state: PageAssignments, pageCount: number): Piece[
     // is what gives it a color one step earlier than the piece it
     // precedes, same as any other two adjacent pieces.
     if (state.shared.has(start) && state.skips.has(start - 1)) {
+      pieces.push({
+        start,
+        end: start,
+        isLast: false,
+        color: PALETTE[pieces.length % PALETTE.length],
+      })
+    }
+
+    // "Begin and split": always produces the same synthetic-bridge shape
+    // as the shared-after-skip case just above, unconditionally rather
+    // than only when the preceding page happens to be a skip — this page
+    // closes its own one-page piece immediately (pushed here, its own
+    // array slot, its own color) *and* — falling through to the normal
+    // end computation right below with the exact same `start` — also
+    // begins a second piece from that same page, staying open and
+    // continuing forward exactly like any other piece start would.
+    if (single.has(start)) {
       pieces.push({
         start,
         end: start,
@@ -134,16 +171,20 @@ export function pieceIndexForPage(pieces: Piece[], page: number): number {
   return idx
 }
 
-export type CycleState = 'normal' | 'start' | 'shared' | 'skip'
+export type CycleState = 'normal' | 'start' | 'shared' | 'single' | 'skip'
 
-// Sets a page directly to one of its four reachable states, bypassing the
-// tap cycle — used by both cyclePage (below) and the long-press/right-click
+// Sets a page directly to one of its reachable states, bypassing the tap
+// cycle — used by both cyclePage (below) and the long-press/right-click
 // menu, which lets a user jump straight to a state instead of stepping
-// through it. Page 1 only ever has two real states: there's no piece
-// before it to finish, so 'shared' isn't offered for it, and 'start' is
-// just its default (implicit, per computeLayout) rather than something
-// that needs to live in the `starts` set — adding it there too would give
-// computeLayout's own implicit-page-1 prepend a duplicate to collide with.
+// through it. Page 1 has fewer real states than other pages: there's no
+// piece before it to finish, so 'shared' isn't offered for it, and
+// 'start' is just its default (implicit, per computeLayout) rather than
+// something that needs to live in the `starts` set — adding it there too
+// would give computeLayout's own implicit-page-1 prepend a duplicate to
+// collide with. 'single' ("begin and split," added post-launch — a
+// standalone single-page piece) IS meaningful on page 1 (e.g. a title
+// page counted as its own piece) and is tracked independently of
+// `starts` specifically so it can apply there too.
 export function setPageState(
   page: number,
   target: CycleState,
@@ -153,16 +194,23 @@ export function setPageState(
   const starts = new Set(state.starts)
   const skips = new Set(state.skips)
   const shared = new Set(state.shared)
+  const single = new Set(state.single ?? [])
 
   if (page === 1) {
-    if (target === 'skip') skips.add(1)
-    else skips.delete(1)
-    return normalizeSplits({ starts, skips, shared }, pageCount)
+    single.delete(1)
+    if (target === 'skip') {
+      skips.add(1)
+    } else {
+      skips.delete(1)
+      if (target === 'single') single.add(1)
+    }
+    return normalizeSplits({ starts, skips, shared, single }, pageCount)
   }
 
   starts.delete(page)
   shared.delete(page)
   skips.delete(page)
+  single.delete(page)
   if (target === 'start') {
     starts.add(page)
   } else if (target === 'shared') {
@@ -170,12 +218,15 @@ export function setPageState(
     shared.add(page)
   } else if (target === 'skip') {
     skips.add(page)
+  } else if (target === 'single') {
+    single.add(page)
   }
-  return normalizeSplits({ starts, skips, shared }, pageCount)
+  return normalizeSplits({ starts, skips, shared, single }, pageCount)
 }
 
 export function currentCycleState(page: number, state: PageAssignments): CycleState {
   if (state.skips.has(page)) return 'skip'
+  if (state.single?.has(page)) return 'single'
   if (state.starts.has(page)) return state.shared.has(page) ? 'shared' : 'start'
   return 'normal'
 }
@@ -185,6 +236,17 @@ export function currentCycleState(page: number, state: PageAssignments): CycleSt
 // Whatever a page's data looks like on load (nothing marked at all) is
 // deliberately *not* a position in this ring; see cyclePage's own comment
 // for why that distinction needs separate tracking.
+//
+// 'single' ("begin and split") is deliberately left out of this ring —
+// it's reachable only via the long-press/right-click menu, same as every
+// other state is also reachable there, but without also lengthening the
+// plain tap cycle for the common case. Tapping a page that's currently
+// 'single' falls out of the ring at whichever end the tap direction
+// implies (CYCLE_ORDER.indexOf returns -1, so the wraparound math lands
+// on 'start' going forward or 'normal' going backward) — an accepted,
+// intentional fallback, not a bug: 'single' is meant to be a deliberate
+// long-press choice, not something a quick tap should be able to land on
+// or need to tap past.
 export const CYCLE_ORDER: CycleState[] = ['start', 'shared', 'normal', 'skip']
 
 // Tap cycle for a single page: starts a piece -> also finishes the
@@ -239,17 +301,19 @@ export function applyRangeAction(
   const starts = new Set(state.starts)
   const skips = new Set(state.skips)
   const shared = new Set(state.shared)
+  const single = new Set(state.single ?? [])
   for (let p = lo; p <= hi; p++) {
     starts.delete(p)
     shared.delete(p)
     skips.delete(p)
+    single.delete(p)
   }
   if (action === 'group') {
     if (lo !== 1) starts.add(lo)
   } else {
     for (let p = lo; p <= hi; p++) skips.add(p)
   }
-  return normalizeSplits({ starts, skips, shared }, pageCount)
+  return normalizeSplits({ starts, skips, shared, single }, pageCount)
 }
 
 // Compact page-list formatting for the Skipped pill — "4, 5, 6" reads as

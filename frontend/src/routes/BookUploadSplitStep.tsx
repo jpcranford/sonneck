@@ -5,6 +5,7 @@ import {
   IconScissors,
   IconEyeOff,
   IconArrowsLeftRight,
+  IconCrop,
   IconDots,
   IconX,
 } from '@tabler/icons-react'
@@ -48,10 +49,24 @@ interface PageMenuItem {
   target: CycleState
 }
 
+// "Begin and split" (target: 'single', added post-launch) is menu-only,
+// not part of the plain tap cycle (see CYCLE_ORDER's own comment in
+// pieceSplitLogic.ts) — distinct from "Split page (finish previous,
+// start new)" just above it: that one shares a page between two pieces
+// where the *first* of the two was already running from earlier pages.
+// This one closes a brand-new, self-contained one-page piece right on
+// this exact page — cleanly split from whatever ran before it — and, on
+// that same page, begins a second piece that stays open, continuing
+// forward exactly like any other piece start would. One page belonging
+// to two Piece entries this way isn't a new shape (see computeLayout's
+// own synthetic-bridge case for `shared` after a skip) — this just
+// triggers that shape directly, on request, instead of only as a side
+// effect of a skip.
 function pageMenuItems(page: number): PageMenuItem[] {
   if (page === 1) {
     return [
       { label: 'Start piece here', icon: <IconScissors size={14} />, target: 'start' },
+      { label: 'Begin and split (one-page piece)', icon: <IconCrop size={14} />, target: 'single' },
       { label: 'Skip this page', icon: <IconEyeOff size={14} />, target: 'skip' },
     ]
   }
@@ -62,6 +77,7 @@ function pageMenuItems(page: number): PageMenuItem[] {
       icon: <IconArrowsLeftRight size={14} />,
       target: 'shared',
     },
+    { label: 'Begin and split (one-page piece)', icon: <IconCrop size={14} />, target: 'single' },
     { label: 'Skip this page', icon: <IconEyeOff size={14} />, target: 'skip' },
     { label: 'Clear (plain page)', icon: <IconX size={14} />, target: 'normal' },
   ]
@@ -286,18 +302,21 @@ export function BookUploadSplitStep({
           const piece = pieces[pieceIdx]
           const isStart = page === piece?.start
           const isSharedStart = isStart && state.shared.has(page)
+          const isSingleStart = isStart && (state.single?.has(page) ?? false)
           const isPending = piece?.isLast && !isStart && !isSkip && page !== pageCount
           const isSelected = selection && page >= selection[0] && page <= selection[1]
 
-          const badgeKind: 'start' | 'shared' | 'pending' | 'skip' | null = isSharedStart
-            ? 'shared'
-            : isStart
-              ? 'start'
-              : isPending
-                ? 'pending'
-                : isSkip
-                  ? 'skip'
-                  : null
+          const badgeKind: 'single' | 'start' | 'shared' | 'pending' | 'skip' | null = isSingleStart
+            ? 'single'
+            : isSharedStart
+              ? 'shared'
+              : isStart
+                ? 'start'
+                : isPending
+                  ? 'pending'
+                  : isSkip
+                    ? 'skip'
+                    : null
 
           let borderStyle: React.CSSProperties = {}
           let sharedGradient: string | null = null
@@ -312,6 +331,18 @@ export function BookUploadSplitStep({
                 : `${prevPiece.color}61`
               : piece.color
             sharedGradient = `linear-gradient(135deg, ${prevColor} 50%, ${piece.color} 50%)`
+          } else if (badgeKind === 'single') {
+            // Same two-color diagonal as 'shared' just above, but both
+            // halves stay full strength (not tinted) — pieces[pieceIdx-1]
+            // is always the synthetic one-page piece computeLayout pushes
+            // immediately before the continuing piece for a 'single'
+            // start (the exact same "two Piece entries share one start"
+            // shape as 'shared' after a skip), so this is that same
+            // bridge-counterpart case 'shared' already special-cases to
+            // full strength — just always true here, not only sometimes.
+            const closedPiece = pieces[pieceIdx - 1]
+            const closedColor = closedPiece ? closedPiece.color : piece.color
+            sharedGradient = `linear-gradient(135deg, ${closedColor} 50%, ${piece.color} 50%)`
           } else if (badgeKind === 'start') {
             borderStyle = { borderColor: piece.color }
           } else {
@@ -376,6 +407,7 @@ export function BookUploadSplitStep({
                     {badgeKind === 'skip' && <IconEyeOff size={11} />}
                     {badgeKind === 'shared' && <IconArrowsLeftRight size={11} />}
                     {badgeKind === 'start' && <IconScissors size={11} />}
+                    {badgeKind === 'single' && <IconCrop size={11} />}
                     {badgeKind === 'pending' && <IconDots size={12} />}
                   </span>
                 )}
