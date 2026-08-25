@@ -76,7 +76,11 @@ func ValidatePiece(ctx context.Context, q repo.Queryer, p *models.Piece) (Valida
 	// traditional/folk tune), not missing data. Both are book-inheritable,
 	// so either one supplied by the piece's book satisfies this too.
 	if eff.Composer.Value == "" && eff.Arranger.Value == "" {
-		errs = append(errs, FieldError{"composer", "or arranger is required (set directly, or via the piece's book)"})
+		// Field/Message capitalized here specifically (unlike every other
+		// FieldError's lowercase field-name prefix, e.g. "title is
+		// required") — Composer and Arranger read as the app's own field
+		// labels in this sentence, not a generic identifier prefix.
+		errs = append(errs, FieldError{"Composer", "or Arranger is required (set directly, or via the piece's book)"})
 	}
 	// Only the piece's own typed value can be too long — an inherited
 	// value was already validated when the Book itself was saved.
@@ -115,7 +119,10 @@ func ValidateBook(b *models.Book) ValidationErrors {
 		errs = append(errs, FieldError{"bookTitle", "is required"})
 	}
 	if isBlankOptional(b.Composer) && isBlankOptional(b.Arranger) && isBlankOptional(b.Publisher) {
-		errs = append(errs, FieldError{"composer", "or arranger or publisher is required"})
+		// Capitalized for the same reason as ValidatePiece's identical
+		// composer-or-arranger message above — these read as field labels
+		// in this sentence, not a generic lowercase field-name prefix.
+		errs = append(errs, FieldError{"Composer", "or Arranger or Publisher is required"})
 	}
 	checkLineLength(&errs, "bookTitle", &b.BookTitle)
 	checkLineLength(&errs, "composer", b.Composer)

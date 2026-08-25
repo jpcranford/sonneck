@@ -91,7 +91,7 @@ func TestValidatePiece_ComposerMissingWithNoBook(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ValidatePiece: %v", err)
 	}
-	if !hasField(errs, "composer") {
+	if !hasField(errs, "Composer") {
 		t.Errorf("errs = %v, want a composer error (no book to inherit from)", errs)
 	}
 }
@@ -207,7 +207,7 @@ func TestValidateBook_RequiresBookTitle(t *testing.T) {
 
 func TestValidateBook_ComposerOrArrangerOrPublisherRequired(t *testing.T) {
 	errs := api.ValidateBook(&models.Book{BookTitle: "Just a Title"})
-	if !hasField(errs, "composer") {
+	if !hasField(errs, "Composer") {
 		t.Errorf("errs = %v, want a composer error (none of composer/arranger/publisher is set)", errs)
 	}
 }

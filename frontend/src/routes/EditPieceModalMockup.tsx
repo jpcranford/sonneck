@@ -1087,7 +1087,7 @@ export function EditPieceModalMockup() {
             <div className="flex flex-col gap-3 min-[525px]:flex-row">
               <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <label htmlFor="f-composer" className="text-sm text-ink-soft">
-                  Composer <span className="text-ink-soft/60 italic">(Required)</span>
+                  Composer
                 </label>
                 <input
                   id="f-composer"
