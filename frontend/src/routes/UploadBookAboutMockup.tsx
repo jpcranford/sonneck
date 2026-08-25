@@ -8,6 +8,7 @@ import {
   IconChevronRightFilled,
   IconCheck,
   IconInfoCircle,
+  IconRotate,
   IconX,
   IconXFilled,
 } from '@tabler/icons-react'
@@ -222,6 +223,25 @@ export function UploadBookAboutMockup() {
 
   const [previewPage, setPreviewPage] = useState(1)
   const [lightboxOpen, setLightboxOpen] = useState(false)
+  // Printed-PDF page number offset — folded into this screen rather than
+  // a dedicated wizard step (an earlier version of this feature, tried
+  // and reverted). Bound to the same previewPage the cover cycler above
+  // already drives, so flipping through the preview and correcting
+  // whichever page you land on is the whole interaction. printedPage is
+  // never stored directly — solving for a new offset on edit (instead of
+  // storing the typed value) is what makes the field keep counting
+  // forward correctly if you flip to another page afterward, rather than
+  // freezing at whatever was last typed.
+  const [pageOffset, setPageOffset] = useState(0)
+  const printedPage = previewPage + pageOffset
+
+  function handlePrintedPageChange(raw: string) {
+    if (raw.trim() === '') return
+    const typed = Number(raw)
+    if (!Number.isFinite(typed)) return
+    setPageOffset(typed - previewPage)
+  }
+
   const {
     register,
     handleSubmit,
@@ -337,7 +357,7 @@ export function UploadBookAboutMockup() {
                 <IconChevronLeft size={14} />
               </button>
               <span className="text-xs whitespace-nowrap tabular-nums text-white/90">
-                {previewPage} / {MOCK_PAGE_COUNT}
+                PDF p. {previewPage} / {MOCK_PAGE_COUNT}
               </span>
               <button
                 type="button"
@@ -353,6 +373,40 @@ export function UploadBookAboutMockup() {
           <div className="text-[0.78rem] leading-relaxed text-ink-soft">
             <strong className="block text-ink">{MOCK_FILENAME}</strong>
             {MOCK_PAGE_COUNT} pages • 18.4 MB
+          </div>
+
+          {/* Printed-PDF page number offset — sets one offset for the
+              whole book, not a per-page correction. sourcePageStart/
+              sourcePageEnd (the fields citations actually use) get
+              physical page + this offset for every piece at import,
+              rather than the raw PDF position. */}
+          <div className="flex flex-col gap-1.5 rounded-lg border border-border bg-paper-raised p-3">
+            <label htmlFor="f-printed-page" className="text-sm text-ink-soft">
+              Printed-PDF page offset
+            </label>
+            <input
+              id="f-printed-page"
+              type="number"
+              value={printedPage}
+              onChange={(event) => handlePrintedPageChange(event.target.value)}
+              className="w-full rounded-md border border-border bg-paper px-3 py-1.5 text-ink tabular-nums"
+            />
+            <p className="text-[0.78rem] leading-relaxed text-ink-soft">
+              Flip the preview above to a page you're sure about and enter what's actually printed on the page. Safe to skip if they already match. 
+            </p>
+            <p className="text-[0.78rem] leading-relaxed text-ink-soft">
+                This book's page numbers will start at page <b>{1 + pageOffset}</b> and count up from there.
+              </p>
+            {pageOffset !== 0 && (
+              <button
+                type="button"
+                onClick={() => setPageOffset(0)}
+                className="flex w-fit cursor-pointer items-center gap-1.5 text-[0.78rem] text-ink-soft hover:text-ink"
+              >
+                <IconRotate size={12} />
+                Reset — no offset
+              </button>
+            )}
           </div>
         </div>
 

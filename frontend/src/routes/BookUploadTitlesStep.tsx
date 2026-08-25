@@ -25,9 +25,14 @@ const DESKTOP_BREAKPOINT_PX = 768
 
 // Academic p./pp. convention app-wide (singular vs. a range), same as
 // PiecePage.tsx/BookDetailsPage.tsx — this row label had drifted to a
-// bare "pp" with no period and no singular form.
-function formatPieceLabel(piece: Piece) {
-  return piece.end !== piece.start ? `pp. ${piece.start}–${piece.end}` : `p. ${piece.start}`
+// bare "pp" with no period and no singular form. Displays the
+// printed-PDF-offset-adjusted range (matching what actually gets written
+// to SourcePageStart/SourcePageEnd at import) rather than the raw
+// physical position.
+function formatPieceLabel(piece: Piece, pageOffset: number) {
+  const start = piece.start + pageOffset
+  const end = piece.end + pageOffset
+  return end !== start ? `pp. ${start}–${end}` : `p. ${start}`
 }
 
 interface FormValues {
@@ -197,6 +202,7 @@ interface BookUploadTitlesStepProps {
   bookId: number
   bookComposer: string | null
   bookArranger: string | null
+  pageOffset: number
   pieces: Piece[]
   pieceFields: { title: string; composer: string; arranger: string }[]
   onChange: (fields: { title: string; composer: string; arranger: string }[]) => void
@@ -210,6 +216,7 @@ export function BookUploadTitlesStep({
   bookId,
   bookComposer,
   bookArranger,
+  pageOffset,
   pieces,
   pieceFields,
   onChange,
@@ -343,7 +350,7 @@ export function BookUploadTitlesStep({
                     }`}
                   >
                     <span className="text-sm text-ink-soft">
-                      Piece {index + 1} • {formatPieceLabel(piece)}
+                      Piece {index + 1} • {formatPieceLabel(piece, pageOffset)}
                     </span>
                     {/* Desktop-only hover popover, on top of the existing
                         tap-to-open overlay rather than replacing it — a
@@ -442,7 +449,7 @@ export function BookUploadTitlesStep({
                   </button>
                   <div className="flex min-w-0 flex-1 flex-col gap-2.5">
                     <span className="text-sm text-ink-soft">
-                      Piece {index + 1} • {formatPieceLabel(piece)}
+                      Piece {index + 1} • {formatPieceLabel(piece, pageOffset)}
                     </span>
                     <div>
                       <label className="mb-1 block text-sm text-ink-soft">
@@ -530,7 +537,7 @@ export function BookUploadTitlesStep({
         <PageLightbox
           key={previewIndex}
           imageUrl={getBookPageThumbnailUrl(bookId, pieces[previewIndex].start)}
-          alt={`Page ${pieces[previewIndex].start} of ${pieceFields[previewIndex]?.title || `piece ${previewIndex + 1}`}`}
+          alt={`Page ${pieces[previewIndex].start + pageOffset} of ${pieceFields[previewIndex]?.title || `piece ${previewIndex + 1}`}`}
           page={previewIndex + 1}
           pageCount={pieces.length}
           onClose={() => setPreviewIndex(null)}

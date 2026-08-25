@@ -70,6 +70,14 @@ function pageMenuItems(page: number): PageMenuItem[] {
 interface BookUploadSplitStepProps {
   bookId: number
   pageCount: number
+  // Printed-PDF page offset, set on Screen 3 ("About this book") — every
+  // page number shown below is displayed offset-adjusted (physical +
+  // pageOffset), matching what actually gets written to each piece's
+  // SourcePageStart/SourcePageEnd at import; the grid's own interaction
+  // logic (data-page, drag-select, pieceIndexForPage, computeLayout)
+  // still runs against the raw physical page throughout, since that's
+  // what extraction actually needs.
+  pageOffset: number
   pageAssignments: PageAssignments
   onChange: (next: PageAssignments) => void
   touchedPagesRef: React.RefObject<Set<number>>
@@ -82,6 +90,7 @@ interface BookUploadSplitStepProps {
 export function BookUploadSplitStep({
   bookId,
   pageCount,
+  pageOffset,
   pageAssignments: state,
   onChange: setState,
   touchedPagesRef: touchedRef,
@@ -371,7 +380,7 @@ export function BookUploadSplitStep({
                   </span>
                 )}
               </div>
-              <span className="text-[0.65rem] text-ink-soft">p.{page}</span>
+              <span className="text-[0.65rem] text-ink-soft">p.{page + pageOffset}</span>
             </div>
           )
         })}
@@ -385,13 +394,13 @@ export function BookUploadSplitStep({
             style={{ borderColor: piece.color, backgroundColor: `${piece.color}1a` }}
           >
             <span className="size-1.5 rounded-full" style={{ backgroundColor: piece.color }} />
-            Piece {index + 1} • pp {piece.start}
-            {piece.end !== piece.start ? `–${piece.end}` : ''}
+            Piece {index + 1} • {piece.end !== piece.start ? 'pp.' : 'p.'} {piece.start + pageOffset}
+            {piece.end !== piece.start ? `–${piece.end + pageOffset}` : ''}
           </span>
         ))}
         {state.skips.size > 0 && (
           <span className="flex items-center gap-1.5 rounded-full border border-border border-dashed bg-paper-sunken px-3 py-1 text-xs text-ink-soft">
-            Skipped • p {formatPageList([...state.skips])}
+            Skipped • p. {formatPageList([...state.skips].map((p) => p + pageOffset))}
           </span>
         )}
       </div>
@@ -457,7 +466,7 @@ export function BookUploadSplitStep({
           style={{ top: contextMenu.y, left: contextMenu.x }}
           onMouseDown={(event) => event.stopPropagation()}
         >
-          <div className="px-3 pt-1 pb-1.5 text-xs text-ink-soft">p.{contextMenu.page}</div>
+          <div className="px-3 pt-1 pb-1.5 text-xs text-ink-soft">p.{contextMenu.page + pageOffset}</div>
           {pageMenuItems(contextMenu.page).map((item) => (
             <button
               key={item.target}

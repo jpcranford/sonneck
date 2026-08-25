@@ -194,6 +194,7 @@ export interface UploadBookResult {
 export interface ConfirmImportRequest {
   ranges: { start: number; end: number }[]
   pieces: PieceWriteRequest[]
+  pageOffset: number
 }
 
 export interface ConfirmImportResult {

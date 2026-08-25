@@ -31,9 +31,14 @@ export interface NamedPiece extends Piece {
 
 // Academic p./pp. convention app-wide (singular vs. a range), same as
 // PiecePage.tsx/BookDetailsPage.tsx — this card grid had drifted to a
-// bare "pp" with no period and no singular form.
-function formatPageRange(piece: Piece): string {
-  return piece.end !== piece.start ? `pp. ${piece.start}–${piece.end}` : `p. ${piece.start}`
+// bare "pp" with no period and no singular form. Displays the
+// printed-PDF-offset-adjusted range (matching what actually gets written
+// to SourcePageStart/SourcePageEnd at import) rather than the raw
+// physical position.
+function formatPageRange(piece: Piece, pageOffset: number): string {
+  const start = piece.start + pageOffset
+  const end = piece.end + pageOffset
+  return end !== start ? `pp. ${start}–${end}` : `p. ${start}`
 }
 
 // Composer-or-arranger: fuses arranger onto composer
@@ -86,6 +91,7 @@ interface BookUploadConfirmStepProps {
   bookId: number
   bookTitle: string
   pageCount: number
+  pageOffset: number
   pieces: NamedPiece[]
   onBack: () => void
   onImported: (createdPieces: ApiPiece[]) => void
@@ -97,6 +103,7 @@ export function BookUploadConfirmStep({
   bookId,
   bookTitle,
   pageCount,
+  pageOffset,
   pieces,
   onBack,
   onImported,
@@ -109,6 +116,10 @@ export function BookUploadConfirmStep({
   const importMutation = useMutation({
     mutationFn: () =>
       confirmImport(bookId, {
+        // Raw physical ranges — extraction needs the real PDF position,
+        // not the offset-adjusted one. pageOffset travels separately so
+        // the backend can apply it only to SourcePageStart/SourcePageEnd
+        // (internal/handlers/wizard.go).
         ranges: pieces.map((p) => ({ start: p.start, end: p.end })),
         pieces: pieces.map((p) => ({
           title: p.title,
@@ -119,6 +130,7 @@ export function BookUploadConfirmStep({
           instruments: [],
           userTags: [],
         })),
+        pageOffset,
       }),
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['books'] })
@@ -182,7 +194,7 @@ export function BookUploadConfirmStep({
         <div className="flex items-center gap-2 text-xs text-ink-soft">
           <IconEyeOff size={14} className="shrink-0" />
           {skippedPages.length} page{skippedPages.length === 1 ? '' : 's'} skipped (p.{' '}
-          {formatPageList(skippedPages)}) — won't be included in any piece
+          {formatPageList(skippedPages.map((p) => p + pageOffset))}) — won't be included in any piece
         </div>
       )}
 
@@ -204,7 +216,7 @@ export function BookUploadConfirmStep({
                 {piece.title}
               </p>
               <p className="truncate text-[0.7rem] text-ink-soft">{composerArrangerLabel(piece)}</p>
-              <p className="truncate text-[0.7rem] text-ink-soft">{formatPageRange(piece)}</p>
+              <p className="truncate text-[0.7rem] text-ink-soft">{formatPageRange(piece, pageOffset)}</p>
             </div>
           </div>
         ))}

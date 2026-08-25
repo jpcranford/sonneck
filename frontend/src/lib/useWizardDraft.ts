@@ -23,6 +23,12 @@ export interface WizardDraftData {
   pageCount: number
   pageAssignments: { starts: number[]; skips: number[]; shared: number[] }
   pieceFields: { title: string; composer: string; arranger: string }[]
+  // Printed-PDF page offset (design doc §5, added post-launch), set on
+  // "About this book" — see BookUploadAboutStep.tsx. A draft saved before
+  // this field existed simply fails isWizardDraftData below and is
+  // treated as no draft at all, same low-stakes fallback this file's own
+  // top comment already accepts for a malformed/unavailable draft.
+  pageOffset: number
 }
 
 function isWizardDraftData(value: unknown): value is WizardDraftData {
@@ -34,7 +40,8 @@ function isWizardDraftData(value: unknown): value is WizardDraftData {
     typeof v.pageCount === 'number' &&
     typeof v.pageAssignments === 'object' &&
     v.pageAssignments !== null &&
-    Array.isArray(v.pieceFields)
+    Array.isArray(v.pieceFields) &&
+    typeof v.pageOffset === 'number'
   )
 }
 

@@ -31,6 +31,13 @@ import { useMockupTitle } from '../lib/useMockupTitle'
 
 const TOTAL_STEPS = 6
 const CURRENT_STEP = 6
+// Simulates a printed-page correction having been set back on Screen 3
+// ("About this book," see UploadBookAboutMockup.tsx's own "Printed-PDF
+// page number offset" field) — piece.start/piece.end stay the raw PDF
+// position, only the numbers *displayed* below (sourcePageStart/
+// sourcePageEnd, once this actually imports) are shown offset-adjusted,
+// same convention as UploadBookSplitMockup.tsx/UploadBookTitlesMockup.tsx.
+const PAGE_OFFSET = 6
 
 interface PieceFixture {
   start: number
@@ -58,7 +65,9 @@ const PIECES: PieceFixture[] = [
 // PiecePage.tsx/BookDetailsPage.tsx — this card grid had drifted to a
 // bare "pp" with no period and no singular form.
 function formatPageRange(piece: PieceFixture): string {
-  return piece.end !== piece.start ? `pp. ${piece.start}–${piece.end}` : `p. ${piece.start}`
+  const start = piece.start + PAGE_OFFSET
+  const end = piece.end + PAGE_OFFSET
+  return end !== start ? `pp. ${start}–${end}` : `p. ${start}`
 }
 
 // Compacts a sorted page list into ranges — same convention as Screen 4's
@@ -206,7 +215,7 @@ export function UploadBookConfirmMockup() {
             <div className="flex items-center gap-2 text-xs text-ink-soft">
               <IconEyeOff size={14} className="shrink-0" />
               {SKIPPED_PAGES.length} page{SKIPPED_PAGES.length === 1 ? '' : 's'} skipped (p.{' '}
-              {formatPageList(SKIPPED_PAGES)}) — won't be included in any piece
+              {formatPageList(SKIPPED_PAGES.map((p) => p + PAGE_OFFSET))}) — won't be included in any piece
             </div>
           )}
 

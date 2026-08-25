@@ -10,6 +10,7 @@ import {
   IconCheck,
   IconInfoCircle,
   IconAlertTriangle,
+  IconRotate,
   IconX,
 } from '@tabler/icons-react'
 import { updateBook, getBookPageThumbnailUrl } from '../api/books'
@@ -91,6 +92,12 @@ interface BookUploadAboutStepProps {
   // aren't something draft persistence can serialize), so this is shown
   // when known and simply omitted otherwise rather than faked.
   fileSizeBytes: number | null
+  // Printed-PDF page offset (design doc §5, added post-launch) — lifted
+  // to BookUploadWizard.tsx (like pageAssignments/pieceFields) so it
+  // survives Back navigation and reaches the Confirm step's import
+  // request, not just local state here.
+  pageOffset: number
+  onPageOffsetChange: (offset: number) => void
   onBack: () => void
   onNext: (updatedBook: Book) => void
   onCancel: () => void
@@ -101,6 +108,8 @@ export function BookUploadAboutStep({
   book,
   pageCount,
   fileSizeBytes,
+  pageOffset,
+  onPageOffsetChange,
   onBack,
   onNext,
   onCancel,
@@ -108,6 +117,22 @@ export function BookUploadAboutStep({
 }: BookUploadAboutStepProps) {
   const [previewPage, setPreviewPage] = useState(1)
   const [lightboxOpen, setLightboxOpen] = useState(false)
+  // The one field this screen adds beyond book metadata. Bound to the
+  // same previewPage the cover cycler above already drives — flipping to
+  // a page you're sure about and correcting it there is the whole
+  // interaction. printedPage is never stored directly: solving for a new
+  // offset on edit (rather than storing the typed value) is what makes
+  // this keep counting forward correctly if you flip to another page
+  // afterward, instead of freezing at whatever was last typed.
+  const printedPage = previewPage + pageOffset
+
+  function handlePrintedPageChange(raw: string) {
+    if (raw.trim() === '') return
+    const typed = Number(raw)
+    if (!Number.isFinite(typed)) return
+    onPageOffsetChange(typed - previewPage)
+  }
+
   const {
     register,
     handleSubmit,
@@ -233,7 +258,7 @@ export function BookUploadAboutStep({
                 <IconChevronLeft size={14} />
               </button>
               <span className="text-xs whitespace-nowrap tabular-nums text-white/90">
-                {previewPage} / {pageCount}
+                PDF p. {previewPage} / {pageCount}
               </span>
               <button
                 type="button"
@@ -252,6 +277,43 @@ export function BookUploadAboutStep({
               <strong className="block text-ink">{book.originalFilename}</strong>
             )}
             {pageCount} pages{fileSizeBytes != null ? ` • ${formatFileSize(fileSizeBytes)}` : ''}
+          </div>
+
+          {/* Printed-PDF page offset — sets one offset for the whole
+              book, not a per-page correction. sourcePageStart/
+              sourcePageEnd (the fields citations actually use) get
+              physical page + this offset for every piece at import,
+              rather than the raw PDF position — see
+              ConfirmImportRequest.PageOffset (internal/handlers/wizard.go). */}
+          <div className="flex flex-col gap-1.5 rounded-lg border border-border bg-paper-raised p-3">
+            <label htmlFor="f-printed-page" className="text-sm text-ink-soft">
+              Printed-PDF page offset
+            </label>
+            <input
+              id="f-printed-page"
+              type="number"
+              value={printedPage}
+              onChange={(event) => handlePrintedPageChange(event.target.value)}
+              className="w-full rounded-md border border-border bg-paper px-3 py-1.5 text-ink tabular-nums"
+            />
+            <p className="text-[0.78rem] leading-relaxed text-ink-soft">
+              Flip the preview above to a page you're sure about and enter what's actually printed
+              on the page. Safe to skip if they already match.
+            </p>
+            <p className="text-[0.78rem] leading-relaxed text-ink-soft">
+              This book's page numbers will start at page <b>{1 + pageOffset}</b> and count up from
+              there.
+            </p>
+            {pageOffset !== 0 && (
+              <button
+                type="button"
+                onClick={() => onPageOffsetChange(0)}
+                className="flex w-fit cursor-pointer items-center gap-1.5 text-[0.78rem] text-ink-soft hover:text-ink"
+              >
+                <IconRotate size={12} />
+                Reset — no offset
+              </button>
+            )}
           </div>
         </div>
 

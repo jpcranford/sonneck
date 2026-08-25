@@ -30,6 +30,14 @@ import { useMockupTitle } from '../lib/useMockupTitle'
 
 const TOTAL_STEPS = 6
 const CURRENT_STEP = 5
+// Simulates a printed-page correction having been set back on Screen 3
+// ("About this book," see UploadBookAboutMockup.tsx's own "Printed-PDF
+// page number offset" field) — piece.start/piece.end stay the raw PDF
+// position (that's what PieceThumb's page-preview lookup and this
+// wizard's split logic actually key off), only the numbers *displayed*
+// below are shown offset-adjusted, same convention as
+// UploadBookSplitMockup.tsx.
+const PAGE_OFFSET = 6
 
 interface PieceFixture {
   start: number
@@ -107,7 +115,9 @@ const DESKTOP_GRID_COLS = SHOW_ARRANGER_FIELD
 // PiecePage.tsx/BookDetailsPage.tsx — this row label had drifted to a
 // bare "pp" with no period and no singular form.
 function formatPieceLabel(piece: PieceFixture) {
-  return piece.end !== piece.start ? `pp. ${piece.start}–${piece.end}` : `p. ${piece.start}`
+  const start = piece.start + PAGE_OFFSET
+  const end = piece.end + PAGE_OFFSET
+  return end !== start ? `pp. ${start}–${end}` : `p. ${start}`
 }
 
 // A single representative page (the piece's own start page) standing in
@@ -247,7 +257,7 @@ function HoverPagePreview({ piece, onPreview }: { piece: PieceFixture; onPreview
         className="relative block aspect-[180/132] w-full overflow-hidden rounded-lg"
         style={{ border: `1.5px solid ${piece.color}` }}
       >
-        <PieceThumb title={piece.title} page={piece.start} />
+        <PieceThumb title={piece.title} page={piece.start + PAGE_OFFSET} />
       </button>
       {/* No fade-in transition (the old opacity-0 -> group-hover:opacity-100
           is gone along with group-hover itself, since visibility is now
@@ -262,7 +272,7 @@ function HoverPagePreview({ piece, onPreview }: { piece: PieceFixture; onPreview
           style={{ border: `2px solid ${piece.color}`, top: pos.top, left: pos.left }}
           className="pointer-events-none fixed z-20 w-[420px] overflow-hidden rounded-md shadow-xl"
         >
-          <PieceThumb title={piece.title} page={piece.start} />
+          <PieceThumb title={piece.title} page={piece.start + PAGE_OFFSET} />
         </div>
       )}
     </div>
@@ -353,7 +363,7 @@ function PageLightbox({
           }
           style={{ border: `2px solid ${piece.color}` }}
         >
-          <PieceThumb title={piece.title} page={piece.start} />
+          <PieceThumb title={piece.title} page={piece.start + PAGE_OFFSET} />
         </div>
       </button>
 
@@ -644,7 +654,7 @@ export function UploadBookTitlesMockup() {
                     className="relative aspect-[180/132] w-[115px] shrink-0 overflow-hidden rounded-lg"
                     style={{ border: `1.5px solid ${piece.color}` }}
                   >
-                    <PieceThumb title={piece.title} page={piece.start} />
+                    <PieceThumb title={piece.title} page={piece.start + PAGE_OFFSET} />
                   </button>
                   <div className="flex min-w-0 flex-1 flex-col gap-2.5">
                     <span className="text-sm text-ink-soft">

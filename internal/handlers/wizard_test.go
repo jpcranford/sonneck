@@ -157,6 +157,53 @@ func TestConfirmImport_SkipAndSharedBoundary(t *testing.T) {
 	}
 }
 
+// TestConfirmImport_PageOffset covers the "About this book" screen's
+// printed-PDF page offset (design doc §5, added post-launch): every
+// piece's SourcePageStart/SourcePageEnd must reflect physical page +
+// pageOffset, while PageCount (derived from the raw extraction range)
+// must stay unaffected by it.
+func TestConfirmImport_PageOffset(t *testing.T) {
+	h := newTestServer(t)
+	bookID, pageCount := uploadBook(t, h, "volume-two.pdf", 8)
+	if pageCount != 8 {
+		t.Fatalf("uploaded book page count = %d, want 8", pageCount)
+	}
+
+	confirmRec := doJSON(t, h, http.MethodPost, apiBooksURL(bookID)+"/confirm-import", map[string]any{
+		"ranges": []map[string]any{
+			{"start": 1, "end": 4},
+			{"start": 5, "end": 8},
+		},
+		"pieces": []map[string]any{
+			{"title": "Toccata", "composer": "Someone"},
+			{"title": "Adagio", "composer": "Someone"},
+		},
+		"pageOffset": 67,
+	})
+	var result struct {
+		Pieces []pieceResponse `json:"pieces"`
+	}
+	decodeData(t, confirmRec, &result)
+
+	if len(result.Pieces) != 2 {
+		t.Fatalf("created %d pieces, want 2", len(result.Pieces))
+	}
+	toccata, adagio := result.Pieces[0], result.Pieces[1]
+
+	if *toccata.SourcePageStart != 68 || *toccata.SourcePageEnd != 71 {
+		t.Errorf("Toccata pages = %d-%d, want 68-71 (physical 1-4 + offset 67)", *toccata.SourcePageStart, *toccata.SourcePageEnd)
+	}
+	if toccata.PageCount != 4 {
+		t.Errorf("Toccata pageCount = %d, want 4 (unaffected by pageOffset)", toccata.PageCount)
+	}
+	if *adagio.SourcePageStart != 72 || *adagio.SourcePageEnd != 75 {
+		t.Errorf("Adagio pages = %d-%d, want 72-75 (physical 5-8 + offset 67)", *adagio.SourcePageStart, *adagio.SourcePageEnd)
+	}
+	if adagio.PageCount != 4 {
+		t.Errorf("Adagio pageCount = %d, want 4 (unaffected by pageOffset)", adagio.PageCount)
+	}
+}
+
 func apiBooksURL(id int64) string {
 	return fmt.Sprintf("/api/books/%d", id)
 }

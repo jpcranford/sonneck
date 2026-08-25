@@ -110,6 +110,12 @@ export function BookUploadWizard({ onExit }: BookUploadWizardProps) {
   const [pieceFields, setPieceFields] = useState<
     { title: string; composer: string; arranger: string }[]
   >([])
+  // Printed-PDF page offset (design doc §5, added post-launch) — set on
+  // Screen 3 ("About this book"), lifted here for the same reason
+  // pageAssignments/pieceFields are: it must survive Back navigation and
+  // feed the Confirm step's import request, not just live inside the
+  // About step that collects it.
+  const [pageOffset, setPageOffset] = useState(0)
   const [importedPieces, setImportedPieces] = useState<ApiPiece[] | null>(null)
   // Owned here, not inside BookUploadSplitStep, specifically so it
   // survives that step unmounting on Back navigation — see that
@@ -135,6 +141,7 @@ export function BookUploadWizard({ onExit }: BookUploadWizardProps) {
     }
     setPageAssignments(restored)
     setPieceFields(draft.pieceFields)
+    setPageOffset(draft.pageOffset)
     // Approximation, not exact: a page that was touched and cycled back to
     // fully "normal" wouldn't appear in any of these sets, so it would be
     // (incorrectly, but harmlessly) treated as never-touched again after a
@@ -215,8 +222,9 @@ export function BookUploadWizard({ onExit }: BookUploadWizardProps) {
         shared: [...pageAssignments.shared],
       },
       pieceFields,
+      pageOffset,
     })
-  }, [book, step, pageCount, pageAssignments, pieceFields])
+  }, [book, step, pageCount, pageAssignments, pieceFields, pageOffset])
 
   function handleUploaded(uploadedBook: Book, uploadedPageCount: number, size: number) {
     setBook(uploadedBook)
@@ -230,6 +238,7 @@ export function BookUploadWizard({ onExit }: BookUploadWizardProps) {
     // restore effect above will pick its draft back up right after this.
     setPageAssignments(EMPTY_ASSIGNMENTS)
     setPieceFields([])
+    setPageOffset(0)
     touchedPagesRef.current = new Set()
     setStep('about')
   }
@@ -289,6 +298,8 @@ export function BookUploadWizard({ onExit }: BookUploadWizardProps) {
         book={book}
         pageCount={pageCount}
         fileSizeBytes={fileSizeBytes}
+        pageOffset={pageOffset}
+        onPageOffsetChange={setPageOffset}
         onBack={() => setStep('file')}
         onNext={(updatedBook) => {
           setBook(updatedBook)
@@ -305,6 +316,7 @@ export function BookUploadWizard({ onExit }: BookUploadWizardProps) {
       <BookUploadSplitStep
         bookId={book.id}
         pageCount={pageCount}
+        pageOffset={pageOffset}
         pageAssignments={pageAssignments}
         onChange={setPageAssignments}
         touchedPagesRef={touchedPagesRef}
@@ -336,6 +348,7 @@ export function BookUploadWizard({ onExit }: BookUploadWizardProps) {
         bookId={book.id}
         bookComposer={book.composer}
         bookArranger={book.arranger}
+        pageOffset={pageOffset}
         pieces={pieces}
         pieceFields={pieceFields}
         onChange={setPieceFields}
@@ -358,6 +371,7 @@ export function BookUploadWizard({ onExit }: BookUploadWizardProps) {
       bookId={book.id}
       bookTitle={book.bookTitle}
       pageCount={pageCount}
+      pageOffset={pageOffset}
       pieces={namedPieces}
       onBack={() => setStep('titles')}
       onImported={handleImported}

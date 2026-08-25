@@ -23,6 +23,18 @@ import (
 type ConfirmImportRequest struct {
 	Ranges []wizard.PageRange      `json:"ranges"`
 	Pieces []api.PieceWriteRequest `json:"pieces"`
+	// PageOffset (design doc §5, added post-launch) — a single whole-book
+	// correction applied to every piece's SourcePageStart/SourcePageEnd,
+	// set on the wizard's "About this book" screen via a page cycler bound
+	// to a "printed page number for this PDF page" field. Extraction and
+	// PageCount below are entirely unaffected — Ranges stay the raw
+	// physical PDF page positions, since that's what actually needs
+	// extracting; PageOffset only shifts what gets written into the
+	// citation-facing SourcePageStart/SourcePageEnd fields. Zero value
+	// (omitted, or an unmodified book) is a no-op, so this is a strict
+	// backward-compatible addition — existing callers that never set it
+	// get today's exact behavior.
+	PageOffset int `json:"pageOffset"`
 }
 
 type stagedPiece struct {
@@ -149,8 +161,13 @@ func (s *Server) handleConfirmImport(w http.ResponseWriter, r *http.Request) {
 			// full-replace handling of that field would otherwise null out
 			// the &bookID this piece was just constructed with above.
 			p.SourceBookID = &bookID
-			p.SourcePageStart = &start
-			p.SourcePageEnd = &end
+			// The printed-page correction from Screen 3 applies here, not to
+			// `start`/`end` themselves — those two remain the raw physical
+			// PDF range used for extraction/PageCount above.
+			adjustedStart := start + req.PageOffset
+			adjustedEnd := end + req.PageOffset
+			p.SourcePageStart = &adjustedStart
+			p.SourcePageEnd = &adjustedEnd
 
 			errs, err := api.ValidatePiece(r.Context(), tx, p)
 			if err != nil {

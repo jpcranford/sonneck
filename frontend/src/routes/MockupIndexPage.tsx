@@ -34,7 +34,7 @@ const MOCKUPS = [
   {
     to: '/mockup/upload-book-about',
     name: 'Upload — About This Book',
-    note: 'Book Upload Wizard (§5), screen 3 of 6 — book-metadata entry with the sticky cover column.',
+    note: 'Book Upload Wizard (§5), screen 3 of 6 — book-metadata entry with the sticky cover column, plus a printed-vs-PDF page number offset field under the cover cycler.',
   },
   {
     to: '/mockup/upload-book-split',

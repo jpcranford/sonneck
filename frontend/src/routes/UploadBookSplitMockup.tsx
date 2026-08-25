@@ -33,9 +33,19 @@ import {
 // can describe a gesture, it can't prove it feels right (this file's own
 // revision history is proof: five real bugs surfaced by actually using it
 // that a static comparison never would have caught).
+//
+// PAGE_OFFSET simulates a printed-page correction having been set back on
+// Screen 3 ("About this book," see its own "Printed-PDF page number
+// offset" field) — every interaction here (data-page, drag-select,
+// pieceIndexForPage, computeLayout) still runs against the raw
+// 1..PAGE_COUNT physical PDF position, since that's what extraction
+// actually needs; only what's *displayed* below (thumbnail corner
+// numbers, the p.N caption, the piece/skip summary pills) is shown in the
+// offset-adjusted, citation-facing numbering.
 // ---------------------------------------------------------------------
 
 const PAGE_COUNT = 8
+const PAGE_OFFSET = 6
 const TOTAL_STEPS = 6
 const CURRENT_STEP = 4
 
@@ -85,7 +95,7 @@ function pageMenuItems(page: number): PageMenuItem[] {
   ]
 }
 
-function PageThumb({ page }: { page: number }) {
+function PageThumb({ page, printedPage }: { page: number; printedPage: number }) {
   const blank = page === 4
   return (
     <svg viewBox="0 0 100 130" className="block h-auto w-full">
@@ -104,7 +114,7 @@ function PageThumb({ page }: { page: number }) {
         ))
       )}
       <text x="92" y="124" textAnchor="end" fontSize="4" fill="#8f857a">
-        {page}
+        {printedPage}
       </text>
     </svg>
   )
@@ -426,12 +436,12 @@ export function UploadBookSplitMockup() {
                 {sharedGradient ? (
                   <div className="overflow-hidden rounded-md p-[2px]" style={{ background: sharedGradient }}>
                     <div className="overflow-hidden rounded-[4px]">
-                      <PageThumb page={page} />
+                      <PageThumb page={page} printedPage={page + PAGE_OFFSET} />
                     </div>
                   </div>
                 ) : (
                   <div className="overflow-hidden rounded-md border-2 transition-shadow" style={borderStyle}>
-                    <PageThumb page={page} />
+                    <PageThumb page={page} printedPage={page + PAGE_OFFSET} />
                   </div>
                 )}
                 {isSelected && (
@@ -446,7 +456,7 @@ export function UploadBookSplitMockup() {
                   </span>
                 )}
               </div>
-              <span className="text-[0.65rem] text-ink-soft">p.{page}</span>
+              <span className="text-[0.65rem] text-ink-soft">p.{page + PAGE_OFFSET}</span>
             </div>
           )
         })}
@@ -475,13 +485,13 @@ export function UploadBookSplitMockup() {
             style={{ borderColor: piece.color, backgroundColor: `${piece.color}1a` }}
           >
             <span className="size-1.5 rounded-full" style={{ backgroundColor: piece.color }} />
-            Piece {index + 1} • pp {piece.start}
-            {piece.end !== piece.start ? `–${piece.end}` : ''}
+            Piece {index + 1} • {piece.end !== piece.start ? 'pp.' : 'p.'} {piece.start + PAGE_OFFSET}
+            {piece.end !== piece.start ? `–${piece.end + PAGE_OFFSET}` : ''}
           </span>
         ))}
         {state.skips.size > 0 && (
           <span className="flex items-center gap-1.5 rounded-full border border-border border-dashed bg-paper-sunken px-3 py-1 text-xs text-ink-soft">
-            Skipped • p {formatPageList([...state.skips])}
+            Skipped • p. {formatPageList([...state.skips].map((p) => p + PAGE_OFFSET))}
           </span>
         )}
       </div>
@@ -549,7 +559,7 @@ export function UploadBookSplitMockup() {
           style={{ top: contextMenu.y, left: contextMenu.x }}
           onMouseDown={(event) => event.stopPropagation()}
         >
-          <div className="px-3 pt-1 pb-1.5 text-xs text-ink-soft">p.{contextMenu.page}</div>
+          <div className="px-3 pt-1 pb-1.5 text-xs text-ink-soft">p.{contextMenu.page + PAGE_OFFSET}</div>
           {pageMenuItems(contextMenu.page).map((item) => (
             <button
               key={item.target}
