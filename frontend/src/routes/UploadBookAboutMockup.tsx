@@ -71,10 +71,15 @@ interface FormValues {
 // bookTitle pre-filled from the uploaded filename, imslpNumber
 // auto-detected from it (design doc §5) — both real behaviors already
 // established at the upload step, just shown here as their result.
-// Everything else starts blank, including arranger/isbn — nothing gets
-// auto-detected for either. Composer or arranger is required
-// (ValidateBook), but neither is pre-filled here any more than composer
-// ever was — same "starts blank, user fills it in" treatment.
+// imslpNumber is the bare digits, not "IMSLP04154" — detectImslpNumber
+// (internal/handlers/filename.go) captures just the number, matching the
+// stored-value-is-prefix-free convention every other IMSLP-number save
+// path in the app already follows (a real bug, fixed: this mockup used to
+// hardcode the unstripped form, faithfully reproducing it). Everything
+// else starts blank, including arranger/isbn — nothing gets auto-detected
+// for either. Composer or arranger is required (ValidateBook), but
+// neither is pre-filled here any more than composer ever was — same
+// "starts blank, user fills it in" treatment.
 const defaultValues: FormValues = {
   bookTitle: 'Album für die Jugend, Op. 68',
   composer: '',
@@ -84,7 +89,7 @@ const defaultValues: FormValues = {
   publisher: '',
   publisherId: '',
   isbn: '',
-  imslpNumber: 'IMSLP04154',
+  imslpNumber: '04154',
   sheetType: '',
   instruments: [],
   description: '',

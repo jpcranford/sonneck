@@ -8,8 +8,13 @@ import (
 
 // imslpNumberPattern is design doc §3's filename-based IMSLP detection: a
 // light regex against the original filename, not a live lookup (deferred,
-// see design doc §13).
-var imslpNumberPattern = regexp.MustCompile(`IMSLP\d+`)
+// see design doc §13). Captures just the digits, not the "IMSLP" label
+// itself — the app's own citation convention renders it as "IMSLP
+// #{number}" (buildCitation, stripImslpPrefix in citation.go), so a
+// stored value should be prefix-free from the moment it's detected, same
+// as EditBookModal.tsx/EditPieceModal.tsx's own stripImslpPrefix already
+// enforces on every manual save.
+var imslpNumberPattern = regexp.MustCompile(`IMSLP(\d+)`)
 
 // defaultTitleFromFilename mirrors the Book upload default (design doc
 // §5: bookTitle defaults to the filename minus extension) for the
@@ -21,11 +26,12 @@ func defaultTitleFromFilename(filename string) string {
 }
 
 func detectImslpNumber(filename string) *string {
-	match := imslpNumberPattern.FindString(filename)
-	if match == "" {
+	match := imslpNumberPattern.FindStringSubmatch(filename)
+	if match == nil {
 		return nil
 	}
-	return &match
+	number := match[1]
+	return &number
 }
 
 // unsafeFilenameChars strips anything that could break a Content-Disposition
