@@ -499,8 +499,14 @@ export function PieceDetailsSample() {
           the button group (whitespace-nowrap below, fits its line on its
           own) drops to a second line, left-aligned. */}
       <div className="flex flex-wrap items-center justify-between gap-4">
+        {/* Label reads "Back to Library" (matching PiecePage.tsx's real
+            copy, the whole point of this page being a visual reference)
+            but actually routes to /mockup, not "/" — every mockup's Back
+            control returns to the mockup index rather than wherever the
+            label implies, so browsing mockups never leaks into real app
+            routes/state. */}
         <Link
-          to="/"
+          to="/mockup"
           className="inline-flex w-fit items-center gap-1.5 text-sm whitespace-nowrap text-ink-soft hover:text-ink"
         >
           <IconArrowLeft size={24} />

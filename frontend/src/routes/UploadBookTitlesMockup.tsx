@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type FocusEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import {
   IconAlertTriangle,
@@ -496,15 +497,15 @@ export function UploadBookTitlesMockup() {
         (design doc §5). Not wired to real data — clear a field and hit Next to see live validation.
       </div>
 
-      {/* Wizard chrome — identical to Screens 3 and 4's, carried forward verbatim. */}
+      {/* Wizard chrome — identical to Screens 3 and 4's, carried forward
+          verbatim, including Back routing to /mockup rather than
+          simulating real step-nav — see UploadBookAboutMockup.tsx's own
+          comment on this. */}
       <div className="flex items-center justify-between">
-        <button
-          type="button"
-          className="flex items-center gap-1.5 text-base text-ink-soft hover:text-ink"
-        >
+        <Link to="/mockup" className="flex items-center gap-1.5 text-base text-ink-soft hover:text-ink">
           <IconArrowLeft size={24} />
           Back
-        </button>
+        </Link>
         <div className="flex flex-col items-end gap-1.5">
           <span className="text-xs text-ink-soft">
             Step {CURRENT_STEP} of {TOTAL_STEPS}

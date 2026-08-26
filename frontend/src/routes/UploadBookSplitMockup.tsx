@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import {
   IconArrowLeft,
   IconArrowRight,
@@ -311,12 +312,14 @@ export function UploadBookSplitMockup() {
         and drag to select a range.
       </div>
 
-      {/* Wizard chrome — identical to Screen 3's, carried forward verbatim. */}
+      {/* Wizard chrome — identical to Screen 3's, carried forward verbatim,
+          including Back routing to /mockup rather than simulating real
+          step-nav — see UploadBookAboutMockup.tsx's own comment on this. */}
       <div className="flex items-center justify-between">
-        <button type="button" className="flex items-center gap-1.5 text-base text-ink-soft hover:text-ink">
+        <Link to="/mockup" className="flex items-center gap-1.5 text-base text-ink-soft hover:text-ink">
           <IconArrowLeft size={24} />
           Back
-        </button>
+        </Link>
         <div className="flex flex-col items-end gap-1.5">
           <span className="text-xs text-ink-soft">
             Step {CURRENT_STEP} of {TOTAL_STEPS}

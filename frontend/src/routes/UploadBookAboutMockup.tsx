@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Controller, useForm } from 'react-hook-form'
 import {
   IconArrowLeft,
@@ -283,12 +284,15 @@ export function UploadBookAboutMockup() {
         doc §5). Not wired to real data.
       </div>
 
-      {/* Wizard chrome — locked, carries unchanged through screens 4-6. */}
+      {/* Wizard chrome — locked, carries unchanged through screens 4-6.
+          Back isn't real step-nav (this mockup doesn't simulate the whole
+          wizard flow, just this one screen) — it routes to /mockup, same
+          as every other mockup's Back control, so it's never a dead end. */}
       <div className="flex items-center justify-between">
-        <button type="button" className="flex items-center gap-1.5 text-base text-ink-soft hover:text-ink">
+        <Link to="/mockup" className="flex items-center gap-1.5 text-base text-ink-soft hover:text-ink">
           <IconArrowLeft size={24} />
           Back
-        </button>
+        </Link>
         <div className="flex flex-col items-end gap-1.5">
           <span className="text-xs text-ink-soft">
             Step {CURRENT_STEP} of {TOTAL_STEPS}

@@ -565,8 +565,13 @@ export function BookDetailsSample() {
           with the back link for the same line, so it just drops to its own
           full line below (adequate room there — 284px fits in 311px). */}
       <div className="flex flex-wrap items-center justify-between gap-4">
+        {/* Label reads "Back to Books" (matching BookDetailsPage.tsx's real
+            copy) but actually routes to /mockup, not /books — every
+            mockup's Back control returns to the mockup index rather than
+            wherever the label implies, so browsing mockups never leaks
+            into real app routes/state. */}
         <Link
-          to="/books"
+          to="/mockup"
           className="inline-flex w-fit items-center gap-1.5 text-sm whitespace-nowrap text-ink-soft hover:text-ink"
         >
           <IconArrowLeft size={24} />
