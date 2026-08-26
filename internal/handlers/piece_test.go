@@ -639,6 +639,52 @@ func TestDownloadPieceFile_SuggestsFilenameWithoutForcingDownload(t *testing.T) 
 	}
 }
 
+// TestDownloadPieceFile_FilenameUsesInheritedComposerAndYear covers the
+// book-inheritance path specifically: composer/publisher/yearWritten are
+// book-inheritable (CLAUDE.md > Book-level soft inheritance), so a piece
+// that inherits them from its book must still get them in its downloaded
+// filename via repo.ResolveEffective — reading p.Composer/p.YearWritten
+// directly would silently produce a name-less, year-less filename for
+// every piece that inherits rather than overrides.
+func TestDownloadPieceFile_FilenameUsesInheritedComposerAndYear(t *testing.T) {
+	h := newTestServer(t)
+	dir := t.TempDir()
+	path := dir + "/piece.pdf"
+	writeFixturePDF(t, path, 1)
+	uploadRec := recordRequest(h, multipartUpload(t, "/api/pieces", "piece.pdf", readAll(t, path)))
+	var uploaded pieceResponse
+	decodeData(t, uploadRec, &uploaded)
+
+	bookRec := doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
+		"bookTitle":   "Album für die Jugend, Op. 68",
+		"composer":    "Robert Schumann",
+		"yearWritten": "1848",
+	})
+	var book bookResponse
+	decodeData(t, bookRec, &book)
+
+	// Deliberately no composer/yearWritten of its own — both must resolve
+	// from the book.
+	decodeData(t, doJSON(t, h, http.MethodPatch, apiPiecesURL(uploaded.ID), map[string]any{
+		"title":        "No. 9, Volksliedchen",
+		"sourceBookId": book.ID,
+	}), nil)
+
+	rec := recordRequest(h, httptestGet(t, apiPiecesURL(uploaded.ID)+"/file"))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("download: status %d", rec.Code)
+	}
+	disposition := rec.Header().Get("Content-Disposition")
+	// The title's "." and "," don't survive sanitizeFilename (same
+	// character-stripping every filename hint here already goes through,
+	// not specific to this test) — assert against the sanitized form.
+	for _, want := range []string{"Robert Schumann", "No_ 9_ Volksliedchen", "1848"} {
+		if !strings.Contains(disposition, want) {
+			t.Errorf("Content-Disposition = %q, want it to contain %q (inherited from the book)", disposition, want)
+		}
+	}
+}
+
 // TestGetRandomPiece_ReturnsAPiece covers the Piece Details page dice button's
 // backend: GET /api/pieces/random must resolve as the literal route, not
 // fall through to handleGetPiece and get parsed as an id of "random".

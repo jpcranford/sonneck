@@ -36,8 +36,10 @@ func detectImslpNumber(filename string) *string {
 
 // unsafeFilenameChars strips anything that could break a Content-Disposition
 // header or confuse a filesystem, for the download filename hint
-// (handleDownloadPieceFile) derived from a piece's free-text title.
-var unsafeFilenameChars = regexp.MustCompile(`[^a-zA-Z0-9 _-]+`)
+// (handleDownloadPieceFile, handleDownloadBookFile) derived from free-text
+// fields. Parens are allowed (not stripped) specifically for
+// downloadFilename's "(yearWritten)" segment below.
+var unsafeFilenameChars = regexp.MustCompile(`[^a-zA-Z0-9 _()-]+`)
 
 func sanitizeFilename(title string) string {
 	cleaned := strings.TrimSpace(unsafeFilenameChars.ReplaceAllString(title, "_"))
@@ -45,4 +47,31 @@ func sanitizeFilename(title string) string {
 		return "piece"
 	}
 	return cleaned
+}
+
+// downloadFilename builds the "<name> - <title> (<year>).pdf"-minus-
+// extension hint shared by the piece and book download/open routes.
+// name is composer, falling back to arranger, falling back to publisher
+// (first non-empty wins) — callers pass already-resolved values: effective
+// (book-inheritable-aware) values for a piece, plain Book columns for a
+// book, since a Book has nothing to inherit from. Either optional segment
+// (name, year) is omitted cleanly, including its separator, rather than
+// leaving a stray "- " or "()" when unset.
+func downloadFilename(composer, arranger, publisher, title, yearWritten string) string {
+	name := composer
+	if name == "" {
+		name = arranger
+	}
+	if name == "" {
+		name = publisher
+	}
+
+	result := title
+	if name != "" {
+		result = name + " - " + result
+	}
+	if yearWritten != "" {
+		result = result + " (" + yearWritten + ")"
+	}
+	return sanitizeFilename(result)
 }

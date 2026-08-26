@@ -702,9 +702,13 @@ func (s *Server) handleDeleteBookCover(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleDownloadBookFile is the Book Details page's "Open Book PDF"
-// button — mirrors handleDownloadPieceFile (piece.go) exactly: Content-
+// button — mirrors handleDownloadPieceFile (piece.go) closely: Content-
 // Disposition "inline" (not "attachment") opens the original file in a
-// new tab rather than forcing a download. A manually created Book
+// new tab rather than forcing a download, with the same "<composer/
+// arranger/publisher> - <title> (<yearWritten>).pdf" filename hint. A
+// Book has nothing to inherit from (it's the top of the hierarchy), so
+// this reads its own columns directly rather than going through
+// repo.ResolveEffective (that's piece-only). A manually created Book
 // (migration 00014) has no file at all — a clean 404, same guard
 // handleBookPageThumbnail already uses, not a nil-pointer panic.
 func (s *Server) handleDownloadBookFile(w http.ResponseWriter, r *http.Request) {
@@ -722,6 +726,20 @@ func (s *Server) handleDownloadBookFile(w http.ResponseWriter, r *http.Request) 
 		api.WriteError(w, http.StatusNotFound, api.CodeNotFound, "this book has no file")
 		return
 	}
-	w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=%q", sanitizeFilename(b.BookTitle)+".pdf"))
+	var composer, arranger, publisher, yearWritten string
+	if b.Composer != nil {
+		composer = *b.Composer
+	}
+	if b.Arranger != nil {
+		arranger = *b.Arranger
+	}
+	if b.Publisher != nil {
+		publisher = *b.Publisher
+	}
+	if b.YearWritten != nil {
+		yearWritten = *b.YearWritten
+	}
+	filename := downloadFilename(composer, arranger, publisher, b.BookTitle, yearWritten)
+	w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=%q", filename+".pdf"))
 	http.ServeFile(w, r, *b.FilePath)
 }

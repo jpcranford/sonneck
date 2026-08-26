@@ -299,9 +299,14 @@ func (s *Server) handleDeletePiece(w http.ResponseWriter, r *http.Request) {
 
 // handleDownloadPieceFile is design doc §7's stable route, shared by
 // preview and download. Content-Disposition is set to "inline" (not
-// "attachment") with a title-derived filename — this suggests a sensible
-// name for "Save As" without forcing a download, so the same route still
-// works for the piece preview embed.
+// "attachment") with a filename hint of "<composer/arranger/publisher> -
+// <title> (<yearWritten>).pdf" — this suggests a sensible name for "Save
+// As" without forcing a download, so the same route still works for the
+// piece preview embed. Composer/arranger/publisher/yearWritten are all
+// book-inheritable, so this goes through repo.ResolveEffective rather than
+// reading p's own columns directly (CLAUDE.md > Book-level soft
+// inheritance) — a piece inheriting its composer from its book must still
+// get that composer in its downloaded filename.
 func (s *Server) handleDownloadPieceFile(w http.ResponseWriter, r *http.Request) {
 	id, ok := pathID(r, "id")
 	if !ok {
@@ -313,7 +318,13 @@ func (s *Server) handleDownloadPieceFile(w http.ResponseWriter, r *http.Request)
 		s.writeError(w, err)
 		return
 	}
-	w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=%q", sanitizeFilename(p.Title)+".pdf"))
+	eff, err := repo.ResolveEffective(r.Context(), s.DB, p)
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+	filename := downloadFilename(eff.Composer.Value, eff.Arranger.Value, eff.Publisher.Value, p.Title, eff.YearWritten.Value)
+	w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=%q", filename+".pdf"))
 	http.ServeFile(w, r, p.FilePath)
 }
 
