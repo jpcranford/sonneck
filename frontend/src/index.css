@@ -132,11 +132,50 @@
     U+A720-A7FF;
 }
 
+/* Bravura Text (Steinberg, SIL OFL 1.1) — the SMuFL music-symbol font
+   used for the Markdown emoji shortcodes in piece/book descriptions and
+   piece notes (see frontend/src/lib/musicEmoji.ts for the shortcode list,
+   frontend/src/components/MarkdownText.tsx for where font-music actually
+   gets applied). Self-hosted, but *not* the full ~3MB release file —
+   subsetted with fonttools (pyftsubset) down to exactly the 26 codepoints
+   this app supports plus the `liga`/`ccmp` GSUB features that touch only
+   those codepoints (Bravura Text's own built-in dynamics ligatures, e.g.
+   two "p" glyphs in a row shaping into "pp" — harmless bonus behavior
+   given how these are actually inserted here, see below, but worth
+   keeping since the font ships it "for free" once liga/ccmp are
+   retained). Result is 8KB, not ~3MB. unicode-range is what keeps this
+   font scoped to only these codepoints — everywhere else in a
+   MarkdownText block, text still renders in the normal font-music
+   fallback (Rethink Sans) rather than hitting Bravura Text's own
+   .notdef/tofu for characters the subset doesn't have.
+   The Markdown shortcodes (`:forte:`, `:f:`, …) are resolved to a plain
+   Unicode character by the remarkMusicEmoji plugin *before* this font
+   ever comes into play — this font-face is only what turns that
+   character into a music glyph visually, it doesn't do any text
+   matching itself. Second unicode-range entries per symbol (U+ED60-ED64
+   for the accidentals, U+1D11E/1D121/1D122 for the clefs) aren't
+   anything a shortcode inserts directly — they're SMuFL's alternate
+   codepoints / the standard Unicode musical-symbol codepoints for the
+   same glyphs, included so this font is still what renders them if
+   they ever show up literally (pasted in, or typed by hand) rather than
+   via a shortcode. */
+@font-face {
+  font-family: 'Bravura Text';
+  font-style: normal;
+  font-weight: normal;
+  font-display: swap;
+  src: url('./assets/fonts/bravura-text-subset.woff2') format('woff2');
+  unicode-range:
+    U+266D-266F, U+E045-E048, U+E050, U+E05C, U+E062, U+E520-E522, U+E52B-E52D, U+E52F, U+EC62,
+    U+ED60-ED64, U+1D11E, U+1D121, U+1D122;
+}
+
 /* Design tokens. Tailwind v4's CSS-first config: these become usable as
    e.g. bg-paper, text-ink, font-display utilities. */
 @theme {
   --font-display: 'Libre Baskerville', Georgia, 'Times New Roman', serif;
   --font-sans: 'Rethink Sans', -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-music: 'Bravura Text', 'Rethink Sans', -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 
   --color-ink: #1c1815;
   --color-ink-soft: #5c5349;

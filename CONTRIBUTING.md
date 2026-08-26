@@ -13,6 +13,7 @@ If anything here is wrong, confusing, or out of date, that's itself a welcome bu
 - [Database migrations](#database-migrations)
 - [Conventions & house rules](#conventions--house-rules)
 - [Testing](#testing)
+- [Music symbol shortcodes](#music-symbol-shortcodes)
 - [Making a change](#making-a-change)
 - [Reporting bugs & suggesting features](#reporting-bugs--suggesting-features)
 - [Code of conduct](#code-of-conduct)
@@ -177,6 +178,19 @@ npx tsc --noEmit -p tsconfig.app.json   # NOT `-p .` — see above
 ```
 
 Beyond the split-logic requirement above, comprehensive frontend test coverage isn't currently expected — use judgment, but don't skip the split-logic tests if you're anywhere near that code.
+
+## Music symbol shortcodes
+
+Piece/book descriptions and a piece's own notes support a small set of `:shortcode:` music symbols (`:forte:`, `:flat:`, `:segno:`, …), documented for end users in [`docs/music-emoji.md`](docs/music-emoji.md). If you're changing that feature:
+
+- The single source of truth for the shortcode → character mapping is `MUSIC_SHORTCODES` in `frontend/src/lib/musicEmoji.ts`. `docs/music-emoji.md`'s table is a hand-maintained mirror of it for humans — if the map changes, update that table to match; nothing regenerates the table text itself.
+- The table's preview images (`docs/music-emoji-images/*.png`) *are* generated — regenerate them any time the shortcode list or the font subset changes, rather than hand-editing:
+  ```sh
+  cd frontend
+  npm run generate:music-emoji-images
+  ```
+  This script reads `MUSIC_SHORTCODES` directly and renders each symbol from the actual shipped font subset (`frontend/src/assets/fonts/bravura-text-subset.woff2`) via Playwright, so the images can't quietly drift out of sync with what the app actually ships. Needs a Chromium binary the first time — `npx playwright install chromium` if you don't already have one.
+- A few symbols also have a second, non-inserted Unicode codepoint that the `Bravura Text` `@font-face` (`frontend/src/index.css`) is *also* the preferred font for, so pasting or typing the character directly (not via a shortcode) still renders correctly: `flat`/`natural`/`sharp` each additionally cover their SMuFL "alternate code" form (U+ED60–U+ED62), and `treble`/`alto`/`bass` each additionally cover the standard Unicode musical-symbol codepoint (U+1D11E, U+1D121, U+1D122). See that `@font-face`'s `unicode-range` for the exact list.
 
 ## Making a change
 

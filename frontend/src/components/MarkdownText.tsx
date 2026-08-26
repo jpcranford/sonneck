@@ -1,5 +1,6 @@
 import ReactMarkdown, { type Components } from 'react-markdown'
 import remarkBreaks from 'remark-breaks'
+import { remarkMusicEmoji } from '../lib/musicEmoji'
 
 // Renders free-text Markdown fields (piece/book description, a piece's own
 // notes) with the app's own type/color tokens — react-markdown ships no
@@ -19,6 +20,12 @@ import remarkBreaks from 'remark-breaks'
 // fields sit inside a page section that already owns its own heading
 // hierarchy, so letting user text render a page-title-sized heading would
 // be visually out of proportion to where it's embedded.
+//
+// remarkMusicEmoji (frontend/src/lib/musicEmoji.ts) turns a supported
+// `:shortcode:` into a plain Unicode character; font-music on the wrapper
+// below (index.css) is what actually renders that character as a music
+// symbol via Bravura Text's unicode-range, scoped to just this component's
+// output rather than app-wide.
 const components: Components = {
   p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
   ul: ({ children }) => <ul className="mb-2 list-disc space-y-0.5 pl-5 last:mb-0">{children}</ul>,
@@ -53,8 +60,8 @@ const components: Components = {
 
 export function MarkdownText({ children, className }: { children: string; className?: string }) {
   return (
-    <div className={className}>
-      <ReactMarkdown remarkPlugins={[remarkBreaks]} components={components}>
+    <div className={`font-music ${className ?? ''}`}>
+      <ReactMarkdown remarkPlugins={[remarkMusicEmoji, remarkBreaks]} components={components}>
         {children}
       </ReactMarkdown>
     </div>
