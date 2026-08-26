@@ -15,6 +15,7 @@ import {
 import { hyphenateISBN } from '../lib/isbn'
 import { useMockupTitle } from '../lib/useMockupTitle'
 import { ContextMenu } from '../components/ContextMenu'
+import { MarkdownText } from '../components/MarkdownText'
 
 // ---------------------------------------------------------------------
 // DESIGN MOCKUP — Book Details page, kept as a standing design reference
@@ -717,9 +718,9 @@ export function BookDetailsSample() {
               )}
 
               {sampleBook.description && (
-                <p className="mt-3.5 max-w-[60ch] text-[0.88rem] text-ink-soft">
-                  {sampleBook.description}
-                </p>
+                <div className="mt-3.5 max-w-[60ch] text-[0.88rem] text-ink-soft">
+                  <MarkdownText>{sampleBook.description}</MarkdownText>
+                </div>
               )}
 
               {fields.length > 0 && (

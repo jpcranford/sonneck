@@ -43,6 +43,7 @@ import { secondsToMMSS } from '../lib/duration'
 import { EditBookModal } from '../components/EditBookModal'
 import { EditPieceModal } from '../components/EditPieceModal'
 import { InfoTooltip } from '../components/InfoTooltip'
+import { MarkdownText } from '../components/MarkdownText'
 import { PageLightbox } from '../components/PageLightbox'
 import { PracticeStatusIcon } from '../components/PracticeStatusIcon'
 
@@ -671,9 +672,9 @@ export function PiecePage() {
             {piece.userNotes && (
               <div className="flex flex-col gap-1">
                 <span className="text-sm text-ink-soft">Your notes</span>
-                <p className="rounded-md bg-accent-soft/40 px-3 py-2 text-sm text-ink">
-                  {piece.userNotes}
-                </p>
+                <div className="rounded-md bg-accent-soft/40 px-3 py-2 text-sm text-ink">
+                  <MarkdownText>{piece.userNotes}</MarkdownText>
+                </div>
               </div>
             )}
           </div>
@@ -928,16 +929,21 @@ export function PiecePage() {
               )}
             </div>
 
-            {/* Description (book-inheritable) */}
+            {/* Description (book-inheritable). Markdown, rendered as
+                block content — can't reuse EffectiveValue's inline <span>
+                layout here since a <p>/<ul> from MarkdownText can't nest
+                inside one, so the inherited badge sits next to the label
+                instead of after the value, unlike every single-line
+                EffectiveValue usage elsewhere on this page. */}
             {piece.description.value && (
               <div className="flex flex-col gap-1">
-                <span className="text-sm text-ink-soft">Description</span>
-                <p className="text-sm text-ink">
-                  <EffectiveValue
-                    value={piece.description.value}
-                    inherited={piece.description.inherited}
-                  />
-                </p>
+                <span className="inline-flex items-center gap-1.5 text-sm text-ink-soft">
+                  Description
+                  {piece.description.inherited && <InheritedNote />}
+                </span>
+                <div className="text-sm text-ink">
+                  <MarkdownText>{piece.description.value}</MarkdownText>
+                </div>
               </div>
             )}
 

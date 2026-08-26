@@ -29,6 +29,7 @@ import { hyphenateISBN } from '../lib/isbn'
 import { ClickableCard } from '../components/ClickableCard'
 import { ContextMenu } from '../components/ContextMenu'
 import { EditBookModal } from '../components/EditBookModal'
+import { MarkdownText } from '../components/MarkdownText'
 import { PieceContextMenu } from '../components/PieceContextMenu'
 import { TagPills } from '../components/TagPills'
 
@@ -588,7 +589,9 @@ export function BookDetailsPage() {
                 )}
 
                 {book.description && (
-                  <p className="mt-3.5 max-w-[60ch] text-[0.88rem] text-ink-soft">{book.description}</p>
+                  <div className="mt-3.5 max-w-[60ch] text-[0.88rem] text-ink-soft">
+                    <MarkdownText>{book.description}</MarkdownText>
+                  </div>
                 )}
 
                 {fields.length > 0 && (

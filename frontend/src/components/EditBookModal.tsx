@@ -448,7 +448,7 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
 
           <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1">
             <label htmlFor="f-description" className="text-sm text-ink-soft">
-              Description
+              Description <span className="text-ink-soft/60 italic">(Markdown supported)</span>
             </label>
             <textarea
               id="f-description"

@@ -694,7 +694,7 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
             )}
           <div className="flex flex-col gap-1">
             <label htmlFor="f-description" className="text-sm text-ink-soft">
-              Description
+              Description <span className="text-ink-soft/60 italic">(Markdown supported)</span>
             </label>
             <textarea
               id="f-description"
@@ -941,7 +941,7 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
             </div>
             <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1">
               <label htmlFor="f-notes" className="text-sm text-ink-soft">
-                Your notes
+                Your notes <span className="text-ink-soft/60 italic">(Markdown supported)</span>
               </label>
               <textarea
                 id="f-notes"
