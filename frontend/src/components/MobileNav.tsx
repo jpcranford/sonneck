@@ -10,12 +10,14 @@ import { NAV_ITEMS, SECONDARY_NAV_ITEMS, SETLISTS, type NavItem } from '../lib/n
 // real NAV_ITEMS/SECONDARY_NAV_ITEMS/SETLISTS data directly.
 //
 // Deliberately logo-less — went through the full wordmark, then
-// mark-plus-text, then mark-only, before landing here. The wordmark
-// specifically hit a real, still-unresolved small-size rendering defect
-// in the k glyph (see SonneckWordmark.tsx's own comment) and was dropped
-// for that reason; going logo-less entirely rather than falling back to
-// the S mark was a separate simplification call on top of that, not a
-// workaround for it.
+// mark-plus-text, then mark-only, before landing here. The wordmark hit a
+// real small-size rendering defect in the k glyph at the time (see
+// SonneckWordmark.tsx's own comment; since resolved by a hand-traced bold
+// replacing the old filter-based one) and was dropped for that reason;
+// going logo-less entirely rather than falling back to the S mark was a
+// separate simplification call on top of that, not a workaround for it.
+// Worth reconsidering now that the defect's fixed, but that's a fresh
+// design call, not something this comment update decides on its own.
 //
 // Split into two components, not one, because the mockup's own layout
 // puts them in two different places in the tree: the top bar is a normal
