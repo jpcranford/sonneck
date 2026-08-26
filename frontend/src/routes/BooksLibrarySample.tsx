@@ -2,9 +2,9 @@ import { useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import {
   IconChevronRight,
+  IconFile,
   IconLayoutGridFilled,
   IconLayoutListFilled,
-  IconMusic,
   IconPlus,
   IconSearch,
   IconXFilled,
@@ -152,29 +152,27 @@ function CoverPlaceholder({ book }: { book: MockBook }) {
 }
 
 // ---- Option B: cover grid ----
-// Piece count treatment: "minimal scrim label" — no pill shape, count+icon
-// sit directly on a dark gradient scrim. Dark, not light: real book cover
-// art is often
-// colorful/photographic rather than a plain cream sheet-music page, so a
-// light label over a dark gradient holds up across unpredictable cover
-// art the way it does for any media app overlaying metadata on artwork —
-// a light scrim + dark text doesn't generalize the same way. Confirmed
-// against real variation, not just a favorable case: once the placeholder
-// cover art (below) switched from a uniform cream page to actual colored
-// covers, 10% black scrim proved too weak against the lighter ones (dusty
-// rose, cream/tan) — bumped to 18% to hold up across the full brightness
-// range. drop-shadow-sm on the label is a small addition beyond what was
-// asked, cheap extra insurance on top of the scrim.
+// Piece count treatment: a dark pill in the bottom-right corner, not a
+// full-width gradient scrim across the cover. Went through a scrim-based
+// version first (10% black proved too weak against lighter covers like
+// dusty rose/cream-tan, bumped to 18%, then to 65% peak trying to hold up
+// against real colorful/photographic covers), but at that darkness the
+// scrim read as either faint or heavy-handed depending on the cover —
+// there was no peak opacity that worked well across all of them. Chosen
+// instead from a 5-option comparison (solid pill, rounded-rect, frosted
+// glass, opaque brand-ink, and a light counterpoint pill) against the same
+// real covers: the pill's own background does the contrast work, so the
+// cover art underneath stays untouched regardless of how light, dark, or
+// colorful it is.
 function BookCoverCard({ book }: { book: MockBook }) {
   const meta = metaLine(book)
   return (
     <div className="flex cursor-pointer flex-col gap-2">
       <div className="relative aspect-[2/3] overflow-hidden rounded-md border border-border shadow-sm transition-shadow hover:shadow-lg">
         <CoverPlaceholder book={book} />
-        <div className="absolute inset-x-0 bottom-0 h-11 bg-[linear-gradient(to_top,rgba(0,0,0,0.18)_0%,rgba(0,0,0,0)_100%)]" />
-        <span className="absolute right-2 bottom-1.5 flex items-center gap-1 text-[0.7rem] font-semibold text-white drop-shadow-sm">
+        <span className="absolute right-2 bottom-1.5 flex items-center gap-1 rounded-full bg-[rgba(28,24,21,0.82)] px-[7px] py-[2px] text-[0.7rem] font-semibold text-white">
           {book.pieceCount}
-          <IconMusic size={10} />
+          <IconFile size={10} />
         </span>
       </div>
       <div className="flex flex-col gap-0.5">

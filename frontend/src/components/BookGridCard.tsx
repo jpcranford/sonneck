@@ -1,4 +1,4 @@
-import { IconFileX, IconMusic } from '@tabler/icons-react'
+import { IconFile, IconFileX } from '@tabler/icons-react'
 import { getBookCoverUrl } from '../api/books'
 import type { Book } from '../api/types'
 import { formatBookMeta } from '../lib/formatBookMeta'
@@ -11,11 +11,15 @@ interface BookGridCardProps {
 
 // Portrait 2:3 covers, not Pieces' landscape 180:132 — the aspect ratio
 // alone reads as "different kind of object" at a glance while staying
-// recognizably the same card-grid pattern. Piece count sits as a minimal
-// label on a dark scrim in the bottom-right corner (not a pill) — real
-// cover art is often colorful/photographic, so a light label over a dark
-// gradient holds up across unpredictable art the way a pill badge
-// wouldn't need to.
+// recognizably the same card-grid pattern. Piece count sits in the
+// bottom-right corner on its own dark pill, not a full-width gradient
+// scrim across the cover — chosen from a 5-option comparison (solid pill,
+// rounded-rect, frosted glass, opaque brand-ink, and a light counterpoint
+// pill) against real colorful/photographic covers, after an earlier
+// scrim-based version (bumped from 10% to 18% to 65% peak opacity trying
+// to hold up against lighter covers) kept reading as either too faint or
+// too heavy-handed against the cover art. The pill's own background does
+// the contrast work now, so the cover underneath stays untouched.
 export function BookGridCard({ book }: BookGridCardProps) {
   const meta = formatBookMeta(book)
 
@@ -51,10 +55,9 @@ export function BookGridCard({ book }: BookGridCardProps) {
               <IconFileX size={28} className="text-[#aea8a0]" />
             </div>
           )}
-          <div className="absolute inset-x-0 bottom-0 h-11 bg-[linear-gradient(to_top,rgba(0,0,0,0.18)_0%,rgba(0,0,0,0)_100%)]" />
-          <span className="absolute right-2 bottom-1.5 flex items-center gap-1 text-[0.7rem] font-semibold text-white drop-shadow-sm">
+          <span className="absolute right-2 bottom-1.5 flex items-center gap-1 rounded-full bg-[rgba(28,24,21,0.82)] px-[7px] py-[2px] text-[0.7rem] font-semibold text-white">
             {book.pieceCount}
-            <IconMusic size={10} />
+            <IconFile size={10} />
           </span>
         </div>
         <div className="flex flex-col gap-0.5">
