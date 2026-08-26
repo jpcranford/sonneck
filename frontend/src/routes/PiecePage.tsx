@@ -562,23 +562,36 @@ export function PiecePage() {
                 shows, so both sit with the preview rather than in the info
                 column's field list. */}
             <div className="flex flex-wrap items-center justify-center gap-2">
-              <div className="relative flex overflow-hidden rounded-md">
-                <a
-                  href={getPieceFileUrl(piece.id)}
-                  download
-                  className="flex items-center gap-2 bg-accent px-4 py-2 font-display text-sm text-white hover:bg-accent/90"
-                >
-                  <IconDownload size={16} />
-                  Download PDF
-                </a>
-                <button
-                  type="button"
-                  onClick={() => setDownloadOpen((o) => !o)}
-                  aria-label="More download options"
-                  className="flex items-center justify-center border-l border-white/25 bg-accent px-2 text-white hover:bg-accent/90"
-                >
-                  <IconChevronDownFilled size={16} />
-                </button>
+              {/* Positioning context lives on this outer div, not the
+                  inner pill — the inner div's own overflow-hidden (needed
+                  so the two buttons share one rounded pill outline) was
+                  clipping the dropdown panel below into total invisibility
+                  despite it otherwise being laid out and styled correctly
+                  (real geometry, opacity 1, z-10) — overflow-hidden clips
+                  any absolutely-positioned descendant whose containing
+                  block is that same box, which this was, since it was the
+                  nearest position:relative ancestor. Found via computed
+                  styles/bounding-box during live verification, not visible
+                  from reading the JSX alone. */}
+              <div className="relative">
+                <div className="flex overflow-hidden rounded-md">
+                  <a
+                    href={getPieceFileUrl(piece.id)}
+                    download
+                    className="flex items-center gap-2 bg-accent px-4 py-2 font-display text-sm text-white hover:bg-accent/90"
+                  >
+                    <IconDownload size={16} />
+                    Download PDF
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => setDownloadOpen((o) => !o)}
+                    aria-label="More download options"
+                    className="flex items-center justify-center border-l border-white/25 bg-accent px-2 text-white hover:bg-accent/90"
+                  >
+                    <IconChevronDownFilled size={16} />
+                  </button>
+                </div>
                 {downloadOpen && (
                   <div className="absolute top-full left-0 z-10 mt-1 w-64 overflow-hidden rounded-md border border-border bg-paper-raised py-1 text-left shadow-lg">
                     <a
@@ -586,14 +599,14 @@ export function PiecePage() {
                       download
                       className="block w-full px-3 py-2 text-left text-sm text-ink hover:bg-accent-soft"
                     >
-                      Download PDF
+                      Download Piece PDF
                     </a>
                     <button
                       type="button"
                       disabled
                       className="block w-full cursor-not-allowed px-3 py-2 text-left text-sm text-ink-soft/50"
                     >
-                      Download original + annotations
+                      Download PDF + Annotations
                       <span className="block text-xs italic">Coming with annotations (§13)</span>
                     </button>
                   </div>

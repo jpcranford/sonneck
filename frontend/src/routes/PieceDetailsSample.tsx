@@ -630,36 +630,43 @@ export function PieceDetailsSample() {
           )}
 
           <div className="flex flex-wrap items-center justify-center gap-2">
-            <div className="relative flex overflow-hidden rounded-md">
-              <button
-                type="button"
-                className="flex items-center gap-2 bg-accent px-4 py-2 font-display text-sm text-white hover:bg-accent/90"
-              >
-                <IconDownload size={16} />
-                Download PDF
-              </button>
-              <button
-                type="button"
-                onClick={() => setDownloadOpen((o) => !o)}
-                aria-label="More download options"
-                className="flex items-center justify-center border-l border-white/25 bg-accent px-2 text-white hover:bg-accent/90"
-              >
-                <IconChevronDownFilled size={16} />
-              </button>
+            {/* Positioning context lives on this outer div, not the inner
+                pill — see PiecePage.tsx's own comment on this: the inner
+                div's overflow-hidden (needed for the shared rounded pill
+                outline) was clipping the dropdown panel into total
+                invisibility despite it being laid out/styled correctly. */}
+            <div className="relative">
+              <div className="flex overflow-hidden rounded-md">
+                <button
+                  type="button"
+                  className="flex items-center gap-2 bg-accent px-4 py-2 font-display text-sm text-white hover:bg-accent/90"
+                >
+                  <IconDownload size={16} />
+                  Download PDF
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDownloadOpen((o) => !o)}
+                  aria-label="More download options"
+                  className="flex items-center justify-center border-l border-white/25 bg-accent px-2 text-white hover:bg-accent/90"
+                >
+                  <IconChevronDownFilled size={16} />
+                </button>
+              </div>
               {downloadOpen && (
                 <div className="absolute top-full left-0 z-10 mt-1 w-64 overflow-hidden rounded-md border border-border bg-paper-raised py-1 text-left shadow-lg">
                   <button
                     type="button"
                     className="block w-full px-3 py-2 text-left text-sm text-ink hover:bg-accent-soft"
                   >
-                    Download PDF
+                    Download Piece PDF
                   </button>
                   <button
                     type="button"
                     disabled
                     className="block w-full cursor-not-allowed px-3 py-2 text-left text-sm text-ink-soft/50"
                   >
-                    Download original + annotations
+                    Download PDF + Annotations
                     <span className="block text-xs italic">Coming with annotations (§13)</span>
                   </button>
                 </div>
