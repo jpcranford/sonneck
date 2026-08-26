@@ -51,11 +51,15 @@ async function main() {
   const fontBase64 = readFileSync(FONT_PATH).toString('base64')
   const symbols = uniqueSymbols()
 
+  // Target output: a hard 75px-tall cap (GitHub renders a plain
+  // ![]()-embedded image at its native pixel size, no downscaling, so the
+  // *actual* PNG dimensions are what matters here, not just a CSS size).
+  // deviceScaleFactor 2 buys some antialiasing quality over a flat 1x
+  // render while staying comfortably under the cap: 36px CSS height * 2 =
+  // 72px physical.
+  const CSS_HEIGHT = 36
   const browser = await chromium.launch()
-  // deviceScaleFactor 4: these are tiny glyphs blown up to fill a table
-  // cell in the doc, so a plain 1x render looks visibly soft next to
-  // surrounding sharp text.
-  const page = await browser.newPage({ deviceScaleFactor: 4 })
+  const page = await browser.newPage({ deviceScaleFactor: 2 })
 
   for (const { slug, char } of symbols) {
     const html = `<!doctype html><html><head><meta charset="utf-8"><style>
@@ -68,9 +72,10 @@ async function main() {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        padding: 6px 10px;
+        height: ${CSS_HEIGHT}px;
+        padding: 0 8px;
         font-family: 'Bravura Text';
-        font-size: 40px;
+        font-size: 24px;
         line-height: 1;
         /* --color-paper (frontend/src/index.css), not transparent or plain
            white: GitHub renders this doc in both light and dark mode, and
