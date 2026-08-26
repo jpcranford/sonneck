@@ -392,7 +392,7 @@ export function BooksLibrarySample() {
             onClick={() => setViewMode('grid')}
             aria-label="Grid view"
             aria-pressed={viewMode === 'grid'}
-            className={`flex size-8 items-center justify-center rounded ${
+            className={`flex size-8 cursor-pointer items-center justify-center rounded ${
               viewMode === 'grid' ? 'bg-accent-soft text-accent' : 'text-ink-soft'
             }`}
           >
@@ -403,7 +403,7 @@ export function BooksLibrarySample() {
             onClick={() => setViewMode('list')}
             aria-label="List view"
             aria-pressed={viewMode === 'list'}
-            className={`flex size-8 items-center justify-center rounded ${
+            className={`flex size-8 cursor-pointer items-center justify-center rounded ${
               viewMode === 'list' ? 'bg-accent-soft text-accent' : 'text-ink-soft'
             }`}
           >

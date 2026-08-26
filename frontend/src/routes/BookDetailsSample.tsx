@@ -608,7 +608,7 @@ export function BookDetailsSample() {
             onClick={(event) => event.preventDefault()}
             aria-label="Open Book PDF"
             title="Open Book PDF — no real file in this mockup"
-            className="flex w-[38px] items-center justify-center rounded-md border border-border bg-paper-raised text-ink-soft hover:border-accent hover:text-ink"
+            className="flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink-soft hover:border-accent hover:text-ink"
           >
             <IconFileTypePdf size={16} />
           </button>
@@ -619,7 +619,7 @@ export function BookDetailsSample() {
             onClick={openCoverFilePicker}
             aria-label="Change cover image"
             title="Change cover image"
-            className="flex w-[38px] items-center justify-center rounded-md border border-border bg-paper-raised text-ink-soft hover:border-accent hover:text-ink"
+            className="flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink-soft hover:border-accent hover:text-ink"
           >
             <IconPhotoUp size={16} />
           </button>
@@ -752,7 +752,7 @@ export function BookDetailsSample() {
                 onClick={() => setViewMode('grid')}
                 aria-label="Grid view"
                 aria-pressed={viewMode === 'grid'}
-                className={`flex size-8 items-center justify-center rounded ${
+                className={`flex size-8 cursor-pointer items-center justify-center rounded ${
                   viewMode === 'grid' ? 'bg-accent-soft text-accent' : 'text-ink-soft'
                 }`}
               >
@@ -763,7 +763,7 @@ export function BookDetailsSample() {
                 onClick={() => setViewMode('list')}
                 aria-label="List view"
                 aria-pressed={viewMode === 'list'}
-                className={`flex size-8 items-center justify-center rounded ${
+                className={`flex size-8 cursor-pointer items-center justify-center rounded ${
                   viewMode === 'list' ? 'bg-accent-soft text-accent' : 'text-ink-soft'
                 }`}
               >

@@ -417,7 +417,7 @@ function ActionButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`flex items-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-sm whitespace-nowrap text-ink hover:border-accent disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border ${className}`}
+      className={`flex cursor-pointer items-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-sm whitespace-nowrap text-ink hover:border-accent disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border ${className}`}
     >
       {icon}
       {label}
@@ -522,7 +522,7 @@ export function PieceDetailsSample() {
             disabled
             aria-label="Delete Piece"
             title="Delete Piece"
-            className="flex size-9 items-center justify-center rounded-md border border-border bg-paper-raised text-red-700 hover:border-red-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border"
+            className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-red-700 hover:border-red-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border"
           >
             <IconTrash size={18} />
           </button>
@@ -537,7 +537,7 @@ export function PieceDetailsSample() {
             disabled
             aria-label="Random Piece"
             title="Random Piece"
-            className="flex size-9 items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent disabled:cursor-not-allowed disabled:opacity-50"
           >
             <IconDice5 size={18} />
           </button>
@@ -736,7 +736,7 @@ export function PieceDetailsSample() {
                   onClick={() => setFavorite((f) => !f)}
                   aria-pressed={favorite}
                   aria-label={favorite ? 'Remove from favorites' : 'Add to favorites'}
-                  className="text-ink-soft hover:text-accent"
+                  className="cursor-pointer text-ink-soft hover:text-accent"
                 >
                   {favorite ? (
                     <IconHeartFilled size={24} className="text-accent" />
@@ -1017,7 +1017,7 @@ export function PieceDetailsSample() {
                       onClick={(event) => handleCopy(piece.fileHash, event)}
                       aria-label="Copy full file hash"
                       // Solid pre-blend, not opacity — overlapping icon strokes would re-blend unevenly under real translucency.
-                      className="text-[#aca7a1] hover:text-ink-soft"
+                      className="cursor-pointer text-[#aca7a1] hover:text-ink-soft"
                     >
                       <IconCopy size={12} />
                     </button>
@@ -1044,7 +1044,7 @@ export function PieceDetailsSample() {
             <button
               type="button"
               onClick={handleCopyCitation}
-              className="w-fit text-left font-display text-sm text-ink-soft/75 italic hover:text-ink-soft"
+              className="w-fit cursor-pointer text-left font-display text-sm text-ink-soft/75 italic hover:text-ink-soft"
             >
               {sampleCitation}
             </button>

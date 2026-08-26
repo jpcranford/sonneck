@@ -63,7 +63,7 @@ export function AppShell() {
             href="https://github.com/jpcranford/sonneck"
             target="_blank"
             rel="noreferrer"
-            className="flex flex-col items-center gap-3.5 text-[#847d75] hover:text-ink"
+            className="flex cursor-pointer flex-col items-center gap-3.5 text-[#847d75] hover:text-ink"
           >
             {/* No whitespace-nowrap here on purpose, even though the design
                 intent is "one line" — the sentence's natural width (~288px)

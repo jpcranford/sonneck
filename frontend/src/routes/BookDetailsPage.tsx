@@ -440,7 +440,7 @@ export function BookDetailsPage() {
               disabled={deleteMutation.isPending}
               aria-label="Delete Book"
               title="Delete Book"
-              className="flex w-[38px] items-center justify-center rounded-md border border-border bg-paper-raised text-red-700 hover:border-red-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border"
+              className="flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-red-700 hover:border-red-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border"
             >
               <IconTrash size={16} />
             </button>
@@ -474,7 +474,7 @@ export function BookDetailsPage() {
               onClick={openCoverFilePicker}
               aria-label="Change cover image"
               title="Change cover image"
-              className="flex w-[38px] items-center justify-center rounded-md border border-border bg-paper-raised text-ink-soft hover:border-accent hover:text-ink"
+              className="flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink-soft hover:border-accent hover:text-ink"
             >
               <IconPhotoUp size={16} />
             </button>
@@ -497,7 +497,7 @@ export function BookDetailsPage() {
               type="button"
               onClick={() => setBookEditOpen(true)}
               aria-label="Edit Book"
-              className="flex items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-sm whitespace-nowrap text-ink hover:border-accent max-[360px]:w-[38px] max-[360px]:px-0"
+              className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-sm whitespace-nowrap text-ink hover:border-accent max-[360px]:w-[38px] max-[360px]:px-0"
             >
               <IconEditFilled size={16} />
               <span className="max-[360px]:hidden">Edit Book</span>
@@ -623,7 +623,7 @@ export function BookDetailsPage() {
                   onClick={() => setViewMode('grid')}
                   aria-label="Grid view"
                   aria-pressed={viewMode === 'grid'}
-                  className={`flex size-8 items-center justify-center rounded ${
+                  className={`flex size-8 cursor-pointer items-center justify-center rounded ${
                     viewMode === 'grid' ? 'bg-accent-soft text-accent' : 'text-ink-soft'
                   }`}
                 >
@@ -634,7 +634,7 @@ export function BookDetailsPage() {
                   onClick={() => setViewMode('list')}
                   aria-label="List view"
                   aria-pressed={viewMode === 'list'}
-                  className={`flex size-8 items-center justify-center rounded ${
+                  className={`flex size-8 cursor-pointer items-center justify-center rounded ${
                     viewMode === 'list' ? 'bg-accent-soft text-accent' : 'text-ink-soft'
                   }`}
                 >
