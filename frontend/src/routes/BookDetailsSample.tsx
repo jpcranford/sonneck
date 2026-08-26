@@ -197,13 +197,28 @@ function sortedPieces(pieces: SamplePiece[]): SamplePiece[] {
 // Composer-or-arranger: a piece/book can have an arranger with no
 // composer at all, so this can't just append arranger onto
 // composer whenever it's set — composer blank + arranger set must still
-// show "arr. Arranger" alone, not disappear entirely. Same three-way
-// fallback as PieceDetailsSample.tsx's bookComposerPart and the backend's
-// buildCitation. Factored out here (unlike those files) since this one
-// file needs it in three places: the book header, the piece grid, and the
-// piece list.
+// show "arr. Arranger" alone, not disappear entirely. Comma-fused
+// ("Composer, arr. Arranger") — this is the PIECE-level convention used
+// everywhere else in the app (formatPieceMeta.ts, PieceGridCard.tsx,
+// BookUploadConfirmStep.tsx), mirroring the backend's citation format.
+// Kept distinct from bookComposerPart below, which is bullet-separated
+// instead. Factored out here (unlike those files) since this one file
+// needs it in multiple places: the piece grid and the piece list.
 function composerArrangerPart(composer: string | null, arranger: string | null): string | null {
   if (composer && arranger) return `${composer}, arr. ${arranger}`
+  if (composer) return composer
+  if (arranger) return `arr. ${arranger}`
+  return null
+}
+
+// Book-level composer/arranger fusion — bullet-separated ("Composer •
+// arr. Arranger"), not comma, to mirror how Piece Details shows a piece's
+// own composer/arranger row (PiecePage.tsx). Mirrors
+// frontend/src/lib/formatBookMeta.ts's real bookComposerPart exactly; kept
+// as its own copy here rather than imported, same convention as
+// composerArrangerPart above.
+function bookComposerPart(composer: string | null, arranger: string | null): string | null {
+  if (composer && arranger) return `${composer} • arr. ${arranger}`
   if (composer) return composer
   if (arranger) return `arr. ${arranger}`
   return null
@@ -524,13 +539,13 @@ export function BookDetailsSample() {
   const title = sampleBook.workOpusNumber
     ? `${sampleBook.bookTitle} (${sampleBook.workOpusNumber})`
     : sampleBook.bookTitle
-  // composerArrangerPart's fallback, then the book's own composer→publisher
+  // bookComposerPart's fallback, then the book's own composer→publisher
   // fallback (effectiveBookComposer, lib/formatBookMeta.ts) if neither
   // composer nor arranger is set — unexercised here since sampleBook always
   // has a composer, same as pieceComposer's own equivalent fallback.
-  const bookComposerPart =
-    composerArrangerPart(sampleBook.composer, sampleBook.arranger) || sampleBook.publisher
-  const metaLine = [bookComposerPart, sampleBook.yearWritten].filter(Boolean).join(' • ')
+  const composerLine =
+    bookComposerPart(sampleBook.composer, sampleBook.arranger) || sampleBook.publisher
+  const metaLine = [composerLine, sampleBook.yearWritten].filter(Boolean).join(' • ')
   const fields = bookFields()
 
   return (

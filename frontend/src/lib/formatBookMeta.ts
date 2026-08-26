@@ -2,13 +2,18 @@ import type { Book } from '../api/types'
 
 // Composer-or-arranger: a Book can have an arranger with no composer at
 // all (ValidateBook requires one of the two, not composer
-// specifically), fused onto composer (", arr. Arranger") when both are
-// set — same three-way fallback as PieceDetailsSample.tsx's bookComposerPart
-// and the backend's buildCitation. Falls back further to publisher only
-// when the book has neither composer nor arranger (the pre-existing
-// composer→publisher fallback, unchanged).
+// specifically), fused onto composer ("Composer • arr. Arranger") when
+// both are set — bullet-separated, not comma, to mirror how Piece Details
+// shows a piece's own composer/arranger row (PiecePage.tsx). Same
+// three-way fallback as PieceDetailsSample.tsx's bookComposerPart. Falls
+// back further to publisher only when the book has neither composer nor
+// arranger (the pre-existing composer→publisher fallback, unchanged). Note
+// this is deliberately different from the *piece*-level composer/arranger
+// fusion used elsewhere (formatPieceMeta.ts, PieceGridCard.tsx), which
+// still uses a comma — that one mirrors the backend's citation format
+// instead, not Piece Details' own header.
 export function bookComposerPart(book: Book): string | null {
-  if (book.composer && book.arranger) return `${book.composer}, arr. ${book.arranger}`
+  if (book.composer && book.arranger) return `${book.composer} • arr. ${book.arranger}`
   if (book.composer) return book.composer
   if (book.arranger) return `arr. ${book.arranger}`
   return book.publisher

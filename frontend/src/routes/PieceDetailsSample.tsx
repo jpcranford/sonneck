@@ -88,13 +88,15 @@ const sampleBook = {
 }
 
 // Book's own composer/arranger fallback chain for the Source Book card's
-// meta line — composer+arranger fused (", arr. Arranger") when both are
-// set, arranger alone when composer is blank (composer-or-arranger means a
-// Book can have neither/either), falling back further to publisher only
-// when the book has neither (effectiveBookComposer's own existing
-// pre-arranger fallback, lib/formatBookMeta.ts).
+// meta line — composer+arranger fused ("Composer • arr. Arranger") when
+// both are set, bullet-separated rather than comma to mirror how this same
+// page shows a piece's own composer/arranger row above (see the JSX
+// below). Arranger alone when composer is blank (composer-or-arranger
+// means a Book can have neither/either), falling back further to
+// publisher only when the book has neither (effectiveBookComposer's own
+// existing pre-arranger fallback, lib/formatBookMeta.ts).
 function bookComposerPart(book: typeof sampleBook): string | null {
-  if (book.composer && book.arranger) return `${book.composer}, arr. ${book.arranger}`
+  if (book.composer && book.arranger) return `${book.composer} • arr. ${book.arranger}`
   if (book.composer) return book.composer
   if (book.arranger) return `arr. ${book.arranger}`
   return book.publisher
