@@ -689,6 +689,12 @@ export function BookUploadAboutStep({
           alt={`Page ${previewPage} of ${book.bookTitle}`}
           page={previewPage}
           pageCount={pageCount}
+          // This screen's own "printed-PDF page offset" field is right
+          // next to this preview — see UploadBookAboutMockup.tsx's own
+          // comment on why a bare "n / N" here could otherwise read as
+          // that instead of the PDF's own physical page (matches this
+          // screen's inline cycler, which already says "PDF p.").
+          pagePrefix="PDF p. "
           onClose={() => setLightboxOpen(false)}
           onPrev={() => setPreviewPage((p) => Math.max(1, p - 1))}
           onNext={() => setPreviewPage((p) => Math.min(pageCount, p + 1))}

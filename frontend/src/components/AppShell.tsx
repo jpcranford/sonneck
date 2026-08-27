@@ -37,7 +37,10 @@ export function AppShell() {
           to" with nothing visibly there. This app has no design that
           calls for horizontal scrolling anywhere in the main content
           column, so hidden is correct here, not auto. */}
-      <div className="flex min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto">
+      <div
+        id="app-scroll-container"
+        className="flex min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto"
+      >
         <MobileNavTopBar onOpen={() => setMobileNavOpen(true)} />
         <main className="flex flex-1 flex-col">
           <Outlet />

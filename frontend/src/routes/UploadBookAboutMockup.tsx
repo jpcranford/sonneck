@@ -261,8 +261,19 @@ function PageLightbox({
           >
             <IconChevronLeft size={16} />
           </button>
-          <span className="text-xs tabular-nums text-white/90">
-            {page} / {pageCount}
+          {/* "PDF p." prefix added (2026-08-27) to match the inline cycler
+              below the main preview (this screen's own "PDF p. {n} / {N}"
+              capsule, added for the same reason — this screen also has a
+              printed-page number input right next to it, and a bare "n /
+              N" could otherwise read as that instead of the PDF's own
+              physical page). The lightbox is centered against the full
+              viewport, not shrink-wrapped against a narrow cover box, so
+              it isn't exposed to the width-clamping wrap bug the inline
+              cycler's own comment describes — whitespace-nowrap added
+              defensively anyway, cheap insurance against the same failure
+              mode on a narrow viewport. */}
+          <span className="text-xs whitespace-nowrap tabular-nums text-white/90">
+            PDF p. {page} / {pageCount}
           </span>
           <button
             type="button"

@@ -6,6 +6,7 @@ import { deleteBook, getBook } from '../api/books'
 import { ApiError } from '../api/client'
 import type { Book, Piece as ApiPiece } from '../api/types'
 import { computeLayout, type PageAssignments, type Piece } from '../lib/pieceSplitLogic'
+import { scrollAppContentToTop } from '../lib/scrollContainer'
 import { clearWizardDraft, loadWizardDraft, saveWizardDraft, type WizardDraftStep } from '../lib/useWizardDraft'
 import { BookUploadFileStep } from './BookUploadFileStep'
 import { BookUploadAboutStep } from './BookUploadAboutStep'
@@ -379,6 +380,21 @@ export function BookUploadWizard({ onExit }: BookUploadWizardProps) {
           setPieceFields((currentFields) => reconcilePieceFields(pieces, oldPieces, currentFields))
           pieceFieldsPiecesRef.current = pieces.map((p) => ({ start: p.start, end: p.end }))
           setStep('titles')
+          // Steps aren't real routes (see this file's own top comment —
+          // one component, local `step` state, no router involved), so
+          // nothing scrolls back to top automatically the way a real
+          // navigation would. The Split step's own page grid can run long
+          // enough to scroll well past the fold reviewing splits; without
+          // this, landing on Titles mid-scroll could show a middle
+          // section of that step instead of its own top, reading as a
+          // broken transition rather than a new step starting.
+          // scrollAppContentToTop, not window.scrollTo — this app's real
+          // scroll container is a specific inner div (AppShell.tsx), not
+          // window; confirmed live (a first pass using window.scrollTo
+          // was a silent no-op, only caught by actually driving the
+          // wizard through a scroll+Next sequence, not by the type-check
+          // passing).
+          scrollAppContentToTop()
         }}
       />
     )

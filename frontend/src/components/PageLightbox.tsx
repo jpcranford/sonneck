@@ -20,6 +20,7 @@ export function PageLightbox({
   page,
   pageCount,
   minPage = 1,
+  pagePrefix = '',
   onClose,
   onPrev,
   onNext,
@@ -36,6 +37,15 @@ export function PageLightbox({
   // button still disables at the *real* first page instead of at a
   // literal "1" that offset numbering may never actually reach.
   minPage?: number
+  // Defaults to '' — only the About step passes "PDF p. " (2026-08-27),
+  // since only that screen has a competing typed "printed page" number
+  // right next to the lightbox, where a bare "n / N" could otherwise read
+  // as that instead of the PDF's own physical page. Every other caller
+  // (Piece Details, single-piece upload, the Titles step) has no such
+  // competing number nearby, so a prefix there would just be noise — kept
+  // as an opt-in prop rather than a hardcoded default, same reasoning as
+  // minPage above.
+  pagePrefix?: string
   onClose: () => void
   onPrev: () => void
   onNext: () => void
@@ -130,7 +140,15 @@ export function PageLightbox({
           >
             <IconChevronLeft size={16} />
           </button>
-          <span className="text-xs tabular-nums text-white/90">
+          {/* whitespace-nowrap: the About step's own inline cycler (a
+              different, narrower capsule) had a real bug where adding the
+              "PDF p." prefix could wrap the count onto two lines — this
+              capsule is centered against the full viewport rather than a
+              narrow local box so it isn't actually exposed to that same
+              failure mode, but the guard is cheap insurance regardless of
+              which caller passes a prefix. */}
+          <span className="text-xs whitespace-nowrap tabular-nums text-white/90">
+            {pagePrefix}
             {page} / {pageCount}
           </span>
           <button
