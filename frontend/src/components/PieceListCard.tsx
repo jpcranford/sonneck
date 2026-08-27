@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { IconHeartFilled } from '@tabler/icons-react'
 import { getPieceThumbnailUrl } from '../api/pieces'
 import type { Piece } from '../api/types'
 import { formatPieceMeta } from '../lib/formatPieceMeta'
@@ -30,7 +31,19 @@ export function PieceListCard({ piece, backLabel }: PieceListCardProps) {
       >
         <div className="flex items-start justify-between gap-4">
           <div className="flex min-w-0 flex-col gap-1">
-            <p className="truncate font-display text-lg font-medium text-ink">{piece.title}</p>
+            {/* Favorite heart, same treatment as PieceGridCard's title
+                line — this list view never had one at all (a real gap, not
+                a deliberate omission), so Library/Favorites/Currently
+                Practicing's list view silently never showed a piece was
+                favorited. */}
+            <p className="flex min-w-0 items-center gap-1.5 font-display text-lg font-medium text-ink">
+              <span className="truncate">{piece.title}</span>
+              {piece.favorite && (
+                <span className="shrink-0 text-accent" title="Favorite">
+                  <IconHeartFilled size={13} />
+                </span>
+              )}
+            </p>
             {meta && <p className="text-sm text-ink-soft">{meta}</p>}
           </div>
           <div className="flex w-[134px] shrink-0 justify-center">
