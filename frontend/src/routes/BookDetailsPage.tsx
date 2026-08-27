@@ -252,6 +252,21 @@ export function BookDetailsPage() {
     enabled: !!book,
   })
 
+  // aspect-[2/3] on the cover box below is a *loading-state placeholder
+  // only*, not the real image's shape — same fix already applied to Piece
+  // Details and the Book Upload Wizard's About step (see those files' own
+  // comments). A permanently forced aspect + object-cover crops whatever
+  // part of the real image doesn't fit 2:3 — most books have no custom
+  // cover uploaded, so this is usually a raw rendered PDF page, not an
+  // actual poster-shaped cover. Keyed on the cover's own source identifier
+  // (not bookId) so switching between a custom cover and the PDF-page
+  // fallback also resets it, not just navigating to a different book.
+  const coverSource = book ? (book.coverImageHash ?? book.fileHash) : null
+  const [coverLoaded, setCoverLoaded] = useState(false)
+  useEffect(() => {
+    setCoverLoaded(false)
+  }, [coverSource])
+
   // Custom cover upload — both the header toolbar button and right-click/
   // long-press the cover call openCoverFilePicker, same shared trigger.
   // Applies regardless of whether the book already has a real file.
@@ -538,12 +553,43 @@ export function BookDetailsPage() {
                   as a second possible cover source; getBookCoverUrl resolves
                   which one server-side. */}
               <ContextMenu items={coverContextMenuItems} hideTriggerButton>
-                <div className="aspect-[2/3] w-[110px] shrink-0 overflow-hidden rounded-md border border-border bg-paper-sunken">
+                {/* Longest side capped at 150px, shorter side following the
+                    image's own aspect ratio — not a fixed 110px width
+                    (design refined on /mockup/book-details first, see that
+                    file's own comment on this same block). A landscape
+                    image (most scanned pages, since most books have no
+                    custom cover uploaded) is 150px wide with a shorter
+                    height; a portrait image (most real book covers) is
+                    150px *tall* with a narrower width — a very tall/narrow
+                    scan no longer renders taller than every other cover on
+                    the page. max-height/max-width + auto sizing on the
+                    <img> picks whichever constraint binds, no orientation
+                    detection needed. While loading, reserve a 150×150
+                    square (a neutral upper bound in both directions, since
+                    the real shape isn't known yet). The no-file fallback
+                    (IconFileX below) has no image to derive a shape from,
+                    so it keeps a fixed 2:3 placeholder capped the same way
+                    (height, its longer side, at 150px). */}
+                <div
+                  className={`shrink-0 overflow-hidden rounded-md border border-border bg-paper-sunken ${
+                    book.hasCustomCover || book.fileHash
+                      ? coverLoaded
+                        ? 'w-fit'
+                        : 'h-[150px] w-[150px]'
+                      : 'aspect-[2/3] h-[150px]'
+                  }`}
+                >
                   {book.hasCustomCover || book.fileHash ? (
                     <img
+                      key={coverSource}
                       src={getBookCoverUrl(book.id, book.coverImageHash ?? book.fileHash)}
+                      onLoad={() => setCoverLoaded(true)}
                       alt=""
-                      className="h-full w-full object-cover object-top"
+                      className={
+                        coverLoaded
+                          ? 'block h-auto max-h-[150px] w-auto max-w-[150px]'
+                          : 'invisible h-full w-full'
+                      }
                     />
                   ) : (
                     // file-x on flat-sunken, locked in the "No-File Cover" design

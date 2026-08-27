@@ -1,4 +1,4 @@
-import { useRef, useState, type ChangeEvent, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import {
   IconArrowLeft,
@@ -510,6 +510,19 @@ export function BookDetailsSample() {
   const [customCoverUrl, setCustomCoverUrl] = useState<string | null>(null)
   const coverFileInputRef = useRef<HTMLInputElement>(null)
 
+  // Ported from BookDetailsPage.tsx's own fix (2026-08-27): the cover box
+  // no longer force-crops into aspect-[2/3]. customCoverUrl is a real
+  // uploaded image (via URL.createObjectURL below), so it gets the same
+  // onLoad/loading-placeholder treatment as the real page. SheetThumb (the
+  // synthetic stand-in for "no custom cover, rendered PDF page instead")
+  // has no async load to wait for, so it just gets a permanent aspect box
+  // matching its own viewBox ratio (100:74) instead — same end result
+  // (uncropped, real shape), no loading state needed for a static SVG.
+  const [coverLoaded, setCoverLoaded] = useState(false)
+  useEffect(() => {
+    setCoverLoaded(false)
+  }, [customCoverUrl])
+
   function openCoverFilePicker() {
     coverFileInputRef.current?.click()
   }
@@ -694,9 +707,41 @@ export function BookDetailsSample() {
                 perfectly good thumbnail can still have it overridden, not
                 just a book with no cover to begin with. */}
             <ContextMenu items={coverContextMenuItems} hideTriggerButton>
-              <div className="aspect-[2/3] w-[110px] shrink-0 overflow-hidden rounded-md border border-border bg-white">
+              {/* Longest side capped at 150px, shorter side following the
+                  image's own aspect ratio — not a fixed 150px width. A
+                  landscape image (most scanned pages) is 150px wide with a
+                  shorter height, same as before; a portrait image (most
+                  real book covers) is now 150px *tall* with a narrower
+                  width, rather than always 150px wide and however tall
+                  that implies (a very tall/narrow scan could otherwise
+                  render taller than every other cover on the page). Plain
+                  max-height/max-width + auto sizing on the <img> handles
+                  both cases with no orientation detection needed — the
+                  browser picks whichever constraint actually binds. While
+                  loading, reserve a 150×150 square (a neutral upper bound
+                  in both directions, since the real shape isn't known
+                  yet) rather than guessing an orientation. */}
+              <div
+                className={`shrink-0 overflow-hidden rounded-md border border-border bg-white ${
+                  customCoverUrl
+                    ? coverLoaded
+                      ? 'w-fit'
+                      : 'h-[150px] w-[150px]'
+                    : 'aspect-[100/74] w-[150px]'
+                }`}
+              >
                 {customCoverUrl ? (
-                  <img src={customCoverUrl} alt="" className="h-full w-full object-cover object-top" />
+                  <img
+                    key={customCoverUrl}
+                    src={customCoverUrl}
+                    onLoad={() => setCoverLoaded(true)}
+                    alt=""
+                    className={
+                      coverLoaded
+                        ? 'block h-auto max-h-[150px] w-auto max-w-[150px]'
+                        : 'invisible h-full w-full'
+                    }
+                  />
                 ) : (
                   <SheetThumb />
                 )}
