@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react'
@@ -19,6 +20,7 @@ import { listInstruments, listKeys, listSheetTypes, listUserTags } from '../api/
 import { ApiError } from '../api/client'
 import { secondsToMMSS, mmssToSeconds } from '../lib/duration'
 import { matchesKeyQuery } from '../lib/keySearch'
+import { afterMinDuration } from '../lib/minDuration'
 import type { Piece, PieceWriteRequest, PracticeStatus, Tag } from '../api/types'
 import { Modal } from './Modal'
 import { InfoTooltip } from './InfoTooltip'
@@ -202,6 +204,20 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
   const [tempoOpen, setTempoOpen] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
   const [previewPage, setPreviewPage] = useState(piece.thumbnailPage)
+  // Captured right before mutate() fires, read in onSuccess — see
+  // lib/minDuration.ts. Without this, the "Saving…" button label (and
+  // this modal closing) resolves in ~1-15ms against this app's local
+  // SQLite backend, faster than a browser paint, so the label is never
+  // actually seen — same underlying bug as EditBookModal's stripe
+  // animation never visibly playing.
+  const saveStartedAtRef = useRef(0)
+  // Drives the button's label/disabled state instead of
+  // saveMutation.isPending directly — isPending flips to false the
+  // instant the real request resolves, which on this app's fast local
+  // backend is well before afterMinDuration lets onClose actually fire,
+  // and would otherwise leave the button reading "Save" for a few
+  // hundred idle-looking ms while the modal still hasn't closed.
+  const [isSaving, setIsSaving] = useState(false)
 
   // "At most 50% of the modal" has to mean 50% of the dialog's actual
   // rendered height, not an approximation — a first vh-based version
@@ -332,15 +348,30 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
   }
 
   const saveMutation = useMutation({
-    mutationFn: (data: FormValues) => updatePiece(piece.id, formValuesToWriteRequest(data, piece)),
+    // The Date.now() capture lives here, not in onSubmit below — onSubmit
+    // is passed straight into react-hook-form's handleSubmit(), which the
+    // react-hooks/purity and react-hooks/refs lint rules can't statically
+    // prove doesn't invoke it during render, so an impure call or ref
+    // write there gets flagged even though it never actually runs until a
+    // real submit event. mutationFn has no such ambiguity — react-query
+    // only ever calls it from mutate(), well after render.
+    mutationFn: (data: FormValues) => {
+      saveStartedAtRef.current = Date.now()
+      return updatePiece(piece.id, formValuesToWriteRequest(data, piece))
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pieces'] })
       queryClient.invalidateQueries({ queryKey: ['piece'] })
-      onClose()
+      afterMinDuration(saveStartedAtRef.current, () => {
+        setIsSaving(false)
+        onClose()
+      })
     },
+    onError: () => setIsSaving(false),
   })
 
   function onSubmit(data: FormValues) {
+    setIsSaving(true)
     saveMutation.mutate(data)
   }
 
@@ -495,10 +526,10 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
             <button
               type="submit"
               form="edit-piece-form"
-              disabled={saveMutation.isPending}
+              disabled={isSaving}
               className="rounded-md bg-accent px-4 py-2 font-display text-white hover:bg-accent/90 disabled:opacity-60"
             >
-              {saveMutation.isPending ? 'Saving…' : 'Save'}
+              {isSaving ? 'Saving…' : 'Save'}
             </button>
           </div>
         </div>

@@ -1,10 +1,11 @@
-import { useEffect, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { IconAlertTriangle, IconCheck, IconXFilled } from '@tabler/icons-react'
 import { updateBook } from '../api/books'
 import { listInstruments, listSheetTypes } from '../api/lookups'
 import { ApiError } from '../api/client'
+import { afterMinDuration } from '../lib/minDuration'
 import type { Book, BookWriteRequest, Tag } from '../api/types'
 import { Modal } from './Modal'
 import { TagComboBox } from './TagComboBox'
@@ -111,6 +112,12 @@ const SAVED_DISPLAY_MS = 900
 export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
   const queryClient = useQueryClient()
   const [saveState, setSaveState] = useState<SaveState>('idle')
+  // Captured right before mutate() fires, read in onSuccess — see
+  // lib/minDuration.ts for why this exists: the real PATCH resolves in
+  // ~1-15ms against this app's local SQLite backend, which is faster
+  // than a browser paint, so without this the stripe animation below
+  // mounts and unmounts before it's ever actually visible.
+  const saveStartedAtRef = useRef(0)
   const {
     register,
     control,
@@ -149,7 +156,17 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
   ]
 
   const saveMutation = useMutation({
-    mutationFn: (data: FormValues) => updateBook(book.id, formValuesToWriteRequest(data)),
+    // The Date.now() capture lives here, not in onSubmit below — onSubmit
+    // is passed straight into react-hook-form's handleSubmit(), which the
+    // react-hooks/purity and react-hooks/refs lint rules can't statically
+    // prove doesn't invoke it during render, so an impure call or ref
+    // write there gets flagged even though it never actually runs until a
+    // real submit event. mutationFn has no such ambiguity — react-query
+    // only ever calls it from mutate(), well after render.
+    mutationFn: (data: FormValues) => {
+      saveStartedAtRef.current = Date.now()
+      return updateBook(book.id, formValuesToWriteRequest(data))
+    },
     onSuccess: () => {
       // Broad invalidation, not just this book's own query — every piece
       // with this sourceBookId (an unknown set from here) may have just
@@ -161,11 +178,13 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
       queryClient.invalidateQueries({ queryKey: ['book'] })
       queryClient.invalidateQueries({ queryKey: ['pieces'] })
       queryClient.invalidateQueries({ queryKey: ['piece'] })
-      setSaveState('saved')
-      setTimeout(() => {
-        setSaveState('idle')
-        onClose()
-      }, SAVED_DISPLAY_MS)
+      afterMinDuration(saveStartedAtRef.current, () => {
+        setSaveState('saved')
+        setTimeout(() => {
+          setSaveState('idle')
+          onClose()
+        }, SAVED_DISPLAY_MS)
+      })
     },
     onError: () => setSaveState('idle'),
   })

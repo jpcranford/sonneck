@@ -1,8 +1,10 @@
+import { useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { IconAlertTriangle, IconXFilled } from '@tabler/icons-react'
 import { createBookManual } from '../api/books'
 import { ApiError } from '../api/client'
+import { afterMinDuration } from '../lib/minDuration'
 import { Modal } from './Modal'
 
 interface NewBookModalProps {
@@ -28,6 +30,20 @@ interface NewBookFormValues {
 // soft inheritance).
 export function NewBookModal({ open, onClose }: NewBookModalProps) {
   const queryClient = useQueryClient()
+  // Captured right before mutate() fires, read in onSuccess — see
+  // lib/minDuration.ts. Without this, "Creating…" (and this modal
+  // closing) resolves in ~1-15ms against this app's local SQLite
+  // backend, faster than a browser paint, so the label is never actually
+  // seen — same underlying bug as EditBookModal's stripe animation never
+  // visibly playing.
+  const createStartedAtRef = useRef(0)
+  // Drives the button's label/disabled state instead of
+  // createMutation.isPending directly — isPending flips to false the
+  // instant the real request resolves, which on this app's fast local
+  // backend is well before afterMinDuration lets handleClose actually
+  // fire, and would otherwise leave the button reading "Create" for a
+  // few hundred idle-looking ms while the modal still hasn't closed.
+  const [isCreating, setIsCreating] = useState(false)
   const {
     register,
     handleSubmit,
@@ -38,26 +54,38 @@ export function NewBookModal({ open, onClose }: NewBookModalProps) {
   })
 
   const createMutation = useMutation({
-    mutationFn: (data: NewBookFormValues) =>
-      createBookManual({
+    // The Date.now() capture lives here, not in onSubmit below — onSubmit
+    // is passed straight into react-hook-form's handleSubmit(), which the
+    // react-hooks/purity and react-hooks/refs lint rules can't statically
+    // prove doesn't invoke it during render, so an impure call or ref
+    // write there gets flagged even though it never actually runs until a
+    // real submit event. mutationFn has no such ambiguity — react-query
+    // only ever calls it from mutate(), well after render.
+    mutationFn: (data: NewBookFormValues) => {
+      createStartedAtRef.current = Date.now()
+      return createBookManual({
         bookTitle: data.bookTitle,
         composer: data.composer || null,
         publisher: data.publisher || null,
         yearWritten: data.yearWritten || null,
-      }),
+      })
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['books'] })
-      handleClose()
+      afterMinDuration(createStartedAtRef.current, handleClose)
     },
+    onError: () => setIsCreating(false),
   })
 
   function handleClose() {
     reset()
     createMutation.reset()
+    setIsCreating(false)
     onClose()
   }
 
   function onSubmit(data: NewBookFormValues) {
+    setIsCreating(true)
     createMutation.mutate(data)
   }
 
@@ -102,10 +130,10 @@ export function NewBookModal({ open, onClose }: NewBookModalProps) {
             <button
               type="submit"
               form="new-book-form"
-              disabled={createMutation.isPending}
+              disabled={isCreating}
               className="rounded-md bg-accent px-4 py-2 font-display text-white hover:bg-accent/90 disabled:opacity-60"
             >
-              {createMutation.isPending ? 'Creating…' : 'Create'}
+              {isCreating ? 'Creating…' : 'Create'}
             </button>
           </div>
         </div>
