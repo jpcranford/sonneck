@@ -77,7 +77,7 @@ export function BookUploadFileStep({ onBack, onUploaded }: BookUploadFileStepPro
         <button
           type="button"
           onClick={onBack}
-          className="flex items-center gap-1.5 self-start text-base text-ink-soft hover:text-ink"
+          className="flex cursor-pointer items-center gap-1.5 self-start text-base text-ink-soft hover:text-ink"
         >
           <IconArrowLeft size={24} />
           Back

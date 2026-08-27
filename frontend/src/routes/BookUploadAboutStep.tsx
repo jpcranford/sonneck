@@ -186,7 +186,7 @@ export function BookUploadAboutStep({
         <button
           type="button"
           onClick={onBack}
-          className="flex items-center gap-1.5 text-base text-ink-soft hover:text-ink"
+          className="flex cursor-pointer items-center gap-1.5 text-base text-ink-soft hover:text-ink"
         >
           <IconArrowLeft size={24} />
           Back
@@ -559,7 +559,7 @@ export function BookUploadAboutStep({
             <button
               type="submit"
               disabled={saveMutation.isPending}
-              className="flex items-center gap-1.5 rounded-md bg-accent px-5 py-2.5 font-display text-white hover:bg-accent/90 disabled:opacity-60"
+              className="flex cursor-pointer items-center gap-1.5 rounded-md bg-accent px-5 py-2.5 font-display text-white hover:bg-accent/90 disabled:cursor-default disabled:opacity-60"
             >
               {saveMutation.isPending ? 'Saving…' : 'Next'}
               {!saveMutation.isPending && <IconArrowRight size={16} />}

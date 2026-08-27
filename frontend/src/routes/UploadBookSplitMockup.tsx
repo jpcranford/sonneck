@@ -582,7 +582,7 @@ export function UploadBookSplitMockup() {
         <button
           type="button"
           onClick={() => console.log('Mockup: advance to Piece Titles', { state, pieces })}
-          className="flex items-center gap-1.5 rounded-md bg-accent px-5 py-2.5 font-display font-medium text-white hover:bg-accent/90"
+          className="flex cursor-pointer items-center gap-1.5 rounded-md bg-accent px-5 py-2.5 font-display font-medium text-white hover:bg-accent/90"
         >
           Next
           <IconArrowRight size={16} />

@@ -272,7 +272,7 @@ export function UploadBookConfirmMockup() {
               type="button"
               onClick={handleImport}
               disabled={stage === 'importing'}
-              className="relative flex min-w-[190px] shrink-0 items-center justify-center overflow-hidden rounded-md bg-accent px-4 py-2.5 font-display whitespace-nowrap text-white disabled:cursor-default"
+              className="relative flex min-w-[190px] shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md bg-accent px-4 py-2.5 font-display whitespace-nowrap text-white disabled:cursor-default"
             >
               {stage === 'importing' && (
                 <span
