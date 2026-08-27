@@ -1,9 +1,16 @@
 import { useEffect, useLayoutEffect, useRef, useState, type FocusEvent } from 'react'
 import { useForm } from 'react-hook-form'
-import { IconAlertTriangle, IconArrowLeft, IconArrowRight, IconX } from '@tabler/icons-react'
+import {
+  IconAlertTriangle,
+  IconArrowLeft,
+  IconArrowRight,
+  IconLetterCase,
+  IconX,
+} from '@tabler/icons-react'
 import { getBookPageThumbnailUrl } from '../api/books'
 import { PageLightbox } from '../components/PageLightbox'
 import type { Piece } from '../lib/pieceSplitLogic'
+import { nameCase, titleCase } from '../lib/textCase'
 import { TOTAL_WIZARD_STEPS } from './BookUploadWizard'
 
 // Book Upload Wizard, Screen 5 of 6: "Name each piece" (design doc §5's
@@ -244,6 +251,7 @@ export function BookUploadTitlesStep({
     register,
     handleSubmit,
     getValues,
+    setValue,
     trigger,
     formState: { errors },
   } = useForm<FormValues>({ defaultValues: { pieces: pieceFields } })
@@ -275,6 +283,32 @@ export function BookUploadTitlesStep({
   function handleBack() {
     onChange(getValues().pieces)
     onBack()
+  }
+
+  // Bulk-cleans every row in one pass — titleCase for Title (headline-
+  // style: minor words lowercase except first/last), nameCase for
+  // Composer/Arranger (mid-name particles like "van"/"von" stay
+  // lowercase) — see lib/textCase.ts for what each actually does. Runs
+  // against whatever's currently in the form (getValues), not the
+  // pieceFields prop, so it also cleans up anything typed since the last
+  // submit/Back. shouldDirty/shouldValidate keep react-hook-form's own
+  // dirty/error state accurate afterward, same as a real user edit would.
+  function handleCapitalize() {
+    const current = getValues()
+    current.pieces.forEach((piece, index) => {
+      setValue(`pieces.${index}.title`, titleCase(piece.title), {
+        shouldDirty: true,
+        shouldValidate: true,
+      })
+      setValue(`pieces.${index}.composer`, nameCase(piece.composer), {
+        shouldDirty: true,
+        shouldValidate: true,
+      })
+      setValue(`pieces.${index}.arranger`, nameCase(piece.arranger), {
+        shouldDirty: true,
+        shouldValidate: true,
+      })
+    })
   }
 
   // Composer and Arranger validate each other: either one being non-blank
@@ -340,15 +374,29 @@ export function BookUploadTitlesStep({
         </div>
       </div>
 
-      <div>
-        <h1 className="font-display text-2xl font-medium text-ink">Name each piece</h1>
-        <p className="text-sm text-ink-soft">
-          Tap a thumbnail to see the page larger.{' '}
-          {bookHasArranger &&
-            `This book already credits arranger ${bookArranger}, so there's no per-piece Arranger field below — set a Composer per piece if you'd like one on record.`}
-          {requireComposerOrArranger &&
-            ' This book has no composer or arranger set, so enter at least one of the two for each piece below.'}
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="font-display text-2xl font-medium text-ink">Name each piece</h1>
+          <p className="text-sm text-ink-soft">
+            Tap a thumbnail to see the page larger.{' '}
+            {bookHasArranger &&
+              `This book already credits arranger ${bookArranger}, so there's no per-piece Arranger field below — set a Composer per piece if you'd like one on record.`}
+            {requireComposerOrArranger &&
+              ' This book has no composer or arranger set, so enter at least one of the two for each piece below.'}
+          </p>
+        </div>
+        {/* Bulk action, not per-row — cleaning up casing one piece at a
+            time defeats the point when a scanned book's OCR/filename-
+            derived titles are often ALL CAPS or all-lowercase across
+            every piece at once. */}
+        <button
+          type="button"
+          onClick={handleCapitalize}
+          className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-border bg-paper-raised px-3 py-1.5 text-sm text-ink hover:border-accent"
+        >
+          <IconLetterCase size={16} />
+          Capitalize
+        </button>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)}>

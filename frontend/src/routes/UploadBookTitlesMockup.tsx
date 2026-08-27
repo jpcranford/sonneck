@@ -7,10 +7,12 @@ import {
   IconArrowRight,
   IconChevronLeft,
   IconChevronRightFilled,
+  IconLetterCase,
   IconX,
   IconXFilled,
 } from '@tabler/icons-react'
 import { useMockupTitle } from '../lib/useMockupTitle'
+import { nameCase, titleCase } from '../lib/textCase'
 
 // ---------------------------------------------------------------------
 // DESIGN MOCKUP — Book Upload Wizard, Screen 5 of 6: "Name each piece"
@@ -494,6 +496,7 @@ export function UploadBookTitlesMockup() {
     register,
     handleSubmit,
     getValues,
+    setValue,
     trigger,
     formState: { errors },
   } = useForm<FormValues>({
@@ -501,6 +504,29 @@ export function UploadBookTitlesMockup() {
       pieces: PIECES.map((p) => ({ title: p.title, composer: p.composer, arranger: p.arranger })),
     },
   })
+
+  // Bulk-cleans every row in one pass — titleCase for Title, nameCase for
+  // Composer/Arranger — see lib/textCase.ts (shared with the real build,
+  // not a local copy — it's pure logic, not a component, same reasoning
+  // pieceSplitLogic.ts is shared rather than duplicated). Runs against
+  // whatever's currently in the form (getValues), not the PIECES fixture.
+  function handleCapitalize() {
+    const current = getValues()
+    current.pieces.forEach((piece, index) => {
+      setValue(`pieces.${index}.title`, titleCase(piece.title), {
+        shouldDirty: true,
+        shouldValidate: true,
+      })
+      setValue(`pieces.${index}.composer`, nameCase(piece.composer), {
+        shouldDirty: true,
+        shouldValidate: true,
+      })
+      setValue(`pieces.${index}.arranger`, nameCase(piece.arranger), {
+        shouldDirty: true,
+        shouldValidate: true,
+      })
+    })
+  }
 
   // Composer and Arranger validate each other: either one being non-blank
   // satisfies both — but only when REQUIRE_COMPOSER_OR_ARRANGER is true in
@@ -574,15 +600,27 @@ export function UploadBookTitlesMockup() {
         </div>
       </div>
 
-      <div>
-        <h1 className="font-display text-2xl font-medium text-ink">Name each piece</h1>
-        <p className="text-sm text-ink-soft">
-          Hover or tap a thumbnail to see the page larger.{' '}
-          {BOOK_HAS_ARRANGER &&
-            `This book already credits arranger ${BOOK_ARRANGER}, so there's no per-piece Arranger field below — set a Composer per piece if you'd like one on record.`}
-          {REQUIRE_COMPOSER_OR_ARRANGER &&
-            ' This book has no composer or arranger set, so enter at least one of the two for each piece below.'}
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="font-display text-2xl font-medium text-ink">Name each piece</h1>
+          <p className="text-sm text-ink-soft">
+            Hover or tap a thumbnail to see the page larger.{' '}
+            {BOOK_HAS_ARRANGER &&
+              `This book already credits arranger ${BOOK_ARRANGER}, so there's no per-piece Arranger field below — set a Composer per piece if you'd like one on record.`}
+            {REQUIRE_COMPOSER_OR_ARRANGER &&
+              ' This book has no composer or arranger set, so enter at least one of the two for each piece below.'}
+          </p>
+        </div>
+        {/* Bulk action, not per-row — see the real build's own comment
+            (BookUploadTitlesStep.tsx) for why. */}
+        <button
+          type="button"
+          onClick={handleCapitalize}
+          className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-border bg-paper-raised px-3 py-1.5 text-sm text-ink hover:border-accent"
+        >
+          <IconLetterCase size={16} />
+          Capitalize
+        </button>
       </div>
 
       <form onSubmit={handleSubmit((data) => console.log('Mockup: advance to Confirmation', data))}>
