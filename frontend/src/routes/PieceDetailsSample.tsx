@@ -138,7 +138,8 @@ const samplePiece = {
   publisherId: { value: 'HL50252950', inherited: true },
   yearWritten: { value: '1848', inherited: true },
   description: {
-    value: "A short, wistful A-minor miniature from the Album — one of the more melancholy entries among the collection's otherwise sunny character pieces.",
+    value:
+      "A short, wistful A-minor miniature from the Album — one of the more melancholy entries among the collection's otherwise sunny character pieces.\n\nOpens :mf:, then settles into a quieter dynamic through the middle section before returning to the opening theme.",
     inherited: false,
   },
   userNotes: 'Left hand voicing in m.9 keeps tripping me up — slow it down to 60bpm next time.',
