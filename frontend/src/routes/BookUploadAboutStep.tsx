@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import {
@@ -133,6 +133,15 @@ export function BookUploadAboutStep({
 }: BookUploadAboutStepProps) {
   const [previewPage, setPreviewPage] = useState(1)
   const [lightboxOpen, setLightboxOpen] = useState(false)
+  // Tracks whether *this* previewPage's thumbnail has actually finished
+  // loading — see the preview box's own comment below for why this
+  // exists (a real page's aspect ratio isn't known until the image
+  // itself loads, but the box still needs to reserve visible space
+  // before that).
+  const [thumbLoaded, setThumbLoaded] = useState(false)
+  useEffect(() => {
+    setThumbLoaded(false)
+  }, [previewPage])
   // The one field this screen adds beyond book metadata. Bound to the
   // same previewPage the cover cycler above already drives — flipping to
   // a page you're sure about and correcting it there is the whole
@@ -224,18 +233,29 @@ export function BookUploadAboutStep({
         className="flex flex-col gap-7 sm:flex-row sm:items-start"
       >
         <div className="flex w-full shrink-0 flex-col gap-2.5 sm:sticky sm:top-5 sm:w-[210px]">
-          {/* aspect-[2/3] + bg-paper-sunken, matching the "cover preview"
-              box used elsewhere (BookGridCard, BookDetailsPage's own book
-              cover) — not just styling parity. Thumbnail generation is
-              synchronous and renders on first request per page (see
-              internal/handlers/book.go's handleBookPageThumbnail), so right
-              after upload, or right after turning to a not-yet-viewed page,
-              this can take a real moment. Without a reserved, colored box
-              the panel read as genuinely empty during that gap; the sunken
-              background now fills it immediately, and key={previewPage}
-              forces a fresh <img> per page turn so the previous page's
-              frame doesn't sit frozen on screen while the new one renders. */}
-          <div className="relative aspect-[2/3] overflow-hidden rounded-lg border border-border bg-paper-sunken shadow-sm">
+          {/* aspect-[2/3] is a *loading-state placeholder only*, not the
+              real page's shape — dropped the instant the image actually
+              loads (thumbLoaded), same fix already applied to Piece
+              Details' own preview (PiecePage.tsx's own comment on this).
+              A forced aspect box + object-cover previously stayed on
+              permanently, which cropped/masked whatever part of the real
+              page didn't fit 2:3 — most scanned pages aren't exactly 2:3.
+              Thumbnail generation is synchronous and renders on first
+              request per page (see internal/handlers/book.go's
+              handleBookPageThumbnail), so right after upload, or right
+              after turning to a not-yet-viewed page, this can take a real
+              moment — without a reserved, colored box the panel read as
+              genuinely empty during that gap. So: reserve the placeholder
+              box (sunken background, 2:3) only until thumbLoaded flips
+              true, then let the box collapse/expand to the image's own
+              real aspect ratio (h-auto) with no cropping at all.
+              key={previewPage} forces a fresh <img> per page turn so the
+              previous page's frame doesn't sit frozen on screen while the
+              new one renders (the thumbLoaded reset effect above keys off
+              the same previewPage for the same reason). */}
+          <div
+            className={`relative w-full overflow-hidden rounded-lg border border-border bg-paper-sunken shadow-sm ${thumbLoaded ? '' : 'aspect-[2/3]'}`}
+          >
             {/* Lightbox trigger — same click-to-enlarge treatment as
                 Piece Details' own preview thumbnail (PageLightbox.tsx).
                 The whole thumbnail is clickable, not just the corner
@@ -245,13 +265,14 @@ export function BookUploadAboutStep({
               type="button"
               onClick={() => setLightboxOpen(true)}
               aria-label={`View page ${previewPage} larger`}
-              className="block h-full w-full cursor-zoom-in"
+              className={`block w-full cursor-zoom-in ${thumbLoaded ? '' : 'h-full'}`}
             >
               <img
                 key={previewPage}
                 src={getBookPageThumbnailUrl(book.id, previewPage)}
+                onLoad={() => setThumbLoaded(true)}
                 alt=""
-                className="h-full w-full object-cover object-top"
+                className={thumbLoaded ? 'h-auto w-full' : 'invisible h-full w-full'}
               />
             </button>
             {/* Always-visible "view larger" hint, not a hover reveal —
