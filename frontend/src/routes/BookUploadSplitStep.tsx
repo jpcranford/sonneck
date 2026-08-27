@@ -355,6 +355,18 @@ export function BookUploadSplitStep({
                 data-page={page}
                 className="relative w-full cursor-pointer"
                 onPointerDown={(e) => {
+                  // Right-click (button 2) reaches this handler too — a
+                  // plain click/tap always has button 0 (touch's synthetic
+                  // primary contact included), but a real right-click's
+                  // pointerdown fires before its contextmenu event, so
+                  // without this guard it would also arm the drag-select/
+                  // long-press state machine below, and releasing the
+                  // right button then fired the same single-page cyclePage
+                  // toggle a left click would — the reported bug: right-
+                  // click did both, not just open the menu. Bail before
+                  // touching any state so the only thing a right-click
+                  // does is what onContextMenu below already handles.
+                  if (e.button !== 0) return
                   e.preventDefault()
                   isPointerDownRef.current = true
                   shiftHeldRef.current = e.shiftKey
