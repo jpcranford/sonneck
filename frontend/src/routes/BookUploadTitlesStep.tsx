@@ -253,8 +253,39 @@ export function BookUploadTitlesStep({
     getValues,
     setValue,
     trigger,
+    watch,
     formState: { errors },
   } = useForm<FormValues>({ defaultValues: { pieces: pieceFields } })
+
+  // Autosaves to the wizard's lifted pieceFields on every field edit, not
+  // just on Back/Next (found 2026-08-27) — previously, closing the tab or
+  // crashing mid-typing on this step lost everything typed since the last
+  // Back/Next, including from the wizard's own localStorage draft
+  // (BookUploadWizard.tsx's save-draft effect keys off pieceFields, so it
+  // never saw anything this step hadn't explicitly flushed). watch's
+  // callback form, not `const pieces = watch('pieces')` during render —
+  // the latter returns a new array reference every render regardless of
+  // whether anything actually changed, which would keep resetting a
+  // reference-equality-based debounce (useDebouncedValue) on unrelated
+  // re-renders (e.g. toggling the lightbox), not just on real edits.
+  // Reads the canonical values via getValues() inside the timeout rather
+  // than trusting the callback's own (DeepPartial-typed) argument.
+  // handleBack's own immediate flush below stays regardless — this is
+  // debounced, so a Back click within the 300ms window still needs that
+  // explicit, unconditional flush to not lose the last edit.
+  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    const subscription = watch(() => {
+      if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current)
+      autosaveTimerRef.current = setTimeout(() => {
+        onChange(getValues().pieces)
+      }, 300)
+    })
+    return () => {
+      subscription.unsubscribe()
+      if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current)
+    }
+  }, [watch, getValues, onChange])
 
   const bookHasArranger = !!bookArranger
   const showArrangerField = !bookHasArranger
@@ -291,23 +322,23 @@ export function BookUploadTitlesStep({
   // lowercase) — see lib/textCase.ts for what each actually does. Runs
   // against whatever's currently in the form (getValues), not the
   // pieceFields prop, so it also cleans up anything typed since the last
-  // submit/Back. shouldDirty/shouldValidate keep react-hook-form's own
-  // dirty/error state accurate afterward, same as a real user edit would.
+  // submit/Back.
+  //
+  // shouldValidate deliberately omitted (found firing 2026-08-27, ported
+  // from UploadBookTitlesMockup.tsx's own fix): this is a formatting
+  // convenience, not a submit attempt — a piece with a still-blank Title
+  // (very plausible mid-wizard, before every row's been typed in yet)
+  // would otherwise light up a "required" error the instant Capitalize is
+  // clicked, for a field the button didn't even touch meaningfully
+  // (titleCase on an empty string is a no-op). shouldDirty stays — the
+  // field's *value* did change for every non-blank row, RHF's dirty
+  // tracking should reflect that regardless of validation timing.
   function handleCapitalize() {
     const current = getValues()
     current.pieces.forEach((piece, index) => {
-      setValue(`pieces.${index}.title`, titleCase(piece.title), {
-        shouldDirty: true,
-        shouldValidate: true,
-      })
-      setValue(`pieces.${index}.composer`, nameCase(piece.composer), {
-        shouldDirty: true,
-        shouldValidate: true,
-      })
-      setValue(`pieces.${index}.arranger`, nameCase(piece.arranger), {
-        shouldDirty: true,
-        shouldValidate: true,
-      })
+      setValue(`pieces.${index}.title`, titleCase(piece.title), { shouldDirty: true })
+      setValue(`pieces.${index}.composer`, nameCase(piece.composer), { shouldDirty: true })
+      setValue(`pieces.${index}.arranger`, nameCase(piece.arranger), { shouldDirty: true })
     })
   }
 

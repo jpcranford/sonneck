@@ -510,21 +510,21 @@ export function UploadBookTitlesMockup() {
   // not a local copy — it's pure logic, not a component, same reasoning
   // pieceSplitLogic.ts is shared rather than duplicated). Runs against
   // whatever's currently in the form (getValues), not the PIECES fixture.
+  //
+  // shouldValidate deliberately omitted (found firing 2026-08-27): this is
+  // a formatting convenience, not a submit attempt — a piece with a still-
+  // blank Title (very plausible mid-wizard, before every row's been typed
+  // in yet) would otherwise light up a "required" error the instant
+  // Capitalize is clicked, for a field the button didn't even touch
+  // meaningfully (titleCase on an empty string is a no-op). shouldDirty
+  // stays — the field's *value* did change for every non-blank row, RHF's
+  // dirty tracking should reflect that regardless of validation timing.
   function handleCapitalize() {
     const current = getValues()
     current.pieces.forEach((piece, index) => {
-      setValue(`pieces.${index}.title`, titleCase(piece.title), {
-        shouldDirty: true,
-        shouldValidate: true,
-      })
-      setValue(`pieces.${index}.composer`, nameCase(piece.composer), {
-        shouldDirty: true,
-        shouldValidate: true,
-      })
-      setValue(`pieces.${index}.arranger`, nameCase(piece.arranger), {
-        shouldDirty: true,
-        shouldValidate: true,
-      })
+      setValue(`pieces.${index}.title`, titleCase(piece.title), { shouldDirty: true })
+      setValue(`pieces.${index}.composer`, nameCase(piece.composer), { shouldDirty: true })
+      setValue(`pieces.${index}.arranger`, nameCase(piece.arranger), { shouldDirty: true })
     })
   }
 

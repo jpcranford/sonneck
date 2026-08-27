@@ -22,6 +22,10 @@ describe('titleCase', () => {
     expect(titleCase('well-tempered clavier')).toBe('Well-Tempered Clavier')
   })
 
+  it('capitalizes the letter right after an opening parenthesis', () => {
+    expect(titleCase('somewhere (reprise)')).toBe('Somewhere (Reprise)')
+  })
+
   it('leaves blank input untouched', () => {
     expect(titleCase('')).toBe('')
     expect(titleCase('   ')).toBe('   ')
