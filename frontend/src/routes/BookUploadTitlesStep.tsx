@@ -264,6 +264,19 @@ export function BookUploadTitlesStep({
     onNext()
   }
 
+  // Back doesn't submit the form (it's a type="button", not the Next
+  // button's type="submit"), so without this, whatever's currently typed
+  // here only ever reaches the wizard's lifted pieceFields on a real
+  // submit — going Back to fix a split point and returning would find
+  // every field blank again, since the wizard never received them in the
+  // first place. No validation here (unlike onSubmit's handleSubmit) —
+  // Back has nothing to block on, it just needs to flush whatever's
+  // currently in the form, valid or not, before the step unmounts.
+  function handleBack() {
+    onChange(getValues().pieces)
+    onBack()
+  }
+
   // Composer and Arranger validate each other: either one being non-blank
   // satisfies both — but only when requireComposerOrArranger is true in
   // the first place. When Arranger is hidden (showArrangerField false),
@@ -300,7 +313,7 @@ export function BookUploadTitlesStep({
       <div className="flex items-center justify-between">
         <button
           type="button"
-          onClick={onBack}
+          onClick={handleBack}
           className="flex cursor-pointer items-center gap-1.5 text-base text-ink-soft hover:text-ink"
         >
           <IconArrowLeft size={24} />

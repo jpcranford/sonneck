@@ -5,7 +5,7 @@ import { IconBook2, IconCircleCheckFilled } from '@tabler/icons-react'
 import { deleteBook, getBook } from '../api/books'
 import { ApiError } from '../api/client'
 import type { Book, Piece as ApiPiece } from '../api/types'
-import { computeLayout, type PageAssignments } from '../lib/pieceSplitLogic'
+import { computeLayout, type PageAssignments, type Piece } from '../lib/pieceSplitLogic'
 import { clearWizardDraft, loadWizardDraft, saveWizardDraft, type WizardDraftStep } from '../lib/useWizardDraft'
 import { BookUploadFileStep } from './BookUploadFileStep'
 import { BookUploadAboutStep } from './BookUploadAboutStep'
@@ -97,6 +97,26 @@ function ImportSuccessScreen({
   )
 }
 
+type PieceFields = { title: string; composer: string; arranger: string }
+
+// Carries a piece's already-typed fields across a Split-step revision —
+// matched by (start, end) against oldPieces, not by array position, so a
+// piece that's genuinely unchanged (same page range, just shifted to a
+// different index because a split elsewhere added/removed a piece) keeps
+// what was already typed for it. Only a piece whose own range doesn't
+// exist in oldPieces at all (new, or its own boundary actually moved)
+// starts blank.
+function reconcilePieceFields(
+  newPieces: Piece[],
+  oldPieces: { start: number; end: number }[],
+  oldFields: PieceFields[],
+): PieceFields[] {
+  return newPieces.map((piece) => {
+    const oldIndex = oldPieces.findIndex((p) => p.start === piece.start && p.end === piece.end)
+    return oldIndex !== -1 ? oldFields[oldIndex] : { title: '', composer: '', arranger: '' }
+  })
+}
+
 interface BookUploadWizardProps {
   onExit: () => void
 }
@@ -107,9 +127,7 @@ export function BookUploadWizard({ onExit }: BookUploadWizardProps) {
   const [pageCount, setPageCount] = useState(0)
   const [fileSizeBytes, setFileSizeBytes] = useState<number | null>(null)
   const [pageAssignments, setPageAssignments] = useState<PageAssignments>(EMPTY_ASSIGNMENTS)
-  const [pieceFields, setPieceFields] = useState<
-    { title: string; composer: string; arranger: string }[]
-  >([])
+  const [pieceFields, setPieceFields] = useState<PieceFields[]>([])
   // Printed-PDF page offset (design doc §5, added post-launch) — set on
   // Screen 3 ("About this book"), lifted here for the same reason
   // pageAssignments/pieceFields are: it must survive Back navigation and
@@ -122,6 +140,17 @@ export function BookUploadWizard({ onExit }: BookUploadWizardProps) {
   // component's own comment on why a plain local ref there would silently
   // break the "first tap always starts a piece" rule after a round trip.
   const touchedPagesRef = useRef<Set<number>>(new Set())
+  // The piece layout (start/end pairs only) that pieceFields[i] currently
+  // lines up with, index for index — read back whenever pieceFields is
+  // about to be recomputed against a *new* layout (the user went back to
+  // Split and changed something) so a piece whose start/end didn't
+  // actually change keeps whatever was already typed for it, instead of
+  // every field blanking just because the piece *count* changed
+  // elsewhere in the book. Kept as a ref, not derived fresh each render,
+  // because the whole point is comparing against the layout from *before*
+  // the just-applied change — pageAssignments itself no longer has that
+  // once the user has edited it.
+  const pieceFieldsPiecesRef = useRef<{ start: number; end: number }[]>([])
   // Tracks which bookId draft-restoration has already been checked for —
   // NOT the same as "has restoration ever run." Re-running the check on
   // every `book` update (e.g. after saving Screen 3's edits, which
@@ -141,6 +170,14 @@ export function BookUploadWizard({ onExit }: BookUploadWizardProps) {
     }
     setPageAssignments(restored)
     setPieceFields(draft.pieceFields)
+    // Keeps the reconciliation ref aligned with what's actually being
+    // restored — without this, the *first* Split-step revision after a
+    // restore would compare against whatever pre-restore layout (likely
+    // empty) happened to be in the ref, and reset every field.
+    pieceFieldsPiecesRef.current = computeLayout(restored, draft.pageCount).map((p) => ({
+      start: p.start,
+      end: p.end,
+    }))
     setPageOffset(draft.pageOffset)
     // Approximation, not exact: a page that was touched and cycled back to
     // fully "normal" wouldn't appear in any of these sets, so it would be
@@ -238,6 +275,7 @@ export function BookUploadWizard({ onExit }: BookUploadWizardProps) {
     // restore effect above will pick its draft back up right after this.
     setPageAssignments(EMPTY_ASSIGNMENTS)
     setPieceFields([])
+    pieceFieldsPiecesRef.current = []
     setPageOffset(0)
     touchedPagesRef.current = new Set()
     setStep('about')
@@ -325,15 +363,21 @@ export function BookUploadWizard({ onExit }: BookUploadWizardProps) {
         cancelPending={cancelUploadMutation.isPending}
         onNext={() => {
           const pieces = computeLayout(pageAssignments, pageCount)
-          // If the piece count changed since fields were last filled in
-          // (the user went back and re-split), start those fields over
-          // rather than reconciling stale positions against a changed
-          // layout — see BookUploadTitlesStep's own comment for why a
-          // piece's identity here is its array position, not something
-          // stabler to diff against.
-          if (pieceFields.length !== pieces.length) {
-            setPieceFields(pieces.map(() => ({ title: '', composer: '', arranger: '' })))
-          }
+          // Reconcile by (start, end), not array position — a piece
+          // whose range didn't actually change keeps whatever was
+          // already typed for it even if the split elsewhere shifted it
+          // to a different index (or changed the total piece count).
+          // Only a piece that's new, or whose own boundary moved, starts
+          // blank. oldPieces is captured here, into a plain local — not
+          // read as pieceFieldsPiecesRef.current from inside the
+          // setPieceFields updater below, since that updater runs
+          // deferred (React invokes it during its own update-processing
+          // pass, not synchronously on this line) and would otherwise see
+          // whatever the ref has *already been reassigned to* by the next
+          // statement, comparing the new layout against itself.
+          const oldPieces = pieceFieldsPiecesRef.current
+          setPieceFields((currentFields) => reconcilePieceFields(pieces, oldPieces, currentFields))
+          pieceFieldsPiecesRef.current = pieces.map((p) => ({ start: p.start, end: p.end }))
           setStep('titles')
         }}
       />
