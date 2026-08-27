@@ -29,6 +29,14 @@ interface MockBook {
   publisher: string | null
   yearWritten: string | null
   pieceCount: number
+  // [width, height] ratio units — omitted defaults to a portrait 2:3
+  // "real cover art" shape. A couple of entries below get a landscape
+  // ratio instead, standing in for the common real-app case of a book
+  // with no custom cover uploaded, where the cover shown is just the
+  // book's own rendered first PDF page (almost never 2:3) — see
+  // BookGridCard.tsx's own comment on the same aspect-ratio fix this
+  // mockup is kept in sync with.
+  coverAspect?: [number, number]
 }
 
 // Composer is optional on Book (design doc §3) — publisher is the agreed
@@ -53,11 +61,11 @@ function metaLine(book: MockBook): string {
 const MOCK_BOOKS: MockBook[] = [
   { id: 1, bookTitle: 'Album für die Jugend, Op. 68', composer: 'Robert Schumann', publisher: 'G. Schirmer', yearWritten: '1848', pieceCount: 43 },
   { id: 2, bookTitle: 'The Real Book — Sixth Edition', composer: null, publisher: 'Hal Leonard', yearWritten: null, pieceCount: 400 },
-  { id: 3, bookTitle: '24 Préludes, Op. 28', composer: 'Frédéric Chopin', publisher: 'Breitkopf & Härtel', yearWritten: '1839', pieceCount: 24 },
+  { id: 3, bookTitle: '24 Préludes, Op. 28', composer: 'Frédéric Chopin', publisher: 'Breitkopf & Härtel', yearWritten: '1839', pieceCount: 24, coverAspect: [11, 8.5] },
   { id: 4, bookTitle: 'Sonatas and Partitas for Solo Violin', composer: 'J.S. Bach', publisher: null, yearWritten: '1720', pieceCount: 6 },
   { id: 5, bookTitle: 'Piano Sonatas, Volume I', composer: 'Ludwig van Beethoven', publisher: 'Henle', yearWritten: '1802', pieceCount: 8 },
   { id: 6, bookTitle: 'Anthology of American Folk Songs', composer: null, publisher: null, yearWritten: null, pieceCount: 52 },
-  { id: 7, bookTitle: 'Suite bergamasque', composer: 'Claude Debussy', publisher: 'Durand', yearWritten: '1905', pieceCount: 4 },
+  { id: 7, bookTitle: 'Suite bergamasque', composer: 'Claude Debussy', publisher: 'Durand', yearWritten: '1905', pieceCount: 4, coverAspect: [4, 3] },
   { id: 8, bookTitle: 'The Nutcracker Suite, Op. 71a (Piano Reduction)', composer: 'Pyotr Ilyich Tchaikovsky', publisher: 'G. Schirmer', yearWritten: '1892', pieceCount: 8 },
 ]
 
@@ -108,8 +116,16 @@ function CoverPlaceholder({ book }: { book: MockBook }) {
   const titleLines = lines.slice(0, 3)
   const titleStartY = 150 - ((titleLines.length - 1) * 20) / 2
 
+  // Height stays fixed at 300 (so the vertical title-centering math above
+  // is unaffected) — only width varies per book, via coverAspect (default
+  // 2:3, i.e. width 200). centerX follows width so title/composer text
+  // stays horizontally centered regardless of aspect ratio.
+  const [aspectW, aspectH] = book.coverAspect ?? [2, 3]
+  const width = Math.round((300 * aspectW) / aspectH)
+  const centerX = width / 2
+
   return (
-    <svg viewBox="0 0 200 300" preserveAspectRatio="none" className="h-full w-full" aria-hidden="true">
+    <svg viewBox={`0 0 ${width} 300`} className="h-full w-full" aria-hidden="true">
       <defs>
         <linearGradient id={`diag-${book.id}`} x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stopColor="#fff" stopOpacity="0.2" />
@@ -117,12 +133,12 @@ function CoverPlaceholder({ book }: { book: MockBook }) {
           <stop offset="100%" stopColor="#000" stopOpacity="0.14" />
         </linearGradient>
       </defs>
-      <rect width="200" height="300" fill={bg} />
-      <rect width="200" height="300" fill={`url(#diag-${book.id})`} />
+      <rect width={width} height="300" fill={bg} />
+      <rect width={width} height="300" fill={`url(#diag-${book.id})`} />
       {titleLines.map((line, i) => (
         <text
           key={i}
-          x="100"
+          x={centerX}
           y={titleStartY + i * 20}
           textAnchor="middle"
           fontFamily="Georgia, serif"
@@ -135,7 +151,7 @@ function CoverPlaceholder({ book }: { book: MockBook }) {
       ))}
       {composer && (
         <text
-          x="100"
+          x={centerX}
           y={titleStartY + titleLines.length * 20 + 14}
           textAnchor="middle"
           fontFamily="Georgia, serif"
@@ -166,16 +182,37 @@ function CoverPlaceholder({ book }: { book: MockBook }) {
 // colorful it is.
 function BookCoverCard({ book }: { book: MockBook }) {
   const meta = metaLine(book)
+  const [aspectW, aspectH] = book.coverAspect ?? [2, 3]
   return (
-    <div className="flex cursor-pointer flex-col gap-2">
-      <div className="relative aspect-[2/3] overflow-hidden rounded-md border border-border shadow-sm transition-shadow hover:shadow-lg">
+    // h-full + justify-end: kept in sync with BookGridCard.tsx's own fix
+    // (2026-08-27) — the grid container's default align-items: stretch
+    // makes every card fill its row's full height, and h-full/justify-end
+    // together push the cover+text group to the bottom of that stretched
+    // space instead of leaving it top-aligned (which, once covers stopped
+    // sharing a uniform aspect ratio, left shorter/landscape covers with a
+    // gap underneath and their title floating at an inconsistent height
+    // next to taller cards in the same row).
+    <div className="flex h-full cursor-pointer flex-col justify-end gap-2">
+      {/* aspect-[var] via style, not a Tailwind aspect-[W/H] class — the
+          ratio is per-book data here (coverAspect), not a fixed design
+          constant, so it can't be a static utility class. */}
+      <div
+        className="relative overflow-hidden rounded-md border border-border shadow-sm transition-shadow hover:shadow-lg"
+        style={{ aspectRatio: `${aspectW} / ${aspectH}` }}
+      >
         <CoverPlaceholder book={book} />
         <span className="absolute right-2 bottom-1.5 flex items-center gap-1 rounded-full bg-[rgba(28,24,21,0.82)] px-[7px] py-[2px] text-[0.7rem] font-semibold text-white">
           {book.pieceCount}
           <IconFile size={10} />
         </span>
       </div>
-      <div className="flex flex-col gap-0.5">
+      {/* min-h-[58px]: kept in sync with BookGridCard.tsx's own fix — pins
+          this block to a constant height (2-line title + gap + one meta
+          line, confirmed via computed styles on the real page) regardless
+          of actual title length, so justify-end above bottom-aligns every
+          cover in the row to the same line rather than each card's cover
+          landing at a height that depends on its own title's wrap length. */}
+      <div className="flex min-h-[58px] flex-col gap-0.5">
         <p className="line-clamp-2 font-display text-sm font-medium text-ink">{book.bookTitle}</p>
         {meta && <p className="truncate text-xs text-ink-soft">{meta}</p>}
       </div>
