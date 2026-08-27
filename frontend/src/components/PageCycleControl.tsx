@@ -20,12 +20,23 @@ export function PageCycleControl({ page, pageCount, onChange }: PageCycleControl
       <button
         type="button"
         onClick={(event) => {
+          // preventDefault, not just stopPropagation: PieceListCard nests
+          // this control inside the card's own <Link> (a real <a> —
+          // ClickableCard). stopPropagation alone stops React from ever
+          // calling Link's own onClick — but Link's onClick is what
+          // normally calls preventDefault() to swap in client-side
+          // routing, so skipping it left the browser's native anchor
+          // navigation to fire unimpeded, sending a page-cycle click
+          // straight to the piece page. Harmless here regardless of
+          // nesting context — a plain type="button" has no default action
+          // worth preserving.
+          event.preventDefault()
           event.stopPropagation()
           if (page > 1) onChange(page - 1)
         }}
         disabled={page <= 1}
         aria-label="Previous page"
-        className="flex size-6 items-center justify-center rounded hover:bg-accent-soft hover:text-accent disabled:pointer-events-none disabled:opacity-30"
+        className="flex size-6 cursor-pointer items-center justify-center rounded hover:bg-accent-soft hover:text-accent disabled:pointer-events-none disabled:opacity-30"
       >
         <IconChevronLeft size={16} />
       </button>
@@ -35,12 +46,15 @@ export function PageCycleControl({ page, pageCount, onChange }: PageCycleControl
       <button
         type="button"
         onClick={(event) => {
+          // See the Previous button's own comment above for why this needs
+          // preventDefault, not just stopPropagation.
+          event.preventDefault()
           event.stopPropagation()
           if (page < pageCount) onChange(page + 1)
         }}
         disabled={page >= pageCount}
         aria-label="Next page"
-        className="flex size-6 items-center justify-center rounded hover:bg-accent-soft hover:text-accent disabled:pointer-events-none disabled:opacity-30"
+        className="flex size-6 cursor-pointer items-center justify-center rounded hover:bg-accent-soft hover:text-accent disabled:pointer-events-none disabled:opacity-30"
       >
         <IconChevronRightFilled size={16} />
       </button>

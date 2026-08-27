@@ -525,7 +525,7 @@ export function PiecePage() {
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                     disabled={page === 1}
                     aria-label="Previous page"
-                    className="flex size-6 items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline-accent-on-dark disabled:pointer-events-none disabled:opacity-35"
+                    className="flex size-6 cursor-pointer items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline-accent-on-dark disabled:pointer-events-none disabled:opacity-35"
                   >
                     <IconChevronLeft size={14} />
                   </button>
@@ -537,7 +537,7 @@ export function PiecePage() {
                     onClick={() => setPage((p) => Math.min(piece.pageCount, p + 1))}
                     disabled={page === piece.pageCount}
                     aria-label="Next page"
-                    className="flex size-6 items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline-accent-on-dark disabled:pointer-events-none disabled:opacity-35"
+                    className="flex size-6 cursor-pointer items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline-accent-on-dark disabled:pointer-events-none disabled:opacity-35"
                   >
                     <IconChevronRightFilled size={14} />
                   </button>

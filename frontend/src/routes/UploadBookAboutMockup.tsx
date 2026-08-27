@@ -202,7 +202,7 @@ function PageLightbox({
             onClick={onPrev}
             disabled={page === 1}
             aria-label="Previous page"
-            className="flex size-7 items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline-accent-on-dark disabled:pointer-events-none disabled:opacity-35"
+            className="flex size-7 cursor-pointer items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline-accent-on-dark disabled:pointer-events-none disabled:opacity-35"
           >
             <IconChevronLeft size={16} />
           </button>
@@ -214,7 +214,7 @@ function PageLightbox({
             onClick={onNext}
             disabled={page === pageCount}
             aria-label="Next page"
-            className="flex size-7 items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline-accent-on-dark disabled:pointer-events-none disabled:opacity-35"
+            className="flex size-7 cursor-pointer items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline-accent-on-dark disabled:pointer-events-none disabled:opacity-35"
           >
             <IconChevronRightFilled size={16} />
           </button>
@@ -361,7 +361,7 @@ export function UploadBookAboutMockup() {
                 onClick={() => setPreviewPage((p) => Math.max(1, p - 1))}
                 disabled={previewPage === 1}
                 aria-label="Previous page"
-                className="flex size-6 shrink-0 items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline-accent-on-dark disabled:pointer-events-none disabled:opacity-35"
+                className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline-accent-on-dark disabled:pointer-events-none disabled:opacity-35"
               >
                 <IconChevronLeft size={14} />
               </button>
@@ -373,7 +373,7 @@ export function UploadBookAboutMockup() {
                 onClick={() => setPreviewPage((p) => Math.min(MOCK_PAGE_COUNT, p + 1))}
                 disabled={previewPage === MOCK_PAGE_COUNT}
                 aria-label="Next page"
-                className="flex size-6 shrink-0 items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline-accent-on-dark disabled:pointer-events-none disabled:opacity-35"
+                className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline-accent-on-dark disabled:pointer-events-none disabled:opacity-35"
               >
                 <IconChevronRightFilled size={14} />
               </button>
