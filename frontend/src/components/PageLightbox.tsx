@@ -19,6 +19,7 @@ export function PageLightbox({
   alt,
   page,
   pageCount,
+  minPage = 1,
   onClose,
   onPrev,
   onNext,
@@ -27,6 +28,14 @@ export function PageLightbox({
   alt: string
   page: number
   pageCount: number
+  // Defaults to 1 — every caller except the Book Upload Wizard's own
+  // printed-page-offset-adjusted screens shows plain 1-based physical
+  // page numbers, where "first page" and "1" are the same thing. A
+  // caller displaying offset-adjusted numbers (page/pageCount both
+  // shifted by the same printed-page offset) needs this so the Previous
+  // button still disables at the *real* first page instead of at a
+  // literal "1" that offset numbering may never actually reach.
+  minPage?: number
   onClose: () => void
   onPrev: () => void
   onNext: () => void
@@ -115,7 +124,7 @@ export function PageLightbox({
           <button
             type="button"
             onClick={onPrev}
-            disabled={page === 1}
+            disabled={page === minPage}
             aria-label="Previous page"
             className="flex size-7 cursor-pointer items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline-accent-on-dark disabled:pointer-events-none disabled:opacity-35"
           >

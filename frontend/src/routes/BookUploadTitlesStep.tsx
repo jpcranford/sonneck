@@ -17,8 +17,14 @@ import { TOTAL_WIZARD_STEPS } from './BookUploadWizard'
 // covers it). Neither is actually required unless the book supplies
 // neither composer nor arranger — see requireComposerOrArranger below.
 // Uses the shared PageLightbox (components/PageLightbox.tsx) for the tap-
-// to-preview overlay, cycling between pieces rather than pages within one
-// piece — this screen only ever shows a piece's own start page.
+// to-preview overlay. Browses the *whole book* by raw physical page, not
+// just the pieces (fixed 2026-08-26) — it originally cycled between
+// pieces only (prev/next meant "the piece before/after this one"), which
+// displayed a piece index as if it were a page number and made it
+// impossible to check a skipped page without leaving this screen and
+// going back to the Split step. A user reviewing piece names still needs
+// to be able to flip through every page, including skipped ones, in case
+// the split itself was wrong.
 
 const CURRENT_STEP = 5
 const DESKTOP_BREAKPOINT_PX = 768
@@ -203,6 +209,7 @@ interface BookUploadTitlesStepProps {
   bookComposer: string | null
   bookArranger: string | null
   pageOffset: number
+  pageCount: number
   pieces: Piece[]
   pieceFields: { title: string; composer: string; arranger: string }[]
   onChange: (fields: { title: string; composer: string; arranger: string }[]) => void
@@ -217,6 +224,7 @@ export function BookUploadTitlesStep({
   bookComposer,
   bookArranger,
   pageOffset,
+  pageCount,
   pieces,
   pieceFields,
   onChange,
@@ -226,7 +234,12 @@ export function BookUploadTitlesStep({
   cancelPending,
 }: BookUploadTitlesStepProps) {
   const isDesktop = useIsDesktop()
-  const [previewIndex, setPreviewIndex] = useState<number | null>(null)
+  // Raw physical page currently shown in the lightbox — not a piece
+  // index. Seeded from a piece's own start page when its thumbnail is
+  // tapped, but prev/next below page through the whole book (1..
+  // pageCount), not just between piece starts — see this file's own
+  // header comment for why.
+  const [previewPage, setPreviewPage] = useState<number | null>(null)
   const {
     register,
     handleSubmit,
@@ -366,7 +379,7 @@ export function BookUploadTitlesStep({
                     <HoverPagePreview
                       piece={piece}
                       bookId={bookId}
-                      onPreview={() => setPreviewIndex(index)}
+                      onPreview={() => setPreviewPage(piece.start)}
                     />
                     <div>
                       <input
@@ -435,7 +448,7 @@ export function BookUploadTitlesStep({
                 >
                   <button
                     type="button"
-                    onClick={() => setPreviewIndex(index)}
+                    onClick={() => setPreviewPage(piece.start)}
                     title="Tap to preview page"
                     className="relative aspect-[180/132] w-[115px] shrink-0 overflow-hidden rounded-lg"
                     style={{ border: `1.5px solid ${piece.color}` }}
@@ -533,16 +546,26 @@ export function BookUploadTitlesStep({
         </div>
       </form>
 
-      {previewIndex !== null && (
+      {previewPage !== null && (
         <PageLightbox
-          key={previewIndex}
-          imageUrl={getBookPageThumbnailUrl(bookId, pieces[previewIndex].start)}
-          alt={`Page ${pieces[previewIndex].start + pageOffset} of ${pieceFields[previewIndex]?.title || `piece ${previewIndex + 1}`}`}
-          page={previewIndex + 1}
-          pageCount={pieces.length}
-          onClose={() => setPreviewIndex(null)}
-          onPrev={() => setPreviewIndex((i) => Math.max(0, (i ?? 0) - 1))}
-          onNext={() => setPreviewIndex((i) => Math.min(pieces.length - 1, (i ?? 0) + 1))}
+          key={previewPage}
+          imageUrl={getBookPageThumbnailUrl(bookId, previewPage)}
+          alt={`Page ${previewPage + pageOffset}`}
+          // previewPage itself stays raw physical (that's what the
+          // thumbnail fetch and the onPrev/onNext clamps below need) —
+          // only the displayed page/pageCount/minPage are shifted by
+          // pageOffset, matching every other number on this screen
+          // (formatPieceLabel's own "p."/"pp." labels). Without minPage,
+          // PageLightbox's Previous button would never disable at all
+          // once pageOffset is nonzero, since its own hardcoded "=== 1"
+          // check would be comparing against a displayed number the
+          // offset shifted past.
+          page={previewPage + pageOffset}
+          pageCount={pageCount + pageOffset}
+          minPage={1 + pageOffset}
+          onClose={() => setPreviewPage(null)}
+          onPrev={() => setPreviewPage((p) => Math.max(1, (p ?? 1) - 1))}
+          onNext={() => setPreviewPage((p) => Math.min(pageCount, (p ?? 1) + 1))}
         />
       )}
     </div>

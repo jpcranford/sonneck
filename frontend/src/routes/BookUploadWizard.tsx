@@ -349,6 +349,7 @@ export function BookUploadWizard({ onExit }: BookUploadWizardProps) {
         bookComposer={book.composer}
         bookArranger={book.arranger}
         pageOffset={pageOffset}
+        pageCount={pageCount}
         pieces={pieces}
         pieceFields={pieceFields}
         onChange={setPieceFields}

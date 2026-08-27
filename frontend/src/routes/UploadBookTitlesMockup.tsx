@@ -84,6 +84,20 @@ const PIECES: PieceFixture[] = [
   },
 ]
 
+// Same 8-page book the Split mockup uses (p.4 skipped, matching neither
+// piece's start/end range) — the lightbox below browses the whole book by
+// raw physical page, not just the 3 pieces, so it needs to know the real
+// total.
+const PAGE_COUNT = 8
+
+// null for a page that isn't any piece's own range (a skipped page, e.g.
+// p.4) — the lightbox renders that as a blank page, same as Screen 4's
+// own skipped-page treatment, rather than pretending it belongs to
+// whichever piece happens to be nearest.
+function pieceForPage(page: number): PieceFixture | null {
+  return PIECES.find((p) => page >= p.start && page <= p.end) ?? null
+}
+
 // Composer always shows, regardless of what the book itself has set —
 // there's no per-piece harm in leaving it editable even when it's not
 // strictly needed. Arranger is the one that hides, and only when the book
@@ -125,29 +139,49 @@ function formatPieceLabel(piece: PieceFixture) {
 // for a real rendered PDF page — same illustrative-SVG spirit as Screen
 // 4's PageThumb, parameterized by piece title instead of blank/page
 // content since this screen is about naming pieces, not marking pages.
-function PieceThumb({ title, page }: { title: string; page: number }) {
+// title is null for a page that isn't any piece's own range (the
+// lightbox's whole-book browsing can land on a skipped page) — rendered
+// as the same italic "(blank)" label Screen 4's PageThumb uses, staff
+// lines omitted, so a blank page still reads as deliberately blank
+// rather than as a piece with no name.
+function PieceThumb({ title, page }: { title: string | null; page: number }) {
   const staffGroupYs = [58, 91, 124, 157, 190, 223]
   const lineOffsets = [0, 3.5, 7, 10.5, 14]
   return (
     <svg viewBox="0 0 200 260" className="block h-auto w-full">
-      <rect x="0.5" y="0.5" width="199" height="259" fill="#fffdf9" stroke="#e4e0d8" />
-      <text
-        x="100"
-        y="26"
-        textAnchor="middle"
-        fontFamily="var(--font-display)"
-        fontSize="9"
-        fill="#5c5349"
-      >
-        {title}
-      </text>
-      {staffGroupYs.map((y) => (
-        <g key={y} stroke="#c9c2b6" strokeWidth="0.5">
-          {lineOffsets.map((offset) => (
-            <line key={offset} x1="18" x2="182" y1={y + offset} y2={y + offset} />
+      <rect
+        x="0.5"
+        y="0.5"
+        width="199"
+        height="259"
+        fill={title === null ? '#f7f5f0' : '#fffdf9'}
+        stroke="#e4e0d8"
+      />
+      {title === null ? (
+        <text x="100" y="134" textAnchor="middle" fontSize="9" fill="#c9c2b6" fontStyle="italic">
+          (blank)
+        </text>
+      ) : (
+        <>
+          <text
+            x="100"
+            y="26"
+            textAnchor="middle"
+            fontFamily="var(--font-display)"
+            fontSize="9"
+            fill="#5c5349"
+          >
+            {title}
+          </text>
+          {staffGroupYs.map((y) => (
+            <g key={y} stroke="#c9c2b6" strokeWidth="0.5">
+              {lineOffsets.map((offset) => (
+                <line key={offset} x1="18" x2="182" y1={y + offset} y2={y + offset} />
+              ))}
+            </g>
           ))}
-        </g>
-      ))}
+        </>
+      )}
       <text
         x="184"
         y="248"
@@ -287,32 +321,39 @@ function HoverPagePreview({ piece, onPreview }: { piece: PieceFixture; onPreview
 // the old PagePreviewOverlay (a single fixed-size popup with no zoom
 // capability): this is the real lightbox's actual fit/actual-size zoom
 // toggle, not a simplified stand-in — 'actual' is a genuine 1:1 view, not
-// just a slightly-bigger 'fit'. Cycles between pieces (not pages within
-// one piece — this screen only ever shows a piece's own start page), so
-// prev/next here means "the piece before/after this one in the list."
+// just a slightly-bigger 'fit'.
+//
+// Browses the *whole book* by raw physical page, not just the pieces —
+// originally cycled between pieces only (prev/next meant "the piece
+// before/after this one"), which showed the wrong number here (a piece
+// index masquerading as a page number) and made it impossible to check a
+// skipped page without leaving this screen and going back to Screen 4.
+// Fixed 2026-08-26 to match the real build (BookUploadTitlesStep.tsx):
+// resolves whichever piece (if any) owns the current page via
+// pieceForPage, rendering a blank PieceThumb for a page that isn't in
+// any piece's range.
 function PageLightbox({
-  piece,
-  pieceIndex,
-  pieceCount,
+  page,
+  pageCount,
   onClose,
   onPrev,
   onNext,
 }: {
-  piece: PieceFixture
-  pieceIndex: number
-  pieceCount: number
+  page: number
+  pageCount: number
   onClose: () => void
   onPrev: () => void
   onNext: () => void
 }) {
+  const piece = pieceForPage(page)
   // 'fit' shows the whole page within the screen; 'actual' shows it at a
   // larger, fixed pixel size in a scrollable box — this mockup's
   // placeholder is a vector SVG with no real pixel size to be "1:1"
   // against, so 'actual' stands in for what would be the real page
   // image's true native size in the real build (same convention as
-  // UploadBookAboutMockup.tsx's own copy). Resets to 'fit' on every piece
-  // change by remounting this component on `key={pieceIndex}` from the
-  // caller (React's own recommended pattern for "reset state when a prop
+  // UploadBookAboutMockup.tsx's own copy). Resets to 'fit' on every page
+  // change by remounting this component on `key={page}` from the caller
+  // (React's own recommended pattern for "reset state when a prop
   // changes") rather than an effect calling setState for the same result.
   const [zoom, setZoom] = useState<'fit' | 'actual'>('fit')
 
@@ -362,31 +403,37 @@ function PageLightbox({
               ? 'w-[70vw] max-w-[440px] overflow-hidden rounded-md shadow-2xl sm:w-[420px]'
               : 'w-[820px] overflow-hidden rounded-md shadow-2xl'
           }
-          style={{ border: `2px solid ${piece.color}` }}
+          style={{ border: `2px solid ${piece ? piece.color : '#e4e0d8'}` }}
         >
-          <PieceThumb title={piece.title} page={piece.start + PAGE_OFFSET} />
+          <PieceThumb title={piece ? piece.title : null} page={page + PAGE_OFFSET} />
         </div>
       </button>
 
-      {pieceCount > 1 && (
+      {pageCount > 1 && (
         <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-ink/80 px-2 py-1 shadow-md backdrop-blur-sm">
           <button
             type="button"
             onClick={onPrev}
-            disabled={pieceIndex === 0}
-            aria-label="Previous piece"
+            disabled={page === 1}
+            aria-label="Previous page"
             className="flex size-7 items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline-accent-on-dark disabled:pointer-events-none disabled:opacity-35"
           >
             <IconChevronLeft size={16} />
           </button>
+          {/* page/pageCount themselves stay raw physical (that's what
+              pieceForPage's own lookup and the disabled checks above
+              need) — only the displayed numbers are offset-adjusted,
+              matching PieceThumb's own printed page number just above
+              and every other number on this screen (formatPieceLabel's
+              "p."/"pp." labels). */}
           <span className="text-xs tabular-nums text-white/90">
-            {pieceIndex + 1} / {pieceCount}
+            {page + PAGE_OFFSET} / {pageCount + PAGE_OFFSET}
           </span>
           <button
             type="button"
             onClick={onNext}
-            disabled={pieceIndex === pieceCount - 1}
-            aria-label="Next piece"
+            disabled={page === pageCount}
+            aria-label="Next page"
             className="flex size-7 items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline-accent-on-dark disabled:pointer-events-none disabled:opacity-35"
           >
             <IconChevronRightFilled size={16} />
@@ -431,7 +478,7 @@ export function UploadBookTitlesMockup() {
   useMockupTitle('Upload — Name Each Piece')
 
   const isDesktop = useIsDesktop()
-  const [previewIndex, setPreviewIndex] = useState<number | null>(null)
+  const [previewPage, setPreviewPage] = useState<number | null>(null)
 
   function handleCancelUpload() {
     const confirmed = window.confirm(
@@ -579,7 +626,7 @@ export function UploadBookTitlesMockup() {
                         comment for why this needs real hover-position
                         measurement (not pure CSS group-hover) and why
                         it's its own component rather than inlined here. */}
-                    <HoverPagePreview piece={piece} onPreview={() => setPreviewIndex(index)} />
+                    <HoverPagePreview piece={piece} onPreview={() => setPreviewPage(piece.start)} />
                     <div>
                       <input
                         className={`w-full rounded-md border bg-paper-raised px-2.5 py-1.5 text-sm text-ink ${
@@ -650,7 +697,7 @@ export function UploadBookTitlesMockup() {
                 >
                   <button
                     type="button"
-                    onClick={() => setPreviewIndex(index)}
+                    onClick={() => setPreviewPage(piece.start)}
                     title="Tap to preview page"
                     className="relative aspect-[180/132] w-[115px] shrink-0 overflow-hidden rounded-lg"
                     style={{ border: `1.5px solid ${piece.color}` }}
@@ -742,15 +789,14 @@ export function UploadBookTitlesMockup() {
         </div>
       </form>
 
-      {previewIndex !== null && (
+      {previewPage !== null && (
         <PageLightbox
-          key={previewIndex}
-          piece={PIECES[previewIndex]}
-          pieceIndex={previewIndex}
-          pieceCount={PIECES.length}
-          onClose={() => setPreviewIndex(null)}
-          onPrev={() => setPreviewIndex((i) => Math.max(0, (i ?? 0) - 1))}
-          onNext={() => setPreviewIndex((i) => Math.min(PIECES.length - 1, (i ?? 0) + 1))}
+          key={previewPage}
+          page={previewPage}
+          pageCount={PAGE_COUNT}
+          onClose={() => setPreviewPage(null)}
+          onPrev={() => setPreviewPage((p) => Math.max(1, (p ?? 1) - 1))}
+          onNext={() => setPreviewPage((p) => Math.min(PAGE_COUNT, (p ?? 1) + 1))}
         />
       )}
     </div>
