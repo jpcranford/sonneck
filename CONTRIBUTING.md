@@ -67,6 +67,7 @@ sonneck/
 │   │   └── migrations/        # goose migration files, one per schema change
 │   ├── export/                # CSV export (admin CLI command)
 │   ├── handlers/               # HTTP handlers — one file per resource area
+│   ├── imslp/                  # Live IMSLP lookup (composer/opus/year/publisher by IMSLP number) — see its own package doc comment
 │   ├── models/                # Core domain structs (Piece, Book, lookups)
 │   ├── pdf/                    # Page splitting/thumbnail generation via poppler-utils
 │   ├── repo/                   # All SQL lives here — the only layer that touches the DB

@@ -20,7 +20,7 @@ Sonneck is designed to live “in an office with a printer”, so to speak. Ther
 
 - **Organize your sheet music library.** Upload individual pieces or entire books — the built-in book splitter and metadata inheritance make quick work of prepping a whole book's worth of pieces to be found later.
 - **Real cataloging, not a folder of PDFs.** Composer, arranger, key(s), instruments, sheet type, opus number, ISBN, and your own tags, plus a one-click citation generator that formats it all for you, ready to be copied into a program template or group chat.
-- **Fully capable metadata.** Multiple keys in a piece, instruments, and of course user tags are all proper tag fields. Citation line shows/hides info based on what you have to maintain a concise yet complete summary. Description fields and performer notes support Markdown syntax, including music "custom emoji" support to render e.g. `:mf:` as the mezzo-forte marking. (see the [doc](docs/music-emoji.md) for what's currently supported!)
+- **Metadata that works for you.** Give it an IMSLP catalog number and it'll auto-fill composer, opus number, year, and publisher for you. The citation line adapts to show only the fields you've actually filled in, and descriptions/performer notes support Markdown — including shortcode music symbols like `:mf:` for a mezzo-forte marking (see the [doc](docs/music-emoji.md) for the full list).
 - **Pieces inherit properties from their books.** Set a book's composer, publisher, and year once. Every piece inside it inherits the information automatically, you only ever need to override the pieces that are actually different.
 - **Search that keeps up with you.** Full-text search across your whole library as you type. Grid views are optimized for number of items shown at once, while list views show you the most detail about each piece without having to open it up.
 - **Track your wishlist.** Ever forget you were learning a piece only to rediscover it weeks later at the bottom of your bag? Or buy pieces to learn, only for them to get lost in the stacks? No more! Use the practice status and filter views to track what you want to play, what you have in progress, and even the stuff you never want to touch again! Take *that*, [Sorabji](https://www.youtube.com/watch?v=_OrAewTxBrc)!
@@ -90,7 +90,7 @@ This backs up the **database only**. The `library/` folder (original book PDFs a
 3. Start the server again.
 
 ## Admin CLI commands
-Maintenance actions are exposed as subcommands on the same binary — `./sonneck <command>` — rather than HTTP endpoints, since there's no authentication to protect an endpoint with (see "No authentication" below). They're safe to run against a live server; they rely on SQLite's WAL mode (already enabled) and, where they touch on-disk files, write via a temp-file-then-atomic-rename so a concurrent request never sees a partial result.
+Maintenance actions are exposed as subcommands on the same binary rather than HTTP endpoints, since they're more actions for server owners than mere admins. They're safe to run against a live server; they rely on SQLite's WAL mode (already enabled) and, where they touch on-disk files, write via a temp-file-then-atomic-rename so a concurrent request never sees a partial result.
 
 If you're using Docker, do
 ```sh
@@ -114,7 +114,6 @@ DATA_DIR=./data ./sonneck <command>
 - **Auth support.** Lock your collection behind a simple password, or utilize a separate OIDC system for multi-user support. User notes, annotations, and tags stay saved per-user.
 - **Public domain badge.** Set your country as an env var and the *likely* copyright status will be calculated per-piece, with the ability to manually override it. Scaffolding for this is already in place.
 - **Dark mode.** Dear God, my eyes.
-- **IMSLP metadata import.** Why spend the effort to manually input the info when you can just autofill from the website?
 - **Configurable citation format.** Just in case you don't like the defaults.
 - Support for a folder of image files to be uploaded/assembled into pieces
 - A way to rename user tags, sheet types, etc. from the interface — honestly, this one's probably waiting on the auth support, when I slice off a *bunch* of user settings into their own menu (dark/light mode preference, citation style choice, etc.)

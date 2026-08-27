@@ -39,10 +39,14 @@ FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
         poppler-utils \
         wget \
+        ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 # wget exists solely so HEALTHCHECK below can hit /healthz without adding a
 # dedicated Go subcommand for it — debian-slim ships neither wget nor curl
-# by default.
+# by default. ca-certificates is new as of the IMSLP live-autofill feature
+# (internal/imslp) — the backend's first-ever outbound HTTPS call (to
+# imslp.org); without it, Go's crypto/tls has no system CA bundle to
+# verify imslp.org's certificate against, and the request fails.
 
 # Non-root by default — a fixed UID/GID (1000, the common first-user
 # default on most Linux distros) so a

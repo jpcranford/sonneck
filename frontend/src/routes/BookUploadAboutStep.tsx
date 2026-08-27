@@ -14,6 +14,7 @@ import {
   IconX,
 } from '@tabler/icons-react'
 import { updateBook, getBookPageThumbnailUrl } from '../api/books'
+import { lookupImslp } from '../api/imslp'
 import { listInstruments, listSheetTypes } from '../api/lookups'
 import { ApiError } from '../api/client'
 import type { Book, BookWriteRequest, Tag } from '../api/types'
@@ -21,6 +22,7 @@ import { TagComboBox } from '../components/TagComboBox'
 import { SingleSelect } from '../components/SingleSelect'
 import { InfoTooltip } from '../components/InfoTooltip'
 import { PageLightbox } from '../components/PageLightbox'
+import { ImslpAutofillButton } from '../components/ImslpAutofillButton'
 import { TOTAL_WIZARD_STEPS } from './BookUploadWizard'
 
 // Book Upload Wizard, Screen 3 of 6: "About this book" (design doc §5 step
@@ -163,8 +165,73 @@ export function BookUploadAboutStep({
     handleSubmit,
     control,
     watch,
+    getValues,
+    setValue,
     formState: { errors },
   } = useForm<FormValues>({ defaultValues: bookToFormValues(book) })
+
+  const [imslpFetchState, setImslpFetchState] = useState<'idle' | 'fetching' | 'done'>('idle')
+  // Which fields the *most recent* autofill actually touched — drives a
+  // brief highlight ring so it's obvious which values just changed.
+  const [imslpFilledFields, setImslpFilledFields] = useState<Set<string>>(new Set())
+  const isValidImslpNumber = /^\d+$/.test(stripImslpPrefix(watch('imslpNumber')).trim())
+
+  const imslpMutation = useMutation({
+    mutationFn: () => lookupImslp(stripImslpPrefix(watch('imslpNumber')).trim()),
+    onSuccess: (info) => {
+      const filled = new Set<string>()
+      const current = getValues()
+      // Only fields currently blank — this is meant to save typing, not
+      // silently overwrite something already entered (design mockup's
+      // own rule, carried into the real build).
+      if (!current.composer && info.composer) {
+        setValue('composer', info.composer)
+        filled.add('composer')
+      }
+      if (!current.yearWritten && info.yearWritten) {
+        setValue('yearWritten', info.yearWritten)
+        filled.add('yearWritten')
+      }
+      if (!current.workOpusNumber && info.workOpusNumber) {
+        setValue('workOpusNumber', info.workOpusNumber)
+        filled.add('workOpusNumber')
+      }
+      if (!current.publisher && info.publisher) {
+        setValue('publisher', info.publisher)
+        filled.add('publisher')
+      }
+      if (!current.publisherId && info.publisherId) {
+        setValue('publisherId', info.publisherId)
+        filled.add('publisherId')
+      }
+      setImslpFilledFields(filled)
+      setImslpFetchState('done')
+      window.setTimeout(() => setImslpFetchState('idle'), 1400)
+      window.setTimeout(() => setImslpFilledFields(new Set()), 2400)
+    },
+    onError: () => setImslpFetchState('idle'),
+  })
+
+  function runImslpAutofill() {
+    if (imslpFetchState !== 'idle' || !isValidImslpNumber) return
+    setImslpFetchState('fetching')
+    imslpMutation.mutate()
+  }
+
+  // Runs once, automatically — no click needed, unlike a manually-typed
+  // number elsewhere (EditPieceModal.tsx), since a filename-detected
+  // number is already considered confirmed by the time this screen
+  // exists at all (design doc §5). The delay is deliberate, not filler:
+  // it's what keeps this screen from ever silently arriving *pre-filled*
+  // — the user needs to actually see the blank "About this book" screen
+  // first, then watch the fetch/highlight sequence play out on it, not
+  // have the fields already different the instant it mounts (matches the
+  // design mockup this was built from, UploadBookAboutMockup.tsx).
+  useEffect(() => {
+    const timer = window.setTimeout(runImslpAutofill, 700)
+    return () => window.clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deliberate one-shot on mount: filename detection already ran server-side before this screen existed, this just reacts to its result once. Re-running on every render (runImslpAutofill is recreated each render) would refire the whole fetch/highlight sequence any time this component re-renders for an unrelated reason.
+  }, [])
 
   const { data: sheetTypeOptions = [] } = useQuery({
     queryKey: ['sheetTypes'],
@@ -390,7 +457,7 @@ export function BookUploadAboutStep({
               <input
                 id="f-composer"
                 placeholder="e.g. Robert Schumann"
-                className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 placeholder:text-ink-soft/40 placeholder:italic ${imslpFilledFields.has('composer') ? 'ring-2 ring-accent-on-dark' : ''}`}
                 {...register('composer', { maxLength: 255 })}
               />
             </div>
@@ -415,7 +482,7 @@ export function BookUploadAboutStep({
               <input
                 id="f-year"
                 placeholder="e.g. 1848"
-                className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 placeholder:text-ink-soft/40 placeholder:italic ${imslpFilledFields.has('yearWritten') ? 'ring-2 ring-accent-on-dark' : ''}`}
                 {...register('yearWritten', { maxLength: 255 })}
               />
             </div>
@@ -426,7 +493,7 @@ export function BookUploadAboutStep({
               <input
                 id="f-opus"
                 placeholder="e.g. Op. 68"
-                className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 placeholder:text-ink-soft/40 placeholder:italic ${imslpFilledFields.has('workOpusNumber') ? 'ring-2 ring-accent-on-dark' : ''}`}
                 {...register('workOpusNumber', { maxLength: 255 })}
               />
             </div>
@@ -440,7 +507,7 @@ export function BookUploadAboutStep({
               <input
                 id="f-publisher"
                 placeholder="e.g. G. Schirmer"
-                className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 placeholder:text-ink-soft/40 placeholder:italic ${imslpFilledFields.has('publisher') ? 'ring-2 ring-accent-on-dark' : ''}`}
                 {...register('publisher', { maxLength: 255 })}
               />
             </div>
@@ -451,7 +518,7 @@ export function BookUploadAboutStep({
               <input
                 id="f-publisher-id"
                 placeholder="e.g. HL50252950"
-                className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 placeholder:text-ink-soft/40 placeholder:italic ${imslpFilledFields.has('publisherId') ? 'ring-2 ring-accent-on-dark' : ''}`}
                 {...register('publisherId', { maxLength: 255 })}
               />
             </div>
@@ -486,11 +553,28 @@ export function BookUploadAboutStep({
                   </span>
                 )}
               </div>
-              <input
-                id="f-imslp"
-                className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-                {...register('imslpNumber', { maxLength: 255 })}
-              />
+              {/* relative + pr-9 reserve room for ImslpAutofillButton
+                  inside the input itself — same placement as
+                  EditPieceModal.tsx's own copy of this field. */}
+              <div className="relative">
+                <input
+                  id="f-imslp"
+                  className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 pr-9 text-ink"
+                  {...register('imslpNumber', { maxLength: 255 })}
+                />
+                <ImslpAutofillButton
+                  state={imslpFetchState}
+                  valid={isValidImslpNumber}
+                  onClick={runImslpAutofill}
+                />
+              </div>
+              {imslpMutation.isError && (
+                <p className="text-sm text-red-700">
+                  {imslpMutation.error instanceof ApiError
+                    ? imslpMutation.error.message
+                    : 'Could not reach IMSLP.'}
+                </p>
+              )}
             </div>
           </div>
 

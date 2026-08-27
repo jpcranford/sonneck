@@ -16,6 +16,7 @@ import {
   IconXFilled,
 } from '@tabler/icons-react'
 import { getPieceThumbnailUrl, updatePiece } from '../api/pieces'
+import { lookupImslp } from '../api/imslp'
 import { listInstruments, listKeys, listSheetTypes, listUserTags } from '../api/lookups'
 import { ApiError } from '../api/client'
 import { secondsToMMSS, mmssToSeconds } from '../lib/duration'
@@ -25,6 +26,7 @@ import type { Piece, PieceWriteRequest, PracticeStatus, Tag } from '../api/types
 import { Modal } from './Modal'
 import { InfoTooltip } from './InfoTooltip'
 import { InheritedNote } from './InheritedNote'
+import { ImslpAutofillButton } from './ImslpAutofillButton'
 import { TagComboBox } from './TagComboBox'
 import { SingleSelect } from './SingleSelect'
 import { SourceBookField } from './SourceBookField'
@@ -293,6 +295,7 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
     control,
     watch,
     setValue,
+    getValues,
     reset,
     formState: { errors },
   } = useForm<FormValues>({ defaultValues: pieceToFormValues(piece) })
@@ -334,6 +337,62 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
   const measureCount = Number(watch('measureCount'))
   const beatsPerMeasure = Number(watch('beatsPerMeasure'))
   const canCalculateDuration = bpm > 0 && measureCount > 0 && beatsPerMeasure > 0
+
+  // Effective value first (the form's own live value, falling back to
+  // the piece's already-resolved effective IMSLP number — inherited or
+  // not, piece.imslpNumber.value is that resolution already), then
+  // stripped of any "IMSLP" label the same way a real save would
+  // normalize it, before checking it's actually just digits — same rule
+  // ImslpAutofillButton's own comment documents.
+  const effectiveImslpNumber = watch('imslpNumber') || piece.imslpNumber.value
+  const isValidImslpNumber = /^\d+$/.test(stripImslpPrefix(effectiveImslpNumber).trim())
+  const [imslpFetchState, setImslpFetchState] = useState<'idle' | 'fetching' | 'done'>('idle')
+  // Which fields the *most recent* autofill actually touched — drives a
+  // brief highlight ring so it's obvious which values just changed.
+  const [imslpFilledFields, setImslpFilledFields] = useState<Set<string>>(new Set())
+
+  const imslpMutation = useMutation({
+    mutationFn: () => lookupImslp(stripImslpPrefix(effectiveImslpNumber).trim()),
+    onSuccess: (info) => {
+      const filled = new Set<string>()
+      const current = getValues()
+      // Only fields currently blank on the piece — this is meant to save
+      // typing, not silently overwrite something already entered,
+      // book-inherited or not (same rule as the design mockup this is
+      // built from).
+      if (!current.composer && info.composer) {
+        setValue('composer', info.composer)
+        filled.add('composer')
+      }
+      if (!current.workOpusNumber && info.workOpusNumber) {
+        setValue('workOpusNumber', info.workOpusNumber)
+        filled.add('workOpusNumber')
+      }
+      if (!current.yearWritten && info.yearWritten) {
+        setValue('yearWritten', info.yearWritten)
+        filled.add('yearWritten')
+      }
+      if (!current.publisher && info.publisher) {
+        setValue('publisher', info.publisher)
+        filled.add('publisher')
+      }
+      if (!current.publisherId && info.publisherId) {
+        setValue('publisherId', info.publisherId)
+        filled.add('publisherId')
+      }
+      setImslpFilledFields(filled)
+      setImslpFetchState('done')
+      window.setTimeout(() => setImslpFetchState('idle'), 1400)
+      window.setTimeout(() => setImslpFilledFields(new Set()), 2400)
+    },
+    onError: () => setImslpFetchState('idle'),
+  })
+
+  function handleImslpAutofill() {
+    if (imslpFetchState !== 'idle' || !isValidImslpNumber) return
+    setImslpFetchState('fetching')
+    imslpMutation.mutate()
+  }
 
   // One-shot convenience, not a live-bound computed field — Piece.duration
   // is a plain user-entered field now (CLAUDE.md > Frontend > Computed
@@ -565,7 +624,7 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
               <input
                 id="f-year"
                 placeholder={!watch('yearWritten') && piece.yearWritten.inherited ? piece.yearWritten.value : undefined}
-                className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                className={`rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 placeholder:text-ink-soft/40 placeholder:italic ${imslpFilledFields.has('yearWritten') ? 'ring-2 ring-accent-on-dark' : ''}`}
                 {...register('yearWritten', { maxLength: 255 })}
               />
               {!watch('yearWritten') && piece.yearWritten.inherited && (
@@ -592,7 +651,7 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
               <input
                 id="f-composer"
                 placeholder={!composer && piece.composer.inherited ? piece.composer.value : undefined}
-                className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                className={`rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 placeholder:text-ink-soft/40 placeholder:italic ${imslpFilledFields.has('composer') ? 'ring-2 ring-accent-on-dark' : ''}`}
                 {...register('composer', { maxLength: 255 })}
               />
               {errors.composer && <p className="text-sm text-red-700">{errors.composer.message}</p>}
@@ -647,7 +706,7 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
               </label>
               <input
                 id="f-opus"
-                className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+                className={`rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 ${imslpFilledFields.has('workOpusNumber') ? 'ring-2 ring-accent-on-dark' : ''}`}
                 {...register('workOpusNumber', { maxLength: 255 })}
               />
             </div>
@@ -655,17 +714,37 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
               <label htmlFor="f-imslp" className="text-sm text-ink-soft">
                 IMSLP no.
               </label>
-              <input
-                id="f-imslp"
-                placeholder={!watch('imslpNumber') && piece.imslpNumber.inherited ? piece.imslpNumber.value : undefined}
-                className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
-                {...register('imslpNumber', { maxLength: 255 })}
-              />
+              {/* relative + pr-9 reserve room for ImslpAutofillButton
+                  inside the input itself — same placement as a password
+                  field's show/hide toggle. Always rendered, not shown-
+                  only-when-present — see ImslpAutofillButton's own
+                  comment for why the cloud-off state matters just as much
+                  as the fetchable one. */}
+              <div className="relative">
+                <input
+                  id="f-imslp"
+                  placeholder={!watch('imslpNumber') && piece.imslpNumber.inherited ? piece.imslpNumber.value : undefined}
+                  className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 pr-9 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                  {...register('imslpNumber', { maxLength: 255 })}
+                />
+                <ImslpAutofillButton
+                  state={imslpFetchState}
+                  valid={isValidImslpNumber}
+                  onClick={handleImslpAutofill}
+                />
+              </div>
               {!watch('imslpNumber') && piece.imslpNumber.inherited && (
                 <InheritedNote
                   bookValue={piece.imslpNumber.value}
                   onCopy={() => setValue('imslpNumber', piece.imslpNumber.value)}
                 />
+              )}
+              {imslpMutation.isError && (
+                <p className="text-sm text-red-700">
+                  {imslpMutation.error instanceof ApiError
+                    ? imslpMutation.error.message
+                    : 'Could not reach IMSLP.'}
+                </p>
               )}
             </div>
           </div>
@@ -683,7 +762,7 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
               <input
                 id="f-publisher"
                 placeholder={!watch('publisher') && piece.publisher.inherited ? piece.publisher.value : undefined}
-                className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 placeholder:text-ink-soft/40 placeholder:italic ${imslpFilledFields.has('publisher') ? 'ring-2 ring-accent-on-dark' : ''}`}
                 {...register('publisher', { maxLength: 255 })}
               />
             </div>
@@ -706,7 +785,7 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
                 placeholder={
                   !watch('publisherId') && piece.publisherId.inherited ? piece.publisherId.value : undefined
                 }
-                className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 placeholder:text-ink-soft/40 placeholder:italic ${imslpFilledFields.has('publisherId') ? 'ring-2 ring-accent-on-dark' : ''}`}
                 {...register('publisherId', { maxLength: 255 })}
               />
             </div>

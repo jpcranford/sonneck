@@ -8,7 +8,10 @@ import {
   IconChevronLeft,
   IconChevronRightFilled,
   IconCheck,
+  IconCloudDownload,
+  IconCloudOff,
   IconInfoCircle,
+  IconLoader2,
   IconRotate,
   IconX,
   IconXFilled,
@@ -94,6 +97,58 @@ const defaultValues: FormValues = {
   sheetType: '',
   instruments: [],
   description: '',
+}
+
+// Same normalization every other IMSLP-number save path in the app
+// already applies (a value typed with the label still attached, e.g.
+// "IMSLP99999", shouldn't be treated as non-numeric just because of it).
+function stripImslpPrefix(value: string): string {
+  return value.replace(/^\s*imslp[\s:#-]*/i, '')
+}
+
+// Design doc §13's deferred "IMSLP live autofill" — see
+// EditPieceModalMockup.tsx's own copy of this component for the full
+// reasoning (same two faint-but-distinct states: a fetchable cloud once
+// the effective number is valid/number-only, a fainter cloud-off
+// otherwise, always visible either way). Not imported from there — every
+// mockup route in this app is self-contained, and there's no *real*
+// shared component to import here yet regardless, since this feature
+// doesn't exist outside these two mockups.
+//
+// The trigger is genuinely different here, though: on the Piece Edit
+// modal this is a manual click against a number the piece already has on
+// record. Here, the number was *just* detected from the uploaded
+// filename (design doc §5) moments before this screen ever appeared — so
+// this screen also auto-runs the same fetch once, automatically, without
+// waiting for a click. The button stays live afterward too, for
+// re-running it if the user corrects a wrong auto-detected number.
+function ImslpAutofillButton({
+  state,
+  valid,
+  onClick,
+}: {
+  state: 'idle' | 'fetching' | 'done'
+  valid: boolean
+  onClick: () => void
+}) {
+  const disabled = !valid || state !== 'idle'
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={valid ? 'Autofill blank fields from IMSLP' : 'No IMSLP number to autofill from'}
+      title={valid ? 'Autofill blank fields from IMSLP' : 'No IMSLP number to autofill from'}
+      className={`absolute top-1/2 right-2.5 flex size-5 -translate-y-1/2 items-center justify-center disabled:cursor-default ${
+        valid ? 'cursor-pointer text-[#9d9892] hover:text-accent' : 'text-[#c9c2b6]'
+      }`}
+    >
+      {!valid && <IconCloudOff size={16} />}
+      {valid && state === 'idle' && <IconCloudDownload size={16} />}
+      {valid && state === 'fetching' && <IconLoader2 size={16} className="animate-spin text-ink-soft" />}
+      {valid && state === 'done' && <IconCheck size={16} className="text-accent" />}
+    </button>
+  )
 }
 
 // Stand-in for a real book-cover page image (this mockup has no real
@@ -253,8 +308,72 @@ export function UploadBookAboutMockup() {
     handleSubmit,
     control,
     watch,
+    getValues,
+    setValue,
     formState: { errors },
   } = useForm<FormValues>({ defaultValues })
+
+  const [imslpFetchState, setImslpFetchState] = useState<'idle' | 'fetching' | 'done'>('idle')
+  const [imslpFilledFields, setImslpFilledFields] = useState<Set<string>>(new Set())
+  const isValidImslpNumber = /^\d+$/.test(stripImslpPrefix(watch('imslpNumber')).trim())
+
+  // Mockup only — no real IMSLP lookup happens here; setTimeout stands in
+  // for the request. Fields it fills mirror EditPieceModalMockup.tsx's
+  // own version of this (own reasoning there for why these specific
+  // fields, and why only currently-blank ones) — composer/year/opus here
+  // instead of composer/year/publisher/publisherId there, since this
+  // fixture already starts with publisher/publisherId blank and workOpusNumber
+  // is the one field a book-level IMSLP page reliably gives that this
+  // fixture doesn't already have some value for. isValidImslpNumber guards
+  // against firing when there's nothing usable — same rule as the
+  // button's own disabled state, checked again here since the auto-run
+  // effect below calls this directly, not through a click.
+  function runImslpAutofill() {
+    if (imslpFetchState !== 'idle' || !isValidImslpNumber) return
+    setImslpFetchState('fetching')
+    window.setTimeout(() => {
+      const filled = new Set<string>()
+      const current = getValues()
+      if (!current.composer) {
+        setValue('composer', 'Robert Schumann')
+        filled.add('composer')
+      }
+      if (!current.yearWritten) {
+        setValue('yearWritten', '1848')
+        filled.add('yearWritten')
+      }
+      if (!current.workOpusNumber) {
+        setValue('workOpusNumber', 'Op. 68')
+        filled.add('workOpusNumber')
+      }
+      if (!current.publisher) {
+        setValue('publisher', 'J. Schuberth & Co.')
+        filled.add('publisher')
+      }
+      if (!current.publisherId) {
+        setValue('publisherId', 'Schuberth 2266')
+        filled.add('publisherId')
+      }
+      setImslpFilledFields(filled)
+      setImslpFetchState('done')
+      window.setTimeout(() => setImslpFetchState('idle'), 1400)
+      window.setTimeout(() => setImslpFilledFields(new Set()), 2400)
+    }, 900)
+  }
+
+  // Runs once, automatically — no click needed, unlike the Piece Edit
+  // modal's version, since a filename-detected number is already
+  // considered confirmed by the time this screen exists at all (design
+  // doc §5). The 700ms delay is deliberate, not filler: it's what keeps
+  // this screen from ever silently arriving *pre-filled* — the user needs
+  // to actually see the blank "About this book" screen first, then watch
+  // the fetch/highlight sequence play out on it, not have the fields
+  // already different the instant it mounts.
+  useEffect(() => {
+    const timer = window.setTimeout(runImslpAutofill, 700)
+    return () => window.clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deliberate one-shot on mount, matching "filename detection already ran, this screen just reacts to its result once" — re-running on every render (runImslpAutofill is recreated each render) would refire the whole fetch/highlight sequence any time this component re-renders for an unrelated reason.
+  }, [])
 
   function onSubmit(data: FormValues) {
     // Mockup only — the real build advances to Screen 4 (Page Selection).
@@ -466,7 +585,7 @@ export function UploadBookAboutMockup() {
               <input
                 id="f-composer"
                 placeholder="e.g. Robert Schumann"
-                className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 placeholder:text-ink-soft/40 placeholder:italic ${imslpFilledFields.has('composer') ? 'ring-2 ring-accent-on-dark' : ''}`}
                 {...register('composer', { maxLength: 255 })}
               />
             </div>
@@ -491,7 +610,7 @@ export function UploadBookAboutMockup() {
               <input
                 id="f-year"
                 placeholder="e.g. 1848"
-                className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 placeholder:text-ink-soft/40 placeholder:italic ${imslpFilledFields.has('yearWritten') ? 'ring-2 ring-accent-on-dark' : ''}`}
                 {...register('yearWritten', { maxLength: 255 })}
               />
             </div>
@@ -502,7 +621,7 @@ export function UploadBookAboutMockup() {
               <input
                 id="f-opus"
                 placeholder="e.g. Op. 68"
-                className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 placeholder:text-ink-soft/40 placeholder:italic ${imslpFilledFields.has('workOpusNumber') ? 'ring-2 ring-accent-on-dark' : ''}`}
                 {...register('workOpusNumber', { maxLength: 255 })}
               />
             </div>
@@ -516,7 +635,7 @@ export function UploadBookAboutMockup() {
               <input
                 id="f-publisher"
                 placeholder="e.g. G. Schirmer"
-                className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 placeholder:text-ink-soft/40 placeholder:italic ${imslpFilledFields.has('publisher') ? 'ring-2 ring-accent-on-dark' : ''}`}
                 {...register('publisher', { maxLength: 255 })}
               />
             </div>
@@ -527,7 +646,7 @@ export function UploadBookAboutMockup() {
               <input
                 id="f-publisher-id"
                 placeholder="e.g. HL50252950"
-                className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 placeholder:text-ink-soft/40 placeholder:italic ${imslpFilledFields.has('publisherId') ? 'ring-2 ring-accent-on-dark' : ''}`}
                 {...register('publisherId', { maxLength: 255 })}
               />
             </div>
@@ -563,11 +682,21 @@ export function UploadBookAboutMockup() {
                   </span>
                 )}
               </div>
-              <input
-                id="f-imslp"
-                className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-                {...register('imslpNumber', { maxLength: 255 })}
-              />
+              {/* relative + pr-9 reserve room for ImslpAutofillButton
+                  inside the input itself — same placement as
+                  EditPieceModalMockup.tsx's own copy of this field. */}
+              <div className="relative">
+                <input
+                  id="f-imslp"
+                  className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 pr-9 text-ink"
+                  {...register('imslpNumber', { maxLength: 255 })}
+                />
+                <ImslpAutofillButton
+                  state={imslpFetchState}
+                  valid={isValidImslpNumber}
+                  onClick={runImslpAutofill}
+                />
+              </div>
             </div>
           </div>
 

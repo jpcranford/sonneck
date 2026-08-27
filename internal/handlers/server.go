@@ -33,6 +33,7 @@ func New(db *sql.DB, cfg *config.Config, logger *slog.Logger, frontend fs.FS) ht
 	mux.HandleFunc("GET /api/sheet-types", s.handleListSheetTypes)
 	mux.HandleFunc("GET /api/instruments", s.handleListInstruments)
 	mux.HandleFunc("GET /api/tags", s.handleListUserTags)
+	mux.HandleFunc("GET /api/imslp/lookup", s.handleImslpLookup)
 
 	mux.HandleFunc("POST /api/pieces", s.handleCreatePiece)
 	mux.HandleFunc("GET /api/pieces", s.handleSearchPieces)

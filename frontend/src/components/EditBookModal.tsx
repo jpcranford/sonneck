@@ -3,11 +3,13 @@ import { Controller, useForm } from 'react-hook-form'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { IconAlertTriangle, IconCheck, IconXFilled } from '@tabler/icons-react'
 import { updateBook } from '../api/books'
+import { lookupImslp } from '../api/imslp'
 import { listInstruments, listSheetTypes } from '../api/lookups'
 import { ApiError } from '../api/client'
 import { afterMinDuration } from '../lib/minDuration'
 import type { Book, BookWriteRequest, Tag } from '../api/types'
 import { Modal } from './Modal'
+import { ImslpAutofillButton } from './ImslpAutofillButton'
 import { TagComboBox } from './TagComboBox'
 import { SingleSelect } from './SingleSelect'
 
@@ -123,6 +125,9 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
     control,
     handleSubmit,
     reset,
+    watch,
+    setValue,
+    getValues,
     formState: { errors },
   } = useForm<FormValues>({ defaultValues: bookToFormValues(book) })
 
@@ -136,8 +141,11 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
       // book data loads, same as EditPieceModal's own usage) — without
       // this, reopening before that earlier request resolves would show a
       // stale "Updating…" animation for a session that hasn't submitted
-      // anything yet.
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate: see comment above; same justification/precedent as Modal.tsx's own use of this disable.
+      // anything yet. (No eslint-disable needed here: adding watch() to
+      // this form's useForm() destructure above already puts this
+      // component on react-hooks/incompatible-library's bail-out path,
+      // which also stops react-hooks/set-state-in-effect from analyzing
+      // it — confirmed the rule no longer fires here.)
       setSaveState('idle')
     }
   }, [open, book, reset])
@@ -154,6 +162,59 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
     { value: '', label: '—' },
     ...sheetTypeOptions.map((o) => ({ value: o.name, label: o.name })),
   ]
+
+  // Effective/valid IMSLP number — no book-inheritance fallback needed
+  // here (unlike EditPieceModal's own version of this), since Book is the
+  // inheritance *source*, not a consumer of it (CLAUDE.md > Book-level
+  // soft inheritance) — the form's own live value is already the whole
+  // story.
+  const imslpNumber = watch('imslpNumber')
+  const isValidImslpNumber = /^\d+$/.test(stripImslpPrefix(imslpNumber).trim())
+  const [imslpFetchState, setImslpFetchState] = useState<'idle' | 'fetching' | 'done'>('idle')
+  // Which fields the *most recent* autofill actually touched — drives a
+  // brief highlight ring, same convention as EditPieceModal.tsx.
+  const [imslpFilledFields, setImslpFilledFields] = useState<Set<string>>(new Set())
+
+  const imslpMutation = useMutation({
+    mutationFn: () => lookupImslp(stripImslpPrefix(imslpNumber).trim()),
+    onSuccess: (info) => {
+      const filled = new Set<string>()
+      const current = getValues()
+      // Only fields currently blank — meant to save typing, not silently
+      // overwrite something already entered.
+      if (!current.composer && info.composer) {
+        setValue('composer', info.composer)
+        filled.add('composer')
+      }
+      if (!current.workOpusNumber && info.workOpusNumber) {
+        setValue('workOpusNumber', info.workOpusNumber)
+        filled.add('workOpusNumber')
+      }
+      if (!current.yearWritten && info.yearWritten) {
+        setValue('yearWritten', info.yearWritten)
+        filled.add('yearWritten')
+      }
+      if (!current.publisher && info.publisher) {
+        setValue('publisher', info.publisher)
+        filled.add('publisher')
+      }
+      if (!current.publisherId && info.publisherId) {
+        setValue('publisherId', info.publisherId)
+        filled.add('publisherId')
+      }
+      setImslpFilledFields(filled)
+      setImslpFetchState('done')
+      window.setTimeout(() => setImslpFetchState('idle'), 1400)
+      window.setTimeout(() => setImslpFilledFields(new Set()), 2400)
+    },
+    onError: () => setImslpFetchState('idle'),
+  })
+
+  function handleImslpAutofill() {
+    if (imslpFetchState !== 'idle' || !isValidImslpNumber) return
+    setImslpFetchState('fetching')
+    imslpMutation.mutate()
+  }
 
   const saveMutation = useMutation({
     // The Date.now() capture lives here, not in onSubmit below — onSubmit
@@ -344,7 +405,7 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
             </label>
             <input
               id="f-composer"
-              className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+              className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 ${imslpFilledFields.has('composer') ? 'ring-2 ring-accent-on-dark' : ''}`}
               {...register('composer', { maxLength: 255 })}
             />
           </div>
@@ -367,7 +428,7 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
             </label>
             <input
               id="f-year"
-              className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+              className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 ${imslpFilledFields.has('yearWritten') ? 'ring-2 ring-accent-on-dark' : ''}`}
               {...register('yearWritten', { maxLength: 255 })}
             />
           </div>
@@ -377,7 +438,7 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
             </label>
             <input
               id="f-opus"
-              className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+              className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 ${imslpFilledFields.has('workOpusNumber') ? 'ring-2 ring-accent-on-dark' : ''}`}
               {...register('workOpusNumber', { maxLength: 255 })}
             />
           </div>
@@ -390,7 +451,7 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
             </label>
             <input
               id="f-publisher"
-              className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+              className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 ${imslpFilledFields.has('publisher') ? 'ring-2 ring-accent-on-dark' : ''}`}
               {...register('publisher', { maxLength: 255 })}
             />
           </div>
@@ -406,7 +467,7 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
             </label>
             <input
               id="f-publisher-id"
-              className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+              className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 ${imslpFilledFields.has('publisherId') ? 'ring-2 ring-accent-on-dark' : ''}`}
               {...register('publisherId', { maxLength: 255 })}
             />
           </div>
@@ -429,11 +490,28 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
             <label htmlFor="f-imslp" className="text-sm text-ink-soft">
               IMSLP number
             </label>
-            <input
-              id="f-imslp"
-              className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-              {...register('imslpNumber', { maxLength: 255 })}
-            />
+            {/* relative + pr-9 reserve room for ImslpAutofillButton inside
+                the input itself — same placement as EditPieceModal's own
+                IMSLP field (password show/hide-toggle convention). */}
+            <div className="relative">
+              <input
+                id="f-imslp"
+                className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 pr-9 text-ink"
+                {...register('imslpNumber', { maxLength: 255 })}
+              />
+              <ImslpAutofillButton
+                state={imslpFetchState}
+                valid={isValidImslpNumber}
+                onClick={handleImslpAutofill}
+              />
+            </div>
+            {imslpMutation.isError && (
+              <p className="text-sm text-red-700">
+                {imslpMutation.error instanceof ApiError
+                  ? imslpMutation.error.message
+                  : 'Could not reach IMSLP.'}
+              </p>
+            )}
           </div>
         </div>
 

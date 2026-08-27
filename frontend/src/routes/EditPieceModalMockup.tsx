@@ -10,9 +10,13 @@ import {
 import { Controller, useForm } from 'react-hook-form'
 import {
   IconArrowRight,
+  IconCheck,
   IconChevronDown,
   IconChevronRight,
+  IconCloudDownload,
+  IconCloudOff,
   IconInfoCircle,
+  IconLoader2,
   IconSearch,
   IconXFilled,
 } from '@tabler/icons-react'
@@ -244,6 +248,57 @@ function InheritedNote({ bookValue, onCopy }: { bookValue: string; onCopy: () =>
         Copy from book
       </button>
     </div>
+  )
+}
+
+// Design doc §13 lists "IMSLP live autofill" as deferred — this is the
+// first concrete look at it, mocked up here for feedback before building
+// the real thing (the Book Upload Wizard gets its own separate mockup of
+// this, since that trigger is automatic-on-upload rather than a manual
+// click here — see UploadBookAboutMockup.tsx). Sits inside the IMSLP
+// field itself, right-aligned and vertically centered — same placement
+// convention as a password field's show/hide toggle — rather than beside
+// it, so it reads as acting *on* that field specifically.
+//
+// Two faint-but-distinct states, not just shown-or-hidden: a bare cloud
+// only means "fetchable" when the effective value (piece's own, or the
+// book's inherited one) is actually number-only once any "IMSLP" label
+// prefix is stripped — the same normalization stripImslpPrefix already
+// applies before a real save. Anything else (blank, or text that isn't
+// just digits) shows cloud-off instead, fainter still than the fetchable
+// state — always visible either way, so the feature is discoverable even
+// when there's nothing to fetch yet, rather than disappearing entirely.
+// Both are solid pre-blend colors (#9d9892 / #c9c2b6, the same two faint
+// tones this codebase already uses elsewhere for "faint icon" and
+// "fainter still, disabled-reading" content respectively), never a
+// translucent opacity utility — this app's icon-color rule (CLAUDE.md)
+// applies here too.
+function ImslpAutofillButton({
+  state,
+  valid,
+  onClick,
+}: {
+  state: 'idle' | 'fetching' | 'done'
+  valid: boolean
+  onClick: () => void
+}) {
+  const disabled = !valid || state !== 'idle'
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={valid ? 'Autofill blank fields from IMSLP' : 'No IMSLP number to autofill from'}
+      title={valid ? 'Autofill blank fields from IMSLP' : 'No IMSLP number to autofill from'}
+      className={`absolute top-1/2 right-2.5 flex size-5 -translate-y-1/2 items-center justify-center disabled:cursor-default ${
+        valid ? 'cursor-pointer text-[#9d9892] hover:text-accent' : 'text-[#c9c2b6]'
+      }`}
+    >
+      {!valid && <IconCloudOff size={16} />}
+      {valid && state === 'idle' && <IconCloudDownload size={16} />}
+      {valid && state === 'fetching' && <IconLoader2 size={16} className="animate-spin text-ink-soft" />}
+      {valid && state === 'done' && <IconCheck size={16} className="text-accent" />}
+    </button>
   )
 }
 
@@ -849,6 +904,7 @@ export function EditPieceModalMockup() {
     handleSubmit,
     control,
     watch,
+    getValues,
     setValue,
     setError,
     clearErrors,
@@ -860,6 +916,59 @@ export function EditPieceModalMockup() {
   const measureCount = Number(watch('measureCount'))
   const beatsPerMeasure = Number(watch('beatsPerMeasure'))
   const canCalculateDuration = bpm > 0 && measureCount > 0 && beatsPerMeasure > 0
+
+  const [imslpFetchState, setImslpFetchState] = useState<'idle' | 'fetching' | 'done'>('idle')
+  // Which fields the *most recent* autofill actually touched — drives a
+  // brief highlight ring so it's obvious which values just changed,
+  // separate from imslpFetchState (that only tracks the button's own
+  // icon/disabled state, not which fields to highlight).
+  const [imslpFilledFields, setImslpFilledFields] = useState<Set<string>>(new Set())
+  // Effective value first (piece's own, falling back to the book's
+  // inherited one — same fallback the field's own placeholder already
+  // uses), then stripped of any "IMSLP" label the same way a real save
+  // would normalize it, before checking it's actually just digits.
+  const effectiveImslpNumber = watch('imslpNumber') || mockBook.imslpNumber
+  const isValidImslpNumber = /^\d+$/.test(stripImslpPrefix(effectiveImslpNumber).trim())
+
+  // Mockup only — no real IMSLP lookup happens here; setTimeout stands in
+  // for the request. Demonstrates the intended shape of the real feature
+  // (design doc §13's deferred "IMSLP live autofill") before it's built:
+  // only fills fields currently *blank* on the piece — book-inherited or
+  // not — since this is meant to save typing, not silently overwrite
+  // something already entered. Publisher/Publisher ID deliberately get a
+  // *different* value than the book's own (G. Schirmer/HL50252950) to
+  // show that IMSLP is a distinct source, not just repeating whatever
+  // inheritance already displays — standing in for a real edition's
+  // actual original publisher, which often differs from a modern
+  // reprint's.
+  function handleImslpAutofill() {
+    if (imslpFetchState !== 'idle' || !isValidImslpNumber) return
+    setImslpFetchState('fetching')
+    window.setTimeout(() => {
+      const filled = new Set<string>()
+      const current = getValues()
+      if (!current.composer) {
+        setValue('composer', 'Robert Schumann')
+        filled.add('composer')
+      }
+      if (!current.yearWritten) {
+        setValue('yearWritten', '1848')
+        filled.add('yearWritten')
+      }
+      if (!current.publisher) {
+        setValue('publisher', 'J. Schuberth & Co.')
+        filled.add('publisher')
+      }
+      if (!current.publisherId) {
+        setValue('publisherId', 'Schuberth 2266')
+        filled.add('publisherId')
+      }
+      setImslpFilledFields(filled)
+      setImslpFetchState('done')
+      window.setTimeout(() => setImslpFetchState('idle'), 1400)
+      window.setTimeout(() => setImslpFilledFields(new Set()), 2400)
+    }, 900)
+  }
 
   // Mirrors the backend's computeDuration (internal/handlers/piece_write.go)
   // exactly — (measureCount × beatsPerMeasure ÷ bpm) × 60, in seconds —
@@ -1064,7 +1173,7 @@ export function EditPieceModalMockup() {
                 <input
                   id="f-year"
                   placeholder={!watch('yearWritten') ? mockBook.yearWritten : undefined}
-                  className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                  className={`rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 placeholder:text-ink-soft/40 placeholder:italic ${imslpFilledFields.has('yearWritten') ? 'ring-2 ring-accent-on-dark' : ''}`}
                   {...register('yearWritten', { maxLength: 255 })}
                 />
                 {!watch('yearWritten') && (
@@ -1092,7 +1201,7 @@ export function EditPieceModalMockup() {
                 <input
                   id="f-composer"
                   placeholder={!composer ? mockBook.composer : undefined}
-                  className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                  className={`rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 placeholder:text-ink-soft/40 placeholder:italic ${imslpFilledFields.has('composer') ? 'ring-2 ring-accent-on-dark' : ''}`}
                   {...register('composer', { maxLength: 255 })}
                 />
                 {errors.composer && <p className="text-sm text-red-700">{errors.composer.message}</p>}
@@ -1147,12 +1256,26 @@ export function EditPieceModalMockup() {
                 <label htmlFor="f-imslp" className="text-sm text-ink-soft">
                   IMSLP no.
                 </label>
-                <input
-                  id="f-imslp"
-                  placeholder={!watch('imslpNumber') ? mockBook.imslpNumber : undefined}
-                  className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
-                  {...register('imslpNumber', { maxLength: 255 })}
-                />
+                {/* relative + pr-9 reserve room for ImslpAutofillButton
+                    inside the input itself, right-aligned and vertically
+                    centered — same placement convention as a password
+                    field's show/hide toggle. Always rendered, not shown-
+                    only-when-present — see ImslpAutofillButton's own
+                    comment for why the cloud-off state matters just as
+                    much as the fetchable one. */}
+                <div className="relative">
+                  <input
+                    id="f-imslp"
+                    placeholder={!watch('imslpNumber') ? mockBook.imslpNumber : undefined}
+                    className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 pr-9 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                    {...register('imslpNumber', { maxLength: 255 })}
+                  />
+                  <ImslpAutofillButton
+                    state={imslpFetchState}
+                    valid={isValidImslpNumber}
+                    onClick={handleImslpAutofill}
+                  />
+                </div>
                 {!watch('imslpNumber') && (
                   <InheritedNote
                     bookValue={mockBook.imslpNumber}
@@ -1175,7 +1298,7 @@ export function EditPieceModalMockup() {
                 <input
                   id="f-publisher"
                   placeholder={!watch('publisher') ? mockBook.publisher : undefined}
-                  className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                  className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 placeholder:text-ink-soft/40 placeholder:italic ${imslpFilledFields.has('publisher') ? 'ring-2 ring-accent-on-dark' : ''}`}
                   {...register('publisher', { maxLength: 255 })}
                 />
               </div>
@@ -1194,7 +1317,7 @@ export function EditPieceModalMockup() {
                 <input
                   id="f-publisher-id"
                   placeholder={!watch('publisherId') ? mockBook.publisherId : undefined}
-                  className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                  className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 placeholder:text-ink-soft/40 placeholder:italic ${imslpFilledFields.has('publisherId') ? 'ring-2 ring-accent-on-dark' : ''}`}
                   {...register('publisherId', { maxLength: 255 })}
                 />
               </div>
