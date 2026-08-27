@@ -974,7 +974,7 @@ export function PiecePage() {
                     onClick={() => setBookEditOpen(true)}
                     aria-label="Edit book details"
                     // Solid pre-blend, not opacity — overlapping icon strokes would re-blend unevenly under real translucency.
-                    className="text-[#9d9892] hover:text-ink"
+                    className="text-[#9d9892] cursor-pointer hover:text-ink"
                   >
                     <IconEditFilled size={16} />
                   </button>
