@@ -247,14 +247,22 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
             >
               Cancel
             </button>
-            {/* Save carries the progress state itself — fixed width so
-                the button doesn't change size as its label goes Save ->
-                "Updating N pieces…" -> Saved. */}
+            {/* Save carries the progress state itself. min-w, not a fixed
+                width — "Updating N pieces…" is longer than "Save"/"Saved",
+                and should push the button wider to stay on one line rather
+                than wrap and grow taller instead (whitespace-nowrap is
+                what actually prevents the wrap; min-w just keeps the idle
+                state from looking undersized) — same pattern as the Book
+                Upload Wizard's own stripe-animated Import button
+                (BookUploadConfirmStep.tsx), ported here since this button
+                had the same bug: fixed w-[190px] with no whitespace-nowrap
+                let "Updating N pieces…" wrap onto a second line and grow
+                the button taller instead of wider. */}
             <button
               type="submit"
               form="edit-book-form"
               disabled={saving}
-              className="relative flex w-[190px] shrink-0 items-center justify-center overflow-hidden rounded-md bg-accent px-4 py-2 font-display text-white disabled:cursor-default"
+              className="relative flex min-w-[190px] shrink-0 items-center justify-center overflow-hidden rounded-md bg-accent px-4 py-2 font-display whitespace-nowrap text-white disabled:cursor-default"
             >
               {saveState === 'saving' && (
                 <span
