@@ -219,6 +219,16 @@ func (s *Server) handleConfirmImport(w http.ResponseWriter, r *http.Request) {
 	}
 	staged = nil // moved (or logged as failed) — the deferred cleanup above is now a no-op
 
+	// Every piece above is now a real, physically split-out file of its
+	// own — the book's own cached page thumbnails (except page 1, still
+	// needed as handleGetBookCover's fallback) are dead weight from here
+	// on, not a live data source. Best-effort/non-fatal, same posture as
+	// the staged-file-move logging just above: a cache-cleanup failure
+	// shouldn't fail an otherwise-successful import.
+	if err := purgeStaleBookThumbnailsAfterImport(s.Cfg.DataDir, bookID); err != nil {
+		s.Logger.Error("failed to purge stale book page thumbnails after import", "error", err, "bookId", bookID)
+	}
+
 	responses := make([]*api.PieceResponse, 0, len(createdIDs))
 	for _, id := range createdIDs {
 		p, err := repo.GetPieceByID(r.Context(), s.DB, id)

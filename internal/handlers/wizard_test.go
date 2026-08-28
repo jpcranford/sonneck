@@ -3,6 +3,8 @@ package handlers_test
 import (
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -201,6 +203,54 @@ func TestConfirmImport_PageOffset(t *testing.T) {
 	}
 	if adagio.PageCount != 4 {
 		t.Errorf("Adagio pageCount = %d, want 4 (unaffected by pageOffset)", adagio.PageCount)
+	}
+}
+
+// TestConfirmImport_PurgesStaleBookThumbnailsExceptPageOne covers a real
+// cache-cleanup gap: once every piece is a real, physically split-out file
+// of its own (pdf.ExtractPages into library/pieces/), the book's own
+// cached page thumbnails beyond page 1 are dead weight — every piece
+// thumbnail renders from the piece's own file (handlePieceThumbnail),
+// never the book's, so nothing requests a book page thumbnail again after
+// import. Page 1 must survive regardless: handleGetBookCover keeps
+// serving it forever as the cover-image fallback for any book with no
+// custom cover uploaded (Books library grid, Book Details header).
+func TestConfirmImport_PurgesStaleBookThumbnailsExceptPageOne(t *testing.T) {
+	h, dataDir, _ := newTestServerWithDataDir(t)
+	bookID, _ := uploadBook(t, h, "book.pdf", 3)
+
+	// Populate all 3 page thumbnails the same way a real client would (the
+	// wizard's own About/Split/Titles screens render every page) rather
+	// than fabricating cache files directly — proves the cache keys this
+	// test checks are the real ones handleBookPageThumbnail uses.
+	for page := 1; page <= 3; page++ {
+		rec := doJSON(t, h, http.MethodGet, fmt.Sprintf("%s/pages/%d/thumbnail", apiBooksURL(bookID), page), nil)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("GET page %d thumbnail before import: status %d", page, rec.Code)
+		}
+	}
+	cachePath := func(page int) string {
+		return filepath.Join(dataDir, "cache", "thumbnails", fmt.Sprintf("book-%d-page-%d.png", bookID, page))
+	}
+	for page := 1; page <= 3; page++ {
+		if _, err := os.Stat(cachePath(page)); err != nil {
+			t.Fatalf("cached thumbnail for page %d not found before import: %v", page, err)
+		}
+	}
+
+	confirmRec := doJSON(t, h, http.MethodPost, apiBooksURL(bookID)+"/confirm-import", map[string]any{
+		"ranges": []map[string]any{{"start": 1, "end": 3}},
+		"pieces": []map[string]any{{"title": "Whole Thing", "composer": "Someone"}},
+	})
+	decodeData(t, confirmRec, new(any))
+
+	if _, err := os.Stat(cachePath(1)); err != nil {
+		t.Errorf("page 1 thumbnail removed after import (err = %v), want it preserved (handleGetBookCover's fallback)", err)
+	}
+	for _, page := range []int{2, 3} {
+		if _, err := os.Stat(cachePath(page)); !os.IsNotExist(err) {
+			t.Errorf("page %d thumbnail still exists after import (err = %v), want it purged (dead weight — no piece thumbnail ever reads a book's own file)", page, err)
+		}
 	}
 }
 

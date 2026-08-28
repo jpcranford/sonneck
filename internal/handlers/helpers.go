@@ -6,14 +6,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"image/png"
 	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/jpcranford/sonneck/internal/api"
+	"github.com/jpcranford/sonneck/internal/models"
 	"github.com/jpcranford/sonneck/internal/pdf"
 	"github.com/jpcranford/sonneck/internal/repo"
 	"github.com/jpcranford/sonneck/internal/storage"
@@ -247,6 +250,236 @@ func purgeBookPageThumbnails(dataDir string, bookID int64) error {
 		}
 	}
 	return nil
+}
+
+// purgeStaleBookThumbnailsAfterImport removes bookID's cached page
+// thumbnails except page 1, once handleConfirmImport has committed —
+// pages 2..N are pure duplicate render work from this point on: every
+// piece just created is a real, physically split-out PDF of its own
+// (handleConfirmImport extracts via pdf.ExtractPages into
+// library/pieces/, a separate file from the book's own library/books/
+// one), rendered and cached under its own "piece-<id>-page-<n>" key
+// (handlePieceThumbnail, piece.go — always renders from the piece's own
+// FilePath, never the book's). Nothing in the app requests a book's own
+// page N>1 thumbnail again after import; leaving them cached is dead
+// weight, not a live data source.
+//
+// Page 1 is deliberately spared, unlike purgeBookPageThumbnails' own
+// unconditional full purge (used on book *deletion*, where nothing needs
+// sparing): handleGetBookCover keeps serving "book-<id>-page-1" forever
+// as the cover-image fallback for any book with no custom cover uploaded
+// (Books library grid, Book Details header) — purging it here would just
+// force an immediate, pointless re-render the moment either page is next
+// viewed, typically seconds later when the wizard itself redirects to the
+// newly-imported book. Sparing it regardless of whether this particular
+// book actually has a custom cover keeps the logic simple; the cost of
+// occasionally keeping one harmless, genuinely unused page-1 PNG around is
+// negligible next to that complexity.
+//
+// The book's own source PDF (Book.FilePath) is never touched by this —
+// only derived cache entries, same "safe to drop and rebuild" status as
+// purgeBookPageThumbnails' own full purge.
+func purgeStaleBookThumbnailsAfterImport(dataDir string, bookID int64) error {
+	cacheDir := filepath.Join(dataDir, "cache", "thumbnails")
+	matches, err := filepath.Glob(filepath.Join(cacheDir, fmt.Sprintf("book-%d-page-*.png", bookID)))
+	if err != nil {
+		return err
+	}
+	keep := fmt.Sprintf("book-%d-page-1.png", bookID)
+	for _, match := range matches {
+		if filepath.Base(match) == keep {
+			continue
+		}
+		if err := os.Remove(match); err != nil && !os.IsNotExist(err) {
+			return err
+		}
+	}
+	return nil
+}
+
+var (
+	bookThumbnailCacheKey  = regexp.MustCompile(`^book-(\d+)-page-(\d+)\.png$`)
+	pieceThumbnailCacheKey = regexp.MustCompile(`^piece-(\d+)-page-(\d+)\.png$`)
+)
+
+// CleanupThumbnailsResult reports what a CleanupThumbnails run actually did
+// — the `cleanup-thumbnails` CLI subcommand logs these two counts.
+type CleanupThumbnailsResult struct {
+	Removed     int
+	Regenerated int
+}
+
+// CleanupThumbnails is a single targeted pass over the whole
+// data/cache/thumbnails directory — the routine-maintenance counterpart to
+// RegenerateThumbnails' nuclear "wipe piece thumbnails and rebuild every
+// one from scratch" option. Unlike that one, this doesn't touch anything
+// that's already correct: it removes an entry only when nothing can ever
+// read it again, and regenerates one only when it's actually corrupt,
+// leaving everything else untouched. Two independent problems this catches
+// that neither purgeBookPageThumbnails (deletion-time) nor
+// purgeStaleBookThumbnailsAfterImport (import-time, this book only) ever
+// will, because both are scoped to one book at the moment something
+// happens to it:
+//   - Book thumbnails left behind by a book deleted before the
+//     purgeBookPageThumbnails fix existed (CLAUDE.md > File handling,
+//     2026-08-24) — permanently orphaned until something like this runs.
+//   - Stale (page 2+, or page-1-with-a-custom-cover) book thumbnails for
+//     every book imported before purgeStaleBookThumbnailsAfterImport
+//     existed — that fix only runs at the moment of a *new* import, not
+//     retroactively for a library's existing history.
+//
+// Each cache filename is parsed back into an owning book/piece id + page
+// number (bookThumbnailCacheKey/pieceThumbnailCacheKey) rather than
+// starting from the database and asking "does this row's thumbnail exist"
+// — the whole point is to find cache entries the database side has no
+// record of needing at all, which a query starting from Piece/Book rows
+// could never surface. A filename that doesn't match either pattern (e.g.
+// a stray temp file from an interrupted render) is left alone rather than
+// guessed at — conservative by design for a tool whose whole job is
+// deleting files unattended.
+func (s *Server) CleanupThumbnails(ctx context.Context) (CleanupThumbnailsResult, error) {
+	cacheDir := filepath.Join(s.Cfg.DataDir, "cache", "thumbnails")
+	entries, err := os.ReadDir(cacheDir)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return CleanupThumbnailsResult{}, nil
+		}
+		return CleanupThumbnailsResult{}, err
+	}
+
+	var result CleanupThumbnailsResult
+	// Memoized per run: many page entries share the same owning book/piece,
+	// and this dedupes both the DB lookups and (for books) the
+	// PieceIDsForBook query rather than repeating them once per page.
+	books := map[int64]*models.Book{}
+	bookHasPieces := map[int64]bool{}
+	pieces := map[int64]*models.Piece{}
+
+	for _, e := range entries {
+		name := e.Name()
+		fullPath := filepath.Join(cacheDir, name)
+
+		if m := bookThumbnailCacheKey.FindStringSubmatch(name); m != nil {
+			bookID, _ := strconv.ParseInt(m[1], 10, 64)
+			page, _ := strconv.Atoi(m[2])
+
+			book, cached := books[bookID]
+			if !cached {
+				b, err := repo.GetBookByID(ctx, s.DB, bookID)
+				if err != nil && !errors.Is(err, repo.ErrNotFound) {
+					return result, err
+				}
+				book = b // nil when ErrNotFound — orphaned, handled below
+				books[bookID] = book
+			}
+
+			if book == nil || book.FilePath == nil {
+				// No book to own this entry at all, or (defensively — not
+				// reachable via any current write path, since a file-less
+				// book never gets a page thumbnail rendered in the first
+				// place) a book with nothing to regenerate from either way.
+				if err := os.Remove(fullPath); err != nil && !os.IsNotExist(err) {
+					return result, err
+				}
+				result.Removed++
+				continue
+			}
+
+			hasPieces, cached := bookHasPieces[bookID]
+			if !cached {
+				pieceIDs, err := repo.PieceIDsForBook(ctx, s.DB, bookID)
+				if err != nil {
+					return result, err
+				}
+				hasPieces = len(pieceIDs) > 0
+				bookHasPieces[bookID] = hasPieces
+			}
+
+			if !hasPieces {
+				// Not yet imported — still plausibly mid-wizard (About/
+				// Split/Titles screens render every page directly), so
+				// every page thumbnail is left alone regardless of page
+				// number or custom-cover status.
+				continue
+			}
+
+			// Imported: page 1 is only still a live dependency
+			// (handleGetBookCover's fallback) when there's no custom
+			// cover to prefer instead — every other page is definitionally
+			// dead weight the instant this book has ≥1 piece, since every
+			// piece renders from its own split-out file, never the book's
+			// (handlePieceThumbnail's own doc comment).
+			if page != 1 || book.CoverImageHash != nil {
+				if err := os.Remove(fullPath); err != nil && !os.IsNotExist(err) {
+					return result, err
+				}
+				result.Removed++
+				continue
+			}
+
+			if isCorruptPNG(fullPath) {
+				cacheKey := strings.TrimSuffix(name, ".png")
+				if _, err := s.regenerateThumbnail(ctx, *book.FilePath, page, 100, cacheKey); err != nil {
+					return result, fmt.Errorf("regenerating %s: %w", name, err)
+				}
+				result.Regenerated++
+			}
+			continue
+		}
+
+		if m := pieceThumbnailCacheKey.FindStringSubmatch(name); m != nil {
+			pieceID, _ := strconv.ParseInt(m[1], 10, 64)
+			page, _ := strconv.Atoi(m[2])
+
+			piece, cached := pieces[pieceID]
+			if !cached {
+				p, err := repo.GetPieceByID(ctx, s.DB, pieceID)
+				if err != nil && !errors.Is(err, repo.ErrNotFound) {
+					return result, err
+				}
+				piece = p
+				pieces[pieceID] = piece
+			}
+
+			// Orphaned (piece since deleted through some path that
+			// predates handleDeletePiece's own thumbnail purge), or a
+			// leftover page beyond the piece's current PageCount (e.g.
+			// after a file replacement — design doc §14 — shrank it):
+			// either way, nothing will ever request this page again.
+			if piece == nil || page > piece.PageCount {
+				if err := os.Remove(fullPath); err != nil && !os.IsNotExist(err) {
+					return result, err
+				}
+				result.Removed++
+				continue
+			}
+
+			if isCorruptPNG(fullPath) {
+				cacheKey := strings.TrimSuffix(name, ".png")
+				if _, err := s.regenerateThumbnail(ctx, piece.FilePath, page, 100, cacheKey); err != nil {
+					return result, fmt.Errorf("regenerating %s: %w", name, err)
+				}
+				result.Regenerated++
+			}
+		}
+	}
+
+	return result, nil
+}
+
+// isCorruptPNG reports whether path can't be decoded as a valid PNG — the
+// same failure mode CLAUDE.md > Search documents for RegenerateThumbnails'
+// own reason for existing: a torn/truncated file from a page-render race.
+// A file that can't even be opened counts as corrupt too (covers a 0-byte
+// leftover from an interrupted render the same way).
+func isCorruptPNG(path string) bool {
+	f, err := os.Open(path)
+	if err != nil {
+		return true
+	}
+	defer f.Close()
+	_, err = png.DecodeConfig(f)
+	return err != nil
 }
 
 // withTx runs fn inside a transaction, committing on success and rolling

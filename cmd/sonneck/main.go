@@ -102,6 +102,22 @@ func runSubcommand(name string, conn *sql.DB, cfg *config.Config, logger *slog.L
 			os.Exit(1)
 		}
 		logger.Info("thumbnail regeneration completed", "count", count)
+	case "cleanup-thumbnails":
+		// Fourth instance of the CLI-subcommand admin pattern (CLAUDE.md >
+		// Search). Also safe against a live server, same reasoning as
+		// regenerate-thumbnails above — cache-directory writes only, atomic
+		// renames throughout. Unlike regenerate-thumbnails' full wipe-and-
+		// rebuild-every-piece-thumbnail, this only touches entries that are
+		// actually orphaned/stale (removed) or actually corrupt
+		// (regenerated) — the routine-maintenance option, not the nuclear
+		// one.
+		s := &handlers.Server{DB: conn, Cfg: cfg, Logger: logger}
+		result, err := s.CleanupThumbnails(context.Background())
+		if err != nil {
+			logger.Error("thumbnail cleanup failed", "error", err, "removed", result.Removed, "regenerated", result.Regenerated)
+			os.Exit(1)
+		}
+		logger.Info("thumbnail cleanup completed", "removed", result.Removed, "regenerated", result.Regenerated)
 	case "export-csv":
 		// Third instance of the CLI-subcommand admin pattern (CLAUDE.md >
 		// Search). Also safe against a live server — WAL mode lets these
