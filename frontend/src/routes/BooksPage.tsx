@@ -95,7 +95,11 @@ export function BooksPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="sticky top-0 z-10 flex flex-wrap items-center gap-3 border-b border-border bg-paper p-4">
+      {/* z-20, matching PieceBrowseView.tsx's own toolbar (see its comment)
+          — no card badge here happens to carry z-10 today, but keeping the
+          two toolbars' z-index consistent avoids re-deriving this the next
+          time a Books card badge does. */}
+      <div className="sticky top-0 z-20 flex flex-wrap items-center gap-3 border-b border-border bg-paper p-4">
         <div className="relative min-w-[180px] max-w-md flex-1">
           <IconSearch
             size={16}

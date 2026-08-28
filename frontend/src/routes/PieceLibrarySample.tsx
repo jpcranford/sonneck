@@ -676,7 +676,11 @@ export function PieceLibrarySample() {
         </div>
       </div>
 
-      <div className="sticky top-0 z-10 flex flex-col gap-3 border-b border-border bg-paper p-4">
+      {/* z-20, matching the real PieceBrowseView.tsx fix (2026-08-28) — the
+          grid's practice-status badge is z-10 with no positioned ancestor
+          of its own, so it ties with (and DOM-order-wins over) a z-10
+          toolbar during scroll. */}
+      <div className="sticky top-0 z-20 flex flex-col gap-3 border-b border-border bg-paper p-4">
         {/* flex-wrap (found clipping on mobile widths, 2026-08-27):
             without it, Search/Filters/Sort/view-toggle all fight for one
             non-wrapping row — Search is the only flex-1 item, so it's the

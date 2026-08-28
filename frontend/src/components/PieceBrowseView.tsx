@@ -210,7 +210,13 @@ export function PieceBrowseView({
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="sticky top-0 z-10 flex flex-col gap-3 border-b border-border bg-paper p-4">
+      {/* z-20, not z-10: PieceGridCard's practice-status badge is also
+          z-10 (absolute, no positioned ancestor with its own z-index in
+          between, so it ties in the same root stacking context) — the tie
+          breaks on DOM order, and the badge sits later in the DOM than
+          this toolbar, so it was painting on top of the toolbar wherever
+          a scrolled-up card's badge happened to overlap it. */}
+      <div className="sticky top-0 z-20 flex flex-col gap-3 border-b border-border bg-paper p-4">
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative min-w-[180px] max-w-md flex-1">
             <IconSearch
