@@ -184,7 +184,7 @@ export function PieceBrowseView({
   }
 
   const pillEntries: { field: keyof PieceFilterState; value?: number | string; label: string }[] = [
-    ...(drawerFilters.favorite ? [{ field: 'favorite' as const, label: 'Favorites only' }] : []),
+    ...(drawerFilters.favorite ? [{ field: 'favorite' as const, label: 'Favorites' }] : []),
     ...(drawerFilters.bookless ? [{ field: 'bookless' as const, label: 'Bookless pieces' }] : []),
     ...(drawerFilters.hasImslpNumber ? [{ field: 'hasImslpNumber' as const, label: 'Has IMSLP number' }] : []),
     ...drawerFilters.keyId.map((id) => ({

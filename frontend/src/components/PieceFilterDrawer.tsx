@@ -106,7 +106,7 @@ export function PieceFilterDrawer({
                 <FacetSection title="Show only">
                   {!hideFavorite && (
                     <FacetRow
-                      label="Favorites only"
+                      label="Favorites"
                       count={facets.favorite}
                       checked={filters.favorite}
                       onChange={() => onChange({ ...filters, favorite: !filters.favorite })}

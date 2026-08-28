@@ -366,7 +366,7 @@ function FilterDrawer({
               whether it's worth checking before you check it. */}
           <FacetSection title="Show only">
             <FacetRow
-              label="Favorites only"
+              label="Favorites"
               count={FAVORITE_COUNT}
               checked={filters.favorite}
               onChange={() => onChange({ ...filters, favorite: !filters.favorite })}
@@ -669,7 +669,7 @@ export function PieceLibrarySample() {
   }
 
   const pillEntries: { field: keyof FilterState; value?: string; label: string }[] = [
-    ...(appliedFilters.favorite ? [{ field: 'favorite' as const, label: 'Favorites only' }] : []),
+    ...(appliedFilters.favorite ? [{ field: 'favorite' as const, label: 'Favorites' }] : []),
     ...(appliedFilters.bookless ? [{ field: 'bookless' as const, label: 'Bookless pieces' }] : []),
     ...(appliedFilters.hasImslpNumber ? [{ field: 'hasImslpNumber' as const, label: 'Has IMSLP number' }] : []),
     ...appliedFilters.key.map((v) => ({ field: 'key' as const, value: v, label: v })),
