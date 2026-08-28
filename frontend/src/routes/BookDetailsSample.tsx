@@ -392,7 +392,21 @@ function PieceGrid({ pieces }: { pieces: SamplePiece[] }) {
             <SheetThumb />
           </div>
           <div className="flex flex-col gap-0.5 px-2 py-1.5">
-            <p className="truncate font-display text-[0.8rem] font-medium text-ink">{piece.title}</p>
+            {/* flex + truncate-inner-span + shrink-0 icon: same pattern as
+                the Piece Library's own grid card (PieceGridCard.tsx) — a
+                plain truncating <p> can't also hold a non-truncating icon
+                sibling without this, and a fixed-size heart (13px, matching
+                every other favorite heart app-wide regardless of the
+                title's own font size) needs to never get clipped by the
+                truncation itself. */}
+            <p className="flex min-w-0 items-center gap-1 font-display text-[0.8rem] font-medium text-ink">
+              <span className="truncate">{piece.title}</span>
+              {piece.favorite && (
+                <span className="shrink-0 text-accent" title="Favorite">
+                  <IconHeartFilled size={13} />
+                </span>
+              )}
+            </p>
             <p className="text-[0.65rem] text-ink-soft/80">{pageRangeLabel(piece)}</p>
           </div>
         </div>
