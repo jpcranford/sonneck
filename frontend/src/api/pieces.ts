@@ -83,6 +83,9 @@ export interface SearchPiecesParams {
    * hard "exclude bookless" filter — there's no drawer affordance for
    * "book-having pieces only" to send it. */
   bookless?: boolean
+  /** Pieces with a non-blank *effective* IMSLP number (own or inherited
+   * from their book) — same `false`-is-a-no-op asymmetry as `bookless`. */
+  hasImslpNumber?: boolean
   /** Book Details page: every piece belonging to this book, sorted by
    * start page ascending (server-side tie-break: a same-start-page 1-page
    * piece sorts before a longer one) instead of the default newest-first
@@ -134,6 +137,7 @@ export interface PieceFacets {
   practiceStatuses: StatusCount[]
   favorite: number
   bookless: number
+  hasImslpNumber: number
 }
 
 export function getPieceFacets(): Promise<PieceFacets> {

@@ -157,6 +157,28 @@ func (s *Server) handleSearchPieces(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// hasImslpNumber: pieces with a non-blank *effective* IMSLP number —
+	// own value if set, else the book's (same inheritance-aware "own OR
+	// book's" shape sheetTypeId/instrumentId use above, but testing
+	// presence/non-blankness rather than a specific id match; NULLIF(TRIM(
+	// ...), '') IS NOT NULL is this file's own established non-blank test,
+	// matching the composer sort expression above and resolveStringField's
+	// isBlank check). Same asymmetric-boolean shape as bookless:
+	// hasImslpNumber=false is a no-op, not a hard exclude — the drawer's
+	// single checkbox never sends false.
+	if v := q.Get("hasImslpNumber"); v != "" {
+		has, err := strconv.ParseBool(v)
+		if err != nil {
+			api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid hasImslpNumber")
+			return
+		}
+		if has {
+			where = append(where, `(NULLIF(TRIM(p.imslp_number), '') IS NOT NULL OR (NULLIF(TRIM(p.imslp_number), '') IS NULL AND p.source_book_id IN (
+				SELECT id FROM books WHERE NULLIF(TRIM(imslp_number), '') IS NOT NULL
+			)))`)
+		}
+	}
+
 	// sourceBookId: the Book Details page's pieces grid/list — every piece
 	// belonging to this book. Sorted by start page ascending instead of the
 	// default newest-first order below, with a tie-break the design review

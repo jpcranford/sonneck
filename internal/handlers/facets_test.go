@@ -108,6 +108,36 @@ func TestPieceFacets_FavoriteAndBooklessCounts(t *testing.T) {
 	}
 }
 
+// TestPieceFacets_HasImslpNumberCountIsInheritanceAware mirrors
+// TestPieceFacets_InstrumentCountsIncludeInheritedPieces: the "Show only"
+// Has IMSLP number count must include a piece that only inherits its
+// number from its book, unlike the plain-column favorite/bookless counts
+// right above it.
+func TestPieceFacets_HasImslpNumberCountIsInheritanceAware(t *testing.T) {
+	h := newTestServer(t)
+	createTestPiece(t, h, map[string]any{"title": "Direct", "imslpNumber": "111"})
+	createTestPiece(t, h, map[string]any{"title": "None"})
+
+	bookID, _ := uploadBook(t, h, "book.pdf", 2)
+	decodeData(t, doJSON(t, h, http.MethodPatch, apiBooksURL(bookID), map[string]any{
+		"bookTitle": "Anthology", "composer": "Someone", "imslpNumber": "222",
+	}), nil)
+	confirmRec := doJSON(t, h, http.MethodPost, apiBooksURL(bookID)+"/confirm-import", map[string]any{
+		"ranges": []map[string]any{{"start": 1, "end": 2}},
+		"pieces": []map[string]any{{"title": "Inherits", "composer": "Someone"}},
+	})
+	decodeData(t, confirmRec, new(any))
+
+	var facets struct {
+		HasImslpNumber int `json:"hasImslpNumber"`
+	}
+	decodeData(t, doJSON(t, h, http.MethodGet, "/api/pieces/facets", nil), &facets)
+
+	if facets.HasImslpNumber != 2 {
+		t.Errorf("hasImslpNumber facet count = %d, want 2 (1 direct + 1 inherited)", facets.HasImslpNumber)
+	}
+}
+
 func TestBookFacets_SheetTypeAndInstrumentCounts(t *testing.T) {
 	h := newTestServer(t)
 	var scoreBook struct {

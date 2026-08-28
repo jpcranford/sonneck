@@ -134,6 +134,7 @@ export function PieceBrowseView({
           : undefined,
         favorite: debouncedDrawerFilters.favorite || undefined,
         bookless: debouncedDrawerFilters.bookless || undefined,
+        hasImslpNumber: debouncedDrawerFilters.hasImslpNumber || undefined,
         sort: sortField,
         dir: sortDirection,
         // Spread last: a page's own fixed filter (e.g. Favorites'
@@ -175,7 +176,7 @@ export function PieceBrowseView({
   const activeCount = activePieceFilterCount(drawerFilters)
 
   function clearDrawerFilter(field: keyof PieceFilterState, value?: number | string) {
-    if (field === 'favorite' || field === 'bookless') {
+    if (field === 'favorite' || field === 'bookless' || field === 'hasImslpNumber') {
       setDrawerFilters((f) => ({ ...f, [field]: false }))
       return
     }
@@ -185,6 +186,7 @@ export function PieceBrowseView({
   const pillEntries: { field: keyof PieceFilterState; value?: number | string; label: string }[] = [
     ...(drawerFilters.favorite ? [{ field: 'favorite' as const, label: 'Favorites only' }] : []),
     ...(drawerFilters.bookless ? [{ field: 'bookless' as const, label: 'Bookless pieces' }] : []),
+    ...(drawerFilters.hasImslpNumber ? [{ field: 'hasImslpNumber' as const, label: 'Has IMSLP number' }] : []),
     ...drawerFilters.keyId.map((id) => ({
       field: 'keyId' as const,
       value: id,
@@ -361,6 +363,7 @@ export function PieceBrowseView({
         onClear={() => setDrawerFilters(EMPTY_PIECE_FILTERS)}
         hideFavorite={filters?.favorite !== undefined}
         hideBookless={filters?.bookless !== undefined}
+        hideHasImslpNumber={filters?.hasImslpNumber !== undefined}
         hidePracticeStatus={filters?.practiceStatus !== undefined}
       />
     </div>

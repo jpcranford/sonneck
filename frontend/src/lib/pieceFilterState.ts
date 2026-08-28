@@ -9,6 +9,7 @@ export interface PieceFilterState {
   practiceStatus: string[]
   favorite: boolean
   bookless: boolean
+  hasImslpNumber: boolean
 }
 
 export const EMPTY_PIECE_FILTERS: PieceFilterState = {
@@ -19,6 +20,7 @@ export const EMPTY_PIECE_FILTERS: PieceFilterState = {
   practiceStatus: [],
   favorite: false,
   bookless: false,
+  hasImslpNumber: false,
 }
 
 export function activePieceFilterCount(f: PieceFilterState): number {
@@ -29,6 +31,7 @@ export function activePieceFilterCount(f: PieceFilterState): number {
     f.userTagId.length +
     f.practiceStatus.length +
     (f.favorite ? 1 : 0) +
-    (f.bookless ? 1 : 0)
+    (f.bookless ? 1 : 0) +
+    (f.hasImslpNumber ? 1 : 0)
   )
 }

@@ -729,3 +729,39 @@ func TestSearchPieces_FiltersByBookless(t *testing.T) {
 		t.Errorf("bookless=true returned %+v, want exactly [%d]", results, standalone.ID)
 	}
 }
+
+// TestSearchPieces_FiltersByHasImslpNumber covers the "Show only" Has
+// IMSLP number toggle — inheritance-aware like the sheetTypeId/
+// instrumentId filters (a piece that only inherits its IMSLP number from
+// its book must still match), unlike its plain-column "Show only" siblings
+// favorite/bookless.
+func TestSearchPieces_FiltersByHasImslpNumber(t *testing.T) {
+	h := newTestServer(t)
+	direct := createTestPiece(t, h, map[string]any{"title": "Direct IMSLP", "imslpNumber": "12345"})
+	createTestPiece(t, h, map[string]any{"title": "No IMSLP"})
+
+	bookID, _ := uploadBook(t, h, "book.pdf", 4)
+	decodeData(t, doJSON(t, h, http.MethodPatch, apiBooksURL(bookID), map[string]any{
+		"bookTitle": "Anthology", "composer": "Someone", "imslpNumber": "67890",
+	}), nil)
+	confirmRec := doJSON(t, h, http.MethodPost, apiBooksURL(bookID)+"/confirm-import", map[string]any{
+		"ranges": []map[string]any{{"start": 1, "end": 4}},
+		"pieces": []map[string]any{{"title": "Inherits IMSLP", "composer": "Someone"}},
+	})
+	var result struct {
+		Pieces []pieceResponse `json:"pieces"`
+	}
+	decodeData(t, confirmRec, &result)
+	inheriting := result.Pieces[0]
+
+	rec := doJSON(t, h, http.MethodGet, "/api/pieces?hasImslpNumber=true", nil)
+	var results []pieceResponse
+	decodeData(t, rec, &results)
+	gotIDs := map[int64]bool{}
+	for _, r := range results {
+		gotIDs[r.ID] = true
+	}
+	if len(results) != 2 || !gotIDs[direct.ID] || !gotIDs[inheriting.ID] {
+		t.Errorf("hasImslpNumber=true returned %+v, want exactly [%d (direct), %d (inherited)]", results, direct.ID, inheriting.ID)
+	}
+}

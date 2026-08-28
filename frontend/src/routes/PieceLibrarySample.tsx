@@ -49,6 +49,7 @@ interface MockPiece {
   // stands in for that "no sourceBookId" case, mirroring the real field's
   // absence rather than naming a book.
   bookless: boolean
+  hasImslpNumber: boolean
   practiceStatus: 'Want to Learn' | 'Learning' | 'Learned' | 'Stalled'
   // Drives PageCycleControl in the list view — that control renders
   // nothing at all for a pageCount of 1 (the common single-page-upload
@@ -73,16 +74,16 @@ interface MockPiece {
 // pick instead — this fixture reflects what the real key list actually
 // contains, not the spelling every musician would reach for by habit.
 const PIECES: MockPiece[] = [
-  { id: 1, title: 'Album für die Jugend', composer: 'Schumann', key: 'A Minor', instrument: 'Piano', sheetType: 'Solo Piece', userTags: [], favorite: true, bookless: false, practiceStatus: 'Learning', pageCount: 3 },
-  { id: 2, title: 'Prelude in C', composer: 'Bach, J.S.', key: 'C Major', instrument: 'Piano', sheetType: 'Solo Piece', userTags: [], favorite: true, bookless: false, practiceStatus: 'Learned', pageCount: 1 },
-  { id: 3, title: 'Nocturne in E♭', composer: 'Chopin', key: 'D Major', instrument: 'Piano', sheetType: 'Solo Piece', userTags: ['Recital'], favorite: false, bookless: false, practiceStatus: 'Learning', pageCount: 4 },
-  { id: 4, title: 'Clair de lune', composer: 'Debussy', key: 'D Major', instrument: 'Piano', sheetType: 'Solo Piece', userTags: [], favorite: false, bookless: true, practiceStatus: 'Want to Learn', pageCount: 5 },
-  { id: 5, title: 'Waltz for Debby', composer: 'Evans', key: 'C Major', instrument: 'Piano', sheetType: 'Lead Sheet', userTags: ['Jazz'], favorite: false, bookless: false, practiceStatus: 'Learned', pageCount: 1 },
-  { id: 6, title: 'Moonlight, I.', composer: 'Beethoven', key: 'D♭ Minor', instrument: 'Piano', sheetType: 'Solo Piece', userTags: ['Recital'], favorite: false, bookless: false, practiceStatus: 'Learning', pageCount: 2 },
-  { id: 7, title: 'Air on the G String', composer: 'Bach, J.S.', key: 'D Major', instrument: 'Violin', sheetType: 'Duet', userTags: [], favorite: false, bookless: true, practiceStatus: 'Want to Learn', pageCount: 1 },
-  { id: 8, title: 'Gymnopédie No. 1', composer: 'Satie', key: 'A Minor', instrument: 'Piano', sheetType: 'Solo Piece', userTags: [], favorite: true, bookless: true, practiceStatus: 'Learned', pageCount: 1 },
-  { id: 9, title: 'Autumn Leaves', composer: 'Kosma', key: 'G Minor', instrument: 'Piano', sheetType: 'Lead Sheet', userTags: ['Jazz'], favorite: false, bookless: false, practiceStatus: 'Want to Learn', pageCount: 1 },
-  { id: 10, title: 'Sonata No. 8 "Pathétique," II.', composer: 'Beethoven', key: 'A♭ Major', instrument: 'Piano', sheetType: 'Solo Piece', userTags: ['Recital'], favorite: true, bookless: false, practiceStatus: 'Stalled', pageCount: 3 },
+  { id: 1, title: 'Album für die Jugend', composer: 'Schumann', key: 'A Minor', instrument: 'Piano', sheetType: 'Solo Piece', userTags: [], favorite: true, bookless: false, hasImslpNumber: true, practiceStatus: 'Learning', pageCount: 3 },
+  { id: 2, title: 'Prelude in C', composer: 'Bach, J.S.', key: 'C Major', instrument: 'Piano', sheetType: 'Solo Piece', userTags: [], favorite: true, bookless: false, hasImslpNumber: true, practiceStatus: 'Learned', pageCount: 1 },
+  { id: 3, title: 'Nocturne in E♭', composer: 'Chopin', key: 'D Major', instrument: 'Piano', sheetType: 'Solo Piece', userTags: ['Recital'], favorite: false, bookless: false, hasImslpNumber: true, practiceStatus: 'Learning', pageCount: 4 },
+  { id: 4, title: 'Clair de lune', composer: 'Debussy', key: 'D Major', instrument: 'Piano', sheetType: 'Solo Piece', userTags: [], favorite: false, bookless: true, hasImslpNumber: false, practiceStatus: 'Want to Learn', pageCount: 5 },
+  { id: 5, title: 'Waltz for Debby', composer: 'Evans', key: 'C Major', instrument: 'Piano', sheetType: 'Lead Sheet', userTags: ['Jazz'], favorite: false, bookless: false, hasImslpNumber: false, practiceStatus: 'Learned', pageCount: 1 },
+  { id: 6, title: 'Moonlight, I.', composer: 'Beethoven', key: 'D♭ Minor', instrument: 'Piano', sheetType: 'Solo Piece', userTags: ['Recital'], favorite: false, bookless: false, hasImslpNumber: true, practiceStatus: 'Learning', pageCount: 2 },
+  { id: 7, title: 'Air on the G String', composer: 'Bach, J.S.', key: 'D Major', instrument: 'Violin', sheetType: 'Duet', userTags: [], favorite: false, bookless: true, hasImslpNumber: false, practiceStatus: 'Want to Learn', pageCount: 1 },
+  { id: 8, title: 'Gymnopédie No. 1', composer: 'Satie', key: 'A Minor', instrument: 'Piano', sheetType: 'Solo Piece', userTags: [], favorite: true, bookless: true, hasImslpNumber: false, practiceStatus: 'Learned', pageCount: 1 },
+  { id: 9, title: 'Autumn Leaves', composer: 'Kosma', key: 'G Minor', instrument: 'Piano', sheetType: 'Lead Sheet', userTags: ['Jazz'], favorite: false, bookless: false, hasImslpNumber: false, practiceStatus: 'Want to Learn', pageCount: 1 },
+  { id: 10, title: 'Sonata No. 8 "Pathétique," II.', composer: 'Beethoven', key: 'A♭ Major', instrument: 'Piano', sheetType: 'Solo Piece', userTags: ['Recital'], favorite: true, bookless: false, hasImslpNumber: true, practiceStatus: 'Stalled', pageCount: 3 },
 ]
 
 // Distinct option lists, derived from PIECES rather than hand-listed a
@@ -118,6 +119,7 @@ function countStatus(status: string): number {
 }
 const FAVORITE_COUNT = PIECES.filter((p) => p.favorite).length
 const BOOKLESS_COUNT = PIECES.filter((p) => p.bookless).length
+const HAS_IMSLP_COUNT = PIECES.filter((p) => p.hasImslpNumber).length
 
 // Stands in for a real page thumbnail (getPieceThumbnailUrl) — same
 // landscape 180:132 staff-line placeholder convention as
@@ -148,6 +150,7 @@ interface FilterState {
   status: string[]
   favorite: boolean
   bookless: boolean
+  hasImslpNumber: boolean
 }
 
 const EMPTY_FILTERS: FilterState = {
@@ -158,6 +161,7 @@ const EMPTY_FILTERS: FilterState = {
   status: [],
   favorite: false,
   bookless: false,
+  hasImslpNumber: false,
 }
 
 function toggleInArray(arr: string[], value: string): string[] {
@@ -172,7 +176,8 @@ function activeFilterCount(f: FilterState): number {
     f.userTags.length +
     f.status.length +
     (f.favorite ? 1 : 0) +
-    (f.bookless ? 1 : 0)
+    (f.bookless ? 1 : 0) +
+    (f.hasImslpNumber ? 1 : 0)
   )
 }
 
@@ -372,6 +377,12 @@ function FilterDrawer({
               checked={filters.bookless}
               onChange={() => onChange({ ...filters, bookless: !filters.bookless })}
             />
+            <FacetRow
+              label="Has IMSLP number"
+              count={HAS_IMSLP_COUNT}
+              checked={filters.hasImslpNumber}
+              onChange={() => onChange({ ...filters, hasImslpNumber: !filters.hasImslpNumber })}
+            />
           </FacetSection>
 
           <FacetSection title="Key">
@@ -491,6 +502,7 @@ function pieceMatches(p: MockPiece, f: FilterState): boolean {
   if (f.status.length && !f.status.includes(p.practiceStatus)) return false
   if (f.favorite && !p.favorite) return false
   if (f.bookless && !p.bookless) return false
+  if (f.hasImslpNumber && !p.hasImslpNumber) return false
   return true
 }
 
@@ -649,7 +661,7 @@ export function PieceLibrarySample() {
   const activeCount = activeFilterCount(appliedFilters)
 
   function clearAppliedFilter(field: keyof FilterState, value?: string) {
-    if (field === 'favorite' || field === 'bookless') {
+    if (field === 'favorite' || field === 'bookless' || field === 'hasImslpNumber') {
       setAppliedFilters((f) => ({ ...f, [field]: false }))
       return
     }
@@ -659,6 +671,7 @@ export function PieceLibrarySample() {
   const pillEntries: { field: keyof FilterState; value?: string; label: string }[] = [
     ...(appliedFilters.favorite ? [{ field: 'favorite' as const, label: 'Favorites only' }] : []),
     ...(appliedFilters.bookless ? [{ field: 'bookless' as const, label: 'Bookless pieces' }] : []),
+    ...(appliedFilters.hasImslpNumber ? [{ field: 'hasImslpNumber' as const, label: 'Has IMSLP number' }] : []),
     ...appliedFilters.key.map((v) => ({ field: 'key' as const, value: v, label: v })),
     ...appliedFilters.instrument.map((v) => ({ field: 'instrument' as const, value: v, label: v })),
     ...appliedFilters.sheetType.map((v) => ({ field: 'sheetType' as const, value: v, label: v })),

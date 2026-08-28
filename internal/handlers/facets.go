@@ -44,6 +44,7 @@ type PieceFacets struct {
 	PracticeStatuses []StatusCount `json:"practiceStatuses"`
 	Favorite         int           `json:"favorite"`
 	Bookless         int           `json:"bookless"`
+	HasImslpNumber   int           `json:"hasImslpNumber"`
 }
 
 type BookFacets struct {
@@ -145,6 +146,23 @@ func (s *Server) handlePieceFacets(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Unlike favorite/bookless just above (plain columns, no inheritance to
+	// consider), hasImslpNumber counts the *effective* IMSLP number — a
+	// direct-only count would undersell what checking the box actually
+	// returns for a piece that only inherits its number from its book.
+	// Same OR-fallback shape/non-blank test as handleSearchPieces's own
+	// hasImslpNumber filter.
+	var hasImslpNumber int
+	if err := s.DB.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM pieces p WHERE
+			NULLIF(TRIM(p.imslp_number), '') IS NOT NULL
+			OR (NULLIF(TRIM(p.imslp_number), '') IS NULL AND p.source_book_id IN (
+				SELECT id FROM books WHERE NULLIF(TRIM(imslp_number), '') IS NOT NULL
+			))`).Scan(&hasImslpNumber); err != nil {
+		s.writeError(w, err)
+		return
+	}
+
 	api.WriteData(w, http.StatusOK, PieceFacets{
 		Keys:             keys,
 		Instruments:      instruments,
@@ -153,6 +171,7 @@ func (s *Server) handlePieceFacets(w http.ResponseWriter, r *http.Request) {
 		PracticeStatuses: statuses,
 		Favorite:         favorite,
 		Bookless:         bookless,
+		HasImslpNumber:   hasImslpNumber,
 	})
 }
 

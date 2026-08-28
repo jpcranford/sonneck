@@ -52,6 +52,7 @@ export function PieceFilterDrawer({
   onClear,
   hideFavorite = false,
   hideBookless = false,
+  hideHasImslpNumber = false,
   hidePracticeStatus = false,
 }: {
   open: boolean
@@ -67,6 +68,7 @@ export function PieceFilterDrawer({
    * real additional filter the user could meaningfully toggle. */
   hideFavorite?: boolean
   hideBookless?: boolean
+  hideHasImslpNumber?: boolean
   hidePracticeStatus?: boolean
 }) {
   return (
@@ -100,7 +102,7 @@ export function PieceFilterDrawer({
         <div className="flex-1 overflow-y-auto px-4 py-2">
           {facets && (
             <>
-              {(!hideFavorite || !hideBookless) && (
+              {(!hideFavorite || !hideBookless || !hideHasImslpNumber) && (
                 <FacetSection title="Show only">
                   {!hideFavorite && (
                     <FacetRow
@@ -116,6 +118,14 @@ export function PieceFilterDrawer({
                       count={facets.bookless}
                       checked={filters.bookless}
                       onChange={() => onChange({ ...filters, bookless: !filters.bookless })}
+                    />
+                  )}
+                  {!hideHasImslpNumber && (
+                    <FacetRow
+                      label="Has IMSLP number"
+                      count={facets.hasImslpNumber}
+                      checked={filters.hasImslpNumber}
+                      onChange={() => onChange({ ...filters, hasImslpNumber: !filters.hasImslpNumber })}
                     />
                   )}
                 </FacetSection>
