@@ -6,7 +6,7 @@ import {
   IconArrowUp,
   IconChevronDown,
   IconChevronRight,
-  IconFile,
+  IconClefStaff,
   IconLayoutGridFilled,
   IconLayoutListFilled,
   IconPlus,
@@ -216,7 +216,7 @@ function BookCoverCard({ book }: { book: MockBook }) {
         <CoverPlaceholder book={book} />
         <span className="absolute right-2 bottom-1.5 flex items-center gap-1 rounded-full bg-[rgba(28,24,21,0.82)] px-[7px] py-[2px] text-[0.7rem] font-semibold text-white">
           {book.pieceCount}
-          <IconFile size={10} />
+          <IconClefStaff size={10} />
         </span>
       </div>
       {/* min-h-[58px]: kept in sync with BookGridCard.tsx's own fix — pins

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { IconFile, IconFileX } from '@tabler/icons-react'
+import { IconClefStaff, IconFileX } from '@tabler/icons-react'
 import { getBookCoverUrl } from '../api/books'
 import type { Book } from '../api/types'
 import { formatBookMeta } from '../lib/formatBookMeta'
@@ -93,7 +93,7 @@ export function BookGridCard({ book }: BookGridCardProps) {
           )}
           <span className="absolute right-2 bottom-1.5 flex items-center gap-1 rounded-full bg-[rgba(28,24,21,0.82)] px-[7px] py-[2px] text-[0.7rem] font-semibold text-white">
             {book.pieceCount}
-            <IconFile size={10} />
+            <IconClefStaff size={10} />
           </span>
         </div>
         {/* min-h-[58px] pins this block to a constant height (2-line
