@@ -260,6 +260,205 @@ func TestListBooks_ReturnsAllAndFiltersByQuery(t *testing.T) {
 	}
 }
 
+func TestListBooks_SortsByTitleAndComposer(t *testing.T) {
+	h := newTestServer(t)
+	var zebra, apple bookResponse
+	decodeData(t, doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
+		"bookTitle": "Zebra Etudes", "composer": "Yellowman",
+	}), &zebra)
+	decodeData(t, doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
+		"bookTitle": "Apple Sonatas", "composer": "Aardvark",
+	}), &apple)
+
+	var byTitle []bookResponse
+	decodeData(t, doJSON(t, h, http.MethodGet, "/api/books?sort=title&dir=asc", nil), &byTitle)
+	if len(byTitle) != 2 || byTitle[0].ID != apple.ID || byTitle[1].ID != zebra.ID {
+		t.Errorf("sort=title&dir=asc returned %+v, want [Apple, Zebra]", byTitle)
+	}
+
+	var byComposer []bookResponse
+	decodeData(t, doJSON(t, h, http.MethodGet, "/api/books?sort=composer&dir=asc", nil), &byComposer)
+	if len(byComposer) != 2 || byComposer[0].ID != apple.ID || byComposer[1].ID != zebra.ID {
+		t.Errorf("sort=composer&dir=asc returned %+v, want [Apple/Aardvark, Zebra/Yellowman]", byComposer)
+	}
+}
+
+// TestListBooks_SortsByYearWrittenHandlesNonNumericAndNull proves the
+// direction-invariant "junk sorts last" clause actually works both ways,
+// not just in the default direction — a book with no year and one with
+// free-text (non-numeric) content must both trail whether the numeric one
+// is sorted earliest-first or latest-first.
+func TestListBooks_SortsByYearWrittenHandlesNonNumericAndNull(t *testing.T) {
+	h := newTestServer(t)
+	var numeric, freeText, blank bookResponse
+	decodeData(t, doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
+		"bookTitle": "Numeric Year", "composer": "Someone", "yearWritten": "1848",
+	}), &numeric)
+	decodeData(t, doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
+		"bookTitle": "Free Text Year", "composer": "Someone", "yearWritten": "ca. 1708-1711",
+	}), &freeText)
+	decodeData(t, doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
+		"bookTitle": "No Year", "composer": "Someone",
+	}), &blank)
+
+	for _, dir := range []string{"asc", "desc"} {
+		var results []bookResponse
+		decodeData(t, doJSON(t, h, http.MethodGet, "/api/books?sort=yearWritten&dir="+dir, nil), &results)
+		if len(results) != 3 || results[0].ID != numeric.ID {
+			t.Fatalf("sort=yearWritten&dir=%s returned %+v, want the numeric-year book first", dir, results)
+		}
+		trailingIDs := map[int64]bool{results[1].ID: true, results[2].ID: true}
+		if !trailingIDs[freeText.ID] || !trailingIDs[blank.ID] {
+			t.Errorf("sort=yearWritten&dir=%s: free-text/blank years must both trail, got %+v", dir, results)
+		}
+	}
+}
+
+func TestListBooks_FiltersBySheetTypeIdAndInstrumentId(t *testing.T) {
+	h := newTestServer(t)
+	var scoreBook bookResponse
+	decodeData(t, doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
+		"bookTitle": "Full Score Book", "composer": "Someone",
+	}), &scoreBook)
+	decodeData(t, doJSON(t, h, http.MethodPatch, apiBooksURL(scoreBook.ID), map[string]any{
+		"bookTitle": scoreBook.BookTitle, "composer": "Someone",
+		"sheetTypeName": "Ensemble Piece – Full Score", "instruments": []string{"Violin"},
+	}), nil)
+
+	decodeData(t, doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
+		"bookTitle": "Unrelated Book", "composer": "Someone",
+	}), nil)
+
+	var sheetTypes []struct {
+		ID   int64  `json:"id"`
+		Name string `json:"name"`
+	}
+	decodeData(t, doJSON(t, h, http.MethodGet, "/api/sheet-types", nil), &sheetTypes)
+	var ensembleID int64
+	for _, st := range sheetTypes {
+		if st.Name == "Ensemble Piece – Full Score" {
+			ensembleID = st.ID
+		}
+	}
+	if ensembleID == 0 {
+		t.Fatal("could not find seeded Ensemble Piece – Full Score sheet type")
+	}
+
+	var bySheetType []bookResponse
+	decodeData(t, doJSON(t, h, http.MethodGet, "/api/books?sheetTypeId="+itoa(ensembleID), nil), &bySheetType)
+	if len(bySheetType) != 1 || bySheetType[0].ID != scoreBook.ID {
+		t.Errorf("sheetTypeId filter returned %+v, want exactly [%d]", bySheetType, scoreBook.ID)
+	}
+
+	var instruments []struct {
+		ID   int64  `json:"id"`
+		Name string `json:"name"`
+	}
+	decodeData(t, doJSON(t, h, http.MethodGet, "/api/instruments", nil), &instruments)
+	var violinID int64
+	for _, inst := range instruments {
+		if inst.Name == "Violin" {
+			violinID = inst.ID
+		}
+	}
+	if violinID == 0 {
+		t.Fatal("could not find the Violin instrument created via the book edit")
+	}
+
+	var byInstrument []bookResponse
+	decodeData(t, doJSON(t, h, http.MethodGet, "/api/books?instrumentId="+itoa(violinID), nil), &byInstrument)
+	if len(byInstrument) != 1 || byInstrument[0].ID != scoreBook.ID {
+		t.Errorf("instrumentId filter returned %+v, want exactly [%d]", byInstrument, scoreBook.ID)
+	}
+}
+
+// TestListBooks_FiltersByCommaSeparatedSheetTypeIdAndInstrumentId covers the
+// Filter Drawer's real multi-select behavior on Books (checking two Sheet
+// Type or Instrument boxes at once, OR-matched) — mirrors
+// TestSearchPieces_FiltersByMultipleKeyIds for the piece side.
+func TestListBooks_FiltersByCommaSeparatedSheetTypeIdAndInstrumentId(t *testing.T) {
+	h := newTestServer(t)
+	var soloBook bookResponse
+	decodeData(t, doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
+		"bookTitle": "Solo Book", "composer": "Someone",
+	}), &soloBook)
+	decodeData(t, doJSON(t, h, http.MethodPatch, apiBooksURL(soloBook.ID), map[string]any{
+		"bookTitle": soloBook.BookTitle, "composer": "Someone",
+		"sheetTypeName": "Solo Piece", "instruments": []string{"Piano"},
+	}), nil)
+
+	var ensembleBook bookResponse
+	decodeData(t, doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
+		"bookTitle": "Ensemble Book", "composer": "Someone",
+	}), &ensembleBook)
+	decodeData(t, doJSON(t, h, http.MethodPatch, apiBooksURL(ensembleBook.ID), map[string]any{
+		"bookTitle": ensembleBook.BookTitle, "composer": "Someone",
+		"sheetTypeName": "Ensemble Piece – Full Score", "instruments": []string{"Violin"},
+	}), nil)
+
+	decodeData(t, doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
+		"bookTitle": "Unrelated Book", "composer": "Someone",
+	}), nil)
+
+	var sheetTypes []struct {
+		ID   int64  `json:"id"`
+		Name string `json:"name"`
+	}
+	decodeData(t, doJSON(t, h, http.MethodGet, "/api/sheet-types", nil), &sheetTypes)
+	var soloID, ensembleID int64
+	for _, st := range sheetTypes {
+		switch st.Name {
+		case "Solo Piece":
+			soloID = st.ID
+		case "Ensemble Piece – Full Score":
+			ensembleID = st.ID
+		}
+	}
+	if soloID == 0 || ensembleID == 0 {
+		t.Fatal("could not find seeded Solo Piece/Ensemble Piece – Full Score sheet types")
+	}
+
+	var bySheetType []bookResponse
+	decodeData(t, doJSON(t, h, http.MethodGet, "/api/books?sheetTypeId="+itoa(soloID)+","+itoa(ensembleID), nil), &bySheetType)
+	gotSheetType := map[int64]bool{}
+	for _, b := range bySheetType {
+		gotSheetType[b.ID] = true
+	}
+	if len(bySheetType) != 2 || !gotSheetType[soloBook.ID] || !gotSheetType[ensembleBook.ID] {
+		t.Errorf("comma-separated sheetTypeId filter returned %+v, want exactly [%d, %d]",
+			bySheetType, soloBook.ID, ensembleBook.ID)
+	}
+
+	var instruments []struct {
+		ID   int64  `json:"id"`
+		Name string `json:"name"`
+	}
+	decodeData(t, doJSON(t, h, http.MethodGet, "/api/instruments", nil), &instruments)
+	var pianoID, violinID int64
+	for _, inst := range instruments {
+		switch inst.Name {
+		case "Piano":
+			pianoID = inst.ID
+		case "Violin":
+			violinID = inst.ID
+		}
+	}
+	if pianoID == 0 || violinID == 0 {
+		t.Fatal("could not find seeded Piano/Violin instruments")
+	}
+
+	var byInstrument2 []bookResponse
+	decodeData(t, doJSON(t, h, http.MethodGet, "/api/books?instrumentId="+itoa(pianoID)+","+itoa(violinID), nil), &byInstrument2)
+	gotInstrument := map[int64]bool{}
+	for _, b := range byInstrument2 {
+		gotInstrument[b.ID] = true
+	}
+	if len(byInstrument2) != 2 || !gotInstrument[soloBook.ID] || !gotInstrument[ensembleBook.ID] {
+		t.Errorf("comma-separated instrumentId filter returned %+v, want exactly [%d, %d]",
+			byInstrument2, soloBook.ID, ensembleBook.ID)
+	}
+}
+
 // TestDeleteBook_CascadeDeletesAllPieces is the Book Library context menu's
 // "Delete Book" action end to end: this removes the Book *and* every
 // Piece referencing it in one action, not the existing orphan-cleanup

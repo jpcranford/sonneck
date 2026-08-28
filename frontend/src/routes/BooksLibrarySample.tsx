@@ -1,25 +1,36 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, type KeyboardEvent } from 'react'
 import { useForm } from 'react-hook-form'
 import {
+  IconAdjustmentsHorizontal,
+  IconArrowDown,
+  IconArrowUp,
+  IconChevronDown,
   IconChevronRight,
   IconFile,
   IconLayoutGridFilled,
   IconLayoutListFilled,
   IconPlus,
   IconSearch,
+  IconX,
   IconXFilled,
 } from '@tabler/icons-react'
 import { Modal } from '../components/Modal'
 import { useMockupTitle } from '../lib/useMockupTitle'
 
 // ---------------------------------------------------------------------
-// DESIGN MOCKUP for the Books Library page — a standing reference showing
-// two competing layouts side by side: Option B (cover grid) and Option C
-// (catalog list), behind the same grid/list toggle the real Pieces
-// Library already uses (LibraryPage.tsx), so switching between them reads
-// as "the same kind of choice" a user already knows from the Pieces view,
-// not a new concept. Visit /mockup/books-library directly; not wired to
-// real data or navigation, so cards are hover-only, not real links.
+// DESIGN MOCKUP for the Books Library page. Originally a side-by-side
+// comparison of two competing layouts (Option B cover grid vs. Option C
+// catalog list) — that decision is long since made and built for real
+// (BooksPage.tsx uses BookGridCard/BookListCard, both grid and list kept
+// in sync with this mockup by hand since), so this file's job now is the
+// same one PieceLibrarySample.tsx serves for the Piece Library: an
+// accurate reference for the real grid/list design, plus whatever's being
+// designed next on top of it. That's currently the same Filter Drawer
+// (Option B, picked 2026-08-27) added to the Piece Library — same system,
+// adjusted for Books' own (much lighter) filter facets: Sheet Type and
+// Instrument only, no Key/tags/Favorite/Practice Status, since those are
+// piece-only fields (design doc §3's Naming/architecture note). Not wired
+// to the API; cards aren't real links.
 // ---------------------------------------------------------------------
 
 interface MockBook {
@@ -29,6 +40,8 @@ interface MockBook {
   publisher: string | null
   yearWritten: string | null
   pieceCount: number
+  sheetType: string
+  instruments: string[]
   // [width, height] ratio units — omitted defaults to a portrait 2:3
   // "real cover art" shape. A couple of entries below get a landscape
   // ratio instead, standing in for the common real-app case of a book
@@ -59,14 +72,14 @@ function metaLine(book: MockBook): string {
 // span 4-400, titles span short to long — same "stress the edges, not just
 // the happy path" habit as the rest of this app's mockups/fixtures.
 const MOCK_BOOKS: MockBook[] = [
-  { id: 1, bookTitle: 'Album für die Jugend, Op. 68', composer: 'Robert Schumann', publisher: 'G. Schirmer', yearWritten: '1848', pieceCount: 43 },
-  { id: 2, bookTitle: 'The Real Book — Sixth Edition', composer: null, publisher: 'Hal Leonard', yearWritten: null, pieceCount: 400 },
-  { id: 3, bookTitle: '24 Préludes, Op. 28', composer: 'Frédéric Chopin', publisher: 'Breitkopf & Härtel', yearWritten: '1839', pieceCount: 24, coverAspect: [11, 8.5] },
-  { id: 4, bookTitle: 'Sonatas and Partitas for Solo Violin', composer: 'J.S. Bach', publisher: null, yearWritten: '1720', pieceCount: 6 },
-  { id: 5, bookTitle: 'Piano Sonatas, Volume I', composer: 'Ludwig van Beethoven', publisher: 'Henle', yearWritten: '1802', pieceCount: 8 },
-  { id: 6, bookTitle: 'Anthology of American Folk Songs', composer: null, publisher: null, yearWritten: null, pieceCount: 52 },
-  { id: 7, bookTitle: 'Suite bergamasque', composer: 'Claude Debussy', publisher: 'Durand', yearWritten: '1905', pieceCount: 4, coverAspect: [4, 3] },
-  { id: 8, bookTitle: 'The Nutcracker Suite, Op. 71a (Piano Reduction)', composer: 'Pyotr Ilyich Tchaikovsky', publisher: 'G. Schirmer', yearWritten: '1892', pieceCount: 8 },
+  { id: 1, bookTitle: 'Album für die Jugend, Op. 68', composer: 'Robert Schumann', publisher: 'G. Schirmer', yearWritten: '1848', pieceCount: 43, sheetType: 'Solo Piece', instruments: ['Piano'] },
+  { id: 2, bookTitle: 'The Real Book — Sixth Edition', composer: null, publisher: 'Hal Leonard', yearWritten: null, pieceCount: 400, sheetType: 'Lead Sheet', instruments: ['Piano', 'Guitar'] },
+  { id: 3, bookTitle: '24 Préludes, Op. 28', composer: 'Frédéric Chopin', publisher: 'Breitkopf & Härtel', yearWritten: '1839', pieceCount: 24, coverAspect: [11, 8.5], sheetType: 'Solo Piece', instruments: ['Piano'] },
+  { id: 4, bookTitle: 'Sonatas and Partitas for Solo Violin', composer: 'J.S. Bach', publisher: null, yearWritten: '1720', pieceCount: 6, sheetType: 'Solo Piece', instruments: ['Violin'] },
+  { id: 5, bookTitle: 'Piano Sonatas, Volume I', composer: 'Ludwig van Beethoven', publisher: 'Henle', yearWritten: '1802', pieceCount: 8, sheetType: 'Solo Piece', instruments: ['Piano'] },
+  { id: 6, bookTitle: 'Anthology of American Folk Songs', composer: null, publisher: null, yearWritten: null, pieceCount: 52, sheetType: 'PVG Score', instruments: ['Piano', 'Voice', 'Guitar'] },
+  { id: 7, bookTitle: 'Suite bergamasque', composer: 'Claude Debussy', publisher: 'Durand', yearWritten: '1905', pieceCount: 4, coverAspect: [4, 3], sheetType: 'Solo Piece', instruments: ['Piano'] },
+  { id: 8, bookTitle: 'The Nutcracker Suite, Op. 71a (Piano Reduction)', composer: 'Pyotr Ilyich Tchaikovsky', publisher: 'G. Schirmer', yearWritten: '1892', pieceCount: 8, sheetType: 'Solo Piece', instruments: ['Piano'] },
 ]
 
 // A believable spread of book-cover colors — published sheet-music
@@ -224,7 +237,15 @@ function BookCoverCard({ book }: { book: MockBook }) {
 function BookCatalogRow({ book }: { book: MockBook }) {
   const meta = metaLine(book)
   return (
-    <div className="flex cursor-pointer items-center gap-5 rounded-md border-t border-border px-2 py-3 first:border-t-0 hover:bg-accent-soft">
+    // No border-t/first:border-t-0 here (found and fixed 2026-08-28,
+    // matching the real BookListCard.tsx's own comment on this exact
+    // bug): this card is wrapped in its own per-row container in the
+    // real component (BookContextMenu's div, for right-click/long-press)
+    // — this mockup doesn't have that wrapper, but keeps the fix anyway
+    // for consistency, since border-t + first:border-t-0 is fragile the
+    // moment any per-row wrapper exists. The list container below
+    // supplies dividers via divide-y divide-border instead.
+    <div className="flex cursor-pointer items-center gap-5 rounded-md px-2 py-3 text-left hover:bg-accent-soft">
       <div className="min-w-0 flex-1">
         <p className="truncate font-display text-base font-medium text-ink">{book.bookTitle}</p>
         <p className="truncate text-sm text-ink-soft">
@@ -239,6 +260,295 @@ function BookCatalogRow({ book }: { book: MockBook }) {
       <IconChevronRight size={18} className="shrink-0 text-[#aca7a1]" />
     </div>
   )
+}
+
+// ---------------------------------------------------------------------
+// Sort/Filter (Option B, picked 2026-08-27 — see the Filter Studies
+// comparison artifact and PieceLibrarySample.tsx's own copy of this
+// system, which this is a direct port of). Books only carry two
+// relational filter facets today, Sheet Type and Instrument — no Key,
+// tags, Favorite, or Practice Status, since those are piece-only fields
+// (design doc §3's Naming/architecture note) — so there's no "Show only"
+// boolean-toggle section the way Pieces' drawer has one; every section
+// here is a real multi-select facet. Sort gets a fourth field Pieces
+// doesn't have, Year Written, since Book carries that as a real field.
+// ---------------------------------------------------------------------
+
+function distinctBookValues<K extends 'sheetType'>(field: K): string[] {
+  return [...new Set(MOCK_BOOKS.map((b) => b[field]))].sort()
+}
+function distinctInstruments(): string[] {
+  const values = new Set<string>()
+  MOCK_BOOKS.forEach((b) => b.instruments.forEach((i) => values.add(i)))
+  return [...values].sort()
+}
+
+const SHEET_TYPE_OPTIONS = distinctBookValues('sheetType')
+const INSTRUMENT_OPTIONS = distinctInstruments()
+
+function countSheetType(value: string): number {
+  return MOCK_BOOKS.filter((b) => b.sheetType === value).length
+}
+function countInstrument(value: string): number {
+  return MOCK_BOOKS.filter((b) => b.instruments.includes(value)).length
+}
+
+interface BookFilterState {
+  sheetType: string[]
+  instruments: string[]
+}
+const EMPTY_BOOK_FILTERS: BookFilterState = { sheetType: [], instruments: [] }
+
+function toggleInArray(arr: string[], value: string): string[] {
+  return arr.includes(value) ? arr.filter((v) => v !== value) : [...arr, value]
+}
+function activeBookFilterCount(f: BookFilterState): number {
+  return f.sheetType.length + f.instruments.length
+}
+function bookMatches(b: MockBook, f: BookFilterState): boolean {
+  if (f.sheetType.length && !f.sheetType.includes(b.sheetType)) return false
+  if (f.instruments.length && !f.instruments.some((i) => b.instruments.includes(i))) return false
+  return true
+}
+
+function BookFacetRow({
+  label,
+  count,
+  checked,
+  onChange,
+}: {
+  label: string
+  count: number
+  checked: boolean
+  onChange: () => void
+}) {
+  return (
+    <label className="flex cursor-pointer items-center gap-2.5 rounded-md px-1 py-1.5 text-sm text-ink hover:bg-paper-sunken">
+      <input type="checkbox" checked={checked} onChange={onChange} className="accent-accent" />
+      <span className="flex-1">{label}</span>
+      <span className="text-xs text-ink-soft tabular-nums">{count}</span>
+    </label>
+  )
+}
+
+function BookFacetSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="border-b border-border py-3 last:border-b-0">
+      <p className="mb-1.5 text-xs font-semibold tracking-wide text-ink-soft uppercase">{title}</p>
+      <div className="flex flex-col">{children}</div>
+    </div>
+  )
+}
+
+// Live update (no draft/"Show results" step — same as PieceLibrarySample's
+// own drawer, changed there 2026-08-27 from an original draft-then-apply
+// design): every checkbox writes straight to the applied filter state, so
+// results/pills/badge count all update the instant a box is checked.
+function BookFilterDrawer({
+  open,
+  filters,
+  onChange,
+  onClose,
+  onClear,
+}: {
+  open: boolean
+  filters: BookFilterState
+  onChange: (next: BookFilterState) => void
+  onClose: () => void
+  onClear: () => void
+}) {
+  return (
+    <>
+      <div
+        aria-hidden={!open}
+        className={`fixed inset-0 z-40 bg-ink/40 backdrop-blur-[1px] transition-opacity duration-200 ${
+          open ? 'opacity-100' : 'pointer-events-none opacity-0'
+        }`}
+        onClick={onClose}
+      />
+      <aside
+        role="dialog"
+        aria-label="Filters"
+        className={`fixed inset-y-0 right-0 z-50 flex w-80 max-w-[88vw] flex-col border-l border-border bg-paper-raised shadow-xl transition-transform duration-200 ${
+          open ? 'translate-x-0' : 'translate-x-full'
+        }`}
+      >
+        <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3.5">
+          <h2 className="font-display text-base font-medium text-ink">Filters</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close filters"
+            className="flex size-8 cursor-pointer items-center justify-center rounded-md text-ink-soft hover:bg-paper-sunken hover:text-ink"
+          >
+            <IconX size={18} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-4 py-2">
+          <BookFacetSection title="Sheet Type">
+            {SHEET_TYPE_OPTIONS.map((v) => (
+              <BookFacetRow
+                key={v}
+                label={v}
+                count={countSheetType(v)}
+                checked={filters.sheetType.includes(v)}
+                onChange={() => onChange({ ...filters, sheetType: toggleInArray(filters.sheetType, v) })}
+              />
+            ))}
+          </BookFacetSection>
+
+          <BookFacetSection title="Instrument">
+            {INSTRUMENT_OPTIONS.map((v) => (
+              <BookFacetRow
+                key={v}
+                label={v}
+                count={countInstrument(v)}
+                checked={filters.instruments.includes(v)}
+                onChange={() => onChange({ ...filters, instruments: toggleInArray(filters.instruments, v) })}
+              />
+            ))}
+          </BookFacetSection>
+        </div>
+
+        <div className="flex shrink-0 items-center border-t border-border px-4 py-3.5">
+          <button
+            type="button"
+            onClick={onClear}
+            className="w-full cursor-pointer rounded-md border border-border bg-paper-raised px-3 py-2 text-sm font-medium text-ink hover:border-accent"
+          >
+            Clear all filters
+          </button>
+        </div>
+      </aside>
+    </>
+  )
+}
+
+const BOOK_SORT_FIELDS = ['Date Added', 'Title', 'Composer', 'Year Written'] as const
+type BookSortField = (typeof BOOK_SORT_FIELDS)[number]
+type SortDirection = 'asc' | 'desc'
+
+const BOOK_DIRECTION_LABEL: Record<BookSortField, Record<SortDirection, string>> = {
+  'Date Added': { asc: 'Oldest first', desc: 'Newest first' },
+  Title: { asc: 'A to Z', desc: 'Z to A' },
+  Composer: { asc: 'A to Z', desc: 'Z to A' },
+  'Year Written': { asc: 'Earliest first', desc: 'Latest first' },
+}
+
+// One fused, segmented button — same as PieceLibrarySample.tsx's own
+// SortControl (ported directly, field names swapped): the text segment
+// opens the field dropdown (the choice with more than two options, the
+// one that actually needs a listbox — per this app's standing dropdown-
+// keyboard-nav rule), the icon segment is a plain toggle button for
+// direction (only ever two states). Same shared-pill structure as Piece
+// Details' own Download PDF split button (PiecePage.tsx).
+function BookSortControl({
+  field,
+  direction,
+  onFieldChange,
+  onDirectionToggle,
+}: {
+  field: BookSortField
+  direction: SortDirection
+  onFieldChange: (v: BookSortField) => void
+  onDirectionToggle: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [highlightedIndex, setHighlightedIndex] = useState(0)
+  const directionLabel = BOOK_DIRECTION_LABEL[field][direction]
+
+  function openMenu() {
+    const i = BOOK_SORT_FIELDS.indexOf(field)
+    setHighlightedIndex(i >= 0 ? i : 0)
+    setOpen(true)
+  }
+  function select(opt: BookSortField) {
+    onFieldChange(opt)
+    setOpen(false)
+  }
+  function handleKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      if (!open) openMenu()
+      else setHighlightedIndex((i) => (i + 1) % BOOK_SORT_FIELDS.length)
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      if (!open) openMenu()
+      else setHighlightedIndex((i) => (i - 1 + BOOK_SORT_FIELDS.length) % BOOK_SORT_FIELDS.length)
+    } else if ((event.key === 'Enter' && !event.shiftKey) || event.key === ' ') {
+      if (open) {
+        event.preventDefault()
+        select(BOOK_SORT_FIELDS[highlightedIndex])
+      }
+    } else if (event.key === 'Escape' && open) {
+      setOpen(false)
+    }
+  }
+
+  return (
+    <div className="relative shrink-0">
+      <div className="flex overflow-hidden rounded-md border border-border bg-paper-raised">
+        <button
+          type="button"
+          onClick={() => (open ? setOpen(false) : openMenu())}
+          onKeyDown={handleKeyDown}
+          onBlur={() => setTimeout(() => setOpen(false), 150)}
+          className="flex cursor-pointer items-center gap-1.5 px-3 py-2 text-sm text-ink hover:bg-paper-sunken"
+        >
+          {field}
+          <IconChevronDown size={14} className="text-[#9d9892]" />
+        </button>
+        <button
+          type="button"
+          onClick={onDirectionToggle}
+          aria-label={`Sort direction: ${directionLabel}. Click to reverse.`}
+          title={directionLabel}
+          className="flex cursor-pointer items-center justify-center border-l border-border px-2.5 py-2 text-ink hover:bg-paper-sunken"
+        >
+          {direction === 'asc' ? <IconArrowUp size={15} /> : <IconArrowDown size={15} />}
+        </button>
+      </div>
+      {open && (
+        <div className="absolute z-10 mt-1 w-full min-w-[150px] overflow-hidden rounded-md border border-border bg-paper-raised py-1 shadow-lg">
+          {BOOK_SORT_FIELDS.map((opt, index) => (
+            <button
+              key={opt}
+              type="button"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => select(opt)}
+              className={`block w-full px-3 py-2 text-left text-sm hover:bg-accent-soft ${
+                opt === field ? 'text-accent' : 'text-ink'
+              } ${index === highlightedIndex ? 'bg-accent-soft' : ''}`}
+            >
+              {opt}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// id doubles as "date added" (no real timestamp field on this fixture,
+// same convention as PieceLibrarySample.tsx's own sortPieces). yearWritten
+// is nullable on a real Book — null sorts last regardless of direction,
+// same principle as a blank field being omitted rather than treated as
+// "earliest"/"latest" by accident.
+function sortBooks(books: MockBook[], field: BookSortField, direction: SortDirection): MockBook[] {
+  const sorted = [...books]
+  if (field === 'Title') sorted.sort((a, b) => a.bookTitle.localeCompare(b.bookTitle))
+  else if (field === 'Composer') sorted.sort((a, b) => (effectiveComposer(a) ?? '').localeCompare(effectiveComposer(b) ?? ''))
+  else if (field === 'Year Written') {
+    sorted.sort((a, b) => {
+      if (!a.yearWritten && !b.yearWritten) return 0
+      if (!a.yearWritten) return 1
+      if (!b.yearWritten) return -1
+      return a.yearWritten.localeCompare(b.yearWritten)
+    })
+  } else sorted.sort((a, b) => a.id - b.id)
+  if (direction === 'desc') sorted.reverse()
+  return sorted
 }
 
 interface NewBookFormValues {
@@ -383,6 +693,10 @@ export function BooksLibrarySample() {
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
   const [books, setBooks] = useState<MockBook[]>(MOCK_BOOKS)
   const [newBookOpen, setNewBookOpen] = useState(false)
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [appliedFilters, setAppliedFilters] = useState<BookFilterState>(EMPTY_BOOK_FILTERS)
+  const [sortField, setSortField] = useState<BookSortField>('Date Added')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
   // Stable, incrementing placeholder ids for mockup-created books, well
   // clear of the seeded 1-8 range — a real create would get its id back
   // from the API response instead.
@@ -397,18 +711,42 @@ export function BooksLibrarySample() {
         publisher: values.publisher.trim() || null,
         yearWritten: values.yearWritten.trim() || null,
         // A freshly created book has no pieces linked yet — real pieces
-        // only get attached via the import wizard's confirm step.
+        // only get attached via the import wizard's confirm step. Same
+        // reasoning for sheetType/instruments: nothing to classify yet.
         pieceCount: 0,
+        sheetType: '',
+        instruments: [],
       },
       ...prev,
     ])
     setNewBookOpen(false)
   }
 
+  const filtered = books.filter(
+    (b) => bookMatches(b, appliedFilters) && (!query.trim() || b.bookTitle.toLowerCase().includes(query.trim().toLowerCase())),
+  )
+  const sortedBooks = sortBooks(filtered, sortField, sortDirection)
+  const activeCount = activeBookFilterCount(appliedFilters)
+
+  function clearAppliedFilter(field: keyof BookFilterState, value: string) {
+    setAppliedFilters((f) => ({ ...f, [field]: f[field].filter((v) => v !== value) }))
+  }
+  const pillEntries: { field: keyof BookFilterState; value: string }[] = [
+    ...appliedFilters.sheetType.map((v) => ({ field: 'sheetType' as const, value: v })),
+    ...appliedFilters.instruments.map((v) => ({ field: 'instruments' as const, value: v })),
+  ]
+
   return (
     <div className="flex flex-1 flex-col">
-      <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-border bg-paper p-4">
-        <div className="relative max-w-md flex-1">
+      {/* flex-wrap (matching the same mobile-clipping fix applied to
+          PieceLibrarySample.tsx's toolbar 2026-08-27): without it, Search/
+          Filters/Sort/view-toggle/New Book all fight for one non-wrapping
+          row on narrow widths, and Search — the only flex-1 item — is the
+          one that gets squeezed toward unusable before anything else
+          gives up space. min-w-[180px] keeps it from being squeezed to
+          nothing before wrapping kicks in. */}
+      <div className="sticky top-0 z-10 flex flex-wrap items-center gap-3 border-b border-border bg-paper p-4">
+        <div className="relative min-w-[180px] max-w-md flex-1">
           <IconSearch
             size={16}
             className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-soft"
@@ -421,6 +759,54 @@ export function BooksLibrarySample() {
             className="w-full rounded-md border border-border bg-paper-raised py-2 pr-3 pl-9 text-sm text-ink"
           />
         </div>
+
+        <button
+          type="button"
+          onClick={() => setDrawerOpen(true)}
+          className={`flex cursor-pointer items-center gap-1.5 rounded-md border px-3 py-2 text-sm active:border-accent active:text-accent ${
+            activeCount > 0
+              ? 'border-accent bg-accent-soft text-accent'
+              : 'border-border bg-paper-raised text-ink hover:border-accent hover:text-accent'
+          }`}
+        >
+          <IconAdjustmentsHorizontal size={16} />
+          Filters
+          {activeCount > 0 && (
+            <span className="flex size-4 items-center justify-center rounded-full bg-accent text-[0.65rem] font-semibold text-white">
+              {activeCount}
+            </span>
+          )}
+        </button>
+
+        <BookSortControl
+          field={sortField}
+          direction={sortDirection}
+          onFieldChange={setSortField}
+          onDirectionToggle={() => setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'))}
+        />
+
+        {/* Bordered/neutral treatment, matching BooksPage.tsx's real
+            button exactly (found stale here 2026-08-28 — this mockup
+            still had the old solid-accent-fill version from before that
+            change). font-medium + plain sans (not font-display), also
+            changed 2026-08-28 — matches every other toolbar button's own
+            text treatment (Filters, Sort) instead of the real button's
+            own font-display, so the row reads as one consistent set now
+            that Filters/Sort exist alongside it; the real button will
+            need the same update when this gets built for real. ml-auto
+            keeps this (and the view toggle right after it) pinned to the
+            row's end regardless of how many controls wrap onto earlier
+            lines — moved before the view toggle so grid/list stays the
+            actual rightmost control, not New Book. */}
+        <button
+          type="button"
+          onClick={() => setNewBookOpen(true)}
+          className="ml-auto flex shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-border bg-paper-raised px-3 py-2 text-sm text-ink hover:border-accent hover:text-accent active:border-accent active:text-accent"
+        >
+          <IconPlus size={16} />
+          New Book
+        </button>
+
         <div className="flex shrink-0 items-center gap-1 rounded-md border border-border p-0.5">
           <button
             type="button"
@@ -445,35 +831,63 @@ export function BooksLibrarySample() {
             <IconLayoutListFilled size={16} />
           </button>
         </div>
-        <button
-          type="button"
-          onClick={() => setNewBookOpen(true)}
-          className="flex shrink-0 items-center gap-1.5 rounded-md bg-accent px-3 py-2 font-display text-sm text-white hover:bg-accent/90"
-        >
-          <IconPlus size={16} />
-          New Book
-        </button>
+
+        {pillEntries.length > 0 && (
+          <div className="flex w-full flex-wrap items-center gap-1.5">
+            {pillEntries.map((entry) => (
+              <span
+                key={entry.field + entry.value}
+                className="flex items-center gap-1.5 rounded-full bg-accent-soft py-1 pr-1.5 pl-3 text-xs font-medium text-accent"
+              >
+                {entry.value}
+                <button
+                  type="button"
+                  onClick={() => clearAppliedFilter(entry.field, entry.value)}
+                  aria-label={`Remove ${entry.value} filter`}
+                  className="flex size-4 cursor-pointer items-center justify-center rounded-full text-accent opacity-75 hover:opacity-100"
+                >
+                  <IconX size={11} />
+                </button>
+              </span>
+            ))}
+            <button
+              type="button"
+              onClick={() => setAppliedFilters(EMPTY_BOOK_FILTERS)}
+              className="cursor-pointer text-xs text-ink-soft underline decoration-dotted underline-offset-2 hover:text-ink"
+            >
+              Clear all
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="p-4 pb-0">
         <div className="rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-4 py-2 text-sm text-ink-soft">
-          Design mockup — <span className="font-medium text-ink">Books library view</span>. Grid = Option
-          B (cover grid), List = Option C (catalog list). Not wired to real data; cards aren't real links.
+          Design mockup — <span className="font-medium text-ink">Books library sort/filter</span>. Grid
+          and list match the real BookGridCard/BookListCard exactly; Search, Filters, Sort, and the
+          grid/list toggle are all genuinely interactive against the 8 fixture books below. Cards aren't
+          real links.
         </div>
       </div>
 
       <div className="flex-1 p-4">
-        {viewMode === 'grid' && (
+        <p className="mb-3 text-xs text-ink-soft tabular-nums">
+          {sortedBooks.length} {sortedBooks.length === 1 ? 'book' : 'books'}
+        </p>
+
+        {sortedBooks.length === 0 && <p className="p-8 text-center text-ink-soft">No books match these filters.</p>}
+
+        {sortedBooks.length > 0 && viewMode === 'grid' && (
           <div className="grid grid-cols-[repeat(auto-fill,minmax(148px,1fr))] gap-x-4 gap-y-6">
-            {books.map((book) => (
+            {sortedBooks.map((book) => (
               <BookCoverCard key={book.id} book={book} />
             ))}
           </div>
         )}
 
-        {viewMode === 'list' && (
-          <div className="flex flex-col">
-            {books.map((book) => (
+        {sortedBooks.length > 0 && viewMode === 'list' && (
+          <div className="flex flex-col divide-y divide-border">
+            {sortedBooks.map((book) => (
               <BookCatalogRow key={book.id} book={book} />
             ))}
           </div>
@@ -481,6 +895,14 @@ export function BooksLibrarySample() {
       </div>
 
       <NewBookModal open={newBookOpen} onClose={() => setNewBookOpen(false)} onCreate={handleCreateBook} />
+
+      <BookFilterDrawer
+        open={drawerOpen}
+        filters={appliedFilters}
+        onChange={setAppliedFilters}
+        onClose={() => setDrawerOpen(false)}
+        onClear={() => setAppliedFilters(EMPTY_BOOK_FILTERS)}
+      />
     </div>
   )
 }

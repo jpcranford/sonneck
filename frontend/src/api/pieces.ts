@@ -65,18 +65,34 @@ export function getCitation(id: number): Promise<{ citation: string }> {
 
 export interface SearchPiecesParams {
   query?: string
-  keyId?: number
-  sheetTypeId?: number
-  instrumentId?: number
-  userTagId?: number
+  /** Comma-separated on the wire — the Filter Drawer's Key/Instrument/
+   * SheetType/UserTags sections are real multi-select checkbox lists
+   * (OR-matched), not single-choice. Passing an array here is enough:
+   * URLSearchParams.set(key, String(array)) already comma-joins it, same
+   * mechanism practiceStatus already relied on before these gained
+   * multi-select too. */
+  keyId?: number[]
+  sheetTypeId?: number[]
+  instrumentId?: number[]
+  userTagId?: number[]
   favorite?: boolean
   practiceStatus?: string
+  /** Pieces with no sourceBookId at all (design doc §3/§5 — a normal,
+   * first-class case, e.g. a single downloaded score). Asymmetric with
+   * `favorite`: the backend treats `bookless=false` as a no-op, not a
+   * hard "exclude bookless" filter — there's no drawer affordance for
+   * "book-having pieces only" to send it. */
+  bookless?: boolean
   /** Book Details page: every piece belonging to this book, sorted by
    * start page ascending (server-side tie-break: a same-start-page 1-page
    * piece sorts before a longer one) instead of the default newest-first
    * order — and with no limit/offset cap, since the page renders every
-   * piece in the book at once rather than paginating. */
+   * piece in the book at once rather than paginating. sort/dir below are
+   * ignored server-side whenever this is set — the page-order sort is a
+   * structural property of the book, not a user preference. */
   sourceBookId?: number
+  sort?: 'dateAdded' | 'title' | 'composer'
+  dir?: 'asc' | 'desc'
   limit?: number
   offset?: number
 }
@@ -88,4 +104,38 @@ export function searchPieces(params: SearchPiecesParams = {}): Promise<Piece[]> 
   }
   const qs = search.toString()
   return apiGet<Piece[]>(`/api/pieces${qs ? `?${qs}` : ''}`)
+}
+
+/** One filter-drawer facet option (e.g. one Key) paired with how many
+ * pieces currently match it — see internal/handlers/facets.go's own doc
+ * comment for why these counts are deliberately static (computed once
+ * against the whole library, not re-narrowed by other active filters or
+ * the search box). */
+export interface FacetCount {
+  id: number
+  name: string
+  count: number
+}
+
+/** practiceStatus has no separate lookup table/ID (a CHECK constraint on
+ * a plain column, unlike Key/Instrument/SheetType/UserTag) and the
+ * practiceStatus filter param already takes the status string directly,
+ * so this facet has no id field. */
+export interface StatusCount {
+  status: string
+  count: number
+}
+
+export interface PieceFacets {
+  keys: FacetCount[]
+  instruments: FacetCount[]
+  sheetTypes: FacetCount[]
+  userTags: FacetCount[]
+  practiceStatuses: StatusCount[]
+  favorite: number
+  bookless: number
+}
+
+export function getPieceFacets(): Promise<PieceFacets> {
+  return apiGet<PieceFacets>('/api/pieces/facets')
 }

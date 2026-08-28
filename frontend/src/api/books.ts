@@ -7,6 +7,9 @@ import type {
   ConfirmImportResult,
   UploadBookResult,
 } from './types'
+// FacetCount's shape (id/name/count) is identical for both resources —
+// reused rather than redefined, same reasoning as any other shared type.
+import type { FacetCount } from './pieces'
 
 export function uploadBook(
   file: File,
@@ -17,6 +20,13 @@ export function uploadBook(
 
 interface ListBooksParams {
   query?: string
+  /** Comma-separated on the wire, same multi-select convention as
+   * SearchPiecesParams's own keyId/instrumentId/sheetTypeId/userTagId —
+   * see that file's comment for why an array param is enough here. */
+  sheetTypeId?: number[]
+  instrumentId?: number[]
+  sort?: 'dateAdded' | 'title' | 'composer' | 'yearWritten'
+  dir?: 'asc' | 'desc'
 }
 
 // Books library view's browse/search — mirrors searchPieces's
@@ -28,6 +38,15 @@ export function listBooks(params: ListBooksParams = {}): Promise<Book[]> {
   }
   const qs = search.toString()
   return apiGet<Book[]>(`/api/books${qs ? `?${qs}` : ''}`)
+}
+
+export interface BookFacets {
+  sheetTypes: FacetCount[]
+  instruments: FacetCount[]
+}
+
+export function getBookFacets(): Promise<BookFacets> {
+  return apiGet<BookFacets>('/api/books/facets')
 }
 
 // Books library view's "New Book" button — creates a Book with no

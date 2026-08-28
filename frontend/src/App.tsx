@@ -8,6 +8,7 @@ import { BookDetailsPage } from './routes/BookDetailsPage'
 import { MockupIndexPage } from './routes/MockupIndexPage'
 import { PieceDetailsSample } from './routes/PieceDetailsSample'
 import { EditPieceModalMockup } from './routes/EditPieceModalMockup'
+import { PieceLibrarySample } from './routes/PieceLibrarySample'
 import { BooksLibrarySample } from './routes/BooksLibrarySample'
 import { BookDetailsSample } from './routes/BookDetailsSample'
 import { EditBookModalMockup } from './routes/EditBookModalMockup'
@@ -38,6 +39,7 @@ function App() {
         <Route path="mockup" element={<MockupIndexPage />} />
         <Route path="mockup/piece-details" element={<PieceDetailsSample />} />
         <Route path="mockup/edit-piece-modal" element={<EditPieceModalMockup />} />
+        <Route path="mockup/piece-library" element={<PieceLibrarySample />} />
         <Route path="mockup/books-library" element={<BooksLibrarySample />} />
         <Route path="mockup/book-details" element={<BookDetailsSample />} />
         <Route path="mockup/edit-book-modal" element={<EditBookModalMockup />} />

@@ -1,11 +1,20 @@
 import { useEffect, useRef, useState } from 'react'
-import { useInfiniteQuery } from '@tanstack/react-query'
-import { IconSearch, IconLayoutGridFilled, IconLayoutListFilled } from '@tabler/icons-react'
-import { searchPieces, type SearchPiecesParams } from '../api/pieces'
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
+import {
+  IconAdjustmentsHorizontal,
+  IconSearch,
+  IconLayoutGridFilled,
+  IconLayoutListFilled,
+  IconX,
+} from '@tabler/icons-react'
+import { getPieceFacets, searchPieces, type SearchPiecesParams } from '../api/pieces'
 import { ApiError } from '../api/client'
 import { useDebouncedValue } from '../hooks/useDebouncedValue'
 import { PieceGridCard } from './PieceGridCard'
 import { PieceListCard } from './PieceListCard'
+import { SortControl, type SortDirection, type SortFieldOption } from './SortControl'
+import { PieceFilterDrawer } from './PieceFilterDrawer'
+import { EMPTY_PIECE_FILTERS, activePieceFilterCount, type PieceFilterState } from '../lib/pieceFilterState'
 
 // Matches the backend's own default (internal/handlers/search.go) — passed
 // explicitly here rather than relying on that default, since this is also
@@ -13,11 +22,30 @@ import { PieceListCard } from './PieceListCard'
 const PAGE_SIZE = 50
 
 type ViewMode = 'grid' | 'list'
+type SortField = 'dateAdded' | 'title' | 'composer'
+
+const SORT_FIELDS: SortFieldOption<SortField>[] = [
+  { value: 'dateAdded', label: 'Date Added' },
+  { value: 'title', label: 'Title' },
+  { value: 'composer', label: 'Composer' },
+]
+
+// What each direction actually means depends on the field — "ascending" on
+// a title is A→Z, but on Date Added it's oldest-first. Same convention as
+// PieceLibrarySample.tsx's own DIRECTION_LABEL.
+const DIRECTION_LABEL: Record<SortField, Record<SortDirection, string>> = {
+  dateAdded: { asc: 'Oldest first', desc: 'Newest first' },
+  title: { asc: 'A to Z', desc: 'Z to A' },
+  composer: { asc: 'A to Z', desc: 'Z to A' },
+}
 
 interface PieceBrowseViewProps {
   /** The fixed filter for this view (e.g. `{ favorite: true }`) — combined
    * with the live search box query on every request. Omit for the
-   * unfiltered library. */
+   * unfiltered library. Also used to hide the corresponding Filter Drawer
+   * row (see PieceFilterDrawer's hideFavorite/hidePracticeStatus props) —
+   * a page that always sends favorite=true has nothing useful for that
+   * checkbox to add. */
   filters?: Omit<SearchPiecesParams, 'query'>
   searchPlaceholder?: string
   /** Shown when the view has no results and the search box is empty. */
@@ -50,7 +78,10 @@ const GRID_COLS_CLASS: Record<'default' | 'compact', string> = {
 // the same search box + grid/list toggle + loading/error/empty states +
 // card rendering, previously duplicated only in LibraryPage before the
 // other two filtered views existed. One implementation now rather than
-// three hand-synced copies of this exact structure.
+// three hand-synced copies of this exact structure. Real build of
+// PieceLibrarySample.tsx's mockup (Option B Filter Drawer, approved
+// 2026-08-27) — Filters/Sort/drawer added on top of the pre-existing
+// search+grid/list toolbar.
 export function PieceBrowseView({
   filters,
   searchPlaceholder = 'Search your library…',
@@ -61,7 +92,25 @@ export function PieceBrowseView({
 }: PieceBrowseViewProps) {
   const [query, setQuery] = useState('')
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
+  const [sortField, setSortField] = useState<SortField>('dateAdded')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [drawerFilters, setDrawerFilters] = useState<PieceFilterState>(EMPTY_PIECE_FILTERS)
   const debouncedQuery = useDebouncedValue(query)
+  // Toggling several drawer checkboxes in quick succession would otherwise
+  // fire one request per click (design doc §11's debounce reasoning,
+  // applied here the same way the search box already debounces its own
+  // query) — this is a plain object, but useDebouncedValue's effect resets
+  // on every new object identity regardless of shape, which is exactly the
+  // "settle after N ms of no further changes" behavior wanted here.
+  const debouncedDrawerFilters = useDebouncedValue(drawerFilters)
+
+  // Facets are static (CLAUDE.md-documented design decision) — fetched
+  // once and cached, not re-narrowed by the search box or other active
+  // filters. Fetching unconditionally on mount rather than gating on
+  // drawerOpen keeps the Filters button's own active-count badge and the
+  // drawer's first paint both correct without a loading flash.
+  const { data: facets } = useQuery({ queryKey: ['pieceFacets'], queryFn: getPieceFacets })
 
   const {
     data,
@@ -72,9 +121,28 @@ export function PieceBrowseView({
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: ['pieces', { query: debouncedQuery, ...filters }],
+    queryKey: ['pieces', { query: debouncedQuery, ...filters, ...debouncedDrawerFilters, sortField, sortDirection }],
     queryFn: ({ pageParam }) =>
-      searchPieces({ query: debouncedQuery || undefined, ...filters, limit: PAGE_SIZE, offset: pageParam }),
+      searchPieces({
+        query: debouncedQuery || undefined,
+        keyId: debouncedDrawerFilters.keyId.length ? debouncedDrawerFilters.keyId : undefined,
+        instrumentId: debouncedDrawerFilters.instrumentId.length ? debouncedDrawerFilters.instrumentId : undefined,
+        sheetTypeId: debouncedDrawerFilters.sheetTypeId.length ? debouncedDrawerFilters.sheetTypeId : undefined,
+        userTagId: debouncedDrawerFilters.userTagId.length ? debouncedDrawerFilters.userTagId : undefined,
+        practiceStatus: debouncedDrawerFilters.practiceStatus.length
+          ? debouncedDrawerFilters.practiceStatus.join(',')
+          : undefined,
+        favorite: debouncedDrawerFilters.favorite || undefined,
+        bookless: debouncedDrawerFilters.bookless || undefined,
+        sort: sortField,
+        dir: sortDirection,
+        // Spread last: a page's own fixed filter (e.g. Favorites'
+        // favorite:true, Practicing's practiceStatus) always wins over
+        // whatever the drawer independently has set for that same field.
+        ...filters,
+        limit: PAGE_SIZE,
+        offset: pageParam,
+      }),
     initialPageParam: 0,
     // The backend returns a bare array, no total count — a page shorter
     // than PAGE_SIZE is the only signal that it was the last one.
@@ -104,46 +172,140 @@ export function PieceBrowseView({
     return () => observer.disconnect()
   }, [hasNextPage, isFetchingNextPage, fetchNextPage])
 
+  const activeCount = activePieceFilterCount(drawerFilters)
+
+  function clearDrawerFilter(field: keyof PieceFilterState, value?: number | string) {
+    if (field === 'favorite' || field === 'bookless') {
+      setDrawerFilters((f) => ({ ...f, [field]: false }))
+      return
+    }
+    setDrawerFilters((f) => ({ ...f, [field]: (f[field] as (number | string)[]).filter((v) => v !== value) }))
+  }
+
+  const pillEntries: { field: keyof PieceFilterState; value?: number | string; label: string }[] = [
+    ...(drawerFilters.favorite ? [{ field: 'favorite' as const, label: 'Favorites only' }] : []),
+    ...(drawerFilters.bookless ? [{ field: 'bookless' as const, label: 'Bookless pieces' }] : []),
+    ...drawerFilters.keyId.map((id) => ({
+      field: 'keyId' as const,
+      value: id,
+      label: facets?.keys.find((k) => k.id === id)?.name ?? String(id),
+    })),
+    ...drawerFilters.instrumentId.map((id) => ({
+      field: 'instrumentId' as const,
+      value: id,
+      label: facets?.instruments.find((v) => v.id === id)?.name ?? String(id),
+    })),
+    ...drawerFilters.sheetTypeId.map((id) => ({
+      field: 'sheetTypeId' as const,
+      value: id,
+      label: facets?.sheetTypes.find((v) => v.id === id)?.name ?? String(id),
+    })),
+    ...drawerFilters.userTagId.map((id) => ({
+      field: 'userTagId' as const,
+      value: id,
+      label: facets?.userTags.find((v) => v.id === id)?.name ?? String(id),
+    })),
+    ...drawerFilters.practiceStatus.map((status) => ({ field: 'practiceStatus' as const, value: status, label: status })),
+  ]
+
   return (
     <div className="flex flex-1 flex-col">
-      <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-border bg-paper p-4">
-        <div className="relative max-w-md flex-1">
-          <IconSearch
-            size={16}
-            className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-soft"
-          />
-          <input
-            type="text"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder={searchPlaceholder}
-            className="w-full rounded-md border border-border bg-paper-raised py-2 pr-3 pl-9 text-sm text-ink"
-          />
-        </div>
-        <div className="flex shrink-0 items-center gap-1 rounded-md border border-border p-0.5">
+      <div className="sticky top-0 z-10 flex flex-col gap-3 border-b border-border bg-paper p-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative min-w-[180px] max-w-md flex-1">
+            <IconSearch
+              size={16}
+              className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-soft"
+            />
+            <input
+              type="text"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder={searchPlaceholder}
+              className="w-full rounded-md border border-border bg-paper-raised py-2 pr-3 pl-9 text-sm text-ink"
+            />
+          </div>
+
           <button
             type="button"
-            onClick={() => setViewMode('grid')}
-            aria-label="Grid view"
-            aria-pressed={viewMode === 'grid'}
-            className={`flex size-8 cursor-pointer items-center justify-center rounded ${
-              viewMode === 'grid' ? 'bg-accent-soft text-accent' : 'text-ink-soft'
+            onClick={() => setDrawerOpen(true)}
+            className={`flex cursor-pointer items-center gap-1.5 rounded-md border px-3 py-2 text-sm active:border-accent active:text-accent ${
+              activeCount > 0
+                ? 'border-accent bg-accent-soft text-accent'
+                : 'border-border bg-paper-raised text-ink hover:border-accent hover:text-accent'
             }`}
           >
-            <IconLayoutGridFilled size={16} />
+            <IconAdjustmentsHorizontal size={16} />
+            Filters
+            {activeCount > 0 && (
+              <span className="flex size-4 items-center justify-center rounded-full bg-accent text-[0.65rem] font-semibold text-white">
+                {activeCount}
+              </span>
+            )}
           </button>
-          <button
-            type="button"
-            onClick={() => setViewMode('list')}
-            aria-label="List view"
-            aria-pressed={viewMode === 'list'}
-            className={`flex size-8 cursor-pointer items-center justify-center rounded ${
-              viewMode === 'list' ? 'bg-accent-soft text-accent' : 'text-ink-soft'
-            }`}
-          >
-            <IconLayoutListFilled size={16} />
-          </button>
+
+          <SortControl
+            fields={SORT_FIELDS}
+            field={sortField}
+            direction={sortDirection}
+            onFieldChange={setSortField}
+            onDirectionToggle={() => setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'))}
+            directionLabel={DIRECTION_LABEL[sortField][sortDirection]}
+          />
+
+          <div className="ml-auto flex shrink-0 items-center gap-1 rounded-md border border-border p-0.5">
+            <button
+              type="button"
+              onClick={() => setViewMode('grid')}
+              aria-label="Grid view"
+              aria-pressed={viewMode === 'grid'}
+              className={`flex size-8 cursor-pointer items-center justify-center rounded ${
+                viewMode === 'grid' ? 'bg-accent-soft text-accent' : 'text-ink-soft'
+              }`}
+            >
+              <IconLayoutGridFilled size={16} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('list')}
+              aria-label="List view"
+              aria-pressed={viewMode === 'list'}
+              className={`flex size-8 cursor-pointer items-center justify-center rounded ${
+                viewMode === 'list' ? 'bg-accent-soft text-accent' : 'text-ink-soft'
+              }`}
+            >
+              <IconLayoutListFilled size={16} />
+            </button>
+          </div>
         </div>
+
+        {pillEntries.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {pillEntries.map((entry) => (
+              <span
+                key={entry.field + String(entry.value ?? '')}
+                className="flex items-center gap-1.5 rounded-full bg-accent-soft py-1 pr-1.5 pl-3 text-xs font-medium text-accent"
+              >
+                {entry.label}
+                <button
+                  type="button"
+                  onClick={() => clearDrawerFilter(entry.field, entry.value)}
+                  aria-label={`Remove ${entry.label} filter`}
+                  className="flex size-4 cursor-pointer items-center justify-center rounded-full text-accent opacity-75 hover:opacity-100"
+                >
+                  <IconX size={11} />
+                </button>
+              </span>
+            ))}
+            <button
+              type="button"
+              onClick={() => setDrawerFilters(EMPTY_PIECE_FILTERS)}
+              className="cursor-pointer text-xs text-ink-soft underline decoration-dotted underline-offset-2 hover:text-ink"
+            >
+              Clear all
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="flex-1 p-4">
@@ -156,7 +318,9 @@ export function PieceBrowseView({
         )}
 
         {pieces && pieces.length === 0 && (
-          <p className="p-8 text-center text-ink-soft">{query ? noMatchMessage : emptyMessage}</p>
+          <p className="p-8 text-center text-ink-soft">
+            {query || activeCount > 0 ? noMatchMessage : emptyMessage}
+          </p>
         )}
 
         {pieces && pieces.length > 0 && viewMode === 'grid' && (
@@ -181,6 +345,18 @@ export function PieceBrowseView({
           </div>
         )}
       </div>
+
+      <PieceFilterDrawer
+        open={drawerOpen}
+        facets={facets}
+        filters={drawerFilters}
+        onChange={setDrawerFilters}
+        onClose={() => setDrawerOpen(false)}
+        onClear={() => setDrawerFilters(EMPTY_PIECE_FILTERS)}
+        hideFavorite={filters?.favorite !== undefined}
+        hideBookless={filters?.bookless !== undefined}
+        hidePracticeStatus={filters?.practiceStatus !== undefined}
+      />
     </div>
   )
 }

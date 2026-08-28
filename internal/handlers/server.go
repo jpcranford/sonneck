@@ -38,6 +38,12 @@ func New(db *sql.DB, cfg *config.Config, logger *slog.Logger, frontend fs.FS) ht
 	mux.HandleFunc("POST /api/pieces", s.handleCreatePiece)
 	mux.HandleFunc("GET /api/pieces", s.handleSearchPieces)
 	mux.HandleFunc("GET /api/pieces/random", s.handleGetRandomPiece)
+	// /facets sits alongside /random as a second specific-literal-path
+	// sibling of /{id} — Go 1.22+'s http.ServeMux resolves the literal
+	// over the wildcard regardless of registration order, so this isn't
+	// an ordering hazard, just worth the same note /random's own route
+	// would deserve if it had one.
+	mux.HandleFunc("GET /api/pieces/facets", s.handlePieceFacets)
 	mux.HandleFunc("GET /api/pieces/{id}", s.handleGetPiece)
 	mux.HandleFunc("PATCH /api/pieces/{id}", s.handleUpdatePiece)
 	mux.HandleFunc("DELETE /api/pieces/{id}", s.handleDeletePiece)
@@ -50,6 +56,7 @@ func New(db *sql.DB, cfg *config.Config, logger *slog.Logger, frontend fs.FS) ht
 	mux.HandleFunc("POST /api/books", s.handleUploadBook)
 	mux.HandleFunc("GET /api/books", s.handleListBooks)
 	mux.HandleFunc("POST /api/books/manual", s.handleCreateBookManual)
+	mux.HandleFunc("GET /api/books/facets", s.handleBookFacets)
 	mux.HandleFunc("GET /api/books/{id}", s.handleGetBook)
 	mux.HandleFunc("PATCH /api/books/{id}", s.handleUpdateBook)
 	mux.HandleFunc("DELETE /api/books/{id}", s.handleDeleteBook)

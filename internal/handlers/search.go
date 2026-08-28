@@ -10,6 +10,26 @@ import (
 	"github.com/jpcranford/sonneck/internal/repo"
 )
 
+// pieceSortColumns: sort=composer relies on the LEFT JOIN books b added
+// conditionally in handleSearchPieces below (only when this field is
+// requested) and mirrors repo.ResolveEffective's resolveStringField
+// fallback (internal/repo/effective.go) exactly — a piece's own composer
+// if non-blank, else its book's, else neither. TRIM/NULLIF treat
+// whitespace-only the same as empty, matching resolveStringField's own
+// isBlank check (strings.TrimSpace(s) == ""). The IS NULL clause (always
+// ASC — see sortColumnFunc's own doc comment) makes a composer-less piece
+// trail regardless of direction, rather than jumping to the front of an
+// ascending list the way SQLite's default NULL-sorts-first-on-ASC would
+// otherwise place it.
+var pieceSortColumns = map[string]sortColumnFunc{
+	"dateAdded": simpleSortColumn("p.id"),
+	"title":     simpleSortColumn("p.title COLLATE NOCASE"),
+	"composer": func(dir string) string {
+		const expr = "COALESCE(NULLIF(TRIM(p.composer), ''), NULLIF(TRIM(b.composer), ''))"
+		return "(" + expr + " IS NULL) ASC, " + expr + " COLLATE NOCASE " + dir
+	},
+}
+
 // handleSearchPieces is design doc §11's library browse/search: search-as-
 // you-type text query against pieces_fts, combinable with tag/favorite/
 // practiceStatus filters.
@@ -34,46 +54,57 @@ func (s *Server) handleSearchPieces(w http.ResponseWriter, r *http.Request) {
 		args = append(args, sanitizeFTSQuery(query))
 	}
 
-	// keyId: a piece can have more than one key (migration 00008) — match
-	// if any of its keys is the requested one, same join-table pattern as
-	// instrumentId/userTagId below.
-	if id, present, ok := parseIDFilter(w, q, "keyId"); !ok {
+	// keyId: comma-separated for an OR match against several keys at once
+	// (the Filter Drawer's Key section is a real multi-select checkbox
+	// list, same "any of several" shape as practiceStatus below — a piece
+	// can also have more than one key itself, migration 00008, but that's
+	// unrelated: this is "matches any of the requested keys", not "has all
+	// of its own"). Same join-table pattern as instrumentId/userTagId.
+	if ids, present, ok := parseIDListFilter(w, q, "keyId"); !ok {
 		return
 	} else if present {
-		where = append(where, "p.id IN (SELECT piece_id FROM piece_keys WHERE key_id = ?)")
-		args = append(args, id)
+		where = append(where, "p.id IN (SELECT piece_id FROM piece_keys WHERE key_id IN ("+sqlPlaceholders(len(ids))+"))")
+		args = append(args, idsToArgs(ids)...)
 	}
 
-	// sheetTypeId: match if the piece's own sheetType is that value, OR
-	// the piece has no sheetType of its own and its book's does — the
-	// same fallback rule repo.ResolveEffective applies for display.
-	if id, present, ok := parseIDFilter(w, q, "sheetTypeId"); !ok {
+	// sheetTypeId: comma-separated, same OR-match shape as keyId above.
+	// Match if the piece's own sheetType is one of the requested values,
+	// OR the piece has no sheetType of its own and its book's is — the
+	// same fallback rule repo.ResolveEffective applies for display. The
+	// id list is bound twice (once per IN clause), so args needs it twice.
+	if ids, present, ok := parseIDListFilter(w, q, "sheetTypeId"); !ok {
 		return
 	} else if present {
-		where = append(where, `(p.sheet_type_id = ? OR (p.sheet_type_id IS NULL AND p.source_book_id IN (
-			SELECT id FROM books WHERE sheet_type_id = ?
+		ph := sqlPlaceholders(len(ids))
+		where = append(where, `(p.sheet_type_id IN (`+ph+`) OR (p.sheet_type_id IS NULL AND p.source_book_id IN (
+			SELECT id FROM books WHERE sheet_type_id IN (`+ph+`)
 		)))`)
-		args = append(args, id, id)
+		args = append(args, idsToArgs(ids)...)
+		args = append(args, idsToArgs(ids)...)
 	}
 
-	// instrumentId: match if the piece has that instrument itself, OR the
-	// piece has none of its own instruments and its book has that one —
-	// mirroring EffectiveTagsField's whole-set fallback (a piece with any
-	// instruments of its own never partially falls back to the book's).
-	if id, present, ok := parseIDFilter(w, q, "instrumentId"); !ok {
+	// instrumentId: comma-separated, same OR-match shape. Match if the
+	// piece has any of the requested instruments itself, OR the piece has
+	// none of its own instruments and its book has one of them — mirroring
+	// EffectiveTagsField's whole-set fallback (a piece with any instruments
+	// of its own never partially falls back to the book's).
+	if ids, present, ok := parseIDListFilter(w, q, "instrumentId"); !ok {
 		return
 	} else if present {
-		where = append(where, `(p.id IN (SELECT piece_id FROM piece_instruments WHERE instrument_id = ?)
+		ph := sqlPlaceholders(len(ids))
+		where = append(where, `(p.id IN (SELECT piece_id FROM piece_instruments WHERE instrument_id IN (`+ph+`))
 			OR (p.id NOT IN (SELECT piece_id FROM piece_instruments)
-				AND p.source_book_id IN (SELECT book_id FROM book_instruments WHERE instrument_id = ?)))`)
-		args = append(args, id, id)
+				AND p.source_book_id IN (SELECT book_id FROM book_instruments WHERE instrument_id IN (`+ph+`))))`)
+		args = append(args, idsToArgs(ids)...)
+		args = append(args, idsToArgs(ids)...)
 	}
 
-	if id, present, ok := parseIDFilter(w, q, "userTagId"); !ok {
+	// userTagId: comma-separated, same OR-match shape as keyId/sheetTypeId.
+	if ids, present, ok := parseIDListFilter(w, q, "userTagId"); !ok {
 		return
 	} else if present {
-		where = append(where, "p.id IN (SELECT piece_id FROM piece_user_tags WHERE tag_id = ?)")
-		args = append(args, id)
+		where = append(where, "p.id IN (SELECT piece_id FROM piece_user_tags WHERE tag_id IN ("+sqlPlaceholders(len(ids))+"))")
+		args = append(args, idsToArgs(ids)...)
 	}
 
 	if v := q.Get("favorite"); v != "" {
@@ -99,6 +130,23 @@ func (s *Server) handleSearchPieces(w http.ResponseWriter, r *http.Request) {
 		where = append(where, "p.practice_status IN ("+strings.Join(placeholders, ",")+")")
 	}
 
+	// bookless: pieces with no sourceBookId at all (design doc §3/§5 — a
+	// piece with no book is a normal, first-class case, e.g. a single
+	// downloaded score). Deliberately asymmetric with favorite above:
+	// bookless=false is a no-op, not a hard "exclude bookless" filter — the
+	// drawer's single checkbox never sends false, there's no equivalent
+	// "book-having pieces only" affordance to wire it to.
+	if v := q.Get("bookless"); v != "" {
+		bookless, err := strconv.ParseBool(v)
+		if err != nil {
+			api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid bookless")
+			return
+		}
+		if bookless {
+			where = append(where, "p.source_book_id IS NULL")
+		}
+	}
+
 	// sourceBookId: the Book Details page's pieces grid/list — every piece
 	// belonging to this book. Sorted by start page ascending instead of the
 	// default newest-first order below, with a tie-break the design review
@@ -106,7 +154,9 @@ func (s *Server) handleSearchPieces(w http.ResponseWriter, r *http.Request) {
 	// that opens on the same page the piece before it is still finishing),
 	// the 1-page one sorts first. No LIMIT/OFFSET either — a book's own
 	// piece count is the natural bound, and the page renders all of them
-	// at once rather than paginating.
+	// at once rather than paginating. sort/dir (below) never apply here —
+	// this is a structural property of the book, not a user preference, so
+	// a sort param present alongside sourceBookId is simply not parsed/used.
 	bookID, byBook, ok := parseIDFilter(w, q, "sourceBookId")
 	if !ok {
 		return
@@ -114,6 +164,27 @@ func (s *Server) handleSearchPieces(w http.ResponseWriter, r *http.Request) {
 	if byBook {
 		where = append(where, "p.source_book_id = ?")
 		args = append(args, bookID)
+	}
+
+	// Composer sort needs the piece's own book to fall back to (matching
+	// repo.ResolveEffective's resolveStringField exactly — see
+	// pieceSortColumns below), so the JOIN is added here, before WHERE, but
+	// only when actually sorting by composer — no reason to pay the join
+	// cost otherwise. Must happen before the "byBook" sourceBookId check
+	// above already ran (it did) but before WHERE is appended (below).
+	var sortOrderBy string
+	if !byBook {
+		sortField := q.Get("sort")
+		if sortField == "" {
+			sortField = "dateAdded"
+		}
+		if sortField == "composer" {
+			sqlStr += ` LEFT JOIN books b ON b.id = p.source_book_id`
+		}
+		sortOrderBy, ok = parseSort(w, q, pieceSortColumns, "dateAdded")
+		if !ok {
+			return
+		}
 	}
 
 	if len(where) > 0 {
@@ -135,7 +206,12 @@ func (s *Server) handleSearchPieces(w http.ResponseWriter, r *http.Request) {
 				offset = n
 			}
 		}
-		sqlStr += " ORDER BY p.id DESC LIMIT ? OFFSET ?"
+		// , p.id DESC: a deterministic secondary tie-break — without it,
+		// rows with equal primary sort values (two identically-titled
+		// pieces, two blank composers) have no guaranteed stable order,
+		// which can skip or duplicate rows across LIMIT/OFFSET page
+		// boundaries as infinite scroll fires further requests.
+		sqlStr += " ORDER BY " + sortOrderBy + ", p.id DESC LIMIT ? OFFSET ?"
 		args = append(args, limit, offset)
 	}
 
@@ -195,6 +271,45 @@ func parseIDFilter(w http.ResponseWriter, q url.Values, param string) (id int64,
 		return 0, false, false
 	}
 	return id, true, true
+}
+
+// parseIDListFilter is parseIDFilter's multi-value counterpart, for the
+// Filter Drawer's real multi-select facets (Key/Instrument/SheetType/
+// UserTag on pieces, SheetType/Instrument on books) — comma-separated,
+// same convention as the pre-existing practiceStatus filter. An empty
+// segment (a stray comma) is rejected the same as any other malformed
+// value, rather than silently skipped.
+func parseIDListFilter(w http.ResponseWriter, q url.Values, param string) (ids []int64, present, ok bool) {
+	v := q.Get(param)
+	if v == "" {
+		return nil, false, true
+	}
+	parts := strings.Split(v, ",")
+	ids = make([]int64, 0, len(parts))
+	for _, part := range parts {
+		id, err := strconv.ParseInt(strings.TrimSpace(part), 10, 64)
+		if err != nil {
+			api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid "+param)
+			return nil, false, false
+		}
+		ids = append(ids, id)
+	}
+	return ids, true, true
+}
+
+// sqlPlaceholders builds "?,?,...,?" for an IN clause of n values.
+func sqlPlaceholders(n int) string {
+	return strings.TrimSuffix(strings.Repeat("?,", n), ",")
+}
+
+// idsToArgs widens []int64 to []any so it can be spread into a QueryContext
+// args slice alongside other parameter types.
+func idsToArgs(ids []int64) []any {
+	args := make([]any, len(ids))
+	for i, id := range ids {
+		args[i] = id
+	}
+	return args
 }
 
 // sanitizeFTSQuery turns free user input into a safe FTS5 MATCH query.

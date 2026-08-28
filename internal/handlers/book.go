@@ -165,12 +165,37 @@ func (s *Server) handleCreateBookManual(w http.ResponseWriter, r *http.Request) 
 	api.WriteData(w, http.StatusCreated, resp)
 }
 
+// bookSortColumns: composer/title need no book-inheritance handling (books
+// are the top of the hierarchy — see handleListBooks's own doc comment),
+// just a plain column. yearWritten is TEXT, not INTEGER (free text, e.g.
+// "ca. 1708-1711"), so a naive ORDER BY would sort lexicographically —
+// GLOB '[0-9]*' is the "does this look like a real leading year" test
+// (chosen over CAST(...) = 0, which would misclassify a literal "0" as
+// junk), and the whole first clause is direction-invariant (always ASC)
+// so blank/non-numeric years trail regardless of the chosen direction,
+// the same "blanks always last" pattern pieceSortColumns uses for
+// composer, for the same reason (SQLite's own NULL-sorts-first-on-ASC
+// default would otherwise put them at the front of an ascending list).
+var bookSortColumns = map[string]sortColumnFunc{
+	"dateAdded": simpleSortColumn("id"),
+	"title":     simpleSortColumn("book_title COLLATE NOCASE"),
+	"composer":  simpleSortColumn("composer COLLATE NOCASE"),
+	"yearWritten": func(dir string) string {
+		return "(year_written IS NULL OR TRIM(year_written) = '' OR NOT (year_written GLOB '[0-9]*')) ASC, " +
+			"CAST(year_written AS INTEGER) " + dir
+	},
+}
+
 // handleListBooks is the Books library view's browse/search (mirrors
 // handleSearchPieces's shape) — text query against book_title/composer/
 // publisher via plain LIKE, not FTS5: unlike pieces_fts (design doc §11),
 // there's no books_fts table, and a books library realistically holds a
 // tiny fraction of the row count a pieces library does, so a LIKE scan
 // costs nothing worth building real full-text search to avoid.
+//
+// sheetTypeId/instrumentId need none of pieces' book-inheritance
+// complexity — a Book is the top of the hierarchy, nothing to fall back
+// to (CLAUDE.md > Book-level soft inheritance).
 func (s *Server) handleListBooks(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 
@@ -185,8 +210,31 @@ func (s *Server) handleListBooks(w http.ResponseWriter, r *http.Request) {
 		args = append(args, like, like, like)
 	}
 
+	// Comma-separated, same OR-match multi-select convention as
+	// handleSearchPieces's own keyId/instrumentId/sheetTypeId/userTagId
+	// filters (see parseIDListFilter's doc comment) — the Filter Drawer's
+	// Sheet Type/Instrument sections are real multi-select checkbox lists.
+	if ids, present, ok := parseIDListFilter(w, q, "sheetTypeId"); !ok {
+		return
+	} else if present {
+		where = append(where, "sheet_type_id IN ("+sqlPlaceholders(len(ids))+")")
+		args = append(args, idsToArgs(ids)...)
+	}
+
+	if ids, present, ok := parseIDListFilter(w, q, "instrumentId"); !ok {
+		return
+	} else if present {
+		where = append(where, "id IN (SELECT book_id FROM book_instruments WHERE instrument_id IN ("+sqlPlaceholders(len(ids))+"))")
+		args = append(args, idsToArgs(ids)...)
+	}
+
 	if len(where) > 0 {
 		sqlStr += " WHERE " + strings.Join(where, " AND ")
+	}
+
+	sortOrderBy, ok := parseSort(w, q, bookSortColumns, "dateAdded")
+	if !ok {
+		return
 	}
 
 	limit := 50
@@ -201,7 +249,11 @@ func (s *Server) handleListBooks(w http.ResponseWriter, r *http.Request) {
 			offset = n
 		}
 	}
-	sqlStr += " ORDER BY id DESC LIMIT ? OFFSET ?"
+	// , id DESC: deterministic secondary tie-break, same reasoning as
+	// handleSearchPieces's own ", p.id DESC" — without it, rows with equal
+	// primary sort values have no guaranteed stable order across paginated
+	// requests.
+	sqlStr += " ORDER BY " + sortOrderBy + ", id DESC LIMIT ? OFFSET ?"
 	args = append(args, limit, offset)
 
 	rows, err := s.DB.QueryContext(r.Context(), sqlStr, args...)

@@ -17,9 +17,14 @@ const MOCKUPS = [
     note: 'Piece Properties Edit Menu (§15) design mockup.',
   },
   {
+    to: '/mockup/piece-library',
+    name: 'Piece Library — Sort/Filter',
+    note: 'Filter Drawer (Option B of a 4-option comparison, picked 2026-08-27) added to the Piece Library toolbar — Filters button + slide-in drawer (Key/Instrument/Sheet Type/Tags/Status/Favorite), plus a new Sort control. Genuinely interactive against 10 fixture pieces.',
+  },
+  {
     to: '/mockup/books-library',
-    name: 'Books Library',
-    note: 'Books library grid/list view design mockup.',
+    name: 'Books Library — Sort/Filter',
+    note: 'Grid/list match the real BookGridCard/BookListCard exactly, plus the same Filter Drawer + Sort control added to the Piece Library, adjusted for Books’ lighter facets (Sheet Type/Instrument only). Genuinely interactive against 8 fixture books.',
   },
   {
     to: '/mockup/book-details',
