@@ -416,6 +416,43 @@ func TestSearchPieces_SortsByTitleAscendingAndDescending(t *testing.T) {
 	}
 }
 
+// TestSearchPieces_SortsByTitleIgnoresLeadingArticle covers titleSortColumn
+// (internal/handlers/sort.go): a leading "A"/"An"/"The" is ignored for sort
+// purposes (the usual library-catalog convention), computed in SQL rather
+// than a stored sort-name field. Also guards against a false-positive
+// strip — "Andantino"/"Aria"/"Theme and Variations" all start with the same
+// letters as an article but have no space right after it, so they must
+// sort on their own literal text, not have a few letters chopped off.
+func TestSearchPieces_SortsByTitleIgnoresLeadingArticle(t *testing.T) {
+	h := newTestServer(t)
+	nutcracker := createTestPiece(t, h, map[string]any{"title": "The Nutcracker"})
+	midsummer := createTestPiece(t, h, map[string]any{"title": "A Midsummer Night's Dream"})
+	american := createTestPiece(t, h, map[string]any{"title": "An American in Paris"})
+	andantino := createTestPiece(t, h, map[string]any{"title": "Andantino"})
+	aria := createTestPiece(t, h, map[string]any{"title": "Aria"})
+	theme := createTestPiece(t, h, map[string]any{"title": "Theme and Variations"})
+	zebra := createTestPiece(t, h, map[string]any{"title": "Zebra"})
+
+	// Effective sort keys: "American in Paris", "Andantino", "Aria",
+	// "Midsummer Night's Dream", "Nutcracker", "Theme and Variations",
+	// "Zebra" — alphabetical order of those, not the raw titles.
+	want := []int64{american.ID, andantino.ID, aria.ID, midsummer.ID, nutcracker.ID, theme.ID, zebra.ID}
+
+	ascRec := doJSON(t, h, http.MethodGet, "/api/pieces?sort=title&dir=asc", nil)
+	var asc []pieceResponse
+	decodeData(t, ascRec, &asc)
+	if len(asc) != len(want) {
+		t.Fatalf("sort=title&dir=asc returned %d pieces, want %d: %+v", len(asc), len(want), asc)
+	}
+	for i, id := range want {
+		if asc[i].ID != id {
+			t.Errorf("sort=title&dir=asc position %d = %q (id %d), want id %d\nfull order: %+v",
+				i, asc[i].Title, asc[i].ID, id, asc)
+			break
+		}
+	}
+}
+
 // TestSearchPieces_SortsByComposerFallsBackToBookComposer is the
 // regression-critical case for the composer sort's SQL — it must mirror
 // repo.ResolveEffective's resolveStringField fallback exactly (a piece's

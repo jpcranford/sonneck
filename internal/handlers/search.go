@@ -10,7 +10,10 @@ import (
 	"github.com/jpcranford/sonneck/internal/repo"
 )
 
-// pieceSortColumns: sort=composer relies on the LEFT JOIN books b added
+// pieceSortColumns: sort=title strips a leading "A"/"An"/"The" via
+// titleSortColumn (internal/handlers/sort.go) — the usual library-catalog
+// convention, computed in SQL rather than a stored sort-name column. sort=
+// composer relies on the LEFT JOIN books b added
 // conditionally in handleSearchPieces below (only when this field is
 // requested) and mirrors repo.ResolveEffective's resolveStringField
 // fallback (internal/repo/effective.go) exactly — a piece's own composer
@@ -23,7 +26,7 @@ import (
 // otherwise place it.
 var pieceSortColumns = map[string]sortColumnFunc{
 	"dateAdded": simpleSortColumn("p.id"),
-	"title":     simpleSortColumn("p.title COLLATE NOCASE"),
+	"title":     titleSortColumn("p.title"),
 	"composer": func(dir string) string {
 		const expr = "COALESCE(NULLIF(TRIM(p.composer), ''), NULLIF(TRIM(b.composer), ''))"
 		return "(" + expr + " IS NULL) ASC, " + expr + " COLLATE NOCASE " + dir

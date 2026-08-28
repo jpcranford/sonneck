@@ -283,6 +283,32 @@ func TestListBooks_SortsByTitleAndComposer(t *testing.T) {
 	}
 }
 
+// TestListBooks_SortsByTitleIgnoresLeadingArticle mirrors
+// TestSearchPieces_SortsByTitleIgnoresLeadingArticle for the Books side of
+// the same shared titleSortColumn helper.
+func TestListBooks_SortsByTitleIgnoresLeadingArticle(t *testing.T) {
+	h := newTestServer(t)
+	var realBook, fakeBook, anthology bookResponse
+	decodeData(t, doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
+		"bookTitle": "The Real Book", "composer": "Various",
+	}), &realBook)
+	decodeData(t, doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
+		"bookTitle": "A Fake Book", "composer": "Various",
+	}), &fakeBook)
+	decodeData(t, doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
+		"bookTitle": "Anthology of Pieces", "composer": "Various",
+	}), &anthology)
+
+	// Sort keys: "Fake Book" (from "A Fake Book"), "Anthology of Pieces"
+	// (unchanged — no space after "An"), "Real Book" (from "The Real
+	// Book"). Alphabetically: Anthology < Fake < Real.
+	var byTitle []bookResponse
+	decodeData(t, doJSON(t, h, http.MethodGet, "/api/books?sort=title&dir=asc", nil), &byTitle)
+	if len(byTitle) != 3 || byTitle[0].ID != anthology.ID || byTitle[1].ID != fakeBook.ID || byTitle[2].ID != realBook.ID {
+		t.Errorf("sort=title&dir=asc returned %+v, want [Anthology of Pieces, A Fake Book, The Real Book]", byTitle)
+	}
+}
+
 // TestListBooks_SortsByYearWrittenHandlesNonNumericAndNull proves the
 // direction-invariant "junk sorts last" clause actually works both ways,
 // not just in the default direction — a book with no year and one with

@@ -28,6 +28,39 @@ func simpleSortColumn(expr string) sortColumnFunc {
 	}
 }
 
+// articleStrippedSQL wraps a title-like column/expression in a SQL CASE
+// that strips a leading "A ", "An ", or "The " — the classic library-
+// catalog "ignore the leading article when sorting" convention. SQLite's
+// LIKE is already case-insensitive for ASCII by default, so a single
+// lowercase pattern per article catches "the"/"The"/"THE" uniformly with
+// no LOWER() needed. The trailing space in each pattern is what keeps this
+// from misfiring on a title that merely starts with those letters (e.g.
+// "Andantino" doesn't match "an %" — there's no space right after "An" in
+// it).
+//
+// Computed at query time, not a stored column: this app's per-library row
+// counts make the lack of index support irrelevant, and it avoids a new
+// field that would need backfilling and keeping in sync at every write
+// path — the same computed-vs-stored tradeoff already made for composer's
+// book-inheritance fallback below.
+func articleStrippedSQL(expr string) string {
+	return "(CASE " +
+		"WHEN " + expr + " LIKE 'a %' THEN SUBSTR(" + expr + ", 3) " +
+		"WHEN " + expr + " LIKE 'an %' THEN SUBSTR(" + expr + ", 4) " +
+		"WHEN " + expr + " LIKE 'the %' THEN SUBSTR(" + expr + ", 5) " +
+		"ELSE " + expr + " END)"
+}
+
+// titleSortColumn is simpleSortColumn's title-specific counterpart —
+// strips a leading article (see articleStrippedSQL) ahead of the usual
+// COLLATE NOCASE + direction.
+func titleSortColumn(expr string) sortColumnFunc {
+	stripped := articleStrippedSQL(expr)
+	return func(dir string) string {
+		return stripped + " COLLATE NOCASE " + dir
+	}
+}
+
 // parseSort reads the `sort`/`dir` query params against a whitelist of
 // known sort keys, returning the fully-composed ORDER BY expression for
 // the resolved field+direction. Same 400-on-invalid-value posture as

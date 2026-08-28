@@ -166,8 +166,10 @@ func (s *Server) handleCreateBookManual(w http.ResponseWriter, r *http.Request) 
 }
 
 // bookSortColumns: composer/title need no book-inheritance handling (books
-// are the top of the hierarchy — see handleListBooks's own doc comment),
-// just a plain column. yearWritten is TEXT, not INTEGER (free text, e.g.
+// are the top of the hierarchy — see handleListBooks's own doc comment).
+// title strips a leading "A"/"An"/"The" via titleSortColumn (internal/
+// handlers/sort.go, shared with pieceSortColumns) — the usual library-
+// catalog sort convention. yearWritten is TEXT, not INTEGER (free text, e.g.
 // "ca. 1708-1711"), so a naive ORDER BY would sort lexicographically —
 // GLOB '[0-9]*' is the "does this look like a real leading year" test
 // (chosen over CAST(...) = 0, which would misclassify a literal "0" as
@@ -178,7 +180,7 @@ func (s *Server) handleCreateBookManual(w http.ResponseWriter, r *http.Request) 
 // default would otherwise put them at the front of an ascending list).
 var bookSortColumns = map[string]sortColumnFunc{
 	"dateAdded": simpleSortColumn("id"),
-	"title":     simpleSortColumn("book_title COLLATE NOCASE"),
+	"title":     titleSortColumn("book_title"),
 	"composer":  simpleSortColumn("composer COLLATE NOCASE"),
 	"yearWritten": func(dir string) string {
 		return "(year_written IS NULL OR TRIM(year_written) = '' OR NOT (year_written GLOB '[0-9]*')) ASC, " +
