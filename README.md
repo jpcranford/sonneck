@@ -16,13 +16,13 @@
 A self-hosted library organizer for sheet music: import, tag, browse, and download pieces and books. Made by a musician, for musicians.
 
 ## Features
-Sonneck is designed to live “in an office with a printer”, so to speak. There are [plans](#planned-features) to add more practice-session features later, but its core feature set is focused squarely on digital library management first and foremost.
+Sonneck is designed to live “in an office with a printer”, so to speak. There are [plans](#planned-features) to add more practice-session features later, but its core feature set is focused squarely on digital score library management first and foremost.
 
 - **Organize your sheet music library.** Upload individual pieces or entire books — the built-in book splitter and metadata inheritance make quick work of prepping a whole book's worth of pieces to be found later.
 - **Real cataloging, not a folder of PDFs.** Composer, arranger, key(s), instruments, sheet type, opus number, ISBN, and your own tags, plus a one-click citation generator that formats it all for you, ready to be copied into a program template or group chat.
 - **Metadata that works for you.** Give it an IMSLP catalog number and it'll auto-fill composer, opus number, year, and publisher for you. The citation line adapts to show only the fields you've actually filled in, and descriptions/performer notes support Markdown — including shortcode music symbols like `:mf:` for a mezzo-forte marking (see the [doc](docs/music-emoji.md) for the full list).
 - **Pieces inherit properties from their books.** Set a book's composer, publisher, and year once. Every piece inside it inherits the information automatically, you only ever need to override the pieces that are actually different.
-- **Search that keeps up with you.** Full-text search across your whole library as you type. Grid views are optimized for number of items shown at once, while list views show you the most detail about each piece without having to open it up.
+- **Search that keeps up with you.** Full-text fuzzy search across your whole library as you type. Grid views are optimized for number of items shown at once, while list views show you the most detail about each piece without having to open it up.
 - **Track your wishlist.** Ever forget you were learning a piece only to rediscover it weeks later at the bottom of your bag? Or buy pieces to learn, only for them to get lost in the stacks? No more! Use the practice status and filter views to track what you want to play, what you have in progress, and even the stuff you never want to touch again! Take *that*, [Sorabji](https://www.youtube.com/watch?v=_OrAewTxBrc)!
 - **A truly *responsive* workflow.** None of that "resize-and-rerender-everything" lag. Resize and it's good to go, instantly. Useful keyboard shortcuts throughout, plus right-click (desktop)/long-press (mobile) context menus for quick edits within library views.
 - **It's completely yours.** Self-hosted, one SQLite file, daily automatic backups. No algorithm, no callbacks to some centralized analytics server. It’s a tool for you: use it, break it, repurpose it, join us (or don’t) in making it better. Or even leave– a full CSV export is available at any time. If it turns out Sonneck isn't the right place for your music, the information you enter (and the time you take doing so) is still yours.
@@ -97,9 +97,9 @@ If you're using Docker, do
 docker exec -it <container-name> ./sonneck <command>
 ```
 
-Or if you're running locally:
+Or if you're running locally from the repo:
 ```sh
-DATA_DIR=./data ./sonneck <command>
+DATA_DIR=./data go run ./cmd/sonneck <command>
 ```
 
 | Command | What it does | When to run it |
@@ -109,12 +109,13 @@ DATA_DIR=./data ./sonneck <command>
 | `export-csv` | Writes a full export of your library data to `$DATA_DIR/export/<timestamp>/` — one CSV file per database table (books, pieces, tags, keys, and so on). Read-only; doesn't touch the database or any existing files. | Any time you want your data out of Sonneck as plain CSV — a one-off backup in a format other tools can read, or just to take it with you. |
 
 ## Planned features
-- **Sheet Viewer!** The practice view every app like this seems to have, with Bluetooth page turner support, server-saved annotations, and a built-in metronome. Maybe some music theory references too, why not; it's not like the circle of fifths has changed in the last 400 years
-- **Setlists!** Plan out sets with the piece duration and tempo values.
-- **Auth support.** Lock your collection behind a simple password, or utilize a separate OIDC system for multi-user support. User notes, annotations, and tags stay saved per-user.
-- **Public domain badge.** Set your country as an env var and the *likely* copyright status will be calculated per-piece, with the ability to manually override it. Scaffolding for this is already in place.
 - **Dark mode.** Dear God, my eyes.
+- **Setlists!** Plan out sets with the piece duration and tempo values.
+- **Public domain badge.** Set your country as an env var and the *likely* copyright status will be calculated per-piece, with the ability to manually override it. Scaffolding for this is already in place.
+- **Auth support.** Lock your collection behind a simple password, or utilize a separate OIDC system for multi-user support. User notes, annotations, and tags stay saved per-user.
 - **Configurable citation format.** Just in case you don't like the defaults.
+- **Sheet Viewer!** The practice view every app like this seems to have, with Bluetooth page turner support, server-saved annotations, and a built-in metronome. Maybe some music theory references too, why not; it's not like the circle of fifths has changed in the last 400 years
+- **Native desktop app builds.** For some reason, the venn diagram of "people who play from sheet music" and "people who know what Docker is" is shockingly small.
 - Support for a folder of image files to be uploaded/assembled into pieces
 - A way to rename user tags, sheet types, etc. from the interface — honestly, this one's probably waiting on the auth support, when I slice off a *bunch* of user settings into their own menu (dark/light mode preference, citation style choice, etc.)
 - Offline mode? for remote gigs? Still thinking about how to accomplish this one. Contributions would be welcome.
@@ -136,4 +137,5 @@ That being said, I still don’t trust it– I’ll gladly welcome the contribut
 - The frontend sans-serif typeface is [Rethink Sans](https://github.com/hans-thiessen/Rethink-Sans) by Hans Thiessen, also for Google Fonts and licensed under the SIL Open Font License 1.1. Self-hosted rather than loaded from Google Fonts at runtime.
 - The cursive S logo is taken from the [Gwendolyn](https://github.com/googlefonts/gwendolyn) font's capital S (what luck, it looking like a treble clef!) and the rest of the wordmark was built with [Mea Culpa](https://github.com/googlefonts/mea-culpa). Both fonts were designed by Robert Leuschke for Google Fonts and licensed under the SIL Open Font License 1.1. Logo and wordmark rendered as SVG and self-hosted.
 - The music symbols supported in Markdown fields (`:forte:`, `:flat:`, `:segno:`, and the rest) render via [Bravura Text](https://github.com/steinbergmedia/bravura), the SMuFL music-notation font from Steinberg Media Technologies, licensed under the SIL Open Font License 1.1. Self-hosted as a tiny subset (a few KB, not the ~3MB full release) containing only the specific glyphs this app supports.
+- My inspirations, for showing me what's possible with modern tech. [RomM](https://github.com/rommapp/romm) and [Calibre](https://calibre-ebook.com/) stand out.
 - Despite some passing resemblance in name, we are in no way affiliated with a certain blue runs-fast creature. Whatever species it claims to be.

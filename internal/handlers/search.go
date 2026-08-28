@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/jpcranford/sonneck/internal/api"
+	"github.com/jpcranford/sonneck/internal/fuzzy"
 	"github.com/jpcranford/sonneck/internal/repo"
 )
 
@@ -43,19 +44,25 @@ var pieceSortColumns = map[string]sortColumnFunc{
 // its sheetType/instruments from its book must still be findable by them,
 // the same way it's already findable by an inherited composer via the free-
 // text query against pieces_fts).
+//
+// The free-text query itself runs through up to three tiers, each only
+// attempted when every tier before it found nothing at all — never merged
+// — so the common case's behavior/ranking stays completely unchanged and
+// each looser tier's extra noise only ever shows up when the tighter ones
+// have nothing to offer:
+//  1. pieces_fts, prefix matching (sanitizeFTSQuery).
+//  2. pieces_fts_trigram, substring-anywhere matching (migration 00019).
+//  3. fuzzydist(), real typo tolerance (internal/fuzzy) — a SQLite scalar
+//     function, not another FTS5 table; see runFuzzyQuery below.
+// This is why the non-free-text filters/sort/pagination below are built
+// into `where`/`args` once and reused by every attempt (via runQuery/
+// runFuzzyQuery) instead of being recomputed per attempt.
 func (s *Server) handleSearchPieces(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
+	query := strings.TrimSpace(q.Get("query"))
 
 	var where []string
 	var args []any
-
-	sqlStr := `SELECT p.id FROM pieces p`
-
-	if query := strings.TrimSpace(q.Get("query")); query != "" {
-		sqlStr += ` JOIN pieces_fts ON pieces_fts.piece_id = p.id`
-		where = append(where, `pieces_fts MATCH ?`)
-		args = append(args, sanitizeFTSQuery(query))
-	}
 
 	// keyId: comma-separated for an OR match against several keys at once
 	// (the Filter Drawer's Key section is a real multi-select checkbox
@@ -171,74 +178,166 @@ func (s *Server) handleSearchPieces(w http.ResponseWriter, r *http.Request) {
 
 	// Composer sort needs the piece's own book to fall back to (matching
 	// repo.ResolveEffective's resolveStringField exactly — see
-	// pieceSortColumns below), so the JOIN is added here, before WHERE, but
-	// only when actually sorting by composer — no reason to pay the join
-	// cost otherwise. Must happen before the "byBook" sourceBookId check
-	// above already ran (it did) but before WHERE is appended (below).
+	// pieceSortColumns below), so the JOIN is added inside runQuery below,
+	// but only when actually sorting by composer — no reason to pay the
+	// join cost otherwise.
 	var sortOrderBy string
+	needsBookJoin := false
 	if !byBook {
 		sortField := q.Get("sort")
 		if sortField == "" {
 			sortField = "dateAdded"
 		}
-		if sortField == "composer" {
-			sqlStr += ` LEFT JOIN books b ON b.id = p.source_book_id`
-		}
+		needsBookJoin = sortField == "composer"
 		sortOrderBy, ok = parseSort(w, q, pieceSortColumns, "dateAdded")
 		if !ok {
 			return
 		}
 	}
 
-	if len(where) > 0 {
-		sqlStr += " WHERE " + strings.Join(where, " AND ")
-	}
-
-	if byBook {
-		sqlStr += " ORDER BY p.source_page_start IS NULL, p.source_page_start ASC, (p.page_count = 1) DESC"
-	} else {
-		limit := 50
+	limit := 50
+	offset := 0
+	if !byBook {
 		if v := q.Get("limit"); v != "" {
 			if n, err := strconv.Atoi(v); err == nil && n > 0 && n <= 200 {
 				limit = n
 			}
 		}
-		offset := 0
 		if v := q.Get("offset"); v != "" {
 			if n, err := strconv.Atoi(v); err == nil && n >= 0 {
 				offset = n
 			}
 		}
-		// , p.id DESC: a deterministic secondary tie-break — without it,
-		// rows with equal primary sort values (two identically-titled
-		// pieces, two blank composers) have no guaranteed stable order,
-		// which can skip or duplicate rows across LIMIT/OFFSET page
-		// boundaries as infinite scroll fires further requests.
-		sqlStr += " ORDER BY " + sortOrderBy + ", p.id DESC LIMIT ? OFFSET ?"
-		args = append(args, limit, offset)
 	}
 
-	rows, err := s.DB.QueryContext(r.Context(), sqlStr, args...)
+	// runQuery executes the piece-id SELECT against one FTS table variant
+	// (see this function's own doc comment for why there are two). Every
+	// clause except the free-text one is identical between the primary and
+	// fallback attempts, so those live in the already-built where/args
+	// above and get prepended to here, not recomputed per attempt.
+	runQuery := func(ftsTable string, sanitize func(string) string) ([]int64, error) {
+		sqlStr := `SELECT p.id FROM pieces p`
+		var qWhere []string
+		var qArgs []any
+		if query != "" {
+			sqlStr += ` JOIN ` + ftsTable + ` ON ` + ftsTable + `.piece_id = p.id`
+			qWhere = append(qWhere, ftsTable+` MATCH ?`)
+			qArgs = append(qArgs, sanitize(query))
+		}
+		if needsBookJoin {
+			sqlStr += ` LEFT JOIN books b ON b.id = p.source_book_id`
+		}
+		qWhere = append(qWhere, where...)
+		qArgs = append(qArgs, args...)
+		if len(qWhere) > 0 {
+			sqlStr += " WHERE " + strings.Join(qWhere, " AND ")
+		}
+
+		if byBook {
+			sqlStr += " ORDER BY p.source_page_start IS NULL, p.source_page_start ASC, (p.page_count = 1) DESC"
+		} else {
+			// , p.id DESC: a deterministic secondary tie-break — without it,
+			// rows with equal primary sort values (two identically-titled
+			// pieces, two blank composers) have no guaranteed stable order,
+			// which can skip or duplicate rows across LIMIT/OFFSET page
+			// boundaries as infinite scroll fires further requests.
+			sqlStr += " ORDER BY " + sortOrderBy + ", p.id DESC LIMIT ? OFFSET ?"
+			qArgs = append(qArgs, limit, offset)
+		}
+
+		rows, err := s.DB.QueryContext(r.Context(), sqlStr, qArgs...)
+		if err != nil {
+			return nil, err
+		}
+		defer rows.Close()
+		var ids []int64
+		for rows.Next() {
+			var id int64
+			if err := rows.Scan(&id); err != nil {
+				return nil, err
+			}
+			ids = append(ids, id)
+		}
+		return ids, rows.Err()
+	}
+
+	// runFuzzyQuery is the third and last tier — real typo tolerance
+	// (internal/fuzzy, CLAUDE.md > Search), not just substring matching.
+	// Its shape genuinely differs from runQuery above (no MATCH, no second
+	// FTS table — fuzzydist() is a plain WHERE predicate against
+	// pieces_fts's own already-denormalized title/composer/arranger
+	// columns, real SQLite scalar function registered in internal/db),
+	// so it's its own closure rather than a third case forced into
+	// runQuery's shape. Still shares where/args/needsBookJoin/byBook/
+	// sortOrderBy/limit/offset from the outer scope exactly like runQuery
+	// does — every filter/sort/pagination behaves identically across all
+	// three tiers. Sort order is still the user's chosen sort field, same
+	// as the trigram tier — this tier doesn't rank by fuzzy distance, for
+	// the same "don't add a fourth kind of ordering behavior" consistency
+	// reasoning that already applies to the trigram tier not ranking by
+	// bm25.
+	runFuzzyQuery := func() ([]int64, error) {
+		maxDist := fuzzy.MaxDistance(query)
+		sqlStr := `SELECT p.id FROM pieces p JOIN pieces_fts ON pieces_fts.piece_id = p.id`
+		if needsBookJoin {
+			sqlStr += ` LEFT JOIN books b ON b.id = p.source_book_id`
+		}
+		qWhere := []string{`(fuzzydist(pieces_fts.title, ?) <= ? OR fuzzydist(pieces_fts.composer, ?) <= ? OR fuzzydist(pieces_fts.arranger, ?) <= ?)`}
+		qArgs := []any{query, maxDist, query, maxDist, query, maxDist}
+		qWhere = append(qWhere, where...)
+		qArgs = append(qArgs, args...)
+		sqlStr += " WHERE " + strings.Join(qWhere, " AND ")
+
+		if byBook {
+			sqlStr += " ORDER BY p.source_page_start IS NULL, p.source_page_start ASC, (p.page_count = 1) DESC"
+		} else {
+			sqlStr += " ORDER BY " + sortOrderBy + ", p.id DESC LIMIT ? OFFSET ?"
+			qArgs = append(qArgs, limit, offset)
+		}
+
+		rows, err := s.DB.QueryContext(r.Context(), sqlStr, qArgs...)
+		if err != nil {
+			return nil, err
+		}
+		defer rows.Close()
+		var ids []int64
+		for rows.Next() {
+			var id int64
+			if err := rows.Scan(&id); err != nil {
+				return nil, err
+			}
+			ids = append(ids, id)
+		}
+		return ids, rows.Err()
+	}
+
+	ids, err := runQuery("pieces_fts", sanitizeFTSQuery)
 	if err != nil {
 		s.writeError(w, err)
 		return
 	}
-	var ids []int64
-	for rows.Next() {
-		var id int64
-		if err := rows.Scan(&id); err != nil {
-			rows.Close()
+
+	// Trigram fallback: only when the primary (prefix) query text
+	// genuinely found nothing — see this function's own doc comment for
+	// why this isn't merged with the primary result instead.
+	if len(ids) == 0 && query != "" {
+		ids, err = runQuery("pieces_fts_trigram", sanitizeTrigramFTSQuery)
+		if err != nil {
 			s.writeError(w, err)
 			return
 		}
-		ids = append(ids, id)
 	}
-	if err := rows.Err(); err != nil {
-		rows.Close()
-		s.writeError(w, err)
-		return
+
+	// Fuzzy fallback: only when *both* prior tiers found nothing — same
+	// "don't change common-case behavior" reasoning as the trigram
+	// fallback above, one step further out.
+	if len(ids) == 0 && query != "" {
+		ids, err = runFuzzyQuery()
+		if err != nil {
+			s.writeError(w, err)
+			return
+		}
 	}
-	rows.Close()
 
 	results := make([]*api.PieceResponse, 0, len(ids))
 	for _, id := range ids {
@@ -315,15 +414,32 @@ func idsToArgs(ids []int64) []any {
 	return args
 }
 
-// sanitizeFTSQuery turns free user input into a safe FTS5 MATCH query.
-// FTS5's default query syntax treats hyphens, colons, and unmatched quotes
-// as operators (column filters, NOT, unterminated strings) rather than
-// literal text — so an ordinary search like "F-sharp" or a partial title
-// containing a quote mark would otherwise throw a SQL error instead of
-// returning results. Wrapping each whitespace-separated token as a quoted
-// phrase (embedded quotes doubled, FTS5's own escaping rule) neutralizes
-// all of that while preserving the expected "every one of these terms,
-// any order" search-box behavior.
+// quoteFTSToken wraps a single whitespace-separated token as a safe,
+// literal FTS5 phrase — FTS5's default query syntax treats hyphens,
+// colons, and unmatched quotes as operators (column filters, NOT,
+// unterminated strings) rather than literal text, so an ordinary search
+// like "F-sharp" or a partial title containing a quote mark would
+// otherwise throw a SQL error instead of returning results. Embedded
+// quotes are doubled, FTS5's own escaping rule.
+func quoteFTSToken(f string) string {
+	return `"` + strings.ReplaceAll(f, `"`, `""`) + `"`
+}
+
+// sanitizeFTSQuery turns free user input into a safe, prefix-matching
+// pieces_fts MATCH query. Each whitespace-separated token becomes its own
+// quoted phrase (quoteFTSToken), joined with AND — "every one of these
+// terms, any order" search-box behavior — with a trailing `*` on each:
+// FTS5's phrase-prefix syntax, valid on a single-token "phrase" the same as
+// a multi-token one, so a still-being-typed word matches ("andan" finds
+// "Andantino"/"Andante sostenuto"), not just a complete one.
+//
+// This is prefix matching only — a query has to match some word's actual
+// start. handleSearchPieces retries via sanitizeTrigramFTSQuery/
+// pieces_fts_trigram (migration 00019) when this finds nothing, covering a
+// mid-word fragment ("crack" finding "Nutcracker") that isn't a prefix of
+// anything. Neither is fuzzy/typo-tolerant matching (a misspelled letter
+// still won't match either way) — see the true-fuzzy-search research saved
+// to memory for what that would take.
 func sanitizeFTSQuery(query string) string {
 	fields := strings.Fields(query)
 	if len(fields) == 0 {
@@ -331,7 +447,27 @@ func sanitizeFTSQuery(query string) string {
 	}
 	quoted := make([]string, len(fields))
 	for i, f := range fields {
-		quoted[i] = `"` + strings.ReplaceAll(f, `"`, `""`) + `"`
+		quoted[i] = quoteFTSToken(f) + `*`
+	}
+	return strings.Join(quoted, " AND ")
+}
+
+// sanitizeTrigramFTSQuery is sanitizeFTSQuery's counterpart for
+// pieces_fts_trigram — same safe-quoting, no trailing `*`: trigram's own
+// tokenizer already matches a token anywhere inside a word (that's the
+// point of the fallback), so the prefix operator doesn't add anything and
+// isn't needed. A token shorter than 3 characters (trigram's own minimum)
+// simply matches nothing rather than erroring — confirmed directly against
+// this project's actual pinned driver before relying on it, not assumed
+// from SQLite's docs alone.
+func sanitizeTrigramFTSQuery(query string) string {
+	fields := strings.Fields(query)
+	if len(fields) == 0 {
+		return ""
+	}
+	quoted := make([]string, len(fields))
+	for i, f := range fields {
+		quoted[i] = quoteFTSToken(f)
 	}
 	return strings.Join(quoted, " AND ")
 }

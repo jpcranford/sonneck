@@ -101,6 +101,18 @@ func TestRunCSV_ExcludesInternalAndDerivedTables(t *testing.T) {
 		"pieces_fts_content.csv",
 		"pieces_fts_docsize.csv",
 		"pieces_fts_config.csv",
+		// pieces_fts_trigram (migration 00019) — a real gap this covers:
+		// the exclusion list used to be hardcoded per table name, so
+		// adding this second FTS5 table silently slipped six new "tables"
+		// into the export until listTables started discovering FTS5
+		// virtual tables (and their shadow tables) from sqlite_master
+		// itself instead.
+		"pieces_fts_trigram.csv",
+		"pieces_fts_trigram_data.csv",
+		"pieces_fts_trigram_idx.csv",
+		"pieces_fts_trigram_content.csv",
+		"pieces_fts_trigram_docsize.csv",
+		"pieces_fts_trigram_config.csv",
 	} {
 		if _, err := os.Stat(filepath.Join(outDir, excluded)); !os.IsNotExist(err) {
 			t.Errorf("%s was exported, want it excluded (internal/derived table)", excluded)

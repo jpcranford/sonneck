@@ -6,19 +6,23 @@ import (
 	"strings"
 )
 
-// ResyncSearchIndex rebuilds pieces_fts's single row for pieceID from
-// current Piece/Book/tag data, resolving book-inheritable fields to their
-// effective value (ResolveEffective) so search never misses a piece that
-// only inherits a field from its book (CLAUDE.md > Search).
+// ResyncSearchIndex rebuilds pieces_fts's (and pieces_fts_trigram's — see
+// migration 00019) single row for pieceID from current Piece/Book/tag data,
+// resolving book-inheritable fields to their effective value
+// (ResolveEffective) so search never misses a piece that only inherits a
+// field from its book (CLAUDE.md > Search).
 //
 // Callers run this in the same transaction as the mutation that triggered
 // it — a Piece create/update/delete, or a tag-assignment change. If the
-// piece no longer exists (the delete case), this just removes its row.
+// piece no longer exists (the delete case), this just removes its rows.
 func ResyncSearchIndex(ctx context.Context, q Queryer, pieceID int64) error {
-	// Delete-then-insert: pieces_fts is derived data (design doc §3), so
+	// Delete-then-insert: both tables are derived data (design doc §3), so
 	// there's no need to distinguish "row exists, update it" from "row
 	// doesn't exist yet, insert it".
 	if _, err := q.ExecContext(ctx, `DELETE FROM pieces_fts WHERE piece_id = ?`, pieceID); err != nil {
+		return err
+	}
+	if _, err := q.ExecContext(ctx, `DELETE FROM pieces_fts_trigram WHERE piece_id = ?`, pieceID); err != nil {
 		return err
 	}
 
@@ -58,16 +62,24 @@ func ResyncSearchIndex(ctx context.Context, q Queryer, pieceID int64) error {
 		return err
 	}
 
-	_, err = q.ExecContext(ctx, `
-		INSERT INTO pieces_fts (
-			piece_id, title, composer, arranger, publisher, publisher_id,
-			imslp_number, year_written, work_opus_number, description, user_notes,
-			key_name, sheet_type_name, instruments, user_tags
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+	// Both tables get the same row shape/values — pieces_fts_trigram exists
+	// purely as a different tokenizer over identical content (migration
+	// 00019's own comment), not a differently-scoped index.
+	insertArgs := []any{
 		p.ID, p.Title, eff.Composer.Value, eff.Arranger.Value, eff.Publisher.Value, eff.PublisherID.Value,
 		eff.ImslpNumber.Value, eff.YearWritten.Value, eff.WorkOpusNumber.Value, eff.Description.Value, strOrEmpty(p.UserNotes),
 		strings.Join(keyNames, " "), sheetTypeName, strings.Join(instrumentNames, " "), strings.Join(userTagNames, " "),
-	)
+	}
+	const insertColumns = `
+		piece_id, title, composer, arranger, publisher, publisher_id,
+		imslp_number, year_written, work_opus_number, description, user_notes,
+		key_name, sheet_type_name, instruments, user_tags
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+
+	if _, err := q.ExecContext(ctx, `INSERT INTO pieces_fts (`+insertColumns, insertArgs...); err != nil {
+		return err
+	}
+	_, err = q.ExecContext(ctx, `INSERT INTO pieces_fts_trigram (`+insertColumns, insertArgs...)
 	return err
 }
 
@@ -94,6 +106,9 @@ func ResyncSearchIndexForBook(ctx context.Context, q Queryer, bookID int64) erro
 // CLAUDE.md > Search (`./main rebuild-search-index`).
 func RebuildSearchIndex(ctx context.Context, q Queryer) error {
 	if _, err := q.ExecContext(ctx, `DELETE FROM pieces_fts`); err != nil {
+		return err
+	}
+	if _, err := q.ExecContext(ctx, `DELETE FROM pieces_fts_trigram`); err != nil {
 		return err
 	}
 

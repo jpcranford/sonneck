@@ -254,6 +254,162 @@ func TestSearchPieces_QueryHandlesFTSSpecialCharacters(t *testing.T) {
 	}
 }
 
+// TestSearchPieces_QueryMatchesPartialWordPrefix covers sanitizeFTSQuery's
+// trailing `*` per token — a still-being-typed word ("andan") must find a
+// piece whose title starts with it ("Andantino"), not just a complete one.
+// The one true negative here (a query that's not even a substring of
+// anything) covers both the primary prefix query *and* the trigram
+// fallback returning nothing — see
+// TestSearchPieces_QueryFallsBackToTrigramForMidWordMatch for cases that
+// are a real substring but not a real prefix, which the fallback is
+// specifically for.
+func TestSearchPieces_QueryMatchesPartialWordPrefix(t *testing.T) {
+	h := newTestServer(t)
+	andantino := createTestPiece(t, h, map[string]any{"title": "Andantino", "composer": "Beethoven"})
+	sostenuto := createTestPiece(t, h, map[string]any{"title": "Andante sostenuto", "composer": "Schubert"})
+	fughetta := createTestPiece(t, h, map[string]any{"title": "Fughetta", "composer": "Bach"})
+
+	for _, tc := range []struct {
+		query    string
+		wantIDs  []int64
+		wantNone bool
+	}{
+		{query: "andan", wantIDs: []int64{andantino.ID, sostenuto.ID}},
+		{query: "fughet", wantIDs: []int64{fughetta.ID}},
+		{query: "beethov", wantIDs: []int64{andantino.ID}}, // partial composer, not just title
+		{query: "xyzzy", wantNone: true},                   // not a substring of anything, prefix or otherwise
+	} {
+		rec := doJSON(t, h, http.MethodGet, "/api/pieces?query="+url.QueryEscape(tc.query), nil)
+		var results []pieceResponse
+		decodeData(t, rec, &results)
+		gotIDs := map[int64]bool{}
+		for _, r := range results {
+			gotIDs[r.ID] = true
+		}
+		if tc.wantNone {
+			if len(results) != 0 {
+				t.Errorf("search for %q returned %+v, want no results", tc.query, results)
+			}
+			continue
+		}
+		if len(results) != len(tc.wantIDs) {
+			t.Errorf("search for %q returned %+v, want exactly %d result(s) matching %v", tc.query, results, len(tc.wantIDs), tc.wantIDs)
+			continue
+		}
+		for _, id := range tc.wantIDs {
+			if !gotIDs[id] {
+				t.Errorf("search for %q returned %+v, want it to include piece id %d", tc.query, results, id)
+			}
+		}
+	}
+}
+
+// TestSearchPieces_QueryFallsBackToTrigramForMidWordMatch covers the
+// pieces_fts_trigram fallback (migration 00019) — a query that isn't a
+// prefix of anything (so the primary pieces_fts query finds nothing) but
+// is a real substring somewhere inside a word must still find it.
+func TestSearchPieces_QueryFallsBackToTrigramForMidWordMatch(t *testing.T) {
+	h := newTestServer(t)
+	nutcracker := createTestPiece(t, h, map[string]any{"title": "Nutcracker Suite", "composer": "Tchaikovsky"})
+	andantino := createTestPiece(t, h, map[string]any{"title": "Andantino", "composer": "Beethoven"})
+
+	for _, tc := range []struct {
+		query  string
+		wantID int64
+	}{
+		{"crack", nutcracker.ID},  // mid-word, title
+		{"aikovsky", nutcracker.ID}, // mid-word, composer
+		{"ntino", andantino.ID},  // a real suffix of "Andantino", not a prefix
+	} {
+		rec := doJSON(t, h, http.MethodGet, "/api/pieces?query="+url.QueryEscape(tc.query), nil)
+		var results []pieceResponse
+		decodeData(t, rec, &results)
+		if len(results) != 1 || results[0].ID != tc.wantID {
+			t.Errorf("search for %q returned %+v, want exactly [%d] via trigram fallback", tc.query, results, tc.wantID)
+		}
+	}
+
+	// A query with no real relationship to anything (not a prefix, not a
+	// substring, not close enough for the fuzzy tier below either) must
+	// still find nothing — confirms this fallback doesn't degrade into
+	// matching everything. A genuine *typo* (e.g. "nutkracker") now DOES
+	// match, via the fuzzy tier — see
+	// TestSearchPieces_QueryFallsBackToFuzzyForTypos.
+	rec := doJSON(t, h, http.MethodGet, "/api/pieces?query="+url.QueryEscape("xylophone"), nil)
+	var results []pieceResponse
+	decodeData(t, rec, &results)
+	if len(results) != 0 {
+		t.Errorf(`search for "xylophone" (unrelated to any fixture) returned %+v, want no results`, results)
+	}
+
+	// The fallback must still respect other active filters, not just
+	// blindly return every trigram match — confirms it goes through the
+	// same runQuery closure as the primary path, not a separate unfiltered
+	// code path.
+	favRec := doJSON(t, h, http.MethodGet, "/api/pieces?query=crack&favorite=true", nil)
+	var favResults []pieceResponse
+	decodeData(t, favRec, &favResults)
+	if len(favResults) != 0 {
+		t.Errorf("search for \"crack\"+favorite=true returned %+v, want none (Nutcracker Suite isn't a favorite)", favResults)
+	}
+}
+
+// TestSearchPieces_QueryFallsBackToFuzzyForTypos covers the third and last
+// search tier — internal/fuzzy's fuzzydist() SQL function (CLAUDE.md >
+// Search) — reached only when neither prefix (pieces_fts) nor substring
+// (pieces_fts_trigram) find anything at all. Real typos, not substrings:
+// none of these queries are contained anywhere in the target text, so
+// TestSearchPieces_QueryFallsBackToTrigramForMidWordMatch's own tier would
+// find nothing for any of them.
+func TestSearchPieces_QueryFallsBackToFuzzyForTypos(t *testing.T) {
+	h := newTestServer(t)
+	nutcracker := createTestPiece(t, h, map[string]any{"title": "Nutcracker Suite", "composer": "Tchaikovsky"})
+	andantino := createTestPiece(t, h, map[string]any{"title": "Andantino", "composer": "Beethoven"})
+	boely := createTestPiece(t, h, map[string]any{"title": "24 Pieces", "composer": "Alexandre Boëly"})
+
+	for _, tc := range []struct {
+		query  string
+		wantID int64
+	}{
+		{"nutkracker suite", nutcracker.ID}, // inserted letter, whole-phrase typo
+		{"tchaikovski", nutcracker.ID},      // composer typo
+		{"andantno", andantino.ID},          // title typo
+		// Regression case, reported directly: MaxDistance's old floor(5/4)=1
+		// threshold missed this (2 real edits: the diaeresis, "u" for "y") —
+		// fixed by switching to ceiling division (internal/fuzzy.go).
+		{"boelu", boely.ID},
+	} {
+		rec := doJSON(t, h, http.MethodGet, "/api/pieces?query="+url.QueryEscape(tc.query), nil)
+		var results []pieceResponse
+		decodeData(t, rec, &results)
+		if len(results) != 1 || results[0].ID != tc.wantID {
+			t.Errorf("search for %q returned %+v, want exactly [%d] via fuzzy fallback", tc.query, results, tc.wantID)
+		}
+	}
+
+	// The fuzzy tier must never run when a tighter tier already found
+	// something — "andantino" (the real word, no typo) prefix-matches
+	// Andantino directly. If the fuzzy tier ran unconditionally (a bug —
+	// e.g. merged instead of gated on "found nothing so far"), a fuzzy
+	// near-match to "Nutcracker Suite"/"Tchaikovsky" could pollute this
+	// result even though the primary tier already had a clean answer.
+	rec := doJSON(t, h, http.MethodGet, "/api/pieces?query="+url.QueryEscape("andantino"), nil)
+	var results []pieceResponse
+	decodeData(t, rec, &results)
+	if len(results) != 1 || results[0].ID != andantino.ID {
+		t.Errorf(`search for "andantino" returned %+v, want exactly [%d] (fuzzy tier must not run when the primary tier already found a match)`, results, andantino.ID)
+	}
+
+	// The fallback must still respect other active filters, same as the
+	// trigram tier's own equivalent check.
+	favRec := doJSON(t, h, http.MethodGet, "/api/pieces?query="+url.QueryEscape("tchaikovski")+"&favorite=true", nil)
+	var favResults []pieceResponse
+	decodeData(t, favRec, &favResults)
+	if len(favResults) != 0 {
+		t.Errorf(`search for "tchaikovski"+favorite=true returned %+v, want none (Nutcracker Suite isn't a favorite)`, favResults)
+	}
+}
+
 // TestSearchPieces_SheetTypeAndInstrumentFiltersMatchInheritedValues is a
 // regression test for a real gap a code review caught: these two filters
 // were matching only the piece's own column, silently missing pieces that

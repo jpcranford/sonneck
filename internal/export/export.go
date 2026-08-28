@@ -18,22 +18,30 @@ import (
 )
 
 // excludedTables are sqlite_master entries that aren't real user data:
-// goose's own migration-tracking table, sqlite's internal autoincrement
-// bookkeeping, and pieces_fts's virtual table plus its FTS5 shadow tables.
-// The latter are explicitly derived/rebuildable (CLAUDE.md > Search:
-// "pieces_fts... is derived data, not a source of truth... can be safely
-// dropped and rebuilt"), so including them would just be noise in an
-// export meant to hand someone their actual library back.
+// goose's own migration-tracking table and sqlite's internal autoincrement
+// bookkeeping. FTS5 virtual tables (pieces_fts, pieces_fts_trigram —
+// migration 00019) and their shadow tables are excluded separately, in
+// listTables below, discovered from sqlite_master itself rather than
+// hardcoded here by name. They're explicitly derived/rebuildable
+// (CLAUDE.md > Search: "pieces_fts... is derived data, not a source of
+// truth... can be safely dropped and rebuilt"), so including them would
+// just be noise in an export meant to hand someone their actual library
+// back — a hardcoded per-table list here would need a new entry (the base
+// table plus 5 shadow suffixes) every time a future FTS5 table is added,
+// exactly the kind of drift a real gap already caught once: adding
+// pieces_fts_trigram silently slipped six new "tables" into the export
+// before this was made dynamic.
 var excludedTables = map[string]bool{
-	"goose_db_version":   true,
-	"sqlite_sequence":    true,
-	"pieces_fts":         true,
-	"pieces_fts_data":    true,
-	"pieces_fts_idx":     true,
-	"pieces_fts_content": true,
-	"pieces_fts_docsize": true,
-	"pieces_fts_config":  true,
+	"goose_db_version": true,
+	"sqlite_sequence":  true,
 }
+
+// fts5ShadowSuffixes are the fixed set of internal tables SQLite creates
+// alongside any FTS5 virtual table that stores its own content (no
+// content='' external-content option) — confirmed directly against a real
+// fts5 table via this project's actual pinned driver, not assumed from
+// SQLite's docs alone.
+var fts5ShadowSuffixes = []string{"_data", "_idx", "_content", "_docsize", "_config"}
 
 // RunCSV writes one CSV file per real data table into a new timestamped
 // subdirectory of exportDir, returning that subdirectory's path. Table and
@@ -61,6 +69,21 @@ func RunCSV(ctx context.Context, db *sql.DB, exportDir string) (string, error) {
 }
 
 func listTables(ctx context.Context, db *sql.DB) ([]string, error) {
+	fts5Tables, err := fts5VirtualTableNames(ctx, db)
+	if err != nil {
+		return nil, err
+	}
+	excluded := make(map[string]bool, len(excludedTables)+len(fts5Tables)*(1+len(fts5ShadowSuffixes)))
+	for name := range excludedTables {
+		excluded[name] = true
+	}
+	for _, name := range fts5Tables {
+		excluded[name] = true
+		for _, suffix := range fts5ShadowSuffixes {
+			excluded[name+suffix] = true
+		}
+	}
+
 	rows, err := db.QueryContext(ctx, `SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name`)
 	if err != nil {
 		return nil, err
@@ -73,12 +96,38 @@ func listTables(ctx context.Context, db *sql.DB) ([]string, error) {
 		if err := rows.Scan(&name); err != nil {
 			return nil, err
 		}
-		if excludedTables[name] {
+		if excluded[name] {
 			continue
 		}
 		tables = append(tables, name)
 	}
 	return tables, rows.Err()
+}
+
+// fts5VirtualTableNames finds every FTS5 virtual table by its own CREATE
+// VIRTUAL TABLE ... USING fts5(...) statement in sqlite_master, rather
+// than hardcoding table names — the same "discover, don't hardcode"
+// principle this package's own doc comment already applies to real data
+// tables/columns. Confirmed the exact stored `sql` text this LIKE pattern
+// depends on directly against the real driver rather than assuming it.
+func fts5VirtualTableNames(ctx context.Context, db *sql.DB) ([]string, error) {
+	rows, err := db.QueryContext(ctx, `
+		SELECT name FROM sqlite_master
+		WHERE type = 'table' AND sql LIKE 'CREATE VIRTUAL TABLE%USING fts5%'`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var names []string
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return nil, err
+		}
+		names = append(names, name)
+	}
+	return names, rows.Err()
 }
 
 // exportTable writes table's full contents to <outDir>/<table>.csv. Table
