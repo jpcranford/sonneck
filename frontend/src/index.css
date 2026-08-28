@@ -75,6 +75,39 @@
     U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
     U+A720-A7FF;
 }
+/* Weight 500 italic — Piece Details' Source Book card title specifically
+   (added 2026-08-28, per direct request). Same verification bar as the
+   normal-style 500 weight above: confirmed via Google Fonts' CSS2 API
+   plus a byte comparison against the 400 italic file (different content/
+   hash, ~110KB vs ~108KB) and fc-scan reporting the font's own name-table
+   style as "Medium Italic" (fontconfig weight 100 vs 80 for the 400
+   file) — a genuinely distinct hinted cut, not an aliased duplicate that
+   would've silently rendered identical to the 400 file. Confirmed live via
+   a real before/after mockup screenshot before adopting — the 400 render
+   and a font-medium-with-no-matching-file render were pixel-identical
+   (the fallback this file exists to avoid); only once this real file was
+   registered did the weight actually change on screen.*/
+@font-face {
+  font-family: 'Libre Baskerville';
+  font-style: italic;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./assets/fonts/libre-baskerville-latin-500-italic.woff2') format('woff2');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Libre Baskerville';
+  font-style: italic;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./assets/fonts/libre-baskerville-latin-ext-500-italic.woff2') format('woff2');
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
+}
 
 /* Rethink Sans, self-hosted (SIL OFL 1.1, Google Fonts) rather than loaded
    from Google's CDN at runtime — see README > Acknowledgements. Replaces

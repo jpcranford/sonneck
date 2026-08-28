@@ -981,7 +981,7 @@ export function PiecePage() {
                 </div>
                 <Link
                   to={`/books/${book.id}`}
-                  className="font-display text-ink italic hover:text-accent hover:underline"
+                  className="font-display font-medium text-ink italic hover:text-accent hover:underline"
                 >
                   {book.bookTitle}
                 </Link>
