@@ -385,42 +385,6 @@ function FilterDrawer({
             />
           </FacetSection>
 
-          <FacetSection title="Key">
-            {KEY_OPTIONS.map((k) => (
-              <FacetRow
-                key={k}
-                label={k}
-                count={countMatching('key', k)}
-                checked={filters.key.includes(k)}
-                onChange={() => onChange({ ...filters, key: toggleInArray(filters.key, k) })}
-              />
-            ))}
-          </FacetSection>
-
-          <FacetSection title="Instrument">
-            {INSTRUMENT_OPTIONS.map((v) => (
-              <FacetRow
-                key={v}
-                label={v}
-                count={countMatching('instrument', v)}
-                checked={filters.instrument.includes(v)}
-                onChange={() => onChange({ ...filters, instrument: toggleInArray(filters.instrument, v) })}
-              />
-            ))}
-          </FacetSection>
-
-          <FacetSection title="Sheet Type">
-            {SHEET_TYPE_OPTIONS.map((v) => (
-              <FacetRow
-                key={v}
-                label={v}
-                count={countMatching('sheetType', v)}
-                checked={filters.sheetType.includes(v)}
-                onChange={() => onChange({ ...filters, sheetType: toggleInArray(filters.sheetType, v) })}
-              />
-            ))}
-          </FacetSection>
-
           <FacetSection title="Your Tags">
             {USER_TAG_OPTIONS.map((v) => (
               <FacetRow
@@ -441,6 +405,42 @@ function FilterDrawer({
                 count={countStatus(v)}
                 checked={filters.status.includes(v)}
                 onChange={() => onChange({ ...filters, status: toggleInArray(filters.status, v) })}
+              />
+            ))}
+          </FacetSection>
+
+          <FacetSection title="Sheet Type">
+            {SHEET_TYPE_OPTIONS.map((v) => (
+              <FacetRow
+                key={v}
+                label={v}
+                count={countMatching('sheetType', v)}
+                checked={filters.sheetType.includes(v)}
+                onChange={() => onChange({ ...filters, sheetType: toggleInArray(filters.sheetType, v) })}
+              />
+            ))}
+          </FacetSection>
+
+          <FacetSection title="Instrument">
+            {INSTRUMENT_OPTIONS.map((v) => (
+              <FacetRow
+                key={v}
+                label={v}
+                count={countMatching('instrument', v)}
+                checked={filters.instrument.includes(v)}
+                onChange={() => onChange({ ...filters, instrument: toggleInArray(filters.instrument, v) })}
+              />
+            ))}
+          </FacetSection>
+
+          <FacetSection title="Key">
+            {KEY_OPTIONS.map((k) => (
+              <FacetRow
+                key={k}
+                label={k}
+                count={countMatching('key', k)}
+                checked={filters.key.includes(k)}
+                onChange={() => onChange({ ...filters, key: toggleInArray(filters.key, k) })}
               />
             ))}
           </FacetSection>

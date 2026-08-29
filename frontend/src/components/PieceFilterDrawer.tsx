@@ -131,52 +131,6 @@ export function PieceFilterDrawer({
                 </FacetSection>
               )}
 
-              {facets.keys.length > 0 && (
-                <FacetSection title="Key">
-                  {facets.keys.map((k) => (
-                    <FacetRow
-                      key={k.id}
-                      label={k.name}
-                      count={k.count}
-                      checked={filters.keyId.includes(k.id)}
-                      onChange={() => onChange({ ...filters, keyId: toggleInArray(filters.keyId, k.id) })}
-                    />
-                  ))}
-                </FacetSection>
-              )}
-
-              {facets.instruments.length > 0 && (
-                <FacetSection title="Instrument">
-                  {facets.instruments.map((v) => (
-                    <FacetRow
-                      key={v.id}
-                      label={v.name}
-                      count={v.count}
-                      checked={filters.instrumentId.includes(v.id)}
-                      onChange={() =>
-                        onChange({ ...filters, instrumentId: toggleInArray(filters.instrumentId, v.id) })
-                      }
-                    />
-                  ))}
-                </FacetSection>
-              )}
-
-              {facets.sheetTypes.length > 0 && (
-                <FacetSection title="Sheet Type">
-                  {facets.sheetTypes.map((v) => (
-                    <FacetRow
-                      key={v.id}
-                      label={v.name}
-                      count={v.count}
-                      checked={filters.sheetTypeId.includes(v.id)}
-                      onChange={() =>
-                        onChange({ ...filters, sheetTypeId: toggleInArray(filters.sheetTypeId, v.id) })
-                      }
-                    />
-                  ))}
-                </FacetSection>
-              )}
-
               {facets.userTags.length > 0 && (
                 <FacetSection title="Your Tags">
                   {facets.userTags.map((v) => (
@@ -202,6 +156,52 @@ export function PieceFilterDrawer({
                       onChange={() =>
                         onChange({ ...filters, practiceStatus: toggleInArray(filters.practiceStatus, v.status) })
                       }
+                    />
+                  ))}
+                </FacetSection>
+              )}
+
+              {facets.sheetTypes.length > 0 && (
+                <FacetSection title="Sheet Type">
+                  {facets.sheetTypes.map((v) => (
+                    <FacetRow
+                      key={v.id}
+                      label={v.name}
+                      count={v.count}
+                      checked={filters.sheetTypeId.includes(v.id)}
+                      onChange={() =>
+                        onChange({ ...filters, sheetTypeId: toggleInArray(filters.sheetTypeId, v.id) })
+                      }
+                    />
+                  ))}
+                </FacetSection>
+              )}
+
+              {facets.instruments.length > 0 && (
+                <FacetSection title="Instrument">
+                  {facets.instruments.map((v) => (
+                    <FacetRow
+                      key={v.id}
+                      label={v.name}
+                      count={v.count}
+                      checked={filters.instrumentId.includes(v.id)}
+                      onChange={() =>
+                        onChange({ ...filters, instrumentId: toggleInArray(filters.instrumentId, v.id) })
+                      }
+                    />
+                  ))}
+                </FacetSection>
+              )}
+
+              {facets.keys.length > 0 && (
+                <FacetSection title="Key">
+                  {facets.keys.map((k) => (
+                    <FacetRow
+                      key={k.id}
+                      label={k.name}
+                      count={k.count}
+                      checked={filters.keyId.includes(k.id)}
+                      onChange={() => onChange({ ...filters, keyId: toggleInArray(filters.keyId, k.id) })}
                     />
                   ))}
                 </FacetSection>
