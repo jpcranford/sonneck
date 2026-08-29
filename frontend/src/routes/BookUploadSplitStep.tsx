@@ -13,6 +13,7 @@ import { getBookPageThumbnailUrl } from '../api/books'
 import {
   applyRangeAction,
   computeLayout,
+  currentCycleState,
   cyclePage,
   formatPageList,
   pieceIndexForPage,
@@ -511,22 +512,48 @@ export function BookUploadSplitStep({
           onMouseDown={(event) => event.stopPropagation()}
         >
           <div className="px-3 pt-1 pb-1.5 text-xs text-ink-soft">p.{contextMenu.page + pageOffset}</div>
-          {pageMenuItems(contextMenu.page).map((item) => (
-            <button
-              key={item.target}
-              role="menuitem"
-              type="button"
-              onClick={() => {
-                setState(setPageState(contextMenu.page, item.target, state, pageCount))
-                touchedRef.current.add(contextMenu.page)
-                setContextMenu(null)
-              }}
-              className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-ink hover:bg-paper"
-            >
-              <span className="text-ink-soft">{item.icon}</span>
-              {item.label}
-            </button>
-          ))}
+          {(() => {
+            // Page 1 has no 'normal' menu option (no "Clear" entry — see
+            // pageMenuItems) because its own default/untouched state
+            // already reads as 'normal' from currentCycleState, even
+            // though it's semantically page 1's implicit start: setPageState's
+            // own page-1 branch never adds anything for target 'start', so
+            // picking "Start piece here" on an untouched page 1 is a true
+            // no-op, identical before and after. Treat 'normal' as 'start'
+            // for page 1 specifically so that option greys out too,
+            // instead of nothing in the menu ever reading as "current."
+            const rawState = currentCycleState(contextMenu.page, state)
+            const effectiveState = contextMenu.page === 1 && rawState === 'normal' ? 'start' : rawState
+            return pageMenuItems(contextMenu.page).map((item) => {
+              // The option matching the page's own current state isn't a
+              // real choice — picking it would be a no-op — so it's greyed
+              // out and unclickable rather than left looking identical to
+              // every other, actually-actionable option.
+              const isCurrent = item.target === effectiveState
+              return (
+                <button
+                  key={item.target}
+                  role="menuitem"
+                  type="button"
+                  disabled={isCurrent}
+                  aria-current={isCurrent || undefined}
+                  onClick={() => {
+                    setState(setPageState(contextMenu.page, item.target, state, pageCount))
+                    touchedRef.current.add(contextMenu.page)
+                    setContextMenu(null)
+                  }}
+                  className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm ${
+                    isCurrent
+                      ? 'cursor-default text-ink-soft/60'
+                      : 'cursor-pointer text-ink hover:bg-paper'
+                  }`}
+                >
+                  <span className="text-ink-soft">{item.icon}</span>
+                  {item.label}
+                </button>
+              )
+            })
+          })()}
         </div>
       )}
     </div>

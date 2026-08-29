@@ -14,6 +14,7 @@ import { useMockupTitle } from '../lib/useMockupTitle'
 import {
   applyRangeAction,
   computeLayout,
+  currentCycleState,
   cyclePage,
   formatPageList,
   pieceIndexForPage,
@@ -613,22 +614,37 @@ export function UploadBookSplitMockup() {
           onMouseDown={(event) => event.stopPropagation()}
         >
           <div className="px-3 pt-1 pb-1.5 text-xs text-ink-soft">p.{contextMenu.page + PAGE_OFFSET}</div>
-          {pageMenuItems(contextMenu.page).map((item) => (
-            <button
-              key={item.target}
-              role="menuitem"
-              type="button"
-              onClick={() => {
-                setState((s) => setPageState(contextMenu.page, item.target, s, PAGE_COUNT))
-                touchedRef.current.add(contextMenu.page)
-                setContextMenu(null)
-              }}
-              className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-ink hover:bg-paper"
-            >
-              <span className="text-ink-soft">{item.icon}</span>
-              {item.label}
-            </button>
-          ))}
+          {(() => {
+            // Kept in sync with the real BookUploadSplitStep.tsx — see
+            // that file's own comment for the page-1 special case.
+            const rawState = currentCycleState(contextMenu.page, state)
+            const effectiveState = contextMenu.page === 1 && rawState === 'normal' ? 'start' : rawState
+            return pageMenuItems(contextMenu.page).map((item) => {
+              const isCurrent = item.target === effectiveState
+              return (
+                <button
+                  key={item.target}
+                  role="menuitem"
+                  type="button"
+                  disabled={isCurrent}
+                  aria-current={isCurrent || undefined}
+                  onClick={() => {
+                    setState((s) => setPageState(contextMenu.page, item.target, s, PAGE_COUNT))
+                    touchedRef.current.add(contextMenu.page)
+                    setContextMenu(null)
+                  }}
+                  className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm ${
+                    isCurrent
+                      ? 'cursor-default text-ink-soft/60'
+                      : 'cursor-pointer text-ink hover:bg-paper'
+                  }`}
+                >
+                  <span className="text-ink-soft">{item.icon}</span>
+                  {item.label}
+                </button>
+              )
+            })
+          })()}
         </div>
       )}
     </div>
