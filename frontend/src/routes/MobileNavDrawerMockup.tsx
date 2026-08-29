@@ -8,6 +8,8 @@ import {
   IconCloudUpload,
   IconHeart,
   IconCircleHalf2,
+  IconCircleDashed,
+  IconCircleCheckFilled,
   IconMenu2,
   IconX,
 } from '@tabler/icons-react'
@@ -33,7 +35,9 @@ const NAV_ITEMS: NavItem[] = [
 ]
 const SECONDARY_NAV_ITEMS: NavItem[] = [
   { to: '/favorites', label: 'Favorites', icon: IconHeart },
+  { to: '/want-to-learn', label: 'Want to Learn', icon: IconCircleDashed },
   { to: '/practicing', label: 'Currently Practicing', icon: IconCircleHalf2 },
+  { to: '/learned', label: 'Learned', icon: IconCircleCheckFilled },
 ]
 const SETLISTS: { id: string; name: string }[] = []
 

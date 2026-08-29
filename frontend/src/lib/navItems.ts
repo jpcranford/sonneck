@@ -6,6 +6,8 @@ import {
   IconCloudUpload,
   IconHeart,
   IconCircleHalf2,
+  IconCircleDashed,
+  IconCircleCheckFilled,
 } from '@tabler/icons-react'
 
 // Shared between Sidebar.tsx (desktop rail) and MobileNav.tsx (mobile top
@@ -30,10 +32,15 @@ export const NAV_ITEMS: NavItem[] = [
 // own right — split below the divider from the primary nav above.
 export const SECONDARY_NAV_ITEMS: NavItem[] = [
   { to: '/favorites', label: 'Favorites', icon: IconHeart },
+  // Same icon as the "Want to Learn" practice-status pill
+  // (PracticeStatusIcon) — this view is a filter on exactly that status.
+  { to: '/want-to-learn', label: 'Want to Learn', icon: IconCircleDashed },
   // Same icon as the "Learning" practice-status pill (PracticeStatusIcon)
   // — this nav item is literally about practicing pieces, so it borrows
   // that icon rather than a generic progress one.
   { to: '/practicing', label: 'Currently Practicing', icon: IconCircleHalf2 },
+  // Same icon as the "Learned" practice-status pill (PracticeStatusIcon).
+  { to: '/learned', label: 'Learned', icon: IconCircleCheckFilled },
 ]
 
 // No setlist backend yet (design doc §13) — this stays empty until that

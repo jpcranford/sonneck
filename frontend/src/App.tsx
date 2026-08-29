@@ -19,7 +19,9 @@ import { UploadBookConfirmMockup } from './routes/UploadBookConfirmMockup'
 import { MobileNavDrawerMockup } from './routes/MobileNavDrawerMockup'
 import { ComposersPage } from './routes/ComposersPage'
 import { FavoritesPage } from './routes/FavoritesPage'
+import { WantToLearnPage } from './routes/WantToLearnPage'
 import { PracticingPage } from './routes/PracticingPage'
+import { LearnedPage } from './routes/LearnedPage'
 import { SetlistPage } from './routes/SetlistPage'
 import { NotFoundPage } from './routes/NotFoundPage'
 
@@ -49,7 +51,9 @@ function App() {
         <Route path="mockup/upload-book-confirm" element={<UploadBookConfirmMockup />} />
         <Route path="composers" element={<ComposersPage />} />
         <Route path="favorites" element={<FavoritesPage />} />
+        <Route path="want-to-learn" element={<WantToLearnPage />} />
         <Route path="practicing" element={<PracticingPage />} />
+        <Route path="learned" element={<LearnedPage />} />
         <Route path="setlists/:id" element={<SetlistPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
