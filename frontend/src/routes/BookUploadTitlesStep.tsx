@@ -369,6 +369,31 @@ export function BookUploadTitlesStep({
       onBlur: (event: FocusEvent<HTMLInputElement>) => {
         registered.onBlur(event)
         void trigger(`pieces.${index}.${other}`)
+        // Immediate flush on blur — see titleField's own comment for why
+        // this exists alongside the debounced watch() autosave above.
+        onChange(getValues().pieces)
+      },
+    }
+  }
+
+  // Same immediate-flush-on-blur treatment as composerOrArrangerField,
+  // pulled into its own helper since Title has no sibling-validation logic
+  // to also wrap register's onBlur for. The debounced watch() autosave
+  // above (300ms after the last keystroke) already covers "still typing
+  // when the tab crashes," but leaves a real, if narrow, race: a keystroke
+  // followed by a reload/navigation within that 300ms window wouldn't have
+  // flushed yet. A field's onBlur is a hard guarantee independent of the
+  // timer — RHF's own input handling already updates its internal state on
+  // every keystroke, so getValues() here reflects the just-typed value the
+  // moment focus actually leaves the field, which is exactly "navigating
+  // away from a field" rather than "some fixed time after it."
+  function titleField(index: number) {
+    const registered = register(`pieces.${index}.title`, { required: true, maxLength: 255 })
+    return {
+      ...registered,
+      onBlur: (event: FocusEvent<HTMLInputElement>) => {
+        registered.onBlur(event)
+        onChange(getValues().pieces)
       },
     }
   }
@@ -479,7 +504,7 @@ export function BookUploadTitlesStep({
                           titleError ? 'border-red-700' : 'border-border'
                         }`}
                         placeholder="Title"
-                        {...register(`pieces.${index}.title`, { required: true, maxLength: 255 })}
+                        {...titleField(index)}
                       />
                       {titleError && (
                         <span className="mt-0.5 flex items-center gap-1 text-xs text-red-700">
@@ -565,7 +590,7 @@ export function BookUploadTitlesStep({
                           titleError ? 'border-red-700' : 'border-border'
                         }`}
                         placeholder="Title"
-                        {...register(`pieces.${index}.title`, { required: true, maxLength: 255 })}
+                        {...titleField(index)}
                       />
                       {titleError && (
                         <span className="mt-1 flex items-center gap-1 text-xs text-red-700">
