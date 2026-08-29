@@ -190,7 +190,7 @@ export function TagComboBox({
                       }}
                       aria-label={`Remove ${tag.name}`}
                       // Solid pre-blend, not opacity — overlapping icon strokes would re-blend unevenly under real translucency.
-                      className="text-[#8d8780] hover:text-ink"
+                      className="cursor-pointer text-[#8d8780] hover:text-ink"
                     >
                       <IconXFilled size={12} />
                     </button>
@@ -215,7 +215,7 @@ export function TagComboBox({
                     removeTagAt(index)
                   }}
                   aria-label={`Remove ${tag.name}`}
-                  className="hover:text-ink"
+                  className="cursor-pointer hover:text-ink"
                 >
                   <IconXFilled size={11} />
                 </button>
@@ -247,7 +247,7 @@ export function TagComboBox({
                 type="button"
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => selectOption(opt)}
-                className={`block w-full px-3 py-2 text-left text-sm text-ink hover:bg-accent-soft ${
+                className={`block w-full cursor-pointer px-3 py-2 text-left text-sm text-ink hover:bg-accent-soft ${
                   index === highlightedIndex ? 'bg-accent-soft' : ''
                 }`}
               >
@@ -259,7 +259,7 @@ export function TagComboBox({
                 type="button"
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={createNew}
-                className={`block w-full px-3 py-2 text-left text-sm text-accent hover:bg-accent-soft ${
+                className={`block w-full cursor-pointer px-3 py-2 text-left text-sm text-accent hover:bg-accent-soft ${
                   highlightedIndex === visibleOptions.length ? 'bg-accent-soft' : ''
                 }`}
               >

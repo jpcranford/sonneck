@@ -81,7 +81,7 @@ export function SingleSelect({
           onClick={() => (open ? setOpen(false) : openMenu())}
           onKeyDown={handleKeyDown}
           onBlur={() => setTimeout(() => setOpen(false), 150)}
-          className="flex w-full items-center justify-between rounded-md border border-border bg-paper-raised px-3 py-2 text-left text-ink focus:outline focus:outline-2 focus:outline-accent focus:outline-offset-2"
+          className="flex w-full cursor-pointer items-center justify-between rounded-md border border-border bg-paper-raised px-3 py-2 text-left text-ink focus:outline focus:outline-2 focus:outline-accent focus:outline-offset-2"
         >
           <span className={value ? '' : 'text-ink-soft/50'}>{selected?.label ?? '—'}</span>
           {/* Solid pre-blend, not opacity — overlapping icon strokes would re-blend unevenly under real translucency. */}
@@ -95,7 +95,7 @@ export function SingleSelect({
                 type="button"
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => selectOption(opt)}
-                className={`block w-full px-3 py-2 text-left text-sm hover:bg-accent-soft ${
+                className={`block w-full cursor-pointer px-3 py-2 text-left text-sm hover:bg-accent-soft ${
                   opt.value === value ? 'text-accent' : 'text-ink'
                 } ${index === highlightedIndex ? 'bg-accent-soft' : ''}`}
               >

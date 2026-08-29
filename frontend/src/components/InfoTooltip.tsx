@@ -145,7 +145,13 @@ export function InfoTooltip({ message, ariaLabel, triggerClassName, children }: 
         }}
         aria-expanded={open}
         aria-label={ariaLabel}
-        className={triggerClassName}
+        // cursor-pointer baked in here, not left to each caller's own
+        // triggerClassName — a plain <button> resets to cursor: default
+        // (Tailwind's preflight, CLAUDE.md > Frontend), and this component
+        // exists specifically so callers don't have to each remember the
+        // rest of this trigger's styling either; the cursor is no
+        // different.
+        className={`cursor-pointer ${triggerClassName}`}
       >
         {children}
       </button>

@@ -133,7 +133,7 @@ export function SourceBookField({
                   type="button"
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={() => selectBook(book)}
-                  className={`block w-full px-3 py-2 text-left text-sm hover:bg-accent-soft ${
+                  className={`block w-full cursor-pointer px-3 py-2 text-left text-sm hover:bg-accent-soft ${
                     book.id === value ? 'text-accent' : 'text-ink'
                   } ${index === highlightedIndex ? 'bg-accent-soft' : ''}`}
                 >

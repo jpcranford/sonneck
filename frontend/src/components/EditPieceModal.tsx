@@ -468,7 +468,7 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
               type="button"
               onClick={onClose}
               aria-label="Close"
-              className="mt-1 shrink-0 text-ink-soft hover:text-accent"
+              className="mt-1 shrink-0 cursor-pointer text-ink-soft hover:text-accent"
             >
               <IconXFilled size={22} />
             </button>
@@ -515,7 +515,7 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
             <button
               type="button"
               onClick={() => setPreviewOpen((o) => !o)}
-              className="flex w-fit items-center gap-1.5 rounded-full border border-border bg-paper px-3 py-1.5 text-xs text-ink-soft hover:text-ink"
+              className="flex w-fit cursor-pointer items-center gap-1.5 rounded-full border border-border bg-paper px-3 py-1.5 text-xs text-ink-soft hover:text-ink"
             >
               {/* Points right (toward the label) while folded — the usual
                   "expands this way" affordance — and rotates to point down
@@ -578,7 +578,7 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
             <button
               type="button"
               onClick={onClose}
-              className="rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent"
+              className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent"
             >
               Cancel
             </button>
@@ -586,7 +586,7 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
               type="submit"
               form="edit-piece-form"
               disabled={isSaving}
-              className="rounded-md bg-accent px-4 py-2 font-display text-white hover:bg-accent/90 disabled:opacity-60"
+              className="cursor-pointer rounded-md bg-accent px-4 py-2 font-display text-white hover:bg-accent/90 disabled:cursor-default disabled:opacity-60"
             >
               {isSaving ? 'Saving…' : 'Save'}
             </button>
@@ -949,7 +949,7 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
               // Solid pre-blend (icon + label share one color) — identical
               // against a static background either way for the text half,
               // but the chevron icon needs it.
-              className="flex items-center gap-1 text-xs text-[#9d9892] hover:text-ink-soft"
+              className="flex cursor-pointer items-center gap-1 text-xs text-[#9d9892] hover:text-ink-soft"
             >
               <IconChevronRight
                 size={12}
@@ -999,7 +999,7 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
                   type="button"
                   onClick={handleCalculateDuration}
                   disabled={!canCalculateDuration}
-                  className="rounded-md border border-border bg-paper-raised px-3 py-2 font-display text-sm text-ink hover:border-accent disabled:pointer-events-none disabled:opacity-40"
+                  className="cursor-pointer rounded-md border border-border bg-paper-raised px-3 py-2 font-display text-sm text-ink hover:border-accent disabled:pointer-events-none disabled:cursor-default disabled:opacity-40"
                 >
                   Calculate
                 </button>

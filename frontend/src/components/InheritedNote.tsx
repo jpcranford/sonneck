@@ -15,7 +15,7 @@ export function InheritedNote({ bookValue, onCopy }: { bookValue: string; onCopy
       <span>
         Inherited from book: <span className="text-ink italic">{bookValue}</span>
       </span>
-      <button type="button" onClick={onCopy} className="shrink-0 text-accent hover:underline">
+      <button type="button" onClick={onCopy} className="shrink-0 cursor-pointer text-accent hover:underline">
         Copy from book
       </button>
     </div>

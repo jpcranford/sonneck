@@ -244,7 +244,7 @@ function InheritedNote({ bookValue, onCopy }: { bookValue: string; onCopy: () =>
       <span>
         Inherited from book: <span className="text-ink italic">{bookValue}</span>
       </span>
-      <button type="button" onClick={onCopy} className="shrink-0 text-accent hover:underline">
+      <button type="button" onClick={onCopy} className="shrink-0 cursor-pointer text-accent hover:underline">
         Copy from book
       </button>
     </div>
@@ -484,7 +484,7 @@ function TagComboBox({
                       }}
                       aria-label={`Remove ${tag.name}`}
                       // Solid pre-blend, not opacity — overlapping icon strokes would re-blend unevenly under real translucency.
-                      className="text-[#8d8780] hover:text-ink"
+                      className="cursor-pointer text-[#8d8780] hover:text-ink"
                     >
                       <IconXFilled size={12} />
                     </button>
@@ -509,7 +509,7 @@ function TagComboBox({
                     removeTagAt(index)
                   }}
                   aria-label={`Remove ${tag.name}`}
-                  className="hover:text-ink"
+                  className="cursor-pointer hover:text-ink"
                 >
                   <IconXFilled size={11} />
                 </button>
@@ -541,7 +541,7 @@ function TagComboBox({
                 type="button"
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => selectOption(opt)}
-                className={`block w-full px-3 py-2 text-left text-sm text-ink hover:bg-accent-soft ${
+                className={`block w-full cursor-pointer px-3 py-2 text-left text-sm text-ink hover:bg-accent-soft ${
                   index === highlightedIndex ? 'bg-accent-soft' : ''
                 }`}
               >
@@ -553,7 +553,7 @@ function TagComboBox({
                 type="button"
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={createNew}
-                className={`block w-full px-3 py-2 text-left text-sm text-accent hover:bg-accent-soft ${
+                className={`block w-full cursor-pointer px-3 py-2 text-left text-sm text-accent hover:bg-accent-soft ${
                   highlightedIndex === visibleOptions.length ? 'bg-accent-soft' : ''
                 }`}
               >
@@ -646,7 +646,7 @@ function SingleSelect({
           onClick={() => (open ? setOpen(false) : openMenu())}
           onKeyDown={handleKeyDown}
           onBlur={() => setTimeout(() => setOpen(false), 150)}
-          className="flex w-full items-center justify-between rounded-md border border-border bg-paper-raised px-3 py-2 text-left text-ink focus:outline focus:outline-2 focus:outline-accent focus:outline-offset-2"
+          className="flex w-full cursor-pointer items-center justify-between rounded-md border border-border bg-paper-raised px-3 py-2 text-left text-ink focus:outline focus:outline-2 focus:outline-accent focus:outline-offset-2"
         >
           <span className={value ? '' : 'text-ink-soft/50'}>{selected?.label ?? '—'}</span>
           {/* Solid pre-blend, not opacity — overlapping icon strokes would re-blend unevenly under real translucency. */}
@@ -660,7 +660,7 @@ function SingleSelect({
                 type="button"
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => selectOption(opt)}
-                className={`block w-full px-3 py-2 text-left text-sm hover:bg-accent-soft ${
+                className={`block w-full cursor-pointer px-3 py-2 text-left text-sm hover:bg-accent-soft ${
                   opt.value === value ? 'text-accent' : 'text-ink'
                 } ${index === highlightedIndex ? 'bg-accent-soft' : ''}`}
               >
@@ -782,7 +782,7 @@ function SourceBookField({
                   type="button"
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={() => selectBook(book)}
-                  className={`block w-full px-3 py-2 text-left text-sm hover:bg-accent-soft ${
+                  className={`block w-full cursor-pointer px-3 py-2 text-left text-sm hover:bg-accent-soft ${
                     book.id === value ? 'text-accent' : 'text-ink'
                   } ${index === highlightedIndex ? 'bg-accent-soft' : ''}`}
                 >
@@ -1019,7 +1019,7 @@ export function EditPieceModalMockup() {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="w-fit rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent"
+          className="w-fit cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent"
         >
           Reopen mockup
         </button>
@@ -1048,7 +1048,7 @@ export function EditPieceModalMockup() {
                 type="button"
                 onClick={() => setOpen(false)}
                 aria-label="Close"
-                className="mt-1 shrink-0 text-ink-soft hover:text-accent"
+                className="mt-1 shrink-0 cursor-pointer text-ink-soft hover:text-accent"
               >
                 <IconXFilled size={22} />
               </button>
@@ -1087,7 +1087,7 @@ export function EditPieceModalMockup() {
               <button
                 type="button"
                 onClick={() => setPreviewOpen((o) => !o)}
-                className="flex w-fit items-center gap-1.5 rounded-full border border-border bg-paper px-3 py-1.5 text-xs text-ink-soft hover:text-ink"
+                className="flex w-fit cursor-pointer items-center gap-1.5 rounded-full border border-border bg-paper px-3 py-1.5 text-xs text-ink-soft hover:text-ink"
               >
                 {/* Points right (toward the label) while folded, rotates
                     to point down once open, matching the panel expanding
@@ -1129,14 +1129,14 @@ export function EditPieceModalMockup() {
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent"
+              className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent"
             >
               Cancel
             </button>
             <button
               type="submit"
               form="edit-piece-form"
-              className="rounded-md bg-accent px-4 py-2 font-display text-white hover:bg-accent/90"
+              className="cursor-pointer rounded-md bg-accent px-4 py-2 font-display text-white hover:bg-accent/90"
             >
               Save
             </button>
@@ -1482,7 +1482,7 @@ export function EditPieceModalMockup() {
                 type="button"
                 onClick={() => setTempoOpen((o) => !o)}
                 // Solid pre-blend (icon + label share one color).
-                className="flex items-center gap-1 text-xs text-[#9d9892] hover:text-ink-soft"
+                className="flex cursor-pointer items-center gap-1 text-xs text-[#9d9892] hover:text-ink-soft"
               >
                 <IconChevronRight
                   size={12}
@@ -1532,7 +1532,7 @@ export function EditPieceModalMockup() {
                     type="button"
                     onClick={handleCalculateDuration}
                     disabled={!canCalculateDuration}
-                    className="rounded-md border border-border bg-paper-raised px-3 py-2 font-display text-sm text-ink hover:border-accent disabled:pointer-events-none disabled:opacity-40"
+                    className="cursor-pointer rounded-md border border-border bg-paper-raised px-3 py-2 font-display text-sm text-ink hover:border-accent disabled:pointer-events-none disabled:cursor-default disabled:opacity-40"
                   >
                     Calculate
                   </button>
