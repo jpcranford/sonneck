@@ -36,7 +36,16 @@ function NavItemsList({ items, collapsed }: { items: NavItem[]; collapsed: boole
               render-prop now that the icon doesn't vary by nav state
               either. */}
           <Icon size={22} className="text-sidebar-text" />
-          {!collapsed && <span className="truncate">{label}</span>}
+          {/* relative top-[0.6px]: picked by eye against the real render
+              (fonts, hover background) via a throwaway calibration tool
+              (SidebarAlignDebug.tsx, since removed) — a prior attempt
+              based on a headless-Chromium pixel measurement nudged the
+              wrong direction/amount, since font hinting differs by
+              rendering engine and a measurement in one browser isn't a
+              reliable stand-in for another. Icons needed no offset. */}
+          {!collapsed && (
+            <span className="relative top-[0.6px] truncate">{label}</span>
+          )}
         </NavLink>
       ))}
     </nav>

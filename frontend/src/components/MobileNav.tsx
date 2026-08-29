@@ -68,7 +68,9 @@ function DrawerNavList({ items, onNavigate }: { items: NavItem[]; onNavigate: ()
           }
         >
           <Icon size={22} className="text-sidebar-text" />
-          <span className="truncate">{label}</span>
+          {/* relative top-[0.6px]: same eye-calibrated fix as Sidebar.tsx's
+              own NavItemsList — see that file's comment. */}
+          <span className="relative top-[0.6px] truncate">{label}</span>
         </NavLink>
       ))}
     </nav>

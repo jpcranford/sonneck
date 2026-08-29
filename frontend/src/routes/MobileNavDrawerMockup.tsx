@@ -64,7 +64,7 @@ function DrawerNavList({ items }: { items: NavItem[] }) {
           }
         >
           <Icon size={22} className="text-sidebar-text" />
-          <span className="truncate">{label}</span>
+          <span className="relative top-[0.6px] truncate">{label}</span>
         </NavLink>
       ))}
     </nav>
