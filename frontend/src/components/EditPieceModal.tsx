@@ -303,13 +303,21 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
   useEffect(() => {
     if (open) {
       reset(pieceToFormValues(piece))
-      // Reopening (possibly for a different piece) always starts the
-      // preview closed on that piece's own thumbnail page — carrying over
-      // an open/scrolled-to-page-4 state from whatever was last edited
-      // would be confusing, not a convenience.
-      setPreviewOpen(false)
+      // Reopening (possibly for a different piece) always resets to that
+      // piece's own thumbnail page — carrying over a scrolled-to-page-4
+      // state from whatever was last edited would be confusing, not a
+      // convenience. Default open/closed state itself depends on viewport:
+      // a viewport taller than 800px has room to show the preview without
+      // it dominating the dialog, so it starts open there; shorter
+      // viewports (and mobile) keep the original collapsed-by-default
+      // behavior. Deliberately reads viewportHeight via closure rather than
+      // listing it as a dependency — this should only decide the *opening*
+      // state, not re-fire (and reset the whole form) on every resize while
+      // the modal is already open.
+      setPreviewOpen(viewportHeight > 800)
       setPreviewPage(piece.thumbnailPage)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, piece, reset])
 
   // Small fixed lookup lists (design doc §5) — generous staleTime since

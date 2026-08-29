@@ -834,7 +834,12 @@ export function EditPieceModalMockup() {
 
   const [open, setOpen] = useState(true)
   const [tempoOpen, setTempoOpen] = useState(false)
-  const [previewOpen, setPreviewOpen] = useState(false)
+  // Kept in sync with the real EditPieceModal.tsx: a viewport taller than
+  // 800px starts with the preview already open, since there's room for it
+  // without dominating the dialog.
+  const [previewOpen, setPreviewOpen] = useState(
+    () => typeof window !== 'undefined' && window.innerHeight > 800,
+  )
   const [previewPage, setPreviewPage] = useState(MOCK_THUMBNAIL_PAGE)
 
   // Kept in sync with the real EditPieceModal.tsx — see that file's own
