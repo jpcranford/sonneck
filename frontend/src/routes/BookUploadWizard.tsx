@@ -168,6 +168,7 @@ export function BookUploadWizard({ onExit }: BookUploadWizardProps) {
       starts: new Set(draft.pageAssignments.starts),
       skips: new Set(draft.pageAssignments.skips),
       shared: new Set(draft.pageAssignments.shared),
+      single: new Set(draft.pageAssignments.single),
     }
     setPageAssignments(restored)
     setPieceFields(draft.pieceFields)
@@ -185,7 +186,12 @@ export function BookUploadWizard({ onExit }: BookUploadWizardProps) {
     // (incorrectly, but harmlessly) treated as never-touched again after a
     // restore. Acceptable for a reload-recovery path — the worst case is
     // one extra forced "start" tap on such a page, not data loss.
-    touchedPagesRef.current = new Set([...restored.starts, ...restored.skips, ...restored.shared])
+    touchedPagesRef.current = new Set([
+      ...restored.starts,
+      ...restored.skips,
+      ...restored.shared,
+      ...(restored.single ?? []),
+    ])
   }
 
   // Resuming on mount — the actual fix for "restore on return to an
@@ -258,6 +264,7 @@ export function BookUploadWizard({ onExit }: BookUploadWizardProps) {
         starts: [...pageAssignments.starts],
         skips: [...pageAssignments.skips],
         shared: [...pageAssignments.shared],
+        single: [...(pageAssignments.single ?? [])],
       },
       pieceFields,
       pageOffset,

@@ -21,7 +21,16 @@ export interface WizardDraftData {
   bookId: number
   step: WizardDraftStep
   pageCount: number
-  pageAssignments: { starts: number[]; skips: number[]; shared: number[] }
+  // `single` ("Begin and split," added post-launch — see
+  // lib/pieceSplitLogic.ts's own PageAssignments.single comment) was
+  // missing from this type entirely for a while after that feature
+  // shipped (real bug, found 2026-08-29): every "Begin and split" page
+  // silently reverted to a plain page across a reload, since neither the
+  // save nor the restore side of the draft ever touched it. A draft saved
+  // before this field existed now simply fails isWizardDraftData below
+  // and is treated as no draft at all, same low-stakes fallback as
+  // pageOffset's own precedent right below.
+  pageAssignments: { starts: number[]; skips: number[]; shared: number[]; single: number[] }
   pieceFields: { title: string; composer: string; arranger: string }[]
   // Printed-PDF page offset (design doc §5, added post-launch), set on
   // "About this book" — see BookUploadAboutStep.tsx. A draft saved before
@@ -34,12 +43,14 @@ export interface WizardDraftData {
 function isWizardDraftData(value: unknown): value is WizardDraftData {
   if (typeof value !== 'object' || value === null) return false
   const v = value as Record<string, unknown>
+  const pa = v.pageAssignments as Record<string, unknown> | null | undefined
   return (
     typeof v.bookId === 'number' &&
     typeof v.step === 'string' &&
     typeof v.pageCount === 'number' &&
     typeof v.pageAssignments === 'object' &&
-    v.pageAssignments !== null &&
+    pa !== null &&
+    Array.isArray(pa?.single) &&
     Array.isArray(v.pieceFields) &&
     typeof v.pageOffset === 'number'
   )
