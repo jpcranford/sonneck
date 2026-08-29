@@ -26,6 +26,10 @@ describe('titleCase', () => {
     expect(titleCase('somewhere (reprise)')).toBe('Somewhere (Reprise)')
   })
 
+  it('capitalizes a minor word right after an opening parenthesis, unlike mid-title', () => {
+    expect(titleCase('somewhere (the reprise)')).toBe('Somewhere (The Reprise)')
+  })
+
   it('leaves blank input untouched', () => {
     expect(titleCase('')).toBe('')
     expect(titleCase('   ')).toBe('   ')
@@ -59,5 +63,13 @@ describe('nameCase', () => {
 
   it('leaves blank input untouched', () => {
     expect(nameCase('')).toBe('')
+  })
+
+  it('never capitalizes "and" joining two credited names', () => {
+    expect(nameCase('rodgers and hammerstein')).toBe('Rodgers and Hammerstein')
+  })
+
+  it('keeps "and" lowercase even as the first word', () => {
+    expect(nameCase('and sullivan')).toBe('and Sullivan')
   })
 })

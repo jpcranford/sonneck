@@ -42,8 +42,18 @@ export function titleCase(input: string): string {
       const isFirst = i === 0
       const isLast = i === words.length - 1
       const afterColon = i > 0 && words[i - 1].endsWith(':')
+      // A word that opens a parenthetical (e.g. "(reprise)" split on
+      // whitespace leaves "(the" as one token — see capitalizeWord's own
+      // comment) always gets capitalized right after the "(", the same
+      // way the first word of the title itself does — even when that
+      // word would normally be a lowercase minor word mid-title. Found
+      // 2026-08-30: the minor-word branch below returns word.toLowerCase()
+      // directly, which was overriding capitalizeWord's own paren-aware
+      // capitalization for exactly this case ("(the" staying "(the"
+      // instead of becoming "(The").
+      const opensParenthetical = word.startsWith('(')
       const bare = word.replace(/[.,;:!?'"()]/g, '').toLowerCase()
-      if (!isFirst && !isLast && !afterColon && MINOR_WORDS.has(bare)) {
+      if (!isFirst && !isLast && !afterColon && !opensParenthetical && MINOR_WORDS.has(bare)) {
         return word.toLowerCase()
       }
       return capitalizeWord(word)
@@ -60,12 +70,20 @@ const NAME_PARTICLES = new Set([
   'van', 'von', 'der', 'den', 'de', 'del', 'della', 'di', 'la', 'le', 'du', 'da', 'dos', 'das',
 ])
 
+// Joins two credited names in one field ("Rodgers and Hammerstein",
+// "Gilbert and Sullivan") — unlike NAME_PARTICLES above, this never
+// capitalizes regardless of position (found 2026-08-30: it isn't a name
+// particle that reads oddly only when it leads, it's a plain conjunction
+// that should never read as part of anyone's name).
+const NAME_CONJUNCTIONS = new Set(['and'])
+
 export function nameCase(input: string): string {
   if (!input.trim()) return input
   const words = input.trim().split(/\s+/)
   return words
     .map((word, i) => {
       const bare = word.replace(/[.,;:!?'"()]/g, '').toLowerCase()
+      if (NAME_CONJUNCTIONS.has(bare)) return word.toLowerCase()
       if (i > 0 && NAME_PARTICLES.has(bare)) return word.toLowerCase()
       return capitalizeWord(word)
     })
