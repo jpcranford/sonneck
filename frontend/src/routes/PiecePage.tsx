@@ -754,21 +754,35 @@ export function PiecePage() {
                   public domain moved onto the Year written row), with user
                   tags right after practice status. Practice status and
                   user tags stay green (genuinely user data); key/sheetType
-                  are neutral hollow pills like everywhere else. */}
+                  are neutral hollow pills like everywhere else.
+
+                  Both link to the Piece Library (route "/") pre-filtered
+                  to that exact value — PieceBrowseView seeds its drawer
+                  filter state from these same query params on mount (a
+                  lazy useState initializer, read once, then cleared from
+                  the URL so it doesn't linger). Real <Link>s, not
+                  onClick-navigate spans, for the same reason
+                  ClickableCard.tsx uses a real <a> elsewhere — cmd/ctrl/
+                  middle-click and right-click "open in new tab" work for
+                  free. */}
               <div className="mt-1 flex flex-wrap items-center gap-2">
                 {piece.practiceStatus && (
-                  <span className="flex items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent">
+                  <Link
+                    to={`/?practiceStatus=${encodeURIComponent(piece.practiceStatus)}`}
+                    className="flex items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent transition-colors hover:bg-accent/20"
+                  >
                     <PracticeStatusIcon status={piece.practiceStatus} size={13} />
                     {piece.practiceStatus}
-                  </span>
+                  </Link>
                 )}
                 {piece.userTags.map((tag) => (
-                  <span
+                  <Link
                     key={tag.id}
-                    className="rounded-full bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent"
+                    to={`/?userTagId=${tag.id}`}
+                    className="rounded-full bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent transition-colors hover:bg-accent/20"
                   >
                     {tag.name}
-                  </span>
+                  </Link>
                 ))}
                 {/* A piece's keys are a sequence, not an unordered set of
                     tags — a piece that modulates (e.g. A Minor → C Major)

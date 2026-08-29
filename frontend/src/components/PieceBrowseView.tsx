@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import {
   IconAdjustmentsHorizontal,
@@ -95,7 +96,36 @@ export function PieceBrowseView({
   const [sortField, setSortField] = useState<SortField>('dateAdded')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const [drawerFilters, setDrawerFilters] = useState<PieceFilterState>(EMPTY_PIECE_FILTERS)
+  const [searchParams, setSearchParams] = useSearchParams()
+  // Seeded from the URL on first render only (a lazy useState initializer
+  // — never re-read after mount) — Piece Details' user-tag/practice-status
+  // pills link here this way (e.g. `/?userTagId=5`, `/?practiceStatus=
+  // Learning`), so a click on one arrives with that filter already
+  // applied, same as if the user had opened the drawer and checked the
+  // box themselves. Every other filter field starts empty regardless —
+  // this is specifically for "arrived via a pill link," not a general
+  // bookmarkable-filter-state feature.
+  const [drawerFilters, setDrawerFilters] = useState<PieceFilterState>(() => {
+    const userTagId = searchParams.get('userTagId')
+    const practiceStatus = searchParams.get('practiceStatus')
+    return {
+      ...EMPTY_PIECE_FILTERS,
+      userTagId: userTagId ? [Number(userTagId)] : [],
+      practiceStatus: practiceStatus ? [practiceStatus] : [],
+    }
+  })
+  // Clears the seed params right after the initial read above, so the URL
+  // doesn't keep showing `?userTagId=5` once the filter's been applied —
+  // matches this app's general "don't leave stale-looking URL/UI state
+  // around" polish level. Deliberately an empty dependency array: this
+  // must run only once, using whatever was in the URL at mount time, not
+  // re-fire in response to its own setSearchParams call below.
+  useEffect(() => {
+    if (searchParams.has('userTagId') || searchParams.has('practiceStatus')) {
+      setSearchParams({}, { replace: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const debouncedQuery = useDebouncedValue(query)
   // Toggling several drawer checkboxes in quick succession would otherwise
   // fire one request per click (design doc §11's debounce reasoning,
