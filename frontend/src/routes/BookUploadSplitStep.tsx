@@ -2,6 +2,9 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNo
 import {
   IconArrowLeft,
   IconArrowRight,
+  IconCircleCaretLeftFilled,
+  IconCircleCaretRightFilled,
+  IconCircleFilled,
   IconScissors,
   IconEyeOff,
   IconArrowsLeftRight,
@@ -10,6 +13,12 @@ import {
   IconX,
 } from '@tabler/icons-react'
 import { getBookPageThumbnailUrl } from '../api/books'
+import {
+  computeLaneSegments,
+  laneDiagonalMaskStyle,
+  useGridColumns,
+  LANE_OUTSET_PX,
+} from '../lib/pieceLaneLayout'
 import {
   applyRangeAction,
   computeLayout,
@@ -44,6 +53,12 @@ const LONG_PRESS_MS = 500
 const LONG_PRESS_MOVE_CANCEL_PX = 10
 const CURRENT_STEP = 4
 
+// A generic portrait-page guess (matches UploadBookSplitMockup.tsx's own
+// placeholder SVG viewBox, 100x130) used only until the *real* aspect
+// ratio is known — see the pageAspectRatio state's own comment for why a
+// real measurement always wins once one exists.
+const FALLBACK_PAGE_ASPECT_RATIO = 100 / 130
+
 interface PageMenuItem {
   label: string
   icon: ReactNode
@@ -52,8 +67,8 @@ interface PageMenuItem {
 
 // "Begin and split" (target: 'single', added post-launch) is menu-only,
 // not part of the plain tap cycle (see CYCLE_ORDER's own comment in
-// pieceSplitLogic.ts) — distinct from "Split page (finish previous,
-// start new)" just above it: that one shares a page between two pieces
+// pieceSplitLogic.ts) — distinct from "Finish previous and split" just
+// above it: that one shares a page between two pieces
 // where the *first* of the two was already running from earlier pages.
 // This one closes a brand-new, self-contained one-page piece right on
 // this exact page — cleanly split from whatever ran before it — and, on
@@ -67,18 +82,18 @@ function pageMenuItems(page: number): PageMenuItem[] {
   if (page === 1) {
     return [
       { label: 'Start piece here', icon: <IconScissors size={14} />, target: 'start' },
-      { label: 'Begin and split (one-page piece)', icon: <IconCrop size={14} />, target: 'single' },
+      { label: 'Begin and split', icon: <IconCrop size={14} />, target: 'single' },
       { label: 'Skip this page', icon: <IconEyeOff size={14} />, target: 'skip' },
     ]
   }
   return [
     { label: 'Start a new piece', icon: <IconScissors size={14} />, target: 'start' },
     {
-      label: 'Split page (finish previous, start new)',
+      label: 'Finish previous and split',
       icon: <IconArrowsLeftRight size={14} />,
       target: 'shared',
     },
-    { label: 'Begin and split (one-page piece)', icon: <IconCrop size={14} />, target: 'single' },
+    { label: 'Begin and split', icon: <IconCrop size={14} />, target: 'single' },
     { label: 'Skip this page', icon: <IconEyeOff size={14} />, target: 'skip' },
     { label: 'Clear (plain page)', icon: <IconX size={14} />, target: 'normal' },
   ]
@@ -128,6 +143,50 @@ export function BookUploadSplitStep({
   const longPressOriginRef = useRef<{ x: number; y: number } | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
+  // Real bug, found live against a 400+ page book (never surfaced against
+  // this screen's own small test fixtures, which load close enough to
+  // instantly that the gap this fixes is never visible): each tile's
+  // `<img loading="lazy">` has *no* declared size, so a page whose
+  // thumbnail hasn't loaded yet — the overwhelming majority of a long
+  // book's pages, most of them off-screen and not even requested yet
+  // under lazy-loading — collapses its own grid row to near-zero height.
+  // The Group Lane/chevron overlays both depend on every real row being
+  // the *same* height (their own `repeat(totalRows, 1fr)` division is only
+  // valid under that assumption — see their own comments) — a wildly
+  // non-uniform mix of full-height (loaded) and collapsed (not-yet-loaded)
+  // rows breaks that outright, which is what actually produced "lanes not
+  // lining up with the thumbs at all" at real scale.
+  //
+  // Fix: every tile reserves its final height *before* its image has
+  // loaded, via a wrapper `aspect-ratio` box, so every row is uniformly
+  // sized regardless of load state — the placeholder protects the layout,
+  // then the real thumbnail hot-swaps in on top of it once it's ready.
+  // `pageAspectRatio` is shared (not per-tile) specifically so a
+  // not-yet-loaded page's placeholder uses the *real*, measured ratio the
+  // moment any other page on the same book has already revealed it — one
+  // real PDF's pages are always uniform aspect ratio in practice (the same
+  // assumption the lane math itself already depends on), so the first
+  // loaded thumbnail is as good a source of truth as any. Falls back to
+  // FALLBACK_PAGE_ASPECT_RATIO only for the brief window before literally
+  // anything has loaded.
+  const [pageAspectRatio, setPageAspectRatio] = useState<number | null>(null)
+  const [loadedPages, setLoadedPages] = useState<Set<number>>(new Set())
+  const handleThumbnailLoad = useCallback(
+    (page: number, event: React.SyntheticEvent<HTMLImageElement>) => {
+      const img = event.currentTarget
+      if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+        setPageAspectRatio((current) => current ?? img.naturalWidth / img.naturalHeight)
+      }
+      setLoadedPages((current) => {
+        if (current.has(page)) return current
+        const next = new Set(current)
+        next.add(page)
+        return next
+      })
+    },
+    [],
+  )
+
   // The mockup this was ported from kept `state` in a local `useState` and
   // read it via a functional updater (`setState((s) => cyclePage(..., s))`)
   // inside the pointerup effect below, which is always fresh regardless of
@@ -155,6 +214,9 @@ export function BookUploadSplitStep({
   }, [setState])
 
   const pieces = computeLayout(state, pageCount)
+  const columns = useGridColumns()
+  const laneSegments = computeLaneSegments(pieces, columns)
+  const totalRows = Math.ceil(pageCount / columns)
   const selection =
     dragAnchor !== null && dragCurrent !== null && dragAnchor !== dragCurrent
       ? [Math.min(dragAnchor, dragCurrent), Math.max(dragAnchor, dragCurrent)]
@@ -292,67 +354,125 @@ export function BookUploadSplitStep({
         </p>
       </div>
 
-      <div
-        ref={gridRef}
-        className="grid grid-cols-3 gap-3 touch-none select-none sm:grid-cols-6"
-        onPointerMove={handlePointerMove}
-      >
-        {Array.from({ length: pageCount }, (_, i) => i + 1).map((page) => {
-          const isSkip = state.skips.has(page)
-          const pieceIdx = pieceIndexForPage(pieces, page)
-          const piece = pieces[pieceIdx]
-          const isStart = page === piece?.start
-          const isSharedStart = isStart && state.shared.has(page)
-          const isSingleStart = isStart && (state.single?.has(page) ?? false)
-          const isPending = piece?.isLast && !isStart && !isSkip && page !== pageCount
-          const isSelected = selection && page >= selection[0] && page <= selection[1]
+      <div className="relative">
+        {/* Lanes live in a wholly separate grid, absolutely positioned to
+            exactly cover the real tiles grid below — not interleaved into
+            that same grid via explicit grid-column/grid-row (browsers
+            reserve an explicitly-placed item's cells and route
+            auto-placed siblings *around* them, scrambling the whole
+            layout — confirmed live building the mockup this was ported
+            from). Same column template/gap so column lines land in the
+            same place; `grid-template-rows: repeat(rows, 1fr)` divides
+            its own (absolutely-positioned, so definite-height) box evenly
+            to match, which is only valid because every real row here is
+            the same height (identical page-thumbnail aspect ratio
+            throughout) — not a general solution if that ever stops being
+            true. pointer-events-none throughout so drag-select/long-press
+            (hit-testing via elementFromPoint) always resolves to the real
+            tile, never a lane sitting in front of it. See
+            UploadBookSplitMockup.tsx and lib/pieceLaneLayout.ts for the
+            full design/bugfix history behind this. */}
+        <div
+          className="pointer-events-none absolute inset-0 grid grid-cols-3 gap-3 sm:grid-cols-6"
+          style={{ gridTemplateRows: `repeat(${totalRows}, 1fr)` }}
+        >
+          {laneSegments.map((seg) => (
+            <div
+              key={seg.key}
+              className="rounded-[10px]"
+              style={{
+                gridColumn: `${seg.colStart + 1} / ${seg.colEnd + 1}`,
+                gridRow: seg.row + 1,
+                margin: -LANE_OUTSET_PX,
+                background: `${seg.color}1a`, // ~10% alpha
+                border: `1.5px solid ${seg.color}73`, // ~45% alpha
+                ...laneDiagonalMaskStyle(seg),
+              }}
+            />
+          ))}
+        </div>
 
-          const badgeKind: 'single' | 'start' | 'shared' | 'pending' | 'skip' | null = isSingleStart
-            ? 'single'
-            : isSharedStart
-              ? 'shared'
-              : isStart
-                ? 'start'
-                : isPending
-                  ? 'pending'
-                  : isSkip
-                    ? 'skip'
-                    : null
+        <div
+          ref={gridRef}
+          className="relative grid grid-cols-3 gap-3 touch-none select-none sm:grid-cols-6"
+          onPointerMove={handlePointerMove}
+        >
+          {Array.from({ length: pageCount }, (_, i) => i + 1).map((page) => {
+            const isSkip = state.skips.has(page)
+            const pieceIdx = pieceIndexForPage(pieces, page)
+            const piece = pieces[pieceIdx]
+            const isStart = page === piece?.start
+            const isSharedStart = isStart && state.shared.has(page)
+            const isSingleStart = isStart && (state.single?.has(page) ?? false)
+            const isPending = piece?.isLast && !isStart && !isSkip && page !== pageCount
+            const isSelected = selection && page >= selection[0] && page <= selection[1]
 
-          let borderStyle: React.CSSProperties = {}
-          let sharedGradient: string | null = null
-          if (badgeKind === 'skip') {
-            borderStyle = { borderStyle: 'dashed', borderColor: '#c9c2b6' }
-          } else if (badgeKind === 'shared') {
-            const prevPiece = pieces[pieceIdx - 1]
-            const prevIsBridgeCounterpart = prevPiece && prevPiece.start === piece.start
-            const prevColor = prevPiece
-              ? prevIsBridgeCounterpart
-                ? prevPiece.color
-                : `${prevPiece.color}61`
-              : piece.color
-            sharedGradient = `linear-gradient(135deg, ${prevColor} 50%, ${piece.color} 50%)`
-          } else if (badgeKind === 'single') {
-            // Same two-color diagonal as 'shared' just above, but both
-            // halves stay full strength (not tinted) — pieces[pieceIdx-1]
-            // is always the synthetic one-page piece computeLayout pushes
-            // immediately before the continuing piece for a 'single'
-            // start (the exact same "two Piece entries share one start"
-            // shape as 'shared' after a skip), so this is that same
-            // bridge-counterpart case 'shared' already special-cases to
-            // full strength — just always true here, not only sometimes.
-            const closedPiece = pieces[pieceIdx - 1]
-            const closedColor = closedPiece ? closedPiece.color : piece.color
-            sharedGradient = `linear-gradient(135deg, ${closedColor} 50%, ${piece.color} 50%)`
-          } else if (badgeKind === 'start') {
-            borderStyle = { borderColor: piece.color }
-          } else {
-            borderStyle = { borderColor: `${piece.color}61` }
-          }
+            const badgeKind: 'single' | 'start' | 'shared' | 'pending' | 'skip' | null =
+              isSingleStart
+                ? 'single'
+                : isSharedStart
+                  ? 'shared'
+                  : isStart
+                    ? 'start'
+                    : isPending
+                      ? 'pending'
+                      : isSkip
+                        ? 'skip'
+                        : null
 
-          return (
-            <div key={page} className="flex flex-col items-center gap-1">
+            let borderStyle: React.CSSProperties = {}
+            let sharedGradient: string | null = null
+            if (badgeKind === 'skip') {
+              // No border at all — kept as an invisible, same-width border
+              // via a transparent color rather than dropping border-width
+              // itself, so the grid doesn't visually jump when a page
+              // toggles to/from skip. A skipped page is excluded content,
+              // not a piece boundary. Paired with the thumbnail's own
+              // reduced opacity (see the className below) and the badge
+              // using a plain X rather than an eye-off icon.
+              borderStyle = { borderColor: 'transparent' }
+            } else if (badgeKind === 'shared') {
+              const prevPiece = pieces[pieceIdx - 1]
+              const prevIsBridgeCounterpart = prevPiece && prevPiece.start === piece.start
+              const prevColor = prevPiece
+                ? prevIsBridgeCounterpart
+                  ? prevPiece.color
+                  : `${prevPiece.color}61`
+                : piece.color
+              sharedGradient = `linear-gradient(135deg, ${prevColor} 50%, ${piece.color} 50%)`
+            } else if (badgeKind === 'single') {
+              // Same two-color diagonal as 'shared' just above, but both
+              // halves stay full strength (not tinted) — pieces[pieceIdx-1]
+              // is always the synthetic one-page piece computeLayout pushes
+              // immediately before the continuing piece for a 'single'
+              // start (the exact same "two Piece entries share one start"
+              // shape as 'shared' after a skip), so this is that same
+              // bridge-counterpart case 'shared' already special-cases to
+              // full strength — just always true here, not only sometimes.
+              const closedPiece = pieces[pieceIdx - 1]
+              const closedColor = closedPiece ? closedPiece.color : piece.color
+              sharedGradient = `linear-gradient(135deg, ${closedColor} 50%, ${piece.color} 50%)`
+            } else if (badgeKind === 'start') {
+              borderStyle = { borderColor: piece.color }
+            } else if (badgeKind === 'pending') {
+              // The still-open piece (no explicit closing boundary yet)
+              // keeps a tinted dashed border — the one remaining real
+              // signal a border still needs to carry: "this piece might not
+              // be done." A genuinely plain member page (below) no longer
+              // needs a border at all for the same purpose, since the Group
+              // Lane background already shows which piece a page belongs to.
+              borderStyle = { borderStyle: 'dashed', borderColor: `${piece.color}61` } // ~38% alpha
+            } else {
+              // Plain member page (badgeKind null) — no badge, no border.
+              // Same transparent-border treatment as 'skip' above, for the
+              // same reflow-avoidance reason. The Group Lane fill is now the
+              // only thing marking a plain page as part of its piece.
+              borderStyle = { borderColor: 'transparent' }
+            }
+
+            return (
               <div
+                key={page}
                 data-page={page}
                 className="relative w-full cursor-pointer"
                 onPointerDown={(e) => {
@@ -387,28 +507,42 @@ export function BookUploadSplitStep({
               >
                 {sharedGradient ? (
                   <div
-                    className="overflow-hidden rounded-md p-[2px]"
+                    className="relative overflow-hidden rounded-md p-[2px]"
                     style={{ background: sharedGradient }}
                   >
-                    <div className="overflow-hidden rounded-[4px]">
+                    <div
+                      className="overflow-hidden rounded-[4px] bg-paper-sunken"
+                      style={{ aspectRatio: pageAspectRatio ?? FALLBACK_PAGE_ASPECT_RATIO }}
+                    >
                       <img
                         src={getBookPageThumbnailUrl(bookId, page)}
                         alt=""
                         loading="lazy"
-                        className="block h-auto w-full"
+                        onLoad={(e) => handleThumbnailLoad(page, e)}
+                        className={`block h-auto w-full transition-opacity duration-300 ${
+                          loadedPages.has(page) ? 'opacity-100' : 'opacity-0'
+                        }`}
                       />
                     </div>
                   </div>
                 ) : (
                   <div
-                    className="overflow-hidden rounded-md border-2 transition-shadow"
-                    style={borderStyle}
+                    className={`overflow-hidden rounded-md border-2 bg-paper-sunken transition-shadow ${
+                      badgeKind === 'skip' ? 'opacity-40' : ''
+                    }`}
+                    style={{
+                      ...borderStyle,
+                      aspectRatio: pageAspectRatio ?? FALLBACK_PAGE_ASPECT_RATIO,
+                    }}
                   >
                     <img
                       src={getBookPageThumbnailUrl(bookId, page)}
                       alt=""
                       loading="lazy"
-                      className="block h-auto w-full"
+                      onLoad={(e) => handleThumbnailLoad(page, e)}
+                      className={`block h-auto w-full transition-opacity duration-300 ${
+                        loadedPages.has(page) ? 'opacity-100' : 'opacity-0'
+                      }`}
                     />
                   </div>
                 )}
@@ -417,18 +551,81 @@ export function BookUploadSplitStep({
                 )}
                 {badgeKind && (
                   <span className="absolute top-1 right-1 flex size-[18px] items-center justify-center rounded bg-ink/75 text-white">
-                    {badgeKind === 'skip' && <IconEyeOff size={11} />}
+                    {badgeKind === 'skip' && <IconX size={11} />}
                     {badgeKind === 'shared' && <IconArrowsLeftRight size={11} />}
                     {badgeKind === 'start' && <IconScissors size={11} />}
                     {badgeKind === 'single' && <IconCrop size={11} />}
                     {badgeKind === 'pending' && <IconDots size={12} />}
                   </span>
                 )}
+                {/* In normal flow, inside this same per-page grid cell — see
+                  UploadBookSplitMockup.tsx's own comment on why (a
+                  separate captions grid stacked below the whole thing only
+                  lines up by coincidence once there's more than one tile
+                  row). Being a real DOM sibling inside the tile's own cell
+                  makes correct placement automatic, and makes every real
+                  tile row uniformly taller by exactly one caption's
+                  height — which the Group Lane/chevron overlays below pick
+                  up for free, since they already divide their own box into
+                  totalRows equal fractions matching the real tiles grid's
+                  own natural height. */}
+                <span className="mt-1 block text-center text-[0.65rem] text-ink-soft">
+                  p.{page + pageOffset}
+                </span>
               </div>
-              <span className="text-[0.65rem] text-ink-soft">p.{page + pageOffset}</span>
-            </div>
-          )
-        })}
+            )
+          })}
+        </div>
+
+        {/* Row-wrap continuation marks — a lane simply stopping at the
+            row's right edge is indistinguishable from a piece that
+            genuinely ends there by coincidence. A stacked pair at
+            whichever edge the *same* piece actually continues across:
+            `IconCircleFilled` (paper-colored) as an opaque backdrop,
+            with `IconCircleCaretRightFilled`/`...LeftFilled` (colored to
+            the wrapping lane) on top — see lib/pieceLaneLayout.ts and
+            UploadBookSplitMockup.tsx for the full derivation of why this
+            needs to be a two-layer stack, and why it's a *third* overlay
+            grid rendered after the real tiles grid rather than inside the
+            lane grid above. */}
+        <div
+          className="pointer-events-none absolute inset-0 grid grid-cols-3 gap-3 sm:grid-cols-6"
+          style={{ gridTemplateRows: `repeat(${totalRows}, 1fr)` }}
+        >
+          {laneSegments
+            .filter((seg) => seg.wrapsToNextRow || seg.wrapsFromPrevRow)
+            .map((seg) => (
+              <div
+                key={`${seg.key}-wrap`}
+                className="relative"
+                style={{
+                  gridColumn: `${seg.colStart + 1} / ${seg.colEnd + 1}`,
+                  gridRow: seg.row + 1,
+                }}
+              >
+                {seg.wrapsToNextRow && (
+                  <span className="absolute top-1/2 -right-[12px] flex size-6 -translate-y-1/2 items-center justify-center">
+                    <IconCircleFilled size={24} className="absolute text-paper" />
+                    <IconCircleCaretRightFilled
+                      size={24}
+                      className="absolute"
+                      style={{ color: seg.color }}
+                    />
+                  </span>
+                )}
+                {seg.wrapsFromPrevRow && (
+                  <span className="absolute top-1/2 -left-[12px] flex size-6 -translate-y-1/2 items-center justify-center">
+                    <IconCircleFilled size={24} className="absolute text-paper" />
+                    <IconCircleCaretLeftFilled
+                      size={24}
+                      className="absolute"
+                      style={{ color: seg.color }}
+                    />
+                  </span>
+                )}
+              </div>
+            ))}
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-2 border-t border-border pt-4">
@@ -439,7 +636,8 @@ export function BookUploadSplitStep({
             style={{ borderColor: piece.color, backgroundColor: `${piece.color}1a` }}
           >
             <span className="size-1.5 rounded-full" style={{ backgroundColor: piece.color }} />
-            Piece {index + 1} • {piece.end !== piece.start ? 'pp.' : 'p.'} {piece.start + pageOffset}
+            Piece {index + 1} • {piece.end !== piece.start ? 'pp.' : 'p.'}{' '}
+            {piece.start + pageOffset}
             {piece.end !== piece.start ? `–${piece.end + pageOffset}` : ''}
           </span>
         ))}
@@ -511,7 +709,9 @@ export function BookUploadSplitStep({
           style={{ top: contextMenu.y, left: contextMenu.x }}
           onMouseDown={(event) => event.stopPropagation()}
         >
-          <div className="px-3 pt-1 pb-1.5 text-xs text-ink-soft">p.{contextMenu.page + pageOffset}</div>
+          <div className="px-3 pt-1 pb-1.5 text-xs text-ink-soft">
+            p.{contextMenu.page + pageOffset}
+          </div>
           {(() => {
             // Page 1 has no 'normal' menu option (no "Clear" entry — see
             // pageMenuItems) because its own default/untouched state
@@ -523,7 +723,8 @@ export function BookUploadSplitStep({
             // for page 1 specifically so that option greys out too,
             // instead of nothing in the menu ever reading as "current."
             const rawState = currentCycleState(contextMenu.page, state)
-            const effectiveState = contextMenu.page === 1 && rawState === 'normal' ? 'start' : rawState
+            const effectiveState =
+              contextMenu.page === 1 && rawState === 'normal' ? 'start' : rawState
             return pageMenuItems(contextMenu.page).map((item) => {
               // The option matching the page's own current state isn't a
               // real choice — picking it would be a no-op — so it's greyed
