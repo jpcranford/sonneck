@@ -2,13 +2,14 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNo
 import {
   IconArrowLeft,
   IconArrowRight,
+  IconArrowsSplit2,
+  IconBoxMultiple2,
   IconCircleCaretLeftFilled,
   IconCircleCaretRightFilled,
   IconCircleFilled,
+  IconFile,
   IconScissors,
-  IconEyeOff,
   IconArrowsLeftRight,
-  IconCrop,
   IconDots,
   IconX,
 } from '@tabler/icons-react'
@@ -78,12 +79,23 @@ interface PageMenuItem {
 // own synthetic-bridge case for `shared` after a skip) — this just
 // triggers that shape directly, on request, instead of only as a side
 // effect of a skip.
+//
+// "Finish previous and split twice" (target: 'double', ported from
+// UploadBookSplitMockup.tsx once approved there) sits right after "Finish
+// previous and split" — it's that same behavior *plus* "Begin and split"
+// chained onto it: the previous piece still finishes exactly here, but
+// instead of the new piece starting directly, a brand-new one-page piece
+// closes immediately first, *then* the real continuing piece begins.
+// Three Piece entries share this one page. `IconArrowsSplit2` (also used
+// by "Begin and split" now) reads as a two-way fork, echoing
+// `IconArrowsLeftRight`'s own arrow language for "Finish previous and
+// split" just above it — `IconBoxMultiple2` marks "twice."
 function pageMenuItems(page: number): PageMenuItem[] {
   if (page === 1) {
     return [
       { label: 'Start piece here', icon: <IconScissors size={14} />, target: 'start' },
-      { label: 'Begin and split', icon: <IconCrop size={14} />, target: 'single' },
-      { label: 'Skip this page', icon: <IconEyeOff size={14} />, target: 'skip' },
+      { label: 'Begin and split', icon: <IconArrowsSplit2 size={14} />, target: 'single' },
+      { label: 'Skip this page', icon: <IconX size={14} />, target: 'skip' },
     ]
   }
   return [
@@ -93,9 +105,14 @@ function pageMenuItems(page: number): PageMenuItem[] {
       icon: <IconArrowsLeftRight size={14} />,
       target: 'shared',
     },
-    { label: 'Begin and split', icon: <IconCrop size={14} />, target: 'single' },
-    { label: 'Skip this page', icon: <IconEyeOff size={14} />, target: 'skip' },
-    { label: 'Clear (plain page)', icon: <IconX size={14} />, target: 'normal' },
+    {
+      label: 'Finish previous and split twice',
+      icon: <IconBoxMultiple2 size={14} />,
+      target: 'double',
+    },
+    { label: 'Begin and split', icon: <IconArrowsSplit2 size={14} />, target: 'single' },
+    { label: 'Skip this page', icon: <IconX size={14} />, target: 'skip' },
+    { label: 'Clear (plain page)', icon: <IconFile size={14} />, target: 'normal' },
   ]
 }
 
@@ -404,21 +421,28 @@ export function BookUploadSplitStep({
             const isStart = page === piece?.start
             const isSharedStart = isStart && state.shared.has(page)
             const isSingleStart = isStart && (state.single?.has(page) ?? false)
+            const isDoubleStart = isStart && (state.double?.has(page) ?? false)
             const isPending = piece?.isLast && !isStart && !isSkip && page !== pageCount
             const isSelected = selection && page >= selection[0] && page <= selection[1]
 
-            const badgeKind: 'single' | 'start' | 'shared' | 'pending' | 'skip' | null =
-              isSingleStart
-                ? 'single'
-                : isSharedStart
-                  ? 'shared'
-                  : isStart
-                    ? 'start'
-                    : isPending
-                      ? 'pending'
-                      : isSkip
-                        ? 'skip'
-                        : null
+            // 'single', 'double', and 'shared' never collide with each
+            // other (setPageState keeps them mutually exclusive), so their
+            // relative priority here doesn't matter in practice — most
+            // specific first, matching UploadBookSplitMockup.tsx.
+            const badgeKind: 'single' | 'double' | 'start' | 'shared' | 'pending' | 'skip' | null =
+              isDoubleStart
+                ? 'double'
+                : isSingleStart
+                  ? 'single'
+                  : isSharedStart
+                    ? 'shared'
+                    : isStart
+                      ? 'start'
+                      : isPending
+                        ? 'pending'
+                        : isSkip
+                          ? 'skip'
+                          : null
 
             let borderStyle: React.CSSProperties = {}
             let sharedGradient: string | null = null
@@ -452,6 +476,30 @@ export function BookUploadSplitStep({
               const closedPiece = pieces[pieceIdx - 1]
               const closedColor = closedPiece ? closedPiece.color : piece.color
               sharedGradient = `linear-gradient(135deg, ${closedColor} 50%, ${piece.color} 50%)`
+            } else if (badgeKind === 'double') {
+              // "Finish previous and split twice" — three Piece entries
+              // touch this one page, so this is a three-stop diagonal
+              // instead of 'shared'/'single's two. pieces[pieceIdx-1] is
+              // always the middle synthetic bridge (computeLayout pushes
+              // it unconditionally, same as 'single' does) — full
+              // strength, same "always a genuine same-page beginning"
+              // reasoning 'single' already uses. pieces[pieceIdx-2] is
+              // whichever piece precedes *that* bridge: the real previous
+              // piece if one exists (tinted, unless it's itself a same-
+              // page bridge-counterpart, mirroring 'shared's own
+              // prevColor logic exactly), or undefined only if something
+              // upstream is inconsistent. See UploadBookSplitMockup.tsx
+              // for the full derivation.
+              const middleBridge = pieces[pieceIdx - 1]
+              const middleColor = middleBridge ? middleBridge.color : piece.color
+              const prevPiece = pieces[pieceIdx - 2]
+              const prevIsBridgeCounterpart = prevPiece && prevPiece.start === piece.start
+              const prevColor = prevPiece
+                ? prevIsBridgeCounterpart
+                  ? prevPiece.color
+                  : `${prevPiece.color}61`
+                : piece.color
+              sharedGradient = `linear-gradient(135deg, ${prevColor} 33%, ${middleColor} 33% 67%, ${piece.color} 67%)`
             } else if (badgeKind === 'start') {
               borderStyle = { borderColor: piece.color }
             } else if (badgeKind === 'pending') {
@@ -554,7 +602,8 @@ export function BookUploadSplitStep({
                     {badgeKind === 'skip' && <IconX size={11} />}
                     {badgeKind === 'shared' && <IconArrowsLeftRight size={11} />}
                     {badgeKind === 'start' && <IconScissors size={11} />}
-                    {badgeKind === 'single' && <IconCrop size={11} />}
+                    {badgeKind === 'single' && <IconArrowsSplit2 size={11} />}
+                    {badgeKind === 'double' && <IconBoxMultiple2 size={11} />}
                     {badgeKind === 'pending' && <IconDots size={12} />}
                   </span>
                 )}

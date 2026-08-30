@@ -30,7 +30,18 @@ export interface WizardDraftData {
   // before this field existed now simply fails isWizardDraftData below
   // and is treated as no draft at all, same low-stakes fallback as
   // pageOffset's own precedent right below.
-  pageAssignments: { starts: number[]; skips: number[]; shared: number[]; single: number[] }
+  //
+  // `double` ("Finish previous and split twice") hit the exact same bug
+  // for the exact same reason when it was ported into the real component —
+  // added here now, same treatment: a draft saved before this field
+  // existed simply fails isWizardDraftData and is treated as no draft.
+  pageAssignments: {
+    starts: number[]
+    skips: number[]
+    shared: number[]
+    single: number[]
+    double: number[]
+  }
   pieceFields: { title: string; composer: string; arranger: string }[]
   // Printed-PDF page offset (design doc §5, added post-launch), set on
   // "About this book" — see BookUploadAboutStep.tsx. A draft saved before
@@ -51,6 +62,7 @@ function isWizardDraftData(value: unknown): value is WizardDraftData {
     typeof v.pageAssignments === 'object' &&
     pa !== null &&
     Array.isArray(pa?.single) &&
+    Array.isArray(pa?.double) &&
     Array.isArray(v.pieceFields) &&
     typeof v.pageOffset === 'number'
   )

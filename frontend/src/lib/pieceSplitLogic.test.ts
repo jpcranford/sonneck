@@ -218,7 +218,12 @@ describe('"begin and split" (a page that is both a complete one-page piece AND t
     // starts at 5 but stays open, continuing forward exactly like any
     // other piece start (nothing marks page 6+, so it runs to the book's
     // end) — not a piece confined to "just the next page."
-    const state: PageAssignments = { starts: new Set(), skips: new Set(), shared: new Set(), single: new Set([5]) }
+    const state: PageAssignments = {
+      starts: new Set(),
+      skips: new Set(),
+      shared: new Set(),
+      single: new Set([5]),
+    }
     const pieces = computeLayout(normalizeSplits(state, 8), 8)
     expect(pieces.map((p) => [p.start, p.end])).toEqual([
       [1, 4],
@@ -229,7 +234,12 @@ describe('"begin and split" (a page that is both a complete one-page piece AND t
   })
 
   it('works on page 1 even though page 1 never appears in `starts`', () => {
-    const state: PageAssignments = { starts: new Set(), skips: new Set(), shared: new Set(), single: new Set([1]) }
+    const state: PageAssignments = {
+      starts: new Set(),
+      skips: new Set(),
+      shared: new Set(),
+      single: new Set([1]),
+    }
     const pieces = computeLayout(normalizeSplits(state, 8), 8)
     expect(pieces.map((p) => [p.start, p.end])).toEqual([
       [1, 1],
@@ -261,7 +271,12 @@ describe('"begin and split" (a page that is both a complete one-page piece AND t
   })
 
   it('a single-page piece as the very last page: the "continuing" piece has nowhere to continue to, so it also degenerates to that same one page', () => {
-    const state: PageAssignments = { starts: new Set(), skips: new Set(), shared: new Set(), single: new Set([8]) }
+    const state: PageAssignments = {
+      starts: new Set(),
+      skips: new Set(),
+      shared: new Set(),
+      single: new Set([8]),
+    }
     const pieces = computeLayout(normalizeSplits(state, 8), 8)
     expect(pieces.map((p) => [p.start, p.end])).toEqual([
       [1, 7],
@@ -331,7 +346,9 @@ describe('"begin and split" (a page that is both a complete one-page piece AND t
         const coverage = new Map<number, number>()
         for (const piece of pieces) {
           if (piece.start > piece.end) {
-            throw new Error(`piece start (${piece.start}) > end (${piece.end}) for state ${JSON.stringify(state)}`)
+            throw new Error(
+              `piece start (${piece.start}) > end (${piece.end}) for state ${JSON.stringify(state)}`,
+            )
           }
           for (let pg = piece.start; pg <= piece.end; pg++) {
             coverage.set(pg, (coverage.get(pg) ?? 0) + 1)
@@ -344,7 +361,157 @@ describe('"begin and split" (a page that is both a complete one-page piece AND t
           } else {
             const maxAllowed = single.has(pg) ? 2 : 1
             expect(count, `page ${pg} coverage`).toBeGreaterThan(0)
-            expect(count, `page ${pg} coverage should not exceed ${maxAllowed}`).toBeLessThanOrEqual(maxAllowed)
+            expect(
+              count,
+              `page ${pg} coverage should not exceed ${maxAllowed}`,
+            ).toBeLessThanOrEqual(maxAllowed)
+          }
+        }
+      }
+    }
+    expect(checked).toBeGreaterThan(0)
+  })
+})
+
+describe('"finish previous and split twice" (a page that finishes the previous piece, closes its own one-page piece, then begins a third piece)', () => {
+  it('finishes the real previous piece, then closes a one-page piece, then begins a second, open piece — all sharing the marked page', () => {
+    const state: PageAssignments = {
+      starts: new Set(),
+      skips: new Set(),
+      shared: new Set(),
+      double: new Set([5]),
+    }
+    const pieces = computeLayout(normalizeSplits(state, 8), 8)
+    expect(pieces.map((p) => [p.start, p.end])).toEqual([
+      [1, 5], // the real previous piece, extended to include the marked page
+      [5, 5], // the synthetic one-page bridge
+      [5, 8], // the new, open continuing piece
+    ])
+    expect(pieces[0].color).not.toBe(pieces[1].color)
+    expect(pieces[1].color).not.toBe(pieces[2].color)
+  })
+
+  it('a double page immediately after a skip has no real previous piece to extend, so it produces its own synthetic "closing" bridge too — three new pieces at once', () => {
+    // page 1 start, page 2 skipped, page 3 marked "double" — same
+    // no-real-adjacent-piece problem the shared-after-skip bridge test
+    // above covers, but for double this stacks a *second* synthetic
+    // bridge (the "split twice" part) right after the first.
+    const state: PageAssignments = {
+      starts: new Set([3]),
+      skips: new Set([2]),
+      double: new Set([3]),
+      shared: new Set(),
+    }
+    const pieces = computeLayout(state, 8)
+    expect(pieces.map((p) => [p.start, p.end])).toEqual([
+      [1, 1],
+      [3, 3], // the "closing" stand-in (shared-after-skip's own mechanism)
+      [3, 3], // the "split twice" bridge (single's own mechanism)
+      [3, 8],
+    ])
+    const colors = pieces.map((p) => p.color)
+    expect(new Set(colors).size).toBe(4) // all four distinct — positional coloring
+  })
+
+  it('works as the very last page: the "continuing" piece has nowhere to continue to, so it also degenerates to that one page', () => {
+    const state: PageAssignments = {
+      starts: new Set(),
+      skips: new Set(),
+      shared: new Set(),
+      double: new Set([8]),
+    }
+    const pieces = computeLayout(normalizeSplits(state, 8), 8)
+    expect(pieces.map((p) => [p.start, p.end])).toEqual([
+      [1, 8], // extended all the way to the marked page
+      [8, 8],
+      [8, 8],
+    ])
+  })
+
+  it('setPageState marks a page double and clears it via any other target — never reachable on page 1', () => {
+    let state: PageAssignments = { starts: new Set(), skips: new Set(), shared: new Set() }
+    state = setPageState(5, 'double', state, 8)
+    expect(currentCycleState(5, state)).toBe('double')
+    expect(state.starts.has(5)).toBe(false) // independent of `starts`, like `single`
+
+    state = setPageState(5, 'start', state, 8)
+    expect(currentCycleState(5, state)).toBe('start')
+    expect(state.double?.has(5)).toBe(false)
+  })
+
+  it('is mutually exclusive with single and shared — setting one clears the others', () => {
+    let state: PageAssignments = { starts: new Set(), skips: new Set(), shared: new Set() }
+    state = setPageState(4, 'single', state, 8)
+    state = setPageState(4, 'double', state, 8)
+    expect(state.single?.has(4)).toBe(false)
+    expect(currentCycleState(4, state)).toBe('double')
+
+    state = setPageState(4, 'shared', state, 8)
+    expect(state.double?.has(4)).toBe(false)
+    expect(currentCycleState(4, state)).toBe('shared')
+  })
+
+  it('a page marked double is excluded from the plain tap cycle, landing on start/normal at either end', () => {
+    let state: PageAssignments = { starts: new Set(), skips: new Set(), shared: new Set() }
+    state = setPageState(4, 'double', state, 8)
+    const forward = cyclePage(4, state, 8, 'forward', true)
+    expect(currentCycleState(4, forward)).toBe('start')
+    const backward = cyclePage(4, state, 8, 'backward', true)
+    expect(currentCycleState(4, backward)).toBe('normal')
+  })
+
+  it('applyRangeAction clears a double mark on any page it touches', () => {
+    let state: PageAssignments = { starts: new Set(), skips: new Set(), shared: new Set() }
+    state = setPageState(4, 'double', state, 8)
+    state = applyRangeAction('group', 3, 5, state, 8)
+    expect(state.double?.has(4)).toBe(false)
+  })
+
+  it('every reachable double/skip combination produces correct, non-corrupt coverage (brute force) — a double page is legitimately covered up to 3 times', () => {
+    const PAGE_COUNT = 5
+    const pages = Array.from({ length: PAGE_COUNT }, (_, i) => i + 1)
+
+    function* subsets<T>(arr: T[]): Generator<Set<T>> {
+      for (let mask = 0; mask < 1 << arr.length; mask++) {
+        const s = new Set<T>()
+        for (let i = 0; i < arr.length; i++) if (mask & (1 << i)) s.add(arr[i])
+        yield s
+      }
+    }
+
+    let checked = 0
+    for (const skips of subsets(pages)) {
+      for (const double of subsets(pages)) {
+        let overlap = false
+        for (const d of double) if (skips.has(d)) overlap = true
+        if (overlap) continue
+        checked++
+        const raw: PageAssignments = { starts: new Set(), skips, shared: new Set(), double }
+        const state = normalizeSplits(raw, PAGE_COUNT)
+        const pieces = computeLayout(state, PAGE_COUNT)
+
+        const coverage = new Map<number, number>()
+        for (const piece of pieces) {
+          if (piece.start > piece.end) {
+            throw new Error(
+              `piece start (${piece.start}) > end (${piece.end}) for state ${JSON.stringify(state)}`,
+            )
+          }
+          for (let pg = piece.start; pg <= piece.end; pg++) {
+            coverage.set(pg, (coverage.get(pg) ?? 0) + 1)
+          }
+        }
+        for (let pg = 1; pg <= PAGE_COUNT; pg++) {
+          const count = coverage.get(pg) ?? 0
+          if (skips.has(pg)) {
+            expect(count, `skipped page ${pg} should be covered 0 times`).toBe(0)
+          } else {
+            const maxAllowed = double.has(pg) ? 3 : 1
+            expect(count, `page ${pg} coverage`).toBeGreaterThan(0)
+            expect(
+              count,
+              `page ${pg} coverage should not exceed ${maxAllowed}`,
+            ).toBeLessThanOrEqual(maxAllowed)
           }
         }
       }

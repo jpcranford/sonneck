@@ -14,9 +14,30 @@
 // bugs this caught along the way (a React key-collision bug, a
 // setState/ref race, several off-by-one and bridge-piece edge cases).
 
-// Garden Variety, trimmed to 7 (locked) — widest hue spread, and 7 is the
-// coprime-optimal count for the Split screen's 6-column desktop grid.
-export const PALETTE = ['#6b8a9c', '#b8935a', '#9c7ab8', '#7a9c6b', '#b87a8a', '#5c8a8a', '#8a8a5c']
+// Garden Variety, expanded to 10 (locked) — the "double" split option
+// (a single page belonging to 3 Piece entries at once, see the `double`
+// field below) made 7 colors too collision-prone for adjacent pieces.
+// Ordered so every adjacent pair, including the wrap, contrasts well —
+// not hue-sorted, since a pure hue-sort clusters warm and cool hues into
+// two separate arcs instead of alternating them. Two colors (citrine,
+// terracotta) are deliberately off the palette's usual S/L tier: citrine
+// because at the tier-matched value it read as near-identical to a color
+// it replaced, terracotta because at the tier-matched value it measured
+// the lowest contrast of any palette color against the app's own paper
+// background. Full derivation (hue math, rejected intermediates, both
+// tier-exception bugs) saved in memory, project_split_palette_expansion.
+export const PALETTE = [
+  '#7a9c6b',
+  '#b87aaf',
+  '#5c8a8a',
+  '#b8935a',
+  '#9c7ab8',
+  '#b8827a',
+  '#6b8a9c',
+  '#87a249',
+  '#ac6939',
+  '#b87a97',
+]
 
 export interface PageAssignments {
   // Every piece-start page except page 1, which is always an implicit
@@ -44,6 +65,23 @@ export interface PageAssignments {
   // that predate this field (tests, the real wizard/step, which don't
   // expose this state in their UI yet) don't need updating.
   single?: Set<number>
+  // "Finish previous and split twice" (added 2026-08-30, mockup-only so
+  // far — not yet exposed in BookUploadSplitStep.tsx's own menu). The
+  // natural extension of `shared` and `single` combined: this page both
+  // finishes whatever piece was running before it (`shared`'s own
+  // behavior) *and* begins its own immediately-closed one-page piece
+  // before that (`single`'s own bridge behavior), before finally
+  // beginning a third piece that stays open, continuing forward. Three
+  // Piece entries touch this one physical page: the real previous piece
+  // (or a synthetic stand-in, if the page right before this one is a
+  // skip — same "no real piece to extend into" problem `shared` already
+  // solves this same way), the synthetic one-page bridge, and the new
+  // continuing piece. Independent of both `starts` and `single` for the
+  // same reasons `single` is independent of them — not offered on page 1
+  // (there's no "previous" for it to finish there), so unlike `single`
+  // this one is never meaningful there and setPageState makes no special
+  // case for it.
+  double?: Set<number>
 }
 
 export interface Piece {
@@ -89,11 +127,12 @@ export function normalizeSplits(state: PageAssignments, pageCount: number): Page
 // happened in — the more important invariant of the two.
 export function computeLayout(state: PageAssignments, pageCount: number): Piece[] {
   const single = state.single ?? new Set<number>()
-  // Union with `single`, not just `state.starts` — a single-page piece is
-  // independent of `starts` (see PageAssignments' own comment on why,
-  // page 1 in particular) but still needs its own entry in this array for
-  // the loop below to give it a piece.
-  let starts = [...new Set([...state.starts, ...single])].sort((a, b) => a - b)
+  const double = state.double ?? new Set<number>()
+  // Union with `single`/`double`, not just `state.starts` — both are
+  // independent of `starts` (see PageAssignments' own comments on why,
+  // page 1 in particular for `single`) but still need their own entry in
+  // this array for the loop below to give them a piece.
+  let starts = [...new Set([...state.starts, ...single, ...double])].sort((a, b) => a - b)
   // Page 1 implicitly starts the first piece by default (tapping it isn't
   // required) — but only while it isn't explicitly skipped. A skipped
   // page 1 must not silently remain "part of a piece" just because of
@@ -113,15 +152,17 @@ export function computeLayout(state: PageAssignments, pageCount: number): Piece[
     const nextStart = starts[i + 1]
     const isLast = i === starts.length - 1
 
-    // A shared page whose preceding page is a skip has no real adjacent
-    // piece to extend backward into — give it its own synthetic
-    // single-page piece first (immediately before its own continuing
-    // piece in this array), rather than reaching across the gap into
-    // whatever piece happens to sit further back. Both pieces share the
-    // same start page on purpose; pushing it first (its own array slot)
-    // is what gives it a color one step earlier than the piece it
-    // precedes, same as any other two adjacent pieces.
-    if (state.shared.has(start) && state.skips.has(start - 1)) {
+    // A shared (or double) page whose preceding page is a skip has no
+    // real adjacent piece to extend backward into — give it its own
+    // synthetic single-page piece first (immediately before its own
+    // continuing piece in this array), rather than reaching across the
+    // gap into whatever piece happens to sit further back. Both pieces
+    // share the same start page on purpose; pushing it first (its own
+    // array slot) is what gives it a color one step earlier than the
+    // piece it precedes, same as any other two adjacent pieces. `double`
+    // shares this exact "finish previous" problem — see its own comment
+    // on PageAssignments — so it triggers the same fallback.
+    if ((state.shared.has(start) || double.has(start)) && state.skips.has(start - 1)) {
       pieces.push({
         start,
         end: start,
@@ -130,15 +171,23 @@ export function computeLayout(state: PageAssignments, pageCount: number): Piece[
       })
     }
 
-    // "Begin and split": always produces the same synthetic-bridge shape
-    // as the shared-after-skip case just above, unconditionally rather
-    // than only when the preceding page happens to be a skip — this page
+    // "Begin and split" (`single`) and "finish previous and split twice"
+    // (`double`) both always produce the same synthetic-bridge shape as
+    // the shared-after-skip case just above, unconditionally rather than
+    // only when the preceding page happens to be a skip — this page
     // closes its own one-page piece immediately (pushed here, its own
     // array slot, its own color) *and* — falling through to the normal
     // end computation right below with the exact same `start` — also
     // begins a second piece from that same page, staying open and
-    // continuing forward exactly like any other piece start would.
-    if (single.has(start)) {
+    // continuing forward exactly like any other piece start would. For
+    // `double` this is the *second* of its two split points — the first
+    // (finishing whatever ran before) is handled by the block above (a
+    // skip-adjacent stand-in) or by the previous iteration's own `end`
+    // computation below (the ordinary case, extending the real previous
+    // piece's `end` to reach here) — never both at once for a `double`
+    // that isn't skip-adjacent, since a real previous piece can't also
+    // need a synthetic stand-in.
+    if (single.has(start) || double.has(start)) {
       pieces.push({
         start,
         end: start,
@@ -148,7 +197,11 @@ export function computeLayout(state: PageAssignments, pageCount: number): Piece[
     }
 
     let end: number
-    if (nextStart && state.shared.has(nextStart) && !state.skips.has(nextStart - 1)) {
+    if (
+      nextStart &&
+      (state.shared.has(nextStart) || double.has(nextStart)) &&
+      !state.skips.has(nextStart - 1)
+    ) {
       end = nextStart
     } else {
       // A skip sitting right before the next piece's start (or the
@@ -171,7 +224,7 @@ export function pieceIndexForPage(pieces: Piece[], page: number): number {
   return idx
 }
 
-export type CycleState = 'normal' | 'start' | 'shared' | 'single' | 'skip'
+export type CycleState = 'normal' | 'start' | 'shared' | 'single' | 'double' | 'skip'
 
 // Sets a page directly to one of its reachable states, bypassing the tap
 // cycle — used by both cyclePage (below) and the long-press/right-click
@@ -184,7 +237,11 @@ export type CycleState = 'normal' | 'start' | 'shared' | 'single' | 'skip'
 // collide with. 'single' ("begin and split," added post-launch — a
 // standalone single-page piece) IS meaningful on page 1 (e.g. a title
 // page counted as its own piece) and is tracked independently of
-// `starts` specifically so it can apply there too.
+// `starts` specifically so it can apply there too. 'double' ("finish
+// previous and split twice," added later still) needs a real previous
+// piece to finish the same way 'shared' does, so — like 'shared' — it's
+// simply never offered on page 1's own menu and has no explicit handling
+// in the page-1 branch below.
 export function setPageState(
   page: number,
   target: CycleState,
@@ -195,22 +252,25 @@ export function setPageState(
   const skips = new Set(state.skips)
   const shared = new Set(state.shared)
   const single = new Set(state.single ?? [])
+  const double = new Set(state.double ?? [])
 
   if (page === 1) {
     single.delete(1)
+    double.delete(1)
     if (target === 'skip') {
       skips.add(1)
     } else {
       skips.delete(1)
       if (target === 'single') single.add(1)
     }
-    return normalizeSplits({ starts, skips, shared, single }, pageCount)
+    return normalizeSplits({ starts, skips, shared, single, double }, pageCount)
   }
 
   starts.delete(page)
   shared.delete(page)
   skips.delete(page)
   single.delete(page)
+  double.delete(page)
   if (target === 'start') {
     starts.add(page)
   } else if (target === 'shared') {
@@ -220,13 +280,19 @@ export function setPageState(
     skips.add(page)
   } else if (target === 'single') {
     single.add(page)
+  } else if (target === 'double') {
+    // Independent of `starts`, same as `single` (not a subset of it, the
+    // way `shared` is) — computeLayout unions `double` into its own
+    // working `starts` array at read time instead.
+    double.add(page)
   }
-  return normalizeSplits({ starts, skips, shared, single }, pageCount)
+  return normalizeSplits({ starts, skips, shared, single, double }, pageCount)
 }
 
 export function currentCycleState(page: number, state: PageAssignments): CycleState {
   if (state.skips.has(page)) return 'skip'
   if (state.single?.has(page)) return 'single'
+  if (state.double?.has(page)) return 'double'
   if (state.starts.has(page)) return state.shared.has(page) ? 'shared' : 'start'
   return 'normal'
 }
@@ -302,18 +368,20 @@ export function applyRangeAction(
   const skips = new Set(state.skips)
   const shared = new Set(state.shared)
   const single = new Set(state.single ?? [])
+  const double = new Set(state.double ?? [])
   for (let p = lo; p <= hi; p++) {
     starts.delete(p)
     shared.delete(p)
     skips.delete(p)
     single.delete(p)
+    double.delete(p)
   }
   if (action === 'group') {
     if (lo !== 1) starts.add(lo)
   } else {
     for (let p = lo; p <= hi; p++) skips.add(p)
   }
-  return normalizeSplits({ starts, skips, shared, single }, pageCount)
+  return normalizeSplits({ starts, skips, shared, single, double }, pageCount)
 }
 
 // Compact page-list formatting for the Skipped pill — "4, 5, 6" reads as

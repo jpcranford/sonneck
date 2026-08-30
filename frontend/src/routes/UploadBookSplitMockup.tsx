@@ -3,13 +3,14 @@ import { Link } from 'react-router-dom'
 import {
   IconArrowLeft,
   IconArrowRight,
+  IconArrowsSplit2,
+  IconBoxMultiple2,
   IconCircleCaretLeftFilled,
   IconCircleCaretRightFilled,
   IconCircleFilled,
+  IconFile,
   IconScissors,
-  IconEyeOff,
   IconArrowsLeftRight,
-  IconCrop,
   IconDots,
   IconX,
 } from '@tabler/icons-react'
@@ -37,7 +38,7 @@ import {
 // piece begins" (design doc §5's "split" step). Not wired to the API —
 // all page-assignment state lives client-side in this component.
 // Design: the tap-marks-start model, a tinted open-piece indicator, and
-// the 7-color Garden Variety palette.
+// the 10-color Garden Variety palette.
 //
 // Genuinely interactive: tap a page to cycle its state, press-hold and
 // drag across pages to range-select. This is the real reason to build a
@@ -107,12 +108,26 @@ interface PageMenuItem {
 // shape (see computeLayout's own synthetic-bridge case for `shared` after
 // a skip) — this just triggers that shape directly, on request, instead
 // of only as a side effect of a skip.
+//
+// "Finish previous and split twice" (target: 'double', added 2026-08-30,
+// direct request — mockup-only pending approval, see PageAssignments'
+// own comment in pieceSplitLogic.ts) sits right after "Finish previous
+// and split" — it's that same behavior *plus* "Begin and split" chained
+// onto it: the previous piece still finishes exactly here, but instead of
+// the new piece starting directly, a brand-new one-page piece closes
+// immediately first, *then* the real continuing piece begins. Three
+// Piece entries share this one page. `IconArrowsSplit2` (replacing "Begin
+// and split"'s previous `IconCrop`, then briefly `IconBoxMultiple1`) reads
+// as a two-way fork, echoing `IconArrowsLeftRight`'s own arrow language
+// for "Finish previous and split" just above it — `IconBoxMultiple2`
+// stays for "twice," the one place the "how many bridge pieces" counting
+// language is still useful.
 function pageMenuItems(page: number): PageMenuItem[] {
   if (page === 1) {
     return [
       { label: 'Start piece here', icon: <IconScissors size={14} />, target: 'start' },
-      { label: 'Begin and split', icon: <IconCrop size={14} />, target: 'single' },
-      { label: 'Skip this page', icon: <IconEyeOff size={14} />, target: 'skip' },
+      { label: 'Begin and split', icon: <IconArrowsSplit2 size={14} />, target: 'single' },
+      { label: 'Skip this page', icon: <IconX size={14} />, target: 'skip' },
     ]
   }
   return [
@@ -122,9 +137,14 @@ function pageMenuItems(page: number): PageMenuItem[] {
       icon: <IconArrowsLeftRight size={14} />,
       target: 'shared',
     },
-    { label: 'Begin and split', icon: <IconCrop size={14} />, target: 'single' },
-    { label: 'Skip this page', icon: <IconEyeOff size={14} />, target: 'skip' },
-    { label: 'Clear (plain page)', icon: <IconX size={14} />, target: 'normal' },
+    {
+      label: 'Finish previous and split twice',
+      icon: <IconBoxMultiple2 size={14} />,
+      target: 'double',
+    },
+    { label: 'Begin and split', icon: <IconArrowsSplit2 size={14} />, target: 'single' },
+    { label: 'Skip this page', icon: <IconX size={14} />, target: 'skip' },
+    { label: 'Clear (plain page)', icon: <IconFile size={14} />, target: 'normal' },
   ]
 }
 
@@ -458,6 +478,7 @@ export function UploadBookSplitMockup() {
             const isStart = page === piece?.start
             const isSharedStart = isStart && state.shared.has(page)
             const isSingleStart = isStart && (state.single?.has(page) ?? false)
+            const isDoubleStart = isStart && (state.double?.has(page) ?? false)
             // Guarded with !isSkip so this can never be true for a page
             // that's also marked skip — pieceIndexForPage doesn't know
             // about skip status (it's a pure position lookup), so without
@@ -479,23 +500,25 @@ export function UploadBookSplitMockup() {
             // skip > pending never actually collide in practice (isPending
             // is guarded above, and starts/skips are kept disjoint
             // everywhere state changes), so this order is safe as well as
-            // requested — not fighting the invariants to get it. 'single'
-            // and 'shared' never collide either (setPageState keeps them
-            // mutually exclusive), so their relative order here doesn't
-            // matter in practice — 'single' first since it's the newer,
-            // more specific mark.
-            const badgeKind: 'single' | 'start' | 'shared' | 'pending' | 'skip' | null =
-              isSingleStart
-                ? 'single'
-                : isSharedStart
-                  ? 'shared'
-                  : isStart
-                    ? 'start'
-                    : isPending
-                      ? 'pending'
-                      : isSkip
-                        ? 'skip'
-                        : null
+            // requested — not fighting the invariants to get it. 'single',
+            // 'double', and 'shared' never collide with each other either
+            // (setPageState keeps them mutually exclusive), so their
+            // relative order here doesn't matter in practice — newest/most
+            // specific marks first ('double', then 'single').
+            const badgeKind: 'single' | 'double' | 'start' | 'shared' | 'pending' | 'skip' | null =
+              isDoubleStart
+                ? 'double'
+                : isSingleStart
+                  ? 'single'
+                  : isSharedStart
+                    ? 'shared'
+                    : isStart
+                      ? 'start'
+                      : isPending
+                        ? 'pending'
+                        : isSkip
+                          ? 'skip'
+                          : null
 
             // `border-image` (the obvious way to paint a two-color diagonal
             // border) ignores `border-radius` entirely — a CSS quirk, not a
@@ -574,6 +597,30 @@ export function UploadBookSplitMockup() {
               const closedPiece = pieces[pieceIdx - 1]
               const closedColor = closedPiece ? closedPiece.color : piece.color
               sharedGradient = `linear-gradient(135deg, ${closedColor} 50%, ${piece.color} 50%)`
+            } else if (badgeKind === 'double') {
+              // "Finish previous and split twice" — three Piece entries
+              // touch this one page (see PageAssignments' own comment in
+              // pieceSplitLogic.ts), so this is a three-stop diagonal
+              // instead of 'shared'/'single's two. pieces[pieceIdx-1] is
+              // always the middle synthetic bridge (computeLayout pushes
+              // it unconditionally, same as 'single' does) — full
+              // strength, same "always a genuine same-page beginning"
+              // reasoning 'single' already uses. pieces[pieceIdx-2] is
+              // whichever piece precedes *that* bridge: the real previous
+              // piece if one exists (tinted, unless it's itself a same-
+              // page bridge-counterpart — the "shared right after a skip"
+              // case, mirroring 'shared's own prevColor logic exactly), or
+              // undefined only if something upstream is inconsistent.
+              const middleBridge = pieces[pieceIdx - 1]
+              const middleColor = middleBridge ? middleBridge.color : piece.color
+              const prevPiece = pieces[pieceIdx - 2]
+              const prevIsBridgeCounterpart = prevPiece && prevPiece.start === piece.start
+              const prevColor = prevPiece
+                ? prevIsBridgeCounterpart
+                  ? prevPiece.color
+                  : `${prevPiece.color}61`
+                : piece.color
+              sharedGradient = `linear-gradient(135deg, ${prevColor} 33%, ${middleColor} 33% 67%, ${piece.color} 67%)`
             } else if (badgeKind === 'start') {
               borderStyle = { borderColor: piece.color }
             } else if (badgeKind === 'pending') {
@@ -662,7 +709,8 @@ export function UploadBookSplitMockup() {
                     {badgeKind === 'skip' && <IconX size={11} />}
                     {badgeKind === 'shared' && <IconArrowsLeftRight size={11} />}
                     {badgeKind === 'start' && <IconScissors size={11} />}
-                    {badgeKind === 'single' && <IconCrop size={11} />}
+                    {badgeKind === 'single' && <IconArrowsSplit2 size={11} />}
+                    {badgeKind === 'double' && <IconBoxMultiple2 size={11} />}
                     {badgeKind === 'pending' && <IconDots size={12} />}
                   </span>
                 )}

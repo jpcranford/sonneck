@@ -7,7 +7,12 @@ import { ApiError } from '../api/client'
 import type { Book, Piece as ApiPiece } from '../api/types'
 import { computeLayout, type PageAssignments, type Piece } from '../lib/pieceSplitLogic'
 import { scrollAppContentToTop } from '../lib/scrollContainer'
-import { clearWizardDraft, loadWizardDraft, saveWizardDraft, type WizardDraftStep } from '../lib/useWizardDraft'
+import {
+  clearWizardDraft,
+  loadWizardDraft,
+  saveWizardDraft,
+  type WizardDraftStep,
+} from '../lib/useWizardDraft'
 import { BookUploadFileStep } from './BookUploadFileStep'
 import { BookUploadAboutStep } from './BookUploadAboutStep'
 import { BookUploadSplitStep } from './BookUploadSplitStep'
@@ -169,6 +174,7 @@ export function BookUploadWizard({ onExit }: BookUploadWizardProps) {
       skips: new Set(draft.pageAssignments.skips),
       shared: new Set(draft.pageAssignments.shared),
       single: new Set(draft.pageAssignments.single),
+      double: new Set(draft.pageAssignments.double),
     }
     setPageAssignments(restored)
     setPieceFields(draft.pieceFields)
@@ -191,6 +197,7 @@ export function BookUploadWizard({ onExit }: BookUploadWizardProps) {
       ...restored.skips,
       ...restored.shared,
       ...(restored.single ?? []),
+      ...(restored.double ?? []),
     ])
   }
 
@@ -265,6 +272,7 @@ export function BookUploadWizard({ onExit }: BookUploadWizardProps) {
         skips: [...pageAssignments.skips],
         shared: [...pageAssignments.shared],
         single: [...(pageAssignments.single ?? [])],
+        double: [...(pageAssignments.double ?? [])],
       },
       pieceFields,
       pageOffset,
