@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type FocusEvent } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type FocusEvent } from 'react'
 import { useForm } from 'react-hook-form'
 import {
   IconAlertTriangle,
@@ -9,6 +9,7 @@ import {
 } from '@tabler/icons-react'
 import { getBookPageThumbnailUrl } from '../api/books'
 import { PageLightbox } from '../components/PageLightbox'
+import { autosizeTextarea, preventTextareaNewline } from '../lib/autosizeTextarea'
 import type { Piece } from '../lib/pieceSplitLogic'
 import { nameCase, titleCase } from '../lib/textCase'
 import { TOTAL_WIZARD_STEPS } from './BookUploadWizard'
@@ -247,6 +248,7 @@ export function BookUploadTitlesStep({
   // pageCount), not just between piece starts — see this file's own
   // header comment for why.
   const [previewPage, setPreviewPage] = useState<number | null>(null)
+  const formRef = useRef<HTMLFormElement>(null)
   const {
     register,
     handleSubmit,
@@ -340,6 +342,12 @@ export function BookUploadTitlesStep({
       setValue(`pieces.${index}.composer`, nameCase(piece.composer), { shouldDirty: true })
       setValue(`pieces.${index}.arranger`, nameCase(piece.arranger), { shouldDirty: true })
     })
+    // setValue writes straight to each field's DOM value without firing a
+    // native input event, so the per-field onChange-driven autosize below
+    // never sees this — resize every field in one pass afterward instead.
+    formRef.current
+      ?.querySelectorAll('textarea')
+      .forEach((el) => autosizeTextarea(el as HTMLTextAreaElement))
   }
 
   // Composer and Arranger validate each other: either one being non-blank
@@ -366,7 +374,19 @@ export function BookUploadTitlesStep({
     })
     return {
       ...registered,
-      onBlur: (event: FocusEvent<HTMLInputElement>) => {
+      // Combines RHF's own ref (which sets the field's initial DOM value)
+      // with an immediate autosize call — runs synchronously at mount, so
+      // a piece restored from a wizard draft with an already-long value
+      // sizes correctly on first paint, not just after the next keystroke.
+      ref: (el: HTMLTextAreaElement | null) => {
+        registered.ref(el)
+        autosizeTextarea(el)
+      },
+      onChange: (event: ChangeEvent<HTMLTextAreaElement>) => {
+        void registered.onChange(event)
+        autosizeTextarea(event.currentTarget)
+      },
+      onBlur: (event: FocusEvent<HTMLTextAreaElement>) => {
         registered.onBlur(event)
         void trigger(`pieces.${index}.${other}`)
         // Immediate flush on blur — see titleField's own comment for why
@@ -391,7 +411,16 @@ export function BookUploadTitlesStep({
     const registered = register(`pieces.${index}.title`, { required: true, maxLength: 255 })
     return {
       ...registered,
-      onBlur: (event: FocusEvent<HTMLInputElement>) => {
+      // Same ref/onChange autosize wiring as composerOrArrangerField above.
+      ref: (el: HTMLTextAreaElement | null) => {
+        registered.ref(el)
+        autosizeTextarea(el)
+      },
+      onChange: (event: ChangeEvent<HTMLTextAreaElement>) => {
+        void registered.onChange(event)
+        autosizeTextarea(event.currentTarget)
+      },
+      onBlur: (event: FocusEvent<HTMLTextAreaElement>) => {
         registered.onBlur(event)
         onChange(getValues().pieces)
       },
@@ -455,7 +484,7 @@ export function BookUploadTitlesStep({
         </button>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)}>
+      <form ref={formRef} onSubmit={handleSubmit(onSubmit)}>
         {isDesktop && (
           <div>
             <div className={`grid ${desktopGridCols} gap-2.5 px-3 pb-1.5`}>
@@ -499,11 +528,13 @@ export function BookUploadTitlesStep({
                       onPreview={() => setPreviewPage(piece.start)}
                     />
                     <div>
-                      <input
-                        className={`w-full rounded-md border bg-paper-raised px-2.5 py-1.5 text-sm text-ink ${
+                      <textarea
+                        rows={1}
+                        className={`w-full resize-none overflow-hidden rounded-md border bg-paper-raised px-2.5 py-1.5 text-sm text-ink ${
                           titleError ? 'border-red-700' : 'border-border'
                         }`}
                         placeholder="Title"
+                        onKeyDown={preventTextareaNewline}
                         {...titleField(index)}
                       />
                       {titleError && (
@@ -514,11 +545,13 @@ export function BookUploadTitlesStep({
                       )}
                     </div>
                     <div>
-                      <input
-                        className={`w-full rounded-md border bg-paper-raised px-2.5 py-1.5 text-sm text-ink ${
+                      <textarea
+                        rows={1}
+                        className={`w-full resize-none overflow-hidden rounded-md border bg-paper-raised px-2.5 py-1.5 text-sm text-ink ${
                           composerError ? 'border-red-700' : 'border-border'
                         }`}
                         placeholder="Composer"
+                        onKeyDown={preventTextareaNewline}
                         {...composerOrArrangerField('composer', index)}
                       />
                       {composerError && (
@@ -530,11 +563,13 @@ export function BookUploadTitlesStep({
                     </div>
                     {showArrangerField && (
                       <div>
-                        <input
-                          className={`w-full rounded-md border bg-paper-raised px-2.5 py-1.5 text-sm text-ink ${
+                        <textarea
+                          rows={1}
+                          className={`w-full resize-none overflow-hidden rounded-md border bg-paper-raised px-2.5 py-1.5 text-sm text-ink ${
                             arrangerError ? 'border-red-700' : 'border-border'
                           }`}
                           placeholder="Arranger"
+                          onKeyDown={preventTextareaNewline}
                           {...composerOrArrangerField('arranger', index)}
                         />
                         {arrangerError && (
@@ -585,11 +620,13 @@ export function BookUploadTitlesStep({
                       <label className="mb-1 block text-sm text-ink-soft">
                         Title <span className="text-red-700">*</span>
                       </label>
-                      <input
-                        className={`w-full rounded-md border bg-paper-raised px-3 py-2 text-base text-ink ${
+                      <textarea
+                        rows={1}
+                        className={`w-full resize-none overflow-hidden rounded-md border bg-paper-raised px-3 py-2 text-base text-ink ${
                           titleError ? 'border-red-700' : 'border-border'
                         }`}
                         placeholder="Title"
+                        onKeyDown={preventTextareaNewline}
                         {...titleField(index)}
                       />
                       {titleError && (
@@ -601,11 +638,13 @@ export function BookUploadTitlesStep({
                     </div>
                     <div>
                       <label className="mb-1 block text-sm text-ink-soft">Composer</label>
-                      <input
-                        className={`w-full rounded-md border bg-paper-raised px-3 py-2 text-base text-ink ${
+                      <textarea
+                        rows={1}
+                        className={`w-full resize-none overflow-hidden rounded-md border bg-paper-raised px-3 py-2 text-base text-ink ${
                           composerError ? 'border-red-700' : 'border-border'
                         }`}
                         placeholder="Composer"
+                        onKeyDown={preventTextareaNewline}
                         {...composerOrArrangerField('composer', index)}
                       />
                       {composerError && (
@@ -618,11 +657,13 @@ export function BookUploadTitlesStep({
                     {showArrangerField && (
                       <div>
                         <label className="mb-1 block text-sm text-ink-soft">Arranger</label>
-                        <input
-                          className={`w-full rounded-md border bg-paper-raised px-3 py-2 text-base text-ink ${
+                        <textarea
+                          rows={1}
+                          className={`w-full resize-none overflow-hidden rounded-md border bg-paper-raised px-3 py-2 text-base text-ink ${
                             arrangerError ? 'border-red-700' : 'border-border'
                           }`}
                           placeholder="Arranger"
+                          onKeyDown={preventTextareaNewline}
                           {...composerOrArrangerField('arranger', index)}
                         />
                         {arrangerError && (

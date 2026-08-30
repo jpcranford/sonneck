@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type FocusEvent } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type FocusEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import {
@@ -12,6 +12,7 @@ import {
   IconXFilled,
 } from '@tabler/icons-react'
 import { useMockupTitle } from '../lib/useMockupTitle'
+import { autosizeTextarea, preventTextareaNewline } from '../lib/autosizeTextarea'
 import { nameCase, titleCase } from '../lib/textCase'
 
 // ---------------------------------------------------------------------
@@ -481,6 +482,7 @@ export function UploadBookTitlesMockup() {
 
   const isDesktop = useIsDesktop()
   const [previewPage, setPreviewPage] = useState<number | null>(null)
+  const formRef = useRef<HTMLFormElement>(null)
 
   function handleCancelUpload() {
     const confirmed = window.confirm(
@@ -526,6 +528,30 @@ export function UploadBookTitlesMockup() {
       setValue(`pieces.${index}.composer`, nameCase(piece.composer), { shouldDirty: true })
       setValue(`pieces.${index}.arranger`, nameCase(piece.arranger), { shouldDirty: true })
     })
+    // setValue writes straight to each field's DOM value without firing a
+    // native input event, so the per-field onChange-driven autosize below
+    // never sees this — resize every field in one pass afterward instead.
+    formRef.current
+      ?.querySelectorAll('textarea')
+      .forEach((el) => autosizeTextarea(el as HTMLTextAreaElement))
+  }
+
+  // Same ref/onChange autosize wiring composerOrArrangerField needs below —
+  // pulled out for Title too since Title has no sibling-validation logic to
+  // otherwise wrap register's return value for.
+  function titleField(index: number) {
+    const registered = register(`pieces.${index}.title`, { required: true, maxLength: 255 })
+    return {
+      ...registered,
+      ref: (el: HTMLTextAreaElement | null) => {
+        registered.ref(el)
+        autosizeTextarea(el)
+      },
+      onChange: (event: ChangeEvent<HTMLTextAreaElement>) => {
+        void registered.onChange(event)
+        autosizeTextarea(event.currentTarget)
+      },
+    }
   }
 
   // Composer and Arranger validate each other: either one being non-blank
@@ -553,7 +579,15 @@ export function UploadBookTitlesMockup() {
     })
     return {
       ...registered,
-      onBlur: (event: FocusEvent<HTMLInputElement>) => {
+      ref: (el: HTMLTextAreaElement | null) => {
+        registered.ref(el)
+        autosizeTextarea(el)
+      },
+      onChange: (event: ChangeEvent<HTMLTextAreaElement>) => {
+        void registered.onChange(event)
+        autosizeTextarea(event.currentTarget)
+      },
+      onBlur: (event: FocusEvent<HTMLTextAreaElement>) => {
         registered.onBlur(event)
         void trigger(`pieces.${index}.${other}`)
       },
@@ -623,7 +657,10 @@ export function UploadBookTitlesMockup() {
         </button>
       </div>
 
-      <form onSubmit={handleSubmit((data) => console.log('Mockup: advance to Confirmation', data))}>
+      <form
+        ref={formRef}
+        onSubmit={handleSubmit((data) => console.log('Mockup: advance to Confirmation', data))}
+      >
         {/* Desktop: table-like grid, piece label first, thumbnail tucked
             tight against Title, then Composer/Arranger as same-width
             field columns. */}
@@ -666,12 +703,14 @@ export function UploadBookTitlesMockup() {
                         it's its own component rather than inlined here. */}
                     <HoverPagePreview piece={piece} onPreview={() => setPreviewPage(piece.start)} />
                     <div>
-                      <input
-                        className={`w-full rounded-md border bg-paper-raised px-2.5 py-1.5 text-sm text-ink ${
+                      <textarea
+                        rows={1}
+                        className={`w-full resize-none overflow-hidden rounded-md border bg-paper-raised px-2.5 py-1.5 text-sm text-ink ${
                           titleError ? 'border-red-700' : 'border-border'
                         }`}
                         placeholder="Title"
-                        {...register(`pieces.${index}.title`, { required: true, maxLength: 255 })}
+                        onKeyDown={preventTextareaNewline}
+                        {...titleField(index)}
                       />
                       {titleError && (
                         <span className="mt-0.5 flex items-center gap-1 text-xs text-red-700">
@@ -681,11 +720,13 @@ export function UploadBookTitlesMockup() {
                       )}
                     </div>
                     <div>
-                      <input
-                        className={`w-full rounded-md border bg-paper-raised px-2.5 py-1.5 text-sm text-ink ${
+                      <textarea
+                        rows={1}
+                        className={`w-full resize-none overflow-hidden rounded-md border bg-paper-raised px-2.5 py-1.5 text-sm text-ink ${
                           composerError ? 'border-red-700' : 'border-border'
                         }`}
                         placeholder="Composer"
+                        onKeyDown={preventTextareaNewline}
                         {...composerOrArrangerField('composer', index)}
                       />
                       {composerError && (
@@ -697,11 +738,13 @@ export function UploadBookTitlesMockup() {
                     </div>
                     {SHOW_ARRANGER_FIELD && (
                       <div>
-                        <input
-                          className={`w-full rounded-md border bg-paper-raised px-2.5 py-1.5 text-sm text-ink ${
+                        <textarea
+                          rows={1}
+                          className={`w-full resize-none overflow-hidden rounded-md border bg-paper-raised px-2.5 py-1.5 text-sm text-ink ${
                             arrangerError ? 'border-red-700' : 'border-border'
                           }`}
                           placeholder="Arranger"
+                          onKeyDown={preventTextareaNewline}
                           {...composerOrArrangerField('arranger', index)}
                         />
                         {arrangerError && (
@@ -750,12 +793,14 @@ export function UploadBookTitlesMockup() {
                       <label className="mb-1 block text-sm text-ink-soft">
                         Title <span className="text-red-700">*</span>
                       </label>
-                      <input
-                        className={`w-full rounded-md border bg-paper-raised px-3 py-2 text-base text-ink ${
+                      <textarea
+                        rows={1}
+                        className={`w-full resize-none overflow-hidden rounded-md border bg-paper-raised px-3 py-2 text-base text-ink ${
                           titleError ? 'border-red-700' : 'border-border'
                         }`}
                         placeholder="Title"
-                        {...register(`pieces.${index}.title`, { required: true, maxLength: 255 })}
+                        onKeyDown={preventTextareaNewline}
+                        {...titleField(index)}
                       />
                       {titleError && (
                         <span className="mt-1 flex items-center gap-1 text-xs text-red-700">
@@ -766,11 +811,13 @@ export function UploadBookTitlesMockup() {
                     </div>
                     <div>
                       <label className="mb-1 block text-sm text-ink-soft">Composer</label>
-                      <input
-                        className={`w-full rounded-md border bg-paper-raised px-3 py-2 text-base text-ink ${
+                      <textarea
+                        rows={1}
+                        className={`w-full resize-none overflow-hidden rounded-md border bg-paper-raised px-3 py-2 text-base text-ink ${
                           composerError ? 'border-red-700' : 'border-border'
                         }`}
                         placeholder="Composer"
+                        onKeyDown={preventTextareaNewline}
                         {...composerOrArrangerField('composer', index)}
                       />
                       {composerError && (
@@ -783,11 +830,13 @@ export function UploadBookTitlesMockup() {
                     {SHOW_ARRANGER_FIELD && (
                       <div>
                         <label className="mb-1 block text-sm text-ink-soft">Arranger</label>
-                        <input
-                          className={`w-full rounded-md border bg-paper-raised px-3 py-2 text-base text-ink ${
+                        <textarea
+                          rows={1}
+                          className={`w-full resize-none overflow-hidden rounded-md border bg-paper-raised px-3 py-2 text-base text-ink ${
                             arrangerError ? 'border-red-700' : 'border-border'
                           }`}
                           placeholder="Arranger"
+                          onKeyDown={preventTextareaNewline}
                           {...composerOrArrangerField('arranger', index)}
                         />
                         {arrangerError && (
