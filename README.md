@@ -41,7 +41,7 @@ docker compose up -d
 
 The compose file takes care of the fiddly bits like remembering where you put your data folder and mounting it to the right place in the container.
 
-Create the `data` folder yourself before the first run. If you skip it, Docker will create it for you when the container starts — but as `root`, which the container (a fixed non-root user) then can't write to. If you hit a permission error on startup, it's almost always this; `sudo chown -R 1000:1000 ./data` fixes it.
+Create the `data` folder yourself before the first run. If you don't, Docker will create it for you as root when the container starts, which may cause write issues. If you hit a permission error on startup, it's almost always this; `sudo chown -R 1000:1000 ./data` will fix it.
 
 To quit the program, just use `docker compose down`. Easy peasy.
 
@@ -94,7 +94,7 @@ Maintenance actions are exposed as subcommands on the same binary rather than HT
 
 If you're using Docker, do
 ```sh
-docker exec -it <container-name> ./sonneck <command>
+docker exec -it <container-name> sonneck <command>
 ```
 
 Or if you're running locally from the repo:
