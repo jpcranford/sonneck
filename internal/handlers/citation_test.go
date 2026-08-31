@@ -10,7 +10,7 @@ func TestCitation_OmitsBlankFieldsAndUsesBookTitle(t *testing.T) {
 	bookID, _ := uploadBook(t, h, "book.pdf", 4)
 	decodeData(t, doJSON(t, h, http.MethodPatch, apiBooksURL(bookID), map[string]any{
 		"bookTitle": "Six Symphonies",
-		"composer":  "Charles-Marie Widor",
+		"composers": []string{"Charles-Marie Widor"},
 	}), nil)
 
 	confirmRec := doJSON(t, h, http.MethodPost, apiBooksURL(bookID)+"/confirm-import", map[string]any{
@@ -48,7 +48,7 @@ func TestCitation_FallsBackToPublisherIdWhenImslpNumberBlank(t *testing.T) {
 
 	decodeData(t, doJSON(t, h, http.MethodPatch, apiPiecesURL(uploaded.ID), map[string]any{
 		"title":       "Solo",
-		"composer":    "Someone",
+		"composers":   []string{"Someone"},
 		"publisherId": "PN-123",
 	}), nil)
 
@@ -78,7 +78,7 @@ func TestCitation_PublisherIdFusesOntoPublisherName(t *testing.T) {
 
 	decodeData(t, doJSON(t, h, http.MethodPatch, apiPiecesURL(uploaded.ID), map[string]any{
 		"title":       "Solo",
-		"composer":    "Someone",
+		"composers":   []string{"Someone"},
 		"publisher":   "G. Schirmer",
 		"publisherId": "HL50252950",
 	}), nil)
@@ -113,7 +113,7 @@ func TestCitation_ImslpNumberSuppressesPublisherAndPublisherId(t *testing.T) {
 
 	decodeData(t, doJSON(t, h, http.MethodPatch, apiPiecesURL(uploaded.ID), map[string]any{
 		"title":       "Solo",
-		"composer":    "Someone",
+		"composers":   []string{"Someone"},
 		"publisher":   "G. Schirmer",
 		"publisherId": "HL50252950",
 		"imslpNumber": "04154",
@@ -146,7 +146,7 @@ func TestCitation_ImslpNumberGetsHashLabelAndStripsExistingPrefix(t *testing.T) 
 
 	decodeData(t, doJSON(t, h, http.MethodPatch, apiPiecesURL(uploaded.ID), map[string]any{
 		"title":       "Solo",
-		"composer":    "Someone",
+		"composers":   []string{"Someone"},
 		"imslpNumber": "IMSLP04154",
 	}), nil)
 
@@ -175,9 +175,9 @@ func TestCitation_ArrangerFusesOntoComposer(t *testing.T) {
 	decodeData(t, rec, &uploaded)
 
 	decodeData(t, doJSON(t, h, http.MethodPatch, apiPiecesURL(uploaded.ID), map[string]any{
-		"title":    "Solo",
-		"composer": "Robert Schumann",
-		"arranger": "J. Someone",
+		"title":     "Solo",
+		"composers": []string{"Robert Schumann"},
+		"arrangers": []string{"J. Someone"},
 	}), nil)
 
 	citeRec := doJSON(t, h, http.MethodGet, apiPiecesURL(uploaded.ID)+"/citation", nil)
@@ -207,8 +207,8 @@ func TestCitation_ArrangerAloneWithNoComposer(t *testing.T) {
 	decodeData(t, rec, &uploaded)
 
 	decodeData(t, doJSON(t, h, http.MethodPatch, apiPiecesURL(uploaded.ID), map[string]any{
-		"title":    "Traditional Tune",
-		"arranger": "J. Someone",
+		"title":     "Traditional Tune",
+		"arrangers": []string{"J. Someone"},
 	}), nil)
 
 	citeRec := doJSON(t, h, http.MethodGet, apiPiecesURL(uploaded.ID)+"/citation", nil)
@@ -239,7 +239,7 @@ func TestCitation_ISBNAppearsAfterPublisherWhenImslpBlank(t *testing.T) {
 	bookID, _ := uploadBook(t, h, "book.pdf", 4)
 	decodeData(t, doJSON(t, h, http.MethodPatch, apiBooksURL(bookID), map[string]any{
 		"bookTitle": "Six Symphonies",
-		"composer":  "Charles-Marie Widor",
+		"composers": []string{"Charles-Marie Widor"},
 		"publisher": "G. Schirmer",
 		"isbn":      "9780132350884",
 	}), nil)
@@ -274,7 +274,7 @@ func TestCitation_ISBNHiddenWhenImslpPresent(t *testing.T) {
 	bookID, _ := uploadBook(t, h, "book.pdf", 4)
 	decodeData(t, doJSON(t, h, http.MethodPatch, apiBooksURL(bookID), map[string]any{
 		"bookTitle": "Six Symphonies",
-		"composer":  "Charles-Marie Widor",
+		"composers": []string{"Charles-Marie Widor"},
 		"isbn":      "9780132350884",
 	}), nil)
 
@@ -311,7 +311,7 @@ func TestCitation_ISBN10Hyphenation(t *testing.T) {
 	bookID, _ := uploadBook(t, h, "book.pdf", 4)
 	decodeData(t, doJSON(t, h, http.MethodPatch, apiBooksURL(bookID), map[string]any{
 		"bookTitle": "Six Symphonies",
-		"composer":  "Charles-Marie Widor",
+		"composers": []string{"Charles-Marie Widor"},
 		"isbn":      "0132350882",
 	}), nil)
 
@@ -347,7 +347,7 @@ func TestCitation_SuppressesBookOpusNumberWhenContainedInPieceOpusNumber(t *test
 	bookID, _ := uploadBook(t, h, "book.pdf", 4)
 	decodeData(t, doJSON(t, h, http.MethodPatch, apiBooksURL(bookID), map[string]any{
 		"bookTitle":      "Album für die Jugend",
-		"composer":       "Robert Schumann",
+		"composers":      []string{"Robert Schumann"},
 		"workOpusNumber": "Op. 68",
 	}), nil)
 
@@ -382,7 +382,7 @@ func TestCitation_ShowsBookOpusNumberWhenNotContainedInPieceOpusNumber(t *testin
 	bookID, _ := uploadBook(t, h, "book.pdf", 4)
 	decodeData(t, doJSON(t, h, http.MethodPatch, apiBooksURL(bookID), map[string]any{
 		"bookTitle":      "Notebook for Anna Magdalena Bach",
-		"composer":       "Johann Sebastian Bach",
+		"composers":      []string{"Johann Sebastian Bach"},
 		"workOpusNumber": "BWV Anh. 113-132",
 	}), nil)
 
@@ -424,8 +424,8 @@ func TestCitation_TitleDoubleQuotesBecomeSingleQuotes(t *testing.T) {
 
 	decodeData(t, doJSON(t, h, http.MethodPatch, apiPiecesURL(uploaded.ID), map[string]any{
 		"title":       `Merry-Go-Round of Life from "Howl's Moving Castle"`,
-		"composer":    "Joe Hisaishi",
-		"arranger":    "M. Yamamoto",
+		"composers":   []string{"Joe Hisaishi"},
+		"arrangers":   []string{"M. Yamamoto"},
 		"publisher":   "Sony/ATV Music Publishing (UK)",
 		"yearWritten": "2004",
 	}), nil)

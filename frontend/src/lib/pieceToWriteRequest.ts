@@ -15,14 +15,13 @@ export function pieceToWriteRequest(piece: Piece): PieceWriteRequest {
   return {
     title: piece.title,
     // Book-inheritable, same inherited-blank convention as every other
-    // field below — not a raw echo of the resolved {value, inherited}
-    // object, which the backend can't decode as the plain string its
-    // write request expects. (Real bug, found live: this line used to
-    // just be `piece.composer.value` with no `.inherited` check, so
-    // pressing Favorite on a piece with an inherited composer silently
-    // froze it into a permanent per-piece override.)
-    composer: piece.composer.inherited ? '' : piece.composer.value,
-    arranger: piece.arranger.inherited ? '' : piece.arranger.value,
+    // field below — not a raw echo of the resolved {values, inherited}
+    // list, which the backend would otherwise silently convert into a
+    // permanent per-piece override (real bug, found live pre-overhaul: see
+    // this function's own test file). Composer/Arranger are now ordered
+    // Person-name lists (composer/arranger overhaul, migration 00020).
+    composers: piece.composer.inherited ? [] : piece.composer.values.map((p) => p.name),
+    arrangers: piece.arranger.inherited ? [] : piece.arranger.values.map((p) => p.name),
     favorite: piece.favorite,
     // sourceBookId follows the same full-replace rule as every other
     // field (see CLAUDE.md's "sourceBookId itself became editable" entry)

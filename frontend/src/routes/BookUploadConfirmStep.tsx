@@ -123,8 +123,8 @@ export function BookUploadConfirmStep({
         ranges: pieces.map((p) => ({ start: p.start, end: p.end })),
         pieces: pieces.map((p) => ({
           title: p.title,
-          composer: p.composer || null,
-          arranger: p.arranger || null,
+          composers: p.composer ? [p.composer] : [],
+          arrangers: p.arranger ? [p.arranger] : [],
           favorite: false,
           keys: [],
           instruments: [],

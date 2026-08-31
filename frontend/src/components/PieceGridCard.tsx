@@ -1,6 +1,7 @@
 import { IconHeartFilled } from '@tabler/icons-react'
 import { getPieceThumbnailUrl } from '../api/pieces'
 import type { Piece } from '../api/types'
+import { personCreditPart } from '../lib/joinNames'
 import { ClickableCard } from './ClickableCard'
 import { PieceContextMenu } from './PieceContextMenu'
 import { PracticeStatusIcon } from './PracticeStatusIcon'
@@ -28,14 +29,12 @@ export function PieceGridCard({ piece, backLabel }: PieceGridCardProps) {
   // Three-way fallback (composer-or-arranger): falls back to "arr.
   // Arranger" when only an arranger is set (own or book-inherited) — a
   // naive two-way ternary would silently drop that case entirely.
-  const composerPart =
-    piece.composer.value && piece.arranger.value
-      ? `${piece.composer.value}, arr. ${piece.arranger.value}`
-      : piece.composer.value
-        ? piece.composer.value
-        : piece.arranger.value
-          ? `arr. ${piece.arranger.value}`
-          : null
+  // Composer/Arranger are ordered Person lists (composer/arranger
+  // overhaul, migration 00020) — personCreditPart joins+fuses them.
+  const composerPart = personCreditPart(
+    piece.composer.values.map((p) => p.name),
+    piece.arranger.values.map((p) => p.name),
+  )
   const meta = [composerPart, piece.yearWritten.value]
     .filter((part): part is string => !!part)
     .join(' • ')

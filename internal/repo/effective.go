@@ -37,8 +37,15 @@ type EffectiveTagsField struct {
 // Piece columns directly, or they will silently diverge from what's shown
 // to the user (CLAUDE.md > Book-level soft inheritance).
 type EffectivePiece struct {
-	Composer       EffectiveField
-	Arranger       EffectiveField
+	// Composer/Arranger (composer/arranger overhaul, migration 00020) are
+	// ordered many-to-many fields now, not a single string — they reuse
+	// EffectiveTagsField/resolveTagsField unchanged (the exact same
+	// fallback shape InstrumentIDs already uses): a piece's own list wins
+	// in its entirety the moment it's non-empty, never merged with the
+	// book's. See CLAUDE.md's Book-level inheritance note for the full
+	// "all-or-nothing per field, independently" semantics.
+	Composer       EffectiveTagsField
+	Arranger       EffectiveTagsField
 	Publisher      EffectiveField
 	PublisherID    EffectiveField
 	ImslpNumber    EffectiveField
@@ -64,12 +71,10 @@ func ResolveEffective(ctx context.Context, q Queryer, p *models.Piece) (*Effecti
 		book = b
 	}
 
-	var bookComposer, bookArranger, bookPublisher, bookPublisherID, bookImslpNumber, bookYearWritten, bookWorkOpusNumber, bookDescription *string
+	var bookPublisher, bookPublisherID, bookImslpNumber, bookYearWritten, bookWorkOpusNumber, bookDescription *string
 	var bookSheetTypeID *int64
-	var bookInstrumentIDs []int64
+	var bookInstrumentIDs, bookComposerIDs, bookArrangerIDs []int64
 	if book != nil {
-		bookComposer = book.Composer
-		bookArranger = book.Arranger
 		bookPublisher = book.Publisher
 		bookPublisherID = book.PublisherID
 		bookImslpNumber = book.ImslpNumber
@@ -78,11 +83,13 @@ func ResolveEffective(ctx context.Context, q Queryer, p *models.Piece) (*Effecti
 		bookDescription = book.Description
 		bookSheetTypeID = book.SheetTypeID
 		bookInstrumentIDs = book.InstrumentIDs
+		bookComposerIDs = book.ComposerIDs
+		bookArrangerIDs = book.ArrangerIDs
 	}
 
 	return &EffectivePiece{
-		Composer:       resolveStringField(p.Composer, bookComposer),
-		Arranger:       resolveStringField(p.Arranger, bookArranger),
+		Composer:       resolveTagsField(p.ComposerIDs, bookComposerIDs),
+		Arranger:       resolveTagsField(p.ArrangerIDs, bookArrangerIDs),
 		Publisher:      resolveStringField(p.Publisher, bookPublisher),
 		PublisherID:    resolveStringField(p.PublisherID, bookPublisherID),
 		ImslpNumber:    resolveStringField(p.ImslpNumber, bookImslpNumber),

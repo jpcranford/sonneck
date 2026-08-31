@@ -7,13 +7,16 @@ import { pieceToWriteRequest } from './pieceToWriteRequest'
 // pieceToWriteRequest echoed piece.composer.value straight through with no
 // .inherited check — the one field missing the guard every other
 // book-inheritable field here already has (see arranger, publisher, etc.).
+// Composer/Arranger are now ordered Person-name lists (composer/arranger
+// overhaul, migration 00020) — the same inherited-blank guard, just over a
+// list instead of a single string.
 
 function fixturePiece(overrides: Partial<Piece> = {}): Piece {
   return {
     id: 1,
     title: 'Nocturne',
-    composer: { value: 'Fr. Chopin', inherited: true },
-    arranger: { value: '', inherited: true },
+    composer: { values: [{ id: 1, name: 'Fr. Chopin' }], inherited: true },
+    arranger: { values: [], inherited: true },
     favorite: false,
     workOpusNumber: { value: '', inherited: true },
     keys: [],
@@ -47,12 +50,14 @@ function fixturePiece(overrides: Partial<Piece> = {}): Piece {
 
 describe('pieceToWriteRequest', () => {
   it('blanks an inherited composer instead of echoing the resolved value back as an override', () => {
-    const piece = fixturePiece({ composer: { value: 'Fr. Chopin', inherited: true } })
-    expect(pieceToWriteRequest(piece).composer).toBe('')
+    const piece = fixturePiece({ composer: { values: [{ id: 1, name: 'Fr. Chopin' }], inherited: true } })
+    expect(pieceToWriteRequest(piece).composers).toEqual([])
   })
 
   it('sends the real value when composer is the piece’s own, not inherited', () => {
-    const piece = fixturePiece({ composer: { value: 'Own Composer', inherited: false } })
-    expect(pieceToWriteRequest(piece).composer).toBe('Own Composer')
+    const piece = fixturePiece({
+      composer: { values: [{ id: 2, name: 'Own Composer' }], inherited: false },
+    })
+    expect(pieceToWriteRequest(piece).composers).toEqual(['Own Composer'])
   })
 })

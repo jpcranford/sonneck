@@ -10,6 +10,9 @@ import { PieceDetailsSample } from './routes/PieceDetailsSample'
 import { EditPieceModalMockup } from './routes/EditPieceModalMockup'
 import { PieceLibrarySample } from './routes/PieceLibrarySample'
 import { BooksLibrarySample } from './routes/BooksLibrarySample'
+import { PeopleLibrarySample } from './routes/PeopleLibrarySample'
+import { PersonDetailsSample } from './routes/PersonDetailsSample'
+import { EditPersonModalMockup } from './routes/EditPersonModalMockup'
 import { BookDetailsSample } from './routes/BookDetailsSample'
 import { EditBookModalMockup } from './routes/EditBookModalMockup'
 import { UploadBookAboutMockup } from './routes/UploadBookAboutMockup'
@@ -17,7 +20,8 @@ import { UploadBookSplitMockup } from './routes/UploadBookSplitMockup'
 import { UploadBookTitlesMockup } from './routes/UploadBookTitlesMockup'
 import { UploadBookConfirmMockup } from './routes/UploadBookConfirmMockup'
 import { MobileNavDrawerMockup } from './routes/MobileNavDrawerMockup'
-import { ComposersPage } from './routes/ComposersPage'
+import { PeopleLibraryPage } from './routes/PeopleLibraryPage'
+import { PersonDetailsPage } from './routes/PersonDetailsPage'
 import { FavoritesPage } from './routes/FavoritesPage'
 import { WantToLearnPage } from './routes/WantToLearnPage'
 import { PracticingPage } from './routes/PracticingPage'
@@ -34,6 +38,8 @@ function App() {
         <Route path="upload" element={<UploadPage />} />
         <Route path="pieces/:id" element={<PiecePage />} />
         <Route path="books/:id" element={<BookDetailsPage />} />
+        <Route path="people" element={<PeopleLibraryPage />} />
+        <Route path="people/:id" element={<PersonDetailsPage />} />
         {/* Design mockups and reference samples — unlinked from the main
             nav, browsable via the /mockup index below. Kept intentionally
             for future reference/experimentation, not deleted once whatever
@@ -43,13 +49,15 @@ function App() {
         <Route path="mockup/edit-piece-modal" element={<EditPieceModalMockup />} />
         <Route path="mockup/piece-library" element={<PieceLibrarySample />} />
         <Route path="mockup/books-library" element={<BooksLibrarySample />} />
+        <Route path="mockup/people-library" element={<PeopleLibrarySample />} />
+        <Route path="mockup/person-details" element={<PersonDetailsSample />} />
+        <Route path="mockup/edit-person-modal" element={<EditPersonModalMockup />} />
         <Route path="mockup/book-details" element={<BookDetailsSample />} />
         <Route path="mockup/edit-book-modal" element={<EditBookModalMockup />} />
         <Route path="mockup/upload-book-about" element={<UploadBookAboutMockup />} />
         <Route path="mockup/upload-book-split" element={<UploadBookSplitMockup />} />
         <Route path="mockup/upload-book-titles" element={<UploadBookTitlesMockup />} />
         <Route path="mockup/upload-book-confirm" element={<UploadBookConfirmMockup />} />
-        <Route path="composers" element={<ComposersPage />} />
         <Route path="favorites" element={<FavoritesPage />} />
         <Route path="want-to-learn" element={<WantToLearnPage />} />
         <Route path="practicing" element={<PracticingPage />} />

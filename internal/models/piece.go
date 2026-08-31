@@ -21,8 +21,6 @@ type Piece struct {
 	ID    int64
 	Title string // never book-inheritable
 
-	Composer       *string // book-inheritable
-	Arranger       *string // book-inheritable
 	Favorite       bool
 	WorkOpusNumber *string // book-inheritable
 	SheetTypeID    *int64  // book-inheritable
@@ -59,8 +57,14 @@ type Piece struct {
 	// Loaded separately via join tables, not columns on `pieces`. KeyIDs
 	// (many-to-many, not book-inheritable — a piece can genuinely be
 	// written in more than one key) moved here from a single KeyID column;
-	// see migration 00008.
+	// see migration 00008. ComposerIDs/ArrangerIDs (book-inheritable,
+	// ordered — composer/arranger overhaul, migration 00020) moved here the
+	// same way from plain string columns; order is meaningful (credit
+	// order), preserved via each join table's own `position` column, same
+	// convention as KeyIDs (migration 00011).
 	KeyIDs        []int64
 	InstrumentIDs []int64
 	UserTagIDs    []int64
+	ComposerIDs   []int64 // book-inheritable, ordered
+	ArrangerIDs   []int64 // book-inheritable, ordered
 }

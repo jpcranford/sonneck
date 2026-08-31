@@ -25,7 +25,7 @@ func TestConfirmImport_PageRangesAndComposerInheritance(t *testing.T) {
 
 	patchRec := doJSON(t, h, http.MethodPatch, apiBooksURL(bookID), map[string]any{
 		"bookTitle": "Six Symphonies",
-		"composer":  "Charles-Marie Widor",
+		"composers": []string{"Charles-Marie Widor"},
 	})
 	decodeData(t, patchRec, nil)
 
@@ -36,7 +36,7 @@ func TestConfirmImport_PageRangesAndComposerInheritance(t *testing.T) {
 		},
 		"pieces": []map[string]any{
 			{"title": "Toccata"},
-			{"title": "Adagio", "composer": "Override Composer"},
+			{"title": "Adagio", "composers": []string{"Override Composer"}},
 		},
 	})
 	var result struct {
@@ -59,8 +59,8 @@ func TestConfirmImport_PageRangesAndComposerInheritance(t *testing.T) {
 	if toccata.PageCount != 4 {
 		t.Errorf("Toccata pageCount = %d, want 4 (derived from its 1-4 page range)", toccata.PageCount)
 	}
-	if !toccata.Composer.Inherited || toccata.Composer.Value != "Charles-Marie Widor" {
-		t.Errorf("Toccata composer = %+v, want inherited Charles-Marie Widor", toccata.Composer)
+	if names := toccata.Composer.names(); !toccata.Composer.Inherited || len(names) != 1 || names[0] != "Charles-Marie Widor" {
+		t.Errorf("Toccata composer = %+v, want inherited [Charles-Marie Widor]", toccata.Composer)
 	}
 
 	if adagio.SourcePageStart == nil || adagio.SourcePageEnd == nil {
@@ -72,8 +72,8 @@ func TestConfirmImport_PageRangesAndComposerInheritance(t *testing.T) {
 	if adagio.PageCount != 4 {
 		t.Errorf("Adagio pageCount = %d, want 4 (derived from its 5-8 page range)", adagio.PageCount)
 	}
-	if adagio.Composer.Inherited || adagio.Composer.Value != "Override Composer" {
-		t.Errorf("Adagio composer = %+v, want own value Override Composer", adagio.Composer)
+	if names := adagio.Composer.names(); adagio.Composer.Inherited || len(names) != 1 || names[0] != "Override Composer" {
+		t.Errorf("Adagio composer = %+v, want own value [Override Composer]", adagio.Composer)
 	}
 }
 
@@ -90,8 +90,8 @@ func TestConfirmImport_AllOrNothingRollback(t *testing.T) {
 			{"start": 5, "end": 8},
 		},
 		"pieces": []map[string]any{
-			{"title": "Valid Piece", "composer": "Someone"},
-			{"title": "", "composer": "Someone"}, // missing required title
+			{"title": "Valid Piece", "composers": []string{"Someone"}},
+			{"title": "", "composers": []string{"Someone"}}, // missing required title
 		},
 	})
 	if rec.Code != http.StatusBadRequest {
@@ -127,9 +127,9 @@ func TestConfirmImport_SkipAndSharedBoundary(t *testing.T) {
 			{"start": 7, "end": 8},
 		},
 		"pieces": []map[string]any{
-			{"title": "Prelude in C", "composer": "J. Burgmüller"},
-			{"title": "Nocturne", "composer": "Fr. Chopin"},
-			{"title": "Waltz in A-flat", "composer": "Fr. Chopin"},
+			{"title": "Prelude in C", "composers": []string{"J. Burgmüller"}},
+			{"title": "Nocturne", "composers": []string{"Fr. Chopin"}},
+			{"title": "Waltz in A-flat", "composers": []string{"Fr. Chopin"}},
 		},
 	})
 	var result struct {
@@ -177,8 +177,8 @@ func TestConfirmImport_PageOffset(t *testing.T) {
 			{"start": 5, "end": 8},
 		},
 		"pieces": []map[string]any{
-			{"title": "Toccata", "composer": "Someone"},
-			{"title": "Adagio", "composer": "Someone"},
+			{"title": "Toccata", "composers": []string{"Someone"}},
+			{"title": "Adagio", "composers": []string{"Someone"}},
 		},
 		"pageOffset": 67,
 	})
@@ -240,7 +240,7 @@ func TestConfirmImport_PurgesStaleBookThumbnailsExceptPageOne(t *testing.T) {
 
 	confirmRec := doJSON(t, h, http.MethodPost, apiBooksURL(bookID)+"/confirm-import", map[string]any{
 		"ranges": []map[string]any{{"start": 1, "end": 3}},
-		"pieces": []map[string]any{{"title": "Whole Thing", "composer": "Someone"}},
+		"pieces": []map[string]any{{"title": "Whole Thing", "composers": []string{"Someone"}}},
 	})
 	decodeData(t, confirmRec, new(any))
 

@@ -8,14 +8,17 @@ import (
 	"github.com/jpcranford/sonneck/internal/models"
 )
 
+// composer/arranger are deliberately absent here (and from GetBookByID/
+// UpdateBook below) — same migration-00020 move to ordered join tables as
+// Piece's own ComposerIDs/ArrangerIDs; see CreatePiece's own comment.
 func CreateBook(ctx context.Context, q Queryer, b *models.Book) (int64, error) {
 	res, err := q.ExecContext(ctx, `
 		INSERT INTO books (
-			book_title, composer, arranger, year_written, work_opus_number, sheet_type_id,
+			book_title, year_written, work_opus_number, sheet_type_id,
 			publisher, publisher_id, description, imslp_number, isbn,
 			original_filename, file_path, file_hash
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		b.BookTitle, b.Composer, b.Arranger, b.YearWritten, b.WorkOpusNumber, b.SheetTypeID,
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		b.BookTitle, b.YearWritten, b.WorkOpusNumber, b.SheetTypeID,
 		b.Publisher, b.PublisherID, b.Description, b.ImslpNumber, b.ISBN,
 		b.OriginalFilename, b.FilePath, b.FileHash,
 	)
@@ -43,13 +46,13 @@ func GetBookByHash(ctx context.Context, q Queryer, hash string) (*models.Book, e
 func GetBookByID(ctx context.Context, q Queryer, id int64) (*models.Book, error) {
 	b := &models.Book{}
 	err := q.QueryRowContext(ctx, `
-		SELECT id, book_title, composer, arranger, year_written, work_opus_number, sheet_type_id,
+		SELECT id, book_title, year_written, work_opus_number, sheet_type_id,
 			publisher, publisher_id, description, imslp_number, isbn,
 			original_filename, file_path, file_hash,
 			cover_image_hash, cover_image_content_type, imported_at
 		FROM books WHERE id = ?`, id,
 	).Scan(
-		&b.ID, &b.BookTitle, &b.Composer, &b.Arranger, &b.YearWritten, &b.WorkOpusNumber, &b.SheetTypeID,
+		&b.ID, &b.BookTitle, &b.YearWritten, &b.WorkOpusNumber, &b.SheetTypeID,
 		&b.Publisher, &b.PublisherID, &b.Description, &b.ImslpNumber, &b.ISBN,
 		&b.OriginalFilename, &b.FilePath, &b.FileHash,
 		&b.CoverImageHash, &b.CoverImageContentType, &b.ImportedAt,
@@ -67,6 +70,18 @@ func GetBookByID(ctx context.Context, q Queryer, id int64) (*models.Book, error)
 	}
 	b.InstrumentIDs = instrumentIDs
 
+	composerIDs, err := getBookComposerIDs(ctx, q, b.ID)
+	if err != nil {
+		return nil, err
+	}
+	b.ComposerIDs = composerIDs
+
+	arrangerIDs, err := getBookArrangerIDs(ctx, q, b.ID)
+	if err != nil {
+		return nil, err
+	}
+	b.ArrangerIDs = arrangerIDs
+
 	return b, nil
 }
 
@@ -74,14 +89,16 @@ func GetBookByID(ctx context.Context, q Queryer, id int64) (*models.Book, error)
 // any Piece row. Every piece with this sourceBookId simply resolves its
 // effective values live against the new data on next read. Callers must
 // still resync the pieces_fts row for every affected piece in the same
-// transaction — see ResyncSearchIndexForBook.
+// transaction — see ResyncSearchIndexForBook. ComposerIDs/ArrangerIDs are
+// not written here — use SetBookComposers/SetBookArrangers, same as
+// InstrumentIDs' own SetBookInstruments.
 func UpdateBook(ctx context.Context, q Queryer, b *models.Book) error {
 	_, err := q.ExecContext(ctx, `
 		UPDATE books SET
-			book_title = ?, composer = ?, arranger = ?, year_written = ?, work_opus_number = ?, sheet_type_id = ?,
+			book_title = ?, year_written = ?, work_opus_number = ?, sheet_type_id = ?,
 			publisher = ?, publisher_id = ?, description = ?, imslp_number = ?, isbn = ?
 		WHERE id = ?`,
-		b.BookTitle, b.Composer, b.Arranger, b.YearWritten, b.WorkOpusNumber, b.SheetTypeID,
+		b.BookTitle, b.YearWritten, b.WorkOpusNumber, b.SheetTypeID,
 		b.Publisher, b.PublisherID, b.Description, b.ImslpNumber, b.ISBN,
 		b.ID,
 	)

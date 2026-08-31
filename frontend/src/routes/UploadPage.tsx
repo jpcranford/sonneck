@@ -18,6 +18,7 @@ import {
 import { getPieceThumbnailUrl, uploadPiece, updatePiece } from '../api/pieces'
 import { ApiError } from '../api/client'
 import type { Piece } from '../api/types'
+import { namesToText, textToNames } from '../lib/joinNames'
 import { loadWizardDraft } from '../lib/useWizardDraft'
 import { PageLightbox } from '../components/PageLightbox'
 import { SourceBookField } from '../components/SourceBookField'
@@ -106,7 +107,14 @@ export function UploadPage() {
       setLightboxOpen(false)
       resetDetailsForm({
         title: uploaded.title,
-        composer: uploaded.composer.value,
+        // Composer is an ordered Person list now (composer/arranger
+        // overhaul, migration 00020) — bridged to this still-plain-text
+        // field as a comma-separated string (namesToText/textToNames,
+        // lib/joinNames.ts). EditPieceModal.tsx's own composer field got
+        // a real multi-person TagComboBox in Stage C; this screen's own
+        // one-shot upload-details field deliberately did not (out of that
+        // stage's scope) and still uses this bridge.
+        composer: namesToText(uploaded.composer.values.map((p) => p.name)),
         sourceBookId: null,
         sourcePageStart: '',
         sourcePageEnd: '',
@@ -120,7 +128,8 @@ export function UploadPage() {
     mutationFn: (data: DetailsForm) =>
       updatePiece(piece!.id, {
         title: data.title,
-        composer: data.composer,
+        composers: textToNames(data.composer),
+        arrangers: [],
         sourceBookId: data.sourceBookId,
         sourcePageStart: toIntOrNull(data.sourcePageStart),
         sourcePageEnd: toIntOrNull(data.sourcePageEnd),

@@ -35,6 +35,21 @@ func New(db *sql.DB, cfg *config.Config, logger *slog.Logger, frontend fs.FS) ht
 	mux.HandleFunc("GET /api/tags", s.handleListUserTags)
 	mux.HandleFunc("GET /api/imslp/lookup", s.handleImslpLookup)
 
+	// Person (composer/arranger overhaul, migration 00020) — a real library
+	// entity with its own page, unlike Key/Instrument/SheetType's small
+	// fixed-list lookups above, so it gets the same route shape as
+	// Piece/Book (list+create, {id} CRUD, plus small dedicated action
+	// endpoints) rather than a bare lookup list.
+	mux.HandleFunc("GET /api/people", s.handleListPeople)
+	mux.HandleFunc("POST /api/people", s.handleCreatePerson)
+	mux.HandleFunc("GET /api/people/{id}", s.handleGetPerson)
+	mux.HandleFunc("PATCH /api/people/{id}", s.handleUpdatePerson)
+	mux.HandleFunc("DELETE /api/people/{id}", s.handleDeletePerson)
+	mux.HandleFunc("POST /api/people/{id}/split", s.handleSplitPerson)
+	mux.HandleFunc("GET /api/people/{id}/portrait", s.handleGetPersonPortrait)
+	mux.HandleFunc("POST /api/people/{id}/portrait", s.handleUploadPersonPortrait)
+	mux.HandleFunc("DELETE /api/people/{id}/portrait", s.handleDeletePersonPortrait)
+
 	mux.HandleFunc("POST /api/pieces", s.handleCreatePiece)
 	mux.HandleFunc("GET /api/pieces", s.handleSearchPieces)
 	mux.HandleFunc("GET /api/pieces/random", s.handleGetRandomPiece)

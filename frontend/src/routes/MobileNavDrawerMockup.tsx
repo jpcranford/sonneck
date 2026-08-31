@@ -29,7 +29,7 @@ interface NavItem {
 // design is approved and ported over for real.
 const NAV_ITEMS: NavItem[] = [
   { to: '/', label: 'Library', icon: IconLibrary },
-  { to: '/composers', label: 'Composers', icon: IconUser },
+  { to: '/people', label: 'People', icon: IconUser },
   { to: '/books', label: 'Books', icon: IconBooks },
   { to: '/upload', label: 'Upload', icon: IconCloudUpload },
 ]

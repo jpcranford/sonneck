@@ -54,8 +54,8 @@ func TestSinglePieceUpload_BypassesValidationButEditRequiresIt(t *testing.T) {
 	}
 
 	goodEditRec := doJSON(t, h, http.MethodPatch, apiPiecesURL(uploaded.ID), map[string]any{
-		"title":    "Now Has A Composer",
-		"composer": "Someone",
+		"title":     "Now Has A Composer",
+		"composers": []string{"Someone"},
 	})
 	decodeData(t, goodEditRec, nil)
 	if goodEditRec.Code != http.StatusOK {
@@ -82,9 +82,9 @@ func TestUpdatePiece_SupportsMultipleKeys(t *testing.T) {
 	decodeData(t, uploadRec, &uploaded)
 
 	updateRec := doJSON(t, h, http.MethodPatch, apiPiecesURL(uploaded.ID), map[string]any{
-		"title":    "Modulating Piece",
-		"composer": "Someone",
-		"keys":     []string{"C Major", "A Minor"},
+		"title":     "Modulating Piece",
+		"composers": []string{"Someone"},
+		"keys":      []string{"C Major", "A Minor"},
 	})
 	var updated pieceResponse
 	decodeData(t, updateRec, &updated)
@@ -106,9 +106,9 @@ func TestUpdatePiece_SupportsMultipleKeys(t *testing.T) {
 	// Replacing with a single key must drop the other, not just add to it —
 	// PieceWriteRequest is a full replace (same rule as every other field).
 	replaceRec := doJSON(t, h, http.MethodPatch, apiPiecesURL(uploaded.ID), map[string]any{
-		"title":    "Modulating Piece",
-		"composer": "Someone",
-		"keys":     []string{"G Major"},
+		"title":     "Modulating Piece",
+		"composers": []string{"Someone"},
+		"keys":      []string{"G Major"},
 	})
 	var replaced pieceResponse
 	decodeData(t, replaceRec, &replaced)
@@ -133,9 +133,9 @@ func TestUpdatePiece_SupportsRepeatedKeys(t *testing.T) {
 	decodeData(t, uploadRec, &uploaded)
 
 	updateRec := doJSON(t, h, http.MethodPatch, apiPiecesURL(uploaded.ID), map[string]any{
-		"title":    "Doubly Modulating Piece",
-		"composer": "Someone",
-		"keys":     []string{"C Major", "G Major", "C Major"},
+		"title":     "Doubly Modulating Piece",
+		"composers": []string{"Someone"},
+		"keys":      []string{"C Major", "G Major", "C Major"},
 	})
 	var updated pieceResponse
 	decodeData(t, updateRec, &updated)
@@ -184,7 +184,7 @@ func TestUpdatePiece_DurationIsWrittenDirectlyNotComputed(t *testing.T) {
 
 	updateRec := doJSON(t, h, http.MethodPatch, apiPiecesURL(uploaded.ID), map[string]any{
 		"title":           "Tempo Test",
-		"composer":        "Someone",
+		"composers":       []string{"Someone"},
 		"duration":        95,
 		"bpm":             88,
 		"measureCount":    35,
@@ -209,7 +209,7 @@ func TestUpdatePiece_DurationIsWrittenDirectlyNotComputed(t *testing.T) {
 	// recomputing one from the still-present tempo fields.
 	clearRec := doJSON(t, h, http.MethodPatch, apiPiecesURL(uploaded.ID), map[string]any{
 		"title":           "Tempo Test",
-		"composer":        "Someone",
+		"composers":       []string{"Someone"},
 		"bpm":             88,
 		"measureCount":    35,
 		"beatsPerMeasure": 3,
@@ -292,8 +292,8 @@ func TestDeletePiece_OrphansBookWhenLastPieceRemoved(t *testing.T) {
 			{"start": 5, "end": 8},
 		},
 		"pieces": []map[string]any{
-			{"title": "First", "composer": "Someone"},
-			{"title": "Second", "composer": "Someone"},
+			{"title": "First", "composers": []string{"Someone"}},
+			{"title": "Second", "composers": []string{"Someone"}},
 		},
 	})
 	var result struct {
@@ -385,7 +385,7 @@ func TestReplacePieceFile_PreservesProvenanceAndSwapsHash(t *testing.T) {
 	bookID, _ := uploadBook(t, h, "book.pdf", 4)
 	confirmRec := doJSON(t, h, http.MethodPost, apiBooksURL(bookID)+"/confirm-import", map[string]any{
 		"ranges": []map[string]any{{"start": 1, "end": 4}},
-		"pieces": []map[string]any{{"title": "Solo", "composer": "Someone"}},
+		"pieces": []map[string]any{{"title": "Solo", "composers": []string{"Someone"}}},
 	})
 	var result struct {
 		Pieces []pieceResponse `json:"pieces"`
@@ -613,8 +613,8 @@ func TestDownloadPieceFile_SuggestsFilenameWithoutForcingDownload(t *testing.T) 
 	decodeData(t, uploadRec, &uploaded)
 
 	decodeData(t, doJSON(t, h, http.MethodPatch, apiPiecesURL(uploaded.ID), map[string]any{
-		"title":    "Prélude / Étude No. 1?",
-		"composer": "Someone",
+		"title":     "Prélude / Étude No. 1?",
+		"composers": []string{"Someone"},
 	}), nil)
 
 	rec := recordRequest(h, httptestGet(t, apiPiecesURL(uploaded.ID)+"/file"))
@@ -657,7 +657,7 @@ func TestDownloadPieceFile_FilenameUsesInheritedComposerAndYear(t *testing.T) {
 
 	bookRec := doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
 		"bookTitle":   "Album für die Jugend, Op. 68",
-		"composer":    "Robert Schumann",
+		"composers":   []string{"Robert Schumann"},
 		"yearWritten": "1848",
 	})
 	var book bookResponse
@@ -751,7 +751,7 @@ func TestGetPiece_ArrangerInheritsFromBook(t *testing.T) {
 	bookID, _ := uploadBook(t, h, "book.pdf", 4)
 	decodeData(t, doJSON(t, h, http.MethodPatch, apiBooksURL(bookID), map[string]any{
 		"bookTitle": "Anthology",
-		"arranger":  "Book Arranger",
+		"arrangers": []string{"Book Arranger"},
 	}), nil)
 
 	confirmRec := doJSON(t, h, http.MethodPost, apiBooksURL(bookID)+"/confirm-import", map[string]any{
@@ -767,8 +767,8 @@ func TestGetPiece_ArrangerInheritsFromBook(t *testing.T) {
 	var piece pieceResponse
 	decodeData(t, rec, &piece)
 
-	if piece.Arranger.Value != "Book Arranger" || !piece.Arranger.Inherited {
-		t.Errorf("arranger = %+v, want {value: %q, inherited: true}", piece.Arranger, "Book Arranger")
+	if names := piece.Arranger.names(); len(names) != 1 || names[0] != "Book Arranger" || !piece.Arranger.Inherited {
+		t.Errorf("arranger = %+v, want {values: [Book Arranger], inherited: true}", piece.Arranger)
 	}
 }
 
@@ -788,10 +788,10 @@ func TestUpdatePiece_TagValidationErrorNamesTheRealField(t *testing.T) {
 		body  map[string]any
 		field string
 	}{
-		{"keys", map[string]any{"title": "T", "composer": "C", "keys": []string{tooLong}}, "keys"},
-		{"sheetTypeName", map[string]any{"title": "T", "composer": "C", "sheetTypeName": tooLong}, "sheetTypeName"},
-		{"instruments", map[string]any{"title": "T", "composer": "C", "instruments": []string{tooLong}}, "instruments"},
-		{"userTags", map[string]any{"title": "T", "composer": "C", "userTags": []string{tooLong}}, "userTags"},
+		{"keys", map[string]any{"title": "T", "composers": []string{"C"}, "keys": []string{tooLong}}, "keys"},
+		{"sheetTypeName", map[string]any{"title": "T", "composers": []string{"C"}, "sheetTypeName": tooLong}, "sheetTypeName"},
+		{"instruments", map[string]any{"title": "T", "composers": []string{"C"}, "instruments": []string{tooLong}}, "instruments"},
+		{"userTags", map[string]any{"title": "T", "composers": []string{"C"}, "userTags": []string{tooLong}}, "userTags"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			rec := doJSON(t, h, http.MethodPatch, apiPiecesURL(uploaded.ID), tc.body)
@@ -829,14 +829,14 @@ func TestUpdatePiece_SetsAndClearsSourceBookID(t *testing.T) {
 
 	bookRec := doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
 		"bookTitle": "Album für die Jugend, Op. 68",
-		"composer":  "Robert Schumann",
+		"composers": []string{"Robert Schumann"},
 	})
 	var book bookResponse
 	decodeData(t, bookRec, &book)
 
 	setRec := doJSON(t, h, http.MethodPatch, apiPiecesURL(uploaded.ID), map[string]any{
 		"title":        "No. 9, Volksliedchen",
-		"composer":     "Robert Schumann",
+		"composers":    []string{"Robert Schumann"},
 		"sourceBookId": book.ID,
 	})
 	var withBook pieceResponse
@@ -859,8 +859,8 @@ func TestUpdatePiece_SetsAndClearsSourceBookID(t *testing.T) {
 	// Omitting sourceBookId on a later write clears it — same full-replace
 	// rule as every other field, not "leaves it alone."
 	clearRec := doJSON(t, h, http.MethodPatch, apiPiecesURL(uploaded.ID), map[string]any{
-		"title":    "No. 9, Volksliedchen",
-		"composer": "Robert Schumann",
+		"title":     "No. 9, Volksliedchen",
+		"composers": []string{"Robert Schumann"},
 	})
 	var cleared pieceResponse
 	decodeData(t, clearRec, &cleared)
@@ -884,7 +884,7 @@ func TestUpdatePiece_RejectsNonexistentSourceBookID(t *testing.T) {
 
 	rec := doJSON(t, h, http.MethodPatch, apiPiecesURL(uploaded.ID), map[string]any{
 		"title":        "T",
-		"composer":     "C",
+		"composers":    []string{"C"},
 		"sourceBookId": 999999,
 	})
 	if rec.Code != http.StatusBadRequest {

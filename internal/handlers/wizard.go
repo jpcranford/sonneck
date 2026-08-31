@@ -192,6 +192,12 @@ func (s *Server) handleConfirmImport(w http.ResponseWriter, r *http.Request) {
 			if err := repo.SetPieceUserTags(r.Context(), tx, id, p.UserTagIDs); err != nil {
 				return err
 			}
+			if err := repo.SetPieceComposers(r.Context(), tx, id, p.ComposerIDs); err != nil {
+				return err
+			}
+			if err := repo.SetPieceArrangers(r.Context(), tx, id, p.ArrangerIDs); err != nil {
+				return err
+			}
 			if err := repo.ResyncSearchIndex(r.Context(), tx, id); err != nil {
 				return err
 			}

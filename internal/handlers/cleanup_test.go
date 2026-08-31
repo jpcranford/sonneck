@@ -131,7 +131,7 @@ func TestCleanupThumbnails_RemovesStaleBookPagesAfterImport(t *testing.T) {
 
 	confirmRec := doJSON(t, h, http.MethodPost, apiBooksURL(bookID)+"/confirm-import", map[string]any{
 		"ranges": []map[string]any{{"start": 1, "end": 3}},
-		"pieces": []map[string]any{{"title": "Whole Thing", "composer": "Someone"}},
+		"pieces": []map[string]any{{"title": "Whole Thing", "composers": []string{"Someone"}}},
 	})
 	decodeData(t, confirmRec, new(any))
 
@@ -167,7 +167,7 @@ func TestCleanupThumbnails_RemovesPageOneWhenBookHasCustomCover(t *testing.T) {
 	bookID, _ := uploadBook(t, h, "book.pdf", 1)
 	confirmRec := doJSON(t, h, http.MethodPost, apiBooksURL(bookID)+"/confirm-import", map[string]any{
 		"ranges": []map[string]any{{"start": 1, "end": 1}},
-		"pieces": []map[string]any{{"title": "Only Piece", "composer": "Someone"}},
+		"pieces": []map[string]any{{"title": "Only Piece", "composers": []string{"Someone"}}},
 	})
 	decodeData(t, confirmRec, new(any))
 	writeStaleCacheFile(t, dataDir, "book-"+itoa(bookID)+"-page-1")

@@ -75,18 +75,19 @@ func ValidatePiece(ctx context.Context, q repo.Queryer, p *models.Piece) (Valida
 	// arranger (no named composer) is a real, legitimate case (e.g. a
 	// traditional/folk tune), not missing data. Both are book-inheritable,
 	// so either one supplied by the piece's book satisfies this too.
-	if eff.Composer.Value == "" && eff.Arranger.Value == "" {
+	// Composer/Arranger are ordered lists now (migration 00020) — "empty"
+	// is len==0, not a blank string; each name's own length is validated
+	// earlier, at the name→id resolution step (applyPieceWriteRequest's
+	// resolveTagNames, via api.ValidateTagName), not here — same treatment
+	// Keys/Instruments/UserTags already get, none of which are re-checked
+	// in this function either.
+	if len(eff.Composer.IDs) == 0 && len(eff.Arranger.IDs) == 0 {
 		// Field/Message capitalized here specifically (unlike every other
 		// FieldError's lowercase field-name prefix, e.g. "title is
 		// required") — Composer and Arranger read as the app's own field
 		// labels in this sentence, not a generic identifier prefix.
 		errs = append(errs, FieldError{"Composer", "or Arranger is required (set directly, or via the piece's book)"})
 	}
-	// Only the piece's own typed value can be too long — an inherited
-	// value was already validated when the Book itself was saved.
-	checkLineLength(&errs, "composer", p.Composer)
-
-	checkLineLength(&errs, "arranger", p.Arranger)
 	checkLineLength(&errs, "workOpusNumber", p.WorkOpusNumber)
 	checkLineLength(&errs, "publisher", p.Publisher)
 	checkLineLength(&errs, "publisherId", p.PublisherID)
@@ -118,15 +119,16 @@ func ValidateBook(b *models.Book) ValidationErrors {
 	if strings.TrimSpace(b.BookTitle) == "" {
 		errs = append(errs, FieldError{"bookTitle", "is required"})
 	}
-	if isBlankOptional(b.Composer) && isBlankOptional(b.Arranger) && isBlankOptional(b.Publisher) {
+	// Composer/Arranger are ordered lists now (migration 00020) — "empty"
+	// is len==0; per-name length is validated at the name→id resolution
+	// step, not here (see ValidatePiece's identical note).
+	if len(b.ComposerIDs) == 0 && len(b.ArrangerIDs) == 0 && isBlankOptional(b.Publisher) {
 		// Capitalized for the same reason as ValidatePiece's identical
 		// composer-or-arranger message above — these read as field labels
 		// in this sentence, not a generic lowercase field-name prefix.
 		errs = append(errs, FieldError{"Composer", "or Arranger or Publisher is required"})
 	}
 	checkLineLength(&errs, "bookTitle", &b.BookTitle)
-	checkLineLength(&errs, "composer", b.Composer)
-	checkLineLength(&errs, "arranger", b.Arranger)
 	checkLineLength(&errs, "yearWritten", b.YearWritten)
 	checkLineLength(&errs, "workOpusNumber", b.WorkOpusNumber)
 	checkLineLength(&errs, "publisher", b.Publisher)
@@ -142,6 +144,20 @@ func ValidateBook(b *models.Book) ValidationErrors {
 // above, same convention as ResolveEffective's own isBlank.
 func isBlankOptional(s *string) bool {
 	return s == nil || strings.TrimSpace(*s) == ""
+}
+
+// ValidatePerson checks p (composer/arranger overhaul, migration 00020) —
+// "should be very minimal" per the original brief: Name is the only
+// required field. Bio is a box/multi-line markdown field (same category as
+// Piece.description/userNotes), so it doesn't get checkLineLength's
+// 255-char cap, matching how those two are exempted too.
+func ValidatePerson(p *models.Person) ValidationErrors {
+	var errs ValidationErrors
+	if strings.TrimSpace(p.Name) == "" {
+		errs = append(errs, FieldError{"name", "is required"})
+	}
+	checkLineLength(&errs, "name", &p.Name)
+	return errs
 }
 
 // ValidateTagName checks a proposed Key/SheetType/Instrument/UserTag name

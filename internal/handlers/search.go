@@ -28,8 +28,20 @@ import (
 var pieceSortColumns = map[string]sortColumnFunc{
 	"dateAdded": simpleSortColumn("p.id"),
 	"title":     titleSortColumn("p.title"),
+	// composer sorts by the piece's own effective first-listed composer —
+	// composer/arranger overhaul (migration 00020) moved it off a plain
+	// column onto an ordered join table. The COALESCE mirrors
+	// repo.ResolveEffective's own all-or-nothing fallback exactly: the
+	// piece's own first composer (position 0) if it has any composer at
+	// all, else the book's — a piece with zero composers of its own has no
+	// row in piece_composers at all, so that subquery genuinely returns
+	// NULL (not an empty string), which is what makes COALESCE fall
+	// through to the book's subquery correctly.
 	"composer": func(dir string) string {
-		const expr = "COALESCE(NULLIF(TRIM(p.composer), ''), NULLIF(TRIM(b.composer), ''))"
+		const expr = `COALESCE(
+			(SELECT ppl.name FROM piece_composers pc JOIN people ppl ON ppl.id = pc.person_id WHERE pc.piece_id = p.id ORDER BY pc.position LIMIT 1),
+			(SELECT ppl.name FROM book_composers bc JOIN people ppl ON ppl.id = bc.person_id WHERE bc.book_id = b.id ORDER BY bc.position LIMIT 1)
+		)`
 		return "(" + expr + " IS NULL) ASC, " + expr + " COLLATE NOCASE " + dir
 	},
 }
@@ -54,6 +66,7 @@ var pieceSortColumns = map[string]sortColumnFunc{
 //  2. pieces_fts_trigram, substring-anywhere matching (migration 00019).
 //  3. fuzzydist(), real typo tolerance (internal/fuzzy) — a SQLite scalar
 //     function, not another FTS5 table; see runFuzzyQuery below.
+//
 // This is why the non-free-text filters/sort/pagination below are built
 // into `where`/`args` once and reused by every attempt (via runQuery/
 // runFuzzyQuery) instead of being recomputed per attempt.
@@ -115,6 +128,26 @@ func (s *Server) handleSearchPieces(w http.ResponseWriter, r *http.Request) {
 	} else if present {
 		where = append(where, "p.id IN (SELECT piece_id FROM piece_user_tags WHERE tag_id IN ("+sqlPlaceholders(len(ids))+"))")
 		args = append(args, idsToArgs(ids)...)
+	}
+
+	// personId: Person Details' own "works" list — every piece crediting
+	// this person as composer OR arranger, effective (book-inheritance-
+	// aware). Composer and Arranger fall back to the book independently
+	// (CLAUDE.md's Book-level inheritance note), so this checks all four
+	// combinations separately rather than one shared "own OR book's"
+	// clause the way sheetTypeId/instrumentId (a single field) can.
+	if id, present, ok := parseIDFilter(w, q, "personId"); !ok {
+		return
+	} else if present {
+		where = append(where, `(
+			p.id IN (SELECT piece_id FROM piece_composers WHERE person_id = ?)
+			OR (p.id NOT IN (SELECT piece_id FROM piece_composers)
+				AND p.source_book_id IN (SELECT book_id FROM book_composers WHERE person_id = ?))
+			OR p.id IN (SELECT piece_id FROM piece_arrangers WHERE person_id = ?)
+			OR (p.id NOT IN (SELECT piece_id FROM piece_arrangers)
+				AND p.source_book_id IN (SELECT book_id FROM book_arrangers WHERE person_id = ?))
+		)`)
+		args = append(args, id, id, id, id)
 	}
 
 	if v := q.Get("favorite"); v != "" {

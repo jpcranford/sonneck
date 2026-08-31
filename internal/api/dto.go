@@ -28,10 +28,13 @@ type EffectiveTagRefs struct {
 // level soft inheritance: display must go through the same resolver as
 // validation/citation/search, or it would silently diverge from them.
 type PieceResponse struct {
-	ID              int64               `json:"id"`
-	Title           string              `json:"title"`
-	Composer        repo.EffectiveField `json:"composer"`
-	Arranger        repo.EffectiveField `json:"arranger"`
+	ID    int64  `json:"id"`
+	Title string `json:"title"`
+	// Composer/Arranger (composer/arranger overhaul, migration 00020) are
+	// ordered many-to-many now — same EffectiveTagRefs wire shape
+	// Instruments already uses, not a plain EffectiveField string.
+	Composer        EffectiveTagRefs    `json:"composer"`
+	Arranger        EffectiveTagRefs    `json:"arranger"`
 	Favorite        bool                `json:"favorite"`
 	WorkOpusNumber  repo.EffectiveField `json:"workOpusNumber"`
 	Keys            []repo.Tag          `json:"keys"`
@@ -73,8 +76,6 @@ func BuildPieceResponse(ctx context.Context, q repo.Queryer, p *models.Piece) (*
 	resp := &PieceResponse{
 		ID:              p.ID,
 		Title:           p.Title,
-		Composer:        eff.Composer,
-		Arranger:        eff.Arranger,
 		Favorite:        p.Favorite,
 		WorkOpusNumber:  eff.WorkOpusNumber,
 		Publisher:       eff.Publisher,
@@ -107,6 +108,27 @@ func BuildPieceResponse(ctx context.Context, q repo.Queryer, p *models.Piece) (*
 			return nil, err
 		}
 		resp.Keys = keys
+	}
+
+	// Composer/Arranger (migration 00020): resolved via PeopleByIDs, not
+	// TagsByIDs — order is meaningful (credit order), and only PeopleByIDs
+	// preserves the id list's own order the way KeysByIDs already does for
+	// a piece's key sequence.
+	resp.Composer = EffectiveTagRefs{Values: []repo.Tag{}, Inherited: eff.Composer.Inherited}
+	if len(eff.Composer.IDs) > 0 {
+		people, err := repo.PeopleByIDs(ctx, q, eff.Composer.IDs)
+		if err != nil {
+			return nil, err
+		}
+		resp.Composer.Values = people
+	}
+	resp.Arranger = EffectiveTagRefs{Values: []repo.Tag{}, Inherited: eff.Arranger.Inherited}
+	if len(eff.Arranger.IDs) > 0 {
+		people, err := repo.PeopleByIDs(ctx, q, eff.Arranger.IDs)
+		if err != nil {
+			return nil, err
+		}
+		resp.Arranger.Values = people
 	}
 
 	resp.SheetType = EffectiveTagRef{Inherited: eff.SheetTypeID.Inherited}
@@ -156,17 +178,21 @@ func BuildPieceResponse(ctx context.Context, q repo.Queryer, p *models.Piece) (*
 // nullable (migration 00014) — a manually created Book (Books library
 // view's "New Book" button) has no underlying file.
 type BookResponse struct {
-	ID             int64     `json:"id"`
-	BookTitle      string    `json:"bookTitle"`
-	Composer       *string   `json:"composer"`
-	Arranger       *string   `json:"arranger"`
-	YearWritten    *string   `json:"yearWritten"`
-	WorkOpusNumber *string   `json:"workOpusNumber"`
-	SheetType      *repo.Tag `json:"sheetType"`
-	Publisher      *string   `json:"publisher"`
-	PublisherID    *string   `json:"publisherId"`
-	Description    *string   `json:"description"`
-	ImslpNumber    *string   `json:"imslpNumber"`
+	ID        int64  `json:"id"`
+	BookTitle string `json:"bookTitle"`
+	// Composer/Arranger (composer/arranger overhaul, migration 00020):
+	// ordered, plain []repo.Tag — no Effective* wrapper, since Book is the
+	// top of the inheritance chain (nothing to fall back to), matching how
+	// Instruments below already works for Book.
+	Composer       []repo.Tag `json:"composer"`
+	Arranger       []repo.Tag `json:"arranger"`
+	YearWritten    *string    `json:"yearWritten"`
+	WorkOpusNumber *string    `json:"workOpusNumber"`
+	SheetType      *repo.Tag  `json:"sheetType"`
+	Publisher      *string    `json:"publisher"`
+	PublisherID    *string    `json:"publisherId"`
+	Description    *string    `json:"description"`
+	ImslpNumber    *string    `json:"imslpNumber"`
 	// ISBN (migration 00017): plain digits, no hyphens — see models.Book's
 	// own doc comment. The frontend hyphenates for display.
 	ISBN             *string    `json:"isbn"`
@@ -197,8 +223,8 @@ func BuildBookResponse(ctx context.Context, q repo.Queryer, b *models.Book) (*Bo
 	resp := &BookResponse{
 		ID:               b.ID,
 		BookTitle:        b.BookTitle,
-		Composer:         b.Composer,
-		Arranger:         b.Arranger,
+		Composer:         []repo.Tag{},
+		Arranger:         []repo.Tag{},
 		YearWritten:      b.YearWritten,
 		WorkOpusNumber:   b.WorkOpusNumber,
 		Publisher:        b.Publisher,
@@ -212,6 +238,21 @@ func BuildBookResponse(ctx context.Context, q repo.Queryer, b *models.Book) (*Bo
 		HasCustomCover:   b.CoverImageHash != nil,
 		CoverImageHash:   b.CoverImageHash,
 		ImportedAt:       b.ImportedAt,
+	}
+
+	if len(b.ComposerIDs) > 0 {
+		people, err := repo.PeopleByIDs(ctx, q, b.ComposerIDs)
+		if err != nil {
+			return nil, err
+		}
+		resp.Composer = people
+	}
+	if len(b.ArrangerIDs) > 0 {
+		people, err := repo.PeopleByIDs(ctx, q, b.ArrangerIDs)
+		if err != nil {
+			return nil, err
+		}
+		resp.Arranger = people
 	}
 
 	if b.SheetTypeID != nil {
@@ -247,9 +288,13 @@ func BuildBookResponse(ctx context.Context, q repo.Queryer, b *models.Book) (*Bo
 // (Calibre-style pick-existing-or-type-new — resolved server-side via
 // repo.FindOrCreate*).
 type PieceWriteRequest struct {
-	Title          string   `json:"title"`
-	Composer       *string  `json:"composer"`
-	Arranger       *string  `json:"arranger"`
+	Title string `json:"title"`
+	// Composers/Arrangers (composer/arranger overhaul, migration 00020):
+	// ordered names, same full-replace-by-name convention as Keys/
+	// Instruments/UserTags below — resolved server-side via
+	// repo.FindOrCreatePerson, preserving submission order as credit order.
+	Composers      []string `json:"composers"`
+	Arrangers      []string `json:"arrangers"`
 	Favorite       bool     `json:"favorite"`
 	WorkOpusNumber *string  `json:"workOpusNumber"`
 	Keys           []string `json:"keys"`
@@ -284,34 +329,100 @@ type PieceWriteRequest struct {
 // a real PDF). Deliberately narrower than BookWriteRequest: only the
 // fields a book can meaningfully have before any pieces exist to classify
 // it by (no sheet type/instruments/opus/IMSLP/description/ISBN here).
-// Arranger is included alongside Composer, unlike those others — since
+// Arrangers is included alongside Composers, unlike those others — since
 // ValidateBook now requires one of the two, leaving arranger out here would
 // make that requirement satisfiable only via composer at creation time.
 type BookCreateRequest struct {
-	BookTitle   string  `json:"bookTitle"`
-	Composer    *string `json:"composer"`
-	Arranger    *string `json:"arranger"`
-	Publisher   *string `json:"publisher"`
-	YearWritten *string `json:"yearWritten"`
+	BookTitle   string   `json:"bookTitle"`
+	Composers   []string `json:"composers"`
+	Arrangers   []string `json:"arrangers"`
+	Publisher   *string  `json:"publisher"`
+	YearWritten *string  `json:"yearWritten"`
 }
 
 // BookWriteRequest is the Book Properties Edit Menu's submission shape
 // (design doc §16). BookTitle is required, and so is one of
-// Composer/Arranger (ValidateBook) — no other field is.
+// Composers/Arrangers (ValidateBook) — no other field is.
 type BookWriteRequest struct {
-	BookTitle      string  `json:"bookTitle"`
-	Composer       *string `json:"composer"`
-	Arranger       *string `json:"arranger"`
-	YearWritten    *string `json:"yearWritten"`
-	WorkOpusNumber *string `json:"workOpusNumber"`
-	SheetTypeName  *string `json:"sheetTypeName"`
-	Publisher      *string `json:"publisher"`
-	PublisherID    *string `json:"publisherId"`
-	Description    *string `json:"description"`
-	ImslpNumber    *string `json:"imslpNumber"`
+	BookTitle      string   `json:"bookTitle"`
+	Composers      []string `json:"composers"`
+	Arrangers      []string `json:"arrangers"`
+	YearWritten    *string  `json:"yearWritten"`
+	WorkOpusNumber *string  `json:"workOpusNumber"`
+	SheetTypeName  *string  `json:"sheetTypeName"`
+	Publisher      *string  `json:"publisher"`
+	PublisherID    *string  `json:"publisherId"`
+	Description    *string  `json:"description"`
+	ImslpNumber    *string  `json:"imslpNumber"`
 	// ISBN follows the same normalize-on-write treatment as IMSLP number's
 	// prefix (handleUpdateBook's normalizeISBN) — plain digits stored,
 	// whatever punctuation/label the user typed.
 	ISBN        *string  `json:"isbn"`
 	Instruments []string `json:"instruments"`
+}
+
+// PersonResponse is the wire shape for a Person (composer/arranger
+// overhaul, migration 00020) — "should be very minimal" per the original
+// brief: Name, Bio, BirthYear, DeathYear, plus an optional custom portrait
+// (mirrors Book's own HasCustomCover/CoverImageHash pair exactly) and a
+// PieceCount for the People Library's own listing and its default
+// >2-piece filter.
+type PersonResponse struct {
+	ID                int64     `json:"id"`
+	Name              string    `json:"name"`
+	Bio               *string   `json:"bio"`
+	BirthYear         *int      `json:"birthYear"`
+	DeathYear         *int      `json:"deathYear"`
+	HasCustomPortrait bool      `json:"hasCustomPortrait"`
+	PortraitImageHash *string   `json:"portraitImageHash"`
+	PieceCount        int       `json:"pieceCount"`
+	CreatedAt         time.Time `json:"createdAt"`
+}
+
+func BuildPersonResponse(ctx context.Context, q repo.Queryer, p *models.Person) (*PersonResponse, error) {
+	count, err := repo.CountPiecesForPerson(ctx, q, p.ID)
+	if err != nil {
+		return nil, err
+	}
+	return &PersonResponse{
+		ID:                p.ID,
+		Name:              p.Name,
+		Bio:               p.Bio,
+		BirthYear:         p.BirthYear,
+		DeathYear:         p.DeathYear,
+		HasCustomPortrait: p.PortraitImageHash != nil,
+		PortraitImageHash: p.PortraitImageHash,
+		PieceCount:        count,
+		CreatedAt:         p.CreatedAt,
+	}, nil
+}
+
+// PersonCreateRequest is the People Library's "New Person" button
+// submission shape — deliberately narrower than PersonWriteRequest (no
+// Bio), same "New Book" convention as BookCreateRequest vs.
+// BookWriteRequest: only what's needed before real content exists.
+type PersonCreateRequest struct {
+	Name      string `json:"name"`
+	BirthYear *int   `json:"birthYear"`
+	DeathYear *int   `json:"deathYear"`
+}
+
+// PersonWriteRequest is the Edit Person modal's submission shape — full
+// replace, same convention as every other edit-menu write request in this
+// app.
+type PersonWriteRequest struct {
+	Name      string  `json:"name"`
+	Bio       *string `json:"bio"`
+	BirthYear *int    `json:"birthYear"`
+	DeathYear *int    `json:"deathYear"`
+}
+
+// PersonSplitRequest is Split People's submission shape — an ordered list
+// of replacement names (Calibre-style pick-existing-or-type-new, resolved
+// server-side via repo.FindOrCreatePerson, same as every other tag-like
+// field). At least one name is required — checked in the handler, not
+// here, since an empty list isn't really a "bad request" so much as
+// "nothing to do."
+type PersonSplitRequest struct {
+	ReplacementNames []string `json:"replacementNames"`
 }

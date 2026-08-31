@@ -45,6 +45,7 @@ interface SampleKey {
 interface SamplePiece {
   id: number
   title: string
+  workOpusNumber: string | null
   composer: string | null
   arranger: string | null
   sourcePageStart: number
@@ -92,6 +93,7 @@ const samplePieces: SamplePiece[] = [
   {
     id: 1,
     title: 'Von fremden Ländern und Menschen',
+    workOpusNumber: 'Op. 68, No. 1',
     composer: null,
     arranger: null,
     sourcePageStart: 1,
@@ -105,6 +107,7 @@ const samplePieces: SamplePiece[] = [
   {
     id: 2,
     title: 'Kuriose Geschichte',
+    workOpusNumber: null,
     composer: null,
     arranger: null,
     sourcePageStart: 2,
@@ -118,6 +121,7 @@ const samplePieces: SamplePiece[] = [
   {
     id: 3,
     title: 'Hasche-Mann',
+    workOpusNumber: 'Op. 68, No. 5',
     composer: null,
     arranger: 'Clara Wieck',
     sourcePageStart: 3,
@@ -134,6 +138,7 @@ const samplePieces: SamplePiece[] = [
   {
     id: 4,
     title: 'Bittendes Kind',
+    workOpusNumber: null,
     composer: null,
     arranger: null,
     sourcePageStart: 4,
@@ -147,6 +152,7 @@ const samplePieces: SamplePiece[] = [
   {
     id: 5,
     title: 'Glückes genug',
+    workOpusNumber: null,
     composer: null,
     arranger: null,
     sourcePageStart: 5,
@@ -160,6 +166,7 @@ const samplePieces: SamplePiece[] = [
   {
     id: 6,
     title: 'Kleine Studie',
+    workOpusNumber: 'Op. 68, No. 14',
     composer: null,
     arranger: null,
     sourcePageStart: 6,
@@ -173,6 +180,7 @@ const samplePieces: SamplePiece[] = [
   {
     id: 7,
     title: 'Armes Waisenkind',
+    workOpusNumber: null,
     composer: null,
     arranger: null,
     sourcePageStart: 6,
@@ -318,6 +326,15 @@ function SheetThumb() {
 // (fallback-resolved) value, not gated on `.inherited` — so it currently
 // shows exactly the repeated-pill clutter this mockup is deliberately
 // avoiding. Needs the equivalent gate added when this ports over (step 6).
+//
+// The three neutral (keys/sheetType/instruments) pills carry a real
+// `bg-paper`, not just a border on transparent — ported from the same fix
+// on the real, shared `TagPills.tsx` (2026-08-30): a transparent pill let
+// this row's own `hover:bg-accent-soft` show straight through, reading as
+// if the pill "turned green" on hover. `bg-paper`, not `bg-paper-sunken`
+// (tried first, corrected via direct feedback) — keeps the pill quiet
+// against the page's own resting background rather than a visibly
+// distinct chip.
 function PiecePills({ piece }: { piece: SamplePiece }) {
   if (
     !piece.keys.length &&
@@ -338,7 +355,7 @@ function PiecePills({ piece }: { piece: SamplePiece }) {
         </span>
       ))}
       {piece.keys.length > 0 && (
-        <span className="flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs font-medium whitespace-nowrap text-ink-soft">
+        <span className="flex items-center gap-1 rounded-full border border-border bg-paper px-2 py-0.5 text-xs font-medium whitespace-nowrap text-ink-soft">
           <IconMusic size={11} className="shrink-0" />
           <span>
             {piece.keys.map((key, i) => (
@@ -356,14 +373,14 @@ function PiecePills({ piece }: { piece: SamplePiece }) {
         </span>
       )}
       {piece.sheetType && (
-        <span className="rounded-full border border-border px-2 py-0.5 text-xs font-medium text-ink-soft">
+        <span className="rounded-full border border-border bg-paper px-2 py-0.5 text-xs font-medium text-ink-soft">
           {piece.sheetType}
         </span>
       )}
       {piece.instruments.map((instrument) => (
         <span
           key={instrument}
-          className="rounded-full border border-border px-2 py-0.5 text-xs font-medium text-ink-soft"
+          className="rounded-full border border-border bg-paper px-2 py-0.5 text-xs font-medium text-ink-soft"
         >
           {instrument}
         </span>
@@ -424,6 +441,11 @@ function PieceGrid({ pieces }: { pieces: SamplePiece[] }) {
 const THUMB_HIDE_CLASS = 'max-[501px]:hidden'
 const ROW_COLLAPSE_CLASS = 'max-[501px]:grid-cols-[96px_1fr]'
 
+// Title includes each piece's own opus number in parentheses (added
+// 2026-08-30, direct instruction, ported from the same fix on Person
+// Details) — matches the header's own bookTitle+workOpusNumber
+// convention above. PieceGrid (this file's grid-view companion) keeps its
+// own title-only treatment, per the same instruction ("list view" only).
 function PieceList({ pieces }: { pieces: SamplePiece[] }) {
   return (
     <div className="flex flex-col">
@@ -441,6 +463,7 @@ function PieceList({ pieces }: { pieces: SamplePiece[] }) {
           <div className="min-w-0">
             <p className="flex flex-wrap items-center gap-1.5 font-display text-[0.92rem] font-medium text-ink">
               {piece.title}
+              {piece.workOpusNumber ? ` (${piece.workOpusNumber})` : ''}
               {piece.favorite && (
                 <span className="text-accent" title="Favorite">
                   <IconHeartFilled size={13} />

@@ -27,6 +27,21 @@ const MOCKUPS = [
     note: 'Grid/list match the real BookGridCard/BookListCard exactly, plus the same Filter Drawer + Sort control added to the Piece Library, adjusted for Books’ lighter facets (Sheet Type/Instrument only). Genuinely interactive against 8 fixture books.',
   },
   {
+    to: '/mockup/people-library',
+    name: 'People Library',
+    note: 'Composer/arranger overhaul, Phase 3 of 6 — real toolbar/grid/list/Filter Drawer shell (same system as Piece/Books Library) with the locked oval Person card and the "Show all composers" default (>2-piece) filter. Genuinely interactive against 17 fixture people.',
+  },
+  {
+    to: '/mockup/person-details',
+    name: 'Person Details',
+    note: 'Composer/arranger overhaul, Phase 4 of 6 — header card (oval portrait + camera-badge Upload Portrait flow with device/Wikipedia search + drag/zoom adjust, bio, direct book-credit chips) and a works grid/list mirroring Book Details’ own PieceList, plus a Split People modal reusing the real TagComboBox as its ordered replacement picker. Genuinely interactive against one fixture person (Chopin).',
+  },
+  {
+    to: '/mockup/edit-person-modal',
+    name: 'Edit Person Modal',
+    note: 'Composer/arranger overhaul, Phase 5 of 6 — Name/Biography/Birth year/Death year, deliberately minimal (no portrait field — that stays on the camera badge, Phase 4). Wikipedia autofill button mimics the real ImslpAutofillButton\'s states/behavior via a mock lookup.',
+  },
+  {
     to: '/mockup/book-details',
     name: 'Book Details',
     note: 'Book Details page (header card + pieces grid/list) design mockup.',

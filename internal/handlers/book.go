@@ -134,17 +134,33 @@ func (s *Server) handleCreateBookManual(w http.ResponseWriter, r *http.Request) 
 	err := s.withTx(r.Context(), func(tx *sql.Tx) error {
 		b := &models.Book{
 			BookTitle:   req.BookTitle,
-			Composer:    req.Composer,
-			Arranger:    req.Arranger,
 			Publisher:   req.Publisher,
 			YearWritten: req.YearWritten,
 		}
+
+		composerIDs, err := resolveTagNames(r.Context(), tx, repo.FindOrCreatePerson, req.Composers, "composers")
+		if err != nil {
+			return err
+		}
+		b.ComposerIDs = composerIDs
+		arrangerIDs, err := resolveTagNames(r.Context(), tx, repo.FindOrCreatePerson, req.Arrangers, "arrangers")
+		if err != nil {
+			return err
+		}
+		b.ArrangerIDs = arrangerIDs
+
 		if errs := api.ValidateBook(b); len(errs) > 0 {
 			return errs
 		}
 
 		id, err := repo.CreateBook(r.Context(), tx, b)
 		if err != nil {
+			return err
+		}
+		if err := repo.SetBookComposers(r.Context(), tx, id, b.ComposerIDs); err != nil {
+			return err
+		}
+		if err := repo.SetBookArrangers(r.Context(), tx, id, b.ArrangerIDs); err != nil {
 			return err
 		}
 
@@ -181,7 +197,16 @@ func (s *Server) handleCreateBookManual(w http.ResponseWriter, r *http.Request) 
 var bookSortColumns = map[string]sortColumnFunc{
 	"dateAdded": simpleSortColumn("id"),
 	"title":     titleSortColumn("book_title"),
-	"composer":  simpleSortColumn("composer COLLATE NOCASE"),
+	// composer sorts by the book's own first-listed composer (position 0)
+	// — composer/arranger overhaul (migration 00020) moved it off a plain
+	// column onto an ordered join table, so this is a scalar subquery now,
+	// not simpleSortColumn. Same direction-invariant "blank sorts last"
+	// clause as yearWritten below (a book with no composer at all has
+	// nothing for the subquery to return, i.e. NULL).
+	"composer": func(dir string) string {
+		const expr = `(SELECT p.name FROM book_composers bc JOIN people p ON p.id = bc.person_id WHERE bc.book_id = books.id ORDER BY bc.position LIMIT 1)`
+		return "(" + expr + " IS NULL) ASC, " + expr + " COLLATE NOCASE " + dir
+	},
 	"yearWritten": func(dir string) string {
 		return "(year_written IS NULL OR TRIM(year_written) = '' OR NOT (year_written GLOB '[0-9]*')) ASC, " +
 			"CAST(year_written AS INTEGER) " + dir
@@ -207,9 +232,15 @@ func (s *Server) handleListBooks(w http.ResponseWriter, r *http.Request) {
 	sqlStr := `SELECT id FROM books`
 
 	if query := strings.TrimSpace(q.Get("query")); query != "" {
-		where = append(where, `(book_title LIKE ? OR composer LIKE ? OR publisher LIKE ?)`)
+		// composer/arranger are ordered join tables now (migration 00020),
+		// not a plain column — matched via an EXISTS-style IN subquery
+		// against `people.name`, same "any of this book's credited people"
+		// shape the personId filter below uses for an exact id match.
+		where = append(where, `(book_title LIKE ? OR publisher LIKE ?
+			OR id IN (SELECT book_id FROM book_composers bc JOIN people p ON p.id = bc.person_id WHERE p.name LIKE ?)
+			OR id IN (SELECT book_id FROM book_arrangers ba JOIN people p ON p.id = ba.person_id WHERE p.name LIKE ?))`)
 		like := "%" + query + "%"
-		args = append(args, like, like, like)
+		args = append(args, like, like, like, like)
 	}
 
 	// Comma-separated, same OR-match multi-select convention as
@@ -228,6 +259,20 @@ func (s *Server) handleListBooks(w http.ResponseWriter, r *http.Request) {
 	} else if present {
 		where = append(where, "id IN (SELECT book_id FROM book_instruments WHERE instrument_id IN ("+sqlPlaceholders(len(ids))+"))")
 		args = append(args, idsToArgs(ids)...)
+	}
+
+	// personId: Person Details' own "Also credited directly on N books"
+	// chip strip — every book directly crediting this person as composer
+	// OR arranger. No inheritance concern here (Book is the top of the
+	// hierarchy), unlike the piece-side personId filter.
+	if id, present, ok := parseIDFilter(w, q, "personId"); !ok {
+		return
+	} else if present {
+		where = append(where, `(
+			id IN (SELECT book_id FROM book_composers WHERE person_id = ?)
+			OR id IN (SELECT book_id FROM book_arrangers WHERE person_id = ?)
+		)`)
+		args = append(args, id, id)
 	}
 
 	if len(where) > 0 {
@@ -341,8 +386,6 @@ func (s *Server) handleUpdateBook(w http.ResponseWriter, r *http.Request) {
 		}
 
 		b.BookTitle = req.BookTitle
-		b.Composer = req.Composer
-		b.Arranger = req.Arranger
 		b.YearWritten = req.YearWritten
 		b.WorkOpusNumber = req.WorkOpusNumber
 		b.Publisher = req.Publisher
@@ -363,6 +406,17 @@ func (s *Server) handleUpdateBook(w http.ResponseWriter, r *http.Request) {
 		}
 		b.InstrumentIDs = instrumentIDs
 
+		composerIDs, err := resolveTagNames(r.Context(), tx, repo.FindOrCreatePerson, req.Composers, "composers")
+		if err != nil {
+			return err
+		}
+		b.ComposerIDs = composerIDs
+		arrangerIDs, err := resolveTagNames(r.Context(), tx, repo.FindOrCreatePerson, req.Arrangers, "arrangers")
+		if err != nil {
+			return err
+		}
+		b.ArrangerIDs = arrangerIDs
+
 		if errs := api.ValidateBook(b); len(errs) > 0 {
 			return errs
 		}
@@ -371,6 +425,12 @@ func (s *Server) handleUpdateBook(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 		if err := repo.SetBookInstruments(r.Context(), tx, id, b.InstrumentIDs); err != nil {
+			return err
+		}
+		if err := repo.SetBookComposers(r.Context(), tx, id, b.ComposerIDs); err != nil {
+			return err
+		}
+		if err := repo.SetBookArrangers(r.Context(), tx, id, b.ArrangerIDs); err != nil {
 			return err
 		}
 		if err := repo.ResyncSearchIndexForBook(r.Context(), tx, id); err != nil {
@@ -780,20 +840,27 @@ func (s *Server) handleDownloadBookFile(w http.ResponseWriter, r *http.Request) 
 		api.WriteError(w, http.StatusNotFound, api.CodeNotFound, "this book has no file")
 		return
 	}
-	var composer, arranger, publisher, yearWritten string
-	if b.Composer != nil {
-		composer = *b.Composer
-	}
-	if b.Arranger != nil {
-		arranger = *b.Arranger
-	}
+	var publisher, yearWritten string
 	if b.Publisher != nil {
 		publisher = *b.Publisher
 	}
 	if b.YearWritten != nil {
 		yearWritten = *b.YearWritten
 	}
-	filename := downloadFilename(composer, arranger, publisher, b.BookTitle, yearWritten)
+	// Composer/Arranger are ordered lists now (migration 00020) — joined
+	// into a single display name via joinPersonNames, same treatment as
+	// handleDownloadPieceFile's own resolution.
+	composerNames, err := personNames(r.Context(), s.DB, b.ComposerIDs)
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+	arrangerNames, err := personNames(r.Context(), s.DB, b.ArrangerIDs)
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+	filename := downloadFilename(joinPersonNames(composerNames), joinPersonNames(arrangerNames), publisher, b.BookTitle, yearWritten)
 	w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=%q", filename+".pdf"))
 	http.ServeFile(w, r, *b.FilePath)
 }

@@ -26,12 +26,25 @@ interface TagPillsProps {
 // tags, key, sheet type; instruments moved into that page's details list).
 // Color is reserved for genuinely user-specific data (`practiceStatus`,
 // `userTags`, both user-authored) — key/sheetType/instruments are
-// system/book-level data, so they stay neutral hollow pills, never
-// distinguished by color alone anyway (CLAUDE.md > Frontend) since key
-// also carries a music-note icon. Keys are many-to-many (a piece can be
-// written in more than one key) and genuinely ordered (e.g. a piece that
-// modulates) — rendered as one merged pill with the sequence joined by a
-// small chevron, not one independent pill per key.
+// system/book-level data, so they stay neutral pills, never distinguished
+// by color alone anyway (CLAUDE.md > Frontend) since key also carries a
+// music-note icon. Keys are many-to-many (a piece can be written in more
+// than one key) and genuinely ordered (e.g. a piece that modulates) —
+// rendered as one merged pill with the sequence joined by a small
+// chevron, not one independent pill per key.
+//
+// The three neutral pills below carry a real `bg-paper` background, not
+// just a border on transparent — found 2026-08-30 as a real bug: a
+// transparent pill inside a row with `hover:bg-accent-soft` (this
+// component's own real callers include exactly that — Book Details' and
+// Person Details' list views) let the row's own hover tint show straight
+// through, reading as if the pill itself "turned green" on hover instead
+// of staying a fixed neutral color. `bg-paper` (not `bg-paper-sunken`,
+// tried first and corrected via direct feedback) keeps the pill visually
+// quiet against the page's own resting background — a border-only outline
+// with a fixed, non-transparent fill, not a visibly distinct "chip."
+// Ported into `BookDetailsSample.tsx`'s own local `PiecePills` duplicate
+// (mockup-vs-real convention — that file doesn't import this component).
 export function TagPills({
   keys,
   sheetType,
@@ -81,7 +94,7 @@ export function TagPills({
         // pathologically long sequence on a narrow card ellipsizes
         // instead of overflowing the card, same fallback the card's own
         // title text already uses elsewhere.
-        <span className="flex min-w-0 max-w-full items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs font-medium whitespace-nowrap text-ink-soft">
+        <span className="flex min-w-0 max-w-full items-center gap-1 rounded-full border border-border bg-paper px-2 py-0.5 text-xs font-medium whitespace-nowrap text-ink-soft">
           <IconMusic size={11} className="shrink-0" />
           <span className="truncate">
             {keys.map((key, i) => (
@@ -102,14 +115,14 @@ export function TagPills({
         </span>
       )}
       {sheetType && (
-        <span className="rounded-full border border-border px-2 py-0.5 text-xs font-medium text-ink-soft">
+        <span className="rounded-full border border-border bg-paper px-2 py-0.5 text-xs font-medium text-ink-soft">
           {sheetType.name}
         </span>
       )}
       {instruments.map((tag) => (
         <span
           key={tag.id}
-          className="rounded-full border border-border px-2 py-0.5 text-xs font-medium text-ink-soft"
+          className="rounded-full border border-border bg-paper px-2 py-0.5 text-xs font-medium text-ink-soft"
         >
           {tag.name}
         </span>

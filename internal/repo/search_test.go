@@ -30,13 +30,19 @@ func TestSearchIndex_FindsInheritedComposer(t *testing.T) {
 
 	bookID, err := repo.CreateBook(ctx, dbConn, &models.Book{
 		BookTitle:        "Six Symphonies",
-		Composer:         strPtr("Charles-Marie Widor"),
 		OriginalFilename: strPtr("widor.pdf"),
 		FilePath:         strPtr("/data/library/books/widor.pdf"),
 		FileHash:         strPtr("widor-hash"),
 	})
 	if err != nil {
 		t.Fatalf("CreateBook: %v", err)
+	}
+	widor, err := repo.FindOrCreatePerson(ctx, dbConn, "Charles-Marie Widor")
+	if err != nil {
+		t.Fatalf("FindOrCreatePerson: %v", err)
+	}
+	if err := repo.SetBookComposers(ctx, dbConn, bookID, []int64{widor}); err != nil {
+		t.Fatalf("SetBookComposers: %v", err)
 	}
 
 	pieceID, err := repo.CreatePiece(ctx, dbConn, &models.Piece{
@@ -67,13 +73,19 @@ func TestSearchIndex_BookEditFansOutToAllPieces(t *testing.T) {
 
 	bookID, err := repo.CreateBook(ctx, dbConn, &models.Book{
 		BookTitle:        "Anthology",
-		Composer:         strPtr("Original Composer"),
 		OriginalFilename: strPtr("anthology.pdf"),
 		FilePath:         strPtr("/data/library/books/anthology.pdf"),
 		FileHash:         strPtr("anthology-hash"),
 	})
 	if err != nil {
 		t.Fatalf("CreateBook: %v", err)
+	}
+	originalComposer, err := repo.FindOrCreatePerson(ctx, dbConn, "Original Composer")
+	if err != nil {
+		t.Fatalf("FindOrCreatePerson: %v", err)
+	}
+	if err := repo.SetBookComposers(ctx, dbConn, bookID, []int64{originalComposer}); err != nil {
+		t.Fatalf("SetBookComposers: %v", err)
 	}
 
 	var pieceIDs []int64
@@ -97,13 +109,12 @@ func TestSearchIndex_BookEditFansOutToAllPieces(t *testing.T) {
 		t.Fatalf("pre-edit FTS match count = %d, want 2", count)
 	}
 
-	book, err := repo.GetBookByID(ctx, dbConn, bookID)
+	renamedComposer, err := repo.FindOrCreatePerson(ctx, dbConn, "Renamed Composer")
 	if err != nil {
-		t.Fatalf("GetBookByID: %v", err)
+		t.Fatalf("FindOrCreatePerson: %v", err)
 	}
-	book.Composer = strPtr("Renamed Composer")
-	if err := repo.UpdateBook(ctx, dbConn, book); err != nil {
-		t.Fatalf("UpdateBook: %v", err)
+	if err := repo.SetBookComposers(ctx, dbConn, bookID, []int64{renamedComposer}); err != nil {
+		t.Fatalf("SetBookComposers: %v", err)
 	}
 	if err := repo.ResyncSearchIndexForBook(ctx, dbConn, bookID); err != nil {
 		t.Fatalf("ResyncSearchIndexForBook: %v", err)

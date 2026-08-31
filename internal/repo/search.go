@@ -44,6 +44,18 @@ func ResyncSearchIndex(ctx context.Context, q Queryer, pieceID int64) error {
 		return err
 	}
 
+	// Composer/arranger are ordered lists now (migration 00020) — flattened
+	// into pieces_fts the same way key names already are (space-joined),
+	// via the effective (book-fallback-resolved) id list.
+	composerNames, err := namesByIDs(ctx, q, "people", eff.Composer.IDs)
+	if err != nil {
+		return err
+	}
+	arrangerNames, err := namesByIDs(ctx, q, "people", eff.Arranger.IDs)
+	if err != nil {
+		return err
+	}
+
 	var sheetTypeName string
 	if eff.SheetTypeID.Value != nil {
 		st, err := GetSheetTypeByID(ctx, q, *eff.SheetTypeID.Value)
@@ -66,7 +78,7 @@ func ResyncSearchIndex(ctx context.Context, q Queryer, pieceID int64) error {
 	// purely as a different tokenizer over identical content (migration
 	// 00019's own comment), not a differently-scoped index.
 	insertArgs := []any{
-		p.ID, p.Title, eff.Composer.Value, eff.Arranger.Value, eff.Publisher.Value, eff.PublisherID.Value,
+		p.ID, p.Title, strings.Join(composerNames, " "), strings.Join(arrangerNames, " "), eff.Publisher.Value, eff.PublisherID.Value,
 		eff.ImslpNumber.Value, eff.YearWritten.Value, eff.WorkOpusNumber.Value, eff.Description.Value, strOrEmpty(p.UserNotes),
 		strings.Join(keyNames, " "), sheetTypeName, strings.Join(instrumentNames, " "), strings.Join(userTagNames, " "),
 	}

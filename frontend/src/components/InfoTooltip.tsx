@@ -41,16 +41,33 @@ interface InfoTooltipProps {
  * was tried first and reverted: it stopped the phantom scrollable space
  * but then silently clipped this exact tooltip's text whenever it was
  * actually opened near an edge, trading one bug for a worse one).
+ *
+ * Vertically flips instead of clamping — found live (2026-08-30) via the
+ * People Library filter drawer's "Show all composers" row, the first row
+ * of a scrollable drawer body: the bubble's default open-upward placement
+ * (`bottom-full`) had nowhere to go above the trigger within that
+ * scrollable ancestor, so its top portion rendered clipped clean off. A
+ * horizontal-style clamp (nudge it back within bounds) doesn't fit this
+ * axis the way it does left/right — squeezing a short, wide bubble
+ * vertically would just make it taller/narrower against its own
+ * `max-w`. Flipping which side it opens on (`top-full` instead) is the
+ * right fix, same as how a dropdown menu flips above its trigger when
+ * there's no room below.
  */
-function getClipBoundary(el: HTMLElement): { left: number; right: number } {
+function getClipBoundary(el: HTMLElement): { left: number; right: number; top: number; bottom: number } {
   for (let node = el.parentElement; node; node = node.parentElement) {
     const style = getComputedStyle(node)
     if (style.overflowX !== 'visible' || style.overflowY !== 'visible') {
       const rect = node.getBoundingClientRect()
-      return { left: rect.left, right: rect.right }
+      return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom }
     }
   }
-  return { left: 0, right: document.documentElement.clientWidth }
+  return {
+    left: 0,
+    right: document.documentElement.clientWidth,
+    top: 0,
+    bottom: document.documentElement.clientHeight,
+  }
 }
 
 export function InfoTooltip({ message, ariaLabel, triggerClassName, children }: InfoTooltipProps) {
@@ -61,6 +78,16 @@ export function InfoTooltip({ message, ariaLabel, triggerClassName, children }: 
   // a separate useEffect keyed on shiftPx) — see clamp()'s own comment for
   // why this needs to be a ref at all, not just closure-captured state.
   const shiftPxRef = useRef(0)
+  // Same ref-mirrors-state reasoning as shiftPx/shiftPxRef above (the
+  // mount effect's `clamp` closure is stale after the first render, so a
+  // later call reading React state directly would see a stale value —
+  // reading/writing the ref instead is always current). One-way only:
+  // once flipped below, clamp() never flips it back — a trigger that
+  // needs this at all is reliably pinned near one edge, not oscillating
+  // near the middle, so there's no real case to handle where flipping
+  // back would matter, and a one-way flip can't itself cause flicker.
+  const [placeBelow, setPlaceBelow] = useState(false)
+  const placeBelowRef = useRef(false)
 
   // Stable across renders (not redefined inside the effect below) so both
   // the mount effect and the hover/open handlers further down can call the
@@ -100,9 +127,20 @@ export function InfoTooltip({ message, ariaLabel, triggerClassName, children }: 
     const el = bubbleRef.current
     if (!el) return
     const rect = el.getBoundingClientRect()
+    const boundary = getClipBoundary(el)
+
+    // Vertical: rect reflects wherever the bubble is *currently* placed
+    // (bottom-full by default) — if its top would land above the nearest
+    // clipping ancestor's own top edge, flip to opening downward instead.
+    // Checked before the horizontal math below, but order doesn't matter
+    // between the two — they clamp independent axes.
+    if (!placeBelowRef.current && rect.top < boundary.top + margin) {
+      placeBelowRef.current = true
+      setPlaceBelow(true)
+    }
+
     const unshiftedRight = rect.right - shiftPxRef.current
     const unshiftedLeft = rect.left - shiftPxRef.current
-    const boundary = getClipBoundary(el)
     let shift = 0
     if (unshiftedRight > boundary.right - margin) {
       shift = boundary.right - margin - unshiftedRight
@@ -159,9 +197,9 @@ export function InfoTooltip({ message, ariaLabel, triggerClassName, children }: 
         ref={bubbleRef}
         role="tooltip"
         style={{ transform: `translateX(calc(-50% + ${shiftPx}px))` }}
-        className={`pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 w-max max-w-[220px] rounded-md bg-ink px-2 py-1 text-center text-xs text-paper shadow-md transition-opacity ${
-          open ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-        }`}
+        className={`pointer-events-none absolute left-1/2 z-10 w-max max-w-[220px] rounded-md bg-ink px-2 py-1 text-center text-xs text-paper shadow-md transition-opacity ${
+          placeBelow ? 'top-full mt-1.5' : 'bottom-full mb-1.5'
+        } ${open ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
       >
         {message}
       </span>

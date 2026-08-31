@@ -50,7 +50,7 @@ func TestUpdateBook_ResyncsSearchForInheritingPieces(t *testing.T) {
 
 	decodeData(t, doJSON(t, h, http.MethodPatch, apiBooksURL(bookID), map[string]any{
 		"bookTitle": "Anthology",
-		"composer":  "Original Composer",
+		"composers": []string{"Original Composer"},
 	}), nil)
 
 	confirmRec := doJSON(t, h, http.MethodPost, apiBooksURL(bookID)+"/confirm-import", map[string]any{
@@ -60,7 +60,7 @@ func TestUpdateBook_ResyncsSearchForInheritingPieces(t *testing.T) {
 		},
 		"pieces": []map[string]any{
 			{"title": "Inherits"},
-			{"title": "Overrides", "composer": "Own Composer"},
+			{"title": "Overrides", "composers": []string{"Own Composer"}},
 		},
 	})
 	var result struct {
@@ -72,7 +72,7 @@ func TestUpdateBook_ResyncsSearchForInheritingPieces(t *testing.T) {
 
 	decodeData(t, doJSON(t, h, http.MethodPatch, apiBooksURL(bookID), map[string]any{
 		"bookTitle": "Anthology",
-		"composer":  "Renamed Composer",
+		"composers": []string{"Renamed Composer"},
 	}), nil)
 
 	assertSearchCount(t, h, "Original", 0)
@@ -92,7 +92,7 @@ func TestUpdateBook_NormalizesISBNOnSave(t *testing.T) {
 
 	decodeData(t, doJSON(t, h, http.MethodPatch, apiBooksURL(bookID), map[string]any{
 		"bookTitle": "Six Symphonies",
-		"composer":  "Charles-Marie Widor",
+		"composers": []string{"Charles-Marie Widor"},
 		"isbn":      "ISBN 978-0-13-235088-4",
 	}), nil)
 
@@ -114,15 +114,15 @@ func TestUpdateBook_ArrangerRoundTrips(t *testing.T) {
 
 	decodeData(t, doJSON(t, h, http.MethodPatch, apiBooksURL(bookID), map[string]any{
 		"bookTitle": "Anthology",
-		"arranger":  "J. Someone",
+		"arrangers": []string{"J. Someone"},
 	}), nil)
 
 	rec := doJSON(t, h, http.MethodGet, apiBooksURL(bookID), nil)
 	var book bookResponse
 	decodeData(t, rec, &book)
 
-	if book.Arranger == nil || *book.Arranger != "J. Someone" {
-		t.Errorf("arranger = %v, want %q", book.Arranger, "J. Someone")
+	if len(book.Arranger) != 1 || book.Arranger[0].Name != "J. Someone" {
+		t.Errorf("arranger = %v, want a single [J. Someone]", book.Arranger)
 	}
 }
 
@@ -151,7 +151,7 @@ func TestCreateBookManual_RequiresTitle(t *testing.T) {
 	h := newTestServer(t)
 
 	rec := doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
-		"composer": "Erik Satie",
+		"composers": []string{"Erik Satie"},
 	})
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status %d, want 400 (bookTitle required); body %s", rec.Code, rec.Body.String())
@@ -167,7 +167,7 @@ func TestCreateBookManual_CreatesFilelessBook(t *testing.T) {
 
 	rec := doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
 		"bookTitle": "Gymnopédies",
-		"composer":  "Erik Satie",
+		"composers": []string{"Erik Satie"},
 	})
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("status %d, want 201; body %s", rec.Code, rec.Body.String())
@@ -223,7 +223,7 @@ func TestDownloadBookFile_FilelessBookReturns404(t *testing.T) {
 	h := newTestServer(t)
 	rec := doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
 		"bookTitle": "Christmas Medleys",
-		"composer":  "Traditional",
+		"composers": []string{"Traditional"},
 	})
 	var book bookResponse
 	decodeData(t, rec, &book)
@@ -244,7 +244,7 @@ func TestListBooks_ReturnsAllAndFiltersByQuery(t *testing.T) {
 
 	decodeData(t, doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
 		"bookTitle": "Gymnopédies",
-		"composer":  "Erik Satie",
+		"composers": []string{"Erik Satie"},
 	}), nil)
 
 	var all []bookResponse
@@ -264,10 +264,10 @@ func TestListBooks_SortsByTitleAndComposer(t *testing.T) {
 	h := newTestServer(t)
 	var zebra, apple bookResponse
 	decodeData(t, doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
-		"bookTitle": "Zebra Etudes", "composer": "Yellowman",
+		"bookTitle": "Zebra Etudes", "composers": []string{"Yellowman"},
 	}), &zebra)
 	decodeData(t, doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
-		"bookTitle": "Apple Sonatas", "composer": "Aardvark",
+		"bookTitle": "Apple Sonatas", "composers": []string{"Aardvark"},
 	}), &apple)
 
 	var byTitle []bookResponse
@@ -290,13 +290,13 @@ func TestListBooks_SortsByTitleIgnoresLeadingArticle(t *testing.T) {
 	h := newTestServer(t)
 	var realBook, fakeBook, anthology bookResponse
 	decodeData(t, doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
-		"bookTitle": "The Real Book", "composer": "Various",
+		"bookTitle": "The Real Book", "composers": []string{"Various"},
 	}), &realBook)
 	decodeData(t, doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
-		"bookTitle": "A Fake Book", "composer": "Various",
+		"bookTitle": "A Fake Book", "composers": []string{"Various"},
 	}), &fakeBook)
 	decodeData(t, doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
-		"bookTitle": "Anthology of Pieces", "composer": "Various",
+		"bookTitle": "Anthology of Pieces", "composers": []string{"Various"},
 	}), &anthology)
 
 	// Sort keys: "Fake Book" (from "A Fake Book"), "Anthology of Pieces"
@@ -318,13 +318,13 @@ func TestListBooks_SortsByYearWrittenHandlesNonNumericAndNull(t *testing.T) {
 	h := newTestServer(t)
 	var numeric, freeText, blank bookResponse
 	decodeData(t, doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
-		"bookTitle": "Numeric Year", "composer": "Someone", "yearWritten": "1848",
+		"bookTitle": "Numeric Year", "composers": []string{"Someone"}, "yearWritten": "1848",
 	}), &numeric)
 	decodeData(t, doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
-		"bookTitle": "Free Text Year", "composer": "Someone", "yearWritten": "ca. 1708-1711",
+		"bookTitle": "Free Text Year", "composers": []string{"Someone"}, "yearWritten": "ca. 1708-1711",
 	}), &freeText)
 	decodeData(t, doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
-		"bookTitle": "No Year", "composer": "Someone",
+		"bookTitle": "No Year", "composers": []string{"Someone"},
 	}), &blank)
 
 	for _, dir := range []string{"asc", "desc"} {
@@ -344,15 +344,15 @@ func TestListBooks_FiltersBySheetTypeIdAndInstrumentId(t *testing.T) {
 	h := newTestServer(t)
 	var scoreBook bookResponse
 	decodeData(t, doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
-		"bookTitle": "Full Score Book", "composer": "Someone",
+		"bookTitle": "Full Score Book", "composers": []string{"Someone"},
 	}), &scoreBook)
 	decodeData(t, doJSON(t, h, http.MethodPatch, apiBooksURL(scoreBook.ID), map[string]any{
-		"bookTitle": scoreBook.BookTitle, "composer": "Someone",
+		"bookTitle": scoreBook.BookTitle, "composers": []string{"Someone"},
 		"sheetTypeName": "Ensemble Piece – Full Score", "instruments": []string{"Violin"},
 	}), nil)
 
 	decodeData(t, doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
-		"bookTitle": "Unrelated Book", "composer": "Someone",
+		"bookTitle": "Unrelated Book", "composers": []string{"Someone"},
 	}), nil)
 
 	var sheetTypes []struct {
@@ -406,24 +406,24 @@ func TestListBooks_FiltersByCommaSeparatedSheetTypeIdAndInstrumentId(t *testing.
 	h := newTestServer(t)
 	var soloBook bookResponse
 	decodeData(t, doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
-		"bookTitle": "Solo Book", "composer": "Someone",
+		"bookTitle": "Solo Book", "composers": []string{"Someone"},
 	}), &soloBook)
 	decodeData(t, doJSON(t, h, http.MethodPatch, apiBooksURL(soloBook.ID), map[string]any{
-		"bookTitle": soloBook.BookTitle, "composer": "Someone",
+		"bookTitle": soloBook.BookTitle, "composers": []string{"Someone"},
 		"sheetTypeName": "Solo Piece", "instruments": []string{"Piano"},
 	}), nil)
 
 	var ensembleBook bookResponse
 	decodeData(t, doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
-		"bookTitle": "Ensemble Book", "composer": "Someone",
+		"bookTitle": "Ensemble Book", "composers": []string{"Someone"},
 	}), &ensembleBook)
 	decodeData(t, doJSON(t, h, http.MethodPatch, apiBooksURL(ensembleBook.ID), map[string]any{
-		"bookTitle": ensembleBook.BookTitle, "composer": "Someone",
+		"bookTitle": ensembleBook.BookTitle, "composers": []string{"Someone"},
 		"sheetTypeName": "Ensemble Piece – Full Score", "instruments": []string{"Violin"},
 	}), nil)
 
 	decodeData(t, doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
-		"bookTitle": "Unrelated Book", "composer": "Someone",
+		"bookTitle": "Unrelated Book", "composers": []string{"Someone"},
 	}), nil)
 
 	var sheetTypes []struct {
@@ -500,8 +500,8 @@ func TestDeleteBook_CascadeDeletesAllPieces(t *testing.T) {
 			{"start": 3, "end": 4},
 		},
 		"pieces": []map[string]any{
-			{"title": "First", "composer": "Someone"},
-			{"title": "Second", "composer": "Someone"},
+			{"title": "First", "composers": []string{"Someone"}},
+			{"title": "Second", "composers": []string{"Someone"}},
 		},
 	})
 	var result struct {
@@ -576,7 +576,7 @@ func TestDeleteBook_DoesNotRemoveFileStillReferencedOutsideTheBook(t *testing.T)
 
 	confirmRec := doJSON(t, h, http.MethodPost, apiBooksURL(bookID)+"/confirm-import", map[string]any{
 		"ranges": []map[string]any{{"start": 1, "end": 2}},
-		"pieces": []map[string]any{{"title": "In The Book", "composer": "Someone"}},
+		"pieces": []map[string]any{{"title": "In The Book", "composers": []string{"Someone"}}},
 	})
 	var result struct {
 		Pieces []pieceResponse `json:"pieces"`
@@ -684,7 +684,7 @@ func TestGetBookCover_404sWhenNoFileAndNoCustomCover(t *testing.T) {
 	h := newTestServer(t)
 	createRec := doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
 		"bookTitle": "No File Book",
-		"composer":  "Someone",
+		"composers": []string{"Someone"},
 	})
 	var created bookResponse
 	decodeData(t, createRec, &created)

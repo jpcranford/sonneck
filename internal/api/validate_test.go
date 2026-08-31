@@ -40,8 +40,8 @@ func TestValidatePiece_RequiresTitle(t *testing.T) {
 	dbConn := newTestDB(t)
 
 	errs, err := api.ValidatePiece(ctx, dbConn, &models.Piece{
-		Title:    "",
-		Composer: strPtr("Someone"),
+		Title:       "",
+		ComposerIDs: []int64{1},
 	})
 	if err != nil {
 		t.Fatalf("ValidatePiece: %v", err)
@@ -57,13 +57,19 @@ func TestValidatePiece_ComposerRequiredButInheritedSatisfiesIt(t *testing.T) {
 
 	bookID, err := repo.CreateBook(ctx, dbConn, &models.Book{
 		BookTitle:        "Anthology",
-		Composer:         strPtr("Book Composer"),
 		OriginalFilename: strPtr("anthology.pdf"),
 		FilePath:         strPtr("/data/library/books/anthology.pdf"),
 		FileHash:         strPtr("anthology-hash"),
 	})
 	if err != nil {
 		t.Fatalf("CreateBook: %v", err)
+	}
+	bookComposer, err := repo.FindOrCreatePerson(ctx, dbConn, "Book Composer")
+	if err != nil {
+		t.Fatalf("FindOrCreatePerson: %v", err)
+	}
+	if err := repo.SetBookComposers(ctx, dbConn, bookID, []int64{bookComposer}); err != nil {
+		t.Fatalf("SetBookComposers: %v", err)
 	}
 
 	// No composer of its own, but it belongs to a book with one — this
@@ -105,8 +111,8 @@ func TestValidatePiece_ArrangerAloneSatisfiesRequirement(t *testing.T) {
 	dbConn := newTestDB(t)
 
 	errs, err := api.ValidatePiece(ctx, dbConn, &models.Piece{
-		Title:    "Traditional Tune",
-		Arranger: strPtr("J. Someone"),
+		Title:       "Traditional Tune",
+		ArrangerIDs: []int64{1},
 	})
 	if err != nil {
 		t.Fatalf("ValidatePiece: %v", err)
@@ -125,13 +131,19 @@ func TestValidatePiece_InheritedArrangerSatisfiesRequirement(t *testing.T) {
 
 	bookID, err := repo.CreateBook(ctx, dbConn, &models.Book{
 		BookTitle:        "Anthology",
-		Arranger:         strPtr("Book Arranger"),
 		OriginalFilename: strPtr("anthology3.pdf"),
 		FilePath:         strPtr("/data/library/books/anthology3.pdf"),
 		FileHash:         strPtr("anthology3-hash"),
 	})
 	if err != nil {
 		t.Fatalf("CreateBook: %v", err)
+	}
+	bookArranger, err := repo.FindOrCreatePerson(ctx, dbConn, "Book Arranger")
+	if err != nil {
+		t.Fatalf("FindOrCreatePerson: %v", err)
+	}
+	if err := repo.SetBookArrangers(ctx, dbConn, bookID, []int64{bookArranger}); err != nil {
+		t.Fatalf("SetBookArrangers: %v", err)
 	}
 
 	errs, err := api.ValidatePiece(ctx, dbConn, &models.Piece{
@@ -146,23 +158,6 @@ func TestValidatePiece_InheritedArrangerSatisfiesRequirement(t *testing.T) {
 	}
 }
 
-func TestValidatePiece_LineLengthCap(t *testing.T) {
-	ctx := context.Background()
-	dbConn := newTestDB(t)
-
-	tooLong := strings.Repeat("a", 256)
-	errs, err := api.ValidatePiece(ctx, dbConn, &models.Piece{
-		Title:    "Fine",
-		Composer: &tooLong,
-	})
-	if err != nil {
-		t.Fatalf("ValidatePiece: %v", err)
-	}
-	if !hasField(errs, "composer") {
-		t.Errorf("errs = %v, want a composer length error for a 256-char value", errs)
-	}
-}
-
 func TestValidatePiece_PracticeStatusMustBeKnownValue(t *testing.T) {
 	ctx := context.Background()
 	dbConn := newTestDB(t)
@@ -170,7 +165,7 @@ func TestValidatePiece_PracticeStatusMustBeKnownValue(t *testing.T) {
 	bogus := "Vibing"
 	errs, err := api.ValidatePiece(ctx, dbConn, &models.Piece{
 		Title:          "Fine",
-		Composer:       strPtr("Someone"),
+		ComposerIDs:    []int64{1},
 		PracticeStatus: &bogus,
 	})
 	if err != nil {
@@ -186,9 +181,9 @@ func TestValidatePiece_BPMMustBePositive(t *testing.T) {
 	dbConn := newTestDB(t)
 
 	errs, err := api.ValidatePiece(ctx, dbConn, &models.Piece{
-		Title:    "Fine",
-		Composer: strPtr("Someone"),
-		BPM:      intPtr(0),
+		Title:       "Fine",
+		ComposerIDs: []int64{1},
+		BPM:         intPtr(0),
 	})
 	if err != nil {
 		t.Fatalf("ValidatePiece: %v", err)
@@ -199,7 +194,7 @@ func TestValidatePiece_BPMMustBePositive(t *testing.T) {
 }
 
 func TestValidateBook_RequiresBookTitle(t *testing.T) {
-	errs := api.ValidateBook(&models.Book{Composer: strPtr("Someone")})
+	errs := api.ValidateBook(&models.Book{ComposerIDs: []int64{1}})
 	if !hasField(errs, "bookTitle") {
 		t.Errorf("errs = %v, want a bookTitle error", errs)
 	}
@@ -213,14 +208,14 @@ func TestValidateBook_ComposerOrArrangerOrPublisherRequired(t *testing.T) {
 }
 
 func TestValidateBook_ComposerAloneSatisfiesRequirement(t *testing.T) {
-	errs := api.ValidateBook(&models.Book{BookTitle: "Just a Title", Composer: strPtr("Someone")})
+	errs := api.ValidateBook(&models.Book{BookTitle: "Just a Title", ComposerIDs: []int64{1}})
 	if hasField(errs, "composer") {
 		t.Errorf("errs = %v, want no composer error", errs)
 	}
 }
 
 func TestValidateBook_ArrangerAloneSatisfiesRequirement(t *testing.T) {
-	errs := api.ValidateBook(&models.Book{BookTitle: "Just a Title", Arranger: strPtr("Someone")})
+	errs := api.ValidateBook(&models.Book{BookTitle: "Just a Title", ArrangerIDs: []int64{1}})
 	if hasField(errs, "composer") {
 		t.Errorf("errs = %v, want no composer error (arranger alone satisfies the requirement)", errs)
 	}

@@ -24,8 +24,6 @@ import (
 // sparse partial update.
 func applyPieceWriteRequest(ctx context.Context, q repo.Queryer, p *models.Piece, req api.PieceWriteRequest) error {
 	p.Title = req.Title
-	p.Composer = req.Composer
-	p.Arranger = req.Arranger
 	p.Favorite = req.Favorite
 	p.WorkOpusNumber = req.WorkOpusNumber
 	p.Publisher = req.Publisher
@@ -86,6 +84,21 @@ func applyPieceWriteRequest(ctx context.Context, q repo.Queryer, p *models.Piece
 		return err
 	}
 	p.UserTagIDs = userTagIDs
+
+	// Composers/Arrangers (composer/arranger overhaul, migration 00020) —
+	// same ordered, full-replace-by-name resolution as Keys/Instruments/
+	// UserTags above.
+	composerIDs, err := resolveTagNames(ctx, q, repo.FindOrCreatePerson, req.Composers, "composers")
+	if err != nil {
+		return err
+	}
+	p.ComposerIDs = composerIDs
+
+	arrangerIDs, err := resolveTagNames(ctx, q, repo.FindOrCreatePerson, req.Arrangers, "arrangers")
+	if err != nil {
+		return err
+	}
+	p.ArrangerIDs = arrangerIDs
 
 	return nil
 }

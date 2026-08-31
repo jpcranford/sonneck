@@ -16,8 +16,6 @@ import "time"
 type Book struct {
 	ID             int64
 	BookTitle      string
-	Composer       *string
-	Arranger       *string
 	YearWritten    *string
 	WorkOpusNumber *string
 	SheetTypeID    *int64
@@ -47,6 +45,11 @@ type Book struct {
 	CoverImageContentType *string
 	ImportedAt            time.Time
 
-	// Loaded separately via the book_instruments join table.
+	// Loaded separately via join tables. ComposerIDs/ArrangerIDs (ordered —
+	// composer/arranger overhaul, migration 00020) moved here from plain
+	// string columns; Book is the top of the inheritance chain, so these
+	// are never themselves a fallback target, only a source.
 	InstrumentIDs []int64
+	ComposerIDs   []int64 // ordered
+	ArrangerIDs   []int64 // ordered
 }

@@ -5,6 +5,7 @@ import { IconBook2, IconCircleCheckFilled } from '@tabler/icons-react'
 import { deleteBook, getBook } from '../api/books'
 import { ApiError } from '../api/client'
 import type { Book, Piece as ApiPiece } from '../api/types'
+import { joinNames } from '../lib/joinNames'
 import { computeLayout, type PageAssignments, type Piece } from '../lib/pieceSplitLogic'
 import { scrollAppContentToTop } from '../lib/scrollContainer'
 import {
@@ -421,8 +422,12 @@ export function BookUploadWizard({ onExit }: BookUploadWizardProps) {
     return (
       <BookUploadTitlesStep
         bookId={book.id}
-        bookComposer={book.composer}
-        bookArranger={book.arranger}
+        // Composer/Arranger are ordered Person lists now (composer/
+        // arranger overhaul, migration 00020) — joined to a plain string
+        // here, since BookUploadTitlesStep only needs them for a
+        // presence check and a display string.
+        bookComposer={joinNames(book.composer.map((p) => p.name)) || null}
+        bookArranger={joinNames(book.arranger.map((p) => p.name)) || null}
         pageOffset={pageOffset}
         pageCount={pageCount}
         pieces={pieces}

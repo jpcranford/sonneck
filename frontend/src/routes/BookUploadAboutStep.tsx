@@ -17,6 +17,7 @@ import { updateBook, getBookPageThumbnailUrl } from '../api/books'
 import { lookupImslp } from '../api/imslp'
 import { listInstruments, listSheetTypes } from '../api/lookups'
 import { ApiError } from '../api/client'
+import { namesToText, textToNames } from '../lib/joinNames'
 import type { Book, BookWriteRequest, Tag } from '../api/types'
 import { TagComboBox } from '../components/TagComboBox'
 import { SingleSelect } from '../components/SingleSelect'
@@ -48,11 +49,17 @@ interface FormValues {
   description: string
 }
 
+// Composer/Arranger are ordered Person lists now (composer/arranger
+// overhaul, migration 00020) — bridged to/from this still-plain-text field
+// as a comma-separated string via namesToText/textToNames (lib/joinNames.ts).
+// EditBookModal.tsx's own composer/arranger fields got a real multi-person
+// TagComboBox in Stage C; this wizard screen deliberately did not (out of
+// that stage's scope) and still uses this bridge.
 function bookToFormValues(book: Book): FormValues {
   return {
     bookTitle: book.bookTitle,
-    composer: book.composer ?? '',
-    arranger: book.arranger ?? '',
+    composer: namesToText(book.composer.map((p) => p.name)),
+    arranger: namesToText(book.arranger.map((p) => p.name)),
     yearWritten: book.yearWritten ?? '',
     workOpusNumber: book.workOpusNumber ?? '',
     publisher: book.publisher ?? '',
@@ -84,8 +91,8 @@ function stripImslpPrefix(value: string): string {
 function formValuesToWriteRequest(data: FormValues): BookWriteRequest {
   return {
     bookTitle: data.bookTitle,
-    composer: data.composer || null,
-    arranger: data.arranger || null,
+    composers: textToNames(data.composer),
+    arrangers: textToNames(data.arranger),
     yearWritten: data.yearWritten || null,
     workOpusNumber: data.workOpusNumber || null,
     sheetTypeName: data.sheetType || null,

@@ -80,6 +80,15 @@ func CoverImagePath(dataDir, hash string) string {
 	return filepath.Join(dataDir, "library", "covers", hash)
 }
 
+// PortraitImagePath returns the permanent path for a Person's custom
+// portrait image (migration 00020) — mirrors CoverImagePath exactly, same
+// no-extension reasoning (format varies, always served through
+// handleGetPersonPortrait, which sets Content-Type from the person's own
+// stored portraitImageContentType column).
+func PortraitImagePath(dataDir, hash string) string {
+	return filepath.Join(dataDir, "library", "portraits", hash)
+}
+
 // MoveIntoPlace renames tempPath to finalPath, creating parent directories
 // as needed. Storage is content-addressed by hash, so if finalPath already
 // exists, its content is already identical by construction — the temp file

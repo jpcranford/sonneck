@@ -25,6 +25,10 @@ interface ListBooksParams {
    * see that file's comment for why an array param is enough here. */
   sheetTypeId?: number[]
   instrumentId?: number[]
+  /** Person Details' own "Also credited directly on N books" chip strip —
+   * a book directly crediting this person as composer or arranger (no
+   * inheritance to consider, Book is the top of that hierarchy). */
+  personId?: number
   sort?: 'dateAdded' | 'title' | 'composer' | 'yearWritten'
   dir?: 'asc' | 'desc'
 }

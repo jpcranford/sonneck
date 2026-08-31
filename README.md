@@ -19,7 +19,8 @@ A self-hosted library organizer for sheet music: import, tag, browse, and downlo
 Sonneck is designed to live “in an office with a printer”, so to speak. There are [plans](#planned-features) to add more practice-session features later, but its core feature set is focused squarely on digital score library management first and foremost.
 
 - **Organize your sheet music library.** Upload individual pieces or entire books — the built-in book splitter and metadata inheritance make quick work of prepping a whole book's worth of pieces to be found later.
-- **Real cataloging, not a folder of PDFs.** Composer, arranger, key(s), instruments, sheet type, opus number, ISBN, and your own tags, plus a one-click citation generator that formats it all for you, ready to be copied into a program template or group chat.
+- **Real cataloging, not a folder of PDFs.** Key(s), instruments, sheet type, opus number, ISBN, and your own tags, plus a one-click citation generator that formats it all for you, ready to be copied into a program template or group chat.
+- **Composers and arrangers are real people, not text fields.** Each one gets their own page — portrait, bio, birth/death years, and every piece and book they're credited on — browsable from a dedicated People library. A piece or book can credit more than one composer or arranger, in the right order (think "Gilbert and Sullivan," or a hymn with a separate composer and arranger). Made a typo, or want to merge two duplicate entries? Split People reassigns every credit to the right person(s) in one action, without touching a single piece or book by hand.
 - **Metadata that works for you.** Give it an IMSLP catalog number and it'll auto-fill composer, opus number, year, and publisher for you. The citation line adapts to show only the fields you've actually filled in, and descriptions/performer notes support Markdown — including shortcode music symbols like `:mf:` for a mezzo-forte marking (see the [doc](docs/music-emoji.md) for the full list).
 - **Pieces inherit properties from their books.** Set a book's composer, publisher, and year once. Every piece inside it inherits the information automatically, you only ever need to override the pieces that are actually different.
 - **Search that keeps up with you.** Full-text fuzzy search across your whole library as you type. Grid views are optimized for number of items shown at once, while list views show you the most detail about each piece without having to open it up.
@@ -28,6 +29,10 @@ Sonneck is designed to live “in an office with a printer”, so to speak. Ther
 - **It's completely yours.** Self-hosted, one SQLite file, daily automatic backups. No algorithm, no callbacks to some centralized analytics server. It’s a tool for you: use it, break it, repurpose it, join us (or don’t) in making it better. Or even leave– a full CSV export is available at any time. If it turns out Sonneck isn't the right place for your music, the information you enter (and the time you take doing so) is still yours.
 
 ## Installation
+
+> [!WARNING]
+> Sonneck has **no login and no access control of its own.** It's currently built for a single user, single session at a time. Anyone who can reach the server over the network can use the full API — there's no separation between "trusted operator" and "anonymous visitor." **Do not expose this directly to the open internet.** Deploy it behind a private network / VPN / Tailscale, or put an authenticating reverse proxy in front of it (e.g. Basic Auth, Authelia). Seriously, if you open it to the internet and a bunch of ne'er-do-wells put sketchy stuff on your server don't come crying to me.
+
 ### Docker Compose (recommended)
 There's a [`docker-compose.yml`](docker-compose.yml) file in this repo and linked to the releases, complete with helpful comments explaining some common options.
 
@@ -61,9 +66,6 @@ And because that needs to keep running, in a separate terminal run:
 cd /sonneck/frontend
 npm run dev
 ```
-
-> [!WARNING]
-> Sonneck has **no login and no access control of its own.** It's currently built for a single user, single session at a time. Anyone who can reach the server over the network can use the full API — there's no separation between "trusted operator" and "anonymous visitor." **Do not expose this directly to the open internet.** Deploy it behind a private network / VPN / Tailscale, or put an authenticating reverse proxy in front of it (e.g. Basic Auth, Authelia). Seriously, if you open it to the internet and a bunch of ne'er-do-wells put sketchy stuff on your server don't come crying to me.
 
 ## Advanced options
 ### Configuration
@@ -108,6 +110,7 @@ DATA_DIR=./data go run ./cmd/sonneck <command>
 | `regenerate-thumbnails` | Clears `$DATA_DIR/cache/thumbnails` and re-renders every page of every piece from scratch, also sweeping up any orphaned entries left over from deleted pieces. | If a cached thumbnail is ever suspected corrupted or stale — no need to know which cache entries are actually bad. |
 | `cleanup-thumbnails` | A lighter touch than `regenerate-thumbnails`: leaves everything that's already correct alone, and only removes cached page images nothing can read anymore (a deleted book/piece's leftovers, or a book's own pages once it's been fully imported into pieces) or re-renders ones that are actually corrupted. | Routine housekeeping — safe to run any time, and if you had a pre-v0.3 library it's worth running once after upgrading to reclaim space from book thumbnails your library accumulated before this existed. |
 | `export-csv` | Writes a full export of your library data to `$DATA_DIR/export/<timestamp>/` — one CSV file per database table (books, pieces, tags, keys, and so on). Read-only; doesn't touch the database or any existing files. | Any time you want your data out of Sonneck as plain CSV — a one-off backup in a format other tools can read, or just to take it with you. |
+| `migrate-people` | One-time backfill that splits every piece's and book's old plain-text composer/arranger into real, individual People entries (splitting on commas/"and"/ampersands, so "Gilbert and Sullivan" becomes two separate people). Idempotent — safe to run more than once, it skips anything already migrated. | **Run this once** after upgrading to the version that introduced the People library. Until you do, existing pieces/books will show no composer or arranger at all — their old data is still there, it just isn't visible until it's migrated into a real Person. |
 
 ## Planned features
 - **Dark mode.** Dear God, my eyes.

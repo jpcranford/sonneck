@@ -94,6 +94,10 @@ export interface SearchPiecesParams {
    * ignored server-side whenever this is set — the page-order sort is a
    * structural property of the book, not a user preference. */
   sourceBookId?: number
+  /** Person Details' own "works" list — every piece crediting this person
+   * as composer or arranger, own or book-inherited (checked independently,
+   * same as sheetTypeId/instrumentId's own inheritance-aware filters). */
+  personId?: number
   sort?: 'dateAdded' | 'title' | 'composer'
   dir?: 'asc' | 'desc'
   limit?: number

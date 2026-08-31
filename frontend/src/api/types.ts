@@ -28,12 +28,53 @@ export interface EffectiveTagRefs {
 
 export type PracticeStatus = 'Want to Learn' | 'Learning' | 'Learned' | 'Stalled' | 'Dropped'
 
+/**
+ * A Person credit (composer/arranger overhaul, migration 00020) — see
+ * PersonResponse (internal/api/dto.go). "Should be very minimal" per the
+ * original brief: Name/Bio/BirthYear/DeathYear plus an optional custom
+ * portrait (mirrors Book's own hasCustomCover/coverImageHash pair) and a
+ * pieceCount for the People Library's own listing/default filter.
+ */
+export interface Person {
+  id: number
+  name: string
+  bio: string | null
+  birthYear: number | null
+  deathYear: number | null
+  hasCustomPortrait: boolean
+  portraitImageHash: string | null
+  pieceCount: number
+  createdAt: string
+}
+
+export interface PersonCreateRequest {
+  name: string
+  birthYear?: number | null
+  deathYear?: number | null
+}
+
+export interface PersonWriteRequest {
+  name: string
+  bio?: string | null
+  birthYear?: number | null
+  deathYear?: number | null
+}
+
+export interface PersonSplitRequest {
+  replacementNames: string[]
+}
+
 export interface Piece {
   id: number
   title: string
-  composer: EffectiveField
+  // Composer/Arranger (composer/arranger overhaul, migration 00020) are
+  // ordered many-to-many now — same EffectiveTagRefs wire shape
+  // Instruments already used, not a plain EffectiveField string. Each
+  // Tag here is a Person's {id, name} — full Person detail (bio/years/
+  // portrait) isn't included, since display sites only ever need the name.
+  composer: EffectiveTagRefs
   /** Book-inheritable (backend: ResolveEffective). */
-  arranger: EffectiveField
+  arranger: EffectiveTagRefs
   favorite: boolean
   workOpusNumber: EffectiveField
   /** Many-to-many, not book-inheritable — a piece can genuinely be written
@@ -72,10 +113,14 @@ export interface Piece {
 export interface Book {
   id: number
   bookTitle: string
-  composer: string | null
-  /** Book-inheritable-source field (backend: ResolveEffective) — a
-   * Piece's own arranger falls back to this. */
-  arranger: string | null
+  // Composer/Arranger (composer/arranger overhaul, migration 00020):
+  // ordered, plain Tag[] — no Effective* wrapper, since Book is the top of
+  // the inheritance chain (nothing to fall back to), matching how
+  // Instruments below already works for Book.
+  composer: Tag[]
+  /** Book-inheritable-source field — a Piece's own arranger falls back to
+   * this. */
+  arranger: Tag[]
   yearWritten: string | null
   workOpusNumber: string | null
   sheetType: Tag | null
@@ -113,12 +158,15 @@ export interface Book {
  */
 export interface BookCreateRequest {
   bookTitle: string
-  composer?: string | null
-  /** Included alongside composer (unlike publisher/yearWritten below) since
-   * ValidateBook requires one of composer/arranger — leaving it out here
-   * would make that requirement satisfiable only via composer at creation
-   * time. */
-  arranger?: string | null
+  // Composers/Arrangers (composer/arranger overhaul, migration 00020):
+  // ordered names, same full-replace-by-name convention as Instruments
+  // elsewhere — resolved server-side via repo.FindOrCreatePerson. Arrangers
+  // is included alongside Composers (unlike publisher/yearWritten below)
+  // since ValidateBook requires one of composer/arranger — leaving it out
+  // here would make that requirement satisfiable only via composer at
+  // creation time.
+  composers: string[]
+  arrangers: string[]
   publisher?: string | null
   yearWritten?: string | null
 }
@@ -133,8 +181,12 @@ export interface BookCreateRequest {
  */
 export interface PieceWriteRequest {
   title: string
-  composer?: string | null
-  arranger?: string | null
+  // Composers/Arrangers (composer/arranger overhaul, migration 00020):
+  // ordered names, same full-replace-by-name convention as Keys/
+  // Instruments/UserTags below — resolved server-side via
+  // repo.FindOrCreatePerson, preserving submission order as credit order.
+  composers: string[]
+  arrangers: string[]
   favorite: boolean
   workOpusNumber?: string | null
   keys: string[]
@@ -170,8 +222,8 @@ export interface PieceWriteRequest {
 
 export interface BookWriteRequest {
   bookTitle: string
-  composer?: string | null
-  arranger?: string | null
+  composers: string[]
+  arrangers: string[]
   yearWritten?: string | null
   workOpusNumber?: string | null
   sheetTypeName?: string | null

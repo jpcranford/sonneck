@@ -27,7 +27,7 @@ func createTestPiece(t *testing.T, h http.Handler, fields map[string]any) pieceR
 	var uploaded pieceResponse
 	decodeData(t, rec, &uploaded)
 
-	base := map[string]any{"title": uploaded.Title, "composer": "Someone"}
+	base := map[string]any{"title": uploaded.Title, "composers": []string{"Someone"}}
 	for k, v := range fields {
 		base[k] = v
 	}
@@ -179,8 +179,8 @@ func TestSearchPieces_FiltersByBookAndSortsByStartPageWithTieBreak(t *testing.T)
 			{"start": 2, "end": 5},
 		},
 		"pieces": []map[string]any{
-			{"title": "Short", "composer": "Someone"},
-			{"title": "Long", "composer": "Someone"},
+			{"title": "Short", "composers": []string{"Someone"}},
+			{"title": "Long", "composers": []string{"Someone"}},
 		},
 	})
 	var result struct {
@@ -197,7 +197,7 @@ func TestSearchPieces_FiltersByBookAndSortsByStartPageWithTieBreak(t *testing.T)
 
 	decodeData(t, doJSON(t, h, http.MethodPatch, apiPiecesURL(long.ID), map[string]any{
 		"title":           long.Title,
-		"composer":        "Someone",
+		"composers":       []string{"Someone"},
 		"sourceBookId":    bookID,
 		"sourcePageStart": *short.SourcePageStart,
 		"sourcePageEnd":   *long.SourcePageEnd,
@@ -265,9 +265,9 @@ func TestSearchPieces_QueryHandlesFTSSpecialCharacters(t *testing.T) {
 // specifically for.
 func TestSearchPieces_QueryMatchesPartialWordPrefix(t *testing.T) {
 	h := newTestServer(t)
-	andantino := createTestPiece(t, h, map[string]any{"title": "Andantino", "composer": "Beethoven"})
-	sostenuto := createTestPiece(t, h, map[string]any{"title": "Andante sostenuto", "composer": "Schubert"})
-	fughetta := createTestPiece(t, h, map[string]any{"title": "Fughetta", "composer": "Bach"})
+	andantino := createTestPiece(t, h, map[string]any{"title": "Andantino", "composers": []string{"Beethoven"}})
+	sostenuto := createTestPiece(t, h, map[string]any{"title": "Andante sostenuto", "composers": []string{"Schubert"}})
+	fughetta := createTestPiece(t, h, map[string]any{"title": "Fughetta", "composers": []string{"Bach"}})
 
 	for _, tc := range []struct {
 		query    string
@@ -310,16 +310,16 @@ func TestSearchPieces_QueryMatchesPartialWordPrefix(t *testing.T) {
 // is a real substring somewhere inside a word must still find it.
 func TestSearchPieces_QueryFallsBackToTrigramForMidWordMatch(t *testing.T) {
 	h := newTestServer(t)
-	nutcracker := createTestPiece(t, h, map[string]any{"title": "Nutcracker Suite", "composer": "Tchaikovsky"})
-	andantino := createTestPiece(t, h, map[string]any{"title": "Andantino", "composer": "Beethoven"})
+	nutcracker := createTestPiece(t, h, map[string]any{"title": "Nutcracker Suite", "composers": []string{"Tchaikovsky"}})
+	andantino := createTestPiece(t, h, map[string]any{"title": "Andantino", "composers": []string{"Beethoven"}})
 
 	for _, tc := range []struct {
 		query  string
 		wantID int64
 	}{
-		{"crack", nutcracker.ID},  // mid-word, title
+		{"crack", nutcracker.ID},    // mid-word, title
 		{"aikovsky", nutcracker.ID}, // mid-word, composer
-		{"ntino", andantino.ID},  // a real suffix of "Andantino", not a prefix
+		{"ntino", andantino.ID},     // a real suffix of "Andantino", not a prefix
 	} {
 		rec := doJSON(t, h, http.MethodGet, "/api/pieces?query="+url.QueryEscape(tc.query), nil)
 		var results []pieceResponse
@@ -363,9 +363,9 @@ func TestSearchPieces_QueryFallsBackToTrigramForMidWordMatch(t *testing.T) {
 // find nothing for any of them.
 func TestSearchPieces_QueryFallsBackToFuzzyForTypos(t *testing.T) {
 	h := newTestServer(t)
-	nutcracker := createTestPiece(t, h, map[string]any{"title": "Nutcracker Suite", "composer": "Tchaikovsky"})
-	andantino := createTestPiece(t, h, map[string]any{"title": "Andantino", "composer": "Beethoven"})
-	boely := createTestPiece(t, h, map[string]any{"title": "24 Pieces", "composer": "Alexandre Boëly"})
+	nutcracker := createTestPiece(t, h, map[string]any{"title": "Nutcracker Suite", "composers": []string{"Tchaikovsky"}})
+	andantino := createTestPiece(t, h, map[string]any{"title": "Andantino", "composers": []string{"Beethoven"}})
+	boely := createTestPiece(t, h, map[string]any{"title": "24 Pieces", "composers": []string{"Alexandre Boëly"}})
 
 	for _, tc := range []struct {
 		query  string
@@ -421,14 +421,14 @@ func TestSearchPieces_SheetTypeAndInstrumentFiltersMatchInheritedValues(t *testi
 	bookID, _ := uploadBook(t, h, "book.pdf", 4)
 	decodeData(t, doJSON(t, h, http.MethodPatch, apiBooksURL(bookID), map[string]any{
 		"bookTitle":     "Anthology",
-		"composer":      "Someone",
+		"composers":     []string{"Someone"},
 		"sheetTypeName": "Ensemble Piece – Full Score",
 		"instruments":   []string{"Violin"},
 	}), nil)
 
 	confirmRec := doJSON(t, h, http.MethodPost, apiBooksURL(bookID)+"/confirm-import", map[string]any{
 		"ranges": []map[string]any{{"start": 1, "end": 4}},
-		"pieces": []map[string]any{{"title": "Inherits Both", "composer": "Someone"}},
+		"pieces": []map[string]any{{"title": "Inherits Both", "composers": []string{"Someone"}}},
 	})
 	var result struct {
 		Pieces []pieceResponse `json:"pieces"`
@@ -618,16 +618,16 @@ func TestSearchPieces_SortsByComposerFallsBackToBookComposer(t *testing.T) {
 	h := newTestServer(t)
 
 	// Own composer, no book.
-	zappa := createTestPiece(t, h, map[string]any{"title": "Own Composer", "composer": "Zappa"})
+	zappa := createTestPiece(t, h, map[string]any{"title": "Own Composer", "composers": []string{"Zappa"}})
 
 	// Blank own composer, falls back to the book's.
 	bookID, _ := uploadBook(t, h, "book.pdf", 2)
 	decodeData(t, doJSON(t, h, http.MethodPatch, apiBooksURL(bookID), map[string]any{
-		"bookTitle": "A Book", "composer": "Bach",
+		"bookTitle": "A Book", "composers": []string{"Bach"},
 	}), nil)
 	confirmRec := doJSON(t, h, http.MethodPost, apiBooksURL(bookID)+"/confirm-import", map[string]any{
 		"ranges": []map[string]any{{"start": 1, "end": 2}},
-		"pieces": []map[string]any{{"title": "Inherits Composer", "composer": ""}},
+		"pieces": []map[string]any{{"title": "Inherits Composer", "composers": []string{""}}},
 	})
 	var result struct {
 		Pieces []pieceResponse `json:"pieces"`
@@ -639,7 +639,7 @@ func TestSearchPieces_SortsByComposerFallsBackToBookComposer(t *testing.T) {
 	// an arranger-only piece (ValidatePiece requires composer OR arranger,
 	// CLAUDE.md > Database migrations), so this is a real, legitimate case,
 	// not a contrived one.
-	neither := createTestPiece(t, h, map[string]any{"title": "Neither", "composer": "", "arranger": "Someone"})
+	neither := createTestPiece(t, h, map[string]any{"title": "Neither", "composers": []string{""}, "arrangers": []string{"Someone"}})
 
 	rec := doJSON(t, h, http.MethodGet, "/api/pieces?sort=composer&dir=asc", nil)
 	var results []pieceResponse
@@ -693,8 +693,8 @@ func TestSearchPieces_SortIgnoredWhenSourceBookIdPresent(t *testing.T) {
 			{"start": 3, "end": 5},
 		},
 		"pieces": []map[string]any{
-			{"title": "Zebra", "composer": "Someone"}, // starts first, alphabetically last
-			{"title": "Apple", "composer": "Someone"}, // starts second, alphabetically first
+			{"title": "Zebra", "composers": []string{"Someone"}}, // starts first, alphabetically last
+			{"title": "Apple", "composers": []string{"Someone"}}, // starts second, alphabetically first
 		},
 	})
 	var result struct {
@@ -718,7 +718,7 @@ func TestSearchPieces_FiltersByBookless(t *testing.T) {
 	bookID, _ := uploadBook(t, h, "book.pdf", 2)
 	confirmRec := doJSON(t, h, http.MethodPost, apiBooksURL(bookID)+"/confirm-import", map[string]any{
 		"ranges": []map[string]any{{"start": 1, "end": 2}},
-		"pieces": []map[string]any{{"title": "From a Book", "composer": "Someone"}},
+		"pieces": []map[string]any{{"title": "From a Book", "composers": []string{"Someone"}}},
 	})
 	decodeData(t, confirmRec, new(any)) // just confirm it succeeded; piece isn't referenced further
 
@@ -742,11 +742,11 @@ func TestSearchPieces_FiltersByHasImslpNumber(t *testing.T) {
 
 	bookID, _ := uploadBook(t, h, "book.pdf", 4)
 	decodeData(t, doJSON(t, h, http.MethodPatch, apiBooksURL(bookID), map[string]any{
-		"bookTitle": "Anthology", "composer": "Someone", "imslpNumber": "67890",
+		"bookTitle": "Anthology", "composers": []string{"Someone"}, "imslpNumber": "67890",
 	}), nil)
 	confirmRec := doJSON(t, h, http.MethodPost, apiBooksURL(bookID)+"/confirm-import", map[string]any{
 		"ranges": []map[string]any{{"start": 1, "end": 4}},
-		"pieces": []map[string]any{{"title": "Inherits IMSLP", "composer": "Someone"}},
+		"pieces": []map[string]any{{"title": "Inherits IMSLP", "composers": []string{"Someone"}}},
 	})
 	var result struct {
 		Pieces []pieceResponse `json:"pieces"`

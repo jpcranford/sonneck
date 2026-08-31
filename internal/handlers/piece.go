@@ -186,6 +186,12 @@ func (s *Server) handleUpdatePiece(w http.ResponseWriter, r *http.Request) {
 		if err := repo.SetPieceUserTags(r.Context(), tx, id, p.UserTagIDs); err != nil {
 			return err
 		}
+		if err := repo.SetPieceComposers(r.Context(), tx, id, p.ComposerIDs); err != nil {
+			return err
+		}
+		if err := repo.SetPieceArrangers(r.Context(), tx, id, p.ArrangerIDs); err != nil {
+			return err
+		}
 		if err := repo.ResyncSearchIndex(r.Context(), tx, id); err != nil {
 			return err
 		}
@@ -323,7 +329,20 @@ func (s *Server) handleDownloadPieceFile(w http.ResponseWriter, r *http.Request)
 		s.writeError(w, err)
 		return
 	}
-	filename := downloadFilename(eff.Composer.Value, eff.Arranger.Value, eff.Publisher.Value, p.Title, eff.YearWritten.Value)
+	// Composer/Arranger are ordered lists now (migration 00020) — joined
+	// into a single display name via joinPersonNames, same as citation.go's
+	// own resolution.
+	composerNames, err := personNames(r.Context(), s.DB, eff.Composer.IDs)
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+	arrangerNames, err := personNames(r.Context(), s.DB, eff.Arranger.IDs)
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+	filename := downloadFilename(joinPersonNames(composerNames), joinPersonNames(arrangerNames), eff.Publisher.Value, p.Title, eff.YearWritten.Value)
 	w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=%q", filename+".pdf"))
 	http.ServeFile(w, r, p.FilePath)
 }

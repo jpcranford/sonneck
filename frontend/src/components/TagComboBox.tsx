@@ -1,4 +1,5 @@
-import { useRef, useState, type KeyboardEvent } from 'react'
+import { useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { IconArrowRight, IconXFilled } from '@tabler/icons-react'
 import type { Tag } from '../api/types'
 import { InheritedNote } from './InheritedNote'
@@ -21,6 +22,8 @@ export function TagComboBox({
   filterOption,
   allowDuplicates,
   sequenceStyle,
+  newOptionLabel,
+  highlighted,
 }: {
   label: string
   options: Tag[]
@@ -47,6 +50,19 @@ export function TagComboBox({
   // — Instruments/Your Tags aren't ordered, so they keep the
   // independent-pill treatment.
   sequenceStyle?: boolean
+  // Overrides the create-new row's leading label — every existing caller
+  // is a genuine "tag" (Key/Instrument/user tag), so 'New tag' stays the
+  // default; the Split People modal's replacement picker (composer-
+  // arranger overhaul) is the first caller picking real *people*, not
+  // tags, so "New tag: 'X'" read wrong there — passes 'New person'
+  // instead.
+  newOptionLabel?: string
+  // Brief highlight ring after an autofill (IMSLP, composer/arranger
+  // overhaul Stage C) just filled this field — same `transition-shadow
+  // duration-700 ring-2 ring-accent-on-dark` convention every plain-input
+  // autofill target already uses elsewhere in this app (EditPieceModal.tsx's
+  // Opus/Publisher/etc. fields). Caller clears it after ~2.4s, same timing.
+  highlighted?: boolean
 }) {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
@@ -56,6 +72,10 @@ export function TagComboBox({
   // ArrowDown first.
   const [highlightedIndex, setHighlightedIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
+  // Anchors the dropdown (see the portal below) — its own bounding box,
+  // not the input's, since selected pills above the input can push the
+  // input itself down within this same row.
+  const wrapperRef = useRef<HTMLDivElement>(null)
   // Stable, decrementing negative IDs for on-the-fly "new tag" entries —
   // avoids calling an impure function like Date.now() from a component.
   // These are placeholder client-side IDs only; the real ID the backend
@@ -127,14 +147,50 @@ export function TagComboBox({
   }
 
   const showInput = multiple || selected.length === 0
+  const menuOpen = open && showInput && (filtered.length > 0 || query.trim() !== '')
+
+  // The dropdown renders through a portal straight to document.body (see
+  // the render below) rather than as a plain `position: absolute` child of
+  // the wrapper div above — found necessary 2026-08-30 fixing a real
+  // reported bug: this field, used inside Modal.tsx's own dialog (e.g. the
+  // Split People modal's ordered replacement picker), had its dropdown
+  // silently clipped by the dialog's own `overflow-hidden` (needed there
+  // for its rounded corners). `overflow: hidden` clips ALL descendants
+  // regardless of their own `position` value as long as they remain real
+  // DOM descendants of the clipping box — switching to `position: fixed`
+  // alone doesn't escape it, only actually moving the element out of that
+  // subtree (a portal) does. `[menuRect, setMenuRect]` tracks the
+  // wrapper's live screen position so the portaled panel still visually
+  // anchors under the field; recomputed on open and kept in sync via
+  // resize/scroll listeners — scroll uses the capture phase (same
+  // technique ContextMenu.tsx already uses to detect a scroll on an
+  // element that wouldn't otherwise bubble to `document`), matching
+  // Modal.tsx's own scrollable body being the exact case that needs this.
+  const [menuRect, setMenuRect] = useState<{ top: number; left: number; width: number } | null>(null)
+  useLayoutEffect(() => {
+    if (!menuOpen) return
+    function updatePosition() {
+      const el = wrapperRef.current
+      if (!el) return
+      const rect = el.getBoundingClientRect()
+      setMenuRect({ top: rect.bottom + 4, left: rect.left, width: rect.width })
+    }
+    updatePosition()
+    window.addEventListener('resize', updatePosition)
+    window.addEventListener('scroll', updatePosition, true)
+    return () => {
+      window.removeEventListener('resize', updatePosition)
+      window.removeEventListener('scroll', updatePosition, true)
+    }
+  }, [menuOpen])
 
   return (
     <div className="flex flex-col gap-1">
       <label className="text-sm text-ink-soft">{label}</label>
-      <div className="relative">
+      <div ref={wrapperRef} className="relative">
         <div
           onClick={() => inputRef.current?.focus()}
-          className="flex min-h-[42px] flex-wrap items-center gap-1.5 rounded-md border border-border bg-paper-raised px-2 py-1.5 focus-within:outline focus-within:outline-2 focus-within:outline-accent focus-within:outline-offset-2"
+          className={`flex min-h-[42px] flex-wrap items-center gap-1.5 rounded-md border border-border bg-paper-raised px-2 py-1.5 transition-shadow duration-700 focus-within:outline focus-within:outline-2 focus-within:outline-accent focus-within:outline-offset-2 ${highlighted ? 'ring-2 ring-accent-on-dark' : ''}`}
         >
           {sequenceStyle && selected.length > 0 ? (
             // One merged sequence for the whole key list (TagPills.tsx /
@@ -239,35 +295,51 @@ export function TagComboBox({
             />
           )}
         </div>
-        {open && showInput && (filtered.length > 0 || query.trim()) && (
-          <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border border-border bg-paper-raised py-1 shadow-lg">
-            {visibleOptions.map((opt, index) => (
-              <button
-                key={opt.id}
-                type="button"
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={() => selectOption(opt)}
-                className={`block w-full cursor-pointer px-3 py-2 text-left text-sm text-ink hover:bg-accent-soft ${
-                  index === highlightedIndex ? 'bg-accent-soft' : ''
-                }`}
-              >
-                {opt.name}
-              </button>
-            ))}
-            {showCreateOption && (
-              <button
-                type="button"
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={createNew}
-                className={`block w-full cursor-pointer px-3 py-2 text-left text-sm text-accent hover:bg-accent-soft ${
-                  highlightedIndex === visibleOptions.length ? 'bg-accent-soft' : ''
-                }`}
-              >
-                New tag: "{query.trim()}"
-              </button>
-            )}
-          </div>
-        )}
+        {menuOpen &&
+          menuRect &&
+          createPortal(
+            <div
+              style={{ position: 'fixed', top: menuRect.top, left: menuRect.left, width: menuRect.width }}
+              // z-[60] — deliberately higher than any other z-index in the
+              // app (max is z-50, Modal's own backdrop/dialog and
+              // ContextMenu's popup) so this field's live suggestions
+              // always paint above whatever dialog it's opened inside,
+              // including that dialog's own footer buttons. Found
+              // necessary the moment the portal fix above (escaping a
+              // Modal's `overflow-hidden`) was verified live: without
+              // this, the portaled panel rendered fully visible but
+              // underneath the modal's footer, which silently intercepted
+              // every click on it.
+              className="z-[60] overflow-hidden rounded-md border border-border bg-paper-raised py-1 shadow-lg"
+            >
+              {visibleOptions.map((opt, index) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => selectOption(opt)}
+                  className={`block w-full cursor-pointer px-3 py-2 text-left text-sm text-ink hover:bg-accent-soft ${
+                    index === highlightedIndex ? 'bg-accent-soft' : ''
+                  }`}
+                >
+                  {opt.name}
+                </button>
+              ))}
+              {showCreateOption && (
+                <button
+                  type="button"
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={createNew}
+                  className={`block w-full cursor-pointer px-3 py-2 text-left text-sm text-accent hover:bg-accent-soft ${
+                    highlightedIndex === visibleOptions.length ? 'bg-accent-soft' : ''
+                  }`}
+                >
+                  {newOptionLabel ?? 'New tag'}: "{query.trim()}"
+                </button>
+              )}
+            </div>,
+            document.body,
+          )}
       </div>
       {selected.length === 0 && bookValue && onCopy && (
         <InheritedNote bookValue={bookValue} onCopy={onCopy} />

@@ -177,39 +177,58 @@ type tagStub struct {
 	Name string `json:"name"`
 }
 
+// effectiveTagRefs mirrors api.EffectiveTagRefs — Composer/Arranger's own
+// wire shape since the composer/arranger overhaul (migration 00020) made
+// them ordered many-to-many fields, same shape Instruments already used.
+type effectiveTagRefs struct {
+	Values    []tagStub `json:"values"`
+	Inherited bool      `json:"inherited"`
+}
+
+// names is a small test-only convenience — most assertions care about the
+// resolved names in order, not the full id+name pairs.
+func (e effectiveTagRefs) names() []string {
+	names := make([]string, len(e.Values))
+	for i, v := range e.Values {
+		names[i] = v.Name
+	}
+	return names
+}
+
 type pieceResponse struct {
-	ID              int64           `json:"id"`
-	Title           string          `json:"title"`
-	Composer        effectiveString `json:"composer"`
-	Arranger        effectiveString `json:"arranger"`
-	Keys            []tagStub       `json:"keys"`
-	SourcePageStart *int            `json:"sourcePageStart"`
-	SourcePageEnd   *int            `json:"sourcePageEnd"`
-	Duration        *int            `json:"duration"`
-	BPM             *int            `json:"bpm"`
-	MeasureCount    *int            `json:"measureCount"`
-	BeatsPerMeasure *int            `json:"beatsPerMeasure"`
-	FileHash        string          `json:"fileHash"`
-	SourceBookID    *int64          `json:"sourceBookId"`
-	SourceBookTitle *string         `json:"sourceBookTitle"`
-	PageCount       int             `json:"pageCount"`
-	ThumbnailPage   int             `json:"thumbnailPage"`
+	ID              int64            `json:"id"`
+	Title           string           `json:"title"`
+	Composer        effectiveTagRefs `json:"composer"`
+	Arranger        effectiveTagRefs `json:"arranger"`
+	Keys            []tagStub        `json:"keys"`
+	SourcePageStart *int             `json:"sourcePageStart"`
+	SourcePageEnd   *int             `json:"sourcePageEnd"`
+	Duration        *int             `json:"duration"`
+	BPM             *int             `json:"bpm"`
+	MeasureCount    *int             `json:"measureCount"`
+	BeatsPerMeasure *int             `json:"beatsPerMeasure"`
+	FileHash        string           `json:"fileHash"`
+	SourceBookID    *int64           `json:"sourceBookId"`
+	SourceBookTitle *string          `json:"sourceBookTitle"`
+	PageCount       int              `json:"pageCount"`
+	ThumbnailPage   int              `json:"thumbnailPage"`
 }
 
 // bookResponse mirrors api.BookResponse's wire shape for tests that only
 // need a handful of fields — OriginalFilename/FileHash stay pointers here
 // specifically so file-less-book tests can assert they come back nil
-// (migration 00014) rather than empty strings.
+// (migration 00014) rather than empty strings. Composer/Arranger are
+// ordered []tagStub now (migration 00020), not a single *string.
 type bookResponse struct {
-	ID               int64   `json:"id"`
-	BookTitle        string  `json:"bookTitle"`
-	Composer         *string `json:"composer"`
-	Arranger         *string `json:"arranger"`
-	ISBN             *string `json:"isbn"`
-	OriginalFilename *string `json:"originalFilename"`
-	FileHash         *string `json:"fileHash"`
-	HasCustomCover   bool    `json:"hasCustomCover"`
-	PieceCount       int     `json:"pieceCount"`
+	ID               int64     `json:"id"`
+	BookTitle        string    `json:"bookTitle"`
+	Composer         []tagStub `json:"composer"`
+	Arranger         []tagStub `json:"arranger"`
+	ISBN             *string   `json:"isbn"`
+	OriginalFilename *string   `json:"originalFilename"`
+	FileHash         *string   `json:"fileHash"`
+	HasCustomCover   bool      `json:"hasCustomCover"`
+	PieceCount       int       `json:"pieceCount"`
 }
 
 func readAll(t *testing.T, path string) []byte {

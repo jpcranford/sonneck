@@ -26,6 +26,7 @@ import { getBook } from '../api/books'
 import type { Book } from '../api/types'
 import { formatBookMeta } from '../lib/formatBookMeta'
 import { hyphenateISBN } from '../lib/isbn'
+import { joinNames } from '../lib/joinNames'
 import {
   deletePiece,
   getCitation,
@@ -732,22 +733,33 @@ export function PiecePage() {
                   below — but only when composer is actually present:
                   composer-or-arranger means a piece can have an arranger
                   with no composer at all, and the dot
-                  must not render with nothing on its left to separate. */}
-              <p className="flex flex-wrap items-center gap-1.5 text-ink-soft">
-                {piece.composer.value ? (
-                  <>
-                    <EffectiveValue value={piece.composer.value} inherited={piece.composer.inherited} />
-                    {piece.arranger.value && <span>• arr. {piece.arranger.value}</span>}
-                  </>
-                ) : piece.arranger.value ? (
-                  <span className="inline-flex items-center gap-1.5">
-                    arr. {piece.arranger.value}
-                    {piece.arranger.inherited && <InheritedNote />}
-                  </span>
-                ) : (
-                  <span className="text-ink-soft/50">—</span>
-                )}
-              </p>
+                  must not render with nothing on its left to separate.
+                  Composer/Arranger are ordered Person lists (composer/
+                  arranger overhaul, migration 00020) — joinNames renders
+                  each list as one string ("X and Y" / Oxford-comma "X, Y,
+                  and Z"), same as EffectiveValue's own single-string
+                  expectation. */}
+              {(() => {
+                const composerNames = joinNames(piece.composer.values.map((p) => p.name))
+                const arrangerNames = joinNames(piece.arranger.values.map((p) => p.name))
+                return (
+                  <p className="flex flex-wrap items-center gap-1.5 text-ink-soft">
+                    {composerNames ? (
+                      <>
+                        <EffectiveValue value={composerNames} inherited={piece.composer.inherited} />
+                        {arrangerNames && <span>• arr. {arrangerNames}</span>}
+                      </>
+                    ) : arrangerNames ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        arr. {arrangerNames}
+                        {piece.arranger.inherited && <InheritedNote />}
+                      </span>
+                    ) : (
+                      <span className="text-ink-soft/50">—</span>
+                    )}
+                  </p>
+                )
+              })()}
 
               {/* Practice status + remaining metadata pills (key, sheet
                   type — instruments moved into the details list below,

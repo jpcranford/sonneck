@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -28,6 +29,21 @@ func (s *Server) handleGetCitation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Composer/Arranger are ordered lists now (migration 00020) — resolved
+	// to display names here, at the one place that needs to actually
+	// render them, rather than carrying names inside EffectivePiece itself
+	// (which stays DB-decoupled, ids only, same as InstrumentIDs).
+	composerNames, err := personNames(r.Context(), s.DB, eff.Composer.IDs)
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+	arrangerNames, err := personNames(r.Context(), s.DB, eff.Arranger.IDs)
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+
 	var bookTitle, bookWorkOpusNumber, bookISBN string
 	if p.SourceBookID != nil {
 		book, err := repo.GetBookByID(r.Context(), s.DB, *p.SourceBookID)
@@ -45,8 +61,42 @@ func (s *Server) handleGetCitation(w http.ResponseWriter, r *http.Request) {
 	}
 
 	api.WriteData(w, http.StatusOK, map[string]string{
-		"citation": buildCitation(eff, p.Title, bookTitle, bookWorkOpusNumber, bookISBN),
+		"citation": buildCitation(eff, composerNames, arrangerNames, p.Title, bookTitle, bookWorkOpusNumber, bookISBN),
 	})
+}
+
+// personNames resolves an ordered list of person ids to their display
+// names, in the same order — the citation/download-filename layer's own
+// thin wrapper over repo.PeopleByIDs (which already preserves order).
+func personNames(ctx context.Context, q repo.Queryer, ids []int64) ([]string, error) {
+	people, err := repo.PeopleByIDs(ctx, q, ids)
+	if err != nil {
+		return nil, err
+	}
+	names := make([]string, len(people))
+	for i, p := range people {
+		names[i] = p.Name
+	}
+	return names, nil
+}
+
+// joinPersonNames formats an ordered list of person names as a natural
+// English list: "" / "X" / "X and Y" / "X, Y, and Z" (Oxford comma for
+// 3+) — Go port of the frontend's own joinNames (PersonDetailsSample.tsx),
+// same locked convention (memory project_people_composer_overhaul.md's
+// migration plan: "2 people → 'X and Y'; 3 → 'X, Y, and Z'; 4+ → 'X, Y, Z,
+// and Last'").
+func joinPersonNames(names []string) string {
+	switch len(names) {
+	case 0:
+		return ""
+	case 1:
+		return names[0]
+	case 2:
+		return names[0] + " and " + names[1]
+	default:
+		return strings.Join(names[:len(names)-1], ", ") + ", and " + names[len(names)-1]
+	}
 }
 
 // buildCitation implements design doc §6's fixed v1 format:
@@ -61,16 +111,25 @@ func (s *Server) handleGetCitation(w http.ResponseWriter, r *http.Request) {
 // formatting and fallback precedence, book-opus-number de-duplication,
 // nested-quote handling — see CLAUDE.md > Config for the full list and the
 // reasoning behind each.
-func buildCitation(eff *repo.EffectivePiece, title, bookTitle, bookWorkOpusNumber, isbn string) string {
+//
+// composerNames/arrangerNames (composer/arranger overhaul, migration
+// 00020) are already-resolved, ordered display names — buildCitation stays
+// a pure function with no DB access, same as before; the caller resolves
+// ids to names (personNames, above) and joins them into a single fused
+// "Composer, arr. Arranger" segment via joinPersonNames, extending each
+// role to however many people it now holds instead of exactly one.
+func buildCitation(eff *repo.EffectivePiece, composerNames, arrangerNames []string, title, bookTitle, bookWorkOpusNumber, isbn string) string {
 	var parts []string
 
+	composer := joinPersonNames(composerNames)
+	arranger := joinPersonNames(arrangerNames)
 	switch {
-	case eff.Composer.Value != "" && eff.Arranger.Value != "":
-		parts = append(parts, fmt.Sprintf("%s, arr. %s", eff.Composer.Value, eff.Arranger.Value))
-	case eff.Composer.Value != "":
-		parts = append(parts, eff.Composer.Value)
-	case eff.Arranger.Value != "":
-		parts = append(parts, fmt.Sprintf("arr. %s", eff.Arranger.Value))
+	case composer != "" && arranger != "":
+		parts = append(parts, fmt.Sprintf("%s, arr. %s", composer, arranger))
+	case composer != "":
+		parts = append(parts, composer)
+	case arranger != "":
+		parts = append(parts, fmt.Sprintf("arr. %s", arranger))
 	}
 
 	bookPart := bookTitle

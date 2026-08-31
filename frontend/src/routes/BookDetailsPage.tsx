@@ -26,6 +26,7 @@ import { ApiError } from '../api/client'
 import type { Piece } from '../api/types'
 import { bookComposerPart } from '../lib/formatBookMeta'
 import { hyphenateISBN } from '../lib/isbn'
+import { personCreditPart } from '../lib/joinNames'
 import { ClickableCard } from '../components/ClickableCard'
 import { ContextMenu } from '../components/ContextMenu'
 import { EditBookModal } from '../components/EditBookModal'
@@ -65,15 +66,19 @@ function pagesLabel(piece: Piece): string {
   return `${piece.pageCount} ${piece.pageCount === 1 ? 'page' : 'pages'}`
 }
 
-// piece.composer is already an EffectiveField — the backend has already
-// resolved the book fallback, so no client-side fallback logic is needed
-// here the way the mockup's hardcoded data required.
+// piece.composer is already an EffectiveTagRefs (composer/arranger
+// overhaul, migration 00020) — the backend has already resolved the book
+// fallback (both which names apply and their credit order), so no
+// client-side fallback logic is needed here the way the mockup's
+// hardcoded data required.
 //
-// Arranger rides on the composer segment itself (", arr. Arranger"), same
-// fragment as formatPieceMeta.ts/PieceGridCard.tsx's own composerPart — not
-// factored into a shared helper since those two callers also each carry
-// their own different surrounding fields (opus/sourceBook/year vs. just
-// year), same as this one carries pages instead.
+// Arranger rides on the composer segment itself (", arr. Arranger"), via
+// the shared personCreditPart (lib/joinNames.ts) — the same helper
+// formatPieceMeta.ts/PieceGridCard.tsx/PiecePage.tsx's own header row use.
+// This function still isn't just a call to formatPieceMeta.ts wholesale,
+// though: this row carries its own different surrounding fields (pages,
+// not opus/sourceBook/year), so only the composer/arranger fusion itself
+// is shared, not the whole meta-line assembly.
 //
 // Three-way fallback (composer-or-arranger): falls back to
 // "arr. Arranger" when only an arranger is set — this is a case that comes
@@ -86,14 +91,10 @@ function pagesLabel(piece: Piece): string {
 // piece of identifying information, not decorative clutter, so it must
 // show the inherited value rather than hide it.
 function pieceMetaLine(piece: Piece): string {
-  const composerPart =
-    piece.composer.value && piece.arranger.value
-      ? `${piece.composer.value}, arr. ${piece.arranger.value}`
-      : piece.composer.value
-        ? piece.composer.value
-        : piece.arranger.value
-          ? `arr. ${piece.arranger.value}`
-          : null
+  const composerPart = personCreditPart(
+    piece.composer.values.map((p) => p.name),
+    piece.arranger.values.map((p) => p.name),
+  )
   return [composerPart, pagesLabel(piece)].filter((part): part is string => !!part).join(' • ')
 }
 
@@ -176,6 +177,15 @@ const ROW_COLLAPSE_CLASS = 'max-[501px]:grid-cols-[96px_1fr]'
 // plain, unconditional `border-t border-border` instead, no `first:`
 // exception, which is what actually produces a line under the header too,
 // not just between pieces.
+//
+// Title includes each piece's own effective opus number in parentheses
+// (added 2026-08-30, direct instruction, ported from the same fix on the
+// People Library's own Person Details page) — matches the header card's
+// own `{book.bookTitle} ({book.workOpusNumber})` convention above, applied
+// per-piece here since a piece's own opus can override the book's.
+// PieceGrid deliberately keeps its own title-only treatment (list view
+// only, per the same instruction) — no room for it in that card's much
+// narrower 112px width.
 function PieceList({ pieces }: { pieces: Piece[] }) {
   return (
     <div className="flex flex-col">
@@ -196,6 +206,7 @@ function PieceList({ pieces }: { pieces: Piece[] }) {
               <div className="min-w-0">
                 <p className="flex flex-wrap items-center gap-1.5 font-display text-[0.92rem] font-medium text-ink">
                   {piece.title}
+                  {piece.workOpusNumber.value ? ` (${piece.workOpusNumber.value})` : ''}
                   {piece.favorite && (
                     <span className="text-accent" title="Favorite">
                       <IconHeartFilled size={13} />

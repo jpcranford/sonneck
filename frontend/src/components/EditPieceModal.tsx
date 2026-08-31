@@ -15,6 +15,7 @@ import {
   IconInfoCircle,
   IconXFilled,
 } from '@tabler/icons-react'
+import { listPeople } from '../api/people'
 import { getPieceThumbnailUrl, updatePiece } from '../api/pieces'
 import { lookupImslp } from '../api/imslp'
 import { listInstruments, listKeys, listSheetTypes, listUserTags } from '../api/lookups'
@@ -47,8 +48,12 @@ interface EditPieceModalProps {
 
 interface FormValues {
   title: string
-  composer: string
-  arranger: string
+  // Composer/Arranger (composer/arranger overhaul, Stage C) are ordered
+  // Person lists now — real TagComboBox fields, same shape as `keys`
+  // below, not the plain comma-separated-text bridge Stage B used as a
+  // stopgap.
+  composer: Tag[]
+  arranger: Tag[]
   keys: Tag[]
   sheetType: string
   instruments: Tag[]
@@ -87,14 +92,23 @@ function ownValue(field: { value: string; inherited: boolean }): string {
   return field.inherited ? '' : field.value
 }
 
+// Same ownValue treatment, for Composer/Arranger's ordered Person lists
+// (composer/arranger overhaul, Stage C) — empty when inherited (so saving
+// with nothing picked keeps inheriting), the piece's own list otherwise.
+// Mirrors Instruments' own field below exactly (`piece.instruments.values`
+// when overridden, `[]` when inherited).
+function ownTagList(field: { values: Tag[]; inherited: boolean }): Tag[] {
+  return field.inherited ? [] : field.values
+}
+
 function pieceToFormValues(piece: Piece): FormValues {
   return {
     title: piece.title,
-    composer: ownValue(piece.composer),
-    // Book-inheritable — same ownValue treatment as every other field
+    composer: ownTagList(piece.composer),
+    // Book-inheritable — same ownTagList treatment as every other field
     // here (blank when inherited, so leaving it blank on save keeps
     // inheriting), not a raw echo of the resolved value.
-    arranger: ownValue(piece.arranger),
+    arranger: ownTagList(piece.arranger),
     keys: piece.keys,
     sheetType: piece.sheetType.inherited ? '' : (piece.sheetType.value?.name ?? ''),
     instruments: piece.instruments.inherited ? [] : piece.instruments.values,
@@ -136,8 +150,8 @@ function stripImslpPrefix(value: string): string {
 function formValuesToWriteRequest(data: FormValues, piece: Piece): PieceWriteRequest {
   return {
     title: data.title,
-    composer: data.composer,
-    arranger: data.arranger || null,
+    composers: data.composer.map((t) => t.name),
+    arrangers: data.arranger.map((t) => t.name),
     // Favorite lives on the Piece Details page's own header (a real toggle there
     // already) — editing it a second time from here would be redundant,
     // so this form doesn't surface it at all. Passed through unchanged so
@@ -334,13 +348,17 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
     queryFn: listInstruments,
   })
   const { data: userTagOptions = [] } = useQuery({ queryKey: ['userTags'], queryFn: listUserTags })
+  // People catalog (composer/arranger overhaul, Stage C) — reused
+  // unpaginated as the Composer/Arranger TagComboBox's own option source,
+  // same "small personal-library scale" assumption every other lookup
+  // list here already makes.
+  const { data: peopleOptions = [] } = useQuery({ queryKey: ['people'], queryFn: () => listPeople() })
 
   const sheetTypeSelectOptions = [
     { value: '', label: '—' },
     ...sheetTypeOptions.map((o) => ({ value: o.name, label: o.name })),
   ]
 
-  const composer = watch('composer')
   const bpm = Number(watch('bpm'))
   const measureCount = Number(watch('measureCount'))
   const beatsPerMeasure = Number(watch('beatsPerMeasure'))
@@ -368,8 +386,14 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
       // typing, not silently overwrite something already entered,
       // book-inherited or not (same rule as the design mockup this is
       // built from).
-      if (!current.composer && info.composer) {
-        setValue('composer', info.composer)
+      // Composer is now an ordered Person list (composer/arranger
+      // overhaul, Stage C) — IMSLP only ever resolves a single composer
+      // name, appended as a placeholder-id entry the same way
+      // TagComboBox's own "create new" affordance does; the real id is
+      // resolved server-side by name on save, same as every other
+      // find-or-create tag field.
+      if (current.composer.length === 0 && info.composer) {
+        setValue('composer', [{ id: -1, name: info.composer }])
         filled.add('composer')
       }
       if (!current.workOpusNumber && info.workOpusNumber) {
@@ -652,40 +676,46 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
               so Composer can shrink freely once stacked and paired
               side-by-side above 525px alike. */}
           <div className="flex flex-col gap-3 min-[525px]:flex-row">
-            <div className="flex min-w-0 flex-1 flex-col gap-1">
-              <label htmlFor="f-composer" className="text-sm text-ink-soft">
-                Composer
-              </label>
-              <input
-                id="f-composer"
-                placeholder={!composer && piece.composer.inherited ? piece.composer.value : undefined}
-                className={`rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 placeholder:text-ink-soft/40 placeholder:italic ${imslpFilledFields.has('composer') ? 'ring-2 ring-accent-on-dark' : ''}`}
-                {...register('composer', { maxLength: 255 })}
+            <div className="min-w-0 flex-1">
+              <Controller
+                name="composer"
+                control={control}
+                render={({ field }) => (
+                  <TagComboBox
+                    label="Composer"
+                    options={peopleOptions}
+                    selected={field.value}
+                    multiple
+                    sequenceStyle
+                    onChange={field.onChange}
+                    highlighted={imslpFilledFields.has('composer')}
+                    bookValue={
+                      piece.composer.inherited ? piece.composer.values.map((p) => p.name).join(', ') : undefined
+                    }
+                    onCopy={() => field.onChange(piece.composer.values)}
+                  />
+                )}
               />
-              {errors.composer && <p className="text-sm text-red-700">{errors.composer.message}</p>}
-              {!composer && piece.composer.inherited && (
-                <InheritedNote
-                  bookValue={piece.composer.value}
-                  onCopy={() => setValue('composer', piece.composer.value)}
-                />
-              )}
             </div>
-            <div className="flex min-w-0 flex-1 flex-col gap-1">
-              <label htmlFor="f-arranger" className="text-sm text-ink-soft">
-                Arranger
-              </label>
-              <input
-                id="f-arranger"
-                placeholder={!watch('arranger') && piece.arranger.inherited ? piece.arranger.value : undefined}
-                className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
-                {...register('arranger', { maxLength: 255 })}
+            <div className="min-w-0 flex-1">
+              <Controller
+                name="arranger"
+                control={control}
+                render={({ field }) => (
+                  <TagComboBox
+                    label="Arranger"
+                    options={peopleOptions}
+                    selected={field.value}
+                    multiple
+                    sequenceStyle
+                    onChange={field.onChange}
+                    bookValue={
+                      piece.arranger.inherited ? piece.arranger.values.map((p) => p.name).join(', ') : undefined
+                    }
+                    onCopy={() => field.onChange(piece.arranger.values)}
+                  />
+                )}
               />
-              {!watch('arranger') && piece.arranger.inherited && (
-                <InheritedNote
-                  bookValue={piece.arranger.value}
-                  onCopy={() => setValue('arranger', piece.arranger.value)}
-                />
-              )}
             </div>
           </div>
         </div>

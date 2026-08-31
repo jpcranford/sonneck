@@ -65,7 +65,11 @@ export function NewBookModal({ open, onClose }: NewBookModalProps) {
       createStartedAtRef.current = Date.now()
       return createBookManual({
         bookTitle: data.bookTitle,
-        composer: data.composer || null,
+        // Composers/Arrangers (composer/arranger overhaul, migration
+        // 00020) — this form has no Arranger field of its own, only
+        // Composer, same scope as before; arrangers is sent empty.
+        composers: data.composer ? [data.composer] : [],
+        arrangers: [],
         publisher: data.publisher || null,
         yearWritten: data.yearWritten || null,
       })

@@ -49,11 +49,11 @@ func TestPieceFacets_InstrumentCountsIncludeInheritedPieces(t *testing.T) {
 	h := newTestServer(t)
 	bookID, _ := uploadBook(t, h, "book.pdf", 4)
 	decodeData(t, doJSON(t, h, http.MethodPatch, apiBooksURL(bookID), map[string]any{
-		"bookTitle": "Anthology", "composer": "Someone", "instruments": []string{"Violin"},
+		"bookTitle": "Anthology", "composers": []string{"Someone"}, "instruments": []string{"Violin"},
 	}), nil)
 	confirmRec := doJSON(t, h, http.MethodPost, apiBooksURL(bookID)+"/confirm-import", map[string]any{
 		"ranges": []map[string]any{{"start": 1, "end": 4}},
-		"pieces": []map[string]any{{"title": "Inherits Violin", "composer": "Someone"}},
+		"pieces": []map[string]any{{"title": "Inherits Violin", "composers": []string{"Someone"}}},
 	})
 	decodeData(t, confirmRec, new(any))
 
@@ -88,7 +88,7 @@ func TestPieceFacets_FavoriteAndBooklessCounts(t *testing.T) {
 	bookID, _ := uploadBook(t, h, "book.pdf", 2)
 	confirmRec := doJSON(t, h, http.MethodPost, apiBooksURL(bookID)+"/confirm-import", map[string]any{
 		"ranges": []map[string]any{{"start": 1, "end": 2}},
-		"pieces": []map[string]any{{"title": "From a book", "composer": "Someone"}},
+		"pieces": []map[string]any{{"title": "From a book", "composers": []string{"Someone"}}},
 	})
 	decodeData(t, confirmRec, new(any))
 
@@ -120,11 +120,11 @@ func TestPieceFacets_HasImslpNumberCountIsInheritanceAware(t *testing.T) {
 
 	bookID, _ := uploadBook(t, h, "book.pdf", 2)
 	decodeData(t, doJSON(t, h, http.MethodPatch, apiBooksURL(bookID), map[string]any{
-		"bookTitle": "Anthology", "composer": "Someone", "imslpNumber": "222",
+		"bookTitle": "Anthology", "composers": []string{"Someone"}, "imslpNumber": "222",
 	}), nil)
 	confirmRec := doJSON(t, h, http.MethodPost, apiBooksURL(bookID)+"/confirm-import", map[string]any{
 		"ranges": []map[string]any{{"start": 1, "end": 2}},
-		"pieces": []map[string]any{{"title": "Inherits", "composer": "Someone"}},
+		"pieces": []map[string]any{{"title": "Inherits", "composers": []string{"Someone"}}},
 	})
 	decodeData(t, confirmRec, new(any))
 
@@ -144,14 +144,14 @@ func TestBookFacets_SheetTypeAndInstrumentCounts(t *testing.T) {
 		ID int64 `json:"id"`
 	}
 	decodeData(t, doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
-		"bookTitle": "Full Score Book", "composer": "Someone",
+		"bookTitle": "Full Score Book", "composers": []string{"Someone"},
 	}), &scoreBook)
 	decodeData(t, doJSON(t, h, http.MethodPatch, apiBooksURL(scoreBook.ID), map[string]any{
-		"bookTitle": "Full Score Book", "composer": "Someone",
+		"bookTitle": "Full Score Book", "composers": []string{"Someone"},
 		"sheetTypeName": "Ensemble Piece – Full Score", "instruments": []string{"Violin", "Cello"},
 	}), nil)
 	decodeData(t, doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
-		"bookTitle": "Unclassified Book", "composer": "Someone",
+		"bookTitle": "Unclassified Book", "composers": []string{"Someone"},
 	}), nil)
 
 	var facets struct {

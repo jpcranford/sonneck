@@ -1,4 +1,5 @@
 import type { Piece } from '../api/types'
+import { personCreditPart } from './joinNames'
 
 // The citation-style metadata line (design system: "composer • opus/catalog
 // number • source book • year") — blank fields omitted entirely rather than
@@ -7,25 +8,15 @@ import type { Piece } from '../api/types'
 // latter reads too faint as a separator; applied consistently everywhere
 // this pattern appears.
 //
-// Arranger rides on the composer segment itself ("Composer, arr.
-// Arranger"), not as its own bullet-separated part — same reasoning as
-// PieceGridCard's own composerPart logic (it qualifies the composer, it
-// isn't a peer fact like the year).
-//
-// Three-way fallback (composer-or-arranger): a piece can legitimately
-// have only an arranger (own or book-inherited) and no composer at all —
-// a naive "composer ? composer+arranger : null" would drop that case's
-// arranger entirely instead of falling back to "arr. Arranger", same
-// pattern PiecePage.tsx's own composer/arranger row follows.
+// Composer/Arranger are now ordered Person lists (composer/arranger
+// overhaul, migration 00020) — personCreditPart (lib/joinNames.ts) joins
+// each list and fuses them ("Composer, arr. Arranger"), same three-way
+// composer-or-arranger fallback this file always had.
 export function formatPieceMeta(piece: Piece): string {
-  const composerPart =
-    piece.composer.value && piece.arranger.value
-      ? `${piece.composer.value}, arr. ${piece.arranger.value}`
-      : piece.composer.value
-        ? piece.composer.value
-        : piece.arranger.value
-          ? `arr. ${piece.arranger.value}`
-          : null
+  const composerPart = personCreditPart(
+    piece.composer.values.map((p) => p.name),
+    piece.arranger.values.map((p) => p.name),
+  )
   return [
     composerPart,
     piece.workOpusNumber.value,

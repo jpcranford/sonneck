@@ -5,6 +5,7 @@ import { IconAlertTriangle, IconCheck, IconXFilled } from '@tabler/icons-react'
 import { updateBook } from '../api/books'
 import { lookupImslp } from '../api/imslp'
 import { listInstruments, listSheetTypes } from '../api/lookups'
+import { listPeople } from '../api/people'
 import { ApiError } from '../api/client'
 import { afterMinDuration } from '../lib/minDuration'
 import type { Book, BookWriteRequest, Tag } from '../api/types'
@@ -34,8 +35,11 @@ interface EditBookModalProps {
 
 interface FormValues {
   bookTitle: string
-  composer: string
-  arranger: string
+  // Composer/Arranger (composer/arranger overhaul, Stage C) are ordered
+  // Person lists now — real TagComboBox fields, same shape as
+  // `instruments` below.
+  composer: Tag[]
+  arranger: Tag[]
   yearWritten: string
   workOpusNumber: string
   instruments: Tag[]
@@ -50,8 +54,11 @@ interface FormValues {
 function bookToFormValues(book: Book): FormValues {
   return {
     bookTitle: book.bookTitle,
-    composer: book.composer ?? '',
-    arranger: book.arranger ?? '',
+    // Composer/Arranger are already plain ordered Tag[] on Book (nothing
+    // to inherit — Book is the top of the inheritance chain), so this is
+    // a direct pass-through, same as `instruments` below.
+    composer: book.composer,
+    arranger: book.arranger,
     yearWritten: book.yearWritten ?? '',
     workOpusNumber: book.workOpusNumber ?? '',
     instruments: book.instruments,
@@ -88,8 +95,8 @@ function stripImslpPrefix(value: string): string {
 function formValuesToWriteRequest(data: FormValues): BookWriteRequest {
   return {
     bookTitle: data.bookTitle,
-    composer: data.composer || null,
-    arranger: data.arranger || null,
+    composers: data.composer.map((t) => t.name),
+    arrangers: data.arranger.map((t) => t.name),
     yearWritten: data.yearWritten || null,
     workOpusNumber: data.workOpusNumber || null,
     sheetTypeName: data.sheetType || null,
@@ -158,6 +165,9 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
     queryKey: ['instruments'],
     queryFn: listInstruments,
   })
+  // People catalog (composer/arranger overhaul, Stage C) — same
+  // unpaginated lookup convention as every other field here.
+  const { data: peopleOptions = [] } = useQuery({ queryKey: ['people'], queryFn: () => listPeople() })
   const sheetTypeSelectOptions = [
     { value: '', label: '—' },
     ...sheetTypeOptions.map((o) => ({ value: o.name, label: o.name })),
@@ -181,9 +191,12 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
       const filled = new Set<string>()
       const current = getValues()
       // Only fields currently blank — meant to save typing, not silently
-      // overwrite something already entered.
-      if (!current.composer && info.composer) {
-        setValue('composer', info.composer)
+      // overwrite something already entered. Composer is now an ordered
+      // Person list (composer/arranger overhaul, Stage C) — same
+      // placeholder-id append EditPieceModal.tsx's own version of this
+      // uses, resolved server-side by name on save.
+      if (current.composer.length === 0 && info.composer) {
+        setValue('composer', [{ id: -1, name: info.composer }])
         filled.add('composer')
       }
       if (!current.workOpusNumber && info.workOpusNumber) {
@@ -390,33 +403,46 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
         </div>
 
         <div className="flex flex-col gap-3 min-[525px]:flex-row">
-          <div className="flex min-w-0 flex-1 flex-col gap-1">
-            {/* No persistent "one of these three required" hint here:
-                composer-or-arranger-or-publisher is a
-                cross-field rule the backend already enforces and reports
-                (ValidateBook), and the footer below already surfaces
-                whatever error a failed save returns — same "validation-
-                error only" treatment already given every other backend-only
-                rule in this app's forms (CLAUDE.md > Frontend: light
-                client-side validation, "surface whatever error the backend
-                returns" for anything beyond the cheap checks). */}
-            <label htmlFor="f-composer" className="text-sm text-ink-soft">
-              Composer
-            </label>
-            <input
-              id="f-composer"
-              className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 ${imslpFilledFields.has('composer') ? 'ring-2 ring-accent-on-dark' : ''}`}
-              {...register('composer', { maxLength: 255 })}
+          {/* No persistent "one of these three required" hint here:
+              composer-or-arranger-or-publisher is a cross-field rule the
+              backend already enforces and reports (ValidateBook), and the
+              footer below already surfaces whatever error a failed save
+              returns — same "validation-error only" treatment already
+              given every other backend-only rule in this app's forms
+              (CLAUDE.md > Frontend: light client-side validation, "surface
+              whatever error the backend returns" for anything beyond the
+              cheap checks). */}
+          <div className="min-w-0 flex-1">
+            <Controller
+              name="composer"
+              control={control}
+              render={({ field }) => (
+                <TagComboBox
+                  label="Composer"
+                  options={peopleOptions}
+                  selected={field.value}
+                  multiple
+                  sequenceStyle
+                  onChange={field.onChange}
+                  highlighted={imslpFilledFields.has('composer')}
+                />
+              )}
             />
           </div>
-          <div className="flex min-w-0 flex-1 flex-col gap-1">
-            <label htmlFor="f-arranger" className="text-sm text-ink-soft">
-              Arranger
-            </label>
-            <input
-              id="f-arranger"
-              className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-              {...register('arranger', { maxLength: 255 })}
+          <div className="min-w-0 flex-1">
+            <Controller
+              name="arranger"
+              control={control}
+              render={({ field }) => (
+                <TagComboBox
+                  label="Arranger"
+                  options={peopleOptions}
+                  selected={field.value}
+                  multiple
+                  sequenceStyle
+                  onChange={field.onChange}
+                />
+              )}
             />
           </div>
         </div>

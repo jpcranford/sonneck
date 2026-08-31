@@ -13,6 +13,7 @@ import (
 	"github.com/jpcranford/sonneck/internal/db"
 	"github.com/jpcranford/sonneck/internal/export"
 	"github.com/jpcranford/sonneck/internal/handlers"
+	"github.com/jpcranford/sonneck/internal/peoplemigrate"
 	"github.com/jpcranford/sonneck/internal/repo"
 	"github.com/jpcranford/sonneck/internal/webui"
 )
@@ -118,6 +119,19 @@ func runSubcommand(name string, conn *sql.DB, cfg *config.Config, logger *slog.L
 			os.Exit(1)
 		}
 		logger.Info("thumbnail cleanup completed", "removed", result.Removed, "regenerated", result.Regenerated)
+	case "migrate-people":
+		// Fifth instance of the CLI-subcommand admin pattern (CLAUDE.md >
+		// Search). Safe against a live server (WAL mode) — reads/writes go
+		// through the same repo layer every real request already uses, no
+		// raw connection tricks. Idempotent: safe to re-run.
+		result, err := peoplemigrate.Run(context.Background(), conn)
+		if err != nil {
+			logger.Error("people migration failed", "error", err)
+			os.Exit(1)
+		}
+		logger.Info("people migration completed",
+			"piecesMigrated", result.PiecesMigrated, "piecesSkipped", result.PiecesSkipped,
+			"booksMigrated", result.BooksMigrated, "booksSkipped", result.BooksSkipped)
 	case "export-csv":
 		// Third instance of the CLI-subcommand admin pattern (CLAUDE.md >
 		// Search). Also safe against a live server — WAL mode lets these
