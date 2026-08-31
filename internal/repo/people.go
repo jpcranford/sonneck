@@ -77,17 +77,33 @@ func CountPeopleWithPortraitImageHash(ctx context.Context, q Queryer, hash strin
 	return count, err
 }
 
-// CountPiecesForPerson counts distinct pieces crediting personID as either
-// composer or arranger — the People Library's pieceCount, and the "Show
-// all composers" default (>2 pieces) filter's underlying value.
+// CountPiecesForPerson counts pieces crediting personID as either composer
+// or arranger, *effective* — a piece's own direct credit, or (when the
+// piece has no composer/arranger of its own at all) its source book's
+// credit, the same book-level inheritance every other composer/arranger
+// read in this app resolves through (CLAUDE.md > Book-level soft
+// inheritance). This is the People Library's pieceCount, the "Show all
+// composers" default (>2 pieces) filter's underlying value, and Person
+// Details' "Saving will update N works" footer text — all three need the
+// same effective count Person Details' own works list (handleSearchPieces'
+// personId filter) already uses, or they'd undercount a person who's only
+// ever credited through a book.
+//
+// Composer and Arranger fall back to the book independently (a piece can
+// override one and inherit the other), so this checks all four
+// combinations separately, mirroring handleSearchPieces' personId filter
+// exactly rather than inventing a different shape for the same rule.
 func CountPiecesForPerson(ctx context.Context, q Queryer, personID int64) (int, error) {
 	var count int
 	err := q.QueryRowContext(ctx, `
-		SELECT COUNT(DISTINCT piece_id) FROM (
-			SELECT piece_id FROM piece_composers WHERE person_id = ?
-			UNION
-			SELECT piece_id FROM piece_arrangers WHERE person_id = ?
-		)`, personID, personID,
+		SELECT COUNT(*) FROM pieces p WHERE (
+			p.id IN (SELECT piece_id FROM piece_composers WHERE person_id = ?)
+			OR (p.id NOT IN (SELECT piece_id FROM piece_composers)
+				AND p.source_book_id IN (SELECT book_id FROM book_composers WHERE person_id = ?))
+			OR p.id IN (SELECT piece_id FROM piece_arrangers WHERE person_id = ?)
+			OR (p.id NOT IN (SELECT piece_id FROM piece_arrangers)
+				AND p.source_book_id IN (SELECT book_id FROM book_arrangers WHERE person_id = ?))
+		)`, personID, personID, personID, personID,
 	).Scan(&count)
 	return count, err
 }

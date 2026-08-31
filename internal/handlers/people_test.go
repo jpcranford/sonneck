@@ -291,6 +291,57 @@ func TestSearchPieces_FiltersByPersonIdIncludingBookInheritance(t *testing.T) {
 	}
 }
 
+// TestPersonResponse_PieceCountIsEffectiveIncludingBookInheritance covers a
+// real reported gap: PersonResponse.pieceCount (the People Library card/
+// list count, its default >2-piece "Show only" filter, and Person Details'
+// own "Saving will update N works" footer) used to only count pieces
+// crediting the person directly, undercounting anyone credited only
+// through a book — the same case
+// TestSearchPieces_FiltersByPersonIdIncludingBookInheritance already
+// confirms the personId piece filter itself gets right; pieceCount needs
+// to agree with it.
+func TestPersonResponse_PieceCountIsEffectiveIncludingBookInheritance(t *testing.T) {
+	h := newTestServer(t)
+	bookID, _ := uploadBook(t, h, "book.pdf", 4)
+	decodeData(t, doJSON(t, h, http.MethodPatch, apiBooksURL(bookID), map[string]any{
+		"bookTitle": "Anthology",
+		"composers": []string{"Shared Person"},
+	}), nil)
+	doJSON(t, h, http.MethodPost, apiBooksURL(bookID)+"/confirm-import", map[string]any{
+		"ranges": []map[string]any{{"start": 1, "end": 4}},
+		"pieces": []map[string]any{{"title": "Inherits From Book"}},
+	})
+
+	var people []personResponse
+	decodeData(t, doJSON(t, h, http.MethodGet, "/api/people", nil), &people)
+	if len(people) != 1 {
+		t.Fatalf("expected exactly 1 person, got %d", len(people))
+	}
+	personID := people[0].ID
+	if people[0].PieceCount != 1 {
+		t.Errorf("pieceCount = %d, want 1 (the book-inheriting piece)", people[0].PieceCount)
+	}
+
+	// Refetching the single person directly must agree with the list
+	// response above — both go through BuildPersonResponse the same way,
+	// but worth confirming neither path diverges.
+	var refetched personResponse
+	decodeData(t, doJSON(t, h, http.MethodGet, apiPeopleURL(personID), nil), &refetched)
+	if refetched.PieceCount != 1 {
+		t.Errorf("GET /api/people/{id} pieceCount = %d, want 1", refetched.PieceCount)
+	}
+
+	// Sorting by pieceCount must agree with the count it's sorting by —
+	// this person has to actually place ahead of a genuinely 0-piece one
+	// in a desc sort, not just report the right number when fetched alone.
+	createPerson(t, h, "Never Credited")
+	var byPieceCount []personResponse
+	decodeData(t, doJSON(t, h, http.MethodGet, "/api/people?sort=pieceCount&dir=desc", nil), &byPieceCount)
+	if len(byPieceCount) == 0 || byPieceCount[0].ID != personID {
+		t.Errorf("sort=pieceCount&dir=desc first result = %+v, want the book-inheriting person (id %d) first", byPieceCount, personID)
+	}
+}
+
 func TestListBooks_FiltersByPersonId(t *testing.T) {
 	h := newTestServer(t)
 	bookID, _ := uploadBook(t, h, "book.pdf", 2)

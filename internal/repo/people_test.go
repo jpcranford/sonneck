@@ -184,3 +184,78 @@ func TestAffectedPieceIDsForPerson_IncludesPiecesInheritingFromABook(t *testing.
 		t.Errorf("affected = %v, want exactly [%d] (the inheriting piece)", affected, pieceID)
 	}
 }
+
+// TestCountPiecesForPerson_IsEffectiveIncludingBookInheritance is the
+// direct regression for a real reported gap: the People Library card,
+// its default >2-piece "Show only" filter, and Person Details' own
+// "Saving will update N works" footer all undercounted a person credited
+// only through a book, never directly on any piece — CountPiecesForPerson
+// used to query piece_composers/piece_arrangers alone. Composer and
+// Arranger are checked independently (a piece can override one and
+// inherit the other), and a piece with its own direct credit for either
+// role must not double-count its book's inherited one.
+func TestCountPiecesForPerson_IsEffectiveIncludingBookInheritance(t *testing.T) {
+	ctx := context.Background()
+	dbConn := newTestDB(t)
+
+	bookID, err := repo.CreateBook(ctx, dbConn, &models.Book{
+		BookTitle:        "Anthology",
+		OriginalFilename: strPtr("anthology.pdf"),
+		FilePath:         strPtr("/data/library/books/anthology.pdf"),
+		FileHash:         strPtr("anthology-count-hash"),
+	})
+	if err != nil {
+		t.Fatalf("CreateBook: %v", err)
+	}
+	composer, err := repo.FindOrCreatePerson(ctx, dbConn, "Only Ever Book-Credited")
+	if err != nil {
+		t.Fatalf("FindOrCreatePerson: %v", err)
+	}
+	if err := repo.SetBookComposers(ctx, dbConn, bookID, []int64{composer}); err != nil {
+		t.Fatalf("SetBookComposers: %v", err)
+	}
+
+	// Two pieces inherit the book's composer (no override of their own);
+	// a third overrides its own composer to someone else entirely, so it
+	// must NOT be counted for `composer`.
+	other, err := repo.FindOrCreatePerson(ctx, dbConn, "Someone Else")
+	if err != nil {
+		t.Fatalf("FindOrCreatePerson: %v", err)
+	}
+	if _, err := repo.CreatePiece(ctx, dbConn, &models.Piece{
+		Title:        "Inherits One",
+		SourceBookID: &bookID,
+		FilePath:     "/data/library/pieces/inherits-one.pdf",
+		FileHash:     "inherits-one-hash",
+	}); err != nil {
+		t.Fatalf("CreatePiece: %v", err)
+	}
+	if _, err := repo.CreatePiece(ctx, dbConn, &models.Piece{
+		Title:        "Inherits Two",
+		SourceBookID: &bookID,
+		FilePath:     "/data/library/pieces/inherits-two.pdf",
+		FileHash:     "inherits-two-hash",
+	}); err != nil {
+		t.Fatalf("CreatePiece: %v", err)
+	}
+	overriddenID, err := repo.CreatePiece(ctx, dbConn, &models.Piece{
+		Title:        "Overridden",
+		SourceBookID: &bookID,
+		FilePath:     "/data/library/pieces/overridden.pdf",
+		FileHash:     "overridden-hash",
+	})
+	if err != nil {
+		t.Fatalf("CreatePiece: %v", err)
+	}
+	if err := repo.SetPieceComposers(ctx, dbConn, overriddenID, []int64{other}); err != nil {
+		t.Fatalf("SetPieceComposers: %v", err)
+	}
+
+	count, err := repo.CountPiecesForPerson(ctx, dbConn, composer)
+	if err != nil {
+		t.Fatalf("CountPiecesForPerson: %v", err)
+	}
+	if count != 2 {
+		t.Errorf("CountPiecesForPerson = %d, want 2 (the two inheriting pieces, not the one that overrides its own composer)", count)
+	}
+}

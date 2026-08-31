@@ -15,20 +15,26 @@ import (
 
 // personSortColumns backs the People Library's own sort control (mockup:
 // Name/Piece Count/Birth Year/Death Year/Date Added). pieceCount is a
-// scalar subquery mirroring repo.CountPiecesForPerson's own UNION query —
-// there's no stored column to sort by directly. birthYear/deathYear use
-// the same direction-invariant "blank sorts last" clause as
-// bookSortColumns' yearWritten, for the same reason (SQLite's own
-// NULL-sorts-first-on-ASC default would otherwise put an unknown-year
-// person at the front of an ascending list).
+// scalar subquery mirroring repo.CountPiecesForPerson's own effective
+// (book-inheritance-aware) query exactly — there's no stored column to
+// sort by directly, and this must count the same pieces the displayed
+// pieceCount does, or "sort by piece count" would order by a different
+// number than the one shown on each card. birthYear/deathYear use the
+// same direction-invariant "blank sorts last" clause as bookSortColumns'
+// yearWritten, for the same reason (SQLite's own NULL-sorts-first-on-ASC
+// default would otherwise put an unknown-year person at the front of an
+// ascending list).
 var personSortColumns = map[string]sortColumnFunc{
 	"dateAdded": simpleSortColumn("id"),
 	"name":      simpleSortColumn("name COLLATE NOCASE"),
 	"pieceCount": func(dir string) string {
-		const expr = `(SELECT COUNT(DISTINCT piece_id) FROM (
-			SELECT piece_id FROM piece_composers WHERE person_id = people.id
-			UNION
-			SELECT piece_id FROM piece_arrangers WHERE person_id = people.id
+		const expr = `(SELECT COUNT(*) FROM pieces p WHERE (
+			p.id IN (SELECT piece_id FROM piece_composers WHERE person_id = people.id)
+			OR (p.id NOT IN (SELECT piece_id FROM piece_composers)
+				AND p.source_book_id IN (SELECT book_id FROM book_composers WHERE person_id = people.id))
+			OR p.id IN (SELECT piece_id FROM piece_arrangers WHERE person_id = people.id)
+			OR (p.id NOT IN (SELECT piece_id FROM piece_arrangers)
+				AND p.source_book_id IN (SELECT book_id FROM book_arrangers WHERE person_id = people.id))
 		))`
 		return expr + " " + dir
 	},
