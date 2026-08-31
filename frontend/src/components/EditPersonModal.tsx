@@ -1,8 +1,25 @@
-import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from 'react'
+import { createPortal } from 'react-dom'
 import { useForm } from 'react-hook-form'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { IconAlertTriangle, IconCheck, IconXFilled } from '@tabler/icons-react'
+import {
+  IconAlertTriangle,
+  IconBrandWikipedia,
+  IconCheck,
+  IconCloudDownload,
+  IconCloudOff,
+  IconExternalLink,
+  IconLoader2,
+  IconXFilled,
+} from '@tabler/icons-react'
 import { updatePerson } from '../api/people'
+import { searchWikipedia, type WikipediaSearchResult } from '../api/wikipedia'
 import { ApiError } from '../api/client'
 import { afterMinDuration } from '../lib/minDuration'
 import type { Person, PersonWriteRequest } from '../api/types'
@@ -17,12 +34,16 @@ import { Modal } from './Modal'
 // redundant triggers" principle EditBookModal.tsx already follows for
 // Book's cover image.
 //
-// The mockup's Wikipedia search-and-pick autofill is NOT wired up here —
-// unlike IMSLP autofill (a real backend endpoint, internal/imslp), no
-// Wikipedia search/parse endpoint exists on the backend yet. Building one
-// is real backend work beyond "port an approved frontend mockup," so it's
-// left for a later session; this modal ships without that affordance for
-// now.
+// Wikipedia search-and-pick autofill (added once GET /api/wikipedia/search
+// existed) mirrors the mockup's own interaction exactly — NOT a single-
+// click instant fill like ImslpAutofillButton: an IMSLP number is a
+// precise identifier resolving to exactly one work/file, but a person's
+// *name* searched against Wikipedia is inherently ambiguous (the same
+// ambiguity Upload Portrait's own Wikipedia search has to solve for the
+// portrait image itself — "Chopin (crater)"/"Chopin Airport" alongside
+// the real composer). Clicking the cloud icon opens a real disambiguation
+// results panel; the human still has to confirm which article is the
+// right person before anything gets filled.
 
 interface EditPersonModalProps {
   person: Person
@@ -65,6 +86,47 @@ type SaveState = 'idle' | 'saving' | 'saved'
 // Same fixed "Saved" display window as EditBookModal.tsx's own version of
 // this — the PATCH itself isn't on a timer, just this confirmation beat.
 const SAVED_DISPLAY_MS = 900
+// How long a just-autofilled field's ring stays visible — matches the
+// real ImslpAutofillButton callers' own ~2.4s clear.
+const HIGHLIGHT_MS = 2400
+
+// Same faint pre-blended tones as the real ImslpAutofillButton.tsx
+// (#9d9892/#c9c2b6, never a translucent opacity utility). Sits inside the
+// Name field itself — the thing that actually drives the search, since a
+// person has no separate numeric identifier the way IMSLP does — same
+// right-aligned/vertically-centered placement convention as a password
+// field's show/hide toggle. Both the Wikipedia brand mark and the cloud/
+// status icon live inside ONE button, a single click target, not a
+// decorative icon beside a separate clickable one (locked in the
+// mockup's own review).
+function WikipediaAutofillButton({
+  state,
+  valid,
+  onClick,
+}: {
+  state: 'idle' | 'searching' | 'open'
+  valid: boolean
+  onClick: () => void
+}) {
+  const disabled = !valid || state === 'searching'
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={valid ? 'Search Wikipedia to autofill blank fields' : 'Type a name to search Wikipedia'}
+      title={valid ? 'Search Wikipedia to autofill blank fields' : 'Type a name to search Wikipedia'}
+      className={`absolute top-1/2 right-2.5 flex -translate-y-1/2 items-center gap-1 disabled:cursor-default ${
+        valid ? 'cursor-pointer text-[#9d9892] hover:text-accent' : 'text-[#c9c2b6]'
+      }`}
+    >
+      <IconBrandWikipedia size={15} className="shrink-0" aria-hidden="true" />
+      {!valid && <IconCloudOff size={16} />}
+      {valid && state !== 'searching' && <IconCloudDownload size={16} />}
+      {valid && state === 'searching' && <IconLoader2 size={16} className="animate-spin text-ink-soft" />}
+    </button>
+  )
+}
 
 export function EditPersonModal({ person, open, onClose }: EditPersonModalProps) {
   const queryClient = useQueryClient()
@@ -77,6 +139,9 @@ export function EditPersonModal({ person, open, onClose }: EditPersonModalProps)
   const {
     register,
     handleSubmit,
+    watch,
+    getValues,
+    setValue,
     reset,
     formState: { errors },
   } = useForm<FormValues>({ defaultValues: personToFormValues(person) })
@@ -92,11 +157,116 @@ export function EditPersonModal({ person, open, onClose }: EditPersonModalProps)
       // for a session that hasn't submitted anything yet. This is a real
       // external-trigger sync (the `open` prop toggling), not a same-
       // render feedback loop — see Modal.tsx/EditBookModal.tsx for the
-      // same reasoning and precedent.
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate: see the comment above.
+      // same reasoning and precedent. No eslint-disable needed here:
+      // adding watch()/getValues()/setValue() above (for the Wikipedia
+      // autofill) already puts this component on react-hooks/
+      // incompatible-library's bail-out path, which also stops
+      // react-hooks/set-state-in-effect from analyzing it — same gotcha
+      // already documented for EditBookModal.tsx/EditPieceModal.tsx
+      // (CLAUDE.md's own "React lint gotchas" entry).
       setSaveState('idle')
     }
   }, [open, person, reset])
+
+  const name = watch('name')
+  const isValidName = name.trim() !== ''
+
+  // Anchors the results panel (see the portal below) — the Name field's
+  // own wrapper, not the input itself, same reasoning TagComboBox.tsx's
+  // own wrapperRef uses.
+  const anchorRef = useRef<HTMLDivElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
+  const [wikiState, setWikiState] = useState<'idle' | 'searching' | 'open'>('idle')
+  const [wikiResults, setWikiResults] = useState<WikipediaSearchResult[]>([])
+  const [wikiFilledFields, setWikiFilledFields] = useState<Set<string>>(new Set())
+
+  const wikiSearchMutation = useMutation({
+    mutationFn: (query: string) => searchWikipedia(query),
+    onSuccess: (results) => {
+      setWikiResults(results)
+      setWikiState('open')
+    },
+    onError: () => setWikiState('idle'),
+  })
+
+  // The results panel renders through a portal to document.body with
+  // JS-computed position: fixed coordinates — not position: absolute
+  // inside the field's own wrapper — for the exact same reason
+  // TagComboBox.tsx's own dropdown needed this fix: this modal's dialog
+  // has overflow-hidden for its rounded corners, which clips ANY
+  // absolutely-positioned descendant regardless of that descendant's own
+  // `position` value, unless it's moved out of that DOM subtree
+  // entirely. z-[60] for the same reason too — higher than Modal's own
+  // z-50, so the results panel isn't painted underneath the dialog's
+  // footer.
+  const [panelRect, setPanelRect] = useState<{ top: number; left: number; width: number } | null>(null)
+  useLayoutEffect(() => {
+    if (wikiState !== 'open') return
+    function updatePosition() {
+      const el = anchorRef.current
+      if (!el) return
+      const rect = el.getBoundingClientRect()
+      setPanelRect({ top: rect.bottom + 4, left: rect.left, width: rect.width })
+    }
+    updatePosition()
+    window.addEventListener('resize', updatePosition)
+    window.addEventListener('scroll', updatePosition, true)
+    return () => {
+      window.removeEventListener('resize', updatePosition)
+      window.removeEventListener('scroll', updatePosition, true)
+    }
+  }, [wikiState])
+
+  // Close on outside click / Escape — same dismiss conventions
+  // ContextMenu.tsx and TagComboBox.tsx's own dropdown already use
+  // app-wide.
+  useLayoutEffect(() => {
+    if (wikiState !== 'open') return
+    function onMouseDown(event: MouseEvent) {
+      const target = event.target as Node
+      if (panelRef.current?.contains(target) || anchorRef.current?.contains(target)) return
+      setWikiState('idle')
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') setWikiState('idle')
+    }
+    document.addEventListener('mousedown', onMouseDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', onMouseDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [wikiState])
+
+  function handleSearchClick() {
+    if (!isValidName) return
+    if (wikiState === 'open') {
+      setWikiState('idle')
+      return
+    }
+    setWikiState('searching')
+    wikiSearchMutation.mutate(name.trim())
+  }
+
+  function pickResult(result: WikipediaSearchResult) {
+    const current = getValues()
+    const filled = new Set<string>()
+    // Only fields currently blank — same "save typing, never silently
+    // overwrite something already entered" rule the real IMSLP autofill
+    // follows. Picking a noise result (no birthYear/deathYear on record)
+    // simply fills nothing — a normal outcome, not an error.
+    if (!current.birthYear && result.birthYear) {
+      setValue('birthYear', String(result.birthYear))
+      filled.add('birthYear')
+    }
+    if (!current.deathYear && result.deathYear) {
+      setValue('deathYear', String(result.deathYear))
+      filled.add('deathYear')
+    }
+    setWikiFilledFields(filled)
+    setWikiState('idle')
+    window.setTimeout(() => setWikiFilledFields(new Set()), HIGHLIGHT_MS)
+  }
 
   const saveMutation = useMutation({
     mutationFn: (data: FormValues) => {
@@ -226,11 +396,17 @@ export function EditPersonModal({ person, open, onClose }: EditPersonModalProps)
           <label htmlFor="f-name" className="text-sm text-ink-soft">
             Name <span className="text-ink-soft/60 italic">(Required)</span>
           </label>
-          <input
-            id="f-name"
-            className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-            {...register('name', { required: 'Name is required.', maxLength: 255 })}
-          />
+          {/* relative + pr-12 reserves room for the button — wider than a
+              single-icon autofill button, since this one renders two
+              icons (Wikipedia brand mark + cloud/status) side by side. */}
+          <div ref={anchorRef} className="relative">
+            <input
+              id="f-name"
+              className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 pr-12 text-ink"
+              {...register('name', { required: 'Name is required.', maxLength: 255 })}
+            />
+            <WikipediaAutofillButton state={wikiState} valid={isValidName} onClick={handleSearchClick} />
+          </div>
           {errors.name && <p className="text-sm text-red-700">{errors.name.message}</p>}
         </div>
 
@@ -254,7 +430,9 @@ export function EditPersonModal({ person, open, onClose }: EditPersonModalProps)
             <input
               id="f-birth-year"
               inputMode="numeric"
-              className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+              className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 ${
+                wikiFilledFields.has('birthYear') ? 'ring-2 ring-accent-on-dark' : ''
+              }`}
               {...register('birthYear')}
             />
           </div>
@@ -265,12 +443,50 @@ export function EditPersonModal({ person, open, onClose }: EditPersonModalProps)
             <input
               id="f-death-year"
               inputMode="numeric"
-              className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+              className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 ${
+                wikiFilledFields.has('deathYear') ? 'ring-2 ring-accent-on-dark' : ''
+              }`}
               {...register('deathYear')}
             />
           </div>
         </div>
       </form>
+
+      {wikiState === 'open' &&
+        panelRect &&
+        createPortal(
+          <div
+            ref={panelRef}
+            style={{ position: 'fixed', top: panelRect.top, left: panelRect.left, width: panelRect.width }}
+            className="z-[60] max-h-72 overflow-y-auto rounded-md border border-border bg-paper-raised py-1 shadow-lg"
+          >
+            {wikiResults.length === 0 && (
+              <p className="px-3 py-2.5 text-sm text-ink-soft italic">No Wikipedia results found.</p>
+            )}
+            {wikiResults.map((result) => (
+              <button
+                key={result.title}
+                type="button"
+                onClick={() => pickResult(result)}
+                className="flex w-full cursor-pointer items-center gap-3 px-3 py-2.5 text-left hover:bg-paper-sunken"
+              >
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#6b6560] text-white">
+                  <IconExternalLink size={14} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-display text-sm font-medium text-ink">
+                    {result.title}
+                  </span>
+                  <span className="block truncate text-xs text-ink-soft">{result.description}</span>
+                </span>
+                {!result.birthYear && !result.deathYear && (
+                  <span className="shrink-0 text-[0.65rem] text-ink-soft/70 italic">not this one</span>
+                )}
+              </button>
+            ))}
+          </div>,
+          document.body,
+        )}
     </Modal>
   )
 }

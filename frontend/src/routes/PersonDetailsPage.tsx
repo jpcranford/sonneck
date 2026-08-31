@@ -1,4 +1,4 @@
-import { useRef, useState, type ChangeEvent } from 'react'
+import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -20,12 +20,12 @@ import {
   listPeople,
   removePersonPortrait,
   splitPerson,
-  uploadPersonPortrait,
 } from '../api/people'
 import { getPieceThumbnailUrl, searchPieces } from '../api/pieces'
 import { ApiError } from '../api/client'
 import type { Person, Piece, Tag } from '../api/types'
 import { EditPersonModal } from '../components/EditPersonModal'
+import { UploadPortraitModal } from '../components/UploadPortraitModal'
 import { ContextMenu } from '../components/ContextMenu'
 import { ClickableCard } from '../components/ClickableCard'
 import { MarkdownText } from '../components/MarkdownText'
@@ -340,7 +340,7 @@ export function PersonDetailsPage() {
   const [workViewMode, setWorkViewMode] = useState<'grid' | 'list'>('list')
   const [editOpen, setEditOpen] = useState(false)
   const [splitOpen, setSplitOpen] = useState(false)
-  const portraitFileInputRef = useRef<HTMLInputElement>(null)
+  const [uploadPortraitOpen, setUploadPortraitOpen] = useState(false)
 
   const {
     data: person,
@@ -377,16 +377,6 @@ export function PersonDetailsPage() {
     .filter((p) => p.id !== personId)
     .map((p) => ({ id: p.id, name: p.name }))
 
-  const uploadPortraitMutation = useMutation({
-    mutationFn: (file: File) => uploadPersonPortrait(personId, file),
-    onSuccess: (updated) => {
-      queryClient.setQueryData(['person', personId], updated)
-      queryClient.invalidateQueries({ queryKey: ['people'] })
-    },
-    onError: (error) => {
-      window.alert(error instanceof ApiError ? error.message : 'Could not upload this portrait.')
-    },
-  })
   const removePortraitMutation = useMutation({
     mutationFn: () => removePersonPortrait(personId),
     onSuccess: (updated) => {
@@ -427,15 +417,6 @@ export function PersonDetailsPage() {
     },
   })
 
-  function openPortraitFilePicker() {
-    portraitFileInputRef.current?.click()
-  }
-  function handlePortraitFileChosen(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0]
-    if (file) uploadPortraitMutation.mutate(file)
-    event.target.value = ''
-  }
-
   function handleDelete() {
     if (person && window.confirm(`Delete "${person.name}"? This can't be undone.`)) {
       deleteMutation.mutate()
@@ -447,7 +428,7 @@ export function PersonDetailsPage() {
 
   const avatarContextMenuItems = person
     ? [
-        { label: 'Change Portrait', onSelect: openPortraitFilePicker },
+        { label: 'Change Portrait', onSelect: () => setUploadPortraitOpen(true) },
         ...(person.hasCustomPortrait
           ? [{ label: 'Remove Portrait', onSelect: () => removePortraitMutation.mutate(), destructive: true }]
           : []),
@@ -528,7 +509,7 @@ export function PersonDetailsPage() {
                   <PersonAvatar person={person} className="w-full shadow-sm" />
                   <button
                     type="button"
-                    onClick={openPortraitFilePicker}
+                    onClick={() => setUploadPortraitOpen(true)}
                     aria-label="Change portrait"
                     title="Change portrait"
                     className="absolute right-1.5 bottom-1.5 flex size-8 cursor-pointer items-center justify-center rounded-full border-2 border-paper-raised bg-ink text-paper shadow-md hover:bg-ink/85"
@@ -537,13 +518,6 @@ export function PersonDetailsPage() {
                   </button>
                 </div>
               </ContextMenu>
-              <input
-                ref={portraitFileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handlePortraitFileChosen}
-              />
 
               <div className="min-w-0 flex-1">
                 <div className="mb-2">
@@ -642,6 +616,11 @@ export function PersonDetailsPage() {
           </div>
 
           <EditPersonModal person={person} open={editOpen} onClose={() => setEditOpen(false)} />
+          <UploadPortraitModal
+            open={uploadPortraitOpen}
+            onClose={() => setUploadPortraitOpen(false)}
+            personId={person.id}
+          />
           <SplitPeopleModal
             open={splitOpen}
             onClose={() => setSplitOpen(false)}

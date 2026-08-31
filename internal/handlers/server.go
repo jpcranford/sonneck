@@ -34,6 +34,12 @@ func New(db *sql.DB, cfg *config.Config, logger *slog.Logger, frontend fs.FS) ht
 	mux.HandleFunc("GET /api/instruments", s.handleListInstruments)
 	mux.HandleFunc("GET /api/tags", s.handleListUserTags)
 	mux.HandleFunc("GET /api/imslp/lookup", s.handleImslpLookup)
+	// Wikipedia autofill (composer/arranger overhaul) — shared by the Edit
+	// Person modal's own autofill button and Upload Portrait's "search
+	// Wikipedia" source step, same "one endpoint, two callers" reasoning
+	// as GET /api/people's own dual role.
+	mux.HandleFunc("GET /api/wikipedia/search", s.handleWikipediaSearch)
+	mux.HandleFunc("GET /api/wikipedia/page-image", s.handleWikipediaPageImage)
 
 	// Person (composer/arranger overhaul, migration 00020) — a real library
 	// entity with its own page, unlike Key/Instrument/SheetType's small
