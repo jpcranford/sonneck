@@ -4,6 +4,23 @@ import { IconArrowRight, IconXFilled } from '@tabler/icons-react'
 import type { Tag } from '../api/types'
 import { InheritedNote } from './InheritedNote'
 
+// Strips diacritics before comparing — e.g. so typing "Boely" (no
+// diaeresis) matches "Alexandre Boëly", found live via the People-picking
+// Composer/Arranger fields' default (no custom filterOption) matching.
+// NFD decomposition splits a base letter from its combining diacritical
+// mark (U+0300-036F covers the whole combining-marks block), so stripping
+// that range after normalizing reduces "ë"/"é"/"ö"/etc. down to their
+// plain ASCII base letter. Applied to the default substring filter only —
+// a caller with its own filterOption (e.g. the Key(s) picker's
+// matchesKeyQuery) already handles its own matching semantics and isn't
+// touched by this.
+function normalizeForSearch(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+}
+
 // The real §15 tag-input pattern: typeahead filter against existing
 // options, a "New tag: '‹input›'" option to create on the fly (resolved
 // server-side via repo.FindOrCreate* — CLAUDE.md > Book-level soft
@@ -104,9 +121,9 @@ export function TagComboBox({
   const filtered = options
     .filter((o) => allowDuplicates || !selected.some((s) => s.id === o.id))
     .filter((o) =>
-      filterOption ? filterOption(o, query) : o.name.toLowerCase().includes(query.toLowerCase()),
+      filterOption ? filterOption(o, query) : normalizeForSearch(o.name).includes(normalizeForSearch(query)),
     )
-  const exactMatch = options.some((o) => o.name.toLowerCase() === query.trim().toLowerCase())
+  const exactMatch = options.some((o) => normalizeForSearch(o.name) === normalizeForSearch(query.trim()))
   // Same slice(0, 6) the dropdown itself renders — keyboard nav has to walk
   // exactly the rows actually on screen, not the full unfiltered match set.
   const visibleOptions = filtered.slice(0, 6)
