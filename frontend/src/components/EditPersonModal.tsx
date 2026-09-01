@@ -463,6 +463,21 @@ export function EditPersonModal({ person, open, onClose }: EditPersonModalProps)
             {wikiResults.length === 0 && (
               <p className="px-3 py-2.5 text-sm text-ink-soft italic">No Wikipedia results found.</p>
             )}
+            {/* No "not this one" hint on a result missing birth/death years
+                (removed 2026-09-01, direct report) — the mockup's own
+                fixture data (crater/airport noise) made that a reliable
+                signal by construction, but it isn't one against real
+                Wikipedia search results: confirmed live (query "Miles
+                Davis") that a real, legitimate, possibly-correct person —
+                "Randy Hall," a real musician/producer — comes back with
+                birthYear/deathYear both null, since his own lead paragraph
+                just doesn't state a year in the parseable format
+                internal/wikipedia's heuristic looks for. Flagging a real
+                candidate as "not this one" on a parsing miss is actively
+                misleading, not merely unhelpful. `result.description` (the
+                actual disambiguator, always shown) still does the real
+                work here — this hint was always a bonus nudge on top of
+                it, never load-bearing. */}
             {wikiResults.map((result) => (
               <button
                 key={result.title}
@@ -479,9 +494,6 @@ export function EditPersonModal({ person, open, onClose }: EditPersonModalProps)
                   </span>
                   <span className="block truncate text-xs text-ink-soft">{result.description}</span>
                 </span>
-                {!result.birthYear && !result.deathYear && (
-                  <span className="shrink-0 text-[0.65rem] text-ink-soft/70 italic">not this one</span>
-                )}
               </button>
             ))}
           </div>,

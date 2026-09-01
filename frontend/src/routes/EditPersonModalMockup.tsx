@@ -460,6 +460,16 @@ export function EditPersonModalMockup() {
             {wikiResults.length === 0 && (
               <p className="px-3 py-2.5 text-sm text-ink-soft italic">No Wikipedia results found.</p>
             )}
+            {/* No "not this one" hint (removed 2026-09-01, mockup-parity —
+                see EditPersonModal.tsx's own comment on this exact block):
+                real Wikipedia data proved the birthYear/deathYear-missing
+                heuristic unreliable — a real, legitimate person can come
+                back with no parseable year — so it's gone from the real
+                component; kept in sync here even though this file's own
+                fixture data (MOCK_WIKI_SEARCH) was curated so the heuristic
+                happened to work by construction, since the underlying
+                design idea is retired, not just its real-data
+                reliability. */}
             {wikiResults.map((result) => (
               <button
                 key={result.title}
@@ -479,9 +489,6 @@ export function EditPersonModalMockup() {
                   </span>
                   <span className="block truncate text-xs text-ink-soft">{result.description}</span>
                 </span>
-                {!result.birthYear && !result.deathYear && (
-                  <span className="shrink-0 text-[0.65rem] text-ink-soft/70 italic">not this one</span>
-                )}
               </button>
             ))}
           </div>,
