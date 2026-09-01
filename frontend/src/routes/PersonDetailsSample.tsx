@@ -583,7 +583,7 @@ function UploadPortraitModal({
   onSave: () => void
 }) {
   const [step, setStep] = useState<'source' | 'adjust'>('source')
-  const [wikiQuery, setWikiQuery] = useState('Chopin')
+  const [wikiQuery, setWikiQuery] = useState(MOCK_PERSON.name)
   const [searched, setSearched] = useState(false)
   const [chosenLabel, setChosenLabel] = useState<string | null>(null)
   const [zoom, setZoom] = useState(1)

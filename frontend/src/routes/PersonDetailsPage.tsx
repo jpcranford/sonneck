@@ -673,6 +673,7 @@ export function PersonDetailsPage() {
             open={uploadPortraitOpen}
             onClose={() => setUploadPortraitOpen(false)}
             personId={person.id}
+            personName={person.name}
           />
           <SplitPeopleModal
             open={splitOpen}

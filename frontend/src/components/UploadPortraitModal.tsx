@@ -35,6 +35,7 @@ interface UploadPortraitModalProps {
   open: boolean
   onClose: () => void
   personId: number
+  personName: string
 }
 
 type Step = 'source' | 'adjust'
@@ -102,10 +103,10 @@ function renderCropToBlob(
   })
 }
 
-export function UploadPortraitModal({ open, onClose, personId }: UploadPortraitModalProps) {
+export function UploadPortraitModal({ open, onClose, personId, personName }: UploadPortraitModalProps) {
   const queryClient = useQueryClient()
   const [step, setStep] = useState<Step>('source')
-  const [wikiQuery, setWikiQuery] = useState('')
+  const [wikiQuery, setWikiQuery] = useState(personName)
   const [wikiResults, setWikiResults] = useState<WikipediaSearchResult[] | null>(null)
   const [wikiImageError, setWikiImageError] = useState<string | null>(null)
   const [chosenLabel, setChosenLabel] = useState<string | null>(null)
@@ -121,7 +122,7 @@ export function UploadPortraitModal({ open, onClose, personId }: UploadPortraitM
 
   function reset() {
     setStep('source')
-    setWikiQuery('')
+    setWikiQuery(personName)
     setWikiResults(null)
     setWikiImageError(null)
     setChosenLabel(null)
