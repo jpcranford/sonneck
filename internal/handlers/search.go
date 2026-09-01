@@ -14,14 +14,15 @@ import (
 // pieceSortColumns: sort=title strips a leading "A"/"An"/"The" via
 // titleSortColumn (internal/handlers/sort.go) — the usual library-catalog
 // convention, computed in SQL rather than a stored sort-name column. sort=
-// composer relies on the LEFT JOIN books b added
-// conditionally in handleSearchPieces below (only when this field is
-// requested) and mirrors repo.ResolveEffective's resolveStringField
-// fallback (internal/repo/effective.go) exactly — a piece's own composer
-// if non-blank, else its book's, else neither. TRIM/NULLIF treat
-// whitespace-only the same as empty, matching resolveStringField's own
-// isBlank check (strings.TrimSpace(s) == ""). The IS NULL clause (always
-// ASC — see sortColumnFunc's own doc comment) makes a composer-less piece
+// composer and sort=yearWritten (both book-inheritable) rely on the LEFT
+// JOIN books b added conditionally in handleSearchPieces below (only when
+// one of them is actually requested) and mirror repo.ResolveEffective's
+// resolveStringField fallback (internal/repo/effective.go) exactly — a
+// piece's own value if non-blank, else its book's, else neither. yearWritten's
+// own expression uses TRIM/NULLIF to treat whitespace-only the same as
+// empty, matching resolveStringField's own isBlank check
+// (strings.TrimSpace(s) == ""). The IS NULL clause (always ASC — see
+// sortColumnFunc's own doc comment) makes a piece with nothing to sort by
 // trail regardless of direction, rather than jumping to the front of an
 // ascending list the way SQLite's default NULL-sorts-first-on-ASC would
 // otherwise place it.
@@ -43,6 +44,21 @@ var pieceSortColumns = map[string]sortColumnFunc{
 			(SELECT ppl.name FROM book_composers bc JOIN people ppl ON ppl.id = bc.person_id WHERE bc.book_id = b.id ORDER BY bc.position LIMIT 1)
 		)`
 		return "(" + expr + " IS NULL) ASC, " + expr + " COLLATE NOCASE " + dir
+	},
+	// yearWritten is book-inheritable (design doc §3) and TEXT, not INTEGER
+	// (free text, e.g. "ca. 1708-1711") — same two concerns bookSortColumns'
+	// own yearWritten already handles individually, combined here. The
+	// COALESCE/NULLIF mirrors repo.resolveStringField exactly (piece's own
+	// non-blank value wins outright, else the book's, matching composer's
+	// own all-or-nothing fallback above), and GLOB '[0-9]*' is the same
+	// "does this look like a real leading year" test bookSortColumns uses,
+	// applied to whichever value actually won the fallback. Direction-
+	// invariant first clause, same "blanks/non-numeric always trail"
+	// reasoning as composer above.
+	"yearWritten": func(dir string) string {
+		const expr = `COALESCE(NULLIF(TRIM(p.year_written), ''), NULLIF(TRIM(b.year_written), ''))`
+		return "(" + expr + " IS NULL OR NOT (" + expr + " GLOB '[0-9]*')) ASC, " +
+			"CAST(" + expr + " AS INTEGER) " + dir
 	},
 }
 
@@ -141,7 +157,7 @@ func (s *Server) handleSearchPieces(w http.ResponseWriter, r *http.Request) {
 		if sortField == "" {
 			sortField = "dateAdded"
 		}
-		needsBookJoin = sortField == "composer"
+		needsBookJoin = sortField == "composer" || sortField == "yearWritten"
 		sortOrderBy, ok = parseSort(w, q, pieceSortColumns, "dateAdded")
 		if !ok {
 			return

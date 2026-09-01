@@ -65,6 +65,11 @@ interface MockPiece {
   // multi-page count instead, to actually demonstrate the control rather
   // than have it silently never appear anywhere in this mockup.
   pageCount: number
+  // Real composition years for the real pieces this fixture names — one
+  // piece (Autumn Leaves) deliberately left blank to demonstrate the "Year
+  // Written" sort's own blanks-always-trail rule, mirroring the real
+  // backend's pieceSortColumns (internal/handlers/search.go).
+  yearWritten: string
 }
 
 // Deliberately mixed, same "stress the edges" habit as this app's other
@@ -82,16 +87,16 @@ interface MockPiece {
 // pick instead — this fixture reflects what the real key list actually
 // contains, not the spelling every musician would reach for by habit.
 const PIECES: MockPiece[] = [
-  { id: 1, title: 'Album für die Jugend', composer: 'Schumann', key: 'A Minor', instrument: 'Piano', sheetType: 'Solo Piece', userTags: [], favorite: true, bookless: false, hasImslpNumber: true, practiceStatus: 'Learning', pageCount: 3 },
-  { id: 2, title: 'Prelude in C', composer: 'Bach, J.S.', key: 'C Major', instrument: 'Piano', sheetType: 'Solo Piece', userTags: [], favorite: true, bookless: false, hasImslpNumber: true, practiceStatus: 'Learned', pageCount: 1 },
-  { id: 3, title: 'Nocturne in E♭', composer: 'Chopin', key: 'D Major', instrument: 'Piano', sheetType: 'Solo Piece', userTags: ['Recital'], favorite: false, bookless: false, hasImslpNumber: true, practiceStatus: 'Learning', pageCount: 4 },
-  { id: 4, title: 'Clair de lune', composer: 'Debussy', key: 'D Major', instrument: 'Piano', sheetType: 'Solo Piece', userTags: [], favorite: false, bookless: true, hasImslpNumber: false, practiceStatus: 'Want to Learn', pageCount: 5 },
-  { id: 5, title: 'Waltz for Debby', composer: 'Evans', key: 'C Major', instrument: 'Piano', sheetType: 'Lead Sheet', userTags: ['Jazz'], favorite: false, bookless: false, hasImslpNumber: false, practiceStatus: 'Learned', pageCount: 1 },
-  { id: 6, title: 'Moonlight, I.', composer: 'Beethoven', key: 'D♭ Minor', instrument: 'Piano', sheetType: 'Solo Piece', userTags: ['Recital'], favorite: false, bookless: false, hasImslpNumber: true, practiceStatus: 'Learning', pageCount: 2 },
-  { id: 7, title: 'Air on the G String', composer: 'Bach, J.S.', key: 'D Major', instrument: 'Violin', sheetType: 'Duet', userTags: [], favorite: false, bookless: true, hasImslpNumber: false, practiceStatus: 'Want to Learn', pageCount: 1 },
-  { id: 8, title: 'Gymnopédie No. 1', composer: 'Satie', key: 'A Minor', instrument: 'Piano', sheetType: 'Solo Piece', userTags: [], favorite: true, bookless: true, hasImslpNumber: false, practiceStatus: 'Learned', pageCount: 1 },
-  { id: 9, title: 'Autumn Leaves', composer: 'Kosma', key: 'G Minor', instrument: 'Piano', sheetType: 'Lead Sheet', userTags: ['Jazz'], favorite: false, bookless: false, hasImslpNumber: false, practiceStatus: 'Want to Learn', pageCount: 1 },
-  { id: 10, title: 'Sonata No. 8 "Pathétique," II.', composer: 'Beethoven', key: 'A♭ Major', instrument: 'Piano', sheetType: 'Solo Piece', userTags: ['Recital'], favorite: true, bookless: false, hasImslpNumber: true, practiceStatus: 'Stalled', pageCount: 3 },
+  { id: 1, title: 'Album für die Jugend', composer: 'Schumann', key: 'A Minor', instrument: 'Piano', sheetType: 'Solo Piece', userTags: [], favorite: true, bookless: false, hasImslpNumber: true, practiceStatus: 'Learning', pageCount: 3, yearWritten: '1848' },
+  { id: 2, title: 'Prelude in C', composer: 'Bach, J.S.', key: 'C Major', instrument: 'Piano', sheetType: 'Solo Piece', userTags: [], favorite: true, bookless: false, hasImslpNumber: true, practiceStatus: 'Learned', pageCount: 1, yearWritten: '1722' },
+  { id: 3, title: 'Nocturne in E♭', composer: 'Chopin', key: 'D Major', instrument: 'Piano', sheetType: 'Solo Piece', userTags: ['Recital'], favorite: false, bookless: false, hasImslpNumber: true, practiceStatus: 'Learning', pageCount: 4, yearWritten: '1831' },
+  { id: 4, title: 'Clair de lune', composer: 'Debussy', key: 'D Major', instrument: 'Piano', sheetType: 'Solo Piece', userTags: [], favorite: false, bookless: true, hasImslpNumber: false, practiceStatus: 'Want to Learn', pageCount: 5, yearWritten: '1905' },
+  { id: 5, title: 'Waltz for Debby', composer: 'Evans', key: 'C Major', instrument: 'Piano', sheetType: 'Lead Sheet', userTags: ['Jazz'], favorite: false, bookless: false, hasImslpNumber: false, practiceStatus: 'Learned', pageCount: 1, yearWritten: '1956' },
+  { id: 6, title: 'Moonlight, I.', composer: 'Beethoven', key: 'D♭ Minor', instrument: 'Piano', sheetType: 'Solo Piece', userTags: ['Recital'], favorite: false, bookless: false, hasImslpNumber: true, practiceStatus: 'Learning', pageCount: 2, yearWritten: '1801' },
+  { id: 7, title: 'Air on the G String', composer: 'Bach, J.S.', key: 'D Major', instrument: 'Violin', sheetType: 'Duet', userTags: [], favorite: false, bookless: true, hasImslpNumber: false, practiceStatus: 'Want to Learn', pageCount: 1, yearWritten: '1731' },
+  { id: 8, title: 'Gymnopédie No. 1', composer: 'Satie', key: 'A Minor', instrument: 'Piano', sheetType: 'Solo Piece', userTags: [], favorite: true, bookless: true, hasImslpNumber: false, practiceStatus: 'Learned', pageCount: 1, yearWritten: '1888' },
+  { id: 9, title: 'Autumn Leaves', composer: 'Kosma', key: 'G Minor', instrument: 'Piano', sheetType: 'Lead Sheet', userTags: ['Jazz'], favorite: false, bookless: false, hasImslpNumber: false, practiceStatus: 'Want to Learn', pageCount: 1, yearWritten: '' },
+  { id: 10, title: 'Sonata No. 8 "Pathétique," II.', composer: 'Beethoven', key: 'A♭ Major', instrument: 'Piano', sheetType: 'Solo Piece', userTags: ['Recital'], favorite: true, bookless: false, hasImslpNumber: true, practiceStatus: 'Stalled', pageCount: 3, yearWritten: '1798' },
 ]
 
 // Distinct option lists, derived from PIECES rather than hand-listed a
@@ -220,7 +225,7 @@ function activeFilterCount(f: FilterState): number {
 // combined "Title A–Z"/"Title Z–A" list: most compact, and a single
 // icon toggle for a binary choice fits this app's device-aware "buttons
 // over menus" convention better than a second dropdown would).
-const SORT_FIELDS = ['Date Added', 'Title', 'Composer'] as const
+const SORT_FIELDS = ['Date Added', 'Title', 'Composer', 'Year Written'] as const
 type SortField = (typeof SORT_FIELDS)[number]
 type SortDirection = 'asc' | 'desc'
 
@@ -228,11 +233,16 @@ type SortDirection = 'asc' | 'desc'
 // on a title is A→Z, but on Date Added it's oldest-first. Centralized
 // here so the toggle button's label/aria-text and the sort comparator
 // below can't drift apart on what "ascending" is supposed to mean for a
-// given field.
+// given field. Year Written uses "Earliest/Latest first" rather than
+// "Oldest/Newest first" — that pair is reserved for Date Added, which is
+// about when the piece was added to the library, not when it was
+// composed — matching the real page's own DIRECTION_LABEL
+// (PieceBrowseView.tsx) and BooksPage.tsx's existing yearWritten wording.
 const DIRECTION_LABEL: Record<SortField, Record<SortDirection, string>> = {
   'Date Added': { asc: 'Oldest first', desc: 'Newest first' },
   Title: { asc: 'A to Z', desc: 'Z to A' },
   Composer: { asc: 'A to Z', desc: 'Z to A' },
+  'Year Written': { asc: 'Earliest first', desc: 'Latest first' },
 }
 
 // One fused, segmented button (changed 2026-08-27) — same shared-pill
@@ -549,7 +559,17 @@ function sortPieces(pieces: MockPiece[], field: SortField, direction: SortDirect
   const sorted = [...pieces]
   if (field === 'Title') sorted.sort((a, b) => a.title.localeCompare(b.title))
   else if (field === 'Composer') sorted.sort((a, b) => a.composer.localeCompare(b.composer))
-  else sorted.sort((a, b) => a.id - b.id)
+  else if (field === 'Year Written') {
+    // Blank years always trail, regardless of direction — the real
+    // backend's own pieceSortColumns (internal/handlers/search.go) applies
+    // this same direction-invariant rule so a year-less piece doesn't jump
+    // to the front of an ascending sort.
+    const withYear = sorted.filter((p) => p.yearWritten !== '')
+    const withoutYear = sorted.filter((p) => p.yearWritten === '')
+    withYear.sort((a, b) => Number(a.yearWritten) - Number(b.yearWritten))
+    if (direction === 'desc') withYear.reverse()
+    return [...withYear, ...withoutYear]
+  } else sorted.sort((a, b) => a.id - b.id)
   if (direction === 'desc') sorted.reverse()
   return sorted
 }

@@ -23,21 +23,26 @@ import { EMPTY_PIECE_FILTERS, activePieceFilterCount, type PieceFilterState } fr
 const PAGE_SIZE = 50
 
 type ViewMode = 'grid' | 'list'
-type SortField = 'dateAdded' | 'title' | 'composer'
+type SortField = 'dateAdded' | 'title' | 'composer' | 'yearWritten'
 
 const SORT_FIELDS: SortFieldOption<SortField>[] = [
   { value: 'dateAdded', label: 'Date Added' },
   { value: 'title', label: 'Title' },
   { value: 'composer', label: 'Composer' },
+  { value: 'yearWritten', label: 'Year Written' },
 ]
 
 // What each direction actually means depends on the field — "ascending" on
 // a title is A→Z, but on Date Added it's oldest-first. Same convention as
-// PieceLibrarySample.tsx's own DIRECTION_LABEL.
+// PieceLibrarySample.tsx's own DIRECTION_LABEL and BooksPage.tsx's own
+// yearWritten wording ("Earliest/Latest first" rather than "Oldest/Newest
+// first" — that pair is reserved for Date Added, which is about when the
+// piece was added to the library, not when it was composed).
 const DIRECTION_LABEL: Record<SortField, Record<SortDirection, string>> = {
   dateAdded: { asc: 'Oldest first', desc: 'Newest first' },
   title: { asc: 'A to Z', desc: 'Z to A' },
   composer: { asc: 'A to Z', desc: 'Z to A' },
+  yearWritten: { asc: 'Earliest first', desc: 'Latest first' },
 }
 
 interface PieceBrowseViewProps {

@@ -98,7 +98,7 @@ export interface SearchPiecesParams {
    * as composer or arranger, own or book-inherited (checked independently,
    * same as sheetTypeId/instrumentId's own inheritance-aware filters). */
   personId?: number
-  sort?: 'dateAdded' | 'title' | 'composer'
+  sort?: 'dateAdded' | 'title' | 'composer' | 'yearWritten'
   dir?: 'asc' | 'desc'
   limit?: number
   offset?: number

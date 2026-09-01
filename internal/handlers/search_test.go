@@ -657,6 +657,68 @@ func TestSearchPieces_SortsByComposerFallsBackToBookComposer(t *testing.T) {
 	}
 }
 
+// TestSearchPieces_SortsByYearWrittenFallsBackToBookYearWritten mirrors
+// TestSearchPieces_SortsByComposerFallsBackToBookComposer exactly, for
+// yearWritten's own identical book-inheritance fallback (both fields go
+// through repo.resolveStringField the same way).
+func TestSearchPieces_SortsByYearWrittenFallsBackToBookYearWritten(t *testing.T) {
+	h := newTestServer(t)
+
+	own := createTestPiece(t, h, map[string]any{"title": "Own Year", "yearWritten": "1990"})
+
+	bookID, _ := uploadBook(t, h, "book.pdf", 2)
+	decodeData(t, doJSON(t, h, http.MethodPatch, apiBooksURL(bookID), map[string]any{
+		"bookTitle": "A Book", "composers": []string{"Someone"}, "yearWritten": "1750",
+	}), nil)
+	confirmRec := doJSON(t, h, http.MethodPost, apiBooksURL(bookID)+"/confirm-import", map[string]any{
+		"ranges": []map[string]any{{"start": 1, "end": 2}},
+		"pieces": []map[string]any{{"title": "Inherits Year", "yearWritten": ""}},
+	})
+	var result struct {
+		Pieces []pieceResponse `json:"pieces"`
+	}
+	decodeData(t, confirmRec, &result)
+	inheriting := result.Pieces[0]
+
+	neither := createTestPiece(t, h, map[string]any{"title": "Neither", "composers": []string{""}, "arrangers": []string{"Someone"}})
+
+	rec := doJSON(t, h, http.MethodGet, "/api/pieces?sort=yearWritten&dir=asc", nil)
+	var results []pieceResponse
+	decodeData(t, rec, &results)
+	if len(results) != 3 {
+		t.Fatalf("sort=yearWritten returned %d pieces, want 3", len(results))
+	}
+	// 1750 (inherited) < 1990 (own); the year-less piece trails regardless
+	// of direction via the explicit "IS NULL OR NOT GLOB" tie-break clause.
+	if results[0].ID != inheriting.ID || results[1].ID != own.ID || results[2].ID != neither.ID {
+		t.Errorf("sort=yearWritten&dir=asc returned %+v, want [inherited 1750, own 1990, neither]", results)
+	}
+}
+
+// TestSearchPieces_SortsByYearWrittenHandlesNonNumericAndBlank mirrors
+// TestListBooks_SortsByYearWrittenHandlesNonNumericAndNull (book_test.go) —
+// same free-text/blank "always trails, both directions" proof, on the
+// piece side.
+func TestSearchPieces_SortsByYearWrittenHandlesNonNumericAndBlank(t *testing.T) {
+	h := newTestServer(t)
+	numeric := createTestPiece(t, h, map[string]any{"title": "Numeric Year", "yearWritten": "1848"})
+	freeText := createTestPiece(t, h, map[string]any{"title": "Free Text Year", "yearWritten": "ca. 1708-1711"})
+	blank := createTestPiece(t, h, map[string]any{"title": "No Year"})
+
+	for _, dir := range []string{"asc", "desc"} {
+		rec := doJSON(t, h, http.MethodGet, "/api/pieces?sort=yearWritten&dir="+dir, nil)
+		var results []pieceResponse
+		decodeData(t, rec, &results)
+		if len(results) != 3 || results[0].ID != numeric.ID {
+			t.Fatalf("sort=yearWritten&dir=%s returned %+v, want the numeric-year piece first", dir, results)
+		}
+		trailingIDs := map[int64]bool{results[1].ID: true, results[2].ID: true}
+		if !trailingIDs[freeText.ID] || !trailingIDs[blank.ID] {
+			t.Errorf("sort=yearWritten&dir=%s: free-text/blank years must both trail, got %+v", dir, results)
+		}
+	}
+}
+
 func TestSearchPieces_DefaultSortIsDateAddedDescending(t *testing.T) {
 	h := newTestServer(t)
 	first := createTestPiece(t, h, map[string]any{"title": "First"})
