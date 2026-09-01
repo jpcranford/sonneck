@@ -94,9 +94,11 @@ func (s *Server) handleSearchPieces(w http.ResponseWriter, r *http.Request) {
 	// part of buildPieceFilterClauses (below) — personId isn't a Filter
 	// Drawer facet, it's Person Details' own filter, so handlePieceFacets
 	// has no reason to know about it.
-	if id, present, ok := parseIDFilter(w, q, "personId"); !ok {
+	personID, byPerson, ok := parseIDFilter(w, q, "personId")
+	if !ok {
 		return
-	} else if present {
+	}
+	if byPerson {
 		where = append(where, `(
 			p.id IN (SELECT piece_id FROM piece_composers WHERE person_id = ?)
 			OR (p.id NOT IN (SELECT piece_id FROM piece_composers)
@@ -105,7 +107,7 @@ func (s *Server) handleSearchPieces(w http.ResponseWriter, r *http.Request) {
 			OR (p.id NOT IN (SELECT piece_id FROM piece_arrangers)
 				AND p.source_book_id IN (SELECT book_id FROM book_arrangers WHERE person_id = ?))
 		)`)
-		args = append(args, id, id, id, id)
+		args = append(args, personID, personID, personID, personID)
 	}
 
 	// sourceBookId: the Book Details page's pieces grid/list — every piece
@@ -146,9 +148,20 @@ func (s *Server) handleSearchPieces(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Neither sourceBookId nor personId paginate — both are naturally
+	// bounded (a book's own piece count; a person's own credit count) and
+	// the frontend renders either as a single full list with no "load
+	// more"/infinite-scroll affordance, so a silent LIMIT 50 would just
+	// drop real results off the end with no way for the user to reach
+	// them. personId added 2026-09-01, direct report ("why is Person
+	// Details capped at 50 pieces?") — the exact same class of bug the
+	// Piece Library itself had before infinite scroll was added there
+	// (2026-08-23), just never fixed for this page since it was built
+	// without ever hitting a person credited on more than 50 pieces during
+	// development.
 	limit := 50
 	offset := 0
-	if !byBook {
+	if !byBook && !byPerson {
 		if v := q.Get("limit"); v != "" {
 			if n, err := strconv.Atoi(v); err == nil && n > 0 && n <= 200 {
 				limit = n
@@ -186,6 +199,11 @@ func (s *Server) handleSearchPieces(w http.ResponseWriter, r *http.Request) {
 
 		if byBook {
 			sqlStr += " ORDER BY p.source_page_start IS NULL, p.source_page_start ASC, (p.page_count = 1) DESC"
+		} else if byPerson {
+			// Same sortOrderBy the paginated case below uses, just with no
+			// LIMIT/OFFSET — see this function's own comment on why personId
+			// doesn't paginate.
+			sqlStr += " ORDER BY " + sortOrderBy + ", p.id DESC"
 		} else {
 			// , p.id DESC: a deterministic secondary tie-break — without it,
 			// rows with equal primary sort values (two identically-titled
@@ -241,6 +259,8 @@ func (s *Server) handleSearchPieces(w http.ResponseWriter, r *http.Request) {
 
 		if byBook {
 			sqlStr += " ORDER BY p.source_page_start IS NULL, p.source_page_start ASC, (p.page_count = 1) DESC"
+		} else if byPerson {
+			sqlStr += " ORDER BY " + sortOrderBy + ", p.id DESC"
 		} else {
 			sqlStr += " ORDER BY " + sortOrderBy + ", p.id DESC LIMIT ? OFFSET ?"
 			qArgs = append(qArgs, limit, offset)

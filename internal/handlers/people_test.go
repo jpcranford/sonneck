@@ -291,6 +291,38 @@ func TestSearchPieces_FiltersByPersonIdIncludingBookInheritance(t *testing.T) {
 	}
 }
 
+// TestSearchPieces_PersonIdFilterIsNotPaginated is the real reported bug,
+// 2026-09-01 ("why is Person Details capped at 50 pieces?") — personId
+// used to fall through to the same default limit=50 every other piece
+// search gets, even though Person Details itself renders the whole works
+// list at once with no "load more"/infinite-scroll affordance the way the
+// Piece Library has, so a person credited on more than 50 pieces silently
+// lost the rest. Mirrors sourceBookId's own established "naturally
+// bounded, no pagination" treatment.
+func TestSearchPieces_PersonIdFilterIsNotPaginated(t *testing.T) {
+	h := newTestServer(t)
+	const pieceCount = 55 // comfortably past the default limit=50
+	for i := 0; i < pieceCount; i++ {
+		createTestPiece(t, h, map[string]any{"composers": []string{"Prolific Composer"}})
+	}
+
+	var people []personResponse
+	decodeData(t, doJSON(t, h, http.MethodGet, "/api/people?query=Prolific", nil), &people)
+	if len(people) != 1 {
+		t.Fatalf("expected exactly 1 person, got %d", len(people))
+	}
+	personID := people[0].ID
+	if people[0].PieceCount != pieceCount {
+		t.Errorf("PersonResponse.pieceCount = %d, want %d", people[0].PieceCount, pieceCount)
+	}
+
+	var byPerson []pieceResponse
+	decodeData(t, doJSON(t, h, http.MethodGet, "/api/pieces?personId="+itoa(personID), nil), &byPerson)
+	if len(byPerson) != pieceCount {
+		t.Errorf("personId filter returned %d pieces, want all %d (not capped at the default limit=50)", len(byPerson), pieceCount)
+	}
+}
+
 // TestPersonResponse_PieceCountIsEffectiveIncludingBookInheritance covers a
 // real reported gap: PersonResponse.pieceCount (the People Library card/
 // list count, its default >2-piece "Show only" filter, and Person Details'
