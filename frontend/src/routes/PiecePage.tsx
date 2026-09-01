@@ -27,6 +27,7 @@ import type { Book } from '../api/types'
 import { formatBookMeta } from '../lib/formatBookMeta'
 import { hyphenateISBN } from '../lib/isbn'
 import { joinNames } from '../lib/joinNames'
+import { PersonNameLinks } from '../components/PersonNameLinks'
 import {
   deletePiece,
   getCitation,
@@ -119,7 +120,7 @@ function InheritedNote({ compact }: { compact?: boolean }) {
 // Inheritance is book-level metadata, not user-specific data — kept
 // neutral (hollow, bordered) so accent green stays reserved for things the
 // user themselves entered (userTags, userNotes, favorite, practiceStatus).
-function EffectiveValue({ value, inherited }: { value: string | null; inherited: boolean }) {
+function EffectiveValue({ value, inherited }: { value: ReactNode; inherited: boolean }) {
   if (!value) return <span className="text-ink-soft/50">—</span>
   return (
     <span className="inline-flex items-center gap-1.5">
@@ -735,10 +736,11 @@ export function PiecePage() {
                   with no composer at all, and the dot
                   must not render with nothing on its left to separate.
                   Composer/Arranger are ordered Person lists (composer/
-                  arranger overhaul, migration 00020) — joinNames renders
-                  each list as one string ("X and Y" / Oxford-comma "X, Y,
-                  and Z"), same as EffectiveValue's own single-string
-                  expectation. */}
+                  arranger overhaul, migration 00020) — each name links to
+                  its own Person Details page via PersonNameLinks (the
+                  JSX-capable sibling of joinNames' plain-text joining);
+                  joinNames itself is still used just to decide whether
+                  either list is non-empty. */}
               {(() => {
                 const composerNames = joinNames(piece.composer.values.map((p) => p.name))
                 const arrangerNames = joinNames(piece.arranger.values.map((p) => p.name))
@@ -746,12 +748,19 @@ export function PiecePage() {
                   <p className="flex flex-wrap items-center gap-1.5 text-ink-soft">
                     {composerNames ? (
                       <>
-                        <EffectiveValue value={composerNames} inherited={piece.composer.inherited} />
-                        {arrangerNames && <span>• arr. {arrangerNames}</span>}
+                        <EffectiveValue
+                          value={<PersonNameLinks people={piece.composer.values} />}
+                          inherited={piece.composer.inherited}
+                        />
+                        {arrangerNames && (
+                          <span>
+                            • arr. <PersonNameLinks people={piece.arranger.values} />
+                          </span>
+                        )}
                       </>
                     ) : arrangerNames ? (
                       <span className="inline-flex items-center gap-1.5">
-                        arr. {arrangerNames}
+                        arr. <PersonNameLinks people={piece.arranger.values} />
                         {piece.arranger.inherited && <InheritedNote />}
                       </span>
                     ) : (
