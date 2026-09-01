@@ -135,12 +135,35 @@ export function PieceBrowseView({
   // "settle after N ms of no further changes" behavior wanted here.
   const debouncedDrawerFilters = useDebouncedValue(drawerFilters)
 
-  // Facets are static (CLAUDE.md-documented design decision) — fetched
-  // once and cached, not re-narrowed by the search box or other active
-  // filters. Fetching unconditionally on mount rather than gating on
-  // drawerOpen keeps the Filters button's own active-count badge and the
-  // drawer's first paint both correct without a loading flash.
-  const { data: facets } = useQuery({ queryKey: ['pieceFacets'], queryFn: getPieceFacets })
+  // Facets are live/faceted (changed 2026-08-31 — see internal/handlers/
+  // facets.go's own doc comment for the full design): each option's count
+  // reflects every OTHER active filter and the current search box text,
+  // never self-narrowing against its own selection. Keyed/fetched with the
+  // exact same debounced query+filters+page-fixed-filters the pieces list
+  // itself uses (queryFn below spreads `filters` last, same "a page's own
+  // fixed filter always wins" rule as the pieces query), so a facet count
+  // only ever reflects filters actually reachable from this view. Fetching
+  // unconditionally on mount (not gated on drawerOpen) keeps the Filters
+  // button's own active-count badge and the drawer's first paint both
+  // correct without a loading flash — this part is unchanged from before.
+  const { data: facets } = useQuery({
+    queryKey: ['pieceFacets', { query: debouncedQuery, ...filters, ...debouncedDrawerFilters }],
+    queryFn: () =>
+      getPieceFacets({
+        query: debouncedQuery || undefined,
+        keyId: debouncedDrawerFilters.keyId.length ? debouncedDrawerFilters.keyId : undefined,
+        instrumentId: debouncedDrawerFilters.instrumentId.length ? debouncedDrawerFilters.instrumentId : undefined,
+        sheetTypeId: debouncedDrawerFilters.sheetTypeId.length ? debouncedDrawerFilters.sheetTypeId : undefined,
+        userTagId: debouncedDrawerFilters.userTagId.length ? debouncedDrawerFilters.userTagId : undefined,
+        practiceStatus: debouncedDrawerFilters.practiceStatus.length
+          ? debouncedDrawerFilters.practiceStatus.join(',')
+          : undefined,
+        favorite: debouncedDrawerFilters.favorite || undefined,
+        bookless: debouncedDrawerFilters.bookless || undefined,
+        hasImslpNumber: debouncedDrawerFilters.hasImslpNumber || undefined,
+        ...filters,
+      }),
+  })
 
   const {
     data,

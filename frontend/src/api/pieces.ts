@@ -114,14 +114,32 @@ export function searchPieces(params: SearchPiecesParams = {}): Promise<Piece[]> 
 }
 
 /** One filter-drawer facet option (e.g. one Key) paired with how many
- * pieces currently match it — see internal/handlers/facets.go's own doc
- * comment for why these counts are deliberately static (computed once
- * against the whole library, not re-narrowed by other active filters or
- * the search box). */
+ * pieces currently match it. Live/faceted (changed 2026-08-31) — see
+ * internal/handlers/facets.go's own doc comment: a value's own count
+ * reflects what checking it would add on top of every OTHER active filter
+ * and the current search box text, not a count that self-narrows against
+ * its own selection. */
 export interface FacetCount {
   id: number
   name: string
   count: number
+}
+
+/** getPieceFacets' own params — deliberately the same shape as
+ * SearchPiecesParams minus sort/limit/offset/sourceBookId/personId (none
+ * of which are Filter Drawer facets), so PieceBrowseView can pass the
+ * exact same debounced query/filter state it already builds for
+ * searchPieces straight through. */
+export interface PieceFacetsParams {
+  query?: string
+  keyId?: number[]
+  sheetTypeId?: number[]
+  instrumentId?: number[]
+  userTagId?: number[]
+  favorite?: boolean
+  practiceStatus?: string
+  bookless?: boolean
+  hasImslpNumber?: boolean
 }
 
 /** practiceStatus has no separate lookup table/ID (a CHECK constraint on
@@ -144,6 +162,11 @@ export interface PieceFacets {
   hasImslpNumber: number
 }
 
-export function getPieceFacets(): Promise<PieceFacets> {
-  return apiGet<PieceFacets>('/api/pieces/facets')
+export function getPieceFacets(params: PieceFacetsParams = {}): Promise<PieceFacets> {
+  const search = new URLSearchParams()
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined) search.set(key, String(value))
+  }
+  const qs = search.toString()
+  return apiGet<PieceFacets>(`/api/pieces/facets${qs ? `?${qs}` : ''}`)
 }

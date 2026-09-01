@@ -31,6 +31,10 @@ import { useMockupTitle } from '../lib/useMockupTitle'
 // Instrument only, no Key/tags/Favorite/Practice Status, since those are
 // piece-only fields (design doc §3's Naming/architecture note). Not wired
 // to the API; cards aren't real links.
+//
+// Facet counts are live/faceted (changed 2026-08-31, matching a real
+// backend switch — internal/handlers/facets.go), same mockup-parity
+// treatment as PieceLibrarySample.tsx's own matchesFiltersExcept.
 // ---------------------------------------------------------------------
 
 interface MockBook {
@@ -286,11 +290,23 @@ function distinctInstruments(): string[] {
 const SHEET_TYPE_OPTIONS = distinctBookValues('sheetType')
 const INSTRUMENT_OPTIONS = distinctInstruments()
 
-function countSheetType(value: string): number {
-  return MOCK_BOOKS.filter((b) => b.sheetType === value).length
+// Live/faceted (changed 2026-08-31, matching the real backend's own
+// switch — internal/handlers/facets.go): a facet's own displayed count
+// reflects the OTHER active filter plus the search box, never
+// self-narrowing against its own selection — the mockup's own port of the
+// real backend's combineClauses "exclude" rule, same as
+// PieceLibrarySample.tsx's matchesFiltersExcept.
+function booksMatchExcept(b: MockBook, f: BookFilterState, exclude: keyof BookFilterState | null, query: string): boolean {
+  if (exclude !== 'sheetType' && f.sheetType.length && !f.sheetType.includes(b.sheetType)) return false
+  if (exclude !== 'instruments' && f.instruments.length && !f.instruments.some((i) => b.instruments.includes(i))) return false
+  if (query.trim() && !b.bookTitle.toLowerCase().includes(query.trim().toLowerCase())) return false
+  return true
 }
-function countInstrument(value: string): number {
-  return MOCK_BOOKS.filter((b) => b.instruments.includes(value)).length
+function countSheetType(value: string, f: BookFilterState, query: string): number {
+  return MOCK_BOOKS.filter((b) => b.sheetType === value && booksMatchExcept(b, f, 'sheetType', query)).length
+}
+function countInstrument(value: string, f: BookFilterState, query: string): number {
+  return MOCK_BOOKS.filter((b) => b.instruments.includes(value) && booksMatchExcept(b, f, 'instruments', query)).length
 }
 
 interface BookFilterState {
@@ -347,12 +363,14 @@ function BookFacetSection({ title, children }: { title: string; children: React.
 function BookFilterDrawer({
   open,
   filters,
+  query,
   onChange,
   onClose,
   onClear,
 }: {
   open: boolean
   filters: BookFilterState
+  query: string
   onChange: (next: BookFilterState) => void
   onClose: () => void
   onClear: () => void
@@ -391,7 +409,7 @@ function BookFilterDrawer({
               <BookFacetRow
                 key={v}
                 label={v}
-                count={countSheetType(v)}
+                count={countSheetType(v, filters, query)}
                 checked={filters.sheetType.includes(v)}
                 onChange={() => onChange({ ...filters, sheetType: toggleInArray(filters.sheetType, v) })}
               />
@@ -403,7 +421,7 @@ function BookFilterDrawer({
               <BookFacetRow
                 key={v}
                 label={v}
-                count={countInstrument(v)}
+                count={countInstrument(v, filters, query)}
                 checked={filters.instruments.includes(v)}
                 onChange={() => onChange({ ...filters, instruments: toggleInArray(filters.instruments, v) })}
               />
@@ -899,6 +917,7 @@ export function BooksLibrarySample() {
       <BookFilterDrawer
         open={drawerOpen}
         filters={appliedFilters}
+        query={query}
         onChange={setAppliedFilters}
         onClose={() => setDrawerOpen(false)}
         onClear={() => setAppliedFilters(EMPTY_BOOK_FILTERS)}

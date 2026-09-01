@@ -49,8 +49,22 @@ export interface BookFacets {
   instruments: FacetCount[]
 }
 
-export function getBookFacets(): Promise<BookFacets> {
-  return apiGet<BookFacets>('/api/books/facets')
+/** Same shape as ListBooksParams minus sort/personId (neither is a Filter
+ * Drawer facet) — see PieceFacetsParams in api/pieces.ts for the same
+ * reasoning on the Pieces side. */
+export interface BookFacetsParams {
+  query?: string
+  sheetTypeId?: number[]
+  instrumentId?: number[]
+}
+
+export function getBookFacets(params: BookFacetsParams = {}): Promise<BookFacets> {
+  const search = new URLSearchParams()
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined) search.set(key, String(value))
+  }
+  const qs = search.toString()
+  return apiGet<BookFacets>(`/api/books/facets${qs ? `?${qs}` : ''}`)
 }
 
 // Books library view's "New Book" button — creates a Book with no

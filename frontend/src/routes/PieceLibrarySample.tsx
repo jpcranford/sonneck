@@ -32,6 +32,14 @@ import { PracticeStatusIcon } from '../components/PracticeStatusIcon'
 // mockup is that real toolbar plus the new Filters button + drawer + Sort
 // control, so the diff against the real page is exactly the new
 // functionality, not a reimagined toolbar.
+//
+// Facet counts are live/faceted (changed 2026-08-31, matching a real
+// backend switch — internal/handlers/facets.go), not the whole-library
+// static counts this mockup originally shipped with: matchesFiltersExcept
+// below is the mockup's own client-side port of the real backend's
+// combineClauses "every OTHER active filter, never your own selection"
+// rule, kept behaviorally in sync per this app's standing mockup-parity
+// convention even though this fixture has no real backend to call.
 // ---------------------------------------------------------------------
 
 interface MockPiece {
@@ -108,18 +116,44 @@ const SHEET_TYPE_OPTIONS = distinct('sheetType')
 const USER_TAG_OPTIONS = distinct('userTags')
 const STATUS_OPTIONS: MockPiece['practiceStatus'][] = ['Want to Learn', 'Learning', 'Learned', 'Stalled']
 
-function countMatching(field: 'key' | 'instrument' | 'sheetType', value: string): number {
-  return PIECES.filter((p) => p[field] === value).length
+// Live/faceted (changed 2026-08-31, matching the real backend's own
+// switch — internal/handlers/facets.go): a facet's own displayed count
+// reflects every OTHER currently active filter plus the search box, but
+// never self-narrows against its own selection — the standard multi-
+// select faceted-search rule. `exclude` names the FilterState key this
+// particular facet's own count must skip when checking f, mirroring
+// combineClauses's `exclude` param on the real backend exactly.
+function matchesFiltersExcept(p: MockPiece, f: FilterState, exclude: keyof FilterState | null, query: string): boolean {
+  if (exclude !== 'key' && f.key.length && !f.key.includes(p.key)) return false
+  if (exclude !== 'instrument' && f.instrument.length && !f.instrument.includes(p.instrument)) return false
+  if (exclude !== 'sheetType' && f.sheetType.length && !f.sheetType.includes(p.sheetType)) return false
+  if (exclude !== 'userTags' && f.userTags.length && !f.userTags.some((t) => p.userTags.includes(t))) return false
+  if (exclude !== 'status' && f.status.length && !f.status.includes(p.practiceStatus)) return false
+  if (exclude !== 'favorite' && f.favorite && !p.favorite) return false
+  if (exclude !== 'bookless' && f.bookless && !p.bookless) return false
+  if (exclude !== 'hasImslpNumber' && f.hasImslpNumber && !p.hasImslpNumber) return false
+  if (query.trim() && !p.title.toLowerCase().includes(query.trim().toLowerCase())) return false
+  return true
 }
-function countTag(tag: string): number {
-  return PIECES.filter((p) => p.userTags.includes(tag)).length
+
+function countMatching(field: 'key' | 'instrument' | 'sheetType', value: string, f: FilterState, query: string): number {
+  return PIECES.filter((p) => p[field] === value && matchesFiltersExcept(p, f, field, query)).length
 }
-function countStatus(status: string): number {
-  return PIECES.filter((p) => p.practiceStatus === status).length
+function countTag(tag: string, f: FilterState, query: string): number {
+  return PIECES.filter((p) => p.userTags.includes(tag) && matchesFiltersExcept(p, f, 'userTags', query)).length
 }
-const FAVORITE_COUNT = PIECES.filter((p) => p.favorite).length
-const BOOKLESS_COUNT = PIECES.filter((p) => p.bookless).length
-const HAS_IMSLP_COUNT = PIECES.filter((p) => p.hasImslpNumber).length
+function countStatus(status: string, f: FilterState, query: string): number {
+  return PIECES.filter((p) => p.practiceStatus === status && matchesFiltersExcept(p, f, 'status', query)).length
+}
+function countFavorite(f: FilterState, query: string): number {
+  return PIECES.filter((p) => p.favorite && matchesFiltersExcept(p, f, 'favorite', query)).length
+}
+function countBookless(f: FilterState, query: string): number {
+  return PIECES.filter((p) => p.bookless && matchesFiltersExcept(p, f, 'bookless', query)).length
+}
+function countHasImslp(f: FilterState, query: string): number {
+  return PIECES.filter((p) => p.hasImslpNumber && matchesFiltersExcept(p, f, 'hasImslpNumber', query)).length
+}
 
 // Stands in for a real page thumbnail (getPieceThumbnailUrl) — same
 // landscape 180:132 staff-line placeholder convention as
@@ -312,12 +346,14 @@ function SortControl({
 function FilterDrawer({
   open,
   filters,
+  query,
   onChange,
   onClose,
   onClear,
 }: {
   open: boolean
   filters: FilterState
+  query: string
   onChange: (next: FilterState) => void
   onClose: () => void
   onClear: () => void
@@ -367,19 +403,19 @@ function FilterDrawer({
           <FacetSection title="Show only">
             <FacetRow
               label="Favorites"
-              count={FAVORITE_COUNT}
+              count={countFavorite(filters, query)}
               checked={filters.favorite}
               onChange={() => onChange({ ...filters, favorite: !filters.favorite })}
             />
             <FacetRow
               label="Bookless pieces"
-              count={BOOKLESS_COUNT}
+              count={countBookless(filters, query)}
               checked={filters.bookless}
               onChange={() => onChange({ ...filters, bookless: !filters.bookless })}
             />
             <FacetRow
               label="Has IMSLP number"
-              count={HAS_IMSLP_COUNT}
+              count={countHasImslp(filters, query)}
               checked={filters.hasImslpNumber}
               onChange={() => onChange({ ...filters, hasImslpNumber: !filters.hasImslpNumber })}
             />
@@ -390,7 +426,7 @@ function FilterDrawer({
               <FacetRow
                 key={v}
                 label={v}
-                count={countTag(v)}
+                count={countTag(v, filters, query)}
                 checked={filters.userTags.includes(v)}
                 onChange={() => onChange({ ...filters, userTags: toggleInArray(filters.userTags, v) })}
               />
@@ -402,7 +438,7 @@ function FilterDrawer({
               <FacetRow
                 key={v}
                 label={v}
-                count={countStatus(v)}
+                count={countStatus(v, filters, query)}
                 checked={filters.status.includes(v)}
                 onChange={() => onChange({ ...filters, status: toggleInArray(filters.status, v) })}
               />
@@ -414,7 +450,7 @@ function FilterDrawer({
               <FacetRow
                 key={v}
                 label={v}
-                count={countMatching('sheetType', v)}
+                count={countMatching('sheetType', v, filters, query)}
                 checked={filters.sheetType.includes(v)}
                 onChange={() => onChange({ ...filters, sheetType: toggleInArray(filters.sheetType, v) })}
               />
@@ -426,7 +462,7 @@ function FilterDrawer({
               <FacetRow
                 key={v}
                 label={v}
-                count={countMatching('instrument', v)}
+                count={countMatching('instrument', v, filters, query)}
                 checked={filters.instrument.includes(v)}
                 onChange={() => onChange({ ...filters, instrument: toggleInArray(filters.instrument, v) })}
               />
@@ -438,7 +474,7 @@ function FilterDrawer({
               <FacetRow
                 key={k}
                 label={k}
-                count={countMatching('key', k)}
+                count={countMatching('key', k, filters, query)}
                 checked={filters.key.includes(k)}
                 onChange={() => onChange({ ...filters, key: toggleInArray(filters.key, k) })}
               />
@@ -869,6 +905,7 @@ export function PieceLibrarySample() {
       <FilterDrawer
         open={drawerOpen}
         filters={appliedFilters}
+        query={query}
         onChange={setAppliedFilters}
         onClose={() => setDrawerOpen(false)}
         onClear={() => setAppliedFilters(EMPTY_FILTERS)}

@@ -74,60 +74,15 @@ func (s *Server) handleSearchPieces(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	query := strings.TrimSpace(q.Get("query"))
 
+	clauses, ok := buildPieceFilterClauses(w, q)
+	if !ok {
+		return
+	}
 	var where []string
 	var args []any
-
-	// keyId: comma-separated for an OR match against several keys at once
-	// (the Filter Drawer's Key section is a real multi-select checkbox
-	// list, same "any of several" shape as practiceStatus below — a piece
-	// can also have more than one key itself, migration 00008, but that's
-	// unrelated: this is "matches any of the requested keys", not "has all
-	// of its own"). Same join-table pattern as instrumentId/userTagId.
-	if ids, present, ok := parseIDListFilter(w, q, "keyId"); !ok {
-		return
-	} else if present {
-		where = append(where, "p.id IN (SELECT piece_id FROM piece_keys WHERE key_id IN ("+sqlPlaceholders(len(ids))+"))")
-		args = append(args, idsToArgs(ids)...)
-	}
-
-	// sheetTypeId: comma-separated, same OR-match shape as keyId above.
-	// Match if the piece's own sheetType is one of the requested values,
-	// OR the piece has no sheetType of its own and its book's is — the
-	// same fallback rule repo.ResolveEffective applies for display. The
-	// id list is bound twice (once per IN clause), so args needs it twice.
-	if ids, present, ok := parseIDListFilter(w, q, "sheetTypeId"); !ok {
-		return
-	} else if present {
-		ph := sqlPlaceholders(len(ids))
-		where = append(where, `(p.sheet_type_id IN (`+ph+`) OR (p.sheet_type_id IS NULL AND p.source_book_id IN (
-			SELECT id FROM books WHERE sheet_type_id IN (`+ph+`)
-		)))`)
-		args = append(args, idsToArgs(ids)...)
-		args = append(args, idsToArgs(ids)...)
-	}
-
-	// instrumentId: comma-separated, same OR-match shape. Match if the
-	// piece has any of the requested instruments itself, OR the piece has
-	// none of its own instruments and its book has one of them — mirroring
-	// EffectiveTagsField's whole-set fallback (a piece with any instruments
-	// of its own never partially falls back to the book's).
-	if ids, present, ok := parseIDListFilter(w, q, "instrumentId"); !ok {
-		return
-	} else if present {
-		ph := sqlPlaceholders(len(ids))
-		where = append(where, `(p.id IN (SELECT piece_id FROM piece_instruments WHERE instrument_id IN (`+ph+`))
-			OR (p.id NOT IN (SELECT piece_id FROM piece_instruments)
-				AND p.source_book_id IN (SELECT book_id FROM book_instruments WHERE instrument_id IN (`+ph+`))))`)
-		args = append(args, idsToArgs(ids)...)
-		args = append(args, idsToArgs(ids)...)
-	}
-
-	// userTagId: comma-separated, same OR-match shape as keyId/sheetTypeId.
-	if ids, present, ok := parseIDListFilter(w, q, "userTagId"); !ok {
-		return
-	} else if present {
-		where = append(where, "p.id IN (SELECT piece_id FROM piece_user_tags WHERE tag_id IN ("+sqlPlaceholders(len(ids))+"))")
-		args = append(args, idsToArgs(ids)...)
+	for _, c := range clauses {
+		where = append(where, c.where)
+		args = append(args, c.args...)
 	}
 
 	// personId: Person Details' own "works" list — every piece crediting
@@ -135,7 +90,10 @@ func (s *Server) handleSearchPieces(w http.ResponseWriter, r *http.Request) {
 	// aware). Composer and Arranger fall back to the book independently
 	// (CLAUDE.md's Book-level inheritance note), so this checks all four
 	// combinations separately rather than one shared "own OR book's"
-	// clause the way sheetTypeId/instrumentId (a single field) can.
+	// clause the way sheetTypeId/instrumentId (a single field) can. Not
+	// part of buildPieceFilterClauses (below) — personId isn't a Filter
+	// Drawer facet, it's Person Details' own filter, so handlePieceFacets
+	// has no reason to know about it.
 	if id, present, ok := parseIDFilter(w, q, "personId"); !ok {
 		return
 	} else if present {
@@ -148,68 +106,6 @@ func (s *Server) handleSearchPieces(w http.ResponseWriter, r *http.Request) {
 				AND p.source_book_id IN (SELECT book_id FROM book_arrangers WHERE person_id = ?))
 		)`)
 		args = append(args, id, id, id, id)
-	}
-
-	if v := q.Get("favorite"); v != "" {
-		fav, err := strconv.ParseBool(v)
-		if err != nil {
-			api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid favorite")
-			return
-		}
-		where = append(where, "p.favorite = ?")
-		args = append(args, fav)
-	}
-	// practiceStatus: comma-separated for an OR match against several
-	// statuses at once (the sidebar's "Currently Practicing" view — Learning
-	// OR Stalled — is the first caller of this; a single value still works
-	// the same as before, IN (?) with one placeholder behaves like = ?).
-	if v := q.Get("practiceStatus"); v != "" {
-		statuses := strings.Split(v, ",")
-		placeholders := make([]string, len(statuses))
-		for i, status := range statuses {
-			placeholders[i] = "?"
-			args = append(args, strings.TrimSpace(status))
-		}
-		where = append(where, "p.practice_status IN ("+strings.Join(placeholders, ",")+")")
-	}
-
-	// bookless: pieces with no sourceBookId at all (design doc §3/§5 — a
-	// piece with no book is a normal, first-class case, e.g. a single
-	// downloaded score). Deliberately asymmetric with favorite above:
-	// bookless=false is a no-op, not a hard "exclude bookless" filter — the
-	// drawer's single checkbox never sends false, there's no equivalent
-	// "book-having pieces only" affordance to wire it to.
-	if v := q.Get("bookless"); v != "" {
-		bookless, err := strconv.ParseBool(v)
-		if err != nil {
-			api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid bookless")
-			return
-		}
-		if bookless {
-			where = append(where, "p.source_book_id IS NULL")
-		}
-	}
-
-	// hasImslpNumber: pieces with a non-blank *effective* IMSLP number —
-	// own value if set, else the book's (same inheritance-aware "own OR
-	// book's" shape sheetTypeId/instrumentId use above, but testing
-	// presence/non-blankness rather than a specific id match; NULLIF(TRIM(
-	// ...), '') IS NOT NULL is this file's own established non-blank test,
-	// matching the composer sort expression above and resolveStringField's
-	// isBlank check). Same asymmetric-boolean shape as bookless:
-	// hasImslpNumber=false is a no-op, not a hard exclude — the drawer's
-	// single checkbox never sends false.
-	if v := q.Get("hasImslpNumber"); v != "" {
-		has, err := strconv.ParseBool(v)
-		if err != nil {
-			api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid hasImslpNumber")
-			return
-		}
-		if has {
-			where = append(where, `(NULLIF(TRIM(p.imslp_number), '') IS NOT NULL OR (NULLIF(TRIM(p.imslp_number), '') IS NULL AND p.source_book_id IN (
-				SELECT id FROM books WHERE NULLIF(TRIM(imslp_number), '') IS NOT NULL
-			)))`)
-		}
 	}
 
 	// sourceBookId: the Book Details page's pieces grid/list — every piece
@@ -452,6 +348,172 @@ func parseIDListFilter(w http.ResponseWriter, q url.Values, param string) (ids [
 		ids = append(ids, id)
 	}
 	return ids, true, true
+}
+
+// namedClause is one Filter Drawer facet's own WHERE fragment + its bound
+// args, tagged with the query-param name it came from. buildPieceFilterClauses
+// (below) returns these instead of the flat where []string/args []any pair
+// handleSearchPieces builds directly for personId/sourceBookId, specifically
+// so handlePieceFacets can compose "every active filter except this one
+// dimension's own" per facet — see combineClauses.
+type namedClause struct {
+	name  string
+	where string
+	args  []any
+}
+
+// buildPieceFilterClauses parses the Piece Filter Drawer's own filter query
+// params — keyId/sheetTypeId/instrumentId/userTagId/favorite/
+// practiceStatus/bookless/hasImslpNumber — into one namedClause per active
+// filter. Shared by handleSearchPieces (which flattens every clause into one
+// WHERE exactly as it did before this existed) and handlePieceFacets (which
+// needs "every active filter except this dimension's own" per facet — the
+// standard multi-select faceted-search rule: a facet value's own displayed
+// count reflects what checking it would add on top of every OTHER active
+// filter/search, not a count that self-narrows against its own current
+// selection). Deliberately excludes personId/sourceBookId — neither is a
+// Filter Drawer facet (personId is Person Details' own works-list filter,
+// sourceBookId is Book Details' pieces list), so handleSearchPieces still
+// parses those two separately, unchanged.
+func buildPieceFilterClauses(w http.ResponseWriter, q url.Values) (clauses []namedClause, ok bool) {
+	if ids, present, ok := parseIDListFilter(w, q, "keyId"); !ok {
+		return nil, false
+	} else if present {
+		clauses = append(clauses, namedClause{
+			name:  "keyId",
+			where: "p.id IN (SELECT piece_id FROM piece_keys WHERE key_id IN (" + sqlPlaceholders(len(ids)) + "))",
+			args:  idsToArgs(ids),
+		})
+	}
+
+	if ids, present, ok := parseIDListFilter(w, q, "sheetTypeId"); !ok {
+		return nil, false
+	} else if present {
+		ph := sqlPlaceholders(len(ids))
+		var args []any
+		args = append(args, idsToArgs(ids)...)
+		args = append(args, idsToArgs(ids)...)
+		clauses = append(clauses, namedClause{
+			name: "sheetTypeId",
+			where: `(p.sheet_type_id IN (` + ph + `) OR (p.sheet_type_id IS NULL AND p.source_book_id IN (
+				SELECT id FROM books WHERE sheet_type_id IN (` + ph + `)
+			)))`,
+			args: args,
+		})
+	}
+
+	if ids, present, ok := parseIDListFilter(w, q, "instrumentId"); !ok {
+		return nil, false
+	} else if present {
+		ph := sqlPlaceholders(len(ids))
+		var args []any
+		args = append(args, idsToArgs(ids)...)
+		args = append(args, idsToArgs(ids)...)
+		clauses = append(clauses, namedClause{
+			name: "instrumentId",
+			where: `(p.id IN (SELECT piece_id FROM piece_instruments WHERE instrument_id IN (` + ph + `))
+				OR (p.id NOT IN (SELECT piece_id FROM piece_instruments)
+					AND p.source_book_id IN (SELECT book_id FROM book_instruments WHERE instrument_id IN (` + ph + `))))`,
+			args: args,
+		})
+	}
+
+	if ids, present, ok := parseIDListFilter(w, q, "userTagId"); !ok {
+		return nil, false
+	} else if present {
+		clauses = append(clauses, namedClause{
+			name:  "userTagId",
+			where: "p.id IN (SELECT piece_id FROM piece_user_tags WHERE tag_id IN (" + sqlPlaceholders(len(ids)) + "))",
+			args:  idsToArgs(ids),
+		})
+	}
+
+	if v := q.Get("favorite"); v != "" {
+		fav, err := strconv.ParseBool(v)
+		if err != nil {
+			api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid favorite")
+			return nil, false
+		}
+		clauses = append(clauses, namedClause{name: "favorite", where: "p.favorite = ?", args: []any{fav}})
+	}
+
+	// practiceStatus: comma-separated for an OR match against several
+	// statuses at once (the sidebar's "Currently Practicing" view — Learning
+	// OR Stalled — is the first caller of this; a single value still works
+	// the same as before, IN (?) with one placeholder behaves like = ?).
+	if v := q.Get("practiceStatus"); v != "" {
+		statuses := strings.Split(v, ",")
+		placeholders := make([]string, len(statuses))
+		args := make([]any, len(statuses))
+		for i, status := range statuses {
+			placeholders[i] = "?"
+			args[i] = strings.TrimSpace(status)
+		}
+		clauses = append(clauses, namedClause{
+			name:  "practiceStatus",
+			where: "p.practice_status IN (" + strings.Join(placeholders, ",") + ")",
+			args:  args,
+		})
+	}
+
+	// bookless: pieces with no sourceBookId at all (design doc §3/§5 — a
+	// piece with no book is a normal, first-class case, e.g. a single
+	// downloaded score). Deliberately asymmetric with favorite above:
+	// bookless=false is a no-op, not a hard "exclude bookless" filter — the
+	// drawer's single checkbox never sends false, there's no equivalent
+	// "book-having pieces only" affordance to wire it to.
+	if v := q.Get("bookless"); v != "" {
+		bookless, err := strconv.ParseBool(v)
+		if err != nil {
+			api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid bookless")
+			return nil, false
+		}
+		if bookless {
+			clauses = append(clauses, namedClause{name: "bookless", where: "p.source_book_id IS NULL"})
+		}
+	}
+
+	// hasImslpNumber: pieces with a non-blank *effective* IMSLP number —
+	// own value if set, else the book's (same inheritance-aware "own OR
+	// book's" shape sheetTypeId/instrumentId use above, but testing
+	// presence/non-blankness rather than a specific id match; NULLIF(TRIM(
+	// ...), '') IS NOT NULL is this file's own established non-blank test,
+	// matching the composer sort expression above and resolveStringField's
+	// isBlank check). Same asymmetric-boolean shape as bookless:
+	// hasImslpNumber=false is a no-op, not a hard exclude — the drawer's
+	// single checkbox never sends false.
+	if v := q.Get("hasImslpNumber"); v != "" {
+		has, err := strconv.ParseBool(v)
+		if err != nil {
+			api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid hasImslpNumber")
+			return nil, false
+		}
+		if has {
+			clauses = append(clauses, namedClause{
+				name: "hasImslpNumber",
+				where: `(NULLIF(TRIM(p.imslp_number), '') IS NOT NULL OR (NULLIF(TRIM(p.imslp_number), '') IS NULL AND p.source_book_id IN (
+					SELECT id FROM books WHERE NULLIF(TRIM(imslp_number), '') IS NOT NULL
+				)))`,
+			})
+		}
+	}
+
+	return clauses, true
+}
+
+// combineClauses ANDs together every namedClause except the one matching
+// `exclude` (pass "" to include everything) — handlePieceFacets's own
+// per-dimension "every other active filter" composition.
+func combineClauses(clauses []namedClause, exclude string) (where string, args []any) {
+	var parts []string
+	for _, c := range clauses {
+		if c.name == exclude {
+			continue
+		}
+		parts = append(parts, c.where)
+		args = append(args, c.args...)
+	}
+	return strings.Join(parts, " AND "), args
 }
 
 // sqlPlaceholders builds "?,?,...,?" for an IN clause of n values.

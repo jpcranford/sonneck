@@ -55,7 +55,21 @@ export function BooksPage() {
   const debouncedQuery = useDebouncedValue(query)
   const debouncedDrawerFilters = useDebouncedValue(drawerFilters)
 
-  const { data: facets } = useQuery({ queryKey: ['bookFacets'], queryFn: getBookFacets })
+  // Live/faceted (changed 2026-08-31 — see internal/handlers/facets.go's
+  // own doc comment): each option's count reflects every OTHER active
+  // filter and the current search box text, never self-narrowing against
+  // its own selection. Keyed/fetched with the same debounced query+
+  // filters the books list itself uses, same reasoning as
+  // PieceBrowseView.tsx's own facets query.
+  const { data: facets } = useQuery({
+    queryKey: ['bookFacets', { query: debouncedQuery, ...debouncedDrawerFilters }],
+    queryFn: () =>
+      getBookFacets({
+        query: debouncedQuery || undefined,
+        sheetTypeId: debouncedDrawerFilters.sheetTypeId.length ? debouncedDrawerFilters.sheetTypeId : undefined,
+        instrumentId: debouncedDrawerFilters.instrumentId.length ? debouncedDrawerFilters.instrumentId : undefined,
+      }),
+  })
 
   const {
     data: books,
