@@ -51,6 +51,15 @@ const INSTRUMENT_OPTIONS: Tag[] = [
   { id: 3, name: 'Guitar' },
   { id: 4, name: 'Voice' },
 ]
+// Real callers (EditPieceModal.tsx/EditBookModal.tsx/BookUploadAboutStep.tsx)
+// source this from the real, unpaginated GET /api/people — this mockup has
+// no backend to call, same "hardcoded fixture stands in for the lookup
+// table" treatment INSTRUMENT_OPTIONS/SHEET_TYPE_OPTIONS above already get.
+const PEOPLE_OPTIONS: Tag[] = [
+  { id: 1, name: 'Robert Schumann' },
+  { id: 2, name: 'Louis Köhler' },
+  { id: 3, name: 'Frédéric Chopin' },
+]
 
 const MOCK_FILENAME = 'Album_für_die_Jugend_Op_68.pdf'
 const MOCK_PAGE_COUNT = 42
@@ -59,8 +68,8 @@ const CURRENT_STEP = 3
 
 interface FormValues {
   bookTitle: string
-  composer: string
-  arranger: string
+  composer: Tag[]
+  arranger: Tag[]
   yearWritten: string
   workOpusNumber: string
   publisher: string
@@ -86,8 +95,8 @@ interface FormValues {
 // "starts blank, user fills it in" treatment.
 const defaultValues: FormValues = {
   bookTitle: 'Album für die Jugend, Op. 68',
-  composer: '',
-  arranger: '',
+  composer: [],
+  arranger: [],
   yearWritten: '',
   workOpusNumber: '',
   publisher: '',
@@ -345,8 +354,8 @@ export function UploadBookAboutMockup() {
     window.setTimeout(() => {
       const filled = new Set<string>()
       const current = getValues()
-      if (!current.composer) {
-        setValue('composer', 'Robert Schumann')
+      if (current.composer.length === 0) {
+        setValue('composer', [{ id: -1, name: 'Robert Schumann' }])
         filled.add('composer')
       }
       if (!current.yearWritten) {
@@ -582,33 +591,44 @@ export function UploadBookAboutMockup() {
           </div>
 
           <div className="flex flex-col gap-3 min-[525px]:flex-row">
-            <div className="flex min-w-0 flex-1 flex-col gap-1">
-              <label htmlFor="f-composer" className="flex items-center gap-1 text-sm text-ink-soft">
-                Composer
-                <InfoTooltip
-                  message="If neither composer nor arranger is set here, you will be later prompted to enter one for each piece."
-                  ariaLabel="What happens if Composer and Arranger are both left blank"
-                  triggerClassName="text-[#9d9892] hover:text-ink-soft"
-                >
-                  <IconInfoCircle size={13} />
-                </InfoTooltip>
-              </label>
-              <input
-                id="f-composer"
-                placeholder="e.g. Robert Schumann"
-                className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 placeholder:text-ink-soft/40 placeholder:italic ${imslpFilledFields.has('composer') ? 'ring-2 ring-accent-on-dark' : ''}`}
-                {...register('composer', { maxLength: 255 })}
+            <div className="min-w-0 flex-1">
+              <Controller
+                name="composer"
+                control={control}
+                render={({ field }) => (
+                  <TagComboBox
+                    label="Composer"
+                    options={PEOPLE_OPTIONS}
+                    selected={field.value}
+                    multiple
+                    onChange={field.onChange}
+                    highlighted={imslpFilledFields.has('composer')}
+                    labelExtra={
+                      <InfoTooltip
+                        message="If neither composer nor arranger is set here, you will be later prompted to enter one for each piece."
+                        ariaLabel="What happens if Composer and Arranger are both left blank"
+                        triggerClassName="text-[#9d9892] hover:text-ink-soft"
+                      >
+                        <IconInfoCircle size={13} />
+                      </InfoTooltip>
+                    }
+                  />
+                )}
               />
             </div>
-            <div className="flex min-w-0 flex-1 flex-col gap-1">
-              <label htmlFor="f-arranger" className="text-sm text-ink-soft">
-                Arranger
-              </label>
-              <input
-                id="f-arranger"
-                placeholder="e.g. Louis Köhler"
-                className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
-                {...register('arranger', { maxLength: 255 })}
+            <div className="min-w-0 flex-1">
+              <Controller
+                name="arranger"
+                control={control}
+                render={({ field }) => (
+                  <TagComboBox
+                    label="Arranger"
+                    options={PEOPLE_OPTIONS}
+                    selected={field.value}
+                    multiple
+                    onChange={field.onChange}
+                  />
+                )}
               />
             </div>
           </div>

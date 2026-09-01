@@ -9,7 +9,8 @@ import {
 } from '@tabler/icons-react'
 import { confirmImport, getBookPageThumbnailUrl } from '../api/books'
 import { ApiError } from '../api/client'
-import type { Piece as ApiPiece } from '../api/types'
+import type { Piece as ApiPiece, Tag } from '../api/types'
+import { personCreditPart } from '../lib/joinNames'
 import type { Piece } from '../lib/pieceSplitLogic'
 import { TOTAL_WIZARD_STEPS } from './BookUploadWizard'
 
@@ -25,8 +26,8 @@ const CURRENT_STEP = 6
 
 export interface NamedPiece extends Piece {
   title: string
-  composer: string
-  arranger: string
+  composer: Tag[]
+  arranger: Tag[]
 }
 
 // Academic p./pp. convention app-wide (singular vs. a range), same as
@@ -41,16 +42,21 @@ function formatPageRange(piece: Piece, pageOffset: number): string {
   return end !== start ? `pp. ${start}–${end}` : `p. ${start}`
 }
 
-// Composer-or-arranger: fuses arranger onto composer
-// (", arr. Arranger"), same convention as everywhere else in this app —
-// arranger alone renders as "arr. Arranger" rather than disappearing when
-// composer is blank (composer-or-arranger means a piece can legitimately
-// have only one of the two).
+// Composer-or-arranger: fuses arranger onto composer ("X, arr. Y"), same
+// convention as everywhere else in this app — arranger alone renders as
+// "arr. Y" rather than disappearing when composer is blank (composer-or-
+// arranger means a piece can legitimately have only one of the two).
+// personCreditPart (lib/joinNames.ts) already implements exactly this,
+// including each side's own Oxford-comma joining for 2+ names — no reason
+// to hand-roll it again here now that Composer/Arranger are ordered Person
+// lists (Tag[]) instead of single strings.
 function composerArrangerLabel(piece: NamedPiece): string {
-  if (piece.composer && piece.arranger) return `${piece.composer}, arr. ${piece.arranger}`
-  if (piece.composer) return piece.composer
-  if (piece.arranger) return `arr. ${piece.arranger}`
-  return ''
+  return (
+    personCreditPart(
+      piece.composer.map((t) => t.name),
+      piece.arranger.map((t) => t.name),
+    ) ?? ''
+  )
 }
 
 // Compacts a sorted page list into ranges — same convention as the Split
@@ -123,8 +129,11 @@ export function BookUploadConfirmStep({
         ranges: pieces.map((p) => ({ start: p.start, end: p.end })),
         pieces: pieces.map((p) => ({
           title: p.title,
-          composers: p.composer ? [p.composer] : [],
-          arrangers: p.arranger ? [p.arranger] : [],
+          // Naturally supports more than one credited name per piece now
+          // that Composer/Arranger are ordered Person lists (Tag[]) — the
+          // old plain-string field could only ever send exactly one name.
+          composers: p.composer.map((t) => t.name),
+          arrangers: p.arranger.map((t) => t.name),
           favorite: false,
           keys: [],
           instruments: [],

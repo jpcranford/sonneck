@@ -1,6 +1,6 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type FocusEvent } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { useForm } from 'react-hook-form'
+import { Controller, useForm } from 'react-hook-form'
 import {
   IconAlertTriangle,
   IconArrowLeft,
@@ -11,6 +11,8 @@ import {
   IconX,
   IconXFilled,
 } from '@tabler/icons-react'
+import type { Tag } from '../api/types'
+import { TagComboBox } from '../components/TagComboBox'
 import { useMockupTitle } from '../lib/useMockupTitle'
 import { autosizeTextarea, preventTextareaNewline } from '../lib/autosizeTextarea'
 import { nameCase, titleCase } from '../lib/textCase'
@@ -49,9 +51,25 @@ interface PieceFixture {
   isLast: boolean
   color: string
   title: string
-  composer: string
-  arranger: string
+  composer: Tag[]
+  arranger: Tag[]
 }
+
+// Composer/Arranger are ordered Person lists now (composer/arranger
+// overhaul, migration 00020) — real per-piece TagComboBox fields, same
+// pattern UploadBookAboutMockup.tsx's own book-level Composer/Arranger
+// fields already use. Real callers (EditPieceModal.tsx/EditBookModal.tsx/
+// BookUploadAboutStep.tsx) source their options from the real, unpaginated
+// GET /api/people — this mockup has no backend to call, same "hardcoded
+// fixture stands in for the lookup table" treatment INSTRUMENT_OPTIONS
+// gets elsewhere in this app's mockups. Deliberately includes one name
+// (Louis Köhler) not credited on any of the three fixture pieces below —
+// something for the "type to search existing" path to actually find.
+const PEOPLE_OPTIONS: Tag[] = [
+  { id: 1, name: 'J. Burgmüller' },
+  { id: 2, name: 'Fr. Chopin' },
+  { id: 3, name: 'Louis Köhler' },
+]
 
 // Same 3 pieces, same colors (PALETTE[0..2] from Screen 4's Garden
 // Variety palette), same book — carried forward for continuity rather
@@ -64,8 +82,8 @@ const PIECES: PieceFixture[] = [
     isLast: false,
     color: '#7a9c6b',
     title: 'Prelude in C',
-    composer: 'J. Burgmüller',
-    arranger: '',
+    composer: [PEOPLE_OPTIONS[0]],
+    arranger: [],
   },
   {
     start: 5,
@@ -73,8 +91,8 @@ const PIECES: PieceFixture[] = [
     isLast: false,
     color: '#b87aaf',
     title: 'Nocturne',
-    composer: 'Fr. Chopin',
-    arranger: '',
+    composer: [PEOPLE_OPTIONS[1]],
+    arranger: [],
   },
   {
     start: 7,
@@ -82,8 +100,8 @@ const PIECES: PieceFixture[] = [
     isLast: true,
     color: '#5c8a8a',
     title: 'Waltz in A♭',
-    composer: 'Fr. Chopin',
-    arranger: '',
+    composer: [PEOPLE_OPTIONS[1]],
+    arranger: [],
   },
 ]
 
@@ -448,7 +466,7 @@ function PageLightbox({
 }
 
 interface FormValues {
-  pieces: { title: string; composer: string; arranger: string }[]
+  pieces: { title: string; composer: Tag[]; arranger: Tag[] }[]
 }
 
 // Matches the `md:` breakpoint (768px) used to switch layouts below.
@@ -496,6 +514,7 @@ export function UploadBookTitlesMockup() {
   }
   const {
     register,
+    control,
     handleSubmit,
     getValues,
     setValue,
@@ -508,10 +527,19 @@ export function UploadBookTitlesMockup() {
   })
 
   // Bulk-cleans every row in one pass — titleCase for Title, nameCase for
-  // Composer/Arranger — see lib/textCase.ts (shared with the real build,
-  // not a local copy — it's pure logic, not a component, same reasoning
-  // pieceSplitLogic.ts is shared rather than duplicated). Runs against
-  // whatever's currently in the form (getValues), not the PIECES fixture.
+  // each selected Composer/Arranger's own name — see lib/textCase.ts
+  // (shared with the real build, not a local copy — it's pure logic, not
+  // a component, same reasoning pieceSplitLogic.ts is shared rather than
+  // duplicated). Runs against whatever's currently in the form
+  // (getValues), not the PIECES fixture. Composer/Arranger are Tag[] now
+  // (real per-piece TagComboBox fields, see PEOPLE_OPTIONS above) —
+  // nameCase applies to each selected person's own name, not the field as
+  // a whole; this still matters for a person just typed fresh via the
+  // "New person: '...'" row (raw OCR/filename-derived casing), same as it
+  // always did, but leaves an existing catalog pick's name exactly as
+  // stored (nameCase is idempotent against an already-correctly-cased
+  // name regardless, so this isn't a behavior change for that case, just
+  // a reminder of why it's still safe to apply unconditionally).
   //
   // shouldValidate deliberately omitted (found firing 2026-08-27): this is
   // a formatting convenience, not a submit attempt — a piece with a still-
@@ -525,20 +553,30 @@ export function UploadBookTitlesMockup() {
     const current = getValues()
     current.pieces.forEach((piece, index) => {
       setValue(`pieces.${index}.title`, titleCase(piece.title), { shouldDirty: true })
-      setValue(`pieces.${index}.composer`, nameCase(piece.composer), { shouldDirty: true })
-      setValue(`pieces.${index}.arranger`, nameCase(piece.arranger), { shouldDirty: true })
+      setValue(
+        `pieces.${index}.composer`,
+        piece.composer.map((t) => ({ ...t, name: nameCase(t.name) })),
+        { shouldDirty: true },
+      )
+      setValue(
+        `pieces.${index}.arranger`,
+        piece.arranger.map((t) => ({ ...t, name: nameCase(t.name) })),
+        { shouldDirty: true },
+      )
     })
     // setValue writes straight to each field's DOM value without firing a
     // native input event, so the per-field onChange-driven autosize below
     // never sees this — resize every field in one pass afterward instead.
+    // Only Title is a <textarea> now; Composer/Arranger's TagComboBox
+    // fields size themselves.
     formRef.current
       ?.querySelectorAll('textarea')
       .forEach((el) => autosizeTextarea(el as HTMLTextAreaElement))
   }
 
-  // Same ref/onChange autosize wiring composerOrArrangerField needs below —
-  // pulled out for Title too since Title has no sibling-validation logic to
-  // otherwise wrap register's return value for.
+  // Pulled out for Title since it has no sibling-validation logic to
+  // otherwise wrap register's return value for (Composer/Arranger's own
+  // sibling-presence check now lives in each Controller's `rules` below).
   function titleField(index: number) {
     const registered = register(`pieces.${index}.title`, { required: true, maxLength: 255 })
     return {
@@ -554,43 +592,31 @@ export function UploadBookTitlesMockup() {
     }
   }
 
-  // Composer and Arranger validate each other: either one being non-blank
-  // satisfies both — but only when REQUIRE_COMPOSER_OR_ARRANGER is true in
-  // the first place (the book supplies neither on its own). When Arranger
-  // is hidden (SHOW_ARRANGER_FIELD false), REQUIRE_COMPOSER_OR_ARRANGER is
-  // always false too — the book's own arranger already satisfies the
-  // backend's requirement via inheritance — so this never blocks
-  // submission on a field the user can no longer even see. Wraps
-  // register's own onBlur to also re-trigger the sibling field's
-  // validation, so blurring Arranger after typing into it clears a
-  // Composer error that was showing (not just the reverse) — RHF's own
-  // validate function reads the sibling's current value fine on its own,
-  // but doesn't know to *re-run* the sibling's validation when a
-  // different field changes without this nudge.
-  function composerOrArrangerField(field: 'composer' | 'arranger', index: number) {
+  // Composer and Arranger validate each other: either one having at least
+  // one person satisfies both — but only when REQUIRE_COMPOSER_OR_ARRANGER
+  // is true in the first place (the book supplies neither on its own).
+  // When Arranger is hidden (SHOW_ARRANGER_FIELD false),
+  // REQUIRE_COMPOSER_OR_ARRANGER is always false too — the book's own
+  // arranger already satisfies the backend's requirement via inheritance —
+  // so this never blocks submission on a field the user can no longer even
+  // see. This checks *presence* only (does the array have anything in it),
+  // not format — TagComboBox's own "pick existing or create new" flow
+  // can't produce a blank/malformed entry, so there's nothing else worth
+  // validating here (direct instruction: format validation on top of that
+  // would be redundant). Composer/arrangerField's own onChange re-triggers
+  // the sibling's validation immediately (not on blur, unlike the old
+  // textarea version — TagComboBox's interaction model is pick-or-create,
+  // not continuous typing with a natural blur point per keystroke), so
+  // adding a name to Arranger clears a Composer error that was showing
+  // (not just the reverse) right away.
+  function composerOrArrangerRules(field: 'composer' | 'arranger', index: number) {
     const other = field === 'composer' ? 'arranger' : 'composer'
-    const registered = register(`pieces.${index}.${field}`, {
-      maxLength: 255,
-      validate: (value) =>
-        !REQUIRE_COMPOSER_OR_ARRANGER ||
-        !!value.trim() ||
-        !!getValues(`pieces.${index}.${other}`).trim() ||
-        'Composer or arranger required',
-    })
     return {
-      ...registered,
-      ref: (el: HTMLTextAreaElement | null) => {
-        registered.ref(el)
-        autosizeTextarea(el)
-      },
-      onChange: (event: ChangeEvent<HTMLTextAreaElement>) => {
-        void registered.onChange(event)
-        autosizeTextarea(event.currentTarget)
-      },
-      onBlur: (event: FocusEvent<HTMLTextAreaElement>) => {
-        registered.onBlur(event)
-        void trigger(`pieces.${index}.${other}`)
-      },
+      validate: (value: Tag[]) =>
+        !REQUIRE_COMPOSER_OR_ARRANGER ||
+        value.length > 0 ||
+        getValues(`pieces.${index}.${other}`).length > 0 ||
+        'Composer or arranger required',
     }
   }
 
@@ -720,14 +746,23 @@ export function UploadBookTitlesMockup() {
                       )}
                     </div>
                     <div>
-                      <textarea
-                        rows={1}
-                        className={`w-full resize-none overflow-hidden rounded-md border bg-paper-raised px-2.5 py-1.5 text-sm text-ink ${
-                          composerError ? 'border-red-700' : 'border-border'
-                        }`}
-                        placeholder="Composer"
-                        onKeyDown={preventTextareaNewline}
-                        {...composerOrArrangerField('composer', index)}
+                      <Controller
+                        name={`pieces.${index}.composer`}
+                        control={control}
+                        rules={composerOrArrangerRules('composer', index)}
+                        render={({ field }) => (
+                          <TagComboBox
+                            label="Composer"
+                            hideLabel
+                            options={PEOPLE_OPTIONS}
+                            selected={field.value}
+                            multiple
+                            onChange={(next) => {
+                              field.onChange(next)
+                              void trigger(`pieces.${index}.arranger`)
+                            }}
+                          />
+                        )}
                       />
                       {composerError && (
                         <span className="mt-0.5 flex items-center gap-1 text-xs text-red-700">
@@ -738,14 +773,23 @@ export function UploadBookTitlesMockup() {
                     </div>
                     {SHOW_ARRANGER_FIELD && (
                       <div>
-                        <textarea
-                          rows={1}
-                          className={`w-full resize-none overflow-hidden rounded-md border bg-paper-raised px-2.5 py-1.5 text-sm text-ink ${
-                            arrangerError ? 'border-red-700' : 'border-border'
-                          }`}
-                          placeholder="Arranger"
-                          onKeyDown={preventTextareaNewline}
-                          {...composerOrArrangerField('arranger', index)}
+                        <Controller
+                          name={`pieces.${index}.arranger`}
+                          control={control}
+                          rules={composerOrArrangerRules('arranger', index)}
+                          render={({ field }) => (
+                            <TagComboBox
+                              label="Arranger"
+                              hideLabel
+                              options={PEOPLE_OPTIONS}
+                              selected={field.value}
+                              multiple
+                              onChange={(next) => {
+                                field.onChange(next)
+                                void trigger(`pieces.${index}.composer`)
+                              }}
+                            />
+                          )}
                         />
                         {arrangerError && (
                           <span className="mt-0.5 flex items-center gap-1 text-xs text-red-700">
@@ -810,15 +854,22 @@ export function UploadBookTitlesMockup() {
                       )}
                     </div>
                     <div>
-                      <label className="mb-1 block text-sm text-ink-soft">Composer</label>
-                      <textarea
-                        rows={1}
-                        className={`w-full resize-none overflow-hidden rounded-md border bg-paper-raised px-3 py-2 text-base text-ink ${
-                          composerError ? 'border-red-700' : 'border-border'
-                        }`}
-                        placeholder="Composer"
-                        onKeyDown={preventTextareaNewline}
-                        {...composerOrArrangerField('composer', index)}
+                      <Controller
+                        name={`pieces.${index}.composer`}
+                        control={control}
+                        rules={composerOrArrangerRules('composer', index)}
+                        render={({ field }) => (
+                          <TagComboBox
+                            label="Composer"
+                            options={PEOPLE_OPTIONS}
+                            selected={field.value}
+                            multiple
+                            onChange={(next) => {
+                              field.onChange(next)
+                              void trigger(`pieces.${index}.arranger`)
+                            }}
+                          />
+                        )}
                       />
                       {composerError && (
                         <span className="mt-1 flex items-center gap-1 text-xs text-red-700">
@@ -829,15 +880,22 @@ export function UploadBookTitlesMockup() {
                     </div>
                     {SHOW_ARRANGER_FIELD && (
                       <div>
-                        <label className="mb-1 block text-sm text-ink-soft">Arranger</label>
-                        <textarea
-                          rows={1}
-                          className={`w-full resize-none overflow-hidden rounded-md border bg-paper-raised px-3 py-2 text-base text-ink ${
-                            arrangerError ? 'border-red-700' : 'border-border'
-                          }`}
-                          placeholder="Arranger"
-                          onKeyDown={preventTextareaNewline}
-                          {...composerOrArrangerField('arranger', index)}
+                        <Controller
+                          name={`pieces.${index}.arranger`}
+                          control={control}
+                          rules={composerOrArrangerRules('arranger', index)}
+                          render={({ field }) => (
+                            <TagComboBox
+                              label="Arranger"
+                              options={PEOPLE_OPTIONS}
+                              selected={field.value}
+                              multiple
+                              onChange={(next) => {
+                                field.onChange(next)
+                                void trigger(`pieces.${index}.composer`)
+                              }}
+                            />
+                          )}
                         />
                         {arrangerError && (
                           <span className="mt-1 flex items-center gap-1 text-xs text-red-700">

@@ -16,8 +16,8 @@ import {
 import { updateBook, getBookPageThumbnailUrl } from '../api/books'
 import { lookupImslp } from '../api/imslp'
 import { listInstruments, listSheetTypes } from '../api/lookups'
+import { listPeople } from '../api/people'
 import { ApiError } from '../api/client'
-import { namesToText, textToNames } from '../lib/joinNames'
 import type { Book, BookWriteRequest, Tag } from '../api/types'
 import { TagComboBox } from '../components/TagComboBox'
 import { SingleSelect } from '../components/SingleSelect'
@@ -36,8 +36,8 @@ const CURRENT_STEP = 3
 
 interface FormValues {
   bookTitle: string
-  composer: string
-  arranger: string
+  composer: Tag[]
+  arranger: Tag[]
   yearWritten: string
   workOpusNumber: string
   publisher: string
@@ -49,17 +49,16 @@ interface FormValues {
   description: string
 }
 
-// Composer/Arranger are ordered Person lists now (composer/arranger
-// overhaul, migration 00020) — bridged to/from this still-plain-text field
-// as a comma-separated string via namesToText/textToNames (lib/joinNames.ts).
-// EditBookModal.tsx's own composer/arranger fields got a real multi-person
-// TagComboBox in Stage C; this wizard screen deliberately did not (out of
-// that stage's scope) and still uses this bridge.
+// Composer/Arranger are ordered Person lists (composer/arranger overhaul,
+// migration 00020) — real TagComboBox fields, same shape and pattern as
+// EditBookModal.tsx's own Stage C retrofit (this screen was deliberately
+// left on a plain-text comma bridge at the time, out of that stage's named
+// scope; closed 2026-09-01, direct request).
 function bookToFormValues(book: Book): FormValues {
   return {
     bookTitle: book.bookTitle,
-    composer: namesToText(book.composer.map((p) => p.name)),
-    arranger: namesToText(book.arranger.map((p) => p.name)),
+    composer: book.composer,
+    arranger: book.arranger,
     yearWritten: book.yearWritten ?? '',
     workOpusNumber: book.workOpusNumber ?? '',
     publisher: book.publisher ?? '',
@@ -91,8 +90,8 @@ function stripImslpPrefix(value: string): string {
 function formValuesToWriteRequest(data: FormValues): BookWriteRequest {
   return {
     bookTitle: data.bookTitle,
-    composers: textToNames(data.composer),
-    arrangers: textToNames(data.arranger),
+    composers: data.composer.map((t) => t.name),
+    arrangers: data.arranger.map((t) => t.name),
     yearWritten: data.yearWritten || null,
     workOpusNumber: data.workOpusNumber || null,
     sheetTypeName: data.sheetType || null,
@@ -190,9 +189,13 @@ export function BookUploadAboutStep({
       const current = getValues()
       // Only fields currently blank — this is meant to save typing, not
       // silently overwrite something already entered (design mockup's
-      // own rule, carried into the real build).
-      if (!current.composer && info.composer) {
-        setValue('composer', info.composer)
+      // own rule, carried into the real build). Composer is an ordered
+      // Person list now — id: -1 is a sentinel for a not-yet-resolved
+      // name-only entry, same as EditBookModal.tsx's own IMSLP autofill;
+      // the write request only ever sends the name (formValuesToWriteRequest
+      // above), so the real id is resolved server-side via find-or-create.
+      if (current.composer.length === 0 && info.composer) {
+        setValue('composer', [{ id: -1, name: info.composer }])
         filled.add('composer')
       }
       if (!current.yearWritten && info.yearWritten) {
@@ -240,6 +243,10 @@ export function BookUploadAboutStep({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- deliberate one-shot on mount: filename detection already ran server-side before this screen existed, this just reacts to its result once. Re-running on every render (runImslpAutofill is recreated each render) would refire the whole fetch/highlight sequence any time this component re-renders for an unrelated reason.
   }, [])
 
+  // People catalog (composer/arranger overhaul, Stage C pattern) — same
+  // unpaginated listPeople() call as EditPieceModal.tsx/EditBookModal.tsx's
+  // own Composer/Arranger TagComboBox option source.
+  const { data: peopleOptions = [] } = useQuery({ queryKey: ['people'], queryFn: () => listPeople() })
   const { data: sheetTypeOptions = [] } = useQuery({
     queryKey: ['sheetTypes'],
     queryFn: listSheetTypes,
@@ -450,33 +457,44 @@ export function BookUploadAboutStep({
           </div>
 
           <div className="flex flex-col gap-3 min-[525px]:flex-row">
-            <div className="flex min-w-0 flex-1 flex-col gap-1">
-              <label htmlFor="f-composer" className="flex items-center gap-1 text-sm text-ink-soft">
-                Composer
-                <InfoTooltip
-                  message="If neither composer nor arranger is set here, you will be later prompted to enter one for each piece."
-                  ariaLabel="What happens if Composer and Arranger are both left blank"
-                  triggerClassName="text-[#9d9892] hover:text-ink-soft"
-                >
-                  <IconInfoCircle size={13} />
-                </InfoTooltip>
-              </label>
-              <input
-                id="f-composer"
-                placeholder="e.g. Robert Schumann"
-                className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 placeholder:text-ink-soft/40 placeholder:italic ${imslpFilledFields.has('composer') ? 'ring-2 ring-accent-on-dark' : ''}`}
-                {...register('composer', { maxLength: 255 })}
+            <div className="min-w-0 flex-1">
+              <Controller
+                name="composer"
+                control={control}
+                render={({ field }) => (
+                  <TagComboBox
+                    label="Composer"
+                    options={peopleOptions}
+                    selected={field.value}
+                    multiple
+                    onChange={field.onChange}
+                    highlighted={imslpFilledFields.has('composer')}
+                    labelExtra={
+                      <InfoTooltip
+                        message="If neither composer nor arranger is set here, you will be later prompted to enter one for each piece."
+                        ariaLabel="What happens if Composer and Arranger are both left blank"
+                        triggerClassName="text-[#9d9892] hover:text-ink-soft"
+                      >
+                        <IconInfoCircle size={13} />
+                      </InfoTooltip>
+                    }
+                  />
+                )}
               />
             </div>
-            <div className="flex min-w-0 flex-1 flex-col gap-1">
-              <label htmlFor="f-arranger" className="text-sm text-ink-soft">
-                Arranger
-              </label>
-              <input
-                id="f-arranger"
-                placeholder="e.g. Louis Köhler"
-                className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
-                {...register('arranger', { maxLength: 255 })}
+            <div className="min-w-0 flex-1">
+              <Controller
+                name="arranger"
+                control={control}
+                render={({ field }) => (
+                  <TagComboBox
+                    label="Arranger"
+                    options={peopleOptions}
+                    selected={field.value}
+                    multiple
+                    onChange={field.onChange}
+                  />
+                )}
               />
             </div>
           </div>

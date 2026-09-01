@@ -11,6 +11,8 @@
 // storage key is enough because only one book import is ever in progress
 // in this UI at a time.
 
+import type { Tag } from '../api/types'
+
 const STORAGE_KEY = 'sonneck-book-wizard-draft'
 
 // The step to resume into — 'file' is deliberately excluded, since that
@@ -42,7 +44,15 @@ export interface WizardDraftData {
     single: number[]
     double: number[]
   }
-  pieceFields: { title: string; composer: string; arranger: string }[]
+  // composer/arranger became ordered Person lists (Tag[]) when the Titles
+  // step's per-piece fields were ported to a real TagComboBox — a draft
+  // saved before that port (plain strings) is a real shape mismatch, not
+  // just a missing field, so isWizardDraftData below checks each piece's
+  // own composer/arranger are arrays, not just that pieceFields itself is
+  // one, to correctly reject a stale-shaped draft rather than restoring it
+  // and crashing the first time TagComboBox tries to render a string as
+  // its `selected` prop.
+  pieceFields: { title: string; composer: Tag[]; arranger: Tag[] }[]
   // Printed-PDF page offset (design doc §5, added post-launch), set on
   // "About this book" — see BookUploadAboutStep.tsx. A draft saved before
   // this field existed simply fails isWizardDraftData below and is
@@ -64,6 +74,13 @@ function isWizardDraftData(value: unknown): value is WizardDraftData {
     Array.isArray(pa?.single) &&
     Array.isArray(pa?.double) &&
     Array.isArray(v.pieceFields) &&
+    (v.pieceFields as unknown[]).every(
+      (pf) =>
+        typeof pf === 'object' &&
+        pf !== null &&
+        Array.isArray((pf as Record<string, unknown>).composer) &&
+        Array.isArray((pf as Record<string, unknown>).arranger),
+    ) &&
     typeof v.pageOffset === 'number'
   )
 }

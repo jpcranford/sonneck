@@ -4,7 +4,7 @@ import { useMutation } from '@tanstack/react-query'
 import { IconBook2, IconCircleCheckFilled } from '@tabler/icons-react'
 import { deleteBook, getBook } from '../api/books'
 import { ApiError } from '../api/client'
-import type { Book, Piece as ApiPiece } from '../api/types'
+import type { Book, Piece as ApiPiece, Tag } from '../api/types'
 import { joinNames } from '../lib/joinNames'
 import { computeLayout, type PageAssignments, type Piece } from '../lib/pieceSplitLogic'
 import { scrollAppContentToTop } from '../lib/scrollContainer'
@@ -104,7 +104,7 @@ function ImportSuccessScreen({
   )
 }
 
-type PieceFields = { title: string; composer: string; arranger: string }
+type PieceFields = { title: string; composer: Tag[]; arranger: Tag[] }
 
 // Carries a piece's already-typed fields across a Split-step revision —
 // matched by (start, end) against oldPieces, not by array position, so a
@@ -120,7 +120,7 @@ function reconcilePieceFields(
 ): PieceFields[] {
   return newPieces.map((piece) => {
     const oldIndex = oldPieces.findIndex((p) => p.start === piece.start && p.end === piece.end)
-    return oldIndex !== -1 ? oldFields[oldIndex] : { title: '', composer: '', arranger: '' }
+    return oldIndex !== -1 ? oldFields[oldIndex] : { title: '', composer: [], arranger: [] }
   })
 }
 
@@ -444,8 +444,8 @@ export function BookUploadWizard({ onExit }: BookUploadWizardProps) {
   const namedPieces: NamedPiece[] = pieces.map((piece, i) => ({
     ...piece,
     title: pieceFields[i]?.title ?? '',
-    composer: pieceFields[i]?.composer ?? '',
-    arranger: pieceFields[i]?.arranger ?? '',
+    composer: pieceFields[i]?.composer ?? [],
+    arranger: pieceFields[i]?.arranger ?? [],
   }))
   return (
     <BookUploadConfirmStep

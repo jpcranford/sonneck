@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { IconArrowRight, IconXFilled } from '@tabler/icons-react'
 import type { Tag } from '../api/types'
@@ -24,6 +24,8 @@ export function TagComboBox({
   sequenceStyle,
   newOptionLabel,
   highlighted,
+  labelExtra,
+  hideLabel,
 }: {
   label: string
   options: Tag[]
@@ -63,6 +65,22 @@ export function TagComboBox({
   // autofill target already uses elsewhere in this app (EditPieceModal.tsx's
   // Opus/Publisher/etc. fields). Caller clears it after ~2.4s, same timing.
   highlighted?: boolean
+  // Extra content appended right after the label text (e.g. an
+  // InfoTooltip) — matches the `flex items-center gap-1` label pattern
+  // every plain-<label>-based field in this app already uses for this
+  // (EditPieceModal.tsx's Year Written/Publisher rows). Needed because
+  // TagComboBox renders its own <label> internally, so a caller can't
+  // just wrap it in a bigger label element the way a plain <input>
+  // field does.
+  labelExtra?: ReactNode
+  // Skips rendering the internal <label> entirely (not just an empty
+  // string, which would still reserve its line height) — for a dense
+  // table/grid context where a column header already labels the field
+  // once, and repeating it on every row would be redundant. The Book
+  // Upload Wizard's "Name each piece" step (UploadBookTitlesMockup.tsx)
+  // is the first caller: its desktop layout has one shared column-header
+  // row above a list of per-piece TagComboBox fields.
+  hideLabel?: boolean
 }) {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
@@ -186,7 +204,12 @@ export function TagComboBox({
 
   return (
     <div className="flex flex-col gap-1">
-      <label className="text-sm text-ink-soft">{label}</label>
+      {!hideLabel && (
+        <label className="flex items-center gap-1 text-sm text-ink-soft">
+          {label}
+          {labelExtra}
+        </label>
+      )}
       <div ref={wrapperRef} className="relative">
         <div
           onClick={() => inputRef.current?.focus()}
@@ -291,6 +314,13 @@ export function TagComboBox({
               onBlur={() => setTimeout(() => setOpen(false), 150)}
               onKeyDown={handleKeyDown}
               placeholder={selected.length === 0 ? 'Type to search or add…' : ''}
+              // The visible <label> above isn't programmatically associated
+              // with this input (no htmlFor/id pairing) even when shown, so
+              // hideLabel — which removes even the visual fallback a sighted
+              // user would otherwise read off the column header — gets an
+              // explicit aria-label instead, rather than leaving the field
+              // with no accessible name at all.
+              aria-label={hideLabel ? label : undefined}
               className="min-w-[100px] flex-1 border-none bg-transparent text-sm text-ink outline-none focus-visible:outline-none"
             />
           )}
