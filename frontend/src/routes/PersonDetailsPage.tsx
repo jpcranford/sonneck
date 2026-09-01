@@ -28,6 +28,7 @@ import { EditPersonModal } from '../components/EditPersonModal'
 import { UploadPortraitModal } from '../components/UploadPortraitModal'
 import { ContextMenu } from '../components/ContextMenu'
 import { ClickableCard } from '../components/ClickableCard'
+import { PieceContextMenu } from '../components/PieceContextMenu'
 import { MarkdownText } from '../components/MarkdownText'
 import { Modal } from '../components/Modal'
 import { TagComboBox } from '../components/TagComboBox'
@@ -153,32 +154,39 @@ function WorkThumbnail({ piece, className }: { piece: Piece; className: string }
   )
 }
 
+// Right-click/long-press menu: shares PieceContextMenu with the Piece
+// Library's own cards and Book Details' own PieceGrid/PieceList (see that
+// file's own comment on the same pattern) rather than a separate copy —
+// same favorite/edit/delete items, same hideTriggerButton convention (no
+// visible "⋯" trigger; touch users get ContextMenu's built-in long-press
+// instead, same as every other card using this component).
 function WorkGrid({ pieces, personId }: { pieces: Piece[]; personId: number }) {
   return (
     <div className="grid grid-cols-[repeat(auto-fill,minmax(112px,1fr))] gap-3">
       {pieces.map((piece) => (
-        <ClickableCard
-          key={piece.id}
-          to={`/pieces/${piece.id}`}
-          state={{ backLabel: 'Person' }}
-          className="flex flex-col overflow-hidden rounded-lg border border-border bg-paper-raised text-left"
-        >
-          <WorkThumbnail piece={piece} className="aspect-[180/132] rounded-none border-0 border-b" />
-          <div className="flex flex-col gap-0.5 px-2 py-1.5">
-            <p className="flex min-w-0 items-center gap-1 font-display text-[0.8rem] font-medium text-ink">
-              <span className="truncate">{workTitle(piece)}</span>
-              {piece.favorite && (
-                <span className="shrink-0 text-accent" title="Favorite">
-                  <IconHeartFilled size={13} />
-                </span>
-              )}
-            </p>
-            <p className="text-[0.65rem] text-ink-soft/80">
-              {piece.yearWritten.value || '—'}
-              {roleFor(piece, personId) === 'Arranger' && ' • as Arranger'}
-            </p>
-          </div>
-        </ClickableCard>
+        <PieceContextMenu key={piece.id} piece={piece} hideTriggerButton>
+          <ClickableCard
+            to={`/pieces/${piece.id}`}
+            state={{ backLabel: 'Person' }}
+            className="flex flex-col overflow-hidden rounded-lg border border-border bg-paper-raised text-left"
+          >
+            <WorkThumbnail piece={piece} className="aspect-[180/132] rounded-none border-0 border-b" />
+            <div className="flex flex-col gap-0.5 px-2 py-1.5">
+              <p className="flex min-w-0 items-center gap-1 font-display text-[0.8rem] font-medium text-ink">
+                <span className="truncate">{workTitle(piece)}</span>
+                {piece.favorite && (
+                  <span className="shrink-0 text-accent" title="Favorite">
+                    <IconHeartFilled size={13} />
+                  </span>
+                )}
+              </p>
+              <p className="text-[0.65rem] text-ink-soft/80">
+                {piece.yearWritten.value || '—'}
+                {roleFor(piece, personId) === 'Arranger' && ' • as Arranger'}
+              </p>
+            </div>
+          </ClickableCard>
+        </PieceContextMenu>
       ))}
     </div>
   )
@@ -194,36 +202,37 @@ function WorkList({ pieces, personId }: { pieces: Piece[]; personId: number }) {
       </div>
       <div>
         {pieces.map((piece) => (
-          <ClickableCard
-            key={piece.id}
-            to={`/pieces/${piece.id}`}
-            state={{ backLabel: 'Person' }}
-            className={`grid grid-cols-[96px_1fr_56px] items-center gap-3 border-t border-border px-1.5 py-2.5 text-left hover:rounded-md hover:bg-accent-soft ${ROW_COLLAPSE_CLASS}`}
-          >
-            <div className="text-center text-sm font-medium tabular-nums text-ink">
-              {piece.yearWritten.value || '—'}
-            </div>
-            <div className="min-w-0">
-              <p className="flex flex-wrap items-center gap-1.5 font-display text-[0.92rem] font-medium text-ink">
-                {workTitle(piece)}
-                {piece.favorite && (
-                  <span className="text-accent" title="Favorite">
-                    <IconHeartFilled size={13} />
-                  </span>
-                )}
-                <RoleBadge role={roleFor(piece, personId)} />
-              </p>
-              <p className="mt-0.5 text-xs text-ink-soft">{workMetaLine(piece)}</p>
-              <TagPills
-                keys={piece.keys}
-                sheetType={piece.sheetType.inherited ? null : piece.sheetType.value}
-                instruments={piece.instruments.inherited ? [] : piece.instruments.values}
-                userTags={piece.userTags}
-                className="mt-1.5"
-              />
-            </div>
-            <WorkThumbnail piece={piece} className={`h-[42px] w-14 rounded-md ${THUMB_HIDE_CLASS}`} />
-          </ClickableCard>
+          <PieceContextMenu key={piece.id} piece={piece} hideTriggerButton>
+            <ClickableCard
+              to={`/pieces/${piece.id}`}
+              state={{ backLabel: 'Person' }}
+              className={`grid grid-cols-[96px_1fr_56px] items-center gap-3 border-t border-border px-1.5 py-2.5 text-left hover:rounded-md hover:bg-accent-soft ${ROW_COLLAPSE_CLASS}`}
+            >
+              <div className="text-center text-sm font-medium tabular-nums text-ink">
+                {piece.yearWritten.value || '—'}
+              </div>
+              <div className="min-w-0">
+                <p className="flex flex-wrap items-center gap-1.5 font-display text-[0.92rem] font-medium text-ink">
+                  {workTitle(piece)}
+                  {piece.favorite && (
+                    <span className="text-accent" title="Favorite">
+                      <IconHeartFilled size={13} />
+                    </span>
+                  )}
+                  <RoleBadge role={roleFor(piece, personId)} />
+                </p>
+                <p className="mt-0.5 text-xs text-ink-soft">{workMetaLine(piece)}</p>
+                <TagPills
+                  keys={piece.keys}
+                  sheetType={piece.sheetType.inherited ? null : piece.sheetType.value}
+                  instruments={piece.instruments.inherited ? [] : piece.instruments.values}
+                  userTags={piece.userTags}
+                  className="mt-1.5"
+                />
+              </div>
+              <WorkThumbnail piece={piece} className={`h-[42px] w-14 rounded-md ${THUMB_HIDE_CLASS}`} />
+            </ClickableCard>
+          </PieceContextMenu>
         ))}
       </div>
     </div>

@@ -44,7 +44,13 @@ import type { Tag } from '../api/types'
 // Piece rows are plain, non-navigating rows (not real ClickableCard links)
 // since these piece ids don't exist in any real database — same "cards
 // aren't real links yet" posture PeopleLibrarySample.tsx already
-// established for its own person cards.
+// established for its own person cards. They do get the same right-click/
+// long-press context menu the real page's works list has (added
+// 2026-08-31, mockup-parity — see workContextMenuItems below): the
+// favorite toggle is genuinely interactive against local state, same as
+// the avatar's own hasPortrait toggle; Edit/Delete Piece use the same
+// lastAction stub-message convention as Edit Person, since there's
+// nothing real to open/delete here either.
 // ---------------------------------------------------------------------
 
 interface MockWork {
@@ -393,39 +399,90 @@ function WorkThumbnail({ paletteIndex, className }: { paletteIndex: number; clas
 const THUMB_HIDE_CLASS = 'max-[501px]:hidden'
 const ROW_COLLAPSE_CLASS = 'max-[501px]:grid-cols-[72px_1fr]'
 
-function WorkGrid({ works }: { works: MockWork[] }) {
+// workContextMenuItems mirrors the real page's own PieceContextMenu
+// exactly — same three items in the same order (favorite toggle/Edit
+// Piece/destructive Delete Piece) — kept in sync per this app's standing
+// mockup-parity convention even though this fixture's piece ids don't
+// exist in any real database (see this file's own header comment): the
+// favorite toggle is genuinely local-state-interactive, same treatment
+// the avatar's own context menu already gets (hasPortrait), while Edit/
+// Delete surface the same lastAction stub-message pattern already
+// established here for Edit Person and Delete Person, since neither has
+// anything real to open/delete against a fixture.
+function workContextMenuItems(
+  work: MockWork,
+  onToggleFavorite: (id: number) => void,
+  onAction: (message: string) => void,
+): { label: string; onSelect: () => void; destructive?: boolean }[] {
+  return [
+    {
+      label: work.favorite ? 'Remove from Favorites' : 'Add to Favorites',
+      onSelect: () => onToggleFavorite(work.id),
+    },
+    {
+      label: 'Edit Piece',
+      onSelect: () => onAction(`Mock action: this opens the Edit Piece modal for "${workTitle(work)}".`),
+    },
+    {
+      label: 'Delete Piece',
+      destructive: true,
+      onSelect: () => {
+        if (window.confirm(`Delete "${workTitle(work)}"? This can't be undone.`)) {
+          onAction(`Mock action: "${workTitle(work)}" would be deleted.`)
+        }
+      },
+    },
+  ]
+}
+
+function WorkGrid({
+  works,
+  onToggleFavorite,
+  onAction,
+}: {
+  works: MockWork[]
+  onToggleFavorite: (id: number) => void
+  onAction: (message: string) => void
+}) {
   return (
     <div className="grid grid-cols-[repeat(auto-fill,minmax(112px,1fr))] gap-3">
       {works.map((work, index) => (
-        <div
-          key={work.id}
-          className="flex flex-col overflow-hidden rounded-lg border border-border bg-paper-raised text-left"
-        >
-          <WorkThumbnail paletteIndex={index} className="aspect-[180/132] rounded-none border-0 border-b" />
-          <div className="flex flex-col gap-0.5 px-2 py-1.5">
-            <p className="flex min-w-0 items-center gap-1 font-display text-[0.8rem] font-medium text-ink">
-              <span className="truncate">{workTitle(work)}</span>
-              {work.favorite && (
-                <span className="shrink-0 text-accent" title="Favorite">
-                  <IconHeartFilled size={13} />
-                </span>
-              )}
-            </p>
-            <p className="text-[0.65rem] text-ink-soft/80">
-              {work.yearWritten ?? '—'}
-              {/* Bullet separator, not an interpunct — CLAUDE.md's own
-                  standing dot-separator convention, which keeps drifting
-                  into freshly-built screens; caught here directly. */}
-              {work.role === 'Arranger' && ' • as Arranger'}
-            </p>
+        <ContextMenu key={work.id} items={workContextMenuItems(work, onToggleFavorite, onAction)} hideTriggerButton>
+          <div className="flex flex-col overflow-hidden rounded-lg border border-border bg-paper-raised text-left">
+            <WorkThumbnail paletteIndex={index} className="aspect-[180/132] rounded-none border-0 border-b" />
+            <div className="flex flex-col gap-0.5 px-2 py-1.5">
+              <p className="flex min-w-0 items-center gap-1 font-display text-[0.8rem] font-medium text-ink">
+                <span className="truncate">{workTitle(work)}</span>
+                {work.favorite && (
+                  <span className="shrink-0 text-accent" title="Favorite">
+                    <IconHeartFilled size={13} />
+                  </span>
+                )}
+              </p>
+              <p className="text-[0.65rem] text-ink-soft/80">
+                {work.yearWritten ?? '—'}
+                {/* Bullet separator, not an interpunct — CLAUDE.md's own
+                    standing dot-separator convention, which keeps drifting
+                    into freshly-built screens; caught here directly. */}
+                {work.role === 'Arranger' && ' • as Arranger'}
+              </p>
+            </div>
           </div>
-        </div>
+        </ContextMenu>
       ))}
     </div>
   )
 }
 
-function WorkList({ works }: { works: MockWork[] }) {
+function WorkList({
+  works,
+  onToggleFavorite,
+  onAction,
+}: {
+  works: MockWork[]
+  onToggleFavorite: (id: number) => void
+  onAction: (message: string) => void
+}) {
   return (
     <div className="flex flex-col">
       <div className="grid grid-cols-[96px_1fr_56px] gap-3 px-1.5 pb-2.5 text-[0.7rem] font-medium tracking-wide text-ink-soft uppercase">
@@ -435,34 +492,35 @@ function WorkList({ works }: { works: MockWork[] }) {
       </div>
       <div>
         {works.map((work, index) => (
-          <div
-            key={work.id}
-            className={`grid grid-cols-[96px_1fr_56px] items-center gap-3 border-t border-border px-1.5 py-2.5 text-left hover:rounded-md hover:bg-accent-soft ${ROW_COLLAPSE_CLASS}`}
-          >
-            <div className="text-center text-sm font-medium tabular-nums text-ink">
-              {work.yearWritten ?? '—'}
+          <ContextMenu key={work.id} items={workContextMenuItems(work, onToggleFavorite, onAction)} hideTriggerButton>
+            <div
+              className={`grid grid-cols-[96px_1fr_56px] items-center gap-3 border-t border-border px-1.5 py-2.5 text-left hover:rounded-md hover:bg-accent-soft ${ROW_COLLAPSE_CLASS}`}
+            >
+              <div className="text-center text-sm font-medium tabular-nums text-ink">
+                {work.yearWritten ?? '—'}
+              </div>
+              <div className="min-w-0">
+                <p className="flex flex-wrap items-center gap-1.5 font-display text-[0.92rem] font-medium text-ink">
+                  {workTitle(work)}
+                  {work.favorite && (
+                    <span className="text-accent" title="Favorite">
+                      <IconHeartFilled size={13} />
+                    </span>
+                  )}
+                  <RoleBadge role={work.role} />
+                </p>
+                <p className="mt-0.5 text-xs text-ink-soft">{workMetaLine(work)}</p>
+                <TagPills
+                  keys={[]}
+                  sheetType={work.sheetType}
+                  instruments={[]}
+                  userTags={work.userTags}
+                  className="mt-1.5"
+                />
+              </div>
+              <WorkThumbnail paletteIndex={index} className={`h-[42px] w-14 ${THUMB_HIDE_CLASS}`} />
             </div>
-            <div className="min-w-0">
-              <p className="flex flex-wrap items-center gap-1.5 font-display text-[0.92rem] font-medium text-ink">
-                {workTitle(work)}
-                {work.favorite && (
-                  <span className="text-accent" title="Favorite">
-                    <IconHeartFilled size={13} />
-                  </span>
-                )}
-                <RoleBadge role={work.role} />
-              </p>
-              <p className="mt-0.5 text-xs text-ink-soft">{workMetaLine(work)}</p>
-              <TagPills
-                keys={[]}
-                sheetType={work.sheetType}
-                instruments={[]}
-                userTags={work.userTags}
-                className="mt-1.5"
-              />
-            </div>
-            <WorkThumbnail paletteIndex={index} className={`h-[42px] w-14 ${THUMB_HIDE_CLASS}`} />
-          </div>
+          </ContextMenu>
         ))}
       </div>
     </div>
@@ -814,6 +872,15 @@ export function PersonDetailsSample() {
   const [splitPeopleOpen, setSplitPeopleOpen] = useState(false)
   const [workViewMode, setWorkViewMode] = useState<'grid' | 'list'>('list')
   const [lastAction, setLastAction] = useState<string | null>(null)
+  // Lifted into state (was a plain module constant) so the works grid/
+  // list's own right-click/long-press context menu can genuinely toggle
+  // a favorite, same "real local interactivity where it's cheap" posture
+  // the avatar's own hasPortrait toggle already has.
+  const [works, setWorks] = useState<MockWork[]>(SORTED_WORKS)
+
+  function toggleWorkFavorite(id: number) {
+    setWorks((prev) => prev.map((w) => (w.id === id ? { ...w, favorite: !w.favorite } : w)))
+  }
 
   const lifespan = formatLifespan(MOCK_PERSON.birthYear, MOCK_PERSON.deathYear)
 
@@ -883,9 +950,10 @@ export function PersonDetailsSample() {
         <div className="rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-4 py-2 text-sm text-ink-soft">
           Design mockup — <span className="font-medium text-ink">Person Details</span>. Change/remove
           portrait (right-click the avatar, or its camera badge), Upload Portrait's device/Wikipedia +
-          drag-to-pan/zoom adjust step, Split People's ordered replacement picker, and the works
-          grid/list toggle are all genuinely interactive against one fixture person. Edit Person is a
-          stub — that's Phase 5.
+          drag-to-pan/zoom adjust step, Split People's ordered replacement picker, the works grid/list
+          toggle, and right-click/long-press on a work (favorite toggle is real; Edit/Delete Piece are
+          stubs) are all genuinely interactive against one fixture person. Edit Person is a stub —
+          that's Phase 5.
         </div>
       </div>
 
@@ -1007,7 +1075,11 @@ export function PersonDetailsSample() {
           </div>
         </div>
         <div className="px-6 pb-5">
-          {workViewMode === 'grid' ? <WorkGrid works={SORTED_WORKS} /> : <WorkList works={SORTED_WORKS} />}
+          {workViewMode === 'grid' ? (
+            <WorkGrid works={works} onToggleFavorite={toggleWorkFavorite} onAction={setLastAction} />
+          ) : (
+            <WorkList works={works} onToggleFavorite={toggleWorkFavorite} onAction={setLastAction} />
+          )}
         </div>
       </div>
 
