@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -385,6 +385,34 @@ export function PersonDetailsPage() {
   const otherPeople: Tag[] = allPeople
     .filter((p) => p.id !== personId)
     .map((p) => ({ id: p.id, name: p.name }))
+
+  // Keyboard shortcut: E opens the edit menu — same convention as
+  // PiecePage.tsx's own E/F shortcuts and BookDetailsPage.tsx's own E
+  // shortcut (matches the header's "Edit Person" button, just a faster
+  // path to it). No favorite-toggle equivalent here since Person has no
+  // favorite field, same reasoning Book's own version has none either.
+  // Skipped while the modal is already open (its own fields should own
+  // keystrokes then) or while focus is in any text-entry element, so
+  // typing "e" elsewhere on the page is never intercepted. `repeat` guards
+  // against a held-down key re-opening the (already-open, so harmless, but
+  // pointless) modal on every repeat tick.
+  useEffect(() => {
+    if (!person || editOpen) return
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return
+      const target = event.target as HTMLElement | null
+      const tag = target?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target?.isContentEditable) {
+        return
+      }
+      if (event.key.toLowerCase() === 'e') {
+        event.preventDefault()
+        setEditOpen(true)
+      }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [person, editOpen])
 
   const removePortraitMutation = useMutation({
     mutationFn: () => removePersonPortrait(personId),

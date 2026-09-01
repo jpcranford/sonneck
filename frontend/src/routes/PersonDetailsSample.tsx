@@ -1,4 +1,4 @@
-import { useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
+import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
 import { Link } from 'react-router-dom'
 import {
   IconArrowsSplit2,
@@ -899,6 +899,38 @@ export function PersonDetailsSample() {
     }
   }
 
+  function handleEditPerson() {
+    setLastAction('Mock action: this opens the Edit Person modal, not built until Phase 5.')
+  }
+
+  // Keyboard shortcut: E opens the edit menu — mirrors the real
+  // PersonDetailsPage.tsx (added 2026-08-31, mockup-parity), which itself
+  // matches PiecePage.tsx's/BookDetailsPage.tsx's own E shortcut. Calls
+  // the exact same handler the "Edit Person" button does above (the same
+  // Phase-5-stub message, not a real modal — this mockup doesn't have
+  // one). Skipped while Upload Portrait or Split People is open (both are
+  // real, interactive modals here with their own text fields) or while
+  // focus is in any text-entry element, so typing "e" elsewhere is never
+  // intercepted. `repeat` guards against a held-down key re-firing the
+  // stub message on every repeat tick.
+  useEffect(() => {
+    if (uploadPortraitOpen || splitPeopleOpen) return
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return
+      const target = event.target as HTMLElement | null
+      const tag = target?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target?.isContentEditable) {
+        return
+      }
+      if (event.key.toLowerCase() === 'e') {
+        event.preventDefault()
+        handleEditPerson()
+      }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [uploadPortraitOpen, splitPeopleOpen])
+
   return (
     <div className="flex flex-1 flex-col gap-6 p-6 md:p-8">
       {/* Every /mockup/* page's Back control routes to the mockup index,
@@ -935,9 +967,7 @@ export function PersonDetailsSample() {
           <button
             type="button"
             title="Coming in Phase 5 — Edit Person modal"
-            onClick={() =>
-              setLastAction('Mock action: this opens the Edit Person modal, not built until Phase 5.')
-            }
+            onClick={handleEditPerson}
             className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-sm whitespace-nowrap text-ink hover:border-accent max-[360px]:w-[38px] max-[360px]:px-0"
           >
             <IconEditFilled size={16} />
@@ -953,7 +983,8 @@ export function PersonDetailsSample() {
           drag-to-pan/zoom adjust step, Split People's ordered replacement picker, the works grid/list
           toggle, and right-click/long-press on a work (favorite toggle is real; Edit/Delete Piece are
           stubs) are all genuinely interactive against one fixture person. Edit Person is a stub —
-          that's Phase 5.
+          that's Phase 5 — but its "E" keyboard shortcut (matching the real page) still fires the same
+          stub message.
         </div>
       </div>
 
