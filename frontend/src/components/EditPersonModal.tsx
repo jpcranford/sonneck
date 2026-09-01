@@ -347,7 +347,7 @@ export function EditPersonModal({ person, open, onClose }: EditPersonModalProps)
             <p
               className={`text-right text-xs text-ink-soft transition-opacity ${saving ? 'opacity-0' : 'opacity-100'}`}
             >
-              Saving will update {person.pieceCount} {person.pieceCount === 1 ? 'work' : 'works'}
+              Saving will update {person.pieceCount} {person.pieceCount === 1 ? 'piece' : 'pieces'}
             </p>
           )}
           <div className="flex justify-end gap-2">

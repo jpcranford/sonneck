@@ -829,7 +829,7 @@ function SplitPeopleModal({
     names.length === 0
       ? null
       : names.length === 1
-        ? `This will rename "${MOCK_PERSON.name}" to "${names[0]}" — every work and book credit stays exactly where it is.`
+        ? `This will rename "${MOCK_PERSON.name}" to "${names[0]}" — every piece and book credit stays exactly where it is.`
         : `This will split "${MOCK_PERSON.name}"'s ${MOCK_WORKS.length + MOCK_BOOK_CREDITS.length} credits among ${joinNames(names)}, in that order.`
 
   return (
@@ -1105,7 +1105,7 @@ export function PersonDetailsSample() {
       <div className="bg-paper">
         <div className="flex flex-wrap items-center justify-between gap-4 px-6 pb-4">
           <h2 className="font-display text-[0.95rem] font-semibold text-ink-soft">
-            {MOCK_WORKS.length} {MOCK_WORKS.length === 1 ? 'work' : 'works'}
+            {MOCK_WORKS.length} {MOCK_WORKS.length === 1 ? 'piece' : 'pieces'}
           </h2>
           <div className="flex shrink-0 items-center gap-1 rounded-md border border-border p-0.5">
             <button

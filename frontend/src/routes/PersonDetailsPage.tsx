@@ -293,7 +293,7 @@ function SplitPeopleModal({
     names.length === 0
       ? null
       : names.length === 1
-        ? `This will rename "${person.name}" to "${names[0]}" — every work and book credit stays exactly where it is.`
+        ? `This will rename "${person.name}" to "${names[0]}" — every piece and book credit stays exactly where it is.`
         : `This will split "${person.name}"'s ${workCount} credits among ${joinNames(names)}, in that order.`
 
   return (
@@ -621,7 +621,7 @@ export function PersonDetailsPage() {
           <div className="bg-paper">
             <div className="flex flex-wrap items-center justify-between gap-4 px-6 pb-4">
               <h2 className="font-display text-[0.95rem] font-semibold text-ink-soft">
-                {works ? `${works.length} ${works.length === 1 ? 'work' : 'works'}` : '…'}
+                {works ? `${works.length} ${works.length === 1 ? 'piece' : 'pieces'}` : '…'}
               </h2>
               <div className="flex shrink-0 items-center gap-1 rounded-md border border-border p-0.5">
                 <button
@@ -652,7 +652,7 @@ export function PersonDetailsPage() {
               {worksLoading && <p className="text-ink-soft">Loading…</p>}
               {works && works.length === 0 && (
                 <div className="py-6 text-center">
-                  <p className="font-display text-ink">No works yet</p>
+                  <p className="font-display text-ink">No pieces yet</p>
                   <p className="mt-1 text-sm text-ink-soft">
                     Pieces and books crediting this person will appear here.
                   </p>

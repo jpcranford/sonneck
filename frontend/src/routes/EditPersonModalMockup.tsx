@@ -349,7 +349,7 @@ export function EditPersonModalMockup() {
             <p
               className={`text-right text-xs text-ink-soft transition-opacity ${saving ? 'opacity-0' : 'opacity-100'}`}
             >
-              Saving will update {MOCK_WORK_COUNT} works and {MOCK_BOOK_CREDIT_COUNT} books
+              Saving will update {MOCK_WORK_COUNT} pieces and {MOCK_BOOK_CREDIT_COUNT} books
             </p>
             <div className="flex justify-end gap-2">
               <button
