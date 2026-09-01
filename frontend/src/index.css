@@ -109,56 +109,140 @@
     U+A720-A7FF;
 }
 
-/* Rethink Sans, self-hosted (SIL OFL 1.1, Google Fonts) rather than loaded
-   from Google's CDN at runtime — see README > Acknowledgements. Replaces
-   the bare system-font stack general UI chrome (tag pills, metadata lines,
-   small labels — see CLAUDE.md's font-weight usage audit) used to rely on
-   for font-weight: 500/600; some systems (Segoe UI on older Windows, Arial
-   with no Medium cut at all) either silently fall back to 400 or
-   synthesize an inconsistent bold instead. A single variable-font file per
-   subset/style covers the whole 400–800 weight range Google serves for
-   this family — confirmed via the font's own fvar table, not just assumed
-   — so this is 4 files total (latin/latin-ext × normal/italic), not one
-   file per weight the way Libre Baskerville's static cuts need. The old
-   system stack stays as the @theme fallback below in case this file ever
-   fails to load. */
+/* Cabin, self-hosted (SIL OFL 1.1, Google Fonts) rather than loaded from
+   Google's CDN at runtime — see README > Acknowledgements. Replaced
+   Rethink Sans as the sans stack 2026-09-01 (direct request, evaluated via
+   a real side-by-side comparison Artifact against the actual Piece
+   Details mockup before committing — see CLAUDE.md > Frontend for the
+   full trail). Rethink Sans's own @font-face blocks and font files are
+   gone entirely, not kept as a fallback — nothing in the app still
+   references that family name.
+
+   Static per-weight files, NOT a single variable file the way Rethink
+   Sans was: confirmed live against Google's own CSS2 API that Cabin has
+   no variable-font axis, and — a real gotcha worth remembering — a
+   *combined* multi-weight request (`ital,wght@0,400;0,500;0,600;0,700`)
+   silently returned the SAME file for every weight, which looked exactly
+   like "this family has no real Medium/Semibold cut" (the disqualifying
+   failure mode that ruled out the old bare system-font stack in the first
+   place). That was wrong — it was an artifact of the combined-request
+   code path, not a fact about the font. Requesting each weight in total
+   isolation (`ital,wght@0,500` alone, etc.) returned genuinely distinct
+   files every time; self-hosting below uses those isolated-request files.
+   Worth re-checking this way for any future static (non-variable) Google
+   Fonts family before concluding it lacks a weight it appears to lack.
+
+   Five weight/style combos are self-hosted, not just the original
+   400/500: a fresh grep audit (this file's own prior comment on this
+   only checked 400/500) found `font-semibold` (600) genuinely reachable
+   in a sans context too — MarkdownText.tsx's own `strong` renderer, several
+   filter-drawer section labels, grid-card count badges — and `font-bold`
+   (700) on People Library's tiny info-badge glyph. 400 italic covers
+   Markdown `*emphasis*` (MarkdownText's `em` has no override, so it falls
+   through to the browser's default italic rendering — a real cut here
+   beats a synthesized slant). latin + latin-ext × 5 combos = 10 files,
+   ~139KB total — same order of magnitude as Libre Baskerville's own 8
+   static files below. */
 @font-face {
-  font-family: 'Rethink Sans';
+  font-family: 'Cabin';
   font-style: normal;
-  font-weight: 400 800;
+  font-weight: 400;
   font-display: swap;
-  src: url('./assets/fonts/rethink-sans-latin-variable-normal.woff2') format('woff2');
+  src: url('./assets/fonts/cabin-latin-400-normal.woff2') format('woff2');
   unicode-range:
     U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
     U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
-  font-family: 'Rethink Sans';
+  font-family: 'Cabin';
   font-style: normal;
-  font-weight: 400 800;
+  font-weight: 400;
   font-display: swap;
-  src: url('./assets/fonts/rethink-sans-latin-ext-variable-normal.woff2') format('woff2');
+  src: url('./assets/fonts/cabin-latin-ext-400-normal.woff2') format('woff2');
   unicode-range:
     U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
     U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
     U+A720-A7FF;
 }
 @font-face {
-  font-family: 'Rethink Sans';
-  font-style: italic;
-  font-weight: 400 800;
+  font-family: 'Cabin';
+  font-style: normal;
+  font-weight: 500;
   font-display: swap;
-  src: url('./assets/fonts/rethink-sans-latin-variable-italic.woff2') format('woff2');
+  src: url('./assets/fonts/cabin-latin-500-normal.woff2') format('woff2');
   unicode-range:
     U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
     U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
-  font-family: 'Rethink Sans';
-  font-style: italic;
-  font-weight: 400 800;
+  font-family: 'Cabin';
+  font-style: normal;
+  font-weight: 500;
   font-display: swap;
-  src: url('./assets/fonts/rethink-sans-latin-ext-variable-italic.woff2') format('woff2');
+  src: url('./assets/fonts/cabin-latin-ext-500-normal.woff2') format('woff2');
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Cabin';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('./assets/fonts/cabin-latin-600-normal.woff2') format('woff2');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Cabin';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('./assets/fonts/cabin-latin-ext-600-normal.woff2') format('woff2');
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Cabin';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./assets/fonts/cabin-latin-700-normal.woff2') format('woff2');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Cabin';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./assets/fonts/cabin-latin-ext-700-normal.woff2') format('woff2');
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Cabin';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./assets/fonts/cabin-latin-400-italic.woff2') format('woff2');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Cabin';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./assets/fonts/cabin-latin-ext-400-italic.woff2') format('woff2');
   unicode-range:
     U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
     U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
@@ -179,8 +263,8 @@
    retained). Result is 8KB, not ~3MB. unicode-range is what keeps this
    font scoped to only these codepoints — everywhere else in a
    MarkdownText block, text still renders in the normal font-music
-   fallback (Rethink Sans) rather than hitting Bravura Text's own
-   .notdef/tofu for characters the subset doesn't have.
+   fallback (Cabin) rather than hitting Bravura Text's own .notdef/tofu
+   for characters the subset doesn't have.
    The Markdown shortcodes (`:forte:`, `:f:`, …) are resolved to a plain
    Unicode character by the remarkMusicEmoji plugin *before* this font
    ever comes into play — this font-face is only what turns that
@@ -207,8 +291,21 @@
    e.g. bg-paper, text-ink, font-display utilities. */
 @theme {
   --font-display: 'Libre Baskerville', Georgia, 'Times New Roman', serif;
-  --font-sans: 'Rethink Sans', -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --font-music: 'Bravura Text', 'Rethink Sans', -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-sans: 'Cabin', -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-music: 'Bravura Text', 'Cabin', -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  /* Cabin reads a touch tighter than Rethink Sans at body sizes — dialed
+     in live against the real Piece Details mockup (comparison Artifact,
+     a drag-adjustable letter-spacing slider over the actual rendered
+     page, not a guess) and confirmed by direct instruction. Applied via
+     `body` below (inherits everywhere, including through font-music's
+     own MarkdownText wrapper — letter-spacing crosses a font-family
+     change on the same element fine) and explicitly exempted on
+     `.font-display`, the same "don't touch the serif headings" scoping
+     the comparison tool itself used — sidebar nav text is `.font-display`
+     too (Libre Baskerville, not Cabin, per the serif-heading-weight
+     convention above), so without this exemption the tracking would
+     leak into text that was never using Cabin in the first place. */
+  --tracking-sans: 0.02em;
 
   --color-ink: #1c1815;
   --color-ink-soft: #5c5349;
@@ -252,7 +349,16 @@ body {
   background-color: var(--color-paper);
   color: var(--color-ink);
   font-family: var(--font-sans);
+  letter-spacing: var(--tracking-sans);
   -webkit-font-smoothing: antialiased;
+}
+
+/* Exempts serif headings (Libre Baskerville) from the sans tracking above
+   — letter-spacing is inherited, so without this every .font-display
+   element (headings, sidebar nav, piece/card titles) would pick up
+   Cabin's own tracking despite never actually rendering in Cabin. */
+.font-display {
+  letter-spacing: normal;
 }
 
 /* @layer base, not unlayered: Tailwind v4's @import expands to

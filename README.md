@@ -57,7 +57,7 @@ Check the `CONTRIBUTING.md` file for full local run instructions. Here's the TL;
 
 Start the backend:
 ```sh
-cd ./sonneck                           # wherever the repo is
+cd /sonneck                            # wherever the repo is
 DATA_DIR=./data go run ./cmd/sonneck   # DATA_DIR *must* be passed somehow or it'll fail
 ```
 
@@ -138,7 +138,7 @@ That being said, I still don’t trust it– I’ll gladly welcome the contribut
 ## Acknowledgements
 - My beautiful girlfriend, for helping design the logo
 - The frontend serif typeface is [Libre Baskerville](https://github.com/impallari/Libre-Baskerville) by Pablo Impallari, [Google Fonts](https://fonts.google.com/), licensed under the [SIL Open Font License 1.1](https://fonts.google.com/specimen/Libre+Baskerville/license). Self-hosted rather than loaded from Google Fonts at runtime.
-- The frontend sans-serif typeface is [Rethink Sans](https://github.com/hans-thiessen/Rethink-Sans) by Hans Thiessen, also for Google Fonts and licensed under the SIL Open Font License 1.1. Self-hosted rather than loaded from Google Fonts at runtime.
+- The frontend sans-serif typeface is [Cabin](https://github.com/impallari/Cabin) by Impallari Type and Rodrigo Fuenzalida, also for Google Fonts and licensed under the SIL Open Font License 1.1. Self-hosted rather than loaded from Google Fonts at runtime.
 - The cursive S logo is taken from the [Gwendolyn](https://github.com/googlefonts/gwendolyn) font's capital S (what luck, it looking like a treble clef!) and the rest of the wordmark was built with [Mea Culpa](https://github.com/googlefonts/mea-culpa). Both fonts were designed by Robert Leuschke for Google Fonts and licensed under the SIL Open Font License 1.1. Logo and wordmark rendered as SVG and self-hosted.
 - The music symbols supported in Markdown fields (`:forte:`, `:flat:`, `:segno:`, and the rest) render via [Bravura Text](https://github.com/steinbergmedia/bravura), the SMuFL music-notation font from Steinberg Media Technologies, licensed under the SIL Open Font License 1.1. Self-hosted as a tiny subset (a few KB, not the ~3MB full release) containing only the specific glyphs this app supports.
 - My inspirations, for showing me what's possible with modern tech. [RomM](https://github.com/rommapp/romm) and [Calibre](https://calibre-ebook.com/) stand out.
