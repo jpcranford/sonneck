@@ -88,7 +88,13 @@ const MOCK_WIKI_SEARCH: Record<string, WikiSearchResult[]> = {
   'frédéric chopin': [
     {
       title: 'Frédéric Chopin',
-      description: 'Polish composer and virtuoso pianist (1810–1849)',
+      // Two real sentences, not one — matches the real backend's own
+      // exsentences=2 (changed 2026-09-01, "just one often isn't enough"),
+      // and actually demonstrates the results panel's line-clamp-2
+      // treatment wrapping to a real second line, not just a CSS change
+      // with nothing in this fixture long enough to show it.
+      description:
+        'Polish composer and virtuoso pianist (1810–1849). Widely regarded as one of the greatest composers for the piano, celebrated for his mazurkas, nocturnes, and études.',
       thumbColor: '#5c8a8a',
       birthYear: '1810',
       deathYear: '1849',
@@ -487,7 +493,10 @@ export function EditPersonModalMockup() {
                   <span className="block truncate font-display text-sm font-medium text-ink">
                     {result.title}
                   </span>
-                  <span className="block truncate text-xs text-ink-soft">{result.description}</span>
+                  {/* line-clamp-2, not truncate — mockup-parity with
+                      EditPersonModal.tsx's own fix (2026-09-01, "just one
+                      [line] often isn't enough"). */}
+                  <span className="line-clamp-2 text-xs text-ink-soft">{result.description}</span>
                 </span>
               </button>
             ))}

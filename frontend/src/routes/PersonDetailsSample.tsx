@@ -545,7 +545,18 @@ interface WikiResult {
 // in the Phase 2 artifact review specifically to demonstrate why a human
 // still has to pick the right result, not just take the first hit.
 const WIKI_RESULTS: WikiResult[] = [
-  { title: 'Frédéric Chopin', description: 'Polish composer and virtuoso pianist (1810–1849)', thumbColor: '#5c8a8a', relevant: true },
+  {
+    title: 'Frédéric Chopin',
+    // Two real sentences, matching the real backend's own exsentences=2
+    // (changed 2026-09-01, "just one often isn't enough") and this file's
+    // line-clamp-2 treatment right below — long enough to actually wrap
+    // to a real second line, not just a CSS change with nothing here
+    // long enough to show it.
+    description:
+      'Polish composer and virtuoso pianist (1810–1849). Widely regarded as one of the greatest composers for the piano, celebrated for his mazurkas, nocturnes, and études.',
+    thumbColor: '#5c8a8a',
+    relevant: true,
+  },
   { title: 'Chopin (crater)', description: 'Impact crater on Mercury named after the composer', thumbColor: '#6b6560', relevant: false },
   { title: 'Chopin Airport', description: 'Warsaw Chopin Airport, the main international airport of Warsaw, Poland', thumbColor: '#6b6560', relevant: false },
 ]
@@ -719,7 +730,11 @@ function UploadPortraitModal({
                       <span className="block truncate font-display text-sm font-medium text-ink">
                         {result.title}
                       </span>
-                      <span className="block truncate text-xs text-ink-soft">{result.description}</span>
+                      {/* line-clamp-2, not truncate — mockup-parity with
+                          the real Upload Portrait/Edit Person's own fix
+                          (2026-09-01, "just one [line] often isn't
+                          enough"). */}
+                      <span className="line-clamp-2 text-xs text-ink-soft">{result.description}</span>
                     </span>
                     {!result.relevant && (
                       <span className="shrink-0 text-[0.65rem] text-ink-soft/70 italic">not this one</span>

@@ -356,7 +356,15 @@ export function UploadPortraitModal({ open, onClose, personId }: UploadPortraitM
                       <span className="block truncate font-display text-sm font-medium text-ink">
                         {result.title}
                       </span>
-                      <span className="block truncate text-xs text-ink-soft">{result.description}</span>
+                      {/* line-clamp-2, not truncate — same fix as
+                          EditPersonModal.tsx's own Wikipedia results panel
+                          (2026-09-01): this shares the exact same
+                          searchWikipedia API/result shape, so the backend's
+                          own exsentences=2 change already means there's a
+                          second sentence's worth of real disambiguating
+                          text here too — showing only one line of it would
+                          just be an inconsistent, needless regression. */}
+                      <span className="line-clamp-2 text-xs text-ink-soft">{result.description}</span>
                     </span>
                   </button>
                 ))}

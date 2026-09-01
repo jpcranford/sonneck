@@ -114,10 +114,21 @@ func Search(ctx context.Context, query string) ([]SearchResult, error) {
 	ctx, cancel := context.WithTimeout(ctx, requestTimeout)
 	defer cancel()
 
+	// exsentences=2, not 1 (changed 2026-09-01, direct report: "just one
+	// often isn't enough" for a human to actually disambiguate) — a second
+	// sentence routinely adds the real disambiguating context a bare first
+	// sentence lacks: confirmed live, "Randy Hall" 's own second sentence
+	// ("Hall helped Davis arrange The Man with the Horn...") is what
+	// actually explains why he shows up in a "Miles Davis" search at all,
+	// and "Miles Davis discography" 's second sentence is what confirms
+	// it's the same Miles Davis rather than an unrelated list. extractYears
+	// below is unaffected — a biographical lede's birth/death parenthetical
+	// is always in the first sentence, so a second sentence never changes
+	// what that regex finds.
 	reqURL := searchAPIBaseURL +
 		"?action=query&format=json&generator=search&gsrsearch=" + url.QueryEscape(query) +
 		"&gsrlimit=" + strconv.Itoa(resultLimit) +
-		"&prop=extracts|pageprops&ppprop=wikibase_item&exintro&explaintext&exsentences=1"
+		"&prop=extracts|pageprops&ppprop=wikibase_item&exintro&explaintext&exsentences=2"
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("wikipedia: building search request: %w", err)

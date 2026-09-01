@@ -492,7 +492,13 @@ export function EditPersonModal({ person, open, onClose }: EditPersonModalProps)
                   <span className="block truncate font-display text-sm font-medium text-ink">
                     {result.title}
                   </span>
-                  <span className="block truncate text-xs text-ink-soft">{result.description}</span>
+                  {/* line-clamp-2, not truncate (single line) — one line
+                      routinely isn't enough to actually disambiguate two
+                      similarly-titled results (direct report, 2026-09-01),
+                      and the backend now fetches a second sentence
+                      specifically to fill this (internal/wikipedia.Search's
+                      own exsentences=2). */}
+                  <span className="line-clamp-2 text-xs text-ink-soft">{result.description}</span>
                 </span>
               </button>
             ))}
