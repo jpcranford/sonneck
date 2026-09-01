@@ -798,7 +798,7 @@ function UploadPortraitModal({
 }
 
 // ---------------------------------------------------------------------
-// Split People — reuses the real, shared TagComboBox (sequenceStyle,
+// Split People — reuses the real, shared TagComboBox (pillStyle="paper",
 // multiple) as its ordered replacement-picker: the exact suggest-existing-
 // or-create-new widget the real composer/arranger fields will use once
 // built (Phase 6), per the Phase 2 artifact's own locked decision.
@@ -874,7 +874,7 @@ function SplitPeopleModal({
           options={OTHER_PEOPLE}
           selected={replacements}
           multiple
-          sequenceStyle
+          pillStyle="paper"
           newOptionLabel="New person"
           onChange={setReplacements}
         />

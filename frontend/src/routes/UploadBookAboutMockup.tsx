@@ -602,6 +602,7 @@ export function UploadBookAboutMockup() {
                     selected={field.value}
                     multiple
                     onChange={field.onChange}
+                    pillStyle="paper"
                     highlighted={imslpFilledFields.has('composer')}
                     labelExtra={
                       <InfoTooltip
@@ -627,6 +628,7 @@ export function UploadBookAboutMockup() {
                     selected={field.value}
                     multiple
                     onChange={field.onChange}
+                    pillStyle="paper"
                   />
                 )}
               />

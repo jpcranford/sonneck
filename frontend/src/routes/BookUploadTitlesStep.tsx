@@ -581,6 +581,7 @@ export function BookUploadTitlesStep({
                               void trigger(`pieces.${index}.arranger`)
                               onChange(getValues().pieces)
                             }}
+                            pillStyle="paper"
                           />
                         )}
                       />
@@ -609,6 +610,7 @@ export function BookUploadTitlesStep({
                                 void trigger(`pieces.${index}.composer`)
                                 onChange(getValues().pieces)
                               }}
+                              pillStyle="paper"
                             />
                           )}
                         />
@@ -692,6 +694,7 @@ export function BookUploadTitlesStep({
                               void trigger(`pieces.${index}.arranger`)
                               onChange(getValues().pieces)
                             }}
+                            pillStyle="paper"
                           />
                         )}
                       />
@@ -719,6 +722,7 @@ export function BookUploadTitlesStep({
                                 void trigger(`pieces.${index}.composer`)
                                 onChange(getValues().pieces)
                               }}
+                              pillStyle="paper"
                             />
                           )}
                         />

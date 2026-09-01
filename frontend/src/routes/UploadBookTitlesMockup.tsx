@@ -761,6 +761,7 @@ export function UploadBookTitlesMockup() {
                               field.onChange(next)
                               void trigger(`pieces.${index}.arranger`)
                             }}
+                            pillStyle="paper"
                           />
                         )}
                       />
@@ -788,6 +789,7 @@ export function UploadBookTitlesMockup() {
                                 field.onChange(next)
                                 void trigger(`pieces.${index}.composer`)
                               }}
+                              pillStyle="paper"
                             />
                           )}
                         />
@@ -868,6 +870,7 @@ export function UploadBookTitlesMockup() {
                               field.onChange(next)
                               void trigger(`pieces.${index}.arranger`)
                             }}
+                            pillStyle="paper"
                           />
                         )}
                       />
@@ -894,6 +897,7 @@ export function UploadBookTitlesMockup() {
                                 field.onChange(next)
                                 void trigger(`pieces.${index}.composer`)
                               }}
+                              pillStyle="paper"
                             />
                           )}
                         />

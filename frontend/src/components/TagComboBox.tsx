@@ -43,6 +43,7 @@ export function TagComboBox({
   highlighted,
   labelExtra,
   hideLabel,
+  pillStyle = 'accent',
 }: {
   label: string
   options: Tag[]
@@ -98,6 +99,19 @@ export function TagComboBox({
   // is the first caller: its desktop layout has one shared column-header
   // row above a list of per-piece TagComboBox fields.
   hideLabel?: boolean
+  // Which independent-pill treatment to use — mirrors TagPills.tsx's own
+  // accent-vs-neutral split (CLAUDE.md > Frontend): 'accent' (default,
+  // bg-accent-soft/text-accent, no border) is for genuinely per-user data
+  // (Your Tags), where standing out in the app's accent color is the
+  // point. 'paper' (border border-border bg-paper text-ink-soft, the exact
+  // classes TagPills.tsx's own neutral keys/sheetType/instruments pills
+  // use) is for shared catalog data that just happens to be picked via
+  // this same component — Composer/Arranger's Person entities are exactly
+  // this (found 2026-09-01: they'd been defaulting to the per-user accent
+  // treatment since the Stage C retrofit, which read as claiming they were
+  // user-specific data the way Your Tags is). No effect when sequenceStyle
+  // is set, which renders no pill background at all.
+  pillStyle?: 'accent' | 'paper'
 }) {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
@@ -301,7 +315,11 @@ export function TagComboBox({
               // allowDuplicates.
               <span
                 key={`${tag.id}-${index}`}
-                className="flex items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent"
+                className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
+                  pillStyle === 'paper'
+                    ? 'border border-border bg-paper text-ink-soft'
+                    : 'bg-accent-soft text-accent'
+                }`}
               >
                 {tag.name}
                 <button

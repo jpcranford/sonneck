@@ -227,7 +227,7 @@ function WorkList({ pieces, personId }: { pieces: Piece[]; personId: number }) {
 }
 
 // ---------------------------------------------------------------------
-// Split People — reuses the real, shared TagComboBox (sequenceStyle,
+// Split People — reuses the real, shared TagComboBox (pillStyle="paper",
 // multiple) as its ordered replacement-picker, wired to POST
 // /api/people/{id}/split.
 // ---------------------------------------------------------------------
@@ -310,7 +310,7 @@ function SplitPeopleModal({
           options={otherPeople}
           selected={replacements}
           multiple
-          sequenceStyle
+          pillStyle="paper"
           newOptionLabel="New person"
           onChange={setReplacements}
         />
