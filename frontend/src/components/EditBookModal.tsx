@@ -422,7 +422,6 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
                   options={peopleOptions}
                   selected={field.value}
                   multiple
-                  sequenceStyle
                   onChange={field.onChange}
                   highlighted={imslpFilledFields.has('composer')}
                 />
@@ -439,7 +438,6 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
                   options={peopleOptions}
                   selected={field.value}
                   multiple
-                  sequenceStyle
                   onChange={field.onChange}
                 />
               )}

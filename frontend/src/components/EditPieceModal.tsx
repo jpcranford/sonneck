@@ -686,7 +686,6 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
                     options={peopleOptions}
                     selected={field.value}
                     multiple
-                    sequenceStyle
                     onChange={field.onChange}
                     highlighted={imslpFilledFields.has('composer')}
                     bookValue={
@@ -707,7 +706,6 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
                     options={peopleOptions}
                     selected={field.value}
                     multiple
-                    sequenceStyle
                     onChange={field.onChange}
                     bookValue={
                       piece.arranger.inherited ? piece.arranger.values.map((p) => p.name).join(', ') : undefined
