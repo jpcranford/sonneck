@@ -265,7 +265,7 @@ function SplitPeopleModal({
       ? null
       : names.length === 1
         ? `This will rename "${person.name}" to "${names[0]}" — every piece and book credit stays exactly where it is.`
-        : `This will split "${person.name}"'s ${workCount} credits among ${joinNames(names)}, in that order.`
+        : `This will replace "${person.name}"'s ${workCount} credits with ${joinNames(names)}, in that order.`
 
   return (
     <Modal
