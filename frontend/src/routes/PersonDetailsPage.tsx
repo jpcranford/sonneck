@@ -16,7 +16,6 @@ import { listBooks } from '../api/books'
 import {
   deletePerson,
   getPerson,
-  getPersonPortraitUrl,
   listPeople,
   removePersonPortrait,
   splitPerson,
@@ -25,6 +24,7 @@ import { getPieceThumbnailUrl, searchPieces } from '../api/pieces'
 import { ApiError } from '../api/client'
 import type { Person, Piece, Tag } from '../api/types'
 import { EditPersonModal } from '../components/EditPersonModal'
+import { PersonAvatar } from '../components/PersonAvatar'
 import { UploadPortraitModal } from '../components/UploadPortraitModal'
 import { ContextMenu } from '../components/ContextMenu'
 import { ClickableCard } from '../components/ClickableCard'
@@ -122,35 +122,6 @@ function RoleBadge({ role }: { role: 'Composer' | 'Arranger' }) {
     <span className="shrink-0 rounded-full bg-paper-sunken px-2 py-0.5 font-sans text-[0.65rem] font-medium text-ink-soft">
       as Arranger
     </span>
-  )
-}
-
-function PersonAvatar({ person, className }: { person: Person; className: string }) {
-  const color = PALETTE[person.id % PALETTE.length]
-  const initials = person.name
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((w) => w[0])
-    .filter(Boolean)
-  const initialsText =
-    initials.length === 0 ? '?' : (initials[0] + (initials[initials.length - 1] ?? '')).toUpperCase()
-  return (
-    <div
-      className={`relative aspect-[3/4] overflow-hidden rounded-[50%] border border-border [container-type:inline-size] ${className}`}
-      style={{ backgroundColor: color }}
-    >
-      {person.hasCustomPortrait ? (
-        <img
-          src={getPersonPortraitUrl(person.id, person.portraitImageHash)}
-          alt=""
-          className="h-full w-full object-cover"
-        />
-      ) : (
-        <div className="flex h-full w-full items-center justify-center font-display font-medium text-white text-[26cqw]">
-          {initialsText}
-        </div>
-      )}
-    </div>
   )
 }
 

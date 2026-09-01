@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { useForm } from 'react-hook-form'
 import {
   IconBrandWikipedia,
+  IconCameraFilled,
   IconCloudDownload,
   IconCloudOff,
   IconCheck,
@@ -11,6 +12,7 @@ import {
   IconXFilled,
 } from '@tabler/icons-react'
 import { Modal } from '../components/Modal'
+import { PALETTE } from '../lib/pieceSplitLogic'
 import { useMockupTitle } from '../lib/useMockupTitle'
 
 // ---------------------------------------------------------------------
@@ -23,13 +25,28 @@ import { useMockupTitle } from '../lib/useMockupTitle'
 // mock lookup — there's no real endpoint yet, that's Phase 6.
 //
 // Deliberately minimal — "should be very minimal" was the original brief
-// for Person, and this modal only has 4 fields total: Name, Bio, Birth
-// Year, Death Year. Portrait editing is deliberately absent here: per
-// Phase 2's own locked decision, the avatar's camera badge on Person
-// Details is that field's ONLY edit trigger (no redundant toolbar/modal
-// entry point) — the exact same "no redundant triggers" principle Book
-// Details' own cover image already follows (EditBookModal.tsx has no
-// cover field either, for the same reason).
+// for Person — Name, Bio, Birth Year, Death Year, same 4 fields as before.
+//
+// Portrait now has an edit trigger here too (added 2026-09-01, direct
+// request: "incorporate the thumb edit field into the modal... similar to
+// how upload book step 3 is laid out with the page thumb small and off to
+// the side") — reversing Phase 2's original "camera badge is the ONLY
+// trigger" decision, the same way this modal's own field list has grown
+// past "very minimal" in spirit if not in field count. Layout mirrors
+// BookUploadAboutStep.tsx's own cover-preview column exactly: a small
+// portrait box pinned to the left (fixed `w-[150px]` at every breakpoint,
+// not just `sm:` — an oval avatar stretched to a mobile viewport's full
+// width looked oversized/orphaned in testing, unlike a book page thumb at
+// the same width; centered via `mx-auto`/`sm:mx-0` when stacked, matching
+// PersonDetailsPage.tsx's own header avatar width), a plain trigger button
+// underneath it, fields flowing in the wider right column — `size="xl"`
+// on Modal now, for the same "real room for two side-by-side columns"
+// reason EditBookModal.tsx already uses it. The button here is a stub
+// (`lastAction`, PersonDetailsSample.tsx's own established stub-message
+// pattern, adopted here too) — the real component nests the already-built
+// UploadPortraitModal (crop/zoom, real Wikipedia image search) the same
+// way PersonDetailsPage.tsx already triggers it, just from this modal
+// instead of only the avatar's own camera badge.
 //
 // Wikipedia autofill is a search-and-pick flow, NOT a single-click
 // instant fill — a real, direct correction after the first pass shipped
@@ -174,6 +191,42 @@ const SAVED_MS = 1100
 // real ImslpAutofillButton callers' own ~2.4s clear.
 const HIGHLIGHT_MS = 2400
 
+// Same illustrative fixture image PersonDetailsSample.tsx's own avatar
+// uses in place of a real uploaded photo — duplicated locally, per this
+// codebase's usual "no shared components between a mockup and the real
+// thing" convention (PALETTE above is the one exception, since it's pure
+// data/logic, not a component).
+function CameoPortrait() {
+  return (
+    <svg viewBox="0 0 100 130" preserveAspectRatio="xMidYMid slice" className="h-full w-full">
+      <rect width="100" height="130" fill="#3a3430" />
+      <circle cx="50" cy="48" r="22" fill="#cbb89a" />
+      <path d="M14 130c0-28 18-46 36-46s36 18 36 46" fill="#cbb89a" />
+      <path
+        d="M28 40c2-14 12-22 22-22s20 8 22 22c-4-6-12-10-22-10s-18 4-22 10z"
+        fill="#1f1b18"
+      />
+    </svg>
+  )
+}
+
+// Mirrors the real PersonAvatar (PersonDetailsPage.tsx)'s box treatment —
+// oval 3:4, palette color behind the portrait. This mockup's own
+// MOCK_PERSON always "has" a portrait (CameoPortrait), same as
+// PersonDetailsSample.tsx's own default, so there's no initials-fallback
+// branch here — that state is already covered on the Person Details
+// mockup, not this screen's own concern.
+function PersonAvatar({ className }: { className: string }) {
+  return (
+    <div
+      className={`relative aspect-[3/4] overflow-hidden rounded-[50%] border border-border ${className}`}
+      style={{ backgroundColor: PALETTE[1 % PALETTE.length] }}
+    >
+      <CameoPortrait />
+    </div>
+  )
+}
+
 export function EditPersonModalMockup() {
   useMockupTitle('Edit Person Modal')
 
@@ -182,6 +235,7 @@ export function EditPersonModalMockup() {
   const [wikiState, setWikiState] = useState<'idle' | 'searching' | 'open'>('idle')
   const [wikiResults, setWikiResults] = useState<WikiSearchResult[]>([])
   const [wikiFilledFields, setWikiFilledFields] = useState<Set<string>>(new Set())
+  const [lastAction, setLastAction] = useState<string | null>(null)
   const {
     register,
     handleSubmit,
@@ -309,7 +363,8 @@ export function EditPersonModalMockup() {
         Design mockup — <span className="font-medium text-ink">Edit Person modal</span>. Not wired to real
         data — Save replays the approved progress animation. Click the cloud icon next to Name (already
         "Frédéric Chopin", with Death year blank) to see the Wikipedia search-and-pick flow — including the
-        same irrelevant-result noise Upload Portrait's own search already demonstrates.
+        same irrelevant-result noise Upload Portrait's own search already demonstrates. "Change Portrait" in
+        the left column is a stub — see the banner it produces.
       </div>
 
       {!open && (
@@ -322,10 +377,25 @@ export function EditPersonModalMockup() {
         </button>
       )}
 
+      {lastAction && (
+        <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-paper-sunken px-4 py-2.5 text-sm text-ink-soft">
+          {lastAction}
+          <button
+            type="button"
+            onClick={() => setLastAction(null)}
+            aria-label="Dismiss"
+            className="shrink-0 cursor-pointer text-ink-soft hover:text-ink"
+          >
+            <IconXFilled size={16} />
+          </button>
+        </div>
+      )}
+
       <Modal
         open={open}
         onClose={() => setOpen(false)}
         labelledBy="edit-person-mockup-title"
+        size="xl"
         header={
           <div className="-mx-6 flex items-start justify-between gap-4 border-b border-border px-6 pb-4">
             <div>
@@ -391,65 +461,89 @@ export function EditPersonModalMockup() {
           id="edit-person-form"
           onSubmit={handleSubmit(onSubmit)}
           onKeyDown={handleFormKeyDown}
-          className="flex flex-col gap-4"
+          className="flex flex-col gap-7 sm:flex-row sm:items-start"
         >
-          <div className="flex min-w-0 flex-col gap-1">
-            <label htmlFor="f-name" className="text-sm text-ink-soft">
-              Name <span className="text-ink-soft/60 italic">(Required)</span>
-            </label>
-            {/* relative + pr-12 reserves room for the button — wider than
-                EditPieceModal.tsx's own single-icon IMSLP field, since
-                this one button now renders two icons (Wikipedia brand
-                mark + cloud/status) side by side. */}
-            <div ref={anchorRef} className="relative">
-              <input
-                id="f-name"
-                className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 pr-12 text-ink"
-                {...register('name', { required: 'Name is required.', maxLength: 255 })}
-              />
-              <WikipediaAutofillButton state={wikiState} valid={isValidName} onClick={handleSearchClick} />
-            </div>
-            {errors.name && <p className="text-sm text-red-700">{errors.name.message}</p>}
+          {/* Portrait column — same "small thumb pinned to the side, plain
+              trigger button underneath" shape as BookUploadAboutStep.tsx's
+              own cover-preview column, just an oval 3:4 box instead of a
+              2:3 page. Not sticky (unlike that wizard screen) — this
+              modal's own field list is short enough it rarely scrolls, so
+              there's no long-scroll case for a pinned thumb to solve. */}
+          <div className="mx-auto flex w-[150px] shrink-0 flex-col gap-2.5 sm:mx-0">
+            <PersonAvatar className="w-full shadow-sm" />
+            <button
+              type="button"
+              onClick={() =>
+                setLastAction(
+                  'Mock action: this opens the Upload Portrait flow (device upload or Wikipedia search, then crop/zoom) — same modal Person Details’ own camera badge already opens.',
+                )
+              }
+              className="flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-md border border-border bg-paper-raised px-3 py-2 text-sm text-ink hover:border-accent"
+            >
+              <IconCameraFilled size={14} />
+              Change Portrait
+            </button>
           </div>
 
-          <div className="flex flex-col gap-1">
-            <label htmlFor="f-bio" className="text-sm text-ink-soft">
-              Biography <span className="text-ink-soft/60 italic">(Markdown supported)</span>
-            </label>
-            <textarea
-              id="f-bio"
-              rows={5}
-              className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-              {...register('bio')}
-            />
-          </div>
-
-          <div className="flex flex-col gap-3 min-[400px]:flex-row">
-            <div className="flex min-w-0 flex-1 flex-col gap-1">
-              <label htmlFor="f-birth-year" className="text-sm text-ink-soft">
-                Birth year
+          <div className="flex min-w-0 flex-1 flex-col gap-4">
+            <div className="flex min-w-0 flex-col gap-1">
+              <label htmlFor="f-name" className="text-sm text-ink-soft">
+                Name <span className="text-ink-soft/60 italic">(Required)</span>
               </label>
-              <input
-                id="f-birth-year"
-                inputMode="numeric"
-                className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 ${
-                  wikiFilledFields.has('birthYear') ? 'ring-2 ring-accent-on-dark' : ''
-                }`}
-                {...register('birthYear')}
+              {/* relative + pr-12 reserves room for the button — wider than
+                  EditPieceModal.tsx's own single-icon IMSLP field, since
+                  this one button now renders two icons (Wikipedia brand
+                  mark + cloud/status) side by side. */}
+              <div ref={anchorRef} className="relative">
+                <input
+                  id="f-name"
+                  className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 pr-12 text-ink"
+                  {...register('name', { required: 'Name is required.', maxLength: 255 })}
+                />
+                <WikipediaAutofillButton state={wikiState} valid={isValidName} onClick={handleSearchClick} />
+              </div>
+              {errors.name && <p className="text-sm text-red-700">{errors.name.message}</p>}
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label htmlFor="f-bio" className="text-sm text-ink-soft">
+                Biography <span className="text-ink-soft/60 italic">(Markdown supported)</span>
+              </label>
+              <textarea
+                id="f-bio"
+                rows={5}
+                className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+                {...register('bio')}
               />
             </div>
-            <div className="flex min-w-0 flex-1 flex-col gap-1">
-              <label htmlFor="f-death-year" className="text-sm text-ink-soft">
-                Death year
-              </label>
-              <input
-                id="f-death-year"
-                inputMode="numeric"
-                className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 ${
-                  wikiFilledFields.has('deathYear') ? 'ring-2 ring-accent-on-dark' : ''
-                }`}
-                {...register('deathYear')}
-              />
+
+            <div className="flex flex-col gap-3 min-[400px]:flex-row">
+              <div className="flex min-w-0 flex-1 flex-col gap-1">
+                <label htmlFor="f-birth-year" className="text-sm text-ink-soft">
+                  Birth year
+                </label>
+                <input
+                  id="f-birth-year"
+                  inputMode="numeric"
+                  className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 ${
+                    wikiFilledFields.has('birthYear') ? 'ring-2 ring-accent-on-dark' : ''
+                  }`}
+                  {...register('birthYear')}
+                />
+              </div>
+              <div className="flex min-w-0 flex-1 flex-col gap-1">
+                <label htmlFor="f-death-year" className="text-sm text-ink-soft">
+                  Death year
+                </label>
+                <input
+                  id="f-death-year"
+                  inputMode="numeric"
+                  className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 ${
+                    wikiFilledFields.has('deathYear') ? 'ring-2 ring-accent-on-dark' : ''
+                  }`}
+                  {...register('deathYear')}
+                />
+              </div>
             </div>
           </div>
         </form>

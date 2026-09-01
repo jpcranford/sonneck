@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useLayoutEffect,
   useRef,
@@ -11,6 +12,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   IconAlertTriangle,
   IconBrandWikipedia,
+  IconCameraFilled,
   IconCheck,
   IconCloudDownload,
   IconCloudOff,
@@ -24,15 +26,26 @@ import { ApiError } from '../api/client'
 import { afterMinDuration } from '../lib/minDuration'
 import type { Person, PersonWriteRequest } from '../api/types'
 import { Modal } from './Modal'
+import { PersonAvatar } from './PersonAvatar'
+import { UploadPortraitModal } from './UploadPortraitModal'
 
 // The real Edit Person modal (composer/arranger overhaul, Phase 5's
 // approved mockup: EditPersonModalMockup.tsx, /mockup/edit-person-modal,
 // left intact as a standing reference). Deliberately minimal — "should be
 // very minimal" per the original brief — Name/Biography/Birth year/Death
-// year only; portrait editing stays on Person Details' own camera badge
-// (its only edit trigger, per that phase's own locked decision), same "no
-// redundant triggers" principle EditBookModal.tsx already follows for
-// Book's cover image.
+// year, same 4 fields as always.
+//
+// Portrait editing gained a second trigger here (2026-09-01, direct
+// request, mockup approved same day: "incorporate the thumb edit field
+// into the modal... similar to how upload book step 3 is laid out with
+// the page thumb small and off to the side") — reversing Phase 2's
+// original "camera badge is the ONLY trigger" decision. `size="xl"` (same
+// reason EditBookModal.tsx already uses it — real room for two side-by-
+// side columns), a small `PersonAvatar` pinned to the left with a plain
+// "Change Portrait" button underneath opening the already-built
+// `UploadPortraitModal` (crop/zoom, real Wikipedia image search) — the
+// exact same modal Person Details' own camera badge already opens, just
+// nested here too rather than only reachable from the avatar itself.
 //
 // Wikipedia search-and-pick autofill (added once GET /api/wikipedia/search
 // existed) mirrors the mockup's own interaction exactly — NOT a single-
@@ -114,8 +127,12 @@ function WikipediaAutofillButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      aria-label={valid ? 'Search Wikipedia to autofill blank fields' : 'Type a name to search Wikipedia'}
-      title={valid ? 'Search Wikipedia to autofill blank fields' : 'Type a name to search Wikipedia'}
+      aria-label={
+        valid ? 'Search Wikipedia to autofill blank fields' : 'Type a name to search Wikipedia'
+      }
+      title={
+        valid ? 'Search Wikipedia to autofill blank fields' : 'Type a name to search Wikipedia'
+      }
       className={`absolute top-1/2 right-2.5 flex -translate-y-1/2 items-center gap-1 disabled:cursor-default ${
         valid ? 'cursor-pointer text-[#9d9892] hover:text-accent' : 'text-[#c9c2b6]'
       }`}
@@ -123,7 +140,9 @@ function WikipediaAutofillButton({
       <IconBrandWikipedia size={15} className="shrink-0" aria-hidden="true" />
       {!valid && <IconCloudOff size={16} />}
       {valid && state !== 'searching' && <IconCloudDownload size={16} />}
-      {valid && state === 'searching' && <IconLoader2 size={16} className="animate-spin text-ink-soft" />}
+      {valid && state === 'searching' && (
+        <IconLoader2 size={16} className="animate-spin text-ink-soft" />
+      )}
     </button>
   )
 }
@@ -131,6 +150,24 @@ function WikipediaAutofillButton({
 export function EditPersonModal({ person, open, onClose }: EditPersonModalProps) {
   const queryClient = useQueryClient()
   const [saveState, setSaveState] = useState<SaveState>('idle')
+  const [uploadPortraitOpen, setUploadPortraitOpen] = useState(false)
+  // Stable reference, not an inline arrow at the call site below — real
+  // bug found live (2026-09-02): an inline `() => setUploadPortraitOpen(false)`
+  // is a new function every render, and this component re-renders on every
+  // Name keystroke (watch('name') for the Wikipedia autofill). That churn
+  // made UploadPortraitModal's own internal Modal re-run its
+  // Escape-listener effect (deps [open, onClose]) constantly — harmless on
+  // its own, but a real, reproducible bug once both modals are open at
+  // once: pressing Escape fires this outer Modal's own listener first,
+  // whose onClose triggers a synchronous-ish re-render here, which tears
+  // down and re-adds UploadPortraitModal's listener *during* the same
+  // native event dispatch pass — removing a listener mid-dispatch means
+  // the browser never calls it for that event. Net effect: Escape closed
+  // the *background* Edit Person modal while the actively-open Upload
+  // Portrait modal on top of it stayed open, exactly backwards from what
+  // Escape should do. A stable callback stops the effect from churning on
+  // unrelated renders, so the listener stays attached and actually fires.
+  const closeUploadPortrait = useCallback(() => setUploadPortraitOpen(false), [])
   // Captured right before mutate() fires, read in onSuccess — see
   // lib/minDuration.ts: this app's mutations round-trip in ~1-15ms against
   // the local SQLite backend, faster than a browser paint, so without this
@@ -199,7 +236,9 @@ export function EditPersonModal({ person, open, onClose }: EditPersonModalProps)
   // entirely. z-[60] for the same reason too — higher than Modal's own
   // z-50, so the results panel isn't painted underneath the dialog's
   // footer.
-  const [panelRect, setPanelRect] = useState<{ top: number; left: number; width: number } | null>(null)
+  const [panelRect, setPanelRect] = useState<{ top: number; left: number; width: number } | null>(
+    null,
+  )
   useLayoutEffect(() => {
     if (wikiState !== 'open') return
     function updatePosition() {
@@ -311,159 +350,195 @@ export function EditPersonModal({ person, open, onClose }: EditPersonModalProps)
   const saving = saveState !== 'idle'
 
   return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      labelledBy="edit-person-title"
-      header={
-        <div className="-mx-6 flex items-start justify-between gap-4 border-b border-border px-6 pb-4">
-          <div>
-            <h2 id="edit-person-title" className="font-display text-2xl font-medium text-ink">
-              Edit person
-            </h2>
-            <p className="text-sm text-ink-soft">{person.name}</p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="mt-1 shrink-0 cursor-pointer text-ink-soft hover:text-accent"
-          >
-            <IconXFilled size={22} />
-          </button>
-        </div>
-      }
-      footer={
-        <div className="flex flex-col gap-2">
-          {saveMutation.isError && (
-            <p className="flex items-center gap-2 text-sm text-red-700">
-              <IconAlertTriangle size={16} />
-              {saveMutation.error instanceof ApiError
-                ? saveMutation.error.message
-                : 'Could not save. Please try again.'}
-            </p>
-          )}
-          {person.pieceCount > 0 && (
-            <p
-              className={`text-right text-xs text-ink-soft transition-opacity ${saving ? 'opacity-0' : 'opacity-100'}`}
-            >
-              Saving will update {person.pieceCount} {person.pieceCount === 1 ? 'piece' : 'pieces'}
-            </p>
-          )}
-          <div className="flex justify-end gap-2">
+    <>
+      <Modal
+        open={open}
+        onClose={onClose}
+        labelledBy="edit-person-title"
+        size="xl"
+        header={
+          <div className="-mx-6 flex items-start justify-between gap-4 border-b border-border px-6 pb-4">
+            <div>
+              <h2 id="edit-person-title" className="font-display text-2xl font-medium text-ink">
+                Edit person
+              </h2>
+              <p className="text-sm text-ink-soft">{person.name}</p>
+            </div>
             <button
               type="button"
               onClick={onClose}
-              disabled={saving}
-              className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent disabled:cursor-default disabled:opacity-45"
+              aria-label="Close"
+              className="mt-1 shrink-0 cursor-pointer text-ink-soft hover:text-accent"
             >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              form="edit-person-form"
-              disabled={saving}
-              className="relative flex min-w-[130px] shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md bg-accent px-4 py-2 font-display whitespace-nowrap text-white disabled:cursor-default"
-            >
-              {saveState === 'saving' && (
-                <span
-                  aria-hidden="true"
-                  className="absolute inset-0 animate-stripe-move bg-[length:56px_56px] [background-image:repeating-linear-gradient(45deg,rgba(255,255,255,0.3)_0,rgba(255,255,255,0.3)_10px,transparent_10px,transparent_20px)] motion-reduce:animate-none motion-reduce:opacity-60"
-                />
-              )}
-              <span className="relative z-10 flex items-center gap-1.5">
-                {saveState === 'idle' && 'Save'}
-                {saveState === 'saving' && 'Saving…'}
-                {saveState === 'saved' && (
-                  <>
-                    <IconCheck size={15} />
-                    Saved
-                  </>
-                )}
-              </span>
+              <IconXFilled size={22} />
             </button>
           </div>
-        </div>
-      }
-    >
-      <form
-        id="edit-person-form"
-        onSubmit={handleSubmit(onSubmit)}
-        onKeyDown={handleFormKeyDown}
-        className="flex flex-col gap-4"
-      >
-        <div className="flex min-w-0 flex-col gap-1">
-          <label htmlFor="f-name" className="text-sm text-ink-soft">
-            Name <span className="text-ink-soft/60 italic">(Required)</span>
-          </label>
-          {/* relative + pr-12 reserves room for the button — wider than a
-              single-icon autofill button, since this one renders two
-              icons (Wikipedia brand mark + cloud/status) side by side. */}
-          <div ref={anchorRef} className="relative">
-            <input
-              id="f-name"
-              className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 pr-12 text-ink"
-              {...register('name', { required: 'Name is required.', maxLength: 255 })}
-            />
-            <WikipediaAutofillButton state={wikiState} valid={isValidName} onClick={handleSearchClick} />
-          </div>
-          {errors.name && <p className="text-sm text-red-700">{errors.name.message}</p>}
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label htmlFor="f-bio" className="text-sm text-ink-soft">
-            Biography <span className="text-ink-soft/60 italic">(Markdown supported)</span>
-          </label>
-          <textarea
-            id="f-bio"
-            rows={5}
-            className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-            {...register('bio')}
-          />
-        </div>
-
-        <div className="flex flex-col gap-3 min-[400px]:flex-row">
-          <div className="flex min-w-0 flex-1 flex-col gap-1">
-            <label htmlFor="f-birth-year" className="text-sm text-ink-soft">
-              Birth year
-            </label>
-            <input
-              id="f-birth-year"
-              inputMode="numeric"
-              className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 ${
-                wikiFilledFields.has('birthYear') ? 'ring-2 ring-accent-on-dark' : ''
-              }`}
-              {...register('birthYear')}
-            />
-          </div>
-          <div className="flex min-w-0 flex-1 flex-col gap-1">
-            <label htmlFor="f-death-year" className="text-sm text-ink-soft">
-              Death year
-            </label>
-            <input
-              id="f-death-year"
-              inputMode="numeric"
-              className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 ${
-                wikiFilledFields.has('deathYear') ? 'ring-2 ring-accent-on-dark' : ''
-              }`}
-              {...register('deathYear')}
-            />
-          </div>
-        </div>
-      </form>
-
-      {wikiState === 'open' &&
-        panelRect &&
-        createPortal(
-          <div
-            ref={panelRef}
-            style={{ position: 'fixed', top: panelRect.top, left: panelRect.left, width: panelRect.width }}
-            className="z-[60] max-h-72 overflow-y-auto rounded-md border border-border bg-paper-raised py-1 shadow-lg"
-          >
-            {wikiResults.length === 0 && (
-              <p className="px-3 py-2.5 text-sm text-ink-soft italic">No Wikipedia results found.</p>
+        }
+        footer={
+          <div className="flex flex-col gap-2">
+            {saveMutation.isError && (
+              <p className="flex items-center gap-2 text-sm text-red-700">
+                <IconAlertTriangle size={16} />
+                {saveMutation.error instanceof ApiError
+                  ? saveMutation.error.message
+                  : 'Could not save. Please try again.'}
+              </p>
             )}
-            {/* No "not this one" hint on a result missing birth/death years
+            {person.pieceCount > 0 && (
+              <p
+                className={`text-right text-xs text-ink-soft transition-opacity ${saving ? 'opacity-0' : 'opacity-100'}`}
+              >
+                Saving will update {person.pieceCount}{' '}
+                {person.pieceCount === 1 ? 'piece' : 'pieces'}
+              </p>
+            )}
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={saving}
+                className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent disabled:cursor-default disabled:opacity-45"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                form="edit-person-form"
+                disabled={saving}
+                className="relative flex min-w-[130px] shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md bg-accent px-4 py-2 font-display whitespace-nowrap text-white disabled:cursor-default"
+              >
+                {saveState === 'saving' && (
+                  <span
+                    aria-hidden="true"
+                    className="absolute inset-0 animate-stripe-move bg-[length:56px_56px] [background-image:repeating-linear-gradient(45deg,rgba(255,255,255,0.3)_0,rgba(255,255,255,0.3)_10px,transparent_10px,transparent_20px)] motion-reduce:animate-none motion-reduce:opacity-60"
+                  />
+                )}
+                <span className="relative z-10 flex items-center gap-1.5">
+                  {saveState === 'idle' && 'Save'}
+                  {saveState === 'saving' && 'Saving…'}
+                  {saveState === 'saved' && (
+                    <>
+                      <IconCheck size={15} />
+                      Saved
+                    </>
+                  )}
+                </span>
+              </button>
+            </div>
+          </div>
+        }
+      >
+        <form
+          id="edit-person-form"
+          onSubmit={handleSubmit(onSubmit)}
+          onKeyDown={handleFormKeyDown}
+          className="flex flex-col gap-7 sm:flex-row sm:items-start"
+        >
+          {/* Portrait column — same "small thumb pinned to the side, plain
+            trigger button underneath" shape as BookUploadAboutStep.tsx's
+            own cover-preview column. Fixed w-[150px] at every breakpoint,
+            not just sm: — an oval avatar stretched to a mobile viewport's
+            full width looked oversized/orphaned in testing (found live,
+            mockup-first), unlike a 2:3 page thumb at the same size;
+            centered via mx-auto/sm:mx-0 when stacked. Not sticky — this
+            modal's own field list is short enough it rarely scrolls. */}
+          <div className="mx-auto flex w-[150px] shrink-0 flex-col gap-2.5 sm:mx-0">
+            <PersonAvatar person={person} className="w-full shadow-sm" />
+            <button
+              type="button"
+              onClick={() => setUploadPortraitOpen(true)}
+              className="flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-md border border-border bg-paper-raised px-3 py-2 text-sm text-ink hover:border-accent"
+            >
+              <IconCameraFilled size={14} />
+              Change Portrait
+            </button>
+          </div>
+
+          <div className="flex min-w-0 flex-1 flex-col gap-4">
+            <div className="flex min-w-0 flex-col gap-1">
+              <label htmlFor="f-name" className="text-sm text-ink-soft">
+                Name <span className="text-ink-soft/60 italic">(Required)</span>
+              </label>
+              {/* relative + pr-12 reserves room for the button — wider than a
+                single-icon autofill button, since this one renders two
+                icons (Wikipedia brand mark + cloud/status) side by side. */}
+              <div ref={anchorRef} className="relative">
+                <input
+                  id="f-name"
+                  className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 pr-12 text-ink"
+                  {...register('name', { required: 'Name is required.', maxLength: 255 })}
+                />
+                <WikipediaAutofillButton
+                  state={wikiState}
+                  valid={isValidName}
+                  onClick={handleSearchClick}
+                />
+              </div>
+              {errors.name && <p className="text-sm text-red-700">{errors.name.message}</p>}
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label htmlFor="f-bio" className="text-sm text-ink-soft">
+                Biography <span className="text-ink-soft/60 italic">(Markdown supported)</span>
+              </label>
+              <textarea
+                id="f-bio"
+                rows={5}
+                className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+                {...register('bio')}
+              />
+            </div>
+
+            <div className="flex flex-col gap-3 min-[400px]:flex-row">
+              <div className="flex min-w-0 flex-1 flex-col gap-1">
+                <label htmlFor="f-birth-year" className="text-sm text-ink-soft">
+                  Birth year
+                </label>
+                <input
+                  id="f-birth-year"
+                  inputMode="numeric"
+                  className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 ${
+                    wikiFilledFields.has('birthYear') ? 'ring-2 ring-accent-on-dark' : ''
+                  }`}
+                  {...register('birthYear')}
+                />
+              </div>
+              <div className="flex min-w-0 flex-1 flex-col gap-1">
+                <label htmlFor="f-death-year" className="text-sm text-ink-soft">
+                  Death year
+                </label>
+                <input
+                  id="f-death-year"
+                  inputMode="numeric"
+                  className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 ${
+                    wikiFilledFields.has('deathYear') ? 'ring-2 ring-accent-on-dark' : ''
+                  }`}
+                  {...register('deathYear')}
+                />
+              </div>
+            </div>
+          </div>
+        </form>
+
+        {wikiState === 'open' &&
+          panelRect &&
+          createPortal(
+            <div
+              ref={panelRef}
+              style={{
+                position: 'fixed',
+                top: panelRect.top,
+                left: panelRect.left,
+                width: panelRect.width,
+              }}
+              className="z-[60] max-h-72 overflow-y-auto rounded-md border border-border bg-paper-raised py-1 shadow-lg"
+            >
+              {wikiResults.length === 0 && (
+                <p className="px-3 py-2.5 text-sm text-ink-soft italic">
+                  No Wikipedia results found.
+                </p>
+              )}
+              {/* No "not this one" hint on a result missing birth/death years
                 (removed 2026-09-01, direct report) — the mockup's own
                 fixture data (crater/airport noise) made that a reliable
                 signal by construction, but it isn't one against real
@@ -478,33 +553,50 @@ export function EditPersonModal({ person, open, onClose }: EditPersonModalProps)
                 actual disambiguator, always shown) still does the real
                 work here — this hint was always a bonus nudge on top of
                 it, never load-bearing. */}
-            {wikiResults.map((result) => (
-              <button
-                key={result.title}
-                type="button"
-                onClick={() => pickResult(result)}
-                className="flex w-full cursor-pointer items-center gap-3 px-3 py-2.5 text-left hover:bg-paper-sunken"
-              >
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#6b6560] text-white">
-                  <IconExternalLink size={14} />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate font-display text-sm font-medium text-ink">
-                    {result.title}
+              {wikiResults.map((result) => (
+                <button
+                  key={result.title}
+                  type="button"
+                  onClick={() => pickResult(result)}
+                  className="flex w-full cursor-pointer items-center gap-3 px-3 py-2.5 text-left hover:bg-paper-sunken"
+                >
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#6b6560] text-white">
+                    <IconExternalLink size={14} />
                   </span>
-                  {/* line-clamp-2, not truncate (single line) — one line
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-display text-sm font-medium text-ink">
+                      {result.title}
+                    </span>
+                    {/* line-clamp-2, not truncate (single line) — one line
                       routinely isn't enough to actually disambiguate two
                       similarly-titled results (direct report, 2026-09-01),
                       and the backend now fetches a second sentence
                       specifically to fill this (internal/wikipedia.Search's
                       own exsentences=2). */}
-                  <span className="line-clamp-2 text-xs text-ink-soft">{result.description}</span>
-                </span>
-              </button>
-            ))}
-          </div>,
-          document.body,
-        )}
-    </Modal>
+                    <span className="line-clamp-2 text-xs text-ink-soft">{result.description}</span>
+                  </span>
+                </button>
+              ))}
+            </div>,
+            document.body,
+          )}
+      </Modal>
+
+      {/* A true sibling, not nested inside the Modal above's own JSX
+          children — Modal.tsx's dialog box applies `scale-*` (a CSS
+          transform) during its open/close transition, which establishes a
+          new containing block for any `position: fixed` descendant. A
+          second Modal nested inside would compute its own `fixed inset-0`
+          against that transformed box instead of the real viewport — the
+          same class of bug CLAUDE.md already documents for a sticky
+          ancestor trapping a fixed lightbox. Rendering it here instead
+          sidesteps that entirely. */}
+      <UploadPortraitModal
+        open={uploadPortraitOpen}
+        onClose={closeUploadPortrait}
+        personId={person.id}
+        personName={person.name}
+      />
+    </>
   )
 }

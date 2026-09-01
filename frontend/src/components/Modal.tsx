@@ -5,6 +5,25 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 // transition duration it's paired with.
 const TRANSITION_MS = 150
 
+// Module-level stack of currently-open modals, oldest first — lets a
+// nested modal (opened while another Modal is already open, e.g. Upload
+// Portrait opened from inside Edit Person, added 2026-09-02) claim Escape
+// for itself instead of every open modal's own independent document
+// keydown listener racing for the same event. Real bug found live: with
+// no coordination, BOTH modals' listeners are genuinely registered on
+// `document`, but the FIRST-opened (background) modal's listener is also
+// always registered FIRST and therefore always fires first — closing the
+// modal *behind* the one the user was actually looking at, backwards from
+// what Escape should do, and (via a cascading re-render from that close)
+// tearing down the topmost modal's own listener before the same
+// synchronous event dispatch pass ever reaches it. Keyed by a stable
+// per-instance id (assigned once via lazy useRef init below), not by
+// `onClose` reference — an unstable inline `onClose` prop is common
+// (arrow function at the call site) and must not cause spurious stack
+// reordering on every unrelated re-render.
+let nextModalStackId = 0
+const openModalStack: { id: number; onClose: () => void }[] = []
+
 interface ModalProps {
   open: boolean
   onClose: () => void
@@ -55,6 +74,23 @@ export function Modal({ open, onClose, labelledBy, children, size = 'md', header
   // of which of the two frames the effect gets torn down on.
   const rafRef = useRef(0)
 
+  // Stable per-instance identity for the modal stack below — assigned
+  // once, lazily, on first render (the standard "useRef as a mutable
+  // instance id" pattern, since useState would need an initializer
+  // function to only run once too, and this is simpler for a value that's
+  // never rendered or used to trigger updates).
+  const stackIdRef = useRef<number | null>(null)
+  if (stackIdRef.current === null) stackIdRef.current = nextModalStackId++
+  // Always points at the current onClose, even though the stack entry
+  // itself (pushed once per open, see below) is a stable wrapper — avoids
+  // a stale closure without making the push/pop effect depend on onClose,
+  // which would otherwise reorder the stack on every unrelated re-render
+  // an unstable inline onClose prop causes.
+  const onCloseRef = useRef(onClose)
+  useEffect(() => {
+    onCloseRef.current = onClose
+  }, [onClose])
+
   // Synchronizes mounted/visible to the open prop inside a real effect —
   // not the "adjust state during render" pattern this used previously.
   // That earlier version set `mounted` synchronously during render
@@ -103,14 +139,34 @@ export function Modal({ open, onClose, labelledBy, children, size = 'md', header
     return () => clearTimeout(timeout)
   }, [open])
 
+  // Pushes onto the shared stack exactly once per open (deliberately not
+  // keyed on `onClose` — see onCloseRef above), so this modal knows its
+  // own position relative to any other Modal that opens later on top of
+  // it.
   useEffect(() => {
     if (!open) return
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
+    const id = stackIdRef.current!
+    openModalStack.push({ id, onClose: () => onCloseRef.current() })
+    return () => {
+      const idx = openModalStack.findIndex((entry) => entry.id === id)
+      if (idx !== -1) openModalStack.splice(idx, 1)
+    }
+  }, [open])
+
+  useEffect(() => {
+    if (!open) return
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key !== 'Escape') return
+      // Only the topmost (most recently opened) modal responds — see the
+      // openModalStack comment up top for why this matters the moment two
+      // Modals are open at once.
+      const top = openModalStack[openModalStack.length - 1]
+      if (top?.id !== stackIdRef.current) return
+      onCloseRef.current()
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
-  }, [open, onClose])
+  }, [open])
 
   if (!mounted) return null
 
