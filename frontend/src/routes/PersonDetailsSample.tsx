@@ -290,8 +290,20 @@ function workYearSortKey(work: MockWork): number {
   const match = work.yearWritten?.match(/\d+/)
   return match ? Number(match[0]) : Number.POSITIVE_INFINITY
 }
+// Same "ignore a leading A/An/The" convention the backend's own title sort
+// applies elsewhere (CLAUDE.md > Frontend) — mockup-parity with
+// PersonDetailsPage.tsx's own titleSortKey.
+function titleSortKey(title: string): string {
+  return title.replace(/^(a|an|the)\s+/i, '').toLowerCase()
+}
+// Year written first, title A→Z as the tiebreaker (direct request,
+// 2026-09-01, mockup-parity with the real page).
 function sortWorksByYear(works: MockWork[]): MockWork[] {
-  return [...works].sort((a, b) => workYearSortKey(a) - workYearSortKey(b))
+  return [...works].sort((a, b) => {
+    const yearDiff = workYearSortKey(a) - workYearSortKey(b)
+    if (yearDiff !== 0) return yearDiff
+    return titleSortKey(a.title).localeCompare(titleSortKey(b.title))
+  })
 }
 
 // Only the Arranger role gets called out — Composer is the expected/

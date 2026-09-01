@@ -93,8 +93,24 @@ function workYearSortKey(piece: Piece): number {
   const match = piece.yearWritten.value.match(/\d+/)
   return match ? Number(match[0]) : Number.POSITIVE_INFINITY
 }
+// Same "ignore a leading A/An/The" library-catalog convention the
+// backend's own title sort already applies everywhere else (CLAUDE.md >
+// Frontend, articleStrippedSQL) — ported client-side here since this page
+// sorts its works list itself rather than through the backend's own sort
+// param (personId doesn't paginate, see CLAUDE.md's own note on that, so
+// the whole list is already in hand to sort locally).
+function titleSortKey(title: string): string {
+  return title.replace(/^(a|an|the)\s+/i, '').toLowerCase()
+}
+// Year written first, title A→Z as the tiebreaker (direct request,
+// 2026-09-01) — a year-less work still sorts last by year (workYearSortKey's
+// own +Infinity), then alphabetically among itself.
 function sortWorksByYear(pieces: Piece[]): Piece[] {
-  return [...pieces].sort((a, b) => workYearSortKey(a) - workYearSortKey(b))
+  return [...pieces].sort((a, b) => {
+    const yearDiff = workYearSortKey(a) - workYearSortKey(b)
+    if (yearDiff !== 0) return yearDiff
+    return titleSortKey(a.title).localeCompare(titleSortKey(b.title))
+  })
 }
 
 // Only the Arranger role is called out — Composer is the expected/default
