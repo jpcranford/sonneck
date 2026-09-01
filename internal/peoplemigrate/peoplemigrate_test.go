@@ -143,20 +143,25 @@ func TestRun_SplitsAndBackfillsBothPiecesAndBooks(t *testing.T) {
 		t.Errorf("piece composers = %+v, want [Gilbert, Sullivan] in that order", pieceComposerNames)
 	}
 
-	// Re-running must be a no-op — both rows already have real credits now.
+	// Re-running must be a no-op — both rows already have real credits now,
+	// so Pending reports nothing left to do and Run short-circuits before
+	// even scanning, returning a zero Result rather than counting either
+	// row as "skipped".
 	second, err := peoplemigrate.Run(ctx, conn)
 	if err != nil {
 		t.Fatalf("second Run: %v", err)
 	}
-	if second.PiecesMigrated != 0 || second.BooksMigrated != 0 || second.PiecesSkipped != 1 || second.BooksSkipped != 1 {
-		t.Errorf("second run result = %+v, want everything skipped (idempotent)", second)
+	if second != (peoplemigrate.Result{}) {
+		t.Errorf("second run result = %+v, want a zero Result (short-circuited, nothing pending)", second)
 	}
 }
 
 // TestRun_SkipsAlreadyMigratedRows confirms the idempotency guard directly:
 // a piece already carrying a real composer credit (set through the normal
 // repo API, not the legacy column) must not be touched, even if its legacy
-// column also happens to hold different data.
+// column also happens to hold different data. Pending's own "already has a
+// credit" check treats this piece as not-pending, so Run short-circuits
+// before ever inspecting it — the strongest form of "left untouched".
 func TestRun_SkipsAlreadyMigratedRows(t *testing.T) {
 	ctx := context.Background()
 	conn := newTestDB(t)
@@ -185,8 +190,8 @@ func TestRun_SkipsAlreadyMigratedRows(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
-	if result.PiecesSkipped != 1 || result.PiecesMigrated != 0 {
-		t.Errorf("result = %+v, want the already-migrated piece skipped", result)
+	if result != (peoplemigrate.Result{}) {
+		t.Errorf("result = %+v, want a zero Result (Pending correctly reports nothing to do)", result)
 	}
 
 	piece, err := repo.GetPieceByID(ctx, conn, pieceID)
@@ -196,4 +201,96 @@ func TestRun_SkipsAlreadyMigratedRows(t *testing.T) {
 	if len(piece.ComposerIDs) != 1 || piece.ComposerIDs[0] != realComposer {
 		t.Errorf("composer ids = %v, want unchanged [%d] (stale legacy value must not be merged in)", piece.ComposerIDs, realComposer)
 	}
+}
+
+// TestPending covers every case Run's automatic-startup short-circuit
+// actually depends on: an empty library and a library with only blank
+// legacy strings must both report false (nothing to scan for), a real
+// unmigrated legacy string must report true, and a row that already has a
+// real credit must report false even while its legacy TEXT column still
+// holds a different, stale value — Pending's "already migrated" condition
+// has to agree with Run's own per-row skip condition, or the two would
+// disagree about whether a row needs work.
+func TestPending(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("empty library", func(t *testing.T) {
+		conn := newTestDB(t)
+		pending, err := peoplemigrate.Pending(ctx, conn)
+		if err != nil {
+			t.Fatalf("Pending: %v", err)
+		}
+		if pending {
+			t.Error("Pending = true, want false for an empty library")
+		}
+	})
+
+	t.Run("blank legacy strings", func(t *testing.T) {
+		conn := newTestDB(t)
+		if _, err := repo.CreatePiece(ctx, conn, &models.Piece{
+			Title:    "No Composer Yet",
+			FilePath: "/data/library/pieces/blank.pdf",
+			FileHash: "blank-hash",
+		}); err != nil {
+			t.Fatalf("CreatePiece: %v", err)
+		}
+		pending, err := peoplemigrate.Pending(ctx, conn)
+		if err != nil {
+			t.Fatalf("Pending: %v", err)
+		}
+		if pending {
+			t.Error("Pending = true, want false when composer/arranger are both blank")
+		}
+	})
+
+	t.Run("real unmigrated legacy string", func(t *testing.T) {
+		conn := newTestDB(t)
+		pieceID, err := repo.CreatePiece(ctx, conn, &models.Piece{
+			Title:    "Needs Migrating",
+			FilePath: "/data/library/pieces/needs.pdf",
+			FileHash: "needs-hash",
+		})
+		if err != nil {
+			t.Fatalf("CreatePiece: %v", err)
+		}
+		if _, err := conn.ExecContext(ctx, `UPDATE pieces SET composer = ? WHERE id = ?`, "Someone", pieceID); err != nil {
+			t.Fatalf("seeding legacy composer: %v", err)
+		}
+		pending, err := peoplemigrate.Pending(ctx, conn)
+		if err != nil {
+			t.Fatalf("Pending: %v", err)
+		}
+		if !pending {
+			t.Error("Pending = false, want true when a piece has a legacy composer string and no join-table credit yet")
+		}
+	})
+
+	t.Run("already migrated, stale legacy string left behind", func(t *testing.T) {
+		conn := newTestDB(t)
+		pieceID, err := repo.CreatePiece(ctx, conn, &models.Piece{
+			Title:    "Already Migrated",
+			FilePath: "/data/library/pieces/already-pending.pdf",
+			FileHash: "already-pending-hash",
+		})
+		if err != nil {
+			t.Fatalf("CreatePiece: %v", err)
+		}
+		personID, err := repo.FindOrCreatePerson(ctx, conn, "Real Composer")
+		if err != nil {
+			t.Fatalf("FindOrCreatePerson: %v", err)
+		}
+		if err := repo.SetPieceComposers(ctx, conn, pieceID, []int64{personID}); err != nil {
+			t.Fatalf("SetPieceComposers: %v", err)
+		}
+		if _, err := conn.ExecContext(ctx, `UPDATE pieces SET composer = ? WHERE id = ?`, "Stale Legacy Name", pieceID); err != nil {
+			t.Fatalf("seeding stale legacy composer: %v", err)
+		}
+		pending, err := peoplemigrate.Pending(ctx, conn)
+		if err != nil {
+			t.Fatalf("Pending: %v", err)
+		}
+		if pending {
+			t.Error("Pending = true, want false — the piece already has a real credit, so its stale legacy TEXT must not count as pending work")
+		}
+	})
 }

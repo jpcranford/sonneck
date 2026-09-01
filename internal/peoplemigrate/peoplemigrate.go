@@ -78,8 +78,26 @@ type Result struct {
 // library's full piece count is small enough that this isn't a
 // performance concern, and it means an interrupted run leaves already-
 // processed rows correctly migrated rather than rolling everything back.
+//
+// Short-circuits entirely via Pending (below) when nothing needs
+// migrating — load-bearing now that this also runs automatically on every
+// server startup (cmd/sonneck/main.go), not just the manual `migrate-
+// people` CLI subcommand: without this, a library that finished migrating
+// years ago would still pay for a full pieces+books scan (plus a
+// GetPieceByID/GetBookByID round trip per row) on every single restart,
+// forever, for zero benefit. A no-op run returns a zero Result rather than
+// counting every already-migrated row as "skipped" — cheaper, and correct,
+// since nothing was actually inspected.
 func Run(ctx context.Context, db *sql.DB) (Result, error) {
 	var result Result
+
+	pending, err := Pending(ctx, db)
+	if err != nil {
+		return result, err
+	}
+	if !pending {
+		return result, nil
+	}
 
 	pieces, err := legacyPieceCredits(ctx, db)
 	if err != nil {
@@ -114,6 +132,34 @@ func Run(ctx context.Context, db *sql.DB) (Result, error) {
 	}
 
 	return result, nil
+}
+
+// Pending reports whether any Piece or Book still has an unmigrated legacy
+// composer/arranger string — a non-blank composer/arranger TEXT value with
+// no corresponding join-table credit yet (mirrors Run's own per-row skip
+// condition, "already has any composer or arranger credit", exactly — a
+// row this treats as pending is exactly a row Run would actually migrate).
+// One cheap query, no per-row round trips — meant to be checked before
+// paying for the full scan Run does when there's real work to do.
+func Pending(ctx context.Context, db *sql.DB) (bool, error) {
+	const query = `
+SELECT EXISTS(
+	SELECT 1 FROM pieces p
+	WHERE (TRIM(COALESCE(p.composer, '')) != '' OR TRIM(COALESCE(p.arranger, '')) != '')
+		AND NOT EXISTS (SELECT 1 FROM piece_composers pc WHERE pc.piece_id = p.id)
+		AND NOT EXISTS (SELECT 1 FROM piece_arrangers pa WHERE pa.piece_id = p.id)
+)
+OR EXISTS(
+	SELECT 1 FROM books b
+	WHERE (TRIM(COALESCE(b.composer, '')) != '' OR TRIM(COALESCE(b.arranger, '')) != '')
+		AND NOT EXISTS (SELECT 1 FROM book_composers bc WHERE bc.book_id = b.id)
+		AND NOT EXISTS (SELECT 1 FROM book_arrangers ba WHERE ba.book_id = b.id)
+)`
+	var pending bool
+	if err := db.QueryRowContext(ctx, query).Scan(&pending); err != nil {
+		return false, err
+	}
+	return pending, nil
 }
 
 type legacyCredit struct {

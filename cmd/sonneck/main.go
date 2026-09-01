@@ -58,6 +58,28 @@ func main() {
 		return
 	}
 
+	// Backfills the composer/arranger overhaul's Person/join-table schema
+	// (migration 00020) from any Piece/Book still carrying only the old
+	// composer/arranger TEXT columns — runs on every normal startup, not
+	// just via the `migrate-people` CLI subcommand (which stays available
+	// below as a manual fallback), so a user upgrading past this point
+	// never has to know the subcommand exists. Safe to run unconditionally:
+	// peoplemigrate.Run is purely additive (never touches the old TEXT
+	// columns, which this migration deliberately never drops — see that
+	// migration's own comment) and idempotent (skips any piece/book that
+	// already has a credit), so an already-migrated library just costs two
+	// cheap SELECTs. Best-effort/non-fatal — a failure here leaves the old
+	// TEXT data untouched and the app fully usable, so it's logged rather
+	// than treated as a startup-blocking error the way a real migration
+	// failure is.
+	if result, err := peoplemigrate.Run(context.Background(), conn); err != nil {
+		logger.Error("people migration failed", "error", err)
+	} else if result.PiecesMigrated > 0 || result.BooksMigrated > 0 {
+		logger.Info("people migration completed",
+			"piecesMigrated", result.PiecesMigrated, "piecesSkipped", result.PiecesSkipped,
+			"booksMigrated", result.BooksMigrated, "booksSkipped", result.BooksSkipped)
+	}
+
 	scheduler, err := backup.StartScheduler(cfg.BackupCron, conn, cfg.BackupDir, cfg.BackupRetentionDays, logger)
 	if err != nil {
 		logger.Error("failed to start backup scheduler", "error", err)
@@ -123,7 +145,12 @@ func runSubcommand(name string, conn *sql.DB, cfg *config.Config, logger *slog.L
 		// Fifth instance of the CLI-subcommand admin pattern (CLAUDE.md >
 		// Search). Safe against a live server (WAL mode) — reads/writes go
 		// through the same repo layer every real request already uses, no
-		// raw connection tricks. Idempotent: safe to re-run.
+		// raw connection tricks. Idempotent: safe to re-run. Kept as a
+		// manual subcommand even though this same backfill now also runs
+		// automatically on every normal server startup (main, above) — a
+		// deliberate fallback for re-running it by hand (e.g. against a
+		// different DATA_DIR, or to retry after a failed automatic run
+		// without restarting the server).
 		result, err := peoplemigrate.Run(context.Background(), conn)
 		if err != nil {
 			logger.Error("people migration failed", "error", err)
