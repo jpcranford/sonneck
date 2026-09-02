@@ -39,7 +39,17 @@ import { TOTAL_WIZARD_STEPS } from './BookUploadWizard'
 // the split itself was wrong.
 
 const CURRENT_STEP = 5
-const DESKTOP_BREAKPOINT_PX = 768
+// Deliberately NOT the app's own `md:` breakpoint (768px, Sidebar.tsx/
+// MobileNav.tsx) — found live building UploadBookTitlesMockup.tsx's own
+// two-tier row layout (Option A of a density-comparison artifact, see
+// CLAUDE.md's Book Upload Wizard entry): at exactly 768px both the
+// sidebar (256px) and this row's own Composer/Arranger split turned on at
+// the same instant, which is the worst possible moment for the split —
+// the sidebar has just claimed its full width and the fields column has
+// its least room, producing a visibly cramped ~150px-wide field. Set
+// wider so the two-column split only engages once there's still real
+// room left over after the sidebar appears.
+const DESKTOP_BREAKPOINT_PX = 1024
 
 // Academic p./pp. convention app-wide (singular vs. a range), same as
 // PiecePage.tsx/BookDetailsPage.tsx — this row label had drifted to a
@@ -307,9 +317,6 @@ export function BookUploadTitlesStep({
   // satisfies the backend's composer-or-arranger rule via inheritance
   // regardless of what (if anything) gets typed on this screen.
   const requireComposerOrArranger = !bookComposer && !bookArranger
-  const desktopGridCols = showArrangerField
-    ? 'grid-cols-[128px_88px_1fr_1fr_1fr]'
-    : 'grid-cols-[128px_88px_1fr_1fr]'
 
   function onSubmit(data: FormValues) {
     onChange(data.pieces)
@@ -505,32 +512,33 @@ export function BookUploadTitlesStep({
       </div>
 
       <form ref={formRef} onSubmit={handleSubmit(onSubmit)}>
+        {/* Desktop: "two-tier" rows (Option A of a density comparison —
+            CLAUDE.md's Book Upload Wizard entry, ported from
+            UploadBookTitlesMockup.tsx once approved). Replaces the old
+            single-row 5-column grid: that layout squeezed Title/Composer/
+            Arranger into equal narrow columns, and a piece with 2+
+            composers or a long OCR'd title wrapped/cramped badly the
+            moment Arranger also showed. Now each piece is its own row — a
+            stacked media column (thumb over its page-range label) on the
+            left, Title on its own full-width line, Composer/Arranger
+            splitting the line below it 50/50 (or Composer alone taking
+            the full line when Arranger's hidden — automatic from flex:1
+            with a single child). No shared column header above the list
+            anymore — each field carries its own inline label instead,
+            since tiers no longer line up into one consistent row shape
+            the way a single grid could label once. */}
         {isDesktop && (
-          <div>
-            <div className={`grid ${desktopGridCols} gap-2.5 px-3 pb-1.5`}>
-              <span />
-              <span />
-              <span className="text-xs font-semibold text-ink-soft">Title *</span>
-              <span className="text-xs font-semibold text-ink-soft">Composer</span>
-              {showArrangerField && (
-                <span className="text-xs font-semibold text-ink-soft">Arranger</span>
-              )}
-            </div>
-            <div className="flex flex-col border-t border-border">
-              {pieces.map((piece, index) => {
-                const titleError = errors.pieces?.[index]?.title
-                const composerError = errors.pieces?.[index]?.composer
-                const arrangerError = errors.pieces?.[index]?.arranger
-                return (
-                  <div
-                    key={index}
-                    className={`grid ${desktopGridCols} items-center gap-2.5 px-3 py-1.5 ${
-                      index % 2 === 0 ? 'bg-paper-sunken' : ''
-                    }`}
-                  >
-                    <span className="text-sm text-ink-soft">
-                      Piece {index + 1} • {formatPieceLabel(piece, pageOffset)}
-                    </span>
+          <div className="flex flex-col border-t border-border">
+            {pieces.map((piece, index) => {
+              const titleError = errors.pieces?.[index]?.title
+              const composerError = errors.pieces?.[index]?.composer
+              const arrangerError = errors.pieces?.[index]?.arranger
+              return (
+                <div
+                  key={index}
+                  className={`flex gap-3.5 px-3 py-3 ${index % 2 === 0 ? 'bg-paper-sunken' : ''}`}
+                >
+                  <div className="flex w-28 shrink-0 flex-col gap-1.5">
                     {/* Desktop-only hover popover, on top of the existing
                         tap-to-open overlay rather than replacing it — a
                         mouse is guaranteed on desktop, so a hover preview
@@ -547,10 +555,32 @@ export function BookUploadTitlesStep({
                       bookId={bookId}
                       onPreview={() => setPreviewPage(piece.start)}
                     />
+                    <span className="text-xs text-ink-soft">
+                      Piece {index + 1} • {formatPieceLabel(piece, pageOffset)}
+                    </span>
+                  </div>
+                  <div className="flex min-w-0 flex-1 flex-col gap-2.5">
                     <div className="min-w-0">
+                      {/* Label matches TagComboBox's own label (text-sm,
+                          regular weight) instead of the smaller bold-caps
+                          style the old shared column header used — that
+                          style was carried over by habit when this row
+                          stopped being a grid, but nothing next to it
+                          uses it anymore, so it read as a mismatched font.
+                          Padding is py-[11px] (not py-1.5) so the box's
+                          measured height lands at exactly 42px — the same
+                          height TagComboBox's own min-h-[42px] wrapper
+                          resolves to (confirmed via live boundingClientRect
+                          on the mockup, not just the Tailwind spacing
+                          scale's nearest step) — so Title, Composer, and
+                          Arranger's boxes line up instead of Title sitting
+                          visibly shorter. */}
+                      <label className="mb-1 block text-sm text-ink-soft">
+                        Title <span className="text-red-700">*</span>
+                      </label>
                       <textarea
                         rows={1}
-                        className={`w-full resize-none overflow-hidden rounded-md border bg-paper-raised px-2.5 py-1.5 text-sm text-ink ${
+                        className={`w-full resize-none overflow-hidden rounded-md border bg-paper-raised px-2.5 py-[11px] text-sm text-ink ${
                           titleError ? 'border-red-700' : 'border-border'
                         }`}
                         placeholder="Title"
@@ -564,51 +594,21 @@ export function BookUploadTitlesStep({
                         </span>
                       )}
                     </div>
-                    <div className="min-w-0">
-                      <Controller
-                        name={`pieces.${index}.composer`}
-                        control={control}
-                        rules={composerOrArrangerRules('composer', index)}
-                        render={({ field }) => (
-                          <TagComboBox
-                            label="Composer"
-                            hideLabel
-                            options={peopleOptions}
-                            selected={field.value}
-                            multiple
-                            onChange={(next) => {
-                              field.onChange(next)
-                              void trigger(`pieces.${index}.arranger`)
-                              onChange(getValues().pieces)
-                            }}
-                            pillStyle="paper"
-                            newOptionLabel="New person"
-                          />
-                        )}
-                      />
-                      {composerError && (
-                        <span className="mt-0.5 flex items-center gap-1 text-xs text-red-700">
-                          <IconAlertTriangle size={10} />
-                          {composerError.message}
-                        </span>
-                      )}
-                    </div>
-                    {showArrangerField && (
-                      <div className="min-w-0">
+                    <div className="flex gap-2.5">
+                      <div className="min-w-0 flex-1">
                         <Controller
-                          name={`pieces.${index}.arranger`}
+                          name={`pieces.${index}.composer`}
                           control={control}
-                          rules={composerOrArrangerRules('arranger', index)}
+                          rules={composerOrArrangerRules('composer', index)}
                           render={({ field }) => (
                             <TagComboBox
-                              label="Arranger"
-                              hideLabel
+                              label="Composer"
                               options={peopleOptions}
                               selected={field.value}
                               multiple
                               onChange={(next) => {
                                 field.onChange(next)
-                                void trigger(`pieces.${index}.composer`)
+                                void trigger(`pieces.${index}.arranger`)
                                 onChange(getValues().pieces)
                               }}
                               pillStyle="paper"
@@ -616,18 +616,48 @@ export function BookUploadTitlesStep({
                             />
                           )}
                         />
-                        {arrangerError && (
+                        {composerError && (
                           <span className="mt-0.5 flex items-center gap-1 text-xs text-red-700">
                             <IconAlertTriangle size={10} />
-                            {arrangerError.message}
+                            {composerError.message}
                           </span>
                         )}
                       </div>
-                    )}
+                      {showArrangerField && (
+                        <div className="min-w-0 flex-1">
+                          <Controller
+                            name={`pieces.${index}.arranger`}
+                            control={control}
+                            rules={composerOrArrangerRules('arranger', index)}
+                            render={({ field }) => (
+                              <TagComboBox
+                                label="Arranger"
+                                options={peopleOptions}
+                                selected={field.value}
+                                multiple
+                                onChange={(next) => {
+                                  field.onChange(next)
+                                  void trigger(`pieces.${index}.composer`)
+                                  onChange(getValues().pieces)
+                                }}
+                                pillStyle="paper"
+                                newOptionLabel="New person"
+                              />
+                            )}
+                          />
+                          {arrangerError && (
+                            <span className="mt-0.5 flex items-center gap-1 text-xs text-red-700">
+                              <IconAlertTriangle size={10} />
+                              {arrangerError.message}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                )
-              })}
-            </div>
+                </div>
+              )
+            })}
           </div>
         )}
 
@@ -642,24 +672,31 @@ export function BookUploadTitlesStep({
                   key={index}
                   className={`flex items-start gap-3.5 px-4 py-3.5 ${index % 2 === 0 ? 'bg-paper-sunken' : ''}`}
                 >
-                  <button
-                    type="button"
-                    onClick={() => setPreviewPage(piece.start)}
-                    title="Tap to preview page"
-                    className="relative aspect-[180/132] w-[115px] shrink-0 overflow-hidden rounded-lg"
-                    style={{ border: `1.5px solid ${piece.color}` }}
-                  >
-                    <img
-                      src={getBookPageThumbnailUrl(bookId, piece.start)}
-                      alt=""
-                      loading="lazy"
-                      className="h-full w-full object-cover object-top"
-                    />
-                  </button>
-                  <div className="flex min-w-0 flex-1 flex-col gap-2.5">
+                  {/* Piece label sits under the thumbnail, same stacked
+                      media column as the desktop layout — it used to
+                      float above Title inside the fields column instead,
+                      which put it to the *side* of the thumbnail rather
+                      than under it. */}
+                  <div className="flex w-[115px] shrink-0 flex-col gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setPreviewPage(piece.start)}
+                      title="Tap to preview page"
+                      className="relative aspect-[180/132] w-full overflow-hidden rounded-lg"
+                      style={{ border: `1.5px solid ${piece.color}` }}
+                    >
+                      <img
+                        src={getBookPageThumbnailUrl(bookId, piece.start)}
+                        alt=""
+                        loading="lazy"
+                        className="h-full w-full object-cover object-top"
+                      />
+                    </button>
                     <span className="text-sm text-ink-soft">
                       Piece {index + 1} • {formatPieceLabel(piece, pageOffset)}
                     </span>
+                  </div>
+                  <div className="flex min-w-0 flex-1 flex-col gap-2.5">
                     <div>
                       <label className="mb-1 block text-sm text-ink-soft">
                         Title <span className="text-red-700">*</span>
