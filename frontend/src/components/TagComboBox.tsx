@@ -161,7 +161,21 @@ export function TagComboBox({
   // last, wrapping both ends); Enter acts on whichever row is currently
   // highlighted — the top result by default, or the create-new row when
   // there are no matches at all, matching what's actually shown on screen.
+  // Backspace with an empty, untyped input removes the pill immediately
+  // behind the cursor (the last selected one) — the standard tag-input
+  // convention (Gmail's "To" field, etc.), and what a Mac's own "delete"
+  // key actually sends (its physical label reads "delete," but it fires
+  // the same 'Backspace' key event as a PC's backspace — there's no
+  // separate forward-delete case to handle here, since nothing ever sits
+  // ahead of the cursor in this field). Checked before the `!open` guard
+  // below so it still fires even if the dropdown menu itself has nothing
+  // to show (e.g. every option is already selected).
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key === 'Backspace' && query === '' && selected.length > 0) {
+      event.preventDefault()
+      removeTagAt(selected.length - 1)
+      return
+    }
     if (!open || menuItemCount === 0) return
     if (event.key === 'ArrowDown') {
       event.preventDefault()
