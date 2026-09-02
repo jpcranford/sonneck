@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router-dom'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   IconArrowLeft,
   IconArrowsDiagonal,
@@ -16,12 +16,13 @@ import {
   IconMusic,
 } from '@tabler/icons-react'
 import { getPieceThumbnailUrl, uploadPiece, updatePiece } from '../api/pieces'
+import { listPeople } from '../api/people'
 import { ApiError } from '../api/client'
-import type { Piece } from '../api/types'
-import { namesToText, textToNames } from '../lib/joinNames'
+import type { Piece, Tag } from '../api/types'
 import { loadWizardDraft } from '../lib/useWizardDraft'
 import { PageLightbox } from '../components/PageLightbox'
 import { SourceBookField } from '../components/SourceBookField'
+import { TagComboBox } from '../components/TagComboBox'
 import { BookUploadWizard } from './BookUploadWizard'
 
 // Mirrors the backend's own cap (internal/handlers/helpers.go MaxUploadBytes)
@@ -49,7 +50,7 @@ function toIntOrNull(value: string): number | null {
 
 interface DetailsForm {
   title: string
-  composer: string
+  composer: Tag[]
   sourceBookId: number | null
   sourcePageStart: string
   sourcePageEnd: string
@@ -91,6 +92,11 @@ export function UploadPage() {
   } = useForm<DetailsForm>()
   const watchedSourceBookId = watch('sourceBookId')
 
+  // People catalog (composer/arranger overhaul, Stage C pattern) — same
+  // unpaginated listPeople() call as EditPieceModal.tsx/EditBookModal.tsx/
+  // BookUploadAboutStep.tsx's own Composer TagComboBox option source.
+  const { data: peopleOptions = [] } = useQuery({ queryKey: ['people'], queryFn: () => listPeople() })
+
   const uploadMutation = useMutation({
     mutationFn: (file: File) => {
       setProgress(0)
@@ -107,14 +113,12 @@ export function UploadPage() {
       setLightboxOpen(false)
       resetDetailsForm({
         title: uploaded.title,
-        // Composer is an ordered Person list now (composer/arranger
-        // overhaul, migration 00020) — bridged to this still-plain-text
-        // field as a comma-separated string (namesToText/textToNames,
-        // lib/joinNames.ts). EditPieceModal.tsx's own composer field got
-        // a real multi-person TagComboBox in Stage C; this screen's own
-        // one-shot upload-details field deliberately did not (out of that
-        // stage's scope) and still uses this bridge.
-        composer: namesToText(uploaded.composer.values.map((p) => p.name)),
+        // Composer is an ordered Person list (composer/arranger overhaul,
+        // migration 00020) — this screen now uses the same real
+        // multi-person TagComboBox as EditPieceModal.tsx/EditBookModal.tsx/
+        // BookUploadAboutStep.tsx's own Stage C fields, so the effective
+        // values already come back as real Tag objects, no bridging needed.
+        composer: uploaded.composer.values,
         sourceBookId: null,
         sourcePageStart: '',
         sourcePageEnd: '',
@@ -128,7 +132,7 @@ export function UploadPage() {
     mutationFn: (data: DetailsForm) =>
       updatePiece(piece!.id, {
         title: data.title,
-        composers: textToNames(data.composer),
+        composers: data.composer.map((t) => t.name),
         arrangers: [],
         sourceBookId: data.sourceBookId,
         sourcePageStart: toIntOrNull(data.sourcePageStart),
@@ -408,13 +412,21 @@ export function UploadPage() {
                 {errors.title && <p className="text-sm text-red-700">{errors.title.message}</p>}
               </div>
               <div className="flex flex-col gap-1">
-                <label htmlFor="composer" className="text-sm text-ink-soft">
-                  Composer
-                </label>
-                <input
-                  id="composer"
-                  className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-                  {...register('composer', { required: 'Composer is required.', maxLength: 255 })}
+                <Controller
+                  name="composer"
+                  control={control}
+                  rules={{ validate: (value) => value.length > 0 || 'Composer is required.' }}
+                  render={({ field }) => (
+                    <TagComboBox
+                      label="Composer"
+                      options={peopleOptions}
+                      selected={field.value}
+                      multiple
+                      onChange={field.onChange}
+                      pillStyle="paper"
+                      newOptionLabel="New person"
+                    />
+                  )}
                 />
                 {errors.composer && (
                   <p className="text-sm text-red-700">{errors.composer.message}</p>
