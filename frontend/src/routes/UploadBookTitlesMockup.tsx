@@ -762,6 +762,7 @@ export function UploadBookTitlesMockup() {
                               void trigger(`pieces.${index}.arranger`)
                             }}
                             pillStyle="paper"
+                            newOptionLabel="New person"
                           />
                         )}
                       />
@@ -790,6 +791,7 @@ export function UploadBookTitlesMockup() {
                                 void trigger(`pieces.${index}.composer`)
                               }}
                               pillStyle="paper"
+                              newOptionLabel="New person"
                             />
                           )}
                         />
@@ -871,6 +873,7 @@ export function UploadBookTitlesMockup() {
                               void trigger(`pieces.${index}.arranger`)
                             }}
                             pillStyle="paper"
+                            newOptionLabel="New person"
                           />
                         )}
                       />
@@ -898,6 +901,7 @@ export function UploadBookTitlesMockup() {
                                 void trigger(`pieces.${index}.composer`)
                               }}
                               pillStyle="paper"
+                              newOptionLabel="New person"
                             />
                           )}
                         />

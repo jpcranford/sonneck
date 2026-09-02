@@ -469,6 +469,7 @@ export function BookUploadAboutStep({
                     multiple
                     onChange={field.onChange}
                     pillStyle="paper"
+                    newOptionLabel="New person"
                     highlighted={imslpFilledFields.has('composer')}
                     labelExtra={
                       <InfoTooltip
@@ -495,6 +496,7 @@ export function BookUploadAboutStep({
                     multiple
                     onChange={field.onChange}
                     pillStyle="paper"
+                    newOptionLabel="New person"
                   />
                 )}
               />

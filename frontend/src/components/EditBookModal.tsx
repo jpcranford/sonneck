@@ -424,6 +424,7 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
                   multiple
                   onChange={field.onChange}
                   pillStyle="paper"
+                  newOptionLabel="New person"
                   highlighted={imslpFilledFields.has('composer')}
                 />
               )}
@@ -441,6 +442,7 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
                   multiple
                   onChange={field.onChange}
                   pillStyle="paper"
+                  newOptionLabel="New person"
                 />
               )}
             />

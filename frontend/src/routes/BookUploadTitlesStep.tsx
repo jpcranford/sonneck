@@ -582,6 +582,7 @@ export function BookUploadTitlesStep({
                               onChange(getValues().pieces)
                             }}
                             pillStyle="paper"
+                            newOptionLabel="New person"
                           />
                         )}
                       />
@@ -611,6 +612,7 @@ export function BookUploadTitlesStep({
                                 onChange(getValues().pieces)
                               }}
                               pillStyle="paper"
+                              newOptionLabel="New person"
                             />
                           )}
                         />
@@ -695,6 +697,7 @@ export function BookUploadTitlesStep({
                               onChange(getValues().pieces)
                             }}
                             pillStyle="paper"
+                            newOptionLabel="New person"
                           />
                         )}
                       />
@@ -723,6 +726,7 @@ export function BookUploadTitlesStep({
                                 onChange(getValues().pieces)
                               }}
                               pillStyle="paper"
+                              newOptionLabel="New person"
                             />
                           )}
                         />
