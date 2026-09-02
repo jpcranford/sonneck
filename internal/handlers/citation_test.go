@@ -436,7 +436,7 @@ func TestCitation_TitleDoubleQuotesBecomeSingleQuotes(t *testing.T) {
 	}
 	decodeData(t, citeRec, &citation)
 
-	want := `Joe Hisaishi, arr. M. Yamamoto, "Merry-Go-Round of Life from 'Howl's Moving Castle'", Sony/ATV Music Publishing (UK), 2004`
+	want := `Joe Hisaishi, arr. M. Yamamoto, "Merry-Go-Round of Life from 'Howl's Moving Castle'", Sony/ATV Music Publishing (UK), 2004.`
 	if citation.Citation != want {
 		t.Errorf("citation = %q, want %q", citation.Citation, want)
 	}

@@ -174,8 +174,12 @@ func buildCitation(eff *repo.EffectivePiece, composerNames, arrangerNames []stri
 		parts = append(parts, fmt.Sprintf("IMSLP #%s", stripImslpPrefix(eff.ImslpNumber.Value)))
 	}
 
+	// yearWritten is always the citation's last component when present, so
+	// appending the period here — rather than after the final Join — lands
+	// it at the very end of the citation without needing a separate
+	// no-op-when-blank check on the whole result.
 	if eff.YearWritten.Value != "" {
-		parts = append(parts, eff.YearWritten.Value)
+		parts = append(parts, eff.YearWritten.Value+".")
 	}
 
 	return strings.Join(parts, ", ")
