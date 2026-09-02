@@ -151,7 +151,7 @@ function WorkGrid({ pieces, personId }: { pieces: Piece[]; personId: number }) {
   return (
     <div className="grid grid-cols-[repeat(auto-fill,minmax(112px,1fr))] gap-3">
       {pieces.map((piece) => (
-        <PieceContextMenu key={piece.id} piece={piece} hideTriggerButton>
+        <PieceContextMenu key={piece.id} piece={piece} hideTriggerButton siblingPieces={pieces}>
           <ClickableCard
             to={`/pieces/${piece.id}`}
             state={{ backLabel: 'Person' }}
@@ -189,7 +189,7 @@ function WorkList({ pieces, personId }: { pieces: Piece[]; personId: number }) {
       </div>
       <div>
         {pieces.map((piece) => (
-          <PieceContextMenu key={piece.id} piece={piece} hideTriggerButton>
+          <PieceContextMenu key={piece.id} piece={piece} hideTriggerButton siblingPieces={pieces}>
             <ClickableCard
               to={`/pieces/${piece.id}`}
               state={{ backLabel: 'Person' }}

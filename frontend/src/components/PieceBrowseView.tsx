@@ -392,7 +392,12 @@ export function PieceBrowseView({
         {pieces && pieces.length > 0 && viewMode === 'grid' && (
           <div className={`grid gap-4 ${GRID_COLS_CLASS[gridCardSize]}`}>
             {pieces.map((piece) => (
-              <PieceGridCard key={piece.id} piece={piece} backLabel={backLabel} />
+              <PieceGridCard
+                key={piece.id}
+                piece={piece}
+                backLabel={backLabel}
+                siblingPieces={pieces}
+              />
             ))}
           </div>
         )}
@@ -400,7 +405,12 @@ export function PieceBrowseView({
         {pieces && pieces.length > 0 && viewMode === 'list' && (
           <div className="flex flex-col gap-3">
             {pieces.map((piece) => (
-              <PieceListCard key={piece.id} piece={piece} backLabel={backLabel} />
+              <PieceListCard
+                key={piece.id}
+                piece={piece}
+                backLabel={backLabel}
+                siblingPieces={pieces}
+              />
             ))}
           </div>
         )}

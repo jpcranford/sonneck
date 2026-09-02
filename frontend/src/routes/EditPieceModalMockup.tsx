@@ -12,7 +12,9 @@ import {
   IconArrowRight,
   IconCheck,
   IconChevronDown,
+  IconChevronLeft,
   IconChevronRight,
+  IconChevronRightFilled,
   IconCloudDownload,
   IconCloudOff,
   IconInfoCircle,
@@ -180,6 +182,39 @@ const defaultValues: FormValues = {
   measureCount: '35',
   beatsPerMeasure: '3',
 }
+
+// Sibling-piece navigation (Option D from the toolbar/nav comparison
+// artifact) — three real, fully-loadable pieces from the same source book
+// as `defaultValues` above (mockBook, "Album für die Jugend, Op. 68"),
+// consecutive numbers either side of No. 9 so stepping through them reads
+// as genuinely browsing the book's own piece order, not arbitrary fixture
+// data. Only title/workOpusNumber/arranger/description/sourcePageStart/
+// sourcePageEnd actually differ per sibling — enough to make the swap
+// obvious without needing three fully distinct fixtures. Index 1 (the
+// middle one) is `defaultValues` itself, unchanged, so the modal still
+// opens on exactly the piece it always has.
+const SIBLING_PIECES: FormValues[] = [
+  {
+    ...defaultValues,
+    title: 'No. 8, Wilder Reiter (The Wild Horseman)',
+    workOpusNumber: 'Op. 68, No. 8',
+    arranger: '',
+    description: 'A galloping, energetic showpiece — a favorite recital opener from the Album.',
+    sourcePageStart: '20',
+    sourcePageEnd: '21',
+  },
+  defaultValues,
+  {
+    ...defaultValues,
+    title: 'No. 10, Fröhlicher Landmann (The Happy Farmer)',
+    workOpusNumber: 'Op. 68, No. 10',
+    arranger: '',
+    description: "Schumann's best-known miniature from the Album — a cheerful, march-like tune.",
+    sourcePageStart: '25',
+    sourcePageEnd: '26',
+  },
+]
+const DEFAULT_SIBLING_INDEX = 1
 
 function SectionHeading({ children }: { children: ReactNode }) {
   return (
@@ -913,8 +948,25 @@ export function EditPieceModalMockup() {
     setValue,
     setError,
     clearErrors,
+    reset,
     formState: { errors },
   } = useForm<FormValues>({ defaultValues })
+
+  // Sibling-piece navigation state — see SIBLING_PIECES above. Loading a
+  // different sibling reset()s the whole form to that piece's own values
+  // (react-hook-form's own documented way to swap in new data), same as
+  // EditPersonModal.tsx already does when its own `person` prop changes;
+  // this mockup has no such prop, so an explicit call from goToSibling
+  // stands in for it. The page preview resets to that piece's own first
+  // page too — carrying over the previous piece's page number would be
+  // showing the wrong piece's imagined page 3 as if it belonged to this one.
+  const [siblingIndex, setSiblingIndex] = useState(DEFAULT_SIBLING_INDEX)
+  function goToSibling(newIndex: number) {
+    if (newIndex < 0 || newIndex >= SIBLING_PIECES.length) return
+    setSiblingIndex(newIndex)
+    reset(SIBLING_PIECES[newIndex])
+    setPreviewPage(MOCK_THUMBNAIL_PAGE)
+  }
 
   const composer = watch('composer')
   const bpm = Number(watch('bpm'))
@@ -993,25 +1045,93 @@ export function EditPieceModalMockup() {
     clearErrors('duration')
   }
 
-  function onSubmit(data: FormValues) {
+  // Split into two submit paths now that Save and Save & Close are
+  // genuinely different actions (toolbar/nav comparison artifact, Option
+  // D) — `closeAfter` is the only thing that differs between them, so both
+  // route through this one validate-then-log function rather than
+  // duplicating the composer check twice.
+  function performSave(data: FormValues, closeAfter: boolean) {
     const effectiveComposer = data.composer.trim() || mockBook.composer
     if (!effectiveComposer) {
       setError('composer', { message: 'Composer is required (own value or inherited from book).' })
       return
     }
     clearErrors('composer')
-    console.log('Mockup submit (no real save):', { ...data, imslpNumber: stripImslpPrefix(data.imslpNumber) })
-    setOpen(false)
+    console.log(`Mockup submit (no real save, closeAfter=${closeAfter}):`, {
+      ...data,
+      imslpNumber: stripImslpPrefix(data.imslpNumber),
+    })
+    if (closeAfter) setOpen(false)
+  }
+  function onSubmitAndClose(data: FormValues) {
+    performSave(data, true)
+  }
+  function onSubmitStayOpen(data: FormValues) {
+    performSave(data, false)
   }
 
-  // Shift+Enter saves from anywhere in the form — kept in sync with the
-  // real EditPieceModal.tsx; see that file's own comment.
+  // Shift+Enter saves (and closes) from anywhere in the form, including a
+  // field with its own open dropdown — kept in sync with the real
+  // EditPieceModal.tsx; see that file's own comment. Now maps to
+  // onSubmitAndClose specifically (not the bare, now-nonexistent onSubmit)
+  // since "Save" alone no longer closes — this is still the "from inside a
+  // field" path; see the no-field-focused document listener below for the
+  // brand new Left/Right/Enter/Shift+Enter shortcuts Option D added.
   function handleFormKeyDown(event: KeyboardEvent<HTMLFormElement>) {
     if (event.key === 'Enter' && event.shiftKey) {
       event.preventDefault()
-      handleSubmit(onSubmit)()
+      handleSubmit(onSubmitAndClose)()
     }
   }
+
+  // New with Option D (toolbar/nav comparison artifact): Left/Right cycles
+  // siblings, Enter is "Save, keep editing", Shift+Enter is "Save & Close"
+  // — but ONLY while nothing text-entry-like has focus, so this never
+  // collides with typing in a field (the guard mirrors the tag check
+  // PiecePage.tsx/BookDetailsPage.tsx/PersonDetailsPage.tsx already use for
+  // their own page-level shortcuts) or with a focused button/link's own
+  // native Enter/Space behavior (BUTTON/A aren't in those three pages'
+  // existing check — added here specifically because Enter and arrow keys,
+  // unlike a plain letter-key shortcut, really do collide with what a
+  // focused button already does with them).
+  useEffect(() => {
+    if (!open) return
+    // globalThis.KeyboardEvent, not the bare name — this file's own top
+    // import (`type KeyboardEvent` from 'react', used by handleFormKeyDown
+    // above) shadows the DOM's native KeyboardEvent, which is the type a
+    // real document-level 'keydown' listener actually needs.
+    function onKeyDown(event: globalThis.KeyboardEvent) {
+      if (event.ctrlKey || event.metaKey || event.altKey) return
+      const target = event.target as HTMLElement | null
+      const tag = target?.tagName
+      if (
+        tag === 'INPUT' ||
+        tag === 'TEXTAREA' ||
+        tag === 'SELECT' ||
+        tag === 'BUTTON' ||
+        tag === 'A' ||
+        target?.isContentEditable
+      ) {
+        return
+      }
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault()
+        goToSibling(siblingIndex - 1)
+      } else if (event.key === 'ArrowRight') {
+        event.preventDefault()
+        goToSibling(siblingIndex + 1)
+      } else if (event.key === 'Enter' && event.shiftKey) {
+        event.preventDefault()
+        handleSubmit(onSubmitAndClose)()
+      } else if (event.key === 'Enter') {
+        event.preventDefault()
+        handleSubmit(onSubmitStayOpen)()
+      }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- handleSubmit is a fresh function identity every render (react-hook-form doesn't memoize it); depending on it would tear down/re-add this listener every render for no behavioral difference. open/siblingIndex are the only real dependencies.
+  }, [open, siblingIndex])
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6 md:p-8">
@@ -1042,7 +1162,13 @@ export function EditPieceModalMockup() {
                 <h2 id="edit-piece-mockup-title" className="font-display text-2xl font-medium text-ink">
                   Edit piece
                 </h2>
-                <p className="text-sm text-ink-soft">{defaultValues.title}</p>
+                {/* watch('title'), not the static defaultValues constant —
+                    the real component's subtitle mirrors its `piece` prop,
+                    and this mockup's nearest equivalent is "whichever
+                    sibling is currently loaded," which only the live form
+                    value tracks once goToSibling can reset() to a
+                    different one. */}
+                <p className="text-sm text-ink-soft">{watch('title')}</p>
               </div>
               {/* Favorite lives on the Piece Details page's own header now (that
                   page already has its own real toggle) — editing it a
@@ -1130,28 +1256,76 @@ export function EditPieceModalMockup() {
           </div>
         }
         footer={
-          <div ref={footerRef} className="flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              form="edit-piece-form"
-              className="cursor-pointer rounded-md bg-accent px-4 py-2 font-display text-white hover:bg-accent/90"
-            >
-              Save
-            </button>
+          // Option D (toolbar/nav comparison artifact): one row, two zones
+          // — sibling-piece nav on the left (same "‹ N / M ›" language as
+          // PageCycleControl, a hand-rolled local equivalent rather than
+          // reusing that component directly, since its aria-labels/count
+          // are hardcoded to "page", not "piece"), Cancel/Save/Save & Close
+          // on the right. Save & Close is the accent-filled primary action
+          // (also the form's native type="submit" target, so a plain Enter
+          // pressed *inside* a text field still saves-and-closes, matching
+          // this app's existing muscle memory) — plain Save is a secondary,
+          // outlined action instead.
+          <div ref={footerRef} className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-1 text-ink-soft">
+              <button
+                type="button"
+                onClick={() => goToSibling(siblingIndex - 1)}
+                disabled={siblingIndex <= 0}
+                aria-label="Previous piece"
+                title={siblingIndex > 0 ? SIBLING_PIECES[siblingIndex - 1].title : undefined}
+                className="flex size-7 cursor-pointer items-center justify-center rounded hover:bg-accent-soft hover:text-accent disabled:pointer-events-none disabled:opacity-30"
+              >
+                <IconChevronLeft size={18} />
+              </button>
+              <span className="px-1 text-sm tabular-nums">
+                {siblingIndex + 1} / {SIBLING_PIECES.length}
+              </span>
+              <button
+                type="button"
+                onClick={() => goToSibling(siblingIndex + 1)}
+                disabled={siblingIndex >= SIBLING_PIECES.length - 1}
+                aria-label="Next piece"
+                title={
+                  siblingIndex < SIBLING_PIECES.length - 1
+                    ? SIBLING_PIECES[siblingIndex + 1].title
+                    : undefined
+                }
+                className="flex size-7 cursor-pointer items-center justify-center rounded hover:bg-accent-soft hover:text-accent disabled:pointer-events-none disabled:opacity-30"
+              >
+                <IconChevronRightFilled size={18} />
+              </button>
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSubmit(onSubmitStayOpen)()}
+                className="cursor-pointer rounded-md border border-accent bg-paper-raised px-4 py-2 font-display text-accent hover:bg-accent-soft"
+              >
+                Save
+              </button>
+              <button
+                type="submit"
+                form="edit-piece-form"
+                className="cursor-pointer rounded-md bg-accent px-4 py-2 font-display text-white hover:bg-accent/90"
+              >
+                Save &amp; Close
+              </button>
+            </div>
           </div>
         }
       >
         <form
           ref={fieldsRef}
           id="edit-piece-form"
-          onSubmit={handleSubmit(onSubmit)}
+          onSubmit={handleSubmit(onSubmitAndClose)}
           onKeyDown={handleFormKeyDown}
           className="flex flex-col gap-6"
         >

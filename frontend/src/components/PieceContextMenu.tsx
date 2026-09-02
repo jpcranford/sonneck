@@ -14,12 +14,17 @@ interface PieceContextMenuProps {
    * custom-positioned trigger via this component's forwarded ref instead
    * (see PieceGridCard, which anchors its trigger to the thumbnail). */
   hideTriggerButton?: boolean
+  /** Passed straight through to EditPieceModal — the ordered list a
+   * caller wants "Edit Piece"'s footer nav arrows to cycle through
+   * (whatever's currently on screen at the call site). Optional; omitting
+   * it hides the nav control entirely. */
+  siblingPieces?: Piece[]
 }
 
 // Shared right-click menu for piece cards (grid + list): a favorite toggle,
 // "Edit Piece", and, at the end, a destructive "Delete Piece".
 export const PieceContextMenu = forwardRef<ContextMenuHandle, PieceContextMenuProps>(
-  function PieceContextMenu({ piece, children, hideTriggerButton }, ref) {
+  function PieceContextMenu({ piece, children, hideTriggerButton, siblingPieces }, ref) {
     const [editOpen, setEditOpen] = useState(false)
     const queryClient = useQueryClient()
 
@@ -75,7 +80,12 @@ export const PieceContextMenu = forwardRef<ContextMenuHandle, PieceContextMenuPr
         >
           {children}
         </ContextMenu>
-        <EditPieceModal piece={piece} open={editOpen} onClose={() => setEditOpen(false)} />
+        <EditPieceModal
+          piece={piece}
+          open={editOpen}
+          onClose={() => setEditOpen(false)}
+          siblingPieces={siblingPieces}
+        />
       </>
     )
   },

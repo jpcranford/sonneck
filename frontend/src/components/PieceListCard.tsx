@@ -14,16 +14,19 @@ interface PieceListCardProps {
    * {backLabel}" once it's navigated to from here — see PiecePage.tsx's
    * back-button section for the full mechanism. */
   backLabel: string
+  /** Passed straight through to PieceContextMenu/EditPieceModal — see
+   * PieceContextMenu's own doc comment. */
+  siblingPieces?: Piece[]
 }
 
-export function PieceListCard({ piece, backLabel }: PieceListCardProps) {
+export function PieceListCard({ piece, backLabel, siblingPieces }: PieceListCardProps) {
   const [page, setPage] = useState(piece.thumbnailPage)
   const meta = formatPieceMeta(piece)
 
   return (
     // No visible "⋯" trigger, same as PieceGridCard — right-click
     // (desktop) and ContextMenu's built-in long-press (touch) cover it instead.
-    <PieceContextMenu piece={piece} hideTriggerButton>
+    <PieceContextMenu piece={piece} hideTriggerButton siblingPieces={siblingPieces}>
       <ClickableCard
         to={`/pieces/${piece.id}`}
         state={{ backLabel }}

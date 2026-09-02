@@ -12,11 +12,14 @@ interface PieceGridCardProps {
    * {backLabel}" once it's navigated to from here — see PiecePage.tsx's
    * back-button section for the full mechanism. */
   backLabel: string
+  /** Passed straight through to PieceContextMenu/EditPieceModal — see
+   * PieceContextMenu's own doc comment. */
+  siblingPieces?: Piece[]
 }
 
 // No page-cycle control here — the locked mockup only shows it on list
 // cards (see PieceListCard). Grid always shows the piece's first page.
-export function PieceGridCard({ piece, backLabel }: PieceGridCardProps) {
+export function PieceGridCard({ piece, backLabel, siblingPieces }: PieceGridCardProps) {
   // Composer (+ arranger) • year written only — narrower than
   // PieceListCard's formatPieceMeta (which also folds in opus number/
   // source book), since the grid card's tighter layout only has room for
@@ -46,7 +49,7 @@ export function PieceGridCard({ piece, backLabel }: PieceGridCardProps) {
     // desktop already has right-click). Touch users get the menu via
     // ContextMenu's built-in long-press instead; hideTriggerButton stays
     // true so the button doesn't fall back in.
-    <PieceContextMenu piece={piece} hideTriggerButton>
+    <PieceContextMenu piece={piece} hideTriggerButton siblingPieces={siblingPieces}>
       <ClickableCard
         to={`/pieces/${piece.id}`}
         state={{ backLabel }}

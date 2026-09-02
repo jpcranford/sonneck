@@ -11,7 +11,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   IconAlertTriangle,
   IconChevronDown,
+  IconChevronLeft,
   IconChevronRight,
+  IconChevronRightFilled,
   IconInfoCircle,
   IconXFilled,
 } from '@tabler/icons-react'
@@ -44,6 +46,17 @@ interface EditPieceModalProps {
   piece: Piece
   open: boolean
   onClose: () => void
+  /** The ordered list of pieces to cycle through via the footer's prev/next
+   * arrows (Book Details' own piece order / Piece Library's current sort
+   * &filter results / a person's works list — whatever list "Edit Piece"
+   * was opened from), including `piece` itself. Omit entirely (or pass a
+   * single-item list) to hide the nav control — same "renders nothing when
+   * there's nothing to cycle through" convention as PageCycleControl.
+   * PiecePage.tsx's own direct Edit Piece button deliberately doesn't pass
+   * this — sibling navigation was only asked for from the three context-
+   * menu entry points (Book Details, Piece Library, Person Details), not
+   * from a piece's own details page. */
+  siblingPieces?: Piece[]
 }
 
 interface FormValues {
@@ -215,10 +228,25 @@ function useMeasuredHeight(active = true) {
   return [ref, height] as const
 }
 
-export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
+export function EditPieceModal({
+  piece: initialPiece,
+  open,
+  onClose,
+  siblingPieces,
+}: EditPieceModalProps) {
   const queryClient = useQueryClient()
   const [tempoOpen, setTempoOpen] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
+  // Shadows the `initialPiece` prop deliberately — every existing
+  // `piece.X` reference throughout the rest of this file (form defaults,
+  // the header title, thumbnail URLs, InheritedNote's bookValue/onCopy
+  // props, the save mutation's target id, SourceBookField's remount key,
+  // ...) keeps working completely unchanged and automatically reflects
+  // whichever sibling is currently active, because they're all reading
+  // this local `piece` state, not the prop. goToSibling below is the only
+  // thing that ever calls setPiece; the reset-on-open effect further down
+  // is what snaps `piece` back to `initialPiece` on every fresh open.
+  const [piece, setPiece] = useState(initialPiece)
   const [previewPage, setPreviewPage] = useState(piece.thumbnailPage)
   // Captured right before mutate() fires, read in onSuccess — see
   // lib/minDuration.ts. Without this, the "Saving…" button label (and
@@ -314,9 +342,17 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
     formState: { errors },
   } = useForm<FormValues>({ defaultValues: pieceToFormValues(piece) })
 
+  // Keyed on `initialPiece` (the prop), not the shadowed `piece` state —
+  // this is deliberately the *only* place that ever reacts to the prop
+  // directly, so a fresh open (or the caller swapping which card's piece
+  // this instance belongs to) always snaps back to that card's own piece,
+  // discarding wherever goToSibling below may have navigated to last time.
+  // goToSibling's own setPiece calls never touch initialPiece, so they
+  // don't re-trigger this effect or fight with it.
   useEffect(() => {
     if (open) {
-      reset(pieceToFormValues(piece))
+      setPiece(initialPiece)
+      reset(pieceToFormValues(initialPiece))
       // Reopening (possibly for a different piece) always resets to that
       // piece's own thumbnail page — carrying over a scrolled-to-page-4
       // state from whatever was last edited would be confusing, not a
@@ -329,10 +365,35 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
       // state, not re-fire (and reset the whole form) on every resize while
       // the modal is already open.
       setPreviewOpen(viewportHeight > 800)
-      setPreviewPage(piece.thumbnailPage)
+      setPreviewPage(initialPiece.thumbnailPage)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, piece, reset])
+  }, [open, initialPiece, reset])
+
+  // Sibling-piece navigation (footer nav control + the no-field-focused
+  // Left/Right shortcut below) — mirrors EditPieceModalMockup.tsx's own
+  // goToSibling exactly, except the index is derived fresh from
+  // siblingPieces/piece.id every call instead of tracked as separate state:
+  // siblingPieces is live data from whatever page opened this modal (a
+  // TanStack Query result), not a fixed fixture array, so deriving avoids
+  // a whole class of "the list changed shape underneath a stale index"
+  // bugs the mockup's own local array never had to worry about.
+  // Deliberately does NOT touch previewOpen (unlike the reset-on-open
+  // effect above, which does) — carrying the user's own
+  // expanded/collapsed preference across a sibling switch is the point;
+  // only the shown page needs to reset, since a different piece's "page 3"
+  // has nothing to do with this one's.
+  function goToSibling(offset: number) {
+    if (!siblingPieces) return
+    const currentIndex = siblingPieces.findIndex((p) => p.id === piece.id)
+    if (currentIndex === -1) return
+    const nextIndex = currentIndex + offset
+    if (nextIndex < 0 || nextIndex >= siblingPieces.length) return
+    const next = siblingPieces[nextIndex]
+    setPiece(next)
+    reset(pieceToFormValues(next))
+    setPreviewPage(next.thumbnailPage)
+  }
 
   // Small fixed lookup lists (design doc §5) — generous staleTime since
   // these change rarely (a user adding a brand-new tag/instrument mid-edit
@@ -438,48 +499,123 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
     setValue('duration', secondsToMMSS(totalSeconds))
   }
 
+  // `variables` (TanStack Query's own name for whatever was passed to
+  // .mutate()) carries closeAfter through to onSuccess — this is what lets
+  // one mutation definition serve both Save (stay open) and Save & Close,
+  // rather than two near-identical useMutation instances.
   const saveMutation = useMutation({
-    // The Date.now() capture lives here, not in onSubmit below — onSubmit
-    // is passed straight into react-hook-form's handleSubmit(), which the
-    // react-hooks/purity and react-hooks/refs lint rules can't statically
-    // prove doesn't invoke it during render, so an impure call or ref
-    // write there gets flagged even though it never actually runs until a
-    // real submit event. mutationFn has no such ambiguity — react-query
-    // only ever calls it from mutate(), well after render.
-    mutationFn: (data: FormValues) => {
+    // The Date.now() capture lives here, not in either onSubmit* function
+    // below — both are passed straight into react-hook-form's
+    // handleSubmit(), which the react-hooks/purity and react-hooks/refs
+    // lint rules can't statically prove doesn't invoke during render, so an
+    // impure call or ref write there gets flagged even though it never
+    // actually runs until a real submit event. mutationFn has no such
+    // ambiguity — react-query only ever calls it from mutate(), well after
+    // render.
+    mutationFn: ({ data }: { data: FormValues; closeAfter: boolean }) => {
       saveStartedAtRef.current = Date.now()
       return updatePiece(piece.id, formValuesToWriteRequest(data, piece))
     },
-    onSuccess: () => {
+    onSuccess: (_updated, variables) => {
       queryClient.invalidateQueries({ queryKey: ['pieces'] })
       queryClient.invalidateQueries({ queryKey: ['piece'] })
       afterMinDuration(saveStartedAtRef.current, () => {
         setIsSaving(false)
-        onClose()
+        if (variables.closeAfter) onClose()
       })
     },
     onError: () => setIsSaving(false),
   })
 
-  function onSubmit(data: FormValues) {
+  // Split into two submit paths (toolbar/nav comparison artifact, Option
+  // D, approved 2026-09-02) now that Save and Save & Close are genuinely
+  // different actions — "Save" alone no longer implies closing. Kept as
+  // two named functions (not one closeAfter-parameterized factory) so
+  // handleFormKeyDown/the footer buttons/the new no-field-focused shortcut
+  // effect below can all reference them directly, same shape
+  // EditPieceModalMockup.tsx already established — see that file's own
+  // comment for why "if the two ever look different" applies here too.
+  function onSubmitAndClose(data: FormValues) {
     setIsSaving(true)
-    saveMutation.mutate(data)
+    saveMutation.mutate({ data, closeAfter: true })
+  }
+  function onSubmitStayOpen(data: FormValues) {
+    setIsSaving(true)
+    saveMutation.mutate({ data, closeAfter: false })
   }
 
-  // Shift+Enter saves from anywhere in the form — including a field with
-  // its own open dropdown (Key, Sheet Type, Instruments, Your Tags,
-  // Source Book), which would
-  // otherwise treat plain Enter as "pick the highlighted row" and never
-  // reach a submit at all. Those fields' own handlers (TagComboBox/
-  // SingleSelect/SourceBookField) explicitly skip Shift+Enter rather than
-  // acting on it, so this handler is the only thing that fires — no
-  // double effect of both picking an option and saving.
+  // Shift+Enter saves (and closes) from anywhere in the form — including a
+  // field with its own open dropdown (Key, Sheet Type, Instruments, Your
+  // Tags, Source Book), which would otherwise treat plain Enter as "pick
+  // the highlighted row" and never reach a submit at all. Those fields'
+  // own handlers (TagComboBox/SingleSelect/SourceBookField) explicitly
+  // skip Shift+Enter rather than acting on it, so this handler is the only
+  // thing that fires — no double effect of both picking an option and
+  // saving. Targets onSubmitAndClose specifically (not a bare "save"),
+  // since this is still the from-inside-a-field path — the no-field-
+  // focused Enter/Shift+Enter shortcuts below are new and separate.
   function handleFormKeyDown(event: ReactKeyboardEvent<HTMLFormElement>) {
     if (event.key === 'Enter' && event.shiftKey) {
       event.preventDefault()
-      handleSubmit(onSubmit)()
+      handleSubmit(onSubmitAndClose)()
     }
   }
+
+  // No-field-focused shortcuts (toolbar/nav comparison artifact, Option D,
+  // approved 2026-09-02): Left/Right cycle siblings, Enter is "Save, keep
+  // editing," Shift+Enter is "Save & Close" — but ONLY while nothing text-
+  // entry-like has focus, so this never collides with typing in a field
+  // (the guard mirrors the tag check PiecePage.tsx/BookDetailsPage.tsx/
+  // PersonDetailsPage.tsx already use for their own page-level shortcuts)
+  // or with a focused button/link's own native Enter/Space behavior
+  // (BUTTON/A aren't in those three pages' own check — added here
+  // specifically because Enter and arrow keys, unlike a plain letter-key
+  // shortcut, really do collide with what a focused button already does
+  // with them — a focused Cancel/Save button and this shortcut could
+  // otherwise both react to the same Enter press). Ported verbatim from
+  // EditPieceModalMockup.tsx's own identical effect.
+  useEffect(() => {
+    if (!open) return
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.ctrlKey || event.metaKey || event.altKey) return
+      const target = event.target as HTMLElement | null
+      const tag = target?.tagName
+      if (
+        tag === 'INPUT' ||
+        tag === 'TEXTAREA' ||
+        tag === 'SELECT' ||
+        tag === 'BUTTON' ||
+        tag === 'A' ||
+        target?.isContentEditable
+      ) {
+        return
+      }
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault()
+        goToSibling(-1)
+      } else if (event.key === 'ArrowRight') {
+        event.preventDefault()
+        goToSibling(1)
+      } else if (event.key === 'Enter' && event.shiftKey) {
+        event.preventDefault()
+        handleSubmit(onSubmitAndClose)()
+      } else if (event.key === 'Enter') {
+        event.preventDefault()
+        handleSubmit(onSubmitStayOpen)()
+      }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- handleSubmit is a fresh function identity every render (react-hook-form doesn't memoize it); depending on it would tear down/re-add this listener every render for no behavioral difference. open/piece/siblingPieces are the only real dependencies (goToSibling itself closes over piece/siblingPieces, both already covered).
+  }, [open, piece, siblingPieces])
+
+  // Same "render nothing when there's nothing to cycle through" convention
+  // as PageCycleControl (a single-piece list, or no list at all — e.g.
+  // PiecePage.tsx's own direct Edit Piece button, which never passes
+  // siblingPieces) hides the nav control entirely rather than showing a
+  // permanently-disabled "1 / 1".
+  const siblingIndex = siblingPieces?.findIndex((p) => p.id === piece.id) ?? -1
+  const showSiblingNav = !!siblingPieces && siblingPieces.length > 1 && siblingIndex !== -1
 
   return (
     <Modal
@@ -597,6 +733,15 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
         </div>
       }
       footer={
+        // Option D (toolbar/nav comparison artifact, approved 2026-09-02):
+        // one row, two zones — sibling-piece nav on the left (hidden
+        // entirely when showSiblingNav is false), Cancel/Save/Save & Close
+        // on the right. Save & Close is the accent-filled primary action
+        // (also the form's native type="submit" target, so a plain Enter
+        // pressed *inside* a text field still saves-and-closes, matching
+        // this app's existing muscle memory) — plain Save is a secondary,
+        // outlined action instead. Ported from
+        // EditPieceModalMockup.tsx's own identical footer.
         <div ref={footerRef} className="flex flex-col gap-2">
           {saveMutation.isError && (
             <p className="flex items-center gap-2 text-sm text-red-700">
@@ -606,22 +751,65 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
                 : 'Could not save. Please try again.'}
             </p>
           )}
-          <div className="flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              form="edit-piece-form"
-              disabled={isSaving}
-              className="cursor-pointer rounded-md bg-accent px-4 py-2 font-display text-white hover:bg-accent/90 disabled:cursor-default disabled:opacity-60"
-            >
-              {isSaving ? 'Saving…' : 'Save'}
-            </button>
+          <div className="flex items-center justify-between gap-3">
+            {showSiblingNav && siblingPieces ? (
+              <div className="flex items-center gap-1 text-ink-soft">
+                <button
+                  type="button"
+                  onClick={() => goToSibling(-1)}
+                  disabled={siblingIndex <= 0}
+                  aria-label="Previous piece"
+                  title={siblingIndex > 0 ? siblingPieces[siblingIndex - 1].title : undefined}
+                  className="flex size-7 cursor-pointer items-center justify-center rounded hover:bg-accent-soft hover:text-accent disabled:pointer-events-none disabled:opacity-30"
+                >
+                  <IconChevronLeft size={18} />
+                </button>
+                <span className="px-1 text-sm tabular-nums">
+                  {siblingIndex + 1} / {siblingPieces.length}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => goToSibling(1)}
+                  disabled={siblingIndex >= siblingPieces.length - 1}
+                  aria-label="Next piece"
+                  title={
+                    siblingIndex < siblingPieces.length - 1
+                      ? siblingPieces[siblingIndex + 1].title
+                      : undefined
+                  }
+                  className="flex size-7 cursor-pointer items-center justify-center rounded hover:bg-accent-soft hover:text-accent disabled:pointer-events-none disabled:opacity-30"
+                >
+                  <IconChevronRightFilled size={18} />
+                </button>
+              </div>
+            ) : (
+              <div />
+            )}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSubmit(onSubmitStayOpen)()}
+                disabled={isSaving}
+                className="cursor-pointer rounded-md border border-accent bg-paper-raised px-4 py-2 font-display text-accent hover:bg-accent-soft disabled:cursor-default disabled:opacity-60"
+              >
+                {isSaving ? 'Saving…' : 'Save'}
+              </button>
+              <button
+                type="submit"
+                form="edit-piece-form"
+                disabled={isSaving}
+                className="cursor-pointer rounded-md bg-accent px-4 py-2 font-display text-white hover:bg-accent/90 disabled:cursor-default disabled:opacity-60"
+              >
+                {isSaving ? 'Saving…' : 'Save & Close'}
+              </button>
+            </div>
           </div>
         </div>
       }
@@ -629,7 +817,7 @@ export function EditPieceModal({ piece, open, onClose }: EditPieceModalProps) {
       <form
         ref={fieldsRef}
         id="edit-piece-form"
-        onSubmit={handleSubmit(onSubmit)}
+        onSubmit={handleSubmit(onSubmitAndClose)}
         onKeyDown={handleFormKeyDown}
         className="flex flex-col gap-6"
       >
