@@ -304,6 +304,51 @@ func TestSearchPieces_QueryMatchesPartialWordPrefix(t *testing.T) {
 	}
 }
 
+// TestSearchPieces_QueryMatchesSourceBookTitle covers migration 00021 —
+// pieces_fts's own book_title column. A piece imported from a book must be
+// findable by that book's own title, not just the piece's own fields
+// (title/composer/etc.) — a real request: searching "Off the Record"
+// should find every piece pulled from that book, and a piece with no
+// source book at all must never match a query for someone else's book
+// title purely by coincidence.
+func TestSearchPieces_QueryMatchesSourceBookTitle(t *testing.T) {
+	h := newTestServer(t)
+
+	bookID, _ := uploadBook(t, h, "book.pdf", 2)
+	decodeData(t, doJSON(t, h, http.MethodPatch, apiBooksURL(bookID), map[string]any{
+		"bookTitle": "Off the Record: Led Zeppelin I", "composers": []string{"Jimmy Page"},
+	}), nil)
+	confirmRec := doJSON(t, h, http.MethodPost, apiBooksURL(bookID)+"/confirm-import", map[string]any{
+		"ranges": []map[string]any{{"start": 1, "end": 2}},
+		"pieces": []map[string]any{{"title": "Communication Breakdown"}},
+	})
+	var result struct {
+		Pieces []pieceResponse `json:"pieces"`
+	}
+	decodeData(t, confirmRec, &result)
+	fromBook := result.Pieces[0]
+
+	bookless := createTestPiece(t, h, map[string]any{"title": "No Book Here", "composers": []string{"Nobody"}})
+
+	rec := doJSON(t, h, http.MethodGet, "/api/pieces?query="+url.QueryEscape("Led Zeppelin"), nil)
+	var results []pieceResponse
+	decodeData(t, rec, &results)
+	if len(results) != 1 || results[0].ID != fromBook.ID {
+		t.Errorf(`query="Led Zeppelin" returned %+v, want exactly the piece from that book (id %d)`, results, fromBook.ID)
+	}
+
+	// A book-less piece's own title/composer must never accidentally match
+	// a query for an unrelated book's title.
+	rec2 := doJSON(t, h, http.MethodGet, "/api/pieces?query="+url.QueryEscape("Off the Record"), nil)
+	var results2 []pieceResponse
+	decodeData(t, rec2, &results2)
+	for _, r := range results2 {
+		if r.ID == bookless.ID {
+			t.Errorf(`query="Off the Record" incorrectly matched the book-less piece %+v`, r)
+		}
+	}
+}
+
 // TestSearchPieces_QueryFallsBackToTrigramForMidWordMatch covers the
 // pieces_fts_trigram fallback (migration 00019) — a query that isn't a
 // prefix of anything (so the primary pieces_fts query finds nothing) but

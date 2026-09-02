@@ -74,19 +74,33 @@ func ResyncSearchIndex(ctx context.Context, q Queryer, pieceID int64) error {
 		return err
 	}
 
+	// Book title has no "effective"/inherited concept of its own the way
+	// composer/publisher/etc. do (a piece can't override its own source
+	// book's title) — just the source book's own BookTitle, verbatim, or
+	// empty for a book-less piece. Same lookup api.dto.go's own
+	// SourceBookTitle response field already uses.
+	var bookTitle string
+	if p.SourceBookID != nil {
+		book, err := GetBookByID(ctx, q, *p.SourceBookID)
+		if err != nil {
+			return err
+		}
+		bookTitle = book.BookTitle
+	}
+
 	// Both tables get the same row shape/values — pieces_fts_trigram exists
 	// purely as a different tokenizer over identical content (migration
 	// 00019's own comment), not a differently-scoped index.
 	insertArgs := []any{
 		p.ID, p.Title, strings.Join(composerNames, " "), strings.Join(arrangerNames, " "), eff.Publisher.Value, eff.PublisherID.Value,
 		eff.ImslpNumber.Value, eff.YearWritten.Value, eff.WorkOpusNumber.Value, eff.Description.Value, strOrEmpty(p.UserNotes),
-		strings.Join(keyNames, " "), sheetTypeName, strings.Join(instrumentNames, " "), strings.Join(userTagNames, " "),
+		strings.Join(keyNames, " "), sheetTypeName, strings.Join(instrumentNames, " "), strings.Join(userTagNames, " "), bookTitle,
 	}
 	const insertColumns = `
 		piece_id, title, composer, arranger, publisher, publisher_id,
 		imslp_number, year_written, work_opus_number, description, user_notes,
-		key_name, sheet_type_name, instruments, user_tags
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+		key_name, sheet_type_name, instruments, user_tags, book_title
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 	if _, err := q.ExecContext(ctx, `INSERT INTO pieces_fts (`+insertColumns, insertArgs...); err != nil {
 		return err
