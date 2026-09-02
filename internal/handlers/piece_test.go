@@ -675,10 +675,14 @@ func TestDownloadPieceFile_FilenameUsesInheritedComposerAndYear(t *testing.T) {
 		t.Fatalf("download: status %d", rec.Code)
 	}
 	disposition := rec.Header().Get("Content-Disposition")
-	// The title's "." and "," don't survive sanitizeFilename (same
+	// The title's "." doesn't survive sanitizeFilename (same
 	// character-stripping every filename hint here already goes through,
-	// not specific to this test) — assert against the sanitized form.
-	for _, want := range []string{"Robert Schumann", "No_ 9_ Volksliedchen", "1848"} {
+	// not specific to this test) — assert against the sanitized form. The
+	// comma does survive (fixed 2026-09-02, real bug: unsafeFilenameChars
+	// used to strip commas too, which corrupted a multi-composer credit's
+	// own Oxford-comma joining — see TestDownloadFilename_PreservesCommas
+	// in filename_test.go for that fix's own dedicated coverage).
+	for _, want := range []string{"Robert Schumann", "No_ 9, Volksliedchen", "1848"} {
 		if !strings.Contains(disposition, want) {
 			t.Errorf("Content-Disposition = %q, want it to contain %q (inherited from the book)", disposition, want)
 		}

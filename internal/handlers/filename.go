@@ -38,8 +38,16 @@ func detectImslpNumber(filename string) *string {
 // header or confuse a filesystem, for the download filename hint
 // (handleDownloadPieceFile, handleDownloadBookFile) derived from free-text
 // fields. Parens are allowed (not stripped) specifically for
-// downloadFilename's "(yearWritten)" segment below.
-var unsafeFilenameChars = regexp.MustCompile(`[^a-zA-Z0-9 _()-]+`)
+// downloadFilename's "(yearWritten)" segment below. Comma allowed too (found
+// 2026-09-02, real bug): joinPersonNames' own Oxford-comma joining of a
+// multi-person composer/arranger credit ("Jimmy Page, John Paul Jones, and
+// John Bonham") was getting every comma replaced with "_" here, since a
+// comma wasn't in the allowed set — a real title can legitimately carry one
+// too ("No. 9, Volksliedchen"). A comma breaks neither a quoted
+// Content-Disposition filename (RFC 6266/2616 quoted-string only requires
+// escaping `"`/`\`) nor any real filesystem (Windows/macOS/Linux all permit
+// it), so there was never a real reason to strip it.
+var unsafeFilenameChars = regexp.MustCompile(`[^a-zA-Z0-9 _(),-]+`)
 
 func sanitizeFilename(title string) string {
 	cleaned := strings.TrimSpace(unsafeFilenameChars.ReplaceAllString(title, "_"))

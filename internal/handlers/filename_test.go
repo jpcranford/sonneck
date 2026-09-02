@@ -73,3 +73,25 @@ func TestDownloadFilename(t *testing.T) {
 		})
 	}
 }
+
+// TestDownloadFilename_PreservesCommas is a real bug found live (2026-09-02):
+// unsafeFilenameChars used to exclude comma, so joinPersonNames' own
+// Oxford-comma join of a multi-person composer credit ("Jimmy Page, John
+// Paul Jones, and John Bonham") came out of downloadFilename with every
+// comma replaced by "_" — confirmed against a real download's
+// Content-Disposition header before fixing it. Asserts the literal comma
+// survives, not just a sanitized-vs-sanitized comparison (which wouldn't
+// have caught this — TestDownloadFilename's own "arranger used when
+// composer is blank" case has a comma in its title too, but compares
+// against sanitizeFilename(want), so it silently expected the comma to be
+// stripped on both sides and never actually verified it was preserved).
+func TestDownloadFilename_PreservesCommas(t *testing.T) {
+	got := downloadFilename(
+		"Jimmy Page, John Paul Jones, and John Bonham", "", "",
+		"Communication Breakdown", "1969",
+	)
+	want := "Jimmy Page, John Paul Jones, and John Bonham - Communication Breakdown (1969)"
+	if got != want {
+		t.Errorf("downloadFilename(...) = %q, want %q (commas must survive, not become \"_\")", got, want)
+	}
+}
