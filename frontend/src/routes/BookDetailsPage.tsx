@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ChangeEvent } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -24,13 +24,13 @@ import {
 import { getPieceThumbnailUrl, searchPieces } from '../api/pieces'
 import { ApiError } from '../api/client'
 import type { Piece } from '../api/types'
-import { bookComposerPart } from '../lib/formatBookMeta'
 import { hyphenateISBN } from '../lib/isbn'
-import { personCreditPart } from '../lib/joinNames'
+import { joinNames, personCreditPart } from '../lib/joinNames'
 import { ClickableCard } from '../components/ClickableCard'
 import { ContextMenu } from '../components/ContextMenu'
 import { EditBookModal } from '../components/EditBookModal'
 import { MarkdownText } from '../components/MarkdownText'
+import { PersonNameLinks } from '../components/PersonNameLinks'
 import { PieceContextMenu } from '../components/PieceContextMenu'
 import { TagPills } from '../components/TagPills'
 
@@ -637,7 +637,50 @@ export function BookDetailsPage() {
                     {book.workOpusNumber ? ` (${book.workOpusNumber})` : ''}
                   </h1>
                   <p className="text-[0.92rem] text-ink-soft">
-                    {[bookComposerPart(book), book.yearWritten].filter(Boolean).join(' • ')}
+                    {/* Composer/Arranger names link to their own Person
+                        Details page, mirroring Piece Details' own header
+                        row (PiecePage.tsx) — same bullet-fused "Composer •
+                        arr. Arranger" convention as the old plain-string
+                        bookComposerPart (lib/formatBookMeta.ts), just
+                        JSX-capable now via PersonNameLinks. Falls back to
+                        publisher (plain text, not a Person) when the book
+                        has neither composer nor arranger — ValidateBook
+                        requires one of composer/arranger/publisher, so this
+                        is never blank. Scoped to this one header row only,
+                        same as Piece Details — formatBookMeta/
+                        bookComposerPart themselves are untouched and still
+                        used as plain strings everywhere else (grid/list
+                        cards, Piece Details' own Source Book card). */}
+                    {(() => {
+                      const composerNames = joinNames(book.composer.map((p) => p.name))
+                      const arrangerNames = joinNames(book.arranger.map((p) => p.name))
+                      const composerPart: ReactNode = composerNames ? (
+                        <>
+                          <PersonNameLinks people={book.composer} />
+                          {arrangerNames && (
+                            <>
+                              {' '}
+                              • arr. <PersonNameLinks people={book.arranger} />
+                            </>
+                          )}
+                        </>
+                      ) : arrangerNames ? (
+                        <>
+                          arr. <PersonNameLinks people={book.arranger} />
+                        </>
+                      ) : (
+                        book.publisher
+                      )
+                      const parts = [composerPart, book.yearWritten].filter(
+                        (part): part is NonNullable<typeof part> => !!part,
+                      )
+                      return parts.map((part, index) => (
+                        <span key={index}>
+                          {index > 0 && ' • '}
+                          {part}
+                        </span>
+                      ))
+                    })()}
                   </p>
                 </div>
 
