@@ -138,13 +138,23 @@ function pieceForPage(page: number): PieceFixture | null {
 // case instead.
 const BOOK_COMPOSER = ''
 const BOOK_ARRANGER = ''
+// Blank here (see BOOK_COMPOSER/BOOK_ARRANGER's own comment above) — set
+// alongside a real BOOK_COMPOSER to preview the third case, where both
+// people fields disappear entirely (direct request, 2026-09-02): a book
+// that already has a composer *and* a confirmed IMSLP number is a
+// single-work catalog entry, nothing left to disambiguate per piece.
+const BOOK_IMSLP_NUMBER = ''
 const BOOK_HAS_COMPOSER = !!BOOK_COMPOSER
 const BOOK_HAS_ARRANGER = !!BOOK_ARRANGER
-const SHOW_ARRANGER_FIELD = !BOOK_HAS_ARRANGER
+const BOOK_HAS_CONFIRMED_ATTRIBUTION = BOOK_HAS_COMPOSER && !!BOOK_IMSLP_NUMBER
+const SHOW_COMPOSER_FIELD = !BOOK_HAS_CONFIRMED_ATTRIBUTION
+const SHOW_ARRANGER_FIELD = !BOOK_HAS_ARRANGER && !BOOK_HAS_CONFIRMED_ATTRIBUTION
 // Neither field is actually required here unless the book supplies
 // neither composer nor arranger of its own — whichever one the book
 // already has satisfies the backend's composer-or-arranger rule via
 // inheritance regardless of what (if anything) gets typed on this screen.
+// Already false whenever BOOK_HAS_CONFIRMED_ATTRIBUTION is true (implies
+// BOOK_HAS_COMPOSER), so that case needs no separate guard here.
 const REQUIRE_COMPOSER_OR_ARRANGER = !BOOK_HAS_COMPOSER && !BOOK_HAS_ARRANGER
 
 // Academic p./pp. convention app-wide (singular vs. a range), same as
@@ -672,7 +682,10 @@ export function UploadBookTitlesMockup() {
           <h1 className="font-display text-2xl font-medium text-ink">Name each piece</h1>
           <p className="text-sm text-ink-soft">
             Hover or tap a thumbnail to see the page larger.{' '}
-            {BOOK_HAS_ARRANGER &&
+            {BOOK_HAS_CONFIRMED_ATTRIBUTION &&
+              `This book already has a composer and IMSLP number on record, so there are no per-piece Composer/Arranger fields below — every piece already credits ${BOOK_COMPOSER}.`}
+            {!BOOK_HAS_CONFIRMED_ATTRIBUTION &&
+              BOOK_HAS_ARRANGER &&
               `This book already credits arranger ${BOOK_ARRANGER}, so there's no per-piece Arranger field below — set a Composer per piece if you'd like one on record.`}
             {REQUIRE_COMPOSER_OR_ARRANGER &&
               ' This book has no composer or arranger set, so enter at least one of the two for each piece below.'}
@@ -771,64 +784,66 @@ export function UploadBookTitlesMockup() {
                         </span>
                       )}
                     </div>
-                    <div className="flex gap-2.5">
-                      <div className="min-w-0 flex-1">
-                        <Controller
-                          name={`pieces.${index}.composer`}
-                          control={control}
-                          rules={composerOrArrangerRules('composer', index)}
-                          render={({ field }) => (
-                            <TagComboBox
-                              label="Composer"
-                              options={PEOPLE_OPTIONS}
-                              selected={field.value}
-                              multiple
-                              onChange={(next) => {
-                                field.onChange(next)
-                                void trigger(`pieces.${index}.arranger`)
-                              }}
-                              pillStyle="paper"
-                              newOptionLabel="New person"
-                            />
-                          )}
-                        />
-                        {composerError && (
-                          <span className="mt-0.5 flex items-center gap-1 text-xs text-red-700">
-                            <IconAlertTriangle size={10} />
-                            {composerError.message}
-                          </span>
-                        )}
-                      </div>
-                      {SHOW_ARRANGER_FIELD && (
+                    {SHOW_COMPOSER_FIELD && (
+                      <div className="flex gap-2.5">
                         <div className="min-w-0 flex-1">
                           <Controller
-                            name={`pieces.${index}.arranger`}
+                            name={`pieces.${index}.composer`}
                             control={control}
-                            rules={composerOrArrangerRules('arranger', index)}
+                            rules={composerOrArrangerRules('composer', index)}
                             render={({ field }) => (
                               <TagComboBox
-                                label="Arranger"
+                                label="Composer"
                                 options={PEOPLE_OPTIONS}
                                 selected={field.value}
                                 multiple
                                 onChange={(next) => {
                                   field.onChange(next)
-                                  void trigger(`pieces.${index}.composer`)
+                                  void trigger(`pieces.${index}.arranger`)
                                 }}
                                 pillStyle="paper"
                                 newOptionLabel="New person"
                               />
                             )}
                           />
-                          {arrangerError && (
+                          {composerError && (
                             <span className="mt-0.5 flex items-center gap-1 text-xs text-red-700">
                               <IconAlertTriangle size={10} />
-                              {arrangerError.message}
+                              {composerError.message}
                             </span>
                           )}
                         </div>
-                      )}
-                    </div>
+                        {SHOW_ARRANGER_FIELD && (
+                          <div className="min-w-0 flex-1">
+                            <Controller
+                              name={`pieces.${index}.arranger`}
+                              control={control}
+                              rules={composerOrArrangerRules('arranger', index)}
+                              render={({ field }) => (
+                                <TagComboBox
+                                  label="Arranger"
+                                  options={PEOPLE_OPTIONS}
+                                  selected={field.value}
+                                  multiple
+                                  onChange={(next) => {
+                                    field.onChange(next)
+                                    void trigger(`pieces.${index}.composer`)
+                                  }}
+                                  pillStyle="paper"
+                                  newOptionLabel="New person"
+                                />
+                              )}
+                            />
+                            {arrangerError && (
+                              <span className="mt-0.5 flex items-center gap-1 text-xs text-red-700">
+                                <IconAlertTriangle size={10} />
+                                {arrangerError.message}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               )
@@ -890,33 +905,35 @@ export function UploadBookTitlesMockup() {
                         </span>
                       )}
                     </div>
-                    <div>
-                      <Controller
-                        name={`pieces.${index}.composer`}
-                        control={control}
-                        rules={composerOrArrangerRules('composer', index)}
-                        render={({ field }) => (
-                          <TagComboBox
-                            label="Composer"
-                            options={PEOPLE_OPTIONS}
-                            selected={field.value}
-                            multiple
-                            onChange={(next) => {
-                              field.onChange(next)
-                              void trigger(`pieces.${index}.arranger`)
-                            }}
-                            pillStyle="paper"
-                            newOptionLabel="New person"
-                          />
+                    {SHOW_COMPOSER_FIELD && (
+                      <div>
+                        <Controller
+                          name={`pieces.${index}.composer`}
+                          control={control}
+                          rules={composerOrArrangerRules('composer', index)}
+                          render={({ field }) => (
+                            <TagComboBox
+                              label="Composer"
+                              options={PEOPLE_OPTIONS}
+                              selected={field.value}
+                              multiple
+                              onChange={(next) => {
+                                field.onChange(next)
+                                void trigger(`pieces.${index}.arranger`)
+                              }}
+                              pillStyle="paper"
+                              newOptionLabel="New person"
+                            />
+                          )}
+                        />
+                        {composerError && (
+                          <span className="mt-1 flex items-center gap-1 text-xs text-red-700">
+                            <IconAlertTriangle size={10} />
+                            {composerError.message}
+                          </span>
                         )}
-                      />
-                      {composerError && (
-                        <span className="mt-1 flex items-center gap-1 text-xs text-red-700">
-                          <IconAlertTriangle size={10} />
-                          {composerError.message}
-                        </span>
-                      )}
-                    </div>
+                      </div>
+                    )}
                     {SHOW_ARRANGER_FIELD && (
                       <div>
                         <Controller

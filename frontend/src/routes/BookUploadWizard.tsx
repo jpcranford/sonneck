@@ -428,6 +428,7 @@ export function BookUploadWizard({ onExit }: BookUploadWizardProps) {
         // presence check and a display string.
         bookComposer={joinNames(book.composer.map((p) => p.name)) || null}
         bookArranger={joinNames(book.arranger.map((p) => p.name)) || null}
+        bookImslpNumber={book.imslpNumber}
         pageOffset={pageOffset}
         pageCount={pageCount}
         pieces={pieces}
