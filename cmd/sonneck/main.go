@@ -80,6 +80,39 @@ func main() {
 			"booksMigrated", result.BooksMigrated, "booksSkipped", result.BooksSkipped)
 	}
 
+	// Same auto-heal posture as the people migration just above, for a real
+	// and previously-unaddressed gap: a goose migration that changes
+	// pieces_fts's own column list (e.g. migration 00021, adding
+	// book_title) has to DROP and recreate the virtual table — FTS5 tables
+	// can't be ALTERed on this project's pinned driver (that migration's
+	// own comment) — which destroys every existing row. Nothing else in
+	// this app's write paths ever repopulates a piece's row except a real
+	// mutation to that specific piece, so without this, search silently
+	// returns nothing for the *entire* existing library (not just the new
+	// column) the moment such a migration runs, until someone happens to
+	// know to run the `rebuild-search-index` CLI subcommand by hand.
+	// Confirmed happening for real, not just in theory — reproduced live
+	// against a real dev database that had just been upgraded past
+	// migration 00021: search for a query matching an existing piece's own
+	// title returned zero results, even though the piece was still fully
+	// present in the library. SearchIndexNeedsRebuild is a cheap two-COUNT
+	// check (same "one query, run on every boot" cost as peoplemigrate.
+	// Pending), so a healthy library pays almost nothing here; only a
+	// genuinely out-of-sync index triggers the full rebuild. Best-effort/
+	// non-fatal, same reasoning as the people migration above — a failed
+	// rebuild leaves search broken but the app otherwise fully usable, not
+	// worth blocking startup over. The manual `rebuild-search-index` CLI
+	// subcommand stays too, as a fallback.
+	if needsRebuild, err := repo.SearchIndexNeedsRebuild(context.Background(), conn); err != nil {
+		logger.Error("search index rebuild check failed", "error", err)
+	} else if needsRebuild {
+		if err := repo.RebuildSearchIndex(context.Background(), conn); err != nil {
+			logger.Error("automatic search index rebuild failed", "error", err)
+		} else {
+			logger.Info("automatic search index rebuild completed")
+		}
+	}
+
 	scheduler, err := backup.StartScheduler(cfg.BackupCron, conn, cfg.BackupDir, cfg.BackupRetentionDays, logger)
 	if err != nil {
 		logger.Error("failed to start backup scheduler", "error", err)

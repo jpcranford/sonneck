@@ -127,6 +127,30 @@ func ResyncSearchIndexForBook(ctx context.Context, q Queryer, bookID int64) erro
 	return nil
 }
 
+// SearchIndexNeedsRebuild reports whether pieces_fts is missing rows for
+// real pieces that exist — a cheap two-COUNT comparison, mirroring
+// peoplemigrate.Pending's own "one query, run on every boot" posture. This
+// is the guard behind main.go's automatic rebuild-on-startup: a plain
+// row-count mismatch is what a migration that does `DROP TABLE pieces_fts`
+// on an already-populated table (e.g. migration 00021, changing its
+// column list) actually produces if the required manual `rebuild-search-
+// index` step never runs afterward — the DROP destroys every existing
+// row, and nothing else in this app's own write paths ever repopulates a
+// piece's row except a real mutation to that specific piece (see
+// ResyncSearchIndex's own doc comment), so a stale/empty index otherwise
+// persists silently forever. Confirmed to actually happen, not just a
+// theoretical risk: reproduced live against a real dev database that had
+// gone through exactly this upgrade path — search returned zero results
+// for a query matching an existing piece's own title, even though the
+// piece itself was still fully present in the library.
+func SearchIndexNeedsRebuild(ctx context.Context, q Queryer) (bool, error) {
+	var mismatch bool
+	err := q.QueryRowContext(ctx,
+		`SELECT (SELECT COUNT(*) FROM pieces) != (SELECT COUNT(*) FROM pieces_fts)`,
+	).Scan(&mismatch)
+	return mismatch, err
+}
+
 // RebuildSearchIndex drops and repopulates pieces_fts from scratch — the
 // manual full-rebuild capability behind the CLI subcommand described in
 // CLAUDE.md > Search (`./main rebuild-search-index`).

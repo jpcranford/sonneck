@@ -128,6 +128,71 @@ func TestSearchIndex_BookEditFansOutToAllPieces(t *testing.T) {
 	}
 }
 
+// TestSearchIndexNeedsRebuild_DetectsAndFixesWipedIndex is the regression
+// test for the real bug this guard exists to catch: a migration that DROPs
+// and recreates an already-populated pieces_fts (e.g. migration 00021,
+// changing its column list) destroys every existing row, but nothing about
+// running that migration itself repopulates it — only a real Piece
+// mutation (ResyncSearchIndex) or the manual `rebuild-search-index` CLI
+// does. Reproduced live against a real dev database that had just gone
+// through exactly this upgrade path before this guard existed: search
+// silently returned zero results for a query matching an existing piece's
+// own title. This test proves the fix at the repo level: a healthy index
+// reports false, a wiped one reports true, and RebuildSearchIndex
+// (main.go's own automatic response) actually resolves it.
+func TestSearchIndexNeedsRebuild_DetectsAndFixesWipedIndex(t *testing.T) {
+	ctx := context.Background()
+	dbConn := newTestDB(t)
+
+	pieceID, err := repo.CreatePiece(ctx, dbConn, &models.Piece{
+		Title:    "O Christmas Tree",
+		FilePath: "/data/library/pieces/christmas.pdf",
+		FileHash: "christmas-hash",
+	})
+	if err != nil {
+		t.Fatalf("CreatePiece: %v", err)
+	}
+	if err := repo.ResyncSearchIndex(ctx, dbConn, pieceID); err != nil {
+		t.Fatalf("ResyncSearchIndex: %v", err)
+	}
+
+	if needsRebuild, err := repo.SearchIndexNeedsRebuild(ctx, dbConn); err != nil {
+		t.Fatalf("SearchIndexNeedsRebuild (healthy): %v", err)
+	} else if needsRebuild {
+		t.Error("SearchIndexNeedsRebuild reported true for a healthy, freshly-synced index")
+	}
+
+	// Simulate exactly what migration 00021's DROP TABLE pieces_fts does to
+	// an already-populated table, with no rebuild-search-index run
+	// afterward — the piece itself is untouched, only its search-index row
+	// is gone.
+	if _, err := dbConn.ExecContext(ctx, `DELETE FROM pieces_fts`); err != nil {
+		t.Fatalf("simulating wiped pieces_fts: %v", err)
+	}
+
+	if needsRebuild, err := repo.SearchIndexNeedsRebuild(ctx, dbConn); err != nil {
+		t.Fatalf("SearchIndexNeedsRebuild (wiped): %v", err)
+	} else if !needsRebuild {
+		t.Fatal("SearchIndexNeedsRebuild reported false after pieces_fts was wiped — the real bug this guard exists to catch")
+	}
+	if count := ftsMatchCount(t, dbConn, "Christmas"); count != 0 {
+		t.Fatalf("expected the wiped index to find nothing, got %d matches", count)
+	}
+
+	if err := repo.RebuildSearchIndex(ctx, dbConn); err != nil {
+		t.Fatalf("RebuildSearchIndex: %v", err)
+	}
+
+	if needsRebuild, err := repo.SearchIndexNeedsRebuild(ctx, dbConn); err != nil {
+		t.Fatalf("SearchIndexNeedsRebuild (post-rebuild): %v", err)
+	} else if needsRebuild {
+		t.Error("SearchIndexNeedsRebuild still reported true after RebuildSearchIndex ran")
+	}
+	if count := ftsMatchCount(t, dbConn, "Christmas"); count != 1 {
+		t.Errorf("post-rebuild FTS match count = %d, want 1", count)
+	}
+}
+
 // TestSearchIndex_ResyncAfterDeleteRemovesRow confirms the delete path:
 // resyncing a piece ID that no longer exists just clears its FTS row,
 // rather than erroring.
