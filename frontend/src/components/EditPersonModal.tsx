@@ -203,7 +203,22 @@ export function EditPersonModal({ person, open, onClose }: EditPersonModalProps)
       // (CLAUDE.md's own "React lint gotchas" entry).
       setSaveState('idle')
     }
-  }, [open, person, reset])
+    // Deliberately `person.id`, not `person` itself (real bug found live,
+    // 2026-09-02) — the nested UploadPortraitModal's own success handler
+    // calls `queryClient.setQueryData(['person', personId], updated)`,
+    // which gives PersonDetailsPage's `person` query a new object
+    // reference the instant a portrait upload finishes, while this modal
+    // is still open. With the full `person` object as a dependency, that
+    // reference change alone re-ran this effect and called `reset()` with
+    // it — silently discarding whatever the user had already typed into
+    // Name/Biography/Birth year/Death year (all still holding the
+    // pre-upload DB values, since the portrait endpoint doesn't touch
+    // them) mid-edit, purely because the *other* modal succeeded.
+    // Depending on `person.id` instead means this only resets on a real
+    // "just opened" transition (`open` flips) or a genuinely different
+    // person, never on an unrelated cache write to the same person.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, person.id, reset])
 
   const name = watch('name')
   const isValidName = name.trim() !== ''
