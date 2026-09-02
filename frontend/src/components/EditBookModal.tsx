@@ -510,7 +510,7 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
             </label>
             <input
               id="f-isbn"
-              className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+              className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 font-mono text-ink"
               {...register('isbn', { maxLength: 255 })}
             />
           </div>
@@ -524,7 +524,7 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
             <div className="relative">
               <input
                 id="f-imslp"
-                className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 pr-9 text-ink"
+                className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 pr-9 font-mono text-ink"
                 {...register('imslpNumber', { maxLength: 255 })}
               />
               <ImslpAutofillButton

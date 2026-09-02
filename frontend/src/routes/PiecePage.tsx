@@ -893,7 +893,7 @@ export function PiecePage() {
                 <DetailRow label="IMSLP no.">
                   <span className="inline-flex items-center gap-1.5">
                     <EffectiveValue
-                      value={piece.imslpNumber.value}
+                      value={<span className="font-mono">{piece.imslpNumber.value}</span>}
                       inherited={piece.imslpNumber.inherited}
                     />
                     {/* Comes after the "inherited" pill (inside

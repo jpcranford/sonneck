@@ -415,7 +415,7 @@ export function BookDetailsPage() {
             href={imslpReverseLookupUrl(book.imslpNumber)}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-0.5 text-accent hover:underline"
+            className="inline-flex items-center gap-0.5 font-mono text-accent hover:underline"
           >
             {book.imslpNumber}
             <IconExternalLink size={12} />
@@ -434,7 +434,7 @@ export function BookDetailsPage() {
     // no. row above — nothing to substitute, the row simply doesn't
     // render.
     if (!book.imslpNumber && book.isbn) {
-      fields.push({ label: 'ISBN', value: hyphenateISBN(book.isbn) })
+      fields.push({ label: 'ISBN', value: <span className="font-mono">{hyphenateISBN(book.isbn)}</span> })
     }
     if (book.originalFilename) {
       fields.push({ label: 'Original filename', value: book.originalFilename })

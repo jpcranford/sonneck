@@ -1272,7 +1272,7 @@ export function EditPieceModalMockup() {
                   <input
                     id="f-imslp"
                     placeholder={!watch('imslpNumber') ? mockBook.imslpNumber : undefined}
-                    className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 pr-9 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                    className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 pr-9 font-mono text-ink placeholder:text-ink-soft/40 placeholder:italic"
                     {...register('imslpNumber', { maxLength: 255 })}
                   />
                   <ImslpAutofillButton

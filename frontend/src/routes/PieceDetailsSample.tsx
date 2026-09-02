@@ -371,7 +371,7 @@ function InheritedNote({ compact }: { compact?: boolean }) {
   )
 }
 
-function EffectiveValue({ value, inherited }: { value: string | null; inherited: boolean }) {
+function EffectiveValue({ value, inherited }: { value: ReactNode; inherited: boolean }) {
   if (!value) return <span className="text-ink-soft/50">—</span>
   return (
     <span className="inline-flex items-center gap-1.5">
@@ -866,7 +866,7 @@ export function PieceDetailsSample() {
               <DetailRow label="IMSLP no.">
                 <span className="inline-flex items-center gap-1.5">
                   <EffectiveValue
-                    value={piece.imslpNumber.value}
+                    value={<span className="font-mono">{piece.imslpNumber.value}</span>}
                     inherited={piece.imslpNumber.inherited}
                   />
                   {/* Comes after the "inherited" pill (inside

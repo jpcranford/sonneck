@@ -701,7 +701,7 @@ export function UploadBookAboutMockup() {
               <input
                 id="f-isbn"
                 placeholder="e.g. 978-0-13-235088-4"
-                className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 font-mono text-ink placeholder:text-ink-soft/40 placeholder:italic"
                 {...register('isbn', { maxLength: 255 })}
               />
             </div>
@@ -723,7 +723,7 @@ export function UploadBookAboutMockup() {
               <div className="relative">
                 <input
                   id="f-imslp"
-                  className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 pr-9 text-ink"
+                  className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 pr-9 font-mono text-ink"
                   {...register('imslpNumber', { maxLength: 255 })}
                 />
                 <ImslpAutofillButton

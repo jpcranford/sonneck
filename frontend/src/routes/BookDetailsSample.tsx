@@ -504,11 +504,11 @@ function bookFields(): { label: string; value: ReactNode }[] {
     fields.push({
       label: 'IMSLP no.',
       value: (
-        <>
+        <span className="font-mono">
           {sampleBook.imslpNumber}
           {/* Solid pre-blend, not opacity — overlapping icon strokes would re-blend unevenly under real translucency. */}
           <IconExternalLink size={12} className="ml-0.5 inline text-[#605d5b]" />
-        </>
+        </span>
       ),
     })
   }
@@ -522,7 +522,7 @@ function bookFields(): { label: string; value: ReactNode }[] {
   // that already has its own IMSLP no. row above — nothing to substitute,
   // the row simply doesn't render.
   if (!sampleBook.imslpNumber && sampleBook.isbn) {
-    fields.push({ label: 'ISBN', value: hyphenateISBN(sampleBook.isbn) })
+    fields.push({ label: 'ISBN', value: <span className="font-mono">{hyphenateISBN(sampleBook.isbn)}</span> })
   }
   if (sampleBook.originalFilename) {
     fields.push({ label: 'Original filename', value: sampleBook.originalFilename })
