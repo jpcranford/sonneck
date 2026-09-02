@@ -547,7 +547,7 @@ export function BookUploadTitlesStep({
                       bookId={bookId}
                       onPreview={() => setPreviewPage(piece.start)}
                     />
-                    <div>
+                    <div className="min-w-0">
                       <textarea
                         rows={1}
                         className={`w-full resize-none overflow-hidden rounded-md border bg-paper-raised px-2.5 py-1.5 text-sm text-ink ${
@@ -564,7 +564,7 @@ export function BookUploadTitlesStep({
                         </span>
                       )}
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <Controller
                         name={`pieces.${index}.composer`}
                         control={control}
@@ -593,7 +593,7 @@ export function BookUploadTitlesStep({
                       )}
                     </div>
                     {showArrangerField && (
-                      <div>
+                      <div className="min-w-0">
                         <Controller
                           name={`pieces.${index}.arranger`}
                           control={control}

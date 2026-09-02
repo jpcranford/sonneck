@@ -728,7 +728,7 @@ export function UploadBookTitlesMockup() {
                         measurement (not pure CSS group-hover) and why
                         it's its own component rather than inlined here. */}
                     <HoverPagePreview piece={piece} onPreview={() => setPreviewPage(piece.start)} />
-                    <div>
+                    <div className="min-w-0">
                       <textarea
                         rows={1}
                         className={`w-full resize-none overflow-hidden rounded-md border bg-paper-raised px-2.5 py-1.5 text-sm text-ink ${
@@ -745,7 +745,7 @@ export function UploadBookTitlesMockup() {
                         </span>
                       )}
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <Controller
                         name={`pieces.${index}.composer`}
                         control={control}
@@ -773,7 +773,7 @@ export function UploadBookTitlesMockup() {
                       )}
                     </div>
                     {SHOW_ARRANGER_FIELD && (
-                      <div>
+                      <div className="min-w-0">
                         <Controller
                           name={`pieces.${index}.arranger`}
                           control={control}
