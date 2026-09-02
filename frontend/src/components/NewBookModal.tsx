@@ -1,11 +1,14 @@
 import { useRef, useState } from 'react'
-import { useForm } from 'react-hook-form'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { Controller, useForm } from 'react-hook-form'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { IconAlertTriangle, IconXFilled } from '@tabler/icons-react'
 import { createBookManual } from '../api/books'
+import { listPeople } from '../api/people'
 import { ApiError } from '../api/client'
+import type { Tag } from '../api/types'
 import { afterMinDuration } from '../lib/minDuration'
 import { Modal } from './Modal'
+import { TagComboBox } from './TagComboBox'
 
 interface NewBookModalProps {
   open: boolean
@@ -14,7 +17,7 @@ interface NewBookModalProps {
 
 interface NewBookFormValues {
   bookTitle: string
-  composer: string
+  composer: Tag[]
   publisher: string
   yearWritten: string
 }
@@ -46,12 +49,18 @@ export function NewBookModal({ open, onClose }: NewBookModalProps) {
   const [isCreating, setIsCreating] = useState(false)
   const {
     register,
+    control,
     handleSubmit,
     reset,
     formState: { errors },
   } = useForm<NewBookFormValues>({
-    defaultValues: { bookTitle: '', composer: '', publisher: '', yearWritten: '' },
+    defaultValues: { bookTitle: '', composer: [], publisher: '', yearWritten: '' },
   })
+
+  // People catalog (composer/arranger overhaul, Stage C pattern) — same
+  // unpaginated listPeople() call as EditPieceModal.tsx/EditBookModal.tsx/
+  // BookUploadAboutStep.tsx's own Composer TagComboBox option source.
+  const { data: peopleOptions = [] } = useQuery({ queryKey: ['people'], queryFn: () => listPeople() })
 
   const createMutation = useMutation({
     // The Date.now() capture lives here, not in onSubmit below — onSubmit
@@ -65,10 +74,11 @@ export function NewBookModal({ open, onClose }: NewBookModalProps) {
       createStartedAtRef.current = Date.now()
       return createBookManual({
         bookTitle: data.bookTitle,
-        // Composers/Arrangers (composer/arranger overhaul, migration
-        // 00020) — this form has no Arranger field of its own, only
-        // Composer, same scope as before; arrangers is sent empty.
-        composers: data.composer ? [data.composer] : [],
+        // Composer is an ordered Person list now (composer/arranger
+        // overhaul, migration 00020) — this form has no Arranger field of
+        // its own, only Composer, same scope as before; arrangers is sent
+        // empty.
+        composers: data.composer.map((t) => t.name),
         arrangers: [],
         publisher: data.publisher || null,
         yearWritten: data.yearWritten || null,
@@ -157,13 +167,20 @@ export function NewBookModal({ open, onClose }: NewBookModalProps) {
           {errors.bookTitle && <p className="text-sm text-red-700">{errors.bookTitle.message}</p>}
         </div>
         <div className="flex flex-col gap-1">
-          <label htmlFor="nb-composer" className="text-sm text-ink-soft">
-            Composer
-          </label>
-          <input
-            id="nb-composer"
-            className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-            {...register('composer', { maxLength: 255 })}
+          <Controller
+            name="composer"
+            control={control}
+            render={({ field }) => (
+              <TagComboBox
+                label="Composer"
+                options={peopleOptions}
+                selected={field.value}
+                multiple
+                onChange={field.onChange}
+                pillStyle="paper"
+                newOptionLabel="New person"
+              />
+            )}
           />
         </div>
         <div className="flex flex-col gap-4 sm:flex-row">
