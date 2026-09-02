@@ -339,9 +339,25 @@
   --animate-stripe-move: stripe-move 0.85s linear infinite;
 }
 
+/* transform, not background-position (fixed 2026-09-02, direct report:
+   "the pinstripe animation never plays, always freezes up" on the Book
+   Upload Wizard's Import button). Animating background-position forces a
+   full repaint of the element on the main thread every single frame —
+   under any real main-thread load (a big import, a slow device, another
+   tab doing work) the browser can't keep up and the stripe visibly stalls
+   or appears completely frozen, since there's no compositor fallback for
+   a property that isn't transform/opacity. transform is compositor-only:
+   the browser can keep animating it smoothly even while the main thread
+   is busy elsewhere. Every caller (BookUploadConfirmStep.tsx,
+   EditBookModal.tsx, EditPersonModal.tsx, and their mockup counterparts)
+   was updated in lockstep — each wraps its stripe layer one tile-width
+   (56px) wider than its own button and relies on the button's own
+   pre-existing overflow-hidden to clip it, so translating the layer
+   reproduces the exact same "infinite scroll" illusion the old
+   background-position version had, just off the main thread. */
 @keyframes stripe-move {
-  from { background-position: 0 0; }
-  to { background-position: 56px 0; }
+  from { transform: translateX(0); }
+  to { transform: translateX(56px); }
 }
 
 body {

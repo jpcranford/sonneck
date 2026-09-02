@@ -198,7 +198,7 @@ export function EditBookModalMockup() {
                 {saveState === 'saving' && (
                   <span
                     aria-hidden="true"
-                    className="absolute inset-0 animate-stripe-move bg-[length:56px_56px] [background-image:repeating-linear-gradient(45deg,rgba(255,255,255,0.3)_0,rgba(255,255,255,0.3)_10px,transparent_10px,transparent_20px)] motion-reduce:animate-none motion-reduce:opacity-60"
+                    className="absolute inset-y-0 -left-14 w-[calc(100%+56px)] animate-stripe-move bg-[length:56px_56px] [background-image:repeating-linear-gradient(45deg,rgba(255,255,255,0.3)_0,rgba(255,255,255,0.3)_10px,transparent_10px,transparent_20px)] will-change-transform motion-reduce:animate-none motion-reduce:opacity-60"
                   />
                 )}
                 <span className="relative z-10 flex items-center gap-1.5">
