@@ -67,6 +67,10 @@ const MOCK_PEOPLE: MockPerson[] = [
   { id: 15, name: 'S. Reyes', birthYear: null, deathYear: null, pieceCount: 1, avatarKind: 'initials', paletteIndex: 4 },
   { id: 16, name: 'R. Nakamura', birthYear: null, deathYear: null, pieceCount: 2, avatarKind: 'initials', paletteIndex: 5 },
   { id: 17, name: 'K. Alvarez', birthYear: null, deathYear: null, pieceCount: 1, avatarKind: 'initials', paletteIndex: 6 },
+  // Demonstrates nameSortKey below (quoted-nickname sort) — sorted by
+  // Name, this must land among the "J"s, not before "A" as a naive
+  // string comparison against the literal leading quote would put it.
+  { id: 18, name: '"Jelly Roll" Morton', birthYear: 1890, deathYear: 1941, pieceCount: 3, avatarKind: 'bust', paletteIndex: 7 },
 ]
 
 // Same partial-case rule worked out on the Person Details artifact: both
@@ -559,10 +563,19 @@ function compareNullableYearLast(a: number | null, b: number | null, dir: 1 | -1
   return (a - b) * dir
 }
 
+// A person entered with a nickname in quotes — "Jelly Roll" Morton — must
+// still sort under "J", not collate as if the quote itself were the first
+// letter. Mirrors the real backend's own quoteStrippedSQL (people.go):
+// strips a single leading straight or curly-opening double quote, nothing
+// more (a closing quote is never the first character of a real name).
+function nameSortKey(name: string): string {
+  return /^["“]/.test(name) ? name.slice(1) : name
+}
+
 function sortPeople(people: MockPerson[], field: PersonSortField, direction: SortDirection): MockPerson[] {
   const sorted = [...people]
   const dir = direction === 'asc' ? 1 : -1
-  if (field === 'Name') sorted.sort((a, b) => a.name.localeCompare(b.name) * dir)
+  if (field === 'Name') sorted.sort((a, b) => nameSortKey(a.name).localeCompare(nameSortKey(b.name)) * dir)
   else if (field === 'Piece Count') sorted.sort((a, b) => (a.pieceCount - b.pieceCount) * dir)
   else if (field === 'Birth Year') sorted.sort((a, b) => compareNullableYearLast(a.birthYear, b.birthYear, dir))
   else if (field === 'Death Year') sorted.sort((a, b) => compareNullableYearLast(a.deathYear, b.deathYear, dir))

@@ -24,9 +24,35 @@ import (
 // yearWritten, for the same reason (SQLite's own NULL-sorts-first-on-ASC
 // default would otherwise put an unknown-year person at the front of an
 // ascending list).
+// quoteStrippedSQL wraps a name-like column/expression in a SQL CASE that
+// strips a single leading quotation mark — a person entered with a
+// nickname in quotes, e.g. "Jelly Roll" Morton, should still sort under
+// "J", not under the quote character itself. Deliberately narrow, same
+// scope as sort.go's own articleStrippedSQL: strips only the one leading
+// character, not every quote in the name. Handles both a straight double
+// quote and a curly opening double quote (real data can carry either,
+// depending on how it was typed) — a closing quote is never the first
+// character of a real name, so there's nothing else worth matching here.
+func quoteStrippedSQL(expr string) string {
+	return "(CASE " +
+		"WHEN SUBSTR(" + expr + ", 1, 1) IN ('\"', '“') THEN SUBSTR(" + expr + ", 2) " +
+		"ELSE " + expr + " END)"
+}
+
+// personNameSortColumn is simpleSortColumn's person-name-specific
+// counterpart — strips a leading quotation mark (see quoteStrippedSQL)
+// ahead of the usual COLLATE NOCASE + direction, mirroring sort.go's own
+// titleSortColumn for titles.
+func personNameSortColumn(expr string) sortColumnFunc {
+	stripped := quoteStrippedSQL(expr)
+	return func(dir string) string {
+		return stripped + " COLLATE NOCASE " + dir
+	}
+}
+
 var personSortColumns = map[string]sortColumnFunc{
 	"dateAdded": simpleSortColumn("id"),
-	"name":      simpleSortColumn("name COLLATE NOCASE"),
+	"name":      personNameSortColumn("name"),
 	"pieceCount": func(dir string) string {
 		const expr = `(SELECT COUNT(*) FROM pieces p WHERE (
 			p.id IN (SELECT piece_id FROM piece_composers WHERE person_id = people.id)

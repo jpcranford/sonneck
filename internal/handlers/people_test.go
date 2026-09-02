@@ -260,6 +260,42 @@ func TestListPeople_SortsByPieceCountAndFiltersByQuery(t *testing.T) {
 	}
 }
 
+// TestListPeople_SortByNameIgnoresLeadingQuotationMark covers a real
+// request: a person entered with a nickname in quotes — "Jelly Roll"
+// Morton, Ferdinand LaMothe's real stage name — must still sort under
+// "J", not collate as if the quote character itself were the first
+// letter of the name. Covers both a straight double quote and a curly
+// opening double quote (quoteStrippedSQL, people.go), since real data can
+// carry either depending on how it was typed.
+func TestListPeople_SortByNameIgnoresLeadingQuotationMark(t *testing.T) {
+	h := newTestServer(t)
+	for _, name := range []string{
+		`"Jelly Roll" Morton`,
+		"“Fats” Waller",
+		"Albert King",
+		"Zoot Sims",
+	} {
+		decodeData(t, doJSON(t, h, http.MethodPost, "/api/people", map[string]any{"name": name}), nil)
+	}
+
+	var people []personResponse
+	decodeData(t, doJSON(t, h, http.MethodGet, "/api/people?sort=name&dir=asc", nil), &people)
+	var got []string
+	for _, p := range people {
+		got = append(got, p.Name)
+	}
+	want := []string{"Albert King", "“Fats” Waller", `"Jelly Roll" Morton`, "Zoot Sims"}
+	if len(got) != len(want) {
+		t.Fatalf("got %d people, want %d: %v", len(got), len(want), got)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("sort=name&dir=asc = %v, want %v (quoted names sort by their first real letter)", got, want)
+			break
+		}
+	}
+}
+
 func TestSearchPieces_FiltersByPersonIdIncludingBookInheritance(t *testing.T) {
 	h := newTestServer(t)
 	bookID, _ := uploadBook(t, h, "book.pdf", 4)
