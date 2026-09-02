@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -257,6 +258,24 @@ func TestListBooks_ReturnsAllAndFiltersByQuery(t *testing.T) {
 	decodeData(t, doJSON(t, h, http.MethodGet, "/api/books?query=Satie", nil), &filtered)
 	if len(filtered) != 1 || filtered[0].BookTitle != "Gymnopédies" {
 		t.Errorf("query=Satie returned %+v, want just the Gymnopédies book", filtered)
+	}
+}
+
+// TestListBooks_AmpersandMatchesAnd covers repo.NormalizeAmpersandForLike —
+// a book_title/publisher/composer with a bare "&" must be findable by a
+// query typed with "and", in the Books library's plain-LIKE search (no
+// FTS5 here, unlike Piece search — CLAUDE.md > Search).
+func TestListBooks_AmpersandMatchesAnd(t *testing.T) {
+	h := newTestServer(t)
+	var book bookResponse
+	decodeData(t, doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
+		"bookTitle": "Rock & Roll Fake Book", "composers": []string{"Various"}, "publisher": "Hal Leonard",
+	}), &book)
+
+	var filtered []bookResponse
+	decodeData(t, doJSON(t, h, http.MethodGet, "/api/books?query="+url.QueryEscape("Rock and Roll"), nil), &filtered)
+	if len(filtered) != 1 || filtered[0].ID != book.ID {
+		t.Errorf(`query="Rock and Roll" returned %+v, want just the "Rock & Roll Fake Book" book`, filtered)
 	}
 }
 

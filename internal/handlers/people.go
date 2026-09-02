@@ -88,8 +88,11 @@ func (s *Server) handleListPeople(w http.ResponseWriter, r *http.Request) {
 	sqlStr := `SELECT id FROM people`
 
 	if query := strings.TrimSpace(q.Get("query")); query != "" {
-		where = append(where, "name LIKE ?")
-		args = append(args, "%"+query+"%")
+		// Same repo.NormalizeAmpersandForLike + column-side REPLACE
+		// treatment as handleListBooks's own text search — see that
+		// function's comment (internal/handlers/book.go) for why.
+		where = append(where, "REPLACE(name, '&', 'and') LIKE ?")
+		args = append(args, "%"+repo.NormalizeAmpersandForLike(query)+"%")
 	}
 	if len(where) > 0 {
 		sqlStr += " WHERE " + strings.Join(where, " AND ")

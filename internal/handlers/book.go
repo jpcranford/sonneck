@@ -236,10 +236,15 @@ func (s *Server) handleListBooks(w http.ResponseWriter, r *http.Request) {
 		// not a plain column — matched via an EXISTS-style IN subquery
 		// against `people.name`, same "any of this book's credited people"
 		// shape the personId filter below uses for an exact id match.
-		where = append(where, `(book_title LIKE ? OR publisher LIKE ?
-			OR id IN (SELECT book_id FROM book_composers bc JOIN people p ON p.id = bc.person_id WHERE p.name LIKE ?)
-			OR id IN (SELECT book_id FROM book_arrangers ba JOIN people p ON p.id = ba.person_id WHERE p.name LIKE ?))`)
-		like := "%" + query + "%"
+		//
+		// Each compared column is wrapped in REPLACE(..., '&', 'and'), and
+		// the query goes through repo.NormalizeAmpersandForLike the same
+		// way — see that function's own doc comment for why LIKE needs a
+		// bare (unpadded) replace, unlike pieces_fts's space-padded version.
+		where = append(where, `(REPLACE(book_title, '&', 'and') LIKE ? OR REPLACE(publisher, '&', 'and') LIKE ?
+			OR id IN (SELECT book_id FROM book_composers bc JOIN people p ON p.id = bc.person_id WHERE REPLACE(p.name, '&', 'and') LIKE ?)
+			OR id IN (SELECT book_id FROM book_arrangers ba JOIN people p ON p.id = ba.person_id WHERE REPLACE(p.name, '&', 'and') LIKE ?))`)
+		like := "%" + repo.NormalizeAmpersandForLike(query) + "%"
 		args = append(args, like, like, like, like)
 	}
 

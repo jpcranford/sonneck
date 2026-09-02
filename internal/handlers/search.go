@@ -262,13 +262,22 @@ func (s *Server) handleSearchPieces(w http.ResponseWriter, r *http.Request) {
 	// reasoning that already applies to the trigram tier not ranking by
 	// bm25.
 	runFuzzyQuery := func() ([]int64, error) {
-		maxDist := fuzzy.MaxDistance(query)
+		// Same repo.NormalizeAmpersand as the prefix/trigram tiers above —
+		// this tier doesn't route through sanitizeFTSQuery at all (a plain
+		// fuzzydist() WHERE predicate, not a MATCH query), so it needs its
+		// own call rather than inheriting theirs. pieces_fts.title/composer/
+		// arranger are already normalized at write time (repo.
+		// ResyncSearchIndex), so comparing against a normalized query here
+		// keeps this tier's "&"/"and" equivalence consistent with the other
+		// two.
+		fuzzyQuery := repo.NormalizeAmpersand(query)
+		maxDist := fuzzy.MaxDistance(fuzzyQuery)
 		sqlStr := `SELECT p.id FROM pieces p JOIN pieces_fts ON pieces_fts.piece_id = p.id`
 		if needsBookJoin {
 			sqlStr += ` LEFT JOIN books b ON b.id = p.source_book_id`
 		}
 		qWhere := []string{`(fuzzydist(pieces_fts.title, ?) <= ? OR fuzzydist(pieces_fts.composer, ?) <= ? OR fuzzydist(pieces_fts.arranger, ?) <= ?)`}
-		qArgs := []any{query, maxDist, query, maxDist, query, maxDist}
+		qArgs := []any{fuzzyQuery, maxDist, fuzzyQuery, maxDist, fuzzyQuery, maxDist}
 		qWhere = append(qWhere, where...)
 		qArgs = append(qArgs, args...)
 		sqlStr += " WHERE " + strings.Join(qWhere, " AND ")
@@ -593,8 +602,14 @@ func quoteFTSToken(f string) string {
 // anything. Neither is fuzzy/typo-tolerant matching (a misspelled letter
 // still won't match either way) — see the true-fuzzy-search research saved
 // to memory for what that would take.
+//
+// repo.NormalizeAmpersand runs first so "&" and "and" are interchangeable
+// in either direction — pieces_fts's own indexed content gets the identical
+// normalization at write time (repo.ResyncSearchIndex), so a query for
+// "Rodgers and Hammerstein" finds data stored as "Rodgers & Hammerstein"
+// and vice versa.
 func sanitizeFTSQuery(query string) string {
-	fields := strings.Fields(query)
+	fields := strings.Fields(repo.NormalizeAmpersand(query))
 	if len(fields) == 0 {
 		return ""
 	}
@@ -614,7 +629,7 @@ func sanitizeFTSQuery(query string) string {
 // this project's actual pinned driver before relying on it, not assumed
 // from SQLite's docs alone.
 func sanitizeTrigramFTSQuery(query string) string {
-	fields := strings.Fields(query)
+	fields := strings.Fields(repo.NormalizeAmpersand(query))
 	if len(fields) == 0 {
 		return ""
 	}

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/jpcranford/sonneck/internal/api"
+	"github.com/jpcranford/sonneck/internal/repo"
 )
 
 // FacetCount is one selectable option in a filter drawer facet (e.g. one
@@ -335,10 +336,13 @@ func bookTextMatchClause(query string) (where string, args []any) {
 	if query == "" {
 		return "", nil
 	}
-	like := "%" + query + "%"
-	return `(b.book_title LIKE ? OR b.publisher LIKE ?
-		OR b.id IN (SELECT book_id FROM book_composers bc JOIN people ppl ON ppl.id = bc.person_id WHERE ppl.name LIKE ?)
-		OR b.id IN (SELECT book_id FROM book_arrangers ba JOIN people ppl ON ppl.id = ba.person_id WHERE ppl.name LIKE ?))`,
+	// Same repo.NormalizeAmpersandForLike + column-side REPLACE treatment
+	// as handleListBooks's own identical clause (internal/handlers/book.go)
+	// — see that function's comment for why.
+	like := "%" + repo.NormalizeAmpersandForLike(query) + "%"
+	return `(REPLACE(b.book_title, '&', 'and') LIKE ? OR REPLACE(b.publisher, '&', 'and') LIKE ?
+		OR b.id IN (SELECT book_id FROM book_composers bc JOIN people ppl ON ppl.id = bc.person_id WHERE REPLACE(ppl.name, '&', 'and') LIKE ?)
+		OR b.id IN (SELECT book_id FROM book_arrangers ba JOIN people ppl ON ppl.id = ba.person_id WHERE REPLACE(ppl.name, '&', 'and') LIKE ?))`,
 		[]any{like, like, like, like}
 }
 

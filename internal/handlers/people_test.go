@@ -260,6 +260,22 @@ func TestListPeople_SortsByPieceCountAndFiltersByQuery(t *testing.T) {
 	}
 }
 
+// TestListPeople_AmpersandMatchesAnd covers repo.NormalizeAmpersandForLike
+// — a Person credited as a duo with a bare "&" in their own name ("Rodgers
+// & Hammerstein") must be findable by a query typed with "and", in the
+// People Library's plain-LIKE search (no FTS5 here, same as Books).
+func TestListPeople_AmpersandMatchesAnd(t *testing.T) {
+	h := newTestServer(t)
+	duo := createPerson(t, h, "Rodgers & Hammerstein")
+	createPerson(t, h, "Unrelated Composer")
+
+	var filtered []personResponse
+	decodeData(t, doJSON(t, h, http.MethodGet, "/api/people?query=Rodgers+and+Hammerstein", nil), &filtered)
+	if len(filtered) != 1 || filtered[0].ID != duo.ID {
+		t.Errorf(`query="Rodgers and Hammerstein" returned %+v, want just the "Rodgers & Hammerstein" person`, filtered)
+	}
+}
+
 // TestListPeople_SortByNameIgnoresLeadingQuotationMark covers a real
 // request: a person entered with a nickname in quotes — "Jelly Roll"
 // Morton, Ferdinand LaMothe's real stage name — must still sort under

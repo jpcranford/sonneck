@@ -304,6 +304,45 @@ func TestSearchPieces_QueryMatchesPartialWordPrefix(t *testing.T) {
 	}
 }
 
+// TestSearchPieces_AmpersandMatchesAnd covers repo.NormalizeAmpersand — a
+// real publisher/title with a bare "&" ("Boosey & Hawkes", "Me & My Girl")
+// must be findable by a query typed with "and", and a query typed with "&"
+// must find data stored with "and" ("Rodgers and Hammerstein"), in both
+// directions independently.
+func TestSearchPieces_AmpersandMatchesAnd(t *testing.T) {
+	h := newTestServer(t)
+	ampersandTitle := createTestPiece(t, h, map[string]any{
+		"title": "Me & My Girl", "composers": []string{"Noel Gay"}, "publisher": "Boosey & Hawkes",
+	})
+	andComposer := createTestPiece(t, h, map[string]any{
+		"title": "Some Enchanted Evening", "composers": []string{"Rodgers and Hammerstein"},
+	})
+	unrelated := createTestPiece(t, h, map[string]any{"title": "Fughetta", "composers": []string{"Bach"}})
+
+	for _, tc := range []struct {
+		query  string
+		wantID int64
+	}{
+		{"Me and My Girl", ampersandTitle.ID},     // query "and" finds data stored with "&"
+		{"Boosey and Hawkes", ampersandTitle.ID},  // same, for a publisher field
+		{"Rodgers & Hammerstein", andComposer.ID}, // query "&" finds data stored with "and"
+	} {
+		rec := doJSON(t, h, http.MethodGet, "/api/pieces?query="+url.QueryEscape(tc.query), nil)
+		var results []pieceResponse
+		decodeData(t, rec, &results)
+		gotIDs := map[int64]bool{}
+		for _, r := range results {
+			gotIDs[r.ID] = true
+		}
+		if !gotIDs[tc.wantID] {
+			t.Errorf("search for %q returned %+v, want it to include piece id %d", tc.query, results, tc.wantID)
+		}
+		if gotIDs[unrelated.ID] {
+			t.Errorf("search for %q incorrectly matched the unrelated piece %d", tc.query, unrelated.ID)
+		}
+	}
+}
+
 // TestSearchPieces_QueryMatchesSourceBookTitle covers migration 00021 —
 // pieces_fts's own book_title column. A piece imported from a book must be
 // findable by that book's own title, not just the piece's own fields

@@ -6,6 +6,45 @@ import (
 	"strings"
 )
 
+// NormalizeAmpersand canonicalizes "&" to "and" so search treats the two as
+// equivalent in both directions — a real publisher/composer name like
+// "Boosey & Hawkes" or "Rodgers & Hammerstein" is findable by a query typed
+// as "and", and a query typed with "&" finds data stored with "and". FTS5's
+// tokenizer already drops a bare "&" as a plain word separator with no
+// token of its own, so without this an ampersand on either side of the
+// comparison just silently fails to line up with the real word "and" on the
+// other side. internal/handlers/search.go's sanitizeFTSQuery/
+// sanitizeTrigramFTSQuery apply this identical normalization to the
+// incoming search query — see ResyncSearchIndex below for the indexed-data
+// side. Padded with spaces (not a bare ReplaceAll) so a no-space case
+// ("Dungeons&Dragons") still tokenizes into separate words instead of
+// merging into one run-together token; any resulting doubled whitespace is
+// harmless, since both the FTS5 tokenizer and the query-side strings.Fields
+// treat any whitespace run as one separator.
+func NormalizeAmpersand(s string) string {
+	return strings.ReplaceAll(s, "&", " and ")
+}
+
+// NormalizeAmpersandForLike is NormalizeAmpersand's counterpart for a plain
+// SQL LIKE search (Book/People search — internal/handlers/book.go,
+// people.go, facets.go's bookTextMatchClause — none of which use FTS5, per
+// CLAUDE.md > Search's own note that Books search has always been plain
+// LIKE) — a bare replace with no padding, unlike NormalizeAmpersand's
+// space-padded version above. LIKE does literal substring matching, so
+// both sides of the comparison need to land on identical spacing: a real
+// name almost always already has a space on each side of a standalone "&"
+// ("Boosey & Hawkes"), and a bare replace preserves that spacing exactly,
+// producing the same single-spaced "and" a normally-typed query already
+// has. Padding with extra spaces here (the way the FTS-index version needs
+// to, so "Dungeons&Dragons" tokenizes into two words instead of merging)
+// would instead double an already-single space and silently break the
+// match. Callers apply this to both the query text and the compared SQL
+// column (via a SQL-level REPLACE(col, '&', 'and')) so it works in both
+// directions.
+func NormalizeAmpersandForLike(s string) string {
+	return strings.ReplaceAll(s, "&", "and")
+}
+
 // ResyncSearchIndex rebuilds pieces_fts's (and pieces_fts_trigram's — see
 // migration 00019) single row for pieceID from current Piece/Book/tag data,
 // resolving book-inheritable fields to their effective value
@@ -91,10 +130,23 @@ func ResyncSearchIndex(ctx context.Context, q Queryer, pieceID int64) error {
 	// Both tables get the same row shape/values — pieces_fts_trigram exists
 	// purely as a different tokenizer over identical content (migration
 	// 00019's own comment), not a differently-scoped index.
+	//
+	// Free-text fields (title/composer/arranger/publisher/description/
+	// user_notes/instruments/user_tags/book_title) go through
+	// NormalizeAmpersand so a real name like "Boosey & Hawkes" or "Rodgers &
+	// Hammerstein" is findable by "and" too, and vice versa (see that
+	// function's own doc comment) — sanitizeFTSQuery/sanitizeTrigramFTSQuery
+	// (internal/handlers/search.go) apply the identical normalization to the
+	// incoming query, so both sides land on the same canonical text.
+	// Identifier/fixed-vocabulary fields (publisher_id, imslp_number,
+	// year_written, work_opus_number, key_name, sheet_type_name) are left
+	// alone — an ampersand there, if it ever occurred, isn't standing in for
+	// "and".
 	insertArgs := []any{
-		p.ID, p.Title, strings.Join(composerNames, " "), strings.Join(arrangerNames, " "), eff.Publisher.Value, eff.PublisherID.Value,
-		eff.ImslpNumber.Value, eff.YearWritten.Value, eff.WorkOpusNumber.Value, eff.Description.Value, strOrEmpty(p.UserNotes),
-		strings.Join(keyNames, " "), sheetTypeName, strings.Join(instrumentNames, " "), strings.Join(userTagNames, " "), bookTitle,
+		p.ID, NormalizeAmpersand(p.Title), NormalizeAmpersand(strings.Join(composerNames, " ")), NormalizeAmpersand(strings.Join(arrangerNames, " ")),
+		NormalizeAmpersand(eff.Publisher.Value), eff.PublisherID.Value,
+		eff.ImslpNumber.Value, eff.YearWritten.Value, eff.WorkOpusNumber.Value, NormalizeAmpersand(eff.Description.Value), NormalizeAmpersand(strOrEmpty(p.UserNotes)),
+		strings.Join(keyNames, " "), sheetTypeName, NormalizeAmpersand(strings.Join(instrumentNames, " ")), NormalizeAmpersand(strings.Join(userTagNames, " ")), NormalizeAmpersand(bookTitle),
 	}
 	const insertColumns = `
 		piece_id, title, composer, arranger, publisher, publisher_id,
