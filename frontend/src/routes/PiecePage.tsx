@@ -23,6 +23,7 @@ import {
 } from '@tabler/icons-react'
 import { getBook } from '../api/books'
 import type { Book } from '../api/types'
+import { copyToClipboard } from '../lib/clipboard'
 import { COPYRIGHT_BADGE_META, copyrightTooltipText } from '../lib/copyrightBadge'
 import { hyphenateISBN } from '../lib/isbn'
 import { joinNames } from '../lib/joinNames'
@@ -375,11 +376,17 @@ export function PiecePage() {
 
   // Shared by the citation button and the file hash's copy button below —
   // same "copy this text, show a toast at the click point" behavior either
-  // way, just different source text.
+  // way, just different source text. Toast only fires once copyToClipboard
+  // actually confirms the write succeeded (see that helper's own comment
+  // for why the old bare navigator.clipboard call silently did nothing —
+  // while still showing "Copied!" — on Firefox/Safari over plain HTTP).
   function handleCopy(text: string, event: MouseEvent) {
-    navigator.clipboard?.writeText(text).catch(() => {})
-    setCopyToast({ x: event.clientX, y: event.clientY })
-    window.setTimeout(() => setCopyToast(null), 1200)
+    const { clientX: x, clientY: y } = event
+    void copyToClipboard(text).then((copied) => {
+      if (!copied) return
+      setCopyToast({ x, y })
+      window.setTimeout(() => setCopyToast(null), 1200)
+    })
   }
 
   function handleCopyCitation(event: MouseEvent) {

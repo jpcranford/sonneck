@@ -22,6 +22,7 @@ import {
   IconXFilled,
 } from '@tabler/icons-react'
 import type { CopyrightStatus, PracticeStatus } from '../api/types'
+import { copyToClipboard } from '../lib/clipboard'
 import { COPYRIGHT_BADGE_META, copyrightTooltipText } from '../lib/copyrightBadge'
 import { InfoTooltip } from '../components/InfoTooltip'
 import { MarkdownText } from '../components/MarkdownText'
@@ -526,9 +527,12 @@ export function PieceDetailsSample() {
   const replaceFileInputRef = useRef<HTMLInputElement>(null)
 
   function handleCopy(text: string, event: MouseEvent) {
-    navigator.clipboard?.writeText(text).catch(() => {})
-    setCopyToast({ x: event.clientX, y: event.clientY })
-    window.setTimeout(() => setCopyToast(null), 1200)
+    const { clientX: x, clientY: y } = event
+    void copyToClipboard(text).then((copied) => {
+      if (!copied) return
+      setCopyToast({ x, y })
+      window.setTimeout(() => setCopyToast(null), 1200)
+    })
   }
 
   function handleCopyCitation(event: MouseEvent) {
