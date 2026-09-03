@@ -417,7 +417,13 @@ func TestCitation_BookOpusNumberWithPureInheritanceLeavesTitleBare(t *testing.T)
 // remainder split works with or without one), Public Domain status (the
 // flat citation format, not the two-sentence in-copyright one, so this
 // also confirms the book-opus/title-prefix logic applies identically to
-// buildFlatCitation, not just buildTwoSentenceCitation).
+// buildFlatCitation, not just buildTwoSentenceCitation). Also doubles as
+// coverage for the "Public domain." trailing note's one remaining case:
+// this piece has no copyrightYear set anywhere, so the live calculation's
+// own conclusion is the conservative negative (not likely PD) — an
+// explicit 'publicDomain' pick against that is exactly the contradiction
+// buildCitation keeps the note for. See the two tests below for the
+// (now default) dropped case.
 func TestCitation_FlatCitationMovesBookOpusToBookNameForPublicDomainPiece(t *testing.T) {
 	h := newTestServer(t)
 	bookID, _ := uploadBook(t, h, "book.pdf", 4)
@@ -453,6 +459,69 @@ func TestCitation_FlatCitationMovesBookOpusToBookNameForPublicDomainPiece(t *tes
 	decodeData(t, rec, &citation)
 
 	want := `Alexandre Boëly, 24 Pièces pour l'orgue, Op. 12, No. 5 "Prélude", IMSLP #972987, 1842. Public domain.`
+	if citation.Citation != want {
+		t.Errorf("citation = %q, want %q", citation.Citation, want)
+	}
+}
+
+// A computed 'likelyPublicDomain' status never gets a trailing note — it's
+// derived from the calculation itself, so it can never contradict it
+// (direct follow-up request: drop the "Public domain." addendum by
+// default, keeping it only for the one case covered by the test above).
+func TestCitation_LikelyPublicDomainGetsNoTrailingNote(t *testing.T) {
+	h := newTestServer(t)
+	dir := t.TempDir()
+	path := dir + "/piece.pdf"
+	writeFixturePDF(t, path, 1)
+	rec := recordRequest(h, multipartUpload(t, "/api/pieces", "piece.pdf", readAll(t, path)))
+	var uploaded pieceResponse
+	decodeData(t, rec, &uploaded)
+
+	decodeData(t, doJSON(t, h, http.MethodPatch, apiPiecesURL(uploaded.ID), map[string]any{
+		"title":         "Solo",
+		"composers":     []string{"Someone"},
+		"copyrightYear": 1700,
+	}), nil)
+
+	citeRec := doJSON(t, h, http.MethodGet, apiPiecesURL(uploaded.ID)+"/citation", nil)
+	var citation struct {
+		Citation string `json:"citation"`
+	}
+	decodeData(t, citeRec, &citation)
+
+	want := `Someone, "Solo"`
+	if citation.Citation != want {
+		t.Errorf("citation = %q, want %q", citation.Citation, want)
+	}
+}
+
+// An explicit 'publicDomain' pick that the live calculation actually
+// agrees with (a real, old copyrightYear on record) also gets no trailing
+// note — there's no contradiction to clarify, so this is the same
+// "ends bare" default as the computed case above, not the exception.
+func TestCitation_ExplicitPublicDomainAgreeingWithCalculationGetsNoTrailingNote(t *testing.T) {
+	h := newTestServer(t)
+	dir := t.TempDir()
+	path := dir + "/piece.pdf"
+	writeFixturePDF(t, path, 1)
+	rec := recordRequest(h, multipartUpload(t, "/api/pieces", "piece.pdf", readAll(t, path)))
+	var uploaded pieceResponse
+	decodeData(t, rec, &uploaded)
+
+	decodeData(t, doJSON(t, h, http.MethodPatch, apiPiecesURL(uploaded.ID), map[string]any{
+		"title":           "Solo",
+		"composers":       []string{"Someone"},
+		"copyrightYear":   1700,
+		"copyrightStatus": "publicDomain",
+	}), nil)
+
+	citeRec := doJSON(t, h, http.MethodGet, apiPiecesURL(uploaded.ID)+"/citation", nil)
+	var citation struct {
+		Citation string `json:"citation"`
+	}
+	decodeData(t, citeRec, &citation)
+
+	want := `Someone, "Solo"`
 	if citation.Citation != want {
 		t.Errorf("citation = %q, want %q", citation.Citation, want)
 	}

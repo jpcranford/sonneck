@@ -32,15 +32,23 @@ import (
 // states (publicDomain/likelyPublicDomain) — an explicit 'copyleft'/
 // 'inCopyright' pick the calculation hasn't (yet) overridden shows no year,
 // matching the badge design (design artifact §5).
-func ResolveCopyrightStatus(ctx context.Context, q Queryer, eff *EffectivePiece, region string) (effective string, expiryYear *int, err error) {
+//
+// calculatedLikelyPD is the *raw* calculation's own conclusion — what
+// calc.IsLikelyPD says — independent of any explicit override, including
+// the sticky publicDomain/likelyPublicDomain cases where it plays no part
+// in the returned effective status. Exists for the one caller that needs
+// to know whether an explicit 'publicDomain' pick actually contradicts
+// what the calculation would otherwise show (citation.go's decision on
+// whether to append a clarifying note) — every other caller ignores it.
+func ResolveCopyrightStatus(ctx context.Context, q Queryer, eff *EffectivePiece, region string) (effective string, expiryYear *int, calculatedLikelyPD bool, err error) {
 	deathYears, err := PersonDeathYearsByIDs(ctx, q, eff.Composer.IDs)
 	if err != nil {
-		return "", nil, err
+		return "", nil, false, err
 	}
 
 	calc, err := copyright.ComputeLikelyPublicDomain(time.Now().Year(), eff.CopyrightYear.Value, deathYears, region)
 	if err != nil {
-		return "", nil, err
+		return "", nil, false, err
 	}
 
 	explicit := eff.CopyrightStatus.Value
@@ -50,16 +58,16 @@ func ResolveCopyrightStatus(ctx context.Context, q Queryer, eff *EffectivePiece,
 		// Sticky — but still surface the calculation's own expiry year for
 		// the tooltip when it happens to be computable, even though the
 		// status itself isn't up for override here.
-		return explicit, calc.ExpiryYear, nil
+		return explicit, calc.ExpiryYear, calc.IsLikelyPD, nil
 	case "copyleft", "inCopyright":
 		if calc.IsLikelyPD {
-			return "likelyPublicDomain", calc.ExpiryYear, nil
+			return "likelyPublicDomain", calc.ExpiryYear, calc.IsLikelyPD, nil
 		}
-		return explicit, nil, nil
+		return explicit, nil, calc.IsLikelyPD, nil
 	default: // "" — nothing explicitly picked anywhere
 		if calc.IsLikelyPD {
-			return "likelyPublicDomain", calc.ExpiryYear, nil
+			return "likelyPublicDomain", calc.ExpiryYear, calc.IsLikelyPD, nil
 		}
-		return "inCopyright", nil, nil
+		return "inCopyright", nil, calc.IsLikelyPD, nil
 	}
 }

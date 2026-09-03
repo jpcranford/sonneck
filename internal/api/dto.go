@@ -101,7 +101,7 @@ func BuildPieceResponse(ctx context.Context, q repo.Queryer, p *models.Piece, re
 	if err != nil {
 		return nil, err
 	}
-	copyrightEffective, copyrightExpiryYear, err := repo.ResolveCopyrightStatus(ctx, q, eff, region)
+	copyrightEffective, copyrightExpiryYear, _, err := repo.ResolveCopyrightStatus(ctx, q, eff, region)
 	if err != nil {
 		return nil, err
 	}

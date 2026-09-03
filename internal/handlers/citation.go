@@ -46,7 +46,11 @@ func (s *Server) handleGetCitation(w http.ResponseWriter, r *http.Request) {
 
 	// Public Domain Badge feature — the effective (computed/overridden)
 	// status the badge itself shows, not just the raw explicit pick.
-	copyrightStatus, _, err := repo.ResolveCopyrightStatus(r.Context(), s.DB, eff, s.Cfg.CopyrightRegion)
+	// calculatedLikelyPD is the raw calculation's own conclusion, needed
+	// separately to decide whether an explicit 'publicDomain' pick
+	// contradicts what the calculation would otherwise show (see
+	// buildCitation's own comment on the note it guards).
+	copyrightStatus, _, calculatedLikelyPD, err := repo.ResolveCopyrightStatus(r.Context(), s.DB, eff, s.Cfg.CopyrightRegion)
 	if err != nil {
 		s.writeError(w, err)
 		return
@@ -83,6 +87,7 @@ func (s *Server) handleGetCitation(w http.ResponseWriter, r *http.Request) {
 		isbn:               bookISBN,
 		hasBook:            hasBook,
 		copyrightStatus:    copyrightStatus,
+		calculatedLikelyPD: calculatedLikelyPD,
 	})
 
 	api.WriteData(w, http.StatusOK, map[string]string{"citation": citation})
@@ -139,6 +144,11 @@ type citationInput struct {
 	// result — already corrected forward by the live calculation), one of
 	// 'publicDomain' / 'copyleft' / 'likelyPublicDomain' / 'inCopyright'.
 	copyrightStatus string
+	// calculatedLikelyPD is the raw calculation's own conclusion
+	// (repo.ResolveCopyrightStatus's 3rd return value), independent of any
+	// explicit override — see buildCitation's own comment on the one place
+	// this is actually consulted.
+	calculatedLikelyPD bool
 }
 
 // buildCitation implements design doc §6's fixed v1 format, extended by
@@ -152,11 +162,16 @@ type citationInput struct {
 // with a book keeps the flat format, book info folded back into the
 // single list).
 //
-// Every other combination keeps the flat format, with a trailing note
-// appended: the "Copyright © {year} {holder}." clause for In Copyright/
-// Copyleft (no book), or the newer "Public domain."/copyrightSlug note for
-// Public Domain/Likely Public Domain (direct request, round 3 — a PD-ish
-// citation no longer ends bare).
+// Every other combination keeps the flat format, with a trailing
+// "Copyright © {year} {holder}." clause appended for In Copyright/Copyleft
+// (no book) when there's anything to attribute. A Public Domain/Likely
+// Public Domain citation ends bare by default — no trailing note — with
+// one deliberate exception: an explicit 'publicDomain' pick that actually
+// contradicts what the live calculation would otherwise show (i.e. the
+// calculation alone would call this piece In Copyright) keeps the note,
+// since silently ending the citation there would read as unexplained
+// rather than simply unremarkable. `likelyPublicDomain` never hits this —
+// it's derived *from* the calculation, so it can't contradict it.
 func buildCitation(in citationInput) string {
 	showsCopyrightClause := in.copyrightStatus == "copyleft" || in.copyrightStatus == "inCopyright"
 
@@ -174,7 +189,10 @@ func buildCitation(in citationInput) string {
 		}
 		return flat
 	}
-	return flat + " " + publicDomainNote(in.eff.CopyrightSlug.Value)
+	if in.copyrightStatus == "publicDomain" && !in.calculatedLikelyPD {
+		return flat + " " + publicDomainNote(in.eff.CopyrightSlug.Value)
+	}
+	return flat
 }
 
 // buildTwoSentenceCitation is the design artifact §4 structure: composer/
