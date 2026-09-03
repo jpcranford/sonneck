@@ -106,6 +106,7 @@ function InheritedNote({ compact }: { compact?: boolean }) {
     <InfoTooltip
       message="Inherited from book"
       ariaLabel="Why this value is shown"
+      showPointerCursor={false}
       triggerClassName={
         compact
           ? 'text-[0.65rem] text-ink-soft/75 hover:text-ink'
