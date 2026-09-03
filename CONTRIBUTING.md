@@ -63,17 +63,21 @@ sonneck/
 │   ├── api/                   # {data}/{error} response envelope, shared field validation
 │   ├── backup/                # Scheduled VACUUM INTO snapshot job
 │   ├── config/                # Env var parsing — validated at startup, fails fast
+│   ├── copyright/              # Public domain badge's region-rule term calculation (region table embedded from regions.json)
 │   ├── db/
 │   │   └── migrations/        # goose migration files, one per schema change
 │   ├── export/                # CSV export (admin CLI command)
+│   ├── fuzzy/                  # Typo-tolerant search — Damerau-Levenshtein distance as a registered SQLite scalar function
 │   ├── handlers/               # HTTP handlers — one file per resource area
 │   ├── imslp/                  # Live IMSLP lookup (composer/opus/year/publisher by IMSLP number) — see its own package doc comment
-│   ├── models/                # Core domain structs (Piece, Book, lookups)
+│   ├── models/                # Core domain structs (Piece, Book, Person, lookups)
 │   ├── pdf/                    # Page splitting/thumbnail generation via poppler-utils
+│   ├── peoplemigrate/           # One-shot backfill splitting legacy composer/arranger strings into Person rows (admin CLI command, also runs automatically on startup)
 │   ├── repo/                   # All SQL lives here — the only layer that touches the DB
 │   ├── storage/                # File storage on disk (originals, extracted pieces)
 │   ├── testutil/               # Shared test fixtures (e.g. minimal valid PDFs)
 │   ├── webui/                  # Embeds the built frontend (//go:embed) for the single-binary/Docker deployment — see the Docker section below
+│   ├── wikipedia/               # Live Wikipedia search + Wikidata birth/death-year enrichment for Person autofill
 │   └── wizard/                 # Book-import wizard's page-range validation logic
 ├── frontend/
 │   └── src/

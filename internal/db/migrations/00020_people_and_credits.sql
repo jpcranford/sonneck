@@ -2,7 +2,7 @@
 -- Composer/arranger overhaul (Phases 1-5 approved, this is the real build):
 -- Piece.composer/arranger and Book.composer/arranger move from plain
 -- strings to an ordered many-to-many relationship to a new Person entity —
--- see CLAUDE.md's own "Open items" note and memory
+-- see CLAUDE.md's own "People / Composer & Arranger" section and memory
 -- project_people_composer_overhaul.md for the full design history.
 --
 -- Additive only. pieces.composer/arranger and books.composer/arranger are

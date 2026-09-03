@@ -31,7 +31,7 @@ Sonneck is designed to live “in an office with a printer”, so to speak. Ther
 
 ## Installation
 
-> [!WARNING]
+> [!CAUTION]
 > Sonneck has **no login and no access control of its own.** It's currently built for a single user, single session at a time. Anyone who can reach the server over the network can use the full API — there's no separation between "trusted operator" and "anonymous visitor." **Do not expose this directly to the open internet.** Deploy it behind a private network / VPN / Tailscale, or put an authenticating reverse proxy in front of it (e.g. Basic Auth, Authelia). Seriously, if you open it to the internet and a bunch of ne'er-do-wells put sketchy stuff on your server don't come crying to me.
 
 ### Docker Compose (recommended)
@@ -86,7 +86,8 @@ All configuration is via environment variables, validated at startup — the pro
 ### Public domain badge
 A piece's badge is one of four states: **In Public Domain** or **Copyleft** (both set explicitly by you), or **Likely Public Domain** / **In Copyright** (computed automatically). The computed states use a small, checked-in region-rule table (not a live third-party API — none exist built for this kind of integration, and the ones that do go stale), reviewed against IMSLP's [Copyright Made Simple](https://imslp.org/wiki/IMSLP:Copyright_Made_Simple) and [Public domain](https://imslp.org/wiki/Public_domain) pages. `COPYRIGHT_REGION` (above) picks which region's rule applies to your whole library — the U.S. rule is based on the copyright year alone; the EU/UK/Canada rules are based on the composer's death year (falling back to an approximation from the copyright year if no death year is on record).
 
-**This is not legal advice.** The calculation is a labeled approximation meant to be a useful starting point, not a determination you should rely on without your own judgment — when in doubt, verify independently before treating a piece as public domain.
+> [!IMPORTANT]
+> **This is not legal advice.** The calculation is a labeled approximation meant to be a useful starting point, not a determination you should rely on without your own judgment. When in doubt, verify independently before treating a piece as public domain. NAL.
 
 ### Backup & restore
 **Backup:** a scheduled job, automatically done by the database using the above environment variables. Backups still retained can be found at `$BACKUP_DIR/sonneck-YYYY-MM-DD.sqlite`.
