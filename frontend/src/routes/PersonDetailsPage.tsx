@@ -86,6 +86,23 @@ function workMetaLine(piece: Piece): string {
 function roleFor(piece: Piece, personId: number): 'Composer' | 'Arranger' {
   return piece.composer.values.some((p) => p.id === personId) ? 'Composer' : 'Arranger'
 }
+// Display label for a work's year: bare value when it's the piece's own
+// Year Written, "{year} (pub.)" when piece.yearWritten.inherited is true —
+// meaning it fell back to the book's Year Published field instead
+// (repo/effective.go's resolveStringField, not new behavior, just newly
+// surfaced here) — since those are two different facts (when a piece was
+// written vs. when its book came out) and showing a bare year would
+// misrepresent one as the other. Mockup-approved 2026-09-03
+// (PersonDetailsSample.tsx); format changed same day from a leading "pub.
+// {year}" to this trailing "{year} (pub.)" per direct follow-up. The
+// "(pub.)" suffix is display-only and never reaches workYearSortKey
+// below, which already reads .value directly — nothing to change there
+// for the sort to correctly ignore it.
+function yearWrittenLabel(piece: Piece): string {
+  if (!piece.yearWritten.value) return '—'
+  return piece.yearWritten.inherited ? `${piece.yearWritten.value} (pub.)` : piece.yearWritten.value
+}
+
 // yearWritten can be a range ("1830–1832") — sorts on the first number
 // found; a work with no year sorts last (this app's usual
 // direction-invariant blank-field-last convention).
@@ -168,7 +185,7 @@ function WorkGrid({ pieces, personId }: { pieces: Piece[]; personId: number }) {
                 )}
               </p>
               <p className="text-[0.65rem] text-ink-soft/80">
-                {piece.yearWritten.value || '—'}
+                {yearWrittenLabel(piece)}
                 {roleFor(piece, personId) === 'Arranger' && ' • as Arranger'}
               </p>
             </div>
@@ -195,9 +212,7 @@ function WorkList({ pieces, personId }: { pieces: Piece[]; personId: number }) {
               state={{ backLabel: 'Person' }}
               className={`grid grid-cols-[96px_1fr_56px] items-center gap-3 border-t border-border px-1.5 py-2.5 text-left hover:rounded-md hover:bg-accent-soft ${ROW_COLLAPSE_CLASS}`}
             >
-              <div className="text-center text-sm font-medium tabular-nums text-ink">
-                {piece.yearWritten.value || '—'}
-              </div>
+              <div className="text-center text-sm font-medium tabular-nums text-ink">{yearWrittenLabel(piece)}</div>
               <div className="min-w-0">
                 <p className="flex flex-wrap items-center gap-1.5 font-display text-[0.92rem] font-medium text-ink">
                   {workTitle(piece)}

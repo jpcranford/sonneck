@@ -57,7 +57,15 @@ interface MockWork {
   id: number
   title: string
   opus: string | null
-  yearWritten: string | null
+  // Mirrors the real piece.yearWritten's own EffectiveField shape
+  // (repo/effective.go: a piece's own yearWritten falls back to its
+  // book's yearPublished) — null means neither is set at all, `inherited:
+  // true` means this value came from the book's Year Published field, not
+  // the piece's own Year Written field. See yearWrittenLabel below for how
+  // that distinction reaches the screen (direct request, 2026-09-03:
+  // "{year} (pub.)" instead of a bare year whenever it's inherited this
+  // way).
+  yearWritten: { value: string; inherited: boolean } | null
   role: 'Composer' | 'Arranger'
   // The work's own full composer/arranger credit (not just this person's
   // own role) — feeds workMetaLine below, which mirrors
@@ -76,7 +84,7 @@ const MOCK_WORKS: MockWork[] = [
     id: 101,
     title: 'Prelude in C minor',
     opus: 'Op. 28 No. 20',
-    yearWritten: '1839',
+    yearWritten: { value: '1839', inherited: false },
     role: 'Composer',
     composer: 'Frédéric Chopin',
     arranger: null,
@@ -90,7 +98,7 @@ const MOCK_WORKS: MockWork[] = [
     id: 102,
     title: 'Nocturne in E-flat major',
     opus: 'Op. 9 No. 2',
-    yearWritten: '1830–1832',
+    yearWritten: { value: '1830–1832', inherited: false },
     role: 'Composer',
     composer: 'Frédéric Chopin',
     arranger: null,
@@ -104,7 +112,7 @@ const MOCK_WORKS: MockWork[] = [
     id: 103,
     title: 'Waltz in D-flat major "Minute Waltz"',
     opus: 'Op. 64 No. 1',
-    yearWritten: '1847',
+    yearWritten: { value: '1847', inherited: false },
     role: 'Composer',
     composer: 'Frédéric Chopin',
     arranger: null,
@@ -118,7 +126,7 @@ const MOCK_WORKS: MockWork[] = [
     id: 104,
     title: 'Fantaisie-Impromptu',
     opus: 'Op. 66',
-    yearWritten: '1834',
+    yearWritten: { value: '1834', inherited: false },
     role: 'Composer',
     composer: 'Frédéric Chopin',
     arranger: null,
@@ -132,7 +140,7 @@ const MOCK_WORKS: MockWork[] = [
     id: 105,
     title: 'Ballade No. 1 in G minor',
     opus: 'Op. 23',
-    yearWritten: '1835–1836',
+    yearWritten: { value: '1835–1836', inherited: false },
     role: 'Composer',
     composer: 'Frédéric Chopin',
     arranger: null,
@@ -150,7 +158,7 @@ const MOCK_WORKS: MockWork[] = [
     id: 106,
     title: 'Military Polonaise',
     opus: 'Op. 40 No. 1',
-    yearWritten: '1838',
+    yearWritten: { value: '1838', inherited: false },
     role: 'Composer',
     // Carries a co-arranger too — exercises the composer+arranger fusion
     // branch of workMetaLine below, not just the plain-composer case every
@@ -171,7 +179,7 @@ const MOCK_WORKS: MockWork[] = [
     id: 107,
     title: 'Chant polonais',
     opus: null,
-    yearWritten: '1836',
+    yearWritten: { value: '1836', inherited: false },
     role: 'Arranger',
     // No named composer — a traditional Polish folk song Chopin arranged,
     // not composed; exercises workMetaLine's arranger-only branch
@@ -180,6 +188,28 @@ const MOCK_WORKS: MockWork[] = [
     arranger: 'Frédéric Chopin',
     pageCount: 2,
     bookTitle: null,
+    favorite: false,
+    sheetType: { id: 1, name: 'Solo Piano' },
+    userTags: [],
+  },
+  // Demonstrates the inherited-year "(pub.)" case (direct request,
+  // 2026-09-03) — this piece has no Year Written of its own, so its
+  // effective year comes from its book's Year Published field instead.
+  // Shown as "1833 (pub.)" rather than a bare year, so it reads as "this
+  // is when the book came out," not "this is when the piece was written"
+  // — those are two different facts and conflating them would
+  // misrepresent a work whose actual composition date isn't on record at
+  // all.
+  {
+    id: 108,
+    title: 'Grande Valse Brillante',
+    opus: 'Op. 18',
+    yearWritten: { value: '1833', inherited: true },
+    role: 'Composer',
+    composer: 'Frédéric Chopin',
+    arranger: null,
+    pageCount: 5,
+    bookTitle: 'Chopin: Waltzes',
     favorite: false,
     sheetType: { id: 1, name: 'Solo Piano' },
     userTags: [],
@@ -280,14 +310,30 @@ function workMetaLine(work: MockWork): string {
   return [composerPart, pagesLabel(work), work.bookTitle].filter((part): part is string => !!part).join(' • ')
 }
 
+// Display label for a work's year: bare value when it's the piece's own
+// Year Written, "{year} (pub.)" when it's inherited from the book's Year
+// Published instead (direct request, 2026-09-03; format changed same day
+// from a leading "pub. {year}" to this trailing form per direct
+// follow-up) — the suffix is a rendering-only concern layered on top of
+// the same underlying value/inherited pair workYearSortKey reads below,
+// so the two never disagree about what year a work actually sorts under.
+function yearWrittenLabel(yearWritten: MockWork['yearWritten']): string {
+  if (!yearWritten) return '—'
+  return yearWritten.inherited ? `${yearWritten.value} (pub.)` : yearWritten.value
+}
+
 // Sort key for "sort by year written, arranger credits mixed in with
 // everything else" (direct instruction) — no separate grouping by role,
-// just one flat chronological list. yearWritten can be a range ("1830–
-// 1832"), so this sorts on the first number found rather than requiring a
-// clean single year; a work with no year at all sorts last (this app's
-// usual direction-invariant blank-field-last convention).
+// just one flat chronological list. yearWritten.value can be a range
+// ("1830–1832"), so this sorts on the first number found rather than
+// requiring a clean single year; a work with no year at all sorts last
+// (this app's usual direction-invariant blank-field-last convention).
+// Reads the raw value regardless of `inherited` — the "(pub.)" suffix
+// (yearWrittenLabel above) is display-only and never reaches this
+// function, so it has nothing to ignore in the first place; the /\d+/
+// match finds the same leading digits either way.
 function workYearSortKey(work: MockWork): number {
-  const match = work.yearWritten?.match(/\d+/)
+  const match = work.yearWritten?.value.match(/\d+/)
   return match ? Number(match[0]) : Number.POSITIVE_INFINITY
 }
 // Same "ignore a leading A/An/The" convention the backend's own title sort
@@ -472,7 +518,7 @@ function WorkGrid({
                 )}
               </p>
               <p className="text-[0.65rem] text-ink-soft/80">
-                {work.yearWritten ?? '—'}
+                {yearWrittenLabel(work.yearWritten)}
                 {/* Bullet separator, not an interpunct — CLAUDE.md's own
                     standing dot-separator convention, which keeps drifting
                     into freshly-built screens; caught here directly. */}
@@ -509,7 +555,7 @@ function WorkList({
               className={`grid grid-cols-[96px_1fr_56px] items-center gap-3 border-t border-border px-1.5 py-2.5 text-left hover:rounded-md hover:bg-accent-soft ${ROW_COLLAPSE_CLASS}`}
             >
               <div className="text-center text-sm font-medium tabular-nums text-ink">
-                {work.yearWritten ?? '—'}
+                {yearWrittenLabel(work.yearWritten)}
               </div>
               <div className="min-w-0">
                 <p className="flex flex-wrap items-center gap-1.5 font-display text-[0.92rem] font-medium text-ink">
