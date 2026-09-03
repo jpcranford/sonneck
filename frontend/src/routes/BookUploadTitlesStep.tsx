@@ -196,7 +196,7 @@ function HoverPagePreview({
         type="button"
         onClick={onPreview}
         title="Tap to preview page"
-        className="relative block aspect-[180/132] w-full overflow-hidden rounded-lg"
+        className="relative block aspect-[180/132] w-full cursor-pointer overflow-hidden rounded-lg"
         style={{ border: `1.5px solid ${piece.color}` }}
       >
         <img
@@ -699,7 +699,7 @@ export function BookUploadTitlesStep({
                       type="button"
                       onClick={() => setPreviewPage(piece.start)}
                       title="Tap to preview page"
-                      className="relative aspect-[180/132] w-full overflow-hidden rounded-lg"
+                      className="relative aspect-[180/132] w-full cursor-pointer overflow-hidden rounded-lg"
                       style={{ border: `1.5px solid ${piece.color}` }}
                     >
                       <img
