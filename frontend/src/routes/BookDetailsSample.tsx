@@ -193,6 +193,12 @@ const samplePieces: SamplePiece[] = [
   },
 ]
 
+// Same IMSLP "Special:ReverseLookup" URL builder as PiecePage.tsx/
+// BookDetailsPage.tsx (real) — see either for the full reasoning.
+function imslpReverseLookupUrl(imslpNumber: string): string {
+  return `https://imslp.org/index.php?title=Special:ReverseLookup&action=submit&indexsearch=${encodeURIComponent(imslpNumber)}`
+}
+
 // Primary key: sourcePageStart ascending. Tie-break: when two pieces
 // share a start page, the 1-page piece sorts first.
 function sortedPieces(pieces: SamplePiece[]): SamplePiece[] {
@@ -503,11 +509,23 @@ function bookFields(): { label: string; value: ReactNode }[] {
   if (sampleBook.imslpNumber) {
     fields.push({
       label: 'IMSLP no.',
+      // Matches Piece Details' own IMSLP row (PieceDetailsSample.tsx) —
+      // the number itself is plain font-mono text, not a link; only the
+      // external-link icon is the clickable `<a>`, styled with the same
+      // muted pre-blended gray as there (never accent).
       value: (
-        <span className="font-mono">
-          {sampleBook.imslpNumber}
-          {/* Solid pre-blend, not opacity — overlapping icon strokes would re-blend unevenly under real translucency. */}
-          <IconExternalLink size={12} className="ml-0.5 inline text-[#605d5b]" />
+        <span className="inline-flex items-center gap-1.5">
+          <span className="font-mono">{sampleBook.imslpNumber}</span>
+          <a
+            href={imslpReverseLookupUrl(sampleBook.imslpNumber)}
+            target="_blank"
+            rel="noreferrer"
+            aria-label="View on IMSLP"
+            // Solid pre-blend, not opacity — overlapping icon strokes would re-blend unevenly under real translucency.
+            className="text-[#9c968f] hover:text-ink-soft"
+          >
+            <IconExternalLink size={12} />
+          </a>
         </span>
       ),
     })

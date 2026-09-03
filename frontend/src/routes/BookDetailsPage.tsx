@@ -410,16 +410,25 @@ export function BookDetailsPage() {
     if (book.imslpNumber) {
       fields.push({
         label: 'IMSLP no.',
+        // Matches Piece Details' own IMSLP row (PiecePage.tsx) — the
+        // number itself is plain font-mono text, not a link; only the
+        // external-link icon is the clickable `<a>`, styled with the
+        // same muted pre-blended gray as there (never accent — that's
+        // reserved for user-specific data, not a catalog identifier).
         value: (
-          <a
-            href={imslpReverseLookupUrl(book.imslpNumber)}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-0.5 font-mono text-accent hover:underline"
-          >
-            {book.imslpNumber}
-            <IconExternalLink size={12} />
-          </a>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="font-mono">{book.imslpNumber}</span>
+            <a
+              href={imslpReverseLookupUrl(book.imslpNumber)}
+              target="_blank"
+              rel="noreferrer"
+              aria-label="View on IMSLP"
+              // Solid pre-blend, not opacity — overlapping icon strokes would re-blend unevenly under real translucency.
+              className="text-[#9c968f] hover:text-ink-soft"
+            >
+              <IconExternalLink size={12} />
+            </a>
+          </span>
         ),
       })
     }
