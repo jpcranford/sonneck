@@ -294,7 +294,13 @@ func TestCitation_ISBNHiddenWhenImslpPresent(t *testing.T) {
 	}
 	decodeData(t, rec, &citation)
 
-	want := `Charles-Marie Widor, "Toccata". Published in Six Symphonies, IMSLP #04154.`
+	// The piece owns this IMSLP number directly (not inherited from the
+	// book), so per the book/piece-opus citation follow-up (direct request,
+	// 2026-09-03) the whole publish sentence — where ISBN would otherwise
+	// have shown — is dropped entirely, not just the ISBN within it: a
+	// piece already pinned to its own IMSLP record doesn't need a second
+	// sentence restating facts that record already carries.
+	want := `Charles-Marie Widor, "Toccata", IMSLP #04154.`
 	if citation.Citation != want {
 		t.Errorf("citation = %q, want %q", citation.Citation, want)
 	}
@@ -369,7 +375,13 @@ func TestCitation_BookOpusNumberMovesToBookNameWhenPieceOpusIncorporatesIt(t *te
 	}
 	decodeData(t, rec, &citation)
 
-	want := `Robert Schumann, No. 9 "Volksliedchen". Published in Album für die Jugend, Op. 68.`
+	// An opus match means the piece is part of a greater work (direct
+	// request, 2026-09-03 follow-up), so the book's title/opus fold
+	// straight into this one sentence — same shape a flat/public-domain
+	// citation already uses — rather than a separate "Published in ..."
+	// sentence; there's no publisher/IMSLP/ISBN on record here for a
+	// publish sentence to add anyway.
+	want := `Robert Schumann, Album für die Jugend, Op. 68, No. 9 "Volksliedchen".`
 	if citation.Citation != want {
 		t.Errorf("citation = %q, want %q", citation.Citation, want)
 	}
@@ -405,7 +417,10 @@ func TestCitation_BookOpusNumberWithPureInheritanceLeavesTitleBare(t *testing.T)
 	}
 	decodeData(t, rec, &citation)
 
-	want := `Sergei Prokofiev, "Allegro". Published in Symphony No. 1: Classical Symphony, Op. 25.`
+	// Same opus-match fold-in as the Schumann test above — the book's title/
+	// opus join the one sentence, with nothing left over to prefix the
+	// title with (pure inheritance).
+	want := `Sergei Prokofiev, Symphony No. 1: Classical Symphony, Op. 25, "Allegro".`
 	if citation.Citation != want {
 		t.Errorf("citation = %q, want %q", citation.Citation, want)
 	}
@@ -567,6 +582,200 @@ func TestCitation_ShowsBookOpusNumberWhenNotContainedInPieceOpusNumber(t *testin
 	decodeData(t, rec, &citation)
 
 	want := `Johann Sebastian Bach, "Minuet" (BWV Anh. 114). Published in Notebook for Anna Magdalena Bach, BWV Anh. 113-132.`
+	if citation.Citation != want {
+		t.Errorf("citation = %q, want %q", citation.Citation, want)
+	}
+}
+
+// The following four tests cover the full opus-match / IMSLP-ownership
+// matrix the two-sentence citation follow-up (direct request, 2026-09-03)
+// introduced. "Opus matches, piece owns IMSLP" is covered by the request's
+// own worked example below; "opus doesn't match, piece owns IMSLP" is
+// already covered by TestCitation_ISBNHiddenWhenImslpPresent above (that
+// book has no workOpusNumber at all, so nothing to match against); "opus
+// doesn't match, neither owns IMSLP" is TestCitation_ShowsBookOpusNumberWhenNotContainedInPieceOpusNumber
+// above, unchanged from the original single "Published in" format.
+
+// The request's own worked example: opus matches (book "part of a greater
+// work"), and the piece owns its IMSLP number directly — book title/opus
+// fold into the one sentence, the IMSLP number goes right there with them,
+// and there's no second "Published..." sentence at all.
+func TestCitation_OpusMatchWithPieceOwnedImslp(t *testing.T) {
+	h := newTestServer(t)
+	bookID, _ := uploadBook(t, h, "book.pdf", 4)
+	decodeData(t, doJSON(t, h, http.MethodPatch, apiBooksURL(bookID), map[string]any{
+		"bookTitle":      "Six Short Preludes and Postludes",
+		"composers":      []string{"Charles Villiers Stanford"},
+		"workOpusNumber": "Op. 105",
+	}), nil)
+
+	confirmRec := doJSON(t, h, http.MethodPost, apiBooksURL(bookID)+"/confirm-import", map[string]any{
+		"ranges": []map[string]any{{"start": 1, "end": 4}},
+		"pieces": []map[string]any{{"title": "Lento", "workOpusNumber": "Op. 105 III."}},
+	})
+	var result struct {
+		Pieces []pieceResponse `json:"pieces"`
+	}
+	decodeData(t, confirmRec, &result)
+	pieceID := result.Pieces[0].ID
+
+	decodeData(t, doJSON(t, h, http.MethodPatch, apiPiecesURL(pieceID), map[string]any{
+		"title":          "Lento",
+		"sourceBookId":   bookID,
+		"workOpusNumber": "Op. 105 III.",
+		"imslpNumber":    "07953",
+		"yearWritten":    "1908",
+		"copyrightYear":  2013,
+		"publisher":      "Stainer & Bell",
+	}), nil)
+
+	rec := doJSON(t, h, http.MethodGet, apiPiecesURL(pieceID)+"/citation", nil)
+	var citation struct {
+		Citation string `json:"citation"`
+	}
+	decodeData(t, rec, &citation)
+
+	want := `Charles Villiers Stanford, Six Short Preludes and Postludes, Op. 105, III. "Lento", IMSLP #07953, 1908. Copyright © 2013 Stainer & Bell.`
+	if citation.Citation != want {
+		t.Errorf("citation = %q, want %q", citation.Citation, want)
+	}
+}
+
+// Opus matches, but the IMSLP number belongs to the book, not the piece —
+// no identifier at all in the first sentence (publisher stays only in the
+// publish sentence, not duplicated in both places), and the publish
+// sentence itself keeps the book's IMSLP number as its own segment
+// alongside publisher, not in place of it (a deliberate divergence from the
+// flat citation's own dominant-IMSLP-wins rule, since this sentence is
+// specifically about the book's own publication facts).
+func TestCitation_OpusMatchWithBookOwnedImslp(t *testing.T) {
+	h := newTestServer(t)
+	bookID, _ := uploadBook(t, h, "book.pdf", 4)
+	decodeData(t, doJSON(t, h, http.MethodPatch, apiBooksURL(bookID), map[string]any{
+		"bookTitle":      "Album for the Young",
+		"composers":      []string{"Jane Doe"},
+		"workOpusNumber": "Op. 68",
+		"imslpNumber":    "12345",
+		"publisher":      "Henle Verlag",
+		"yearPublished":  "2015",
+	}), nil)
+
+	confirmRec := doJSON(t, h, http.MethodPost, apiBooksURL(bookID)+"/confirm-import", map[string]any{
+		"ranges": []map[string]any{{"start": 1, "end": 4}},
+		"pieces": []map[string]any{{"title": "The Reaper's Song", "workOpusNumber": "Op. 68, No. 3"}},
+	})
+	var result struct {
+		Pieces []pieceResponse `json:"pieces"`
+	}
+	decodeData(t, confirmRec, &result)
+	pieceID := result.Pieces[0].ID
+
+	decodeData(t, doJSON(t, h, http.MethodPatch, apiPiecesURL(pieceID), map[string]any{
+		"title":          "The Reaper's Song",
+		"sourceBookId":   bookID,
+		"workOpusNumber": "Op. 68, No. 3",
+		"yearWritten":    "1878",
+		"copyrightYear":  2015,
+	}), nil)
+
+	rec := doJSON(t, h, http.MethodGet, apiPiecesURL(pieceID)+"/citation", nil)
+	var citation struct {
+		Citation string `json:"citation"`
+	}
+	decodeData(t, rec, &citation)
+
+	want := `Jane Doe, Album for the Young, Op. 68, No. 3 "The Reaper's Song", 1878. Published by Henle Verlag, IMSLP #12345, 2015. Copyright © 2015 Henle Verlag.`
+	if citation.Citation != want {
+		t.Errorf("citation = %q, want %q", citation.Citation, want)
+	}
+}
+
+// Opus matches, no IMSLP number anywhere — the publish sentence still runs
+// (there's a publisher/year to report), just reworded from "Published in
+// {book}, ..." to "Published by {publisher}, ..." since the book's own
+// name/opus already said its piece in the first sentence.
+func TestCitation_OpusMatchWithNoImslpUsesPublishedByWording(t *testing.T) {
+	h := newTestServer(t)
+	bookID, _ := uploadBook(t, h, "book.pdf", 4)
+	decodeData(t, doJSON(t, h, http.MethodPatch, apiBooksURL(bookID), map[string]any{
+		"bookTitle":      "Album for the Young",
+		"composers":      []string{"Jane Doe"},
+		"workOpusNumber": "Op. 68",
+		"publisher":      "Henle Verlag",
+		"yearPublished":  "2015",
+	}), nil)
+
+	confirmRec := doJSON(t, h, http.MethodPost, apiBooksURL(bookID)+"/confirm-import", map[string]any{
+		"ranges": []map[string]any{{"start": 1, "end": 4}},
+		"pieces": []map[string]any{{"title": "The Reaper's Song", "workOpusNumber": "Op. 68, No. 3"}},
+	})
+	var result struct {
+		Pieces []pieceResponse `json:"pieces"`
+	}
+	decodeData(t, confirmRec, &result)
+	pieceID := result.Pieces[0].ID
+
+	decodeData(t, doJSON(t, h, http.MethodPatch, apiPiecesURL(pieceID), map[string]any{
+		"title":          "The Reaper's Song",
+		"sourceBookId":   bookID,
+		"workOpusNumber": "Op. 68, No. 3",
+		"yearWritten":    "1878",
+		"copyrightYear":  2015,
+	}), nil)
+
+	rec := doJSON(t, h, http.MethodGet, apiPiecesURL(pieceID)+"/citation", nil)
+	var citation struct {
+		Citation string `json:"citation"`
+	}
+	decodeData(t, rec, &citation)
+
+	want := `Jane Doe, Album for the Young, Op. 68, No. 3 "The Reaper's Song", 1878. Published by Henle Verlag, 2015. Copyright © 2015 Henle Verlag.`
+	if citation.Citation != want {
+		t.Errorf("citation = %q, want %q", citation.Citation, want)
+	}
+}
+
+// Opus doesn't match (no book opus at all to match against — a distinct
+// piece within an anthology) and the book, not the piece, owns the IMSLP
+// number — the publish sentence keeps its original "Published in {book},
+// ..." wording (book title never moved out of it) and gains the book's
+// IMSLP number as its own segment, same as the opus-match case above.
+func TestCitation_NoOpusMatchWithBookOwnedImslp(t *testing.T) {
+	h := newTestServer(t)
+	bookID, _ := uploadBook(t, h, "book.pdf", 4)
+	decodeData(t, doJSON(t, h, http.MethodPatch, apiBooksURL(bookID), map[string]any{
+		"bookTitle":     "Album for the Young",
+		"composers":     []string{"Jane Doe"},
+		"imslpNumber":   "12345",
+		"publisher":     "Henle Verlag",
+		"yearPublished": "2015",
+	}), nil)
+
+	confirmRec := doJSON(t, h, http.MethodPost, apiBooksURL(bookID)+"/confirm-import", map[string]any{
+		"ranges": []map[string]any{{"start": 1, "end": 4}},
+		"pieces": []map[string]any{{"title": "The Reaper's Song", "workOpusNumber": "No. 3"}},
+	})
+	var result struct {
+		Pieces []pieceResponse `json:"pieces"`
+	}
+	decodeData(t, confirmRec, &result)
+	pieceID := result.Pieces[0].ID
+
+	decodeData(t, doJSON(t, h, http.MethodPatch, apiPiecesURL(pieceID), map[string]any{
+		"title":          "The Reaper's Song",
+		"sourceBookId":   bookID,
+		"workOpusNumber": "No. 3",
+		"yearWritten":    "1878",
+		"copyrightYear":  2015,
+	}), nil)
+
+	rec := doJSON(t, h, http.MethodGet, apiPiecesURL(pieceID)+"/citation", nil)
+	var citation struct {
+		Citation string `json:"citation"`
+	}
+	decodeData(t, rec, &citation)
+
+	want := `Jane Doe, "The Reaper's Song" (No. 3), 1878. Published in Album for the Young, Henle Verlag, IMSLP #12345, 2015. Copyright © 2015 Henle Verlag.`
 	if citation.Citation != want {
 		t.Errorf("citation = %q, want %q", citation.Citation, want)
 	}

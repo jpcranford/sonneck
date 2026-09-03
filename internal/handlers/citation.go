@@ -195,15 +195,44 @@ func buildCitation(in citationInput) string {
 	return flat
 }
 
-// buildTwoSentenceCitation is the design artifact §4 structure: composer/
-// title/yearWritten as their own sentence, a "Published in ..." sentence
-// carrying the book/publication facts, then the copyright clause as a
-// third. Only ever called when a book is present (bookTitle would
-// otherwise be empty and the "Published in" sentence meaningless).
+// pieceOwnsImslp reports whether eff's effective IMSLP number came from the
+// piece itself, not inherited from its book — the switch buildTwoSentenceCitation
+// uses to decide both where the number is shown (folded into the first
+// sentence, like a flat citation, vs. as its own segment in the publish
+// sentence) and whether the publish sentence exists at all (direct request:
+// a piece already pinned to its own IMSLP record doesn't need a second
+// sentence restating facts that record already carries — a *book*-level
+// IMSLP number doesn't carry that same implication, since the piece itself
+// isn't independently catalogued there).
+func pieceOwnsImslp(eff *repo.EffectivePiece) bool {
+	return eff.ImslpNumber.Value != "" && !eff.ImslpNumber.Inherited
+}
+
+// buildTwoSentenceCitation is the design artifact §4 structure, extended by
+// two direct follow-up requests on top of the original fixed "written /
+// published" split:
+//
+//  1. An opus match (the book's own opus number contained in the piece's
+//     effective one — resolvedOpus.matched) means the piece is part of a
+//     greater work, so the book's title/opus fold directly into the first
+//     sentence, exactly like a flat citation already does — the same
+//     resolveOpus call already decides this via titlePrefix/titleParen, this
+//     just also gates whether bookTitle+bookSuffix join sentence 1.
+//  2. The piece's own IMSLP number (pieceOwnsImslp, not merely inherited
+//     from the book) also earns a spot in the first sentence — independent
+//     of whether #1 applies — and suppresses the publish sentence entirely.
+//     A *book*-owned IMSLP number instead becomes its own segment inside the
+//     publish sentence, alongside publisher/publisherId rather than
+//     replacing them (a deliberate divergence from publisherOrIdentifierParts'
+//     normal dominant-IMSLP-wins rule — see that function's own comment).
+//
+// Only ever called when a book is present.
 func buildTwoSentenceCitation(in citationInput) string {
 	eff := in.eff
-	var sentence1 strings.Builder
+	opus := resolveOpus(eff.WorkOpusNumber.Value, in.bookWorkOpusNumber)
+	ownsImslp := pieceOwnsImslp(eff)
 
+	var sentence1 strings.Builder
 	composer := joinPersonNames(in.composerNames)
 	arranger := joinPersonNames(in.arrangerNames)
 	switch {
@@ -214,7 +243,16 @@ func buildTwoSentenceCitation(in citationInput) string {
 	case arranger != "":
 		fmt.Fprintf(&sentence1, "arr. %s, ", arranger)
 	}
-	opus := resolveOpus(eff.WorkOpusNumber.Value, in.bookWorkOpusNumber)
+
+	if opus.matched {
+		bookPart := in.bookTitle
+		if opus.bookSuffix != "" {
+			bookPart += fmt.Sprintf(", %s", opus.bookSuffix)
+		}
+		if bookPart != "" {
+			fmt.Fprintf(&sentence1, "%s, ", bookPart)
+		}
+	}
 	if opus.titlePrefix != "" {
 		fmt.Fprintf(&sentence1, "%s ", opus.titlePrefix)
 	}
@@ -222,29 +260,62 @@ func buildTwoSentenceCitation(in citationInput) string {
 	if opus.titleParen != "" {
 		fmt.Fprintf(&sentence1, " (%s)", opus.titleParen)
 	}
+	if ownsImslp {
+		fmt.Fprintf(&sentence1, ", IMSLP #%s", stripImslpPrefix(eff.ImslpNumber.Value))
+	}
 	if eff.YearWritten.Value != "" {
 		fmt.Fprintf(&sentence1, ", %s", eff.YearWritten.Value)
 	}
 	sentence1.WriteString(".")
 
-	var publishedParts []string
-	bookPart := in.bookTitle
-	if opus.bookSuffix != "" {
-		bookPart += fmt.Sprintf(", %s", opus.bookSuffix)
+	if ownsImslp {
+		if clause := copyrightClause(eff); clause != "" {
+			return sentence1.String() + " " + clause
+		}
+		return sentence1.String()
 	}
-	if bookPart != "" {
-		publishedParts = append(publishedParts, bookPart)
-	}
-	publishedParts = append(publishedParts, publisherOrIdentifierParts(eff, in.isbn)...)
-	if in.bookYearPublished != "" {
-		publishedParts = append(publishedParts, in.bookYearPublished)
-	}
-	sentence2 := "Published in " + strings.Join(publishedParts, ", ") + "."
 
-	if clause := copyrightClause(eff); clause != "" {
-		return sentence1.String() + " " + sentence2 + " " + clause
+	var publishParts []string
+	if !opus.matched && in.bookTitle != "" {
+		bookPart := in.bookTitle
+		if opus.bookSuffix != "" {
+			bookPart += fmt.Sprintf(", %s", opus.bookSuffix)
+		}
+		publishParts = append(publishParts, bookPart)
 	}
-	return sentence1.String() + " " + sentence2
+	if assembly := fusePublisherAndID(eff.Publisher.Value, eff.PublisherID.Value); assembly != "" {
+		publishParts = append(publishParts, assembly)
+	}
+	switch {
+	case eff.ImslpNumber.Value != "": // book-owned, since ownsImslp is false here
+		publishParts = append(publishParts, fmt.Sprintf("IMSLP #%s", stripImslpPrefix(eff.ImslpNumber.Value)))
+	case in.isbn != "":
+		publishParts = append(publishParts, fmt.Sprintf("ISBN %s", hyphenateISBN(in.isbn)))
+	}
+	if in.bookYearPublished != "" {
+		publishParts = append(publishParts, in.bookYearPublished)
+	}
+
+	var sentence2 string
+	if len(publishParts) > 0 {
+		verb := "Published in "
+		if opus.matched {
+			verb = "Published by "
+		}
+		sentence2 = verb + strings.Join(publishParts, ", ") + "."
+	}
+
+	clause := copyrightClause(eff)
+	switch {
+	case sentence2 != "" && clause != "":
+		return sentence1.String() + " " + sentence2 + " " + clause
+	case sentence2 != "":
+		return sentence1.String() + " " + sentence2
+	case clause != "":
+		return sentence1.String() + " " + clause
+	default:
+		return sentence1.String()
+	}
 }
 
 // buildFlatCitation is the original (pre-Public Domain Badge feature) v1
@@ -308,31 +379,56 @@ func buildFlatCitation(eff *repo.EffectivePiece, composerNames, arrangerNames []
 }
 
 // publisherOrIdentifierParts is the shared publisher/publisherId/IMSLP/ISBN
-// segment(s), extracted so buildFlatCitation and buildTwoSentenceCitation's
-// own "Published in" sentence apply the identical fallback rule — IMSLP
-// wins outright over both publisher(+publisherId) and ISBN when known
-// (dropping them from the citation entirely), but publisher and ISBN are
-// otherwise independent: both can render as their own separate parts when
-// IMSLP is blank (e.g. "G. Schirmer, ISBN 978-0-13235088-4"), not a single
-// either/or fallback chain. Returns nil when nothing in this family is set.
+// segment(s) for a citation's single flat identifier slot — buildFlatCitation
+// itself, and buildTwoSentenceCitation's own first sentence when the piece
+// has its own IMSLP number (see pieceOwnsImslp). IMSLP wins outright over
+// both publisher(+publisherId) and ISBN when known (dropping them from the
+// citation entirely), but publisher and ISBN are otherwise independent: both
+// can render as their own separate parts when IMSLP is blank (e.g.
+// "G. Schirmer, ISBN 978-0-13235088-4"), not a single either/or fallback
+// chain. Returns nil when nothing in this family is set.
+//
+// This dominant-IMSLP-wins rule is specific to a single flat identifier
+// slot — buildTwoSentenceCitation's own "Published in/by" sentence
+// deliberately does NOT reuse this function when the *book* (not the piece)
+// owns the IMSLP number, since that sentence is specifically about the
+// book's own publication facts and treats a book-level IMSLP as one more
+// fact alongside publisher, not a replacement for it (direct request,
+// distinguishing "piece has the IMSLP number" from "book has the IMSLP
+// number" as two different cases).
 func publisherOrIdentifierParts(eff *repo.EffectivePiece, isbn string) []string {
 	if eff.ImslpNumber.Value != "" {
 		return []string{fmt.Sprintf("IMSLP #%s", stripImslpPrefix(eff.ImslpNumber.Value))}
 	}
 
 	var parts []string
-	switch {
-	case eff.Publisher.Value != "" && eff.PublisherID.Value != "":
-		parts = append(parts, fmt.Sprintf("%s #%s", eff.Publisher.Value, eff.PublisherID.Value))
-	case eff.Publisher.Value != "":
-		parts = append(parts, eff.Publisher.Value)
-	case eff.PublisherID.Value != "":
-		parts = append(parts, fmt.Sprintf("#%s", eff.PublisherID.Value))
+	if assembly := fusePublisherAndID(eff.Publisher.Value, eff.PublisherID.Value); assembly != "" {
+		parts = append(parts, assembly)
 	}
 	if isbn != "" {
 		parts = append(parts, fmt.Sprintf("ISBN %s", hyphenateISBN(isbn)))
 	}
 	return parts
+}
+
+// fusePublisherAndID formats publisher+publisherId as "{publisher} #{id}"
+// when both are set, falling back to whichever one alone is set, or "" when
+// neither is — the shared publisher-naming rule every citation format uses,
+// factored out since publisherOrIdentifierParts and
+// buildTwoSentenceCitation's own publish-sentence assembly both need it but
+// otherwise combine it with different things (IMSLP-dominant vs.
+// IMSLP-additive).
+func fusePublisherAndID(publisher, publisherID string) string {
+	switch {
+	case publisher != "" && publisherID != "":
+		return fmt.Sprintf("%s #%s", publisher, publisherID)
+	case publisher != "":
+		return publisher
+	case publisherID != "":
+		return fmt.Sprintf("#%s", publisherID)
+	default:
+		return ""
+	}
 }
 
 // copyrightClause is the "Copyright © {year} {holder}. {slug}" trailing
@@ -482,6 +578,16 @@ type resolvedOpus struct {
 	// opus of its own, or a piece opus that references something else
 	// entirely, e.g. two different catalog systems).
 	titleParen string
+	// matched mirrors which of titlePrefix/titleParen was taken (true only
+	// for the "piece's opus incorporates the book's" branch) — exposed as
+	// its own bool, rather than making every caller re-derive it from which
+	// of the other two fields is non-empty (both are legitimately empty
+	// together in the matched branch, when the piece's opus is identical to
+	// the book's with nothing of its own to add). buildTwoSentenceCitation
+	// uses this directly to decide whether the book's title/opus fold into
+	// its first sentence (direct request: an opus match means "the piece is
+	// part of a greater work," so the book moves up to join it).
+	matched bool
 }
 
 // resolveOpus decides which of resolvedOpus's two mutually exclusive
@@ -511,7 +617,7 @@ func resolveOpus(pieceOpus, bookOpus string) resolvedOpus {
 		if after != "" {
 			remainder = append(remainder, after)
 		}
-		return resolvedOpus{bookSuffix: bookOpus, titlePrefix: strings.Join(remainder, ", ")}
+		return resolvedOpus{bookSuffix: bookOpus, titlePrefix: strings.Join(remainder, ", "), matched: true}
 	}
 	return resolvedOpus{bookSuffix: bookOpus, titleParen: pieceOpus}
 }
