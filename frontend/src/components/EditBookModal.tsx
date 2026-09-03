@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { IconAlertTriangle, IconCheck, IconXFilled } from '@tabler/icons-react'
+import { IconAlertTriangle, IconChevronRight, IconCheck, IconXFilled } from '@tabler/icons-react'
 import { updateBook } from '../api/books'
 import { lookupImslp } from '../api/imslp'
 import { listInstruments, listSheetTypes } from '../api/lookups'
@@ -40,7 +40,7 @@ interface FormValues {
   // `instruments` below.
   composer: Tag[]
   arranger: Tag[]
-  yearWritten: string
+  yearPublished: string
   workOpusNumber: string
   instruments: Tag[]
   sheetType: string
@@ -49,6 +49,12 @@ interface FormValues {
   isbn: string
   imslpNumber: string
   description: string
+  // Public Domain Badge feature (migration 00022) — plain fields, no
+  // inheritance concept (Book is the inheritance root).
+  copyrightStatus: string
+  copyrightYear: string
+  copyrightHolder: string
+  copyrightSlug: string
 }
 
 function bookToFormValues(book: Book): FormValues {
@@ -59,7 +65,7 @@ function bookToFormValues(book: Book): FormValues {
     // a direct pass-through, same as `instruments` below.
     composer: book.composer,
     arranger: book.arranger,
-    yearWritten: book.yearWritten ?? '',
+    yearPublished: book.yearPublished ?? '',
     workOpusNumber: book.workOpusNumber ?? '',
     instruments: book.instruments,
     sheetType: book.sheetType?.name ?? '',
@@ -68,6 +74,10 @@ function bookToFormValues(book: Book): FormValues {
     isbn: book.isbn ?? '',
     imslpNumber: book.imslpNumber ?? '',
     description: book.description ?? '',
+    copyrightStatus: book.copyrightStatus ?? '',
+    copyrightYear: book.copyrightYear != null ? String(book.copyrightYear) : '',
+    copyrightHolder: book.copyrightHolder ?? '',
+    copyrightSlug: book.copyrightSlug ?? '',
   }
 }
 
@@ -84,6 +94,42 @@ function stripImslpPrefix(value: string): string {
   return value.replace(/^\s*imslp[\s:#-]*/i, '')
 }
 
+function toIntOrNull(value: string): number | null {
+  if (value.trim() === '') return null
+  const n = Number(value)
+  return Number.isFinite(n) ? n : null
+}
+
+// Public Domain Badge feature — order matches the original design table
+// exactly (design artifact, locked); same list as EditPieceModal.tsx's own
+// copy (option lists are always duplicated per-caller in this app, only
+// the real shared *components* — SingleSelect — aren't).
+const COPYRIGHT_STATUS_OPTIONS = [
+  {
+    value: 'publicDomain',
+    label: 'In Public Domain',
+    description: 'No copyright applies. Sticky once picked — the calculation never overrides this.',
+  },
+  {
+    value: 'likelyPublicDomain',
+    label: 'Likely Public Domain',
+    description:
+      'Calculated automatically from copyright year and composer death year. Sticky if picked by hand too.',
+  },
+  {
+    value: 'inCopyright',
+    label: 'In Copyright',
+    description:
+      'Your own call — but if the calculation later determines the term has expired, this moves to Likely Public Domain on its own.',
+  },
+  {
+    value: 'copyleft',
+    label: 'Copyleft',
+    description:
+      'A license like Creative Commons has been attached to this piece. Same auto-upgrade as In Copyright if the calculation later says the term expired anyway.',
+  },
+]
+
 // Book has no inheritance to preserve (unlike PieceWriteRequest, which
 // blanks inherited fields so a full-replace write can't accidentally
 // convert an inherited value into a permanent override) — every field here
@@ -97,7 +143,7 @@ function formValuesToWriteRequest(data: FormValues): BookWriteRequest {
     bookTitle: data.bookTitle,
     composers: data.composer.map((t) => t.name),
     arrangers: data.arranger.map((t) => t.name),
-    yearWritten: data.yearWritten || null,
+    yearPublished: data.yearPublished || null,
     workOpusNumber: data.workOpusNumber || null,
     sheetTypeName: data.sheetType || null,
     publisher: data.publisher || null,
@@ -106,6 +152,12 @@ function formValuesToWriteRequest(data: FormValues): BookWriteRequest {
     imslpNumber: stripImslpPrefix(data.imslpNumber) || null,
     isbn: data.isbn || null,
     instruments: data.instruments.map((i) => i.name),
+    // Public Domain Badge feature (migration 00022) — same plain
+    // direct-mapping treatment as every other field above.
+    copyrightStatus: (data.copyrightStatus || null) as BookWriteRequest['copyrightStatus'],
+    copyrightYear: toIntOrNull(data.copyrightYear),
+    copyrightHolder: data.copyrightHolder || null,
+    copyrightSlug: data.copyrightSlug || null,
   }
 }
 
@@ -121,6 +173,7 @@ const SAVED_DISPLAY_MS = 900
 export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
   const queryClient = useQueryClient()
   const [saveState, setSaveState] = useState<SaveState>('idle')
+  const [copyrightOpen, setCopyrightOpen] = useState(false)
   // Captured right before mutate() fires, read in onSuccess — see
   // lib/minDuration.ts for why this exists: the real PATCH resolves in
   // ~1-15ms against this app's local SQLite backend, which is faster
@@ -203,9 +256,9 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
         setValue('workOpusNumber', info.workOpusNumber)
         filled.add('workOpusNumber')
       }
-      if (!current.yearWritten && info.yearWritten) {
-        setValue('yearWritten', info.yearWritten)
-        filled.add('yearWritten')
+      if (!current.yearPublished && info.yearWritten) {
+        setValue('yearPublished', info.yearWritten)
+        filled.add('yearPublished')
       }
       if (!current.publisher && info.publisher) {
         setValue('publisher', info.publisher)
@@ -452,12 +505,12 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
         <div className="flex flex-col gap-3 min-[525px]:flex-row">
           <div className="flex min-w-0 flex-1 flex-col gap-1">
             <label htmlFor="f-year" className="text-sm text-ink-soft">
-              Year written
+              Year published
             </label>
             <input
               id="f-year"
-              className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 ${imslpFilledFields.has('yearWritten') ? 'ring-2 ring-accent-on-dark' : ''}`}
-              {...register('yearWritten', { maxLength: 255 })}
+              className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 ${imslpFilledFields.has('yearPublished') ? 'ring-2 ring-accent-on-dark' : ''}`}
+              {...register('yearPublished', { maxLength: 255 })}
             />
           </div>
           <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -594,6 +647,82 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
               {...register('description')}
             />
           </div>
+        </div>
+
+        {/* Copyright — Public Domain Badge feature. Same collapsed-by-
+            default posture as the Piece Edit menu's own Copyright section.
+            No InheritedNote wiring here (unlike Piece's version) — Book is
+            the top of the inheritance chain, nothing for it to inherit
+            from, and its Copyright Status trigger has no live-calculated
+            default to show either (needs an effective copyright year +
+            composer death years, both pulled *through* Piece → Book
+            inheritance), so it just shows a plain "Not set" placeholder
+            instead. */}
+        <div className="border-t border-border pt-4">
+          <button
+            type="button"
+            onClick={() => setCopyrightOpen((o) => !o)}
+            className="flex cursor-pointer items-center gap-1 text-sm text-ink-soft hover:text-ink"
+          >
+            <IconChevronRight
+              size={14}
+              className={`transition-transform ${copyrightOpen ? 'rotate-90' : ''}`}
+            />
+            Copyright
+          </button>
+          {copyrightOpen && (
+            <div className="mt-3 flex flex-col gap-4 rounded-md border border-dashed border-border p-4">
+              <Controller
+                name="copyrightStatus"
+                control={control}
+                render={({ field }) => (
+                  <SingleSelect
+                    label="Copyright status"
+                    options={COPYRIGHT_STATUS_OPTIONS}
+                    value={field.value}
+                    onChange={field.onChange}
+                    placeholder="Not set"
+                    placeholderDescription="No status set for this book yet."
+                    onClear={() => field.onChange('')}
+                  />
+                )}
+              />
+              <div className="flex flex-col gap-3 min-[525px]:flex-row">
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  <label htmlFor="f-copyright-year" className="text-sm text-ink-soft">
+                    Copyright year
+                  </label>
+                  <input
+                    id="f-copyright-year"
+                    type="number"
+                    className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+                    {...register('copyrightYear')}
+                  />
+                </div>
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  <label htmlFor="f-copyright-holder" className="text-sm text-ink-soft">
+                    Copyright holder
+                  </label>
+                  <input
+                    id="f-copyright-holder"
+                    className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+                    {...register('copyrightHolder', { maxLength: 255 })}
+                  />
+                </div>
+              </div>
+              <div className="flex min-w-0 flex-col gap-1">
+                <label htmlFor="f-copyright-slug" className="text-sm text-ink-soft">
+                  Copyright details
+                </label>
+                <input
+                  id="f-copyright-slug"
+                  placeholder="Optional — e.g. license terms, renewal notes"
+                  className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                  {...register('copyrightSlug')}
+                />
+              </div>
+            </div>
+          )}
         </div>
       </form>
     </Modal>

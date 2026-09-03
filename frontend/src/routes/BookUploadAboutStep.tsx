@@ -38,7 +38,7 @@ interface FormValues {
   bookTitle: string
   composer: Tag[]
   arranger: Tag[]
-  yearWritten: string
+  yearPublished: string
   workOpusNumber: string
   publisher: string
   publisherId: string
@@ -59,7 +59,7 @@ function bookToFormValues(book: Book): FormValues {
     bookTitle: book.bookTitle,
     composer: book.composer,
     arranger: book.arranger,
-    yearWritten: book.yearWritten ?? '',
+    yearPublished: book.yearPublished ?? '',
     workOpusNumber: book.workOpusNumber ?? '',
     publisher: book.publisher ?? '',
     publisherId: book.publisherId ?? '',
@@ -92,7 +92,7 @@ function formValuesToWriteRequest(data: FormValues): BookWriteRequest {
     bookTitle: data.bookTitle,
     composers: data.composer.map((t) => t.name),
     arrangers: data.arranger.map((t) => t.name),
-    yearWritten: data.yearWritten || null,
+    yearPublished: data.yearPublished || null,
     workOpusNumber: data.workOpusNumber || null,
     sheetTypeName: data.sheetType || null,
     publisher: data.publisher || null,
@@ -198,9 +198,9 @@ export function BookUploadAboutStep({
         setValue('composer', [{ id: -1, name: info.composer }])
         filled.add('composer')
       }
-      if (!current.yearWritten && info.yearWritten) {
-        setValue('yearWritten', info.yearWritten)
-        filled.add('yearWritten')
+      if (!current.yearPublished && info.yearWritten) {
+        setValue('yearPublished', info.yearWritten)
+        filled.add('yearPublished')
       }
       if (!current.workOpusNumber && info.workOpusNumber) {
         setValue('workOpusNumber', info.workOpusNumber)
@@ -506,13 +506,13 @@ export function BookUploadAboutStep({
           <div className="flex flex-col gap-3 min-[525px]:flex-row">
             <div className="flex min-w-0 flex-1 flex-col gap-1">
               <label htmlFor="f-year" className="text-sm text-ink-soft">
-                Year Written
+                Year Published
               </label>
               <input
                 id="f-year"
                 placeholder="e.g. 1848"
-                className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 placeholder:text-ink-soft/40 placeholder:italic ${imslpFilledFields.has('yearWritten') ? 'ring-2 ring-accent-on-dark' : ''}`}
-                {...register('yearWritten', { maxLength: 255 })}
+                className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 placeholder:text-ink-soft/40 placeholder:italic ${imslpFilledFields.has('yearPublished') ? 'ring-2 ring-accent-on-dark' : ''}`}
+                {...register('yearPublished', { maxLength: 255 })}
               />
             </div>
             <div className="flex min-w-0 flex-1 flex-col gap-1">

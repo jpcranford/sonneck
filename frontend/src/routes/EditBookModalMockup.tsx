@@ -1,6 +1,6 @@
 import { useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { Controller, useForm } from 'react-hook-form'
-import { IconCheck, IconXFilled } from '@tabler/icons-react'
+import { IconCheck, IconChevronRight, IconXFilled } from '@tabler/icons-react'
 import type { Tag } from '../api/types'
 import { Modal } from '../components/Modal'
 import { TagComboBox } from '../components/TagComboBox'
@@ -43,6 +43,38 @@ const INSTRUMENT_OPTIONS: Tag[] = [
 const MOCK_BOOK_TITLE = 'Album for the Young'
 const MOCK_PIECE_COUNT = 6
 
+// Public Domain Badge feature (design artifact, phase 1) — same order/
+// wording as EditPieceModalMockup.tsx's own copy of this list (option
+// lists are always duplicated per-mockup in this app, same as
+// SHEET_TYPE_OPTIONS just above already being its own separate copy from
+// that file's; only the real shared *components* — SingleSelect,
+// TagComboBox — aren't).
+const COPYRIGHT_STATUS_OPTIONS = [
+  {
+    value: 'publicDomain',
+    label: 'In Public Domain',
+    description: 'No copyright applies. Sticky once picked — the calculation never overrides this.',
+  },
+  {
+    value: 'likelyPublicDomain',
+    label: 'Likely Public Domain',
+    description:
+      'Calculated automatically from copyright year and composer death year. Sticky if picked by hand too.',
+  },
+  {
+    value: 'inCopyright',
+    label: 'In Copyright',
+    description:
+      'Your own call — but if the calculation later determines the term has expired, this moves to Likely Public Domain on its own.',
+  },
+  {
+    value: 'copyleft',
+    label: 'Copyleft',
+    description:
+      'A license like Creative Commons has been attached to this piece. Same auto-upgrade as In Copyright if the calculation later says the term expired anyway.',
+  },
+]
+
 interface FormValues {
   bookTitle: string
   composer: string
@@ -56,6 +88,10 @@ interface FormValues {
   isbn: string
   imslpNumber: string
   description: string
+  copyrightStatus: string
+  copyrightYear: string
+  copyrightHolder: string
+  copyrightSlug: string
 }
 
 const defaultValues: FormValues = {
@@ -76,6 +112,14 @@ const defaultValues: FormValues = {
   isbn: '9780132350884',
   imslpNumber: 'IMSLP04154',
   description: "Schumann's collection of 43 short pieces for young pianists, composed for his own children.",
+  // Public Domain Badge feature — all blank, demonstrating a Book that's
+  // never touched this feature: the Copyright Status trigger shows a
+  // plain "Not set" (Book has nothing to calculate a live default from,
+  // unlike Piece — see the design artifact's own §7 note on this).
+  copyrightStatus: '',
+  copyrightYear: '',
+  copyrightHolder: '',
+  copyrightSlug: '',
 }
 
 type SaveState = 'idle' | 'saving' | 'saved'
@@ -90,6 +134,7 @@ export function EditBookModalMockup() {
 
   const [open, setOpen] = useState(true)
   const [saveState, setSaveState] = useState<SaveState>('idle')
+  const [copyrightOpen, setCopyrightOpen] = useState(false)
   const { register, control, handleSubmit, formState: { errors } } = useForm<FormValues>({ defaultValues })
 
   // No real PATCH here (mockup) — just runs the same perceived-progress
@@ -401,6 +446,82 @@ export function EditBookModalMockup() {
                 {...register('description')}
               />
             </div>
+          </div>
+
+          {/* Copyright — Public Domain Badge feature (design artifact,
+              phase 1). Same collapsed-by-default posture as the Piece
+              Edit menu's own Copyright section. No InheritedNote wiring
+              here (unlike Piece's version) — Book is the top of the
+              inheritance chain, nothing for it to inherit from, and its
+              Copyright Status trigger has no live-calculated default to
+              show either (needs an effective copyright year + composer
+              death years, both pulled *through* Piece → Book inheritance
+              — see the design artifact's own §7 note), so it just shows
+              a plain "Not set" placeholder instead. */}
+          <div className="border-t border-border pt-4">
+            <button
+              type="button"
+              onClick={() => setCopyrightOpen((o) => !o)}
+              className="flex cursor-pointer items-center gap-1 text-sm text-ink-soft hover:text-ink"
+            >
+              <IconChevronRight
+                size={14}
+                className={`transition-transform ${copyrightOpen ? 'rotate-90' : ''}`}
+              />
+              Copyright
+            </button>
+            {copyrightOpen && (
+              <div className="mt-3 flex flex-col gap-4 rounded-md border border-dashed border-border p-4">
+                <Controller
+                  name="copyrightStatus"
+                  control={control}
+                  render={({ field }) => (
+                    <SingleSelect
+                      label="Copyright status"
+                      options={COPYRIGHT_STATUS_OPTIONS}
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder="Not set"
+                      placeholderDescription="No status set for this book yet."
+                      onClear={() => field.onChange('')}
+                    />
+                  )}
+                />
+                <div className="flex flex-col gap-3 min-[525px]:flex-row">
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <label htmlFor="f-copyright-year" className="text-sm text-ink-soft">
+                      Copyright year
+                    </label>
+                    <input
+                      id="f-copyright-year"
+                      className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+                      {...register('copyrightYear', { maxLength: 255 })}
+                    />
+                  </div>
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <label htmlFor="f-copyright-holder" className="text-sm text-ink-soft">
+                      Copyright holder
+                    </label>
+                    <input
+                      id="f-copyright-holder"
+                      className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+                      {...register('copyrightHolder', { maxLength: 255 })}
+                    />
+                  </div>
+                </div>
+                <div className="flex min-w-0 flex-col gap-1">
+                  <label htmlFor="f-copyright-slug" className="text-sm text-ink-soft">
+                    Copyright details
+                  </label>
+                  <input
+                    id="f-copyright-slug"
+                    placeholder="Optional — e.g. license terms, renewal notes"
+                    className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                    {...register('copyrightSlug', { maxLength: 255 })}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </form>
       </Modal>

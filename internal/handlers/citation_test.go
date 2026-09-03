@@ -29,7 +29,7 @@ func TestCitation_OmitsBlankFieldsAndUsesBookTitle(t *testing.T) {
 	}
 	decodeData(t, rec, &citation)
 
-	want := `Charles-Marie Widor, Six Symphonies, "Toccata" (Op. 42)`
+	want := `Charles-Marie Widor, "Toccata" (Op. 42). Published in Six Symphonies.`
 	if citation.Citation != want {
 		t.Errorf("citation = %q, want %q", citation.Citation, want)
 	}
@@ -89,7 +89,7 @@ func TestCitation_PublisherIdFusesOntoPublisherName(t *testing.T) {
 	}
 	decodeData(t, citeRec, &citation)
 
-	want := `Someone, "Solo", G. Schirmer #HL50252950`
+	want := `Someone, "Solo", G. Schirmer #HL50252950 Copyright © G. Schirmer.`
 	if citation.Citation != want {
 		t.Errorf("citation = %q, want %q", citation.Citation, want)
 	}
@@ -125,7 +125,7 @@ func TestCitation_ImslpNumberSuppressesPublisherAndPublisherId(t *testing.T) {
 	}
 	decodeData(t, citeRec, &citation)
 
-	want := `Someone, "Solo", IMSLP #04154`
+	want := `Someone, "Solo", IMSLP #04154 Copyright © G. Schirmer.`
 	if citation.Citation != want {
 		t.Errorf("citation = %q, want %q", citation.Citation, want)
 	}
@@ -260,7 +260,7 @@ func TestCitation_ISBNAppearsAfterPublisherWhenImslpBlank(t *testing.T) {
 	}
 	decodeData(t, rec, &citation)
 
-	want := `Charles-Marie Widor, Six Symphonies, "Toccata", G. Schirmer, ISBN 978-0-13235088-4`
+	want := `Charles-Marie Widor, "Toccata". Published in Six Symphonies, G. Schirmer, ISBN 978-0-13235088-4. Copyright © G. Schirmer.`
 	if citation.Citation != want {
 		t.Errorf("citation = %q, want %q", citation.Citation, want)
 	}
@@ -294,7 +294,7 @@ func TestCitation_ISBNHiddenWhenImslpPresent(t *testing.T) {
 	}
 	decodeData(t, rec, &citation)
 
-	want := `Charles-Marie Widor, Six Symphonies, "Toccata", IMSLP #04154`
+	want := `Charles-Marie Widor, "Toccata". Published in Six Symphonies, IMSLP #04154.`
 	if citation.Citation != want {
 		t.Errorf("citation = %q, want %q", citation.Citation, want)
 	}
@@ -331,7 +331,7 @@ func TestCitation_ISBN10Hyphenation(t *testing.T) {
 	}
 	decodeData(t, rec, &citation)
 
-	want := `Charles-Marie Widor, Six Symphonies, "Toccata", ISBN 0-13235088-2`
+	want := `Charles-Marie Widor, "Toccata". Published in Six Symphonies, ISBN 0-13235088-2.`
 	if citation.Citation != want {
 		t.Errorf("citation = %q, want %q", citation.Citation, want)
 	}
@@ -367,7 +367,7 @@ func TestCitation_SuppressesBookOpusNumberWhenContainedInPieceOpusNumber(t *test
 	}
 	decodeData(t, rec, &citation)
 
-	want := `Robert Schumann, Album für die Jugend, "Volksliedchen" (Op. 68, No. 9)`
+	want := `Robert Schumann, "Volksliedchen" (Op. 68, No. 9). Published in Album für die Jugend.`
 	if citation.Citation != want {
 		t.Errorf("citation = %q, want %q", citation.Citation, want)
 	}
@@ -402,7 +402,7 @@ func TestCitation_ShowsBookOpusNumberWhenNotContainedInPieceOpusNumber(t *testin
 	}
 	decodeData(t, rec, &citation)
 
-	want := `Johann Sebastian Bach, Notebook for Anna Magdalena Bach, BWV Anh. 113-132, "Minuet" (BWV Anh. 114)`
+	want := `Johann Sebastian Bach, "Minuet" (BWV Anh. 114). Published in Notebook for Anna Magdalena Bach, BWV Anh. 113-132.`
 	if citation.Citation != want {
 		t.Errorf("citation = %q, want %q", citation.Citation, want)
 	}
@@ -436,7 +436,7 @@ func TestCitation_TitleDoubleQuotesBecomeSingleQuotes(t *testing.T) {
 	}
 	decodeData(t, citeRec, &citation)
 
-	want := `Joe Hisaishi, arr. M. Yamamoto, "Merry-Go-Round of Life from 'Howl's Moving Castle'", Sony/ATV Music Publishing (UK), 2004.`
+	want := `Joe Hisaishi, arr. M. Yamamoto, "Merry-Go-Round of Life from 'Howl's Moving Castle'", Sony/ATV Music Publishing (UK), 2004. Copyright © Sony/ATV Music Publishing (UK).`
 	if citation.Citation != want {
 		t.Errorf("citation = %q, want %q", citation.Citation, want)
 	}

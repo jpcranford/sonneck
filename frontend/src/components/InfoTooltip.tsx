@@ -5,6 +5,12 @@ interface InfoTooltipProps {
   ariaLabel: string
   triggerClassName: string
   children: ReactNode
+  // Defaults to true (every existing caller relies on this, unchanged) —
+  // set false for a trigger that's genuinely read-only-feeling and
+  // shouldn't invite a click, like the public domain badge (Public Domain
+  // Badge feature): it's still tap-to-open on touch (design doc §12 — no
+  // hover-dependent interactions), only the desktop mouse cursor differs.
+  showPointerCursor?: boolean
 }
 
 /**
@@ -70,7 +76,13 @@ function getClipBoundary(el: HTMLElement): { left: number; right: number; top: n
   }
 }
 
-export function InfoTooltip({ message, ariaLabel, triggerClassName, children }: InfoTooltipProps) {
+export function InfoTooltip({
+  message,
+  ariaLabel,
+  triggerClassName,
+  children,
+  showPointerCursor = true,
+}: InfoTooltipProps) {
   const [open, setOpen] = useState(false)
   const bubbleRef = useRef<HTMLSpanElement>(null)
   const [shiftPx, setShiftPx] = useState(0)
@@ -183,13 +195,19 @@ export function InfoTooltip({ message, ariaLabel, triggerClassName, children }: 
         }}
         aria-expanded={open}
         aria-label={ariaLabel}
-        // cursor-pointer baked in here, not left to each caller's own
-        // triggerClassName — a plain <button> resets to cursor: default
-        // (Tailwind's preflight, CLAUDE.md > Frontend), and this component
-        // exists specifically so callers don't have to each remember the
-        // rest of this trigger's styling either; the cursor is no
-        // different.
-        className={`cursor-pointer ${triggerClassName}`}
+        // cursor-pointer baked in here (not left to each caller's own
+        // triggerClassName) by default — a plain <button> resets to
+        // cursor: default (Tailwind's preflight, CLAUDE.md > Frontend),
+        // and this component exists specifically so callers don't have to
+        // each remember the rest of this trigger's styling either,
+        // cursor included. showPointerCursor={false} opts a specific
+        // trigger back out — written as a ternary between two literal
+        // class strings (`cursor-pointer`/`cursor-default`), not a
+        // template-interpolated `cursor-${x}`, so both possible classes
+        // appear verbatim in this file's source for Tailwind's build-time
+        // scanner to find; a runtime-only interpolated class name isn't
+        // guaranteed to exist in the generated stylesheet at all.
+        className={`${showPointerCursor ? 'cursor-pointer' : 'cursor-default'} ${triggerClassName}`}
       >
         {children}
       </button>

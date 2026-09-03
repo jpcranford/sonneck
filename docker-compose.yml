@@ -10,6 +10,7 @@ services:
       # BACKUP_CRON: "0 3 * * *"      # standard cron expression, default = daily at 3am
       # BACKUP_RETENTION_DAYS: "30"
       # LOG_LEVEL: info               # debug | info | warn | error — turn up to debug if you're troubleshooting
+      # COPYRIGHT_REGION: en-US       # en-US | eu-generic | en-GB | ca — which public-domain rule the "Likely Public Domain" badge uses, default = en-US
       TZ: UTC # set to your own timezone (e.g. America/New_York) so BACKUP_CRON fires when you expect
     healthcheck:
       test: ["CMD", "wget", "-q", "-O-", "http://localhost:8080/healthz"]

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/jpcranford/sonneck/internal/models"
 	"github.com/jpcranford/sonneck/internal/repo"
@@ -93,6 +94,9 @@ func ValidatePiece(ctx context.Context, q repo.Queryer, p *models.Piece) (Valida
 	checkLineLength(&errs, "publisherId", p.PublisherID)
 	checkLineLength(&errs, "yearWritten", p.YearWritten)
 	checkLineLength(&errs, "imslpNumber", p.ImslpNumber)
+	checkLineLength(&errs, "copyrightHolder", p.CopyrightHolder)
+	checkCopyrightYear(&errs, p.CopyrightYear)
+	checkCopyrightStatus(&errs, p.CopyrightStatus)
 
 	if p.PracticeStatus != nil && !validPracticeStatuses[*p.PracticeStatus] {
 		errs = append(errs, FieldError{"practiceStatus", "must be one of: Want to Learn, Learning, Learned, Stalled, Dropped"})
@@ -129,12 +133,15 @@ func ValidateBook(b *models.Book) ValidationErrors {
 		errs = append(errs, FieldError{"Composer", "or Arranger or Publisher is required"})
 	}
 	checkLineLength(&errs, "bookTitle", &b.BookTitle)
-	checkLineLength(&errs, "yearWritten", b.YearWritten)
+	checkLineLength(&errs, "yearPublished", b.YearPublished)
 	checkLineLength(&errs, "workOpusNumber", b.WorkOpusNumber)
 	checkLineLength(&errs, "publisher", b.Publisher)
 	checkLineLength(&errs, "publisherId", b.PublisherID)
 	checkLineLength(&errs, "imslpNumber", b.ImslpNumber)
 	checkLineLength(&errs, "isbn", b.ISBN)
+	checkLineLength(&errs, "copyrightHolder", b.CopyrightHolder)
+	checkCopyrightYear(&errs, b.CopyrightYear)
+	checkCopyrightStatus(&errs, b.CopyrightStatus)
 
 	return errs
 }
@@ -182,5 +189,39 @@ func checkLineLength(errs *ValidationErrors, field string, val *string) {
 func checkPositiveInt(errs *ValidationErrors, field string, val *int) {
 	if val != nil && *val <= 0 {
 		*errs = append(*errs, FieldError{field, "must be a positive integer"})
+	}
+}
+
+// minCopyrightYear/maxCopyrightYearFuture mirror the sane-range check the
+// original design doc specified for this field before the whole feature
+// was deferred (design doc §13's "1400–current year+1"). 1400 is a floor,
+// not tied to "this year" the way the upper bound is, so it's a plain
+// constant rather than computed.
+const minCopyrightYear = 1400
+
+func checkCopyrightYear(errs *ValidationErrors, val *int) {
+	if val == nil {
+		return
+	}
+	maxYear := time.Now().Year() + 1
+	if *val < minCopyrightYear || *val > maxYear {
+		*errs = append(*errs, FieldError{"copyrightYear", fmt.Sprintf("must be between %d and %d", minCopyrightYear, maxYear)})
+	}
+}
+
+// validCopyrightStatuses mirrors the pieces/books.copyright_status CHECK
+// constraint (migration 00022) — validated at this layer too so a bad
+// value surfaces as a real {error} envelope field message instead of an
+// opaque 500 from the raw SQL constraint violation.
+var validCopyrightStatuses = map[string]bool{
+	"publicDomain":       true,
+	"copyleft":           true,
+	"likelyPublicDomain": true,
+	"inCopyright":        true,
+}
+
+func checkCopyrightStatus(errs *ValidationErrors, val *string) {
+	if val != nil && !validCopyrightStatuses[*val] {
+		*errs = append(*errs, FieldError{"copyrightStatus", "must be one of: publicDomain, copyleft, likelyPublicDomain, inCopyright"})
 	}
 }

@@ -752,7 +752,7 @@ func TestSearchPieces_SortsByYearWrittenFallsBackToBookYearWritten(t *testing.T)
 
 	bookID, _ := uploadBook(t, h, "book.pdf", 2)
 	decodeData(t, doJSON(t, h, http.MethodPatch, apiBooksURL(bookID), map[string]any{
-		"bookTitle": "A Book", "composers": []string{"Someone"}, "yearWritten": "1750",
+		"bookTitle": "A Book", "composers": []string{"Someone"}, "yearPublished": "1750",
 	}), nil)
 	confirmRec := doJSON(t, h, http.MethodPost, apiBooksURL(bookID)+"/confirm-import", map[string]any{
 		"ranges": []map[string]any{{"start": 1, "end": 2}},

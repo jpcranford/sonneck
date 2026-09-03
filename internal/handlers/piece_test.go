@@ -656,9 +656,9 @@ func TestDownloadPieceFile_FilenameUsesInheritedComposerAndYear(t *testing.T) {
 	decodeData(t, uploadRec, &uploaded)
 
 	bookRec := doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
-		"bookTitle":   "Album für die Jugend, Op. 68",
-		"composers":   []string{"Robert Schumann"},
-		"yearWritten": "1848",
+		"bookTitle":     "Album für die Jugend, Op. 68",
+		"composers":     []string{"Robert Schumann"},
+		"yearPublished": "1848",
 	})
 	var book bookResponse
 	decodeData(t, bookRec, &book)

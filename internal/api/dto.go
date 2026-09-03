@@ -22,6 +22,24 @@ type EffectiveTagRefs struct {
 	Inherited bool       `json:"inherited"`
 }
 
+// CopyrightStatusResponse (Public Domain Badge feature, migration 00022)
+// can't reuse plain EffectiveField like CopyrightHolder/CopyrightSlug do,
+// because the badge's displayed status is never just "the piece's own
+// pick, else the book's" — it's that pick corrected forward by a live
+// calculation (repo.ResolveCopyrightStatus). Value/Inherited are the raw
+// explicit pick (same shape/meaning as every other EffectiveField — what
+// the Edit Piece dropdown should show as "currently selected" before
+// considering the calculation); Effective is the final status the badge
+// and citation actually use, always one of the four real values, never
+// blank; ExpiryYear is the algorithm's own computed term-expiry year (for
+// the "as of {year}" tooltip), nil when not computable.
+type CopyrightStatusResponse struct {
+	Value      string `json:"value"`
+	Inherited  bool   `json:"inherited"`
+	Effective  string `json:"effective"`
+	ExpiryYear *int   `json:"expiryYear"`
+}
+
 // PieceResponse is the wire shape for a Piece. Every book-inheritable field
 // is an effective-value object ({value, inherited}) built via
 // repo.ResolveEffective — never a raw Piece column — per CLAUDE.md > Book-
@@ -59,16 +77,31 @@ type PieceResponse struct {
 	FileHash        string              `json:"fileHash"`
 	PageCount       int                 `json:"pageCount"`
 	ThumbnailPage   int                 `json:"thumbnailPage"`
-	CopyrightYear   *int                `json:"copyrightYear"`
-	PublicDomain    bool                `json:"publicDomain"`
-	CreatedAt       time.Time           `json:"createdAt"`
-	UpdatedAt       time.Time           `json:"updatedAt"`
+	// CopyrightYear/CopyrightHolder/CopyrightSlug (Public Domain Badge
+	// feature, migration 00022) are book-inheritable, same EffectiveField
+	// shape as every other such field. CopyrightStatus carries both the
+	// raw explicit pick (value/inherited, same shape) AND the final
+	// computed/overridden badge status + its expiry year — see
+	// CopyrightStatusResponse's own doc comment for why these can't share
+	// one plain EffectiveField the way the other three do.
+	CopyrightYear   repo.EffectiveIntField  `json:"copyrightYear"`
+	CopyrightHolder repo.EffectiveField     `json:"copyrightHolder"`
+	CopyrightSlug   repo.EffectiveField     `json:"copyrightSlug"`
+	CopyrightStatus CopyrightStatusResponse `json:"copyrightStatus"`
+	CreatedAt       time.Time               `json:"createdAt"`
+	UpdatedAt       time.Time               `json:"updatedAt"`
 }
 
 // BuildPieceResponse resolves p's effective values and every referenced
 // tag's display name, in the fewest queries reasonable for v1's scale.
-func BuildPieceResponse(ctx context.Context, q repo.Queryer, p *models.Piece) (*PieceResponse, error) {
+// region (Public Domain Badge feature) is the validated COPYRIGHT_REGION
+// config value — every caller is a handler method with s.Cfg in scope.
+func BuildPieceResponse(ctx context.Context, q repo.Queryer, p *models.Piece, region string) (*PieceResponse, error) {
 	eff, err := repo.ResolveEffective(ctx, q, p)
+	if err != nil {
+		return nil, err
+	}
+	copyrightEffective, copyrightExpiryYear, err := repo.ResolveCopyrightStatus(ctx, q, eff, region)
 	if err != nil {
 		return nil, err
 	}
@@ -88,6 +121,15 @@ func BuildPieceResponse(ctx context.Context, q repo.Queryer, p *models.Piece) (*
 		SourceBookID:    p.SourceBookID,
 		SourcePageStart: p.SourcePageStart,
 		SourcePageEnd:   p.SourcePageEnd,
+		CopyrightYear:   eff.CopyrightYear,
+		CopyrightHolder: eff.CopyrightHolder,
+		CopyrightSlug:   eff.CopyrightSlug,
+		CopyrightStatus: CopyrightStatusResponse{
+			Value:      eff.CopyrightStatus.Value,
+			Inherited:  eff.CopyrightStatus.Inherited,
+			Effective:  copyrightEffective,
+			ExpiryYear: copyrightExpiryYear,
+		},
 		Duration:        p.Duration,
 		BPM:             p.BPM,
 		MeasureCount:    p.MeasureCount,
@@ -95,8 +137,6 @@ func BuildPieceResponse(ctx context.Context, q repo.Queryer, p *models.Piece) (*
 		FileHash:        p.FileHash,
 		PageCount:       p.PageCount,
 		ThumbnailPage:   p.ThumbnailPage,
-		CopyrightYear:   p.CopyrightYear,
-		PublicDomain:    p.PublicDomain,
 		CreatedAt:       p.CreatedAt,
 		UpdatedAt:       p.UpdatedAt,
 		Keys:            []repo.Tag{},
@@ -184,15 +224,18 @@ type BookResponse struct {
 	// ordered, plain []repo.Tag — no Effective* wrapper, since Book is the
 	// top of the inheritance chain (nothing to fall back to), matching how
 	// Instruments below already works for Book.
-	Composer       []repo.Tag `json:"composer"`
-	Arranger       []repo.Tag `json:"arranger"`
-	YearWritten    *string    `json:"yearWritten"`
-	WorkOpusNumber *string    `json:"workOpusNumber"`
-	SheetType      *repo.Tag  `json:"sheetType"`
-	Publisher      *string    `json:"publisher"`
-	PublisherID    *string    `json:"publisherId"`
-	Description    *string    `json:"description"`
-	ImslpNumber    *string    `json:"imslpNumber"`
+	Composer []repo.Tag `json:"composer"`
+	Arranger []repo.Tag `json:"arranger"`
+	// YearPublished (renamed from YearWritten, migration 00022, Public
+	// Domain Badge feature) — when this edition was published, not when
+	// the piece was composed.
+	YearPublished  *string   `json:"yearPublished"`
+	WorkOpusNumber *string   `json:"workOpusNumber"`
+	SheetType      *repo.Tag `json:"sheetType"`
+	Publisher      *string   `json:"publisher"`
+	PublisherID    *string   `json:"publisherId"`
+	Description    *string   `json:"description"`
+	ImslpNumber    *string   `json:"imslpNumber"`
 	// ISBN (migration 00017): plain digits, no hyphens — see models.Book's
 	// own doc comment. The frontend hyphenates for display.
 	ISBN             *string    `json:"isbn"`
@@ -217,6 +260,18 @@ type BookResponse struct {
 	CoverImageHash *string   `json:"coverImageHash"`
 	ImportedAt     time.Time `json:"importedAt"`
 	PieceCount     int       `json:"pieceCount"`
+	// CopyrightYear/CopyrightHolder/CopyrightSlug/CopyrightStatus (Public
+	// Domain Badge feature, migration 00022) — plain Book columns, no
+	// Effective* wrapper (Book is the inheritance root, same as
+	// Composer/Arranger/Instruments above). CopyrightStatus is one of
+	// 'publicDomain'/'copyleft'/'likelyPublicDomain'/'inCopyright', or nil
+	// — a Book has no live-computed default to fall back to for display
+	// (see repo.ResolveCopyrightStatus's own comment), so unlike Piece
+	// there's no separate "effective" status to also expose here.
+	CopyrightYear   *int    `json:"copyrightYear"`
+	CopyrightHolder *string `json:"copyrightHolder"`
+	CopyrightSlug   *string `json:"copyrightSlug"`
+	CopyrightStatus *string `json:"copyrightStatus"`
 }
 
 func BuildBookResponse(ctx context.Context, q repo.Queryer, b *models.Book) (*BookResponse, error) {
@@ -225,7 +280,7 @@ func BuildBookResponse(ctx context.Context, q repo.Queryer, b *models.Book) (*Bo
 		BookTitle:        b.BookTitle,
 		Composer:         []repo.Tag{},
 		Arranger:         []repo.Tag{},
-		YearWritten:      b.YearWritten,
+		YearPublished:    b.YearPublished,
 		WorkOpusNumber:   b.WorkOpusNumber,
 		Publisher:        b.Publisher,
 		PublisherID:      b.PublisherID,
@@ -238,6 +293,10 @@ func BuildBookResponse(ctx context.Context, q repo.Queryer, b *models.Book) (*Bo
 		HasCustomCover:   b.CoverImageHash != nil,
 		CoverImageHash:   b.CoverImageHash,
 		ImportedAt:       b.ImportedAt,
+		CopyrightYear:    b.CopyrightYear,
+		CopyrightHolder:  b.CopyrightHolder,
+		CopyrightSlug:    b.CopyrightSlug,
+		CopyrightStatus:  b.CopyrightStatus,
 	}
 
 	if len(b.ComposerIDs) > 0 {
@@ -321,6 +380,15 @@ type PieceWriteRequest struct {
 	BPM             *int   `json:"bpm"`
 	MeasureCount    *int   `json:"measureCount"`
 	BeatsPerMeasure *int   `json:"beatsPerMeasure"`
+	// CopyrightYear/CopyrightHolder/CopyrightSlug/CopyrightStatus (Public
+	// Domain Badge feature, migration 00022) — full-replace like every
+	// other field here, book-inheritable. CopyrightStatus is validated
+	// against the same four-value CHECK constraint the DB enforces
+	// (checkCopyrightStatus, validate.go).
+	CopyrightYear   *int    `json:"copyrightYear"`
+	CopyrightHolder *string `json:"copyrightHolder"`
+	CopyrightSlug   *string `json:"copyrightSlug"`
+	CopyrightStatus *string `json:"copyrightStatus"`
 }
 
 // BookCreateRequest is the Books library view's "New Book" button
@@ -333,11 +401,11 @@ type PieceWriteRequest struct {
 // ValidateBook now requires one of the two, leaving arranger out here would
 // make that requirement satisfiable only via composer at creation time.
 type BookCreateRequest struct {
-	BookTitle   string   `json:"bookTitle"`
-	Composers   []string `json:"composers"`
-	Arrangers   []string `json:"arrangers"`
-	Publisher   *string  `json:"publisher"`
-	YearWritten *string  `json:"yearWritten"`
+	BookTitle     string   `json:"bookTitle"`
+	Composers     []string `json:"composers"`
+	Arrangers     []string `json:"arrangers"`
+	Publisher     *string  `json:"publisher"`
+	YearPublished *string  `json:"yearPublished"`
 }
 
 // BookWriteRequest is the Book Properties Edit Menu's submission shape
@@ -347,7 +415,7 @@ type BookWriteRequest struct {
 	BookTitle      string   `json:"bookTitle"`
 	Composers      []string `json:"composers"`
 	Arrangers      []string `json:"arrangers"`
-	YearWritten    *string  `json:"yearWritten"`
+	YearPublished  *string  `json:"yearPublished"`
 	WorkOpusNumber *string  `json:"workOpusNumber"`
 	SheetTypeName  *string  `json:"sheetTypeName"`
 	Publisher      *string  `json:"publisher"`
@@ -359,6 +427,15 @@ type BookWriteRequest struct {
 	// whatever punctuation/label the user typed.
 	ISBN        *string  `json:"isbn"`
 	Instruments []string `json:"instruments"`
+	// CopyrightYear/CopyrightHolder/CopyrightSlug/CopyrightStatus (Public
+	// Domain Badge feature, migration 00022) — full-replace like every
+	// other field here. CopyrightStatus is validated against the same
+	// four-value CHECK constraint the DB enforces (checkCopyrightStatus,
+	// validate.go).
+	CopyrightYear   *int    `json:"copyrightYear"`
+	CopyrightHolder *string `json:"copyrightHolder"`
+	CopyrightSlug   *string `json:"copyrightSlug"`
+	CopyrightStatus *string `json:"copyrightStatus"`
 }
 
 // PersonResponse is the wire shape for a Person (composer/arranger

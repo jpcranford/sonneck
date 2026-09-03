@@ -19,7 +19,7 @@ interface NewBookFormValues {
   bookTitle: string
   composer: Tag[]
   publisher: string
-  yearWritten: string
+  yearPublished: string
 }
 
 // Books library view's "New Book" button — creates a Book with no
@@ -54,7 +54,7 @@ export function NewBookModal({ open, onClose }: NewBookModalProps) {
     reset,
     formState: { errors },
   } = useForm<NewBookFormValues>({
-    defaultValues: { bookTitle: '', composer: [], publisher: '', yearWritten: '' },
+    defaultValues: { bookTitle: '', composer: [], publisher: '', yearPublished: '' },
   })
 
   // People catalog (composer/arranger overhaul, Stage C pattern) — same
@@ -81,7 +81,7 @@ export function NewBookModal({ open, onClose }: NewBookModalProps) {
         composers: data.composer.map((t) => t.name),
         arrangers: [],
         publisher: data.publisher || null,
-        yearWritten: data.yearWritten || null,
+        yearPublished: data.yearPublished || null,
       })
     },
     onSuccess: () => {
@@ -201,7 +201,7 @@ export function NewBookModal({ open, onClose }: NewBookModalProps) {
             <input
               id="nb-year"
               className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-              {...register('yearWritten', { maxLength: 255 })}
+              {...register('yearPublished', { maxLength: 255 })}
             />
           </div>
         </div>

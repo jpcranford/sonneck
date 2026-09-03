@@ -44,8 +44,17 @@ func (s *Server) handleGetCitation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var bookTitle, bookWorkOpusNumber, bookISBN string
-	if p.SourceBookID != nil {
+	// Public Domain Badge feature — the effective (computed/overridden)
+	// status the badge itself shows, not just the raw explicit pick.
+	copyrightStatus, _, err := repo.ResolveCopyrightStatus(r.Context(), s.DB, eff, s.Cfg.CopyrightRegion)
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+
+	var bookTitle, bookWorkOpusNumber, bookISBN, bookYearPublished string
+	hasBook := p.SourceBookID != nil
+	if hasBook {
 		book, err := repo.GetBookByID(r.Context(), s.DB, *p.SourceBookID)
 		if err != nil {
 			s.writeError(w, err)
@@ -58,11 +67,25 @@ func (s *Server) handleGetCitation(w http.ResponseWriter, r *http.Request) {
 		if book.ISBN != nil {
 			bookISBN = *book.ISBN
 		}
+		if book.YearPublished != nil {
+			bookYearPublished = *book.YearPublished
+		}
 	}
 
-	api.WriteData(w, http.StatusOK, map[string]string{
-		"citation": buildCitation(eff, composerNames, arrangerNames, p.Title, bookTitle, bookWorkOpusNumber, bookISBN),
+	citation := buildCitation(citationInput{
+		eff:                eff,
+		composerNames:      composerNames,
+		arrangerNames:      arrangerNames,
+		title:              p.Title,
+		bookTitle:          bookTitle,
+		bookWorkOpusNumber: bookWorkOpusNumber,
+		bookYearPublished:  bookYearPublished,
+		isbn:               bookISBN,
+		hasBook:            hasBook,
+		copyrightStatus:    copyrightStatus,
 	})
+
+	api.WriteData(w, http.StatusOK, map[string]string{"citation": citation})
 }
 
 // personNames resolves an ordered list of person ids to their display
@@ -99,26 +122,123 @@ func joinPersonNames(names []string) string {
 	}
 }
 
-// buildCitation implements design doc §6's fixed v1 format:
-// {composer}, {Book.bookTitle}, "{title}" ({workOpusNumber}), {publisher},
-// {imslpNumber falling back to publisherId}, {yearWritten} — every blank
-// component omitted entirely, never shown as empty punctuation. This is
-// deliberately not generic CITATION_FORMAT token substitution: blank-field
-// omission doesn't fit a plain-substitution model, and a real conditional
-// template engine is out of scope for now (design doc §6, §13).
+// citationInput bundles buildCitation's inputs — grown too large for a
+// positional parameter list once the Public Domain Badge feature added
+// hasBook/copyrightStatus/bookYearPublished on top of the original set.
+type citationInput struct {
+	eff                *repo.EffectivePiece
+	composerNames      []string
+	arrangerNames      []string
+	title              string
+	bookTitle          string
+	bookWorkOpusNumber string
+	bookYearPublished  string
+	isbn               string
+	hasBook            bool
+	// copyrightStatus is the piece's EFFECTIVE status (repo.ResolveCopyrightStatus's
+	// result — already corrected forward by the live calculation), one of
+	// 'publicDomain' / 'copyleft' / 'likelyPublicDomain' / 'inCopyright'.
+	copyrightStatus string
+}
+
+// buildCitation implements design doc §6's fixed v1 format, extended by
+// the Public Domain Badge feature (design artifact §4). The original
+// single flat comma-joined format (buildFlatCitation) is unchanged and
+// still used for every piece except one specific case: a piece with a
+// source book whose status is In Copyright or Copyleft additionally gets
+// the new two-sentence "written / published" split — locked via direct
+// answer to "does the new structure apply everywhere a book exists, or
+// only in-copyright" (only in-copyright/copyleft; a Public Domain piece
+// with a book keeps the flat format, book info folded back into the
+// single list).
+//
+// Every other combination keeps the flat format, with a trailing note
+// appended: the "Copyright © {year} {holder}." clause for In Copyright/
+// Copyleft (no book), or the newer "Public domain."/copyrightSlug note for
+// Public Domain/Likely Public Domain (direct request, round 3 — a PD-ish
+// citation no longer ends bare).
+func buildCitation(in citationInput) string {
+	showsCopyrightClause := in.copyrightStatus == "copyleft" || in.copyrightStatus == "inCopyright"
+
+	if in.hasBook && showsCopyrightClause {
+		return buildTwoSentenceCitation(in)
+	}
+
+	flat := buildFlatCitation(in.eff, in.composerNames, in.arrangerNames, in.title, in.bookTitle, in.bookWorkOpusNumber, in.isbn)
+	if showsCopyrightClause {
+		// copyrightClause can legitimately be "" (nothing at all to
+		// attribute) — appending a bare trailing space in that case would
+		// be a real, if subtle, formatting bug.
+		if clause := copyrightClause(in.eff); clause != "" {
+			return flat + " " + clause
+		}
+		return flat
+	}
+	return flat + " " + publicDomainNote(in.eff.CopyrightSlug.Value)
+}
+
+// buildTwoSentenceCitation is the design artifact §4 structure: composer/
+// title/yearWritten as their own sentence, a "Published in ..." sentence
+// carrying the book/publication facts, then the copyright clause as a
+// third. Only ever called when a book is present (bookTitle would
+// otherwise be empty and the "Published in" sentence meaningless).
+func buildTwoSentenceCitation(in citationInput) string {
+	eff := in.eff
+	var sentence1 strings.Builder
+
+	composer := joinPersonNames(in.composerNames)
+	arranger := joinPersonNames(in.arrangerNames)
+	switch {
+	case composer != "" && arranger != "":
+		fmt.Fprintf(&sentence1, "%s, arr. %s, ", composer, arranger)
+	case composer != "":
+		fmt.Fprintf(&sentence1, "%s, ", composer)
+	case arranger != "":
+		fmt.Fprintf(&sentence1, "arr. %s, ", arranger)
+	}
+	fmt.Fprintf(&sentence1, `"%s"`, strings.ReplaceAll(in.title, `"`, `'`))
+	if eff.WorkOpusNumber.Value != "" {
+		fmt.Fprintf(&sentence1, " (%s)", eff.WorkOpusNumber.Value)
+	}
+	if eff.YearWritten.Value != "" {
+		fmt.Fprintf(&sentence1, ", %s", eff.YearWritten.Value)
+	}
+	sentence1.WriteString(".")
+
+	var publishedParts []string
+	bookPart := in.bookTitle
+	if in.bookWorkOpusNumber != "" && !containsIgnoringSpaces(eff.WorkOpusNumber.Value, in.bookWorkOpusNumber) {
+		bookPart += fmt.Sprintf(", %s", in.bookWorkOpusNumber)
+	}
+	if bookPart != "" {
+		publishedParts = append(publishedParts, bookPart)
+	}
+	publishedParts = append(publishedParts, publisherOrIdentifierParts(eff, in.isbn)...)
+	if in.bookYearPublished != "" {
+		publishedParts = append(publishedParts, in.bookYearPublished)
+	}
+	sentence2 := "Published in " + strings.Join(publishedParts, ", ") + "."
+
+	if clause := copyrightClause(eff); clause != "" {
+		return sentence1.String() + " " + sentence2 + " " + clause
+	}
+	return sentence1.String() + " " + sentence2
+}
+
+// buildFlatCitation is the original (pre-Public Domain Badge feature) v1
+// format, unchanged: {composer}, {Book.bookTitle}, "{title}"
+// ({workOpusNumber}), {publisher}, {imslpNumber falling back to
+// publisherId}, {yearWritten} — every blank component omitted entirely,
+// never shown as empty punctuation. This is deliberately not generic
+// CITATION_FORMAT token substitution: blank-field omission doesn't fit a
+// plain-substitution model, and a real conditional template engine is out
+// of scope for now (design doc §6, §13).
 //
 // This diverges from §6's spec in several places — arranger, IMSLP/ISBN
 // formatting and fallback precedence, book-opus-number de-duplication,
 // nested-quote handling — see CLAUDE.md > Config for the full list and the
 // reasoning behind each.
-//
-// composerNames/arrangerNames (composer/arranger overhaul, migration
-// 00020) are already-resolved, ordered display names — buildCitation stays
-// a pure function with no DB access, same as before; the caller resolves
-// ids to names (personNames, above) and joins them into a single fused
-// "Composer, arr. Arranger" segment via joinPersonNames, extending each
-// role to however many people it now holds instead of exactly one.
-func buildCitation(eff *repo.EffectivePiece, composerNames, arrangerNames []string, title, bookTitle, bookWorkOpusNumber, isbn string) string {
+func buildFlatCitation(eff *repo.EffectivePiece, composerNames, arrangerNames []string, title, bookTitle, bookWorkOpusNumber, isbn string) string {
 	var parts []string
 
 	composer := joinPersonNames(composerNames)
@@ -146,33 +266,7 @@ func buildCitation(eff *repo.EffectivePiece, composerNames, arrangerNames []stri
 	}
 	parts = append(parts, titlePart)
 
-	// Publisher (and publisherId, fused on as "#" prefixed) only render
-	// when imslpNumber is blank — an IMSLP catalog number is the more
-	// useful identifier when both are known, so publisher is dropped from
-	// the citation entirely rather than shown alongside it. Same rule
-	// applied to ISBN below.
-	if eff.ImslpNumber.Value == "" {
-		switch {
-		case eff.Publisher.Value != "" && eff.PublisherID.Value != "":
-			parts = append(parts, fmt.Sprintf("%s #%s", eff.Publisher.Value, eff.PublisherID.Value))
-		case eff.Publisher.Value != "":
-			parts = append(parts, eff.Publisher.Value)
-		case eff.PublisherID.Value != "":
-			parts = append(parts, fmt.Sprintf("#%s", eff.PublisherID.Value))
-		}
-	}
-
-	// Same "IMSLP wins the fallback entirely" rule as publisherId above —
-	// isbn is only book-sourced (never a Piece-level field), so there's no
-	// effective-value resolution to do here, just the blank/imslpNumber
-	// gate.
-	if eff.ImslpNumber.Value == "" && isbn != "" {
-		parts = append(parts, fmt.Sprintf("ISBN %s", hyphenateISBN(isbn)))
-	}
-
-	if eff.ImslpNumber.Value != "" {
-		parts = append(parts, fmt.Sprintf("IMSLP #%s", stripImslpPrefix(eff.ImslpNumber.Value)))
-	}
+	parts = append(parts, publisherOrIdentifierParts(eff, isbn)...)
 
 	// yearWritten is always the citation's last component when present, so
 	// appending the period here — rather than after the final Join — lands
@@ -183,6 +277,89 @@ func buildCitation(eff *repo.EffectivePiece, composerNames, arrangerNames []stri
 	}
 
 	return strings.Join(parts, ", ")
+}
+
+// publisherOrIdentifierParts is the shared publisher/publisherId/IMSLP/ISBN
+// segment(s), extracted so buildFlatCitation and buildTwoSentenceCitation's
+// own "Published in" sentence apply the identical fallback rule — IMSLP
+// wins outright over both publisher(+publisherId) and ISBN when known
+// (dropping them from the citation entirely), but publisher and ISBN are
+// otherwise independent: both can render as their own separate parts when
+// IMSLP is blank (e.g. "G. Schirmer, ISBN 978-0-13235088-4"), not a single
+// either/or fallback chain. Returns nil when nothing in this family is set.
+func publisherOrIdentifierParts(eff *repo.EffectivePiece, isbn string) []string {
+	if eff.ImslpNumber.Value != "" {
+		return []string{fmt.Sprintf("IMSLP #%s", stripImslpPrefix(eff.ImslpNumber.Value))}
+	}
+
+	var parts []string
+	switch {
+	case eff.Publisher.Value != "" && eff.PublisherID.Value != "":
+		parts = append(parts, fmt.Sprintf("%s #%s", eff.Publisher.Value, eff.PublisherID.Value))
+	case eff.Publisher.Value != "":
+		parts = append(parts, eff.Publisher.Value)
+	case eff.PublisherID.Value != "":
+		parts = append(parts, fmt.Sprintf("#%s", eff.PublisherID.Value))
+	}
+	if isbn != "" {
+		parts = append(parts, fmt.Sprintf("ISBN %s", hyphenateISBN(isbn)))
+	}
+	return parts
+}
+
+// copyrightClause is the "Copyright © {year} {holder}. {slug}" trailing
+// note for an In Copyright/Copyleft piece (design artifact §4).
+// CopyrightHolder falls back to the piece's effective Publisher when
+// unset — citation-only, doesn't change what's stored/displayed anywhere
+// else. Omitted entirely (returns "") when there's neither a year nor an
+// effective holder to attribute to, matching this codebase's "never
+// render empty punctuation" citation convention.
+func copyrightClause(eff *repo.EffectivePiece) string {
+	holder := eff.CopyrightHolder.Value
+	if holder == "" {
+		holder = eff.Publisher.Value
+	}
+	if eff.CopyrightYear.Value == nil && holder == "" {
+		return ""
+	}
+
+	base := "Copyright ©"
+	if eff.CopyrightYear.Value != nil {
+		base += fmt.Sprintf(" %d", *eff.CopyrightYear.Value)
+	}
+	if holder != "" {
+		base += " " + holder
+	}
+	base = endsWithPeriod(base)
+
+	if eff.CopyrightSlug.Value != "" {
+		base += " " + endsWithPeriod(eff.CopyrightSlug.Value)
+	}
+	return base
+}
+
+// publicDomainNote is the Public Domain/Likely Public Domain equivalent of
+// copyrightClause — never the "Copyright © ..." clause itself (nothing to
+// attribute once there's no copyright), just the piece's own
+// copyrightSlug, or the literal "Public domain." when that's unset (direct
+// request, round 3).
+func publicDomainNote(slug string) string {
+	if slug == "" {
+		return "Public domain."
+	}
+	return endsWithPeriod(slug)
+}
+
+// endsWithPeriod appends a trailing period only if s doesn't already have
+// one — used for both copyrightClause/publicDomainNote's own slug segment
+// and copyrightClause's holder segment (a holder like "G. Schirmer, Inc."
+// already ends in one from the abbreviation; appending unconditionally
+// would produce "Inc..").
+func endsWithPeriod(s string) string {
+	if strings.HasSuffix(s, ".") {
+		return s
+	}
+	return s + "."
 }
 
 var imslpPrefixPattern = regexp.MustCompile(`(?i)^\s*imslp[\s:#-]*`)

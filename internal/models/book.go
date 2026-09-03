@@ -14,15 +14,32 @@ import "time"
 // real file is attached some other way. All three are nil together or not
 // at all; there's no state where only one of them is set.
 type Book struct {
-	ID             int64
-	BookTitle      string
-	YearWritten    *string
+	ID        int64
+	BookTitle string
+	// YearPublished (renamed from YearWritten, migration 00022, Public
+	// Domain Badge feature): when this edition was published, not when the
+	// piece itself was composed. Still book-inheritable to a Piece's own
+	// YearWritten, unchanged — see CopyrightYear below for the field that
+	// took over YearWritten's old inheritance-source column name's spirit.
+	YearPublished  *string
 	WorkOpusNumber *string
 	SheetTypeID    *int64
 	Publisher      *string
 	PublisherID    *string
 	Description    *string
 	ImslpNumber    *string
+	// CopyrightYear/CopyrightHolder/CopyrightSlug/CopyrightStatus
+	// (migration 00022, Public Domain Badge feature) — CopyrightYear is
+	// one-time backfilled from the old YearWritten value at migration time
+	// (see that migration's own comment), independently editable from then
+	// on. All four are the inheritance source for a Piece's own
+	// same-named fields; CopyrightStatus is one of 'publicDomain' /
+	// 'copyleft' / 'likelyPublicDomain' / 'inCopyright', or nil (unset —
+	// see repo.ResolveCopyrightStatus for what "unset" resolves to).
+	CopyrightYear   *int
+	CopyrightHolder *string
+	CopyrightSlug   *string
+	CopyrightStatus *string
 	// ISBN (migration 00017): plain digits only, no hyphens — a possible
 	// trailing "X" check digit (ISBN-10) is the one non-digit character it
 	// can legitimately hold. Hyphenation for display is computed from this

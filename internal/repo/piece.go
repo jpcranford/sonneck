@@ -22,13 +22,15 @@ func CreatePiece(ctx context.Context, q Queryer, p *models.Piece) (int64, error)
 			publisher, publisher_id, year_written, description, user_notes, practice_status,
 			imslp_number, source_book_id, source_page_start, source_page_end,
 			duration, bpm, measure_count, beats_per_measure,
-			file_path, file_hash, page_count, thumbnail_page, copyright_year, public_domain
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			file_path, file_hash, page_count, thumbnail_page, copyright_year,
+			copyright_holder, copyright_slug, copyright_status
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		p.Title, p.Favorite, p.WorkOpusNumber, p.SheetTypeID,
 		p.Publisher, p.PublisherID, p.YearWritten, p.Description, p.UserNotes, p.PracticeStatus,
 		p.ImslpNumber, p.SourceBookID, p.SourcePageStart, p.SourcePageEnd,
 		p.Duration, p.BPM, p.MeasureCount, p.BeatsPerMeasure,
-		p.FilePath, p.FileHash, p.PageCount, p.ThumbnailPage, p.CopyrightYear, p.PublicDomain,
+		p.FilePath, p.FileHash, p.PageCount, p.ThumbnailPage, p.CopyrightYear,
+		p.CopyrightHolder, p.CopyrightSlug, p.CopyrightStatus,
 	)
 	if err != nil {
 		return 0, err
@@ -43,14 +45,16 @@ func GetPieceByID(ctx context.Context, q Queryer, id int64) (*models.Piece, erro
 			publisher, publisher_id, year_written, description, user_notes, practice_status,
 			imslp_number, source_book_id, source_page_start, source_page_end,
 			duration, bpm, measure_count, beats_per_measure,
-			file_path, file_hash, page_count, thumbnail_page, copyright_year, public_domain, created_at, updated_at
+			file_path, file_hash, page_count, thumbnail_page, copyright_year,
+			copyright_holder, copyright_slug, copyright_status, created_at, updated_at
 		FROM pieces WHERE id = ?`, id,
 	).Scan(
 		&p.ID, &p.Title, &p.Favorite, &p.WorkOpusNumber, &p.SheetTypeID,
 		&p.Publisher, &p.PublisherID, &p.YearWritten, &p.Description, &p.UserNotes, &p.PracticeStatus,
 		&p.ImslpNumber, &p.SourceBookID, &p.SourcePageStart, &p.SourcePageEnd,
 		&p.Duration, &p.BPM, &p.MeasureCount, &p.BeatsPerMeasure,
-		&p.FilePath, &p.FileHash, &p.PageCount, &p.ThumbnailPage, &p.CopyrightYear, &p.PublicDomain, &p.CreatedAt, &p.UpdatedAt,
+		&p.FilePath, &p.FileHash, &p.PageCount, &p.ThumbnailPage, &p.CopyrightYear,
+		&p.CopyrightHolder, &p.CopyrightSlug, &p.CopyrightStatus, &p.CreatedAt, &p.UpdatedAt,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
@@ -107,7 +111,8 @@ func UpdatePiece(ctx context.Context, q Queryer, p *models.Piece) error {
 			description = ?, user_notes = ?, practice_status = ?, imslp_number = ?,
 			source_book_id = ?, source_page_start = ?, source_page_end = ?,
 			duration = ?, bpm = ?, measure_count = ?, beats_per_measure = ?,
-			file_path = ?, file_hash = ?, page_count = ?, thumbnail_page = ?, copyright_year = ?, public_domain = ?,
+			file_path = ?, file_hash = ?, page_count = ?, thumbnail_page = ?, copyright_year = ?,
+			copyright_holder = ?, copyright_slug = ?, copyright_status = ?,
 			updated_at = ?
 		WHERE id = ?`,
 		p.Title, p.Favorite, p.WorkOpusNumber,
@@ -115,7 +120,8 @@ func UpdatePiece(ctx context.Context, q Queryer, p *models.Piece) error {
 		p.Description, p.UserNotes, p.PracticeStatus, p.ImslpNumber,
 		p.SourceBookID, p.SourcePageStart, p.SourcePageEnd,
 		p.Duration, p.BPM, p.MeasureCount, p.BeatsPerMeasure,
-		p.FilePath, p.FileHash, p.PageCount, p.ThumbnailPage, p.CopyrightYear, p.PublicDomain,
+		p.FilePath, p.FileHash, p.PageCount, p.ThumbnailPage, p.CopyrightYear,
+		p.CopyrightHolder, p.CopyrightSlug, p.CopyrightStatus,
 		p.UpdatedAt,
 		p.ID,
 	)

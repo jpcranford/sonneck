@@ -37,5 +37,5 @@ export function effectiveBookComposer(book: Book): string | null {
 
 // Same "•"-joined, blank-fields-omitted convention as formatPieceMeta.ts.
 export function formatBookMeta(book: Book): string {
-  return [bookComposerPart(book), book.yearWritten].filter((part): part is string => !!part).join(' • ')
+  return [bookComposerPart(book), book.yearPublished].filter((part): part is string => !!part).join(' • ')
 }

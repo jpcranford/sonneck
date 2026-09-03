@@ -46,5 +46,14 @@ export function pieceToWriteRequest(piece: Piece): PieceWriteRequest {
     bpm: piece.bpm,
     measureCount: piece.measureCount,
     beatsPerMeasure: piece.beatsPerMeasure,
+    // Public Domain Badge feature — same inherited-blank convention as
+    // every other book-inheritable field above. copyrightStatus.value is
+    // the raw explicit pick (never .effective, which is the
+    // calculation-corrected value and would silently freeze that
+    // correction in as a permanent override if echoed back).
+    copyrightYear: piece.copyrightYear.inherited ? null : piece.copyrightYear.value,
+    copyrightHolder: piece.copyrightHolder.inherited ? '' : piece.copyrightHolder.value,
+    copyrightSlug: piece.copyrightSlug.inherited ? '' : piece.copyrightSlug.value,
+    copyrightStatus: piece.copyrightStatus.inherited || !piece.copyrightStatus.value ? null : piece.copyrightStatus.value,
   }
 }

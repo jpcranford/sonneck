@@ -22,6 +22,7 @@ import { getPieceThumbnailUrl, updatePiece } from '../api/pieces'
 import { lookupImslp } from '../api/imslp'
 import { listInstruments, listKeys, listSheetTypes, listUserTags } from '../api/lookups'
 import { ApiError } from '../api/client'
+import { COPYRIGHT_BADGE_META } from '../lib/copyrightBadge'
 import { secondsToMMSS, mmssToSeconds } from '../lib/duration'
 import { matchesKeyQuery } from '../lib/keySearch'
 import { afterMinDuration } from '../lib/minDuration'
@@ -86,7 +87,46 @@ interface FormValues {
   bpm: string
   measureCount: string
   beatsPerMeasure: string
+  // Public Domain Badge feature — copyrightStatus is the piece's own raw
+  // pick only ('' when inheriting/unset), same convention as sheetType
+  // above; the dropdown's *displayed* effective value comes from
+  // piece.copyrightStatus.effective directly (passed as `placeholder`),
+  // not from this form field.
+  copyrightStatus: string
+  copyrightYear: string
+  copyrightHolder: string
+  copyrightSlug: string
 }
+
+// Public Domain Badge feature — order matches the original design table
+// exactly (design artifact, locked). Descriptions render under each row in
+// the open menu AND under whichever value is currently effective
+// (SingleSelect's description support).
+const COPYRIGHT_STATUS_OPTIONS = [
+  {
+    value: 'publicDomain',
+    label: 'In Public Domain',
+    description: 'No copyright applies. Sticky once picked — the calculation never overrides this.',
+  },
+  {
+    value: 'likelyPublicDomain',
+    label: 'Likely Public Domain',
+    description:
+      'Calculated automatically from copyright year and composer death year. Sticky if picked by hand too.',
+  },
+  {
+    value: 'inCopyright',
+    label: 'In Copyright',
+    description:
+      'Your own call — but if the calculation later determines the term has expired, this moves to Likely Public Domain on its own.',
+  },
+  {
+    value: 'copyleft',
+    label: 'Copyleft',
+    description:
+      'A license like Creative Commons has been attached to this piece. Same auto-upgrade as In Copyright if the calculation later says the term expired anyway.',
+  },
+]
 
 const PRACTICE_STATUS_OPTIONS = [
   { value: '', label: 'No status set' },
@@ -141,6 +181,15 @@ function pieceToFormValues(piece: Piece): FormValues {
     bpm: piece.bpm != null ? String(piece.bpm) : '',
     measureCount: piece.measureCount != null ? String(piece.measureCount) : '',
     beatsPerMeasure: piece.beatsPerMeasure != null ? String(piece.beatsPerMeasure) : '',
+    // Public Domain Badge feature — same inherited-blank convention as
+    // every other field above.
+    copyrightStatus: piece.copyrightStatus.inherited ? '' : piece.copyrightStatus.value,
+    copyrightYear:
+      piece.copyrightYear.inherited || piece.copyrightYear.value == null
+        ? ''
+        : String(piece.copyrightYear.value),
+    copyrightHolder: ownValue(piece.copyrightHolder),
+    copyrightSlug: ownValue(piece.copyrightSlug),
   }
 }
 
@@ -189,6 +238,12 @@ function formValuesToWriteRequest(data: FormValues, piece: Piece): PieceWriteReq
     bpm: toIntOrNull(data.bpm),
     measureCount: toIntOrNull(data.measureCount),
     beatsPerMeasure: toIntOrNull(data.beatsPerMeasure),
+    // Public Domain Badge feature — full-replace like every other field
+    // here; '' means "no override," same as sheetTypeName above.
+    copyrightStatus: (data.copyrightStatus || null) as PieceWriteRequest['copyrightStatus'],
+    copyrightYear: toIntOrNull(data.copyrightYear),
+    copyrightHolder: data.copyrightHolder,
+    copyrightSlug: data.copyrightSlug,
   }
 }
 
@@ -236,6 +291,7 @@ export function EditPieceModal({
 }: EditPieceModalProps) {
   const queryClient = useQueryClient()
   const [tempoOpen, setTempoOpen] = useState(false)
+  const [copyrightOpen, setCopyrightOpen] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
   // Shadows the `initialPiece` prop deliberately — every existing
   // `piece.X` reference throughout the rest of this file (form defaults,
@@ -1342,6 +1398,111 @@ export function EditPieceModal({
               />
             </div>
           </div>
+        </div>
+
+        {/* Copyright — Public Domain Badge feature. Own collapsible
+            section at the very bottom, same "collapsed by default, nothing
+            new for someone who's never touched this feature" posture as
+            Piece Details' own Advanced/Get Info panel. Copyright Status
+            shows the *effective* value either way (calculated, inherited
+            from book, or this piece's own explicit pick) via `placeholder`
+            — the small grey line under the trigger says which. "Clear"
+            only appears once something's actually been picked here. */}
+        <div className="border-t border-border pt-4">
+          <button
+            type="button"
+            onClick={() => setCopyrightOpen((o) => !o)}
+            className="flex cursor-pointer items-center gap-1 text-sm text-ink-soft hover:text-ink"
+          >
+            <IconChevronRight
+              size={14}
+              className={`transition-transform ${copyrightOpen ? 'rotate-90' : ''}`}
+            />
+            Copyright
+          </button>
+          {copyrightOpen && (
+            <div className="mt-3 flex flex-col gap-4 rounded-md border border-dashed border-border p-4">
+              <Controller
+                name="copyrightStatus"
+                control={control}
+                render={({ field }) => (
+                  <SingleSelect
+                    label="Copyright status"
+                    options={COPYRIGHT_STATUS_OPTIONS}
+                    value={field.value}
+                    onChange={field.onChange}
+                    placeholder={COPYRIGHT_BADGE_META[piece.copyrightStatus.effective].label}
+                    placeholderDescription="Calculated automatically — not explicitly set on this piece."
+                    onClear={() => field.onChange('')}
+                  />
+                )}
+              />
+              <div className="flex flex-col gap-3 min-[525px]:flex-row">
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  <label htmlFor="f-copyright-year" className="text-sm text-ink-soft">
+                    Copyright year
+                  </label>
+                  <input
+                    id="f-copyright-year"
+                    type="number"
+                    placeholder={
+                      !watch('copyrightYear') && piece.copyrightYear.inherited && piece.copyrightYear.value != null
+                        ? String(piece.copyrightYear.value)
+                        : undefined
+                    }
+                    className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                    {...register('copyrightYear')}
+                  />
+                  {!watch('copyrightYear') && piece.copyrightYear.inherited && piece.copyrightYear.value != null && (
+                    <InheritedNote
+                      bookValue={String(piece.copyrightYear.value)}
+                      onCopy={() => setValue('copyrightYear', String(piece.copyrightYear.value))}
+                    />
+                  )}
+                </div>
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  <label htmlFor="f-copyright-holder" className="text-sm text-ink-soft">
+                    Copyright holder
+                  </label>
+                  <input
+                    id="f-copyright-holder"
+                    type="text"
+                    placeholder={!watch('copyrightHolder') && piece.copyrightHolder.inherited ? piece.copyrightHolder.value : undefined}
+                    className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                    {...register('copyrightHolder', { maxLength: 255 })}
+                  />
+                  {!watch('copyrightHolder') && piece.copyrightHolder.inherited && (
+                    <InheritedNote
+                      bookValue={piece.copyrightHolder.value}
+                      onCopy={() => setValue('copyrightHolder', piece.copyrightHolder.value)}
+                    />
+                  )}
+                </div>
+              </div>
+              <div className="flex min-w-0 flex-col gap-1">
+                <label htmlFor="f-copyright-slug" className="text-sm text-ink-soft">
+                  Copyright details
+                </label>
+                <input
+                  id="f-copyright-slug"
+                  type="text"
+                  placeholder={
+                    !watch('copyrightSlug') && piece.copyrightSlug.inherited
+                      ? piece.copyrightSlug.value
+                      : 'Optional — e.g. license terms, renewal notes'
+                  }
+                  className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                  {...register('copyrightSlug')}
+                />
+                {!watch('copyrightSlug') && piece.copyrightSlug.inherited && (
+                  <InheritedNote
+                    bookValue={piece.copyrightSlug.value}
+                    onCopy={() => setValue('copyrightSlug', piece.copyrightSlug.value)}
+                  />
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </form>
     </Modal>

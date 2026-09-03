@@ -18,11 +18,11 @@ import {
   IconImageInPicture,
   IconMusic,
   IconRefresh,
-  IconShieldCheck,
   IconTrash,
   IconXFilled,
 } from '@tabler/icons-react'
-import type { PracticeStatus } from '../api/types'
+import type { CopyrightStatus, PracticeStatus } from '../api/types'
+import { COPYRIGHT_BADGE_META, copyrightTooltipText } from '../lib/copyrightBadge'
 import { InfoTooltip } from '../components/InfoTooltip'
 import { MarkdownText } from '../components/MarkdownText'
 import { PracticeStatusIcon } from '../components/PracticeStatusIcon'
@@ -156,9 +156,55 @@ const samplePiece = {
   beatsPerMeasure: 3,
   fileHash: 'e71c2f9b8a4d5e6f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f',
   pageCount: 3,
-  copyrightYear: null as number | null,
+  // Public Domain Badge feature (design artifact, phase 1) — copyrightYear
+  // set (unlike before) so the citation's copyright clause has a real year
+  // to show once the preview toggle below lands on a clause-showing state.
+  // copyrightHolder deliberately left blank — demonstrates the new
+  // "falls back to effective Publisher" citation rule (§4 of the artifact)
+  // every time the clause renders, rather than needing a second fixture.
+  // copyrightSlug deliberately has no trailing period, demonstrating the
+  // citation's own auto-appended one.
+  copyrightYear: 1877 as number | null,
+  copyrightHolder: null as string | null,
+  copyrightSlug: 'Arrangement by Louis Köhler' as string | null,
   createdAt: '2026-06-02T14:12:03Z',
   updatedAt: '2026-08-16T09:41:17Z',
+}
+
+// Public Domain Badge feature (design artifact, phase 1) — the badge's
+// effective status has no real calculation engine to drive it here (this
+// mockup has no Person.deathYear/region-table data model at all), so a
+// small preview toggle (below, next to the "Reference sample" banner)
+// stands in for it instead: pick any of the four states and both the
+// badge AND the citation respond, live. Option A (bare icon, no circle
+// chip) + Grass green — both "chosen for now" in the design artifact §5.
+// CopyrightStatus itself is the real api/types.ts one (imported above),
+// not a locally-duplicated copy — this mockup predates that type existing
+// at all, ported once the real build caught up.
+
+// COPYRIGHT_BADGE_META/copyrightTooltipText now live in the shared
+// lib/copyrightBadge.ts, imported above — real, non-markup, non-visual
+// logic shared with PiecePage.tsx (the same "shared, not duplicated"
+// treatment lib/formatPieceMeta.ts/lib/textCase.ts already get), not the
+// usual mockup-vs-real duplication convention. MOCK_EXPIRY_YEAR stands in
+// for what a real computeLikelyPublicDomain result would be for this
+// piece's own fixture data (Schumann died 1856; EU life+70 → 1926, long
+// since expired) — the shared metadata itself carries no expiryYear
+// (that's real per-piece data in the real app, not a property of the
+// status), so this mockup supplies its own single fixed value for the two
+// PD-ish preview states.
+const MOCK_EXPIRY_YEAR = 1926
+
+// copyrightSlug gets an auto-appended period if it doesn't already end in
+// one (design artifact §4) — same rule the copyright clause's own holder
+// segment follows. Falls back to the literal "Public domain." when unset,
+// per direct request: a Public Domain/Likely Public Domain piece's
+// citation still ends with its own copyright-details note (just never the
+// "Copyright © {year} {holder}" part, which has nothing to assert once
+// there's no copyright to attribute) rather than ending bare.
+function publicDomainNote(slug: string | null): string {
+  if (!slug) return 'Public domain.'
+  return slug.endsWith('.') ? slug : `${slug}.`
 }
 
 // Matches buildCitation's current logic exactly (internal/handlers/
@@ -171,10 +217,30 @@ const samplePiece = {
 // stored data would have it) specifically to demonstrate that
 // buildCitation strips it at render time regardless of what's actually
 // stored. Also demonstrates: samplePiece.publisher ("G. Schirmer") is
-// deliberately set but does NOT appear below — imslpNumber being present
-// suppresses publisher (and publisherId) from the citation entirely.
-const sampleCitation =
-  'Robert Schumann, arr. Louis Köhler, Album für die Jugend, "No. 9, Volksliedchen (Little Folk Song)" (Op. 68, No. 9), IMSLP #04154, 1848'
+// deliberately set but does NOT appear in the flat citation's own main
+// segment below — imslpNumber being present suppresses publisher (and
+// publisherId) from that segment entirely; it resurfaces only as the
+// copyright clause's own holder-fallback (see COPYRIGHT_CLAUSE below), an
+// independent rule.
+const FLAT_CITATION =
+  'Robert Schumann, arr. Louis Köhler, Album für die Jugend, "No. 9, Volksliedchen (Little Folk Song)" (Op. 68, No. 9), IMSLP #04154, 1848.'
+// Copyright Holder falls back to effective Publisher when unset (design
+// artifact §4/§7) — samplePiece.copyrightHolder is null above, so this
+// reads "G. Schirmer" (the piece's own effective publisher), not a blank.
+// The trailing period on "Köhler" is auto-appended by the citation logic
+// (copyrightSlug itself has none, per the fixture's own comment above).
+const COPYRIGHT_CLAUSE = 'Copyright © 1877 G. Schirmer. Arrangement by Louis Köhler.'
+// The new two-sentence "written / published" split (design artifact §4) —
+// used only when a book is present AND the status shows a copyright
+// clause (In Copyright, Copyleft). Public Domain/Likely Public Domain
+// never use this structure (see sampleCitationFor below) — they keep the
+// flat format, just with a different trailing note.
+const TWO_SENTENCE_CITATION = `Robert Schumann, arr. Louis Köhler, "No. 9, Volksliedchen (Little Folk Song)" (Op. 68, No. 9), 1848. Published in Album für die Jugend, IMSLP #04154, 1848. ${COPYRIGHT_CLAUSE}`
+
+function sampleCitationFor(status: CopyrightStatus): string {
+  if (status === 'inCopyright' || status === 'copyleft') return TWO_SENTENCE_CITATION
+  return `${FLAT_CITATION} ${publicDomainNote(samplePiece.copyrightSlug)}`
+}
 
 function SheetPagePlaceholder({ page }: { page: number }) {
   return (
@@ -450,6 +516,12 @@ export function PieceDetailsSample() {
   const [advancedOpen, setAdvancedOpen] = useState(false)
   const [tempoOpen, setTempoOpen] = useState(false)
   const [copyToast, setCopyToast] = useState<{ x: number; y: number } | null>(null)
+  // Public Domain Badge feature — mockup-only preview control (see
+  // COPYRIGHT_BADGE_META's own comment above); drives both the badge and
+  // the citation string below. Starts on Likely Public Domain, the state
+  // this piece's own (fake) 1877 copyright year + Schumann's 1856 death
+  // would actually compute to under the EU life+70 rule.
+  const [copyrightPreview, setCopyrightPreview] = useState<CopyrightStatus>('likelyPublicDomain')
   const replaceFileInputRef = useRef<HTMLInputElement>(null)
 
   function handleCopy(text: string, event: MouseEvent) {
@@ -459,7 +531,7 @@ export function PieceDetailsSample() {
   }
 
   function handleCopyCitation(event: MouseEvent) {
-    handleCopy(sampleCitation, event)
+    handleCopy(sampleCitationFor(copyrightPreview), event)
   }
 
   function simulateReplace() {
@@ -557,6 +629,30 @@ export function PieceDetailsSample() {
       <div className="rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-4 py-2 text-sm text-ink-soft">
         Reference sample — <span className="font-medium text-ink">Piece Details</span> (design doc §14).
         Not wired to real data; Edit is inert here on purpose.
+      </div>
+
+      {/* Public Domain Badge feature (design artifact, phase 1) — mockup-
+          only preview control, no equivalent in the real page (there, the
+          badge is driven by ResolveEffective's live computation, not a
+          click). Picking a state here updates both the badge below (in
+          the Year written row) and the citation at the bottom of the
+          page. */}
+      <div className="flex flex-wrap items-center gap-2 rounded-md border border-dashed border-border px-4 py-2 text-xs">
+        <span className="font-medium text-ink-soft">Public domain badge preview:</span>
+        {(Object.keys(COPYRIGHT_BADGE_META) as CopyrightStatus[]).map((status) => (
+          <button
+            key={status}
+            type="button"
+            onClick={() => setCopyrightPreview(status)}
+            className={`cursor-pointer rounded-full border px-2.5 py-1 ${
+              copyrightPreview === status
+                ? 'border-accent bg-accent-soft text-accent'
+                : 'border-border text-ink-soft hover:text-ink'
+            }`}
+          >
+            {COPYRIGHT_BADGE_META[status].label}
+          </button>
+        ))}
       </div>
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
@@ -843,13 +939,30 @@ export function PieceDetailsSample() {
               <DetailRow label="Year written">
                 <span className="inline-flex items-center gap-2">
                   <EffectiveValue value={piece.yearWritten.value} inherited={piece.yearWritten.inherited} />
+                  {/* Public domain badge — Option A (bare icon, no circle
+                      chip) + Grass green, both "chosen for now" in the
+                      design artifact §5. Driven by the mockup-only preview
+                      toggle above, not a real calculation — see
+                      COPYRIGHT_BADGE_META's own comment.
+                      showPointerCursor={false} — this reads as status
+                      display, not a control; still tap-to-open on touch
+                      (InfoTooltip's own default behavior), just no
+                      clickable-looking cursor on desktop. */}
                   <InfoTooltip
-                    message="Public domain status — coming soon"
+                    message={copyrightTooltipText(
+                      copyrightPreview,
+                      copyrightPreview === 'publicDomain' || copyrightPreview === 'likelyPublicDomain'
+                        ? MOCK_EXPIRY_YEAR
+                        : null,
+                    )}
                     ariaLabel="Public domain status info"
-                    // Solid pre-blend, not opacity — overlapping icon strokes would re-blend unevenly under real translucency.
-                    triggerClassName="flex size-5 shrink-0 items-center justify-center rounded-full border border-dashed border-border text-[#aca7a1] hover:text-ink-soft"
+                    triggerClassName="flex size-5 shrink-0 items-center justify-center"
+                    showPointerCursor={false}
                   >
-                    <IconShieldCheck size={11} />
+                    {(() => {
+                      const Icon = COPYRIGHT_BADGE_META[copyrightPreview].icon
+                      return <Icon size={15} className={COPYRIGHT_BADGE_META[copyrightPreview].colorClass} />
+                    })()}
                   </InfoTooltip>
                 </span>
               </DetailRow>
@@ -1051,6 +1164,21 @@ export function PieceDetailsSample() {
                 <DetailRow small tight label="Copyright year">
                   {piece.copyrightYear ?? '—'}
                 </DetailRow>
+                {/* Public Domain Badge feature — three more fields in this
+                    same "always render, dash or not" box. Copyright status
+                    reads the mockup's own preview toggle (there's no
+                    separate "raw stored value" to show here, unlike the
+                    Edit modal's dropdown — this panel is read-only display,
+                    same as every other row in it). */}
+                <DetailRow small tight label="Copyright status">
+                  {COPYRIGHT_BADGE_META[copyrightPreview].label}
+                </DetailRow>
+                <DetailRow small tight label="Copyright holder">
+                  {piece.copyrightHolder ?? '—'}
+                </DetailRow>
+                <DetailRow small tight label="Copyright details">
+                  {piece.copyrightSlug ?? '—'}
+                </DetailRow>
               </div>
             )}
           </div>
@@ -1062,7 +1190,7 @@ export function PieceDetailsSample() {
               onClick={handleCopyCitation}
               className="w-fit cursor-pointer text-left font-display text-sm text-ink-soft/75 italic hover:text-ink-soft"
             >
-              {sampleCitation}
+              {sampleCitationFor(copyrightPreview)}
             </button>
           </div>
         </div>

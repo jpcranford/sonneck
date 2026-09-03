@@ -143,6 +143,53 @@ func PeopleByIDs(ctx context.Context, q Queryer, ids []int64) ([]Tag, error) {
 	return tags, nil
 }
 
+// PersonDeathYearsByIDs returns one entry per id, in the same order,
+// nil for a person with no death year on record (or, in principle, a
+// dangling id) — feeds the Public Domain Badge feature's life+70
+// calculation (internal/copyright), which needs every composer's death
+// year lined up against the composer list it's already resolved,
+// unordered-map lookups included, the same shape PeopleByIDs already
+// returns names in.
+func PersonDeathYearsByIDs(ctx context.Context, q Queryer, ids []int64) ([]*int, error) {
+	years := make([]*int, len(ids))
+	if len(ids) == 0 {
+		return years, nil
+	}
+
+	placeholders := make([]byte, 0, len(ids)*2)
+	args := make([]any, len(ids))
+	for i, id := range ids {
+		if i > 0 {
+			placeholders = append(placeholders, ',')
+		}
+		placeholders = append(placeholders, '?')
+		args[i] = id
+	}
+	rows, err := q.QueryContext(ctx, `SELECT id, death_year FROM people WHERE id IN (`+string(placeholders)+`)`, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	byID := make(map[int64]*int, len(ids))
+	for rows.Next() {
+		var id int64
+		var deathYear *int
+		if err := rows.Scan(&id, &deathYear); err != nil {
+			return nil, err
+		}
+		byID[id] = deathYear
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	for i, id := range ids {
+		years[i] = byID[id]
+	}
+	return years, nil
+}
+
 // SetPieceComposers/SetPieceArrangers/SetBookComposers/SetBookArrangers
 // replace the full ordered credit list on a piece/book — same delete-all-
 // then-reinsert-0..n-1 pattern as SetPieceKeys (tags.go), since credit

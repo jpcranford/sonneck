@@ -95,6 +95,46 @@ const PRACTICE_STATUS_OPTIONS = [
   { value: 'Dropped', label: 'Dropped' },
 ]
 
+// Public Domain Badge feature (design artifact, phase 1) — order matches
+// the original design table exactly. Descriptions render under each row
+// in the open menu AND under whichever value is currently effective
+// (SingleSelect's new description support, below) — this is the one
+// field in this modal that needs that, so the extension is opt-in/
+// backward-compatible rather than changing every other SingleSelect caller.
+const COPYRIGHT_STATUS_OPTIONS = [
+  {
+    value: 'publicDomain',
+    label: 'In Public Domain',
+    description: 'No copyright applies. Sticky once picked — the calculation never overrides this.',
+  },
+  {
+    value: 'likelyPublicDomain',
+    label: 'Likely Public Domain',
+    description:
+      'Calculated automatically from copyright year and composer death year. Sticky if picked by hand too.',
+  },
+  {
+    value: 'inCopyright',
+    label: 'In Copyright',
+    description:
+      'Your own call — but if the calculation later determines the term has expired, this moves to Likely Public Domain on its own.',
+  },
+  {
+    value: 'copyleft',
+    label: 'Copyleft',
+    description:
+      'A license like Creative Commons has been attached to this piece. Same auto-upgrade as In Copyright if the calculation later says the term expired anyway.',
+  },
+]
+// Stands in for what a real build's live computeLikelyPublicDomain (design
+// artifact §3) would return for this piece right now, given mockBook's
+// copyrightYear below and a composer death year the real feature would
+// pull from Person.deathYear — this mockup has no such calculation engine
+// to run, so it's a fixed, narratively-plausible result instead (Schumann
+// died 1856; EU life+70 → 1926, long since expired).
+const MOCK_CALCULATED_STATUS = COPYRIGHT_STATUS_OPTIONS[1] // Likely Public Domain
+const MOCK_CALCULATED_EXPIRY_YEAR = 1926
+
 const mockBook = {
   id: 1,
   bookTitle: 'Album für die Jugend, Op. 68',
@@ -105,6 +145,14 @@ const mockBook = {
   publisherId: 'HL50252950',
   imslpNumber: 'IMSLP04154',
   instruments: [INSTRUMENT_OPTIONS[0]],
+  // Public Domain Badge feature — copyrightYear/copyrightHolder set at the
+  // book level so the piece's own (blank) fields below demonstrate real
+  // inheritance, same as every other book-inheritable field in this
+  // fixture; copyrightStatus stays blank (the book hasn't explicitly
+  // picked one either), so the piece's own Copyright Status field falls
+  // all the way through to the live-calculated default, not a book pick.
+  copyrightYear: '1877',
+  copyrightHolder: 'G. Schirmer, Inc.',
 }
 
 // Candidate books for the Source Book search field below — standing in for
@@ -152,6 +200,10 @@ interface FormValues {
   bpm: string
   measureCount: string
   beatsPerMeasure: string
+  copyrightStatus: string
+  copyrightYear: string
+  copyrightHolder: string
+  copyrightSlug: string
 }
 
 // Two keys selected deliberately (not one), to actually demonstrate "a
@@ -181,6 +233,15 @@ const defaultValues: FormValues = {
   bpm: '88',
   measureCount: '35',
   beatsPerMeasure: '3',
+  // Public Domain Badge feature — all blank/unset by default, so opening
+  // the modal demonstrates the "nothing explicitly picked" state (the
+  // Copyright Status trigger shows the live-calculated default; Copyright
+  // year/holder both show "Inherited from book" against mockBook's own
+  // values above).
+  copyrightStatus: '',
+  copyrightYear: '',
+  copyrightHolder: '',
+  copyrightSlug: '',
 }
 
 // Sibling-piece navigation (Option D from the toolbar/nav comparison
@@ -611,6 +672,17 @@ function TagComboBox({
 // browser/OS's own chrome, which doesn't match the rest of this form), but
 // deliberately no pill: picking a value just sets it in place, since
 // there's only ever one and nothing to remove/re-add.
+// Public Domain Badge feature — description/placeholder/onClear are all
+// new, optional props (existing Sheet Type/Practice Status callers pass
+// none of them, unaffected). description renders under a row in the open
+// menu AND under the trigger once that row is the effective value —
+// Copyright Status is the first field in this modal that needs a
+// per-option explanation, not just a label. placeholder/placeholderDescription
+// stand in for "nothing picked here — this is what's currently in effect
+// anyway" (a live-calculated default, or a book-inherited one), styled the
+// same faded way the existing bare '—' placeholder already was. onClear
+// renders a small text link beside the label, shown only once a value is
+// actually set, resetting back to that placeholder/calculated state.
 function SingleSelect({
   label,
   options,
@@ -618,13 +690,21 @@ function SingleSelect({
   onChange,
   bookValue,
   onCopy,
+  placeholder,
+  placeholderDescription,
+  onClear,
+  clearLabel = 'Clear',
 }: {
   label: string
-  options: { value: string; label: string }[]
+  options: { value: string; label: string; description?: string }[]
   value: string
   onChange: (next: string) => void
   bookValue?: string
   onCopy?: () => void
+  placeholder?: string
+  placeholderDescription?: string
+  onClear?: () => void
+  clearLabel?: string
 }) {
   const [open, setOpen] = useState(false)
   // Which option row ArrowUp/Down move between and Enter would pick — set
@@ -672,9 +752,26 @@ function SingleSelect({
     }
   }
 
+  // The description shown under the (closed) trigger — the selected
+  // option's own if something's really picked, else the placeholder's
+  // (e.g. "Calculated automatically…"), else nothing at all for a plain
+  // field like Sheet Type that never passes either.
+  const currentDescription = selected?.description ?? (!value ? placeholderDescription : undefined)
+
   return (
     <div className="flex flex-col gap-1">
-      <label className="text-sm text-ink-soft">{label}</label>
+      <div className="flex items-center justify-between gap-2">
+        <label className="text-sm text-ink-soft">{label}</label>
+        {onClear && value && (
+          <button
+            type="button"
+            onClick={() => onChange('')}
+            className="cursor-pointer text-xs text-ink-soft underline decoration-dotted underline-offset-2 hover:text-accent"
+          >
+            {clearLabel}
+          </button>
+        )}
+      </div>
       <div className="relative">
         <button
           type="button"
@@ -683,7 +780,7 @@ function SingleSelect({
           onBlur={() => setTimeout(() => setOpen(false), 150)}
           className="flex w-full cursor-pointer items-center justify-between rounded-md border border-border bg-paper-raised px-3 py-2 text-left text-ink focus:outline focus:outline-2 focus:outline-accent focus:outline-offset-2"
         >
-          <span className={value ? '' : 'text-ink-soft/50'}>{selected?.label ?? '—'}</span>
+          <span className={value ? '' : 'text-ink-soft/50'}>{selected?.label ?? placeholder ?? '—'}</span>
           {/* Solid pre-blend, not opacity — overlapping icon strokes would re-blend unevenly under real translucency. */}
           <IconChevronDown size={16} className="text-[#9d9892]" />
         </button>
@@ -695,16 +792,22 @@ function SingleSelect({
                 type="button"
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => selectOption(opt)}
-                className={`block w-full cursor-pointer px-3 py-2 text-left text-sm hover:bg-accent-soft ${
-                  opt.value === value ? 'text-accent' : 'text-ink'
-                } ${index === highlightedIndex ? 'bg-accent-soft' : ''}`}
+                className={`block w-full cursor-pointer px-3 py-2 text-left hover:bg-accent-soft ${
+                  index === highlightedIndex ? 'bg-accent-soft' : ''
+                }`}
               >
-                {opt.label}
+                <span className={`block text-sm ${opt.value === value ? 'text-accent' : 'text-ink'}`}>
+                  {opt.label}
+                </span>
+                {opt.description && (
+                  <span className="mt-0.5 block text-xs text-ink-soft">{opt.description}</span>
+                )}
               </button>
             ))}
           </div>
         )}
       </div>
+      {!open && currentDescription && <p className="text-xs text-ink-soft">{currentDescription}</p>}
       {!value && bookValue && onCopy && <InheritedNote bookValue={bookValue} onCopy={onCopy} />}
     </div>
   )
@@ -869,6 +972,7 @@ export function EditPieceModalMockup() {
 
   const [open, setOpen] = useState(true)
   const [tempoOpen, setTempoOpen] = useState(false)
+  const [copyrightOpen, setCopyrightOpen] = useState(false)
   // Kept in sync with the real EditPieceModal.tsx: a viewport taller than
   // 800px starts with the preview already open, since there's room for it
   // without dominating the dialog.
@@ -1820,6 +1924,99 @@ export function EditPieceModalMockup() {
                 />
               </div>
             </div>
+          </div>
+
+          {/* Copyright — Public Domain Badge feature (design artifact,
+              phase 1). Own collapsible section at the very bottom, same
+              "collapsed by default, nothing new for someone who's never
+              touched this feature" posture as Piece Details' own
+              Advanced/Get Info panel — four fields would be too much to
+              add to the always-visible form above. Copyright Status shows
+              the *effective* value either way (a live-calculated default,
+              a book-inherited pick, or this piece's own explicit one) —
+              the small grey line under the trigger says which; "Clear"
+              only appears once something's actually been picked here. */}
+          <div className="border-t border-border pt-4">
+            <button
+              type="button"
+              onClick={() => setCopyrightOpen((o) => !o)}
+              className="flex cursor-pointer items-center gap-1 text-sm text-ink-soft hover:text-ink"
+            >
+              <IconChevronRight
+                size={14}
+                className={`transition-transform ${copyrightOpen ? 'rotate-90' : ''}`}
+              />
+              Copyright
+            </button>
+            {copyrightOpen && (
+              <div className="mt-3 flex flex-col gap-4 rounded-md border border-dashed border-border p-4">
+                <Controller
+                  name="copyrightStatus"
+                  control={control}
+                  render={({ field }) => (
+                    <SingleSelect
+                      label="Copyright status"
+                      options={COPYRIGHT_STATUS_OPTIONS}
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder={MOCK_CALCULATED_STATUS.label}
+                      placeholderDescription={`Calculated from copyright year and composer info — currently ${MOCK_CALCULATED_STATUS.label} (as of ${MOCK_CALCULATED_EXPIRY_YEAR}), not explicitly set.`}
+                      onClear={() => field.onChange('')}
+                    />
+                  )}
+                />
+                <div className="flex flex-col gap-3 min-[525px]:flex-row">
+                  <div className="flex flex-1 flex-col gap-1">
+                    <label htmlFor="f-copyright-year" className="text-sm text-ink-soft">
+                      Copyright year
+                    </label>
+                    <input
+                      id="f-copyright-year"
+                      type="number"
+                      placeholder={!watch('copyrightYear') ? mockBook.copyrightYear : undefined}
+                      className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                      {...register('copyrightYear')}
+                    />
+                    {!watch('copyrightYear') && (
+                      <InheritedNote
+                        bookValue={mockBook.copyrightYear}
+                        onCopy={() => setValue('copyrightYear', mockBook.copyrightYear)}
+                      />
+                    )}
+                  </div>
+                  <div className="flex flex-1 flex-col gap-1">
+                    <label htmlFor="f-copyright-holder" className="text-sm text-ink-soft">
+                      Copyright holder
+                    </label>
+                    <input
+                      id="f-copyright-holder"
+                      type="text"
+                      placeholder={!watch('copyrightHolder') ? mockBook.copyrightHolder : undefined}
+                      className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                      {...register('copyrightHolder')}
+                    />
+                    {!watch('copyrightHolder') && (
+                      <InheritedNote
+                        bookValue={mockBook.copyrightHolder}
+                        onCopy={() => setValue('copyrightHolder', mockBook.copyrightHolder)}
+                      />
+                    )}
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label htmlFor="f-copyright-slug" className="text-sm text-ink-soft">
+                    Copyright details
+                  </label>
+                  <input
+                    id="f-copyright-slug"
+                    type="text"
+                    placeholder="Optional — e.g. license terms, renewal notes"
+                    className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                    {...register('copyrightSlug')}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </form>
       </Modal>

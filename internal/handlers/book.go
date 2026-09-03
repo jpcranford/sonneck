@@ -133,9 +133,9 @@ func (s *Server) handleCreateBookManual(w http.ResponseWriter, r *http.Request) 
 	var resp *api.BookResponse
 	err := s.withTx(r.Context(), func(tx *sql.Tx) error {
 		b := &models.Book{
-			BookTitle:   req.BookTitle,
-			Publisher:   req.Publisher,
-			YearWritten: req.YearWritten,
+			BookTitle:     req.BookTitle,
+			Publisher:     req.Publisher,
+			YearPublished: req.YearPublished,
 		}
 
 		composerIDs, err := resolveTagNames(r.Context(), tx, repo.FindOrCreatePerson, req.Composers, "composers")
@@ -207,9 +207,12 @@ var bookSortColumns = map[string]sortColumnFunc{
 		const expr = `(SELECT p.name FROM book_composers bc JOIN people p ON p.id = bc.person_id WHERE bc.book_id = books.id ORDER BY bc.position LIMIT 1)`
 		return "(" + expr + " IS NULL) ASC, " + expr + " COLLATE NOCASE " + dir
 	},
-	"yearWritten": func(dir string) string {
-		return "(year_written IS NULL OR TRIM(year_written) = '' OR NOT (year_written GLOB '[0-9]*')) ASC, " +
-			"CAST(year_written AS INTEGER) " + dir
+	// "yearPublished", renamed from "yearWritten" (Public Domain Badge
+	// feature, migration 00022) — Book's own field is now genuinely called
+	// YearPublished throughout the API contract, so its sort key follows.
+	"yearPublished": func(dir string) string {
+		return "(year_published IS NULL OR TRIM(year_published) = '' OR NOT (year_published GLOB '[0-9]*')) ASC, " +
+			"CAST(year_published AS INTEGER) " + dir
 	},
 }
 
@@ -391,13 +394,19 @@ func (s *Server) handleUpdateBook(w http.ResponseWriter, r *http.Request) {
 		}
 
 		b.BookTitle = req.BookTitle
-		b.YearWritten = req.YearWritten
+		b.YearPublished = req.YearPublished
 		b.WorkOpusNumber = req.WorkOpusNumber
 		b.Publisher = req.Publisher
 		b.PublisherID = req.PublisherID
 		b.Description = req.Description
 		b.ImslpNumber = req.ImslpNumber
 		b.ISBN = normalizeISBN(req.ISBN)
+		// Public Domain Badge feature (migration 00022) — full-replace,
+		// same as every other field above.
+		b.CopyrightYear = req.CopyrightYear
+		b.CopyrightHolder = req.CopyrightHolder
+		b.CopyrightSlug = req.CopyrightSlug
+		b.CopyrightStatus = req.CopyrightStatus
 
 		sheetTypeID, err := resolveOptionalTagName(r.Context(), tx, repo.FindOrCreateSheetType, req.SheetTypeName, "sheetTypeName")
 		if err != nil {
@@ -849,8 +858,8 @@ func (s *Server) handleDownloadBookFile(w http.ResponseWriter, r *http.Request) 
 	if b.Publisher != nil {
 		publisher = *b.Publisher
 	}
-	if b.YearWritten != nil {
-		yearWritten = *b.YearWritten
+	if b.YearPublished != nil {
+		yearWritten = *b.YearPublished
 	}
 	// Composer/Arranger are ordered lists now (migration 00020) — joined
 	// into a single display name via joinPersonNames, same treatment as

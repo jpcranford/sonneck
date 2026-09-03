@@ -48,7 +48,7 @@ func (s *Server) handleCreatePiece(w http.ResponseWriter, r *http.Request) {
 	}
 	if existing != nil {
 		os.Remove(tempPath)
-		resp, err := api.BuildPieceResponse(r.Context(), s.DB, existing)
+		resp, err := api.BuildPieceResponse(r.Context(), s.DB, existing, s.Cfg.CopyrightRegion)
 		if err != nil {
 			s.writeError(w, err)
 			return
@@ -89,7 +89,7 @@ func (s *Server) handleCreatePiece(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return err
 		}
-		resp, err = api.BuildPieceResponse(r.Context(), tx, created)
+		resp, err = api.BuildPieceResponse(r.Context(), tx, created, s.Cfg.CopyrightRegion)
 		return err
 	})
 	if err != nil {
@@ -111,7 +111,7 @@ func (s *Server) handleGetRandomPiece(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, err)
 		return
 	}
-	resp, err := api.BuildPieceResponse(r.Context(), s.DB, p)
+	resp, err := api.BuildPieceResponse(r.Context(), s.DB, p, s.Cfg.CopyrightRegion)
 	if err != nil {
 		s.writeError(w, err)
 		return
@@ -131,7 +131,7 @@ func (s *Server) handleGetPiece(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, err)
 		return
 	}
-	resp, err := api.BuildPieceResponse(r.Context(), s.DB, p)
+	resp, err := api.BuildPieceResponse(r.Context(), s.DB, p, s.Cfg.CopyrightRegion)
 	if err != nil {
 		s.writeError(w, err)
 		return
@@ -196,7 +196,7 @@ func (s *Server) handleUpdatePiece(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
-		resp, err = api.BuildPieceResponse(r.Context(), tx, p)
+		resp, err = api.BuildPieceResponse(r.Context(), tx, p, s.Cfg.CopyrightRegion)
 		return err
 	})
 	if err != nil {
@@ -453,7 +453,7 @@ func (s *Server) handleReplacePieceFile(w http.ResponseWriter, r *http.Request) 
 			return err
 		}
 
-		resp, err = api.BuildPieceResponse(r.Context(), tx, p)
+		resp, err = api.BuildPieceResponse(r.Context(), tx, p, s.Cfg.CopyrightRegion)
 		return err
 	})
 	if err != nil {
@@ -548,7 +548,7 @@ func (s *Server) handleSetPieceThumbnailPage(w http.ResponseWriter, r *http.Requ
 			return err
 		}
 
-		resp, err = api.BuildPieceResponse(r.Context(), tx, p)
+		resp, err = api.BuildPieceResponse(r.Context(), tx, p, s.Cfg.CopyrightRegion)
 		return err
 	})
 	if err != nil {

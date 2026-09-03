@@ -26,6 +26,38 @@ export interface EffectiveTagRefs {
   inherited: boolean
 }
 
+/** Same fallback as EffectiveField, for an integer field (Public Domain
+ * Badge feature's copyrightYear). */
+export interface EffectiveIntField {
+  value: number | null
+  inherited: boolean
+}
+
+/** The four real badge states (Public Domain Badge feature) — fixed,
+ * law-derived categories, never user-extensible. */
+export type CopyrightStatus = 'publicDomain' | 'copyleft' | 'likelyPublicDomain' | 'inCopyright'
+
+/**
+ * Piece.copyrightStatus's wire shape — can't reuse plain EffectiveField
+ * like copyrightHolder/copyrightSlug do, because the badge's displayed
+ * status is never just "the piece's own pick, else the book's": it's that
+ * pick corrected forward by a live calculation (backend:
+ * repo.ResolveCopyrightStatus). value/inherited are the raw explicit pick
+ * (same shape/meaning as every other EffectiveField — what the Edit Piece
+ * dropdown should show as "currently selected" before considering the
+ * calculation, "" when nothing's picked anywhere); effective is the final
+ * status the badge and citation actually use, always one of the four real
+ * values, never blank; expiryYear is the algorithm's own computed
+ * term-expiry year (for the "as of {year}" tooltip), null when not
+ * computable.
+ */
+export interface CopyrightStatusField {
+  value: CopyrightStatus | ''
+  inherited: boolean
+  effective: CopyrightStatus
+  expiryYear: number | null
+}
+
 export type PracticeStatus = 'Want to Learn' | 'Learning' | 'Learned' | 'Stalled' | 'Dropped'
 
 /**
@@ -104,8 +136,15 @@ export interface Piece {
    * (design doc §14 addition) — user-selectable from the Piece Details page,
    * defaults to 1. */
   thumbnailPage: number
-  copyrightYear: number | null
-  publicDomain: boolean
+  // Public Domain Badge feature (migration 00022) — copyrightYear/Holder/
+  // Slug are book-inheritable (same EffectiveField family as every other
+  // such field); copyrightStatus additionally carries the *effective*
+  // (computed/overridden) badge status — see CopyrightStatusField's own
+  // doc comment for why it can't share the plain EffectiveField shape.
+  copyrightYear: EffectiveIntField
+  copyrightHolder: EffectiveField
+  copyrightSlug: EffectiveField
+  copyrightStatus: CopyrightStatusField
   createdAt: string
   updatedAt: string
 }
@@ -121,7 +160,11 @@ export interface Book {
   /** Book-inheritable-source field — a Piece's own arranger falls back to
    * this. */
   arranger: Tag[]
-  yearWritten: string | null
+  /** Renamed from yearWritten (Public Domain Badge feature, migration
+   * 00022) — when this edition was published, not when the piece was
+   * composed. Still book-inheritable to a Piece's own yearWritten,
+   * unchanged. */
+  yearPublished: string | null
   workOpusNumber: string | null
   sheetType: Tag | null
   publisher: string | null
@@ -147,6 +190,16 @@ export interface Book {
   coverImageHash: string | null
   importedAt: string
   pieceCount: number
+  // Public Domain Badge feature (migration 00022) — plain fields, no
+  // Effective* wrapper (Book is the inheritance root) and no computed/
+  // "effective" variant (a Book has no live-computed default to fall back
+  // to — needs an effective copyright year *and* composer death years,
+  // both only reachable by resolving *through* Piece→Book inheritance,
+  // which doesn't exist in the other direction).
+  copyrightYear: number | null
+  copyrightHolder: string | null
+  copyrightSlug: string | null
+  copyrightStatus: CopyrightStatus | null
 }
 
 /**
@@ -168,7 +221,12 @@ export interface BookCreateRequest {
   composers: string[]
   arrangers: string[]
   publisher?: string | null
-  yearWritten?: string | null
+  yearPublished?: string | null
+  // Public Domain Badge feature: deliberately NOT included here — matches
+  // this form's own existing "only what a book can meaningfully have
+  // before any pieces exist" scope (already excludes sheet type/ISBN/
+  // description/etc.). Set copyright fields afterward via the full Edit
+  // Book form (BookWriteRequest) instead.
 }
 
 /**
@@ -218,13 +276,19 @@ export interface PieceWriteRequest {
   bpm?: number | null
   measureCount?: number | null
   beatsPerMeasure?: number | null
+  // Public Domain Badge feature (migration 00022) — full-replace like
+  // every other field here, book-inheritable.
+  copyrightYear?: number | null
+  copyrightHolder?: string | null
+  copyrightSlug?: string | null
+  copyrightStatus?: CopyrightStatus | null
 }
 
 export interface BookWriteRequest {
   bookTitle: string
   composers: string[]
   arrangers: string[]
-  yearWritten?: string | null
+  yearPublished?: string | null
   workOpusNumber?: string | null
   sheetTypeName?: string | null
   publisher?: string | null
@@ -236,6 +300,12 @@ export interface BookWriteRequest {
    * trailing check-digit X) are actually stored. */
   isbn?: string | null
   instruments: string[]
+  // Public Domain Badge feature (migration 00022) — full-replace like
+  // every other field here.
+  copyrightYear?: number | null
+  copyrightHolder?: string | null
+  copyrightSlug?: string | null
+  copyrightStatus?: CopyrightStatus | null
 }
 
 export interface UploadBookResult {

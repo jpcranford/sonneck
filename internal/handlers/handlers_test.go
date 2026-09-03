@@ -53,7 +53,7 @@ func newTestServerWithDataDir(t *testing.T) (http.Handler, string, *sql.DB) {
 	}
 	t.Cleanup(func() { conn.Close() })
 
-	cfg := &config.Config{DataDir: dataDir}
+	cfg := &config.Config{DataDir: dataDir, CopyrightRegion: "en-US"}
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
 
 	frontend, err := webui.FS()

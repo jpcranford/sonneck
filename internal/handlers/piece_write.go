@@ -61,6 +61,13 @@ func applyPieceWriteRequest(ctx context.Context, q repo.Queryer, p *models.Piece
 	// doc §3, see CLAUDE.md > Frontend > Computed fields for the reasoning.
 	p.Duration = req.Duration
 
+	// Public Domain Badge feature (migration 00022) — full-replace, same
+	// as every other field above.
+	p.CopyrightYear = req.CopyrightYear
+	p.CopyrightHolder = req.CopyrightHolder
+	p.CopyrightSlug = req.CopyrightSlug
+	p.CopyrightStatus = req.CopyrightStatus
+
 	keyIDs, err := resolveTagNames(ctx, q, repo.FindOrCreateKey, req.Keys, "keys")
 	if err != nil {
 		return err

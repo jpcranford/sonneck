@@ -328,19 +328,19 @@ func TestListBooks_SortsByTitleIgnoresLeadingArticle(t *testing.T) {
 	}
 }
 
-// TestListBooks_SortsByYearWrittenHandlesNonNumericAndNull proves the
+// TestListBooks_SortsByYearPublishedHandlesNonNumericAndNull proves the
 // direction-invariant "junk sorts last" clause actually works both ways,
 // not just in the default direction — a book with no year and one with
 // free-text (non-numeric) content must both trail whether the numeric one
 // is sorted earliest-first or latest-first.
-func TestListBooks_SortsByYearWrittenHandlesNonNumericAndNull(t *testing.T) {
+func TestListBooks_SortsByYearPublishedHandlesNonNumericAndNull(t *testing.T) {
 	h := newTestServer(t)
 	var numeric, freeText, blank bookResponse
 	decodeData(t, doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
-		"bookTitle": "Numeric Year", "composers": []string{"Someone"}, "yearWritten": "1848",
+		"bookTitle": "Numeric Year", "composers": []string{"Someone"}, "yearPublished": "1848",
 	}), &numeric)
 	decodeData(t, doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
-		"bookTitle": "Free Text Year", "composers": []string{"Someone"}, "yearWritten": "ca. 1708-1711",
+		"bookTitle": "Free Text Year", "composers": []string{"Someone"}, "yearPublished": "ca. 1708-1711",
 	}), &freeText)
 	decodeData(t, doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
 		"bookTitle": "No Year", "composers": []string{"Someone"},
@@ -348,13 +348,13 @@ func TestListBooks_SortsByYearWrittenHandlesNonNumericAndNull(t *testing.T) {
 
 	for _, dir := range []string{"asc", "desc"} {
 		var results []bookResponse
-		decodeData(t, doJSON(t, h, http.MethodGet, "/api/books?sort=yearWritten&dir="+dir, nil), &results)
+		decodeData(t, doJSON(t, h, http.MethodGet, "/api/books?sort=yearPublished&dir="+dir, nil), &results)
 		if len(results) != 3 || results[0].ID != numeric.ID {
-			t.Fatalf("sort=yearWritten&dir=%s returned %+v, want the numeric-year book first", dir, results)
+			t.Fatalf("sort=yearPublished&dir=%s returned %+v, want the numeric-year book first", dir, results)
 		}
 		trailingIDs := map[int64]bool{results[1].ID: true, results[2].ID: true}
 		if !trailingIDs[freeText.ID] || !trailingIDs[blank.ID] {
-			t.Errorf("sort=yearWritten&dir=%s: free-text/blank years must both trail, got %+v", dir, results)
+			t.Errorf("sort=yearPublished&dir=%s: free-text/blank years must both trail, got %+v", dir, results)
 		}
 	}
 }

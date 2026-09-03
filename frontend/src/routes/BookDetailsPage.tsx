@@ -671,7 +671,7 @@ export function BookDetailsPage() {
                       ) : (
                         book.publisher
                       )
-                      const parts = [composerPart, book.yearWritten].filter(
+                      const parts = [composerPart, book.yearPublished].filter(
                         (part): part is NonNullable<typeof part> => !!part,
                       )
                       return parts.map((part, index) => (

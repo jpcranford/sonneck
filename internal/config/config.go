@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	"github.com/robfig/cron/v3"
+
+	"github.com/jpcranford/sonneck/internal/copyright"
 )
 
 // defaultCitationFormat mirrors design doc §6's format string. No "ca. "
@@ -31,6 +33,8 @@ var logLevels = map[string]slog.Level{
 	"error": slog.LevelError,
 }
 
+const defaultCopyrightRegion = "en-US"
+
 type Config struct {
 	Port                string
 	DataDir             string
@@ -39,6 +43,11 @@ type Config struct {
 	BackupCron          string
 	CitationFormat      string
 	LogLevel            string
+	// CopyrightRegion (Public Domain Badge feature) — which region-rule
+	// entry (internal/copyright) the "Likely Public Domain" calculation
+	// uses. Validated against that package's own table at startup, not a
+	// literal enum here, so the two never drift out of sync.
+	CopyrightRegion string
 }
 
 // SlogLevel converts the validated LogLevel string into a slog.Level for
@@ -51,11 +60,12 @@ func (c *Config) SlogLevel() slog.Level {
 // per CLAUDE.md > Config rather than surfacing a bad value mid-request.
 func Load() (*Config, error) {
 	cfg := &Config{
-		Port:           getEnv("PORT", "8080"),
-		DataDir:        getEnv("DATA_DIR", "/data"),
-		BackupCron:     getEnv("BACKUP_CRON", "0 3 * * *"),
-		CitationFormat: getEnv("CITATION_FORMAT", defaultCitationFormat),
-		LogLevel:       strings.ToLower(getEnv("LOG_LEVEL", defaultLogLevel)),
+		Port:            getEnv("PORT", "8080"),
+		DataDir:         getEnv("DATA_DIR", "/data"),
+		BackupCron:      getEnv("BACKUP_CRON", "0 3 * * *"),
+		CitationFormat:  getEnv("CITATION_FORMAT", defaultCitationFormat),
+		LogLevel:        strings.ToLower(getEnv("LOG_LEVEL", defaultLogLevel)),
+		CopyrightRegion: getEnv("COPYRIGHT_REGION", defaultCopyrightRegion),
 	}
 	cfg.BackupDir = getEnv("BACKUP_DIR", cfg.DataDir+"/backups")
 
@@ -72,6 +82,10 @@ func Load() (*Config, error) {
 
 	if _, ok := logLevels[cfg.LogLevel]; !ok {
 		return nil, fmt.Errorf("LOG_LEVEL must be one of debug, info, warn, error, got %q", cfg.LogLevel)
+	}
+
+	if !copyright.ValidRegion(cfg.CopyrightRegion) {
+		return nil, fmt.Errorf("COPYRIGHT_REGION %q is not a known region", cfg.CopyrightRegion)
 	}
 
 	return cfg, nil

@@ -30,6 +30,14 @@ type EffectiveTagsField struct {
 	Inherited bool    `json:"inherited"`
 }
 
+// EffectiveIntField is the same fallback as EffectiveField for an integer
+// field (Public Domain Badge feature's CopyrightYear) — nil Value means
+// neither the piece nor its book has one set.
+type EffectiveIntField struct {
+	Value     *int `json:"value"`
+	Inherited bool `json:"inherited"`
+}
+
 // EffectivePiece holds every book-inheritable field (design doc §3's
 // confirmed list) resolved to its effective value. This is the ONLY
 // resolution logic in the app — display, validation, citation generation,
@@ -54,6 +62,21 @@ type EffectivePiece struct {
 	Description    EffectiveField
 	SheetTypeID    EffectiveIDField
 	InstrumentIDs  EffectiveTagsField
+
+	// Public Domain Badge feature (migration 00022). CopyrightStatus here
+	// is the RAW explicit pick only (piece's own non-nil value, else the
+	// book's, else blank) — the same plain fallback every other
+	// EffectiveField uses. It is NOT the final effective badge status:
+	// that needs live computation against composer death years/region on
+	// top of this, which ResolveCopyrightStatus (copyright.go, this
+	// package) does separately, taking this struct as input. Kept
+	// separate from ResolveEffective itself because the two other callers
+	// that don't need the badge status at all (ValidatePiece,
+	// ResyncSearchIndex) shouldn't have to pay for it.
+	CopyrightYear   EffectiveIntField
+	CopyrightHolder EffectiveField
+	CopyrightSlug   EffectiveField
+	CopyrightStatus EffectiveField
 }
 
 // ResolveEffective computes p's effective values, loading its source Book
@@ -71,33 +94,43 @@ func ResolveEffective(ctx context.Context, q Queryer, p *models.Piece) (*Effecti
 		book = b
 	}
 
-	var bookPublisher, bookPublisherID, bookImslpNumber, bookYearWritten, bookWorkOpusNumber, bookDescription *string
+	var bookPublisher, bookPublisherID, bookImslpNumber, bookYearPublished, bookWorkOpusNumber, bookDescription *string
 	var bookSheetTypeID *int64
 	var bookInstrumentIDs, bookComposerIDs, bookArrangerIDs []int64
+	var bookCopyrightYear *int
+	var bookCopyrightHolder, bookCopyrightSlug, bookCopyrightStatus *string
 	if book != nil {
 		bookPublisher = book.Publisher
 		bookPublisherID = book.PublisherID
 		bookImslpNumber = book.ImslpNumber
-		bookYearWritten = book.YearWritten
+		bookYearPublished = book.YearPublished
 		bookWorkOpusNumber = book.WorkOpusNumber
 		bookDescription = book.Description
 		bookSheetTypeID = book.SheetTypeID
 		bookInstrumentIDs = book.InstrumentIDs
 		bookComposerIDs = book.ComposerIDs
 		bookArrangerIDs = book.ArrangerIDs
+		bookCopyrightYear = book.CopyrightYear
+		bookCopyrightHolder = book.CopyrightHolder
+		bookCopyrightSlug = book.CopyrightSlug
+		bookCopyrightStatus = book.CopyrightStatus
 	}
 
 	return &EffectivePiece{
-		Composer:       resolveTagsField(p.ComposerIDs, bookComposerIDs),
-		Arranger:       resolveTagsField(p.ArrangerIDs, bookArrangerIDs),
-		Publisher:      resolveStringField(p.Publisher, bookPublisher),
-		PublisherID:    resolveStringField(p.PublisherID, bookPublisherID),
-		ImslpNumber:    resolveStringField(p.ImslpNumber, bookImslpNumber),
-		YearWritten:    resolveStringField(p.YearWritten, bookYearWritten),
-		WorkOpusNumber: resolveStringField(p.WorkOpusNumber, bookWorkOpusNumber),
-		Description:    resolveStringField(p.Description, bookDescription),
-		SheetTypeID:    resolveIDField(p.SheetTypeID, bookSheetTypeID),
-		InstrumentIDs:  resolveTagsField(p.InstrumentIDs, bookInstrumentIDs),
+		Composer:        resolveTagsField(p.ComposerIDs, bookComposerIDs),
+		Arranger:        resolveTagsField(p.ArrangerIDs, bookArrangerIDs),
+		Publisher:       resolveStringField(p.Publisher, bookPublisher),
+		PublisherID:     resolveStringField(p.PublisherID, bookPublisherID),
+		ImslpNumber:     resolveStringField(p.ImslpNumber, bookImslpNumber),
+		YearWritten:     resolveStringField(p.YearWritten, bookYearPublished),
+		WorkOpusNumber:  resolveStringField(p.WorkOpusNumber, bookWorkOpusNumber),
+		Description:     resolveStringField(p.Description, bookDescription),
+		SheetTypeID:     resolveIDField(p.SheetTypeID, bookSheetTypeID),
+		InstrumentIDs:   resolveTagsField(p.InstrumentIDs, bookInstrumentIDs),
+		CopyrightYear:   resolveIntField(p.CopyrightYear, bookCopyrightYear),
+		CopyrightHolder: resolveStringField(p.CopyrightHolder, bookCopyrightHolder),
+		CopyrightSlug:   resolveStringField(p.CopyrightSlug, bookCopyrightSlug),
+		CopyrightStatus: resolveStringField(p.CopyrightStatus, bookCopyrightStatus),
 	}, nil
 }
 
@@ -117,6 +150,16 @@ func resolveStringField(pieceVal, bookVal *string) EffectiveField {
 		return EffectiveField{Value: *bookVal, Inherited: true}
 	}
 	return EffectiveField{}
+}
+
+func resolveIntField(pieceVal, bookVal *int) EffectiveIntField {
+	if pieceVal != nil {
+		return EffectiveIntField{Value: pieceVal}
+	}
+	if bookVal != nil {
+		return EffectiveIntField{Value: bookVal, Inherited: true}
+	}
+	return EffectiveIntField{}
 }
 
 func resolveIDField(pieceVal, bookVal *int64) EffectiveIDField {

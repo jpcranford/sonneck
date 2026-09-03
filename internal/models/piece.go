@@ -46,10 +46,21 @@ type Piece struct {
 	PageCount     int // total pages in FilePath, for the Library card page-cycle control
 	ThumbnailPage int // which page renders as the Library card thumbnail (design doc §14 addition); user-selectable via the Piece Details page, defaults to 1
 
-	// Deliberate pre-build exception (CLAUDE.md > Database migrations):
-	// unused until the public-domain badge feature (design doc §13) lands.
-	CopyrightYear *int
-	PublicDomain  bool
+	// CopyrightYear: pre-built (CLAUDE.md > Database migrations), now live
+	// as of migration 00022 (Public Domain Badge feature) — book-inheritable.
+	// CopyrightHolder/CopyrightSlug/CopyrightStatus are new in that same
+	// migration, also book-inheritable; CopyrightStatus is one of
+	// 'publicDomain' / 'copyleft' / 'likelyPublicDomain' / 'inCopyright',
+	// or nil (unset — see repo.ResolveCopyrightStatus). The old
+	// PublicDomain bool column this superseded stays in the schema unused
+	// (a plain non-nullable bool can't represent a real four-way choice or
+	// "unset") — deliberately dropped from this struct entirely, same
+	// treatment migration 00020 gave the old composer/arranger TEXT
+	// columns: the DB column exists, application code just never touches it.
+	CopyrightYear   *int
+	CopyrightHolder *string
+	CopyrightSlug   *string
+	CopyrightStatus *string
 
 	CreatedAt time.Time
 	UpdatedAt time.Time

@@ -19,11 +19,11 @@ import {
   IconImageInPicture,
   IconMusic,
   IconRefresh,
-  IconShieldCheck,
   IconTrash,
 } from '@tabler/icons-react'
 import { getBook } from '../api/books'
 import type { Book } from '../api/types'
+import { COPYRIGHT_BADGE_META, copyrightTooltipText } from '../lib/copyrightBadge'
 import { formatBookMeta } from '../lib/formatBookMeta'
 import { hyphenateISBN } from '../lib/isbn'
 import { joinNames } from '../lib/joinNames'
@@ -865,18 +865,27 @@ export function PiecePage() {
                 <DetailRow label="Year written">
                   <span className="inline-flex items-center gap-2">
                     <EffectiveValue value={piece.yearWritten.value} inherited={piece.yearWritten.inherited} />
-                    {/* Public domain badge — circular icon-only badge
-                        sharing this row. Inert/deferred (§13); the real
-                        copy (three states: copyleft / likely PD / PD)
-                        lands with the feature — for now the coming-soon
-                        placeholder text. */}
+                    {/* Public domain badge — Option A (bare icon, no circle
+                        chip) + Grass green, both locked in the design
+                        artifact §5. Driven by the real computed/overridden
+                        status (repo.ResolveCopyrightStatus on the
+                        backend) — never the raw copyrightStatus.value.
+                        showPointerCursor={false} — this reads as status
+                        display, not a control; still tap-to-open on touch
+                        (InfoTooltip's own default behavior), just no
+                        clickable-looking cursor on desktop. */}
                     <InfoTooltip
-                      message="Public domain status — coming soon"
+                      message={copyrightTooltipText(piece.copyrightStatus.effective, piece.copyrightStatus.expiryYear)}
                       ariaLabel="Public domain status info"
-                      // Solid pre-blend, not opacity — overlapping icon strokes would re-blend unevenly under real translucency.
-                      triggerClassName="flex size-5 shrink-0 items-center justify-center rounded-full border border-dashed border-border text-[#aca7a1] hover:text-ink-soft"
+                      showPointerCursor={false}
+                      triggerClassName="flex size-5 shrink-0 items-center justify-center"
                     >
-                      <IconShieldCheck size={11} />
+                      {(() => {
+                        const Icon = COPYRIGHT_BADGE_META[piece.copyrightStatus.effective].icon
+                        return (
+                          <Icon size={15} className={COPYRIGHT_BADGE_META[piece.copyrightStatus.effective].colorClass} />
+                        )
+                      })()}
                     </InfoTooltip>
                   </span>
                 </DetailRow>
@@ -1093,7 +1102,16 @@ export function PiecePage() {
                     {formatDate(piece.updatedAt)}
                   </DetailRow>
                   <DetailRow small tight label="Copyright year">
-                    {piece.copyrightYear ?? '—'}
+                    {piece.copyrightYear.value ?? '—'}
+                  </DetailRow>
+                  <DetailRow small tight label="Copyright status">
+                    {COPYRIGHT_BADGE_META[piece.copyrightStatus.effective].label}
+                  </DetailRow>
+                  <DetailRow small tight label="Copyright holder">
+                    {piece.copyrightHolder.value || '—'}
+                  </DetailRow>
+                  <DetailRow small tight label="Copyright details">
+                    {piece.copyrightSlug.value || '—'}
                   </DetailRow>
                 </div>
               )}

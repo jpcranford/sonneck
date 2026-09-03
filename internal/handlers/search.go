@@ -56,7 +56,7 @@ var pieceSortColumns = map[string]sortColumnFunc{
 	// invariant first clause, same "blanks/non-numeric always trail"
 	// reasoning as composer above.
 	"yearWritten": func(dir string) string {
-		const expr = `COALESCE(NULLIF(TRIM(p.year_written), ''), NULLIF(TRIM(b.year_written), ''))`
+		const expr = `COALESCE(NULLIF(TRIM(p.year_written), ''), NULLIF(TRIM(b.year_published), ''))`
 		return "(" + expr + " IS NULL OR NOT (" + expr + " GLOB '[0-9]*')) ASC, " +
 			"CAST(" + expr + " AS INTEGER) " + dir
 	},
@@ -342,7 +342,7 @@ func (s *Server) handleSearchPieces(w http.ResponseWriter, r *http.Request) {
 			s.writeError(w, err)
 			return
 		}
-		resp, err := api.BuildPieceResponse(r.Context(), s.DB, p)
+		resp, err := api.BuildPieceResponse(r.Context(), s.DB, p, s.Cfg.CopyrightRegion)
 		if err != nil {
 			s.writeError(w, err)
 			return

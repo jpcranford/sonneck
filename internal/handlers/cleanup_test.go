@@ -22,7 +22,7 @@ func newCleanupServer(t *testing.T) (*handlers.Server, http.Handler, string) {
 	h, dataDir, conn := newTestServerWithDataDir(t)
 	s := &handlers.Server{
 		DB:     conn,
-		Cfg:    &config.Config{DataDir: dataDir},
+		Cfg:    &config.Config{DataDir: dataDir, CopyrightRegion: "en-US"},
 		Logger: slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError})),
 	}
 	return s, h, dataDir
