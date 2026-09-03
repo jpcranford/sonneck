@@ -24,7 +24,6 @@ import {
 import { getBook } from '../api/books'
 import type { Book } from '../api/types'
 import { COPYRIGHT_BADGE_META, copyrightTooltipText } from '../lib/copyrightBadge'
-import { formatBookMeta } from '../lib/formatBookMeta'
 import { hyphenateISBN } from '../lib/isbn'
 import { joinNames } from '../lib/joinNames'
 import { PersonNameLinks } from '../components/PersonNameLinks'
@@ -962,7 +961,7 @@ export function PiecePage() {
                     type="button"
                     onClick={() => setTempoOpen((o) => !o)}
                     // Solid pre-blend (icon + label share one color).
-                    className="flex items-center gap-1 text-xs text-[#847d75] hover:text-ink-soft"
+                    className="flex cursor-pointer items-center gap-1 text-xs text-[#847d75] hover:text-ink-soft"
                   >
                     <IconChevronRight
                       size={12}
@@ -1037,9 +1036,48 @@ export function PiecePage() {
                     set — see bookIdentifierLabel's own comment. */}
                 <div className="flex items-baseline justify-between gap-3">
                   <p className="text-sm text-ink-soft">
-                    {formatBookMeta(book) || (
-                      <span className="text-ink-soft/60 italic">No composer or publisher on file</span>
-                    )}
+                    {/* Composer/Arranger names link to their own Person
+                        Details page — same IIFE pattern as this page's own
+                        header row above and BookDetailsPage.tsx's header,
+                        ported here per direct report. formatBookMeta/
+                        bookComposerPart stay plain strings for every other
+                        caller (grid/list cards) — this is a JSX-capable
+                        rebuild of bookComposerPart's own three-way
+                        composer(+arranger) → arranger-only → publisher
+                        fallback, not a formatBookMeta change. */}
+                    {(() => {
+                      const composerNames = joinNames(book.composer.map((p) => p.name))
+                      const arrangerNames = joinNames(book.arranger.map((p) => p.name))
+                      const composerPart: ReactNode = composerNames ? (
+                        <>
+                          <PersonNameLinks people={book.composer} />
+                          {arrangerNames && (
+                            <>
+                              {' '}
+                              • arr. <PersonNameLinks people={book.arranger} />
+                            </>
+                          )}
+                        </>
+                      ) : arrangerNames ? (
+                        <>
+                          arr. <PersonNameLinks people={book.arranger} />
+                        </>
+                      ) : (
+                        book.publisher
+                      )
+                      const parts = [composerPart, book.yearPublished].filter(
+                        (part): part is NonNullable<typeof part> => !!part,
+                      )
+                      if (parts.length === 0) {
+                        return <span className="text-ink-soft/60 italic">No composer or publisher on file</span>
+                      }
+                      return parts.map((part, index) => (
+                        <span key={index}>
+                          {index > 0 && ' • '}
+                          {part}
+                        </span>
+                      ))
+                    })()}
                   </p>
                   {bookIdentifierLabel(book) && (
                     <span className="shrink-0 font-mono text-xs whitespace-nowrap text-ink-soft/75 tabular-nums">
@@ -1056,7 +1094,7 @@ export function PiecePage() {
                 type="button"
                 onClick={() => setAdvancedOpen((o) => !o)}
                 // Solid pre-blend (icon + label share one color).
-                className="flex w-fit items-center gap-1 text-[#847d75] hover:text-ink-soft"
+                className="flex w-fit cursor-pointer items-center gap-1 text-[#847d75] hover:text-ink-soft"
               >
                 <IconChevronRight
                   size={13}

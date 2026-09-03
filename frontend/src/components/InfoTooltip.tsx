@@ -1,4 +1,19 @@
-import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+
+// Coordinates click/tap-opened tooltips across the whole page: several
+// InfoTooltip instances can exist at once (Piece Details alone has 7+
+// "inherited" pills plus the opus/publisher-id info icons), each with its
+// own independent `open` state — with no coordination, tapping a second
+// trigger on mobile (where hover doesn't exist, so tap is the only way to
+// reveal one) left the first tooltip visibly stuck open alongside it.
+// Plain document-level custom event, not React context — a context
+// provider would need wrapping every page that renders any InfoTooltip,
+// while this event is opt-in per-instance (mirrors Modal.tsx's own
+// module-level openModalStack for the identical class of "many independent
+// instances of the same component need one piece of cross-instance
+// coordination" problem, just pub/sub instead of a stack since there's no
+// ordering to track here).
+const TOOLTIP_OPENED_EVENT = 'sonneck:tooltip-opened'
 
 interface InfoTooltipProps {
   message: string
@@ -101,6 +116,26 @@ export function InfoTooltip({
   const [placeBelow, setPlaceBelow] = useState(false)
   const placeBelowRef = useRef(false)
 
+  // Stable per-instance identity for the open-coordination event below —
+  // a plain object reference (not a counter/id prop) is enough since it
+  // only ever needs to be compared for "is this the instance that just
+  // opened," never serialized or looked up.
+  const instanceRef = useRef({})
+
+  // Close this tooltip whenever a *different* instance announces it just
+  // opened. Doesn't fire for this instance's own open (the dispatch below
+  // carries this same instanceRef, filtered out here) — only ever reacts
+  // to another trigger's click.
+  useEffect(() => {
+    function handleOtherOpened(event: Event) {
+      if ((event as CustomEvent<object>).detail !== instanceRef.current) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener(TOOLTIP_OPENED_EVENT, handleOtherOpened)
+    return () => document.removeEventListener(TOOLTIP_OPENED_EVENT, handleOtherOpened)
+  }, [])
+
   // Stable across renders (not redefined inside the effect below) so both
   // the mount effect and the hover/open handlers further down can call the
   // exact same measurement logic.
@@ -190,7 +225,14 @@ export function InfoTooltip({
           // above can be stale (see its comment), and by the time a user
           // actually clicks, any entrance animation on an ancestor modal
           // has long since settled, so this reflects real, final geometry.
-          if (!open) clamp()
+          if (!open) {
+            clamp()
+            // Announce before flipping local state — every other open
+            // instance's own listener (registered above) reacts to this
+            // and closes itself, so only one tooltip is ever open at a
+            // time page-wide.
+            document.dispatchEvent(new CustomEvent(TOOLTIP_OPENED_EVENT, { detail: instanceRef.current }))
+          }
           setOpen((o) => !o)
         }}
         aria-expanded={open}

@@ -1032,7 +1032,7 @@ export function PieceDetailsSample() {
                   type="button"
                   onClick={() => setTempoOpen((o) => !o)}
                   // Solid pre-blend (icon + label share one color).
-                  className="flex items-center gap-1 text-xs text-[#847d75] hover:text-ink-soft"
+                  className="flex cursor-pointer items-center gap-1 text-xs text-[#847d75] hover:text-ink-soft"
                 >
                   <IconChevronRight
                     size={12}
@@ -1129,7 +1129,7 @@ export function PieceDetailsSample() {
               type="button"
               onClick={() => setAdvancedOpen((o) => !o)}
               // Solid pre-blend (icon + label share one color).
-              className="flex w-fit items-center gap-1 text-[#847d75] hover:text-ink-soft"
+              className="flex w-fit cursor-pointer items-center gap-1 text-[#847d75] hover:text-ink-soft"
             >
               <IconChevronRight
                 size={13}
