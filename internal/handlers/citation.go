@@ -196,9 +196,13 @@ func buildTwoSentenceCitation(in citationInput) string {
 	case arranger != "":
 		fmt.Fprintf(&sentence1, "arr. %s, ", arranger)
 	}
+	opus := resolveOpus(eff.WorkOpusNumber.Value, in.bookWorkOpusNumber)
+	if opus.titlePrefix != "" {
+		fmt.Fprintf(&sentence1, "%s ", opus.titlePrefix)
+	}
 	fmt.Fprintf(&sentence1, `"%s"`, strings.ReplaceAll(in.title, `"`, `'`))
-	if eff.WorkOpusNumber.Value != "" {
-		fmt.Fprintf(&sentence1, " (%s)", eff.WorkOpusNumber.Value)
+	if opus.titleParen != "" {
+		fmt.Fprintf(&sentence1, " (%s)", opus.titleParen)
 	}
 	if eff.YearWritten.Value != "" {
 		fmt.Fprintf(&sentence1, ", %s", eff.YearWritten.Value)
@@ -207,8 +211,8 @@ func buildTwoSentenceCitation(in citationInput) string {
 
 	var publishedParts []string
 	bookPart := in.bookTitle
-	if in.bookWorkOpusNumber != "" && !containsIgnoringSpaces(eff.WorkOpusNumber.Value, in.bookWorkOpusNumber) {
-		bookPart += fmt.Sprintf(", %s", in.bookWorkOpusNumber)
+	if opus.bookSuffix != "" {
+		bookPart += fmt.Sprintf(", %s", opus.bookSuffix)
 	}
 	if bookPart != "" {
 		publishedParts = append(publishedParts, bookPart)
@@ -252,17 +256,23 @@ func buildFlatCitation(eff *repo.EffectivePiece, composerNames, arrangerNames []
 		parts = append(parts, fmt.Sprintf("arr. %s", arranger))
 	}
 
+	opus := resolveOpus(eff.WorkOpusNumber.Value, bookWorkOpusNumber)
+
 	bookPart := bookTitle
-	if bookTitle != "" && bookWorkOpusNumber != "" && !containsIgnoringSpaces(eff.WorkOpusNumber.Value, bookWorkOpusNumber) {
-		bookPart += fmt.Sprintf(", %s", bookWorkOpusNumber)
+	if bookTitle != "" && opus.bookSuffix != "" {
+		bookPart += fmt.Sprintf(", %s", opus.bookSuffix)
 	}
 	if bookPart != "" {
 		parts = append(parts, bookPart)
 	}
 
-	titlePart := fmt.Sprintf(`"%s"`, strings.ReplaceAll(title, `"`, `'`))
-	if eff.WorkOpusNumber.Value != "" {
-		titlePart += fmt.Sprintf(" (%s)", eff.WorkOpusNumber.Value)
+	titlePart := ""
+	if opus.titlePrefix != "" {
+		titlePart = opus.titlePrefix + " "
+	}
+	titlePart += fmt.Sprintf(`"%s"`, strings.ReplaceAll(title, `"`, `'`))
+	if opus.titleParen != "" {
+		titlePart += fmt.Sprintf(" (%s)", opus.titleParen)
 	}
 	parts = append(parts, titlePart)
 
@@ -423,4 +433,136 @@ func containsIgnoringSpaces(haystack, needle string) bool {
 	}
 	strip := func(s string) string { return strings.ReplaceAll(s, " ", "") }
 	return strings.Contains(strip(haystack), strip(needle))
+}
+
+// resolvedOpus bundles how a piece's own effective opus number should
+// render relative to its source book's — computed once by resolveOpus
+// below, shared by buildFlatCitation's single-line format and
+// buildTwoSentenceCitation's two-sentence one, so "Op. 25" renders
+// identically regardless of which shape a given piece's citation takes
+// (direct request, 2026-09-03: move a book's own catalog number up next
+// to the book's name instead of leaving it folded into the piece's own
+// title parenthetical).
+type resolvedOpus struct {
+	// bookSuffix is appended onto the book title unconditionally whenever
+	// the book has an opus number set (", {bookWorkOpusNumber}") — a
+	// reversal of the original rule, which suppressed it whenever the
+	// piece's own opus already incorporated it. See titlePrefix below for
+	// what replaced that suppression.
+	bookSuffix string
+	// titlePrefix, when non-empty, is prepended to the quoted title with a
+	// plain space — not a comma, not parens (e.g. `No. 5 "Prélude"`) — the
+	// piece's own distinguishing remainder once the book's opus has been
+	// subtracted back out of it (book "Op. 12" + piece "Op. 12 No. 5" →
+	// "No. 5"). Empty when the piece purely inherits the book's opus
+	// verbatim, with nothing of its own to add — the title then renders
+	// bare, with no opus text anywhere near it.
+	titlePrefix string
+	// titleParen, when non-empty, is appended to the quoted title as
+	// " (...)" — the original, unchanged behavior for a piece whose own
+	// opus doesn't incorporate the book's at all (no book, a book with no
+	// opus of its own, or a piece opus that references something else
+	// entirely, e.g. two different catalog systems).
+	titleParen string
+}
+
+// resolveOpus decides which of resolvedOpus's two mutually exclusive
+// shapes applies: pieceOpus is EffectivePiece.WorkOpusNumber.Value (the
+// piece's own, book-inherited when the piece has no override of its own —
+// see repo/effective.go), bookOpus is the source book's own
+// WorkOpusNumber column read directly (not the piece's effective one).
+//
+// When the book has an opus AND the piece's own opus incorporates it (the
+// existing containsIgnoringSpaces check — true both for pure inheritance,
+// where the two are identical, and for an override like book "Op. 68" /
+// piece "Op. 68, No. 9"): the book's opus always renders next to the
+// book's name, and only whatever's left of the piece's own opus after
+// subtracting the book's back out becomes the title's own prefix.
+//
+// Otherwise: unchanged from the original behavior — the book shows its
+// own opus if it has one (never suppressed here, since there's nothing to
+// dedupe against), and the piece's full own opus renders as the title's
+// "(...)" suffix, entirely independently.
+func resolveOpus(pieceOpus, bookOpus string) resolvedOpus {
+	if bookOpus != "" && containsIgnoringSpaces(pieceOpus, bookOpus) {
+		before, after, _ := splitAroundIgnoringSpaces(pieceOpus, bookOpus)
+		var remainder []string
+		if before != "" {
+			remainder = append(remainder, before)
+		}
+		if after != "" {
+			remainder = append(remainder, after)
+		}
+		return resolvedOpus{bookSuffix: bookOpus, titlePrefix: strings.Join(remainder, ", ")}
+	}
+	return resolvedOpus{bookSuffix: bookOpus, titleParen: pieceOpus}
+}
+
+// splitAroundIgnoringSpaces finds needle within haystack the same
+// space-insensitive way containsIgnoringSpaces does (spaces stripped from
+// both before comparing — rune-based throughout, not byte-based, so a
+// haystack carrying non-ASCII characters elsewhere doesn't misalign the
+// match), then returns whatever's left in haystack before and after the
+// matched span, each trimmed of the stray leading/trailing comma or space
+// the removal can leave behind — e.g. splitting "Op. 12 No. 5" around
+// "Op. 12" returns ("", "No. 5"); splitting "Op. 68, No. 9" around
+// "Op. 68" returns ("", "No. 9"). found is false (both returned strings
+// "") when needle isn't present this way.
+func splitAroundIgnoringSpaces(haystack, needle string) (before, after string, found bool) {
+	needleCompact := []rune(strings.ReplaceAll(needle, " ", ""))
+	if len(needleCompact) == 0 {
+		return "", "", false
+	}
+
+	haystackRunes := []rune(haystack)
+	var compact []rune
+	origIndex := make([]int, 0, len(haystackRunes))
+	for i, r := range haystackRunes {
+		if r == ' ' {
+			continue
+		}
+		compact = append(compact, r)
+		origIndex = append(origIndex, i)
+	}
+
+	pos := runesIndex(compact, needleCompact)
+	if pos == -1 {
+		return "", "", false
+	}
+
+	startOrig := origIndex[pos]
+	endOrig := origIndex[pos+len(needleCompact)-1] + 1
+	before = trimSeparators(string(haystackRunes[:startOrig]))
+	after = trimSeparators(string(haystackRunes[endOrig:]))
+	return before, after, true
+}
+
+// runesIndex is strings.Index for []rune — needed because
+// splitAroundIgnoringSpaces builds its "compact" (spaces removed) haystack
+// as runes to keep its position-mapping back to the original string
+// correct for any non-ASCII content, so it can't hand off to strings.Index
+// (which works in bytes) without re-introducing that risk.
+func runesIndex(haystack, needle []rune) int {
+	if len(needle) == 0 || len(needle) > len(haystack) {
+		return -1
+	}
+outer:
+	for i := 0; i+len(needle) <= len(haystack); i++ {
+		for j := range needle {
+			if haystack[i+j] != needle[j] {
+				continue outer
+			}
+		}
+		return i
+	}
+	return -1
+}
+
+// trimSeparators strips the leading/trailing whitespace and comma
+// punctuation splitAroundIgnoringSpaces' removal can leave dangling at
+// either edge (", No. 9" → "No. 9"; "No. 9, " → "No. 9").
+func trimSeparators(s string) string {
+	s = strings.TrimSpace(s)
+	s = strings.Trim(s, ",")
+	return strings.TrimSpace(s)
 }

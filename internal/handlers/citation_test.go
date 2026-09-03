@@ -337,12 +337,14 @@ func TestCitation_ISBN10Hyphenation(t *testing.T) {
 	}
 }
 
-// Book's own opus number is suppressed from the book-title segment when
-// it's already contained (spaces ignored) in the piece's own effective
-// opus number — otherwise the same opus number would appear twice in one
-// citation (book-title segment + the piece's own "(workOpusNumber)"
-// parenthetical next to the title).
-func TestCitation_SuppressesBookOpusNumberWhenContainedInPieceOpusNumber(t *testing.T) {
+// The book's own opus number always renders next to the book's name once
+// the book has one (direct request, 2026-09-03) — when the piece's own
+// effective opus number incorporates it (spaces ignored), only the
+// piece's own distinguishing remainder renders, as a bare prefix on the
+// title (no comma, no parens) rather than the book's opus number
+// appearing a second time inside the piece's own "(workOpusNumber)"
+// parenthetical.
+func TestCitation_BookOpusNumberMovesToBookNameWhenPieceOpusIncorporatesIt(t *testing.T) {
 	h := newTestServer(t)
 	bookID, _ := uploadBook(t, h, "book.pdf", 4)
 	decodeData(t, doJSON(t, h, http.MethodPatch, apiBooksURL(bookID), map[string]any{
@@ -367,7 +369,90 @@ func TestCitation_SuppressesBookOpusNumberWhenContainedInPieceOpusNumber(t *test
 	}
 	decodeData(t, rec, &citation)
 
-	want := `Robert Schumann, "Volksliedchen" (Op. 68, No. 9). Published in Album für die Jugend.`
+	want := `Robert Schumann, No. 9 "Volksliedchen". Published in Album für die Jugend, Op. 68.`
+	if citation.Citation != want {
+		t.Errorf("citation = %q, want %q", citation.Citation, want)
+	}
+}
+
+// A piece that purely inherits its opus number from the book (no override
+// of its own — the common case for most pieces in a book) has nothing
+// distinguishing to add next to the title: the book's opus renders next
+// to the book's name as usual, but the title itself stays bare, with no
+// prefix and no "(...)" parenthetical either.
+func TestCitation_BookOpusNumberWithPureInheritanceLeavesTitleBare(t *testing.T) {
+	h := newTestServer(t)
+	bookID, _ := uploadBook(t, h, "book.pdf", 4)
+	decodeData(t, doJSON(t, h, http.MethodPatch, apiBooksURL(bookID), map[string]any{
+		"bookTitle":      "Symphony No. 1: Classical Symphony",
+		"composers":      []string{"Sergei Prokofiev"},
+		"workOpusNumber": "Op. 25",
+	}), nil)
+
+	confirmRec := doJSON(t, h, http.MethodPost, apiBooksURL(bookID)+"/confirm-import", map[string]any{
+		"ranges": []map[string]any{{"start": 1, "end": 4}},
+		"pieces": []map[string]any{{"title": "Allegro"}},
+	})
+	var result struct {
+		Pieces []pieceResponse `json:"pieces"`
+	}
+	decodeData(t, confirmRec, &result)
+	pieceID := result.Pieces[0].ID
+
+	rec := doJSON(t, h, http.MethodGet, apiPiecesURL(pieceID)+"/citation", nil)
+	var citation struct {
+		Citation string `json:"citation"`
+	}
+	decodeData(t, rec, &citation)
+
+	want := `Sergei Prokofiev, "Allegro". Published in Symphony No. 1: Classical Symphony, Op. 25.`
+	if citation.Citation != want {
+		t.Errorf("citation = %q, want %q", citation.Citation, want)
+	}
+}
+
+// Direct request's own "perhaps clearer example" — Boëly's "24 Pièces pour
+// l'orgue," book opus "Op. 12," a piece whose own effective opus is "Op.
+// 12 No. 5" (no comma, unlike the Schumann fixture above — confirms the
+// remainder split works with or without one), Public Domain status (the
+// flat citation format, not the two-sentence in-copyright one, so this
+// also confirms the book-opus/title-prefix logic applies identically to
+// buildFlatCitation, not just buildTwoSentenceCitation).
+func TestCitation_FlatCitationMovesBookOpusToBookNameForPublicDomainPiece(t *testing.T) {
+	h := newTestServer(t)
+	bookID, _ := uploadBook(t, h, "book.pdf", 4)
+	decodeData(t, doJSON(t, h, http.MethodPatch, apiBooksURL(bookID), map[string]any{
+		"bookTitle":      "24 Pièces pour l'orgue",
+		"composers":      []string{"Alexandre Boëly"},
+		"workOpusNumber": "Op. 12",
+	}), nil)
+
+	confirmRec := doJSON(t, h, http.MethodPost, apiBooksURL(bookID)+"/confirm-import", map[string]any{
+		"ranges": []map[string]any{{"start": 1, "end": 4}},
+		"pieces": []map[string]any{{"title": "Prélude", "workOpusNumber": "Op. 12 No. 5"}},
+	})
+	var result struct {
+		Pieces []pieceResponse `json:"pieces"`
+	}
+	decodeData(t, confirmRec, &result)
+	pieceID := result.Pieces[0].ID
+
+	decodeData(t, doJSON(t, h, http.MethodPatch, apiPiecesURL(pieceID), map[string]any{
+		"title":           "Prélude",
+		"sourceBookId":    bookID,
+		"workOpusNumber":  "Op. 12 No. 5",
+		"imslpNumber":     "972987",
+		"yearWritten":     "1842",
+		"copyrightStatus": "publicDomain",
+	}), nil)
+
+	rec := doJSON(t, h, http.MethodGet, apiPiecesURL(pieceID)+"/citation", nil)
+	var citation struct {
+		Citation string `json:"citation"`
+	}
+	decodeData(t, rec, &citation)
+
+	want := `Alexandre Boëly, 24 Pièces pour l'orgue, Op. 12, No. 5 "Prélude", IMSLP #972987, 1842. Public domain.`
 	if citation.Citation != want {
 		t.Errorf("citation = %q, want %q", citation.Citation, want)
 	}
