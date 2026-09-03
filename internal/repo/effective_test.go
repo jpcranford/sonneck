@@ -2,6 +2,7 @@ package repo_test
 
 import (
 	"context"
+	"database/sql"
 	"testing"
 
 	"github.com/jpcranford/sonneck/internal/models"
@@ -347,4 +348,109 @@ func TestResolveEffective_InstrumentsFallBackAsWholeSet(t *testing.T) {
 	if len(eff.InstrumentIDs.IDs) != 2 || !eff.InstrumentIDs.Inherited {
 		t.Errorf("InstrumentIDs = %+v, want both book instruments inherited", eff.InstrumentIDs)
 	}
+}
+
+// TestResolveEffective_CopyrightYearForCalcFallbackChain covers
+// CopyrightYearForCalc's own 4-level priority order (piece copyright year,
+// book copyright year, book year published, piece year written) — a
+// deliberate follow-up to the Public Domain Badge feature: a book/piece
+// missing an explicit Copyright Year but carrying a Year Published (the
+// common case for an imported book) should still get a real calculation
+// instead of the calc's conservative "not likely PD" default.
+func TestResolveEffective_CopyrightYearForCalcFallbackChain(t *testing.T) {
+	ctx := context.Background()
+
+	newPiece := func(t *testing.T, dbConn *sql.DB, bookID *int64, yearWritten *string, copyrightYear *int) *repo.EffectivePiece {
+		t.Helper()
+		pieceID, err := repo.CreatePiece(ctx, dbConn, &models.Piece{
+			Title:         "Piece",
+			SourceBookID:  bookID,
+			FilePath:      "/data/library/pieces/" + t.Name() + ".pdf",
+			FileHash:      t.Name(),
+			YearWritten:   yearWritten,
+			CopyrightYear: copyrightYear,
+		})
+		if err != nil {
+			t.Fatalf("CreatePiece: %v", err)
+		}
+		piece, err := repo.GetPieceByID(ctx, dbConn, pieceID)
+		if err != nil {
+			t.Fatalf("GetPieceByID: %v", err)
+		}
+		eff, err := repo.ResolveEffective(ctx, dbConn, piece)
+		if err != nil {
+			t.Fatalf("ResolveEffective: %v", err)
+		}
+		return eff
+	}
+
+	newBook := func(t *testing.T, dbConn *sql.DB, yearPublished *string, copyrightYear *int) int64 {
+		t.Helper()
+		bookID, err := repo.CreateBook(ctx, dbConn, &models.Book{
+			BookTitle:        "Book " + t.Name(),
+			OriginalFilename: strPtr("book.pdf"),
+			FilePath:         strPtr("/data/library/books/" + t.Name() + ".pdf"),
+			FileHash:         strPtr(t.Name()),
+			YearPublished:    yearPublished,
+			CopyrightYear:    copyrightYear,
+		})
+		if err != nil {
+			t.Fatalf("CreateBook: %v", err)
+		}
+		return bookID
+	}
+
+	t.Run("piece copyright year wins over everything", func(t *testing.T) {
+		dbConn := newTestDB(t)
+		bookID := newBook(t, dbConn, strPtr("1900"), intPtr(1950))
+		eff := newPiece(t, dbConn, &bookID, strPtr("1980"), intPtr(1999))
+		if eff.CopyrightYearForCalc == nil || *eff.CopyrightYearForCalc != 1999 {
+			t.Errorf("CopyrightYearForCalc = %v, want 1999 (piece's own copyright year)", eff.CopyrightYearForCalc)
+		}
+	})
+
+	t.Run("book copyright year wins when piece has none", func(t *testing.T) {
+		dbConn := newTestDB(t)
+		bookID := newBook(t, dbConn, strPtr("1900"), intPtr(1950))
+		eff := newPiece(t, dbConn, &bookID, strPtr("1980"), nil)
+		if eff.CopyrightYearForCalc == nil || *eff.CopyrightYearForCalc != 1950 {
+			t.Errorf("CopyrightYearForCalc = %v, want 1950 (book's copyright year)", eff.CopyrightYearForCalc)
+		}
+	})
+
+	t.Run("book year published wins when neither copyright year is set", func(t *testing.T) {
+		dbConn := newTestDB(t)
+		bookID := newBook(t, dbConn, strPtr("1900"), nil)
+		eff := newPiece(t, dbConn, &bookID, strPtr("1980"), nil)
+		if eff.CopyrightYearForCalc == nil || *eff.CopyrightYearForCalc != 1900 {
+			t.Errorf("CopyrightYearForCalc = %v, want 1900 (book's year published, not the piece's own year written)", eff.CopyrightYearForCalc)
+		}
+	})
+
+	t.Run("piece year written is the last resort", func(t *testing.T) {
+		dbConn := newTestDB(t)
+		bookID := newBook(t, dbConn, nil, nil)
+		eff := newPiece(t, dbConn, &bookID, strPtr("1980"), nil)
+		if eff.CopyrightYearForCalc == nil || *eff.CopyrightYearForCalc != 1980 {
+			t.Errorf("CopyrightYearForCalc = %v, want 1980 (piece's own year written)", eff.CopyrightYearForCalc)
+		}
+	})
+
+	t.Run("nothing usable on record resolves to nil", func(t *testing.T) {
+		dbConn := newTestDB(t)
+		bookID := newBook(t, dbConn, nil, nil)
+		eff := newPiece(t, dbConn, &bookID, nil, nil)
+		if eff.CopyrightYearForCalc != nil {
+			t.Errorf("CopyrightYearForCalc = %v, want nil", eff.CopyrightYearForCalc)
+		}
+	})
+
+	t.Run("free-text year that doesn't parse cleanly is skipped, not guessed", func(t *testing.T) {
+		dbConn := newTestDB(t)
+		bookID := newBook(t, dbConn, strPtr("c. 1900"), nil)
+		eff := newPiece(t, dbConn, &bookID, strPtr("early 1980s"), nil)
+		if eff.CopyrightYearForCalc != nil {
+			t.Errorf("CopyrightYearForCalc = %v, want nil (neither free-text year parses as a clean integer)", eff.CopyrightYearForCalc)
+		}
+	})
 }

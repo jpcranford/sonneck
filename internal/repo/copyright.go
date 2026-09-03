@@ -40,13 +40,20 @@ import (
 // to know whether an explicit 'publicDomain' pick actually contradicts
 // what the calculation would otherwise show (citation.go's decision on
 // whether to append a clarifying note) — every other caller ignores it.
+//
+// The calculation's copyright year input is eff.CopyrightYearForCalc, not
+// eff.CopyrightYear — a book/piece is very often missing an explicit
+// Copyright Year while still having a Year Published on record, so the
+// calc falls further back to that (and, last, the piece's own Year
+// Written) rather than conservatively giving up. See
+// CopyrightYearForCalc's own doc comment for the full fallback order.
 func ResolveCopyrightStatus(ctx context.Context, q Queryer, eff *EffectivePiece, region string) (effective string, expiryYear *int, calculatedLikelyPD bool, err error) {
 	deathYears, err := PersonDeathYearsByIDs(ctx, q, eff.Composer.IDs)
 	if err != nil {
 		return "", nil, false, err
 	}
 
-	calc, err := copyright.ComputeLikelyPublicDomain(time.Now().Year(), eff.CopyrightYear.Value, deathYears, region)
+	calc, err := copyright.ComputeLikelyPublicDomain(time.Now().Year(), eff.CopyrightYearForCalc, deathYears, region)
 	if err != nil {
 		return "", nil, false, err
 	}

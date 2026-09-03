@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"strconv"
 	"strings"
 
 	"github.com/jpcranford/sonneck/internal/models"
@@ -77,6 +78,21 @@ type EffectivePiece struct {
 	CopyrightHolder EffectiveField
 	CopyrightSlug   EffectiveField
 	CopyrightStatus EffectiveField
+
+	// CopyrightYearForCalc is the year actually fed into the Likely Public
+	// Domain calculation (ResolveCopyrightStatus, this package) — a longer
+	// fallback chain than CopyrightYear's own piece-then-book resolution,
+	// since a book/piece pair often has no explicit Copyright Year set at
+	// all even when a publication year is on record. In priority order:
+	// piece's own copyright year, book's copyright year, book's year
+	// published, piece's own year written (checked last since it's often
+	// itself just inherited display of the book's year published — see
+	// resolveCopyrightYearForCalc). YearWritten/YearPublished are free-text
+	// fields, so a value that doesn't parse as a clean year is skipped
+	// rather than guessed at. Calculation-only: never displayed as "the"
+	// copyright year and not exposed on any API response — CopyrightYear
+	// above remains what's shown/edited in the UI and used by citations.
+	CopyrightYearForCalc *int
 }
 
 // ResolveEffective computes p's effective values, loading its source Book
@@ -116,22 +132,62 @@ func ResolveEffective(ctx context.Context, q Queryer, p *models.Piece) (*Effecti
 		bookCopyrightStatus = book.CopyrightStatus
 	}
 
+	copyrightYear := resolveIntField(p.CopyrightYear, bookCopyrightYear)
+
 	return &EffectivePiece{
-		Composer:        resolveTagsField(p.ComposerIDs, bookComposerIDs),
-		Arranger:        resolveTagsField(p.ArrangerIDs, bookArrangerIDs),
-		Publisher:       resolveStringField(p.Publisher, bookPublisher),
-		PublisherID:     resolveStringField(p.PublisherID, bookPublisherID),
-		ImslpNumber:     resolveStringField(p.ImslpNumber, bookImslpNumber),
-		YearWritten:     resolveStringField(p.YearWritten, bookYearPublished),
-		WorkOpusNumber:  resolveStringField(p.WorkOpusNumber, bookWorkOpusNumber),
-		Description:     resolveStringField(p.Description, bookDescription),
-		SheetTypeID:     resolveIDField(p.SheetTypeID, bookSheetTypeID),
-		InstrumentIDs:   resolveTagsField(p.InstrumentIDs, bookInstrumentIDs),
-		CopyrightYear:   resolveIntField(p.CopyrightYear, bookCopyrightYear),
-		CopyrightHolder: resolveStringField(p.CopyrightHolder, bookCopyrightHolder),
-		CopyrightSlug:   resolveStringField(p.CopyrightSlug, bookCopyrightSlug),
-		CopyrightStatus: resolveStringField(p.CopyrightStatus, bookCopyrightStatus),
+		Composer:             resolveTagsField(p.ComposerIDs, bookComposerIDs),
+		Arranger:             resolveTagsField(p.ArrangerIDs, bookArrangerIDs),
+		Publisher:            resolveStringField(p.Publisher, bookPublisher),
+		PublisherID:          resolveStringField(p.PublisherID, bookPublisherID),
+		ImslpNumber:          resolveStringField(p.ImslpNumber, bookImslpNumber),
+		YearWritten:          resolveStringField(p.YearWritten, bookYearPublished),
+		WorkOpusNumber:       resolveStringField(p.WorkOpusNumber, bookWorkOpusNumber),
+		Description:          resolveStringField(p.Description, bookDescription),
+		SheetTypeID:          resolveIDField(p.SheetTypeID, bookSheetTypeID),
+		InstrumentIDs:        resolveTagsField(p.InstrumentIDs, bookInstrumentIDs),
+		CopyrightYear:        copyrightYear,
+		CopyrightHolder:      resolveStringField(p.CopyrightHolder, bookCopyrightHolder),
+		CopyrightSlug:        resolveStringField(p.CopyrightSlug, bookCopyrightSlug),
+		CopyrightStatus:      resolveStringField(p.CopyrightStatus, bookCopyrightStatus),
+		CopyrightYearForCalc: resolveCopyrightYearForCalc(copyrightYear, bookYearPublished, p.YearWritten),
 	}, nil
+}
+
+// resolveCopyrightYearForCalc implements CopyrightYearForCalc's own
+// fallback chain — see that field's doc comment for the full reasoning.
+// copyrightYear is the already-resolved piece-then-book CopyrightYear
+// (covers priority 1 and 2 in one step); bookYearPublished/pieceYearWritten
+// are the raw, unresolved fields, since the ordering needed here (book's
+// year published before the piece's own year written) is the reverse of
+// YearWritten's own piece-before-book resolution.
+func resolveCopyrightYearForCalc(copyrightYear EffectiveIntField, bookYearPublished, pieceYearWritten *string) *int {
+	if copyrightYear.Value != nil {
+		return copyrightYear.Value
+	}
+	if year := parseYearInt(bookYearPublished); year != nil {
+		return year
+	}
+	return parseYearInt(pieceYearWritten)
+}
+
+// parseYearInt reads a free-text year field (YearWritten/YearPublished
+// allow arbitrary text, e.g. "c. 1908") as a clean integer, returning nil
+// rather than guessing when it isn't one — matching this package's existing
+// "never guess" convention (see ComputeLikelyPublicDomain's own doc
+// comment).
+func parseYearInt(s *string) *int {
+	if s == nil {
+		return nil
+	}
+	trimmed := strings.TrimSpace(*s)
+	if trimmed == "" {
+		return nil
+	}
+	year, err := strconv.Atoi(trimmed)
+	if err != nil {
+		return nil
+	}
+	return &year
 }
 
 // isBlank treats whitespace-only as empty, matching how title/tag-name

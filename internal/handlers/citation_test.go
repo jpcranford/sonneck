@@ -444,10 +444,20 @@ func TestCitation_FlatCitationMovesBookOpusToBookNameForPublicDomainPiece(t *tes
 	pieceID := result.Pieces[0].ID
 
 	decodeData(t, doJSON(t, h, http.MethodPatch, apiPiecesURL(pieceID), map[string]any{
-		"title":           "Prélude",
-		"sourceBookId":    bookID,
-		"workOpusNumber":  "Op. 12 No. 5",
-		"imslpNumber":     "972987",
+		"title":          "Prélude",
+		"sourceBookId":   bookID,
+		"workOpusNumber": "Op. 12 No. 5",
+		"imslpNumber":    "972987",
+		// yearWritten (1842) drives the citation's own displayed date;
+		// copyrightYear is set separately, deliberately recent, so the
+		// calculation genuinely disagrees with the explicit publicDomain
+		// pick below (2020 + a 95-year US term hasn't expired yet) — this
+		// test is specifically about that contradiction case, and without
+		// an explicit copyrightYear the calc's own CopyrightYearForCalc
+		// fallback would otherwise pick up yearWritten=1842 itself (long
+		// expired), agreeing with the pick and suppressing the note this
+		// test exists to check for.
+		"copyrightYear":   2020,
 		"yearWritten":     "1842",
 		"copyrightStatus": "publicDomain",
 	}), nil)

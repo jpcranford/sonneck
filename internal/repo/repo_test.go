@@ -19,3 +19,5 @@ func newTestDB(t *testing.T) *sql.DB {
 }
 
 func strPtr(s string) *string { return &s }
+
+func intPtr(i int) *int { return &i }
