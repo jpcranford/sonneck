@@ -443,7 +443,7 @@ function BookFilterDrawer({
   )
 }
 
-const BOOK_SORT_FIELDS = ['Date Added', 'Title', 'Composer', 'Year Written'] as const
+const BOOK_SORT_FIELDS = ['Date Added', 'Title', 'Composer', 'Year Published'] as const
 type BookSortField = (typeof BOOK_SORT_FIELDS)[number]
 type SortDirection = 'asc' | 'desc'
 
@@ -451,7 +451,7 @@ const BOOK_DIRECTION_LABEL: Record<BookSortField, Record<SortDirection, string>>
   'Date Added': { asc: 'Oldest first', desc: 'Newest first' },
   Title: { asc: 'A to Z', desc: 'Z to A' },
   Composer: { asc: 'A to Z', desc: 'Z to A' },
-  'Year Written': { asc: 'Earliest first', desc: 'Latest first' },
+  'Year Published': { asc: 'Earliest first', desc: 'Latest first' },
 }
 
 // One fused, segmented button — same as PieceLibrarySample.tsx's own
@@ -557,7 +557,7 @@ function sortBooks(books: MockBook[], field: BookSortField, direction: SortDirec
   const sorted = [...books]
   if (field === 'Title') sorted.sort((a, b) => a.bookTitle.localeCompare(b.bookTitle))
   else if (field === 'Composer') sorted.sort((a, b) => (effectiveComposer(a) ?? '').localeCompare(effectiveComposer(b) ?? ''))
-  else if (field === 'Year Written') {
+  else if (field === 'Year Published') {
     sorted.sort((a, b) => {
       if (!a.yearWritten && !b.yearWritten) return 0
       if (!a.yearWritten) return 1

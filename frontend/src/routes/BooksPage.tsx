@@ -19,20 +19,20 @@ import { SortControl, type SortDirection, type SortFieldOption } from '../compon
 import { EMPTY_BOOK_FILTERS, activeBookFilterCount, type BookFilterState } from '../lib/bookFilterState'
 
 type ViewMode = 'grid' | 'list'
-type BookSortField = 'dateAdded' | 'title' | 'composer' | 'yearWritten'
+type BookSortField = 'dateAdded' | 'title' | 'composer' | 'yearPublished'
 
 const SORT_FIELDS: SortFieldOption<BookSortField>[] = [
   { value: 'dateAdded', label: 'Date Added' },
   { value: 'title', label: 'Title' },
   { value: 'composer', label: 'Composer' },
-  { value: 'yearWritten', label: 'Year Written' },
+  { value: 'yearPublished', label: 'Year Published' },
 ]
 
 const DIRECTION_LABEL: Record<BookSortField, Record<SortDirection, string>> = {
   dateAdded: { asc: 'Oldest first', desc: 'Newest first' },
   title: { asc: 'A to Z', desc: 'Z to A' },
   composer: { asc: 'A to Z', desc: 'Z to A' },
-  yearWritten: { asc: 'Earliest first', desc: 'Latest first' },
+  yearPublished: { asc: 'Earliest first', desc: 'Latest first' },
 }
 
 // Books library view (design doc §3's Book data model gets its own

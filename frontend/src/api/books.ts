@@ -29,7 +29,7 @@ interface ListBooksParams {
    * a book directly crediting this person as composer or arranger (no
    * inheritance to consider, Book is the top of that hierarchy). */
   personId?: number
-  sort?: 'dateAdded' | 'title' | 'composer' | 'yearWritten'
+  sort?: 'dateAdded' | 'title' | 'composer' | 'yearPublished'
   dir?: 'asc' | 'desc'
 }
 
