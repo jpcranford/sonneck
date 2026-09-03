@@ -67,6 +67,7 @@ func applyPieceWriteRequest(ctx context.Context, q repo.Queryer, p *models.Piece
 	p.CopyrightHolder = req.CopyrightHolder
 	p.CopyrightSlug = req.CopyrightSlug
 	p.CopyrightStatus = req.CopyrightStatus
+	p.CopyrightRenewed = req.CopyrightRenewed
 
 	keyIDs, err := resolveTagNames(ctx, q, repo.FindOrCreateKey, req.Keys, "keys")
 	if err != nil {

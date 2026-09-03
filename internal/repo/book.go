@@ -17,12 +17,12 @@ func CreateBook(ctx context.Context, q Queryer, b *models.Book) (int64, error) {
 			book_title, year_published, work_opus_number, sheet_type_id,
 			publisher, publisher_id, description, imslp_number, isbn,
 			original_filename, file_path, file_hash,
-			copyright_year, copyright_holder, copyright_slug, copyright_status
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			copyright_year, copyright_holder, copyright_slug, copyright_status, copyright_renewed
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		b.BookTitle, b.YearPublished, b.WorkOpusNumber, b.SheetTypeID,
 		b.Publisher, b.PublisherID, b.Description, b.ImslpNumber, b.ISBN,
 		b.OriginalFilename, b.FilePath, b.FileHash,
-		b.CopyrightYear, b.CopyrightHolder, b.CopyrightSlug, b.CopyrightStatus,
+		b.CopyrightYear, b.CopyrightHolder, b.CopyrightSlug, b.CopyrightStatus, b.CopyrightRenewed,
 	)
 	if err != nil {
 		return 0, err
@@ -52,14 +52,14 @@ func GetBookByID(ctx context.Context, q Queryer, id int64) (*models.Book, error)
 			publisher, publisher_id, description, imslp_number, isbn,
 			original_filename, file_path, file_hash,
 			cover_image_hash, cover_image_content_type, imported_at,
-			copyright_year, copyright_holder, copyright_slug, copyright_status
+			copyright_year, copyright_holder, copyright_slug, copyright_status, copyright_renewed
 		FROM books WHERE id = ?`, id,
 	).Scan(
 		&b.ID, &b.BookTitle, &b.YearPublished, &b.WorkOpusNumber, &b.SheetTypeID,
 		&b.Publisher, &b.PublisherID, &b.Description, &b.ImslpNumber, &b.ISBN,
 		&b.OriginalFilename, &b.FilePath, &b.FileHash,
 		&b.CoverImageHash, &b.CoverImageContentType, &b.ImportedAt,
-		&b.CopyrightYear, &b.CopyrightHolder, &b.CopyrightSlug, &b.CopyrightStatus,
+		&b.CopyrightYear, &b.CopyrightHolder, &b.CopyrightSlug, &b.CopyrightStatus, &b.CopyrightRenewed,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
@@ -101,11 +101,11 @@ func UpdateBook(ctx context.Context, q Queryer, b *models.Book) error {
 		UPDATE books SET
 			book_title = ?, year_published = ?, work_opus_number = ?, sheet_type_id = ?,
 			publisher = ?, publisher_id = ?, description = ?, imslp_number = ?, isbn = ?,
-			copyright_year = ?, copyright_holder = ?, copyright_slug = ?, copyright_status = ?
+			copyright_year = ?, copyright_holder = ?, copyright_slug = ?, copyright_status = ?, copyright_renewed = ?
 		WHERE id = ?`,
 		b.BookTitle, b.YearPublished, b.WorkOpusNumber, b.SheetTypeID,
 		b.Publisher, b.PublisherID, b.Description, b.ImslpNumber, b.ISBN,
-		b.CopyrightYear, b.CopyrightHolder, b.CopyrightSlug, b.CopyrightStatus,
+		b.CopyrightYear, b.CopyrightHolder, b.CopyrightSlug, b.CopyrightStatus, b.CopyrightRenewed,
 		b.ID,
 	)
 	return err

@@ -431,13 +431,22 @@ func fusePublisherAndID(publisher, publisherID string) string {
 	}
 }
 
-// copyrightClause is the "Copyright © {year} {holder}. {slug}" trailing
-// note for an In Copyright/Copyleft piece (design artifact §4).
+// copyrightClause is the "Copyright © {year} (renewed) {holder}. {slug}"
+// trailing note for an In Copyright/Copyleft piece (design artifact §4).
 // CopyrightHolder falls back to the piece's effective Publisher when
 // unset — citation-only, doesn't change what's stored/displayed anywhere
 // else. Omitted entirely (returns "") when there's neither a year nor an
 // effective holder to attribute to, matching this codebase's "never
 // render empty punctuation" citation convention.
+//
+// "(renewed)" (US renewal follow-up, direct follow-up request) appears
+// right after the year, before the holder, whenever CopyrightRenewed is
+// set — bare, no specific year: the exact renewal filing year never
+// affects the term calculation (a renewed pre-1964 US work always gets 95
+// years from the copyright year already shown, not from whenever within
+// its filing window the renewal happened — see
+// internal/copyright.ComputeLikelyPublicDomain's own doc comment), so
+// there's nothing more precise to add here than the bare fact itself.
 func copyrightClause(eff *repo.EffectivePiece) string {
 	holder := eff.CopyrightHolder.Value
 	if holder == "" {
@@ -450,6 +459,9 @@ func copyrightClause(eff *repo.EffectivePiece) string {
 	base := "Copyright ©"
 	if eff.CopyrightYear.Value != nil {
 		base += fmt.Sprintf(" %d", *eff.CopyrightYear.Value)
+		if eff.CopyrightRenewed.Value {
+			base += " (renewed)"
+		}
 	}
 	if holder != "" {
 		base += " " + holder

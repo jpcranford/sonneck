@@ -3,6 +3,7 @@ import {
   IconCopyright,
   IconShieldCheck,
   IconShieldCheckFilled,
+  IconShieldQuestion,
 } from '@tabler/icons-react'
 import type { CopyrightStatus } from '../api/types'
 
@@ -31,6 +32,12 @@ export const COPYRIGHT_BADGE_META: Record<
 > = {
   publicDomain: { label: 'In Public Domain', icon: IconShieldCheckFilled, colorClass: GRASS_ICON_CLASS },
   likelyPublicDomain: { label: 'Likely Public Domain', icon: IconShieldCheck, colorClass: NEUTRAL_ICON_CLASS },
+  // US renewal follow-up (2026-09-03) — a step below likelyPublicDomain's
+  // own confidence: the PD conclusion here rests on an assumed (not
+  // confirmed) non-renewal default for a 1923-1963 en-US copyright year, so
+  // it gets its own weaker-worded label/icon rather than borrowing
+  // likelyPublicDomain's — see CopyrightStatus's own doc comment (api/types.ts).
+  possiblyPublicDomain: { label: 'Possibly Public Domain', icon: IconShieldQuestion, colorClass: NEUTRAL_ICON_CLASS },
   inCopyright: { label: 'In Copyright', icon: IconCopyright, colorClass: NEUTRAL_ICON_CLASS },
   copyleft: { label: 'Copyleft', icon: IconCopyleftFilled, colorClass: GRASS_ICON_CLASS },
 }
@@ -49,6 +56,8 @@ export function copyrightTooltipText(status: CopyrightStatus, expiryYear: number
       return expiryYear != null ? `Public domain as of ${expiryYear}` : 'Public domain'
     case 'likelyPublicDomain':
       return expiryYear != null ? `Likely public domain as of ${expiryYear}` : 'Likely public domain'
+    case 'possiblyPublicDomain':
+      return expiryYear != null ? `Possibly public domain as of ${expiryYear}` : 'Possibly public domain'
     case 'inCopyright':
       return 'In copyright'
     case 'copyleft':

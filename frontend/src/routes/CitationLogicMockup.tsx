@@ -227,8 +227,8 @@ export function CitationLogicMockup() {
           />
           <IndependentCard
             name="copyrightClause(eff)"
-            description={`Copyright Holder falls back to the piece's effective Publisher when unset. Omitted entirely (returns "") when there's neither a year nor a holder to attribute to.`}
-            example={`year 2013, holder unset, publisher "Stainer & Bell" → "Copyright © 2013 Stainer & Bell."`}
+            description={`Copyright Holder falls back to the piece's effective Publisher when unset. A bare "(renewed)" marker (US renewal follow-up — no specific year, since the exact filing year never changes the term calculation) joins right after the year when CopyrightRenewed is set. Omitted entirely (returns "") when there's neither a year nor a holder to attribute to.`}
+            example={`year 1950, renewed, holder "Test Publisher" → "Copyright © 1950 (renewed) Test Publisher."`}
           />
           <IndependentCard
             name="publicDomainNote(slug)"

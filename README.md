@@ -87,7 +87,7 @@ All configuration is via environment variables, validated at startup — the pro
 A piece's badge is one of four states: **In Public Domain** or **Copyleft** (both set explicitly by you), or **Likely Public Domain** / **In Copyright** (computed automatically). The computed states use a small, checked-in region-rule table (not a live third-party API — none exist built for this kind of integration, and the ones that do go stale), reviewed against IMSLP's [Copyright Made Simple](https://imslp.org/wiki/IMSLP:Copyright_Made_Simple) and [Public domain](https://imslp.org/wiki/Public_domain) pages. `COPYRIGHT_REGION` (above) picks which region's rule applies to your whole library — the U.S. rule is based on the copyright year alone; the EU/UK/Canada rules are based on the composer's death year (falling back to an approximation from the copyright year if no death year is on record).
 
 > [!IMPORTANT]
-> **This is not legal advice.** The calculation is a labeled approximation meant to be a useful starting point, not a determination you should rely on without your own judgment. When in doubt, verify independently before treating a piece as public domain. NAL.
+> **This is not legal advice.** The calculation is a labeled approximation meant to be a useful starting point, not a determination you should rely on without your own judgment. When in doubt, verify independently before treating a piece as public domain. Especially in the US, there are some edge cases that can throw normal rules out the window; the [Hirtle chart](https://commons.wikimedia.org/wiki/Commons:Hirtle_chart#Works_except_sound_recordings_and_architecture) lays out more of those in detail. To be absolutely sure, consult an appropriate lawyer.
 
 ### Backup & restore
 **Backup:** a scheduled job, automatically done by the database using the above environment variables. Backups still retained can be found at `$BACKUP_DIR/sonneck-YYYY-MM-DD.sqlite`.
@@ -123,7 +123,6 @@ DATA_DIR=./data go run ./cmd/sonneck <command>
 ## Planned features
 - **Dark mode.** Dear God, my eyes.
 - **Setlists!** Plan out sets with the piece duration and tempo values.
-- **Public domain badge.** Set your country as an env var and the *likely* copyright status will be calculated per-piece, with the ability to manually override it. Scaffolding for this is already in place.
 - **Auth support.** Lock your collection behind a simple password, or utilize a separate OIDC system for multi-user support. User notes, annotations, and tags stay saved per-user.
 - **Configurable citation format.** Just in case you don't like the defaults.
 - **Sheet Viewer!** The practice view every app like this seems to have, with Bluetooth page turner support, server-saved annotations, and a built-in metronome. Maybe some music theory references too, why not; it's not like the circle of fifths has changed in the last 400 years

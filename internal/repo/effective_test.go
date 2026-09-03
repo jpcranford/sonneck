@@ -454,3 +454,106 @@ func TestResolveEffective_CopyrightYearForCalcFallbackChain(t *testing.T) {
 		}
 	})
 }
+
+// TestResolveEffective_CopyrightRenewedInheritance covers CopyrightRenewed's
+// own book-inheritance resolution (US renewal follow-up) — same
+// piece-wins-else-book-else-false shape every other EffectiveBoolField/
+// EffectiveIntField uses, just confirming it for real given how much this
+// specific field's semantics were debated (false must mean "not explicitly
+// set" both when truly unset AND when explicitly set to false — a plain
+// bool, not tri-state, by direct product decision).
+func TestResolveEffective_CopyrightRenewedInheritance(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("piece's own true wins over book's false", func(t *testing.T) {
+		dbConn := newTestDB(t)
+		bookID, err := repo.CreateBook(ctx, dbConn, &models.Book{
+			BookTitle:        "Book",
+			OriginalFilename: strPtr("book.pdf"),
+			FilePath:         strPtr("/data/library/books/renewed1.pdf"),
+			FileHash:         strPtr("renewed1"),
+			CopyrightRenewed: boolPtr(false),
+		})
+		if err != nil {
+			t.Fatalf("CreateBook: %v", err)
+		}
+		pieceID, err := repo.CreatePiece(ctx, dbConn, &models.Piece{
+			Title:            "Piece",
+			SourceBookID:     &bookID,
+			FilePath:         "/data/library/pieces/renewed1.pdf",
+			FileHash:         "renewed1-piece",
+			CopyrightRenewed: boolPtr(true),
+		})
+		if err != nil {
+			t.Fatalf("CreatePiece: %v", err)
+		}
+		piece, err := repo.GetPieceByID(ctx, dbConn, pieceID)
+		if err != nil {
+			t.Fatalf("GetPieceByID: %v", err)
+		}
+		eff, err := repo.ResolveEffective(ctx, dbConn, piece)
+		if err != nil {
+			t.Fatalf("ResolveEffective: %v", err)
+		}
+		if !eff.CopyrightRenewed.Value || eff.CopyrightRenewed.Inherited {
+			t.Errorf("CopyrightRenewed = %+v, want {Value: true, Inherited: false}", eff.CopyrightRenewed)
+		}
+	})
+
+	t.Run("inherits book's true when piece has none", func(t *testing.T) {
+		dbConn := newTestDB(t)
+		bookID, err := repo.CreateBook(ctx, dbConn, &models.Book{
+			BookTitle:        "Book",
+			OriginalFilename: strPtr("book.pdf"),
+			FilePath:         strPtr("/data/library/books/renewed2.pdf"),
+			FileHash:         strPtr("renewed2"),
+			CopyrightRenewed: boolPtr(true),
+		})
+		if err != nil {
+			t.Fatalf("CreateBook: %v", err)
+		}
+		pieceID, err := repo.CreatePiece(ctx, dbConn, &models.Piece{
+			Title:        "Piece",
+			SourceBookID: &bookID,
+			FilePath:     "/data/library/pieces/renewed2.pdf",
+			FileHash:     "renewed2-piece",
+		})
+		if err != nil {
+			t.Fatalf("CreatePiece: %v", err)
+		}
+		piece, err := repo.GetPieceByID(ctx, dbConn, pieceID)
+		if err != nil {
+			t.Fatalf("GetPieceByID: %v", err)
+		}
+		eff, err := repo.ResolveEffective(ctx, dbConn, piece)
+		if err != nil {
+			t.Fatalf("ResolveEffective: %v", err)
+		}
+		if !eff.CopyrightRenewed.Value || !eff.CopyrightRenewed.Inherited {
+			t.Errorf("CopyrightRenewed = %+v, want {Value: true, Inherited: true}", eff.CopyrightRenewed)
+		}
+	})
+
+	t.Run("neither set resolves to false, not inherited", func(t *testing.T) {
+		dbConn := newTestDB(t)
+		pieceID, err := repo.CreatePiece(ctx, dbConn, &models.Piece{
+			Title:    "Standalone Piece",
+			FilePath: "/data/library/pieces/renewed3.pdf",
+			FileHash: "renewed3-piece",
+		})
+		if err != nil {
+			t.Fatalf("CreatePiece: %v", err)
+		}
+		piece, err := repo.GetPieceByID(ctx, dbConn, pieceID)
+		if err != nil {
+			t.Fatalf("GetPieceByID: %v", err)
+		}
+		eff, err := repo.ResolveEffective(ctx, dbConn, piece)
+		if err != nil {
+			t.Fatalf("ResolveEffective: %v", err)
+		}
+		if eff.CopyrightRenewed.Value || eff.CopyrightRenewed.Inherited {
+			t.Errorf("CopyrightRenewed = %+v, want {Value: false, Inherited: false}", eff.CopyrightRenewed)
+		}
+	})
+}

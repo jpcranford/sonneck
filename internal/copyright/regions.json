@@ -1,5 +1,12 @@
 {
-  "en-US": { "rule": "fixed-term", "years": 95 },
+  "en-US": {
+    "rule": "fixed-term",
+    "years": 95,
+    "renewalWindowStart": 1923,
+    "renewalWindowEnd": 1963,
+    "unrenewedYears": 28,
+    "note": "1923-1963: a work needed a renewal filed during its 28th year to keep protection past that initial 28-year term (95 total once renewed) — see internal/copyright's own package doc comment and CLAUDE.md's Public domain badge section for sourcing."
+  },
   "eu-generic": { "rule": "life-plus", "years": 70, "deathYearFallbackOffset": 40 },
   "en-GB": { "rule": "life-plus", "years": 70, "deathYearFallbackOffset": 40 },
   "ca": {

@@ -24,9 +24,17 @@ import {
 } from '@tabler/icons-react'
 import { Modal } from '../components/Modal'
 import { InfoTooltip } from '../components/InfoTooltip'
+import { Toggle } from '../components/Toggle'
 import { PageCycleControl } from '../components/PageCycleControl'
 import { matchesKeyQuery } from '../lib/keySearch'
 import { useMockupTitle } from '../lib/useMockupTitle'
+import { COPYRIGHT_BADGE_META } from '../lib/copyrightBadge'
+import type { CopyrightStatus } from '../api/types'
+import {
+  US_RENEWAL_WINDOW_START,
+  US_RENEWAL_WINDOW_END,
+  inUSRenewalWindow,
+} from '../lib/usRenewalWindow'
 
 // ---------------------------------------------------------------------
 // DESIGN MOCKUP — not wired to the API, no real mutations, still not
@@ -204,6 +212,12 @@ interface FormValues {
   copyrightYear: string
   copyrightHolder: string
   copyrightSlug: string
+  // US renewal follow-up (direct request, 2026-09-03) — copyrightRenewed
+  // only ever matters, and only ever shows, for en-US pieces whose
+  // Copyright Year falls in 1923-1963 (the window where a work's term
+  // actually depended on a separate renewal filing — see the section
+  // header comment above the renewal toggle below for the full picture).
+  copyrightRenewed: boolean
 }
 
 // Two keys selected deliberately (not one), to actually demonstrate "a
@@ -242,7 +256,12 @@ const defaultValues: FormValues = {
   copyrightYear: '',
   copyrightHolder: '',
   copyrightSlug: '',
+  copyrightRenewed: false,
 }
+
+// This mockup hardcodes `region === 'en-US'` (the real page will read this
+// from a new /api/config endpoint) — everything below the year field is
+// gated on both that and inUSRenewalWindow.
 
 // Sibling-piece navigation (Option D from the toolbar/nav comparison
 // artifact) — three real, fully-loadable pieces from the same source book
@@ -1973,8 +1992,18 @@ export function EditPieceModalMockup() {
                 />
                 <div className="flex flex-col gap-3 min-[525px]:flex-row">
                   <div className="flex flex-1 flex-col gap-1">
-                    <label htmlFor="f-copyright-year" className="text-sm text-ink-soft">
+                    <label
+                      htmlFor="f-copyright-year"
+                      className="flex items-center gap-1 text-sm text-ink-soft"
+                    >
                       Copyright year
+                      <InfoTooltip
+                        message="Enter the year copyright was first established for this piece — usually the year of first publication."
+                        ariaLabel="What Copyright year means"
+                        triggerClassName="text-[#9d9892] hover:text-ink-soft"
+                      >
+                        <IconInfoCircle size={13} />
+                      </InfoTooltip>
                     </label>
                     <input
                       id="f-copyright-year"
@@ -2009,6 +2038,66 @@ export function EditPieceModalMockup() {
                     )}
                   </div>
                 </div>
+
+                {/* US renewal follow-up — only for en-US, only when the
+                    typed year is in the 1923-1963 window where renewal
+                    status actually decides the term length. Real page:
+                    same gate, but region comes from /api/config instead of
+                    being hardcoded true. Just the toggle — no separate
+                    renewal-year field: the exact filing year never changes
+                    the calculation (a renewed work always gets 95 years
+                    from the copyright year above, regardless of which year
+                    within its filing window the renewal happened), and the
+                    citation's own "(renewed)" marker doesn't need a
+                    specific year either (direct follow-up, dropped after
+                    confirming the calc reasoning). */}
+                {inUSRenewalWindow(watch('copyrightYear')) && (
+                  <div className="flex items-center gap-1.5 rounded-md border border-dashed border-border p-3">
+                    <Controller
+                      name="copyrightRenewed"
+                      control={control}
+                      render={({ field }) => (
+                        <Toggle
+                          checked={field.value}
+                          onChange={field.onChange}
+                          label="This work was renewed"
+                        />
+                      )}
+                    />
+                    <InfoTooltip
+                      message={`US works published ${US_RENEWAL_WINDOW_START}–${US_RENEWAL_WINDOW_END} needed a separate renewal filing to keep protection past the first 28 years. Enable this if your source shows a "(renewed …)" note next to the copyright year above.`}
+                      ariaLabel="What 'This work was renewed' means"
+                      triggerClassName="text-[#9d9892] hover:text-ink-soft"
+                    >
+                      <IconInfoCircle size={13} />
+                    </InfoTooltip>
+                  </div>
+                )}
+
+                {/* Design-review only — NOT part of the real form, never
+                    ships. Shows what the new "Possibly Public Domain" badge
+                    state (US renewal follow-up) looks like next to the
+                    existing four, all pulled from the real, shared
+                    COPYRIGHT_BADGE_META (lib/copyrightBadge.ts) so this is
+                    an accurate preview, not a hand-drawn approximation. */}
+                <div className="flex flex-col gap-2 rounded-md border border-dashed border-accent/40 bg-accent-soft/40 p-3">
+                  <p className="text-xs font-medium text-ink-soft">
+                    Design review only — all five badge states (real COPYRIGHT_BADGE_META)
+                  </p>
+                  <div className="flex flex-wrap gap-3">
+                    {(Object.keys(COPYRIGHT_BADGE_META) as CopyrightStatus[]).map((status) => {
+                      const meta = COPYRIGHT_BADGE_META[status]
+                      const Icon = meta.icon
+                      return (
+                        <span key={status} className="flex items-center gap-1.5 text-sm text-ink">
+                          <Icon size={16} className={meta.colorClass} />
+                          {meta.label}
+                        </span>
+                      )
+                    })}
+                  </div>
+                </div>
+
                 <div className="flex flex-col gap-1">
                   <label htmlFor="f-copyright-slug" className="text-sm text-ink-soft">
                     Copyright details

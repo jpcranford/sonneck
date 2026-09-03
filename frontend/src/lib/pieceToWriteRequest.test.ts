@@ -44,6 +44,7 @@ function fixturePiece(overrides: Partial<Piece> = {}): Piece {
     copyrightHolder: { value: '', inherited: false },
     copyrightSlug: { value: '', inherited: false },
     copyrightStatus: { value: '', inherited: false, effective: 'inCopyright', expiryYear: null },
+    copyrightRenewed: { value: false, inherited: false },
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
     ...overrides,

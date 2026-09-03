@@ -407,6 +407,7 @@ func (s *Server) handleUpdateBook(w http.ResponseWriter, r *http.Request) {
 		b.CopyrightHolder = req.CopyrightHolder
 		b.CopyrightSlug = req.CopyrightSlug
 		b.CopyrightStatus = req.CopyrightStatus
+		b.CopyrightRenewed = req.CopyrightRenewed
 
 		sheetTypeID, err := resolveOptionalTagName(r.Context(), tx, repo.FindOrCreateSheetType, req.SheetTypeName, "sheetTypeName")
 		if err != nil {

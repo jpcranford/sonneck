@@ -781,6 +781,85 @@ func TestCitation_NoOpusMatchWithBookOwnedImslp(t *testing.T) {
 	}
 }
 
+// US renewal follow-up: a bare "(renewed)" marker (no specific year — the
+// exact renewal filing year never affects the term calculation, so there's
+// nothing more precise to cite) appears right after the copyright year,
+// before the holder, when CopyrightRenewed is set. 1950 is deliberately
+// chosen so the renewed 95-year term (1950+95=2045) hasn't elapsed yet —
+// otherwise the live calculation would upgrade this piece's explicit
+// "inCopyright" pick to a computed public-domain status before citation
+// generation even sees it, routing through buildFlatCitation's bare-ending
+// path instead of the copyrightClause this test exists to check.
+func TestCitation_CopyrightClauseShowsRenewedMarker(t *testing.T) {
+	h := newTestServer(t)
+	dir := t.TempDir()
+	path := dir + "/piece.pdf"
+	writeFixturePDF(t, path, 1)
+	rec := recordRequest(h, multipartUpload(t, "/api/pieces", "piece.pdf", readAll(t, path)))
+	var uploaded pieceResponse
+	decodeData(t, rec, &uploaded)
+
+	decodeData(t, doJSON(t, h, http.MethodPatch, apiPiecesURL(uploaded.ID), map[string]any{
+		"title":            "Solo",
+		"composers":        []string{"Someone"},
+		"yearWritten":      "1950",
+		"copyrightYear":    1950,
+		"copyrightRenewed": true,
+		"copyrightHolder":  "Test Publishing",
+		"copyrightStatus":  "inCopyright",
+	}), nil)
+
+	citeRec := doJSON(t, h, http.MethodGet, apiPiecesURL(uploaded.ID)+"/citation", nil)
+	var citation struct {
+		Citation string `json:"citation"`
+	}
+	decodeData(t, citeRec, &citation)
+
+	want := `Someone, "Solo", 1950. Copyright © 1950 (renewed) Test Publishing.`
+	if citation.Citation != want {
+		t.Errorf("citation = %q, want %q", citation.Citation, want)
+	}
+}
+
+// Same shape, but CopyrightRenewed left unset — no "(renewed)" marker,
+// confirming it's conditional, not always shown once a copyright year is
+// present. 1990 (outside the 1923-1963 renewal window) is used here
+// specifically so the calculation's own "unrenewed 1923-1963 gets only 28
+// years" logic doesn't come into play at all — that's not what this test
+// is about, and an in-window year here would auto-upgrade this piece past
+// "inCopyright" before citation generation ever ran (the same reasoning
+// the test above documents, just the opposite direction: an *unrenewed* in-
+// window year is exactly the case that resolves to public domain quickly).
+func TestCitation_CopyrightClauseOmitsRenewedMarkerWhenUnset(t *testing.T) {
+	h := newTestServer(t)
+	dir := t.TempDir()
+	path := dir + "/piece.pdf"
+	writeFixturePDF(t, path, 1)
+	rec := recordRequest(h, multipartUpload(t, "/api/pieces", "piece.pdf", readAll(t, path)))
+	var uploaded pieceResponse
+	decodeData(t, rec, &uploaded)
+
+	decodeData(t, doJSON(t, h, http.MethodPatch, apiPiecesURL(uploaded.ID), map[string]any{
+		"title":           "Solo",
+		"composers":       []string{"Someone"},
+		"yearWritten":     "1990",
+		"copyrightYear":   1990,
+		"copyrightHolder": "Test Publishing",
+		"copyrightStatus": "inCopyright",
+	}), nil)
+
+	citeRec := doJSON(t, h, http.MethodGet, apiPiecesURL(uploaded.ID)+"/citation", nil)
+	var citation struct {
+		Citation string `json:"citation"`
+	}
+	decodeData(t, citeRec, &citation)
+
+	want := `Someone, "Solo", 1990. Copyright © 1990 Test Publishing.`
+	if citation.Citation != want {
+		t.Errorf("citation = %q, want %q", citation.Citation, want)
+	}
+}
+
 // A title containing its own literal double quotes (a nested subtitle,
 // e.g. "Merry-Go-Round of Life from "Howl's Moving Castle"") would
 // otherwise collide with the citation's own wrapping quotes — those

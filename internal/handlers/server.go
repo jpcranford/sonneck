@@ -29,6 +29,13 @@ func New(db *sql.DB, cfg *config.Config, logger *slog.Logger, frontend fs.FS) ht
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", s.handleHealthz)
 
+	// A minimal, deliberately narrow slice of server config the frontend
+	// needs at runtime — just CopyrightRegion so far (US renewal follow-up:
+	// gates whether the Copyright Year field's renewal toggle even shows),
+	// not the whole config.Config (most of which is server-internal —
+	// directories, cron schedule — with no frontend use).
+	mux.HandleFunc("GET /api/config", s.handleGetConfig)
+
 	mux.HandleFunc("GET /api/keys", s.handleListKeys)
 	mux.HandleFunc("GET /api/sheet-types", s.handleListSheetTypes)
 	mux.HandleFunc("GET /api/instruments", s.handleListInstruments)
@@ -138,6 +145,10 @@ func spaHandler(frontend fs.FS, notFound http.HandlerFunc) http.HandlerFunc {
 // shape, so this doesn't cost anything operationally.
 func (s *Server) handleHealthz(w http.ResponseWriter, r *http.Request) {
 	api.WriteData(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (s *Server) handleGetConfig(w http.ResponseWriter, r *http.Request) {
+	api.WriteData(w, http.StatusOK, map[string]string{"copyrightRegion": s.Cfg.CopyrightRegion})
 }
 
 func (s *Server) handleNotFound(w http.ResponseWriter, r *http.Request) {

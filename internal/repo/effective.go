@@ -39,6 +39,17 @@ type EffectiveIntField struct {
 	Inherited bool `json:"inherited"`
 }
 
+// EffectiveBoolField is the same fallback as EffectiveField for a boolean
+// field (US renewal follow-up's CopyrightRenewed) — unlike EffectiveIntField,
+// Value is a plain bool, not a pointer: "neither the piece nor its book has
+// one set" resolves to false (not renewed) rather than a third null state,
+// matching the confirmed product decision that an unanswered renewal toggle
+// is treated the same as an explicit "no."
+type EffectiveBoolField struct {
+	Value     bool `json:"value"`
+	Inherited bool `json:"inherited"`
+}
+
 // EffectivePiece holds every book-inheritable field (design doc §3's
 // confirmed list) resolved to its effective value. This is the ONLY
 // resolution logic in the app — display, validation, citation generation,
@@ -79,6 +90,13 @@ type EffectivePiece struct {
 	CopyrightSlug   EffectiveField
 	CopyrightStatus EffectiveField
 
+	// CopyrightRenewed: US renewal follow-up — only meaningful for an en-US
+	// CopyrightYear in 1923-1963, but resolved unconditionally here like
+	// every other book-inheritable field; ComputeLikelyPublicDomain is what
+	// actually gates whether it affects anything. See
+	// models.Piece.CopyrightRenewed's doc comment for the legal reasoning.
+	CopyrightRenewed EffectiveBoolField
+
 	// CopyrightYearForCalc is the year actually fed into the Likely Public
 	// Domain calculation (ResolveCopyrightStatus, this package) — a longer
 	// fallback chain than CopyrightYear's own piece-then-book resolution,
@@ -115,6 +133,7 @@ func ResolveEffective(ctx context.Context, q Queryer, p *models.Piece) (*Effecti
 	var bookInstrumentIDs, bookComposerIDs, bookArrangerIDs []int64
 	var bookCopyrightYear *int
 	var bookCopyrightHolder, bookCopyrightSlug, bookCopyrightStatus *string
+	var bookCopyrightRenewed *bool
 	if book != nil {
 		bookPublisher = book.Publisher
 		bookPublisherID = book.PublisherID
@@ -130,6 +149,7 @@ func ResolveEffective(ctx context.Context, q Queryer, p *models.Piece) (*Effecti
 		bookCopyrightHolder = book.CopyrightHolder
 		bookCopyrightSlug = book.CopyrightSlug
 		bookCopyrightStatus = book.CopyrightStatus
+		bookCopyrightRenewed = book.CopyrightRenewed
 	}
 
 	copyrightYear := resolveIntField(p.CopyrightYear, bookCopyrightYear)
@@ -149,6 +169,7 @@ func ResolveEffective(ctx context.Context, q Queryer, p *models.Piece) (*Effecti
 		CopyrightHolder:      resolveStringField(p.CopyrightHolder, bookCopyrightHolder),
 		CopyrightSlug:        resolveStringField(p.CopyrightSlug, bookCopyrightSlug),
 		CopyrightStatus:      resolveStringField(p.CopyrightStatus, bookCopyrightStatus),
+		CopyrightRenewed:     resolveBoolField(p.CopyrightRenewed, bookCopyrightRenewed),
 		CopyrightYearForCalc: resolveCopyrightYearForCalc(copyrightYear, bookYearPublished, p.YearWritten),
 	}, nil
 }
@@ -216,6 +237,16 @@ func resolveIntField(pieceVal, bookVal *int) EffectiveIntField {
 		return EffectiveIntField{Value: bookVal, Inherited: true}
 	}
 	return EffectiveIntField{}
+}
+
+func resolveBoolField(pieceVal, bookVal *bool) EffectiveBoolField {
+	if pieceVal != nil {
+		return EffectiveBoolField{Value: *pieceVal}
+	}
+	if bookVal != nil {
+		return EffectiveBoolField{Value: *bookVal, Inherited: true}
+	}
+	return EffectiveBoolField{}
 }
 
 func resolveIDField(pieceVal, bookVal *int64) EffectiveIDField {

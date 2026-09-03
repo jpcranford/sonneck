@@ -21,11 +21,13 @@ import { listPeople } from '../api/people'
 import { getPieceThumbnailUrl, updatePiece } from '../api/pieces'
 import { lookupImslp } from '../api/imslp'
 import { listInstruments, listKeys, listSheetTypes, listUserTags } from '../api/lookups'
+import { getConfig } from '../api/config'
 import { ApiError } from '../api/client'
 import { COPYRIGHT_BADGE_META } from '../lib/copyrightBadge'
 import { secondsToMMSS, mmssToSeconds } from '../lib/duration'
 import { matchesKeyQuery } from '../lib/keySearch'
 import { afterMinDuration } from '../lib/minDuration'
+import { US_RENEWAL_WINDOW_START, US_RENEWAL_WINDOW_END, inUSRenewalWindow } from '../lib/usRenewalWindow'
 import type { Piece, PieceWriteRequest, PracticeStatus, Tag } from '../api/types'
 import { Modal } from './Modal'
 import { InfoTooltip } from './InfoTooltip'
@@ -33,6 +35,7 @@ import { InheritedNote } from './InheritedNote'
 import { ImslpAutofillButton } from './ImslpAutofillButton'
 import { TagComboBox } from './TagComboBox'
 import { SingleSelect } from './SingleSelect'
+import { Toggle } from './Toggle'
 import { SourceBookField } from './SourceBookField'
 import { PageCycleControl } from './PageCycleControl'
 
@@ -96,6 +99,15 @@ interface FormValues {
   copyrightYear: string
   copyrightHolder: string
   copyrightSlug: string
+  // US renewal follow-up — same "'' means own value unset/inherit"
+  // tri-state shape copyrightStatus above uses, not a plain boolean:
+  // a bare boolean form field can't distinguish "never touched, still
+  // inheriting the book's value" from "explicitly toggled to false,"
+  // which would silently freeze an inherited false into a permanent
+  // override on every save (the exact bug class pieceToWriteRequest's
+  // own test file documents for composer/arranger) — '' means inherit,
+  // 'true'/'false' are real explicit picks.
+  copyrightRenewed: '' | 'true' | 'false'
 }
 
 // Public Domain Badge feature — order matches the original design table
@@ -190,6 +202,7 @@ function pieceToFormValues(piece: Piece): FormValues {
         : String(piece.copyrightYear.value),
     copyrightHolder: ownValue(piece.copyrightHolder),
     copyrightSlug: ownValue(piece.copyrightSlug),
+    copyrightRenewed: piece.copyrightRenewed.inherited ? '' : String(piece.copyrightRenewed.value) as 'true' | 'false',
   }
 }
 
@@ -244,6 +257,9 @@ function formValuesToWriteRequest(data: FormValues, piece: Piece): PieceWriteReq
     copyrightYear: toIntOrNull(data.copyrightYear),
     copyrightHolder: data.copyrightHolder,
     copyrightSlug: data.copyrightSlug,
+    // US renewal follow-up — '' means "no override, keep inheriting,"
+    // same convention as copyrightStatus just above.
+    copyrightRenewed: data.copyrightRenewed === '' ? null : data.copyrightRenewed === 'true',
   }
 }
 
@@ -455,6 +471,15 @@ export function EditPieceModal({
   // these change rarely (a user adding a brand-new tag/instrument mid-edit
   // is the only case that invalidates them, handled by TagComboBox's own
   // "New tag" affordance without needing this list to refetch).
+  // US renewal follow-up — server config, effectively static for the life
+  // of the process (a real env var, only changes on a restart), so an
+  // aggressively long staleTime is safe and avoids a redundant refetch on
+  // every sibling-piece navigation within the same modal session.
+  const { data: appConfig } = useQuery({
+    queryKey: ['config'],
+    queryFn: getConfig,
+    staleTime: Infinity,
+  })
   const { data: keyOptions = [] } = useQuery({ queryKey: ['keys'], queryFn: listKeys })
   const { data: sheetTypeOptions = [] } = useQuery({
     queryKey: ['sheetTypes'],
@@ -1458,8 +1483,15 @@ export function EditPieceModal({
               />
               <div className="flex flex-col gap-3 min-[525px]:flex-row">
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
-                  <label htmlFor="f-copyright-year" className="text-sm text-ink-soft">
+                  <label htmlFor="f-copyright-year" className="flex items-center gap-1 text-sm text-ink-soft">
                     Copyright year
+                    <InfoTooltip
+                      message="Enter the year copyright was first established for this piece — usually the year of first publication."
+                      ariaLabel="What Copyright year means"
+                      triggerClassName="text-[#9d9892] hover:text-ink-soft"
+                    >
+                      <IconInfoCircle size={13} />
+                    </InfoTooltip>
                   </label>
                   <input
                     id="f-copyright-year"
@@ -1498,6 +1530,49 @@ export function EditPieceModal({
                   )}
                 </div>
               </div>
+
+              {/* US renewal follow-up — only for en-US, only when the
+                  typed year is in the 1923-1963 window where renewal
+                  status actually decides the term length (28 vs. 95
+                  years — see internal/copyright.ComputeLikelyPublicDomain's
+                  own doc comment). copyrightRenewed is tri-state ('' means
+                  inherit/unset) the same way copyrightStatus above is —
+                  see FormValues' own comment for why a plain boolean would
+                  silently freeze an inherited value into a permanent
+                  override on every save. */}
+              {appConfig?.copyrightRegion === 'en-US' && inUSRenewalWindow(watch('copyrightYear')) && (
+                <div className="flex flex-col gap-2 rounded-md border border-dashed border-border p-3">
+                  <div className="flex items-center gap-1.5">
+                    <Controller
+                      name="copyrightRenewed"
+                      control={control}
+                      render={({ field }) => (
+                        <Toggle
+                          checked={field.value === '' ? piece.copyrightRenewed.value : field.value === 'true'}
+                          onChange={(next) => field.onChange(next ? 'true' : 'false')}
+                          label="This work was renewed"
+                        />
+                      )}
+                    />
+                    <InfoTooltip
+                      message={`US works published ${US_RENEWAL_WINDOW_START}–${US_RENEWAL_WINDOW_END} needed a separate renewal filing to keep protection past the first 28 years. Enable this if your source shows a "(renewed …)" note next to the copyright year above.`}
+                      ariaLabel="What 'This work was renewed' means"
+                      triggerClassName="text-[#9d9892] hover:text-ink-soft"
+                    >
+                      <IconInfoCircle size={13} />
+                    </InfoTooltip>
+                  </div>
+                  {watch('copyrightRenewed') === '' && piece.copyrightRenewed.inherited && (
+                    <InheritedNote
+                      bookValue={piece.copyrightRenewed.value ? 'Renewed' : 'Not renewed'}
+                      onCopy={() =>
+                        setValue('copyrightRenewed', piece.copyrightRenewed.value ? 'true' : 'false')
+                      }
+                    />
+                  )}
+                </div>
+              )}
+
               <div className="flex min-w-0 flex-col gap-1">
                 <label htmlFor="f-copyright-slug" className="text-sm text-ink-soft">
                   Copyright details

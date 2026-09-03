@@ -38,8 +38,25 @@ type Region struct {
 	// year is known but a copyright year is, approximates death as
 	// CopyrightYear + this many years — a labeled approximation, not a
 	// precise calculation.
-	DeathYearFallbackOffset int    `json:"deathYearFallbackOffset"`
-	Note                    string `json:"note"`
+	DeathYearFallbackOffset int `json:"deathYearFallbackOffset"`
+
+	// RenewalWindowStart/End/UnrenewedYears ("fixed-term" only; en-US is
+	// currently the only region that sets them — zero value on every other
+	// region, which the renewed-check below treats as "no such window").
+	// US renewal follow-up: a work published in this range needed a
+	// separate renewal filed during its 28th year to keep protection past
+	// that initial UnrenewedYears-year term — Years (95) is the term ONLY
+	// once renewed (or automatically, for 1964+, which is why the window
+	// ends at 1963); without one it's just UnrenewedYears (28) from
+	// CopyrightYear, not Years. See the caller
+	// (repo.ResolveCopyrightStatus)'s own comment for how the `renewed`
+	// bool this package receives gets its value, and CLAUDE.md's Public
+	// domain badge section for the sourcing behind these three numbers.
+	RenewalWindowStart int `json:"renewalWindowStart"`
+	RenewalWindowEnd   int `json:"renewalWindowEnd"`
+	UnrenewedYears     int `json:"unrenewedYears"`
+
+	Note string `json:"note"`
 }
 
 var regions map[string]Region
@@ -61,9 +78,21 @@ func ValidRegion(region string) bool {
 // Result is computeLikelyPublicDomain's return shape — ExpiryYear is the
 // actual year the term runs out (nil when not computable), so callers
 // (the badge tooltip, "as of {year}") get more than a bare yes/no.
+//
+// LowConfidence (US renewal follow-up) is true only when IsLikelyPD is true
+// AND that conclusion rests on an *assumed* non-renewal (renewed=false,
+// which the caller sets identically whether the piece was actively
+// confirmed not renewed or the question was just never answered — see
+// repo.ResolveCopyrightStatus's own comment) rather than a confirmed fact —
+// the caller uses this to pick "possibly" vs. "likely" public domain
+// wording. Always false for the life-plus rule and for a fixed-term
+// conclusion outside the renewal-relevant window (RenewalWindowStart/End),
+// since those never depended on an unconfirmed assumption in the first
+// place.
 type Result struct {
-	IsLikelyPD bool
-	ExpiryYear *int
+	IsLikelyPD    bool
+	ExpiryYear    *int
+	LowConfidence bool
 }
 
 // ComputeLikelyPublicDomain implements the design artifact §3 algorithm.
@@ -75,10 +104,23 @@ type Result struct {
 // death year nor a copyright year at all, returns the conservative
 // negative — never a guessed public domain).
 //
+// renewed (US renewal follow-up) only ever changes anything for the
+// "fixed-term" rule when copyrightYear falls inside the region's own
+// RenewalWindowStart/End (currently only set for en-US, 1923-1963): a
+// renewed work gets the region's normal Years (95, same as always); an
+// unrenewed one gets only UnrenewedYears (28) from copyrightYear instead —
+// a much shorter term, since a validly renewed pre-1964 US work is
+// protected 95 years from its ORIGINAL publication regardless of which
+// year within its filing window the renewal itself happened (the exact
+// renewal year is a citation detail, not a second date this calculation
+// needs — see CLAUDE.md's Public domain badge section for the full
+// reasoning and sourcing). Ignored entirely outside that window and for
+// the life-plus rule.
+//
 // Returns an error only for a region key not present in the table — every
 // caller is expected to have already validated the configured region at
 // startup, so this is a defensive check, not a normal-path failure.
-func ComputeLikelyPublicDomain(currentYear int, copyrightYear *int, composerDeathYears []*int, region string) (Result, error) {
+func ComputeLikelyPublicDomain(currentYear int, copyrightYear *int, composerDeathYears []*int, renewed bool, region string) (Result, error) {
 	r, ok := regions[region]
 	if !ok {
 		return Result{}, fmt.Errorf("copyright: unknown region %q", region)
@@ -88,6 +130,13 @@ func ComputeLikelyPublicDomain(currentYear int, copyrightYear *int, composerDeat
 	case "fixed-term":
 		if copyrightYear == nil {
 			return Result{}, nil
+		}
+		inRenewalWindow := r.RenewalWindowStart != 0 &&
+			*copyrightYear >= r.RenewalWindowStart && *copyrightYear <= r.RenewalWindowEnd
+		if inRenewalWindow && !renewed {
+			expiry := *copyrightYear + r.UnrenewedYears
+			isPD := currentYear >= expiry
+			return Result{IsLikelyPD: isPD, ExpiryYear: &expiry, LowConfidence: isPD}, nil
 		}
 		expiry := *copyrightYear + r.Years
 		return Result{IsLikelyPD: currentYear >= expiry, ExpiryYear: &expiry}, nil

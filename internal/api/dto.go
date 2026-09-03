@@ -88,8 +88,14 @@ type PieceResponse struct {
 	CopyrightHolder repo.EffectiveField     `json:"copyrightHolder"`
 	CopyrightSlug   repo.EffectiveField     `json:"copyrightSlug"`
 	CopyrightStatus CopyrightStatusResponse `json:"copyrightStatus"`
-	CreatedAt       time.Time               `json:"createdAt"`
-	UpdatedAt       time.Time               `json:"updatedAt"`
+	// CopyrightRenewed: US renewal follow-up — book-inheritable, same
+	// EffectiveBoolField shape every other Piece-level boolean-ish field
+	// would use. Only ever meaningful (shown/edited) client-side for an
+	// en-US CopyrightYear in 1923-1963 — see COPYRIGHT_REGION's own
+	// /api/config exposure and repo.EffectiveBoolField's doc comment.
+	CopyrightRenewed repo.EffectiveBoolField `json:"copyrightRenewed"`
+	CreatedAt        time.Time               `json:"createdAt"`
+	UpdatedAt        time.Time               `json:"updatedAt"`
 }
 
 // BuildPieceResponse resolves p's effective values and every referenced
@@ -130,6 +136,7 @@ func BuildPieceResponse(ctx context.Context, q repo.Queryer, p *models.Piece, re
 			Effective:  copyrightEffective,
 			ExpiryYear: copyrightExpiryYear,
 		},
+		CopyrightRenewed: eff.CopyrightRenewed,
 		Duration:        p.Duration,
 		BPM:             p.BPM,
 		MeasureCount:    p.MeasureCount,
@@ -272,6 +279,12 @@ type BookResponse struct {
 	CopyrightHolder *string `json:"copyrightHolder"`
 	CopyrightSlug   *string `json:"copyrightSlug"`
 	CopyrightStatus *string `json:"copyrightStatus"`
+	// CopyrightRenewed: US renewal follow-up — plain nullable bool, same
+	// "no Effective* wrapper" treatment as the four fields above (Book is
+	// the inheritance root). nil means "not explicitly set here," same
+	// meaning as every other nullable Book field, not "confirmed not
+	// renewed" — see models.Book.CopyrightRenewed's own doc comment.
+	CopyrightRenewed *bool `json:"copyrightRenewed"`
 }
 
 func BuildBookResponse(ctx context.Context, q repo.Queryer, b *models.Book) (*BookResponse, error) {
@@ -297,6 +310,7 @@ func BuildBookResponse(ctx context.Context, q repo.Queryer, b *models.Book) (*Bo
 		CopyrightHolder:  b.CopyrightHolder,
 		CopyrightSlug:    b.CopyrightSlug,
 		CopyrightStatus:  b.CopyrightStatus,
+		CopyrightRenewed: b.CopyrightRenewed,
 	}
 
 	if len(b.ComposerIDs) > 0 {
@@ -389,6 +403,9 @@ type PieceWriteRequest struct {
 	CopyrightHolder *string `json:"copyrightHolder"`
 	CopyrightSlug   *string `json:"copyrightSlug"`
 	CopyrightStatus *string `json:"copyrightStatus"`
+	// CopyrightRenewed: US renewal follow-up — full-replace like every
+	// other field here, book-inheritable.
+	CopyrightRenewed *bool `json:"copyrightRenewed"`
 }
 
 // BookCreateRequest is the Books library view's "New Book" button
@@ -436,6 +453,9 @@ type BookWriteRequest struct {
 	CopyrightHolder *string `json:"copyrightHolder"`
 	CopyrightSlug   *string `json:"copyrightSlug"`
 	CopyrightStatus *string `json:"copyrightStatus"`
+	// CopyrightRenewed: US renewal follow-up — full-replace like every
+	// other field here.
+	CopyrightRenewed *bool `json:"copyrightRenewed"`
 }
 
 // PersonResponse is the wire shape for a Person (composer/arranger

@@ -33,9 +33,29 @@ export interface EffectiveIntField {
   inherited: boolean
 }
 
-/** The four real badge states (Public Domain Badge feature) — fixed,
- * law-derived categories, never user-extensible. */
-export type CopyrightStatus = 'publicDomain' | 'copyleft' | 'likelyPublicDomain' | 'inCopyright'
+/** Same fallback as EffectiveField, for a boolean field (US renewal
+ * follow-up's copyrightRenewed) — value is a plain boolean, not
+ * nullable: "neither the piece nor its book has one set" resolves to
+ * false (not renewed), not a third null state, by direct product
+ * decision. */
+export interface EffectiveBoolField {
+  value: boolean
+  inherited: boolean
+}
+
+/** The real badge states (Public Domain Badge feature) — fixed, law-derived
+ * categories, never user-extensible. `possiblyPublicDomain` (US renewal
+ * follow-up) is a lower-confidence sibling of `likelyPublicDomain`,
+ * computed-only (never an explicit pick): en-US, a Copyright Year in
+ * 1923-1963 (the window where a work's term actually depended on a renewal
+ * filing), and no confirmed renewal — meaning the PD conclusion rests on an
+ * *assumed* non-renewal default rather than a confirmed fact. */
+export type CopyrightStatus =
+  | 'publicDomain'
+  | 'copyleft'
+  | 'likelyPublicDomain'
+  | 'possiblyPublicDomain'
+  | 'inCopyright'
 
 /**
  * Piece.copyrightStatus's wire shape — can't reuse plain EffectiveField
@@ -145,6 +165,11 @@ export interface Piece {
   copyrightHolder: EffectiveField
   copyrightSlug: EffectiveField
   copyrightStatus: CopyrightStatusField
+  /** US renewal follow-up — book-inheritable. Only ever shown/edited when
+   * COPYRIGHT_REGION is en-US (see api/config.ts) and copyrightYear falls
+   * in 1923-1963 (lib/usRenewalWindow.ts), but always present on the
+   * wire like every other book-inheritable field. */
+  copyrightRenewed: EffectiveBoolField
   createdAt: string
   updatedAt: string
 }
@@ -200,6 +225,10 @@ export interface Book {
   copyrightHolder: string | null
   copyrightSlug: string | null
   copyrightStatus: CopyrightStatus | null
+  /** US renewal follow-up — plain nullable, same "no Effective* wrapper"
+   * treatment as the four fields above. null means "not explicitly set
+   * here," not "confirmed not renewed." */
+  copyrightRenewed: boolean | null
 }
 
 /**
@@ -282,6 +311,8 @@ export interface PieceWriteRequest {
   copyrightHolder?: string | null
   copyrightSlug?: string | null
   copyrightStatus?: CopyrightStatus | null
+  /** US renewal follow-up — full-replace like every other field here. */
+  copyrightRenewed?: boolean | null
 }
 
 export interface BookWriteRequest {
@@ -306,6 +337,8 @@ export interface BookWriteRequest {
   copyrightHolder?: string | null
   copyrightSlug?: string | null
   copyrightStatus?: CopyrightStatus | null
+  /** US renewal follow-up — full-replace like every other field here. */
+  copyrightRenewed?: boolean | null
 }
 
 export interface UploadBookResult {

@@ -47,15 +47,32 @@ import (
 // calc falls further back to that (and, last, the piece's own Year
 // Written) rather than conservatively giving up. See
 // CopyrightYearForCalc's own doc comment for the full fallback order.
+//
+// eff.CopyrightRenewed.Value feeds the calc's own US renewal follow-up
+// (only ever consulted for a fixed-term region's 1923-1963 window) — its
+// zero value (false) is reached both by an explicit "not renewed" pick and
+// by the toggle simply never having been touched, indistinguishable by
+// design (direct product decision: a plain boolean, not tri-state). When
+// that produces a PD conclusion resting on this unconfirmed assumption
+// (calc.LowConfidence), the computed status downgrades from
+// 'likelyPublicDomain' to 'possiblyPublicDomain' — see that type's own doc
+// comment (api response DTO / CopyrightStatus) for the full reasoning.
+// possiblyPublicDomain is computed-only, same as likelyPublicDomain always
+// was — never a value explicit picks can produce themselves, so it never
+// appears on the left side of this function's own switch.
 func ResolveCopyrightStatus(ctx context.Context, q Queryer, eff *EffectivePiece, region string) (effective string, expiryYear *int, calculatedLikelyPD bool, err error) {
 	deathYears, err := PersonDeathYearsByIDs(ctx, q, eff.Composer.IDs)
 	if err != nil {
 		return "", nil, false, err
 	}
 
-	calc, err := copyright.ComputeLikelyPublicDomain(time.Now().Year(), eff.CopyrightYearForCalc, deathYears, region)
+	calc, err := copyright.ComputeLikelyPublicDomain(time.Now().Year(), eff.CopyrightYearForCalc, deathYears, eff.CopyrightRenewed.Value, region)
 	if err != nil {
 		return "", nil, false, err
+	}
+	computedPDStatus := "likelyPublicDomain"
+	if calc.LowConfidence {
+		computedPDStatus = "possiblyPublicDomain"
 	}
 
 	explicit := eff.CopyrightStatus.Value
@@ -68,12 +85,12 @@ func ResolveCopyrightStatus(ctx context.Context, q Queryer, eff *EffectivePiece,
 		return explicit, calc.ExpiryYear, calc.IsLikelyPD, nil
 	case "copyleft", "inCopyright":
 		if calc.IsLikelyPD {
-			return "likelyPublicDomain", calc.ExpiryYear, calc.IsLikelyPD, nil
+			return computedPDStatus, calc.ExpiryYear, calc.IsLikelyPD, nil
 		}
 		return explicit, nil, calc.IsLikelyPD, nil
 	default: // "" — nothing explicitly picked anywhere
 		if calc.IsLikelyPD {
-			return "likelyPublicDomain", calc.ExpiryYear, calc.IsLikelyPD, nil
+			return computedPDStatus, calc.ExpiryYear, calc.IsLikelyPD, nil
 		}
 		return "inCopyright", nil, calc.IsLikelyPD, nil
 	}

@@ -40,6 +40,10 @@ type Book struct {
 	CopyrightHolder *string
 	CopyrightSlug   *string
 	CopyrightStatus *string
+	// CopyrightRenewed: US renewal follow-up (migration 00023) — the
+	// inheritance source for a Piece's own same-named field. See
+	// models.Piece.CopyrightRenewed's own comment for the full reasoning.
+	CopyrightRenewed *bool
 	// ISBN (migration 00017): plain digits only, no hyphens — a possible
 	// trailing "X" check digit (ISBN-10) is the one non-digit character it
 	// can legitimately hold. Hyphenation for display is computed from this

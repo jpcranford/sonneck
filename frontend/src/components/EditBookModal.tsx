@@ -1,18 +1,22 @@
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { IconAlertTriangle, IconChevronRight, IconCheck, IconXFilled } from '@tabler/icons-react'
+import { IconAlertTriangle, IconChevronRight, IconCheck, IconInfoCircle, IconXFilled } from '@tabler/icons-react'
 import { updateBook } from '../api/books'
 import { lookupImslp } from '../api/imslp'
 import { listInstruments, listSheetTypes } from '../api/lookups'
 import { listPeople } from '../api/people'
+import { getConfig } from '../api/config'
 import { ApiError } from '../api/client'
 import { afterMinDuration } from '../lib/minDuration'
+import { US_RENEWAL_WINDOW_START, US_RENEWAL_WINDOW_END, inUSRenewalWindow } from '../lib/usRenewalWindow'
 import type { Book, BookWriteRequest, Tag } from '../api/types'
 import { Modal } from './Modal'
+import { InfoTooltip } from './InfoTooltip'
 import { ImslpAutofillButton } from './ImslpAutofillButton'
 import { TagComboBox } from './TagComboBox'
 import { SingleSelect } from './SingleSelect'
+import { Toggle } from './Toggle'
 
 // The real Book Properties Edit Menu (design doc §16). Every layout/
 // behavior decision here mirrors the locked mockup (EditBookModalMockup.tsx,
@@ -55,6 +59,11 @@ interface FormValues {
   copyrightYear: string
   copyrightHolder: string
   copyrightSlug: string
+  // US renewal follow-up — '' means "not explicitly picked" (preserved as
+  // null on save, distinct from an explicit "false"), same tri-state shape
+  // copyrightStatus above already uses for the identical reason (a plain
+  // boolean form field can't represent "nothing picked yet").
+  copyrightRenewed: '' | 'true' | 'false'
 }
 
 function bookToFormValues(book: Book): FormValues {
@@ -78,6 +87,7 @@ function bookToFormValues(book: Book): FormValues {
     copyrightYear: book.copyrightYear != null ? String(book.copyrightYear) : '',
     copyrightHolder: book.copyrightHolder ?? '',
     copyrightSlug: book.copyrightSlug ?? '',
+    copyrightRenewed: book.copyrightRenewed == null ? '' : book.copyrightRenewed ? 'true' : 'false',
   }
 }
 
@@ -158,6 +168,7 @@ function formValuesToWriteRequest(data: FormValues): BookWriteRequest {
     copyrightYear: toIntOrNull(data.copyrightYear),
     copyrightHolder: data.copyrightHolder || null,
     copyrightSlug: data.copyrightSlug || null,
+    copyrightRenewed: data.copyrightRenewed === '' ? null : data.copyrightRenewed === 'true',
   }
 }
 
@@ -210,6 +221,13 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
     }
   }, [open, book, reset])
 
+  // US renewal follow-up — server config, effectively static for the life
+  // of the process, same long staleTime EditPieceModal.tsx's own copy uses.
+  const { data: appConfig } = useQuery({
+    queryKey: ['config'],
+    queryFn: getConfig,
+    staleTime: Infinity,
+  })
   const { data: sheetTypeOptions = [] } = useQuery({
     queryKey: ['sheetTypes'],
     queryFn: listSheetTypes,
@@ -689,8 +707,15 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
               />
               <div className="flex flex-col gap-3 min-[525px]:flex-row">
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
-                  <label htmlFor="f-copyright-year" className="text-sm text-ink-soft">
+                  <label htmlFor="f-copyright-year" className="flex items-center gap-1 text-sm text-ink-soft">
                     Copyright year
+                    <InfoTooltip
+                      message="Enter the year copyright was first established for this book — usually the year of first publication."
+                      ariaLabel="What Copyright year means"
+                      triggerClassName="text-[#9d9892] hover:text-ink-soft"
+                    >
+                      <IconInfoCircle size={13} />
+                    </InfoTooltip>
                   </label>
                   <input
                     id="f-copyright-year"
@@ -710,6 +735,33 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
                   />
                 </div>
               </div>
+
+              {/* US renewal follow-up — same gate/shape as
+                  EditPieceModal.tsx's copy, but plain-boolean tri-state (no
+                  InheritedNote — Book has nothing to inherit from). */}
+              {appConfig?.copyrightRegion === 'en-US' && inUSRenewalWindow(watch('copyrightYear')) && (
+                <div className="flex items-center gap-1.5 rounded-md border border-dashed border-border p-3">
+                  <Controller
+                    name="copyrightRenewed"
+                    control={control}
+                    render={({ field }) => (
+                      <Toggle
+                        checked={field.value === 'true'}
+                        onChange={(next) => field.onChange(next ? 'true' : 'false')}
+                        label="This work was renewed"
+                      />
+                    )}
+                  />
+                  <InfoTooltip
+                    message={`US works published ${US_RENEWAL_WINDOW_START}–${US_RENEWAL_WINDOW_END} needed a separate renewal filing to keep protection past the first 28 years. Enable this if your source shows a "(renewed …)" note next to the copyright year above.`}
+                    ariaLabel="What 'This work was renewed' means"
+                    triggerClassName="text-[#9d9892] hover:text-ink-soft"
+                  >
+                    <IconInfoCircle size={13} />
+                  </InfoTooltip>
+                </div>
+              )}
+
               <div className="flex min-w-0 flex-col gap-1">
                 <label htmlFor="f-copyright-slug" className="text-sm text-ink-soft">
                   Copyright details

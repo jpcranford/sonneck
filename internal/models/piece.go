@@ -62,6 +62,15 @@ type Piece struct {
 	CopyrightSlug   *string
 	CopyrightStatus *string
 
+	// CopyrightRenewed: US renewal follow-up (migration 00023), book-
+	// inheritable, nil meaning "not explicitly set here" (fall back to the
+	// book, else treat as not renewed) rather than "confirmed not renewed"
+	// — only ever meaningful for an en-US CopyrightYear in 1923-1963, the
+	// window a work's term actually depended on a renewal filing. See
+	// repo.ComputeLikelyPublicDomain's own doc comment for the full
+	// 28-vs-95-year reasoning.
+	CopyrightRenewed *bool
+
 	CreatedAt time.Time
 	UpdatedAt time.Time
 
