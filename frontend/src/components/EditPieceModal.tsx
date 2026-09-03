@@ -600,21 +600,38 @@ export function EditPieceModal({
     saveMutation.mutate({ data, closeAfter: false })
   }
 
-  // Shift+Enter saves (and closes) from anywhere in the form — including a
+  // Shift+Enter saves and closes from anywhere in the form — including a
   // field with its own open dropdown (Key, Sheet Type, Instruments, Your
   // Tags, Source Book), which would otherwise treat plain Enter as "pick
   // the highlighted row" and never reach a submit at all. Those fields'
   // own handlers (TagComboBox/SingleSelect/SourceBookField) explicitly
   // skip Shift+Enter rather than acting on it, so this handler is the only
   // thing that fires — no double effect of both picking an option and
-  // saving. Targets onSubmitAndClose specifically (not a bare "save"),
-  // since this is still the from-inside-a-field path — the no-field-
-  // focused Enter/Shift+Enter shortcuts below are new and separate.
+  // saving.
+  //
+  // Plain Enter saves and keeps editing — matching the no-field-focused
+  // shortcut below, so Enter means the same thing everywhere in this modal,
+  // not just outside a field (a prior "let the browser's native
+  // submit-on-Enter reach the Save & Close button" design meant plain Enter
+  // saved *and closed* while typing, surprising users expecting a plain
+  // save). `event.defaultPrevented` is checked first so this doesn't
+  // double-fire when a dropdown field already consumed the same Enter to
+  // pick its highlighted row (those handlers preventDefault() but don't
+  // stopPropagation()); BUTTON/A/SELECT are skipped so a focused control's
+  // own native Enter/Space behavior isn't hijacked, and TEXTAREA is skipped
+  // so Enter still inserts a newline in Notes/Description.
   function handleFormKeyDown(event: ReactKeyboardEvent<HTMLFormElement>) {
-    if (event.key === 'Enter' && event.shiftKey) {
+    if (event.key !== 'Enter') return
+    if (event.shiftKey) {
       event.preventDefault()
       handleSubmit(onSubmitAndClose)()
+      return
     }
+    if (event.defaultPrevented) return
+    const tag = (event.target as HTMLElement).tagName
+    if (tag === 'TEXTAREA' || tag === 'BUTTON' || tag === 'SELECT' || tag === 'A') return
+    event.preventDefault()
+    handleSubmit(onSubmitStayOpen)()
   }
 
   // No-field-focused shortcuts (toolbar/nav comparison artifact, Option D,
@@ -792,11 +809,13 @@ export function EditPieceModal({
         // Option D (toolbar/nav comparison artifact, approved 2026-09-02):
         // one row, two zones — sibling-piece nav on the left (hidden
         // entirely when showSiblingNav is false), Cancel/Save/Save & Close
-        // on the right. Save & Close is the accent-filled primary action
-        // (also the form's native type="submit" target, so a plain Enter
-        // pressed *inside* a text field still saves-and-closes, matching
-        // this app's existing muscle memory) — plain Save is a secondary,
-        // outlined action instead. Ported from
+        // on the right. Save & Close is the accent-filled primary action —
+        // plain Save is a secondary, outlined action instead. Its
+        // `type="submit"` is only the form's programmatic submit target
+        // (footer buttons live outside the `<form>`, wired via `form=`),
+        // not what plain Enter reaches: handleFormKeyDown intercepts plain
+        // Enter itself and always routes it to Save, keep editing — see
+        // that function's own comment. Ported from
         // EditPieceModalMockup.tsx's own identical footer.
         <div ref={footerRef} className="flex flex-col gap-2">
           {saveMutation.isError && (

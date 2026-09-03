@@ -1174,18 +1174,25 @@ export function EditPieceModalMockup() {
     performSave(data, false)
   }
 
-  // Shift+Enter saves (and closes) from anywhere in the form, including a
-  // field with its own open dropdown — kept in sync with the real
-  // EditPieceModal.tsx; see that file's own comment. Now maps to
-  // onSubmitAndClose specifically (not the bare, now-nonexistent onSubmit)
-  // since "Save" alone no longer closes — this is still the "from inside a
-  // field" path; see the no-field-focused document listener below for the
-  // brand new Left/Right/Enter/Shift+Enter shortcuts Option D added.
+  // Shift+Enter saves and closes from anywhere in the form, including a
+  // field with its own open dropdown; plain Enter saves and keeps editing,
+  // matching the no-field-focused shortcut below — kept in sync with the
+  // real EditPieceModal.tsx; see that file's own comment for the full
+  // reasoning (defaultPrevented check to avoid double-firing under a
+  // dropdown field's own Enter-to-pick handling, BUTTON/A/SELECT/TEXTAREA
+  // skipped).
   function handleFormKeyDown(event: KeyboardEvent<HTMLFormElement>) {
-    if (event.key === 'Enter' && event.shiftKey) {
+    if (event.key !== 'Enter') return
+    if (event.shiftKey) {
       event.preventDefault()
       handleSubmit(onSubmitAndClose)()
+      return
     }
+    if (event.defaultPrevented) return
+    const tag = (event.target as HTMLElement).tagName
+    if (tag === 'TEXTAREA' || tag === 'BUTTON' || tag === 'SELECT' || tag === 'A') return
+    event.preventDefault()
+    handleSubmit(onSubmitStayOpen)()
   }
 
   // New with Option D (toolbar/nav comparison artifact): Left/Right cycles
@@ -1365,11 +1372,10 @@ export function EditPieceModalMockup() {
           // PageCycleControl, a hand-rolled local equivalent rather than
           // reusing that component directly, since its aria-labels/count
           // are hardcoded to "page", not "piece"), Cancel/Save/Save & Close
-          // on the right. Save & Close is the accent-filled primary action
-          // (also the form's native type="submit" target, so a plain Enter
-          // pressed *inside* a text field still saves-and-closes, matching
-          // this app's existing muscle memory) — plain Save is a secondary,
-          // outlined action instead.
+          // on the right. Save & Close is the accent-filled primary action —
+          // plain Save is a secondary, outlined action instead. Plain Enter
+          // always reaches Save, keep editing (handleFormKeyDown intercepts
+          // it), regardless of which button is visually primary.
           <div ref={footerRef} className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-1 text-ink-soft">
               <button
