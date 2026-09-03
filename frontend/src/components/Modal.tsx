@@ -73,6 +73,10 @@ export function Modal({ open, onClose, labelledBy, children, size = 'md', header
   // pending, so the effect's cleanup can cancel the right one regardless
   // of which of the two frames the effect gets torn down on.
   const rafRef = useRef(0)
+  // Escape-blurs-before-close (direct request) needs to know whether the
+  // currently focused element is actually inside *this* dialog, not just
+  // that something text-entry-like is focused somewhere on the page.
+  const dialogRef = useRef<HTMLDivElement>(null)
 
   // Stable per-instance identity for the modal stack below — assigned
   // once, lazily, on first render (the standard "useRef as a mutable
@@ -162,6 +166,21 @@ export function Modal({ open, onClose, labelledBy, children, size = 'md', header
       // Modals are open at once.
       const top = openModalStack[openModalStack.length - 1]
       if (top?.id !== stackIdRef.current) return
+
+      // First Escape with the cursor inside a field just unfocuses it
+      // (direct request) — a second Escape, with nothing left to blur,
+      // closes the modal. Scoped to this dialog's own subtree so a field
+      // focused in some other part of the page (shouldn't happen while a
+      // modal's open, but not guaranteed) can't suppress the close.
+      const active = document.activeElement as HTMLElement | null
+      const tag = active?.tagName
+      const isTextEntry =
+        tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || active?.isContentEditable
+      if (isTextEntry && active && dialogRef.current?.contains(active)) {
+        active.blur()
+        return
+      }
+
       onCloseRef.current()
     }
     document.addEventListener('keydown', onKeyDown)
@@ -180,6 +199,7 @@ export function Modal({ open, onClose, labelledBy, children, size = 'md', header
       }}
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={labelledBy}
