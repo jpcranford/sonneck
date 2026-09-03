@@ -1,0 +1,58 @@
+%% Source for CitationLogicMockup.tsx's flowchart image — mirrors
+%% internal/handlers/citation.go's own branching (buildCitation /
+%% buildFlatCitation / buildTwoSentenceCitation). Regenerate the sibling
+%% .svg after any edit here (from frontend/src/assets/diagrams/):
+%%   npx -y @mermaid-js/mermaid-cli -i citation-logic-flowchart.mmd \
+%%     -o citation-logic-flowchart.svg \
+%%     -c citation-logic-flowchart.config.json -b transparent
+%% Leaf labels (A1-A3, B1-B6) are cross-referenced by the same IDs in the
+%% real page's leaf-example grid below the image — keep both in sync; see
+%% memory frontend_citation_logic_mockup.md for the full standing rule.
+flowchart TD
+    Start(["buildCitation(piece)"])
+    D1{"Has a source book AND<br/>status is Copyleft or<br/>In Copyright?"}
+    Start --> D1
+
+    D1 -- No --> Flat["buildFlatCitation<br/>composer, book title+opus (if present),<br/>quoted title, identifier, yearWritten"]
+    D1 -- Yes --> Two["buildTwoSentenceCitation<br/>sentence 1, then a publish sentence<br/>unless suppressed"]
+
+    Flat --> D2{"What's the<br/>effective status?"}
+    D2 -- "Copyleft / In Copyright<br/>(no book)" --> A1["A1: + Copyright clause"]
+    D2 -- "Public Domain,<br/>contradicts the calc" --> A2["A2: + publicDomainNote"]
+    D2 -- "Otherwise" --> A3["A3: bare"]
+
+    Two --> D3{"Book opus matches the<br/>piece's own effective opus?<br/>(resolveOpus)"}
+    D3 -- "Yes &mdash; part of a<br/>greater work" --> M["Book title+opus fold<br/>into sentence 1"]
+    D3 -- No --> N["Piece's own opus stays<br/>as a '(...)' suffix"]
+
+    M --> D4{"Who owns the effective<br/>IMSLP number?"}
+    N --> D5{"Who owns the effective<br/>IMSLP number?"}
+
+    D4 -- Piece --> B1["B1: IMSLP in sentence 1,<br/>no publish sentence"]
+    D4 -- Book --> B2["B2: Published by {publisher},<br/>IMSLP #{n}, {year}"]
+    D4 -- Neither --> B3["B3: Published by<br/>{publisher}, {year}"]
+
+    D5 -- Piece --> B4["B4: IMSLP in sentence 1,<br/>no publish sentence"]
+    D5 -- Book --> B5["B5: Published in {book},<br/>{publisher}, IMSLP #{n}, {year}"]
+    D5 -- Neither --> B6["B6: Published in {book},<br/>{publisher}[, ISBN], {year}"]
+
+    B1 --> CC["+ Copyright clause (if any)"]
+    B2 --> CC
+    B3 --> CC
+    B4 --> CC
+    B5 --> CC
+    B6 --> CC
+
+    classDef startNode fill:#1c1815,stroke:#1c1815,color:#fbfaf8,font-weight:bold,rx:20,ry:20;
+    classDef decision fill:#e3e9e0,stroke:#3f5c3f,stroke-width:2px,color:#1c1815,font-weight:bold;
+    classDef step fill:#ffffff,stroke:#e4e0d8,color:#5c5349;
+    classDef leaf fill:#f1eee8,stroke:#e4e0d8,color:#1c1815,font-weight:bold,text-align:left;
+    classDef converge fill:#ffffff,stroke:#3f5c3f,color:#1c1815,stroke-dasharray: 3 3;
+
+    class Start startNode
+    class D1,D2,D3,D4,D5 decision
+    class Flat,Two,M,N step
+    class A1,A2,A3,B1,B2,B3,B4,B5,B6 leaf
+    class CC converge
+
+    linkStyle default stroke:#9c968f,stroke-width:1.5px;

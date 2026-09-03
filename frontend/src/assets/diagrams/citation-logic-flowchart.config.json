@@ -1,0 +1,17 @@
+{
+  "theme": "base",
+  "themeVariables": {
+    "fontFamily": "Cabin, sans-serif",
+    "primaryColor": "#e3e9e0",
+    "primaryBorderColor": "#3f5c3f",
+    "primaryTextColor": "#1c1815",
+    "lineColor": "#9c968f",
+    "edgeLabelBackground": "#fbfaf8"
+  },
+  "flowchart": {
+    "curve": "basis",
+    "htmlLabels": true,
+    "nodeSpacing": 40,
+    "rankSpacing": 55
+  }
+}

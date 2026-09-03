@@ -76,6 +76,11 @@ const MOCKUPS = [
     name: 'Mobile Nav — Left Drawer',
     note: 'Replaces the sidebar’s permanent mobile icon rail with a top bar + slide-in drawer below 768px. Not nested in AppShell — renders the real Sidebar for desktop, a new top bar + drawer for mobile.',
   },
+  {
+    to: '/mockup/citation-logic',
+    name: 'Citation Logic',
+    note: 'Not a screen mockup — a decision-flow reference for buildCitation (internal/handlers/citation.go), kept in sync under the same mockup-parity rule whenever the real branching logic changes. Every example citation is copied verbatim from a passing citation_test.go case.',
+  },
 ]
 
 export function MockupIndexPage() {
