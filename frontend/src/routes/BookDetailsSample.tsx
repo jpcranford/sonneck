@@ -12,7 +12,7 @@ import {
   IconPhotoUp,
   IconTrash,
 } from '@tabler/icons-react'
-import { hyphenateISBN } from '../lib/isbn'
+import { hyphenateISBN, isbnSearchUrl } from '../lib/isbn'
 import { useMockupTitle } from '../lib/useMockupTitle'
 import { ContextMenu } from '../components/ContextMenu'
 import { MarkdownText } from '../components/MarkdownText'
@@ -540,7 +540,28 @@ function bookFields(): { label: string; value: ReactNode }[] {
   // that already has its own IMSLP no. row above — nothing to substitute,
   // the row simply doesn't render.
   if (!sampleBook.imslpNumber && sampleBook.isbn) {
-    fields.push({ label: 'ISBN', value: <span className="font-mono">{hyphenateISBN(sampleBook.isbn)}</span> })
+    fields.push({
+      label: 'ISBN',
+      // Matches the IMSLP no. row just above — the hyphenated number
+      // itself is plain font-mono text, not a link; only the
+      // external-link icon is the clickable `<a>`, same muted
+      // pre-blended gray. isbnSearchUrl takes the raw digits-only value
+      // (sampleBook.isbn), not the hyphenated display string.
+      value: (
+        <span className="inline-flex items-center gap-1.5">
+          <span className="font-mono">{hyphenateISBN(sampleBook.isbn)}</span>
+          <a
+            href={isbnSearchUrl(sampleBook.isbn)}
+            target="_blank"
+            rel="noreferrer"
+            aria-label="View on isbnsearch.org"
+            className="text-[#9c968f] hover:text-ink-soft"
+          >
+            <IconExternalLink size={12} />
+          </a>
+        </span>
+      ),
+    })
   }
   if (sampleBook.originalFilename) {
     fields.push({ label: 'Original filename', value: sampleBook.originalFilename })

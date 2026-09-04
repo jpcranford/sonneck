@@ -42,3 +42,13 @@ export function hyphenateISBN(digits: string): string {
 function isbnRegistrationGroupLength(firstDigit: string): number {
   return ['0', '1', '2', '3', '4', '5', '7'].includes(firstDigit) ? 1 : 2
 }
+
+// isbnsearch.org resolves a raw ISBN-10/13 straight to its page — same
+// "view on {source}" external-link affordance IMSLP no. already gets
+// (imslpReverseLookupUrl, duplicated locally in each of PiecePage.tsx/
+// PieceDetailsSample.tsx/BookDetailsPage.tsx/BookDetailsSample.tsx). Built
+// from the stored digits-only value (models.Book.ISBN), not the hyphenated
+// display string hyphenateISBN produces.
+export function isbnSearchUrl(isbn: string): string {
+  return `https://isbnsearch.org/isbn/${encodeURIComponent(isbn)}`
+}

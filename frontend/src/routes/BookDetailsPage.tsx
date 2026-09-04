@@ -24,7 +24,7 @@ import {
 import { getPieceThumbnailUrl, searchPieces } from '../api/pieces'
 import { ApiError } from '../api/client'
 import type { Piece } from '../api/types'
-import { hyphenateISBN } from '../lib/isbn'
+import { hyphenateISBN, isbnSearchUrl } from '../lib/isbn'
 import { joinNames, personCreditPart } from '../lib/joinNames'
 import { ClickableCard } from '../components/ClickableCard'
 import { ContextMenu } from '../components/ContextMenu'
@@ -443,7 +443,28 @@ export function BookDetailsPage() {
     // no. row above — nothing to substitute, the row simply doesn't
     // render.
     if (!book.imslpNumber && book.isbn) {
-      fields.push({ label: 'ISBN', value: <span className="font-mono">{hyphenateISBN(book.isbn)}</span> })
+      fields.push({
+        label: 'ISBN',
+        // Matches the IMSLP no. row just above — the hyphenated number
+        // itself is plain font-mono text, not a link; only the
+        // external-link icon is the clickable `<a>`, same muted
+        // pre-blended gray. isbnSearchUrl takes the raw digits-only value
+        // (book.isbn), not the hyphenated display string.
+        value: (
+          <span className="inline-flex items-center gap-1.5">
+            <span className="font-mono">{hyphenateISBN(book.isbn)}</span>
+            <a
+              href={isbnSearchUrl(book.isbn)}
+              target="_blank"
+              rel="noreferrer"
+              aria-label="View on isbnsearch.org"
+              className="text-[#9c968f] hover:text-ink-soft"
+            >
+              <IconExternalLink size={12} />
+            </a>
+          </span>
+        ),
+      })
     }
     if (book.originalFilename) {
       fields.push({ label: 'Original filename', value: book.originalFilename })
