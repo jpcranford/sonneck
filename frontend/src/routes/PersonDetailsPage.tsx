@@ -110,6 +110,26 @@ function workYearSortKey(piece: Piece): number {
   const match = piece.yearWritten.value.match(/\d+/)
   return match ? Number(match[0]) : Number.POSITIVE_INFINITY
 }
+// Compares the piece's own effective opus number (workOpusNumber, a
+// book-inheritable EffectiveField same as yearWritten above — resolved
+// server-side by repo.ResolveEffective, this just reads .value). Real dev
+// data surfaced a case the initial mockup fixture didn't: a set of pieces
+// sharing one base opus ("Op. 12 No. 1".."Op. 12 No. 10") needs its
+// trailing number compared too, not just the first one found, or the whole
+// set falls through to a plain alphabetical title tiebreak instead of
+// piece-number order. `localeCompare`'s built-in `numeric: true` mode
+// handles this in one line — it compares embedded digit runs
+// numerically wherever they appear in the string, so "No. 2" sorts before
+// "No. 10" — rather than a hand-rolled multi-number array comparison. A
+// piece with no opus at all sorts last (direct request, 2026-09-03).
+function compareOpus(a: Piece, b: Piece): number {
+  const av = a.workOpusNumber.value
+  const bv = b.workOpusNumber.value
+  if (!av && !bv) return 0
+  if (!av) return 1
+  if (!bv) return -1
+  return av.localeCompare(bv, undefined, { numeric: true })
+}
 // Same "ignore a leading A/An/The" library-catalog convention the
 // backend's own title sort already applies everywhere else (CLAUDE.md >
 // Frontend, articleStrippedSQL) — ported client-side here since this page
@@ -119,13 +139,17 @@ function workYearSortKey(piece: Piece): number {
 function titleSortKey(title: string): string {
   return title.replace(/^(a|an|the)\s+/i, '').toLowerCase()
 }
-// Year written first, title A→Z as the tiebreaker (direct request,
-// 2026-09-01) — a year-less work still sorts last by year (workYearSortKey's
-// own +Infinity), then alphabetically among itself.
-function sortWorksByYear(pieces: Piece[]): Piece[] {
+// Year written first, then opus number, then title A→Z as the final
+// tiebreaker (direct request, 2026-09-03 — opus inserted as the new middle
+// key between the existing year-then-title chain from 2026-09-01). A
+// year-less/opus-less work still sorts last within its tier (both sort
+// keys' own +Infinity), then alphabetically among itself.
+function sortWorks(pieces: Piece[]): Piece[] {
   return [...pieces].sort((a, b) => {
     const yearDiff = workYearSortKey(a) - workYearSortKey(b)
     if (yearDiff !== 0) return yearDiff
+    const opusDiff = compareOpus(a, b)
+    if (opusDiff !== 0) return opusDiff
     return titleSortKey(a.title).localeCompare(titleSortKey(b.title))
   })
 }
@@ -463,7 +487,7 @@ export function PersonDetailsPage() {
   }
 
   const notFound = personError instanceof ApiError && personError.code === 'NOT_FOUND'
-  const sortedWorks = works ? sortWorksByYear(works) : []
+  const sortedWorks = works ? sortWorks(works) : []
 
   const avatarContextMenuItems = person
     ? [

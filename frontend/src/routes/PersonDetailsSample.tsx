@@ -158,7 +158,12 @@ const MOCK_WORKS: MockWork[] = [
     id: 106,
     title: 'Military Polonaise',
     opus: 'Op. 40 No. 1',
-    yearWritten: { value: '1838', inherited: false },
+    // Deliberately shares 1836 with work 107 below (was 1838) — the two
+    // now collide on year, so the new opus-number tiebreaker (2026-09-03)
+    // is actually exercised: this work's "Op. 40 No. 1" (opusSortKey 40)
+    // must sort ahead of 107's opus-less null (sorts last), not fall back
+    // to a coincidentally-correct title comparison.
+    yearWritten: { value: '1836', inherited: false },
     role: 'Composer',
     // Carries a co-arranger too — exercises the composer+arranger fusion
     // branch of workMetaLine below, not just the plain-composer case every
@@ -174,7 +179,8 @@ const MOCK_WORKS: MockWork[] = [
   // Demonstrates the Arranger role case — the role badge/filter reads
   // person-specific per work, not a fixed property of the whole page, so
   // at least one non-Composer credit needs to exist in the fixture to
-  // actually exercise that path.
+  // actually exercise that path. Also the opus-less half of the 1836
+  // year-collision with work 106 above (see its own comment).
   {
     id: 107,
     title: 'Chant polonais',
@@ -216,12 +222,11 @@ const MOCK_WORKS: MockWork[] = [
   },
 ]
 
-// Chronological, not grouped by role — sortWorksByYear (defined below;
-// function declarations hoist, so this module-level use ahead of its own
-// textual definition is fine) mixes Composer and Arranger credits into one
-// flat list, per direct instruction not to sort arranger credits
-// separately.
-const SORTED_WORKS = sortWorksByYear(MOCK_WORKS)
+// Chronological, not grouped by role — sortWorks (defined below; function
+// declarations hoist, so this module-level use ahead of its own textual
+// definition is fine) mixes Composer and Arranger credits into one flat
+// list, per direct instruction not to sort arranger credits separately.
+const SORTED_WORKS = sortWorks(MOCK_WORKS)
 
 // Direct book-level credits (Book.composer/arranger naming this person
 // specifically, not just a piece inheriting it) — locked as a small chip
@@ -336,18 +341,39 @@ function workYearSortKey(work: MockWork): number {
   const match = work.yearWritten?.value.match(/\d+/)
   return match ? Number(match[0]) : Number.POSITIVE_INFINITY
 }
+// Compares the work's own effective opus number (mirrors the real
+// piece.workOpusNumber's resolved/book-inheritable value — this fixture's
+// plain `opus: string | null` already stands in for that same effective
+// value, same as yearWritten above). Real dev data surfaced a case this
+// fixture didn't originally cover: a set of pieces sharing one base opus
+// ("Op. 12 No. 1".."Op. 12 No. 10") needs its trailing number compared too,
+// not just the first one found, or the whole set falls through to a plain
+// alphabetical title tiebreak instead of piece-number order (see
+// PersonDetailsPage.tsx's own compareOpus for the full writeup — ported
+// here for mockup-parity). `localeCompare`'s built-in `numeric: true` mode
+// handles this in one line. A work with no opus at all sorts last (direct
+// request, 2026-09-03).
+function compareOpus(a: string | null, b: string | null): number {
+  if (!a && !b) return 0
+  if (!a) return 1
+  if (!b) return -1
+  return a.localeCompare(b, undefined, { numeric: true })
+}
 // Same "ignore a leading A/An/The" convention the backend's own title sort
 // applies elsewhere (CLAUDE.md > Frontend) — mockup-parity with
 // PersonDetailsPage.tsx's own titleSortKey.
 function titleSortKey(title: string): string {
   return title.replace(/^(a|an|the)\s+/i, '').toLowerCase()
 }
-// Year written first, title A→Z as the tiebreaker (direct request,
-// 2026-09-01, mockup-parity with the real page).
-function sortWorksByYear(works: MockWork[]): MockWork[] {
+// Year written first, then opus number, then title A→Z as the final
+// tiebreaker (direct request, 2026-09-03 — opus inserted as the new middle
+// key between the existing year-then-title chain from 2026-09-01).
+function sortWorks(works: MockWork[]): MockWork[] {
   return [...works].sort((a, b) => {
     const yearDiff = workYearSortKey(a) - workYearSortKey(b)
     if (yearDiff !== 0) return yearDiff
+    const opusDiff = compareOpus(a.opus, b.opus)
+    if (opusDiff !== 0) return opusDiff
     return titleSortKey(a.title).localeCompare(titleSortKey(b.title))
   })
 }
