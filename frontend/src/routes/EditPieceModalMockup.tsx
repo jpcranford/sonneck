@@ -485,7 +485,12 @@ function TagComboBox({
   const filtered = options
     .filter((o) => allowDuplicates || !selected.some((s) => s.id === o.id))
     .filter((o) =>
-      filterOption ? filterOption(o, query) : o.name.toLowerCase().includes(query.toLowerCase()),
+      filterOption
+        ? filterOption(o, query)
+        : // Spaces stripped from both sides (direct request, 2026-09-05,
+          // mockup-parity with the real TagComboBox.tsx's own
+          // normalizeForSearch) — "toml" matches "Tom Lehrer".
+          o.name.toLowerCase().replace(/\s+/g, '').includes(query.toLowerCase().replace(/\s+/g, '')),
     )
   const exactMatch = options.some((o) => o.name.toLowerCase() === query.trim().toLowerCase())
   // Same slice(0, 6) the dropdown itself renders — keyboard nav has to walk
