@@ -16,6 +16,7 @@ import { PieceListCard } from './PieceListCard'
 import { SortControl, type SortDirection, type SortFieldOption } from './SortControl'
 import { PieceFilterDrawer } from './PieceFilterDrawer'
 import { EMPTY_PIECE_FILTERS, activePieceFilterCount, type PieceFilterState } from '../lib/pieceFilterState'
+import { usePageTitle } from '../lib/usePageTitle'
 
 // Matches the backend's own default (internal/handlers/search.go) — passed
 // explicitly here rather than relying on that default, since this is also
@@ -96,6 +97,12 @@ export function PieceBrowseView({
   gridCardSize = 'default',
   backLabel,
 }: PieceBrowseViewProps) {
+  // backLabel already carries this view's own display name ("Library",
+  // "Favorites", "Want to Learn", "Currently Practicing", "Learned") for
+  // its "back to X" purpose elsewhere — reused as-is for the tab title
+  // rather than adding a second, redundant prop every call site would
+  // need to keep in sync with it.
+  usePageTitle(backLabel)
   const [query, setQuery] = useState('')
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
   const [sortField, setSortField] = useState<SortField>('dateAdded')

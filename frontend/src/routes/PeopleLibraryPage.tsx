@@ -23,6 +23,7 @@ import { ClickableCard } from '../components/ClickableCard'
 import { InfoTooltip } from '../components/InfoTooltip'
 import { Modal } from '../components/Modal'
 import { PersonContextMenu } from '../components/PersonContextMenu'
+import { usePageTitle } from '../lib/usePageTitle'
 
 // The real People Library (/people) — composer/arranger overhaul, Stage B.
 // Real build of PeopleLibrarySample.tsx (/mockup/people-library, kept as a
@@ -561,6 +562,7 @@ function toIntOrNull(value: string): number | null {
 }
 
 export function PeopleLibraryPage() {
+  usePageTitle('People')
   const queryClient = useQueryClient()
   const [query, setQuery] = useState('')
   const debouncedQuery = useDebouncedValue(query, 250)

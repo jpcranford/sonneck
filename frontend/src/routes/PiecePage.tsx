@@ -26,7 +26,8 @@ import type { Book } from '../api/types'
 import { copyToClipboard } from '../lib/clipboard'
 import { COPYRIGHT_BADGE_META, copyrightTooltipText } from '../lib/copyrightBadge'
 import { hyphenateISBN } from '../lib/isbn'
-import { joinNames } from '../lib/joinNames'
+import { joinNames, pieceTitleCredit } from '../lib/joinNames'
+import { usePageTitle } from '../lib/usePageTitle'
 import { yearWrittenSource } from '../lib/yearWrittenSource'
 import { PersonNameLinks } from '../components/PersonNameLinks'
 import {
@@ -232,6 +233,26 @@ export function PiecePage() {
   })
 
   const notFound = error instanceof ApiError && error.code === 'NOT_FOUND'
+
+  usePageTitle(
+    piece &&
+      (() => {
+        // A freshly uploaded piece can legitimately have neither a
+        // composer nor an arranger yet — handleCreatePiece deliberately
+        // skips api.ValidatePiece's composer-or-arranger requirement,
+        // which only applies to the Edit Piece/Book save flows (found
+        // live, 2026-09-04: a real title-only piece was rendering the tab
+        // title as "CoverLetter by" with a dangling "by" and nothing
+        // after it). Same "omit the segment cleanly, including its own
+        // separator" convention downloadFilename already uses server-side
+        // for this exact kind of optional piece.
+        const credit = pieceTitleCredit(
+          piece.composer.values.map((p) => p.name),
+          piece.arranger.values.map((p) => p.name),
+        )
+        return credit ? `${piece.title} by ${credit}` : piece.title
+      })(),
+  )
 
   const { data: book } = useQuery({
     queryKey: ['book', piece?.sourceBookId],

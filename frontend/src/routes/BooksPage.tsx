@@ -17,6 +17,7 @@ import { NewBookModal } from '../components/NewBookModal'
 import { BookFilterDrawer } from '../components/BookFilterDrawer'
 import { SortControl, type SortDirection, type SortFieldOption } from '../components/SortControl'
 import { EMPTY_BOOK_FILTERS, activeBookFilterCount, type BookFilterState } from '../lib/bookFilterState'
+import { usePageTitle } from '../lib/usePageTitle'
 
 type ViewMode = 'grid' | 'list'
 type BookSortField = 'dateAdded' | 'title' | 'composer' | 'yearPublished'
@@ -45,6 +46,7 @@ const DIRECTION_LABEL: Record<BookSortField, Record<SortDirection, string>> = {
 // 2026-08-27, same system as PieceBrowseView.tsx) — Filters/Sort/drawer
 // added on top of the pre-existing search+grid/list toolbar.
 export function BooksPage() {
+  usePageTitle('Books')
   const [query, setQuery] = useState('')
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
   const [newBookOpen, setNewBookOpen] = useState(false)

@@ -35,6 +35,7 @@ import { TagComboBox } from '../components/TagComboBox'
 import { TagPills } from '../components/TagPills'
 import { joinNames, personCreditPart } from '../lib/joinNames'
 import { PALETTE } from '../lib/pieceSplitLogic'
+import { usePageTitle } from '../lib/usePageTitle'
 
 // The real Person Details page (/people/:id) — composer/arranger overhaul,
 // Stage B. Real build of PersonDetailsSample.tsx (/mockup/person-details,
@@ -392,6 +393,8 @@ export function PersonDetailsPage() {
     queryFn: () => searchPieces({ personId }),
     enabled: !!person,
   })
+
+  usePageTitle(person?.name)
 
   const { data: bookCredits } = useQuery({
     queryKey: ['books', { personId }],

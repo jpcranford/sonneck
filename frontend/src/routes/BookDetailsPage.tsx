@@ -26,6 +26,7 @@ import { ApiError } from '../api/client'
 import type { Piece } from '../api/types'
 import { hyphenateISBN, isbnSearchUrl } from '../lib/isbn'
 import { joinNames, personCreditPart } from '../lib/joinNames'
+import { usePageTitle } from '../lib/usePageTitle'
 import { ClickableCard } from '../components/ClickableCard'
 import { ContextMenu } from '../components/ContextMenu'
 import { EditBookModal } from '../components/EditBookModal'
@@ -276,6 +277,8 @@ export function BookDetailsPage() {
     queryFn: () => searchPieces({ sourceBookId: bookId }),
     enabled: !!book,
   })
+
+  usePageTitle(book?.bookTitle)
 
   // aspect-[2/3] on the cover box below is a *loading-state placeholder
   // only*, not the real image's shape — same fix already applied to Piece

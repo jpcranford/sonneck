@@ -28,6 +28,19 @@ export function personCreditPart(composerNames: string[], arrangerNames: string[
   return null
 }
 
+// Tab-title credit ("(pieceTitle) by (composer)") — deliberately simpler
+// than personCreditPart above: composer wins outright when present (even
+// alongside an arranger — the title spec only ever wants one name segment),
+// falling back to the arranger's own plain name with no "arr." label when
+// there's no composer at all (a traditional/folk piece crediting only an
+// arranger is a legitimate case, same as everywhere else in this app).
+// Direct decision, 2026-09-04, since usePageTitle's callers need this exact
+// shape and personCreditPart's citation-style "arr." fusion would misfit a
+// tab title.
+export function pieceTitleCredit(composerNames: string[], arrangerNames: string[]): string {
+  return composerNames.length > 0 ? joinNames(composerNames) : joinNames(arrangerNames)
+}
+
 // Bridges an ordered Person-name list to/from a single plain-text input —
 // this is what lets such a field round-trip a multi-person credit as a
 // comma-separated list, rather than silently truncating to one name.

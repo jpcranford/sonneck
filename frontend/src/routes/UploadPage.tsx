@@ -23,6 +23,7 @@ import { ApiError } from '../api/client'
 import type { Piece, Tag } from '../api/types'
 import { loadWizardDraft } from '../lib/useWizardDraft'
 import { matchesKeyQuery } from '../lib/keySearch'
+import { usePageTitle } from '../lib/usePageTitle'
 import { PageLightbox } from '../components/PageLightbox'
 import { SourceBookField } from '../components/SourceBookField'
 import { TagComboBox } from '../components/TagComboBox'
@@ -80,6 +81,11 @@ export function UploadPage() {
   // when stage === 'book', so getting there in the first place is this
   // page's own job, checked once at the lazy-init.
   const [stage, setStage] = useState<Stage>(() => (loadWizardDraft() ? 'book' : 'landing'))
+  // Generic "Upload" on the landing fork (before Piece/Book is even
+  // chosen), then specific once it is — every piece-flow stage after that
+  // choice (select/uploading/details/success) reads "Upload Piece", the
+  // book placeholder reads "Upload Book" (direct decision, 2026-09-04).
+  usePageTitle(stage === 'landing' ? 'Upload' : stage === 'book' ? 'Upload Book' : 'Upload Piece')
   const [fileError, setFileError] = useState<string | null>(null)
   const [progress, setProgress] = useState(0)
   const [piece, setPiece] = useState<Piece | null>(null)
