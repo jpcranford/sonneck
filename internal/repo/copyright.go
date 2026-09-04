@@ -31,7 +31,17 @@ import (
 // expiryYear is only ever non-nil for the two "as of {year}" tooltip
 // states (publicDomain/likelyPublicDomain) — an explicit 'copyleft'/
 // 'inCopyright' pick the calculation hasn't (yet) overridden shows no year,
-// matching the badge design (design artifact §5).
+// matching the badge design (design artifact §5). Also nil for a sticky
+// 'publicDomain'/'likelyPublicDomain' pick whose own calc.ExpiryYear hasn't
+// actually arrived yet (calc.IsLikelyPD false) — found live, 2026-09-05: an
+// explicit publicDomain override with a copyrightYear the calculation
+// disagrees with was surfacing that future date anyway, rendering as the
+// self-contradictory "Public domain as of 2060" (a status claiming *already*
+// PD, qualified by a year that hasn't happened). buildCitation already
+// treats this exact contradiction as citation-note-worthy rather than
+// year-worthy (see its own comment); the tooltip needed the equivalent
+// fix — only ever surface a year that has actually elapsed, the same gate
+// the copyleft/inCopyright branch below already applies correctly.
 //
 // calculatedLikelyPD is the *raw* calculation's own conclusion — what
 // calc.IsLikelyPD says — independent of any explicit override, including
@@ -79,10 +89,17 @@ func ResolveCopyrightStatus(ctx context.Context, q Queryer, eff *EffectivePiece,
 
 	switch explicit {
 	case "publicDomain", "likelyPublicDomain":
-		// Sticky — but still surface the calculation's own expiry year for
-		// the tooltip when it happens to be computable, even though the
-		// status itself isn't up for override here.
-		return explicit, calc.ExpiryYear, calc.IsLikelyPD, nil
+		// Sticky — the status itself isn't up for override here, but the
+		// tooltip's year still only makes sense once it's actually true:
+		// surface calc.ExpiryYear when the calculation agrees the term has
+		// already elapsed (calc.IsLikelyPD), nil otherwise (a contradicting
+		// pick with a still-future calculated expiry, e.g. someone marking
+		// a piece Public Domain ahead of what the on-record copyright year
+		// alone would justify).
+		if calc.IsLikelyPD {
+			return explicit, calc.ExpiryYear, calc.IsLikelyPD, nil
+		}
+		return explicit, nil, calc.IsLikelyPD, nil
 	case "copyleft", "inCopyright":
 		if calc.IsLikelyPD {
 			return computedPDStatus, calc.ExpiryYear, calc.IsLikelyPD, nil

@@ -149,3 +149,47 @@ func TestCopyrightStatus_LikelyPublicDomainOutsideRenewalWindow(t *testing.T) {
 		t.Errorf("effective status = %q, want %q", got, "likelyPublicDomain")
 	}
 }
+
+// Real bug found live, 2026-09-05: an explicit 'publicDomain' pick is
+// sticky (the calculation can never override it back to inCopyright), but
+// this piece's own copyrightYear (1965) puts the calculation's own 95-year
+// term expiry at 2060 — still in the future. The tooltip was rendering
+// "Public domain as of 2060" (self-contradictory: claims *already* PD,
+// qualified by a year that hasn't happened), because ResolveCopyrightStatus
+// surfaced calc.ExpiryYear unconditionally for the sticky case, unlike the
+// copyleft/inCopyright branch right below it, which correctly only ever
+// shows a year that's actually elapsed. effective status must stay
+// "publicDomain" (still sticky) while expiryYear must be nil (nothing
+// sensible to show).
+func TestCopyrightStatus_PublicDomainOverrideWithFutureCalculatedExpiryShowsNoYear(t *testing.T) {
+	h := newTestServer(t)
+	dir := t.TempDir()
+	path := dir + "/piece.pdf"
+	writeFixturePDF(t, path, 1)
+	rec := recordRequest(h, multipartUpload(t, "/api/pieces", "piece.pdf", readAll(t, path)))
+	var uploaded pieceResponse
+	decodeData(t, rec, &uploaded)
+
+	decodeData(t, doJSON(t, h, http.MethodPatch, apiPiecesURL(uploaded.ID), map[string]any{
+		"title":           "Smut",
+		"composers":       []string{"Tom Lehrer"},
+		"copyrightYear":   1965, // 1965+95=2060, still in the future
+		"copyrightStatus": "publicDomain",
+	}), nil)
+
+	getRec := doJSON(t, h, http.MethodGet, apiPiecesURL(uploaded.ID), nil)
+	var resp struct {
+		CopyrightStatus struct {
+			Effective  string `json:"effective"`
+			ExpiryYear *int   `json:"expiryYear"`
+		} `json:"copyrightStatus"`
+	}
+	decodeData(t, getRec, &resp)
+
+	if resp.CopyrightStatus.Effective != "publicDomain" {
+		t.Errorf("effective status = %q, want %q (explicit pick stays sticky)", resp.CopyrightStatus.Effective, "publicDomain")
+	}
+	if resp.CopyrightStatus.ExpiryYear != nil {
+		t.Errorf("expiryYear = %v, want nil (calculated expiry hasn't elapsed yet)", *resp.CopyrightStatus.ExpiryYear)
+	}
+}
