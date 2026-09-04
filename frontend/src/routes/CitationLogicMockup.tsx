@@ -46,8 +46,7 @@ const FLAT_LEAVES: Leaf[] = [
   },
   {
     id: 'A2',
-    pattern:
-      'Public Domain, contradicts the live calc — + publicDomainNote (the slug, else "Public domain.")',
+    pattern: 'Public Domain, contradicts the live calc — + bare literal "Public domain." note',
     example: `Alexandre Boëly, 24 Pièces pour l'orgue, Op. 12, No. 5 "Prélude", IMSLP #972987, 1842. Public domain.`,
     source: 'TestCitation_FlatCitationMovesBookOpusToBookNameForPublicDomainPiece',
   },
@@ -275,11 +274,6 @@ export function CitationLogicMockup() {
             name="copyrightClause(eff)"
             description={`Copyright Holder falls back to the piece's effective Publisher when unset. A bare "(renewed)" marker (US renewal follow-up — no specific year, since the exact filing year never changes the term calculation) joins right after the year when CopyrightRenewed is set. Omitted entirely (returns "") when there's neither a year nor a holder to attribute to.`}
             example={`year 1950, renewed, holder "Test Publisher" → "Copyright © 1950 (renewed) Test Publisher."`}
-          />
-          <IndependentCard
-            name="publicDomainNote(slug)"
-            description='The piece’s own copyrightSlug if set, else the literal "Public domain."'
-            example={`slug unset → "Public domain."`}
           />
           <IndependentCard
             name="endsWithPeriod(s)"

@@ -557,6 +557,44 @@ func TestCitation_ExplicitPublicDomainAgreeingWithCalculationGetsNoTrailingNote(
 	}
 }
 
+// Real bug found live, 2026-09-05: an explicit 'publicDomain' pick that
+// contradicts the calculation (copyrightYear recent enough that the term
+// hasn't expired yet) used to substitute the piece's own CopyrightSlug for
+// the trailing "Public domain." note when one was set — "Tom Lehrer,
+// 'Smut', 1965. Released into public domain on November 26, 2022." instead
+// of "... Public domain." — reading as the slug silently overriding the PD
+// status rather than clarifying it. Direct product decision: the trailing
+// note is always the bare literal now, regardless of CopyrightSlug (which
+// still displays on its own in Piece Details' Advanced/Get Info panel).
+func TestCitation_PublicDomainOverrideNeverShowsCopyrightSlug(t *testing.T) {
+	h := newTestServer(t)
+	dir := t.TempDir()
+	path := dir + "/piece.pdf"
+	writeFixturePDF(t, path, 1)
+	rec := recordRequest(h, multipartUpload(t, "/api/pieces", "piece.pdf", readAll(t, path)))
+	var uploaded pieceResponse
+	decodeData(t, rec, &uploaded)
+
+	decodeData(t, doJSON(t, h, http.MethodPatch, apiPiecesURL(uploaded.ID), map[string]any{
+		"title":           "Smut",
+		"composers":       []string{"Tom Lehrer"},
+		"copyrightYear":   1965, // 1965+95=2060, still in the future
+		"copyrightStatus": "publicDomain",
+		"copyrightSlug":   "Released into public domain on November 26, 2022.",
+	}), nil)
+
+	citeRec := doJSON(t, h, http.MethodGet, apiPiecesURL(uploaded.ID)+"/citation", nil)
+	var citation struct {
+		Citation string `json:"citation"`
+	}
+	decodeData(t, citeRec, &citation)
+
+	want := `Tom Lehrer, "Smut", 1965. Public domain.`
+	if citation.Citation != want {
+		t.Errorf("citation = %q, want %q", citation.Citation, want)
+	}
+}
+
 // The book's opus number still renders (as its own comma-joined addition
 // to the book title) when the piece's own effective opus number doesn't
 // actually contain it — a genuinely different identifier, not a

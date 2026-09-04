@@ -168,10 +168,22 @@ type citationInput struct {
 // Public Domain citation ends bare by default — no trailing note — with
 // one deliberate exception: an explicit 'publicDomain' pick that actually
 // contradicts what the live calculation would otherwise show (i.e. the
-// calculation alone would call this piece In Copyright) keeps the note,
-// since silently ending the citation there would read as unexplained
-// rather than simply unremarkable. `likelyPublicDomain` never hits this —
-// it's derived *from* the calculation, so it can't contradict it.
+// calculation alone would call this piece In Copyright) keeps a bare literal
+// "Public domain." note, since silently ending the citation there would
+// read as unexplained rather than simply unremarkable. `likelyPublicDomain`
+// never hits this — it's derived *from* the calculation, so it can't
+// contradict it.
+//
+// This trailing note is always the literal "Public domain." — never the
+// piece's own CopyrightSlug (found live, 2026-09-05: a piece's citation was
+// showing "Released into public domain on November 26, 2022." — its
+// CopyrightSlug — in place of "Public domain.", which read as the slug
+// silently overriding/hiding the actual PD status rather than clarifying
+// it). An earlier version of this feature substituted the slug here when
+// set; that's been dropped as a direct product decision — the slug still
+// displays on its own in Piece Details' Advanced/Get Info panel
+// ("Copyright details" row) regardless of status, just never folded into
+// the citation's own PD note.
 func buildCitation(in citationInput) string {
 	showsCopyrightClause := in.copyrightStatus == "copyleft" || in.copyrightStatus == "inCopyright"
 
@@ -190,7 +202,7 @@ func buildCitation(in citationInput) string {
 		return flat
 	}
 	if in.copyrightStatus == "publicDomain" && !in.calculatedLikelyPD {
-		return flat + " " + publicDomainNote(in.eff.CopyrightSlug.Value)
+		return flat + " Public domain."
 	}
 	return flat
 }
@@ -474,23 +486,10 @@ func copyrightClause(eff *repo.EffectivePiece) string {
 	return base
 }
 
-// publicDomainNote is the Public Domain/Likely Public Domain equivalent of
-// copyrightClause — never the "Copyright © ..." clause itself (nothing to
-// attribute once there's no copyright), just the piece's own
-// copyrightSlug, or the literal "Public domain." when that's unset (direct
-// request, round 3).
-func publicDomainNote(slug string) string {
-	if slug == "" {
-		return "Public domain."
-	}
-	return endsWithPeriod(slug)
-}
-
 // endsWithPeriod appends a trailing period only if s doesn't already have
-// one — used for both copyrightClause/publicDomainNote's own slug segment
-// and copyrightClause's holder segment (a holder like "G. Schirmer, Inc."
-// already ends in one from the abbreviation; appending unconditionally
-// would produce "Inc..").
+// one — used for both copyrightClause's own slug segment and its holder
+// segment (a holder like "G. Schirmer, Inc." already ends in one from the
+// abbreviation; appending unconditionally would produce "Inc..").
 func endsWithPeriod(s string) string {
 	if strings.HasSuffix(s, ".") {
 		return s
