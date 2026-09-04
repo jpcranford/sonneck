@@ -95,3 +95,44 @@ func TestDownloadFilename_PreservesCommas(t *testing.T) {
 		t.Errorf("downloadFilename(...) = %q, want %q (commas must survive, not become \"_\")", got, want)
 	}
 }
+
+// TestSanitizeFilename_FoldsDiacritics is a real bug found live
+// (2026-09-05): unsafeFilenameChars only allows plain ASCII letters, so
+// every accented character in a composer/title fell to its "_"
+// replacement instead of its closest ASCII equivalent —
+// "Frédéric Chopin.pdf" was downloading as "Fr_d_ric_Chopin.pdf". Covers
+// both NFD-decomposable accents (é, ř, ó, ñ) and the Latin letters that
+// aren't a base+combining-mark pair at all (ß, æ, ø, ł, þ, ð), which NFD
+// decomposition alone can't touch.
+func TestSanitizeFilename_FoldsDiacritics(t *testing.T) {
+	tests := []struct{ in, want string }{
+		{"Frédéric Chopin", "Frederic Chopin"},
+		{"Antonín Dvořák", "Antonin Dvorak"},
+		{"Bedřich Smetana", "Bedrich Smetana"},
+		{"Niño García", "Nino Garcia"},
+		{"Café Müller", "Cafe Muller"},
+		{"Weiße Rose", "Weisse Rose"},
+		{"Grieg – Øystein", "Grieg _ Oystein"},
+		{"Wacław Kisielewski", "Waclaw Kisielewski"},
+		{"Þórunn", "Thorunn"},
+		{"Sørensen", "Sorensen"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.in, func(t *testing.T) {
+			if got := sanitizeFilename(tt.in); got != tt.want {
+				t.Errorf("sanitizeFilename(%q) = %q, want %q", tt.in, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestDownloadFilename_FoldsDiacritics confirms the fold applies through
+// the real call path (downloadFilename → sanitizeFilename), not just to a
+// bare string.
+func TestDownloadFilename_FoldsDiacritics(t *testing.T) {
+	got := downloadFilename("Frédéric Chopin", "", "", "Étude", "1832")
+	want := "Frederic Chopin - Etude (1832)"
+	if got != want {
+		t.Errorf("downloadFilename(...) = %q, want %q", got, want)
+	}
+}

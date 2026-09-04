@@ -4,6 +4,11 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"unicode"
+
+	"golang.org/x/text/runes"
+	"golang.org/x/text/transform"
+	"golang.org/x/text/unicode/norm"
 )
 
 // imslpNumberPattern is design doc §3's filename-based IMSLP detection: a
@@ -49,8 +54,40 @@ func detectImslpNumber(filename string) *string {
 // it), so there was never a real reason to strip it.
 var unsafeFilenameChars = regexp.MustCompile(`[^a-zA-Z0-9 _(),-]+`)
 
+// diacriticStripper decomposes precomposed accented letters (é → e +
+// combining acute) and drops the combining mark, so a composer/title with
+// diacritics degrades to its closest ASCII letter instead of falling
+// straight to unsafeFilenameChars' "_" replacement below (found 2026-09-05:
+// "Frédéric Chopin - Nocturne.pdf" was downloading as
+// "Fr_d_ric_Chopin_-_Nocturne.pdf").
+var diacriticStripper = transform.Chain(norm.NFD, runes.Remove(runes.In(unicode.Mn)), norm.NFC)
+
+// extraLatinFolds covers the common Latin letters NFD decomposition can't
+// touch — they're their own code points, not a base letter plus a
+// combining mark, so diacriticStripper above passes them through
+// unchanged and they'd otherwise still hit the "_" fallback.
+var extraLatinFolds = strings.NewReplacer(
+	"ß", "ss",
+	"æ", "ae", "Æ", "AE",
+	"œ", "oe", "Œ", "OE",
+	"ø", "o", "Ø", "O",
+	"đ", "d", "Đ", "D",
+	"ł", "l", "Ł", "L",
+	"þ", "th", "Þ", "Th",
+	"ð", "d", "Ð", "D",
+)
+
+func stripDiacritics(s string) string {
+	folded := extraLatinFolds.Replace(s)
+	result, _, err := transform.String(diacriticStripper, folded)
+	if err != nil {
+		return folded
+	}
+	return result
+}
+
 func sanitizeFilename(title string) string {
-	cleaned := strings.TrimSpace(unsafeFilenameChars.ReplaceAllString(title, "_"))
+	cleaned := strings.TrimSpace(unsafeFilenameChars.ReplaceAllString(stripDiacritics(title), "_"))
 	if cleaned == "" {
 		return "piece"
 	}
