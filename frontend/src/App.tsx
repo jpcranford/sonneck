@@ -15,6 +15,7 @@ import { PersonDetailsSample } from './routes/PersonDetailsSample'
 import { EditPersonModalMockup } from './routes/EditPersonModalMockup'
 import { BookDetailsSample } from './routes/BookDetailsSample'
 import { EditBookModalMockup } from './routes/EditBookModalMockup'
+import { UploadPieceAboutMockup } from './routes/UploadPieceAboutMockup'
 import { UploadBookAboutMockup } from './routes/UploadBookAboutMockup'
 import { UploadBookSplitMockup } from './routes/UploadBookSplitMockup'
 import { UploadBookTitlesMockup } from './routes/UploadBookTitlesMockup'
@@ -55,6 +56,7 @@ function App() {
         <Route path="mockup/edit-person-modal" element={<EditPersonModalMockup />} />
         <Route path="mockup/book-details" element={<BookDetailsSample />} />
         <Route path="mockup/edit-book-modal" element={<EditBookModalMockup />} />
+        <Route path="mockup/upload-piece-about" element={<UploadPieceAboutMockup />} />
         <Route path="mockup/upload-book-about" element={<UploadBookAboutMockup />} />
         <Route path="mockup/upload-book-split" element={<UploadBookSplitMockup />} />
         <Route path="mockup/upload-book-titles" element={<UploadBookTitlesMockup />} />

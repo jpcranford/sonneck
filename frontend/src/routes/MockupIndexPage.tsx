@@ -52,6 +52,11 @@ const MOCKUPS = [
     note: 'Book Properties Edit Menu (§16) design mockup, incl. the animated Save-progress button.',
   },
   {
+    to: '/mockup/upload-piece-about',
+    name: 'Upload Piece — About This Piece',
+    note: 'Single-piece Upload flow\'s "details" step redesign — Option B ("Essentials + More Details") of a 3-way comparison: Title/Composer/Arranger/Key(s)/Sheet Type always visible, everything else (opus, year, publisher, IMSLP, instruments, description) and the source-book link behind two collapsible sections using the same trigger pattern as EditPieceModal.tsx\'s own Copyright/Book Details.',
+  },
+  {
     to: '/mockup/upload-book-about',
     name: 'Upload — About This Book',
     note: 'Book Upload Wizard (§5), screen 3 of 6 — book-metadata entry with the sticky cover column, plus a printed-vs-PDF page number offset field under the cover cycler.',
