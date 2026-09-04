@@ -47,21 +47,25 @@ var pieceSortColumns = map[string]sortColumnFunc{
 	},
 	// yearWritten is book-inheritable (design doc §3) and TEXT, not INTEGER
 	// (free text, e.g. "ca. 1708-1711") — same two concerns bookSortColumns'
-	// own yearWritten already handles individually, combined here. The
+	// own yearPublished already handles individually, combined here. The
 	// COALESCE mirrors repo.resolveYearWritten exactly (direct follow-up
 	// request extending the original piece-then-book fallback): piece's own
 	// non-blank year_written wins outright, else the piece's own
 	// copyright_year (cast to text so COALESCE's return type stays
 	// consistent — it's an INTEGER column, the other two are TEXT), else
-	// the book's year_published. GLOB '[0-9]*' is the same "does this look
-	// like a real leading year" test bookSortColumns uses, applied to
-	// whichever value actually won the fallback. Direction-invariant first
-	// clause, same "blanks/non-numeric always trail" reasoning as composer
-	// above.
+	// the book's year_published. leading_year(...) (internal/yearparse,
+	// registered internal/db/db.go) is what actually extracts a sortable
+	// year out of whichever value won the fallback — it ignores any texty
+	// prefix ("ca. 1685" sorts as 1685, not last) by finding the first run
+	// of digits anywhere in the string, rather than the old GLOB '[0-9]*'
+	// check's stricter "does the string START with a digit" test, which
+	// misclassified a legitimately-dated "ca. 1685" piece as yearless.
+	// Returns SQL NULL when there's no digit anywhere to find (blank, or
+	// genuinely non-numeric text) — direction-invariant first clause, same
+	// "blanks/non-numeric always trail" reasoning as composer above.
 	"yearWritten": func(dir string) string {
-		const expr = `COALESCE(NULLIF(TRIM(p.year_written), ''), CAST(p.copyright_year AS TEXT), NULLIF(TRIM(b.year_published), ''))`
-		return "(" + expr + " IS NULL OR NOT (" + expr + " GLOB '[0-9]*')) ASC, " +
-			"CAST(" + expr + " AS INTEGER) " + dir
+		const expr = `leading_year(COALESCE(NULLIF(TRIM(p.year_written), ''), CAST(p.copyright_year AS TEXT), NULLIF(TRIM(b.year_published), '')))`
+		return "(" + expr + " IS NULL) ASC, " + expr + " " + dir
 	},
 }
 

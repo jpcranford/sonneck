@@ -185,15 +185,18 @@ func (s *Server) handleCreateBookManual(w http.ResponseWriter, r *http.Request) 
 // are the top of the hierarchy — see handleListBooks's own doc comment).
 // title strips a leading "A"/"An"/"The" via titleSortColumn (internal/
 // handlers/sort.go, shared with pieceSortColumns) — the usual library-
-// catalog sort convention. yearWritten is TEXT, not INTEGER (free text, e.g.
-// "ca. 1708-1711"), so a naive ORDER BY would sort lexicographically —
-// GLOB '[0-9]*' is the "does this look like a real leading year" test
-// (chosen over CAST(...) = 0, which would misclassify a literal "0" as
-// junk), and the whole first clause is direction-invariant (always ASC)
-// so blank/non-numeric years trail regardless of the chosen direction,
-// the same "blanks always last" pattern pieceSortColumns uses for
-// composer, for the same reason (SQLite's own NULL-sorts-first-on-ASC
-// default would otherwise put them at the front of an ascending list).
+// catalog sort convention. yearPublished is TEXT, not INTEGER (free text,
+// e.g. "ca. 1708-1711"), so a naive ORDER BY would sort lexicographically —
+// leading_year(...) (internal/yearparse, registered internal/db/db.go)
+// extracts the first run of digits anywhere in the string as the actual
+// sort key, so a texty prefix ("ca. 1685") sorts by 1685 instead of
+// trailing as if the book had no year at all — the whole first clause is
+// direction-invariant (always ASC) so a book with no digits anywhere in
+// its year (blank, or genuinely non-numeric text) trails regardless of the
+// chosen direction, the same "blanks always last" pattern pieceSortColumns
+// uses for composer, for the same reason (SQLite's own
+// NULL-sorts-first-on-ASC default would otherwise put them at the front of
+// an ascending list).
 var bookSortColumns = map[string]sortColumnFunc{
 	"dateAdded": simpleSortColumn("id"),
 	"title":     titleSortColumn("book_title"),
@@ -201,7 +204,7 @@ var bookSortColumns = map[string]sortColumnFunc{
 	// — composer/arranger overhaul (migration 00020) moved it off a plain
 	// column onto an ordered join table, so this is a scalar subquery now,
 	// not simpleSortColumn. Same direction-invariant "blank sorts last"
-	// clause as yearWritten below (a book with no composer at all has
+	// clause as yearPublished below (a book with no composer at all has
 	// nothing for the subquery to return, i.e. NULL).
 	"composer": func(dir string) string {
 		const expr = `(SELECT p.name FROM book_composers bc JOIN people p ON p.id = bc.person_id WHERE bc.book_id = books.id ORDER BY bc.position LIMIT 1)`
@@ -211,8 +214,8 @@ var bookSortColumns = map[string]sortColumnFunc{
 	// feature, migration 00022) — Book's own field is now genuinely called
 	// YearPublished throughout the API contract, so its sort key follows.
 	"yearPublished": func(dir string) string {
-		return "(year_published IS NULL OR TRIM(year_published) = '' OR NOT (year_published GLOB '[0-9]*')) ASC, " +
-			"CAST(year_published AS INTEGER) " + dir
+		const expr = `leading_year(year_published)`
+		return "(" + expr + " IS NULL) ASC, " + expr + " " + dir
 	},
 }
 

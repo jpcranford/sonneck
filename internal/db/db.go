@@ -10,6 +10,7 @@ import (
 	sqlite "modernc.org/sqlite"
 
 	"github.com/jpcranford/sonneck/internal/fuzzy"
+	"github.com/jpcranford/sonneck/internal/yearparse"
 )
 
 //go:embed migrations/*.sql
@@ -34,12 +35,30 @@ var migrationsFS embed.FS
 // registration, independent of whether it measurably changes query
 // planning (confirmed no meaningful difference either way before
 // choosing this one, not assumed).
+// leading_year is registered the same way, for the same underlying reason
+// (SQLite has no regex support to lean on instead): yearWritten/
+// yearPublished are free-text TEXT columns ("ca. 1708-1711" is real,
+// expected data, design doc §3), so a year-based ORDER BY needs to extract
+// the actual number rather than assume the column is already a bare one —
+// see internal/yearparse's own doc comment for the extraction rule itself
+// (first run of digits anywhere in the string) and CLAUDE.md > Book-level
+// soft inheritance for where its two SQL call sites are.
 func init() {
 	sqlite.RegisterDeterministicScalarFunction("fuzzydist", 2,
 		func(ctx *sqlite.FunctionContext, args []driver.Value) (driver.Value, error) {
 			text, _ := args[0].(string)
 			query, _ := args[1].(string)
 			return int64(fuzzy.MinWordDistance(text, query)), nil
+		},
+	)
+	sqlite.RegisterDeterministicScalarFunction("leading_year", 1,
+		func(ctx *sqlite.FunctionContext, args []driver.Value) (driver.Value, error) {
+			text, _ := args[0].(string)
+			year, ok := yearparse.LeadingYear(text)
+			if !ok {
+				return nil, nil
+			}
+			return int64(year), nil
 		},
 	)
 }

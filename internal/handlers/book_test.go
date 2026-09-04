@@ -328,20 +328,23 @@ func TestListBooks_SortsByTitleIgnoresLeadingArticle(t *testing.T) {
 	}
 }
 
-// TestListBooks_SortsByYearPublishedHandlesNonNumericAndNull proves the
-// direction-invariant "junk sorts last" clause actually works both ways,
-// not just in the default direction — a book with no year and one with
-// free-text (non-numeric) content must both trail whether the numeric one
-// is sorted earliest-first or latest-first.
-func TestListBooks_SortsByYearPublishedHandlesNonNumericAndNull(t *testing.T) {
+// TestListBooks_SortsByYearPublishedTrailsGenuinelyNonNumericAndNull proves
+// the direction-invariant "junk sorts last" clause actually works both
+// ways, not just in the default direction — a book with no year and one
+// with genuinely non-numeric content (no digits anywhere) must both trail
+// whether the numeric one is sorted earliest-first or latest-first. A
+// texty PREFIX in front of a real year is a different case entirely — see
+// TestListBooks_SortsByYearPublishedIgnoresTextyPrefix below, which sorts
+// by the embedded year instead of trailing.
+func TestListBooks_SortsByYearPublishedTrailsGenuinelyNonNumericAndNull(t *testing.T) {
 	h := newTestServer(t)
-	var numeric, freeText, blank bookResponse
+	var numeric, nonNumeric, blank bookResponse
 	decodeData(t, doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
 		"bookTitle": "Numeric Year", "composers": []string{"Someone"}, "yearPublished": "1848",
 	}), &numeric)
 	decodeData(t, doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
-		"bookTitle": "Free Text Year", "composers": []string{"Someone"}, "yearPublished": "ca. 1708-1711",
-	}), &freeText)
+		"bookTitle": "Non-Numeric Year", "composers": []string{"Someone"}, "yearPublished": "unknown",
+	}), &nonNumeric)
 	decodeData(t, doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
 		"bookTitle": "No Year", "composers": []string{"Someone"},
 	}), &blank)
@@ -353,9 +356,39 @@ func TestListBooks_SortsByYearPublishedHandlesNonNumericAndNull(t *testing.T) {
 			t.Fatalf("sort=yearPublished&dir=%s returned %+v, want the numeric-year book first", dir, results)
 		}
 		trailingIDs := map[int64]bool{results[1].ID: true, results[2].ID: true}
-		if !trailingIDs[freeText.ID] || !trailingIDs[blank.ID] {
-			t.Errorf("sort=yearPublished&dir=%s: free-text/blank years must both trail, got %+v", dir, results)
+		if !trailingIDs[nonNumeric.ID] || !trailingIDs[blank.ID] {
+			t.Errorf("sort=yearPublished&dir=%s: non-numeric/blank years must both trail, got %+v", dir, results)
 		}
+	}
+}
+
+// TestListBooks_SortsByYearPublishedIgnoresTextyPrefix is the direct fix
+// proof: a book whose yearPublished carries a texty prefix ("ca.
+// 1708-1711") must sort by the first real year it contains (1708), not
+// trail as if it had no year at all — see
+// TestSearchPieces_SortsByYearWrittenIgnoresTextyPrefix (search_test.go)
+// for the identical proof on the piece side and the full explanation of
+// what bug this guards against.
+func TestListBooks_SortsByYearPublishedIgnoresTextyPrefix(t *testing.T) {
+	h := newTestServer(t)
+	var prefixed, numeric bookResponse
+	decodeData(t, doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
+		"bookTitle": "Prefixed Year", "composers": []string{"Someone"}, "yearPublished": "ca. 1708-1711",
+	}), &prefixed)
+	decodeData(t, doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
+		"bookTitle": "Numeric Year", "composers": []string{"Someone"}, "yearPublished": "1848",
+	}), &numeric)
+
+	var ascResults []bookResponse
+	decodeData(t, doJSON(t, h, http.MethodGet, "/api/books?sort=yearPublished&dir=asc", nil), &ascResults)
+	if len(ascResults) != 2 || ascResults[0].ID != prefixed.ID || ascResults[1].ID != numeric.ID {
+		t.Errorf("sort=yearPublished&dir=asc returned %+v, want [prefixed 1708, numeric 1848]", ascResults)
+	}
+
+	var descResults []bookResponse
+	decodeData(t, doJSON(t, h, http.MethodGet, "/api/books?sort=yearPublished&dir=desc", nil), &descResults)
+	if len(descResults) != 2 || descResults[0].ID != numeric.ID || descResults[1].ID != prefixed.ID {
+		t.Errorf("sort=yearPublished&dir=desc returned %+v, want [numeric 1848, prefixed 1708]", descResults)
 	}
 }
 

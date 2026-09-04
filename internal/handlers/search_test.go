@@ -806,14 +806,17 @@ func TestSearchPieces_SortsByYearWrittenFallsBackToCopyrightYear(t *testing.T) {
 	}
 }
 
-// TestSearchPieces_SortsByYearWrittenHandlesNonNumericAndBlank mirrors
-// TestListBooks_SortsByYearWrittenHandlesNonNumericAndNull (book_test.go) —
-// same free-text/blank "always trails, both directions" proof, on the
-// piece side.
-func TestSearchPieces_SortsByYearWrittenHandlesNonNumericAndBlank(t *testing.T) {
+// TestSearchPieces_SortsByYearWrittenTrailsGenuinelyNonNumericAndBlank
+// mirrors TestListBooks_SortsByYearPublishedTrailsGenuinelyNonNumericAndNull
+// (book_test.go) — same "always trails, both directions" proof, on the
+// piece side, for a value with NO digits anywhere (as opposed to a texty
+// prefix in front of a real year — see
+// TestSearchPieces_SortsByYearWrittenIgnoresTextyPrefix below for that
+// case, which sorts by the embedded year instead of trailing).
+func TestSearchPieces_SortsByYearWrittenTrailsGenuinelyNonNumericAndBlank(t *testing.T) {
 	h := newTestServer(t)
 	numeric := createTestPiece(t, h, map[string]any{"title": "Numeric Year", "yearWritten": "1848"})
-	freeText := createTestPiece(t, h, map[string]any{"title": "Free Text Year", "yearWritten": "ca. 1708-1711"})
+	nonNumeric := createTestPiece(t, h, map[string]any{"title": "Non-Numeric Year", "yearWritten": "unknown"})
 	blank := createTestPiece(t, h, map[string]any{"title": "No Year"})
 
 	for _, dir := range []string{"asc", "desc"} {
@@ -824,9 +827,36 @@ func TestSearchPieces_SortsByYearWrittenHandlesNonNumericAndBlank(t *testing.T) 
 			t.Fatalf("sort=yearWritten&dir=%s returned %+v, want the numeric-year piece first", dir, results)
 		}
 		trailingIDs := map[int64]bool{results[1].ID: true, results[2].ID: true}
-		if !trailingIDs[freeText.ID] || !trailingIDs[blank.ID] {
-			t.Errorf("sort=yearWritten&dir=%s: free-text/blank years must both trail, got %+v", dir, results)
+		if !trailingIDs[nonNumeric.ID] || !trailingIDs[blank.ID] {
+			t.Errorf("sort=yearWritten&dir=%s: non-numeric/blank years must both trail, got %+v", dir, results)
 		}
+	}
+}
+
+// TestSearchPieces_SortsByYearWrittenIgnoresTextyPrefix is the direct fix
+// proof: a piece whose yearWritten carries a texty prefix ("ca. 1708-1711")
+// must sort by the first real year it contains (1708), not trail as if it
+// had no year at all — the bug this test guards against is
+// leading_year(...) (internal/yearparse) never being consulted, leaving
+// the old GLOB '[0-9]*' check's stricter "must START with a digit" rule in
+// place, which misclassified this exact kind of value.
+func TestSearchPieces_SortsByYearWrittenIgnoresTextyPrefix(t *testing.T) {
+	h := newTestServer(t)
+	prefixed := createTestPiece(t, h, map[string]any{"title": "Prefixed Year", "yearWritten": "ca. 1708-1711"})
+	numeric := createTestPiece(t, h, map[string]any{"title": "Numeric Year", "yearWritten": "1848"})
+
+	ascRec := doJSON(t, h, http.MethodGet, "/api/pieces?sort=yearWritten&dir=asc", nil)
+	var ascResults []pieceResponse
+	decodeData(t, ascRec, &ascResults)
+	if len(ascResults) != 2 || ascResults[0].ID != prefixed.ID || ascResults[1].ID != numeric.ID {
+		t.Errorf("sort=yearWritten&dir=asc returned %+v, want [prefixed 1708, numeric 1848]", ascResults)
+	}
+
+	descRec := doJSON(t, h, http.MethodGet, "/api/pieces?sort=yearWritten&dir=desc", nil)
+	var descResults []pieceResponse
+	decodeData(t, descRec, &descResults)
+	if len(descResults) != 2 || descResults[0].ID != numeric.ID || descResults[1].ID != prefixed.ID {
+		t.Errorf("sort=yearWritten&dir=desc returned %+v, want [numeric 1848, prefixed 1708]", descResults)
 	}
 }
 
