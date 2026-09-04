@@ -779,6 +779,33 @@ func TestSearchPieces_SortsByYearWrittenFallsBackToBookYearWritten(t *testing.T)
 	}
 }
 
+// TestSearchPieces_SortsByYearWrittenFallsBackToCopyrightYear covers the
+// extended fallback chain (direct follow-up request): a piece with no
+// yearWritten of its own but a copyrightYear on record sorts by THAT year —
+// distinctly from, and at a higher priority than, its book's yearPublished
+// (own_no_year below has no source book at all, so this specifically
+// isolates the copyright-year step rather than conflating it with the
+// existing book fallback the test above already covers).
+func TestSearchPieces_SortsByYearWrittenFallsBackToCopyrightYear(t *testing.T) {
+	h := newTestServer(t)
+
+	ownYearWritten := createTestPiece(t, h, map[string]any{"title": "Own Year Written", "yearWritten": "1990"})
+	viaCopyrightYear := createTestPiece(t, h, map[string]any{"title": "Via Copyright Year", "copyrightYear": 1958})
+	neither := createTestPiece(t, h, map[string]any{"title": "Neither"})
+
+	rec := doJSON(t, h, http.MethodGet, "/api/pieces?sort=yearWritten&dir=asc", nil)
+	var results []pieceResponse
+	decodeData(t, rec, &results)
+	if len(results) != 3 {
+		t.Fatalf("sort=yearWritten returned %d pieces, want 3", len(results))
+	}
+	// 1958 (via copyrightYear) < 1990 (own yearWritten); the year-less piece
+	// trails regardless of direction, same tie-break as every other case.
+	if results[0].ID != viaCopyrightYear.ID || results[1].ID != ownYearWritten.ID || results[2].ID != neither.ID {
+		t.Errorf("sort=yearWritten&dir=asc returned %+v, want [via copyrightYear 1958, own yearWritten 1990, neither]", results)
+	}
+}
+
 // TestSearchPieces_SortsByYearWrittenHandlesNonNumericAndBlank mirrors
 // TestListBooks_SortsByYearWrittenHandlesNonNumericAndNull (book_test.go) —
 // same free-text/blank "always trails, both directions" proof, on the

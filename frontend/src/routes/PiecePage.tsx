@@ -27,6 +27,7 @@ import { copyToClipboard } from '../lib/clipboard'
 import { COPYRIGHT_BADGE_META, copyrightTooltipText } from '../lib/copyrightBadge'
 import { hyphenateISBN } from '../lib/isbn'
 import { joinNames } from '../lib/joinNames'
+import { yearWrittenSource } from '../lib/yearWrittenSource'
 import { PersonNameLinks } from '../components/PersonNameLinks'
 import {
   deletePiece,
@@ -101,10 +102,16 @@ function bookIdentifierLabel(book: Book): string | null {
   return null
 }
 
-function InheritedNote({ compact }: { compact?: boolean }) {
+// `source` defaults to "book" for every ordinary book-inheritable field.
+// Year Written's own extended fallback chain (piece's own Copyright Year,
+// checked before the book's Year Published — see lib/yearWrittenSource.ts)
+// passes "copyright year" instead when that's actually where the value
+// came from — "Inherited from book" would be a real factual error there,
+// not just imprecise wording, since no book is involved at all.
+function InheritedNote({ compact, source = 'book' }: { compact?: boolean; source?: string }) {
   return (
     <InfoTooltip
-      message="Inherited from book"
+      message={`Inherited from ${source}`}
       ariaLabel="Why this value is shown"
       showPointerCursor={false}
       triggerClassName={
@@ -121,12 +128,20 @@ function InheritedNote({ compact }: { compact?: boolean }) {
 // Inheritance is book-level metadata, not user-specific data — kept
 // neutral (hollow, bordered) so accent green stays reserved for things the
 // user themselves entered (userTags, userNotes, favorite, practiceStatus).
-function EffectiveValue({ value, inherited }: { value: ReactNode; inherited: boolean }) {
+function EffectiveValue({
+  value,
+  inherited,
+  source,
+}: {
+  value: ReactNode
+  inherited: boolean
+  source?: string
+}) {
   if (!value) return <span className="text-ink-soft/50">—</span>
   return (
     <span className="inline-flex items-center gap-1.5">
       {value}
-      {inherited && <InheritedNote />}
+      {inherited && <InheritedNote source={source} />}
     </span>
   )
 }
@@ -871,7 +886,11 @@ export function PiecePage() {
               {piece.yearWritten.value && (
                 <DetailRow label="Year written">
                   <span className="inline-flex items-center gap-2">
-                    <EffectiveValue value={piece.yearWritten.value} inherited={piece.yearWritten.inherited} />
+                    <EffectiveValue
+                      value={piece.yearWritten.value}
+                      inherited={piece.yearWritten.inherited}
+                      source={yearWrittenSource(piece)}
+                    />
                     {/* Public domain badge — Option A (bare icon, no circle
                         chip) + Grass green, both locked in the design
                         artifact §5. Driven by the real computed/overridden

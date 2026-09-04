@@ -160,7 +160,7 @@ func ResolveEffective(ctx context.Context, q Queryer, p *models.Piece) (*Effecti
 		Publisher:            resolveStringField(p.Publisher, bookPublisher),
 		PublisherID:          resolveStringField(p.PublisherID, bookPublisherID),
 		ImslpNumber:          resolveStringField(p.ImslpNumber, bookImslpNumber),
-		YearWritten:          resolveStringField(p.YearWritten, bookYearPublished),
+		YearWritten:          resolveYearWritten(p.YearWritten, p.CopyrightYear, bookYearPublished),
 		WorkOpusNumber:       resolveStringField(p.WorkOpusNumber, bookWorkOpusNumber),
 		Description:          resolveStringField(p.Description, bookDescription),
 		SheetTypeID:          resolveIDField(p.SheetTypeID, bookSheetTypeID),
@@ -217,6 +217,29 @@ func parseYearInt(s *string) *int {
 // be treated as having "set" its own.
 func isBlank(s string) bool {
 	return strings.TrimSpace(s) == ""
+}
+
+// resolveYearWritten implements YearWritten's own extended fallback chain
+// (direct follow-up request): the piece's own YearWritten if set, else the
+// piece's own CopyrightYear (a piece can legitimately have an accurate
+// copyright year on record with no separate written-year note), else the
+// book's YearPublished — the original two-level fallback resolveStringField
+// still handles for every other field. Both fallback steps are marked
+// Inherited, same treatment, even though the CopyrightYear step isn't
+// really "from the book" — a direct, deliberate simplification (reusing
+// the existing "Inherited from book"/"(pub.)" UI as-is rather than adding a
+// third distinct source label) rather than an oversight.
+func resolveYearWritten(pieceYearWritten *string, pieceCopyrightYear *int, bookYearPublished *string) EffectiveField {
+	if pieceYearWritten != nil && !isBlank(*pieceYearWritten) {
+		return EffectiveField{Value: *pieceYearWritten}
+	}
+	if pieceCopyrightYear != nil {
+		return EffectiveField{Value: strconv.Itoa(*pieceCopyrightYear), Inherited: true}
+	}
+	if bookYearPublished != nil && !isBlank(*bookYearPublished) {
+		return EffectiveField{Value: *bookYearPublished, Inherited: true}
+	}
+	return EffectiveField{}
 }
 
 func resolveStringField(pieceVal, bookVal *string) EffectiveField {

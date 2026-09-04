@@ -48,15 +48,18 @@ var pieceSortColumns = map[string]sortColumnFunc{
 	// yearWritten is book-inheritable (design doc §3) and TEXT, not INTEGER
 	// (free text, e.g. "ca. 1708-1711") — same two concerns bookSortColumns'
 	// own yearWritten already handles individually, combined here. The
-	// COALESCE/NULLIF mirrors repo.resolveStringField exactly (piece's own
-	// non-blank value wins outright, else the book's, matching composer's
-	// own all-or-nothing fallback above), and GLOB '[0-9]*' is the same
-	// "does this look like a real leading year" test bookSortColumns uses,
-	// applied to whichever value actually won the fallback. Direction-
-	// invariant first clause, same "blanks/non-numeric always trail"
-	// reasoning as composer above.
+	// COALESCE mirrors repo.resolveYearWritten exactly (direct follow-up
+	// request extending the original piece-then-book fallback): piece's own
+	// non-blank year_written wins outright, else the piece's own
+	// copyright_year (cast to text so COALESCE's return type stays
+	// consistent — it's an INTEGER column, the other two are TEXT), else
+	// the book's year_published. GLOB '[0-9]*' is the same "does this look
+	// like a real leading year" test bookSortColumns uses, applied to
+	// whichever value actually won the fallback. Direction-invariant first
+	// clause, same "blanks/non-numeric always trail" reasoning as composer
+	// above.
 	"yearWritten": func(dir string) string {
-		const expr = `COALESCE(NULLIF(TRIM(p.year_written), ''), NULLIF(TRIM(b.year_published), ''))`
+		const expr = `COALESCE(NULLIF(TRIM(p.year_written), ''), CAST(p.copyright_year AS TEXT), NULLIF(TRIM(b.year_published), ''))`
 		return "(" + expr + " IS NULL OR NOT (" + expr + " GLOB '[0-9]*')) ASC, " +
 			"CAST(" + expr + " AS INTEGER) " + dir
 	},

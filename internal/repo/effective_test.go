@@ -557,3 +557,142 @@ func TestResolveEffective_CopyrightRenewedInheritance(t *testing.T) {
 		}
 	})
 }
+
+// TestResolveEffective_YearWrittenFallsBackToCopyrightYearThenBook covers
+// YearWritten's own extended fallback chain (direct follow-up request):
+// piece's own YearWritten, else piece's own CopyrightYear, else the book's
+// YearPublished. Both fallback steps are marked Inherited (a deliberate
+// simplification, reusing the existing "Inherited from book"/"(pub.)" UI
+// as-is even for the CopyrightYear step, which isn't really from the book —
+// see resolveYearWritten's own comment).
+func TestResolveEffective_YearWrittenFallsBackToCopyrightYearThenBook(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("piece's own year written wins outright", func(t *testing.T) {
+		dbConn := newTestDB(t)
+		bookID, err := repo.CreateBook(ctx, dbConn, &models.Book{
+			BookTitle:        "Book",
+			OriginalFilename: strPtr("book.pdf"),
+			FilePath:         strPtr("/data/library/books/yw1.pdf"),
+			FileHash:         strPtr("yw1"),
+			YearPublished:    strPtr("1900"),
+		})
+		if err != nil {
+			t.Fatalf("CreateBook: %v", err)
+		}
+		pieceID, err := repo.CreatePiece(ctx, dbConn, &models.Piece{
+			Title:         "Piece",
+			SourceBookID:  &bookID,
+			FilePath:      "/data/library/pieces/yw1.pdf",
+			FileHash:      "yw1-piece",
+			YearWritten:   strPtr("1931"),
+			CopyrightYear: intPtr(1958),
+		})
+		if err != nil {
+			t.Fatalf("CreatePiece: %v", err)
+		}
+		piece, err := repo.GetPieceByID(ctx, dbConn, pieceID)
+		if err != nil {
+			t.Fatalf("GetPieceByID: %v", err)
+		}
+		eff, err := repo.ResolveEffective(ctx, dbConn, piece)
+		if err != nil {
+			t.Fatalf("ResolveEffective: %v", err)
+		}
+		if eff.YearWritten.Value != "1931" || eff.YearWritten.Inherited {
+			t.Errorf("YearWritten = %+v, want {Value: \"1931\", Inherited: false}", eff.YearWritten)
+		}
+	})
+
+	t.Run("falls back to piece's own copyright year, not the book's year published", func(t *testing.T) {
+		dbConn := newTestDB(t)
+		bookID, err := repo.CreateBook(ctx, dbConn, &models.Book{
+			BookTitle:        "Book",
+			OriginalFilename: strPtr("book.pdf"),
+			FilePath:         strPtr("/data/library/books/yw2.pdf"),
+			FileHash:         strPtr("yw2"),
+			YearPublished:    strPtr("1900"),
+		})
+		if err != nil {
+			t.Fatalf("CreateBook: %v", err)
+		}
+		pieceID, err := repo.CreatePiece(ctx, dbConn, &models.Piece{
+			Title:         "Piece",
+			SourceBookID:  &bookID,
+			FilePath:      "/data/library/pieces/yw2.pdf",
+			FileHash:      "yw2-piece",
+			CopyrightYear: intPtr(1958),
+		})
+		if err != nil {
+			t.Fatalf("CreatePiece: %v", err)
+		}
+		piece, err := repo.GetPieceByID(ctx, dbConn, pieceID)
+		if err != nil {
+			t.Fatalf("GetPieceByID: %v", err)
+		}
+		eff, err := repo.ResolveEffective(ctx, dbConn, piece)
+		if err != nil {
+			t.Fatalf("ResolveEffective: %v", err)
+		}
+		if eff.YearWritten.Value != "1958" || !eff.YearWritten.Inherited {
+			t.Errorf("YearWritten = %+v, want {Value: \"1958\", Inherited: true} (piece's own copyright year, not the book's 1900)", eff.YearWritten)
+		}
+	})
+
+	t.Run("falls back to the book's year published when neither piece field is set", func(t *testing.T) {
+		dbConn := newTestDB(t)
+		bookID, err := repo.CreateBook(ctx, dbConn, &models.Book{
+			BookTitle:        "Book",
+			OriginalFilename: strPtr("book.pdf"),
+			FilePath:         strPtr("/data/library/books/yw3.pdf"),
+			FileHash:         strPtr("yw3"),
+			YearPublished:    strPtr("1900"),
+		})
+		if err != nil {
+			t.Fatalf("CreateBook: %v", err)
+		}
+		pieceID, err := repo.CreatePiece(ctx, dbConn, &models.Piece{
+			Title:        "Piece",
+			SourceBookID: &bookID,
+			FilePath:     "/data/library/pieces/yw3.pdf",
+			FileHash:     "yw3-piece",
+		})
+		if err != nil {
+			t.Fatalf("CreatePiece: %v", err)
+		}
+		piece, err := repo.GetPieceByID(ctx, dbConn, pieceID)
+		if err != nil {
+			t.Fatalf("GetPieceByID: %v", err)
+		}
+		eff, err := repo.ResolveEffective(ctx, dbConn, piece)
+		if err != nil {
+			t.Fatalf("ResolveEffective: %v", err)
+		}
+		if eff.YearWritten.Value != "1900" || !eff.YearWritten.Inherited {
+			t.Errorf("YearWritten = %+v, want {Value: \"1900\", Inherited: true}", eff.YearWritten)
+		}
+	})
+
+	t.Run("blank when nothing is set anywhere", func(t *testing.T) {
+		dbConn := newTestDB(t)
+		pieceID, err := repo.CreatePiece(ctx, dbConn, &models.Piece{
+			Title:    "Standalone Piece",
+			FilePath: "/data/library/pieces/yw4.pdf",
+			FileHash: "yw4-piece",
+		})
+		if err != nil {
+			t.Fatalf("CreatePiece: %v", err)
+		}
+		piece, err := repo.GetPieceByID(ctx, dbConn, pieceID)
+		if err != nil {
+			t.Fatalf("GetPieceByID: %v", err)
+		}
+		eff, err := repo.ResolveEffective(ctx, dbConn, piece)
+		if err != nil {
+			t.Fatalf("ResolveEffective: %v", err)
+		}
+		if eff.YearWritten.Value != "" || eff.YearWritten.Inherited {
+			t.Errorf("YearWritten = %+v, want zero value", eff.YearWritten)
+		}
+	})
+}

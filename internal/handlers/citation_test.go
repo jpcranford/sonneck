@@ -514,7 +514,10 @@ func TestCitation_LikelyPublicDomainGetsNoTrailingNote(t *testing.T) {
 	}
 	decodeData(t, citeRec, &citation)
 
-	want := `Someone, "Solo"`
+	// yearWritten falls back to the piece's own copyrightYear when blank
+	// (direct follow-up request) — this piece never set yearWritten, so
+	// "1700" now correctly appears, sourced from copyrightYear.
+	want := `Someone, "Solo", 1700.`
 	if citation.Citation != want {
 		t.Errorf("citation = %q, want %q", citation.Citation, want)
 	}
@@ -546,7 +549,9 @@ func TestCitation_ExplicitPublicDomainAgreeingWithCalculationGetsNoTrailingNote(
 	}
 	decodeData(t, citeRec, &citation)
 
-	want := `Someone, "Solo"`
+	// yearWritten falls back to the piece's own copyrightYear when blank
+	// (direct follow-up request) — same reasoning as the test above.
+	want := `Someone, "Solo", 1700.`
 	if citation.Citation != want {
 		t.Errorf("citation = %q, want %q", citation.Citation, want)
 	}
