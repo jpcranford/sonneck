@@ -1123,12 +1123,21 @@ export function EditPieceModal({
               />
             </div>
           </div>
+          {/* `||`, not `&&` — a book missing a publisher ID (a plausible,
+              common case: not every publisher stamps one) still has an
+              inherited publisher *name* to show, and resolveStringField
+              (repo/effective.go) marks a field with nothing to inherit as
+              Inherited: false, not true, so requiring both to be inherited
+              silently hid this note whenever exactly one of the pair was
+              actually blank on the book. bookValue joins only whichever of
+              the two is actually present, same "•"-joined, no-dangling-
+              separator convention buildCitation's own fusePublisherAndID
+              uses. */}
           {!watch('publisher') &&
             !watch('publisherId') &&
-            piece.publisher.inherited &&
-            piece.publisherId.inherited && (
+            (piece.publisher.inherited || piece.publisherId.inherited) && (
               <InheritedNote
-                bookValue={`${piece.publisher.value} • ${piece.publisherId.value}`}
+                bookValue={[piece.publisher.value, piece.publisherId.value].filter(Boolean).join(' • ')}
                 onCopy={() => {
                   setValue('publisher', piece.publisher.value)
                   setValue('publisherId', piece.publisherId.value)
