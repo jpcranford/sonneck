@@ -1,6 +1,6 @@
 services:
   sonneck:
-    image: ghcr.io/jpcranford/sonneck:latest # use :dev instead to get pre-releases too
+    image: ghcr.io/jpcranford/sonneck:latest # :beta for pre-releases, :dev for a nightly build off main (neither is stable)
     restart: unless-stopped
     ports:
       - "8080:8080"

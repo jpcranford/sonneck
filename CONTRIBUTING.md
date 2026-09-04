@@ -1,8 +1,12 @@
 # Contributing to Sonneck
 
-Thanks for taking a look. Sonneck started as a personal tool — a self-hosted sheet music library for my own use — and quickly spiraled out of control. I'm more than happy to have other people poke at, use, and improve this thing. I said it in the README and I'll say it again here: this has involved a *lot* of AI-assisted development (probably too much tbh), and I'll welcome the eyes and/or code of any human who wants to make it more secure, reliable, robust, or just plain cleaner. If that's you, this file is the map.
+Thanks for taking a look. Sonneck started as a personal tool — a self-hosted sheet music library for my own use — and quickly spiraled out of control. I'm more than happy to have other people poke at, use, and improve this thing. If that's you, this file is the map.
 
 If anything here is wrong, confusing, or out of date, that's itself a welcome bug report — open an issue, or just fix it with a PR.
+
+> [!NOTE]
+> I said it in the README and I'll say it again here: this has involved a *lot* of AI-assisted development (probably too much tbh), and I'll welcome the eyes and/or code of any human who wants to make it more secure, reliable, robust, or just plain cleaner.
+> If you have the experience to be able to confidently clean up the code, I'll happily accept *any* contributions you want to give.
 
 ## Table of contents
 
@@ -136,7 +140,7 @@ This runs the full multi-stage build (frontend build → embed into the Go binar
 
 To test `docker-compose.yml` itself against a local build rather than the published image, temporarily point its `image:` at `sonneck:local` (don't commit that change though obvs).
 
-**CI** (`.github/workflows/docker-publish.yml`): every push to `main` runs a validation build (build only, no push — this is what the README's Build-status badge reflects day to day). Publishing to GHCR only happens when a GitHub Release is published, and `:latest` only moves if that release is genuinely what GitHub currently considers the latest one (checked via the API, not just "most recently published") — see `CLAUDE.md` > Docker/build for the full mechanics if you're changing the workflow itself.
+**CI** (`.github/workflows/docker-publish.yml`): every push to `main` runs a validation build (build only, no push — this is what the README's Build-status badge reflects day to day). `:dev` rebuilds nightly from whichever commit on `main` most recently passed that validation build (not just whatever HEAD happens to be). Publishing a version-tagged image to GHCR otherwise only happens when a GitHub Release is published — a pre-release unconditionally moves `:beta`, and a real release moves both `:latest` and `:beta` together (so `:beta` always tracks the newer of the two) but only if that release is genuinely what GitHub currently considers the latest one (checked via the API, not just "most recently published") — see `CLAUDE.md` > Docker/build for the full mechanics if you're changing the workflow itself.
 
 ## Database migrations
 

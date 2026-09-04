@@ -1,50 +1,66 @@
 # Builds and publishes Sonneck's Docker image to GHCR.
 #
-# Three triggers, one of which (release) splits into two different
-# publish channels depending on whether it's a real release or a
-# pre-release:
+# Four triggers:
 #
 #   1. push to main       -> validation build only, no push. This is what
 #                             keeps the README's "Build status" badge
 #                             meaningful day to day, separate from actual
 #                             releases.
-#   2. a release is published — action is either "released" (a real
+#   2. nightly (schedule) -> :dev, rebuilt from the latest commit on main
+#                             whose OWN push-triggered validation build (#1
+#                             above) actually succeeded — not just whatever
+#                             HEAD happens to be, which could be a commit
+#                             whose validation run hasn't finished yet, or
+#                             failed. Resolved via `gh run list` against
+#                             this exact workflow file (push/main/success,
+#                             newest first) in the "Resolve latest validated
+#                             commit on main" step below, then checked out
+#                             by that specific SHA rather than the
+#                             schedule event's own (undefined-until-resolved)
+#                             ref. Builds linux/amd64 and linux/arm64
+#                             natively (CLAUDE.md > Docker/build — native
+#                             runners, not QEMU emulation), merges into one
+#                             multi-arch manifest, and points the floating
+#                             :dev tag at it directly — a nightly build has
+#                             no release version to also tag alongside it,
+#                             unlike #3 below.
+#   3. a release is published — action is either "released" (a real
 #      release, or a pre-release converted to one) or "prereleased" (a new
-#      pre-release). Both build linux/amd64 and linux/arm64 natively
-#      (CLAUDE.md > Docker/build — native runners, not QEMU emulation) and
+#      pre-release). Both build linux/amd64 and linux/arm64 natively and
 #      merge into one multi-arch manifest tagged with the release's own
 #      version tag (e.g. v2.0.0-beta.1) — every published build, stable or
 #      not, stays pinnable/referenceable later. From there the two actions
-#      diverge on which floating tags they also move:
-#      - both actions        -> ALWAYS also point the floating :dev tag at
-#                             whatever was just published. :dev tracks the
-#                             tip of publishing activity, period — not just
-#                             pre-releases — since a real release can
-#                             legitimately contain fixes made after the
-#                             last pre-release was cut; if :dev only moved
-#                             on pre-releases, it would go stale exactly
-#                             when someone testing against it needs it
-#                             least. No releases/latest-style check needed
-#                             here either way — GitHub has no "marked
-#                             latest pre-release" concept to compare
-#                             against, so this is unconditional.
-#      - "released" only     -> ALSO tags :latest, but only if this release
-#                             is actually what GitHub currently considers
-#                             the latest release (GET /repos/.../releases/
-#                             latest) — not just "the most recently
-#                             published one". A release published for an
-#                             older branch, or with "Set as the latest
-#                             release" unchecked, must not clobber :latest.
-#                             Also attaches docker-compose.yml to the
-#                             release itself (a stable, versioned download
-#                             URL, and a real number for the README's
-#                             Downloads badge to count — GHCR has no public
+#      diverge on which floating tag(s) they also move:
+#      - "released" only     -> points :latest at it, but only if this
+#                             release is actually what GitHub currently
+#                             considers the latest release (GET
+#                             /repos/.../releases/latest) — not just "the
+#                             most recently published one". A release
+#                             published for an older branch, or with "Set
+#                             as the latest release" unchecked, must not
+#                             clobber :latest. :beta moves alongside it, in
+#                             the same step, under the same gate — :beta is
+#                             a superset of :latest (every real release
+#                             :latest ever points at, :beta points at too),
+#                             on top of every pre-release below. Also
+#                             attaches docker-compose.yml to the release
+#                             itself (a stable, versioned download URL, and
+#                             a real number for the README's Downloads
+#                             badge to count — GHCR has no public
 #                             pull-count API, so a release asset is the
 #                             closest thing to a live counter this setup
 #                             can offer) — doesn't run for a pre-release,
 #                             since that's part of the polished, stable
-#                             distribution story, not a dev/testing build.
-#   3. manual (workflow_dispatch)
+#                             distribution story, not the beta channel.
+#      - "prereleased" only  -> points :beta at it — the other half of
+#                             :beta's coverage, unconditionally (no
+#                             latest-style check; every pre-release is, by
+#                             definition, newer than the last one). :dev
+#                             never moves on a release event either way —
+#                             it's nightly-only now, driven off main's own
+#                             validated commits, not releases (see #2
+#                             above).
+#   4. manual (workflow_dispatch)
 #                          -> no build at all. Just re-checks
 #                             releases/latest and re-points :latest at
 #                             whichever version tag that now names — for
@@ -59,6 +75,12 @@ on:
     branches: [main]
   release:
     types: [released, prereleased]
+  schedule:
+    # Arbitrary off-the-hour time (GitHub's own recommendation — everyone
+    # who schedules at a round hour spikes runner queue times right then).
+    # UTC, no particular significance beyond "some time most maintainers
+    # are asleep."
+    - cron: '37 6 * * *'
   workflow_dispatch:
 
 env:
@@ -67,6 +89,11 @@ env:
 permissions:
   contents: read
   packages: write
+  # actions: read is only for the nightly build's own "Resolve latest
+  # validated commit on main" step (gh run list needs it to query this
+  # workflow's own past runs) — every other job either doesn't need it or
+  # already overrides permissions locally (attach-assets).
+  actions: read
 
 jobs:
   build:
@@ -83,14 +110,38 @@ jobs:
             arch: arm64
     runs-on: ${{ matrix.runner }}
     steps:
+      # schedule-only — resolves which commit "nightly" actually means.
+      # The schedule event itself has no ref tied to a specific validated
+      # commit (it'd otherwise just check out main's current HEAD, which
+      # might not have a successful validation run at all yet), so this
+      # asks the GitHub API for this exact workflow's own most recent
+      # successful push/main run and uses ITS commit instead.
+      - name: Resolve latest validated commit on main
+        if: github.event_name == 'schedule'
+        id: resolve
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          sha=$(gh run list --repo "${{ github.repository }}" --workflow docker-publish.yml \
+            --branch main --event push --status success --limit 1 \
+            --json headSha --jq '.[0].headSha // empty')
+          if [ -z "$sha" ]; then
+            echo "::error::No successful push-to-main validation run found — refusing to build an unvalidated commit."
+            exit 1
+          fi
+          echo "Latest validated commit on main: $sha"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event_name == 'schedule' && steps.resolve.outputs.sha || github.sha }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
       - name: Log in to GHCR
-        if: github.event_name == 'release'
+        if: github.event_name == 'release' || github.event_name == 'schedule'
         uses: docker/login-action@v4
         with:
           registry: ghcr.io
@@ -98,21 +149,21 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build (validation only, no push)
-        if: github.event_name != 'release'
+        if: github.event_name == 'push'
         uses: docker/build-push-action@v7
         with:
           context: .
           platforms: ${{ matrix.platform }}
           push: false
 
-      # Pushed by digest only (no final tag yet) — the merge job below
-      # combines both architectures' digests into one multi-arch manifest.
-      # This build-by-digest-then-merge two-step is Docker's own documented
-      # pattern for multi-arch builds split across separate native runners,
-      # as opposed to a single buildx invocation emulating the other
-      # architecture under QEMU.
+      # Pushed by digest only (no final tag yet) — the merge/nightly job
+      # below combines both architectures' digests into one multi-arch
+      # manifest. This build-by-digest-then-merge two-step is Docker's own
+      # documented pattern for multi-arch builds split across separate
+      # native runners, as opposed to a single buildx invocation emulating
+      # the other architecture under QEMU.
       - name: Build and push by digest
-        if: github.event_name == 'release'
+        if: github.event_name == 'release' || github.event_name == 'schedule'
         id: build
         uses: docker/build-push-action@v7
         with:
@@ -121,14 +172,14 @@ jobs:
           outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
 
       - name: Export digest
-        if: github.event_name == 'release'
+        if: github.event_name == 'release' || github.event_name == 'schedule'
         run: |
           mkdir -p /tmp/digests
           digest="${{ steps.build.outputs.digest }}"
           touch "/tmp/digests/${digest#sha256:}"
 
       - name: Upload digest
-        if: github.event_name == 'release'
+        if: github.event_name == 'release' || github.event_name == 'schedule'
         uses: actions/upload-artifact@v6
         with:
           name: digests-${{ matrix.arch }}
@@ -143,7 +194,7 @@ jobs:
   # rather than widening the token for every other job in the workflow.
   # Scoped to real releases only (github.event.action == 'released'), not
   # pre-releases — this is part of the polished, stable distribution story,
-  # not something a dev/testing pre-release build needs.
+  # not something the beta channel needs.
   attach-assets:
     if: github.event_name == 'release' && github.event.action == 'released'
     runs-on: ubuntu-latest
@@ -201,7 +252,13 @@ jobs:
             -t "${{ env.IMAGE }}:$RELEASE_TAG" \
             $(printf '${{ env.IMAGE }}@sha256:%s ' *)
 
-      - name: Point :latest at this release, if GitHub agrees it's the latest
+      # :beta is a superset of :latest — every real release :latest ever
+      # points at, :beta points at too (moved in the same step, same
+      # GitHub-agrees-this-is-genuinely-latest gate, so the two never
+      # disagree about a "released" event) — on top of every pre-release,
+      # tagged separately below. A release for an older branch, or with
+      # "Set as the latest release" unchecked, must not clobber either.
+      - name: Point :latest and :beta at this release, if GitHub agrees it's the latest
         if: github.event.action == 'released'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -209,31 +266,64 @@ jobs:
         run: |
           actual_latest=$(gh api "repos/${{ github.repository }}/releases/latest" --jq .tag_name)
           if [ "$actual_latest" = "$RELEASE_TAG" ]; then
-            echo "GitHub's current latest release is $RELEASE_TAG — tagging :latest"
+            echo "GitHub's current latest release is $RELEASE_TAG — tagging :latest and :beta"
             docker buildx imagetools create \
               -t "${{ env.IMAGE }}:latest" \
+              -t "${{ env.IMAGE }}:beta" \
               "${{ env.IMAGE }}:$RELEASE_TAG"
           else
-            echo "GitHub's current latest release is $actual_latest, not $RELEASE_TAG — leaving :latest alone"
+            echo "GitHub's current latest release is $actual_latest, not $RELEASE_TAG — leaving :latest/:beta alone"
           fi
 
-      # Unconditional (no `if:` — runs for both 'released' and
-      # 'prereleased', unlike :latest above): :dev tracks the tip of
-      # publishing activity, period, not just pre-releases. A real release
-      # can legitimately contain fixes made after the last pre-release was
-      # cut, so :dev needs to move forward on a real release too, or it'd
-      # go stale exactly when someone testing against it needs it least.
-      # No releases/latest-style check needed either way — GitHub has no
-      # "marked latest pre-release" concept to compare against, so this
-      # just always points :dev at whatever was most recently published.
-      - name: Point :dev at this build
+      # prereleased only — the other half of :beta's coverage (the above
+      # step's "released" branch is the first half). :dev never moves here
+      # at all (it's nightly-only now, driven off main's own validated
+      # commits, not releases — see the "nightly" job below).
+      - name: Point :beta at this pre-release
+        if: github.event.action == 'prereleased'
         env:
           RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
-          echo "Tagging :dev at $RELEASE_TAG"
+          echo "Tagging :beta at $RELEASE_TAG"
+          docker buildx imagetools create \
+            -t "${{ env.IMAGE }}:beta" \
+            "${{ env.IMAGE }}:$RELEASE_TAG"
+
+  # schedule only — takes the two digests build produced (from the latest
+  # commit on main that build's own "Resolve latest validated commit on
+  # main" step confirmed had a successful push-triggered validation run)
+  # and points :dev straight at the merged manifest. No release-version tag
+  # to create alongside it the way merge's release path does — a nightly
+  # build isn't a pinnable release, :dev IS the pointer to it, and
+  # tomorrow's nightly run simply moves it again.
+  nightly:
+    needs: build
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v7
+        with:
+          path: /tmp/digests
+          pattern: digests-*
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Point :dev at tonight's build
+        working-directory: /tmp/digests
+        run: |
           docker buildx imagetools create \
             -t "${{ env.IMAGE }}:dev" \
-            "${{ env.IMAGE }}:$RELEASE_TAG"
+            $(printf '${{ env.IMAGE }}@sha256:%s ' *)
 
   sync-latest:
     if: github.event_name == 'workflow_dispatch'
