@@ -308,6 +308,7 @@ export function EditPieceModal({
 }: EditPieceModalProps) {
   const queryClient = useQueryClient()
   const [tempoOpen, setTempoOpen] = useState(false)
+  const [bookDetailsOpen, setBookDetailsOpen] = useState(false)
   const [copyrightOpen, setCopyrightOpen] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
   // Shadows the `initialPiece` prop deliberately — every existing
@@ -1406,56 +1407,77 @@ export function EditPieceModal({
         </div>
 
         {/* Book Details — the Source Book search field, plus the page
-            range. Moved to the very end of the form: it's about where
-            this piece lives inside its source book, not a fact about the
-            piece itself the way every section above it is, so it reads
-            last rather than competing with the piece's own bibliographic
-            fields for early attention. Source Book itself still sits
-            above the page range within this section — picking a
-            different book is the thing that makes "page 22–24 of what?"
-            answerable, so it still reads first within the section even
-            though the section itself moved. key={piece.id} forces a full
-            remount (resetting the field's internal search-query text)
-            whenever this modal is reused for a different piece, rather
-            than only when it unmounts. */}
-        <div className="flex flex-col gap-3 border-t border-border pt-4">
-          <SectionHeading>Book Details</SectionHeading>
-          <Controller
-            name="sourceBookId"
-            control={control}
-            render={({ field }) => (
-              <SourceBookField
-                key={piece.id}
-                value={field.value}
-                onChange={field.onChange}
-                initialTitle={piece.sourceBookTitle ?? null}
+            range. Own collapsible section at the very end of the form,
+            same "collapsed by default" posture as Copyright below it
+            (direct follow-up request) — it's about where this piece lives
+            inside its source book, not a fact about the piece itself the
+            way every section above it is, so it doesn't need to compete
+            with the piece's own bibliographic fields for early attention
+            either collapsed or open. Source Book itself still sits above
+            the page range within the panel — picking a different book is
+            the thing that makes "page 22–24 of what?" answerable, so it
+            still reads first within the section. key={piece.id} on
+            SourceBookField forces a full remount (resetting the field's
+            internal search-query text) whenever this modal is reused for a
+            different piece, rather than only when it unmounts. */}
+        <div className="border-t border-border pt-4">
+          {/* Text styling matches SectionHeading (Frontmatter/Musical
+              Details/Personal above) exactly — same pattern Copyright's
+              own trigger below uses, for the same reason: this is a
+              section title that's also a clickable disclosure trigger, so
+              it needs the chevron + hover affordance SectionHeading itself
+              (a plain h3) doesn't. */}
+          <button
+            type="button"
+            onClick={() => setBookDetailsOpen((o) => !o)}
+            className="flex cursor-pointer items-center gap-1 text-xs font-medium tracking-wide text-ink-soft/70 uppercase hover:text-ink"
+          >
+            <IconChevronRight
+              size={12}
+              className={`transition-transform ${bookDetailsOpen ? 'rotate-90' : ''}`}
+            />
+            Book Details
+          </button>
+          {bookDetailsOpen && (
+            <div className="mt-3 flex flex-col gap-4 rounded-md border border-dashed border-border p-4">
+              <Controller
+                name="sourceBookId"
+                control={control}
+                render={({ field }) => (
+                  <SourceBookField
+                    key={piece.id}
+                    value={field.value}
+                    onChange={field.onChange}
+                    initialTitle={piece.sourceBookTitle ?? null}
+                  />
+                )}
               />
-            )}
-          />
-          <div className="flex gap-3">
-            <div className="flex flex-1 flex-col gap-1">
-              <label htmlFor="f-page-start" className="text-sm text-ink-soft">
-                Start page
-              </label>
-              <input
-                id="f-page-start"
-                type="number"
-                className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-                {...register('sourcePageStart')}
-              />
+              <div className="flex gap-3">
+                <div className="flex flex-1 flex-col gap-1">
+                  <label htmlFor="f-page-start" className="text-sm text-ink-soft">
+                    Start page
+                  </label>
+                  <input
+                    id="f-page-start"
+                    type="number"
+                    className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+                    {...register('sourcePageStart')}
+                  />
+                </div>
+                <div className="flex flex-1 flex-col gap-1">
+                  <label htmlFor="f-page-end" className="text-sm text-ink-soft">
+                    End page
+                  </label>
+                  <input
+                    id="f-page-end"
+                    type="number"
+                    className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+                    {...register('sourcePageEnd')}
+                  />
+                </div>
+              </div>
             </div>
-            <div className="flex flex-1 flex-col gap-1">
-              <label htmlFor="f-page-end" className="text-sm text-ink-soft">
-                End page
-              </label>
-              <input
-                id="f-page-end"
-                type="number"
-                className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-                {...register('sourcePageEnd')}
-              />
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Copyright — Public Domain Badge feature. Own collapsible
@@ -1467,10 +1489,11 @@ export function EditPieceModal({
             whole section, spent time up there. */}
         <div className="border-t border-border pt-4">
           {/* Text styling matches SectionHeading (Frontmatter/Musical
-              Details/Personal/Book Details above) exactly — this is the
-              one section title in the form that's also a clickable
-              disclosure trigger, so it needs the chevron + hover affordance
-              SectionHeading itself (a plain h3) doesn't. */}
+              Details/Personal above) exactly — same pattern Book Details'
+              own trigger above uses, for the same reason: this is a
+              section title that's also a clickable disclosure trigger, so
+              it needs the chevron + hover affordance SectionHeading itself
+              (a plain h3) doesn't. */}
           <button
             type="button"
             onClick={() => setCopyrightOpen((o) => !o)}
