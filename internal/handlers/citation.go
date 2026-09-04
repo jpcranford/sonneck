@@ -197,12 +197,22 @@ func buildCitation(in citationInput) string {
 		// attribute) — appending a bare trailing space in that case would
 		// be a real, if subtle, formatting bug.
 		if clause := copyrightClause(in.eff); clause != "" {
-			return flat + " " + clause
+			// endsWithPeriod(flat), not flat + " " + clause: buildFlatCitation
+			// only ends flat in a period when yearWritten is set (its own
+			// last-component rule, and a citation with no year legitimately
+			// has no trailing period on its own — TestCitation_ArrangerAloneWithNoComposer
+			// et al. cover that bare case). Found live, 2026-09-05: a
+			// yearWritten-less piece's citation read `"A Christmas Carol"
+			// Public domain.` — missing the period that should separate the
+			// title from the appended note. Same gap applied here, just
+			// never surfaced because every existing copyrightClause test
+			// happened to set yearWritten.
+			return endsWithPeriod(flat) + " " + clause
 		}
 		return flat
 	}
 	if in.copyrightStatus == "publicDomain" && !in.calculatedLikelyPD {
-		return flat + " Public domain."
+		return endsWithPeriod(flat) + " Public domain."
 	}
 	return flat
 }

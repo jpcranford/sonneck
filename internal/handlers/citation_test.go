@@ -89,7 +89,7 @@ func TestCitation_PublisherIdFusesOntoPublisherName(t *testing.T) {
 	}
 	decodeData(t, citeRec, &citation)
 
-	want := `Someone, "Solo", G. Schirmer #HL50252950 Copyright © G. Schirmer.`
+	want := `Someone, "Solo", G. Schirmer #HL50252950. Copyright © G. Schirmer.`
 	if citation.Citation != want {
 		t.Errorf("citation = %q, want %q", citation.Citation, want)
 	}
@@ -125,7 +125,7 @@ func TestCitation_ImslpNumberSuppressesPublisherAndPublisherId(t *testing.T) {
 	}
 	decodeData(t, citeRec, &citation)
 
-	want := `Someone, "Solo", IMSLP #04154 Copyright © G. Schirmer.`
+	want := `Someone, "Solo", IMSLP #04154. Copyright © G. Schirmer.`
 	if citation.Citation != want {
 		t.Errorf("citation = %q, want %q", citation.Citation, want)
 	}
@@ -552,6 +552,78 @@ func TestCitation_ExplicitPublicDomainAgreeingWithCalculationGetsNoTrailingNote(
 	// yearWritten falls back to the piece's own copyrightYear when blank
 	// (direct follow-up request) — same reasoning as the test above.
 	want := `Someone, "Solo", 1700.`
+	if citation.Citation != want {
+		t.Errorf("citation = %q, want %q", citation.Citation, want)
+	}
+}
+
+// Real bug found live, 2026-09-05: buildFlatCitation only ends its own
+// output in a period when yearWritten is present (a bare citation with no
+// year legitimately has no trailing period on its own — see e.g.
+// TestCitation_ArrangerAloneWithNoComposer). Appending the "Public domain."
+// note after a yearWritten-less flat citation skipped straight past that
+// missing period — "Tom Lehrer, "A Christmas Carol" Public domain." instead
+// of "... "A Christmas Carol". Public domain." (or, matching this app's
+// existing convention of folding the note straight onto the last real
+// component, "... "A Christmas Carol." Public domain." — the fix reuses
+// endsWithPeriod, which normalizes to no double period either way). This
+// piece has neither copyrightYear nor yearWritten set at all, so the
+// calculation has nothing to compute from (Result{} zero value, IsLikelyPD
+// false) — trivially "contradicts" the explicit publicDomain pick and
+// triggers the trailing note.
+func TestCitation_PublicDomainNoteGetsPeriodWhenFlatCitationHasNoYear(t *testing.T) {
+	h := newTestServer(t)
+	dir := t.TempDir()
+	path := dir + "/piece.pdf"
+	writeFixturePDF(t, path, 1)
+	rec := recordRequest(h, multipartUpload(t, "/api/pieces", "piece.pdf", readAll(t, path)))
+	var uploaded pieceResponse
+	decodeData(t, rec, &uploaded)
+
+	decodeData(t, doJSON(t, h, http.MethodPatch, apiPiecesURL(uploaded.ID), map[string]any{
+		"title":           "A Christmas Carol",
+		"composers":       []string{"Tom Lehrer"},
+		"copyrightStatus": "publicDomain",
+	}), nil)
+
+	citeRec := doJSON(t, h, http.MethodGet, apiPiecesURL(uploaded.ID)+"/citation", nil)
+	var citation struct {
+		Citation string `json:"citation"`
+	}
+	decodeData(t, citeRec, &citation)
+
+	want := `Tom Lehrer, "A Christmas Carol". Public domain.`
+	if citation.Citation != want {
+		t.Errorf("citation = %q, want %q", citation.Citation, want)
+	}
+}
+
+// Same missing-period gap, the copyrightClause append site — every existing
+// copyrightClause test happened to set yearWritten, which is why this half
+// of the bug never surfaced until the Public Domain case above found it.
+func TestCitation_CopyrightClauseGetsPeriodWhenFlatCitationHasNoYear(t *testing.T) {
+	h := newTestServer(t)
+	dir := t.TempDir()
+	path := dir + "/piece.pdf"
+	writeFixturePDF(t, path, 1)
+	rec := recordRequest(h, multipartUpload(t, "/api/pieces", "piece.pdf", readAll(t, path)))
+	var uploaded pieceResponse
+	decodeData(t, rec, &uploaded)
+
+	decodeData(t, doJSON(t, h, http.MethodPatch, apiPiecesURL(uploaded.ID), map[string]any{
+		"title":           "Solo",
+		"composers":       []string{"Someone"},
+		"copyrightHolder": "Test Publishing",
+		"copyrightStatus": "inCopyright",
+	}), nil)
+
+	citeRec := doJSON(t, h, http.MethodGet, apiPiecesURL(uploaded.ID)+"/citation", nil)
+	var citation struct {
+		Citation string `json:"citation"`
+	}
+	decodeData(t, citeRec, &citation)
+
+	want := `Someone, "Solo". Copyright © Test Publishing.`
 	if citation.Citation != want {
 		t.Errorf("citation = %q, want %q", citation.Citation, want)
 	}
