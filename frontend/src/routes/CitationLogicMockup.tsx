@@ -14,15 +14,21 @@ import { useMockupTitle } from '../lib/useMockupTitle'
 // 2026-09-03 — a hand-rolled CSS box/arrow version read as genuinely
 // ambiguous about where Yes/No splits happened once a wide sibling branch
 // pushed the next one onto its own row below it), source + regeneration
-// command in ../assets/diagrams/citation-logic-flowchart.mmd. Its leaf
-// nodes (A1-A3, B1-B6) are intentionally short labels, not the full
-// citation text — the LEAVES constant below carries the actual worked
-// example for each, cross-referenced by that same id, so the diagram stays
-// legible while the real strings still live right underneath it. Every
-// example is copied verbatim from a passing internal/handlers/citation_test.go
-// case (see each leaf's own `source`) specifically so this page can't
-// silently diverge from what the real code actually produces — if a test's
-// expected string ever changes, the matching leaf here needs the same edit.
+// command in ../assets/diagrams/citation-logic-flowchart.mmd. Its Path A
+// leaf nodes (A1-A3) are intentionally short labels, not the full citation
+// text — the LEAVES constant below carries the actual worked example for
+// each, cross-referenced by that same id, so the diagram stays legible
+// while the real strings still live right underneath it. Every example is
+// copied verbatim from a passing internal/handlers/citation_test.go case
+// (see each leaf's own `source`) specifically so this page can't silently
+// diverge from what the real code actually produces — if a test's expected
+// string ever changes, the matching leaf here needs the same edit.
+//
+// Path B's own two decisions (opus match, IMSLP source) ARE drawn as real
+// diamonds in the diagram — its six leaf boxes stay terse ("B1", not the
+// full pattern text) and cross-reference the Path B table below by that
+// same id for the actual worked example, rather than the diagram carrying
+// both the decision structure and the full leaf detail redundantly.
 
 type Leaf = {
   id: string
@@ -48,29 +54,38 @@ const FLAT_LEAVES: Leaf[] = [
   {
     id: 'A3',
     pattern: 'Otherwise (Likely PD, or PD agreeing with the calc) — bare, nothing appended',
-    example: `Someone, "Solo"`,
+    example: `Someone, "Solo", 1700.`,
     source: 'TestCitation_LikelyPublicDomainGetsNoTrailingNote',
   },
 ]
 
+// Examples deliberately end where buildTwoSentenceCitation's own
+// unconditional output ends — the trailing "Copyright © {year} {holder}."
+// clause each source test's real citation actually carries is stripped
+// back out here, since the prose below the table already covers it as an
+// "additional, whenever there's something to attribute" note, not part of
+// the pattern any single row is meant to illustrate. `pattern` states each
+// row's opus-match/IMSLP-source combination in prose — the flowchart's own
+// D3/D4-D5 diamonds show the same two decisions structurally, terse leaf
+// boxes there just say "B1" etc. and point here for the detail.
 const TWO_SENTENCE_LEAVES: Leaf[] = [
   {
     id: 'B1',
     pattern: 'Opus matches, piece owns IMSLP — IMSLP # joins sentence 1, no publish sentence',
-    example: `Charles Villiers Stanford, Six Short Preludes and Postludes, Op. 105, III. "Lento", IMSLP #07953, 1908. Copyright © 2013 Stainer & Bell.`,
+    example: `Charles Villiers Stanford, Six Short Preludes and Postludes, Op. 105, III. "Lento", IMSLP #07953, 1908.`,
     source: 'TestCitation_OpusMatchWithPieceOwnedImslp',
   },
   {
     id: 'B2',
     pattern:
       'Opus matches, book owns IMSLP — "Published by {publisher}, IMSLP #{n}, {yearPublished}."',
-    example: `Jane Doe, Album for the Young, Op. 68, No. 3 "The Reaper's Song", 1878. Published by Henle Verlag, IMSLP #12345, 2015. Copyright © 2015 Henle Verlag.`,
+    example: `Jane Doe, Album for the Young, Op. 68, No. 3 "The Reaper's Song", 1878. Published by Henle Verlag, IMSLP #12345, 2015.`,
     source: 'TestCitation_OpusMatchWithBookOwnedImslp',
   },
   {
     id: 'B3',
     pattern: 'Opus matches, neither owns IMSLP — "Published by {publisher}, {yearPublished}."',
-    example: `Jane Doe, Album for the Young, Op. 68, No. 3 "The Reaper's Song", 1878. Published by Henle Verlag, 2015. Copyright © 2015 Henle Verlag.`,
+    example: `Jane Doe, Album for the Young, Op. 68, No. 3 "The Reaper's Song", 1878. Published by Henle Verlag, 2015.`,
     source: 'TestCitation_OpusMatchWithNoImslpUsesPublishedByWording',
   },
   {
@@ -83,7 +98,7 @@ const TWO_SENTENCE_LEAVES: Leaf[] = [
     id: 'B5',
     pattern:
       'No opus match, book owns IMSLP — "Published in {bookTitle}, {publisher}, IMSLP #{n}, {yearPublished}."',
-    example: `Jane Doe, "The Reaper's Song" (No. 3), 1878. Published in Album for the Young, Henle Verlag, IMSLP #12345, 2015. Copyright © 2015 Henle Verlag.`,
+    example: `Jane Doe, "The Reaper's Song" (No. 3), 1878. Published in Album for the Young, Henle Verlag, IMSLP #12345, 2015.`,
     source: 'TestCitation_NoOpusMatchWithBookOwnedImslp',
   },
   {
@@ -108,6 +123,42 @@ function LeafCard({ id, pattern, example, source }: Leaf) {
         {example}
       </p>
       <p className="break-all text-[0.7rem] text-ink-soft/70">{source}</p>
+    </div>
+  )
+}
+
+// Path B (six leaves, one per opus-match/IMSLP-ownership combination) reads
+// tidier as a table than as six cards repeating the same four fields — Path
+// A stays LeafCard (only three leaves, one axis of variation) since a table
+// wouldn't buy anything there. The opus-match/IMSLP-source combination each
+// row sits at is stated in `pattern`'s own prose, not a separate column —
+// the flowchart's own D3/D4-D5 diamonds already show those two decisions
+// structurally, so a dedicated column here would just restate them a
+// second time next to the same B1-B6 ids the diagram's own terse leaf
+// boxes already point at.
+function LeafTable({ leaves }: { leaves: Leaf[] }) {
+  return (
+    <div className="overflow-x-auto rounded-lg border border-border">
+      <table className="w-full min-w-[760px] border-collapse text-sm">
+        <thead>
+          <tr className="border-b border-border bg-paper-sunken text-left text-xs text-ink-soft">
+            <th className="px-3 py-2 font-medium">ID</th>
+            <th className="px-3 py-2 font-medium">Pattern</th>
+            <th className="px-3 py-2 font-medium">Example</th>
+            <th className="px-3 py-2 font-medium">Source test</th>
+          </tr>
+        </thead>
+        <tbody>
+          {leaves.map((leaf) => (
+            <tr key={leaf.id} className="border-b border-border align-top last:border-b-0">
+              <td className="px-3 py-2 font-mono font-semibold text-accent">{leaf.id}</td>
+              <td className="px-3 py-2 text-ink-soft">{leaf.pattern}</td>
+              <td className="px-3 py-2 font-mono text-[0.8em] leading-snug text-ink">{leaf.example}</td>
+              <td className="px-3 py-2 break-all text-[0.7rem] text-ink-soft/70">{leaf.source}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   )
 }
@@ -151,7 +202,7 @@ export function CitationLogicMockup() {
       <section className="overflow-x-auto rounded-lg border border-border bg-paper p-6">
         <img
           src={citationFlowchart}
-          alt="Citation logic flowchart: buildCitation checks whether the piece has a source book and an In Copyright/Copyleft status. If not, buildFlatCitation runs, then branches on status into leaves A1-A3. If so, buildTwoSentenceCitation runs, branching first on whether the book's opus matches the piece's own, then on who owns the effective IMSLP number, into leaves B1-B6 — all of which converge on an optional trailing copyright clause."
+          alt="Citation logic flowchart: buildCitation checks whether the piece has a source book and an In Copyright/Copyleft status. If not, buildFlatCitation runs, then branches on status into leaves A1-A3. If so, buildTwoSentenceCitation runs, branching first on whether the book's opus matches the piece's own, then on who owns the effective IMSLP number, into leaves B1-B6 (see the table below for what each one produces) — all of which converge on an optional trailing copyright clause."
           className="mx-auto min-w-[880px]"
         />
       </section>
@@ -171,17 +222,12 @@ export function CitationLogicMockup() {
         <h2 className="font-display text-lg font-medium text-ink">
           Path B — has a book, Copyleft/In Copyright (buildTwoSentenceCitation)
         </h2>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-          {TWO_SENTENCE_LEAVES.map((leaf) => (
-            <LeafCard key={leaf.id} {...leaf} />
-          ))}
-        </div>
+        <LeafTable leaves={TWO_SENTENCE_LEAVES} />
         <p className="max-w-2xl text-xs text-ink-soft">
-          All six results above (B1-B6) can additionally end with a trailing{' '}
-          <span className="font-mono">Copyright © {'{year}'} {'{holder}'}.</span> clause whenever
-          there's a year or holder to attribute to (<span className="font-mono">copyrightClause</span>
-          , see below) — omitted from each example above only when this piece's own fixture data
-          has neither.
+          Examples above are shown without it, but all six (B1-B6) can additionally end with a
+          trailing <span className="font-mono">Copyright © {'{year}'} {'{holder}'}.</span> clause
+          whenever there's a year or holder to attribute to (
+          <span className="font-mono">copyrightClause</span>, see below).
         </p>
       </section>
 
