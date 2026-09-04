@@ -1013,163 +1013,6 @@ export function EditPieceModal({
               />
             </div>
           </div>
-
-          {/* Copyright — Public Domain Badge feature. Whole collapsible
-              section (trigger + panel), not just the Copyright Status
-              field, moved up here — last thing in this untitled lead
-              section, right before the Frontmatter divider. Collapsed by
-              default, same "nothing new for someone who's never touched
-              this feature" posture it always had. Uses the section's own
-              natural gap-3 spacing rather than its own border-t divider,
-              since it's now a sibling of Title/Year written and
-              Composer/Arranger within this same untitled section, not its
-              own top-level bordered one. */}
-          <div>
-            <button
-              type="button"
-              onClick={() => setCopyrightOpen((o) => !o)}
-              className="flex cursor-pointer items-center gap-1 text-sm text-ink-soft hover:text-ink"
-            >
-              <IconChevronRight
-                size={14}
-                className={`transition-transform ${copyrightOpen ? 'rotate-90' : ''}`}
-              />
-              Copyright
-            </button>
-            {copyrightOpen && (
-              <div className="mt-3 flex flex-col gap-4 rounded-md border border-dashed border-border p-4">
-                <Controller
-                  name="copyrightStatus"
-                  control={control}
-                  render={({ field }) => (
-                    <SingleSelect
-                      label="Copyright status"
-                      options={COPYRIGHT_STATUS_OPTIONS}
-                      value={field.value}
-                      onChange={field.onChange}
-                      placeholder={COPYRIGHT_BADGE_META[piece.copyrightStatus.effective].label}
-                      placeholderDescription="Calculated automatically — not explicitly set on this piece."
-                      onClear={() => field.onChange('')}
-                    />
-                  )}
-                />
-                <div className="flex flex-col gap-3 min-[525px]:flex-row">
-                  <div className="flex min-w-0 flex-1 flex-col gap-1">
-                    <label htmlFor="f-copyright-year" className="flex items-center gap-1 text-sm text-ink-soft">
-                      Copyright year
-                      <InfoTooltip
-                        message="Enter the year copyright was first established for this piece — usually the year of first publication."
-                        ariaLabel="What Copyright year means"
-                        triggerClassName="text-[#9d9892] hover:text-ink-soft"
-                      >
-                        <IconInfoCircle size={13} />
-                      </InfoTooltip>
-                    </label>
-                    <input
-                      id="f-copyright-year"
-                      type="number"
-                      placeholder={
-                        !watch('copyrightYear') && piece.copyrightYear.inherited && piece.copyrightYear.value != null
-                          ? String(piece.copyrightYear.value)
-                          : undefined
-                      }
-                      className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
-                      {...register('copyrightYear')}
-                    />
-                    {!watch('copyrightYear') && piece.copyrightYear.inherited && piece.copyrightYear.value != null && (
-                      <InheritedNote
-                        bookValue={String(piece.copyrightYear.value)}
-                        onCopy={() => setValue('copyrightYear', String(piece.copyrightYear.value))}
-                      />
-                    )}
-                  </div>
-                  <div className="flex min-w-0 flex-1 flex-col gap-1">
-                    <label htmlFor="f-copyright-holder" className="text-sm text-ink-soft">
-                      Copyright holder
-                    </label>
-                    <input
-                      id="f-copyright-holder"
-                      type="text"
-                      placeholder={!watch('copyrightHolder') && piece.copyrightHolder.inherited ? piece.copyrightHolder.value : undefined}
-                      className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
-                      {...register('copyrightHolder', { maxLength: 255 })}
-                    />
-                    {!watch('copyrightHolder') && piece.copyrightHolder.inherited && (
-                      <InheritedNote
-                        bookValue={piece.copyrightHolder.value}
-                        onCopy={() => setValue('copyrightHolder', piece.copyrightHolder.value)}
-                      />
-                    )}
-                  </div>
-                </div>
-
-                {/* US renewal follow-up — only for en-US, only when the
-                    typed year is in the 1923-1963 window where renewal
-                    status actually decides the term length (28 vs. 95
-                    years — see internal/copyright.ComputeLikelyPublicDomain's
-                    own doc comment). copyrightRenewed is tri-state ('' means
-                    inherit/unset) the same way copyrightStatus above is —
-                    see FormValues' own comment for why a plain boolean would
-                    silently freeze an inherited value into a permanent
-                    override on every save. */}
-                {appConfig?.copyrightRegion === 'en-US' && inUSRenewalWindow(watch('copyrightYear')) && (
-                  <div className="flex flex-col gap-2 rounded-md border border-dashed border-border p-3">
-                    <div className="flex items-center gap-1.5">
-                      <Controller
-                        name="copyrightRenewed"
-                        control={control}
-                        render={({ field }) => (
-                          <Toggle
-                            checked={field.value === '' ? piece.copyrightRenewed.value : field.value === 'true'}
-                            onChange={(next) => field.onChange(next ? 'true' : 'false')}
-                            label="This work was renewed"
-                          />
-                        )}
-                      />
-                      <InfoTooltip
-                        message={`US works published ${US_RENEWAL_WINDOW_START}–${US_RENEWAL_WINDOW_END} needed a separate renewal filing to keep protection past the first 28 years. Enable this if your source shows a "(renewed …)" note next to the copyright year above.`}
-                        ariaLabel="What 'This work was renewed' means"
-                        triggerClassName="text-[#9d9892] hover:text-ink-soft"
-                      >
-                        <IconInfoCircle size={13} />
-                      </InfoTooltip>
-                    </div>
-                    {watch('copyrightRenewed') === '' && piece.copyrightRenewed.inherited && (
-                      <InheritedNote
-                        bookValue={piece.copyrightRenewed.value ? 'Renewed' : 'Not renewed'}
-                        onCopy={() =>
-                          setValue('copyrightRenewed', piece.copyrightRenewed.value ? 'true' : 'false')
-                        }
-                      />
-                    )}
-                  </div>
-                )}
-
-                <div className="flex min-w-0 flex-col gap-1">
-                  <label htmlFor="f-copyright-slug" className="text-sm text-ink-soft">
-                    Copyright details
-                  </label>
-                  <input
-                    id="f-copyright-slug"
-                    type="text"
-                    placeholder={
-                      !watch('copyrightSlug') && piece.copyrightSlug.inherited
-                        ? piece.copyrightSlug.value
-                        : 'Optional — e.g. license terms, renewal notes'
-                    }
-                    className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
-                    {...register('copyrightSlug')}
-                  />
-                  {!watch('copyrightSlug') && piece.copyrightSlug.inherited && (
-                    <InheritedNote
-                      bookValue={piece.copyrightSlug.value}
-                      onCopy={() => setValue('copyrightSlug', piece.copyrightSlug.value)}
-                    />
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
         </div>
 
         <div className="flex flex-col gap-3 border-t border-border pt-4">
@@ -1604,6 +1447,165 @@ export function EditPieceModal({
               />
             </div>
           </div>
+        </div>
+
+        {/* Copyright — Public Domain Badge feature. Own collapsible
+            section at the very bottom, same "collapsed by default, nothing
+            new for someone who's never touched this feature" posture as
+            Piece Details' own Advanced/Get Info panel. Moved back here
+            (direct follow-up — a prior pass had relocated it up into the
+            lead section) after only the Copyright Status field, then the
+            whole section, spent time up there. */}
+        <div className="border-t border-border pt-4">
+          {/* Text styling matches SectionHeading (Frontmatter/Musical
+              Details/Personal/Book Details above) exactly — this is the
+              one section title in the form that's also a clickable
+              disclosure trigger, so it needs the chevron + hover affordance
+              SectionHeading itself (a plain h3) doesn't. */}
+          <button
+            type="button"
+            onClick={() => setCopyrightOpen((o) => !o)}
+            className="flex cursor-pointer items-center gap-1 text-xs font-medium tracking-wide text-ink-soft/70 uppercase hover:text-ink"
+          >
+            <IconChevronRight
+              size={12}
+              className={`transition-transform ${copyrightOpen ? 'rotate-90' : ''}`}
+            />
+            Copyright
+          </button>
+          {copyrightOpen && (
+            <div className="mt-3 flex flex-col gap-4 rounded-md border border-dashed border-border p-4">
+              <Controller
+                name="copyrightStatus"
+                control={control}
+                render={({ field }) => (
+                  <SingleSelect
+                    label="Copyright status"
+                    options={COPYRIGHT_STATUS_OPTIONS}
+                    value={field.value}
+                    onChange={field.onChange}
+                    placeholder={COPYRIGHT_BADGE_META[piece.copyrightStatus.effective].label}
+                    placeholderDescription="Calculated automatically — not explicitly set on this piece."
+                    onClear={() => field.onChange('')}
+                  />
+                )}
+              />
+              <div className="flex flex-col gap-3 min-[525px]:flex-row">
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  <label htmlFor="f-copyright-year" className="flex items-center gap-1 text-sm text-ink-soft">
+                    Copyright year
+                    <InfoTooltip
+                      message="Enter the year copyright was first established for this piece — usually the year of first publication."
+                      ariaLabel="What Copyright year means"
+                      triggerClassName="text-[#9d9892] hover:text-ink-soft"
+                    >
+                      <IconInfoCircle size={13} />
+                    </InfoTooltip>
+                  </label>
+                  <input
+                    id="f-copyright-year"
+                    type="number"
+                    placeholder={
+                      !watch('copyrightYear') && piece.copyrightYear.inherited && piece.copyrightYear.value != null
+                        ? String(piece.copyrightYear.value)
+                        : undefined
+                    }
+                    className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                    {...register('copyrightYear')}
+                  />
+                  {!watch('copyrightYear') && piece.copyrightYear.inherited && piece.copyrightYear.value != null && (
+                    <InheritedNote
+                      bookValue={String(piece.copyrightYear.value)}
+                      onCopy={() => setValue('copyrightYear', String(piece.copyrightYear.value))}
+                    />
+                  )}
+                </div>
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  <label htmlFor="f-copyright-holder" className="text-sm text-ink-soft">
+                    Copyright holder
+                  </label>
+                  <input
+                    id="f-copyright-holder"
+                    type="text"
+                    placeholder={!watch('copyrightHolder') && piece.copyrightHolder.inherited ? piece.copyrightHolder.value : undefined}
+                    className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                    {...register('copyrightHolder', { maxLength: 255 })}
+                  />
+                  {!watch('copyrightHolder') && piece.copyrightHolder.inherited && (
+                    <InheritedNote
+                      bookValue={piece.copyrightHolder.value}
+                      onCopy={() => setValue('copyrightHolder', piece.copyrightHolder.value)}
+                    />
+                  )}
+                </div>
+              </div>
+
+              {/* US renewal follow-up — only for en-US, only when the
+                  typed year is in the 1923-1963 window where renewal
+                  status actually decides the term length (28 vs. 95
+                  years — see internal/copyright.ComputeLikelyPublicDomain's
+                  own doc comment). copyrightRenewed is tri-state ('' means
+                  inherit/unset) the same way copyrightStatus above is —
+                  see FormValues' own comment for why a plain boolean would
+                  silently freeze an inherited value into a permanent
+                  override on every save. */}
+              {appConfig?.copyrightRegion === 'en-US' && inUSRenewalWindow(watch('copyrightYear')) && (
+                <div className="flex flex-col gap-2 rounded-md border border-dashed border-border p-3">
+                  <div className="flex items-center gap-1.5">
+                    <Controller
+                      name="copyrightRenewed"
+                      control={control}
+                      render={({ field }) => (
+                        <Toggle
+                          checked={field.value === '' ? piece.copyrightRenewed.value : field.value === 'true'}
+                          onChange={(next) => field.onChange(next ? 'true' : 'false')}
+                          label="This work was renewed"
+                        />
+                      )}
+                    />
+                    <InfoTooltip
+                      message={`US works published ${US_RENEWAL_WINDOW_START}–${US_RENEWAL_WINDOW_END} needed a separate renewal filing to keep protection past the first 28 years. Enable this if your source shows a "(renewed …)" note next to the copyright year above.`}
+                      ariaLabel="What 'This work was renewed' means"
+                      triggerClassName="text-[#9d9892] hover:text-ink-soft"
+                    >
+                      <IconInfoCircle size={13} />
+                    </InfoTooltip>
+                  </div>
+                  {watch('copyrightRenewed') === '' && piece.copyrightRenewed.inherited && (
+                    <InheritedNote
+                      bookValue={piece.copyrightRenewed.value ? 'Renewed' : 'Not renewed'}
+                      onCopy={() =>
+                        setValue('copyrightRenewed', piece.copyrightRenewed.value ? 'true' : 'false')
+                      }
+                    />
+                  )}
+                </div>
+              )}
+
+              <div className="flex min-w-0 flex-col gap-1">
+                <label htmlFor="f-copyright-slug" className="text-sm text-ink-soft">
+                  Copyright details
+                </label>
+                <input
+                  id="f-copyright-slug"
+                  type="text"
+                  placeholder={
+                    !watch('copyrightSlug') && piece.copyrightSlug.inherited
+                      ? piece.copyrightSlug.value
+                      : 'Optional — e.g. license terms, renewal notes'
+                  }
+                  className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                  {...register('copyrightSlug')}
+                />
+                {!watch('copyrightSlug') && piece.copyrightSlug.inherited && (
+                  <InheritedNote
+                    bookValue={piece.copyrightSlug.value}
+                    onCopy={() => setValue('copyrightSlug', piece.copyrightSlug.value)}
+                  />
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </form>
     </Modal>

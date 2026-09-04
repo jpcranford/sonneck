@@ -1551,169 +1551,6 @@ export function EditPieceModalMockup() {
                 />
               </div>
             </div>
-
-            {/* Copyright — Public Domain Badge feature (design artifact,
-                phase 1). Whole collapsible section (trigger + panel), not
-                just the Copyright Status field, moved up here — last thing
-                in this untitled lead section, right before the Frontmatter
-                divider. Collapsed by default, same "nothing new for
-                someone who's never touched this feature" posture it always
-                had. Uses the section's own natural gap-3 spacing rather
-                than its own border-t divider, since it's now a sibling of
-                Title/Year written and Composer/Arranger within this same
-                untitled section, not its own top-level bordered one. */}
-            <div>
-              <button
-                type="button"
-                onClick={() => setCopyrightOpen((o) => !o)}
-                className="flex cursor-pointer items-center gap-1 text-sm text-ink-soft hover:text-ink"
-              >
-                <IconChevronRight
-                  size={14}
-                  className={`transition-transform ${copyrightOpen ? 'rotate-90' : ''}`}
-                />
-                Copyright
-              </button>
-              {copyrightOpen && (
-                <div className="mt-3 flex flex-col gap-4 rounded-md border border-dashed border-border p-4">
-                  <Controller
-                    name="copyrightStatus"
-                    control={control}
-                    render={({ field }) => (
-                      <SingleSelect
-                        label="Copyright status"
-                        options={COPYRIGHT_STATUS_OPTIONS}
-                        value={field.value}
-                        onChange={field.onChange}
-                        placeholder={MOCK_CALCULATED_STATUS.label}
-                        placeholderDescription={`Calculated from copyright year and composer info — currently ${MOCK_CALCULATED_STATUS.label} (as of ${MOCK_CALCULATED_EXPIRY_YEAR}), not explicitly set.`}
-                        onClear={() => field.onChange('')}
-                      />
-                    )}
-                  />
-                  <div className="flex flex-col gap-3 min-[525px]:flex-row">
-                    <div className="flex flex-1 flex-col gap-1">
-                      <label
-                        htmlFor="f-copyright-year"
-                        className="flex items-center gap-1 text-sm text-ink-soft"
-                      >
-                        Copyright year
-                        <InfoTooltip
-                          message="Enter the year copyright was first established for this piece — usually the year of first publication."
-                          ariaLabel="What Copyright year means"
-                          triggerClassName="text-[#9d9892] hover:text-ink-soft"
-                        >
-                          <IconInfoCircle size={13} />
-                        </InfoTooltip>
-                      </label>
-                      <input
-                        id="f-copyright-year"
-                        type="number"
-                        placeholder={!watch('copyrightYear') ? mockBook.copyrightYear : undefined}
-                        className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
-                        {...register('copyrightYear')}
-                      />
-                      {!watch('copyrightYear') && (
-                        <InheritedNote
-                          bookValue={mockBook.copyrightYear}
-                          onCopy={() => setValue('copyrightYear', mockBook.copyrightYear)}
-                        />
-                      )}
-                    </div>
-                    <div className="flex flex-1 flex-col gap-1">
-                      <label htmlFor="f-copyright-holder" className="text-sm text-ink-soft">
-                        Copyright holder
-                      </label>
-                      <input
-                        id="f-copyright-holder"
-                        type="text"
-                        placeholder={!watch('copyrightHolder') ? mockBook.copyrightHolder : undefined}
-                        className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
-                        {...register('copyrightHolder')}
-                      />
-                      {!watch('copyrightHolder') && (
-                        <InheritedNote
-                          bookValue={mockBook.copyrightHolder}
-                          onCopy={() => setValue('copyrightHolder', mockBook.copyrightHolder)}
-                        />
-                      )}
-                    </div>
-                  </div>
-
-                  {/* US renewal follow-up — only for en-US, only when the
-                      typed year is in the 1923-1963 window where renewal
-                      status actually decides the term length. Real page:
-                      same gate, but region comes from /api/config instead of
-                      being hardcoded true. Just the toggle — no separate
-                      renewal-year field: the exact filing year never changes
-                      the calculation (a renewed work always gets 95 years
-                      from the copyright year above, regardless of which year
-                      within its filing window the renewal happened), and the
-                      citation's own "(renewed)" marker doesn't need a
-                      specific year either (direct follow-up, dropped after
-                      confirming the calc reasoning). */}
-                  {inUSRenewalWindow(watch('copyrightYear')) && (
-                    <div className="flex items-center gap-1.5 rounded-md border border-dashed border-border p-3">
-                      <Controller
-                        name="copyrightRenewed"
-                        control={control}
-                        render={({ field }) => (
-                          <Toggle
-                            checked={field.value}
-                            onChange={field.onChange}
-                            label="This work was renewed"
-                          />
-                        )}
-                      />
-                      <InfoTooltip
-                        message={`US works published ${US_RENEWAL_WINDOW_START}–${US_RENEWAL_WINDOW_END} needed a separate renewal filing to keep protection past the first 28 years. Enable this if your source shows a "(renewed …)" note next to the copyright year above.`}
-                        ariaLabel="What 'This work was renewed' means"
-                        triggerClassName="text-[#9d9892] hover:text-ink-soft"
-                      >
-                        <IconInfoCircle size={13} />
-                      </InfoTooltip>
-                    </div>
-                  )}
-
-                  {/* Design-review only — NOT part of the real form, never
-                      ships. Shows what the new "Possibly Public Domain" badge
-                      state (US renewal follow-up) looks like next to the
-                      existing four, all pulled from the real, shared
-                      COPYRIGHT_BADGE_META (lib/copyrightBadge.ts) so this is
-                      an accurate preview, not a hand-drawn approximation. */}
-                  <div className="flex flex-col gap-2 rounded-md border border-dashed border-accent/40 bg-accent-soft/40 p-3">
-                    <p className="text-xs font-medium text-ink-soft">
-                      Design review only — all five badge states (real COPYRIGHT_BADGE_META)
-                    </p>
-                    <div className="flex flex-wrap gap-3">
-                      {(Object.keys(COPYRIGHT_BADGE_META) as CopyrightStatus[]).map((status) => {
-                        const meta = COPYRIGHT_BADGE_META[status]
-                        const Icon = meta.icon
-                        return (
-                          <span key={status} className="flex items-center gap-1.5 text-sm text-ink">
-                            <Icon size={16} className={meta.colorClass} />
-                            {meta.label}
-                          </span>
-                        )
-                      })}
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col gap-1">
-                    <label htmlFor="f-copyright-slug" className="text-sm text-ink-soft">
-                      Copyright details
-                    </label>
-                    <input
-                      id="f-copyright-slug"
-                      type="text"
-                      placeholder="Optional — e.g. license terms, renewal notes"
-                      className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
-                      {...register('copyrightSlug')}
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
           </div>
 
           {/* Frontmatter (was "Piece Details" — renamed, see Classification below) */}
@@ -2132,6 +1969,172 @@ export function EditPieceModalMockup() {
                 />
               </div>
             </div>
+          </div>
+
+          {/* Copyright — Public Domain Badge feature (design artifact,
+              phase 1). Own collapsible section at the very bottom, same
+              "collapsed by default, nothing new for someone who's never
+              touched this feature" posture as Piece Details' own
+              Advanced/Get Info panel. Moved back here (direct follow-up —
+              a prior pass had relocated it up into the lead section) after
+              only the Copyright Status field, then the whole section,
+              spent time up there. */}
+          <div className="border-t border-border pt-4">
+            {/* Text styling matches SectionHeading (Frontmatter/Musical
+                Details/Personal/Book Details above) exactly — this is the
+                one section title in the form that's also a clickable
+                disclosure trigger, so it needs the chevron + hover
+                affordance SectionHeading itself (a plain h3) doesn't. */}
+            <button
+              type="button"
+              onClick={() => setCopyrightOpen((o) => !o)}
+              className="flex cursor-pointer items-center gap-1 text-xs font-medium tracking-wide text-ink-soft/70 uppercase hover:text-ink"
+            >
+              <IconChevronRight
+                size={12}
+                className={`transition-transform ${copyrightOpen ? 'rotate-90' : ''}`}
+              />
+              Copyright
+            </button>
+            {copyrightOpen && (
+              <div className="mt-3 flex flex-col gap-4 rounded-md border border-dashed border-border p-4">
+                <Controller
+                  name="copyrightStatus"
+                  control={control}
+                  render={({ field }) => (
+                    <SingleSelect
+                      label="Copyright status"
+                      options={COPYRIGHT_STATUS_OPTIONS}
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder={MOCK_CALCULATED_STATUS.label}
+                      placeholderDescription={`Calculated from copyright year and composer info — currently ${MOCK_CALCULATED_STATUS.label} (as of ${MOCK_CALCULATED_EXPIRY_YEAR}), not explicitly set.`}
+                      onClear={() => field.onChange('')}
+                    />
+                  )}
+                />
+                <div className="flex flex-col gap-3 min-[525px]:flex-row">
+                  <div className="flex flex-1 flex-col gap-1">
+                    <label
+                      htmlFor="f-copyright-year"
+                      className="flex items-center gap-1 text-sm text-ink-soft"
+                    >
+                      Copyright year
+                      <InfoTooltip
+                        message="Enter the year copyright was first established for this piece — usually the year of first publication."
+                        ariaLabel="What Copyright year means"
+                        triggerClassName="text-[#9d9892] hover:text-ink-soft"
+                      >
+                        <IconInfoCircle size={13} />
+                      </InfoTooltip>
+                    </label>
+                    <input
+                      id="f-copyright-year"
+                      type="number"
+                      placeholder={!watch('copyrightYear') ? mockBook.copyrightYear : undefined}
+                      className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                      {...register('copyrightYear')}
+                    />
+                    {!watch('copyrightYear') && (
+                      <InheritedNote
+                        bookValue={mockBook.copyrightYear}
+                        onCopy={() => setValue('copyrightYear', mockBook.copyrightYear)}
+                      />
+                    )}
+                  </div>
+                  <div className="flex flex-1 flex-col gap-1">
+                    <label htmlFor="f-copyright-holder" className="text-sm text-ink-soft">
+                      Copyright holder
+                    </label>
+                    <input
+                      id="f-copyright-holder"
+                      type="text"
+                      placeholder={!watch('copyrightHolder') ? mockBook.copyrightHolder : undefined}
+                      className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                      {...register('copyrightHolder')}
+                    />
+                    {!watch('copyrightHolder') && (
+                      <InheritedNote
+                        bookValue={mockBook.copyrightHolder}
+                        onCopy={() => setValue('copyrightHolder', mockBook.copyrightHolder)}
+                      />
+                    )}
+                  </div>
+                </div>
+
+                {/* US renewal follow-up — only for en-US, only when the
+                    typed year is in the 1923-1963 window where renewal
+                    status actually decides the term length. Real page:
+                    same gate, but region comes from /api/config instead of
+                    being hardcoded true. Just the toggle — no separate
+                    renewal-year field: the exact filing year never changes
+                    the calculation (a renewed work always gets 95 years
+                    from the copyright year above, regardless of which year
+                    within its filing window the renewal happened), and the
+                    citation's own "(renewed)" marker doesn't need a
+                    specific year either (direct follow-up, dropped after
+                    confirming the calc reasoning). */}
+                {inUSRenewalWindow(watch('copyrightYear')) && (
+                  <div className="flex items-center gap-1.5 rounded-md border border-dashed border-border p-3">
+                    <Controller
+                      name="copyrightRenewed"
+                      control={control}
+                      render={({ field }) => (
+                        <Toggle
+                          checked={field.value}
+                          onChange={field.onChange}
+                          label="This work was renewed"
+                        />
+                      )}
+                    />
+                    <InfoTooltip
+                      message={`US works published ${US_RENEWAL_WINDOW_START}–${US_RENEWAL_WINDOW_END} needed a separate renewal filing to keep protection past the first 28 years. Enable this if your source shows a "(renewed …)" note next to the copyright year above.`}
+                      ariaLabel="What 'This work was renewed' means"
+                      triggerClassName="text-[#9d9892] hover:text-ink-soft"
+                    >
+                      <IconInfoCircle size={13} />
+                    </InfoTooltip>
+                  </div>
+                )}
+
+                {/* Design-review only — NOT part of the real form, never
+                    ships. Shows what the new "Possibly Public Domain" badge
+                    state (US renewal follow-up) looks like next to the
+                    existing four, all pulled from the real, shared
+                    COPYRIGHT_BADGE_META (lib/copyrightBadge.ts) so this is
+                    an accurate preview, not a hand-drawn approximation. */}
+                <div className="flex flex-col gap-2 rounded-md border border-dashed border-accent/40 bg-accent-soft/40 p-3">
+                  <p className="text-xs font-medium text-ink-soft">
+                    Design review only — all five badge states (real COPYRIGHT_BADGE_META)
+                  </p>
+                  <div className="flex flex-wrap gap-3">
+                    {(Object.keys(COPYRIGHT_BADGE_META) as CopyrightStatus[]).map((status) => {
+                      const meta = COPYRIGHT_BADGE_META[status]
+                      const Icon = meta.icon
+                      return (
+                        <span key={status} className="flex items-center gap-1.5 text-sm text-ink">
+                          <Icon size={16} className={meta.colorClass} />
+                          {meta.label}
+                        </span>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label htmlFor="f-copyright-slug" className="text-sm text-ink-soft">
+                    Copyright details
+                  </label>
+                  <input
+                    id="f-copyright-slug"
+                    type="text"
+                    placeholder="Optional — e.g. license terms, renewal notes"
+                    className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                    {...register('copyrightSlug')}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </form>
       </Modal>

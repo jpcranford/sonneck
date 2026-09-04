@@ -464,13 +464,19 @@ export function EditBookModalMockup() {
               — see the design artifact's own §7 note), so it just shows
               a plain "Not set" placeholder instead. */}
           <div className="border-t border-border pt-4">
+            {/* Text styling matches EditPieceModal.tsx's own Copyright
+                trigger — the SectionHeading typography (text-xs font-medium
+                tracking-wide uppercase text-ink-soft/70) this form has no
+                other section title to compare against directly, but the
+                Piece Edit menu's Copyright section is the same feature and
+                should read identically. */}
             <button
               type="button"
               onClick={() => setCopyrightOpen((o) => !o)}
-              className="flex cursor-pointer items-center gap-1 text-sm text-ink-soft hover:text-ink"
+              className="flex cursor-pointer items-center gap-1 text-xs font-medium tracking-wide text-ink-soft/70 uppercase hover:text-ink"
             >
               <IconChevronRight
-                size={14}
+                size={12}
                 className={`transition-transform ${copyrightOpen ? 'rotate-90' : ''}`}
               />
               Copyright
