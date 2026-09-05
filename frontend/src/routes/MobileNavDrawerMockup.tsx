@@ -87,7 +87,12 @@ export function MobileNavDrawerMockup() {
   const [drawerOpen, setDrawerOpen] = useState(false)
 
   return (
-    <div className="flex h-screen overflow-hidden bg-paper text-ink">
+    // h-dvh, not h-screen — mockup-parity with AppShell.tsx's own fix for a
+    // real iOS Safari bug (dynamic toolbar resize resetting a nested
+    // scroll container's scrollTop to 0 mid-swipe); this mockup shares the
+    // exact same outer-h-screen-plus-nested-overflow-y-auto shape, so it
+    // carries the identical latent bug.
+    <div className="flex h-dvh overflow-hidden bg-paper text-ink">
       <div className="hidden md:block">
         <Sidebar />
       </div>

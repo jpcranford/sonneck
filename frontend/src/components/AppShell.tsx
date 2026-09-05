@@ -11,7 +11,21 @@ export function AppShell() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
 
   return (
-    <div className="flex h-screen overflow-hidden bg-paper text-ink">
+    // h-dvh, not h-screen (100vh) — real bug found live on iOS Safari,
+    // 2026-09-05 (screen recording): 100vh stays pinned to a fixed
+    // worst-case viewport height and doesn't track Safari's own dynamic
+    // address-bar/toolbar animation, which keeps changing the *actually*
+    // visible height while the user scrolls (confirmed directly against
+    // /mockup/device-info's own live innerHeight reading, which cycled
+    // through three different values — 628/716/812 — mid-scroll on a real
+    // iPhone). Every time that mismatch gets reconciled, this shell's own
+    // *nested* scroll container (#app-scroll-container below, not this
+    // outer div) is exactly the kind of element iOS Safari can reset
+    // scrollTop to 0 on — reproduced twice in one recording, snapping the
+    // whole page back to the top mid-swipe. 100dvh tracks the real,
+    // currently-visible viewport instead of a fixed one, removing the
+    // mismatch this bug depends on.
+    <div className="flex h-dvh overflow-hidden bg-paper text-ink">
       {/* Desktop only — MobileNav (top bar + drawer, its own `md:hidden`
           guards) covers everything below the md breakpoint instead. */}
       <div className="hidden md:block">
