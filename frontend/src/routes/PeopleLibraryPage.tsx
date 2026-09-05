@@ -575,7 +575,7 @@ export function PeopleLibraryPage() {
         viewMode={viewMode}
         onViewModeChange={setViewMode}
         newButton={{ label: 'New Person', onClick: () => setNewPersonOpen(true) }}
-        rightColumnGridColsClassName="sm:grid-cols-[auto_1fr_175px] 2xl:grid-cols-[auto_1fr_219px]"
+        rightColumnGridColsClassName="sm:grid-cols-[auto_1fr_212px] 2xl:grid-cols-[auto_1fr_256px]"
       >
         {pillEntries.length > 0 && (
           <div className="flex flex-wrap items-center gap-1.5">

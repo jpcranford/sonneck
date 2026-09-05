@@ -297,7 +297,7 @@ export function PieceBrowseView({
         sortDirectionLabel={DIRECTION_LABEL[sortField][sortDirection]}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
-        rightColumnGridColsClassName="sm:grid-cols-[auto_1fr_211px] 2xl:grid-cols-[auto_1fr_255px]"
+        rightColumnGridColsClassName="sm:grid-cols-[auto_1fr_215px] 2xl:grid-cols-[auto_1fr_259px]"
       >
         {pillEntries.length > 0 && (
           <div className="flex flex-wrap items-center gap-1.5">

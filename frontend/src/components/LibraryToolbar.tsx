@@ -33,7 +33,21 @@ import { WIDE_CONTENT_MAX_W } from '../lib/layout'
  *   its cap. Measure the real Filters+Sort rendered width per caller (it
  *   genuinely differs — People's shorter "Name" sort label needs a
  *   smaller floor than Piece/Books' "Date Added") and pass the actual
- *   number plus ~1px.
+ *   number plus ~1px. **Measure with the WIDEST sort field label
+ *   selected, not whatever the default field happens to be** — a real
+ *   bug found live: measuring at the default ("Name"/"Date Added") and
+ *   then selecting a longer field (e.g. "Piece Count") grows the segmented
+ *   sort button past a floor sized for the shorter default, clipping it
+ *   at the toolbar's right edge. Every caller's own sort-field list needs
+ *   its own widest-label check, not just its default.
+ * - `SortControl.tsx`'s own field-picker dropdown is anchored `right-0`
+ *   (not the default left-aligned), since Sort always sits at this
+ *   toolbar's own right edge — a real bug found alongside the one above:
+ *   the dropdown's `min-w-[150px]` routinely needs to be wider than the
+ *   currently-selected field's own (possibly much narrower) button, and
+ *   without `right-0` it grew rightward off past the viewport/container
+ *   edge instead of leftward into the room the toolbar's own left-hand
+ *   content already keeps clear.
  * - The Search+optional-newButton wrapper is `w-full` (so Search's
  *   `flex-1` has the whole track to grow into) with `justify-content:
  *   center` on the flex row itself (not `justify-self-center` on the

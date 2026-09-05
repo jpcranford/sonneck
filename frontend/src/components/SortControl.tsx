@@ -105,7 +105,7 @@ export function SortControl<Field extends string>({
         </button>
       </div>
       {open && (
-        <div className="absolute z-10 mt-1 w-full min-w-[150px] overflow-hidden rounded-md border border-border bg-paper-raised py-1 shadow-lg">
+        <div className="absolute right-0 z-10 mt-1 w-full min-w-[150px] overflow-hidden rounded-md border border-border bg-paper-raised py-1 shadow-lg">
           {fields.map((opt, index) => (
             <button
               key={opt.value}

@@ -527,7 +527,7 @@ function PersonSortControl({
         </button>
       </div>
       {open && (
-        <div className="absolute z-10 mt-1 w-full min-w-[150px] overflow-hidden rounded-md border border-border bg-paper-raised py-1 shadow-lg">
+        <div className="absolute right-0 z-10 mt-1 w-full min-w-[150px] overflow-hidden rounded-md border border-border bg-paper-raised py-1 shadow-lg">
           {PERSON_SORT_FIELDS.map((opt, index) => (
             <button
               key={opt}
@@ -801,7 +801,7 @@ export function PeopleLibrarySample() {
           pair-centering once Search hits its cap — never icon-only. */}
       <div className="sticky top-0 z-10 border-b border-border bg-paper">
         <div className={`${WIDE_CONTENT_MAX_W} flex flex-col gap-3 p-4`}>
-          <div className="grid grid-cols-[auto_1fr] items-center gap-3 sm:grid-cols-[auto_1fr_175px] 2xl:grid-cols-[auto_1fr_219px]">
+          <div className="grid grid-cols-[auto_1fr] items-center gap-3 sm:grid-cols-[auto_1fr_212px] 2xl:grid-cols-[auto_1fr_256px]">
             <div className="col-start-1 row-start-1 flex shrink-0 items-center justify-self-start gap-1 rounded-md border border-border p-0.5 sm:col-start-auto sm:row-start-auto">
               <button
                 type="button"

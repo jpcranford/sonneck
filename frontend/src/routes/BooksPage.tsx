@@ -121,7 +121,7 @@ export function BooksPage() {
         viewMode={viewMode}
         onViewModeChange={setViewMode}
         newButton={{ label: 'New Book', onClick: () => setNewBookOpen(true) }}
-        rightColumnGridColsClassName="sm:grid-cols-[auto_1fr_211px] 2xl:grid-cols-[auto_1fr_255px]"
+        rightColumnGridColsClassName="sm:grid-cols-[auto_1fr_228px] 2xl:grid-cols-[auto_1fr_272px]"
       >
         {pillEntries.length > 0 && (
           <div className="flex flex-wrap items-center gap-1.5">
