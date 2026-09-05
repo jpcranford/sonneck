@@ -139,11 +139,33 @@ function EffectiveValue({
   source?: string
 }) {
   if (!value) return <span className="text-ink-soft/50">—</span>
+  // A Fragment, not an inline-flex wrapper span — real bug found live
+  // (2026-09-05, against the composer row specifically, a long list of
+  // names): `inline-flex` makes this an atomic inline-level box from the
+  // *outer* paragraph's own perspective, sized once via shrink-to-fit
+  // against the available width. That resolved width doesn't reliably
+  // match the box's own longest wrapped-text line — browsers can size it
+  // wider — so a following sibling (composer row's own arranger span)
+  // gets placed after the *whole box's* right edge, not after wherever
+  // the box's own text visually ends on its last internal line, and drops
+  // to an entirely new row below the box instead of continuing on it.
+  // Removing the wrapper means `value` (here, PersonNameLinks' own plain
+  // <span>) becomes a genuinely plain child of whatever the caller
+  // renders it inside, letting real inline text reflow carry the trailing
+  // "inherited" badge onto whatever room is actually left on the last
+  // wrapped line, exactly like normal wrapped text does. The badge's own
+  // spacing moves from the old wrapper's `gap-1.5` to a plain `ml-1.5` on
+  // its own tiny wrapping span — safe unlike the value's own wrapper,
+  // since the badge's short fixed text never itself wraps across lines.
   return (
-    <span className="inline-flex items-center gap-1.5">
+    <>
       {value}
-      {inherited && <InheritedNote source={source} />}
-    </span>
+      {inherited && (
+        <span className="ml-1.5">
+          <InheritedNote source={source} />
+        </span>
+      )}
+    </>
   )
 }
 
@@ -788,7 +810,20 @@ export function PiecePage() {
                 const composerNames = joinNames(piece.composer.values.map((p) => p.name))
                 const arrangerNames = joinNames(piece.arranger.values.map((p) => p.name))
                 return (
-                  <p className="flex flex-wrap items-center gap-1.5 text-ink-soft">
+                  // Plain inline flow, not flex/flex-wrap — a flex container
+                  // wraps its *children* as whole units, so with a long
+                  // enough composer list (real bug found live: 5 composers)
+                  // the composer EffectiveValue's own box fills the line by
+                  // itself and the arranger span, having no room left in
+                  // that flex row, drops to an entirely new line below it
+                  // instead of continuing right after the last composer
+                  // name. Removing flex lets the browser's ordinary text
+                  // wrapping merge composer + arranger into one running
+                  // paragraph, the same way any other wrapped sentence
+                  // does — the arranger span picks up right where the
+                  // composer names left off, wrapping only when the whole
+                  // line is actually full.
+                  <p className="text-ink-soft">
                     {composerNames ? (
                       <>
                         <EffectiveValue
@@ -796,7 +831,7 @@ export function PiecePage() {
                           inherited={piece.composer.inherited}
                         />
                         {arrangerNames && (
-                          <span>
+                          <span className="ml-1.5">
                             • arr. <PersonNameLinks people={piece.arranger.values} />
                           </span>
                         )}
