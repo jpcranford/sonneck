@@ -70,21 +70,30 @@ export interface SearchPiecesParams {
    * (OR-matched), not single-choice. Passing an array here is enough:
    * URLSearchParams.set(key, String(array)) already comma-joins it, same
    * mechanism practiceStatus already relied on before these gained
-   * multi-select too. */
+   * multi-select too. Each has an exclude* sibling below (direct request,
+   * 2026-09-05 — the Filter Drawer's segmented exclude/neutral/include
+   * control) — the two are independent params, not one signed list, so a
+   * value can appear in at most one of the pair (the drawer's own
+   * three-state model already guarantees this; the backend doesn't). */
   keyId?: number[]
+  excludeKeyId?: number[]
   sheetTypeId?: number[]
+  excludeSheetTypeId?: number[]
   instrumentId?: number[]
+  excludeInstrumentId?: number[]
   userTagId?: number[]
+  excludeUserTagId?: number[]
   favorite?: boolean
   practiceStatus?: string
+  excludePracticeStatus?: string
   /** Pieces with no sourceBookId at all (design doc §3/§5 — a normal,
-   * first-class case, e.g. a single downloaded score). Asymmetric with
-   * `favorite`: the backend treats `bookless=false` as a no-op, not a
-   * hard "exclude bookless" filter — there's no drawer affordance for
-   * "book-having pieces only" to send it. */
+   * first-class case, e.g. a single downloaded score). Genuinely tri-state
+   * now (direct request, 2026-09-05) — `true` books-none only, `false`
+   * book-having only, omitted no constraint, same shape `favorite` already
+   * had. */
   bookless?: boolean
   /** Pieces with a non-blank *effective* IMSLP number (own or inherited
-   * from their book) — same `false`-is-a-no-op asymmetry as `bookless`. */
+   * from their book) — same tri-state shape as `bookless` now. */
   hasImslpNumber?: boolean
   /** Book Details page: every piece belonging to this book, sorted by
    * start page ascending (server-side tie-break: a same-start-page 1-page
@@ -133,11 +142,16 @@ export interface FacetCount {
 export interface PieceFacetsParams {
   query?: string
   keyId?: number[]
+  excludeKeyId?: number[]
   sheetTypeId?: number[]
+  excludeSheetTypeId?: number[]
   instrumentId?: number[]
+  excludeInstrumentId?: number[]
   userTagId?: number[]
+  excludeUserTagId?: number[]
   favorite?: boolean
   practiceStatus?: string
+  excludePracticeStatus?: string
   bookless?: boolean
   hasImslpNumber?: boolean
 }

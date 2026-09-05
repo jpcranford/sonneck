@@ -1,6 +1,6 @@
-import { IconX } from '@tabler/icons-react'
+import { IconMinus, IconPlus, IconSlash, IconX } from '@tabler/icons-react'
 import type { BookFacets } from '../api/books'
-import type { BookFilterState } from '../lib/bookFilterState'
+import { dimensionState, setDimensionState, type BookFilterState, type TriState } from '../lib/bookFilterState'
 
 // Real build of BooksLibrarySample.tsx's own BookFilterDrawer — same
 // system as PieceFilterDrawer.tsx, adjusted for Books' own (much lighter)
@@ -10,10 +10,11 @@ import type { BookFilterState } from '../lib/bookFilterState'
 // Pieces' drawer has one. BookFilterState/EMPTY_BOOK_FILTERS/
 // activeBookFilterCount live in lib/bookFilterState.ts, not here
 // (react-refresh/only-export-components — CLAUDE.md > Frontend).
-
-function toggleInArray(arr: number[], value: number): number[] {
-  return arr.includes(value) ? arr.filter((v) => v !== value) : [...arr, value]
-}
+//
+// Segmented exclude/neutral/include control per row (direct request,
+// 2026-09-05, ported from the mockup once approved there — see
+// PieceLibrarySample.tsx's own TriStateControl comment for the full
+// reasoning) replaces the old plain checkbox.
 
 function FacetSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -27,20 +28,60 @@ function FacetSection({ title, children }: { title: string; children: React.Reac
 function FacetRow({
   label,
   count,
-  checked,
+  state,
   onChange,
 }: {
   label: string
   count: number
-  checked: boolean
-  onChange: () => void
+  state: TriState
+  onChange: (next: TriState) => void
 }) {
   return (
-    <label className="flex cursor-pointer items-center gap-2.5 rounded-md px-1 py-1.5 text-sm text-ink hover:bg-paper-sunken">
-      <input type="checkbox" checked={checked} onChange={onChange} className="accent-accent" />
-      <span className="flex-1">{label}</span>
+    <div className="flex items-center gap-2.5 rounded-md px-1 py-1.5 text-sm text-ink">
+      <span className="min-w-0 flex-1 truncate">{label}</span>
       <span className="text-xs text-ink-soft tabular-nums">{count}</span>
-    </label>
+      <TriStateControl state={state} onChange={onChange} label={label} />
+    </div>
+  )
+}
+
+function TriStateControl({ state, onChange, label }: { state: TriState; onChange: (next: TriState) => void; label: string }) {
+  return (
+    <div className="flex shrink-0 items-center gap-0.5 rounded-md border border-border p-0.5">
+      <button
+        type="button"
+        onClick={() => onChange('exclude')}
+        aria-label={`Exclude ${label}`}
+        aria-pressed={state === 'exclude'}
+        className={`flex size-6 cursor-pointer items-center justify-center rounded ${
+          state === 'exclude' ? 'bg-red-50 text-red-700' : 'text-ink-soft hover:bg-paper-sunken hover:text-ink'
+        }`}
+      >
+        <IconMinus size={14} />
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange('neutral')}
+        aria-label={`Clear ${label} filter`}
+        aria-pressed={state === 'neutral'}
+        className={`flex size-6 cursor-pointer items-center justify-center rounded ${
+          state === 'neutral' ? 'bg-paper-sunken text-ink' : 'text-ink-soft hover:bg-paper-sunken hover:text-ink'
+        }`}
+      >
+        <IconSlash size={14} />
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange('include')}
+        aria-label={`Include ${label}`}
+        aria-pressed={state === 'include'}
+        className={`flex size-6 cursor-pointer items-center justify-center rounded ${
+          state === 'include' ? 'bg-accent-soft text-accent' : 'text-ink-soft hover:bg-paper-sunken hover:text-ink'
+        }`}
+      >
+        <IconPlus size={14} />
+      </button>
+    </div>
   )
 }
 
@@ -87,6 +128,12 @@ export function BookFilterDrawer({
           </button>
         </div>
 
+        <p className="shrink-0 border-b border-border px-4 py-2.5 text-xs leading-snug text-ink-soft">
+          Included options within a section combine with <span className="font-medium text-ink">or</span> — checking
+          two sheet types, for example, matches books with either. Different sections, and any excluded option, must
+          all match.
+        </p>
+
         <div className="flex-1 overflow-y-auto px-4 py-2">
           {facets && (
             <>
@@ -97,9 +144,9 @@ export function BookFilterDrawer({
                       key={v.id}
                       label={v.name}
                       count={v.count}
-                      checked={filters.sheetTypeId.includes(v.id)}
-                      onChange={() =>
-                        onChange({ ...filters, sheetTypeId: toggleInArray(filters.sheetTypeId, v.id) })
+                      state={dimensionState(filters.sheetTypeId, String(v.id))}
+                      onChange={(next) =>
+                        onChange({ ...filters, sheetTypeId: setDimensionState(filters.sheetTypeId, String(v.id), next) })
                       }
                     />
                   ))}
@@ -113,9 +160,9 @@ export function BookFilterDrawer({
                       key={v.id}
                       label={v.name}
                       count={v.count}
-                      checked={filters.instrumentId.includes(v.id)}
-                      onChange={() =>
-                        onChange({ ...filters, instrumentId: toggleInArray(filters.instrumentId, v.id) })
+                      state={dimensionState(filters.instrumentId, String(v.id))}
+                      onChange={(next) =>
+                        onChange({ ...filters, instrumentId: setDimensionState(filters.instrumentId, String(v.id), next) })
                       }
                     />
                   ))}

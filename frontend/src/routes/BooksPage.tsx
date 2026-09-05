@@ -10,7 +10,14 @@ import { NewBookModal } from '../components/NewBookModal'
 import { BookFilterDrawer } from '../components/BookFilterDrawer'
 import { type SortDirection, type SortFieldOption } from '../components/SortControl'
 import { LibraryToolbar } from '../components/LibraryToolbar'
-import { EMPTY_BOOK_FILTERS, activeBookFilterCount, type BookFilterState } from '../lib/bookFilterState'
+import {
+  EMPTY_BOOK_FILTERS,
+  activeBookFilterCount,
+  bookFilterApiParams,
+  setDimensionState,
+  type BookFilterState,
+  type TriState,
+} from '../lib/bookFilterState'
 import { WIDE_CONTENT_MAX_W } from '../lib/layout'
 import { usePageTitle } from '../lib/usePageTitle'
 
@@ -63,8 +70,7 @@ export function BooksPage() {
     queryFn: () =>
       getBookFacets({
         query: debouncedQuery || undefined,
-        sheetTypeId: debouncedDrawerFilters.sheetTypeId.length ? debouncedDrawerFilters.sheetTypeId : undefined,
-        instrumentId: debouncedDrawerFilters.instrumentId.length ? debouncedDrawerFilters.instrumentId : undefined,
+        ...bookFilterApiParams(debouncedDrawerFilters),
       }),
   })
 
@@ -78,8 +84,7 @@ export function BooksPage() {
     queryFn: () =>
       listBooks({
         query: debouncedQuery || undefined,
-        sheetTypeId: debouncedDrawerFilters.sheetTypeId.length ? debouncedDrawerFilters.sheetTypeId : undefined,
-        instrumentId: debouncedDrawerFilters.instrumentId.length ? debouncedDrawerFilters.instrumentId : undefined,
+        ...bookFilterApiParams(debouncedDrawerFilters),
         sort: sortField,
         dir: sortDirection,
       }),
@@ -87,20 +92,22 @@ export function BooksPage() {
 
   const activeCount = activeBookFilterCount(drawerFilters)
 
-  function clearDrawerFilter(field: keyof BookFilterState, value: number) {
-    setDrawerFilters((f) => ({ ...f, [field]: f[field].filter((v) => v !== value) }))
+  function clearDrawerFilter(field: keyof BookFilterState, value: string) {
+    setDrawerFilters((f) => ({ ...f, [field]: setDimensionState(f[field], value, 'neutral') }))
   }
 
-  const pillEntries: { field: keyof BookFilterState; value: number; label: string }[] = [
-    ...drawerFilters.sheetTypeId.map((id) => ({
+  const pillEntries: { field: keyof BookFilterState; value: string; label: string; state: TriState }[] = [
+    ...Object.entries(drawerFilters.sheetTypeId).map(([id, state]) => ({
       field: 'sheetTypeId' as const,
       value: id,
-      label: facets?.sheetTypes.find((v) => v.id === id)?.name ?? String(id),
+      label: facets?.sheetTypes.find((v) => v.id === Number(id))?.name ?? id,
+      state,
     })),
-    ...drawerFilters.instrumentId.map((id) => ({
+    ...Object.entries(drawerFilters.instrumentId).map(([id, state]) => ({
       field: 'instrumentId' as const,
       value: id,
-      label: facets?.instruments.find((v) => v.id === id)?.name ?? String(id),
+      label: facets?.instruments.find((v) => v.id === Number(id))?.name ?? id,
+      state,
     })),
   ]
 
@@ -125,22 +132,29 @@ export function BooksPage() {
       >
         {pillEntries.length > 0 && (
           <div className="flex flex-wrap items-center gap-1.5">
-            {pillEntries.map((entry) => (
-              <span
-                key={entry.field + String(entry.value)}
-                className="flex items-center gap-1.5 rounded-full bg-accent-soft py-1 pr-1.5 pl-3 text-xs font-medium text-accent"
-              >
-                {entry.label}
-                <button
-                  type="button"
-                  onClick={() => clearDrawerFilter(entry.field, entry.value)}
-                  aria-label={`Remove ${entry.label} filter`}
-                  className="flex size-4 cursor-pointer items-center justify-center rounded-full text-accent opacity-75 hover:opacity-100"
+            {pillEntries.map((entry) => {
+              const excluded = entry.state === 'exclude'
+              return (
+                <span
+                  key={entry.field + entry.value}
+                  className={`flex items-center gap-1.5 rounded-full py-1 pr-1.5 pl-3 text-xs font-medium ${
+                    excluded ? 'bg-red-50 text-red-700' : 'bg-accent-soft text-accent'
+                  }`}
                 >
-                  <IconX size={11} />
-                </button>
-              </span>
-            ))}
+                  {excluded ? `Not ${entry.label}` : entry.label}
+                  <button
+                    type="button"
+                    onClick={() => clearDrawerFilter(entry.field, entry.value)}
+                    aria-label={`Remove ${excluded ? 'not ' : ''}${entry.label} filter`}
+                    className={`flex size-4 cursor-pointer items-center justify-center rounded-full opacity-75 hover:opacity-100 ${
+                      excluded ? 'text-red-700' : 'text-accent'
+                    }`}
+                  >
+                    <IconX size={11} />
+                  </button>
+                </span>
+              )
+            })}
             <button
               type="button"
               onClick={() => setDrawerFilters(EMPTY_BOOK_FILTERS)}

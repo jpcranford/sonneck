@@ -264,11 +264,29 @@ func (s *Server) handleListBooks(w http.ResponseWriter, r *http.Request) {
 		where = append(where, "sheet_type_id IN ("+sqlPlaceholders(len(ids))+")")
 		args = append(args, idsToArgs(ids)...)
 	}
+	// excludeSheetTypeId (direct request, 2026-09-05 — the Filter Drawer's
+	// segmented exclude/neutral/include control): negateClause, not a bare
+	// NOT IN, since sheet_type_id is nullable (a book with none set) and a
+	// bare `sheet_type_id NOT IN (...)` evaluates to SQL NULL rather than
+	// TRUE for a NULL column, silently dropping that book from an exclude
+	// result even though it plainly doesn't carry the excluded type.
+	if ids, present, ok := parseIDListFilter(w, q, "excludeSheetTypeId"); !ok {
+		return
+	} else if present {
+		where = append(where, negateClause("sheet_type_id IN ("+sqlPlaceholders(len(ids))+")"))
+		args = append(args, idsToArgs(ids)...)
+	}
 
 	if ids, present, ok := parseIDListFilter(w, q, "instrumentId"); !ok {
 		return
 	} else if present {
 		where = append(where, "id IN (SELECT book_id FROM book_instruments WHERE instrument_id IN ("+sqlPlaceholders(len(ids))+"))")
+		args = append(args, idsToArgs(ids)...)
+	}
+	if ids, present, ok := parseIDListFilter(w, q, "excludeInstrumentId"); !ok {
+		return
+	} else if present {
+		where = append(where, "id NOT IN (SELECT book_id FROM book_instruments WHERE instrument_id IN ("+sqlPlaceholders(len(ids))+"))")
 		args = append(args, idsToArgs(ids)...)
 	}
 

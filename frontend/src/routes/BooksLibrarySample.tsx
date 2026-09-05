@@ -9,8 +9,10 @@ import {
   IconClefStaff,
   IconLayoutGridFilled,
   IconLayoutListFilled,
+  IconMinus,
   IconPlus,
   IconSearch,
+  IconSlash,
   IconX,
   IconXFilled,
 } from '@tabler/icons-react'
@@ -291,6 +293,37 @@ function distinctInstruments(): string[] {
 const SHEET_TYPE_OPTIONS = distinctBookValues('sheetType')
 const INSTRUMENT_OPTIONS = distinctInstruments()
 
+// Three-way segmented control (direct request, 2026-09-05, ported from
+// PieceLibrarySample.tsx once approved there — see that file's own comment
+// on TriState/dimensionState/setDimensionState/matchesDimension for the
+// full reasoning, unchanged here) — exclude/neutral/include per facet
+// value, replacing the old plain checkbox (include-or-not). A dimension's
+// own map only ever stores its non-neutral entries; 'neutral' is the key's
+// absence, not a stored value.
+type TriState = 'exclude' | 'neutral' | 'include'
+
+function dimensionState(map: Record<string, TriState>, value: string): TriState {
+  return map[value] ?? 'neutral'
+}
+function setDimensionState(map: Record<string, TriState>, value: string, next: TriState): Record<string, TriState> {
+  if (next === 'neutral') {
+    return Object.fromEntries(Object.entries(map).filter(([k]) => k !== value))
+  }
+  return { ...map, [value]: next }
+}
+function matchesDimension(map: Record<string, TriState>, bookValue: string): boolean {
+  const entries = Object.entries(map)
+  if (entries.some(([v, s]) => s === 'exclude' && v === bookValue)) return false
+  const included = entries.filter(([, s]) => s === 'include').map(([v]) => v)
+  return included.length === 0 || included.includes(bookValue)
+}
+function matchesTagDimension(map: Record<string, TriState>, bookValues: string[]): boolean {
+  const entries = Object.entries(map)
+  if (entries.some(([v, s]) => s === 'exclude' && bookValues.includes(v))) return false
+  const included = entries.filter(([, s]) => s === 'include').map(([v]) => v)
+  return included.length === 0 || included.some((i) => bookValues.includes(i))
+}
+
 // Live/faceted (changed 2026-08-31, matching the real backend's own
 // switch — internal/handlers/facets.go): a facet's own displayed count
 // reflects the OTHER active filter plus the search box, never
@@ -298,8 +331,8 @@ const INSTRUMENT_OPTIONS = distinctInstruments()
 // real backend's combineClauses "exclude" rule, same as
 // PieceLibrarySample.tsx's matchesFiltersExcept.
 function booksMatchExcept(b: MockBook, f: BookFilterState, exclude: keyof BookFilterState | null, query: string): boolean {
-  if (exclude !== 'sheetType' && f.sheetType.length && !f.sheetType.includes(b.sheetType)) return false
-  if (exclude !== 'instruments' && f.instruments.length && !f.instruments.some((i) => b.instruments.includes(i))) return false
+  if (exclude !== 'sheetType' && !matchesDimension(f.sheetType, b.sheetType)) return false
+  if (exclude !== 'instruments' && !matchesTagDimension(f.instruments, b.instruments)) return false
   if (query.trim() && !b.bookTitle.toLowerCase().includes(query.trim().toLowerCase())) return false
   return true
 }
@@ -311,40 +344,78 @@ function countInstrument(value: string, f: BookFilterState, query: string): numb
 }
 
 interface BookFilterState {
-  sheetType: string[]
-  instruments: string[]
+  sheetType: Record<string, TriState>
+  instruments: Record<string, TriState>
 }
-const EMPTY_BOOK_FILTERS: BookFilterState = { sheetType: [], instruments: [] }
+const EMPTY_BOOK_FILTERS: BookFilterState = { sheetType: {}, instruments: {} }
 
-function toggleInArray(arr: string[], value: string): string[] {
-  return arr.includes(value) ? arr.filter((v) => v !== value) : [...arr, value]
-}
 function activeBookFilterCount(f: BookFilterState): number {
-  return f.sheetType.length + f.instruments.length
+  return Object.keys(f.sheetType).length + Object.keys(f.instruments).length
 }
 function bookMatches(b: MockBook, f: BookFilterState): boolean {
-  if (f.sheetType.length && !f.sheetType.includes(b.sheetType)) return false
-  if (f.instruments.length && !f.instruments.some((i) => b.instruments.includes(i))) return false
-  return true
+  return booksMatchExcept(b, f, null, '')
 }
 
 function BookFacetRow({
   label,
   count,
-  checked,
+  state,
   onChange,
 }: {
   label: string
   count: number
-  checked: boolean
-  onChange: () => void
+  state: TriState
+  onChange: (next: TriState) => void
 }) {
   return (
-    <label className="flex cursor-pointer items-center gap-2.5 rounded-md px-1 py-1.5 text-sm text-ink hover:bg-paper-sunken">
-      <input type="checkbox" checked={checked} onChange={onChange} className="accent-accent" />
-      <span className="flex-1">{label}</span>
+    <div className="flex items-center gap-2.5 rounded-md px-1 py-1.5 text-sm text-ink">
+      <span className="min-w-0 flex-1 truncate">{label}</span>
       <span className="text-xs text-ink-soft tabular-nums">{count}</span>
-    </label>
+      <BookTriStateControl state={state} onChange={onChange} label={label} />
+    </div>
+  )
+}
+
+// Same bordered-pill segmented control as PieceLibrarySample.tsx's own
+// TriStateControl (full reasoning there) — duplicated by hand, not shared,
+// per this codebase's "mockups are self-contained" convention.
+function BookTriStateControl({ state, onChange, label }: { state: TriState; onChange: (next: TriState) => void; label: string }) {
+  return (
+    <div className="flex shrink-0 items-center gap-0.5 rounded-md border border-border p-0.5">
+      <button
+        type="button"
+        onClick={() => onChange('exclude')}
+        aria-label={`Exclude ${label}`}
+        aria-pressed={state === 'exclude'}
+        className={`flex size-6 cursor-pointer items-center justify-center rounded ${
+          state === 'exclude' ? 'bg-red-50 text-red-700' : 'text-ink-soft hover:bg-paper-sunken hover:text-ink'
+        }`}
+      >
+        <IconMinus size={14} />
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange('neutral')}
+        aria-label={`Clear ${label} filter`}
+        aria-pressed={state === 'neutral'}
+        className={`flex size-6 cursor-pointer items-center justify-center rounded ${
+          state === 'neutral' ? 'bg-paper-sunken text-ink' : 'text-ink-soft hover:bg-paper-sunken hover:text-ink'
+        }`}
+      >
+        <IconSlash size={14} />
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange('include')}
+        aria-label={`Include ${label}`}
+        aria-pressed={state === 'include'}
+        className={`flex size-6 cursor-pointer items-center justify-center rounded ${
+          state === 'include' ? 'bg-accent-soft text-accent' : 'text-ink-soft hover:bg-paper-sunken hover:text-ink'
+        }`}
+      >
+        <IconPlus size={14} />
+      </button>
+    </div>
   )
 }
 
@@ -404,6 +475,12 @@ function BookFilterDrawer({
           </button>
         </div>
 
+        <p className="shrink-0 border-b border-border px-4 py-2.5 text-xs leading-snug text-ink-soft">
+          Included options within a section combine with <span className="font-medium text-ink">or</span> — checking
+          two sheet types, for example, matches books with either. Different sections, and any excluded option, must
+          all match.
+        </p>
+
         <div className="flex-1 overflow-y-auto px-4 py-2">
           <BookFacetSection title="Sheet Type">
             {SHEET_TYPE_OPTIONS.map((v) => (
@@ -411,8 +488,8 @@ function BookFilterDrawer({
                 key={v}
                 label={v}
                 count={countSheetType(v, filters, query)}
-                checked={filters.sheetType.includes(v)}
-                onChange={() => onChange({ ...filters, sheetType: toggleInArray(filters.sheetType, v) })}
+                state={dimensionState(filters.sheetType, v)}
+                onChange={(next) => onChange({ ...filters, sheetType: setDimensionState(filters.sheetType, v, next) })}
               />
             ))}
           </BookFacetSection>
@@ -423,8 +500,8 @@ function BookFilterDrawer({
                 key={v}
                 label={v}
                 count={countInstrument(v, filters, query)}
-                checked={filters.instruments.includes(v)}
-                onChange={() => onChange({ ...filters, instruments: toggleInArray(filters.instruments, v) })}
+                state={dimensionState(filters.instruments, v)}
+                onChange={(next) => onChange({ ...filters, instruments: setDimensionState(filters.instruments, v, next) })}
               />
             ))}
           </BookFacetSection>
@@ -748,11 +825,11 @@ export function BooksLibrarySample() {
   const activeCount = activeBookFilterCount(appliedFilters)
 
   function clearAppliedFilter(field: keyof BookFilterState, value: string) {
-    setAppliedFilters((f) => ({ ...f, [field]: f[field].filter((v) => v !== value) }))
+    setAppliedFilters((f) => ({ ...f, [field]: setDimensionState(f[field], value, 'neutral') }))
   }
-  const pillEntries: { field: keyof BookFilterState; value: string }[] = [
-    ...appliedFilters.sheetType.map((v) => ({ field: 'sheetType' as const, value: v })),
-    ...appliedFilters.instruments.map((v) => ({ field: 'instruments' as const, value: v })),
+  const pillEntries: { field: keyof BookFilterState; value: string; state: TriState }[] = [
+    ...Object.entries(appliedFilters.sheetType).map(([v, state]) => ({ field: 'sheetType' as const, value: v, state })),
+    ...Object.entries(appliedFilters.instruments).map(([v, state]) => ({ field: 'instruments' as const, value: v, state })),
   ]
 
   return (
@@ -874,22 +951,29 @@ export function BooksLibrarySample() {
 
           {pillEntries.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5">
-              {pillEntries.map((entry) => (
-                <span
-                  key={entry.field + entry.value}
-                  className="flex items-center gap-1.5 rounded-full bg-accent-soft py-1 pr-1.5 pl-3 text-xs font-medium text-accent"
-                >
-                  {entry.value}
-                  <button
-                    type="button"
-                    onClick={() => clearAppliedFilter(entry.field, entry.value)}
-                    aria-label={`Remove ${entry.value} filter`}
-                    className="flex size-4 cursor-pointer items-center justify-center rounded-full text-accent opacity-75 hover:opacity-100"
+              {pillEntries.map((entry) => {
+                const excluded = entry.state === 'exclude'
+                return (
+                  <span
+                    key={entry.field + entry.value}
+                    className={`flex items-center gap-1.5 rounded-full py-1 pr-1.5 pl-3 text-xs font-medium ${
+                      excluded ? 'bg-red-50 text-red-700' : 'bg-accent-soft text-accent'
+                    }`}
                   >
-                    <IconX size={11} />
-                  </button>
-                </span>
-              ))}
+                    {excluded ? `Not ${entry.value}` : entry.value}
+                    <button
+                      type="button"
+                      onClick={() => clearAppliedFilter(entry.field, entry.value)}
+                      aria-label={`Remove ${excluded ? 'not ' : ''}${entry.value} filter`}
+                      className={`flex size-4 cursor-pointer items-center justify-center rounded-full opacity-75 hover:opacity-100 ${
+                        excluded ? 'text-red-700' : 'text-accent'
+                      }`}
+                    >
+                      <IconX size={11} />
+                    </button>
+                  </span>
+                )
+              })}
               <button
                 type="button"
                 onClick={() => setAppliedFilters(EMPTY_BOOK_FILTERS)}

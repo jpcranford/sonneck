@@ -313,6 +313,20 @@ func buildBookFilterClauses(w http.ResponseWriter, q url.Values) (clauses []name
 			args:  idsToArgs(ids),
 		})
 	}
+	// excludeSheetTypeId shares the "sheetTypeId" clause name with its
+	// include sibling above (see namedClause's own comment) and goes
+	// through negateClause, not a bare NOT IN — book.go's identical
+	// handleListBooks fragment has the full reasoning (sheet_type_id is
+	// nullable, and a bare NOT IN silently mishandles that).
+	if ids, present, ok := parseIDListFilter(w, q, "excludeSheetTypeId"); !ok {
+		return nil, false
+	} else if present {
+		clauses = append(clauses, namedClause{
+			name:  "sheetTypeId",
+			where: negateClause("b.sheet_type_id IN (" + sqlPlaceholders(len(ids)) + ")"),
+			args:  idsToArgs(ids),
+		})
+	}
 
 	if ids, present, ok := parseIDListFilter(w, q, "instrumentId"); !ok {
 		return nil, false
@@ -320,6 +334,15 @@ func buildBookFilterClauses(w http.ResponseWriter, q url.Values) (clauses []name
 		clauses = append(clauses, namedClause{
 			name:  "instrumentId",
 			where: "b.id IN (SELECT book_id FROM book_instruments WHERE instrument_id IN (" + sqlPlaceholders(len(ids)) + "))",
+			args:  idsToArgs(ids),
+		})
+	}
+	if ids, present, ok := parseIDListFilter(w, q, "excludeInstrumentId"); !ok {
+		return nil, false
+	} else if present {
+		clauses = append(clauses, namedClause{
+			name:  "instrumentId",
+			where: "b.id NOT IN (SELECT book_id FROM book_instruments WHERE instrument_id IN (" + sqlPlaceholders(len(ids)) + "))",
 			args:  idsToArgs(ids),
 		})
 	}

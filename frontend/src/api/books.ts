@@ -22,9 +22,14 @@ interface ListBooksParams {
   query?: string
   /** Comma-separated on the wire, same multi-select convention as
    * SearchPiecesParams's own keyId/instrumentId/sheetTypeId/userTagId —
-   * see that file's comment for why an array param is enough here. */
+   * see that file's comment for why an array param is enough here. Each
+   * has an exclude* sibling (direct request, 2026-09-05 — the Filter
+   * Drawer's segmented exclude/neutral/include control), same shape as
+   * pieces.ts's own excludeKeyId etc. */
   sheetTypeId?: number[]
+  excludeSheetTypeId?: number[]
   instrumentId?: number[]
+  excludeInstrumentId?: number[]
   /** Person Details' own "Also credited directly on N books" chip strip —
    * a book directly crediting this person as composer or arranger (no
    * inheritance to consider, Book is the top of that hierarchy). */
@@ -55,7 +60,9 @@ export interface BookFacets {
 export interface BookFacetsParams {
   query?: string
   sheetTypeId?: number[]
+  excludeSheetTypeId?: number[]
   instrumentId?: number[]
+  excludeInstrumentId?: number[]
 }
 
 export function getBookFacets(params: BookFacetsParams = {}): Promise<BookFacets> {

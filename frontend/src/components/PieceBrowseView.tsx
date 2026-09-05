@@ -10,7 +10,14 @@ import { PieceListCard } from './PieceListCard'
 import { type SortDirection, type SortFieldOption } from './SortControl'
 import { LibraryToolbar } from './LibraryToolbar'
 import { PieceFilterDrawer } from './PieceFilterDrawer'
-import { EMPTY_PIECE_FILTERS, activePieceFilterCount, type PieceFilterState } from '../lib/pieceFilterState'
+import {
+  EMPTY_PIECE_FILTERS,
+  activePieceFilterCount,
+  pieceFilterApiParams,
+  setDimensionState,
+  type PieceFilterState,
+  type TriState,
+} from '../lib/pieceFilterState'
 import { WIDE_CONTENT_MAX_W } from '../lib/layout'
 import { usePageTitle } from '../lib/usePageTitle'
 
@@ -128,8 +135,8 @@ export function PieceBrowseView({
     const practiceStatus = searchParams.get('practiceStatus')
     return {
       ...EMPTY_PIECE_FILTERS,
-      userTagId: userTagId ? [Number(userTagId)] : [],
-      practiceStatus: practiceStatus ? [practiceStatus] : [],
+      userTagId: userTagId ? { [userTagId]: 'include' } : {},
+      practiceStatus: practiceStatus ? { [practiceStatus]: 'include' } : {},
     }
   })
   // Clears the seed params right after the initial read above, so the URL
@@ -169,16 +176,7 @@ export function PieceBrowseView({
     queryFn: () =>
       getPieceFacets({
         query: debouncedQuery || undefined,
-        keyId: debouncedDrawerFilters.keyId.length ? debouncedDrawerFilters.keyId : undefined,
-        instrumentId: debouncedDrawerFilters.instrumentId.length ? debouncedDrawerFilters.instrumentId : undefined,
-        sheetTypeId: debouncedDrawerFilters.sheetTypeId.length ? debouncedDrawerFilters.sheetTypeId : undefined,
-        userTagId: debouncedDrawerFilters.userTagId.length ? debouncedDrawerFilters.userTagId : undefined,
-        practiceStatus: debouncedDrawerFilters.practiceStatus.length
-          ? debouncedDrawerFilters.practiceStatus.join(',')
-          : undefined,
-        favorite: debouncedDrawerFilters.favorite || undefined,
-        bookless: debouncedDrawerFilters.bookless || undefined,
-        hasImslpNumber: debouncedDrawerFilters.hasImslpNumber || undefined,
+        ...pieceFilterApiParams(debouncedDrawerFilters),
         ...filters,
       }),
   })
@@ -196,16 +194,7 @@ export function PieceBrowseView({
     queryFn: ({ pageParam }) =>
       searchPieces({
         query: debouncedQuery || undefined,
-        keyId: debouncedDrawerFilters.keyId.length ? debouncedDrawerFilters.keyId : undefined,
-        instrumentId: debouncedDrawerFilters.instrumentId.length ? debouncedDrawerFilters.instrumentId : undefined,
-        sheetTypeId: debouncedDrawerFilters.sheetTypeId.length ? debouncedDrawerFilters.sheetTypeId : undefined,
-        userTagId: debouncedDrawerFilters.userTagId.length ? debouncedDrawerFilters.userTagId : undefined,
-        practiceStatus: debouncedDrawerFilters.practiceStatus.length
-          ? debouncedDrawerFilters.practiceStatus.join(',')
-          : undefined,
-        favorite: debouncedDrawerFilters.favorite || undefined,
-        bookless: debouncedDrawerFilters.bookless || undefined,
-        hasImslpNumber: debouncedDrawerFilters.hasImslpNumber || undefined,
+        ...pieceFilterApiParams(debouncedDrawerFilters),
         sort: sortField,
         dir: sortDirection,
         // Spread last: a page's own fixed filter (e.g. Favorites'
@@ -246,39 +235,54 @@ export function PieceBrowseView({
 
   const activeCount = activePieceFilterCount(drawerFilters)
 
-  function clearDrawerFilter(field: keyof PieceFilterState, value?: number | string) {
+  function clearDrawerFilter(field: keyof PieceFilterState, value?: string) {
     if (field === 'favorite' || field === 'bookless' || field === 'hasImslpNumber') {
-      setDrawerFilters((f) => ({ ...f, [field]: false }))
+      setDrawerFilters((f) => ({ ...f, [field]: 'neutral' }))
       return
     }
-    setDrawerFilters((f) => ({ ...f, [field]: (f[field] as (number | string)[]).filter((v) => v !== value) }))
+    setDrawerFilters((f) => ({ ...f, [field]: setDimensionState(f[field], value!, 'neutral') }))
   }
 
-  const pillEntries: { field: keyof PieceFilterState; value?: number | string; label: string }[] = [
-    ...(drawerFilters.favorite ? [{ field: 'favorite' as const, label: 'Favorites' }] : []),
-    ...(drawerFilters.bookless ? [{ field: 'bookless' as const, label: 'Bookless pieces' }] : []),
-    ...(drawerFilters.hasImslpNumber ? [{ field: 'hasImslpNumber' as const, label: 'Has IMSLP number' }] : []),
-    ...drawerFilters.keyId.map((id) => ({
+  const pillEntries: { field: keyof PieceFilterState; value?: string; label: string; state: TriState }[] = [
+    ...(drawerFilters.favorite !== 'neutral'
+      ? [{ field: 'favorite' as const, label: 'Favorites', state: drawerFilters.favorite }]
+      : []),
+    ...(drawerFilters.bookless !== 'neutral'
+      ? [{ field: 'bookless' as const, label: 'Bookless pieces', state: drawerFilters.bookless }]
+      : []),
+    ...(drawerFilters.hasImslpNumber !== 'neutral'
+      ? [{ field: 'hasImslpNumber' as const, label: 'Has IMSLP number', state: drawerFilters.hasImslpNumber }]
+      : []),
+    ...Object.entries(drawerFilters.keyId).map(([id, state]) => ({
       field: 'keyId' as const,
       value: id,
-      label: facets?.keys.find((k) => k.id === id)?.name ?? String(id),
+      label: facets?.keys.find((k) => k.id === Number(id))?.name ?? id,
+      state,
     })),
-    ...drawerFilters.instrumentId.map((id) => ({
+    ...Object.entries(drawerFilters.instrumentId).map(([id, state]) => ({
       field: 'instrumentId' as const,
       value: id,
-      label: facets?.instruments.find((v) => v.id === id)?.name ?? String(id),
+      label: facets?.instruments.find((v) => v.id === Number(id))?.name ?? id,
+      state,
     })),
-    ...drawerFilters.sheetTypeId.map((id) => ({
+    ...Object.entries(drawerFilters.sheetTypeId).map(([id, state]) => ({
       field: 'sheetTypeId' as const,
       value: id,
-      label: facets?.sheetTypes.find((v) => v.id === id)?.name ?? String(id),
+      label: facets?.sheetTypes.find((v) => v.id === Number(id))?.name ?? id,
+      state,
     })),
-    ...drawerFilters.userTagId.map((id) => ({
+    ...Object.entries(drawerFilters.userTagId).map(([id, state]) => ({
       field: 'userTagId' as const,
       value: id,
-      label: facets?.userTags.find((v) => v.id === id)?.name ?? String(id),
+      label: facets?.userTags.find((v) => v.id === Number(id))?.name ?? id,
+      state,
     })),
-    ...drawerFilters.practiceStatus.map((status) => ({ field: 'practiceStatus' as const, value: status, label: status })),
+    ...Object.entries(drawerFilters.practiceStatus).map(([status, state]) => ({
+      field: 'practiceStatus' as const,
+      value: status,
+      label: status,
+      state,
+    })),
   ]
 
   return (
@@ -301,22 +305,29 @@ export function PieceBrowseView({
       >
         {pillEntries.length > 0 && (
           <div className="flex flex-wrap items-center gap-1.5">
-            {pillEntries.map((entry) => (
-              <span
-                key={entry.field + String(entry.value ?? '')}
-                className="flex items-center gap-1.5 rounded-full bg-accent-soft py-1 pr-1.5 pl-3 text-xs font-medium text-accent"
-              >
-                {entry.label}
-                <button
-                  type="button"
-                  onClick={() => clearDrawerFilter(entry.field, entry.value)}
-                  aria-label={`Remove ${entry.label} filter`}
-                  className="flex size-4 cursor-pointer items-center justify-center rounded-full text-accent opacity-75 hover:opacity-100"
+            {pillEntries.map((entry) => {
+              const excluded = entry.state === 'exclude'
+              return (
+                <span
+                  key={entry.field + String(entry.value ?? '')}
+                  className={`flex items-center gap-1.5 rounded-full py-1 pr-1.5 pl-3 text-xs font-medium ${
+                    excluded ? 'bg-red-50 text-red-700' : 'bg-accent-soft text-accent'
+                  }`}
                 >
-                  <IconX size={11} />
-                </button>
-              </span>
-            ))}
+                  {excluded ? `Not ${entry.label}` : entry.label}
+                  <button
+                    type="button"
+                    onClick={() => clearDrawerFilter(entry.field, entry.value)}
+                    aria-label={`Remove ${excluded ? 'not ' : ''}${entry.label} filter`}
+                    className={`flex size-4 cursor-pointer items-center justify-center rounded-full opacity-75 hover:opacity-100 ${
+                      excluded ? 'text-red-700' : 'text-accent'
+                    }`}
+                  >
+                    <IconX size={11} />
+                  </button>
+                </span>
+              )
+            })}
             <button
               type="button"
               onClick={() => setDrawerFilters(EMPTY_PIECE_FILTERS)}

@@ -9,8 +9,11 @@ import {
   IconHeartFilled,
   IconLayoutGridFilled,
   IconLayoutListFilled,
+  IconMinus,
   IconMusic,
+  IconPlus,
   IconSearch,
+  IconSlash,
   IconX,
 } from '@tabler/icons-react'
 import { useMockupTitle } from '../lib/useMockupTitle'
@@ -129,15 +132,40 @@ const STATUS_OPTIONS: MockPiece['practiceStatus'][] = ['Want to Learn', 'Learnin
 // select faceted-search rule. `exclude` names the FilterState key this
 // particular facet's own count must skip when checking f, mirroring
 // combineClauses's `exclude` param on the real backend exactly.
+// matchesDimension/matchesTagDimension: 'include' entries OR together
+// exactly like the old array did (any one included value is enough);
+// 'exclude' entries are checked first and unconditionally reject a match
+// regardless of the include list — a value can't be both, since
+// setDimensionState only ever stores one state per key.
+function matchesDimension(map: Record<string, TriState>, pieceValue: string): boolean {
+  const entries = Object.entries(map)
+  if (entries.some(([v, s]) => s === 'exclude' && v === pieceValue)) return false
+  const included = entries.filter(([, s]) => s === 'include').map(([v]) => v)
+  return included.length === 0 || included.includes(pieceValue)
+}
+
+function matchesTagDimension(map: Record<string, TriState>, pieceTags: string[]): boolean {
+  const entries = Object.entries(map)
+  if (entries.some(([v, s]) => s === 'exclude' && pieceTags.includes(v))) return false
+  const included = entries.filter(([, s]) => s === 'include').map(([v]) => v)
+  return included.length === 0 || included.some((t) => pieceTags.includes(t))
+}
+
+function matchesBoolean(state: TriState, pieceValue: boolean): boolean {
+  if (state === 'include') return pieceValue
+  if (state === 'exclude') return !pieceValue
+  return true
+}
+
 function matchesFiltersExcept(p: MockPiece, f: FilterState, exclude: keyof FilterState | null, query: string): boolean {
-  if (exclude !== 'key' && f.key.length && !f.key.includes(p.key)) return false
-  if (exclude !== 'instrument' && f.instrument.length && !f.instrument.includes(p.instrument)) return false
-  if (exclude !== 'sheetType' && f.sheetType.length && !f.sheetType.includes(p.sheetType)) return false
-  if (exclude !== 'userTags' && f.userTags.length && !f.userTags.some((t) => p.userTags.includes(t))) return false
-  if (exclude !== 'status' && f.status.length && !f.status.includes(p.practiceStatus)) return false
-  if (exclude !== 'favorite' && f.favorite && !p.favorite) return false
-  if (exclude !== 'bookless' && f.bookless && !p.bookless) return false
-  if (exclude !== 'hasImslpNumber' && f.hasImslpNumber && !p.hasImslpNumber) return false
+  if (exclude !== 'key' && !matchesDimension(f.key, p.key)) return false
+  if (exclude !== 'instrument' && !matchesDimension(f.instrument, p.instrument)) return false
+  if (exclude !== 'sheetType' && !matchesDimension(f.sheetType, p.sheetType)) return false
+  if (exclude !== 'userTags' && !matchesTagDimension(f.userTags, p.userTags)) return false
+  if (exclude !== 'status' && !matchesDimension(f.status, p.practiceStatus)) return false
+  if (exclude !== 'favorite' && !matchesBoolean(f.favorite, p.favorite)) return false
+  if (exclude !== 'bookless' && !matchesBoolean(f.bookless, p.bookless)) return false
+  if (exclude !== 'hasImslpNumber' && !matchesBoolean(f.hasImslpNumber, p.hasImslpNumber)) return false
   if (query.trim() && !p.title.toLowerCase().includes(query.trim().toLowerCase())) return false
   return true
 }
@@ -182,42 +210,64 @@ function PieceThumb({ seed }: { seed: number }) {
   )
 }
 
+// Three-way segmented control (direct request, 2026-09-05) — replaces the
+// old plain checkbox (include-or-not) on every facet row with a real
+// exclude/neutral/include choice, so "any key but D Major" or "must not be
+// a Favorite" is expressible, not just "must be." 'neutral' is the
+// no-constraint default (the old unchecked state); 'include'/'exclude' are
+// new. A dimension's own map (see FilterState below) only ever stores its
+// non-neutral entries — 'neutral' is represented by the key's *absence*,
+// not a stored 'neutral' value, so activeFilterCount/pillEntries below can
+// stay a plain Object.keys().length / Object.entries() read, same shape
+// the old plain string[] arrays already had.
+type TriState = 'exclude' | 'neutral' | 'include'
+
+function dimensionState(map: Record<string, TriState>, value: string): TriState {
+  return map[value] ?? 'neutral'
+}
+
+// Returns a new map with `value` set to `next` — or removed entirely when
+// `next` is 'neutral', keeping the map's own invariant (only non-neutral
+// entries stored) intact rather than accumulating dead 'neutral' keys.
+function setDimensionState(map: Record<string, TriState>, value: string, next: TriState): Record<string, TriState> {
+  if (next === 'neutral') {
+    return Object.fromEntries(Object.entries(map).filter(([k]) => k !== value))
+  }
+  return { ...map, [value]: next }
+}
+
 interface FilterState {
-  key: string[]
-  instrument: string[]
-  sheetType: string[]
-  userTags: string[]
-  status: string[]
-  favorite: boolean
-  bookless: boolean
-  hasImslpNumber: boolean
+  key: Record<string, TriState>
+  instrument: Record<string, TriState>
+  sheetType: Record<string, TriState>
+  userTags: Record<string, TriState>
+  status: Record<string, TriState>
+  favorite: TriState
+  bookless: TriState
+  hasImslpNumber: TriState
 }
 
 const EMPTY_FILTERS: FilterState = {
-  key: [],
-  instrument: [],
-  sheetType: [],
-  userTags: [],
-  status: [],
-  favorite: false,
-  bookless: false,
-  hasImslpNumber: false,
-}
-
-function toggleInArray(arr: string[], value: string): string[] {
-  return arr.includes(value) ? arr.filter((v) => v !== value) : [...arr, value]
+  key: {},
+  instrument: {},
+  sheetType: {},
+  userTags: {},
+  status: {},
+  favorite: 'neutral',
+  bookless: 'neutral',
+  hasImslpNumber: 'neutral',
 }
 
 function activeFilterCount(f: FilterState): number {
   return (
-    f.key.length +
-    f.instrument.length +
-    f.sheetType.length +
-    f.userTags.length +
-    f.status.length +
-    (f.favorite ? 1 : 0) +
-    (f.bookless ? 1 : 0) +
-    (f.hasImslpNumber ? 1 : 0)
+    Object.keys(f.key).length +
+    Object.keys(f.instrument).length +
+    Object.keys(f.sheetType).length +
+    Object.keys(f.userTags).length +
+    Object.keys(f.status).length +
+    (f.favorite !== 'neutral' ? 1 : 0) +
+    (f.bookless !== 'neutral' ? 1 : 0) +
+    (f.hasImslpNumber !== 'neutral' ? 1 : 0)
   )
 }
 
@@ -402,6 +452,12 @@ function FilterDrawer({
           </button>
         </div>
 
+        <p className="shrink-0 border-b border-border px-4 py-2.5 text-xs leading-snug text-ink-soft">
+          Included options within a section combine with <span className="font-medium text-ink">or</span> — checking
+          two keys, for example, matches pieces in either. Different sections, and any excluded option, must all
+          match.
+        </p>
+
         <div className="flex-1 overflow-y-auto px-4 py-2">
           {/* Moved to the top (2026-08-27) — these two are whole-library
               toggles, not a facet you narrow down within, so they read
@@ -415,20 +471,20 @@ function FilterDrawer({
             <FacetRow
               label="Favorites"
               count={countFavorite(filters, query)}
-              checked={filters.favorite}
-              onChange={() => onChange({ ...filters, favorite: !filters.favorite })}
+              state={filters.favorite}
+              onChange={(next) => onChange({ ...filters, favorite: next })}
             />
             <FacetRow
               label="Bookless pieces"
               count={countBookless(filters, query)}
-              checked={filters.bookless}
-              onChange={() => onChange({ ...filters, bookless: !filters.bookless })}
+              state={filters.bookless}
+              onChange={(next) => onChange({ ...filters, bookless: next })}
             />
             <FacetRow
               label="Has IMSLP number"
               count={countHasImslp(filters, query)}
-              checked={filters.hasImslpNumber}
-              onChange={() => onChange({ ...filters, hasImslpNumber: !filters.hasImslpNumber })}
+              state={filters.hasImslpNumber}
+              onChange={(next) => onChange({ ...filters, hasImslpNumber: next })}
             />
           </FacetSection>
 
@@ -438,8 +494,8 @@ function FilterDrawer({
                 key={v}
                 label={v}
                 count={countTag(v, filters, query)}
-                checked={filters.userTags.includes(v)}
-                onChange={() => onChange({ ...filters, userTags: toggleInArray(filters.userTags, v) })}
+                state={dimensionState(filters.userTags, v)}
+                onChange={(next) => onChange({ ...filters, userTags: setDimensionState(filters.userTags, v, next) })}
               />
             ))}
           </FacetSection>
@@ -450,8 +506,8 @@ function FilterDrawer({
                 key={v}
                 label={v}
                 count={countStatus(v, filters, query)}
-                checked={filters.status.includes(v)}
-                onChange={() => onChange({ ...filters, status: toggleInArray(filters.status, v) })}
+                state={dimensionState(filters.status, v)}
+                onChange={(next) => onChange({ ...filters, status: setDimensionState(filters.status, v, next) })}
               />
             ))}
           </FacetSection>
@@ -462,8 +518,8 @@ function FilterDrawer({
                 key={v}
                 label={v}
                 count={countMatching('sheetType', v, filters, query)}
-                checked={filters.sheetType.includes(v)}
-                onChange={() => onChange({ ...filters, sheetType: toggleInArray(filters.sheetType, v) })}
+                state={dimensionState(filters.sheetType, v)}
+                onChange={(next) => onChange({ ...filters, sheetType: setDimensionState(filters.sheetType, v, next) })}
               />
             ))}
           </FacetSection>
@@ -474,8 +530,8 @@ function FilterDrawer({
                 key={v}
                 label={v}
                 count={countMatching('instrument', v, filters, query)}
-                checked={filters.instrument.includes(v)}
-                onChange={() => onChange({ ...filters, instrument: toggleInArray(filters.instrument, v) })}
+                state={dimensionState(filters.instrument, v)}
+                onChange={(next) => onChange({ ...filters, instrument: setDimensionState(filters.instrument, v, next) })}
               />
             ))}
           </FacetSection>
@@ -486,8 +542,8 @@ function FilterDrawer({
                 key={k}
                 label={k}
                 count={countMatching('key', k, filters, query)}
-                checked={filters.key.includes(k)}
-                onChange={() => onChange({ ...filters, key: toggleInArray(filters.key, k) })}
+                state={dimensionState(filters.key, k)}
+                onChange={(next) => onChange({ ...filters, key: setDimensionState(filters.key, k, next) })}
               />
             ))}
           </FacetSection>
@@ -524,33 +580,78 @@ function FacetSection({ title, children }: { title: string; children: React.Reac
 function FacetRow({
   label,
   count,
-  checked,
+  state,
   onChange,
 }: {
   label: string
   count: number
-  checked: boolean
-  onChange: () => void
+  state: TriState
+  onChange: (next: TriState) => void
 }) {
   return (
-    <label className="flex cursor-pointer items-center gap-2.5 rounded-md px-1 py-1.5 text-sm text-ink hover:bg-paper-sunken">
-      <input type="checkbox" checked={checked} onChange={onChange} className="accent-accent" />
-      <span className="flex-1">{label}</span>
+    <div className="flex items-center gap-2.5 rounded-md px-1 py-1.5 text-sm text-ink">
+      <span className="min-w-0 flex-1 truncate">{label}</span>
       <span className="text-xs text-ink-soft tabular-nums">{count}</span>
-    </label>
+      <TriStateControl state={state} onChange={onChange} label={label} />
+    </div>
+  )
+}
+
+// Three real buttons, not one cycling toggle — a segmented control always
+// shows all its own options at once (unlike the grid/list view toggle,
+// which only ever needs 2), so a state is always one click away regardless
+// of which of the other two is currently active, not buried behind however
+// many clicks a cycle puts between them. Same bordered-pill shell the
+// grid/list view toggle and SortControl.tsx already use (rounded-md border
+// p-0.5, each segment its own rounded button), sized down (size-6/14px
+// icons vs. their size-8/16px) to stay compact repeated down a long facet
+// list. Exclude's red is the same text-red-700 this app already uses for
+// every other destructive/negative affordance (delete buttons, validation
+// errors) — extended here to "removes results" rather than "removes data,"
+// which reads as the same family of action (this option makes something
+// go away) even though nothing is actually deleted.
+function TriStateControl({ state, onChange, label }: { state: TriState; onChange: (next: TriState) => void; label: string }) {
+  return (
+    <div className="flex shrink-0 items-center gap-0.5 rounded-md border border-border p-0.5">
+      <button
+        type="button"
+        onClick={() => onChange('exclude')}
+        aria-label={`Exclude ${label}`}
+        aria-pressed={state === 'exclude'}
+        className={`flex size-6 cursor-pointer items-center justify-center rounded ${
+          state === 'exclude' ? 'bg-red-50 text-red-700' : 'text-ink-soft hover:bg-paper-sunken hover:text-ink'
+        }`}
+      >
+        <IconMinus size={14} />
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange('neutral')}
+        aria-label={`Clear ${label} filter`}
+        aria-pressed={state === 'neutral'}
+        className={`flex size-6 cursor-pointer items-center justify-center rounded ${
+          state === 'neutral' ? 'bg-paper-sunken text-ink' : 'text-ink-soft hover:bg-paper-sunken hover:text-ink'
+        }`}
+      >
+        <IconSlash size={14} />
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange('include')}
+        aria-label={`Include ${label}`}
+        aria-pressed={state === 'include'}
+        className={`flex size-6 cursor-pointer items-center justify-center rounded ${
+          state === 'include' ? 'bg-accent-soft text-accent' : 'text-ink-soft hover:bg-paper-sunken hover:text-ink'
+        }`}
+      >
+        <IconPlus size={14} />
+      </button>
+    </div>
   )
 }
 
 function pieceMatches(p: MockPiece, f: FilterState): boolean {
-  if (f.key.length && !f.key.includes(p.key)) return false
-  if (f.instrument.length && !f.instrument.includes(p.instrument)) return false
-  if (f.sheetType.length && !f.sheetType.includes(p.sheetType)) return false
-  if (f.userTags.length && !f.userTags.some((t) => p.userTags.includes(t))) return false
-  if (f.status.length && !f.status.includes(p.practiceStatus)) return false
-  if (f.favorite && !p.favorite) return false
-  if (f.bookless && !p.bookless) return false
-  if (f.hasImslpNumber && !p.hasImslpNumber) return false
-  return true
+  return matchesFiltersExcept(p, f, null, '')
 }
 
 // id doubles as a stand-in for "date added" — this fixture has no real
@@ -719,21 +820,47 @@ export function PieceLibrarySample() {
 
   function clearAppliedFilter(field: keyof FilterState, value?: string) {
     if (field === 'favorite' || field === 'bookless' || field === 'hasImslpNumber') {
-      setAppliedFilters((f) => ({ ...f, [field]: false }))
+      setAppliedFilters((f) => ({ ...f, [field]: 'neutral' }))
       return
     }
-    setAppliedFilters((f) => ({ ...f, [field]: (f[field] as string[]).filter((v) => v !== value) }))
+    setAppliedFilters((f) => ({ ...f, [field]: setDimensionState(f[field] as Record<string, TriState>, value!, 'neutral') }))
   }
 
-  const pillEntries: { field: keyof FilterState; value?: string; label: string }[] = [
-    ...(appliedFilters.favorite ? [{ field: 'favorite' as const, label: 'Favorites' }] : []),
-    ...(appliedFilters.bookless ? [{ field: 'bookless' as const, label: 'Bookless pieces' }] : []),
-    ...(appliedFilters.hasImslpNumber ? [{ field: 'hasImslpNumber' as const, label: 'Has IMSLP number' }] : []),
-    ...appliedFilters.key.map((v) => ({ field: 'key' as const, value: v, label: v })),
-    ...appliedFilters.instrument.map((v) => ({ field: 'instrument' as const, value: v, label: v })),
-    ...appliedFilters.sheetType.map((v) => ({ field: 'sheetType' as const, value: v, label: v })),
-    ...appliedFilters.userTags.map((v) => ({ field: 'userTags' as const, value: v, label: v })),
-    ...appliedFilters.status.map((v) => ({ field: 'status' as const, value: v, label: v })),
+  const pillEntries: { field: keyof FilterState; value?: string; label: string; state: TriState }[] = [
+    ...(appliedFilters.favorite !== 'neutral'
+      ? [{ field: 'favorite' as const, label: 'Favorites', state: appliedFilters.favorite }]
+      : []),
+    ...(appliedFilters.bookless !== 'neutral'
+      ? [{ field: 'bookless' as const, label: 'Bookless pieces', state: appliedFilters.bookless }]
+      : []),
+    ...(appliedFilters.hasImslpNumber !== 'neutral'
+      ? [{ field: 'hasImslpNumber' as const, label: 'Has IMSLP number', state: appliedFilters.hasImslpNumber }]
+      : []),
+    ...Object.entries(appliedFilters.key).map(([v, state]) => ({ field: 'key' as const, value: v, label: v, state })),
+    ...Object.entries(appliedFilters.instrument).map(([v, state]) => ({
+      field: 'instrument' as const,
+      value: v,
+      label: v,
+      state,
+    })),
+    ...Object.entries(appliedFilters.sheetType).map(([v, state]) => ({
+      field: 'sheetType' as const,
+      value: v,
+      label: v,
+      state,
+    })),
+    ...Object.entries(appliedFilters.userTags).map(([v, state]) => ({
+      field: 'userTags' as const,
+      value: v,
+      label: v,
+      state,
+    })),
+    ...Object.entries(appliedFilters.status).map(([v, state]) => ({
+      field: 'status' as const,
+      value: v,
+      label: v,
+      state,
+    })),
   ]
 
   return (
@@ -895,22 +1022,29 @@ export function PieceLibrarySample() {
 
           {pillEntries.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5">
-              {pillEntries.map((entry) => (
-                <span
-                  key={entry.field + (entry.value ?? '')}
-                  className="flex items-center gap-1.5 rounded-full bg-accent-soft py-1 pr-1.5 pl-3 text-xs font-medium text-accent"
-                >
-                  {entry.label}
-                  <button
-                    type="button"
-                    onClick={() => clearAppliedFilter(entry.field, entry.value)}
-                    aria-label={`Remove ${entry.label} filter`}
-                    className="flex size-4 cursor-pointer items-center justify-center rounded-full text-accent opacity-75 hover:opacity-100"
+              {pillEntries.map((entry) => {
+                const excluded = entry.state === 'exclude'
+                return (
+                  <span
+                    key={entry.field + (entry.value ?? '')}
+                    className={`flex items-center gap-1.5 rounded-full py-1 pr-1.5 pl-3 text-xs font-medium ${
+                      excluded ? 'bg-red-50 text-red-700' : 'bg-accent-soft text-accent'
+                    }`}
                   >
-                    <IconX size={11} />
-                  </button>
-                </span>
-              ))}
+                    {excluded ? `Not ${entry.label}` : entry.label}
+                    <button
+                      type="button"
+                      onClick={() => clearAppliedFilter(entry.field, entry.value)}
+                      aria-label={`Remove ${excluded ? 'not ' : ''}${entry.label} filter`}
+                      className={`flex size-4 cursor-pointer items-center justify-center rounded-full opacity-75 hover:opacity-100 ${
+                        excluded ? 'text-red-700' : 'text-accent'
+                      }`}
+                    >
+                      <IconX size={11} />
+                    </button>
+                  </span>
+                )
+              })}
               <button
                 type="button"
                 onClick={() => setAppliedFilters(EMPTY_FILTERS)}

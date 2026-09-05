@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { IconX, IconXFilled } from '@tabler/icons-react'
+import { IconMinus, IconPlus, IconSlash, IconX, IconXFilled } from '@tabler/icons-react'
 import { createPerson, getPersonPortraitUrl, listPeople } from '../api/people'
 import { ApiError } from '../api/client'
 import type { Person, PersonCreateRequest } from '../api/types'
@@ -138,16 +138,39 @@ function PersonListRow({ person }: { person: Person }) {
 // porting PeopleLibrarySample.tsx's own getEra/getCenturies/ordinal logic.
 // ---------------------------------------------------------------------
 
+// Three-way segmented control (direct request, 2026-09-05, real build of
+// PeopleLibrarySample.tsx's own approved mockup — see
+// PieceLibrarySample.tsx's own TriState/dimensionState/setDimensionState
+// comment for the full reasoning, unchanged here). Era/Century both get
+// it (genuine per-person categorical facets); `showAll` does not — it's a
+// display-mode threshold override ("show people below the normal
+// >2-piece cutoff too"), not an include/exclude filter over some
+// attribute a person either has or doesn't. Century keys are stored as
+// strings purely so this can reuse the same dimensionState/
+// setDimensionState helpers Piece/Books already use — converted back with
+// Number(v) only where century-specific math (ordinal()) needs one. No
+// backend involvement either way — Era/Century have always been a purely
+// client-side filter over the already-fetched people list (no server-side
+// facet, per this file's own established "Person's own dataset is small"
+// assumption), so this is a frontend-only change.
+type TriState = 'exclude' | 'neutral' | 'include'
+
+function dimensionState(map: Record<string, TriState>, value: string): TriState {
+  return map[value] ?? 'neutral'
+}
+function setDimensionState(map: Record<string, TriState>, value: string, next: TriState): Record<string, TriState> {
+  if (next === 'neutral') {
+    return Object.fromEntries(Object.entries(map).filter(([k]) => k !== value))
+  }
+  return { ...map, [value]: next }
+}
+
 interface PersonFilterState {
   showAll: boolean
-  era: string[]
-  centuries: number[]
+  era: Record<string, TriState>
+  centuries: Record<string, TriState>
 }
-const EMPTY_PERSON_FILTERS: PersonFilterState = { showAll: false, era: [], centuries: [] }
-
-function toggleInArray<T>(arr: T[], value: T): T[] {
-  return arr.includes(value) ? arr.filter((v) => v !== value) : [...arr, value]
-}
+const EMPTY_PERSON_FILTERS: PersonFilterState = { showAll: false, era: {}, centuries: {} }
 
 const ERA_ORDER = ['Renaissance & Earlier', 'Baroque', 'Classical', 'Romantic', 'Modern', 'Contemporary'] as const
 type Era = (typeof ERA_ORDER)[number]
@@ -185,7 +208,7 @@ function ordinal(n: number): string {
 }
 
 function activePersonFilterCount(f: PersonFilterState): number {
-  return (f.showAll ? 1 : 0) + f.era.length + f.centuries.length
+  return (f.showAll ? 1 : 0) + Object.keys(f.era).length + Object.keys(f.centuries).length
 }
 
 function FacetSection({ title, children }: { title: string; children: React.ReactNode }) {
@@ -199,20 +222,60 @@ function FacetSection({ title, children }: { title: string; children: React.Reac
 function FacetRow({
   label,
   count,
-  checked,
+  state,
   onChange,
 }: {
   label: string
   count: number
-  checked: boolean
-  onChange: () => void
+  state: TriState
+  onChange: (next: TriState) => void
 }) {
   return (
-    <label className="flex cursor-pointer items-center gap-2.5 rounded-md px-1 py-1.5 text-sm text-ink hover:bg-paper-sunken">
-      <input type="checkbox" checked={checked} onChange={onChange} className="accent-accent" />
-      <span className="flex-1">{label}</span>
+    <div className="flex items-center gap-2.5 rounded-md px-1 py-1.5 text-sm text-ink">
+      <span className="min-w-0 flex-1 truncate">{label}</span>
       <span className="text-xs text-ink-soft tabular-nums">{count}</span>
-    </label>
+      <TriStateControl state={state} onChange={onChange} label={label} />
+    </div>
+  )
+}
+
+function TriStateControl({ state, onChange, label }: { state: TriState; onChange: (next: TriState) => void; label: string }) {
+  return (
+    <div className="flex shrink-0 items-center gap-0.5 rounded-md border border-border p-0.5">
+      <button
+        type="button"
+        onClick={() => onChange('exclude')}
+        aria-label={`Exclude ${label}`}
+        aria-pressed={state === 'exclude'}
+        className={`flex size-6 cursor-pointer items-center justify-center rounded ${
+          state === 'exclude' ? 'bg-red-50 text-red-700' : 'text-ink-soft hover:bg-paper-sunken hover:text-ink'
+        }`}
+      >
+        <IconMinus size={14} />
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange('neutral')}
+        aria-label={`Clear ${label} filter`}
+        aria-pressed={state === 'neutral'}
+        className={`flex size-6 cursor-pointer items-center justify-center rounded ${
+          state === 'neutral' ? 'bg-paper-sunken text-ink' : 'text-ink-soft hover:bg-paper-sunken hover:text-ink'
+        }`}
+      >
+        <IconSlash size={14} />
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange('include')}
+        aria-label={`Include ${label}`}
+        aria-pressed={state === 'include'}
+        className={`flex size-6 cursor-pointer items-center justify-center rounded ${
+          state === 'include' ? 'bg-accent-soft text-accent' : 'text-ink-soft hover:bg-paper-sunken hover:text-ink'
+        }`}
+      >
+        <IconPlus size={14} />
+      </button>
+    </div>
   )
 }
 
@@ -262,6 +325,12 @@ function PersonFilterDrawer({
           </button>
         </div>
 
+        <p className="shrink-0 border-b border-border px-4 py-2.5 text-xs leading-snug text-ink-soft">
+          Included options within a section combine with <span className="font-medium text-ink">or</span> — checking
+          two eras, for example, matches people from either. Different sections, and any excluded option, must all
+          match.
+        </p>
+
         <div className="flex-1 overflow-y-auto px-4 py-2">
           <FacetSection title="Show only">
             <label className="flex cursor-pointer items-center gap-2.5 rounded-md px-1 py-1.5 text-sm text-ink hover:bg-paper-sunken">
@@ -290,8 +359,8 @@ function PersonFilterDrawer({
                 key={era}
                 label={era}
                 count={countEra(era)}
-                checked={filters.era.includes(era)}
-                onChange={() => onChange({ ...filters, era: toggleInArray(filters.era, era) })}
+                state={dimensionState(filters.era, era)}
+                onChange={(next) => onChange({ ...filters, era: setDimensionState(filters.era, era, next) })}
               />
             ))}
           </FacetSection>
@@ -302,8 +371,8 @@ function PersonFilterDrawer({
                 key={c}
                 label={`${ordinal(c)} century`}
                 count={countCentury(c)}
-                checked={filters.centuries.includes(c)}
-                onChange={() => onChange({ ...filters, centuries: toggleInArray(filters.centuries, c) })}
+                state={dimensionState(filters.centuries, String(c))}
+                onChange={(next) => onChange({ ...filters, centuries: setDimensionState(filters.centuries, String(c), next) })}
               />
             ))}
           </FacetSection>
@@ -534,28 +603,35 @@ export function PeopleLibraryPage() {
     return filters.showAll || p.pieceCount > 2 || justCreatedIds.has(p.id)
   }
   function passesEra(p: Person): boolean {
-    if (filters.era.length === 0) return true
     const era = getEra(p)
-    return era !== null && filters.era.includes(era)
+    const entries = Object.entries(filters.era)
+    if (era !== null && entries.some(([v, s]) => s === 'exclude' && v === era)) return false
+    const included = entries.filter(([, s]) => s === 'include').map(([v]) => v)
+    return included.length === 0 || (era !== null && included.includes(era))
   }
   function passesCentury(p: Person): boolean {
-    if (filters.centuries.length === 0) return true
-    return getCenturies(p).some((c) => filters.centuries.includes(c))
+    const personCenturies = getCenturies(p).map(String)
+    const entries = Object.entries(filters.centuries)
+    if (entries.some(([v, s]) => s === 'exclude' && personCenturies.includes(v))) return false
+    const included = entries.filter(([, s]) => s === 'include').map(([v]) => v)
+    return included.length === 0 || included.some((c) => personCenturies.includes(c))
   }
 
   const filtered = people.filter((p) => passesShowOnly(p) && passesEra(p) && passesCentury(p))
   const hiddenCount = people.length - people.filter(passesShowOnly).length
 
   const activeFilterCount = activePersonFilterCount(filters)
-  function clearFilterPill(field: 'era' | 'centuries', value: string | number) {
-    setFilters((f) => ({
-      ...f,
-      [field]: (f[field] as (string | number)[]).filter((v) => v !== value),
-    }))
+  function clearFilterPill(field: 'era' | 'centuries', value: string) {
+    setFilters((f) => ({ ...f, [field]: setDimensionState(f[field], value, 'neutral') }))
   }
-  const pillEntries: { field: 'era' | 'centuries'; value: string | number; label: string }[] = [
-    ...filters.era.map((e) => ({ field: 'era' as const, value: e, label: e })),
-    ...filters.centuries.map((c) => ({ field: 'centuries' as const, value: c, label: `${ordinal(c)} century` })),
+  const pillEntries: { field: 'era' | 'centuries'; value: string; label: string; state: TriState }[] = [
+    ...Object.entries(filters.era).map(([v, state]) => ({ field: 'era' as const, value: v, label: v, state })),
+    ...Object.entries(filters.centuries).map(([v, state]) => ({
+      field: 'centuries' as const,
+      value: v,
+      label: `${ordinal(Number(v))} century`,
+      state,
+    })),
   ]
 
   return (
@@ -579,25 +655,32 @@ export function PeopleLibraryPage() {
       >
         {pillEntries.length > 0 && (
           <div className="flex flex-wrap items-center gap-1.5">
-            {pillEntries.map((entry) => (
-              <span
-                key={entry.field + String(entry.value)}
-                className="flex items-center gap-1.5 rounded-full bg-accent-soft py-1 pr-1.5 pl-3 text-xs font-medium text-accent"
-              >
-                {entry.label}
-                <button
-                  type="button"
-                  onClick={() => clearFilterPill(entry.field, entry.value)}
-                  aria-label={`Remove ${entry.label} filter`}
-                  className="flex size-4 cursor-pointer items-center justify-center rounded-full text-accent opacity-75 hover:opacity-100"
+            {pillEntries.map((entry) => {
+              const excluded = entry.state === 'exclude'
+              return (
+                <span
+                  key={entry.field + entry.value}
+                  className={`flex items-center gap-1.5 rounded-full py-1 pr-1.5 pl-3 text-xs font-medium ${
+                    excluded ? 'bg-red-50 text-red-700' : 'bg-accent-soft text-accent'
+                  }`}
                 >
-                  <IconX size={11} />
-                </button>
-              </span>
-            ))}
+                  {excluded ? `Not ${entry.label}` : entry.label}
+                  <button
+                    type="button"
+                    onClick={() => clearFilterPill(entry.field, entry.value)}
+                    aria-label={`Remove ${excluded ? 'not ' : ''}${entry.label} filter`}
+                    className={`flex size-4 cursor-pointer items-center justify-center rounded-full opacity-75 hover:opacity-100 ${
+                      excluded ? 'text-red-700' : 'text-accent'
+                    }`}
+                  >
+                    <IconX size={11} />
+                  </button>
+                </span>
+              )
+            })}
             <button
               type="button"
-              onClick={() => setFilters((f) => ({ ...f, era: [], centuries: [] }))}
+              onClick={() => setFilters((f) => ({ ...f, era: {}, centuries: {} }))}
               className="cursor-pointer text-xs text-ink-soft underline decoration-dotted underline-offset-2 hover:text-ink"
             >
               Clear all

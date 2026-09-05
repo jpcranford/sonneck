@@ -408,78 +408,124 @@ func parseIDListFilter(w http.ResponseWriter, q url.Values, param string) (ids [
 // handleSearchPieces builds directly for personId/sourceBookId, specifically
 // so handlePieceFacets can compose "every active filter except this one
 // dimension's own" per facet — see combineClauses.
+//
+// An exclude* param (e.g. excludeKeyId) generates a *second* namedClause
+// carrying the exact same `name` as its include sibling (e.g. "keyId"),
+// not a distinct name — combineClauses's single-string `exclude` skip
+// param then drops both together when a facet computes its own count,
+// which is exactly what the faceted-search "never self-narrow" rule
+// wants: a value's displayed count reflects every OTHER active filter,
+// regardless of whether this dimension's own current selection includes,
+// excludes, or leaves it neutral. Both can also be present simultaneously
+// (e.g. practiceStatus=Learning excludePracticeStatus=Stalled) and simply
+// AND together like any two clauses — the frontend's own tri-state model
+// never puts the same single value in both lists at once, but nothing here
+// depends on that.
 type namedClause struct {
 	name  string
 	where string
 	args  []any
 }
 
+// negateClause wraps an include fragment's exact WHERE text (reusing its
+// args unchanged) into its exclude counterpart. COALESCE(...,0), not a bare
+// NOT(...) — several fragments below (sheetTypeId/instrumentId/
+// hasImslpNumber) are an inheritance-aware `x IN (ids) OR (x IS NULL AND
+// ...)` shape, and when the leading `x IN (ids)` half is evaluated against
+// a NULL column it yields SQL NULL, not FALSE — so `NULL OR FALSE` is
+// itself NULL, and a bare `NOT (...)` of that is NULL too, which a WHERE
+// clause treats as no-match. That silently drops a piece with no own value
+// and a book whose value doesn't match either from an *exclude* result,
+// even though it plainly doesn't carry the excluded value. COALESCE forces
+// that indeterminate case to a definite FALSE before negating, so it
+// correctly reads as "doesn't have it" → matches the exclude filter. Simple
+// clauses (keyId, favorite, bookless, ...) never actually hit this — they
+// only ever resolve to a real TRUE/FALSE — so the wrapper is a no-op there,
+// applied uniformly rather than hand-verified per clause.
+func negateClause(where string) string {
+	return "NOT COALESCE((" + where + "), 0)"
+}
+
+// idListClause builds one namedClause (or its exclude counterpart, via
+// negateClause) for a simple "the piece's id appears in this join-table
+// subquery" facet — keyId/userTagId's own shape, no book-inheritance
+// fallback to worry about.
+func idListClause(name, subqueryTable, subqueryCol string, ids []int64, excl bool) namedClause {
+	where := "p.id IN (SELECT piece_id FROM " + subqueryTable + " WHERE " + subqueryCol + " IN (" + sqlPlaceholders(len(ids)) + "))"
+	if excl {
+		where = negateClause(where)
+	}
+	return namedClause{name: name, where: where, args: idsToArgs(ids)}
+}
+
 // buildPieceFilterClauses parses the Piece Filter Drawer's own filter query
 // params — keyId/sheetTypeId/instrumentId/userTagId/favorite/
-// practiceStatus/bookless/hasImslpNumber — into one namedClause per active
-// filter. Shared by handleSearchPieces (which flattens every clause into one
-// WHERE exactly as it did before this existed) and handlePieceFacets (which
-// needs "every active filter except this dimension's own" per facet — the
-// standard multi-select faceted-search rule: a facet value's own displayed
-// count reflects what checking it would add on top of every OTHER active
-// filter/search, not a count that self-narrows against its own current
-// selection). Deliberately excludes personId/sourceBookId — neither is a
-// Filter Drawer facet (personId is Person Details' own works-list filter,
-// sourceBookId is Book Details' pieces list), so handleSearchPieces still
-// parses those two separately, unchanged.
+// practiceStatus/bookless/hasImslpNumber, plus each one's exclude*
+// counterpart (excludeKeyId/excludeSheetTypeId/excludeInstrumentId/
+// excludeUserTagId/excludePracticeStatus — direct request, 2026-09-05, the
+// Filter Drawer's segmented exclude/neutral/include control) — into one
+// namedClause per active filter. Shared by handleSearchPieces (which
+// flattens every clause into one WHERE exactly as it did before this
+// existed) and handlePieceFacets (which needs "every active filter except
+// this dimension's own" per facet — the standard multi-select faceted-
+// search rule: a facet value's own displayed count reflects what checking
+// it would add on top of every OTHER active filter/search, not a count
+// that self-narrows against its own current selection — an include and its
+// sibling exclude clause share one `name` for exactly this reason, see
+// namedClause's own comment). Deliberately excludes personId/sourceBookId —
+// neither is a Filter Drawer facet (personId is Person Details' own
+// works-list filter, sourceBookId is Book Details' pieces list), so
+// handleSearchPieces still parses those two separately, unchanged.
 func buildPieceFilterClauses(w http.ResponseWriter, q url.Values) (clauses []namedClause, ok bool) {
 	if ids, present, ok := parseIDListFilter(w, q, "keyId"); !ok {
 		return nil, false
 	} else if present {
-		clauses = append(clauses, namedClause{
-			name:  "keyId",
-			where: "p.id IN (SELECT piece_id FROM piece_keys WHERE key_id IN (" + sqlPlaceholders(len(ids)) + "))",
-			args:  idsToArgs(ids),
-		})
+		clauses = append(clauses, idListClause("keyId", "piece_keys", "key_id", ids, false))
+	}
+	if ids, present, ok := parseIDListFilter(w, q, "excludeKeyId"); !ok {
+		return nil, false
+	} else if present {
+		clauses = append(clauses, idListClause("keyId", "piece_keys", "key_id", ids, true))
 	}
 
 	if ids, present, ok := parseIDListFilter(w, q, "sheetTypeId"); !ok {
 		return nil, false
 	} else if present {
-		ph := sqlPlaceholders(len(ids))
-		var args []any
-		args = append(args, idsToArgs(ids)...)
-		args = append(args, idsToArgs(ids)...)
-		clauses = append(clauses, namedClause{
-			name: "sheetTypeId",
-			where: `(p.sheet_type_id IN (` + ph + `) OR (p.sheet_type_id IS NULL AND p.source_book_id IN (
-				SELECT id FROM books WHERE sheet_type_id IN (` + ph + `)
-			)))`,
-			args: args,
-		})
+		clauses = append(clauses, sheetTypeClause(ids, false))
+	}
+	if ids, present, ok := parseIDListFilter(w, q, "excludeSheetTypeId"); !ok {
+		return nil, false
+	} else if present {
+		clauses = append(clauses, sheetTypeClause(ids, true))
 	}
 
 	if ids, present, ok := parseIDListFilter(w, q, "instrumentId"); !ok {
 		return nil, false
 	} else if present {
-		ph := sqlPlaceholders(len(ids))
-		var args []any
-		args = append(args, idsToArgs(ids)...)
-		args = append(args, idsToArgs(ids)...)
-		clauses = append(clauses, namedClause{
-			name: "instrumentId",
-			where: `(p.id IN (SELECT piece_id FROM piece_instruments WHERE instrument_id IN (` + ph + `))
-				OR (p.id NOT IN (SELECT piece_id FROM piece_instruments)
-					AND p.source_book_id IN (SELECT book_id FROM book_instruments WHERE instrument_id IN (` + ph + `))))`,
-			args: args,
-		})
+		clauses = append(clauses, instrumentClause(ids, false))
+	}
+	if ids, present, ok := parseIDListFilter(w, q, "excludeInstrumentId"); !ok {
+		return nil, false
+	} else if present {
+		clauses = append(clauses, instrumentClause(ids, true))
 	}
 
 	if ids, present, ok := parseIDListFilter(w, q, "userTagId"); !ok {
 		return nil, false
 	} else if present {
-		clauses = append(clauses, namedClause{
-			name:  "userTagId",
-			where: "p.id IN (SELECT piece_id FROM piece_user_tags WHERE tag_id IN (" + sqlPlaceholders(len(ids)) + "))",
-			args:  idsToArgs(ids),
-		})
+		clauses = append(clauses, idListClause("userTagId", "piece_user_tags", "tag_id", ids, false))
+	}
+	if ids, present, ok := parseIDListFilter(w, q, "excludeUserTagId"); !ok {
+		return nil, false
+	} else if present {
+		clauses = append(clauses, idListClause("userTagId", "piece_user_tags", "tag_id", ids, true))
 	}
 
+	// favorite: already genuinely tri-state on the wire before this change
+	// (true → must be favorite, false → must NOT be favorite, absent → no
+	// constraint) — `p.favorite = ?` bound to either literal boolean is
+	// exactly the exclude/include shape every other dimension is gaining
+	// here, so favorite itself needs no change at all.
 	if v := q.Get("favorite"); v != "" {
 		fav, err := strconv.ParseBool(v)
 		if err != nil {
@@ -493,36 +539,38 @@ func buildPieceFilterClauses(w http.ResponseWriter, q url.Values) (clauses []nam
 	// statuses at once (the sidebar's "Currently Practicing" view — Learning
 	// OR Stalled — is the first caller of this; a single value still works
 	// the same as before, IN (?) with one placeholder behaves like = ?).
-	if v := q.Get("practiceStatus"); v != "" {
-		statuses := strings.Split(v, ",")
-		placeholders := make([]string, len(statuses))
-		args := make([]any, len(statuses))
-		for i, status := range statuses {
-			placeholders[i] = "?"
-			args[i] = strings.TrimSpace(status)
-		}
-		clauses = append(clauses, namedClause{
-			name:  "practiceStatus",
-			where: "p.practice_status IN (" + strings.Join(placeholders, ",") + ")",
-			args:  args,
-		})
+	// excludePracticeStatus is the same list, negated — both can be present
+	// at once (e.g. practiceStatus=Learning excludePracticeStatus=Stalled),
+	// which simply ANDs the two conditions like any other pair of clauses.
+	if clause, present, ok := practiceStatusClause(w, q, "practiceStatus", false); !ok {
+		return nil, false
+	} else if present {
+		clauses = append(clauses, clause)
+	}
+	if clause, present, ok := practiceStatusClause(w, q, "excludePracticeStatus", true); !ok {
+		return nil, false
+	} else if present {
+		clauses = append(clauses, clause)
 	}
 
 	// bookless: pieces with no sourceBookId at all (design doc §3/§5 — a
 	// piece with no book is a normal, first-class case, e.g. a single
-	// downloaded score). Deliberately asymmetric with favorite above:
-	// bookless=false is a no-op, not a hard "exclude bookless" filter — the
-	// drawer's single checkbox never sends false, there's no equivalent
-	// "book-having pieces only" affordance to wire it to.
+	// downloaded score). Genuinely tri-state now (direct request,
+	// 2026-09-05) — true → bookless only, false → book-having only, absent
+	// → no constraint. IS NULL/IS NOT NULL are already exact complements
+	// (no NULL-propagation risk the way a bare column IN(...) check has),
+	// so no negateClause wrapper is needed here.
 	if v := q.Get("bookless"); v != "" {
 		bookless, err := strconv.ParseBool(v)
 		if err != nil {
 			api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid bookless")
 			return nil, false
 		}
-		if bookless {
-			clauses = append(clauses, namedClause{name: "bookless", where: "p.source_book_id IS NULL"})
+		where := "p.source_book_id IS NULL"
+		if !bookless {
+			where = "p.source_book_id IS NOT NULL"
 		}
+		clauses = append(clauses, namedClause{name: "bookless", where: where})
 	}
 
 	// hasImslpNumber: pieces with a non-blank *effective* IMSLP number —
@@ -531,26 +579,85 @@ func buildPieceFilterClauses(w http.ResponseWriter, q url.Values) (clauses []nam
 	// presence/non-blankness rather than a specific id match; NULLIF(TRIM(
 	// ...), '') IS NOT NULL is this file's own established non-blank test,
 	// matching the composer sort expression above and resolveStringField's
-	// isBlank check). Same asymmetric-boolean shape as bookless:
-	// hasImslpNumber=false is a no-op, not a hard exclude — the drawer's
-	// single checkbox never sends false.
+	// isBlank check). Genuinely tri-state now (direct request, 2026-09-05).
 	if v := q.Get("hasImslpNumber"); v != "" {
 		has, err := strconv.ParseBool(v)
 		if err != nil {
 			api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid hasImslpNumber")
 			return nil, false
 		}
-		if has {
-			clauses = append(clauses, namedClause{
-				name: "hasImslpNumber",
-				where: `(NULLIF(TRIM(p.imslp_number), '') IS NOT NULL OR (NULLIF(TRIM(p.imslp_number), '') IS NULL AND p.source_book_id IN (
-					SELECT id FROM books WHERE NULLIF(TRIM(imslp_number), '') IS NOT NULL
-				)))`,
-			})
-		}
+		clauses = append(clauses, hasImslpClause(has))
 	}
 
 	return clauses, true
+}
+
+// sheetTypeClause/instrumentClause factor out the two book-inheritance-aware
+// "own value, else the book's" fragments buildPieceFilterClauses needs
+// twice each (once for the include param, once for exclude) — negateClause,
+// not a hand-written negation, since the leading bare `p.sheet_type_id IN
+// (...)`/piece_instruments membership check can evaluate to SQL NULL rather
+// than FALSE when that column is itself NULL (see negateClause's own
+// comment for why that matters here specifically).
+func sheetTypeClause(ids []int64, excl bool) namedClause {
+	ph := sqlPlaceholders(len(ids))
+	var args []any
+	args = append(args, idsToArgs(ids)...)
+	args = append(args, idsToArgs(ids)...)
+	where := `(p.sheet_type_id IN (` + ph + `) OR (p.sheet_type_id IS NULL AND p.source_book_id IN (
+		SELECT id FROM books WHERE sheet_type_id IN (` + ph + `)
+	)))`
+	if excl {
+		where = negateClause(where)
+	}
+	return namedClause{name: "sheetTypeId", where: where, args: args}
+}
+
+func instrumentClause(ids []int64, excl bool) namedClause {
+	ph := sqlPlaceholders(len(ids))
+	var args []any
+	args = append(args, idsToArgs(ids)...)
+	args = append(args, idsToArgs(ids)...)
+	where := `(p.id IN (SELECT piece_id FROM piece_instruments WHERE instrument_id IN (` + ph + `))
+		OR (p.id NOT IN (SELECT piece_id FROM piece_instruments)
+			AND p.source_book_id IN (SELECT book_id FROM book_instruments WHERE instrument_id IN (` + ph + `))))`
+	if excl {
+		where = negateClause(where)
+	}
+	return namedClause{name: "instrumentId", where: where, args: args}
+}
+
+func hasImslpClause(has bool) namedClause {
+	where := `(NULLIF(TRIM(p.imslp_number), '') IS NOT NULL OR (NULLIF(TRIM(p.imslp_number), '') IS NULL AND p.source_book_id IN (
+		SELECT id FROM books WHERE NULLIF(TRIM(imslp_number), '') IS NOT NULL
+	)))`
+	if !has {
+		where = negateClause(where)
+	}
+	return namedClause{name: "hasImslpNumber", where: where}
+}
+
+// practiceStatusClause parses one comma-separated status-list param
+// (practiceStatus or its excludePracticeStatus sibling) into a namedClause,
+// both sharing the "practiceStatus" name so a facet's own count skips both
+// together (see buildPieceFilterClauses's own comment).
+func practiceStatusClause(w http.ResponseWriter, q url.Values, param string, excl bool) (clause namedClause, present, ok bool) {
+	v := q.Get(param)
+	if v == "" {
+		return namedClause{}, false, true
+	}
+	statuses := strings.Split(v, ",")
+	placeholders := make([]string, len(statuses))
+	args := make([]any, len(statuses))
+	for i, status := range statuses {
+		placeholders[i] = "?"
+		args[i] = strings.TrimSpace(status)
+	}
+	where := "p.practice_status IN (" + strings.Join(placeholders, ",") + ")"
+	if excl {
+		where = negateClause(where)
+	}
+	return namedClause{name: "practiceStatus", where: where, args: args}, true, true
 }
 
 // combineClauses ANDs together every namedClause except the one matching
