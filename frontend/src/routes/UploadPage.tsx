@@ -239,32 +239,44 @@ export function UploadPage() {
   }
 
   return (
-    // min-h-dvh, not min-h-screen (revised 2026-09-05, direct follow-up) —
-    // without an explicit floor, this div's real available height comes
-    // from flex-growing inside AppShell's <main>, which itself only gets
-    // whatever's left after the shell's own shrink-0 footer takes its
-    // share of the same flex-col budget (confirmed via computed styles:
-    // <main> measured ~93px shorter than the actual viewport, footer-
-    // sized, in a live check). For the short landing/select/uploading/
-    // success stages this was never visible — comfortably shorter than
-    // that reduced budget either way. The 'details' stage (thumbnail +
-    // fields, taller since the field-set grew — mockup/upload-piece-about)
-    // is a different story: once content approaches that reduced budget,
-    // the flex item's implicit min-height:auto stops it from shrinking
-    // below its own content, silently zeroing out justify-center's own
-    // "extra space to distribute" and leaving it flush at the top of
-    // whatever scrolls, instead of gracefully centering-then-degrading.
-    // This floor forces real centering headroom regardless of the
-    // footer's share or how tall any one stage's content gets. min-screen
-    // (100vh) was the original fix, but that's the same static-viewport
-    // property AppShell.tsx's own h-dvh fix (project_responsive_device_
-    // plan) exists to avoid: on mobile Safari, 100vh doesn't track the
-    // dynamic address-bar/toolbar animation, so the centering math ran
-    // against a taller reference than what's actually visible right now,
-    // reading as "content sitting too low" (found live via a real
-    // screenshot report) — min-h-dvh centers against the actually-visible
-    // viewport instead, matching the shell it lives inside.
-    <div className="flex min-h-dvh flex-1 flex-col items-center justify-center gap-6 p-8">
+    // min-h-dvh is scoped to the 'details' stage only (revised 2026-09-05,
+    // real bug found live) — it was originally applied to this whole shared
+    // wrapper unconditionally, which forced every stage (including the
+    // short landing/select/uploading/success ones) to claim a full
+    // viewport's height for itself. That div sits inside AppShell's
+    // #app-scroll-container ahead of the shell's own footer (a flex
+    // sibling, not a child of this div) — so a wrapper that's already
+    // exactly one viewport tall, plus the footer after it, always overflows
+    // the scroll container by the footer's own height, creating a scrollbar
+    // and hiding the footer below the fold on every stage, not just the one
+    // that needed the extra headroom. min-h-dvh is only actually needed on
+    // 'details' (thumbnail + fields, taller since the field-set grew —
+    // mockup/upload-piece-about): without an explicit floor there, this
+    // div's available height comes from flex-growing inside <main>, which
+    // only gets whatever's left after the footer takes its own share of the
+    // same flex-col budget (confirmed via computed styles: <main> measured
+    // ~93px shorter than the actual viewport, footer-sized) — once content
+    // approaches that reduced budget, the flex item's implicit
+    // min-height:auto stops it from shrinking below its own content,
+    // silently zeroing out justify-center's "extra space to distribute" and
+    // leaving it flush at the top of whatever scrolls, instead of
+    // gracefully centering-then-degrading. min-h-dvh forces real centering
+    // headroom for that one stage regardless of the footer's share — worth
+    // it there since 'details' is tall enough that the footer being pushed
+    // below the fold is expected, not a bug. min-screen (100vh) was tried
+    // first, but that's the same static-viewport property AppShell.tsx's
+    // own h-dvh fix (project_responsive_device_plan) exists to avoid: on
+    // mobile Safari, 100vh doesn't track the dynamic address-bar/toolbar
+    // animation, so the centering math ran against a taller reference than
+    // what's actually visible right now, reading as "content sitting too
+    // low" (found live via a real screenshot report) — min-h-dvh centers
+    // against the actually-visible viewport instead, matching the shell it
+    // lives inside.
+    <div
+      className={`flex flex-1 flex-col items-center justify-center gap-6 p-8 ${
+        stage === 'details' ? 'min-h-dvh' : ''
+      }`}
+    >
       {/* Landing fork, not a segmented toggle/tabs: these two paths diverge
           into structurally different flows (one file field vs. the book-
           splitting wizard below), not just a different layout of the same
