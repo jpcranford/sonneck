@@ -402,8 +402,17 @@ export function BookUploadAboutStep({
               sourcePageEnd (the fields citations actually use) get
               physical page + this offset for every piece at import,
               rather than the raw PDF position — see
-              ConfirmImportRequest.PageOffset (internal/handlers/wizard.go). */}
-          <div className="flex flex-col gap-1.5 rounded-lg border border-border bg-paper-raised p-3">
+              ConfirmImportRequest.PageOffset (internal/handlers/wizard.go).
+              Dashed border, matching EditPieceModal.tsx's own Copyright/
+              Book Details disclosure boxes (direct request, 2026-09-05) —
+              reads as an optional/secondary settings box rather than a
+              regular solid-bordered field, same visual language this app
+              already uses for "you probably don't need to touch this"
+              sections. No bg-paper-raised here (the copyright box has none
+              either) — this wizard's own modal background already is
+              paper-raised, so a matching fill was a no-op, not a
+              deliberate distinct surface. */}
+          <div className="flex flex-col gap-1.5 rounded-md border border-dashed border-border p-4">
             <label htmlFor="f-printed-page" className="text-sm text-ink-soft">
               Printed-PDF page offset
             </label>
@@ -415,12 +424,7 @@ export function BookUploadAboutStep({
               className="w-full rounded-md border border-border bg-paper px-3 py-1.5 text-ink tabular-nums"
             />
             <p className="text-[0.78rem] leading-relaxed text-ink-soft">
-              Flip the preview above to a page you're sure about and enter what's actually printed
-              on the page. Safe to skip if they already match.
-            </p>
-            <p className="text-[0.78rem] leading-relaxed text-ink-soft">
-              This book's page numbers will start at page <b>{1 + pageOffset}</b> and count up from
-              there.
+              Flip through the preview until you see a page number, then adjust the number above to match.
             </p>
             {pageOffset !== 0 && (
               <button
