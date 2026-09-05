@@ -22,6 +22,7 @@ import { UploadBookTitlesMockup } from './routes/UploadBookTitlesMockup'
 import { UploadBookConfirmMockup } from './routes/UploadBookConfirmMockup'
 import { MobileNavDrawerMockup } from './routes/MobileNavDrawerMockup'
 import { CitationLogicMockup } from './routes/CitationLogicMockup'
+import { DeviceInfoMockup } from './routes/DeviceInfoMockup'
 import { PeopleLibraryPage } from './routes/PeopleLibraryPage'
 import { PersonDetailsPage } from './routes/PersonDetailsPage'
 import { FavoritesPage } from './routes/FavoritesPage'
@@ -62,6 +63,7 @@ function App() {
         <Route path="mockup/upload-book-titles" element={<UploadBookTitlesMockup />} />
         <Route path="mockup/upload-book-confirm" element={<UploadBookConfirmMockup />} />
         <Route path="mockup/citation-logic" element={<CitationLogicMockup />} />
+        <Route path="mockup/device-info" element={<DeviceInfoMockup />} />
         <Route path="favorites" element={<FavoritesPage />} />
         <Route path="want-to-learn" element={<WantToLearnPage />} />
         <Route path="practicing" element={<PracticingPage />} />

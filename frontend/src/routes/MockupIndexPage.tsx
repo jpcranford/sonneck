@@ -86,6 +86,11 @@ const MOCKUPS = [
     name: 'Citation Logic',
     note: 'Not a screen mockup — a decision-flow reference for buildCitation (internal/handlers/citation.go), kept in sync under the same mockup-parity rule whenever the real branching logic changes. Every example citation is copied verbatim from a passing citation_test.go case.',
   },
+  {
+    to: '/mockup/device-info',
+    name: 'Device Info',
+    note: 'Not a screen mockup — a live diagnostic reference (window/screen size, orientation, devicePixelRatio, current Tailwind breakpoint tier, active nav mode) for the responsive-layout pass across phone/tablet/ultrawide/e-ink widths. See memory project_responsive_device_plan.',
+  },
 ]
 
 export function MockupIndexPage() {
