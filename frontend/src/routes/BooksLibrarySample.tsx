@@ -525,7 +525,7 @@ function BookSortControl({
           title={directionLabel}
           className="flex cursor-pointer items-center justify-center border-l border-border px-2.5 py-2 text-ink hover:bg-paper-sunken"
         >
-          {direction === 'asc' ? <IconArrowUp size={15} /> : <IconArrowDown size={15} />}
+          {direction === 'asc' ? <IconArrowUp size={16} /> : <IconArrowDown size={16} />}
         </button>
       </div>
       {open && (
@@ -757,127 +757,149 @@ export function BooksLibrarySample() {
 
   return (
     <div className="flex flex-1 flex-col">
-      {/* flex-wrap (matching the same mobile-clipping fix applied to
-          PieceLibrarySample.tsx's toolbar 2026-08-27): without it, Search/
-          Filters/Sort/view-toggle/New Book all fight for one non-wrapping
-          row on narrow widths, and Search — the only flex-1 item — is the
-          one that gets squeezed toward unusable before anything else
-          gives up space. min-w-[180px] keeps it from being squeezed to
-          nothing before wrapping kicks in. */}
-      <div className="sticky top-0 z-10 flex flex-wrap items-center gap-3 border-b border-border bg-paper p-4">
-        <div className="relative min-w-[180px] max-w-md flex-1">
-          <IconSearch
-            size={16}
-            className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-soft"
-          />
-          <input
-            type="text"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search your books…"
-            className="w-full rounded-md border border-border bg-paper-raised py-2 pr-3 pl-9 text-sm text-ink"
-          />
-        </div>
+      {/* Ported from PieceLibrarySample.tsx's own toolbar (full reasoning
+          there, and in memory project_responsive_device_plan.md) — same
+          left(toggle)/center(search)/right(Filters→Sort) grid, same
+          `sm:`/`2xl:` breakpoints (an `lg:`-based attempt to smooth out
+          the real-but-narrow dip in Search's width right at `md:768`,
+          where the sidebar first appears, was tried and reverted — direct
+          instruction to keep Piece's exact proven breakpoints rather than
+          layer in more fixes; that dip is accepted here, same as it's
+          accepted on Piece itself), same icon-only-Filters squeezed band,
+          same h-[38px]/exact-px-floor fixes (right column's floor values
+          are identical to Piece's — Filters+Sort alone, nothing New-Book-
+          specific baked in).
 
-        <button
-          type="button"
-          onClick={() => setDrawerOpen(true)}
-          className={`flex cursor-pointer items-center gap-1.5 rounded-md border px-3 py-2 text-sm active:border-accent active:text-accent ${
-            activeCount > 0
-              ? 'border-accent bg-accent-soft text-accent'
-              : 'border-border bg-paper-raised text-ink hover:border-accent hover:text-accent'
-          }`}
-        >
-          <IconAdjustmentsHorizontal size={16} />
-          Filters
-          {activeCount > 0 && (
-            <span className="flex size-4 items-center justify-center rounded-full bg-accent text-[0.65rem] font-semibold text-white">
-              {activeCount}
-            </span>
-          )}
-        </button>
-
-        <BookSortControl
-          field={sortField}
-          direction={sortDirection}
-          onFieldChange={setSortField}
-          onDirectionToggle={() => setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'))}
-        />
-
-        {/* Bordered/neutral treatment, matching BooksPage.tsx's real
-            button exactly (found stale here 2026-08-28 — this mockup
-            still had the old solid-accent-fill version from before that
-            change). font-medium + plain sans (not font-display), also
-            changed 2026-08-28 — matches every other toolbar button's own
-            text treatment (Filters, Sort) instead of the real button's
-            own font-display, so the row reads as one consistent set now
-            that Filters/Sort exist alongside it; the real button will
-            need the same update when this gets built for real. ml-auto
-            keeps this (and the view toggle right after it) pinned to the
-            row's end regardless of how many controls wrap onto earlier
-            lines — moved before the view toggle so grid/list stays the
-            actual rightmost control, not New Book. */}
-        <button
-          type="button"
-          onClick={() => setNewBookOpen(true)}
-          className="ml-auto flex shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-border bg-paper-raised px-3 py-2 text-sm text-ink hover:border-accent hover:text-accent active:border-accent active:text-accent"
-        >
-          <IconPlus size={16} />
-          New Book
-        </button>
-
-        <div className="flex shrink-0 items-center gap-1 rounded-md border border-border p-0.5">
-          <button
-            type="button"
-            onClick={() => setViewMode('grid')}
-            aria-label="Grid view"
-            aria-pressed={viewMode === 'grid'}
-            className={`flex size-8 cursor-pointer items-center justify-center rounded ${
-              viewMode === 'grid' ? 'bg-accent-soft text-accent' : 'text-ink-soft'
-            }`}
-          >
-            <IconLayoutGridFilled size={16} />
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewMode('list')}
-            aria-label="List view"
-            aria-pressed={viewMode === 'list'}
-            className={`flex size-8 cursor-pointer items-center justify-center rounded ${
-              viewMode === 'list' ? 'bg-accent-soft text-accent' : 'text-ink-soft'
-            }`}
-          >
-            <IconLayoutListFilled size={16} />
-          </button>
-        </div>
-
-        {pillEntries.length > 0 && (
-          <div className="flex w-full flex-wrap items-center gap-1.5">
-            {pillEntries.map((entry) => (
-              <span
-                key={entry.field + entry.value}
-                className="flex items-center gap-1.5 rounded-full bg-accent-soft py-1 pr-1.5 pl-3 text-xs font-medium text-accent"
+          "New Book" pairs with Search specifically, not with Filters+Sort
+          — same row as Search at narrow widths, immediately to Search's
+          right at wide ones (direct request, after an earlier attempt put
+          it in the Filters+Sort cluster instead and needed correcting).
+          Folded into the *same* grid cell Search already owns, as a small
+          flex row (`Search flex-1` + `New Book shrink-0`) rather than a
+          fourth top-level grid column — this cell already collapses to
+          one full-width mobile row and centers as one desktop column, so
+          nesting the pair inside it gets both "shares Search's row" and
+          "rides its right edge" for free, no separate mobile-only markup
+          needed. `justify-center` (not `justify-self-center`, which has
+          nothing to act on once the wrapper is `w-full`) is what actually
+          centers the pair as a unit once Search hits its cap — without
+          it, leftover track space collects as trailing whitespace after
+          New Book instead of splitting evenly around the pair, which
+          looked plainly wrong on a real screenshot (Search+New Book
+          shoved left, matching neither Piece's own centered-Search
+          precedent nor the direct instruction to keep them floating
+          center like it). Never icon-only, unlike Filters — direct
+          instruction, applies here and on People's equivalent button. */}
+      <div className="sticky top-0 z-10 border-b border-border bg-paper">
+        <div className={`${WIDE_CONTENT_MAX_W} flex flex-col gap-3 p-4`}>
+          <div className="grid grid-cols-[auto_1fr] items-center gap-3 sm:grid-cols-[auto_1fr_211px] 2xl:grid-cols-[auto_1fr_255px]">
+            <div className="col-start-1 row-start-1 flex shrink-0 items-center justify-self-start gap-1 rounded-md border border-border p-0.5 sm:col-start-auto sm:row-start-auto">
+              <button
+                type="button"
+                onClick={() => setViewMode('grid')}
+                aria-label="Grid view"
+                aria-pressed={viewMode === 'grid'}
+                className={`flex size-8 cursor-pointer items-center justify-center rounded ${
+                  viewMode === 'grid' ? 'bg-accent-soft text-accent' : 'text-ink-soft'
+                }`}
               >
-                {entry.value}
-                <button
-                  type="button"
-                  onClick={() => clearAppliedFilter(entry.field, entry.value)}
-                  aria-label={`Remove ${entry.value} filter`}
-                  className="flex size-4 cursor-pointer items-center justify-center rounded-full text-accent opacity-75 hover:opacity-100"
-                >
-                  <IconX size={11} />
-                </button>
-              </span>
-            ))}
-            <button
-              type="button"
-              onClick={() => setAppliedFilters(EMPTY_BOOK_FILTERS)}
-              className="cursor-pointer text-xs text-ink-soft underline decoration-dotted underline-offset-2 hover:text-ink"
-            >
-              Clear all
-            </button>
+                <IconLayoutGridFilled size={16} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('list')}
+                aria-label="List view"
+                aria-pressed={viewMode === 'list'}
+                className={`flex size-8 cursor-pointer items-center justify-center rounded ${
+                  viewMode === 'list' ? 'bg-accent-soft text-accent' : 'text-ink-soft'
+                }`}
+              >
+                <IconLayoutListFilled size={16} />
+              </button>
+            </div>
+
+            <div className="col-span-2 row-start-2 flex w-full min-w-0 items-center justify-center gap-3 sm:col-span-1 sm:row-start-auto">
+              <div className="relative min-w-0 max-w-xl flex-1">
+                <IconSearch
+                  size={16}
+                  className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-soft"
+                />
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Search your books…"
+                  className="w-full rounded-md border border-border bg-paper-raised py-2 pr-3 pl-9 text-sm text-ink"
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setNewBookOpen(true)}
+                className="flex h-[38px] shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-border bg-paper-raised px-3 text-sm text-ink hover:border-accent hover:text-accent active:border-accent active:text-accent"
+              >
+                <IconPlus size={16} />
+                New Book
+              </button>
+            </div>
+
+            <div className="col-start-2 row-start-1 flex items-center justify-self-end gap-3 sm:col-start-auto sm:row-start-auto">
+              <button
+                type="button"
+                onClick={() => setDrawerOpen(true)}
+                aria-label="Filters"
+                className={`flex h-[38px] cursor-pointer items-center gap-1.5 rounded-md border px-3 text-sm active:border-accent active:text-accent ${
+                  activeCount > 0
+                    ? 'border-accent bg-accent-soft text-accent'
+                    : 'border-border bg-paper-raised text-ink hover:border-accent hover:text-accent'
+                }`}
+              >
+                <IconAdjustmentsHorizontal size={16} />
+                <span className="inline sm:hidden 2xl:inline">Filters</span>
+                {activeCount > 0 && (
+                  <span className="flex size-4 items-center justify-center rounded-full bg-accent text-[0.65rem] font-semibold text-white">
+                    {activeCount}
+                  </span>
+                )}
+              </button>
+
+              <BookSortControl
+                field={sortField}
+                direction={sortDirection}
+                onFieldChange={setSortField}
+                onDirectionToggle={() => setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'))}
+              />
+            </div>
           </div>
-        )}
+
+          {pillEntries.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              {pillEntries.map((entry) => (
+                <span
+                  key={entry.field + entry.value}
+                  className="flex items-center gap-1.5 rounded-full bg-accent-soft py-1 pr-1.5 pl-3 text-xs font-medium text-accent"
+                >
+                  {entry.value}
+                  <button
+                    type="button"
+                    onClick={() => clearAppliedFilter(entry.field, entry.value)}
+                    aria-label={`Remove ${entry.value} filter`}
+                    className="flex size-4 cursor-pointer items-center justify-center rounded-full text-accent opacity-75 hover:opacity-100"
+                  >
+                    <IconX size={11} />
+                  </button>
+                </span>
+              ))}
+              <button
+                type="button"
+                onClick={() => setAppliedFilters(EMPTY_BOOK_FILTERS)}
+                className="cursor-pointer text-xs text-ink-soft underline decoration-dotted underline-offset-2 hover:text-ink"
+              >
+                Clear all
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="p-4 pb-0">

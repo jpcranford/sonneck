@@ -523,7 +523,7 @@ function PersonSortControl({
           title={directionLabel}
           className="flex cursor-pointer items-center justify-center border-l border-border px-2.5 py-2 text-ink hover:bg-paper-sunken"
         >
-          {direction === 'asc' ? <IconArrowUp size={15} /> : <IconArrowDown size={15} />}
+          {direction === 'asc' ? <IconArrowUp size={16} /> : <IconArrowDown size={16} />}
         </button>
       </div>
       {open && (
@@ -785,107 +785,130 @@ export function PeopleLibrarySample() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="sticky top-0 z-10 flex flex-wrap items-center gap-3 border-b border-border bg-paper p-4">
-        <div className="relative min-w-[180px] max-w-md flex-1">
-          <IconSearch
-            size={16}
-            className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-soft"
-          />
-          <input
-            type="text"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search your people…"
-            className="w-full rounded-md border border-border bg-paper-raised py-2 pr-3 pl-9 text-sm text-ink"
-          />
-        </div>
-
-        <button
-          type="button"
-          onClick={() => setDrawerOpen(true)}
-          className={`flex cursor-pointer items-center gap-1.5 rounded-md border px-3 py-2 text-sm active:border-accent active:text-accent ${
-            activeFilterCount > 0
-              ? 'border-accent bg-accent-soft text-accent'
-              : 'border-border bg-paper-raised text-ink hover:border-accent hover:text-accent'
-          }`}
-        >
-          <IconAdjustmentsHorizontal size={16} />
-          Filters
-          {activeFilterCount > 0 && (
-            <span className="flex size-4 items-center justify-center rounded-full bg-accent text-[0.65rem] font-semibold text-white">
-              {activeFilterCount}
-            </span>
-          )}
-        </button>
-
-        <PersonSortControl
-          field={sortField}
-          direction={sortDirection}
-          onFieldChange={setSortField}
-          onDirectionToggle={() => setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'))}
-        />
-
-        <button
-          type="button"
-          onClick={() => setNewPersonOpen(true)}
-          className="ml-auto flex shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-border bg-paper-raised px-3 py-2 text-sm text-ink hover:border-accent hover:text-accent active:border-accent active:text-accent"
-        >
-          <IconPlus size={16} />
-          New Person
-        </button>
-
-        <div className="flex shrink-0 items-center gap-1 rounded-md border border-border p-0.5">
-          <button
-            type="button"
-            onClick={() => setViewMode('grid')}
-            aria-label="Grid view"
-            aria-pressed={viewMode === 'grid'}
-            className={`flex size-8 cursor-pointer items-center justify-center rounded ${
-              viewMode === 'grid' ? 'bg-accent-soft text-accent' : 'text-ink-soft'
-            }`}
-          >
-            <IconLayoutGridFilled size={16} />
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewMode('list')}
-            aria-label="List view"
-            aria-pressed={viewMode === 'list'}
-            className={`flex size-8 cursor-pointer items-center justify-center rounded ${
-              viewMode === 'list' ? 'bg-accent-soft text-accent' : 'text-ink-soft'
-            }`}
-          >
-            <IconLayoutListFilled size={16} />
-          </button>
-        </div>
-
-        {pillEntries.length > 0 && (
-          <div className="flex w-full flex-wrap items-center gap-1.5">
-            {pillEntries.map((entry) => (
-              <span
-                key={entry.field + String(entry.value)}
-                className="flex items-center gap-1.5 rounded-full bg-accent-soft py-1 pr-1.5 pl-3 text-xs font-medium text-accent"
+      {/* Ported from PieceLibrarySample.tsx's toolbar, via BooksLibrarySample.tsx
+          (which worked out the New-Button pairing pattern first — read that
+          file's own comment for the full reasoning, and memory
+          project_responsive_device_plan.md for the complete narrative,
+          including an lg:-breakpoint attempt that was tried and reverted).
+          Same left(toggle)/center(search)/right(Filters→Sort) grid, same
+          sm:/2xl: breakpoints (kept identical to Piece/Books on direct
+          instruction, including the accepted narrow Search-width dip right
+          at md:768 where the sidebar appears), same icon-only-Filters
+          squeezed band, same h-[38px]/exact-px-floor fixes. "New Person"
+          pairs with Search specifically (same row at narrow widths,
+          immediately to its right at wide ones), folded into Search's own
+          grid cell as a flex row with `justify-center` doing the actual
+          pair-centering once Search hits its cap — never icon-only. */}
+      <div className="sticky top-0 z-10 border-b border-border bg-paper">
+        <div className={`${WIDE_CONTENT_MAX_W} flex flex-col gap-3 p-4`}>
+          <div className="grid grid-cols-[auto_1fr] items-center gap-3 sm:grid-cols-[auto_1fr_175px] 2xl:grid-cols-[auto_1fr_219px]">
+            <div className="col-start-1 row-start-1 flex shrink-0 items-center justify-self-start gap-1 rounded-md border border-border p-0.5 sm:col-start-auto sm:row-start-auto">
+              <button
+                type="button"
+                onClick={() => setViewMode('grid')}
+                aria-label="Grid view"
+                aria-pressed={viewMode === 'grid'}
+                className={`flex size-8 cursor-pointer items-center justify-center rounded ${
+                  viewMode === 'grid' ? 'bg-accent-soft text-accent' : 'text-ink-soft'
+                }`}
               >
-                {entry.label}
-                <button
-                  type="button"
-                  onClick={() => clearFilterPill(entry.field, entry.value)}
-                  aria-label={`Remove ${entry.label} filter`}
-                  className="flex size-4 cursor-pointer items-center justify-center rounded-full text-accent opacity-75 hover:opacity-100"
-                >
-                  <IconX size={11} />
-                </button>
-              </span>
-            ))}
-            <button
-              type="button"
-              onClick={() => setFilters((f) => ({ ...f, era: [], centuries: [] }))}
-              className="cursor-pointer text-xs text-ink-soft underline decoration-dotted underline-offset-2 hover:text-ink"
-            >
-              Clear all
-            </button>
+                <IconLayoutGridFilled size={16} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('list')}
+                aria-label="List view"
+                aria-pressed={viewMode === 'list'}
+                className={`flex size-8 cursor-pointer items-center justify-center rounded ${
+                  viewMode === 'list' ? 'bg-accent-soft text-accent' : 'text-ink-soft'
+                }`}
+              >
+                <IconLayoutListFilled size={16} />
+              </button>
+            </div>
+
+            <div className="col-span-2 row-start-2 flex w-full min-w-0 items-center justify-center gap-3 sm:col-span-1 sm:row-start-auto">
+              <div className="relative min-w-0 max-w-xl flex-1">
+                <IconSearch
+                  size={16}
+                  className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-soft"
+                />
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Search your people…"
+                  className="w-full rounded-md border border-border bg-paper-raised py-2 pr-3 pl-9 text-sm text-ink"
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setNewPersonOpen(true)}
+                className="flex h-[38px] shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-border bg-paper-raised px-3 text-sm text-ink hover:border-accent hover:text-accent active:border-accent active:text-accent"
+              >
+                <IconPlus size={16} />
+                New Person
+              </button>
+            </div>
+
+            <div className="col-start-2 row-start-1 flex items-center justify-self-end gap-3 sm:col-start-auto sm:row-start-auto">
+              <button
+                type="button"
+                onClick={() => setDrawerOpen(true)}
+                aria-label="Filters"
+                className={`flex h-[38px] cursor-pointer items-center gap-1.5 rounded-md border px-3 text-sm active:border-accent active:text-accent ${
+                  activeFilterCount > 0
+                    ? 'border-accent bg-accent-soft text-accent'
+                    : 'border-border bg-paper-raised text-ink hover:border-accent hover:text-accent'
+                }`}
+              >
+                <IconAdjustmentsHorizontal size={16} />
+                <span className="inline sm:hidden 2xl:inline">Filters</span>
+                {activeFilterCount > 0 && (
+                  <span className="flex size-4 items-center justify-center rounded-full bg-accent text-[0.65rem] font-semibold text-white">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </button>
+
+              <PersonSortControl
+                field={sortField}
+                direction={sortDirection}
+                onFieldChange={setSortField}
+                onDirectionToggle={() => setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'))}
+              />
+            </div>
           </div>
-        )}
+
+          {pillEntries.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              {pillEntries.map((entry) => (
+                <span
+                  key={entry.field + String(entry.value)}
+                  className="flex items-center gap-1.5 rounded-full bg-accent-soft py-1 pr-1.5 pl-3 text-xs font-medium text-accent"
+                >
+                  {entry.label}
+                  <button
+                    type="button"
+                    onClick={() => clearFilterPill(entry.field, entry.value)}
+                    aria-label={`Remove ${entry.label} filter`}
+                    className="flex size-4 cursor-pointer items-center justify-center rounded-full text-accent opacity-75 hover:opacity-100"
+                  >
+                    <IconX size={11} />
+                  </button>
+                </span>
+              ))}
+              <button
+                type="button"
+                onClick={() => setFilters((f) => ({ ...f, era: [], centuries: [] }))}
+                className="cursor-pointer text-xs text-ink-soft underline decoration-dotted underline-offset-2 hover:text-ink"
+              >
+                Clear all
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="p-4 pb-0">

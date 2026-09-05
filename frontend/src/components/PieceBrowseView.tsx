@@ -1,19 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
-import {
-  IconAdjustmentsHorizontal,
-  IconSearch,
-  IconLayoutGridFilled,
-  IconLayoutListFilled,
-  IconX,
-} from '@tabler/icons-react'
+import { IconX } from '@tabler/icons-react'
 import { getPieceFacets, searchPieces, type SearchPiecesParams } from '../api/pieces'
 import { ApiError } from '../api/client'
 import { useDebouncedValue } from '../hooks/useDebouncedValue'
 import { PieceGridCard } from './PieceGridCard'
 import { PieceListCard } from './PieceListCard'
-import { SortControl, type SortDirection, type SortFieldOption } from './SortControl'
+import { type SortDirection, type SortFieldOption } from './SortControl'
+import { LibraryToolbar } from './LibraryToolbar'
 import { PieceFilterDrawer } from './PieceFilterDrawer'
 import { EMPTY_PIECE_FILTERS, activePieceFilterCount, type PieceFilterState } from '../lib/pieceFilterState'
 import { WIDE_CONTENT_MAX_W } from '../lib/layout'
@@ -288,81 +283,22 @@ export function PieceBrowseView({
 
   return (
     <div className="flex flex-1 flex-col">
-      {/* z-20, not z-10: PieceGridCard's practice-status badge is also
-          z-10 (absolute, no positioned ancestor with its own z-index in
-          between, so it ties in the same root stacking context) — the tie
-          breaks on DOM order, and the badge sits later in the DOM than
-          this toolbar, so it was painting on top of the toolbar wherever
-          a scrolled-up card's badge happened to overlap it. */}
-      <div className="sticky top-0 z-20 flex flex-col gap-3 border-b border-border bg-paper p-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative min-w-[180px] max-w-md flex-1">
-            <IconSearch
-              size={16}
-              className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-soft"
-            />
-            <input
-              type="text"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder={searchPlaceholder}
-              className="w-full rounded-md border border-border bg-paper-raised py-2 pr-3 pl-9 text-sm text-ink"
-            />
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setDrawerOpen(true)}
-            className={`flex cursor-pointer items-center gap-1.5 rounded-md border px-3 py-2 text-sm active:border-accent active:text-accent ${
-              activeCount > 0
-                ? 'border-accent bg-accent-soft text-accent'
-                : 'border-border bg-paper-raised text-ink hover:border-accent hover:text-accent'
-            }`}
-          >
-            <IconAdjustmentsHorizontal size={16} />
-            Filters
-            {activeCount > 0 && (
-              <span className="flex size-4 items-center justify-center rounded-full bg-accent text-[0.65rem] font-semibold text-white">
-                {activeCount}
-              </span>
-            )}
-          </button>
-
-          <SortControl
-            fields={SORT_FIELDS}
-            field={sortField}
-            direction={sortDirection}
-            onFieldChange={setSortField}
-            onDirectionToggle={() => setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'))}
-            directionLabel={DIRECTION_LABEL[sortField][sortDirection]}
-          />
-
-          <div className="ml-auto flex shrink-0 items-center gap-1 rounded-md border border-border p-0.5">
-            <button
-              type="button"
-              onClick={() => setViewMode('grid')}
-              aria-label="Grid view"
-              aria-pressed={viewMode === 'grid'}
-              className={`flex size-8 cursor-pointer items-center justify-center rounded ${
-                viewMode === 'grid' ? 'bg-accent-soft text-accent' : 'text-ink-soft'
-              }`}
-            >
-              <IconLayoutGridFilled size={16} />
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('list')}
-              aria-label="List view"
-              aria-pressed={viewMode === 'list'}
-              className={`flex size-8 cursor-pointer items-center justify-center rounded ${
-                viewMode === 'list' ? 'bg-accent-soft text-accent' : 'text-ink-soft'
-              }`}
-            >
-              <IconLayoutListFilled size={16} />
-            </button>
-          </div>
-        </div>
-
+      <LibraryToolbar
+        query={query}
+        onQueryChange={setQuery}
+        searchPlaceholder={searchPlaceholder}
+        activeFilterCount={activeCount}
+        onOpenFilters={() => setDrawerOpen(true)}
+        sortFields={SORT_FIELDS}
+        sortField={sortField}
+        sortDirection={sortDirection}
+        onSortFieldChange={setSortField}
+        onSortDirectionToggle={() => setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'))}
+        sortDirectionLabel={DIRECTION_LABEL[sortField][sortDirection]}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        rightColumnGridColsClassName="sm:grid-cols-[auto_1fr_211px] 2xl:grid-cols-[auto_1fr_255px]"
+      >
         {pillEntries.length > 0 && (
           <div className="flex flex-wrap items-center gap-1.5">
             {pillEntries.map((entry) => (
@@ -390,7 +326,7 @@ export function PieceBrowseView({
             </button>
           </div>
         )}
-      </div>
+      </LibraryToolbar>
 
       <div className={`${WIDE_CONTENT_MAX_W} flex-1 p-4`}>
         {isLoading && <p className="p-8 text-center text-ink-soft">Loading…</p>}

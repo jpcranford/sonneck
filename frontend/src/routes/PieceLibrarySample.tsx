@@ -330,7 +330,7 @@ function SortControl({
           title={directionLabel}
           className="flex cursor-pointer items-center justify-center border-l border-border px-2.5 py-2 text-ink hover:bg-paper-sunken"
         >
-          {direction === 'asc' ? <IconArrowUp size={15} /> : <IconArrowDown size={15} />}
+          {direction === 'asc' ? <IconArrowUp size={16} /> : <IconArrowDown size={16} />}
         </button>
       </div>
       {open && (
@@ -750,110 +750,177 @@ export function PieceLibrarySample() {
           grid's practice-status badge is z-10 with no positioned ancestor
           of its own, so it ties with (and DOM-order-wins over) a z-10
           toolbar during scroll. */}
-      <div className="sticky top-0 z-20 flex flex-col gap-3 border-b border-border bg-paper p-4">
-        {/* flex-wrap (found clipping on mobile widths, 2026-08-27):
-            without it, Search/Filters/Sort/view-toggle all fight for one
-            non-wrapping row — Search is the only flex-1 item, so it's the
-            one that loses that fight, shrinking toward unusable before
-            the others give up any space, and past a point the row simply
-            overflows the sticky bar rather than any control actually
-            shrinking further. min-w-[180px] on the search box keeps it
-            from being squeezed to nothing before wrapping kicks in —
-            Filters/Sort/view-toggle drop to their own row instead once
-            the first line runs out of room. */}
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative min-w-[180px] max-w-md flex-1">
-            <IconSearch
-              size={16}
-              className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-soft"
-            />
-            <input
-              type="text"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search your library…"
-              className="w-full rounded-md border border-border bg-paper-raised py-2 pr-3 pl-9 text-sm text-ink"
-            />
-          </div>
+      <div className="sticky top-0 z-20 border-b border-border bg-paper">
+        {/* Capped to the same width as the content grid below, not
+            full-bleed — view toggle / search / Filters+Sort would
+            otherwise spread across the full remaining width, drifting
+            away from the (already-capped) card grid underneath.
+            Left–center–right via a real grid, not flex: the left and
+            right groups are different widths (toggle vs. Filters+Sort),
+            so flex's justify-between would leave Search off-center.
 
-          <button
-            type="button"
-            onClick={() => setDrawerOpen(true)}
-            className={`flex cursor-pointer items-center gap-1.5 rounded-md border px-3 py-2 text-sm active:border-accent active:text-accent ${
-              activeCount > 0
-                ? 'border-accent bg-accent-soft text-accent'
-                : 'border-border bg-paper-raised text-ink hover:border-accent hover:text-accent'
-            }`}
-          >
-            <IconAdjustmentsHorizontal size={16} />
-            Filters
-            {activeCount > 0 && (
-              <span className="flex size-4 items-center justify-center rounded-full bg-accent text-[0.65rem] font-semibold text-white">
-                {activeCount}
-              </span>
-            )}
-          </button>
+            Column sizing, current state: toggle is `auto` (simple
+            icon-pair content, sizes accurately) and Filters+Sort is an
+            exact directly-measured px value per label-visibility tier
+            (`211px`/`255px`, "Filters" being icon-only vs. full-text) —
+            both non-flexible, deliberately. Only Search's own column is
+            `1fr`, absorbing 100% of any leftover row width; its wrapper's
+            own `max-w-xl` caps how wide it actually renders, and
+            `justify-self-center` centers it within its (possibly much
+            wider) track once leftover space exceeds that cap. This
+            specific split (one real `1fr` column, two rigid ones) is
+            deliberate, not incidental — an earlier version gave
+            Filters+Sort its own `minmax(Npx,1fr)` too, which let it claim
+            leftover space independently of the toggle's own `1fr` share
+            rather than the two splitting it evenly, silently drifting
+            Filters rightward as the viewport widened (confirmed via
+            direct measurement: the gap before Filters grew from 22px to
+            367px while the gap after the toggle stayed a flat 12px the
+            whole time — a real bug, not intended). The two fixed floor
+            values are the *exact* measured content width (plus ~1px),
+            not a padded guess — an earlier ~10px safety margin was
+            itself the source of a small constant (not growing) gap in
+            front of Filters even below Search's cap, where the row's
+            uniform gap-3 should be the only spacing.
 
-          <SortControl
-            field={sortField}
-            direction={sortDirection}
-            onFieldChange={setSortField}
-            onDirectionToggle={() => setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'))}
-          />
+            Confirmed this design's growing-but-symmetric gap around
+            Search (once it's at its 576px cap and the bar has more room
+            than the toolbar's content needs) is the intended behavior —
+            asked directly rather than assumed, since it's a real design
+            choice, not a bug: the toolbar stays capped+centered as a
+            whole (matching the content grid), Search likewise centers
+            within it, and toggle/Filters+Sort stay pinned to their own
+            sides. `searchWidth` grows continuously as the viewport
+            widens (reaching 576 by ~1200px and holding), never jumping
+            at a breakpoint — confirmed via a full 640–1920px sweep.
 
-          <div className="ml-auto flex shrink-0 items-center gap-1 rounded-md border border-border p-0.5">
-            <button
-              type="button"
-              onClick={() => setViewMode('grid')}
-              aria-label="Grid view"
-              aria-pressed={viewMode === 'grid'}
-              className={`flex size-8 cursor-pointer items-center justify-center rounded ${
-                viewMode === 'grid' ? 'bg-accent-soft text-accent' : 'text-ink-soft'
-              }`}
-            >
-              <IconLayoutGridFilled size={16} />
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('list')}
-              aria-label="List view"
-              aria-pressed={viewMode === 'list'}
-              className={`flex size-8 cursor-pointer items-center justify-center rounded ${
-                viewMode === 'list' ? 'bg-accent-soft text-accent' : 'text-ink-soft'
-              }`}
-            >
-              <IconLayoutListFilled size={16} />
-            </button>
-          </div>
-        </div>
+            The icon-only Filters button carries an explicit `h-[38px]`
+            rather than padding-driven auto-height — that's the real
+            shared height every neighbor in this row renders at (toggle
+            and Sort control both wrap their inner buttons in their own
+            bordered shell, adding 2px beyond the 36px those inner buttons
+            report on their own), confirmed via direct measurement rather
+            than assumed from the padding recipe alone.
 
-        {pillEntries.length > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5">
-            {pillEntries.map((entry) => (
-              <span
-                key={entry.field + (entry.value ?? '')}
-                className="flex items-center gap-1.5 rounded-full bg-accent-soft py-1 pr-1.5 pl-3 text-xs font-medium text-accent"
+            Below `sm:`, 2 explicit grid rows instead of a plain
+            single-column stack (direct request) — toggle and Filters+Sort
+            share the first row (still left/right-aligned), Search alone
+            spans both columns below. "Filters" shows its full text label
+            here too (this row has no Search competing for its space, and
+            a real sweep down to 350px confirmed the full label fits at
+            every real target width down to the 375px phone minimum) —
+            hidden again only in the squeezed `sm:`–`2xl:` band where
+            Search *does* share the row, and back once `2xl:` gives
+            everything room again. `2xl:` (1536px) stands in for this
+            app's actual measured ~1400px problem threshold — a custom
+            `min-[1400px]:` arbitrary breakpoint was tried first, but
+            doesn't reliably sort against a *named* one (`sm:`) in this
+            project's Tailwind build (confirmed directly in the compiled
+            stylesheet: the arbitrary rule landed *before* `sm:`'s in
+            source order, so `sm:` silently won past both thresholds).
+            Two real named breakpoints don't have that problem.
+
+            Full narrative for all of the above (every dead end, every
+            wrong first guess) is in memory `project_responsive_device_
+            plan.md`, not here — this comment states current behavior. */}
+        <div className={`${WIDE_CONTENT_MAX_W} flex flex-col gap-3 p-4`}>
+          <div className="grid grid-cols-[auto_1fr] items-center gap-3 sm:grid-cols-[auto_1fr_211px] 2xl:grid-cols-[auto_1fr_255px]">
+            <div className="col-start-1 row-start-1 flex shrink-0 items-center justify-self-start gap-1 rounded-md border border-border p-0.5 sm:col-start-auto sm:row-start-auto">
+              <button
+                type="button"
+                onClick={() => setViewMode('grid')}
+                aria-label="Grid view"
+                aria-pressed={viewMode === 'grid'}
+                className={`flex size-8 cursor-pointer items-center justify-center rounded ${
+                  viewMode === 'grid' ? 'bg-accent-soft text-accent' : 'text-ink-soft'
+                }`}
               >
-                {entry.label}
-                <button
-                  type="button"
-                  onClick={() => clearAppliedFilter(entry.field, entry.value)}
-                  aria-label={`Remove ${entry.label} filter`}
-                  className="flex size-4 cursor-pointer items-center justify-center rounded-full text-accent opacity-75 hover:opacity-100"
-                >
-                  <IconX size={11} />
-                </button>
-              </span>
-            ))}
-            <button
-              type="button"
-              onClick={() => setAppliedFilters(EMPTY_FILTERS)}
-              className="cursor-pointer text-xs text-ink-soft underline decoration-dotted underline-offset-2 hover:text-ink"
-            >
-              Clear all
-            </button>
+                <IconLayoutGridFilled size={16} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('list')}
+                aria-label="List view"
+                aria-pressed={viewMode === 'list'}
+                className={`flex size-8 cursor-pointer items-center justify-center rounded ${
+                  viewMode === 'list' ? 'bg-accent-soft text-accent' : 'text-ink-soft'
+                }`}
+              >
+                <IconLayoutListFilled size={16} />
+              </button>
+            </div>
+
+            <div className="col-span-2 row-start-2 relative w-full justify-self-center sm:col-span-1 sm:row-start-auto sm:max-w-xl">
+              <IconSearch
+                size={16}
+                className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-soft"
+              />
+              <input
+                type="text"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search your library…"
+                className="w-full rounded-md border border-border bg-paper-raised py-2 pr-3 pl-9 text-sm text-ink"
+              />
+            </div>
+
+            <div className="col-start-2 row-start-1 flex items-center justify-self-end gap-3 sm:col-start-auto sm:row-start-auto">
+              <button
+                type="button"
+                onClick={() => setDrawerOpen(true)}
+                aria-label="Filters"
+                className={`flex h-[38px] cursor-pointer items-center gap-1.5 rounded-md border px-3 text-sm active:border-accent active:text-accent ${
+                  activeCount > 0
+                    ? 'border-accent bg-accent-soft text-accent'
+                    : 'border-border bg-paper-raised text-ink hover:border-accent hover:text-accent'
+                }`}
+              >
+                <IconAdjustmentsHorizontal size={16} />
+                <span className="inline sm:hidden 2xl:inline">Filters</span>
+                {activeCount > 0 && (
+                  <span className="flex size-4 items-center justify-center rounded-full bg-accent text-[0.65rem] font-semibold text-white">
+                    {activeCount}
+                  </span>
+                )}
+              </button>
+
+              <SortControl
+                field={sortField}
+                direction={sortDirection}
+                onFieldChange={setSortField}
+                onDirectionToggle={() => setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'))}
+              />
+            </div>
           </div>
-        )}
+
+          {pillEntries.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              {pillEntries.map((entry) => (
+                <span
+                  key={entry.field + (entry.value ?? '')}
+                  className="flex items-center gap-1.5 rounded-full bg-accent-soft py-1 pr-1.5 pl-3 text-xs font-medium text-accent"
+                >
+                  {entry.label}
+                  <button
+                    type="button"
+                    onClick={() => clearAppliedFilter(entry.field, entry.value)}
+                    aria-label={`Remove ${entry.label} filter`}
+                    className="flex size-4 cursor-pointer items-center justify-center rounded-full text-accent opacity-75 hover:opacity-100"
+                  >
+                    <IconX size={11} />
+                  </button>
+                </span>
+              ))}
+              <button
+                type="button"
+                onClick={() => setAppliedFilters(EMPTY_FILTERS)}
+                className="cursor-pointer text-xs text-ink-soft underline decoration-dotted underline-offset-2 hover:text-ink"
+              >
+                Clear all
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className={`${WIDE_CONTENT_MAX_W} flex-1 p-4`}>

@@ -1,13 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import {
-  IconAdjustmentsHorizontal,
-  IconLayoutGridFilled,
-  IconLayoutListFilled,
-  IconPlus,
-  IconSearch,
-  IconX,
-} from '@tabler/icons-react'
+import { IconX } from '@tabler/icons-react'
 import { getBookFacets, listBooks } from '../api/books'
 import { ApiError } from '../api/client'
 import { useDebouncedValue } from '../hooks/useDebouncedValue'
@@ -15,7 +8,8 @@ import { BookGridCard } from '../components/BookGridCard'
 import { BookListCard } from '../components/BookListCard'
 import { NewBookModal } from '../components/NewBookModal'
 import { BookFilterDrawer } from '../components/BookFilterDrawer'
-import { SortControl, type SortDirection, type SortFieldOption } from '../components/SortControl'
+import { type SortDirection, type SortFieldOption } from '../components/SortControl'
+import { LibraryToolbar } from '../components/LibraryToolbar'
 import { EMPTY_BOOK_FILTERS, activeBookFilterCount, type BookFilterState } from '../lib/bookFilterState'
 import { WIDE_CONTENT_MAX_W } from '../lib/layout'
 import { usePageTitle } from '../lib/usePageTitle'
@@ -112,96 +106,25 @@ export function BooksPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      {/* z-20, matching PieceBrowseView.tsx's own toolbar (see its comment)
-          — no card badge here happens to carry z-10 today, but keeping the
-          two toolbars' z-index consistent avoids re-deriving this the next
-          time a Books card badge does. */}
-      <div className="sticky top-0 z-20 flex flex-wrap items-center gap-3 border-b border-border bg-paper p-4">
-        <div className="relative min-w-[180px] max-w-md flex-1">
-          <IconSearch
-            size={16}
-            className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-soft"
-          />
-          <input
-            type="text"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search your books…"
-            className="w-full rounded-md border border-border bg-paper-raised py-2 pr-3 pl-9 text-sm text-ink"
-          />
-        </div>
-
-        <button
-          type="button"
-          onClick={() => setDrawerOpen(true)}
-          className={`flex cursor-pointer items-center gap-1.5 rounded-md border px-3 py-2 text-sm active:border-accent active:text-accent ${
-            activeCount > 0
-              ? 'border-accent bg-accent-soft text-accent'
-              : 'border-border bg-paper-raised text-ink hover:border-accent hover:text-accent'
-          }`}
-        >
-          <IconAdjustmentsHorizontal size={16} />
-          Filters
-          {activeCount > 0 && (
-            <span className="flex size-4 items-center justify-center rounded-full bg-accent text-[0.65rem] font-semibold text-white">
-              {activeCount}
-            </span>
-          )}
-        </button>
-
-        <SortControl
-          fields={SORT_FIELDS}
-          field={sortField}
-          direction={sortDirection}
-          onFieldChange={setSortField}
-          onDirectionToggle={() => setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'))}
-          directionLabel={DIRECTION_LABEL[sortField][sortDirection]}
-        />
-
-        {/* Bordered/neutral treatment, matching the grid/list toggle right
-            next to it (border-border, bg-paper-raised, text-ink), not a
-            solid accent fill. hover/active tint the label+icon accent (not
-            just the border) — text-accent on the button carries through to
-            IconPlus automatically via currentColor. active: alongside
-            hover: so a tap gets the same feedback a mouse hover does.
-            ml-auto keeps this and the view toggle pinned to the row's end
-            regardless of how many controls wrap onto earlier lines. */}
-        <button
-          type="button"
-          onClick={() => setNewBookOpen(true)}
-          className="ml-auto flex shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-border bg-paper-raised px-3 py-2 text-sm text-ink hover:border-accent hover:text-accent active:border-accent active:text-accent"
-        >
-          <IconPlus size={16} />
-          New Book
-        </button>
-
-        <div className="flex shrink-0 items-center gap-1 rounded-md border border-border p-0.5">
-          <button
-            type="button"
-            onClick={() => setViewMode('grid')}
-            aria-label="Grid view"
-            aria-pressed={viewMode === 'grid'}
-            className={`flex size-8 cursor-pointer items-center justify-center rounded ${
-              viewMode === 'grid' ? 'bg-accent-soft text-accent' : 'text-ink-soft'
-            }`}
-          >
-            <IconLayoutGridFilled size={16} />
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewMode('list')}
-            aria-label="List view"
-            aria-pressed={viewMode === 'list'}
-            className={`flex size-8 cursor-pointer items-center justify-center rounded ${
-              viewMode === 'list' ? 'bg-accent-soft text-accent' : 'text-ink-soft'
-            }`}
-          >
-            <IconLayoutListFilled size={16} />
-          </button>
-        </div>
-
+      <LibraryToolbar
+        query={query}
+        onQueryChange={setQuery}
+        searchPlaceholder="Search your books…"
+        activeFilterCount={activeCount}
+        onOpenFilters={() => setDrawerOpen(true)}
+        sortFields={SORT_FIELDS}
+        sortField={sortField}
+        sortDirection={sortDirection}
+        onSortFieldChange={setSortField}
+        onSortDirectionToggle={() => setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'))}
+        sortDirectionLabel={DIRECTION_LABEL[sortField][sortDirection]}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        newButton={{ label: 'New Book', onClick: () => setNewBookOpen(true) }}
+        rightColumnGridColsClassName="sm:grid-cols-[auto_1fr_211px] 2xl:grid-cols-[auto_1fr_255px]"
+      >
         {pillEntries.length > 0 && (
-          <div className="flex w-full flex-wrap items-center gap-1.5">
+          <div className="flex flex-wrap items-center gap-1.5">
             {pillEntries.map((entry) => (
               <span
                 key={entry.field + String(entry.value)}
@@ -227,7 +150,7 @@ export function BooksPage() {
             </button>
           </div>
         )}
-      </div>
+      </LibraryToolbar>
 
       <div className={`${WIDE_CONTENT_MAX_W} flex-1 p-4`}>
         {isLoading && <p className="p-8 text-center text-ink-soft">Loading…</p>}

@@ -101,7 +101,7 @@ export function SortControl<Field extends string>({
           title={directionLabel}
           className="flex cursor-pointer items-center justify-center border-l border-border px-2.5 py-2 text-ink hover:bg-paper-sunken"
         >
-          {direction === 'asc' ? <IconArrowUp size={15} /> : <IconArrowDown size={15} />}
+          {direction === 'asc' ? <IconArrowUp size={16} /> : <IconArrowDown size={16} />}
         </button>
       </div>
       {open && (

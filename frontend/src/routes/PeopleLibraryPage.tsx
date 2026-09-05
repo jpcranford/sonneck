@@ -1,18 +1,7 @@
-import { useRef, useState, type KeyboardEvent } from 'react'
+import { useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import {
-  IconAdjustmentsHorizontal,
-  IconArrowDown,
-  IconArrowUp,
-  IconChevronDown,
-  IconLayoutGridFilled,
-  IconLayoutListFilled,
-  IconPlus,
-  IconSearch,
-  IconX,
-  IconXFilled,
-} from '@tabler/icons-react'
+import { IconX, IconXFilled } from '@tabler/icons-react'
 import { createPerson, getPersonPortraitUrl, listPeople } from '../api/people'
 import { ApiError } from '../api/client'
 import type { Person, PersonCreateRequest } from '../api/types'
@@ -23,6 +12,8 @@ import { ClickableCard } from '../components/ClickableCard'
 import { InfoTooltip } from '../components/InfoTooltip'
 import { Modal } from '../components/Modal'
 import { PersonContextMenu } from '../components/PersonContextMenu'
+import { type SortDirection, type SortFieldOption } from '../components/SortControl'
+import { LibraryToolbar } from '../components/LibraryToolbar'
 import { WIDE_CONTENT_MAX_W } from '../lib/layout'
 import { usePageTitle } from '../lib/usePageTitle'
 
@@ -323,114 +314,29 @@ function PersonFilterDrawer({
 }
 
 // ---------------------------------------------------------------------
-// Sort — direct port of the mockup's own segmented field+direction
-// button, now driving real sort/dir query params against GET /api/people.
+// Sort — now driving real sort/dir query params against GET /api/people
+// through the shared components/SortControl.tsx (this page used to carry
+// its own local PersonSortControl duplicate, keyed by display label
+// rather than a machine key — consolidated so People matches how
+// Piece/Books already share this component, per direct instruction when
+// the toolbar itself got ported onto the shared LibraryToolbar).
 // ---------------------------------------------------------------------
 
-const PERSON_SORT_FIELDS = ['Name', 'Piece Count', 'Birth Year', 'Death Year', 'Date Added'] as const
-type PersonSortField = (typeof PERSON_SORT_FIELDS)[number]
-type SortDirection = 'asc' | 'desc'
+type PersonSortField = 'name' | 'pieceCount' | 'birthYear' | 'deathYear' | 'dateAdded'
 
-const SORT_FIELD_PARAM: Record<PersonSortField, 'name' | 'pieceCount' | 'birthYear' | 'deathYear' | 'dateAdded'> = {
-  Name: 'name',
-  'Piece Count': 'pieceCount',
-  'Birth Year': 'birthYear',
-  'Death Year': 'deathYear',
-  'Date Added': 'dateAdded',
-}
-const PERSON_DIRECTION_LABEL: Record<PersonSortField, Record<SortDirection, string>> = {
-  Name: { asc: 'A to Z', desc: 'Z to A' },
-  'Piece Count': { asc: 'Fewest first', desc: 'Most first' },
-  'Birth Year': { asc: 'Earliest first', desc: 'Latest first' },
-  'Death Year': { asc: 'Earliest first', desc: 'Latest first' },
-  'Date Added': { asc: 'Oldest first', desc: 'Newest first' },
-}
-
-function PersonSortControl({
-  field,
-  direction,
-  onFieldChange,
-  onDirectionToggle,
-}: {
-  field: PersonSortField
-  direction: SortDirection
-  onFieldChange: (v: PersonSortField) => void
-  onDirectionToggle: () => void
-}) {
-  const [open, setOpen] = useState(false)
-  const [highlightedIndex, setHighlightedIndex] = useState(0)
-  const directionLabel = PERSON_DIRECTION_LABEL[field][direction]
-
-  function openMenu() {
-    const i = PERSON_SORT_FIELDS.indexOf(field)
-    setHighlightedIndex(i >= 0 ? i : 0)
-    setOpen(true)
-  }
-  function select(opt: PersonSortField) {
-    onFieldChange(opt)
-    setOpen(false)
-  }
-  function handleKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
-    if (event.key === 'ArrowDown') {
-      event.preventDefault()
-      if (!open) openMenu()
-      else setHighlightedIndex((i) => (i + 1) % PERSON_SORT_FIELDS.length)
-    } else if (event.key === 'ArrowUp') {
-      event.preventDefault()
-      if (!open) openMenu()
-      else setHighlightedIndex((i) => (i - 1 + PERSON_SORT_FIELDS.length) % PERSON_SORT_FIELDS.length)
-    } else if ((event.key === 'Enter' && !event.shiftKey) || event.key === ' ') {
-      if (open) {
-        event.preventDefault()
-        select(PERSON_SORT_FIELDS[highlightedIndex])
-      }
-    } else if (event.key === 'Escape' && open) {
-      setOpen(false)
-    }
-  }
-
-  return (
-    <div className="relative shrink-0">
-      <div className="flex overflow-hidden rounded-md border border-border bg-paper-raised">
-        <button
-          type="button"
-          onClick={() => (open ? setOpen(false) : openMenu())}
-          onKeyDown={handleKeyDown}
-          onBlur={() => setTimeout(() => setOpen(false), 150)}
-          className="flex cursor-pointer items-center gap-1.5 px-3 py-2 text-sm text-ink hover:bg-paper-sunken"
-        >
-          {field}
-          <IconChevronDown size={14} className="text-[#9d9892]" />
-        </button>
-        <button
-          type="button"
-          onClick={onDirectionToggle}
-          aria-label={`Sort direction: ${directionLabel}. Click to reverse.`}
-          title={directionLabel}
-          className="flex cursor-pointer items-center justify-center border-l border-border px-2.5 py-2 text-ink hover:bg-paper-sunken"
-        >
-          {direction === 'asc' ? <IconArrowUp size={15} /> : <IconArrowDown size={15} />}
-        </button>
-      </div>
-      {open && (
-        <div className="absolute z-10 mt-1 w-full min-w-[150px] overflow-hidden rounded-md border border-border bg-paper-raised py-1 shadow-lg">
-          {PERSON_SORT_FIELDS.map((opt, index) => (
-            <button
-              key={opt}
-              type="button"
-              onMouseDown={(event) => event.preventDefault()}
-              onClick={() => select(opt)}
-              className={`block w-full px-3 py-2 text-left text-sm hover:bg-accent-soft ${
-                opt === field ? 'text-accent' : 'text-ink'
-              } ${index === highlightedIndex ? 'bg-accent-soft' : ''}`}
-            >
-              {opt}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
+const SORT_FIELDS: SortFieldOption<PersonSortField>[] = [
+  { value: 'name', label: 'Name' },
+  { value: 'pieceCount', label: 'Piece Count' },
+  { value: 'birthYear', label: 'Birth Year' },
+  { value: 'deathYear', label: 'Death Year' },
+  { value: 'dateAdded', label: 'Date Added' },
+]
+const DIRECTION_LABEL: Record<PersonSortField, Record<SortDirection, string>> = {
+  name: { asc: 'A to Z', desc: 'Z to A' },
+  pieceCount: { asc: 'Fewest first', desc: 'Most first' },
+  birthYear: { asc: 'Earliest first', desc: 'Latest first' },
+  deathYear: { asc: 'Earliest first', desc: 'Latest first' },
+  dateAdded: { asc: 'Oldest first', desc: 'Newest first' },
 }
 
 // ---------------------------------------------------------------------
@@ -571,7 +477,7 @@ export function PeopleLibraryPage() {
   const [newPersonOpen, setNewPersonOpen] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [filters, setFilters] = useState<PersonFilterState>(EMPTY_PERSON_FILTERS)
-  const [sortField, setSortField] = useState<PersonSortField>('Name')
+  const [sortField, setSortField] = useState<PersonSortField>('name')
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
   // A freshly created person has no credits yet, so they'd otherwise be
   // immediately invisible under the default >2-piece "Show only" filter —
@@ -583,11 +489,11 @@ export function PeopleLibraryPage() {
   const [justCreatedIds, setJustCreatedIds] = useState<Set<number>>(new Set())
 
   const { data: people = [], isLoading } = useQuery({
-    queryKey: ['people', { query: debouncedQuery, sort: SORT_FIELD_PARAM[sortField], dir: sortDirection }],
+    queryKey: ['people', { query: debouncedQuery, sort: sortField, dir: sortDirection }],
     queryFn: () =>
       listPeople({
         query: debouncedQuery || undefined,
-        sort: SORT_FIELD_PARAM[sortField],
+        sort: sortField,
         dir: sortDirection,
       }),
   })
@@ -654,82 +560,25 @@ export function PeopleLibraryPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="sticky top-0 z-10 flex flex-wrap items-center gap-3 border-b border-border bg-paper p-4">
-        <div className="relative min-w-[180px] max-w-md flex-1">
-          <IconSearch
-            size={16}
-            className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-soft"
-          />
-          <input
-            type="text"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search your people…"
-            className="w-full rounded-md border border-border bg-paper-raised py-2 pr-3 pl-9 text-sm text-ink"
-          />
-        </div>
-
-        <button
-          type="button"
-          onClick={() => setDrawerOpen(true)}
-          className={`flex cursor-pointer items-center gap-1.5 rounded-md border px-3 py-2 text-sm active:border-accent active:text-accent ${
-            activeFilterCount > 0
-              ? 'border-accent bg-accent-soft text-accent'
-              : 'border-border bg-paper-raised text-ink hover:border-accent hover:text-accent'
-          }`}
-        >
-          <IconAdjustmentsHorizontal size={16} />
-          Filters
-          {activeFilterCount > 0 && (
-            <span className="flex size-4 items-center justify-center rounded-full bg-accent text-[0.65rem] font-semibold text-white">
-              {activeFilterCount}
-            </span>
-          )}
-        </button>
-
-        <PersonSortControl
-          field={sortField}
-          direction={sortDirection}
-          onFieldChange={setSortField}
-          onDirectionToggle={() => setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'))}
-        />
-
-        <button
-          type="button"
-          onClick={() => setNewPersonOpen(true)}
-          className="ml-auto flex shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-border bg-paper-raised px-3 py-2 text-sm text-ink hover:border-accent hover:text-accent active:border-accent active:text-accent"
-        >
-          <IconPlus size={16} />
-          New Person
-        </button>
-
-        <div className="flex shrink-0 items-center gap-1 rounded-md border border-border p-0.5">
-          <button
-            type="button"
-            onClick={() => setViewMode('grid')}
-            aria-label="Grid view"
-            aria-pressed={viewMode === 'grid'}
-            className={`flex size-8 cursor-pointer items-center justify-center rounded ${
-              viewMode === 'grid' ? 'bg-accent-soft text-accent' : 'text-ink-soft'
-            }`}
-          >
-            <IconLayoutGridFilled size={16} />
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewMode('list')}
-            aria-label="List view"
-            aria-pressed={viewMode === 'list'}
-            className={`flex size-8 cursor-pointer items-center justify-center rounded ${
-              viewMode === 'list' ? 'bg-accent-soft text-accent' : 'text-ink-soft'
-            }`}
-          >
-            <IconLayoutListFilled size={16} />
-          </button>
-        </div>
-
+      <LibraryToolbar
+        query={query}
+        onQueryChange={setQuery}
+        searchPlaceholder="Search your people…"
+        activeFilterCount={activeFilterCount}
+        onOpenFilters={() => setDrawerOpen(true)}
+        sortFields={SORT_FIELDS}
+        sortField={sortField}
+        sortDirection={sortDirection}
+        onSortFieldChange={setSortField}
+        onSortDirectionToggle={() => setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'))}
+        sortDirectionLabel={DIRECTION_LABEL[sortField][sortDirection]}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        newButton={{ label: 'New Person', onClick: () => setNewPersonOpen(true) }}
+        rightColumnGridColsClassName="sm:grid-cols-[auto_1fr_175px] 2xl:grid-cols-[auto_1fr_219px]"
+      >
         {pillEntries.length > 0 && (
-          <div className="flex w-full flex-wrap items-center gap-1.5">
+          <div className="flex flex-wrap items-center gap-1.5">
             {pillEntries.map((entry) => (
               <span
                 key={entry.field + String(entry.value)}
@@ -755,7 +604,7 @@ export function PeopleLibraryPage() {
             </button>
           </div>
         )}
-      </div>
+      </LibraryToolbar>
 
       <div className={`${WIDE_CONTENT_MAX_W} flex-1 p-4`}>
         {isLoading && <p className="text-ink-soft">Loading…</p>}
