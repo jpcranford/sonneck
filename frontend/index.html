@@ -2,7 +2,15 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!-- SVG first so a browser that understands image/svg+xml (Chrome,
+         Firefox) prefers it over the PNG below — Safari (iOS and macOS)
+         doesn't render an SVG favicon in its tab bar at all, silently
+         falling through to a blank/globe placeholder, so favicon-32x32.png
+         (rasterized from favicon.svg via a headless-browser render, same
+         near-black-badge design) is a real fallback for it, not a
+         duplicate. -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <!-- Matches --color-paper (see index.css's design tokens) so Safari's
