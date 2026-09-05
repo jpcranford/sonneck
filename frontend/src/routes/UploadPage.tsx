@@ -239,26 +239,32 @@ export function UploadPage() {
   }
 
   return (
-    // min-h-screen (direct follow-up, 2026-09-04) — without an explicit
-    // floor, this div's real available height comes from flex-growing
-    // inside AppShell's <main>, which itself only gets whatever's left
-    // after the shell's own shrink-0 footer takes its share of the same
-    // flex-col budget (confirmed via computed styles: <main> measured
-    // ~93px shorter than the actual viewport, footer-sized, in a live
-    // check). For the short landing/select/uploading/success stages this
-    // was never visible — comfortably shorter than that reduced budget
-    // either way. The 'details' stage (thumbnail + fields, taller since
-    // the field-set grew — mockup/upload-piece-about) is a different
-    // story: once content approaches that reduced budget, the flex item's
-    // implicit min-height:auto stops it from shrinking below its own
-    // content, silently zeroing out justify-center's own "extra space to
-    // distribute" and leaving it flush at the top of whatever scrolls,
-    // instead of gracefully centering-then-degrading. min-h-screen forces
-    // real centering headroom against the full viewport regardless of the
-    // footer's share or how tall any one stage's content gets — the same
-    // guarantee every other stage already had for free by virtue of being
-    // short, now explicit rather than incidental.
-    <div className="flex min-h-screen flex-1 flex-col items-center justify-center gap-6 p-8">
+    // min-h-dvh, not min-h-screen (revised 2026-09-05, direct follow-up) —
+    // without an explicit floor, this div's real available height comes
+    // from flex-growing inside AppShell's <main>, which itself only gets
+    // whatever's left after the shell's own shrink-0 footer takes its
+    // share of the same flex-col budget (confirmed via computed styles:
+    // <main> measured ~93px shorter than the actual viewport, footer-
+    // sized, in a live check). For the short landing/select/uploading/
+    // success stages this was never visible — comfortably shorter than
+    // that reduced budget either way. The 'details' stage (thumbnail +
+    // fields, taller since the field-set grew — mockup/upload-piece-about)
+    // is a different story: once content approaches that reduced budget,
+    // the flex item's implicit min-height:auto stops it from shrinking
+    // below its own content, silently zeroing out justify-center's own
+    // "extra space to distribute" and leaving it flush at the top of
+    // whatever scrolls, instead of gracefully centering-then-degrading.
+    // This floor forces real centering headroom regardless of the
+    // footer's share or how tall any one stage's content gets. min-screen
+    // (100vh) was the original fix, but that's the same static-viewport
+    // property AppShell.tsx's own h-dvh fix (project_responsive_device_
+    // plan) exists to avoid: on mobile Safari, 100vh doesn't track the
+    // dynamic address-bar/toolbar animation, so the centering math ran
+    // against a taller reference than what's actually visible right now,
+    // reading as "content sitting too low" (found live via a real
+    // screenshot report) — min-h-dvh centers against the actually-visible
+    // viewport instead, matching the shell it lives inside.
+    <div className="flex min-h-dvh flex-1 flex-col items-center justify-center gap-6 p-8">
       {/* Landing fork, not a segmented toggle/tabs: these two paths diverge
           into structurally different flows (one file field vs. the book-
           splitting wizard below), not just a different layout of the same

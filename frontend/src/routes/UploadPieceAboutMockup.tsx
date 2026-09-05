@@ -273,18 +273,18 @@ export function UploadPieceAboutMockup() {
   } = useForm<FormValues>({ defaultValues })
 
   return (
-    // min-h-screen + justify-center (ported from the real build, direct
-    // follow-up, 2026-09-04) — AppShell's <main> only gets whatever's left
-    // over after its own sibling <footer> takes a share of the same
-    // flex-col budget, which silently zeroes out justify-center's own
-    // "extra space to distribute" once a stage's content gets tall enough
-    // (confirmed live against the real UploadPage.tsx: <main> measured
-    // ~93px shorter than the actual viewport). min-h-screen forces real
-    // centering headroom against the full viewport regardless. This
-    // mockup's own earlier top-aligned choice (no justify-center) predates
-    // that fix — reversed here to match the real page's own final
-    // behavior, not left to drift.
-    <div className="flex min-h-screen flex-1 flex-col items-center justify-center gap-6 p-8">
+    // min-h-dvh + justify-center (ported from the real build, revised
+    // 2026-09-05) — AppShell's <main> only gets whatever's left over after
+    // its own sibling <footer> takes a share of the same flex-col budget,
+    // which silently zeroes out justify-center's own "extra space to
+    // distribute" once a stage's content gets tall enough (confirmed live
+    // against the real UploadPage.tsx: <main> measured ~93px shorter than
+    // the actual viewport). This floor forces real centering headroom
+    // regardless. min-h-screen (100vh) was the original fix here, but
+    // that's the same static-viewport property AppShell.tsx's own h-dvh
+    // fix exists to avoid — min-h-dvh centers against the actually-visible
+    // viewport instead, matching the shell it lives inside.
+    <div className="flex min-h-dvh flex-1 flex-col items-center justify-center gap-6 p-8">
       <div className="w-full max-w-3xl">
         {/* Back isn't real stage-nav (this mockup doesn't simulate the
             whole Upload flow, just this one step) — it routes to /mockup,

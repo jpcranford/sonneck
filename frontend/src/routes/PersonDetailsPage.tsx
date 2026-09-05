@@ -34,6 +34,7 @@ import { Modal } from '../components/Modal'
 import { TagComboBox } from '../components/TagComboBox'
 import { TagPills } from '../components/TagPills'
 import { joinNames, personCreditPart } from '../lib/joinNames'
+import { CONTENT_MAX_W } from '../lib/layout'
 import { PALETTE } from '../lib/pieceSplitLogic'
 import { usePageTitle } from '../lib/usePageTitle'
 
@@ -502,7 +503,7 @@ export function PersonDetailsPage() {
     : []
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-6 md:p-8">
+    <div className={`${CONTENT_MAX_W} flex flex-1 flex-col gap-6 p-6 md:p-8`}>
       <div className="flex flex-wrap items-center justify-between gap-4">
         <Link
           to="/people"
@@ -563,7 +564,18 @@ export function PersonDetailsPage() {
       {person && (
         <>
           <div className="overflow-hidden rounded-2xl border border-border bg-paper-raised shadow-sm">
-            <div className="flex items-start gap-6 p-7">
+            {/* Stacked (flex-col) below lg:, side-by-side above it —
+                mockup-parity fix with Book Details' own identical header
+                bug (project_responsive_device_plan, Phase 4): at phone
+                width the name/credit-chip column had nowhere near enough
+                room beside a fixed 150px avatar, wrapping the name
+                awkwardly mid-word and clipping the credit chip's own text.
+                lg:items-start only, not on the base flex-col: default
+                column-mode stretch is what's wanted there (full-width
+                text), items-start is specifically for row mode (keeps the
+                avatar's own aspect ratio from being stretched by a taller
+                info column). */}
+            <div className="flex flex-col gap-6 p-7 lg:flex-row lg:items-start">
               {/* Camera badge is the only visible edit trigger on the
                   portrait itself — no separate always-visible toolbar
                   button, mirroring Book Details' own "no redundant

@@ -16,6 +16,7 @@ import {
 } from '@tabler/icons-react'
 import { Modal } from '../components/Modal'
 import { useMockupTitle } from '../lib/useMockupTitle'
+import { WIDE_CONTENT_MAX_W } from '../lib/layout'
 
 // ---------------------------------------------------------------------
 // DESIGN MOCKUP for the Books Library page. Originally a side-by-side
@@ -888,7 +889,7 @@ export function BooksLibrarySample() {
         </div>
       </div>
 
-      <div className="flex-1 p-4">
+      <div className={`${WIDE_CONTENT_MAX_W} flex-1 p-4`}>
         <p className="mb-3 text-xs text-ink-soft tabular-nums">
           {sortedBooks.length} {sortedBooks.length === 1 ? 'book' : 'books'}
         </p>

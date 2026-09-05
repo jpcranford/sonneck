@@ -15,6 +15,7 @@ import {
 } from '@tabler/icons-react'
 import { useMockupTitle } from '../lib/useMockupTitle'
 import { PracticeStatusIcon } from '../components/PracticeStatusIcon'
+import { WIDE_CONTENT_MAX_W } from '../lib/layout'
 
 // ---------------------------------------------------------------------
 // DESIGN MOCKUP — Piece Library sort/filter (Option B, "Filter Drawer",
@@ -855,7 +856,7 @@ export function PieceLibrarySample() {
         )}
       </div>
 
-      <div className="flex-1 p-4">
+      <div className={`${WIDE_CONTENT_MAX_W} flex-1 p-4`}>
         <p className="mb-3 text-xs text-ink-soft tabular-nums">
           {pieces.length} {pieces.length === 1 ? 'piece' : 'pieces'}
         </p>
@@ -865,7 +866,7 @@ export function PieceLibrarySample() {
         )}
 
         {pieces.length > 0 && viewMode === 'grid' && (
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(176px,1fr))] gap-4">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-4 sm:grid-cols-[repeat(auto-fill,minmax(176px,1fr))]">
             {pieces.map((piece) => (
               <div
                 key={piece.id}
@@ -905,7 +906,7 @@ export function PieceLibrarySample() {
         )}
 
         {pieces.length > 0 && viewMode === 'list' && (
-          <div className="flex flex-col gap-3">
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(min(576px,100%),768px))] justify-center gap-3">
             {pieces.map((piece) => (
               <PieceListRow key={piece.id} piece={piece} />
             ))}

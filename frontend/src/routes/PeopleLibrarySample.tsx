@@ -18,6 +18,7 @@ import { InfoTooltip } from '../components/InfoTooltip'
 import { Modal } from '../components/Modal'
 import { PALETTE } from '../lib/pieceSplitLogic'
 import { useMockupTitle } from '../lib/useMockupTitle'
+import { WIDE_CONTENT_MAX_W } from '../lib/layout'
 
 // ---------------------------------------------------------------------
 // DESIGN MOCKUP for the People Library page (Phase 3 of the composer/
@@ -895,7 +896,7 @@ export function PeopleLibrarySample() {
         </div>
       </div>
 
-      <div className="flex-1 p-4">
+      <div className={`${WIDE_CONTENT_MAX_W} flex-1 p-4`}>
         <p className="mb-3 text-xs text-ink-soft tabular-nums">
           {sortedPeople.length} {sortedPeople.length === 1 ? 'person' : 'people'}
           {/* Bullet, not an interpunct — CLAUDE.md's own standing dot-

@@ -39,9 +39,10 @@ import { UploadPortraitModal } from './UploadPortraitModal'
 // request, mockup approved same day: "incorporate the thumb edit field
 // into the modal... similar to how upload book step 3 is laid out with
 // the page thumb small and off to the side") — reversing Phase 2's
-// original "camera badge is the ONLY trigger" decision. `size="xl"` (same
-// reason EditBookModal.tsx already uses it — real room for two side-by-
-// side columns), a small `PersonAvatar` pinned to the left with a plain
+// original "camera badge is the ONLY trigger" decision. `size="lg"` (same
+// as EditBookModal.tsx and EditPieceModal.tsx — `xl` turned out to leave
+// zero side margin at iPad portrait's 768px viewport), a small
+// `PersonAvatar` pinned to the left with a plain
 // "Change Portrait" button underneath opening the already-built
 // `UploadPortraitModal` (crop/zoom, real Wikipedia image search) — the
 // exact same modal Person Details' own camera badge already opens, just
@@ -370,7 +371,11 @@ export function EditPersonModal({ person, open, onClose }: EditPersonModalProps)
         open={open}
         onClose={onClose}
         labelledBy="edit-person-title"
-        size="xl"
+        // lg, not xl — matches EditPieceModal.tsx's own size, same direct
+        // request/reasoning as EditBookModal.tsx's own identical change
+        // (2026-09-05): at exactly iPad-portrait's 768px viewport, an xl
+        // (max-w-3xl = 768px) modal has zero margin on either side.
+        size="lg"
         header={
           <div className="-mx-6 flex items-start justify-between gap-4 border-b border-border px-6 pb-4">
             <div>

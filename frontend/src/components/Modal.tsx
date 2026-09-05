@@ -32,11 +32,15 @@ interface ModalProps {
   /** 'md' (default, max-w-lg) fits the simple modals (rename, placeholder
    * confirmations). 'lg' (max-w-2xl) is for genuinely field-dense forms —
    * added for the Piece Properties Edit Menu (§15), which has far more
-   * fields than max-w-lg can lay out without feeling cramped. 'xl'
-   * (max-w-3xl) is for a two-column field layout specifically — the Book
-   * Properties Edit Menu (§16) needs real room for two side-by-side
-   * columns at desktop width without cramming either one; collapses to a
-   * single column below `sm` regardless of this prop. */
+   * fields than max-w-lg can lay out without feeling cramped; also what
+   * the Book and Person Properties Edit Menus (§16) use for their own
+   * two-column field layouts — `lg` turned out to have enough room for
+   * that shape of form after all. 'xl' (max-w-3xl) is unused for now
+   * (found, 2026-09-05, to leave zero side margin at iPad portrait's
+   * exact 768px viewport — a modal isn't width-constrained by the
+   * sidebar, so it sizes against the full raw viewport) — kept available
+   * for a genuinely wider future need, not removed on spec. Collapses to
+   * a single column below `sm` regardless of this prop. */
   size?: 'md' | 'lg' | 'xl'
   /** Rendered outside the scrolling body, pinned to the top of the dialog
    * — mirrors `footer` below but for content that must stay visible while

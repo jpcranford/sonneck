@@ -39,9 +39,10 @@ import { useMockupTitle } from '../lib/useMockupTitle'
 // width looked oversized/orphaned in testing, unlike a book page thumb at
 // the same width; centered via `mx-auto`/`sm:mx-0` when stacked, matching
 // PersonDetailsPage.tsx's own header avatar width), a plain trigger button
-// underneath it, fields flowing in the wider right column — `size="xl"`
-// on Modal now, for the same "real room for two side-by-side columns"
-// reason EditBookModal.tsx already uses it. The button here is a stub
+// underneath it, fields flowing in the wider right column — `size="lg"`
+// on Modal (revised from `xl`, which left zero side margin at iPad
+// portrait's 768px viewport — see Modal.tsx's own size doc comment). The
+// button here is a stub
 // (`lastAction`, PersonDetailsSample.tsx's own established stub-message
 // pattern, adopted here too) — the real component nests the already-built
 // UploadPortraitModal (crop/zoom, real Wikipedia image search) the same
@@ -395,7 +396,10 @@ export function EditPersonModalMockup() {
         open={open}
         onClose={() => setOpen(false)}
         labelledBy="edit-person-mockup-title"
-        size="xl"
+        // lg, not xl — mockup-parity with the real EditPersonModal.tsx's
+        // own size change (2026-09-05): matches EditPieceModal.tsx, fixes
+        // zero side-margin at iPad-portrait's 768px viewport.
+        size="lg"
         header={
           <div className="-mx-6 flex items-start justify-between gap-4 border-b border-border px-6 pb-4">
             <div>

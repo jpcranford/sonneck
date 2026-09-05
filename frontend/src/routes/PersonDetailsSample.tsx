@@ -1102,7 +1102,12 @@ export function PersonDetailsSample() {
       )}
 
       <div className="overflow-hidden rounded-2xl border border-border bg-paper-raised shadow-sm">
-        <div className="flex items-start gap-6 p-7">
+        {/* Stacked below lg:, side-by-side above it — mockup-parity port of
+            the real PersonDetailsPage.tsx's own fix (project_responsive_
+            device_plan, Phase 4): at phone width the name/credit-chip
+            column had nowhere near enough room beside the fixed 150px
+            avatar. */}
+        <div className="flex flex-col gap-6 p-7 lg:flex-row lg:items-start">
           {/* Camera badge is the only visible edit trigger on the portrait
               itself (locked in the Phase 2 artifact review) — no separate
               always-visible toolbar button for it, mirroring Book Details'

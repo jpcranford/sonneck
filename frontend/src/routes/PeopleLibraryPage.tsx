@@ -23,6 +23,7 @@ import { ClickableCard } from '../components/ClickableCard'
 import { InfoTooltip } from '../components/InfoTooltip'
 import { Modal } from '../components/Modal'
 import { PersonContextMenu } from '../components/PersonContextMenu'
+import { WIDE_CONTENT_MAX_W } from '../lib/layout'
 import { usePageTitle } from '../lib/usePageTitle'
 
 // The real People Library (/people) — composer/arranger overhaul, Stage B.
@@ -756,7 +757,7 @@ export function PeopleLibraryPage() {
         )}
       </div>
 
-      <div className="flex-1 p-4">
+      <div className={`${WIDE_CONTENT_MAX_W} flex-1 p-4`}>
         {isLoading && <p className="text-ink-soft">Loading…</p>}
 
         {!isLoading && (

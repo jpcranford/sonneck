@@ -187,7 +187,10 @@ export function EditBookModalMockup() {
         open={open}
         onClose={() => setOpen(false)}
         labelledBy="edit-book-mockup-title"
-        size="xl"
+        // lg, not xl — mockup-parity with the real EditBookModal.tsx's own
+        // size change (2026-09-05): matches EditPieceModal.tsx, fixes zero
+        // side-margin at iPad-portrait's 768px viewport.
+        size="lg"
         header={
           // -mx-6/px-6 bleeds the line to the dialog's true edges rather
           // than stopping at the header's own content width — same

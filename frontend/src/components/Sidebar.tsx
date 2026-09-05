@@ -62,8 +62,15 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false)
 
   return (
+    // h-dvh, not h-screen — same AppShell.tsx gotcha (100vh doesn't track
+    // a dynamic browser-chrome viewport). This component is desktop/tablet
+    // only (rendered inside AppShell's `hidden md:block`), so the aggressive
+    // iPhone Safari toolbar-hide behavior that originally surfaced this bug
+    // doesn't apply here, but iPad Safari can still resize its chrome, and
+    // this is exactly the "any future shell-like component" case that fix
+    // was meant to cover.
     <aside
-      className={`flex h-screen shrink-0 flex-col border-r border-sidebar-border bg-sidebar-bg transition-[width] duration-150 ${
+      className={`flex h-dvh shrink-0 flex-col border-r border-sidebar-border bg-sidebar-bg transition-[width] duration-150 ${
         collapsed ? 'w-16' : 'w-64'
       }`}
     >

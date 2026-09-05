@@ -78,7 +78,11 @@ const sampleBook = {
   // IMSLP always wins the fallback over ISBN, same rule as
   // buildCitation's publisherId/ISBN handling).
   isbn: '9783795345352' as string | null,
-  originalFilename: 'album-fur-die-jugend.pdf',
+  // Long enough (matches a real IMSLP-sourced scan's own naming
+  // convention) to exercise the truncate-with-ellipsis/tap-to-expand
+  // behavior (project_responsive_device_plan, Phase 4 follow-up) — the
+  // short version this fixture used before never demonstrated it.
+  originalFilename: 'IMSLP04154-Schumann_Album_fuer_die_Jugend_Op_68.pdf',
   importedAt: 'Aug 12, 2026',
 }
 
@@ -496,7 +500,39 @@ function PieceList({ pieces }: { pieces: SamplePiece[] }) {
 // blank, same "hide missing metadata" rule as everywhere else on this
 // page — no more "always render regardless of blank" Advanced-box
 // exception, since that box no longer exists.
-function bookFields(): { label: string; value: ReactNode }[] {
+// Original filename value — collapsed state is always exactly one line,
+// real CSS ellipsis (Tailwind's `truncate`), never a wrapped second line.
+// Tap/click expands to the full value, which *can* wrap across multiple
+// lines (that "never two lines" rule is specifically about the collapsed
+// state). Mockup-parity port of BookDetailsPage.tsx's own identical
+// component (project_responsive_device_plan, Phase 4 follow-up) — see that
+// file's own comment for the full reasoning, including why the button
+// needs block+w-full rather than relying on its default inline-block
+// shrink-to-fit sizing (padding alone fed back into that sizing and made
+// the button overflow rather than leaving breathing room).
+function TruncatableFilename({
+  filename,
+  expanded,
+  onToggle,
+}: {
+  filename: string
+  expanded: boolean
+  onToggle: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className={`block w-full cursor-pointer pr-2 text-left hover:text-ink-soft ${expanded ? 'break-words' : 'truncate'}`}
+      aria-expanded={expanded}
+      aria-label={expanded ? 'Show less of the original filename' : 'Show full original filename'}
+    >
+      {filename}
+    </button>
+  )
+}
+
+function bookFields(filenameExpanded: boolean, onToggleFilename: () => void): { label: string; value: ReactNode }[] {
   const fields: { label: string; value: ReactNode }[] = []
   if (sampleBook.publisher || sampleBook.publisherId) {
     fields.push({
@@ -564,7 +600,16 @@ function bookFields(): { label: string; value: ReactNode }[] {
     })
   }
   if (sampleBook.originalFilename) {
-    fields.push({ label: 'Original filename', value: sampleBook.originalFilename })
+    fields.push({
+      label: 'Original filename',
+      value: (
+        <TruncatableFilename
+          filename={sampleBook.originalFilename}
+          expanded={filenameExpanded}
+          onToggle={onToggleFilename}
+        />
+      ),
+    })
   }
   return fields
 }
@@ -573,6 +618,7 @@ export function BookDetailsSample() {
   useMockupTitle('Book Details')
 
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  const [filenameExpanded, setFilenameExpanded] = useState(false)
 
   // Custom cover upload, combining trigger "D" (header toolbar button)
   // and trigger "E" (right-click/long-press context menu) for the same
@@ -635,7 +681,7 @@ export function BookDetailsSample() {
   const composerLine =
     bookComposerPart(sampleBook.composer, sampleBook.arranger) || sampleBook.publisher
   const metaLine = [composerLine, sampleBook.yearWritten].filter(Boolean).join(' • ')
-  const fields = bookFields()
+  const fields = bookFields(filenameExpanded, () => setFilenameExpanded((v) => !v))
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-6 md:p-8">
@@ -770,7 +816,12 @@ export function BookDetailsSample() {
           cover, distorting its shape. */}
       <div>
         <div className="overflow-hidden rounded-2xl border border-border bg-paper-raised shadow-sm">
-          <div className="flex items-start gap-6 p-7">
+          {/* Stacked below lg:, side-by-side above it — mockup-parity port
+              of the real BookDetailsPage.tsx's own fix (project_responsive_
+              device_plan, Phase 4): this row never collapsed at any width,
+              overflowing the filename past the card at phone/iPad-portrait
+              widths. */}
+          <div className="flex flex-col gap-6 p-7 lg:flex-row lg:items-start">
             {/* Custom cover upload, combining trigger "D" (header toolbar
                 button, below) with trigger "E" (this context menu).
                 The cover itself renders exactly as it already does either
@@ -867,7 +918,10 @@ export function BookDetailsSample() {
               {fields.length > 0 && (
                 <div className="mt-3.5 flex flex-wrap gap-x-8 gap-y-3">
                   {fields.map((field) => (
-                    <div key={field.label}>
+                    // min-w-0 + break-words: mockup-parity port of
+                    // BookDetailsPage.tsx's own fix — see that file's own
+                    // comment for the full reasoning.
+                    <div key={field.label} className="min-w-0 break-words">
                       <dt className="mb-0.5 text-[0.7rem] tracking-wide text-ink-soft uppercase">
                         {field.label}
                       </dt>

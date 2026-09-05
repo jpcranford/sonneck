@@ -17,6 +17,7 @@ import { NewBookModal } from '../components/NewBookModal'
 import { BookFilterDrawer } from '../components/BookFilterDrawer'
 import { SortControl, type SortDirection, type SortFieldOption } from '../components/SortControl'
 import { EMPTY_BOOK_FILTERS, activeBookFilterCount, type BookFilterState } from '../lib/bookFilterState'
+import { WIDE_CONTENT_MAX_W } from '../lib/layout'
 import { usePageTitle } from '../lib/usePageTitle'
 
 type ViewMode = 'grid' | 'list'
@@ -228,7 +229,7 @@ export function BooksPage() {
         )}
       </div>
 
-      <div className="flex-1 p-4">
+      <div className={`${WIDE_CONTENT_MAX_W} flex-1 p-4`}>
         {isLoading && <p className="p-8 text-center text-ink-soft">Loading…</p>}
 
         {isError && (

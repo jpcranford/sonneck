@@ -16,6 +16,7 @@ import { PieceListCard } from './PieceListCard'
 import { SortControl, type SortDirection, type SortFieldOption } from './SortControl'
 import { PieceFilterDrawer } from './PieceFilterDrawer'
 import { EMPTY_PIECE_FILTERS, activePieceFilterCount, type PieceFilterState } from '../lib/pieceFilterState'
+import { WIDE_CONTENT_MAX_W } from '../lib/layout'
 import { usePageTitle } from '../lib/usePageTitle'
 
 // Matches the backend's own default (internal/handlers/search.go) — passed
@@ -75,9 +76,19 @@ interface PieceBrowseViewProps {
   backLabel: string
 }
 
+// Mobile-first: the bare (unprefixed) value applies below sm:, the sm:
+// value overrides it at 640px and up (project_responsive_device_plan,
+// Phase 3) — the plain
+// 200px/176px minimums only ever fit 1 column at iPhone-13-mini width
+// (375px, minus this component's own p-4 padding and the gap between
+// cards), so phone-width screens got a single, oversized-looking card
+// where a real Library naturally has more than one thing to browse. 150px
+// was tuned empirically (live Playwright screenshot at 375px) to comfortably
+// fit 2 columns without the cards feeling cramped; left alone at sm: and up,
+// where the plain default already works well.
 const GRID_COLS_CLASS: Record<'default' | 'compact', string> = {
-  default: 'grid-cols-[repeat(auto-fill,minmax(200px,1fr))]',
-  compact: 'grid-cols-[repeat(auto-fill,minmax(176px,1fr))]',
+  default: 'grid-cols-[repeat(auto-fill,minmax(150px,1fr))] sm:grid-cols-[repeat(auto-fill,minmax(200px,1fr))]',
+  compact: 'grid-cols-[repeat(auto-fill,minmax(150px,1fr))] sm:grid-cols-[repeat(auto-fill,minmax(176px,1fr))]',
 }
 
 // Shared by LibraryPage (no filters — the whole collection), FavoritesPage
@@ -381,7 +392,7 @@ export function PieceBrowseView({
         )}
       </div>
 
-      <div className="flex-1 p-4">
+      <div className={`${WIDE_CONTENT_MAX_W} flex-1 p-4`}>
         {isLoading && <p className="p-8 text-center text-ink-soft">Loading…</p>}
 
         {isError && (
@@ -410,7 +421,29 @@ export function PieceBrowseView({
         )}
 
         {pieces && pieces.length > 0 && viewMode === 'list' && (
-          <div className="flex flex-col gap-3">
+          // Capped-width, multi-column-when-there's-room, centered-when-
+          // there-isn't (project_responsive_device_plan, Phase 3, direct
+          // request) — replaces the old flex-col full-width-row stack,
+          // which stretched a single row edge-to-edge on an ultrawide
+          // monitor. 768px cap matches max-w-3xl (revised down from an
+          // initial 896px/max-w-4xl, still a ballpark not a firm number —
+          // reuses an existing Tailwind scale value rather than an
+          // arbitrary one-off).
+          //
+          // minmax(min(576px,100%), 768px), not minmax(0, 768px): a plain
+          // 0 floor meant a column had to shrink all the way down to a
+          // single ~1552px-wide container before a second one would even
+          // appear — direct follow-up asked for the 2-up shift to kick in
+          // much earlier, around 550-800px. 576px (matches max-w-xl) is
+          // the real per-column minimum auto-fit now sizes against, so 2
+          // columns appear once the container's roughly 2×576px+gap or
+          // wider; the `min(576px,100%)` wrapper (not a bare 576px) is what
+          // keeps a *single* column safely shrinking to fit a narrow
+          // (phone-width) container instead of overflowing it, since 100%
+          // there resolves smaller than 576px and wins. justify-center
+          // turns any leftover container width into centering margin
+          // rather than leaving it flush to one side.
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(min(576px,100%),768px))] justify-center gap-3">
             {pieces.map((piece) => (
               <PieceListCard
                 key={piece.id}

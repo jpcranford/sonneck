@@ -26,6 +26,7 @@ import { ApiError } from '../api/client'
 import type { Piece } from '../api/types'
 import { hyphenateISBN, isbnSearchUrl } from '../lib/isbn'
 import { joinNames, personCreditPart } from '../lib/joinNames'
+import { CONTENT_MAX_W } from '../lib/layout'
 import { usePageTitle } from '../lib/usePageTitle'
 import { ClickableCard } from '../components/ClickableCard'
 import { ContextMenu } from '../components/ContextMenu'
@@ -252,6 +253,54 @@ function PieceList({ pieces }: { pieces: Piece[] }) {
   )
 }
 
+// Original filename value — collapsed state is always exactly one line,
+// real CSS ellipsis (Tailwind's `truncate`: overflow:hidden + text-overflow:
+// ellipsis + white-space:nowrap), never a wrapped second line, simplified
+// from an earlier char-count `.slice()` version per direct follow-up
+// (2026-09-05) — CSS truncates at whatever width the card actually
+// rendered at, so there's no length to precompute or hardcode at all.
+// Tap/click expands to the full value, which *can* wrap across multiple
+// lines (that "never two lines" rule is specifically about the collapsed
+// state) — break-words there for the same long-unbroken-run reason as
+// before. Always rendered as a button regardless of whether this
+// particular filename is actually long enough to be truncated right now —
+// toggling is a harmless no-op when it isn't, and that's simpler than
+// re-deriving "is this currently truncated" from rendered layout.
+function TruncatableFilename({
+  filename,
+  expanded,
+  onToggle,
+}: {
+  filename: string
+  expanded: boolean
+  onToggle: () => void
+}) {
+  return (
+    // block w-full pr-2, not just pr-2 on its own: this button has no
+    // other display/width overrides, so it's a plain inline-block whose
+    // own width is computed via shrink-to-fit — adding padding to *that*
+    // grows its own intrinsic size (and, cascading up, its unconstrained
+    // flex-item ancestor) rather than shrinking the room left for text,
+    // confirmed live: the button's own box ended up rendering past the
+    // card's edge, worse than before. block+w-full pins the box to a real,
+    // already-correctly-constrained 100% of its parent first, so pr-2 then
+    // does what it's supposed to: eat into the text's own available room,
+    // not the box's outer size — needed for both the collapsed state's
+    // ellipsis (so it doesn't sit flush against the card edge) and the
+    // expanded state's wrap (break-words only wraps exactly at the point
+    // it would otherwise overflow, with no inherent margin of its own).
+    <button
+      type="button"
+      onClick={onToggle}
+      className={`block w-full cursor-pointer pr-2 text-left hover:text-ink-soft ${expanded ? 'break-words' : 'truncate'}`}
+      aria-expanded={expanded}
+      aria-label={expanded ? 'Show less of the original filename' : 'Show full original filename'}
+    >
+      {filename}
+    </button>
+  )
+}
+
 export function BookDetailsPage() {
   const { id } = useParams<{ id: string }>()
   const bookId = Number(id)
@@ -261,6 +310,13 @@ export function BookDetailsPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [bookEditOpen, setBookEditOpen] = useState(false)
   const coverFileInputRef = useRef<HTMLInputElement>(null)
+  // Original filename can genuinely run long (an IMSLP-sourced scan's own
+  // filename convention easily clears 50+ characters) — truncated to a
+  // fixed length with a trailing "…", tap/click to reveal the rest, rather
+  // than always showing the raw value (which just re-triggers the
+  // min-w-0/break-words fix's own many-line wrap on a long enough name,
+  // still readable but not exactly tidy).
+  const [filenameExpanded, setFilenameExpanded] = useState(false)
 
   const {
     data: book,
@@ -470,12 +526,21 @@ export function BookDetailsPage() {
       })
     }
     if (book.originalFilename) {
-      fields.push({ label: 'Original filename', value: book.originalFilename })
+      fields.push({
+        label: 'Original filename',
+        value: (
+          <TruncatableFilename
+            filename={book.originalFilename}
+            expanded={filenameExpanded}
+            onToggle={() => setFilenameExpanded((v) => !v)}
+          />
+        ),
+      })
     }
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-6 md:p-8">
+    <div className={`${CONTENT_MAX_W} flex flex-1 flex-col gap-6 p-6 md:p-8`}>
       {/* Edit / Change Cover / Open Book PDF live in this top toolbar row,
           mirroring Piece Details page's own toolbar (PiecePage.tsx): icon-only
           buttons first (Open Book PDF, Change Cover — identical
@@ -596,12 +661,23 @@ export function BookDetailsPage() {
 
       {book && (
         <div>
-          {/* Header is its own card. items-start on the header row: without
-              it, the cover's flex cross-axis defaults to stretch, which
-              fights its own aspect-[2/3] the moment a sibling column grows
-              taller than the cover, distorting its shape. */}
+          {/* Header is its own card. Stacked (flex-col) below lg:, side-by-
+              side above it — found live, 2026-09-05 (project_responsive_
+              device_plan, Phase 4): the side-by-side row never collapsed at
+              any width, so the info column's available width shrank along
+              with the viewport (worse still, further eaten by the sidebar
+              at md:+), overflowing the original filename past the card's
+              own edge well before the header ever got phone-narrow — real
+              breakage confirmed at both 375px and iPad-portrait's ~512px
+              actual content width (post-sidebar), first genuinely clean
+              row layout confirmed at iPad-landscape's ~768px. lg:items-start
+              on the row itself, not the base flex-col: without it, the
+              cover's flex cross-axis defaults to stretch, which fights its
+              own aspect-[2/3] the moment a sibling column grows taller than
+              the cover, distorting its shape — only relevant once they're
+              actually side by side. */}
           <div className="overflow-hidden rounded-2xl border border-border bg-paper-raised shadow-sm">
-            <div className="flex items-start gap-6 p-7">
+            <div className="flex flex-col gap-6 p-7 lg:flex-row lg:items-start">
               {/* Custom cover upload — right-click (desktop) or
                   long-press (touch) the cover to change/remove it, same
                   ContextMenu component pieces already use. hideTriggerButton
@@ -744,7 +820,20 @@ export function BookDetailsPage() {
                 {fields.length > 0 && (
                   <div className="mt-3.5 flex flex-wrap gap-x-8 gap-y-3">
                     {fields.map((field) => (
-                      <div key={field.label}>
+                      // min-w-0 + break-words: a flex item's default
+                      // min-width is `auto` (its own content's intrinsic
+                      // minimum), not 0 — a long value with no natural
+                      // break point (e.g. an underscore-joined filename)
+                      // has an enormous min-content width, forcing this
+                      // item wider than its own flex-wrap container rather
+                      // than wrapping (found live testing this page's own
+                      // phone-width layout, project_responsive_device_plan
+                      // Phase 4 follow-up — confirmed via computed styles:
+                      // this div was rendering 298px wide inside a 269px
+                      // parent). min-w-0 lets it shrink to fit; break-words
+                      // (overflow-wrap: break-word) is what actually gives
+                      // long unbroken runs a place to wrap once it does.
+                      <div key={field.label} className="min-w-0 break-words">
                         <dt className="mb-0.5 text-[0.7rem] tracking-wide text-ink-soft uppercase">
                           {field.label}
                         </dt>

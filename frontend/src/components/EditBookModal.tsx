@@ -360,7 +360,14 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
       open={open}
       onClose={onClose}
       labelledBy="edit-book-title"
-      size="xl"
+      // lg, not xl — matches EditPieceModal.tsx's own size, direct request
+      // 2026-09-05: at exactly iPad-portrait's 768px viewport, an xl
+      // (max-w-3xl = 768px) modal has zero margin on either side, touching
+      // both screen edges — EditPieceModal's own 2-column field layout
+      // already proves lg (max-w-2xl = 672px) has enough room for the same
+      // shape of form, contrary to this size's own original "xl is for a
+      // two-column layout" reasoning (Modal.tsx's own comment).
+      size="lg"
       header={
         // -mx-6/px-6 bleeds the line to the dialog's true edges — same
         // full-bleed convention as EditPieceModal's own pinned-header
