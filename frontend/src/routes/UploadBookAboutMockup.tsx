@@ -461,7 +461,15 @@ export function UploadBookAboutMockup() {
             scrolls, 210px wide (sized down from the piece-upload flow's
             own 340px thumb, since this screen has roughly 5x the form
             content that one does). */}
-        <div className="flex w-full shrink-0 flex-col gap-2.5 sm:sticky sm:top-5 sm:w-[210px]">
+        {/* max-w-[420px] guards the stacked (below-sm:) layout specifically
+            — real bug found live at 638px: below `sm:`'s 640px breakpoint
+            this column is still plain `w-full` (the fixed `sm:w-[210px]`
+            hasn't kicked in yet), so it grows with the viewport/content
+            column's own width, which at a single-column width like this is
+            wide enough to make the PDF page thumbnail render "massive."
+            Harmless at `sm:` and up — 210px is already far under this
+            cap, so it never actually constrains anything there. */}
+        <div className="mx-auto flex w-full max-w-[420px] shrink-0 flex-col gap-2.5 sm:sticky sm:top-5 sm:w-[210px]">
           <div className="relative overflow-hidden rounded-lg border border-border bg-paper-raised shadow-sm">
             {/* Lightbox trigger — same click-to-enlarge treatment as
                 Piece Details' own preview thumbnail. The whole cover is

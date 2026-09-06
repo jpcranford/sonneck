@@ -313,7 +313,15 @@ export function BookUploadAboutStep({
         onSubmit={handleSubmit(onSubmit)}
         className="flex flex-col gap-7 sm:flex-row sm:items-start"
       >
-        <div className="flex w-full shrink-0 flex-col gap-2.5 sm:sticky sm:top-5 sm:w-[210px]">
+        {/* max-w-[420px] guards the stacked (below-sm:) layout specifically
+            — real bug found live at 638px: below `sm:`'s 640px breakpoint
+            this column is still plain `w-full` (the fixed `sm:w-[210px]`
+            hasn't kicked in yet), so it grows with the viewport/content
+            column's own width, which at a single-column width like this is
+            wide enough to make the PDF page thumbnail render "massive."
+            Harmless at `sm:` and up — 210px is already far under this
+            cap, so it never actually constrains anything there. */}
+        <div className="mx-auto flex w-full max-w-[420px] shrink-0 flex-col gap-2.5 sm:sticky sm:top-5 sm:w-[210px]">
           {/* aspect-[2/3] is a *loading-state placeholder only*, not the
               real page's shape — dropped the instant the image actually
               loads (thumbLoaded), same fix already applied to Piece
