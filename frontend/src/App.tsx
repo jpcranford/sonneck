@@ -1,4 +1,7 @@
 import { Routes, Route } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import { getConfig } from './api/config'
+import { FirstLaunchFlow } from './routes/FirstLaunchFlow'
 import { AppShell } from './components/AppShell'
 import { LibraryPage } from './routes/LibraryPage'
 import { BooksPage } from './routes/BooksPage'
@@ -23,6 +26,7 @@ import { UploadBookConfirmMockup } from './routes/UploadBookConfirmMockup'
 import { MobileNavDrawerMockup } from './routes/MobileNavDrawerMockup'
 import { CitationLogicMockup } from './routes/CitationLogicMockup'
 import { DeviceInfoMockup } from './routes/DeviceInfoMockup'
+import { FirstLaunchMockup } from './routes/FirstLaunchMockup'
 import { PeopleLibraryPage } from './routes/PeopleLibraryPage'
 import { PersonDetailsPage } from './routes/PersonDetailsPage'
 import { FavoritesPage } from './routes/FavoritesPage'
@@ -33,6 +37,28 @@ import { SetlistPage } from './routes/SetlistPage'
 import { NotFoundPage } from './routes/NotFoundPage'
 
 function App() {
+  // First-time launch flow (multi-user support, memory
+  // project_multiuser_build.md's Phase 3) — gates the entire app behind
+  // setup completion, not just a route, since nothing else is meant to be
+  // reachable until it's done. Same ['config'] query key FirstLaunchFlow
+  // itself invalidates on a successful Finish Setup, so completing it
+  // swaps this component out automatically once the refetch lands.
+  //
+  // Fails open on a loading/error config (renders the real app either way)
+  // — this gate is a first-run UX nicety, not a security boundary; no real
+  // login-wall enforcement exists yet (that's a later "Backend changes"
+  // phase), so a backend hiccup here shouldn't lock a real user out of an
+  // otherwise-working app.
+  const { data: config, isLoading } = useQuery({ queryKey: ['config'], queryFn: getConfig })
+
+  if (isLoading) {
+    return <div className="min-h-dvh bg-paper" />
+  }
+
+  if (config && !config.firstLaunchCompleted) {
+    return <FirstLaunchFlow config={config} />
+  }
+
   return (
     <Routes>
       <Route element={<AppShell />}>
@@ -77,6 +103,12 @@ function App() {
           renders the real <Sidebar /> itself for desktop, so nothing about
           desktop rendering is duplicated or at risk of drifting. */}
       <Route path="mockup/mobile-nav-drawer" element={<MobileNavDrawerMockup />} />
+      {/* Also not nested inside <AppShell /> — the real first-launch flow
+          is a full-page takeover shown before there's any sidebar/nav to
+          speak of (no library confirmed yet, no auth resolved yet), so the
+          mockup needs to be reachable without AppShell's sidebar wrapped
+          around it, same reasoning as mobile-nav-drawer above. */}
+      <Route path="mockup/first-launch" element={<FirstLaunchMockup />} />
     </Routes>
   )
 }

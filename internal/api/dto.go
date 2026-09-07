@@ -523,3 +523,31 @@ type PersonWriteRequest struct {
 type PersonSplitRequest struct {
 	ReplacementNames []string `json:"replacementNames"`
 }
+
+// ConfigResponse is GET /api/config's shape — a deliberately narrow slice
+// of server config the frontend needs at runtime (CLAUDE.md > Config),
+// grown for the first-time launch flow (memory project_multiuser_build.md):
+// AuthMethod is already resolved (env var wins, else the stored
+// first-launch choice, else "none" — the frontend never re-derives this
+// order itself); AuthMethodSetByEnv tells the Security step whether to
+// show the picker at all or a locked "set by environment variable" state,
+// same convention the Admin Settings screen's own env-var-shadowed fields
+// will use. DataDir is only ever populated while first-launch hasn't
+// completed yet — the Library Folder step's own confirmation display, not
+// exposed once setup is done and there's no more reason for an unauthenticated
+// endpoint to keep announcing a host filesystem path.
+type ConfigResponse struct {
+	CopyrightRegion      string  `json:"copyrightRegion"`
+	AuthMethod           string  `json:"authMethod"`
+	AuthMethodSetByEnv   bool    `json:"authMethodSetByEnv"`
+	FirstLaunchCompleted bool    `json:"firstLaunchCompleted"`
+	DataDir              *string `json:"dataDir,omitempty"`
+}
+
+// SetupCompleteRequest is the first-time launch flow's Security step
+// submission shape. Password is required (and validated) only when
+// AuthMethod is "singlepass" — nil otherwise.
+type SetupCompleteRequest struct {
+	AuthMethod string  `json:"authMethod"`
+	Password   *string `json:"password"`
+}

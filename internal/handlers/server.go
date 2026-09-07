@@ -11,6 +11,7 @@ import (
 
 	"github.com/jpcranford/sonneck/internal/api"
 	"github.com/jpcranford/sonneck/internal/config"
+	"github.com/jpcranford/sonneck/internal/repo"
 )
 
 type Server struct {
@@ -35,6 +36,11 @@ func New(db *sql.DB, cfg *config.Config, logger *slog.Logger, frontend fs.FS) ht
 	// not the whole config.Config (most of which is server-internal —
 	// directories, cron schedule — with no frontend use).
 	mux.HandleFunc("GET /api/config", s.handleGetConfig)
+	// First-time launch flow (multi-user support, memory
+	// project_multiuser_build.md's Phase 3) — the one real endpoint that
+	// flow needs; see handleCompleteSetup's own comment for what it does
+	// and doesn't gate.
+	mux.HandleFunc("POST /api/setup/complete", s.handleCompleteSetup)
 
 	mux.HandleFunc("GET /api/keys", s.handleListKeys)
 	mux.HandleFunc("GET /api/sheet-types", s.handleListSheetTypes)
@@ -148,7 +154,34 @@ func (s *Server) handleHealthz(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleGetConfig(w http.ResponseWriter, r *http.Request) {
-	api.WriteData(w, http.StatusOK, map[string]string{"copyrightRegion": s.Cfg.CopyrightRegion})
+	settings, err := repo.GetServerSettings(r.Context(), s.DB)
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+
+	// Resolution order (memory project_multiuser_build.md): env var wins if
+	// set, else the stored first-launch choice, else "none" — the frontend
+	// never re-derives this itself, it just reads the already-resolved
+	// value here.
+	authMethod := s.Cfg.AuthMethod
+	if authMethod == "" && settings.AuthMethod != nil {
+		authMethod = *settings.AuthMethod
+	}
+	if authMethod == "" {
+		authMethod = "none"
+	}
+
+	resp := api.ConfigResponse{
+		CopyrightRegion:      s.Cfg.CopyrightRegion,
+		AuthMethod:           authMethod,
+		AuthMethodSetByEnv:   s.Cfg.AuthMethod != "",
+		FirstLaunchCompleted: settings.FirstLaunchCompletedAt != nil,
+	}
+	if !resp.FirstLaunchCompleted {
+		resp.DataDir = &s.Cfg.DataDir
+	}
+	api.WriteData(w, http.StatusOK, resp)
 }
 
 func (s *Server) handleNotFound(w http.ResponseWriter, r *http.Request) {

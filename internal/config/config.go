@@ -48,6 +48,12 @@ type Config struct {
 	// uses. Validated against that package's own table at startup, not a
 	// literal enum here, so the two never drift out of sync.
 	CopyrightRegion string
+	// AuthMethod (multi-user support) — "" if unset, meaning the choice
+	// made through the first-time launch flow (persisted in
+	// server_settings, see repo.GetServerSettings) governs instead. When
+	// non-empty this always wins over that stored choice — see
+	// GET /api/config's resolution order (memory project_multiuser_build.md).
+	AuthMethod string
 }
 
 // SlogLevel converts the validated LogLevel string into a slog.Level for
@@ -66,6 +72,7 @@ func Load() (*Config, error) {
 		CitationFormat:  getEnv("CITATION_FORMAT", defaultCitationFormat),
 		LogLevel:        strings.ToLower(getEnv("LOG_LEVEL", defaultLogLevel)),
 		CopyrightRegion: getEnv("COPYRIGHT_REGION", defaultCopyrightRegion),
+		AuthMethod:      getEnv("AUTH_METHOD", ""),
 	}
 	cfg.BackupDir = getEnv("BACKUP_DIR", cfg.DataDir+"/backups")
 
@@ -86,6 +93,12 @@ func Load() (*Config, error) {
 
 	if !copyright.ValidRegion(cfg.CopyrightRegion) {
 		return nil, fmt.Errorf("COPYRIGHT_REGION %q is not a known region", cfg.CopyrightRegion)
+	}
+
+	switch cfg.AuthMethod {
+	case "", "none", "singlepass", "oidc":
+	default:
+		return nil, fmt.Errorf("AUTH_METHOD must be one of none, singlepass, oidc, got %q", cfg.AuthMethod)
 	}
 
 	return cfg, nil

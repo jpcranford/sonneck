@@ -6,6 +6,7 @@ If anything here is wrong, confusing, or out of date, that's itself a welcome bu
 
 > [!NOTE]
 > I said it in the README and I'll say it again here: this has involved a *lot* of AI-assisted development (probably too much tbh), and I'll welcome the eyes and/or code of any human who wants to make it more secure, reliable, robust, or just plain cleaner.
+> 
 > If you have the experience to be able to confidently clean up the code, I'll happily accept *any* contributions you want to give.
 
 ## Table of contents

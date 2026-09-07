@@ -91,6 +91,11 @@ const MOCKUPS = [
     name: 'Device Info',
     note: 'Not a screen mockup — a live diagnostic reference (window/screen size, orientation, devicePixelRatio, current Tailwind breakpoint tier, active nav mode) for the responsive-layout pass across phone/tablet/ultrawide/e-ink widths. See memory project_responsive_device_plan.',
   },
+  {
+    to: '/mockup/first-launch',
+    name: 'First-Time Launch Flow',
+    note: 'Multi-user support, Phase 2 of the plan (memory project_multiuser_build.md) — Welcome → Library Folder → Security, with a "Preview as Docker/Native" toggle since OIDC and the folder picker both branch on runtime mode. Genuinely interactive against local state; no real backend exists for this yet.',
+  },
 ]
 
 export function MockupIndexPage() {
