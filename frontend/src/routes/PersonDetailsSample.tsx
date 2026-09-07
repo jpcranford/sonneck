@@ -58,14 +58,21 @@ interface MockWork {
   title: string
   opus: string | null
   // Mirrors the real piece.yearWritten's own EffectiveField shape
-  // (repo/effective.go: a piece's own yearWritten falls back to its
-  // book's yearPublished) — null means neither is set at all, `inherited:
-  // true` means this value came from the book's Year Published field, not
-  // the piece's own Year Written field. See yearWrittenLabel below for how
-  // that distinction reaches the screen (direct request, 2026-09-03:
-  // "{year} (pub.)" instead of a bare year whenever it's inherited this
-  // way).
-  yearWritten: { value: string; inherited: boolean } | null
+  // (repo/effective.go's resolveYearWritten, three-level fallback: piece's
+  // own Year Written, else piece's own Copyright Year, else book's Year
+  // Published) — null means neither is set at all, `inherited: true`
+  // means this value fell back rather than coming from the piece's own
+  // Year Written. `source` (only meaningful when inherited) distinguishes
+  // *which* fallback tier: real Piece data derives this from
+  // lib/yearWrittenSource.ts's own check against the piece's Copyright
+  // Year field, which this fixture doesn't otherwise model — recorded
+  // directly here instead as the simplest faithful stand-in. See
+  // yearWrittenLabel below for how the distinction reaches the screen: a
+  // genuinely book-inherited year gets "{year} (pub.)"; a piece's own
+  // Copyright Year borrowed for this field does not (direct request,
+  // 2026-09-06 — real bug found live, a copyright-year-sourced year had
+  // been mislabeled identically to a book-inherited one).
+  yearWritten: { value: string; inherited: boolean; source?: 'book' | 'copyrightYear' } | null
   role: 'Composer' | 'Arranger'
   // The work's own full composer/arranger credit (not just this person's
   // own role) — feeds workMetaLine below, which mirrors
@@ -210,12 +217,33 @@ const MOCK_WORKS: MockWork[] = [
     id: 108,
     title: 'Grande Valse Brillante',
     opus: 'Op. 18',
-    yearWritten: { value: '1833', inherited: true },
+    yearWritten: { value: '1833', inherited: true, source: 'book' },
     role: 'Composer',
     composer: 'Frédéric Chopin',
     arranger: null,
     pageCount: 5,
     bookTitle: 'Chopin: Waltzes',
+    favorite: false,
+    sheetType: { id: 1, name: 'Solo Piano' },
+    userTags: [],
+  },
+  // Demonstrates the *other* inherited-year case, added alongside the
+  // real bug fix (2026-09-06): this piece has its own Copyright Year set
+  // but no Year Written of its own, so resolveYearWritten's middle
+  // fallback tier kicks in — inherited, same as the book-inherited case
+  // above, but from a completely different field. Shown as a bare "1836"
+  // with no "(pub.)" suffix, since that suffix would misrepresent the
+  // piece's own explicit data as if it were the book's publication date.
+  {
+    id: 109,
+    title: 'Souvenir de Paganini',
+    opus: null,
+    yearWritten: { value: '1836', inherited: true, source: 'copyrightYear' },
+    role: 'Composer',
+    composer: 'Frédéric Chopin',
+    arranger: null,
+    pageCount: 3,
+    bookTitle: null,
     favorite: false,
     sheetType: { id: 1, name: 'Solo Piano' },
     userTags: [],
@@ -316,15 +344,23 @@ function workMetaLine(work: MockWork): string {
 }
 
 // Display label for a work's year: bare value when it's the piece's own
-// Year Written, "{year} (pub.)" when it's inherited from the book's Year
-// Published instead (direct request, 2026-09-03; format changed same day
+// Year Written, "{year} (pub.)" only when it's inherited from the book's
+// Year Published (direct request, 2026-09-03; format changed same day
 // from a leading "pub. {year}" to this trailing form per direct
 // follow-up) — the suffix is a rendering-only concern layered on top of
 // the same underlying value/inherited pair workYearSortKey reads below,
 // so the two never disagree about what year a work actually sorts under.
+// Real bug found live (2026-09-06) and fixed alongside the real page
+// (PersonDetailsPage.tsx): `inherited` alone can't say *which* fallback
+// tier produced the value — a piece with its own Copyright Year set but
+// no Year Written also gets `inherited: true` here (resolveYearWritten's
+// own deliberate simplification, reusing one flag rather than adding a
+// third UI state), but that's the piece's own data, not the book's
+// publication date, so it must not get the same "(pub.)" suffix.
 function yearWrittenLabel(yearWritten: MockWork['yearWritten']): string {
   if (!yearWritten) return '—'
-  return yearWritten.inherited ? `${yearWritten.value} (pub.)` : yearWritten.value
+  if (!yearWritten.inherited) return yearWritten.value
+  return yearWritten.source === 'copyrightYear' ? yearWritten.value : `${yearWritten.value} (pub.)`
 }
 
 // Sort key for "sort by year written, arranger credits mixed in with

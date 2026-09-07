@@ -37,6 +37,7 @@ import { joinNames, personCreditPart } from '../lib/joinNames'
 import { CONTENT_MAX_W } from '../lib/layout'
 import { PALETTE } from '../lib/pieceSplitLogic'
 import { usePageTitle } from '../lib/usePageTitle'
+import { yearWrittenSource } from '../lib/yearWrittenSource'
 
 // The real Person Details page (/people/:id) — composer/arranger overhaul,
 // Stage B. Real build of PersonDetailsSample.tsx (/mockup/person-details,
@@ -89,20 +90,31 @@ function roleFor(piece: Piece, personId: number): 'Composer' | 'Arranger' {
   return piece.composer.values.some((p) => p.id === personId) ? 'Composer' : 'Arranger'
 }
 // Display label for a work's year: bare value when it's the piece's own
-// Year Written, "{year} (pub.)" when piece.yearWritten.inherited is true —
-// meaning it fell back to the book's Year Published field instead
-// (repo/effective.go's resolveStringField, not new behavior, just newly
-// surfaced here) — since those are two different facts (when a piece was
-// written vs. when its book came out) and showing a bare year would
-// misrepresent one as the other. Mockup-approved 2026-09-03
-// (PersonDetailsSample.tsx); format changed same day from a leading "pub.
-// {year}" to this trailing "{year} (pub.)" per direct follow-up. The
-// "(pub.)" suffix is display-only and never reaches workYearSortKey
-// below, which already reads .value directly — nothing to change there
-// for the sort to correctly ignore it.
+// Year Written, "{year} (pub.)" only when piece.yearWritten.inherited is
+// true *and* the source is genuinely the book's Year Published field
+// (repo/effective.go's resolveYearWritten, three-level fallback: piece's
+// own Year Written, else piece's own Copyright Year, else book's Year
+// Published — see lib/yearWrittenSource.ts, the same helper
+// EditPieceModal.tsx already uses to label its own InheritedNote). Real
+// bug found live (2026-09-06, direct report): a piece with its own
+// Copyright Year set but no Year Written also has `inherited: true` on
+// this field (a deliberate simplification in resolveYearWritten — it
+// reuses the same Inherited flag rather than adding a third UI state),
+// but that value isn't actually "published" anything — it's the piece's
+// own explicit data on a different field, just borrowed here. Labeling it
+// "(pub.)" the same as a genuinely book-inherited year misrepresented one
+// fact as another, and (found alongside the report) could visually break
+// this page's own year-then-opus-then-title sort ordering for a set of
+// same-opus pieces sharing one book — a piece with a stray own Copyright
+// Year jumps to a completely different year tier than its siblings, who
+// all correctly show the book's own Year Published, with nothing here to
+// explain why. The "(pub.)" suffix is still display-only either way,
+// never reaching workYearSortKey below, which already reads .value
+// directly — nothing to change there.
 function yearWrittenLabel(piece: Piece): string {
   if (!piece.yearWritten.value) return '—'
-  return piece.yearWritten.inherited ? `${piece.yearWritten.value} (pub.)` : piece.yearWritten.value
+  if (!piece.yearWritten.inherited) return piece.yearWritten.value
+  return yearWrittenSource(piece) === 'book' ? `${piece.yearWritten.value} (pub.)` : piece.yearWritten.value
 }
 
 // yearWritten can be a range ("1830–1832") — sorts on the first number
