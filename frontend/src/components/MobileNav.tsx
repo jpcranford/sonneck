@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom'
-import { IconMenu2, IconUserFilled, IconX } from '@tabler/icons-react'
+import { IconMenu2, IconX } from '@tabler/icons-react'
 import { NAV_ITEMS, SECONDARY_NAV_ITEMS, SETLISTS, type NavItem } from '../lib/navItems'
+import { UserMenuButton } from './UserMenuButton'
 
 // Mobile-only top bar + left drawer — the classic hamburger-drawer
 // pattern, chosen over a top-fold panel, a bottom sheet, and a bottom tab
@@ -118,12 +119,7 @@ export function MobileNavDrawer({ open, onClose }: { open: boolean; onClose: () 
           </div>
         </div>
 
-        <div className="m-2 flex items-center gap-2 rounded-lg border border-sidebar-border bg-sidebar-panel p-2">
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-full border border-sidebar-border bg-sidebar-bg text-sidebar-text">
-            <IconUserFilled size={16} />
-          </span>
-          <span className="truncate text-[0.95rem] text-sidebar-text">Local Library</span>
-        </div>
+        <UserMenuButton collapsed={false} />
       </aside>
     </>
   )

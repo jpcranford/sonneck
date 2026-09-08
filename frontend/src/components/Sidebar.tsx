@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import {
-  IconUserFilled,
   IconLayoutSidebarLeftCollapseFilled,
   IconLayoutSidebarLeftExpandFilled,
 } from '@tabler/icons-react'
 import { NAV_ITEMS, SECONDARY_NAV_ITEMS, SETLISTS, type NavItem } from '../lib/navItems'
+import { UserMenuButton } from './UserMenuButton'
 
 // Shared between the primary nav group and the secondary (Favorites/
 // Currently Practicing) group below the divider — same link styling
@@ -160,20 +160,7 @@ export function Sidebar() {
         </div>
       </div>
 
-      <div
-        className={`m-2 flex items-center gap-2 rounded-lg border border-sidebar-border bg-sidebar-panel p-2 ${collapsed ? 'justify-center' : ''}`}
-      >
-        {/* Icon matches the "Local Library" label's own color
-            (text-sidebar-text) — not text-sidebar-text-dim, a visibly
-            more muted color than the text beside it (same fix as the
-            nav icons above). */}
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-full border border-sidebar-border bg-sidebar-bg text-sidebar-text">
-          <IconUserFilled size={16} />
-        </span>
-        {!collapsed && (
-          <span className="truncate text-[0.95rem] text-sidebar-text">Local Library</span>
-        )}
-      </div>
+      <UserMenuButton collapsed={collapsed} />
     </aside>
   )
 }

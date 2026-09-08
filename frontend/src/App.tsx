@@ -1,7 +1,13 @@
 import { Routes, Route } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { getConfig } from './api/config'
+import { getConfig, type AppConfig } from './api/config'
+import { getMe } from './api/auth'
+import { ApiError } from './api/client'
+import { AuthContext } from './lib/AuthContext'
 import { FirstLaunchFlow } from './routes/FirstLaunchFlow'
+import { LoginScreen } from './routes/LoginScreen'
+import { SettingsPage } from './routes/SettingsPage'
+import { AdminPage } from './routes/AdminPage'
 import { AppShell } from './components/AppShell'
 import { LibraryPage } from './routes/LibraryPage'
 import { BooksPage } from './routes/BooksPage'
@@ -48,11 +54,9 @@ function App() {
   // itself invalidates on a successful Finish Setup, so completing it
   // swaps this component out automatically once the refetch lands.
   //
-  // Fails open on a loading/error config (renders the real app either way)
-  // — this gate is a first-run UX nicety, not a security boundary; no real
-  // login-wall enforcement exists yet (that's a later "Backend changes"
-  // phase), so a backend hiccup here shouldn't lock a real user out of an
-  // otherwise-working app.
+  // Fails open on a loading/error config (renders AuthGate either way) —
+  // this gate is a first-run UX nicety, not a security boundary. Real
+  // login-wall enforcement is AuthGate's job, right below.
   const { data: config, isLoading } = useQuery({ queryKey: ['config'], queryFn: getConfig })
 
   if (isLoading) {
@@ -63,6 +67,49 @@ function App() {
     return <FirstLaunchFlow config={config} />
   }
 
+  return <AuthGate authMethod={config?.authMethod ?? 'none'} />
+}
+
+// AuthGate — multi-user support, master plan Phase 11 (memory
+// project_multiuser_build.md). The real login-wall counterpart to
+// FirstLaunchFlow's own gate above, reached only once first-launch is
+// already done. Resolves GET /api/auth/me before rendering anything real:
+// `none` mode always resolves (authMiddleware's implicit id=1 user, no
+// session needed), so this never shows LoginScreen there; `singlepass`/
+// `oidc` get a genuine 401 straight from authMiddleware when there's no
+// valid session cookie, which is what actually triggers it. A successful
+// resolution is threaded down via AuthContext rather than re-fetched by
+// each consumer — Sidebar/MobileNav's user menu (UserMenuButton) and the
+// Admin route guard below both read it from there via useAuth().
+function AuthGate({ authMethod }: { authMethod: AppConfig['authMethod'] }) {
+  const meQuery = useQuery({ queryKey: ['auth', 'me'], queryFn: getMe, retry: false })
+
+  if (meQuery.isLoading) {
+    return <div className="min-h-dvh bg-paper" />
+  }
+
+  if (meQuery.isError) {
+    if (meQuery.error instanceof ApiError && meQuery.error.status === 401) {
+      return <LoginScreen authMethod={authMethod} />
+    }
+    // A non-401 failure (network error, 500) isn't a "please log in" case —
+    // the rest of the app depends on this same backend anyway, so there's
+    // nothing useful to render behind it.
+    return (
+      <div className="flex min-h-dvh flex-col items-center justify-center gap-2 bg-paper p-6 text-center">
+        <p className="text-ink-soft">Couldn't reach the server. Try refreshing.</p>
+      </div>
+    )
+  }
+
+  return (
+    <AuthContext.Provider value={meQuery.data ?? null}>
+      <AppRoutes />
+    </AuthContext.Provider>
+  )
+}
+
+function AppRoutes() {
   return (
     <Routes>
       <Route element={<AppShell />}>
@@ -73,6 +120,13 @@ function App() {
         <Route path="books/:id" element={<BookDetailsPage />} />
         <Route path="people" element={<PeopleLibraryPage />} />
         <Route path="people/:id" element={<PersonDetailsPage />} />
+        {/* Real routes (shell scope) for the sidebar user menu's Settings/
+            Admin links — master plan Phase 11. Both stubbed with
+            ComingSoon for now; filled in for real against the already-
+            approved /mockup/user-settings and /mockup/admin-settings
+            designs in Phases 12/13. */}
+        <Route path="settings" element={<SettingsPage />} />
+        <Route path="admin" element={<AdminPage />} />
         {/* Design mockups and reference samples — unlinked from the main
             nav, browsable via the /mockup index below. Kept intentionally
             for future reference/experimentation, not deleted once whatever

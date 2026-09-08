@@ -18,6 +18,9 @@ import {
   IconSettings,
   IconShieldLock,
   IconLogout,
+  IconSun,
+  IconMoon,
+  IconDeviceDesktop,
 } from '@tabler/icons-react'
 import { useMockupTitle } from '../lib/useMockupTitle'
 
@@ -40,6 +43,25 @@ import { useMockupTitle } from '../lib/useMockupTitle'
 // mobile-nav-drawer and first-launch: this replaces AppShell's own sidebar
 // footer, so nesting it inside the real shell would show two competing
 // footers.
+//
+// Theme switcher added to the popup, same day, per direct feedback — "an
+// elegant light/dark/system mode switcher..., to be built out with the menu
+// in a later phase." Deliberately a compact icon-only sliding-pill toggle
+// (ThemeSwitcher below), not a re-skin of User/Admin Settings' own
+// full-width, text-labeled ThemeControl row — this is a quick-access popup
+// control, not a settings-page field, so the denser form factor fits the
+// context better (the fuller row-based control still exists, and still
+// belongs, on both Settings pages). Dark stays disabled, same "not built
+// yet" reason as everywhere else in this app (no real dark-mode CSS),  but
+// signals it via reduced icon opacity + a title tooltip rather than
+// ThemeControl's visible "Soon" pill badge — a deliberate, scale-driven
+// divergence from that convention, not an oversight: a persistent text
+// badge doesn't fit legibly on a 28px circular icon button the way it does
+// on a full labeled button. `theme` state lives in the parent
+// (SidebarUserMenuMockup) and is passed to both UserMenuButton instances
+// (desktop rail + mobile drawer), so switching it in one preview stays in
+// sync with the other — same reasoning `identity`/`collapsed` already get
+// passed down rather than living inside UserMenuButton itself.
 
 interface NavItem {
   to: string
@@ -127,11 +149,74 @@ function IdentityStateToggle({
   )
 }
 
+type ThemePreview = 'light' | 'dark' | 'system'
+
+const THEME_OPTIONS: { key: ThemePreview; icon: ComponentType<{ size?: number; className?: string }>; label: string }[] = [
+  { key: 'light', icon: IconSun, label: 'Light' },
+  { key: 'dark', icon: IconMoon, label: 'Dark' },
+  { key: 'system', icon: IconDeviceDesktop, label: 'System' },
+]
+
+// Compact icon-only sliding-pill toggle — see this file's own header
+// comment for why this is deliberately not a re-skin of ThemeControl (the
+// full-width, text-labeled version already on both Settings pages). The
+// active option's highlight is a real absolute-positioned pill that slides
+// between icons (translateX by index × button width) rather than each
+// button independently flipping its own background — the small bit of
+// motion is the whole point of "elegant" here, on a control small enough
+// that a plain instant color swap would read as static/dead by comparison.
+function ThemeSwitcher({ theme, onChange }: { theme: ThemePreview; onChange: (theme: ThemePreview) => void }) {
+  const activeIndex = THEME_OPTIONS.findIndex((option) => option.key === theme)
+  return (
+    <div className="flex items-center justify-between gap-3 px-3.5 py-2.5">
+      <span className="text-[0.78rem] text-sidebar-text-dim">Theme</span>
+      <div className="relative flex gap-0.5 rounded-full border border-sidebar-border bg-sidebar-bg p-0.5">
+        <span
+          aria-hidden
+          className="absolute top-0.5 left-0.5 size-6 rounded-full bg-sidebar-panel shadow-sm transition-transform duration-150 ease-out"
+          style={{ transform: `translateX(${activeIndex * 26}px)` }}
+        />
+        {THEME_OPTIONS.map(({ key, icon: Icon, label }) => {
+          const disabled = key === 'dark'
+          return (
+            <button
+              key={key}
+              type="button"
+              disabled={disabled}
+              onClick={() => onChange(key)}
+              title={disabled ? `${label} — coming soon` : label}
+              aria-label={label}
+              aria-pressed={theme === key}
+              className={`relative z-10 flex size-6 items-center justify-center rounded-full transition-colors ${
+                disabled
+                  ? 'cursor-not-allowed text-sidebar-text-dim/35'
+                  : `cursor-pointer ${theme === key ? 'text-sidebar-text' : 'text-sidebar-text-dim hover:text-sidebar-text'}`
+              }`}
+            >
+              <Icon size={13} />
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 // Shared between the desktop rail and the mobile drawer footer — same
 // trigger + popup either side, mobile just gets a wider drawer to sit in
 // (per the artifact's own footer note: "visually identical to the Expanded
 // state at a slightly wider drawer width").
-function UserMenuButton({ identity, collapsed }: { identity: Identity; collapsed: boolean }) {
+function UserMenuButton({
+  identity,
+  collapsed,
+  theme,
+  onThemeChange,
+}: {
+  identity: Identity
+  collapsed: boolean
+  theme: ThemePreview
+  onThemeChange: (theme: ThemePreview) => void
+}) {
   const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
 
@@ -214,6 +299,8 @@ function UserMenuButton({ identity, collapsed }: { identity: Identity; collapsed
             <p className="truncate text-[0.76rem] text-sidebar-text-dim">{identity.sub}</p>
           </div>
         </div>
+        <div className="h-px bg-sidebar-border" />
+        <ThemeSwitcher theme={theme} onChange={onThemeChange} />
         <div className="h-px bg-sidebar-border" />
         <div className="p-1.5">
           <button
@@ -331,6 +418,10 @@ export function SidebarUserMenuMockup() {
   const [identityKey, setIdentityKey] = useState<IdentityKey>('none')
   const [collapsed, setCollapsed] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  // 'system' — matches user_settings.theme_preference's own real DEFAULT
+  // 'system' (migration 00025), and the real build (UserMenuButton.tsx)
+  // now ported from this mockup.
+  const [theme, setTheme] = useState<ThemePreview>('system')
   const identity = IDENTITIES[identityKey]
 
   return (
@@ -365,7 +456,7 @@ export function SidebarUserMenuMockup() {
         <RailNavList items={SECONDARY_NAV_ITEMS} collapsed={collapsed} />
         <SetlistsSlot collapsed={collapsed} />
 
-        <UserMenuButton identity={identity} collapsed={collapsed} />
+        <UserMenuButton identity={identity} collapsed={collapsed} theme={theme} onThemeChange={setTheme} />
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto">
@@ -434,7 +525,7 @@ export function SidebarUserMenuMockup() {
           </div>
         </div>
 
-        <UserMenuButton identity={identity} collapsed={false} />
+        <UserMenuButton identity={identity} collapsed={false} theme={theme} onThemeChange={setTheme} />
       </aside>
     </div>
   )
