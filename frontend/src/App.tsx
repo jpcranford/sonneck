@@ -24,6 +24,10 @@ import { UploadBookSplitMockup } from './routes/UploadBookSplitMockup'
 import { UploadBookTitlesMockup } from './routes/UploadBookTitlesMockup'
 import { UploadBookConfirmMockup } from './routes/UploadBookConfirmMockup'
 import { MobileNavDrawerMockup } from './routes/MobileNavDrawerMockup'
+import { SidebarUserMenuMockup } from './routes/SidebarUserMenuMockup'
+import { UserSettingsMockup } from './routes/UserSettingsMockup'
+import { AdminSettingsMockup } from './routes/AdminSettingsMockup'
+import { AuthChangeFlowMockup } from './routes/AuthChangeFlowMockup'
 import { CitationLogicMockup } from './routes/CitationLogicMockup'
 import { DeviceInfoMockup } from './routes/DeviceInfoMockup'
 import { FirstLaunchMockup } from './routes/FirstLaunchMockup'
@@ -90,6 +94,8 @@ function App() {
         <Route path="mockup/upload-book-confirm" element={<UploadBookConfirmMockup />} />
         <Route path="mockup/citation-logic" element={<CitationLogicMockup />} />
         <Route path="mockup/device-info" element={<DeviceInfoMockup />} />
+        <Route path="mockup/user-settings" element={<UserSettingsMockup />} />
+        <Route path="mockup/admin-settings" element={<AdminSettingsMockup />} />
         <Route path="favorites" element={<FavoritesPage />} />
         <Route path="want-to-learn" element={<WantToLearnPage />} />
         <Route path="practicing" element={<PracticingPage />} />
@@ -109,6 +115,15 @@ function App() {
           mockup needs to be reachable without AppShell's sidebar wrapped
           around it, same reasoning as mobile-nav-drawer above. */}
       <Route path="mockup/first-launch" element={<FirstLaunchMockup />} />
+      {/* Not nested inside <AppShell /> either — replaces AppShell's own
+          sidebar footer (both the desktop rail and MobileNavDrawer), so
+          nesting it inside the real shell would show a second, competing
+          footer alongside this one's. */}
+      <Route path="mockup/sidebar-user-menu" element={<SidebarUserMenuMockup />} />
+      {/* Also not nested inside <AppShell /> — a full-page boot-time gate,
+          same reasoning as first-launch above (reached before the real app
+          — sidebar included — is ever shown). */}
+      <Route path="mockup/auth-change-flow" element={<AuthChangeFlowMockup />} />
     </Routes>
   )
 }

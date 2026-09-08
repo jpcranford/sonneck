@@ -96,6 +96,26 @@ const MOCKUPS = [
     name: 'First-Time Launch Flow',
     note: 'Multi-user support, Phase 2 of the plan (memory project_multiuser_build.md) — Welcome → Library Folder → Security, with a "Preview as Docker/Native" toggle since OIDC and the folder picker both branch on runtime mode. Genuinely interactive against local state; no real backend exists for this yet.',
   },
+  {
+    to: '/mockup/sidebar-user-menu',
+    name: 'Sidebar User Menu',
+    note: 'Multi-user support, Phase 7 of the plan — replaces the static "Local Library" footer pill (desktop rail + mobile drawer) with a real account menu, the approved Option 2 ("Identity card, dark popup") from the Phase 4 artifact. Switch identity state (None/Password/OIDC Admin/OIDC Member), collapse the rail, or open the mobile drawer to see the menu adapt.',
+  },
+  {
+    to: '/mockup/user-settings',
+    name: 'User Settings',
+    note: 'Multi-user support, Phase 8 of the plan — the approved Option 2 ("separate cards per section") from the Phase 5 artifact: Account (display name, identity line, Change Password), Appearance (Theme, Dark disabled/"Soon"), Library (Hide Books in sidebar, Paginated views), Your Tags and Practice Status (per-user create/delete/merge, same pattern as Admin Settings\' Lookup Tables). Switch identity state to see the Account card adapt.',
+  },
+  {
+    to: '/mockup/admin-settings',
+    name: 'Admin Settings',
+    note: 'Multi-user support, Phase 9 of the plan — the approved Option B ("single scrolling page, jump-nav") from the Phase 6 artifact, each section switched to its own bordered card to match User Settings\' Option 2 look (same max-width too): Library Settings (every field independently env-var-shadowed; Security is now read-only, env-var-only, no in-app change control — see the Auth Change Flow mockup for how a change gets handled instead), Library counts, Version (identifies the build by commit SHA against GitHub release/pre-release tags, falling back to "Dev build, from commit <SHA> on <date>"), Users (expandable permission grid with a hover/tap description per permission, last-admin lock, per-row delete with a window.confirm() gate), Lookup Tables (inline-editable Sheet Types/Instruments with usage instructions, a "+" to create a new entry, and a per-row delete that opens a real modal to merge into another entry or delete outright). Switch identity state to see the user list change.',
+  },
+  {
+    to: '/mockup/auth-change-flow',
+    name: 'Auth Change Flow',
+    note: 'Multi-user support, Phase 16 of the plan — a boot-time gate that replaces Admin Settings\' removed in-app Security-change capability: the app detects its AUTH_METHOD no longer matches what it last ran under and walks the admin through the adjustment, mirroring the first-launch flow\'s own full-page-takeover weight. Reuses the choose-surviving-admin/confirm-delete content Admin Settings briefly held before it was pulled out. Switch the "Simulate detected change" scenario to preview every content path: an OIDC upgrade (informational only), a new-password requirement, a light single-account downgrade, and the full destructive multi-account downgrade.',
+  },
 ]
 
 export function MockupIndexPage() {
