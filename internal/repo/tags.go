@@ -13,9 +13,30 @@ func FindOrCreateInstrument(ctx context.Context, q Queryer, name string) (int64,
 	return findOrCreateTag(ctx, q, "instruments", name)
 }
 
-// FindOrCreateUserTag is the same pattern for user-authored tags.
-func FindOrCreateUserTag(ctx context.Context, q Queryer, name string) (int64, error) {
-	return findOrCreateTag(ctx, q, "user_tags", name)
+// FindOrCreateUserTag is the same pattern for user-authored tags, scoped to
+// ownerUserID — user_tags became a private per-user vocabulary in migration
+// 00025 (CLAUDE.md > Concurrency's own forward note), so "find existing"
+// only ever matches a tag this same user already owns; two different users
+// typing the identical tag name each get their own row, never share one.
+func FindOrCreateUserTag(ctx context.Context, q Queryer, ownerUserID int64, name string) (int64, error) {
+	var id int64
+	err := q.QueryRowContext(ctx,
+		`SELECT id FROM user_tags WHERE owner_user_id = ? AND name = ?`, ownerUserID, name,
+	).Scan(&id)
+	if err == nil {
+		return id, nil
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return 0, err
+	}
+
+	res, err := q.ExecContext(ctx,
+		`INSERT INTO user_tags (owner_user_id, name) VALUES (?, ?)`, ownerUserID, name,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return res.LastInsertId()
 }
 
 func findOrCreateTag(ctx context.Context, q Queryer, table, name string) (int64, error) {
@@ -68,9 +89,34 @@ func SetPieceInstruments(ctx context.Context, q Queryer, pieceID int64, instrume
 	return replaceJoinRows(ctx, q, "piece_instruments", "piece_id", "instrument_id", pieceID, instrumentIDs)
 }
 
-// SetPieceUserTags replaces the full set of user tags on a piece.
-func SetPieceUserTags(ctx context.Context, q Queryer, pieceID int64, tagIDs []int64) error {
-	return replaceJoinRows(ctx, q, "piece_user_tags", "piece_id", "tag_id", pieceID, tagIDs)
+// SetPieceUserTags replaces ownerUserID's own tag assignments on pieceID —
+// deliberately NOT the generic replaceJoinRows shape every other Set*
+// function here uses, and NOT a plain "delete every row for this piece_id"
+// the way that shape would imply. piece_user_tags carries no user_id column
+// of its own (multiple users' private tags on the same piece coexist in the
+// same join table, per migration 00025's own design), so an unscoped delete
+// would silently wipe every OTHER user's tag associations on this piece too
+// — a real cross-account data-loss bug, caught live: user A tags a piece,
+// user B then edits the SAME piece's tags (even to set their own, unrelated
+// tags), and user A's own tags vanished. Fixed by scoping the delete to
+// only rows whose tag_id is owned by ownerUserID before inserting the new
+// list — every other user's own rows on this same piece are left untouched.
+func SetPieceUserTags(ctx context.Context, q Queryer, pieceID, ownerUserID int64, tagIDs []int64) error {
+	if _, err := q.ExecContext(ctx, `
+		DELETE FROM piece_user_tags
+		WHERE piece_id = ? AND tag_id IN (SELECT id FROM user_tags WHERE owner_user_id = ?)`,
+		pieceID, ownerUserID,
+	); err != nil {
+		return err
+	}
+	for _, tagID := range tagIDs {
+		if _, err := q.ExecContext(ctx,
+			`INSERT INTO piece_user_tags (piece_id, tag_id) VALUES (?, ?)`, pieceID, tagID,
+		); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // SetBookInstruments replaces the full set of instrument tags on a book.
@@ -161,8 +207,105 @@ func ListInstruments(ctx context.Context, q Queryer) ([]Tag, error) {
 	return listTags(ctx, q, "instruments")
 }
 
-func ListUserTags(ctx context.Context, q Queryer) ([]Tag, error) {
-	return listTags(ctx, q, "user_tags")
+// CreateUserTag adds a new tag owned by ownerUserID — unlike
+// FindOrCreateUserTag (silently reuses an existing name match, used by
+// piece writes), this is a genuine create for User Settings' own "+"
+// button: ErrDuplicateName on a name already in that user's own set,
+// checked via createNamedRow (internal/repo/lookup.go).
+func CreateUserTag(ctx context.Context, q Queryer, ownerUserID int64, name string) (int64, error) {
+	return createNamedRow(ctx, q, "user_tags", "owner_user_id", name, ownerUserID)
+}
+
+// ListUserTags returns only ownerUserID's own tags — private per-user
+// vocabulary (migration 00025), not the shared listTags/global-table
+// pattern Instruments still uses.
+func ListUserTags(ctx context.Context, q Queryer, ownerUserID int64) ([]Tag, error) {
+	rows, err := q.QueryContext(ctx,
+		`SELECT id, name FROM user_tags WHERE owner_user_id = ? ORDER BY name`, ownerUserID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	tags := []Tag{}
+	for rows.Next() {
+		var t Tag
+		if err := rows.Scan(&t.ID, &t.Name); err != nil {
+			return nil, err
+		}
+		tags = append(tags, t)
+	}
+	return tags, rows.Err()
+}
+
+// UserTagsByIDsForUser resolves a piece's tag_id list to display names,
+// scoped to ownerUserID — any id in ids that belongs to a *different*
+// user's private vocabulary (possible since piece_user_tags itself carries
+// no user_id of its own, per migration 00025's own comment) is silently
+// dropped rather than shown, since a viewer must never see another
+// account's private tag names on a piece they both happen to have tagged.
+func UserTagsByIDsForUser(ctx context.Context, q Queryer, ownerUserID int64, ids []int64) ([]Tag, error) {
+	if len(ids) == 0 {
+		return []Tag{}, nil
+	}
+	placeholders := make([]byte, 0, len(ids)*2)
+	args := make([]any, 0, len(ids)+1)
+	args = append(args, ownerUserID)
+	for i, id := range ids {
+		if i > 0 {
+			placeholders = append(placeholders, ',')
+		}
+		placeholders = append(placeholders, '?')
+		args = append(args, id)
+	}
+
+	rows, err := q.QueryContext(ctx,
+		`SELECT id, name FROM user_tags WHERE owner_user_id = ? AND id IN (`+string(placeholders)+`)`, args...,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	tags := []Tag{}
+	for rows.Next() {
+		var t Tag
+		if err := rows.Scan(&t.ID, &t.Name); err != nil {
+			return nil, err
+		}
+		tags = append(tags, t)
+	}
+	return tags, rows.Err()
+}
+
+// PieceIDsWithUserTag collects every piece needing a search-index resync
+// after a user tag delete/merge (CLAUDE.md > Search) — direct join-table
+// membership only, no book-inheritance fallback (user_tags was never
+// book-inheritable). Must be called BEFORE DeleteUserTag, same "collect
+// before the value moves" convention as PieceIDsUsingSheetType/
+// PieceIDsUsingInstrument.
+func PieceIDsWithUserTag(ctx context.Context, q Queryer, tagID int64) ([]int64, error) {
+	return getJoinedIDs(ctx, q, `SELECT piece_id FROM piece_user_tags WHERE tag_id = ?`, tagID)
+}
+
+// DeleteUserTag removes tagID (already confirmed to belong to the calling
+// user). mergeIntoID present means every piece_user_tags row pointing at
+// tagID is repointed to mergeIntoID first — same merge-then-delete shape
+// DeletePracticeStatus/the admin lookup-table delete already use.
+func DeleteUserTag(ctx context.Context, q Queryer, tagID int64, mergeIntoID *int64) error {
+	if mergeIntoID != nil {
+		if _, err := q.ExecContext(ctx, `
+			UPDATE piece_user_tags SET tag_id = ?
+			WHERE tag_id = ? AND piece_id NOT IN (
+				SELECT piece_id FROM piece_user_tags WHERE tag_id = ?
+			)`, *mergeIntoID, tagID, *mergeIntoID,
+		); err != nil {
+			return err
+		}
+	}
+	_, err := q.ExecContext(ctx, `DELETE FROM user_tags WHERE id = ?`, tagID)
+	return err
 }
 
 func listTags(ctx context.Context, q Queryer, table string) ([]Tag, error) {

@@ -52,6 +52,9 @@ func normalizeISBN(raw *string) *string {
 // the book PDF, dedupe on hash match, render nothing yet (thumbnails are
 // rendered on demand per-page — see handleBookPageThumbnail).
 func (s *Server) handleUploadBook(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requirePermission(w, r, models.PermissionUpload); !ok {
+		return
+	}
 	file, header, ok := requireMultipartFile(w, r)
 	if !ok {
 		return
@@ -124,6 +127,9 @@ func (s *Server) handleUploadBook(w http.ResponseWriter, r *http.Request) {
 // gaining one either — it exists purely as a placeholder record a user can
 // fill in ahead of actually having the sheet music.
 func (s *Server) handleCreateBookManual(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requirePermission(w, r, models.PermissionUpload); !ok {
+		return
+	}
 	var req api.BookCreateRequest
 	if err := decodeJSON(r, &req); err != nil {
 		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid request body: "+err.Error())
@@ -230,6 +236,9 @@ var bookSortColumns = map[string]sortColumnFunc{
 // complexity — a Book is the top of the hierarchy, nothing to fall back
 // to (CLAUDE.md > Book-level soft inheritance).
 func (s *Server) handleListBooks(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requirePermission(w, r, models.PermissionRead); !ok {
+		return
+	}
 	q := r.URL.Query()
 
 	var where []string
@@ -373,6 +382,9 @@ func (s *Server) handleListBooks(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleGetBook(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requirePermission(w, r, models.PermissionRead); !ok {
+		return
+	}
 	id, ok := pathID(r, "id")
 	if !ok {
 		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid book id")
@@ -395,6 +407,9 @@ func (s *Server) handleGetBook(w http.ResponseWriter, r *http.Request) {
 // writes only the Book row, then fans the search-index resync out to
 // every piece that inherits from it — not just this one row.
 func (s *Server) handleUpdateBook(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requirePermission(w, r, models.PermissionEdit); !ok {
+		return
+	}
 	id, ok := pathID(r, "id")
 	if !ok {
 		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid book id")
@@ -504,6 +519,9 @@ func (s *Server) handleUpdateBook(w http.ResponseWriter, r *http.Request) {
 // piece in the same batch would make an already-deleted piece's file look
 // "still referenced" and wrongly survive the cleanup.
 func (s *Server) handleDeleteBook(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requirePermission(w, r, models.PermissionDelete); !ok {
+		return
+	}
 	id, ok := pathID(r, "id")
 	if !ok {
 		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid book id")
@@ -606,6 +624,9 @@ func (s *Server) handleDeleteBook(w http.ResponseWriter, r *http.Request) {
 // a PNG, for the wizard's split step (design doc §5) and the basic piece
 // preview (§7).
 func (s *Server) handleBookPageThumbnail(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requirePermission(w, r, models.PermissionRead); !ok {
+		return
+	}
 	id, ok := pathID(r, "id")
 	if !ok {
 		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid book id")
@@ -674,6 +695,9 @@ func detectImageContentType(path string) (string, bool) {
 // first-page-of-PDF thumbnail, then 404) so no call site needs to
 // special-case which source a given book's cover actually comes from.
 func (s *Server) handleGetBookCover(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requirePermission(w, r, models.PermissionRead); !ok {
+		return
+	}
 	id, ok := pathID(r, "id")
 	if !ok {
 		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid book id")
@@ -713,6 +737,9 @@ func (s *Server) handleGetBookCover(w http.ResponseWriter, r *http.Request) {
 // Same move-into-place-then-transaction-then-orphan-cleanup shape as
 // handleReplacePieceFile.
 func (s *Server) handleUploadBookCover(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requirePermission(w, r, models.PermissionEdit); !ok {
+		return
+	}
 	id, ok := pathID(r, "id")
 	if !ok {
 		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid book id")
@@ -802,6 +829,9 @@ func (s *Server) handleUploadBookCover(w http.ResponseWriter, r *http.Request) {
 // placeholder). Same orphan-cleanup-then-log shape as the piece/book file
 // deletion paths elsewhere in this file.
 func (s *Server) handleDeleteBookCover(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requirePermission(w, r, models.PermissionEdit); !ok {
+		return
+	}
 	id, ok := pathID(r, "id")
 	if !ok {
 		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid book id")
@@ -862,6 +892,12 @@ func (s *Server) handleDeleteBookCover(w http.ResponseWriter, r *http.Request) {
 // (migration 00014) has no file at all — a clean 404, same guard
 // handleBookPageThumbnail already uses, not a nil-pointer panic.
 func (s *Server) handleDownloadBookFile(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requirePermission(w, r, models.PermissionRead); !ok {
+		return
+	}
+	if _, ok := s.requirePermission(w, r, models.PermissionDownload); !ok {
+		return
+	}
 	id, ok := pathID(r, "id")
 	if !ok {
 		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid book id")

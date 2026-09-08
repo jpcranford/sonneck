@@ -8,10 +8,14 @@ import (
 	"strings"
 
 	"github.com/jpcranford/sonneck/internal/api"
+	"github.com/jpcranford/sonneck/internal/models"
 	"github.com/jpcranford/sonneck/internal/repo"
 )
 
 func (s *Server) handleGetCitation(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requirePermission(w, r, models.PermissionRead); !ok {
+		return
+	}
 	id, ok := pathID(r, "id")
 	if !ok {
 		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid piece id")

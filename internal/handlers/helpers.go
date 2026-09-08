@@ -511,6 +511,10 @@ func (s *Server) writeError(w http.ResponseWriter, err error) {
 		api.WriteError(w, http.StatusNotFound, api.CodeNotFound, "not found")
 		return
 	}
+	if errors.Is(err, repo.ErrDuplicateName) {
+		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "that name is already in use")
+		return
+	}
 	s.Logger.Error("internal error", "error", err)
 	api.WriteError(w, http.StatusInternalServerError, api.CodeInternalError, "internal error")
 }

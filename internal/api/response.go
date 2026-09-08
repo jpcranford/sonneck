@@ -15,6 +15,12 @@ const (
 	CodeNotFound        = "NOT_FOUND"
 	CodeConflict        = "CONFLICT"
 	CodeInternalError   = "INTERNAL_ERROR"
+	// CodeUnauthorized/CodeForbidden — multi-user support (Phase 10):
+	// Unauthorized means no valid session at all (401, "log in"); Forbidden
+	// means a real session that lacks the permission a specific endpoint
+	// needs (403, "you're logged in, but not allowed to do this").
+	CodeUnauthorized = "UNAUTHORIZED"
+	CodeForbidden    = "FORBIDDEN"
 )
 
 type successEnvelope struct {

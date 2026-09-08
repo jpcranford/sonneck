@@ -22,16 +22,20 @@ import (
 // req is a full-form submission (design doc §5, §15): every field in req
 // replaces p's current value, including clearing it when nil/empty — not a
 // sparse partial update.
-func applyPieceWriteRequest(ctx context.Context, q repo.Queryer, p *models.Piece, req api.PieceWriteRequest) error {
+//
+// userID scopes req.UserTags' find-or-create resolution to this user's own
+// private vocabulary (migration 00025). Favorite/UserNotes/PracticeStatus
+// are deliberately NOT set here even though req carries them — those moved
+// off Piece into per-user tables in the same migration, so the caller
+// (handleCreatePiece/handleUpdatePiece) writes them separately via
+// repo.SetUserPieceData once it has both p.ID and userID in hand.
+func applyPieceWriteRequest(ctx context.Context, q repo.Queryer, p *models.Piece, req api.PieceWriteRequest, userID int64) error {
 	p.Title = req.Title
-	p.Favorite = req.Favorite
 	p.WorkOpusNumber = req.WorkOpusNumber
 	p.Publisher = req.Publisher
 	p.PublisherID = req.PublisherID
 	p.YearWritten = req.YearWritten
 	p.Description = req.Description
-	p.UserNotes = req.UserNotes
-	p.PracticeStatus = req.PracticeStatus
 	p.ImslpNumber = req.ImslpNumber
 
 	// Must reference a real Book — checked explicitly here rather than
@@ -87,7 +91,10 @@ func applyPieceWriteRequest(ctx context.Context, q repo.Queryer, p *models.Piece
 	}
 	p.InstrumentIDs = instrumentIDs
 
-	userTagIDs, err := resolveTagNames(ctx, q, repo.FindOrCreateUserTag, req.UserTags, "userTags")
+	findOrCreateOwnUserTag := func(ctx context.Context, q repo.Queryer, name string) (int64, error) {
+		return repo.FindOrCreateUserTag(ctx, q, userID, name)
+	}
+	userTagIDs, err := resolveTagNames(ctx, q, findOrCreateOwnUserTag, req.UserTags, "userTags")
 	if err != nil {
 		return err
 	}

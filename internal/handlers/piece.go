@@ -29,6 +29,10 @@ import (
 // frontend can route the user to the piece that already represents this
 // file rather than minting a second one.
 func (s *Server) handleCreatePiece(w http.ResponseWriter, r *http.Request) {
+	user, ok := s.requirePermission(w, r, models.PermissionUpload)
+	if !ok {
+		return
+	}
 	file, header, ok := requireMultipartFile(w, r)
 	if !ok {
 		return
@@ -48,7 +52,7 @@ func (s *Server) handleCreatePiece(w http.ResponseWriter, r *http.Request) {
 	}
 	if existing != nil {
 		os.Remove(tempPath)
-		resp, err := api.BuildPieceResponse(r.Context(), s.DB, existing, s.Cfg.CopyrightRegion)
+		resp, err := api.BuildPieceResponse(r.Context(), s.DB, existing, s.Cfg.CopyrightRegion, user.ID)
 		if err != nil {
 			s.writeError(w, err)
 			return
@@ -89,7 +93,7 @@ func (s *Server) handleCreatePiece(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return err
 		}
-		resp, err = api.BuildPieceResponse(r.Context(), tx, created, s.Cfg.CopyrightRegion)
+		resp, err = api.BuildPieceResponse(r.Context(), tx, created, s.Cfg.CopyrightRegion, user.ID)
 		return err
 	})
 	if err != nil {
@@ -106,12 +110,16 @@ func (s *Server) handleCreatePiece(w http.ResponseWriter, r *http.Request) {
 // one regardless of registration order, so "random" never falls through to
 // handleGetPiece and gets parsed as an id.
 func (s *Server) handleGetRandomPiece(w http.ResponseWriter, r *http.Request) {
+	user, ok := s.requirePermission(w, r, models.PermissionRead)
+	if !ok {
+		return
+	}
 	p, err := repo.GetRandomPiece(r.Context(), s.DB)
 	if err != nil {
 		s.writeError(w, err)
 		return
 	}
-	resp, err := api.BuildPieceResponse(r.Context(), s.DB, p, s.Cfg.CopyrightRegion)
+	resp, err := api.BuildPieceResponse(r.Context(), s.DB, p, s.Cfg.CopyrightRegion, user.ID)
 	if err != nil {
 		s.writeError(w, err)
 		return
@@ -120,6 +128,10 @@ func (s *Server) handleGetRandomPiece(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleGetPiece(w http.ResponseWriter, r *http.Request) {
+	user, ok := s.requirePermission(w, r, models.PermissionRead)
+	if !ok {
+		return
+	}
 	id, ok := pathID(r, "id")
 	if !ok {
 		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid piece id")
@@ -131,7 +143,7 @@ func (s *Server) handleGetPiece(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, err)
 		return
 	}
-	resp, err := api.BuildPieceResponse(r.Context(), s.DB, p, s.Cfg.CopyrightRegion)
+	resp, err := api.BuildPieceResponse(r.Context(), s.DB, p, s.Cfg.CopyrightRegion, user.ID)
 	if err != nil {
 		s.writeError(w, err)
 		return
@@ -142,6 +154,10 @@ func (s *Server) handleGetPiece(w http.ResponseWriter, r *http.Request) {
 // handleUpdatePiece is the standalone Piece Properties Edit Menu (design
 // doc §15) — one of the two flows that must run api.ValidatePiece.
 func (s *Server) handleUpdatePiece(w http.ResponseWriter, r *http.Request) {
+	user, ok := s.requirePermission(w, r, models.PermissionEdit)
+	if !ok {
+		return
+	}
 	id, ok := pathID(r, "id")
 	if !ok {
 		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid piece id")
@@ -161,13 +177,30 @@ func (s *Server) handleUpdatePiece(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
-		if err := applyPieceWriteRequest(r.Context(), tx, p, req); err != nil {
+		if err := applyPieceWriteRequest(r.Context(), tx, p, req, user.ID); err != nil {
 			return err
 		}
 
 		errs, err := api.ValidatePiece(r.Context(), tx, p)
 		if err != nil {
 			return err
+		}
+		// practiceStatus validated here, not inside ValidatePiece — it's no
+		// longer a field on Piece at all (migration 00025), and its
+		// validity depends on the request's own user's practice_statuses,
+		// not a fixed set ValidatePiece's pure signature has no DB-scoped
+		// user to check against.
+		var statusID *int64
+		if req.PracticeStatus != nil {
+			foundID, found, err := repo.FindPracticeStatusByName(r.Context(), tx, user.ID, *req.PracticeStatus)
+			if err != nil {
+				return err
+			}
+			if !found {
+				errs = append(errs, api.FieldError{Field: "practiceStatus", Message: "does not exist — create it first in Practice Status settings"})
+			} else {
+				statusID = &foundID
+			}
 		}
 		if len(errs) > 0 {
 			return errs
@@ -183,7 +216,7 @@ func (s *Server) handleUpdatePiece(w http.ResponseWriter, r *http.Request) {
 		if err := repo.SetPieceInstruments(r.Context(), tx, id, p.InstrumentIDs); err != nil {
 			return err
 		}
-		if err := repo.SetPieceUserTags(r.Context(), tx, id, p.UserTagIDs); err != nil {
+		if err := repo.SetPieceUserTags(r.Context(), tx, id, user.ID, p.UserTagIDs); err != nil {
 			return err
 		}
 		if err := repo.SetPieceComposers(r.Context(), tx, id, p.ComposerIDs); err != nil {
@@ -192,11 +225,15 @@ func (s *Server) handleUpdatePiece(w http.ResponseWriter, r *http.Request) {
 		if err := repo.SetPieceArrangers(r.Context(), tx, id, p.ArrangerIDs); err != nil {
 			return err
 		}
+		userData := repo.UserPieceData{Favorite: req.Favorite, UserNotes: req.UserNotes, PracticeStatus: req.PracticeStatus}
+		if err := repo.SetUserPieceData(r.Context(), tx, user.ID, id, userData, statusID); err != nil {
+			return err
+		}
 		if err := repo.ResyncSearchIndex(r.Context(), tx, id); err != nil {
 			return err
 		}
 
-		resp, err = api.BuildPieceResponse(r.Context(), tx, p, s.Cfg.CopyrightRegion)
+		resp, err = api.BuildPieceResponse(r.Context(), tx, p, s.Cfg.CopyrightRegion, user.ID)
 		return err
 	})
 	if err != nil {
@@ -212,6 +249,9 @@ func (s *Server) handleUpdatePiece(w http.ResponseWriter, r *http.Request) {
 // transaction (row delete, FTS resync, orphan detection/deletion) commits
 // first; only once that's durably true do we touch the filesystem.
 func (s *Server) handleDeletePiece(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requirePermission(w, r, models.PermissionDelete); !ok {
+		return
+	}
 	id, ok := pathID(r, "id")
 	if !ok {
 		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid piece id")
@@ -314,6 +354,12 @@ func (s *Server) handleDeletePiece(w http.ResponseWriter, r *http.Request) {
 // inheritance) — a piece inheriting its composer from its book must still
 // get that composer in its downloaded filename.
 func (s *Server) handleDownloadPieceFile(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requirePermission(w, r, models.PermissionRead); !ok {
+		return
+	}
+	if _, ok := s.requirePermission(w, r, models.PermissionDownload); !ok {
+		return
+	}
 	id, ok := pathID(r, "id")
 	if !ok {
 		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid piece id")
@@ -359,6 +405,9 @@ func (s *Server) handleDownloadPieceFile(w http.ResponseWriter, r *http.Request)
 // PageCount (populated at upload/replace time — see CreatePiece call sites),
 // not the book's.
 func (s *Server) handlePieceThumbnail(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requirePermission(w, r, models.PermissionRead); !ok {
+		return
+	}
 	id, ok := pathID(r, "id")
 	if !ok {
 		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid piece id")
@@ -398,6 +447,10 @@ func (s *Server) handlePieceThumbnail(w http.ResponseWriter, r *http.Request) {
 // — so a failure at any point leaves either the old (DB row + file) pair
 // or the new one intact, never a row pointing at a missing file.
 func (s *Server) handleReplacePieceFile(w http.ResponseWriter, r *http.Request) {
+	user, ok := s.requirePermission(w, r, models.PermissionUpload)
+	if !ok {
+		return
+	}
 	id, ok := pathID(r, "id")
 	if !ok {
 		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid piece id")
@@ -453,7 +506,7 @@ func (s *Server) handleReplacePieceFile(w http.ResponseWriter, r *http.Request) 
 			return err
 		}
 
-		resp, err = api.BuildPieceResponse(r.Context(), tx, p, s.Cfg.CopyrightRegion)
+		resp, err = api.BuildPieceResponse(r.Context(), tx, p, s.Cfg.CopyrightRegion, user.ID)
 		return err
 	})
 	if err != nil {
@@ -516,6 +569,10 @@ type setThumbnailPageRequest struct {
 // replace meant for the (not-yet-built) Piece Properties Edit Menu, and
 // this is a one-click action triggered from the preview, not a field edit.
 func (s *Server) handleSetPieceThumbnailPage(w http.ResponseWriter, r *http.Request) {
+	user, ok := s.requirePermission(w, r, models.PermissionEdit)
+	if !ok {
+		return
+	}
 	id, ok := pathID(r, "id")
 	if !ok {
 		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid piece id")
@@ -548,7 +605,7 @@ func (s *Server) handleSetPieceThumbnailPage(w http.ResponseWriter, r *http.Requ
 			return err
 		}
 
-		resp, err = api.BuildPieceResponse(r.Context(), tx, p, s.Cfg.CopyrightRegion)
+		resp, err = api.BuildPieceResponse(r.Context(), tx, p, s.Cfg.CopyrightRegion, user.ID)
 		return err
 	})
 	if err != nil {

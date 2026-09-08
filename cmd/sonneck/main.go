@@ -192,6 +192,25 @@ func runSubcommand(name string, conn *sql.DB, cfg *config.Config, logger *slog.L
 		logger.Info("people migration completed",
 			"piecesMigrated", result.PiecesMigrated, "piecesSkipped", result.PiecesSkipped,
 			"booksMigrated", result.BooksMigrated, "booksSkipped", result.BooksSkipped)
+	case "reset-password":
+		// Sixth instance of the CLI-subcommand admin pattern (CLAUDE.md >
+		// Search), locked in the master plan's own "Auth methods" section.
+		// Clears password_hash on the local admin row (id=1, the one
+		// account singlepass mode ever has) — a lockout recovery path for
+		// an operator who's forgotten it, reachable only via shell/docker
+		// exec, matching every other subcommand's own no-HTTP-auth-yet
+		// posture. The app itself doesn't fall back to open access once
+		// this runs (that would be a real security regression for anyone
+		// who didn't intend to reset anything) — POST /api/admin/security's
+		// own "password required" branch (no existing hash) simply applies
+		// the next time an admin sets a new one through the app, the exact
+		// same state a fresh singlepass install starts in before its first
+		// password is ever set.
+		if err := repo.SetUserPasswordHash(context.Background(), conn, 1, nil); err != nil {
+			logger.Error("password reset failed", "error", err)
+			os.Exit(1)
+		}
+		logger.Info("password reset completed", "userId", 1)
 	case "export-csv":
 		// Third instance of the CLI-subcommand admin pattern (CLAUDE.md >
 		// Search). Also safe against a live server — WAL mode lets these

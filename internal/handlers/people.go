@@ -81,6 +81,9 @@ var personSortColumns = map[string]sortColumnFunc{
 // — same "small personal-library scale" assumption Key/Instrument's own
 // always-return-everything lookups already make.
 func (s *Server) handleListPeople(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requirePermission(w, r, models.PermissionRead); !ok {
+		return
+	}
 	q := r.URL.Query()
 
 	var where []string
@@ -145,6 +148,9 @@ func (s *Server) handleListPeople(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleCreatePerson(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requirePermission(w, r, models.PermissionEdit); !ok {
+		return
+	}
 	var req api.PersonCreateRequest
 	if err := decodeJSON(r, &req); err != nil {
 		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid request body: "+err.Error())
@@ -182,6 +188,9 @@ func (s *Server) handleCreatePerson(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleGetPerson(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requirePermission(w, r, models.PermissionRead); !ok {
+		return
+	}
 	id, ok := pathID(r, "id")
 	if !ok {
 		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid person id")
@@ -208,6 +217,9 @@ func (s *Server) handleGetPerson(w http.ResponseWriter, r *http.Request) {
 // a Book field edit already fans out to its pieces), so this resyncs the
 // search index for every affected piece, same as ResyncSearchIndexForBook.
 func (s *Server) handleUpdatePerson(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requirePermission(w, r, models.PermissionEdit); !ok {
+		return
+	}
 	id, ok := pathID(r, "id")
 	if !ok {
 		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid person id")
@@ -268,6 +280,9 @@ func (s *Server) handleUpdatePerson(w http.ResponseWriter, r *http.Request) {
 // name edit, since a deleted person's name should stop appearing in
 // search the instant the row is gone.
 func (s *Server) handleDeletePerson(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requirePermission(w, r, models.PermissionDelete); !ok {
+		return
+	}
 	id, ok := pathID(r, "id")
 	if !ok {
 		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid person id")
@@ -313,6 +328,9 @@ func (s *Server) handleDeletePerson(w http.ResponseWriter, r *http.Request) {
 // left with zero credits afterward"). At least one replacement name is
 // required.
 func (s *Server) handleSplitPerson(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requirePermission(w, r, models.PermissionEdit); !ok {
+		return
+	}
 	id, ok := pathID(r, "id")
 	if !ok {
 		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid person id")
@@ -374,6 +392,9 @@ func (s *Server) handleSplitPerson(w http.ResponseWriter, r *http.Request) {
 // own initials/bust placeholder takes over from there, entirely client-
 // side, same as it already does for a person with no portraitImageHash).
 func (s *Server) handleGetPersonPortrait(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requirePermission(w, r, models.PermissionRead); !ok {
+		return
+	}
 	id, ok := pathID(r, "id")
 	if !ok {
 		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid person id")
@@ -393,6 +414,9 @@ func (s *Server) handleGetPersonPortrait(w http.ResponseWriter, r *http.Request)
 }
 
 func (s *Server) handleUploadPersonPortrait(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requirePermission(w, r, models.PermissionEdit); !ok {
+		return
+	}
 	id, ok := pathID(r, "id")
 	if !ok {
 		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid person id")
@@ -474,6 +498,9 @@ func (s *Server) handleUploadPersonPortrait(w http.ResponseWriter, r *http.Reque
 }
 
 func (s *Server) handleDeletePersonPortrait(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requirePermission(w, r, models.PermissionEdit); !ok {
+		return
+	}
 	id, ok := pathID(r, "id")
 	if !ok {
 		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid person id")

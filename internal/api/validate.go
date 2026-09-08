@@ -15,14 +15,6 @@ import (
 // inputs (description, userNotes) are exempt.
 const MaxLineLength = 255
 
-var validPracticeStatuses = map[string]bool{
-	models.PracticeStatusWantToLearn: true,
-	models.PracticeStatusLearning:    true,
-	models.PracticeStatusLearned:     true,
-	models.PracticeStatusStalled:     true,
-	models.PracticeStatusDropped:     true,
-}
-
 // FieldError is one field-level validation failure.
 type FieldError struct {
 	Field   string
@@ -98,9 +90,13 @@ func ValidatePiece(ctx context.Context, q repo.Queryer, p *models.Piece) (Valida
 	checkCopyrightYear(&errs, p.CopyrightYear)
 	checkCopyrightStatus(&errs, p.CopyrightStatus)
 
-	if p.PracticeStatus != nil && !validPracticeStatuses[*p.PracticeStatus] {
-		errs = append(errs, FieldError{"practiceStatus", "must be one of: Want to Learn, Learning, Learned, Stalled, Dropped"})
-	}
+	// practiceStatus is no longer validated here — it moved off Piece
+	// entirely (migration 00025), and validity now depends on the request's
+	// own user (does a practice_statuses row by this name exist for them),
+	// not a fixed in-memory set this pure function has no DB access for.
+	// See handleCreatePiece/handleUpdatePiece, which check it directly via
+	// repo.FindPracticeStatusByName and append into this same
+	// ValidationErrors slice before responding.
 
 	checkPositiveInt(&errs, "duration", p.Duration)
 	checkPositiveInt(&errs, "bpm", p.BPM)

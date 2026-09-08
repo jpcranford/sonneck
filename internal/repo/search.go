@@ -108,10 +108,16 @@ func ResyncSearchIndex(ctx context.Context, q Queryer, pieceID int64) error {
 	if err != nil {
 		return err
 	}
-	userTagNames, err := namesByIDs(ctx, q, "user_tags", p.UserTagIDs)
-	if err != nil {
-		return err
-	}
+	// user_tags names are deliberately NOT indexed here as of migration
+	// 00025 (multi-user support) — same cross-account leak reasoning as the
+	// user_notes column just above: user_tags is now a private per-user
+	// vocabulary (owner_user_id), and pieces_fts is one shared row per
+	// piece, so indexing every owner's tag names would let one user's
+	// search match on another user's private tag text, even though the
+	// piece response itself already hides that tag from anyone but its
+	// owner (repo.UserTagsByIDsForUser). Left as an always-empty FTS
+	// column for the same "no drop-recreate migration for a value with no
+	// single well-defined content anymore" reasoning as user_notes.
 
 	// Book title has no "effective"/inherited concept of its own the way
 	// composer/publisher/etc. do (a piece can't override its own source
@@ -132,21 +138,31 @@ func ResyncSearchIndex(ctx context.Context, q Queryer, pieceID int64) error {
 	// 00019's own comment), not a differently-scoped index.
 	//
 	// Free-text fields (title/composer/arranger/publisher/description/
-	// user_notes/instruments/user_tags/book_title) go through
-	// NormalizeAmpersand so a real name like "Boosey & Hawkes" or "Rodgers &
-	// Hammerstein" is findable by "and" too, and vice versa (see that
-	// function's own doc comment) — sanitizeFTSQuery/sanitizeTrigramFTSQuery
+	// instruments/user_tags/book_title) go through NormalizeAmpersand so a
+	// real name like "Boosey & Hawkes" or "Rodgers & Hammerstein" is
+	// findable by "and" too, and vice versa (see that function's own doc
+	// comment) — sanitizeFTSQuery/sanitizeTrigramFTSQuery
 	// (internal/handlers/search.go) apply the identical normalization to the
 	// incoming query, so both sides land on the same canonical text.
 	// Identifier/fixed-vocabulary fields (publisher_id, imslp_number,
 	// year_written, work_opus_number, key_name, sheet_type_name) are left
 	// alone — an ampersand there, if it ever occurred, isn't standing in for
 	// "and".
+	//
+	// The pieces_fts column named user_notes is deliberately always written
+	// empty as of migration 00025 (multi-user support) — user_notes moved
+	// off Piece into a genuinely per-user table (piece_user_notes), and this
+	// index row is shared by every user's search: indexing one user's own
+	// notes text here would leak it into every *other* user's search
+	// matches, a real cross-account privacy break. Left as an always-empty
+	// column rather than dropped from the FTS5 schema (which would need a
+	// drop-recreate migration per 00019's own constraint) for a value that
+	// no longer has any single well-defined content to index anyway.
 	insertArgs := []any{
 		p.ID, NormalizeAmpersand(p.Title), NormalizeAmpersand(strings.Join(composerNames, " ")), NormalizeAmpersand(strings.Join(arrangerNames, " ")),
 		NormalizeAmpersand(eff.Publisher.Value), eff.PublisherID.Value,
-		eff.ImslpNumber.Value, eff.YearWritten.Value, eff.WorkOpusNumber.Value, NormalizeAmpersand(eff.Description.Value), NormalizeAmpersand(strOrEmpty(p.UserNotes)),
-		strings.Join(keyNames, " "), sheetTypeName, NormalizeAmpersand(strings.Join(instrumentNames, " ")), NormalizeAmpersand(strings.Join(userTagNames, " ")), NormalizeAmpersand(bookTitle),
+		eff.ImslpNumber.Value, eff.YearWritten.Value, eff.WorkOpusNumber.Value, NormalizeAmpersand(eff.Description.Value), "",
+		strings.Join(keyNames, " "), sheetTypeName, NormalizeAmpersand(strings.Join(instrumentNames, " ")), "", NormalizeAmpersand(bookTitle),
 	}
 	const insertColumns = `
 		piece_id, title, composer, arranger, publisher, publisher_id,
@@ -225,11 +241,4 @@ func RebuildSearchIndex(ctx context.Context, q Queryer) error {
 		}
 	}
 	return nil
-}
-
-func strOrEmpty(s *string) string {
-	if s == nil {
-		return ""
-	}
-	return *s
 }

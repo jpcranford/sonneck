@@ -66,6 +66,13 @@ func DeletePerson(ctx context.Context, q Queryer, id int64) error {
 	return err
 }
 
+// CountAllPeople backs Admin Settings' "Library" stat cards.
+func CountAllPeople(ctx context.Context, q Queryer) (int, error) {
+	var count int
+	err := q.QueryRowContext(ctx, `SELECT COUNT(*) FROM people`).Scan(&count)
+	return count, err
+}
+
 // CountPeopleWithPortraitImageHash mirrors CountBooksWithCoverImageHash —
 // portrait images are content-addressed (storage.PortraitImagePath), so
 // two different people legitimately sharing the identical portrait file

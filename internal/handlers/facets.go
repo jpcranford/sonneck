@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/jpcranford/sonneck/internal/api"
+	"github.com/jpcranford/sonneck/internal/models"
 	"github.com/jpcranford/sonneck/internal/repo"
 )
 
@@ -102,11 +103,15 @@ func whereClauseSuffix(where string) string {
 }
 
 func (s *Server) handlePieceFacets(w http.ResponseWriter, r *http.Request) {
+	user, ok := s.requirePermission(w, r, models.PermissionRead)
+	if !ok {
+		return
+	}
 	ctx := r.Context()
 	q := r.URL.Query()
 	query := strings.TrimSpace(q.Get("query"))
 
-	clauses, ok := buildPieceFilterClauses(w, q)
+	clauses, ok := buildPieceFilterClauses(w, q, user.ID)
 	if !ok {
 		return
 	}
@@ -195,16 +200,23 @@ func (s *Server) handlePieceFacets(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Scoped to user.ID (migration 00025) — practice status is per-user now,
+	// so this facet counts only the calling user's own statuses, joined
+	// through piece_practice_status/practice_statuses instead of a plain
+	// p.practice_status column.
 	psWhere, psArgs := buildWhere("practiceStatus")
-	psFullWhere := "p.practice_status IS NOT NULL"
+	psFullWhere := "pps.user_id = ?"
+	psQueryArgs := append([]any{user.ID}, psArgs...)
 	if psWhere != "" {
 		psFullWhere += " AND " + psWhere
 	}
 	statusRows, err := s.DB.QueryContext(ctx, `
-		SELECT p.practice_status, COUNT(*)
-		FROM pieces p`+textJoin+`
+		SELECT ps.name, COUNT(*)
+		FROM piece_practice_status pps
+		JOIN practice_statuses ps ON ps.id = pps.status_id
+		JOIN pieces p ON p.id = pps.piece_id`+textJoin+`
 		WHERE `+psFullWhere+`
-		GROUP BY p.practice_status`, psArgs...)
+		GROUP BY ps.name`, psQueryArgs...)
 	if err != nil {
 		s.writeError(w, err)
 		return
@@ -226,8 +238,13 @@ func (s *Server) handlePieceFacets(w http.ResponseWriter, r *http.Request) {
 	}
 	statusRows.Close()
 
+	// Scoped to user.ID (migration 00025) — favorite is per-user now
+	// (piece_favorites), so this counts only pieces the calling user
+	// themselves has favorited, not a shared column.
 	favWhere, favArgs := buildWhere("favorite")
-	favorite, err := countPiecesMatching(ctx, s.DB, "p.favorite = 1", textJoin, favWhere, favArgs)
+	favOwnCondition := "p.id IN (SELECT piece_id FROM piece_favorites WHERE user_id = ?)"
+	favQueryArgs := append([]any{user.ID}, favArgs...)
+	favorite, err := countPiecesMatching(ctx, s.DB, favOwnCondition, textJoin, favWhere, favQueryArgs)
 	if err != nil {
 		s.writeError(w, err)
 		return
@@ -269,9 +286,13 @@ func (s *Server) handlePieceFacets(w http.ResponseWriter, r *http.Request) {
 
 // countPiecesMatching runs `SELECT COUNT(*) FROM pieces p<textJoin> WHERE
 // <ownCondition> [AND <otherWhere>]` — the shared shape behind each of
-// PieceFacets's three boolean ("Show only") counts. ownCondition is always
-// a fixed, parameter-free SQL fragment (no `?` placeholders of its own),
-// so otherArgs alone is the query's full arg list.
+// PieceFacets's boolean ("Show only") counts. ownCondition is usually a
+// fixed, parameter-free SQL fragment (bookless/hasImslpNumber), in which
+// case otherArgs alone is the query's full arg list; favorite (migration
+// 00025, now a per-user join) is the one exception — its ownCondition
+// carries its own leading `?` (for userID), so its caller passes that value
+// prepended onto otherArgs, matching the placeholder order in the SQL text
+// above (ownCondition's own placeholders always come before otherWhere's).
 func countPiecesMatching(ctx context.Context, db *sql.DB, ownCondition, textJoin, otherWhere string, otherArgs []any) (int, error) {
 	fullWhere := ownCondition
 	if otherWhere != "" {
@@ -370,6 +391,9 @@ func bookTextMatchClause(query string) (where string, args []any) {
 }
 
 func (s *Server) handleBookFacets(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requirePermission(w, r, models.PermissionRead); !ok {
+		return
+	}
 	ctx := r.Context()
 	q := r.URL.Query()
 	query := strings.TrimSpace(q.Get("query"))

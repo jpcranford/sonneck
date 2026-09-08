@@ -18,15 +18,15 @@ import (
 func CreatePiece(ctx context.Context, q Queryer, p *models.Piece) (int64, error) {
 	res, err := q.ExecContext(ctx, `
 		INSERT INTO pieces (
-			title, favorite, work_opus_number, sheet_type_id,
-			publisher, publisher_id, year_written, description, user_notes, practice_status,
+			title, work_opus_number, sheet_type_id,
+			publisher, publisher_id, year_written, description,
 			imslp_number, source_book_id, source_page_start, source_page_end,
 			duration, bpm, measure_count, beats_per_measure,
 			file_path, file_hash, page_count, thumbnail_page, copyright_year,
 			copyright_holder, copyright_slug, copyright_status, copyright_renewed
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		p.Title, p.Favorite, p.WorkOpusNumber, p.SheetTypeID,
-		p.Publisher, p.PublisherID, p.YearWritten, p.Description, p.UserNotes, p.PracticeStatus,
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		p.Title, p.WorkOpusNumber, p.SheetTypeID,
+		p.Publisher, p.PublisherID, p.YearWritten, p.Description,
 		p.ImslpNumber, p.SourceBookID, p.SourcePageStart, p.SourcePageEnd,
 		p.Duration, p.BPM, p.MeasureCount, p.BeatsPerMeasure,
 		p.FilePath, p.FileHash, p.PageCount, p.ThumbnailPage, p.CopyrightYear,
@@ -41,16 +41,16 @@ func CreatePiece(ctx context.Context, q Queryer, p *models.Piece) (int64, error)
 func GetPieceByID(ctx context.Context, q Queryer, id int64) (*models.Piece, error) {
 	p := &models.Piece{}
 	err := q.QueryRowContext(ctx, `
-		SELECT id, title, favorite, work_opus_number, sheet_type_id,
-			publisher, publisher_id, year_written, description, user_notes, practice_status,
+		SELECT id, title, work_opus_number, sheet_type_id,
+			publisher, publisher_id, year_written, description,
 			imslp_number, source_book_id, source_page_start, source_page_end,
 			duration, bpm, measure_count, beats_per_measure,
 			file_path, file_hash, page_count, thumbnail_page, copyright_year,
 			copyright_holder, copyright_slug, copyright_status, copyright_renewed, created_at, updated_at
 		FROM pieces WHERE id = ?`, id,
 	).Scan(
-		&p.ID, &p.Title, &p.Favorite, &p.WorkOpusNumber, &p.SheetTypeID,
-		&p.Publisher, &p.PublisherID, &p.YearWritten, &p.Description, &p.UserNotes, &p.PracticeStatus,
+		&p.ID, &p.Title, &p.WorkOpusNumber, &p.SheetTypeID,
+		&p.Publisher, &p.PublisherID, &p.YearWritten, &p.Description,
 		&p.ImslpNumber, &p.SourceBookID, &p.SourcePageStart, &p.SourcePageEnd,
 		&p.Duration, &p.BPM, &p.MeasureCount, &p.BeatsPerMeasure,
 		&p.FilePath, &p.FileHash, &p.PageCount, &p.ThumbnailPage, &p.CopyrightYear,
@@ -106,18 +106,18 @@ func GetPieceByID(ctx context.Context, q Queryer, id int64) (*models.Piece, erro
 func UpdatePiece(ctx context.Context, q Queryer, p *models.Piece) error {
 	_, err := q.ExecContext(ctx, `
 		UPDATE pieces SET
-			title = ?, favorite = ?, work_opus_number = ?,
+			title = ?, work_opus_number = ?,
 			sheet_type_id = ?, publisher = ?, publisher_id = ?, year_written = ?,
-			description = ?, user_notes = ?, practice_status = ?, imslp_number = ?,
+			description = ?, imslp_number = ?,
 			source_book_id = ?, source_page_start = ?, source_page_end = ?,
 			duration = ?, bpm = ?, measure_count = ?, beats_per_measure = ?,
 			file_path = ?, file_hash = ?, page_count = ?, thumbnail_page = ?, copyright_year = ?,
 			copyright_holder = ?, copyright_slug = ?, copyright_status = ?, copyright_renewed = ?,
 			updated_at = ?
 		WHERE id = ?`,
-		p.Title, p.Favorite, p.WorkOpusNumber,
+		p.Title, p.WorkOpusNumber,
 		p.SheetTypeID, p.Publisher, p.PublisherID, p.YearWritten,
-		p.Description, p.UserNotes, p.PracticeStatus, p.ImslpNumber,
+		p.Description, p.ImslpNumber,
 		p.SourceBookID, p.SourcePageStart, p.SourcePageEnd,
 		p.Duration, p.BPM, p.MeasureCount, p.BeatsPerMeasure,
 		p.FilePath, p.FileHash, p.PageCount, p.ThumbnailPage, p.CopyrightYear,
@@ -169,6 +169,13 @@ func AllPieceIDs(ctx context.Context, q Queryer) ([]int64, error) {
 // Callers must check this before deleting a piece's file: removing it while
 // another row still references it would silently break that piece's
 // download/preview.
+// CountAllPieces backs Admin Settings' "Library" stat cards.
+func CountAllPieces(ctx context.Context, q Queryer) (int, error) {
+	var count int
+	err := q.QueryRowContext(ctx, `SELECT COUNT(*) FROM pieces`).Scan(&count)
+	return count, err
+}
+
 func CountPiecesWithFileHash(ctx context.Context, q Queryer, hash string) (int, error) {
 	var count int
 	err := q.QueryRowContext(ctx, `SELECT COUNT(*) FROM pieces WHERE file_hash = ?`, hash).Scan(&count)

@@ -2,17 +2,6 @@ package models
 
 import "time"
 
-// PracticeStatus values (design doc §3) — a fixed app-level enum, not a
-// relational lookup table, since there's no indication these need runtime
-// editing the way Key/SheetType do.
-const (
-	PracticeStatusWantToLearn = "Want to Learn"
-	PracticeStatusLearning    = "Learning"
-	PracticeStatusLearned     = "Learned"
-	PracticeStatusStalled     = "Stalled"
-	PracticeStatusDropped     = "Dropped"
-)
-
 // Piece is the app's core unit (design doc §3). Fields marked
 // "book-inheritable" below fall back to the source Book's value when empty —
 // see ResolveEffective in this package's sibling repo package, which is the
@@ -21,15 +10,19 @@ type Piece struct {
 	ID    int64
 	Title string // never book-inheritable
 
-	Favorite       bool
+	// Favorite/UserNotes/PracticeStatus moved OFF Piece entirely in
+	// migration 00025 (multi-user support, Phase 10) — each is now genuinely
+	// per-user data (piece_favorites/piece_user_notes/piece_practice_status),
+	// which a single bool/string field on this shared struct could never
+	// represent once more than one account can view the same piece. See
+	// repo.UserPieceData/GetUserPieceData/SetUserPieceData — fetched/written
+	// separately, only by the handlers that have a request-scoped user.
 	WorkOpusNumber *string // book-inheritable
 	SheetTypeID    *int64  // book-inheritable
 	Publisher      *string // book-inheritable
 	PublisherID    *string // book-inheritable
 	YearWritten    *string // book-inheritable
 	Description    *string // book-inheritable
-	UserNotes      *string
-	PracticeStatus *string
 	ImslpNumber    *string // book-inheritable
 
 	SourceBookID    *int64

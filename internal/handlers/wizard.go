@@ -52,6 +52,10 @@ type stagedPiece struct {
 // commit leaves nothing committed and the staging directory is simply
 // discarded — never a half-imported book.
 func (s *Server) handleConfirmImport(w http.ResponseWriter, r *http.Request) {
+	user, ok := s.requirePermission(w, r, models.PermissionUpload)
+	if !ok {
+		return
+	}
 	bookID, ok := pathID(r, "id")
 	if !ok {
 		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid book id")
@@ -146,7 +150,7 @@ func (s *Server) handleConfirmImport(w http.ResponseWriter, r *http.Request) {
 				ThumbnailPage: 1,
 			}
 
-			if err := applyPieceWriteRequest(r.Context(), tx, p, req.Pieces[i]); err != nil {
+			if err := applyPieceWriteRequest(r.Context(), tx, p, req.Pieces[i], user.ID); err != nil {
 				return fmt.Errorf("piece %d (pages %d-%d): %w", i+1, start, end, err)
 			}
 			// The actual book/extraction range is authoritative here — it
@@ -169,9 +173,22 @@ func (s *Server) handleConfirmImport(w http.ResponseWriter, r *http.Request) {
 			p.SourcePageStart = &adjustedStart
 			p.SourcePageEnd = &adjustedEnd
 
+			pieceReq := req.Pieces[i]
 			errs, err := api.ValidatePiece(r.Context(), tx, p)
 			if err != nil {
 				return err
+			}
+			var statusID *int64
+			if pieceReq.PracticeStatus != nil {
+				foundID, found, err := repo.FindPracticeStatusByName(r.Context(), tx, user.ID, *pieceReq.PracticeStatus)
+				if err != nil {
+					return err
+				}
+				if !found {
+					errs = append(errs, api.FieldError{Field: "practiceStatus", Message: "does not exist — create it first in Practice Status settings"})
+				} else {
+					statusID = &foundID
+				}
 			}
 			if len(errs) > 0 {
 				return fmt.Errorf("piece %d (pages %d-%d): %w", i+1, start, end, errs)
@@ -189,13 +206,17 @@ func (s *Server) handleConfirmImport(w http.ResponseWriter, r *http.Request) {
 			if err := repo.SetPieceInstruments(r.Context(), tx, id, p.InstrumentIDs); err != nil {
 				return err
 			}
-			if err := repo.SetPieceUserTags(r.Context(), tx, id, p.UserTagIDs); err != nil {
+			if err := repo.SetPieceUserTags(r.Context(), tx, id, user.ID, p.UserTagIDs); err != nil {
 				return err
 			}
 			if err := repo.SetPieceComposers(r.Context(), tx, id, p.ComposerIDs); err != nil {
 				return err
 			}
 			if err := repo.SetPieceArrangers(r.Context(), tx, id, p.ArrangerIDs); err != nil {
+				return err
+			}
+			userData := repo.UserPieceData{Favorite: pieceReq.Favorite, UserNotes: pieceReq.UserNotes, PracticeStatus: pieceReq.PracticeStatus}
+			if err := repo.SetUserPieceData(r.Context(), tx, user.ID, id, userData, statusID); err != nil {
 				return err
 			}
 			if err := repo.ResyncSearchIndex(r.Context(), tx, id); err != nil {
@@ -242,7 +263,7 @@ func (s *Server) handleConfirmImport(w http.ResponseWriter, r *http.Request) {
 			s.writeError(w, err)
 			return
 		}
-		resp, err := api.BuildPieceResponse(r.Context(), s.DB, p, s.Cfg.CopyrightRegion)
+		resp, err := api.BuildPieceResponse(r.Context(), s.DB, p, s.Cfg.CopyrightRegion, user.ID)
 		if err != nil {
 			s.writeError(w, err)
 			return

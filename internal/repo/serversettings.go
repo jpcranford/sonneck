@@ -50,3 +50,31 @@ func CompleteFirstLaunch(ctx context.Context, q Queryer, authMethod string, pass
 	_, err := q.ExecContext(ctx, `UPDATE users SET password_hash = ? WHERE id = 1`, passwordHash)
 	return err
 }
+
+// UpdateAuthMethod persists an in-app auth-method change (POST
+// /api/admin/security) — unlike CompleteFirstLaunch, this deliberately does
+// NOT touch first_launch_completed_at (that timestamp means "when setup was
+// first completed," not "when security was last changed"; a later security
+// change re-stamping it would be a real, if minor, semantic drift with
+// nothing else in this app depending on the distinction, but not worth
+// introducing for no benefit).
+func UpdateAuthMethod(ctx context.Context, q Queryer, authMethod string) error {
+	_, err := q.ExecContext(ctx, `UPDATE server_settings SET auth_method = ? WHERE id = 1`, authMethod)
+	return err
+}
+
+// ResolveAuthMethod is the one shared implementation of the env-var-wins
+// resolution order (master plan's Auth methods table): cfgAuthMethod (from
+// AUTH_METHOD, "" if unset) wins if set, else settings.AuthMethod (the
+// first-launch choice) if that's been made, else "none". Used by both
+// GET /api/config and authMiddleware — CLAUDE.md's "one shared helper, not
+// duplicated logic" convention (same reasoning as ResolveEffective).
+func ResolveAuthMethod(cfgAuthMethod string, settings *ServerSettings) string {
+	if cfgAuthMethod != "" {
+		return cfgAuthMethod
+	}
+	if settings.AuthMethod != nil {
+		return *settings.AuthMethod
+	}
+	return "none"
+}

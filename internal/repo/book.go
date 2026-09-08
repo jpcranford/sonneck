@@ -130,6 +130,13 @@ func UpdateBookCoverImage(ctx context.Context, q Queryer, bookID int64, hash, co
 	return err
 }
 
+// CountAllBooks backs Admin Settings' "Library" stat cards.
+func CountAllBooks(ctx context.Context, q Queryer) (int, error) {
+	var count int
+	err := q.QueryRowContext(ctx, `SELECT COUNT(*) FROM books`).Scan(&count)
+	return count, err
+}
+
 // CountBooksWithCoverImageHash supports the same orphan-cleanup rule as
 // CountPiecesWithFileHash/CountPiecesForBook: cover images are
 // content-addressed (storage.CoverImagePath), so two different books

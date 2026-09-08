@@ -158,23 +158,10 @@ func TestValidatePiece_InheritedArrangerSatisfiesRequirement(t *testing.T) {
 	}
 }
 
-func TestValidatePiece_PracticeStatusMustBeKnownValue(t *testing.T) {
-	ctx := context.Background()
-	dbConn := newTestDB(t)
-
-	bogus := "Vibing"
-	errs, err := api.ValidatePiece(ctx, dbConn, &models.Piece{
-		Title:          "Fine",
-		ComposerIDs:    []int64{1},
-		PracticeStatus: &bogus,
-	})
-	if err != nil {
-		t.Fatalf("ValidatePiece: %v", err)
-	}
-	if !hasField(errs, "practiceStatus") {
-		t.Errorf("errs = %v, want a practiceStatus error for an unrecognized value", errs)
-	}
-}
+// practiceStatus is no longer validated inside ValidatePiece (migration
+// 00025 moved it off Piece entirely into a per-user practice_statuses
+// table) — see TestFindPracticeStatusByName in internal/repo for the
+// replacement coverage of "an unrecognized status name is rejected."
 
 func TestValidatePiece_BPMMustBePositive(t *testing.T) {
 	ctx := context.Background()

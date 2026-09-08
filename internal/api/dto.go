@@ -102,7 +102,11 @@ type PieceResponse struct {
 // tag's display name, in the fewest queries reasonable for v1's scale.
 // region (Public Domain Badge feature) is the validated COPYRIGHT_REGION
 // config value — every caller is a handler method with s.Cfg in scope.
-func BuildPieceResponse(ctx context.Context, q repo.Queryer, p *models.Piece, region string) (*PieceResponse, error) {
+// userID (multi-user support, migration 00025) scopes the now-per-user
+// favorite/userNotes/practiceStatus fields, and which of the piece's own
+// UserTags are visible at all (repo.UserTagsByIDsForUser) — every caller is
+// a handler method with the request's authenticated user in scope.
+func BuildPieceResponse(ctx context.Context, q repo.Queryer, p *models.Piece, region string, userID int64) (*PieceResponse, error) {
 	eff, err := repo.ResolveEffective(ctx, q, p)
 	if err != nil {
 		return nil, err
@@ -111,18 +115,22 @@ func BuildPieceResponse(ctx context.Context, q repo.Queryer, p *models.Piece, re
 	if err != nil {
 		return nil, err
 	}
+	userData, err := repo.GetUserPieceData(ctx, q, userID, p.ID)
+	if err != nil {
+		return nil, err
+	}
 
 	resp := &PieceResponse{
 		ID:              p.ID,
 		Title:           p.Title,
-		Favorite:        p.Favorite,
+		Favorite:        userData.Favorite,
 		WorkOpusNumber:  eff.WorkOpusNumber,
 		Publisher:       eff.Publisher,
 		PublisherID:     eff.PublisherID,
 		YearWritten:     eff.YearWritten,
 		Description:     eff.Description,
-		UserNotes:       p.UserNotes,
-		PracticeStatus:  p.PracticeStatus,
+		UserNotes:       userData.UserNotes,
+		PracticeStatus:  userData.PracticeStatus,
 		ImslpNumber:     eff.ImslpNumber,
 		SourceBookID:    p.SourceBookID,
 		SourcePageStart: p.SourcePageStart,
@@ -199,9 +207,15 @@ func BuildPieceResponse(ctx context.Context, q repo.Queryer, p *models.Piece, re
 		resp.Instruments.Values = tags
 	}
 
+	// UserTagsByIDsForUser, not the generic TagsByIDs every other tag field
+	// uses — user_tags became a private per-user vocabulary (migration
+	// 00025), so a piece's own UserTagIDs can legitimately include another
+	// user's private tag (piece_user_tags itself carries no user_id column
+	// of its own); those must never surface in a response built for anyone
+	// but that tag's own owner.
 	resp.UserTags = []repo.Tag{}
 	if len(p.UserTagIDs) > 0 {
-		tags, err := repo.TagsByIDs(ctx, q, "user_tags", p.UserTagIDs)
+		tags, err := repo.UserTagsByIDsForUser(ctx, q, userID, p.UserTagIDs)
 		if err != nil {
 			return nil, err
 		}
@@ -550,4 +564,94 @@ type ConfigResponse struct {
 type SetupCompleteRequest struct {
 	AuthMethod string  `json:"authMethod"`
 	Password   *string `json:"password"`
+}
+
+// LoginRequest is POST /api/auth/login's body — singlepass mode's only
+// login UI (master plan's Auth methods table; `none` has no login, `oidc`
+// redirects to the IdP instead, Phase 14).
+type LoginRequest struct {
+	Password string `json:"password"`
+}
+
+// AuthMeResponse is GET /api/auth/me's shape — the frontend's one source of
+// truth for "who am I, what can I do, how is this server configured for
+// login" (route guards, the sidebar user menu).
+type AuthMeResponse struct {
+	ID          int64    `json:"id"`
+	DisplayName string   `json:"displayName"`
+	Permissions []string `json:"permissions"`
+	AuthMethod  string   `json:"authMethod"`
+}
+
+// AdminUserResponse is one row in Admin Settings' Users screen.
+// IsLastAdmin drives the frontend's own lock on removing this user's admin
+// permission or deleting them outright — the same guard the backend itself
+// enforces server-side (never trust the client to have actually respected
+// the disabled UI state).
+type AdminUserResponse struct {
+	ID          int64    `json:"id"`
+	DisplayName string   `json:"displayName"`
+	Permissions []string `json:"permissions"`
+	IsLastAdmin bool     `json:"isLastAdmin"`
+}
+
+// SetUserPermissionsRequest is PATCH /api/admin/users/{id}'s body — a full
+// replace of the permission set (master plan's Permission model: an
+// independent multi-select checklist, not incremental add/remove).
+type SetUserPermissionsRequest struct {
+	Permissions []string `json:"permissions"`
+}
+
+// AdminSecurityRequest is POST /api/admin/security's body — see that
+// endpoint's own doc comment (internal/handlers/admin.go) for the full
+// none/singlepass-only scope this reaches.
+type AdminSecurityRequest struct {
+	AuthMethod string  `json:"authMethod"`
+	Password   *string `json:"password"`
+}
+
+// LookupCreateRequest/LookupRenameRequest are the admin Lookup Tables'
+// (Sheet Types/Instruments) create/rename bodies — both just a name, same
+// shape as the user-scoped Tags/Practice Status equivalents below.
+type LookupCreateRequest struct {
+	Name string `json:"name"`
+}
+
+type LookupRenameRequest struct {
+	Name string `json:"name"`
+}
+
+// LookupDeleteRequest is every merge-or-delete-outright endpoint's shared
+// body shape (admin Lookup Tables, user Tags, user Practice Status) —
+// MergeIntoID present means reassign-then-delete, absent means delete
+// outright (master plan's Backend architecture section).
+type LookupDeleteRequest struct {
+	MergeIntoID *int64 `json:"mergeIntoId"`
+}
+
+// LibraryCountsResponse backs Admin Settings' "Library" stat cards.
+type LibraryCountsResponse struct {
+	Pieces int `json:"pieces"`
+	Books  int `json:"books"`
+	People int `json:"people"`
+}
+
+// BuildAuthMeResponse has no DB access of its own (unlike BuildPieceResponse)
+// — user already carries everything needed (GetUserByID loads permissions
+// alongside the row), so this is a pure mapping, not a resolver. Kept as a
+// function rather than inlined at each of handleLogin/handleGetMe's two call
+// sites so the shape can't drift between them. err is always nil today;
+// returned for symmetry with this file's other Build* functions and in case
+// a future field needs a query.
+func BuildAuthMeResponse(user *models.User, authMethod string) (*AuthMeResponse, error) {
+	perms := user.Permissions
+	if perms == nil {
+		perms = []string{}
+	}
+	return &AuthMeResponse{
+		ID:          user.ID,
+		DisplayName: user.DisplayName,
+		Permissions: perms,
+		AuthMethod:  authMethod,
+	}, nil
 }

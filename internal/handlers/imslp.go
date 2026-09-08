@@ -6,6 +6,7 @@ import (
 
 	"github.com/jpcranford/sonneck/internal/api"
 	"github.com/jpcranford/sonneck/internal/imslp"
+	"github.com/jpcranford/sonneck/internal/models"
 )
 
 // handleImslpLookup is the "IMSLP live autofill" endpoint (design doc
@@ -17,6 +18,9 @@ import (
 // blank — this endpoint just resolves the number, it doesn't know or
 // care which piece/book is asking.
 func (s *Server) handleImslpLookup(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requirePermission(w, r, models.PermissionRead); !ok {
+		return
+	}
 	number := r.URL.Query().Get("number")
 	if number == "" {
 		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "number is required")

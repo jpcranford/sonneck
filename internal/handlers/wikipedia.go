@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/jpcranford/sonneck/internal/api"
+	"github.com/jpcranford/sonneck/internal/models"
 	"github.com/jpcranford/sonneck/internal/wikipedia"
 )
 
@@ -21,6 +22,9 @@ import (
 // empty result list is exactly what "no name entered yet" should read as
 // to whatever UI called this.
 func (s *Server) handleWikipediaSearch(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requirePermission(w, r, models.PermissionRead); !ok {
+		return
+	}
 	query := r.URL.Query().Get("query")
 
 	results, err := wikipedia.Search(r.Context(), query)
@@ -46,6 +50,9 @@ func (s *Server) handleWikipediaSearch(w http.ResponseWriter, r *http.Request) {
 // *which* URL to use, it never fetches or re-serves the image bytes
 // itself).
 func (s *Server) handleWikipediaPageImage(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requirePermission(w, r, models.PermissionRead); !ok {
+		return
+	}
 	title := strings.TrimSpace(r.URL.Query().Get("title"))
 	if title == "" {
 		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "title is required")

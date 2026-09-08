@@ -42,11 +42,40 @@ func New(db *sql.DB, cfg *config.Config, logger *slog.Logger, frontend fs.FS) ht
 	// and doesn't gate.
 	mux.HandleFunc("POST /api/setup/complete", s.handleCompleteSetup)
 
+	// Auth (multi-user support, Phase 10) — session issuance/lookup/expiry.
+	// GET /api/auth/me is the frontend's own single source of truth for
+	// "who am I, what can I do" (route guards, the sidebar user menu).
+	mux.HandleFunc("POST /api/auth/login", s.handleLogin)
+	mux.HandleFunc("POST /api/auth/logout", s.handleLogout)
+	mux.HandleFunc("GET /api/auth/me", s.handleGetMe)
+
 	mux.HandleFunc("GET /api/keys", s.handleListKeys)
 	mux.HandleFunc("GET /api/sheet-types", s.handleListSheetTypes)
 	mux.HandleFunc("GET /api/instruments", s.handleListInstruments)
 	mux.HandleFunc("GET /api/tags", s.handleListUserTags)
+	mux.HandleFunc("GET /api/practice-statuses", s.handleListPracticeStatuses)
 	mux.HandleFunc("GET /api/imslp/lookup", s.handleImslpLookup)
+
+	// Your Tags / Practice Status create/delete/merge (multi-user support,
+	// Phase 10) — user-scoped, not admin-gated (read permission only).
+	mux.HandleFunc("POST /api/tags", s.handleCreateUserTag)
+	mux.HandleFunc("DELETE /api/tags/{id}", s.handleDeleteUserTag)
+	mux.HandleFunc("POST /api/practice-statuses", s.handleCreatePracticeStatus)
+	mux.HandleFunc("DELETE /api/practice-statuses/{id}", s.handleDeletePracticeStatus)
+
+	// Admin Settings (multi-user support, Phase 10) — every route below is
+	// `admin`-gated inside its own handler (requirePermission).
+	mux.HandleFunc("GET /api/admin/users", s.handleListAdminUsers)
+	mux.HandleFunc("PATCH /api/admin/users/{id}", s.handleSetUserPermissions)
+	mux.HandleFunc("DELETE /api/admin/users/{id}", s.handleDeleteAdminUser)
+	mux.HandleFunc("POST /api/admin/security", s.handleAdminSecurity)
+	mux.HandleFunc("GET /api/admin/library-counts", s.handleLibraryCounts)
+	mux.HandleFunc("POST /api/admin/sheet-types", s.handleCreateSheetType)
+	mux.HandleFunc("PATCH /api/admin/sheet-types/{id}", s.handleRenameSheetType)
+	mux.HandleFunc("DELETE /api/admin/sheet-types/{id}", s.handleDeleteSheetType)
+	mux.HandleFunc("POST /api/admin/instruments", s.handleCreateInstrument)
+	mux.HandleFunc("PATCH /api/admin/instruments/{id}", s.handleRenameInstrument)
+	mux.HandleFunc("DELETE /api/admin/instruments/{id}", s.handleDeleteInstrument)
 	// Wikipedia autofill (composer/arranger overhaul) — shared by the Edit
 	// Person modal's own autofill button and Upload Portrait's "search
 	// Wikipedia" source step, same "one endpoint, two callers" reasoning
@@ -114,7 +143,10 @@ func New(db *sql.DB, cfg *config.Config, logger *slog.Logger, frontend fs.FS) ht
 	// itself, before any handler (including this one) runs.
 	mux.Handle("/", spaHandler(frontend, s.handleNotFound))
 
-	return recoverMiddleware(mux, logger)
+	// authMiddleware runs inside recoverMiddleware (recover stays outermost,
+	// so a panic anywhere — including inside auth resolution itself — still
+	// gets the standard 500 envelope, not a bare connection reset).
+	return recoverMiddleware(authMiddleware(mux, db, cfg), logger)
 }
 
 // spaHandler serves the embedded frontend build. A request path that
@@ -163,14 +195,8 @@ func (s *Server) handleGetConfig(w http.ResponseWriter, r *http.Request) {
 	// Resolution order (memory project_multiuser_build.md): env var wins if
 	// set, else the stored first-launch choice, else "none" — the frontend
 	// never re-derives this itself, it just reads the already-resolved
-	// value here.
-	authMethod := s.Cfg.AuthMethod
-	if authMethod == "" && settings.AuthMethod != nil {
-		authMethod = *settings.AuthMethod
-	}
-	if authMethod == "" {
-		authMethod = "none"
-	}
+	// value here. Shared with authMiddleware via repo.ResolveAuthMethod.
+	authMethod := repo.ResolveAuthMethod(s.Cfg.AuthMethod, settings)
 
 	resp := api.ConfigResponse{
 		CopyrightRegion:      s.Cfg.CopyrightRegion,

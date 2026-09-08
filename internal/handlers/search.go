@@ -8,6 +8,7 @@ import (
 
 	"github.com/jpcranford/sonneck/internal/api"
 	"github.com/jpcranford/sonneck/internal/fuzzy"
+	"github.com/jpcranford/sonneck/internal/models"
 	"github.com/jpcranford/sonneck/internal/repo"
 )
 
@@ -94,10 +95,14 @@ var pieceSortColumns = map[string]sortColumnFunc{
 // into `where`/`args` once and reused by every attempt (via runQuery/
 // runFuzzyQuery) instead of being recomputed per attempt.
 func (s *Server) handleSearchPieces(w http.ResponseWriter, r *http.Request) {
+	user, ok := s.requirePermission(w, r, models.PermissionRead)
+	if !ok {
+		return
+	}
 	q := r.URL.Query()
 	query := strings.TrimSpace(q.Get("query"))
 
-	clauses, ok := buildPieceFilterClauses(w, q)
+	clauses, ok := buildPieceFilterClauses(w, q, user.ID)
 	if !ok {
 		return
 	}
@@ -349,7 +354,7 @@ func (s *Server) handleSearchPieces(w http.ResponseWriter, r *http.Request) {
 			s.writeError(w, err)
 			return
 		}
-		resp, err := api.BuildPieceResponse(r.Context(), s.DB, p, s.Cfg.CopyrightRegion)
+		resp, err := api.BuildPieceResponse(r.Context(), s.DB, p, s.Cfg.CopyrightRegion, user.ID)
 		if err != nil {
 			s.writeError(w, err)
 			return
@@ -476,7 +481,11 @@ func idListClause(name, subqueryTable, subqueryCol string, ids []int64, excl boo
 // neither is a Filter Drawer facet (personId is Person Details' own
 // works-list filter, sourceBookId is Book Details' pieces list), so
 // handleSearchPieces still parses those two separately, unchanged.
-func buildPieceFilterClauses(w http.ResponseWriter, q url.Values) (clauses []namedClause, ok bool) {
+// userID (multi-user support, migration 00025) scopes the favorite and
+// practiceStatus filters — both moved off Piece into per-user tables, so
+// "favorite" now genuinely means "favorited by the calling user", not a
+// single shared column.
+func buildPieceFilterClauses(w http.ResponseWriter, q url.Values, userID int64) (clauses []namedClause, ok bool) {
 	if ids, present, ok := parseIDListFilter(w, q, "keyId"); !ok {
 		return nil, false
 	} else if present {
@@ -521,18 +530,19 @@ func buildPieceFilterClauses(w http.ResponseWriter, q url.Values) (clauses []nam
 		clauses = append(clauses, idListClause("userTagId", "piece_user_tags", "tag_id", ids, true))
 	}
 
-	// favorite: already genuinely tri-state on the wire before this change
-	// (true → must be favorite, false → must NOT be favorite, absent → no
-	// constraint) — `p.favorite = ?` bound to either literal boolean is
-	// exactly the exclude/include shape every other dimension is gaining
-	// here, so favorite itself needs no change at all.
+	// favorite: genuinely tri-state on the wire (true → must be favorite,
+	// false → must NOT be favorite, absent → no constraint). Migration
+	// 00025 moved favorite off Piece into piece_favorites (per-user), so
+	// this is now a join-table membership check scoped to userID — same
+	// shape idListClause already uses for keyId/userTagId — rather than a
+	// plain `p.favorite = ?` column comparison.
 	if v := q.Get("favorite"); v != "" {
 		fav, err := strconv.ParseBool(v)
 		if err != nil {
 			api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid favorite")
 			return nil, false
 		}
-		clauses = append(clauses, namedClause{name: "favorite", where: "p.favorite = ?", args: []any{fav}})
+		clauses = append(clauses, favoriteClause(userID, fav))
 	}
 
 	// practiceStatus: comma-separated for an OR match against several
@@ -542,12 +552,12 @@ func buildPieceFilterClauses(w http.ResponseWriter, q url.Values) (clauses []nam
 	// excludePracticeStatus is the same list, negated — both can be present
 	// at once (e.g. practiceStatus=Learning excludePracticeStatus=Stalled),
 	// which simply ANDs the two conditions like any other pair of clauses.
-	if clause, present, ok := practiceStatusClause(w, q, "practiceStatus", false); !ok {
+	if clause, present, ok := practiceStatusClause(w, q, "practiceStatus", false, userID); !ok {
 		return nil, false
 	} else if present {
 		clauses = append(clauses, clause)
 	}
-	if clause, present, ok := practiceStatusClause(w, q, "excludePracticeStatus", true); !ok {
+	if clause, present, ok := practiceStatusClause(w, q, "excludePracticeStatus", true, userID); !ok {
 		return nil, false
 	} else if present {
 		clauses = append(clauses, clause)
@@ -637,23 +647,44 @@ func hasImslpClause(has bool) namedClause {
 	return namedClause{name: "hasImslpNumber", where: where}
 }
 
+// favoriteClause is the join-table-membership counterpart to idListClause,
+// scoped to a single userID rather than a set of ids — favorite became
+// per-user (piece_favorites, migration 00025), so this is "does a
+// (userID, piece) row exist" rather than a plain column comparison.
+func favoriteClause(userID int64, fav bool) namedClause {
+	where := "p.id IN (SELECT piece_id FROM piece_favorites WHERE user_id = ?)"
+	if !fav {
+		where = negateClause(where)
+	}
+	return namedClause{name: "favorite", where: where, args: []any{userID}}
+}
+
 // practiceStatusClause parses one comma-separated status-list param
 // (practiceStatus or its excludePracticeStatus sibling) into a namedClause,
 // both sharing the "practiceStatus" name so a facet's own count skips both
-// together (see buildPieceFilterClauses's own comment).
-func practiceStatusClause(w http.ResponseWriter, q url.Values, param string, excl bool) (clause namedClause, present, ok bool) {
+// together (see buildPieceFilterClauses's own comment). Scoped to userID
+// (migration 00025: practice status is now a per-user practice_statuses
+// row, not a fixed CHECK-constrained column) — matches by status *name*
+// within that user's own set, same as before on the wire, just resolved via
+// a join instead of a plain column IN check.
+func practiceStatusClause(w http.ResponseWriter, q url.Values, param string, excl bool, userID int64) (clause namedClause, present, ok bool) {
 	v := q.Get(param)
 	if v == "" {
 		return namedClause{}, false, true
 	}
 	statuses := strings.Split(v, ",")
 	placeholders := make([]string, len(statuses))
-	args := make([]any, len(statuses))
+	args := make([]any, 0, len(statuses)+1)
+	args = append(args, userID)
 	for i, status := range statuses {
 		placeholders[i] = "?"
-		args[i] = strings.TrimSpace(status)
+		args = append(args, strings.TrimSpace(status))
 	}
-	where := "p.practice_status IN (" + strings.Join(placeholders, ",") + ")"
+	where := `p.id IN (
+		SELECT pps.piece_id FROM piece_practice_status pps
+		JOIN practice_statuses ps ON ps.id = pps.status_id
+		WHERE pps.user_id = ? AND ps.name IN (` + strings.Join(placeholders, ",") + `)
+	)`
 	if excl {
 		where = negateClause(where)
 	}
