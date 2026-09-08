@@ -369,20 +369,33 @@ function SecurityStep({
               description="OIDC / SSO through your existing identity provider (Authelia, Authentik, Keycloak, etc.) — each person signs in as their own account."
               onSelect={() => {}}
             >
-              <p className="flex items-center gap-1.5 text-xs text-ink-soft">
-                <IconInfoCircle size={14} className="shrink-0" />
-                Configure via <code className="rounded bg-paper-sunken px-1 py-0.5">OIDC_*</code> environment
-                variables.{' '}
-                <a
-                  href="https://github.com/jpcranford/sonneck#advanced-options"
-                  target="_blank"
-                  rel="noreferrer"
-                  onClick={(e) => e.stopPropagation()}
-                  className="inline-flex items-center gap-0.5 text-accent underline hover:text-accent/80"
-                >
-                  Setup guide
-                  <IconExternalLink size={12} />
-                </a>
+              {/* items-start + a single wrapping span, not `flex` directly
+                  on the <p> around several sibling text nodes/elements — a
+                  flex container turns each sibling into its own
+                  independently-wrapping box instead of one flowing
+                  sentence, fragmenting "Configure via" / "OIDC_*" /
+                  "environment variables..." into separate columns on a
+                  narrow viewport (confirmed live at 380px, same bug found
+                  on Admin Settings' own copy of this card). One span holds
+                  the whole sentence (code/link included) as a single flex
+                  item, so it wraps normally as one block; only the icon is
+                  a separate item, pinned to the start. */}
+              <p className="flex items-start gap-1.5 text-xs text-ink-soft">
+                <IconInfoCircle size={14} className="mt-0.5 shrink-0" />
+                <span>
+                  Configure via <code className="rounded bg-paper-sunken px-1 py-0.5">OIDC_*</code> environment
+                  variables.{' '}
+                  <a
+                    href="https://github.com/jpcranford/sonneck#advanced-options"
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="inline-flex items-center gap-0.5 text-accent underline hover:text-accent/80"
+                  >
+                    Setup guide
+                    <IconExternalLink size={12} />
+                  </a>
+                </span>
               </p>
             </SecurityCard>
           </div>
