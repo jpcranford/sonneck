@@ -284,6 +284,98 @@ func DeleteUser(ctx context.Context, q Queryer, id int64) error {
 	return err
 }
 
+// ApplyAuthChangeDowngrade collapses a multi-account OIDC install down to
+// the single implicit account none/singlepass mode requires (Auth Change
+// flow, master plan Phase 16) — the destructive transaction the removed
+// POST /api/admin/security's original downgrade design moved into: it
+// doesn't disappear with that endpoint, it just moves to run here,
+// automatically, once the frontend flow's own confirm-delete step has
+// already gotten the operator's confirmation (this function performs no
+// confirmation of its own — same "frontend owns confirmation UX" stance as
+// every other admin-adjacent mutation in this app).
+//
+// none/singlepass mode always operates on id=1 specifically, so keepUserID
+// has to end up there one way or another:
+//
+//   - keepUserID == 1: nothing to move — just clear any stale OIDC-mode
+//     fields and make sure permissions are the full set (the survivor was
+//     already required to hold admin to be selectable, matching the
+//     standing "id=1 is always implicitly full admin in none/singlepass"
+//     invariant).
+//   - keepUserID != 1: id=1's own current identity/data is *replaced* by
+//     the survivor's, not merged with it — reassigning the survivor's rows
+//     onto id=1 without first clearing id=1's own would collide:
+//     practice_statuses/user_tags both carry UNIQUE(owner_user_id, name),
+//     so two same-named rows (e.g. both accounts' own seeded "Want to
+//     Learn") can't coexist under one owner, and user_settings has user_id
+//     as its own primary key, so two rows can't share an id either. Wiping
+//     id=1's own rows first, then reassigning the survivor's, avoids both.
+//
+// Either way, every other account (and everything it owns) is removed in
+// one final DELETE, cascading via the same ON DELETE CASCADE chain
+// DeleteUser above already relies on — nothing here re-implements that
+// cleanup by hand.
+func ApplyAuthChangeDowngrade(ctx context.Context, q Queryer, keepUserID int64) error {
+	if keepUserID != 1 {
+		ownedTables := []string{"practice_statuses", "user_tags"}
+		for _, table := range ownedTables {
+			if _, err := q.ExecContext(ctx, `DELETE FROM `+table+` WHERE owner_user_id = 1`); err != nil {
+				return err
+			}
+		}
+		perUserTables := []string{"piece_favorites", "piece_practice_status", "piece_user_notes", "user_settings"}
+		for _, table := range perUserTables {
+			if _, err := q.ExecContext(ctx, `DELETE FROM `+table+` WHERE user_id = 1`); err != nil {
+				return err
+			}
+		}
+		if _, err := q.ExecContext(ctx, `DELETE FROM user_permissions WHERE user_id = 1`); err != nil {
+			return err
+		}
+
+		for _, table := range ownedTables {
+			if _, err := q.ExecContext(ctx, `UPDATE `+table+` SET owner_user_id = 1 WHERE owner_user_id = ?`, keepUserID); err != nil {
+				return err
+			}
+		}
+		for _, table := range perUserTables {
+			if _, err := q.ExecContext(ctx, `UPDATE `+table+` SET user_id = 1 WHERE user_id = ?`, keepUserID); err != nil {
+				return err
+			}
+		}
+
+		// password_hash carries over as-is (nearly always nil for an
+		// OIDC-sourced account) rather than being forced to NULL — a
+		// caller applying a fresh singlepass password as part of this same
+		// transition (POST /api/auth-change/complete's own "password"
+		// step) does so as a separate, later write targeting id=1
+		// directly, after this function returns, so there's no ordering
+		// dependency to get wrong here either way.
+		survivor, err := GetUserByID(ctx, q, keepUserID)
+		if err != nil {
+			return err
+		}
+		if _, err := q.ExecContext(ctx,
+			`UPDATE users SET display_name = ?, avatar_url = NULL, oidc_subject = NULL, password_hash = ? WHERE id = 1`,
+			survivor.DisplayName, survivor.PasswordHash,
+		); err != nil {
+			return err
+		}
+	} else {
+		if _, err := q.ExecContext(ctx,
+			`UPDATE users SET avatar_url = NULL, oidc_subject = NULL WHERE id = 1`,
+		); err != nil {
+			return err
+		}
+	}
+
+	if err := SetUserPermissions(ctx, q, 1, models.AllPermissions); err != nil {
+		return err
+	}
+	_, err := q.ExecContext(ctx, `DELETE FROM users WHERE id != 1`)
+	return err
+}
+
 // --- Sessions ---
 
 // CreateSession inserts a new session row. token is expected to already be

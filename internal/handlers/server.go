@@ -3,6 +3,7 @@
 package handlers
 
 import (
+	"context"
 	"database/sql"
 	"io/fs"
 	"log/slog"
@@ -86,6 +87,13 @@ func New(db *sql.DB, cfg *config.Config, logger *slog.Logger, frontend fs.FS, sc
 	// pre-session (authMiddleware's publicAPIPaths).
 	mux.HandleFunc("GET /api/auth/oidc/login", s.handleOIDCLogin)
 	mux.HandleFunc("GET /api/auth/oidc/callback", s.handleOIDCCallback)
+	// Auth Change flow (Phase 16) — reachable pre-session by necessity
+	// (nobody can be logged in yet under whichever method just became
+	// active), self-guarded by re-deriving authChangePending server-side
+	// rather than trusting the client, same posture as
+	// POST /api/setup/complete.
+	mux.HandleFunc("GET /api/auth-change/candidates", s.handleAuthChangeCandidates)
+	mux.HandleFunc("POST /api/auth-change/complete", s.handleAuthChangeComplete)
 	// User Settings' Account card (multi-user support, Phase 12) —
 	// self-rename and self-service password change, distinct from the
 	// admin-only equivalents under /api/admin/*.
@@ -266,7 +274,52 @@ func (s *Server) handleGetConfig(w http.ResponseWriter, r *http.Request) {
 	if authMethod == "oidc" {
 		resp.OIDCProviderName = &s.Cfg.ExternalProvider
 	}
+	// Auth Change flow (Phase 16) — a fresh install has LastActiveAuthMethod
+	// == nil (never set until first-launch completes), so this is never
+	// pending before then; App.tsx also only checks it after
+	// firstLaunchCompleted, so the ordering doesn't strictly depend on this
+	// nil-check alone, but it's correct either way.
+	if resp.FirstLaunchCompleted && settings.LastActiveAuthMethod != nil && *settings.LastActiveAuthMethod != authMethod {
+		pending, err := s.buildAuthChangePending(r.Context(), *settings.LastActiveAuthMethod, authMethod)
+		if err != nil {
+			s.writeError(w, err)
+			return
+		}
+		resp.AuthChangePending = pending
+	}
 	api.WriteData(w, http.StatusOK, resp)
+}
+
+// buildAuthChangePending fills in NeedsPassword/MultiAccount alongside the
+// bare from/to mismatch — cheap enough (a user count, and id=1's own
+// password_hash) to compute unconditionally whenever a change is actually
+// pending, so AuthChangeFlow.tsx can render its whole step sequence
+// upfront (computeSteps, ported from AuthChangeFlowMockup.tsx) rather than
+// discovering it field-by-field from validation errors.
+func (s *Server) buildAuthChangePending(ctx context.Context, from, to string) (*api.AuthChangePendingResponse, error) {
+	users, err := repo.ListUsers(ctx, s.DB)
+	if err != nil {
+		return nil, err
+	}
+	multiAccount := to != "oidc" && len(users) > 1
+
+	needsPassword := false
+	if to == "singlepass" {
+		if multiAccount {
+			// Conservatively true — see AuthChangePendingResponse's own
+			// doc comment for why this is safe even in the rare case the
+			// eventual survivor already has one.
+			needsPassword = true
+		} else {
+			seed, err := repo.GetUserByID(ctx, s.DB, 1)
+			if err != nil {
+				return nil, err
+			}
+			needsPassword = seed.PasswordHash == nil
+		}
+	}
+
+	return &api.AuthChangePendingResponse{From: from, To: to, NeedsPassword: needsPassword, MultiAccount: multiAccount}, nil
 }
 
 func (s *Server) handleNotFound(w http.ResponseWriter, r *http.Request) {

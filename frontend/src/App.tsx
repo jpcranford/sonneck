@@ -5,6 +5,7 @@ import { getMe } from './api/auth'
 import { ApiError } from './api/client'
 import { AuthContext } from './lib/AuthContext'
 import { FirstLaunchFlow } from './routes/FirstLaunchFlow'
+import { AuthChangeFlow } from './routes/AuthChangeFlow'
 import { LoginScreen } from './routes/LoginScreen'
 import { UserSettingsPage } from './routes/UserSettingsPage'
 import { AdminPage } from './routes/AdminPage'
@@ -34,6 +35,7 @@ import { SidebarUserMenuMockup } from './routes/SidebarUserMenuMockup'
 import { UserSettingsMockup } from './routes/UserSettingsMockup'
 import { AdminSettingsMockup } from './routes/AdminSettingsMockup'
 import { AuthChangeFlowMockup } from './routes/AuthChangeFlowMockup'
+import { LoginScreenMockup } from './routes/LoginScreenMockup'
 import { CitationLogicMockup } from './routes/CitationLogicMockup'
 import { DeviceInfoMockup } from './routes/DeviceInfoMockup'
 import { FirstLaunchMockup } from './routes/FirstLaunchMockup'
@@ -65,6 +67,17 @@ function App() {
 
   if (config && !config.firstLaunchCompleted) {
     return <FirstLaunchFlow config={config} />
+  }
+
+  // Auth Change flow (multi-user support, master plan Phase 16) — checked
+  // after firstLaunchCompleted (a fresh install's very first boot has no
+  // prior last_active_auth_method to mismatch against, so that path always
+  // goes through FirstLaunchFlow above instead, never this). A non-null
+  // authChangePending means the resolved AUTH_METHOD no longer matches
+  // what the app last ran under — gates the whole app the same way
+  // FirstLaunchFlow does above, just for a different condition.
+  if (config?.authChangePending) {
+    return <AuthChangeFlow pending={config.authChangePending} />
   }
 
   return <AuthGate authMethod={config?.authMethod ?? 'none'} oidcProviderName={config?.oidcProviderName} />
@@ -184,6 +197,9 @@ function AppRoutes() {
           same reasoning as first-launch above (reached before the real app
           — sidebar included — is ever shown). */}
       <Route path="mockup/auth-change-flow" element={<AuthChangeFlowMockup />} />
+      {/* Also not nested inside <AppShell /> — same reasoning as
+          auth-change-flow above (a full-page boot-time gate). */}
+      <Route path="mockup/login-screen" element={<LoginScreenMockup />} />
     </Routes>
   )
 }

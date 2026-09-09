@@ -1,6 +1,7 @@
-import { useState } from 'react'
-import { IconArrowLeft, IconCircleCheckFilled, IconUserCircle } from '@tabler/icons-react'
+import { useEffect, useState } from 'react'
+import { IconAlertTriangle, IconArrowLeft, IconCircleCheckFilled, IconLoader2, IconUserCircle } from '@tabler/icons-react'
 import { useMockupTitle } from '../lib/useMockupTitle'
+import { afterMinDuration } from '../lib/minDuration'
 
 // Auth Change flow — multi-user support, Phase 16 of the plan (memory
 // project_multiuser_build.md / precious-kindling-pretzel.md's own "Auth
@@ -36,6 +37,85 @@ import { useMockupTitle } from '../lib/useMockupTitle'
 // needs at once — e.g. the last scenario needs both a new password *and*
 // the destructive downgrade — falls out naturally rather than needing a
 // sixth hand-written case.
+//
+// Direct-feedback revisions after the real build was already live-
+// verified: the OIDC-upgrade intro copy was vague about what actually
+// happens to existing data — reworded to say plainly that nothing is lost
+// and the first person to sign in takes control of the existing account,
+// both in the intro's own paragraph and in its closing reassurance line
+// (a dedicated line for this one scenario, not the shared ReversibleNote
+// below — that component's own "switch back and nothing is lost" framing
+// only covers reverting, not the fact that *proceeding* is just as safe,
+// which only genuinely holds for this specific lossless-upgrade case).
+// An earlier pass also added an embedded preview of the Login Screen to
+// the 'done' step, plus a "you land on the real Login Screen next" note —
+// removed per direct feedback: the preview was superfluous once
+// /mockup/login-screen exists as its own real reference, and mockups
+// should read as the as-built copy, not carry mockup-to-mockup asides
+// like "see its own mockup for every state."
+//
+// 'done' gained a real, genuine primary button per further direct
+// feedback — a real design decision, not an oversight the first pass
+// missed: every other step in this flow already ends on an explicit
+// button the person clicks to move forward, so silently auto-transitioning
+// away the instant the last one succeeds (this app's other boot-time gate,
+// FirstLaunchFlow.tsx, does exactly that, with no equivalent final button
+// of its own) would be the one step in this whole flow that doesn't ask
+// for a deliberate "yes, continue" — worth breaking that precedent here on
+// purpose. Labeled "Continue to Library" for a `none` target (no login
+// screen to hand off to) or "Continue to Sign In" otherwise. In this
+// mockup it re-runs the current scenario (`selectScenario`) rather than
+// going anywhere real, the same stand-in every other "what happens next"
+// control here already uses — the top `ScenarioPicker` remains the one
+// actual way to switch scenarios, this button and the old dedicated
+// "Restart this scenario" link (now folded into it, not kept as a second
+// control) were both just this screen's own way of looping the demo.
+//
+// The destructive path's own confirm-delete button was relabeled "Delete
+// accounts now" (was "...and continue") specifically to stop reading like
+// it's the same kind of "continue" as the new button above — this one's
+// click is the actual, immediate, irreversible trigger, not a step toward
+// a later confirmation, and the added warning icon reinforces that same
+// point visually, not just in the copy.
+//
+// A further pass strengthened both buttons in the destructive path per
+// direct feedback: choose-admin's own "Continue" (bare navigation wording,
+// same as every other non-destructive step) was relabeled "Review
+// Deletion" — it's the last click before the confirm-delete screen, so
+// naming what that screen actually is reads as more deliberate than a
+// generic "Continue" would. confirm-delete's "Delete accounts now" got
+// more visual weight (larger padding/text) on top of its existing
+// red/icon treatment, so the two buttons read as an escalating pair
+// rather than two identically-styled steps.
+//
+// A genuine new step, 'updating', now sits between confirm-delete and
+// 'done' — clicking "Delete accounts now" no longer jumps straight to
+// "All set"; it shows a full-screen spinner for a guaranteed minimum 2.5s
+// (`afterMinDuration`, the same shared helper CLAUDE.md's own "a fast
+// mutation needs an artificial minimum display duration" gotcha already
+// established elsewhere, imported here as-is since it's pure logic with
+// no markup of its own — the one kind of real-code import mockups are
+// allowed) before auto-advancing to 'done' with no click needed. Real
+// backend work (the destructive downgrade transaction, an OIDC discovery
+// call if switching to OIDC, session issuance) is genuinely async in the
+// shipped app, unlike this mockup's own fixture data — the spinner reflects
+// that real wait, not just decorates a fake one. Scoped to the destructive
+// path specifically, not every scenario — the lighter scenarios apply
+// near-instantly with nothing worth narrating a wait for.
+//
+// Color corrections per direct feedback, all pulling 'done'/'updating' back
+// from accent to neutral: the spinner (`IconLoader2`) and the checkmark
+// (`IconCircleCheckFilled`) both read as `text-ink`, not `text-accent` —
+// neutral "something happened" indicators, not accent-colored elements
+// competing with the red confirm button that precedes them. 'done's own
+// "Continue to Sign In"/"Continue to Library" button was likewise pulled
+// back from solid `bg-accent` to this app's standard secondary/white
+// button treatment (`border border-border bg-paper-raised text-ink
+// hover:border-accent` — the same recipe used everywhere else in the app
+// for a lower-emphasis action, e.g. FirstLaunchMockup.tsx's own "Preview
+// again") — it's the literal end of the flow, not a decision point that
+// needs to compete visually with the buttons that actually drove it
+// forward.
 
 type AuthMethod = 'none' | 'singlepass' | 'oidc'
 
@@ -109,7 +189,7 @@ const SCENARIOS: Record<ScenarioKey, Scenario> = {
   },
 }
 
-type StepKey = 'intro' | 'password' | 'choose-admin' | 'confirm-delete' | 'done'
+type StepKey = 'intro' | 'password' | 'choose-admin' | 'confirm-delete' | 'updating' | 'done'
 
 function computeSteps(scenario: Scenario): StepKey[] {
   const steps: StepKey[] = ['intro']
@@ -119,7 +199,10 @@ function computeSteps(scenario: Scenario): StepKey[] {
   if (needsPassword) steps.push('password')
   if (isDowngrade) {
     if (admins.length > 1) steps.push('choose-admin')
-    steps.push('confirm-delete')
+    // 'updating' only ever follows the destructive confirm-delete step —
+    // the lighter scenarios apply near-instantly, with nothing worth a
+    // spinner for.
+    steps.push('confirm-delete', 'updating')
   }
   steps.push('done')
   return steps
@@ -217,13 +300,36 @@ export function AuthChangeFlowMockup() {
     setStepIndex((i) => Math.max(i - 1, 0))
   }
 
+  // 'updating' auto-advances itself the moment it's reached (below) — a
+  // real timer effect calling setState from its own callback once the
+  // minimum display duration has elapsed, not a synchronous derivation,
+  // so this doesn't hit the same react-hooks/set-state-in-effect gotcha
+  // CLAUDE.md already documents elsewhere for the *other* kind of effect.
+  useEffect(() => {
+    if (step !== 'updating') return
+    const startedAt = Date.now()
+    let cancelled = false
+    afterMinDuration(startedAt, () => {
+      if (!cancelled) goNext()
+    }, 2500)
+    return () => {
+      cancelled = true
+    }
+    // goNext deliberately excluded — it closes over `steps`, which is
+    // recomputed every render, so including it would re-fire this effect
+    // (and restart the 2.5s timer) far more often than intended; this
+    // should only ever restart when `step` itself changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step])
+
   const canContinue =
     step !== 'password' || passwordValid
   const chooseAdminCanContinue = step !== 'choose-admin' || keptAdminId !== null
-  // 'done' is always last in `steps`, so the step right before it is the
-  // real last *actionable* one — whichever step that turns out to be for
-  // this scenario is where ReversibleNote's wording sharpens.
-  const isFinalActionableStep = steps[steps.length - 2] === step
+  // The real last *actionable* step — the last one with a button a person
+  // actually clicks — isn't always steps[steps.length - 2] anymore now
+  // that 'updating' can sit between it and 'done' non-interactively.
+  const actionableSteps = steps.filter((s) => s !== 'updating' && s !== 'done')
+  const isFinalActionableStep = step === actionableSteps[actionableSteps.length - 1]
 
   return (
     <div className="flex min-h-dvh items-center justify-center bg-paper p-6">
@@ -245,12 +351,20 @@ export function AuthChangeFlowMockup() {
             </p>
             <p className="mt-2 text-sm text-ink-soft">
               {scenario.to === 'oidc'
-                ? 'Existing data (favorites, notes, tags) carries over to whoever signs in first.'
+                ? "Nothing is lost — the first person who signs in takes control of your existing account, with all its favorites, notes, and tags already there."
                 : scenario.users.length > 1
                   ? "The next few screens will walk you through what this means for your existing accounts."
                   : 'No other accounts are affected by this change.'}
             </p>
-            <ReversibleNote fromLabel={scenario.fromLabel} isFinalStep={isFinalActionableStep} />
+            {scenario.to === 'oidc' ? (
+              <p className="mt-4 text-xs text-ink-soft">
+                Nothing is lost with this upgrade. To abandon before upgrading, switch{' '}
+                <code className="rounded bg-paper-sunken px-1 py-0.5">AUTH_METHOD</code> back to{' '}
+                <strong className="text-ink">{scenario.fromLabel}</strong>.
+              </p>
+            ) : (
+              <ReversibleNote fromLabel={scenario.fromLabel} isFinalStep={isFinalActionableStep} />
+            )}
             <button
               type="button"
               onClick={goNext}
@@ -268,20 +382,27 @@ export function AuthChangeFlowMockup() {
             <p className="mt-1 text-sm text-ink-soft">
               {scenario.toLabel} gates the whole app behind a single shared password — pick one now.
             </p>
+            {/* text-base + tracking-wide, not text-sm — see
+                LoginScreenMockup.tsx's own comment on its password field:
+                the browser's masked "dot" glyph scales with font-size, and
+                macOS renders a noticeably larger dot than Windows at the
+                same small size, so bumping the font-size gives every OS a
+                legible minimum dot size instead of leaving it to each
+                platform's own default. */}
             <div className="mt-6 flex flex-col gap-2">
               <input
                 type="password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 placeholder="Password (min. 8 characters)"
-                className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-sm text-ink"
+                className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-base tracking-wide text-ink"
               />
               <input
                 type="password"
                 value={confirmPassword}
                 onChange={(event) => setConfirmPassword(event.target.value)}
                 placeholder="Confirm password"
-                className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-sm text-ink"
+                className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-base tracking-wide text-ink"
               />
               {confirmPassword.length > 0 && !passwordValid && (
                 <p className="text-xs text-red-700">
@@ -340,7 +461,7 @@ export function AuthChangeFlowMockup() {
               onClick={goNext}
               className="mt-8 flex w-full items-center justify-center gap-2 rounded-md bg-accent px-5 py-2.5 font-display text-white enabled:cursor-pointer enabled:hover:bg-accent/90 disabled:opacity-40"
             >
-              Continue
+              Review Deletion
             </button>
           </>
         )}
@@ -363,25 +484,34 @@ export function AuthChangeFlowMockup() {
               ))}
             </ul>
             <p className="mt-4 text-xs text-ink-soft">
-              This is the last step — until you click "Delete accounts and continue" below, you can still
+              This is the last step — until you click "Delete accounts now" below, you can still
               switch <code className="rounded bg-paper-sunken px-1 py-0.5">AUTH_METHOD</code> back to{' '}
-              <strong className="text-ink">{scenario.fromLabel}</strong> and nothing will be lost. Once you
-              click it, this can't be undone — anything specific to just those accounts (their own favorites,
-              notes, and tags) is deleted along with them.
+              <strong className="text-ink">{scenario.fromLabel}</strong> and nothing will be lost. Clicking it
+              deletes them immediately and can't be undone — anything specific to just those accounts (their
+              own favorites, notes, and tags) is deleted along with them.
             </p>
             <button
               type="button"
               onClick={goNext}
-              className="mt-8 flex w-full cursor-pointer items-center justify-center gap-2 rounded-md bg-red-700 px-5 py-2.5 font-display text-white hover:bg-red-800"
+              className="mt-8 flex w-full cursor-pointer items-center justify-center gap-2.5 rounded-md bg-red-700 px-6 py-3.5 font-display text-base font-medium text-white shadow-sm hover:bg-red-800"
             >
-              Delete accounts and continue
+              <IconAlertTriangle size={20} />
+              Delete accounts now
             </button>
           </>
         )}
 
+        {step === 'updating' && (
+          <div className="flex w-full flex-col items-center py-8 text-center">
+            <IconLoader2 size={44} className="animate-spin text-ink" />
+            <h1 className="mt-4 font-display text-2xl font-medium text-ink">Updating your library</h1>
+            <p className="mt-2 text-sm text-ink-soft">This will only take a moment.</p>
+          </div>
+        )}
+
         {step === 'done' && (
-          <div className="flex flex-col items-center text-center">
-            <IconCircleCheckFilled size={48} className="text-accent" />
+          <div className="flex w-full flex-col items-center text-center">
+            <IconCircleCheckFilled size={48} className="text-ink" />
             <h1 className="mt-4 font-display text-2xl font-medium text-ink">All set</h1>
             <p className="mt-2 text-sm text-ink-soft">
               Sonneck is now running with <strong className="text-ink">{scenario.toLabel}</strong>.
@@ -389,9 +519,9 @@ export function AuthChangeFlowMockup() {
             <button
               type="button"
               onClick={() => selectScenario(scenarioKey)}
-              className="mt-8 cursor-pointer text-sm text-ink-soft underline hover:text-ink"
+              className="mt-8 flex w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-5 py-2.5 font-display text-ink hover:border-accent"
             >
-              Restart this scenario
+              {scenario.to === 'none' ? 'Continue to Library' : 'Continue to Sign In'}
             </button>
           </div>
         )}

@@ -116,6 +116,11 @@ const MOCKUPS = [
     name: 'Auth Change Flow',
     note: 'Multi-user support, Phase 16 of the plan — a boot-time gate that replaces Admin Settings\' removed in-app Security-change capability: the app detects its AUTH_METHOD no longer matches what it last ran under and walks the admin through the adjustment, mirroring the first-launch flow\'s own full-page-takeover weight. Reuses the choose-surviving-admin/confirm-delete content Admin Settings briefly held before it was pulled out. Switch the "Simulate detected change" scenario to preview every content path: an OIDC upgrade (informational only), a new-password requirement, a light single-account downgrade, and the full destructive multi-account downgrade.',
   },
+  {
+    to: '/mockup/login-screen',
+    name: 'Login Screen',
+    note: 'Multi-user support — the boot-time login wall for singlepass/OIDC installs, built after the fact (no mockup existed when the real page was first built). Added so the Auth Change Flow mockup has something real to preview as the hand-off screen a completed transition lands on. Switch preview state to see the password and OIDC branches, each with and without an error.',
+  },
 ]
 
 export function MockupIndexPage() {

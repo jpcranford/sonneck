@@ -15,6 +15,13 @@ import (
 type ServerSettings struct {
 	AuthMethod             *string
 	FirstLaunchCompletedAt *time.Time
+	// LastActiveAuthMethod (migration 00028, master plan Phase 16) is the
+	// boot-time comparison baseline for the Auth Change flow — nil until
+	// first-launch completes, then kept in sync by every write path below
+	// that changes what's actually running. See GetServerSettings's own
+	// callers (handleGetConfig's authChangePending) for how the mismatch
+	// itself is detected.
+	LastActiveAuthMethod *string
 }
 
 // GetServerSettings reads the singleton row — always exists, seeded by
@@ -22,8 +29,8 @@ type ServerSettings struct {
 func GetServerSettings(ctx context.Context, q Queryer) (*ServerSettings, error) {
 	s := &ServerSettings{}
 	err := q.QueryRowContext(ctx, `
-		SELECT auth_method, first_launch_completed_at FROM server_settings WHERE id = 1`,
-	).Scan(&s.AuthMethod, &s.FirstLaunchCompletedAt)
+		SELECT auth_method, first_launch_completed_at, last_active_auth_method FROM server_settings WHERE id = 1`,
+	).Scan(&s.AuthMethod, &s.FirstLaunchCompletedAt, &s.LastActiveAuthMethod)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -40,10 +47,16 @@ func GetServerSettings(ctx context.Context, q Queryer) (*ServerSettings, error) 
 // passwordHash is nil for "none"/"oidc", set for "singlepass" — passing
 // nil also clears any password set by an earlier run of this flow (e.g.
 // after a DB restore), rather than leaving a stale hash behind.
+// authMethod is also written to last_active_auth_method (Phase 16) — the
+// caller (handleCompleteSetup) has already resolved any env-var override
+// before calling this, so the value stored here is always the method the
+// app is genuinely about to run under, not just whatever was submitted.
 func CompleteFirstLaunch(ctx context.Context, q Queryer, authMethod string, passwordHash *string) error {
 	if _, err := q.ExecContext(ctx, `
-		UPDATE server_settings SET auth_method = ?, first_launch_completed_at = CURRENT_TIMESTAMP WHERE id = 1`,
-		authMethod,
+		UPDATE server_settings
+		SET auth_method = ?, first_launch_completed_at = CURRENT_TIMESTAMP, last_active_auth_method = ?
+		WHERE id = 1`,
+		authMethod, authMethod,
 	); err != nil {
 		return err
 	}
@@ -57,9 +70,29 @@ func CompleteFirstLaunch(ctx context.Context, q Queryer, authMethod string, pass
 // first completed," not "when security was last changed"; a later security
 // change re-stamping it would be a real, if minor, semantic drift with
 // nothing else in this app depending on the distinction, but not worth
-// introducing for no benefit).
+// introducing for no benefit). Also writes last_active_auth_method to the
+// same value (Phase 16) — an in-app change here is already fully
+// consistent between stored and active, so it must never itself trigger
+// the boot-time Auth Change flow on the next boot; that flow exists for
+// externally-driven changes (the env var moving) this endpoint never
+// causes.
 func UpdateAuthMethod(ctx context.Context, q Queryer, authMethod string) error {
-	_, err := q.ExecContext(ctx, `UPDATE server_settings SET auth_method = ? WHERE id = 1`, authMethod)
+	_, err := q.ExecContext(ctx,
+		`UPDATE server_settings SET auth_method = ?, last_active_auth_method = ? WHERE id = 1`,
+		authMethod, authMethod,
+	)
+	return err
+}
+
+// SetLastActiveAuthMethod persists just the Auth Change flow's own
+// completion (POST /api/auth-change/complete) — deliberately does NOT
+// touch server_settings.auth_method (the stored first-launch/admin
+// fallback), per this plan's own locked design: an env-var-driven
+// transition should keep re-gating behind this same flow if the env var is
+// later removed and resolution falls back to a stale stored choice, not
+// silently start trusting a value nobody explicitly confirmed.
+func SetLastActiveAuthMethod(ctx context.Context, q Queryer, authMethod string) error {
+	_, err := q.ExecContext(ctx, `UPDATE server_settings SET last_active_auth_method = ? WHERE id = 1`, authMethod)
 	return err
 }
 

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { IconEye, IconEyeOff } from '@tabler/icons-react'
+import { IconAlertTriangle, IconEye, IconEyeOff } from '@tabler/icons-react'
 import type { AppConfig } from '../api/config'
 import { ApiError } from '../api/client'
 import { login } from '../api/auth'
@@ -82,15 +82,20 @@ export function LoginScreen({
     return (
       <div className="flex min-h-dvh flex-col items-center justify-center bg-paper p-6">
         <div className="flex w-full max-w-sm flex-col items-center gap-5 text-center">
-          <SonneckWordmark className="h-14 w-auto text-ink" />
+          <SonneckWordmark className="h-20 w-auto text-ink" />
           <div className="flex flex-col gap-1">
             <h1 className="font-display text-2xl font-medium text-ink">Welcome back</h1>
             <p className="text-sm text-ink-soft">Sign in to continue.</p>
           </div>
           {oidcError && <p className="text-xs text-red-700">{oidcError}</p>}
+          {/* w-auto + min-w, not w-full — this and the Log In button below
+              read too wide stretched to the full form width. min-w keeps a
+              short label from looking cramped; w-auto (no max-w) lets this
+              one specifically keep growing for a genuinely long
+              oidcProviderName rather than wrapping or truncating it. */}
           <a
             href="/api/auth/oidc/login"
-            className="flex w-full items-center justify-center gap-2 rounded-md bg-accent px-5 py-2.5 font-display text-white hover:bg-accent/90"
+            className="flex w-auto min-w-[180px] items-center justify-center gap-2 rounded-md bg-accent px-8 py-2.5 font-display text-white hover:bg-accent/90"
           >
             Sign in with {oidcProviderName ?? 'your identity provider'}
           </a>
@@ -108,10 +113,10 @@ export function LoginScreen({
         }}
         className="flex w-full max-w-sm flex-col items-center gap-5 text-center"
       >
-        <SonneckWordmark className="h-14 w-auto text-ink" />
+        <SonneckWordmark className="h-20 w-auto text-ink" />
         <div className="flex flex-col gap-1">
           <h1 className="font-display text-2xl font-medium text-ink">Welcome back</h1>
-          <p className="text-sm text-ink-soft">Enter the shared password to continue.</p>
+          <p className="text-sm text-ink-soft">Enter the password to continue.</p>
         </div>
         <div className="relative w-full">
           <input
@@ -120,7 +125,16 @@ export function LoginScreen({
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Password"
             autoFocus
-            className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 pr-9 text-sm text-ink"
+            aria-invalid={loginMutation.isError ? true : undefined}
+            // text-base + tracking-wide, not text-sm — the browser's own
+            // masked "dot" glyph for type="password" scales with font-size,
+            // and macOS renders a noticeably larger dot than Windows at the
+            // same small size — bumping the font-size gives every OS a
+            // legible minimum dot size instead of leaving it to each
+            // platform's own default.
+            className={`w-full rounded-md border bg-paper-raised px-3 py-2 pr-9 text-base tracking-wide text-ink ${
+              loginMutation.isError ? 'border-red-700' : 'border-border'
+            }`}
           />
           <button
             type="button"
@@ -132,14 +146,15 @@ export function LoginScreen({
           </button>
         </div>
         {loginMutation.isError && (
-          <p className="text-xs text-red-700">
+          <p className="-mt-3 flex items-center justify-center gap-1.5 text-xs font-medium text-red-700">
+            <IconAlertTriangle size={14} />
             {loginMutation.error instanceof ApiError ? loginMutation.error.message : 'Something went wrong.'}
           </p>
         )}
         <button
           type="submit"
           disabled={password.length === 0 || loginMutation.isPending}
-          className="flex w-full items-center justify-center gap-2 rounded-md bg-accent px-5 py-2.5 font-display text-white enabled:cursor-pointer enabled:hover:bg-accent/90 disabled:opacity-40"
+          className="flex w-auto min-w-[180px] items-center justify-center gap-2 rounded-md bg-accent px-8 py-2.5 font-display text-white enabled:cursor-pointer enabled:hover:bg-accent/90 disabled:opacity-40"
         >
           {loginMutation.isPending ? 'Signing in…' : 'Log In'}
         </button>

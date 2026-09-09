@@ -559,6 +559,57 @@ type ConfigResponse struct {
 	// OIDCProviderName (Phase 14) — only meaningful when AuthMethod is
 	// "oidc"; drives LoginScreen.tsx's "Sign in with {name}" button text.
 	OIDCProviderName *string `json:"oidcProviderName,omitempty"`
+	// AuthChangePending (Phase 16) — non-nil means the resolved auth
+	// method no longer matches what the app last ran under (an operator
+	// changed AUTH_METHOD since the previous boot). App.tsx gates on this
+	// exactly parallel to FirstLaunchCompleted, rendering AuthChangeFlow
+	// instead of the normal routes until it's resolved.
+	AuthChangePending *AuthChangePendingResponse `json:"authChangePending"`
+}
+
+// AuthChangePendingResponse carries enough for the frontend to render the
+// right step sequence upfront (AuthChangeFlow.tsx's own computeSteps, a
+// direct port of AuthChangeFlowMockup.tsx's), without a round trip just to
+// find out — NeedsPassword/MultiAccount are cheap to compute alongside the
+// mismatch check itself (handleGetConfig).
+type AuthChangePendingResponse struct {
+	From string `json:"from"`
+	To   string `json:"to"`
+	// NeedsPassword is true when To is "singlepass" and no account that
+	// could remain already has a password set — with more than one
+	// existing account this is conservatively always true (almost every
+	// real case, since an OIDC-sourced account never has one), and the
+	// completion endpoint simply won't use a submitted password if it
+	// turns out the actual survivor already had one.
+	NeedsPassword bool `json:"needsPassword"`
+	// MultiAccount is true when downgrading away from oidc with more than
+	// one existing account — gates whether the choose-admin/confirm-delete
+	// steps apply at all.
+	MultiAccount bool `json:"multiAccount"`
+}
+
+// AuthChangeCandidateResponse is one entry in GET /api/auth-change/
+// candidates' list — an admin account eligible to survive a multi-account
+// OIDC-to-single-account downgrade. No email/avatar field — unlike the
+// AuthChangeFlowMockup.tsx reference this ports, models.User carries no
+// email at all, and the survivor's avatar is cleared during the downgrade
+// regardless (repo.ApplyAuthChangeDowngrade), so it wouldn't outlive the
+// choice anyway.
+type AuthChangeCandidateResponse struct {
+	ID          int64  `json:"id"`
+	DisplayName string `json:"displayName"`
+}
+
+// AuthChangeCompleteRequest is POST /api/auth-change/complete's body.
+// Password is required only when the pending transition's target is
+// singlepass and the account that will remain has no password_hash yet;
+// KeepUserID is required only when more than one account currently exists
+// and the target is none/singlepass. The handler re-derives which fields
+// are actually needed from server-side state — it never trusts the client
+// to have sent only what applies.
+type AuthChangeCompleteRequest struct {
+	Password   *string `json:"password"`
+	KeepUserID *int64  `json:"keepUserId"`
 }
 
 // SetupCompleteRequest is the first-time launch flow's Security step
