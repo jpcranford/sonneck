@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/jpcranford/sonneck/internal/copyright"
 	"github.com/jpcranford/sonneck/internal/libraryconfig"
+	"github.com/jpcranford/sonneck/internal/models"
 )
 
 // defaultCitationFormat mirrors design doc §6's format string. No "ca. "
@@ -61,6 +63,20 @@ type Config struct {
 	// non-empty this always wins over that stored choice — see
 	// GET /api/config's resolution order (memory project_multiuser_build.md).
 	AuthMethod string
+
+	// OIDC (Phase 14) — all seven read only when AuthMethod == "oidc"
+	// (env-var-only, master plan's Auth methods table); see
+	// precious-kindling-pretzel.md's Phase 14 section for the full table of
+	// what each does and its default. None of these do network I/O here —
+	// the one call that needs it (discovery) is internal/oidcauth.New,
+	// a separate startup step for exactly that reason.
+	OIDCIssuerURL          string
+	OIDCClientID           string
+	OIDCClientSecret       string
+	OIDCRedirectURI        string
+	ExternalProvider       string
+	OIDCAllowRegistration  bool
+	OIDCDefaultPermissions []string
 
 	mu                  sync.RWMutex
 	backupCron          string
@@ -193,6 +209,45 @@ func Load() (*Config, error) {
 	case "", "none", "singlepass", "oidc":
 	default:
 		return nil, fmt.Errorf("AUTH_METHOD must be one of none, singlepass, oidc, got %q", cfg.AuthMethod)
+	}
+
+	if cfg.AuthMethod == "oidc" {
+		cfg.OIDCIssuerURL = getEnv("OIDC_ISSUER_URL", "")
+		cfg.OIDCClientID = getEnv("OIDC_CLIENT_ID", "")
+		cfg.OIDCClientSecret = getEnv("OIDC_CLIENT_SECRET", "")
+		cfg.OIDCRedirectURI = getEnv("OIDC_REDIRECT_URI", "")
+		for name, val := range map[string]string{
+			"OIDC_ISSUER_URL": cfg.OIDCIssuerURL, "OIDC_CLIENT_ID": cfg.OIDCClientID,
+			"OIDC_CLIENT_SECRET": cfg.OIDCClientSecret, "OIDC_REDIRECT_URI": cfg.OIDCRedirectURI,
+		} {
+			if val == "" {
+				return nil, fmt.Errorf("%s is required when AUTH_METHOD=oidc", name)
+			}
+		}
+		cfg.ExternalProvider = getEnv("EXTERNAL_PROVIDER", "your identity provider")
+
+		cfg.OIDCAllowRegistration = true
+		if v := os.Getenv("OIDC_ALLOW_REGISTRATION"); v != "" {
+			parsed, err := strconv.ParseBool(v)
+			if err != nil {
+				return nil, fmt.Errorf("OIDC_ALLOW_REGISTRATION must be a boolean, got %q", v)
+			}
+			cfg.OIDCAllowRegistration = parsed
+		}
+
+		cfg.OIDCDefaultPermissions = []string{models.PermissionRead}
+		if v := os.Getenv("OIDC_DEFAULT_PERMISSIONS"); v != "" {
+			perms := strings.Split(v, ",")
+			for i, p := range perms {
+				perms[i] = strings.TrimSpace(p)
+			}
+			for _, p := range perms {
+				if !slices.Contains(models.AllPermissions, p) {
+					return nil, fmt.Errorf("OIDC_DEFAULT_PERMISSIONS: %q is not a valid permission", p)
+				}
+			}
+			cfg.OIDCDefaultPermissions = perms
+		}
 	}
 
 	// DATA_DIR itself needs to exist before config.yml can be read/written —

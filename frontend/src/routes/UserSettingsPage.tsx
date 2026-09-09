@@ -525,7 +525,17 @@ export function UserSettingsPage() {
                   if (trimmed && trimmed !== me.displayName) renameMutation.mutate(trimmed)
                   else setName(me.displayName)
                 }}
-                className="w-full rounded-md border border-border bg-paper-raised px-2.5 py-1.5 text-sm text-ink"
+                // Disabled for OIDC (Phase 14) — that identity's name is the
+                // IdP's to own and gets re-synced on every login
+                // (ClaimOrProvisionOIDCUser), so a local edit here would
+                // just be silently overwritten next login; PATCH
+                // /api/auth/me rejects it server-side too. Porting
+                // UserSettingsMockup.tsx's own already-locked design
+                // (disabled={identityKey.startsWith('oidc')}), never wired
+                // into this real page until now since real OIDC login
+                // didn't exist yet to need it.
+                disabled={me.authMethod === 'oidc'}
+                className="w-full rounded-md border border-border bg-paper-raised px-2.5 py-1.5 text-sm text-ink disabled:cursor-not-allowed disabled:bg-paper-sunken disabled:text-ink-soft"
               />
               <p className="mt-1.5 text-xs text-ink-soft">
                 {me.authMethod === 'none'

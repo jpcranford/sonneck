@@ -67,7 +67,7 @@ function App() {
     return <FirstLaunchFlow config={config} />
   }
 
-  return <AuthGate authMethod={config?.authMethod ?? 'none'} />
+  return <AuthGate authMethod={config?.authMethod ?? 'none'} oidcProviderName={config?.oidcProviderName} />
 }
 
 // AuthGate — multi-user support, master plan Phase 11 (memory
@@ -81,7 +81,13 @@ function App() {
 // resolution is threaded down via AuthContext rather than re-fetched by
 // each consumer — Sidebar/MobileNav's user menu (UserMenuButton) and the
 // Admin route guard below both read it from there via useAuth().
-function AuthGate({ authMethod }: { authMethod: AppConfig['authMethod'] }) {
+function AuthGate({
+  authMethod,
+  oidcProviderName,
+}: {
+  authMethod: AppConfig['authMethod']
+  oidcProviderName?: string
+}) {
   const meQuery = useQuery({ queryKey: ['auth', 'me'], queryFn: getMe, retry: false })
 
   if (meQuery.isLoading) {
@@ -90,7 +96,7 @@ function AuthGate({ authMethod }: { authMethod: AppConfig['authMethod'] }) {
 
   if (meQuery.isError) {
     if (meQuery.error instanceof ApiError && meQuery.error.status === 401) {
-      return <LoginScreen authMethod={authMethod} />
+      return <LoginScreen authMethod={authMethod} oidcProviderName={oidcProviderName} />
     }
     // A non-401 failure (network error, 500) isn't a "please log in" case —
     // the rest of the app depends on this same backend anyway, so there's

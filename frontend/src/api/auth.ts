@@ -9,6 +9,9 @@ export interface AuthMe {
   displayName: string
   permissions: string[]
   authMethod: 'none' | 'singlepass' | 'oidc'
+  // avatarUrl (Phase 14) — null for none/singlepass, and for an OIDC
+  // account whose IdP never supplied a "picture" claim.
+  avatarUrl: string | null
 }
 
 export function getMe(): Promise<AuthMe> {

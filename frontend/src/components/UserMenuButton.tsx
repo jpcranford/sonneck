@@ -23,11 +23,12 @@ import { useAuth } from '../lib/AuthContext'
 // trigger + popup either side, the drawer just sits in a wider column
 // (collapsed is always false there).
 //
-// One deliberate simplification vs. the mockup, confirmed directly this
-// session: no identity "sub" line (the mockup's email/description text —
-// real AuthMe carries no such field yet; OIDC, the only mode that would
-// have a real email, isn't built until Phase 14). The authMethod-derived
-// blurb below stands in for that line using data that already exists.
+// One deliberate simplification vs. the mockup, confirmed directly the
+// session this was built: no identity "sub" line (the mockup's email/
+// description text — real AuthMe still carries no email field, even now
+// that OIDC (Phase 14) is real; the identity/avatar row below is the real
+// counterpart instead). The authMethod-derived blurb stands in for that
+// line using data that already exists.
 const AUTH_METHOD_BLURB: Record<string, string> = {
   none: 'No login required',
   singlepass: 'Shared password',
@@ -163,8 +164,12 @@ export function UserMenuButton({ collapsed }: { collapsed: boolean }) {
           open ? 'border-sidebar-text-dim bg-sidebar-bg' : ''
         } ${collapsed ? 'justify-center' : ''}`}
       >
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-full border border-sidebar-border bg-sidebar-bg text-sidebar-text">
-          <IconUserFilled size={16} />
+        <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full border border-sidebar-border bg-sidebar-bg text-sidebar-text">
+          {me.avatarUrl ? (
+            <img src={me.avatarUrl} alt="" className="size-full object-cover" />
+          ) : (
+            <IconUserFilled size={16} />
+          )}
         </span>
         {!collapsed && (
           <>
@@ -188,8 +193,12 @@ export function UserMenuButton({ collapsed }: { collapsed: boolean }) {
         }`}
       >
         <div className="flex items-center gap-2.5 px-3.5 py-3">
-          <span className="flex size-[34px] shrink-0 items-center justify-center rounded-full border border-sidebar-border bg-sidebar-bg text-sidebar-text">
-            <IconUserFilled size={17} />
+          <span className="flex size-[34px] shrink-0 items-center justify-center overflow-hidden rounded-full border border-sidebar-border bg-sidebar-bg text-sidebar-text">
+            {me.avatarUrl ? (
+              <img src={me.avatarUrl} alt="" className="size-full object-cover" />
+            ) : (
+              <IconUserFilled size={17} />
+            )}
           </span>
           <div className="min-w-0">
             <p className="flex items-center gap-1.5 truncate text-[0.92rem] font-medium text-sidebar-text">

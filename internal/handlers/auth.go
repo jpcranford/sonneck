@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
 	"strings"
 	"time"
@@ -10,6 +11,34 @@ import (
 	"github.com/jpcranford/sonneck/internal/models"
 	"github.com/jpcranford/sonneck/internal/repo"
 )
+
+// issueSession mints a session token, persists it, and sets the cookie —
+// shared by handleLogin (singlepass) and handleOIDCCallback (Phase 14), so
+// the two login paths can't drift on cookie flags or TTL.
+func (s *Server) issueSession(w http.ResponseWriter, ctx context.Context, userID int64) error {
+	token, err := auth.NewSessionToken()
+	if err != nil {
+		return err
+	}
+	expiresAt := time.Now().Add(auth.SessionTTL)
+	if err := repo.CreateSession(ctx, s.DB, token, userID, expiresAt); err != nil {
+		return err
+	}
+	http.SetCookie(w, &http.Cookie{
+		Name:     auth.SessionCookieName,
+		Value:    token,
+		Path:     "/",
+		Expires:  expiresAt,
+		HttpOnly: true,
+		// SameSite=Lax, not Strict — Strict would break the OIDC
+		// redirect-back flow; not Secure — this app is commonly reached
+		// over plain HTTP on a LAN (CLAUDE.md's own clipboard-API note
+		// makes the same point), so forcing Secure would silently stop the
+		// browser from ever sending the cookie back.
+		SameSite: http.SameSiteLaxMode,
+	})
+	return nil
+}
 
 // handleLogin is the singlepass password check — the only login UI that
 // exists pre-OIDC (master plan's Auth methods table: `none` has no login at
@@ -47,30 +76,10 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := auth.NewSessionToken()
-	if err != nil {
+	if err := s.issueSession(w, ctx, user.ID); err != nil {
 		s.writeError(w, err)
 		return
 	}
-	expiresAt := time.Now().Add(auth.SessionTTL)
-	if err := repo.CreateSession(ctx, s.DB, token, user.ID, expiresAt); err != nil {
-		s.writeError(w, err)
-		return
-	}
-
-	http.SetCookie(w, &http.Cookie{
-		Name:     auth.SessionCookieName,
-		Value:    token,
-		Path:     "/",
-		Expires:  expiresAt,
-		HttpOnly: true,
-		// SameSite=Lax, not Strict — Strict would break the OIDC
-		// redirect-back flow (Phase 14); not Secure — this app is commonly
-		// reached over plain HTTP on a LAN (CLAUDE.md's own clipboard-API
-		// note makes the same point), so forcing Secure would silently stop
-		// the browser from ever sending the cookie back.
-		SameSite: http.SameSiteLaxMode,
-	})
 
 	resp, err := api.BuildAuthMeResponse(user, repo.ResolveAuthMethod(s.Cfg.AuthMethod, settings))
 	if err != nil {
@@ -130,12 +139,28 @@ func (s *Server) handleGetMe(w http.ResponseWriter, r *http.Request) {
 // permission beyond being authenticated (models.PermissionRead is the
 // lowest bar every real account already has). Unlike PATCH
 // /api/admin/users/{id} (permissions only, admin-gated, any user), this
-// never takes a target id — always the calling user's own row.
+// never takes a target id — always the calling user's own row. Rejected
+// outright for an OIDC account (Phase 14) — that identity's name is the
+// IdP's to own and gets re-synced on every login (ClaimOrProvisionOIDCUser),
+// so a local rename here would just be silently overwritten on next login;
+// UserSettingsPage.tsx's own Account field is disabled for the same reason,
+// this is the server-side backstop (CLAUDE.md > Frontend: "the backend
+// stays sole authority").
 func (s *Server) handleUpdateMe(w http.ResponseWriter, r *http.Request) {
 	user, ok := s.requirePermission(w, r, models.PermissionRead)
 	if !ok {
 		return
 	}
+	settings, err := repo.GetServerSettings(r.Context(), s.DB)
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+	if repo.ResolveAuthMethod(s.Cfg.AuthMethod, settings) == "oidc" {
+		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "your name is managed by your identity provider")
+		return
+	}
+
 	var req api.UpdateMeRequest
 	if err := decodeJSON(r, &req); err != nil {
 		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid request body: "+err.Error())
@@ -151,11 +176,6 @@ func (s *Server) handleUpdateMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	settings, err := repo.GetServerSettings(r.Context(), s.DB)
-	if err != nil {
-		s.writeError(w, err)
-		return
-	}
 	user.DisplayName = name
 	resp, err := api.BuildAuthMeResponse(user, repo.ResolveAuthMethod(s.Cfg.AuthMethod, settings))
 	if err != nil {

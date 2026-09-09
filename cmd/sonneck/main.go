@@ -13,6 +13,7 @@ import (
 	"github.com/jpcranford/sonneck/internal/db"
 	"github.com/jpcranford/sonneck/internal/export"
 	"github.com/jpcranford/sonneck/internal/handlers"
+	"github.com/jpcranford/sonneck/internal/oidcauth"
 	"github.com/jpcranford/sonneck/internal/peoplemigrate"
 	"github.com/jpcranford/sonneck/internal/repo"
 	"github.com/jpcranford/sonneck/internal/webui"
@@ -132,13 +133,27 @@ func main() {
 	}
 	defer scheduler.Stop()
 
+	// OIDC discovery (Phase 14) — a real network call, so it's kept out of
+	// config.Load() (which stays pure parse-and-validate) and done here
+	// instead, once, at startup — fail fast, same posture as every other
+	// required-when-applicable config value, just one step later since this
+	// specific check needs the network.
+	var oidcAuth *oidcauth.Authenticator
+	if cfg.AuthMethod == "oidc" {
+		oidcAuth, err = oidcauth.New(context.Background(), cfg)
+		if err != nil {
+			logger.Error("failed to configure OIDC", "error", err)
+			os.Exit(1)
+		}
+	}
+
 	frontend, err := webui.FS()
 	if err != nil {
 		logger.Error("failed to load embedded frontend", "error", err)
 		os.Exit(1)
 	}
 
-	handler := handlers.New(conn, cfg, logger, frontend, scheduler, buildSHA, buildDate)
+	handler := handlers.New(conn, cfg, logger, frontend, scheduler, buildSHA, buildDate, oidcAuth)
 
 	logger.Info("starting server", "port", cfg.Port)
 	if err := http.ListenAndServe(":"+cfg.Port, handler); err != nil {
@@ -223,6 +238,32 @@ func runSubcommand(name string, conn *sql.DB, cfg *config.Config, logger *slog.L
 			os.Exit(1)
 		}
 		logger.Info("password reset completed", "userId", 1)
+	case "link-oidc-account":
+		// Seventh instance of the CLI-subcommand admin pattern (CLAUDE.md >
+		// Search), master plan Phase 14. Manually links an existing users
+		// row to an OIDC subject — for cases the automatic first-login
+		// claim/auto-provision (repo.ClaimOrProvisionOIDCUser) doesn't
+		// cover: re-linking after a subject needs correcting, or
+		// deliberately attaching a pre-provisioned account before its
+		// owner ever logs in (useful with OIDC_ALLOW_REGISTRATION=false).
+		// Takes the target user (id or exact display name) and the OIDC
+		// subject string; fails loudly (via repo.ErrDuplicateName) if that
+		// subject is already linked to a *different* row, rather than
+		// silently reassigning it.
+		if len(os.Args) != 4 {
+			logger.Error("usage: sonneck link-oidc-account <user-id-or-display-name> <subject>")
+			os.Exit(1)
+		}
+		user, err := repo.FindUserByIDOrDisplayName(context.Background(), conn, os.Args[2])
+		if err != nil {
+			logger.Error("could not find user", "target", os.Args[2], "error", err)
+			os.Exit(1)
+		}
+		if err := repo.SetOIDCSubject(context.Background(), conn, user.ID, os.Args[3]); err != nil {
+			logger.Error("linking oidc account failed", "error", err)
+			os.Exit(1)
+		}
+		logger.Info("oidc account linked", "userId", user.ID, "displayName", user.DisplayName)
 	case "export-csv":
 		// Third instance of the CLI-subcommand admin pattern (CLAUDE.md >
 		// Search). Also safe against a live server — WAL mode lets these

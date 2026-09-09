@@ -23,15 +23,19 @@ var AllPermissions = []string{
 	PermissionUpload, PermissionCreate, PermissionDelete, PermissionAdmin,
 }
 
-// User is an account row (migration 00024, extended by 00025). In
+// User is an account row (migration 00024, extended by 00025/00027). In
 // none/singlepass mode there is always exactly one (id=1) — OIDC (Phase 14)
 // is the only mode that ever creates a second.
 type User struct {
 	ID           int64
 	DisplayName  string
 	PasswordHash *string
-	CreatedAt    time.Time
-	Permissions  []string
+	// OIDCSubject/AvatarURL are always nil for none/singlepass — only an
+	// OIDC-claimed or -provisioned row ever sets them (migration 00027).
+	OIDCSubject *string
+	AvatarURL   *string
+	CreatedAt   time.Time
+	Permissions []string
 }
 
 // HasPermission reports whether u holds perm directly, or holds "admin"

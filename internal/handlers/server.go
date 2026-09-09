@@ -32,6 +32,15 @@ type Server struct {
 	BuildSHA     string
 	BuildDate    string
 	versionCache *versionCache
+
+	// OIDCAuth is nil unless the resolved auth method is genuinely "oidc"
+	// (master plan Phase 14) — mirrors BackupScheduler's own "nil in
+	// test/CLI-subcommand construction" convention. handleOIDCLogin/
+	// handleOIDCCallback check for nil before using it. Typed as the local
+	// OIDCAuthenticator interface (oidc.go), not the concrete
+	// *oidcauth.Authenticator, so tests can inject a fake with no real
+	// network/JWT-signing involved.
+	OIDCAuth OIDCAuthenticator
 }
 
 // New wires up the full HTTP surface — the /api endpoints below, /healthz,
@@ -40,12 +49,16 @@ type Server struct {
 // tests can pass the same webui.FS() call without any special-casing.
 // scheduler/buildSHA/buildDate all back Admin Settings' Library
 // Settings/Version sections — a test or CLI-subcommand caller that never
-// reaches those routes can pass nil/""/"" for all three.
-func New(db *sql.DB, cfg *config.Config, logger *slog.Logger, frontend fs.FS, scheduler *backup.Scheduler, buildSHA, buildDate string) http.Handler {
+// reaches those routes can pass nil/""/"" for all three. oidcAuth is nil
+// unless cfg.AuthMethod == "oidc" (master plan Phase 14) — constructed once
+// in cmd/sonneck/main.go, since it does a real network call (OIDC
+// discovery) that config.Load() itself deliberately never makes.
+func New(db *sql.DB, cfg *config.Config, logger *slog.Logger, frontend fs.FS, scheduler *backup.Scheduler, buildSHA, buildDate string, oidcAuth OIDCAuthenticator) http.Handler {
 	s := &Server{
 		DB: db, Cfg: cfg, Logger: logger,
 		BackupScheduler: scheduler, BuildSHA: buildSHA, BuildDate: buildDate,
 		versionCache: &versionCache{},
+		OIDCAuth:     oidcAuth,
 	}
 
 	mux := http.NewServeMux()
@@ -69,6 +82,10 @@ func New(db *sql.DB, cfg *config.Config, logger *slog.Logger, frontend fs.FS, sc
 	mux.HandleFunc("POST /api/auth/login", s.handleLogin)
 	mux.HandleFunc("POST /api/auth/logout", s.handleLogout)
 	mux.HandleFunc("GET /api/auth/me", s.handleGetMe)
+	// OIDC (Phase 14) — the IdP redirect and its callback, both reachable
+	// pre-session (authMiddleware's publicAPIPaths).
+	mux.HandleFunc("GET /api/auth/oidc/login", s.handleOIDCLogin)
+	mux.HandleFunc("GET /api/auth/oidc/callback", s.handleOIDCCallback)
 	// User Settings' Account card (multi-user support, Phase 12) —
 	// self-rename and self-service password change, distinct from the
 	// admin-only equivalents under /api/admin/*.
@@ -245,6 +262,9 @@ func (s *Server) handleGetConfig(w http.ResponseWriter, r *http.Request) {
 	}
 	if !resp.FirstLaunchCompleted {
 		resp.DataDir = &s.Cfg.DataDir
+	}
+	if authMethod == "oidc" {
+		resp.OIDCProviderName = &s.Cfg.ExternalProvider
 	}
 	api.WriteData(w, http.StatusOK, resp)
 }

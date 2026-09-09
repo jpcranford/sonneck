@@ -556,6 +556,9 @@ type ConfigResponse struct {
 	AuthMethodSetByEnv   bool    `json:"authMethodSetByEnv"`
 	FirstLaunchCompleted bool    `json:"firstLaunchCompleted"`
 	DataDir              *string `json:"dataDir,omitempty"`
+	// OIDCProviderName (Phase 14) — only meaningful when AuthMethod is
+	// "oidc"; drives LoginScreen.tsx's "Sign in with {name}" button text.
+	OIDCProviderName *string `json:"oidcProviderName,omitempty"`
 }
 
 // SetupCompleteRequest is the first-time launch flow's Security step
@@ -581,6 +584,9 @@ type AuthMeResponse struct {
 	DisplayName string   `json:"displayName"`
 	Permissions []string `json:"permissions"`
 	AuthMethod  string   `json:"authMethod"`
+	// AvatarURL (Phase 14) — nil for none/singlepass, and for an OIDC
+	// account whose IdP never supplied a "picture" claim.
+	AvatarURL *string `json:"avatarUrl"`
 }
 
 // AdminUserResponse is one row in Admin Settings' Users screen.
@@ -727,5 +733,6 @@ func BuildAuthMeResponse(user *models.User, authMethod string) (*AuthMeResponse,
 		DisplayName: user.DisplayName,
 		Permissions: perms,
 		AuthMethod:  authMethod,
+		AvatarURL:   user.AvatarURL,
 	}, nil
 }

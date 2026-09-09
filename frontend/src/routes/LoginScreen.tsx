@@ -1,10 +1,21 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { IconEye, IconEyeOff, IconShieldLock } from '@tabler/icons-react'
+import { IconEye, IconEyeOff } from '@tabler/icons-react'
 import type { AppConfig } from '../api/config'
 import { ApiError } from '../api/client'
 import { login } from '../api/auth'
 import { SonneckWordmark } from '../components/SonneckWordmark'
+
+// The small fixed set of ?oidcError= codes handleOIDCCallback
+// (internal/handlers/oidc.go) can redirect back with — mapped to a short,
+// friendly line rather than showing raw error text.
+const OIDC_ERROR_MESSAGES: Record<string, string> = {
+  state: 'That sign-in link expired or was already used — try again.',
+  exchange: 'Your identity provider could not complete sign-in — try again.',
+  registration_disabled: "This account isn't set up yet. Ask an admin to add it first.",
+  unconfigured: 'Sign-in through an identity provider is not set up on this server.',
+  internal: 'Something went wrong signing you in — try again.',
+}
 
 // Boot-time login gate — multi-user support, Phase 11 of the master plan
 // (memory project_multiuser_build.md). Not itself named as a phase in that
@@ -22,10 +33,36 @@ import { SonneckWordmark } from '../components/SonneckWordmark'
 // text-red-700 error line) — not a mockup-first build, since no design
 // mockup exists for this screen; it's small enough, and similar enough to
 // FirstLaunchFlow's own Security step, not to need one.
-export function LoginScreen({ authMethod }: { authMethod: AppConfig['authMethod'] }) {
+export function LoginScreen({
+  authMethod,
+  oidcProviderName,
+}: {
+  authMethod: AppConfig['authMethod']
+  oidcProviderName?: string
+}) {
   const queryClient = useQueryClient()
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  // handleOIDCCallback (internal/handlers/oidc.go) redirects failures back
+  // here as ?oidcError=<code>. Read once via a lazy initializer rather than
+  // an effect calling setState (react-hooks/set-state-in-effect — this
+  // project's React Compiler setup flags that, CLAUDE.md > Frontend's own
+  // "prefer deriving state from the event that causes it" gotcha).
+  const [oidcError] = useState<string | null>(() => {
+    const code = new URLSearchParams(window.location.search).get('oidcError')
+    return code ? (OIDC_ERROR_MESSAGES[code] ?? OIDC_ERROR_MESSAGES.internal) : null
+  })
+
+  // Stripping the query param is a real external-system side effect (not a
+  // React state update), so it stays in an effect — just with no setState
+  // call inside it.
+  useEffect(() => {
+    if (!window.location.search.includes('oidcError')) return
+    const params = new URLSearchParams(window.location.search)
+    params.delete('oidcError')
+    const rest = params.toString()
+    window.history.replaceState(null, '', window.location.pathname + (rest ? `?${rest}` : ''))
+  }, [])
 
   const loginMutation = useMutation({
     mutationFn: () => login(password),
@@ -37,22 +74,26 @@ export function LoginScreen({ authMethod }: { authMethod: AppConfig['authMethod'
     },
   })
 
-  // OIDC is env-var-only and Phase 14 (not built) — a server configured for
-  // it has no IdP redirect this frontend can perform, so this explains the
-  // dead end instead of rendering a password field that could never work.
+  // OIDC (Phase 14) — a real top-level navigation to the IdP, not an
+  // in-app action, so this is a genuine <a>, not a click-handled button
+  // (CLAUDE.md > Frontend's own "card navigation needs a real <a>"
+  // convention, same underlying reason).
   if (authMethod === 'oidc') {
     return (
-      <div className="flex min-h-dvh flex-col items-center justify-center gap-5 bg-paper p-6 text-center">
-        <SonneckWordmark className="h-14 w-auto text-ink" />
-        <div className="flex max-w-sm flex-col items-center gap-2">
-          <IconShieldLock size={28} className="text-ink-soft" />
-          <h1 className="font-display text-xl font-medium text-ink">Sign-in isn't built yet</h1>
-          <p className="text-sm text-ink-soft">
-            This server is set up for sign-in through an identity provider, but that part of Sonneck isn't built
-            yet. Unset <code className="rounded bg-paper-sunken px-1 py-0.5">AUTH_METHOD</code>, or set it to{' '}
-            <code className="rounded bg-paper-sunken px-1 py-0.5">none</code> or{' '}
-            <code className="rounded bg-paper-sunken px-1 py-0.5">singlepass</code>, to get back in.
-          </p>
+      <div className="flex min-h-dvh flex-col items-center justify-center bg-paper p-6">
+        <div className="flex w-full max-w-sm flex-col items-center gap-5 text-center">
+          <SonneckWordmark className="h-14 w-auto text-ink" />
+          <div className="flex flex-col gap-1">
+            <h1 className="font-display text-2xl font-medium text-ink">Welcome back</h1>
+            <p className="text-sm text-ink-soft">Sign in to continue.</p>
+          </div>
+          {oidcError && <p className="text-xs text-red-700">{oidcError}</p>}
+          <a
+            href="/api/auth/oidc/login"
+            className="flex w-full items-center justify-center gap-2 rounded-md bg-accent px-5 py-2.5 font-display text-white hover:bg-accent/90"
+          >
+            Sign in with {oidcProviderName ?? 'your identity provider'}
+          </a>
         </div>
       </div>
     )

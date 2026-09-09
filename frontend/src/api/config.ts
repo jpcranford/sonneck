@@ -18,6 +18,9 @@ export interface AppConfig {
   authMethodSetByEnv: boolean
   firstLaunchCompleted: boolean
   dataDir?: string
+  // oidcProviderName (Phase 14) — only present when authMethod is 'oidc';
+  // drives LoginScreen.tsx's "Sign in with {name}" button text.
+  oidcProviderName?: string
 }
 
 export function getConfig(): Promise<AppConfig> {

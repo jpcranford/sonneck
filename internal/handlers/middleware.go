@@ -43,9 +43,11 @@ const userContextKey contextKey = 0
 // gated at all, so the SPA shell always loads and can itself call these to
 // decide what to show.
 var publicAPIPaths = map[string]bool{
-	"/api/config":         true,
-	"/api/setup/complete": true,
-	"/api/auth/login":     true,
+	"/api/config":             true,
+	"/api/setup/complete":     true,
+	"/api/auth/login":         true,
+	"/api/auth/oidc/login":    true,
+	"/api/auth/oidc/callback": true,
 }
 
 // authMiddleware resolves the request's user — the implicit id=1 row in
