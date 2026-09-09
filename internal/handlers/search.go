@@ -546,18 +546,37 @@ func buildPieceFilterClauses(w http.ResponseWriter, q url.Values, userID int64) 
 	}
 
 	// practiceStatus: comma-separated for an OR match against several
-	// statuses at once (the sidebar's "Currently Practicing" view — Learning
-	// OR Stalled — is the first caller of this; a single value still works
-	// the same as before, IN (?) with one placeholder behaves like = ?).
-	// excludePracticeStatus is the same list, negated — both can be present
-	// at once (e.g. practiceStatus=Learning excludePracticeStatus=Stalled),
-	// which simply ANDs the two conditions like any other pair of clauses.
+	// statuses at once — the Filter Drawer's own multi-select is the only
+	// remaining caller of this by *name* (the sidebar's three fixed views
+	// switched to practiceStatusSlot below, precisely because a name-based
+	// match breaks the moment the status is renamed). excludePracticeStatus
+	// is the same list, negated — both can be present at once (e.g.
+	// practiceStatus=Learning excludePracticeStatus=Stalled), which simply
+	// ANDs the two conditions like any other pair of clauses.
 	if clause, present, ok := practiceStatusClause(w, q, "practiceStatus", false, userID); !ok {
 		return nil, false
 	} else if present {
 		clauses = append(clauses, clause)
 	}
 	if clause, present, ok := practiceStatusClause(w, q, "excludePracticeStatus", true, userID); !ok {
+		return nil, false
+	} else if present {
+		clauses = append(clauses, clause)
+	}
+
+	// practiceStatusSlot: the sidebar's fixed Want to Learn/Currently
+	// Practicing/Learned views (direct feedback — renaming a status in User
+	// Settings must not break these). Matches practice_statuses.sidebar_slot
+	// (migration 00026) instead of the live name — set once when a status is
+	// seeded, untouched by RenamePracticeStatus, so a rename never affects
+	// which pieces these three views show. "practicing" naturally OR-matches
+	// both Learning and Stalled, since both rows carry that slot — no
+	// separate multi-value handling needed the way the name-based
+	// practiceStatus param has. Shares practiceStatusClause's own "practiceStatus"
+	// namedClause name (self-narrowing/facet-skip purposes) even though nothing
+	// currently uses both params in the same request — the Filter Drawer's own
+	// Practice Status row is always hidden on these three pages.
+	if clause, present, ok := practiceStatusSlotClause(w, q, userID); !ok {
 		return nil, false
 	} else if present {
 		clauses = append(clauses, clause)
@@ -689,6 +708,32 @@ func practiceStatusClause(w http.ResponseWriter, q url.Values, param string, exc
 		where = negateClause(where)
 	}
 	return namedClause{name: "practiceStatus", where: where, args: args}, true, true
+}
+
+// practiceStatusSlotClause is the sidebar's own rename-proof counterpart to
+// practiceStatusClause above — see buildPieceFilterClauses's own comment on
+// why this exists. Single-value, not comma-separated: unlike the name-based
+// param (which needs a multi-value list because names are arbitrary and
+// user-chosen), the three valid slots already fully enumerate the sidebar's
+// fixed views, and "practicing" already covers both Learning/Stalled server-
+// side via the join, with no equivalent multi-value request needed.
+func practiceStatusSlotClause(w http.ResponseWriter, q url.Values, userID int64) (clause namedClause, present, ok bool) {
+	slot := q.Get("practiceStatusSlot")
+	if slot == "" {
+		return namedClause{}, false, true
+	}
+	switch slot {
+	case "want_to_learn", "practicing", "learned":
+	default:
+		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid practiceStatusSlot")
+		return namedClause{}, false, false
+	}
+	where := `p.id IN (
+		SELECT pps.piece_id FROM piece_practice_status pps
+		JOIN practice_statuses ps ON ps.id = pps.status_id
+		WHERE pps.user_id = ? AND ps.sidebar_slot = ?
+	)`
+	return namedClause{name: "practiceStatus", where: where, args: []any{userID, slot}}, true, true
 }
 
 // combineClauses ANDs together every namedClause except the one matching

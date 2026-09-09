@@ -94,7 +94,7 @@ const GRID_COLS_CLASS: Record<'default' | 'compact', string> = {
 }
 
 // Shared by LibraryPage (no filters — the whole collection), FavoritesPage
-// (favorite: true), and PracticingPage (practiceStatus: Learning,Stalled):
+// (favorite: true), and PracticingPage (practiceStatusSlot: 'practicing'):
 // the same search box + grid/list toggle + loading/error/empty states +
 // card rendering, previously duplicated only in LibraryPage before the
 // other two filtered views existed. One implementation now rather than
@@ -198,7 +198,7 @@ export function PieceBrowseView({
         sort: sortField,
         dir: sortDirection,
         // Spread last: a page's own fixed filter (e.g. Favorites'
-        // favorite:true, Practicing's practiceStatus) always wins over
+        // favorite:true, Practicing's practiceStatusSlot) always wins over
         // whatever the drawer independently has set for that same field.
         ...filters,
         limit: PAGE_SIZE,
@@ -419,7 +419,7 @@ export function PieceBrowseView({
         hideFavorite={filters?.favorite !== undefined}
         hideBookless={filters?.bookless !== undefined}
         hideHasImslpNumber={filters?.hasImslpNumber !== undefined}
-        hidePracticeStatus={filters?.practiceStatus !== undefined}
+        hidePracticeStatus={filters?.practiceStatus !== undefined || filters?.practiceStatusSlot !== undefined}
       />
     </div>
   )

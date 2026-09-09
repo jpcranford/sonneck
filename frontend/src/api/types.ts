@@ -8,6 +8,15 @@ export interface Tag {
   name: string
 }
 
+/** GET /api/practice-statuses' own shape — like Tag, plus iconKey
+ * (migration 00026): null for anything but the five seeded defaults, which
+ * User Settings' own PRACTICE_STATUS_ICON_COMPONENTS map keys by. Durable
+ * and rename-proof by construction (renaming a status only ever changes
+ * `name` server-side, never `icon_key`). */
+export interface PracticeStatusItem extends Tag {
+  iconKey: 'want_to_learn' | 'learning' | 'learned' | 'stalled' | 'dropped' | null
+}
+
 /** A book-inheritable string field, resolved to its effective value. */
 export interface EffectiveField {
   value: string
@@ -78,7 +87,16 @@ export interface CopyrightStatusField {
   expiryYear: number | null
 }
 
-export type PracticeStatus = 'Want to Learn' | 'Learning' | 'Learned' | 'Stalled' | 'Dropped'
+// Was a closed 5-value union; Practice Status became a real, per-user
+// renameable/creatable table back in migration 00025 (repo.PracticeStatus),
+// so a piece's own practiceStatus is genuinely just whatever that status is
+// currently named — no longer a fixed enum. A plain string alias, kept
+// (rather than dropped entirely) so every existing `PracticeStatus | null`
+// annotation stays meaningful without a mechanical find/replace across the
+// app. Found via a real crash: PracticeStatusIcon.tsx's old
+// Record<PracticeStatus, …> lookup threw outright on a renamed status,
+// since TypeScript trusted this type's stale closed-set promise.
+export type PracticeStatus = string
 
 /**
  * A Person credit (composer/arranger overhaul, migration 00020) — see

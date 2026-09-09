@@ -86,6 +86,13 @@ export interface SearchPiecesParams {
   favorite?: boolean
   practiceStatus?: string
   excludePracticeStatus?: string
+  /** The sidebar's fixed Want to Learn/Currently Practicing/Learned views
+   * only — matches practice_statuses.sidebar_slot server-side instead of
+   * the live name, so renaming a status in User Settings doesn't break
+   * these three (WantToLearnPage.tsx/PracticingPage.tsx/LearnedPage.tsx).
+   * Mutually exclusive with practiceStatus in practice: a page uses one or
+   * the other, never both. */
+  practiceStatusSlot?: 'want_to_learn' | 'practicing' | 'learned'
   /** Pieces with no sourceBookId at all (design doc §3/§5 — a normal,
    * first-class case, e.g. a single downloaded score). Genuinely tri-state
    * now (direct request, 2026-09-05) — `true` books-none only, `false`
@@ -152,6 +159,7 @@ export interface PieceFacetsParams {
   favorite?: boolean
   practiceStatus?: string
   excludePracticeStatus?: string
+  practiceStatusSlot?: 'want_to_learn' | 'practicing' | 'learned'
   bookless?: boolean
   hasImslpNumber?: boolean
 }

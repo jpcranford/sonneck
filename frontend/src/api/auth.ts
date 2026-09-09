@@ -1,4 +1,4 @@
-import { apiGet, apiPost } from './client'
+import { apiGet, apiPatch, apiPost } from './client'
 
 // Mirrors internal/api/dto.go's AuthMeResponse — the frontend's one source
 // of truth for "who am I, what can I do, how is this server configured for
@@ -23,4 +23,14 @@ export function login(password: string): Promise<AuthMe> {
 
 export function logout(): Promise<{ ok: boolean }> {
   return apiPost<{ ok: boolean }>('/api/auth/logout')
+}
+
+// User Settings' Account card (master plan Phase 12) — self-rename and
+// self-service password change.
+export function updateMe(displayName: string): Promise<AuthMe> {
+  return apiPatch<AuthMe>('/api/auth/me', { displayName })
+}
+
+export function changePassword(currentPassword: string, newPassword: string): Promise<{ ok: boolean }> {
+  return apiPost<{ ok: boolean }>('/api/auth/change-password', { currentPassword, newPassword })
 }

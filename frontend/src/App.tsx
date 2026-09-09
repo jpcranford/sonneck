@@ -6,7 +6,7 @@ import { ApiError } from './api/client'
 import { AuthContext } from './lib/AuthContext'
 import { FirstLaunchFlow } from './routes/FirstLaunchFlow'
 import { LoginScreen } from './routes/LoginScreen'
-import { SettingsPage } from './routes/SettingsPage'
+import { UserSettingsPage } from './routes/UserSettingsPage'
 import { AdminPage } from './routes/AdminPage'
 import { AppShell } from './components/AppShell'
 import { LibraryPage } from './routes/LibraryPage'
@@ -121,11 +121,11 @@ function AppRoutes() {
         <Route path="people" element={<PeopleLibraryPage />} />
         <Route path="people/:id" element={<PersonDetailsPage />} />
         {/* Real routes (shell scope) for the sidebar user menu's Settings/
-            Admin links — master plan Phase 11. Both stubbed with
-            ComingSoon for now; filled in for real against the already-
-            approved /mockup/user-settings and /mockup/admin-settings
-            designs in Phases 12/13. */}
-        <Route path="settings" element={<SettingsPage />} />
+            Admin links — master plan Phase 11. /settings is real as of
+            Phase 12 (against the approved /mockup/user-settings design);
+            /admin is still a ComingSoon stub until Phase 13 builds it
+            against /mockup/admin-settings. */}
+        <Route path="settings" element={<UserSettingsPage />} />
         <Route path="admin" element={<AdminPage />} />
         {/* Design mockups and reference samples — unlinked from the main
             nav, browsable via the /mockup index below. Kept intentionally

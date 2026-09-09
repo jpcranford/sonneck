@@ -3,7 +3,7 @@ import { PieceBrowseView } from '../components/PieceBrowseView'
 export function WantToLearnPage() {
   return (
     <PieceBrowseView
-      filters={{ practiceStatus: 'Want to Learn' }}
+      filters={{ practiceStatusSlot: 'want_to_learn' }}
       searchPlaceholder="Search pieces you want to learn…"
       emptyMessage="No pieces marked Want to Learn yet."
       noMatchMessage="No matching pieces in Want to Learn."

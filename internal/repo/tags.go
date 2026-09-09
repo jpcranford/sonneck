@@ -216,6 +216,16 @@ func CreateUserTag(ctx context.Context, q Queryer, ownerUserID int64, name strin
 	return createNamedRow(ctx, q, "user_tags", "owner_user_id", name, ownerUserID)
 }
 
+// RenameUserTag changes tagID's display name within ownerUserID's own
+// vocabulary (User Settings' Your Tags card, master plan Phase 12) — via
+// renameNamedRow (internal/repo/lookup.go), so a duplicate name within that
+// same owner's set reports ErrDuplicateName, and a tagID belonging to a
+// different owner reports ErrNotFound rather than silently renaming
+// someone else's tag.
+func RenameUserTag(ctx context.Context, q Queryer, ownerUserID, tagID int64, name string) error {
+	return renameNamedRow(ctx, q, "user_tags", "owner_user_id", ownerUserID, tagID, name)
+}
+
 // ListUserTags returns only ownerUserID's own tags — private per-user
 // vocabulary (migration 00025), not the shared listTags/global-table
 // pattern Instruments still uses.

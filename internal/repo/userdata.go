@@ -121,10 +121,15 @@ func SetUserPieceData(ctx context.Context, q Queryer, userID, pieceID int64, dat
 
 // PracticeStatus is a per-user practice-status row — same id+name wire
 // shape as repo.Tag (JSON tags included, so this can be returned directly
-// from a handler the same way Tag already is).
+// from a handler the same way Tag already is), plus IconKey (migration
+// 00026) — nil for anything but the five seeded defaults, which the
+// frontend's own PRACTICE_STATUS_ICON_COMPONENTS map (User Settings) keys
+// by. Durable and rename-proof by construction: RenamePracticeStatus only
+// ever touches `name`.
 type PracticeStatus struct {
-	ID   int64  `json:"id"`
-	Name string `json:"name"`
+	ID      int64   `json:"id"`
+	Name    string  `json:"name"`
+	IconKey *string `json:"iconKey"`
 }
 
 // ListPracticeStatuses returns userID's own practice statuses, alphabetical
@@ -132,7 +137,7 @@ type PracticeStatus struct {
 // list.
 func ListPracticeStatuses(ctx context.Context, q Queryer, userID int64) ([]PracticeStatus, error) {
 	rows, err := q.QueryContext(ctx,
-		`SELECT id, name FROM practice_statuses WHERE owner_user_id = ? ORDER BY name`, userID,
+		`SELECT id, name, icon_key FROM practice_statuses WHERE owner_user_id = ? ORDER BY name`, userID,
 	)
 	if err != nil {
 		return nil, err
@@ -142,7 +147,7 @@ func ListPracticeStatuses(ctx context.Context, q Queryer, userID int64) ([]Pract
 	statuses := []PracticeStatus{}
 	for rows.Next() {
 		var s PracticeStatus
-		if err := rows.Scan(&s.ID, &s.Name); err != nil {
+		if err := rows.Scan(&s.ID, &s.Name, &s.IconKey); err != nil {
 			return nil, err
 		}
 		statuses = append(statuses, s)
@@ -177,6 +182,15 @@ func CreatePracticeStatus(ctx context.Context, q Queryer, userID int64, name str
 	return createNamedRow(ctx, q, "practice_statuses", "owner_user_id", name, userID)
 }
 
+// RenamePracticeStatus changes statusID's display name within userID's own
+// set (User Settings' Practice Status card, master plan Phase 12) — via
+// renameNamedRow (internal/repo/lookup.go), same duplicate/ownership
+// guarantees as RenameUserTag. Not indexed in pieces_fts (unlike a tag
+// rename), so no search-index resync is needed here.
+func RenamePracticeStatus(ctx context.Context, q Queryer, userID, statusID int64, name string) error {
+	return renameNamedRow(ctx, q, "practice_statuses", "owner_user_id", userID, statusID, name)
+}
+
 // DeletePracticeStatus removes statusID (already confirmed to belong to
 // userID by the caller). mergeIntoID present means every piece_practice_status
 // row pointing at statusID is repointed to mergeIntoID first, in the same
@@ -208,11 +222,13 @@ func DeletePracticeStatus(ctx context.Context, q Queryer, statusID int64, mergeI
 // --- User settings ---
 
 // UserSettings is the small fixed set of admin-screen-visible per-user
-// preferences (migration 00025's user_settings table).
+// preferences (migration 00025's user_settings table). JSON tags included
+// (same convention as PracticeStatus/Tag) — GET/PATCH /api/user-settings
+// (master plan Phase 12) return/accept this shape directly.
 type UserSettings struct {
-	ShowBooksInSidebar bool
-	ThemePreference    string
-	ContentViewMode    string
+	ShowBooksInSidebar bool   `json:"showBooksInSidebar"`
+	ThemePreference    string `json:"themePreference"`
+	ContentViewMode    string `json:"contentViewMode"`
 }
 
 // GetUserSettings loads userID's settings row — always exists once the
@@ -249,9 +265,26 @@ func UpdateUserSettings(ctx context.Context, q Queryer, userID int64, s UserSett
 // will be the real caller; not exercised by none/singlepass, which never
 // creates a second account).
 func SeedNewUserData(ctx context.Context, q Queryer, userID int64) error {
-	for _, name := range []string{"Want to Learn", "Learning", "Learned", "Stalled", "Dropped"} {
+	// sidebar_slot/icon_key (migration 00026) — same assignment the
+	// migration's own backfill gives every existing account's rows, kept in
+	// sync deliberately rather than shared: this is a one-time INSERT
+	// literal, that migration is a one-time UPDATE, and there's no third
+	// call site that would justify factoring the mapping out.
+	defaults := []struct {
+		name        string
+		sidebarSlot *string
+		iconKey     *string
+	}{
+		{"Want to Learn", ptr("want_to_learn"), ptr("want_to_learn")},
+		{"Learning", ptr("practicing"), ptr("learning")},
+		{"Stalled", ptr("practicing"), ptr("stalled")},
+		{"Learned", ptr("learned"), ptr("learned")},
+		{"Dropped", nil, ptr("dropped")},
+	}
+	for _, d := range defaults {
 		if _, err := q.ExecContext(ctx,
-			`INSERT INTO practice_statuses (owner_user_id, name) VALUES (?, ?)`, userID, name,
+			`INSERT INTO practice_statuses (owner_user_id, name, sidebar_slot, icon_key) VALUES (?, ?, ?, ?)`,
+			userID, d.name, d.sidebarSlot, d.iconKey,
 		); err != nil {
 			return err
 		}
@@ -259,3 +292,5 @@ func SeedNewUserData(ctx context.Context, q Queryer, userID int64) error {
 	_, err := q.ExecContext(ctx, `INSERT INTO user_settings (user_id) VALUES (?)`, userID)
 	return err
 }
+
+func ptr(s string) *string { return &s }

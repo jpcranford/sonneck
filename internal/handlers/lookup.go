@@ -292,6 +292,54 @@ func (s *Server) handleCreateUserTag(w http.ResponseWriter, r *http.Request) {
 	api.WriteData(w, http.StatusCreated, repo.Tag{ID: id, Name: req.Name})
 }
 
+// handleRenameUserTag is User Settings' Your Tags card inline rename
+// (master plan Phase 12) — unlike the admin lookup tables' rename above,
+// user tags are indexed in pieces_fts (CLAUDE.md > Search's corrected note:
+// "user tags genuinely are indexed"), so every piece carrying this tag
+// needs its search-index row resynced with the new name, same as a
+// merge/delete.
+func (s *Server) handleRenameUserTag(w http.ResponseWriter, r *http.Request) {
+	user, ok := s.requirePermission(w, r, models.PermissionRead)
+	if !ok {
+		return
+	}
+	id, ok := pathID(r, "id")
+	if !ok {
+		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid tag id")
+		return
+	}
+	var req api.LookupRenameRequest
+	if err := decodeJSON(r, &req); err != nil {
+		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid request body: "+err.Error())
+		return
+	}
+	if err := api.ValidateTagName(req.Name); err != nil {
+		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, err.Error())
+		return
+	}
+
+	err := s.withTx(r.Context(), func(tx *sql.Tx) error {
+		affected, err := repo.PieceIDsWithUserTag(r.Context(), tx, id)
+		if err != nil {
+			return err
+		}
+		if err := repo.RenameUserTag(r.Context(), tx, user.ID, id, req.Name); err != nil {
+			return err
+		}
+		for _, pieceID := range affected {
+			if err := repo.ResyncSearchIndex(r.Context(), tx, pieceID); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+	api.WriteData(w, http.StatusOK, repo.Tag{ID: id, Name: req.Name})
+}
+
 func (s *Server) handleDeleteUserTag(w http.ResponseWriter, r *http.Request) {
 	user, ok := s.requirePermission(w, r, models.PermissionRead)
 	if !ok {
@@ -374,6 +422,35 @@ func (s *Server) handleCreatePracticeStatus(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	api.WriteData(w, http.StatusCreated, repo.PracticeStatus{ID: id, Name: req.Name})
+}
+
+// handleRenamePracticeStatus is User Settings' Practice Status card inline
+// rename (master plan Phase 12). No search-index resync needed — practice
+// status isn't indexed in pieces_fts, unlike a user tag rename above.
+func (s *Server) handleRenamePracticeStatus(w http.ResponseWriter, r *http.Request) {
+	user, ok := s.requirePermission(w, r, models.PermissionRead)
+	if !ok {
+		return
+	}
+	id, ok := pathID(r, "id")
+	if !ok {
+		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid practice status id")
+		return
+	}
+	var req api.LookupRenameRequest
+	if err := decodeJSON(r, &req); err != nil {
+		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid request body: "+err.Error())
+		return
+	}
+	if err := api.ValidateTagName(req.Name); err != nil {
+		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, err.Error())
+		return
+	}
+	if err := repo.RenamePracticeStatus(r.Context(), s.DB, user.ID, id, req.Name); err != nil {
+		s.writeError(w, err)
+		return
+	}
+	api.WriteData(w, http.StatusOK, repo.PracticeStatus{ID: id, Name: req.Name})
 }
 
 func (s *Server) handleDeletePracticeStatus(w http.ResponseWriter, r *http.Request) {

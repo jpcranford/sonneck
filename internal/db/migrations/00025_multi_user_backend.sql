@@ -1,3 +1,11 @@
+-- +goose NO TRANSACTION
+-- Required by the two PRAGMA foreign_keys toggles below — SQLite refuses to
+-- change that pragma while a transaction is open, and goose wraps a plain
+-- migration's Up/Down in one transaction unless told not to. The tradeoff
+-- (no automatic rollback if a later statement in this file fails) is
+-- accepted deliberately: see the foreign_keys comment below for why the
+-- toggle itself is non-negotiable. Applies to both Up and Down.
+
 -- +goose Up
 -- Multi-user support, Phase 10 of the plan (memory project_multiuser_build.md,
 -- precious-kindling-pretzel.md's "Data model" section) — real per-user data
@@ -5,6 +13,27 @@
 -- (Phase 3), which deliberately left all of this for later. No OIDC yet
 -- (Phase 14) — oidc_subject and the rest of the OIDC-specific surface are
 -- added when that phase actually wires up login, not pre-built here.
+--
+-- IMPORTANT — DROP TABLE + foreign_keys(1) + ON DELETE CASCADE gotcha
+-- (found the hard way, 2026-09-08, memory feedback_migration_fk_cascade_wipe.md):
+-- internal/db/db.go sets `_pragma=foreign_keys(1)` on every connection.
+-- With that pragma on, SQLite's DROP TABLE performs an implicit DELETE FROM
+-- every row of the table being dropped before removing it — and that
+-- implicit delete genuinely fires ON DELETE CASCADE on every OTHER table
+-- referencing it, even though DROP TABLE is schema DDL, not an application
+-- DELETE. This migration rebuilds both `user_tags` and `pieces` (the usual
+-- CREATE ..._new / copy / DROP / RENAME pattern, needed because SQLite
+-- can't ALTER a UNIQUE constraint or DROP a CHECK-constrained column in
+-- place) — and both are parents of several other tables via ON DELETE
+-- CASCADE. Dropping either one un-bracketed would silently wipe every
+-- child row for every piece in the library: piece_composers,
+-- piece_arrangers, piece_keys, piece_instruments, piece_user_tags, plus
+-- this same migration's own freshly-backfilled piece_favorites/
+-- piece_practice_status/piece_user_notes. It did exactly that against the
+-- real dev library the first time this migration shipped — see memory
+-- project_multiuser_build.md's recovery section for the incident. Fix:
+-- bracket each rebuild's DROP TABLE in PRAGMA foreign_keys = OFF / ON,
+-- which requires the NO TRANSACTION directive above.
 
 CREATE TABLE user_permissions (
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -99,8 +128,10 @@ CREATE TABLE user_tags_new (
 );
 INSERT INTO user_tags_new (id, owner_user_id, name)
 SELECT id, 1, name FROM user_tags;
+PRAGMA foreign_keys = OFF;
 DROP TABLE user_tags;
 ALTER TABLE user_tags_new RENAME TO user_tags;
+PRAGMA foreign_keys = ON;
 
 -- Structured, admin-screen-visible user settings — a small fixed set, one
 -- column each. The silent per-page grid/list view-mode memory is
@@ -179,8 +210,10 @@ SELECT
     copyright_slug, copyright_status, copyright_renewed
 FROM pieces;
 
+PRAGMA foreign_keys = OFF;
 DROP TABLE pieces;
 ALTER TABLE pieces_new RENAME TO pieces;
+PRAGMA foreign_keys = ON;
 
 CREATE INDEX idx_pieces_source_book_id ON pieces(source_book_id);
 CREATE INDEX idx_pieces_sheet_type_id ON pieces(sheet_type_id);
@@ -189,6 +222,15 @@ CREATE INDEX idx_pieces_sheet_type_id ON pieces(sheet_type_id);
 -- user_notes (CLAUDE.md > Search — only book-inheritable + tag fields are
 -- indexed) and sync is application-level, not SQL triggers, so no FTS
 -- rebuild is needed here.
+--
+-- No inline PRAGMA foreign_key_check here: goose's raw-SQL runner execs
+-- each statement and discards any result set, so a bare foreign_key_check
+-- can't actually fail the migration even if it finds a violation — there's
+-- no procedural way to branch on it without converting this to a Go
+-- migration, disproportionate for this fix. The real, enforcing guard is
+-- the new internal/db/migration_safety_test.go (CLAUDE.md > Database
+-- migrations), which seeds real relational data before migrating forward
+-- and asserts every FK-child table's row count is preserved.
 
 -- +goose Down
 -- Lossy by necessity, same reasoning as every other collapse-many-back-to-
@@ -218,8 +260,13 @@ CREATE TABLE user_tags_old (
     name TEXT NOT NULL UNIQUE
 );
 INSERT INTO user_tags_old (id, name) SELECT id, name FROM user_tags;
+-- Same DROP TABLE + foreign_keys(1) + ON DELETE CASCADE gotcha as the Up
+-- direction's own rebuilds (see this file's header comment) — piece_user_tags
+-- references user_tags(id) ON DELETE CASCADE and would otherwise be wiped.
+PRAGMA foreign_keys = OFF;
 DROP TABLE user_tags;
 ALTER TABLE user_tags_old RENAME TO user_tags;
+PRAGMA foreign_keys = ON;
 
 DROP TABLE piece_user_notes;
 DROP TABLE piece_practice_status;

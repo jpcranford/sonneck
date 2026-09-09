@@ -156,7 +156,11 @@ func createNamedRow(ctx context.Context, q Queryer, table, ownerCol string, name
 
 // RenameSheetType/RenameInstrument change a row's display name in place —
 // every piece/book already using it reflects the new name automatically via
-// the existing FK/join relationship, not a separate fan-out write.
+// the existing FK/join relationship, not a separate fan-out write. Neither
+// table is owner-scoped (global lookups), so a duplicate name is left to
+// the table's own UNIQUE constraint rather than checked here — unlike
+// renameNamedRow below, which the owner-scoped user tag/practice status
+// equivalents need.
 func RenameSheetType(ctx context.Context, q Queryer, id int64, name string) error {
 	_, err := q.ExecContext(ctx, `UPDATE sheet_types SET name = ? WHERE id = ?`, name, id)
 	return err
@@ -165,6 +169,43 @@ func RenameSheetType(ctx context.Context, q Queryer, id int64, name string) erro
 func RenameInstrument(ctx context.Context, q Queryer, id int64, name string) error {
 	_, err := q.ExecContext(ctx, `UPDATE instruments SET name = ? WHERE id = ?`, name, id)
 	return err
+}
+
+// renameNamedRow is the owner-scoped counterpart to createNamedRow — the
+// shared "reject a duplicate name (within that owner's own set) with
+// ErrDuplicateName, else rename" shape behind RenameUserTag/
+// RenamePracticeStatus (master plan Phase 12, User Settings' Tags/Practice
+// Status inline rename). The UPDATE itself is scoped by ownerID too, not
+// just id — the caller never separately confirms ownership before calling
+// this, so a rename attempt against a row belonging to a different user
+// affects zero rows and reports ErrNotFound, the same as if the id didn't
+// exist at all.
+func renameNamedRow(ctx context.Context, q Queryer, table, ownerCol string, ownerID, id int64, name string) error {
+	var one int
+	err := q.QueryRowContext(ctx,
+		`SELECT 1 FROM `+table+` WHERE name = ? AND `+ownerCol+` = ? AND id != ?`, name, ownerID, id,
+	).Scan(&one)
+	if err == nil {
+		return ErrDuplicateName
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return err
+	}
+
+	res, err := q.ExecContext(ctx,
+		`UPDATE `+table+` SET name = ? WHERE id = ? AND `+ownerCol+` = ?`, name, id, ownerID,
+	)
+	if err != nil {
+		return err
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 // PieceIDsUsingSheetType/PieceIDsUsingInstrument collect every piece that

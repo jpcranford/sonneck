@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ComponentType } from 'react'
 import { Link } from 'react-router-dom'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   IconDeviceDesktop,
   IconLogout,
@@ -12,6 +12,7 @@ import {
   IconUserFilled,
 } from '@tabler/icons-react'
 import { logout } from '../api/auth'
+import { getUserSettings, updateUserSettings, type UserSettings } from '../api/userSettings'
 import { useAuth } from '../lib/AuthContext'
 
 // Real build of the approved Sidebar User Menu mockup (Option 2, "identity
@@ -33,15 +34,13 @@ const AUTH_METHOD_BLURB: Record<string, string> = {
   oidc: 'Signed in via identity provider',
 }
 
-// Ported from the mockup's own ThemeSwitcher (SidebarUserMenuMockup.tsx) —
-// local-only state, not persisted, same as the mockup: no dark-mode CSS
-// exists anywhere in the app yet, and no HTTP endpoint backs
-// user_settings.theme_preference yet either (the real column exists as of
-// migration 00025, repo.GetUserSettings/UpdateUserSettings too, but nothing
-// wires them to a route — that's User Settings' own job, master plan Phase
-// 12). Dark stays disabled for the same reason the mockup disabled it; this
-// control is honest UI chrome for a real feature two phases away, not a
-// working switch yet.
+// Ported from the mockup's own ThemeSwitcher (SidebarUserMenuMockup.tsx).
+// Real persistence as of master plan Phase 12 — shares the exact same
+// ['user-settings'] query/mutation as User Settings' own Appearance card
+// (UserSettingsPage.tsx), so changing the theme in either place updates
+// the other immediately and survives a reload. Dark stays disabled — no
+// real dark-mode CSS exists anywhere in the app yet, independent of
+// persistence.
 type ThemePreview = 'light' | 'dark' | 'system'
 
 const THEME_OPTIONS: { key: ThemePreview; icon: ComponentType<{ size?: number; className?: string }>; label: string }[] = [
@@ -96,11 +95,6 @@ function ThemeSwitcher({ theme, onChange }: { theme: ThemePreview; onChange: (th
 export function UserMenuButton({ collapsed }: { collapsed: boolean }) {
   const me = useAuth()
   const [open, setOpen] = useState(false)
-  // 'system' — matches user_settings.theme_preference's own real DEFAULT
-  // 'system' (migration 00025), not the mockup's own arbitrary 'light'
-  // preview starting point (that useState('light') was just a demo
-  // starting value, never a deliberate default-behavior decision).
-  const [theme, setTheme] = useState<ThemePreview>('system')
   const wrapRef = useRef<HTMLDivElement>(null)
   const queryClient = useQueryClient()
 
@@ -114,6 +108,24 @@ export function UserMenuButton({ collapsed }: { collapsed: boolean }) {
       void queryClient.invalidateQueries({ queryKey: ['auth', 'me'] })
     },
   })
+
+  // 'system' fallback while loading — matches user_settings.theme_preference's
+  // own real DEFAULT 'system' (migration 00025), not the mockup's own
+  // arbitrary 'light' preview starting point.
+  const { data: settings } = useQuery({ queryKey: ['user-settings'], queryFn: getUserSettings })
+  const theme = settings?.themePreference ?? 'system'
+  const updateSettingsMutation = useMutation({
+    mutationFn: updateUserSettings,
+    onSuccess: (updated) => queryClient.setQueryData(['user-settings'], updated),
+  })
+  function setTheme(next: ThemePreview) {
+    // Unreachable in practice — ThemeSwitcher's Dark button is disabled and
+    // never calls onChange('dark') — but guarded rather than assumed, since
+    // UserSettings.themePreference has no 'dark' persistence path yet.
+    if (!settings || next === 'dark') return
+    const full: UserSettings = { ...settings, themePreference: next }
+    updateSettingsMutation.mutate(full)
+  }
 
   // Closes on outside click/Escape, same dismiss convention as
   // ContextMenu.tsx (and the mockup this was built from).

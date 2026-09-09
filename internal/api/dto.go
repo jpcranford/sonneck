@@ -629,6 +629,24 @@ type LookupDeleteRequest struct {
 	MergeIntoID *int64 `json:"mergeIntoId"`
 }
 
+// UpdateMeRequest is PATCH /api/auth/me's body — User Settings' Account
+// card self-rename (master plan Phase 12). No permission beyond being
+// authenticated is needed; a user can only ever rename themselves.
+type UpdateMeRequest struct {
+	DisplayName string `json:"displayName"`
+}
+
+// ChangePasswordRequest is POST /api/auth/change-password's body — User
+// Settings' Account card "Change Password" action, singlepass only (master
+// plan Phase 12). Distinct from AdminSecurityRequest's admin-only
+// set-or-clear: this always requires the caller's own CurrentPassword,
+// since it's self-service rather than an admin acting on someone else's
+// account.
+type ChangePasswordRequest struct {
+	CurrentPassword string `json:"currentPassword"`
+	NewPassword     string `json:"newPassword"`
+}
+
 // LibraryCountsResponse backs Admin Settings' "Library" stat cards.
 type LibraryCountsResponse struct {
 	Pieces int `json:"pieces"`

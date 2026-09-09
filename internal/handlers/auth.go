@@ -2,10 +2,12 @@ package handlers
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/jpcranford/sonneck/internal/api"
 	"github.com/jpcranford/sonneck/internal/auth"
+	"github.com/jpcranford/sonneck/internal/models"
 	"github.com/jpcranford/sonneck/internal/repo"
 )
 
@@ -121,4 +123,91 @@ func (s *Server) handleGetMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	api.WriteData(w, http.StatusOK, resp)
+}
+
+// handleUpdateMe is User Settings' Account card self-rename (master plan
+// Phase 12) — a user can only ever rename themselves, so this needs no
+// permission beyond being authenticated (models.PermissionRead is the
+// lowest bar every real account already has). Unlike PATCH
+// /api/admin/users/{id} (permissions only, admin-gated, any user), this
+// never takes a target id — always the calling user's own row.
+func (s *Server) handleUpdateMe(w http.ResponseWriter, r *http.Request) {
+	user, ok := s.requirePermission(w, r, models.PermissionRead)
+	if !ok {
+		return
+	}
+	var req api.UpdateMeRequest
+	if err := decodeJSON(r, &req); err != nil {
+		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid request body: "+err.Error())
+		return
+	}
+	name := strings.TrimSpace(req.DisplayName)
+	if name == "" {
+		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "display name is required")
+		return
+	}
+	if err := repo.UpdateDisplayName(r.Context(), s.DB, user.ID, name); err != nil {
+		s.writeError(w, err)
+		return
+	}
+
+	settings, err := repo.GetServerSettings(r.Context(), s.DB)
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+	user.DisplayName = name
+	resp, err := api.BuildAuthMeResponse(user, repo.ResolveAuthMethod(s.Cfg.AuthMethod, settings))
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+	api.WriteData(w, http.StatusOK, resp)
+}
+
+// handleChangePassword is User Settings' Account card "Change Password"
+// action (master plan Phase 12) — self-service, singlepass only. Distinct
+// from POST /api/admin/security's admin-only set-or-clear (which never asks
+// for the account's own current password) and from the reset-password CLI
+// (which just clears the hash for lockout recovery) — this is the normal,
+// in-app "I know my password and want a new one" path.
+func (s *Server) handleChangePassword(w http.ResponseWriter, r *http.Request) {
+	user, ok := s.requirePermission(w, r, models.PermissionRead)
+	if !ok {
+		return
+	}
+	settings, err := repo.GetServerSettings(r.Context(), s.DB)
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+	if repo.ResolveAuthMethod(s.Cfg.AuthMethod, settings) != "singlepass" {
+		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "changing your password isn't applicable for the current auth method")
+		return
+	}
+
+	var req api.ChangePasswordRequest
+	if err := decodeJSON(r, &req); err != nil {
+		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid request body: "+err.Error())
+		return
+	}
+	if user.PasswordHash == nil || !auth.CheckPassword(*user.PasswordHash, req.CurrentPassword) {
+		api.WriteError(w, http.StatusUnauthorized, api.CodeUnauthorized, "current password is incorrect")
+		return
+	}
+	if len(req.NewPassword) < minSinglepassPasswordLength {
+		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "new password must be at least 8 characters")
+		return
+	}
+
+	hash, err := auth.HashPassword(req.NewPassword)
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+	if err := repo.SetUserPasswordHash(r.Context(), s.DB, user.ID, &hash); err != nil {
+		s.writeError(w, err)
+		return
+	}
+	api.WriteData(w, http.StatusOK, map[string]bool{"ok": true})
 }

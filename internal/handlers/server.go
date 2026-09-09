@@ -48,6 +48,11 @@ func New(db *sql.DB, cfg *config.Config, logger *slog.Logger, frontend fs.FS) ht
 	mux.HandleFunc("POST /api/auth/login", s.handleLogin)
 	mux.HandleFunc("POST /api/auth/logout", s.handleLogout)
 	mux.HandleFunc("GET /api/auth/me", s.handleGetMe)
+	// User Settings' Account card (multi-user support, Phase 12) —
+	// self-rename and self-service password change, distinct from the
+	// admin-only equivalents under /api/admin/*.
+	mux.HandleFunc("PATCH /api/auth/me", s.handleUpdateMe)
+	mux.HandleFunc("POST /api/auth/change-password", s.handleChangePassword)
 
 	mux.HandleFunc("GET /api/keys", s.handleListKeys)
 	mux.HandleFunc("GET /api/sheet-types", s.handleListSheetTypes)
@@ -59,9 +64,16 @@ func New(db *sql.DB, cfg *config.Config, logger *slog.Logger, frontend fs.FS) ht
 	// Your Tags / Practice Status create/delete/merge (multi-user support,
 	// Phase 10) — user-scoped, not admin-gated (read permission only).
 	mux.HandleFunc("POST /api/tags", s.handleCreateUserTag)
+	mux.HandleFunc("PATCH /api/tags/{id}", s.handleRenameUserTag)
 	mux.HandleFunc("DELETE /api/tags/{id}", s.handleDeleteUserTag)
 	mux.HandleFunc("POST /api/practice-statuses", s.handleCreatePracticeStatus)
+	mux.HandleFunc("PATCH /api/practice-statuses/{id}", s.handleRenamePracticeStatus)
 	mux.HandleFunc("DELETE /api/practice-statuses/{id}", s.handleDeletePracticeStatus)
+
+	// User Settings' Appearance/Library cards (multi-user support, Phase
+	// 12) — read permission only, the calling user's own preferences.
+	mux.HandleFunc("GET /api/user-settings", s.handleGetUserSettings)
+	mux.HandleFunc("PATCH /api/user-settings", s.handleUpdateUserSettings)
 
 	// Admin Settings (multi-user support, Phase 10) — every route below is
 	// `admin`-gated inside its own handler (requirePermission).

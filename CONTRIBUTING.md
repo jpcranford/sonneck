@@ -166,6 +166,7 @@ Migrations run automatically against `$DATA_DIR` on every backend startup (inclu
 - **Frontend type-checking**: `frontend/tsconfig.json` is a solution-style config (`{ files: [], references: [...] }`). Running `tsc --noEmit -p .` against it is a silent no-op — it type-checks nothing and reports no errors either way. Always run `tsc --noEmit -p tsconfig.app.json` instead.
 - **Frontend data fetching** goes through TanStack Query — not ad-hoc `useEffect`/`useState` per component.
 - **Frontend forms** use `react-hook-form` with light client-side validation only (required fields, obviously-plausible ranges). The backend remains the sole authority for everything else — don't build a second, parallel validation schema that has to be kept in sync by hand.
+- **This project's React Compiler setup is stricter than default React advice on two points**: it flags reading a ref's `.current` during render, not just writing one (a value that needs to persist across renders has to be real `useState`, updated from an event handler or effect — never a ref read inline in the render body), and it flags a bare `setState` call directly inside a plain `useEffect` body (prefer updating state from the specific event handler that causes the change).
 
 ## Testing
 

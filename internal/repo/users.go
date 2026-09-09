@@ -116,6 +116,15 @@ func SetUserPasswordHash(ctx context.Context, q Queryer, userID int64, hash *str
 	return err
 }
 
+// UpdateDisplayName renames userID's own account — User Settings' Account
+// card (master plan Phase 12), PATCH /api/auth/me. No uniqueness constraint
+// on display_name (unlike a tag/lookup name) — two accounts sharing a
+// display name is a cosmetic collision, not a data-integrity concern.
+func UpdateDisplayName(ctx context.Context, q Queryer, userID int64, displayName string) error {
+	_, err := q.ExecContext(ctx, `UPDATE users SET display_name = ? WHERE id = ?`, displayName, userID)
+	return err
+}
+
 // DeleteUser removes only this app's own users row — cascades via
 // ON DELETE CASCADE to user_permissions/sessions/piece_favorites/
 // piece_practice_status/piece_user_notes/user_settings, and to any

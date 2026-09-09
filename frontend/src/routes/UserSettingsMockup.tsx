@@ -73,33 +73,29 @@ import { useMockupTitle } from '../lib/useMockupTitle'
 // description — Tags/Practice Status genuinely need different copy, so
 // each column keeps its own). Previously two separate `SettingsCard`s.
 //
-// Real schema implication, not yet built (flagged for Phase 10/12, not
-// resolved here): `piece_practice_status.status` is currently a plain
-// `CHECK`-constrained enum (master plan's Data model section), not a real
-// table with rows — renaming/creating statuses per-user needs a genuine
-// new `practice_statuses` table (id/name/owner_user_id, same shape as
-// `user_tags`), with `piece_practice_status` gaining a `status_id` FK
-// instead of a raw string. **Bigger open question, deliberately not
-// resolved by this mockup**: the sidebar's Want to Learn/Currently
-// Practicing/Learned nav items (`SECONDARY_NAV_ITEMS`, `Sidebar.tsx`)
-// currently assume those three fixed English names always exist — once a
-// user can freely rename or delete any status, those nav items need a
-// real answer (dynamic labels pulled from whichever rows actually exist?
-// a few statuses flagged as "pinned to the sidebar"? something else?)
-// that this phase hasn't picked yet. Note this for whoever designs
-// Phase 11 (Sidebar changes)/Phase 12 (this page's real build).
+// Real schema implication noted here at the time, since resolved: a real
+// `practice_statuses` table (id/name/owner_user_id, same shape as
+// `user_tags`) shipped in Phase 10, and the sidebar's Want to
+// Learn/Currently Practicing/Learned nav items' own fixed-name assumption
+// (this comment's original "bigger open question") was resolved in Phase
+// 11 — kept as fixed English names, since a rename/delete degrades
+// gracefully to that view's normal empty state rather than needing a new
+// "pin to sidebar" mechanism (memory project_multiuser_build.md's own
+// Phase 11 section has the full reasoning).
 //
-// Practice Status create disabled, same day, per direct feedback: creating
-// a genuinely new status has no schema to back it yet (the real
-// `piece_practice_status.status` CHECK-constrained enum this phase's own
-// schema note above hasn't shipped as a real table yet either) — the add
-// control is muted + tagged "Soon" (EditableList's `canAdd` prop) rather
-// than removed, matching this file's existing "visible but marked" pattern
-// for a not-yet-real control. Rename/delete/merge stay fully live, since
-// the five seeded rows already exist either way. Each row also now shows
-// its icon (hand-copied from the real components/PracticeStatusIcon.tsx,
-// keyed by row id) so this card visually matches how a status actually
-// renders everywhere else in the app.
+// **Practice Status create is disabled — corrected 2026-09-08**: a same-day
+// edit briefly re-enabled it on the mistaken belief that the only reason it
+// was ever off was the schema not existing yet. Wrong — the schema gap
+// was real back when `canAdd={false}` first shipped, but the reason that
+// still holds today, direct feedback confirmed, is independent of schema:
+// each row renders a fixed hardcoded icon (`PRACTICE_STATUS_ICON_BY_ID`
+// below), and creating a genuinely new status raises a real, still-open
+// product question — how does a user pick or get assigned an icon for one?
+// — that hasn't been decided. `canAdd={false}` stays until that's resolved,
+// same muted-icon-plus-"Soon"-pill treatment as any other not-yet-real
+// control in this file. Rename/delete/merge on the 5 existing rows (each
+// already has a fixed, known icon) are unaffected — only *creating a new
+// row* is blocked, since only that path has no icon to assign yet.
 
 type IdentityKey = 'none' | 'singlepass' | 'oidc-admin' | 'oidc-member'
 
@@ -158,8 +154,9 @@ const INITIAL_USER_LISTS: Record<UserListKey, ListItem[]> = {
 // its own markup and mockups only ever share pure presentational
 // logic/data with no markup of its own. Keyed by the fixed row id (not the
 // live text value), since renaming a row shouldn't make its icon drift —
-// only meaningful while item creation stays "coming soon" below, since
-// there are no ids beyond these five to map yet.
+// only meaningful while item creation stays "coming soon" below (this
+// file's own header comment): there's no icon-assignment UX yet for a row
+// beyond these five known ids.
 const PRACTICE_STATUS_ICON_BY_ID: Record<number, typeof IconCircleDashed> = {
   10: IconCircleDashed,
   11: IconCircleHalf2,
@@ -199,7 +196,7 @@ function IdentityStateToggle({
 function SettingsCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-4 rounded-lg border border-border bg-paper-raised p-5">
-      <h2 className="font-display text-base font-bold text-ink">{title}</h2>
+      <h2 className="font-display text-base font-medium text-ink">{title}</h2>
       {children}
     </div>
   )
@@ -310,14 +307,30 @@ function EditableList({
   lastAddedIdRef: React.RefObject<number | null>
   // Practice Status only — see PRACTICE_STATUS_ICON_BY_ID above.
   iconForId?: Record<number, typeof IconCircleDashed>
-  // Practice Status only, for now — creating a new status has no schema to
-  // back it yet (this file's own header comment), so the add control is
-  // replaced by a muted icon + "Soon" pill, matching the same pattern
-  // SettingsRow/ThemeControl already use for a not-yet-built control,
-  // rather than removed outright.
+  // Practice Status only, for now — each row has a fixed hardcoded icon,
+  // and creating a genuinely new status has no icon-assignment UX decided
+  // yet (this file's own header comment) — the add control is muted +
+  // tagged "Soon" rather than removed, matching the same pattern
+  // SettingsRow/ThemeControl already use for a not-yet-real control.
   canAdd?: boolean
 }) {
   const noun = listKey === 'Tags' ? 'tag' : 'status'
+
+  // Enter commits (blur triggers the real onBlurItem save/create/cancel
+  // logic — see handleListBlur); Escape reverts the DOM value to the
+  // item's own current name first — a no-op rename for an existing row, or
+  // a cancel for a freshly-added still-blank one (handleListBlur already
+  // drops a row blurred blank with no prior name), since this input is
+  // uncontrolled and onBlurItem reads event.target.value directly.
+  function handleEditKeyDown(event: React.KeyboardEvent<HTMLInputElement>, revertValue: string) {
+    if (event.key === 'Enter') {
+      event.currentTarget.blur()
+    } else if (event.key === 'Escape') {
+      event.currentTarget.value = revertValue
+      event.currentTarget.blur()
+    }
+  }
+
   return (
     <div className="flex flex-col">
       {items.map((item) => {
@@ -334,6 +347,7 @@ function EditableList({
                   lastAddedIdRef.current = null
                 }
               }}
+              onKeyDown={(event) => handleEditKeyDown(event, item.name)}
               onBlur={(event) => onBlurItem(item.id, event.target.value)}
               className="min-w-0 flex-1 rounded-md border border-transparent px-2 py-1.5 text-sm text-ink hover:border-border focus:border-border focus:bg-paper-raised focus:outline-none"
             />
@@ -550,12 +564,6 @@ export function UserSettingsMockup() {
             </div>
           </div>
         </SettingsCard>
-
-        <p className="text-xs text-ink-soft">
-          Admin-only settings (library-wide config, user list, Sheet Type/Instrument renames) never appear here
-          — this page is strictly the signed-in account's own preferences, regardless of that account's
-          permissions. See the separate Admin Settings mockup.
-        </p>
       </div>
 
       <Modal
