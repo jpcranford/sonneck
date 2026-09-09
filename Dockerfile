@@ -20,6 +20,14 @@ RUN npm run build
 
 # ---- Stage 2: backend ----
 FROM golang:1.26-bookworm AS backend-builder
+# BUILD_SHA/BUILD_DATE back Admin Settings' Version section (memory
+# project_multiuser_build.md's Phase 13 section) — the workflow that builds
+# this image passes the real commit SHA/date it actually checked out;
+# defaults here only ever apply to a manual `docker build` with no
+# --build-arg, which cmd/sonneck/main.go's own buildSHA="dev" default
+# already treats as "running from source, don't attempt a GitHub check."
+ARG BUILD_SHA=dev
+ARG BUILD_DATE=unknown
 WORKDIR /build
 COPY go.mod go.sum ./
 RUN go mod download
@@ -32,7 +40,9 @@ COPY --from=frontend-builder /build/frontend/dist/. ./internal/webui/dist/
 # CGO_ENABLED=0: no CGO anywhere in this module (modernc.org/sqlite and
 # robfig/cron are both pure Go — see CLAUDE.md > Config/File handling),
 # so a fully static binary needs nothing from the build image at runtime.
-RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/sonneck ./cmd/sonneck
+RUN CGO_ENABLED=0 go build -trimpath \
+        -ldflags="-s -w -X main.buildSHA=${BUILD_SHA} -X main.buildDate=${BUILD_DATE}" \
+        -o /out/sonneck ./cmd/sonneck
 
 # ---- Stage 3: runtime ----
 FROM debian:bookworm-slim

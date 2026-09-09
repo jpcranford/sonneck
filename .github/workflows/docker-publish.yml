@@ -137,6 +137,18 @@ jobs:
         with:
           ref: ${{ github.event_name == 'schedule' && steps.resolve.outputs.sha || github.sha }}
 
+      # Backs Admin Settings' Version section (memory
+      # project_multiuser_build.md's Phase 13 section) — sha mirrors the
+      # exact same ref the checkout step above just used (never a bare
+      # github.sha; the nightly build must report the commit it actually
+      # checked out, not necessarily HEAD), so the injected identity always
+      # matches what's really running in the image.
+      - name: Set build metadata
+        id: meta
+        run: |
+          echo "sha=${{ github.event_name == 'schedule' && steps.resolve.outputs.sha || github.sha }}" >> "$GITHUB_OUTPUT"
+          echo "date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
@@ -155,6 +167,9 @@ jobs:
           context: .
           platforms: ${{ matrix.platform }}
           push: false
+          build-args: |
+            BUILD_SHA=${{ steps.meta.outputs.sha }}
+            BUILD_DATE=${{ steps.meta.outputs.date }}
 
       # Pushed by digest only (no final tag yet) — the merge/nightly job
       # below combines both architectures' digests into one multi-arch
@@ -170,6 +185,9 @@ jobs:
           context: .
           platforms: ${{ matrix.platform }}
           outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
+          build-args: |
+            BUILD_SHA=${{ steps.meta.outputs.sha }}
+            BUILD_DATE=${{ steps.meta.outputs.date }}
 
       - name: Export digest
         if: github.event_name == 'release' || github.event_name == 'schedule'

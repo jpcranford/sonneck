@@ -18,6 +18,18 @@ import (
 	"github.com/jpcranford/sonneck/internal/webui"
 )
 
+// buildSHA/buildDate are overridden at build time via -ldflags
+// (Dockerfile's `go build` step, memory project_multiuser_build.md's Phase
+// 13 section) — a plain `go run`/`go build` invocation straight from the
+// repo (this project's own whole dev loop included) keeps these literal
+// defaults, which internal/handlers' version.go treats as a real sentinel
+// ("running from source," never attempts a GitHub check against them) —
+// see that file's own isDevBuild.
+var (
+	buildSHA  = "dev"
+	buildDate = "unknown"
+)
+
 func main() {
 	// Bootstrap logger at the default level — LOG_LEVEL itself hasn't been
 	// validated yet, so this is only used to report a config.Load failure
@@ -32,7 +44,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: cfg.SlogLevel()}))
+	logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: cfg.LogLevelVar}))
 	slog.SetDefault(logger)
 
 	dbPath := filepath.Join(cfg.DataDir, "db", "sonneck.sqlite")
@@ -113,7 +125,7 @@ func main() {
 		}
 	}
 
-	scheduler, err := backup.StartScheduler(cfg.BackupCron, conn, cfg.BackupDir, cfg.BackupRetentionDays, logger)
+	scheduler, err := backup.StartScheduler(cfg.BackupCron(), conn, cfg.BackupDir, cfg, logger)
 	if err != nil {
 		logger.Error("failed to start backup scheduler", "error", err)
 		os.Exit(1)
@@ -126,7 +138,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	handler := handlers.New(conn, cfg, logger, frontend)
+	handler := handlers.New(conn, cfg, logger, frontend, scheduler, buildSHA, buildDate)
 
 	logger.Info("starting server", "port", cfg.Port)
 	if err := http.ListenAndServe(":"+cfg.Port, handler); err != nil {

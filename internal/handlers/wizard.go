@@ -263,7 +263,7 @@ func (s *Server) handleConfirmImport(w http.ResponseWriter, r *http.Request) {
 			s.writeError(w, err)
 			return
 		}
-		resp, err := api.BuildPieceResponse(r.Context(), s.DB, p, s.Cfg.CopyrightRegion, user.ID)
+		resp, err := api.BuildPieceResponse(r.Context(), s.DB, p, s.Cfg.CopyrightRegion(), user.ID)
 		if err != nil {
 			s.writeError(w, err)
 			return

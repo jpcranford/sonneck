@@ -4,12 +4,15 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/robfig/cron/v3"
 
 	"github.com/jpcranford/sonneck/internal/copyright"
+	"github.com/jpcranford/sonneck/internal/libraryconfig"
 )
 
 // defaultCitationFormat mirrors design doc §6's format string. No "ca. "
@@ -34,71 +37,242 @@ var logLevels = map[string]slog.Level{
 }
 
 const defaultCopyrightRegion = "en-US"
+const defaultBackupCron = "0 3 * * *"
+const defaultBackupRetentionDays = 30
 
+// Config holds process-wide settings. Most fields are set once at startup
+// and never change. Four fields — BackupCron/BackupRetentionDays/LogLevel/
+// CopyrightRegion, Admin Settings' "Library Settings" card — are genuinely
+// live-mutable: an admin can change them at runtime (PATCH
+// /api/admin/library-settings, internal/handlers/admin.go) when not
+// env-shadowed, persisted to DATA_DIR/config.yml (internal/libraryconfig)
+// and applied immediately with no restart. Guarded by mu since HTTP
+// handlers read/write concurrently; LogLevel is instead a *slog.LevelVar
+// (the standard library's own mutable-level primitive), since that's what
+// slog.HandlerOptions.Level actually wants.
 type Config struct {
-	Port                string
-	DataDir             string
-	BackupDir           string
-	BackupRetentionDays int
-	BackupCron          string
-	CitationFormat      string
-	LogLevel            string
-	// CopyrightRegion (Public Domain Badge feature) — which region-rule
-	// entry (internal/copyright) the "Likely Public Domain" calculation
-	// uses. Validated against that package's own table at startup, not a
-	// literal enum here, so the two never drift out of sync.
-	CopyrightRegion string
+	Port           string
+	DataDir        string
+	BackupDir      string
+	CitationFormat string
 	// AuthMethod (multi-user support) — "" if unset, meaning the choice
 	// made through the first-time launch flow (persisted in
 	// server_settings, see repo.GetServerSettings) governs instead. When
 	// non-empty this always wins over that stored choice — see
 	// GET /api/config's resolution order (memory project_multiuser_build.md).
 	AuthMethod string
+
+	mu                  sync.RWMutex
+	backupCron          string
+	backupRetentionDays int
+	copyrightRegion     string
+
+	// LogLevelVar is read directly by cmd/sonneck/main.go's slog handler
+	// construction (slog.HandlerOptions{Level: cfg.LogLevelVar}) — updating
+	// it live via .Set() changes logging output immediately, no restart,
+	// no extra plumbing needed beyond this one shared pointer.
+	LogLevelVar *slog.LevelVar
+
+	// SetByEnv flags drive Admin Settings' env-shadow pills (CLAUDE.md >
+	// Config: "Env vars always win over whatever's configured through this
+	// screen" — same convention AuthMethodSetByEnv already established for
+	// Security). A field can't be edited through the app while its own flag
+	// is true.
+	BackupCronSetByEnv          bool
+	BackupRetentionDaysSetByEnv bool
+	LogLevelSetByEnv            bool
+	CopyrightRegionSetByEnv     bool
 }
 
-// SlogLevel converts the validated LogLevel string into a slog.Level for
-// building the app's logger.
-func (c *Config) SlogLevel() slog.Level {
-	return logLevels[c.LogLevel]
+func (c *Config) BackupCron() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.backupCron
 }
 
-// Load reads and validates configuration from the environment, failing fast
-// per CLAUDE.md > Config rather than surfacing a bad value mid-request.
+// SetBackupCron only updates the live in-memory value — callers that also
+// need this to survive a restart (Admin Settings' PATCH handler) persist to
+// config.yml themselves via internal/libraryconfig.Save, then call this.
+func (c *Config) SetBackupCron(v string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.backupCron = v
+}
+
+func (c *Config) BackupRetentionDays() int {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.backupRetentionDays
+}
+
+func (c *Config) SetBackupRetentionDays(v int) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.backupRetentionDays = v
+}
+
+func (c *Config) CopyrightRegion() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.copyrightRegion
+}
+
+func (c *Config) SetCopyrightRegion(v string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.copyrightRegion = v
+}
+
+func (c *Config) LogLevel() string {
+	for name, level := range logLevels {
+		if level == c.LogLevelVar.Level() {
+			return name
+		}
+	}
+	return defaultLogLevel
+}
+
+// ValidateBackupCron/ValidateLogLevel/ValidateCopyrightRegion/
+// ValidateBackupRetentionDays are exported so Admin Settings' PATCH
+// /api/admin/library-settings handler validates an admin-submitted value
+// with the exact same rules Load applies to an env var — one source of
+// truth for what's a legal value, not two copies that could drift.
+
+func ValidateBackupCron(expr string) error {
+	if _, err := cron.ParseStandard(expr); err != nil {
+		return fmt.Errorf("not a valid cron expression: %w", err)
+	}
+	return nil
+}
+
+func ValidateLogLevel(level string) (slog.Level, error) {
+	parsed, ok := logLevels[strings.ToLower(level)]
+	if !ok {
+		return 0, fmt.Errorf("must be one of debug, info, warn, error, got %q", level)
+	}
+	return parsed, nil
+}
+
+func ValidateCopyrightRegion(region string) error {
+	if !copyright.ValidRegion(region) {
+		return fmt.Errorf("%q is not a known region", region)
+	}
+	return nil
+}
+
+func ValidateBackupRetentionDays(days int) error {
+	if days <= 0 {
+		return fmt.Errorf("must be a positive integer, got %d", days)
+	}
+	return nil
+}
+
+// Load reads and validates configuration from the environment plus
+// DATA_DIR/config.yml, failing fast per CLAUDE.md > Config rather than
+// surfacing a bad value mid-request.
+//
+// Library Settings (backupCron/backupRetentionDays/logLevel/
+// copyrightRegion) merge two sources, confirmed 2026-09-08: an env var,
+// when set, always wins and gets written back into config.yml (so the file
+// stays the honest record of "what's actually running," even though env
+// vars only ever apply at process start); when unset, the file's own
+// persisted value applies (set by a prior Admin Settings edit, or the
+// built-in default if the file has never been written). The merged,
+// effective values are what get validated below — identical rules whether
+// the value came from the environment or the file.
 func Load() (*Config, error) {
 	cfg := &Config{
-		Port:            getEnv("PORT", "8080"),
-		DataDir:         getEnv("DATA_DIR", "/data"),
-		BackupCron:      getEnv("BACKUP_CRON", "0 3 * * *"),
-		CitationFormat:  getEnv("CITATION_FORMAT", defaultCitationFormat),
-		LogLevel:        strings.ToLower(getEnv("LOG_LEVEL", defaultLogLevel)),
-		CopyrightRegion: getEnv("COPYRIGHT_REGION", defaultCopyrightRegion),
-		AuthMethod:      getEnv("AUTH_METHOD", ""),
+		Port:           getEnv("PORT", "8080"),
+		DataDir:        getEnv("DATA_DIR", "/data"),
+		CitationFormat: getEnv("CITATION_FORMAT", defaultCitationFormat),
+		AuthMethod:     getEnv("AUTH_METHOD", ""),
 	}
 	cfg.BackupDir = getEnv("BACKUP_DIR", cfg.DataDir+"/backups")
-
-	retentionStr := getEnv("BACKUP_RETENTION_DAYS", "30")
-	retention, err := strconv.Atoi(retentionStr)
-	if err != nil || retention <= 0 {
-		return nil, fmt.Errorf("BACKUP_RETENTION_DAYS must be a positive integer, got %q", retentionStr)
-	}
-	cfg.BackupRetentionDays = retention
-
-	if _, err := cron.ParseStandard(cfg.BackupCron); err != nil {
-		return nil, fmt.Errorf("BACKUP_CRON is not a valid cron expression: %w", err)
-	}
-
-	if _, ok := logLevels[cfg.LogLevel]; !ok {
-		return nil, fmt.Errorf("LOG_LEVEL must be one of debug, info, warn, error, got %q", cfg.LogLevel)
-	}
-
-	if !copyright.ValidRegion(cfg.CopyrightRegion) {
-		return nil, fmt.Errorf("COPYRIGHT_REGION %q is not a known region", cfg.CopyrightRegion)
-	}
 
 	switch cfg.AuthMethod {
 	case "", "none", "singlepass", "oidc":
 	default:
 		return nil, fmt.Errorf("AUTH_METHOD must be one of none, singlepass, oidc, got %q", cfg.AuthMethod)
+	}
+
+	// DATA_DIR itself needs to exist before config.yml can be read/written —
+	// in practice always true by this point (a Docker bind-mount target is
+	// created empty by Docker itself even against a nonexistent host path,
+	// memory project_docker_bindmount_permissions.md), but MkdirAll is
+	// idempotent and cheap, so there's no reason not to guarantee it here
+	// too rather than assume.
+	if err := os.MkdirAll(cfg.DataDir, 0o755); err != nil {
+		return nil, fmt.Errorf("creating data directory: %w", err)
+	}
+	configPath := filepath.Join(cfg.DataDir, "config.yml")
+	persisted, err := libraryconfig.Load(configPath)
+	if err != nil {
+		return nil, fmt.Errorf("loading %s: %w", configPath, err)
+	}
+
+	if envCron := os.Getenv("BACKUP_CRON"); envCron != "" {
+		cfg.backupCron = envCron
+		cfg.BackupCronSetByEnv = true
+	} else if persisted.BackupCron != "" {
+		cfg.backupCron = persisted.BackupCron
+	} else {
+		cfg.backupCron = defaultBackupCron
+	}
+	if err := ValidateBackupCron(cfg.backupCron); err != nil {
+		return nil, fmt.Errorf("BACKUP_CRON: %w", err)
+	}
+
+	if envRetention := os.Getenv("BACKUP_RETENTION_DAYS"); envRetention != "" {
+		retention, err := strconv.Atoi(envRetention)
+		if err != nil {
+			return nil, fmt.Errorf("BACKUP_RETENTION_DAYS must be a positive integer, got %q", envRetention)
+		}
+		cfg.backupRetentionDays = retention
+		cfg.BackupRetentionDaysSetByEnv = true
+	} else if persisted.BackupRetentionDays != 0 {
+		cfg.backupRetentionDays = persisted.BackupRetentionDays
+	} else {
+		cfg.backupRetentionDays = defaultBackupRetentionDays
+	}
+	if err := ValidateBackupRetentionDays(cfg.backupRetentionDays); err != nil {
+		return nil, fmt.Errorf("BACKUP_RETENTION_DAYS: %w", err)
+	}
+
+	logLevelStr := ""
+	if envLevel := os.Getenv("LOG_LEVEL"); envLevel != "" {
+		logLevelStr = strings.ToLower(envLevel)
+		cfg.LogLevelSetByEnv = true
+	} else if persisted.LogLevel != "" {
+		logLevelStr = persisted.LogLevel
+	} else {
+		logLevelStr = defaultLogLevel
+	}
+	parsedLevel, err := ValidateLogLevel(logLevelStr)
+	if err != nil {
+		return nil, fmt.Errorf("LOG_LEVEL: %w", err)
+	}
+	cfg.LogLevelVar = &slog.LevelVar{}
+	cfg.LogLevelVar.Set(parsedLevel)
+
+	if envRegion := os.Getenv("COPYRIGHT_REGION"); envRegion != "" {
+		cfg.copyrightRegion = envRegion
+		cfg.CopyrightRegionSetByEnv = true
+	} else if persisted.CopyrightRegion != "" {
+		cfg.copyrightRegion = persisted.CopyrightRegion
+	} else {
+		cfg.copyrightRegion = defaultCopyrightRegion
+	}
+	if err := ValidateCopyrightRegion(cfg.copyrightRegion); err != nil {
+		return nil, fmt.Errorf("COPYRIGHT_REGION: %w", err)
+	}
+
+	if err := libraryconfig.Save(configPath, &libraryconfig.Settings{
+		BackupCron:          cfg.backupCron,
+		BackupRetentionDays: cfg.backupRetentionDays,
+		LogLevel:            logLevelStr,
+		CopyrightRegion:     cfg.copyrightRegion,
+	}); err != nil {
+		return nil, fmt.Errorf("saving %s: %w", configPath, err)
 	}
 
 	return cfg, nil

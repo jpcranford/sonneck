@@ -145,16 +145,16 @@ func BuildPieceResponse(ctx context.Context, q repo.Queryer, p *models.Piece, re
 			ExpiryYear: copyrightExpiryYear,
 		},
 		CopyrightRenewed: eff.CopyrightRenewed,
-		Duration:        p.Duration,
-		BPM:             p.BPM,
-		MeasureCount:    p.MeasureCount,
-		BeatsPerMeasure: p.BeatsPerMeasure,
-		FileHash:        p.FileHash,
-		PageCount:       p.PageCount,
-		ThumbnailPage:   p.ThumbnailPage,
-		CreatedAt:       p.CreatedAt,
-		UpdatedAt:       p.UpdatedAt,
-		Keys:            []repo.Tag{},
+		Duration:         p.Duration,
+		BPM:              p.BPM,
+		MeasureCount:     p.MeasureCount,
+		BeatsPerMeasure:  p.BeatsPerMeasure,
+		FileHash:         p.FileHash,
+		PageCount:        p.PageCount,
+		ThumbnailPage:    p.ThumbnailPage,
+		CreatedAt:        p.CreatedAt,
+		UpdatedAt:        p.UpdatedAt,
+		Keys:             []repo.Tag{},
 	}
 
 	if len(p.KeyIDs) > 0 {
@@ -652,6 +652,62 @@ type LibraryCountsResponse struct {
 	Pieces int `json:"pieces"`
 	Books  int `json:"books"`
 	People int `json:"people"`
+}
+
+// LibrarySettingsResponse/UpdateLibrarySettingsRequest back Admin Settings'
+// "Library Settings" card (memory project_multiuser_build.md's Phase 13
+// section) — a second deliberate exception to CLAUDE.md > Config's "no
+// settings table in v1" (server_settings/auth_method was the first),
+// confirmed 2026-09-08: these 4 fields persist to DATA_DIR/config.yml
+// (internal/libraryconfig) instead, not SQLite. Each field's own *SetByEnv
+// flag drives the frontend's "Set by environment variable" pill — same
+// convention GET /api/config's AuthMethodSetByEnv already established.
+// UpdateLibrarySettingsRequest is a full-replace body (this app's usual
+// PATCH convention) — a field currently env-set is accepted only if its
+// submitted value matches what's already in effect (the frontend never
+// renders that field as editable, so it always just echoes the current
+// value back); a genuine attempted change to an env-locked field is a 409.
+type LibrarySettingsResponse struct {
+	BackupCron                  string `json:"backupCron"`
+	BackupCronSetByEnv          bool   `json:"backupCronSetByEnv"`
+	BackupRetentionDays         int    `json:"backupRetentionDays"`
+	BackupRetentionDaysSetByEnv bool   `json:"backupRetentionDaysSetByEnv"`
+	LogLevel                    string `json:"logLevel"`
+	LogLevelSetByEnv            bool   `json:"logLevelSetByEnv"`
+	CopyrightRegion             string `json:"copyrightRegion"`
+	CopyrightRegionSetByEnv     bool   `json:"copyrightRegionSetByEnv"`
+}
+
+type UpdateLibrarySettingsRequest struct {
+	BackupCron          string `json:"backupCron"`
+	BackupRetentionDays int    `json:"backupRetentionDays"`
+	LogLevel            string `json:"logLevel"`
+	CopyrightRegion     string `json:"copyrightRegion"`
+}
+
+// VersionResponse backs Admin Settings' Version section (same memory
+// section as above). MatchedRelease/CheckStatus/AvailableVersion/CheckedAt
+// are all nil until a check has actually run this process's lifetime (a
+// background check kicks one off lazily on the first real page view, and
+// "Check for updates" forces a fresh one when the cache is stale) — the
+// frontend shows the honest SHA-only "Dev build, from commit..." fallback
+// until then, never a guessed result.
+//
+// RunningFromSource is true when this binary has no injected build
+// identity at all — running via `go run`/a plain `go build` straight from
+// the repo (every session's own dev-loop, not just a hypothetical), rather
+// than the Docker image's ldflags-injected commit SHA. No GitHub check
+// ever runs in this case (there's no real commit to compare), and the
+// frontend shows plain "Running from source" copy instead of a
+// nonsensical "Dev build, from commit dev on unknown" line.
+type VersionResponse struct {
+	RunningSHA        string  `json:"runningSHA"`
+	RunningDate       string  `json:"runningDate"`
+	RunningFromSource bool    `json:"runningFromSource"`
+	MatchedRelease    *string `json:"matchedRelease"`
+	CheckStatus       *string `json:"checkStatus"`
+	AvailableVersion  *string `json:"availableVersion,omitempty"`
+	CheckedAt         *string `json:"checkedAt,omitempty"`
 }
 
 // BuildAuthMeResponse has no DB access of its own (unlike BuildPieceResponse)

@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import {
   IconChevronDown,
+  IconCircleCheck,
   IconCircleDashedPlus,
   IconExternalLink,
   IconInfoCircle,
@@ -28,7 +29,9 @@ import { useMockupTitle } from '../lib/useMockupTitle'
 // 1. The Version section's copy now explicitly warns that the check only
 //    ever compares against official GitHub releases — a :dev/:beta install
 //    can be genuinely ahead of the latest release shown here with no way
-//    for the check to know that.
+//    for the check to know that. **Superseded 2026-09-08, see below** — the
+//    check itself was refined so this is no longer a caveat the copy has
+//    to apologize for; it's now genuinely handled.
 // 2. EVERY Library Settings field (not just Backup schedule, the only one
 //    the artifact actually demoed locked) independently shows "Set by
 //    environment variable" the moment its own env var is set, with env
@@ -49,6 +52,27 @@ import { useMockupTitle } from '../lib/useMockupTitle'
 // BUILD_FIXTURES/the Version section's own "Preview build identity"
 // control below, which previews all three outcomes (not a real toggle —
 // the shipped page only ever has one true build identity to report).
+//
+// "Check for updates" refined 2026-09-08, per direct feedback on the
+// master plan (precious-kindling-pretzel.md's Status/Backend architecture
+// sections) — plan-only at the time, now ported into this mockup's copy
+// and preview states. The real endpoint won't just compare against the
+// latest official release and call it a day; it double-checks (GitHub's
+// compare API, keyed off the same injected commit SHA the build-identity
+// mechanism above already needs) whether the *running* commit is actually
+// behind that release before ever claiming "update available" — so a
+// pre-release/dev build that's already ahead of the latest official
+// release correctly shows "ahead," not a false update prompt. Each
+// BUILD_FIXTURES entry now carries its own `checkResult` ('upToDate' for
+// the tagged-release fixture, 'ahead' for the pre-release one, 'behind'
+// for the dev one) so flipping through the existing "Preview build
+// identity" toggle also previews all three check outcomes, without a
+// second toggle control. The footer copy's old apologetic "it may already
+// be newer than what's shown here" caveat is gone, replaced by copy
+// describing the real fix, plus a line about result caching (a real
+// concern flagged the same round: this control can get clicked repeatedly
+// over the weeks between releases, so results are cached server-side
+// rather than re-hitting GitHub every time).
 //
 // Security's in-app "Change…" flow (a modal chooser, plus a two-step
 // downgrade-from-multi-user flow reusing FirstLaunchFlow.tsx's own
@@ -114,10 +138,17 @@ const IDENTITY_LABELS: Record<IdentityKey, string> = {
   oidc: 'OIDC (multiple accounts)',
 }
 
+// oidc's provider name is hand-copied as "Authelia" — the exact same
+// fixture value UserSettingsMockup.tsx's own IDENTITIES record already
+// uses for its "Signed in via {provider} as {email}" line, kept in sync
+// deliberately rather than reinvented here. Real data comes from the
+// already-planned `EXTERNAL_PROVIDER` env var (Auth methods table, master
+// plan) — the display name an operator sets alongside the other OIDC_*
+// vars, not something this screen would ever let an admin type in.
 const SECURITY_STATUS: Record<IdentityKey, string> = {
   none: 'No login',
   singlepass: 'Password',
-  oidc: 'Sign in with…',
+  oidc: 'Sign in with Authelia',
 }
 
 const ALL_PERMS = [
@@ -177,25 +208,53 @@ const INITIAL_USERS: Record<IdentityKey, AdminUser[]> = {
 // build identified by its own short SHA + commit date. BUILD_FIXTURES
 // previews all three outcomes; not a real toggle in the shipped page,
 // which only ever has one real build identity to report.
+//
+// Each fixture also carries its own `checkResult` (added 2026-09-08, see
+// this file's header comment) so the same "Preview build identity" toggle
+// doubles as a preview of "Check for updates"' three possible outcomes —
+// the tagged release is already current (`upToDate`), the tagged
+// pre-release is genuinely ahead of the latest official release
+// (`ahead` — the exact case the old naive check would've gotten wrong),
+// and the dev build is genuinely behind it (`behind`, with a real
+// `availableVersion` to surface).
 type BuildKind = 'release' | 'prerelease' | 'dev'
+type CheckResult = 'upToDate' | 'ahead' | 'behind'
 
 const BUILD_FIXTURES: Record<
   BuildKind,
-  { label: string; shortSha: string; commitDate: string; releaseName?: string }
+  {
+    label: string
+    shortSha: string
+    commitDate: string
+    releaseName?: string
+    checkResult: CheckResult
+    availableVersion?: string
+  }
 > = {
   release: {
-    label: 'Tagged release',
+    label: 'Tagged release (up to date)',
     shortSha: 'a1b2c3d',
     commitDate: '2026-08-30',
-    releaseName: 'v2.3.1',
+    // No "v" prefix — real release tags are bare numbers ("0.5", "0.5.1"),
+    // confirmed against this repo's own actual releases; fixed 2026-09-09
+    // after this fixture drifted from that real convention.
+    releaseName: '0.5',
+    checkResult: 'upToDate',
   },
   prerelease: {
-    label: 'Tagged pre-release',
+    label: 'Tagged pre-release (ahead of latest)',
     shortSha: 'f9e8d7c',
     commitDate: '2026-09-02',
-    releaseName: 'v2.4.0-beta.1',
+    releaseName: '0.6-beta.1',
+    checkResult: 'ahead',
   },
-  dev: { label: 'Dev build (no tag match)', shortSha: '7c3a9f1', commitDate: '2026-09-06' },
+  dev: {
+    label: 'Dev build (update available)',
+    shortSha: '7c3a9f1',
+    commitDate: '2026-09-06',
+    checkResult: 'behind',
+    availableVersion: '0.6',
+  },
 }
 
 type LookupColumn = 'Sheet Types' | 'Instruments'
@@ -420,7 +479,7 @@ function SectionBlock({
 }) {
   return (
     <div id={id} className="scroll-mt-20 rounded-lg border border-border bg-paper-raised p-5">
-      <h2 className="mb-3 font-display text-base font-bold text-ink">{title}</h2>
+      <h2 className="mb-3 font-display text-base font-medium text-ink">{title}</h2>
       {children}
     </div>
   )
@@ -453,8 +512,9 @@ export function AdminSettingsMockup() {
   const [updateChecked, setUpdateChecked] = useState(false)
   const [buildKind, setBuildKind] = useState<BuildKind>('release')
   const build = BUILD_FIXTURES[buildKind]
-  const runningLabel =
-    build.releaseName ?? `Dev build, from commit ${build.shortSha} on ${build.commitDate}`
+  const runningLabel = build.releaseName
+    ? `version ${build.releaseName}`
+    : `Dev build, from commit ${build.shortSha} on ${build.commitDate}`
 
   const currentUsers = users[identityKey]
 
@@ -774,12 +834,19 @@ export function AdminSettingsMockup() {
                 Running <strong>{runningLabel}</strong>
               </span>
               {updateChecked ? (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#fbe9e7] px-2.5 py-1 text-sm text-[#b45309]">
-                  v2.4.0 available
-                  <a href="#" className="inline-flex items-center gap-0.5 text-inherit underline">
-                    View release <IconExternalLink size={12} />
-                  </a>
-                </span>
+                build.checkResult === 'behind' ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-[#fbe9e7] px-2.5 py-1 text-sm text-[#b45309]">
+                    version {build.availableVersion} available
+                    <a href="#" className="inline-flex items-center gap-0.5 text-inherit underline">
+                      View release <IconExternalLink size={12} />
+                    </a>
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 text-sm text-[#3fa34d]">
+                    <IconCircleCheck size={14} className="text-[#3fa34d]" />
+                    {build.checkResult === 'ahead' ? 'Ahead of the latest release' : 'Up to date'}
+                  </span>
+                )
               ) : (
                 <button
                   type="button"
@@ -790,11 +857,12 @@ export function AdminSettingsMockup() {
                 </button>
               )}
             </div>
+            {updateChecked && (
+              <p className="text-xs text-ink-soft">Checked just now — cached for a while, so checking again soon reuses this result instead of asking GitHub every time.</p>
+            )}
             <p className="text-xs text-ink-soft">
-              Shows the exact build you're running — a version number if it matches an official
-              release, or a dev build label if it doesn't. "Check for updates" only looks for newer
-              official releases, so if you're on a beta or dev build, it may already be newer than
-              what's shown here.
+              Shows the build you're running and checks GitHub for anything newer — without falsely
+              flagging a preview or dev build that's already ahead of the latest release.
             </p>
           </div>
         </SectionBlock>

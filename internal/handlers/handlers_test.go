@@ -53,7 +53,10 @@ func newTestServerWithDataDir(t *testing.T) (http.Handler, string, *sql.DB) {
 	}
 	t.Cleanup(func() { conn.Close() })
 
-	cfg := &config.Config{DataDir: dataDir, CopyrightRegion: "en-US"}
+	cfg := &config.Config{DataDir: dataDir, LogLevelVar: &slog.LevelVar{}}
+	cfg.SetCopyrightRegion("en-US")
+	cfg.SetBackupCron("0 3 * * *")
+	cfg.SetBackupRetentionDays(30)
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
 
 	frontend, err := webui.FS()
@@ -61,7 +64,7 @@ func newTestServerWithDataDir(t *testing.T) (http.Handler, string, *sql.DB) {
 		t.Fatalf("loading embedded frontend: %v", err)
 	}
 
-	return handlers.New(conn, cfg, logger, frontend), dataDir, conn
+	return handlers.New(conn, cfg, logger, frontend, nil, "", ""), dataDir, conn
 }
 
 // writeFixturePDF is a thin wrapper over the shared fixture generator

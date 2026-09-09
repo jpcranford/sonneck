@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/jpcranford/sonneck/internal/api"
+	"github.com/jpcranford/sonneck/internal/backup"
 	"github.com/jpcranford/sonneck/internal/config"
 	"github.com/jpcranford/sonneck/internal/repo"
 )
@@ -18,14 +19,34 @@ type Server struct {
 	DB     *sql.DB
 	Cfg    *config.Config
 	Logger *slog.Logger
+
+	// BackupScheduler is nil in test/CLI-subcommand construction that never
+	// calls New (e.g. internal/handlers/cleanup_test.go's direct &Server{}
+	// literal) — handleUpdateLibrarySettings checks for nil before calling
+	// Reschedule, since none of those callers ever reach that handler.
+	BackupScheduler *backup.Scheduler
+	// BuildSHA/BuildDate are ldflags-injected at build time (Dockerfile),
+	// "dev"/"unknown" otherwise — Admin Settings' Version section's own
+	// running-build identity (memory project_multiuser_build.md's Phase 13
+	// section).
+	BuildSHA     string
+	BuildDate    string
+	versionCache *versionCache
 }
 
 // New wires up the full HTTP surface — the /api endpoints below, /healthz,
 // and (via frontend) the embedded frontend build itself (design doc §9,
 // internal/webui). frontend is an fs.FS rather than a concrete embed.FS so
 // tests can pass the same webui.FS() call without any special-casing.
-func New(db *sql.DB, cfg *config.Config, logger *slog.Logger, frontend fs.FS) http.Handler {
-	s := &Server{DB: db, Cfg: cfg, Logger: logger}
+// scheduler/buildSHA/buildDate all back Admin Settings' Library
+// Settings/Version sections — a test or CLI-subcommand caller that never
+// reaches those routes can pass nil/""/"" for all three.
+func New(db *sql.DB, cfg *config.Config, logger *slog.Logger, frontend fs.FS, scheduler *backup.Scheduler, buildSHA, buildDate string) http.Handler {
+	s := &Server{
+		DB: db, Cfg: cfg, Logger: logger,
+		BackupScheduler: scheduler, BuildSHA: buildSHA, BuildDate: buildDate,
+		versionCache: &versionCache{},
+	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", s.handleHealthz)
@@ -88,6 +109,12 @@ func New(db *sql.DB, cfg *config.Config, logger *slog.Logger, frontend fs.FS) ht
 	mux.HandleFunc("POST /api/admin/instruments", s.handleCreateInstrument)
 	mux.HandleFunc("PATCH /api/admin/instruments/{id}", s.handleRenameInstrument)
 	mux.HandleFunc("DELETE /api/admin/instruments/{id}", s.handleDeleteInstrument)
+	// Library Settings + Version (Phase 13) — the two Admin Settings gaps
+	// Phase 10 left unbuilt; see librarysettings.go/version.go.
+	mux.HandleFunc("GET /api/admin/library-settings", s.handleGetLibrarySettings)
+	mux.HandleFunc("PATCH /api/admin/library-settings", s.handleUpdateLibrarySettings)
+	mux.HandleFunc("GET /api/admin/version", s.handleGetVersion)
+	mux.HandleFunc("POST /api/admin/version/check", s.handleCheckForUpdates)
 	// Wikipedia autofill (composer/arranger overhaul) — shared by the Edit
 	// Person modal's own autofill button and Upload Portrait's "search
 	// Wikipedia" source step, same "one endpoint, two callers" reasoning
@@ -211,7 +238,7 @@ func (s *Server) handleGetConfig(w http.ResponseWriter, r *http.Request) {
 	authMethod := repo.ResolveAuthMethod(s.Cfg.AuthMethod, settings)
 
 	resp := api.ConfigResponse{
-		CopyrightRegion:      s.Cfg.CopyrightRegion,
+		CopyrightRegion:      s.Cfg.CopyrightRegion(),
 		AuthMethod:           authMethod,
 		AuthMethodSetByEnv:   s.Cfg.AuthMethod != "",
 		FirstLaunchCompleted: settings.FirstLaunchCompletedAt != nil,

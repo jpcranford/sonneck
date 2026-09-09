@@ -54,7 +54,7 @@ func (s *Server) handleGetCitation(w http.ResponseWriter, r *http.Request) {
 	// separately to decide whether an explicit 'publicDomain' pick
 	// contradicts what the calculation would otherwise show (see
 	// buildCitation's own comment on the note it guards).
-	copyrightStatus, _, calculatedLikelyPD, err := repo.ResolveCopyrightStatus(r.Context(), s.DB, eff, s.Cfg.CopyrightRegion)
+	copyrightStatus, _, calculatedLikelyPD, err := repo.ResolveCopyrightStatus(r.Context(), s.DB, eff, s.Cfg.CopyrightRegion())
 	if err != nil {
 		s.writeError(w, err)
 		return

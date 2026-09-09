@@ -20,9 +20,13 @@ import (
 func newCleanupServer(t *testing.T) (*handlers.Server, http.Handler, string) {
 	t.Helper()
 	h, dataDir, conn := newTestServerWithDataDir(t)
+	cfg := &config.Config{DataDir: dataDir, LogLevelVar: &slog.LevelVar{}}
+	cfg.SetCopyrightRegion("en-US")
+	cfg.SetBackupCron("0 3 * * *")
+	cfg.SetBackupRetentionDays(30)
 	s := &handlers.Server{
 		DB:     conn,
-		Cfg:    &config.Config{DataDir: dataDir, CopyrightRegion: "en-US"},
+		Cfg:    cfg,
 		Logger: slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError})),
 	}
 	return s, h, dataDir
