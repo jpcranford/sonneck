@@ -13,14 +13,15 @@
   <a href="https://github.com/jpcranford/sonneck/releases"><img alt="Downloads" src="https://img.shields.io/github/downloads/jpcranford/sonneck/total"></a>
 </p>
 
-A self-hosted library organizer for sheet music: import, tag, browse, and download pieces and books. Made by a musician, for musicians.
+An intuitive sheet music organizer app: import, tag, browse, and download pieces and books. Made by a musician, for musicians.
 
 ## Features
-Sonneck is a bookshelf for your digital sheet music, whether you have public domain classics or the newest pop hits. Organize your personal sheet music by category, composer, year, or practice status, and access your library from whatever device you have on hand.
+Sonneck is a bookshelf for your sheet music, whether you have public domain classics or the newest pop hits. Organize your personal sheet music by category, composer, year, or practice status, and access your library from whatever device you have on hand.
 
-Sonneck is designed to live “in an office with a printer”, so to speak, but there are [plans](#planned-features) to add more practice-session features later to turn it into a more holistic sheet music app.
+Sonneck is currently built to live “in an office with a printer”, so to speak, but there are [plans](#planned-features) to add more practice-session features later to turn it into a more well-rounded app.
 
 - **Organize your sheet music library.** Upload individual pieces or entire books — the built-in book splitter and metadata inheritance make quick work of prepping a whole book's worth of pieces to be found later.
+- **Use it from any device.** Any device with a browser can use every feature of Sonneck, with everything you do saved to the library. Edit metadata on your phone, mark up your score on your tablet (feature [coming soon](#planned-features):tm:), or build a setlist on your computer.
 - **Real cataloging, not a folder of PDFs.** Input key(s), instruments, sheet type, opus number, ISBN, and your own tags, plus a one-click citation generator that collects it all for you, ready to be pasted into a program template or group chat.
 - **Composers and arrangers are real people, not text fields.** Each one gets their own page — portrait, bio, birth/death years, and every piece and book they're credited on — browsable from a dedicated People library. A piece or book can credit more than one composer or arranger, in the right order (think "Gilbert and Sullivan," or a hymn with a separate composer and arranger). Made a typo, or want to merge two duplicate entries? Split People reassigns every credit to the right person(s) in one action, without touching a single piece or book by hand.
 - **Metadata that works for you.** Give it an IMSLP catalog number and it'll auto-fill composer, opus number, year, and publisher for you. The citation line adapts to show only the fields you've actually filled in, and descriptions/performer notes support Markdown — including shortcode music symbols like `:mf:` for a mezzo-forte marking (see the [emoji doc](docs/music-emoji.md) for the full list).
@@ -33,10 +34,9 @@ Sonneck is designed to live “in an office with a printer”, so to speak, but 
 
 ## Installation
 
-> [!CAUTION]
-> By default (**No login**, `AUTH_METHOD=none`), Sonneck has **no login and no access control of its own** — anyone who can reach the server over the network can use the full API, with no separation between "trusted operator" and "anonymous visitor." **Do not expose this directly to the open internet.** Deploy it behind a private network / VPN / Tailscale, or put an authenticating reverse proxy in front of it (e.g. Basic Auth, Authelia). **Password** mode has a real login screen and genuinely gates the app behind a shared password; **Sign in with…** (OIDC/SSO) now has a real working sign-in flow too, with named accounts and per-user permissions managed from Admin Settings (see [Security](#security) below). Seriously, if you open it to the internet and a bunch of ne'er-do-wells put sketchy stuff on your server don't come crying to me.
+Two ways of installing Sonneck: there's the native Mac and Windows apps for an easier install (see the [releases](https://github.com/jpcranford/sonneck/releases) page to download) or you can use Docker, which is recommended if you intend on using SSO or hosting over the web.
 
-### Docker Compose (recommended)
+### Docker Compose
 There's a [`docker-compose.yml`](docker-compose.yml) file in this repo and linked to the releases, complete with helpful comments explaining some common options.
 
 Download the file, tailor it how you want, then run:
@@ -54,6 +54,9 @@ Create the `data` folder yourself before the first run. If you don't, Docker wil
 To quit the program, just use `docker compose down`. Easy peasy.
 
 ***But what about `docker run`?*** I'm sure there's some web tool out there that can helpfully convert the docker compose to a run command. Said tool would be more accurate than I.
+
+> [!CAUTION]
+> By default, Sonneck has **no login and no access control of its own** — anyone who can reach the server over the network can use the full API, with no separation between "trusted operator" and "anonymous visitor." **Do not expose this directly to the open internet like this.** Deploy it behind a private network / VPN / Tailscale, or put an authenticating reverse proxy in front of it (e.g. Basic Auth, Authelia). **Password** mode has a real login screen and genuinely gates the app behind a shared password; **Sign in with…** (OIDC/SSO) now has a real working sign-in flow too, with named accounts and per-user permissions managed from Admin Settings (see [Security](#security) below). Seriously, if you open it to the internet and a bunch of ne'er-do-wells put sketchy stuff on your server don't come crying to me.
 
 ### Running locally
 Check the `CONTRIBUTING.md` file for full local run instructions. Here's the TL;DR for those that understand what it means.
@@ -135,7 +138,7 @@ DATA_DIR=./data go run ./cmd/sonneck <command>
 - **Setlists!** Plan out sets with the piece duration and tempo values.
 - **Auth support.** Lock your collection behind a simple password, or utilize a separate OIDC system for multi-user support. User notes, annotations, and tags stay saved per-user.
 - **Configurable citation format.** Just in case you don't like the defaults.
-- **Sheet Viewer!** The practice view every app like this seems to have, with Bluetooth page turner support, server-saved annotations, and a built-in metronome. Maybe some music theory references too, why not; it's not like the circle of fifths has changed in the last 400 years
+- **Sheet Viewer!** The practice view every app like this seems to have, with Bluetooth page turner support, server-saved annotations, and a built-in metronome, possibly with some simple gap support. Maybe some music theory references too, why not; it's not like the circle of fifths has changed in the last 400 years
 - **Native desktop app builds.** For some reason, the venn diagram of "people who play from sheet music" and "people who know what Docker is" is shockingly small.
 - Support for a folder of image files to be uploaded/assembled into pieces
 - A way to rename user tags, sheet types, etc. from the interface — honestly, this one's probably waiting on the auth support, when I slice off a *bunch* of user settings into their own menu (dark/light mode preference, citation style choice, etc.)
