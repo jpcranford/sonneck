@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   IconAlertTriangle,
   IconArrowLeft,
-  IconCircleCheckFilled,
+  IconCircleCheck,
   IconLoader2,
   IconUserCircle,
 } from '@tabler/icons-react'
@@ -425,7 +425,7 @@ export function AuthChangeFlow({
 
         {step === 'done' && (
           <div className="flex w-full flex-col items-center text-center">
-            <IconCircleCheckFilled size={48} className="text-ink" />
+            <IconCircleCheck size={48} className="text-ink" />
             <h1 className="mt-4 font-display text-2xl font-medium text-ink">All set</h1>
             <p className="mt-2 text-sm text-ink-soft">
               Sonneck is now running with <strong className="text-ink">{toLabel}</strong>.
