@@ -22,7 +22,7 @@ import { afterMinDuration } from '../lib/minDuration'
 // AdminSettingsMockup.tsx before it was pulled out — that work wasn't
 // wasted, it just moved from an in-app admin action to a boot-time gate.
 //
-// Five fixture SCENARIOS cover every meaningfully-different content path a
+// Six fixture SCENARIOS cover every meaningfully-different content path a
 // real AUTH_METHOD transition can take (a dev-only "Simulate detected
 // change" preview control switches between them — not part of the shipped
 // design, which only ever has one real detected transition to walk
@@ -30,9 +30,13 @@ import { afterMinDuration } from '../lib/minDuration'
 // moving to Password with no existing password_hash (needs a new
 // password, reusing FirstLaunchMockup.tsx's own password-fields shape),
 // a light Password→No-login swap (nothing to adjust), downgrading from a
-// *single*-account OIDC setup (light confirmation, nothing destroyed), and
-// downgrading from a *multi*-account OIDC setup (the full destructive
-// choose-admin + confirm-delete sequence). The step sequence itself is
+// *single*-account OIDC setup (its own no-deletion confirm step, nothing
+// destroyed), downgrading from a multi-account OIDC setup with only one
+// eligible admin (skips choose-admin, goes straight to the real
+// destructive confirm since the other, non-admin account still has to
+// go), and downgrading from a genuinely *multi-admin* OIDC setup (the
+// full destructive choose-admin + confirm-delete sequence). The step
+// sequence itself is
 // computed per scenario (`computeSteps`), not hardcoded, so composing two
 // needs at once — e.g. the last scenario needs both a new password *and*
 // the destructive downgrade — falls out naturally rather than needing a
@@ -116,6 +120,24 @@ import { afterMinDuration } from '../lib/minDuration'
 // again") — it's the literal end of the flow, not a decision point that
 // needs to compete visually with the buttons that actually drove it
 // forward.
+//
+// Rough edge fixed here for review, not yet ported to the real
+// AuthChangeFlow.tsx: reaching a multi-account downgrade with only one
+// eligible admin among those accounts used to still walk through
+// choose-admin's "Multiple admins found" screen with a single, already-
+// obvious option. computeSteps already conditioned that step on
+// `admins.length > 1`, and selectScenario already pre-selected a lone
+// admin as keptAdminId — the actual gap was that no fixture scenario ever
+// exercised the multi-account/single-admin combination, so this path was
+// never reachable to preview or confirm correct. New scenario
+// 'oidc-to-none-lone-admin' (now the default, so it's the first thing
+// shown) exercises it: intro goes straight to confirm-delete with the
+// lone admin already selected as survivor, no dead-end "choose between
+// one option" screen in between. The real component's own version of this
+// fix is trickier (its admin count only becomes known once
+// GET /api/auth-change/candidates resolves, needing a real effect-driven
+// step skip rather than a pure computation over already-known fixture
+// data) — see project_multiuser_build.md's Phase 16 section.
 
 type AuthMethod = 'none' | 'singlepass' | 'oidc'
 
@@ -140,6 +162,7 @@ type ScenarioKey =
   | 'none-to-singlepass'
   | 'singlepass-to-none'
   | 'oidc-to-none-single'
+  | 'oidc-to-none-lone-admin'
   | 'oidc-to-singlepass-multi'
 
 const SCENARIOS: Record<ScenarioKey, Scenario> = {
@@ -175,6 +198,24 @@ const SCENARIOS: Record<ScenarioKey, Scenario> = {
     existingPasswordSet: false,
     users: [{ id: 1, name: 'Jamie Chen', email: 'jamie@example.com', isAdmin: true }],
   },
+  // Exercises the "rough edge" fix: multiple accounts exist (isDowngrade
+  // is true), but only one of them is an admin — the only real candidate
+  // to keep. computeSteps below already omits 'choose-admin' whenever
+  // admins.length <= 1, and selectScenario already pre-selects that lone
+  // admin as keptAdminId — this scenario is what makes that path
+  // reachable/previewable at all, since no prior fixture had a
+  // multi-account, single-admin combination.
+  'oidc-to-none-lone-admin': {
+    label: 'OIDC SSO (1 admin + 1 member) → No login',
+    fromLabel: 'OIDC SSO',
+    to: 'none',
+    toLabel: 'No login',
+    existingPasswordSet: false,
+    users: [
+      { id: 1, name: 'Jamie Chen', email: 'jamie@example.com', isAdmin: true },
+      { id: 2, name: 'Riley Park', email: 'riley@example.com', isAdmin: false },
+    ],
+  },
   'oidc-to-singlepass-multi': {
     label: 'OIDC SSO (3 accounts) → Password (new)',
     fromLabel: 'OIDC SSO',
@@ -194,15 +235,30 @@ type StepKey = 'intro' | 'password' | 'choose-admin' | 'confirm-delete' | 'updat
 function computeSteps(scenario: Scenario): StepKey[] {
   const steps: StepKey[] = ['intro']
   const needsPassword = scenario.to === 'singlepass' && !scenario.existingPasswordSet
-  const isDowngrade = scenario.users.length > 1
+  // A downgrade away from OIDC always gets its own explicit confirm step —
+  // 'confirm-delete' — regardless of how many accounts exist. Previously
+  // this step (and 'choose-admin' ahead of it) only appeared when more
+  // than one account existed; a single-OIDC-account downgrade jumped
+  // straight from intro to done instead, the one downgrade scenario with
+  // no explicit "yes, continue" moment of its own. Keeping the step count
+  // fixed per transition type (never conditionally inserted/omitted based
+  // on account count) also sidesteps the real difficulty the live
+  // AuthChangeFlow.tsx hits porting this: its account list only resolves
+  // once GET /api/auth-change/candidates returns, so skipping a step
+  // based on that count needs an effect-driven step-index adjustment —
+  // always rendering the step and varying its *content* once the data
+  // arrives avoids that entirely.
+  const isFromOidc = scenario.fromLabel === 'OIDC SSO'
   const admins = scenario.users.filter((u) => u.isAdmin)
+  const willDeleteAccounts = scenario.users.length > 1
   if (needsPassword) steps.push('password')
-  if (isDowngrade) {
+  if (isFromOidc) {
     if (admins.length > 1) steps.push('choose-admin')
-    // 'updating' only ever follows the destructive confirm-delete step —
-    // the lighter scenarios apply near-instantly, with nothing worth a
-    // spinner for.
-    steps.push('confirm-delete', 'updating')
+    steps.push('confirm-delete')
+    // 'updating' only ever follows when 'confirm-delete' is actually
+    // destructive — the no-deletion variant (a single existing account)
+    // applies instantly, same as every other light scenario.
+    if (willDeleteAccounts) steps.push('updating')
   }
   steps.push('done')
   return steps
@@ -268,11 +324,23 @@ function BackLink({ onClick }: { onClick: () => void }) {
   )
 }
 
+// Shared by the initial state below and selectScenario, so a scenario
+// with exactly one eligible admin always starts pre-selected — same as
+// the real flow ends up needing to do once choose-admin is skipped for
+// that case, just simpler here since fixture users are synchronous
+// (no query to wait on before the lone candidate is known).
+function lonelyAdminId(scenario: Scenario): number | null {
+  const admins = scenario.users.filter((u) => u.isAdmin)
+  return admins.length === 1 ? admins[0].id : null
+}
+
+const DEFAULT_SCENARIO: ScenarioKey = 'oidc-to-none-lone-admin'
+
 export function AuthChangeFlowMockup() {
   useMockupTitle('Auth Change Flow')
-  const [scenarioKey, setScenarioKey] = useState<ScenarioKey>('oidc-to-singlepass-multi')
+  const [scenarioKey, setScenarioKey] = useState<ScenarioKey>(DEFAULT_SCENARIO)
   const [stepIndex, setStepIndex] = useState(0)
-  const [keptAdminId, setKeptAdminId] = useState<number | null>(null)
+  const [keptAdminId, setKeptAdminId] = useState<number | null>(() => lonelyAdminId(SCENARIOS[DEFAULT_SCENARIO]))
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
 
@@ -289,8 +357,7 @@ export function AuthChangeFlowMockup() {
     setStepIndex(0)
     setPassword('')
     setConfirmPassword('')
-    const nextAdmins = SCENARIOS[key].users.filter((u) => u.isAdmin)
-    setKeptAdminId(nextAdmins.length === 1 ? nextAdmins[0].id : null)
+    setKeptAdminId(lonelyAdminId(SCENARIOS[key]))
   }
 
   function goNext() {
@@ -466,7 +533,37 @@ export function AuthChangeFlowMockup() {
           </>
         )}
 
-        {step === 'confirm-delete' && keptAdmin && (
+        {step === 'confirm-delete' && keptAdmin && usersToDelete.length === 0 && (
+          // The no-deletion variant of this same step — reached whenever a
+          // downgrade comes from an OIDC setup with only one existing
+          // account, so there's genuinely nothing to choose or delete.
+          // Exists specifically so this scenario still gets an explicit,
+          // deliberate "yes, continue" moment of its own, the same as
+          // every destructive scenario already gets via the variant below
+          // — rather than silently completing the instant intro's own
+          // Continue button is clicked, which would make this the one
+          // downgrade path with no confirm step at all.
+          <>
+            <BackLink onClick={goBack} />
+            <h1 className="font-display text-2xl font-medium text-ink">Confirm the switch</h1>
+            <p className="mt-2 text-sm text-ink-soft">
+              No accounts need to be deleted — <strong className="text-ink">{keptAdmin.name}</strong> is the
+              only account here. Continuing switches Sonneck to{' '}
+              <strong className="text-ink">{scenario.toLabel}</strong>; everything else about your library
+              stays exactly as it is.
+            </p>
+            <ReversibleNote fromLabel={scenario.fromLabel} isFinalStep={isFinalActionableStep} />
+            <button
+              type="button"
+              onClick={goNext}
+              className="mt-8 flex w-full cursor-pointer items-center justify-center gap-2 rounded-md bg-accent px-5 py-2.5 font-display text-white hover:bg-accent/90"
+            >
+              Confirm and Continue
+            </button>
+          </>
+        )}
+
+        {step === 'confirm-delete' && keptAdmin && usersToDelete.length > 0 && (
           <>
             <BackLink onClick={goBack} />
             <h1 className="font-display text-2xl font-medium text-ink">Delete the other accounts?</h1>

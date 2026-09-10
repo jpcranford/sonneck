@@ -132,7 +132,7 @@ func TestAuthChangeComplete_SinglepassToNone_NoPasswordNeeded(t *testing.T) {
 	}
 }
 
-func TestAuthChangeCandidates_RequiresMultiAccountOIDCDowngrade(t *testing.T) {
+func TestAuthChangeCandidates_AvailableForAnyOIDCDowngrade(t *testing.T) {
 	_, conn := newTestServerWithDB(t)
 	ctx := context.Background()
 	if err := repo.CompleteFirstLaunch(ctx, conn, "none", nil); err != nil {
@@ -142,12 +142,24 @@ func TestAuthChangeCandidates_RequiresMultiAccountOIDCDowngrade(t *testing.T) {
 		t.Fatalf("SetLastActiveAuthMethod: %v", err)
 	}
 	// Simulates having actually run under oidc with only the one seeded
-	// account — target isn't oidc (so not an upgrade) and only one account
-	// exists, so candidates has nothing to offer.
+	// account — target isn't oidc (so not an upgrade), and only one
+	// account exists, so there's nothing to *choose* between, but the
+	// endpoint still succeeds: AuthChangeFlow.tsx's no-deletion
+	// confirm-delete variant needs this account's real display name for
+	// its own copy even when there's no destructive choice to make.
 	restarted := serverWithAuthMethod(t, conn, "none")
 	rec := doJSON(t, restarted, http.MethodGet, "/api/auth-change/candidates", nil)
-	if rec.Code != http.StatusBadRequest {
-		t.Errorf("single-account downgrade: status = %d, want 400 (nothing to choose)", rec.Code)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("single-account downgrade: status = %d, want 200, body %s", rec.Code, rec.Body.String())
+	}
+	var singleCandidate []struct {
+		ID          int64  `json:"id"`
+		DisplayName string `json:"displayName"`
+		IsAdmin     bool   `json:"isAdmin"`
+	}
+	decodeData(t, rec, &singleCandidate)
+	if len(singleCandidate) != 1 || singleCandidate[0].DisplayName != "Admin" || !singleCandidate[0].IsAdmin {
+		t.Errorf("single-account downgrade: candidates = %+v, want exactly the seeded id=1 Admin account", singleCandidate)
 	}
 
 	// id=1 has to be claimed first — ClaimOrProvisionOIDCUser's own "first

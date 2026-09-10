@@ -33,8 +33,11 @@ func (s *Server) pendingAuthChange(w http.ResponseWriter, r *http.Request) (targ
 }
 
 // handleAuthChangeCandidates is GET /api/auth-change/candidates — the
-// destructive downgrade's account data, only meaningful when the pending
-// target is none/singlepass and more than one account currently exists.
+// account data behind confirm-delete, for any downgrade away from OIDC,
+// not just a multi-account one: a single-existing-account downgrade needs
+// this too, to personalize its own no-deletion confirm step with that
+// account's real display name (AuthChangeFlow.tsx's confirm-delete step
+// fetches this for any OIDC-sourced transition — see its own comment).
 // Returns every account (not just admins — see AuthChangeCandidateResponse's
 // own doc comment for why confirm-delete needs the full list), each flagged
 // IsAdmin so the choose-admin step's own radio list can still filter down
@@ -56,10 +59,6 @@ func (s *Server) handleAuthChangeCandidates(w http.ResponseWriter, r *http.Reque
 	users, err := repo.ListUsers(r.Context(), s.DB)
 	if err != nil {
 		s.writeError(w, err)
-		return
-	}
-	if len(users) <= 1 {
-		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "only one account exists — nothing to choose between")
 		return
 	}
 	resp := make([]api.AuthChangeCandidateResponse, 0, len(users))

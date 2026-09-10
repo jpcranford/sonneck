@@ -49,6 +49,19 @@ import { afterMinDuration } from '../lib/minDuration'
 // non-destructive scenarios skip 'updating' entirely (their own final
 // button just awaits the mutation directly, same as before) — nothing
 // worth narrating a wait for on those paths.
+//
+// 'confirm-delete' itself is never conditionally omitted for a downgrade
+// away from OIDC — it always appears, with two content variants chosen
+// from usersToDelete.length once the candidate list resolves, rather than
+// the step's own presence in `steps` depending on that (async) count.
+// This sidesteps needing a step-index adjustment once
+// GET /api/auth-change/candidates returns: only pending.multiAccount (a
+// plain boolean already known synchronously from GET /api/config) decides
+// whether the step exists at all, matching AuthChangeFlowMockup.tsx's own
+// fix for the identical rough edge. The candidates query itself now runs
+// for any OIDC downgrade, single-account included, not just a
+// multi-account one — the no-deletion variant still needs the one
+// existing account's real name for its copy.
 
 const METHOD_LABELS: Record<AuthMethod, string> = {
   none: 'No login',
@@ -58,11 +71,26 @@ const METHOD_LABELS: Record<AuthMethod, string> = {
 
 type StepKey = 'intro' | 'password' | 'choose-admin' | 'confirm-delete' | 'updating' | 'done'
 
-function computeSteps(pending: { needsPassword: boolean; multiAccount: boolean }): StepKey[] {
+// 'confirm-delete' now appears for every downgrade away from OIDC, not
+// just a multi-account one — a single-existing-account OIDC downgrade
+// used to jump straight from intro (or password) to 'done' with no
+// explicit "yes, continue" moment of its own, the one downgrade path with
+// no confirm step at all. It renders a harmless "nothing to delete"
+// variant in that case (below) instead of being skipped, which also
+// means this step's presence is decided from pending.from alone — no
+// step-index adjustment is ever needed once the async candidate list
+// resolves, only that step's own internal content varies once it does.
+function computeSteps(pending: { from: AuthMethod; needsPassword: boolean; multiAccount: boolean }): StepKey[] {
   const steps: StepKey[] = ['intro']
+  const isFromOidc = pending.from === 'oidc'
   if (pending.needsPassword) steps.push('password')
-  if (pending.multiAccount) {
-    steps.push('choose-admin', 'confirm-delete', 'updating')
+  if (isFromOidc) {
+    if (pending.multiAccount) steps.push('choose-admin')
+    steps.push('confirm-delete')
+    // 'updating' only ever follows when 'confirm-delete' is actually
+    // destructive — the no-deletion variant applies instantly, same as
+    // every other light scenario.
+    if (pending.multiAccount) steps.push('updating')
   }
   steps.push('done')
   return steps
@@ -114,7 +142,11 @@ export function AuthChangeFlow({
   const candidatesQuery = useQuery({
     queryKey: ['auth-change', 'candidates'],
     queryFn: getAuthChangeCandidates,
-    enabled: pending.multiAccount,
+    // Fetched for any OIDC downgrade, not just a multi-account one —
+    // 'confirm-delete's no-deletion variant still needs the one existing
+    // account's real name to personalize its copy, the same as the
+    // destructive variant already needs the full list.
+    enabled: pending.from === 'oidc',
   })
   // Every existing account — confirm-delete needs the complete list to
   // correctly report everyone who's actually about to be deleted, not just
@@ -123,7 +155,13 @@ export function AuthChangeFlow({
   // The choose-admin step's own radio list is the admin-eligible subset —
   // only an admin can become none/singlepass mode's one implicit account.
   const admins = candidates.filter((u) => u.isAdmin)
-  const keptAdmin = candidates.find((u) => u.id === keptAdminId) ?? null
+  // A genuinely single-account downgrade has exactly one candidate and no
+  // choose-admin step to have set keptAdminId from — resolve it directly
+  // rather than requiring an explicit selection for an account that was
+  // never actually a choice. Doesn't touch the multi-account case (more
+  // than one candidate) at all, which still relies on a real click.
+  const keptAdmin = candidates.length === 1 ? candidates[0] : (candidates.find((u) => u.id === keptAdminId) ?? null)
+  const usersToDelete = candidates.filter((u) => u.id !== keptAdmin?.id)
 
   const completeMutation = useMutation({
     mutationFn: () =>
@@ -289,23 +327,59 @@ export function AuthChangeFlow({
           </>
         )}
 
-        {step === 'confirm-delete' && keptAdmin && (
+        {step === 'confirm-delete' && candidatesQuery.isLoading && (
+          <p className="text-sm text-ink-soft">Loading accounts…</p>
+        )}
+
+        {step === 'confirm-delete' && keptAdmin && usersToDelete.length === 0 && (
+          // The no-deletion variant — a downgrade from an OIDC setup with
+          // only one existing account, so there's genuinely nothing to
+          // choose or delete. Gives this scenario the same explicit,
+          // deliberate "yes, continue" moment every destructive scenario
+          // already gets via the variant below, rather than completing
+          // the instant intro's (or password's) own button is clicked.
+          <>
+            <BackLink onClick={goBack} />
+            <h1 className="font-display text-2xl font-medium text-ink">Confirm the switch</h1>
+            <p className="mt-2 text-sm text-ink-soft">
+              No accounts need to be deleted — <strong className="text-ink">{keptAdmin.displayName}</strong> is the
+              only account here. Continuing switches Sonneck to <strong className="text-ink">{toLabel}</strong>;
+              everything else about your library stays exactly as it is.
+            </p>
+            <ReversibleNote fromLabel={fromLabel} isFinalStep={isFinalActionableStep} />
+            {isFinalActionableStep && completeMutation.isError && (
+              <p className="mt-3 text-xs text-red-700">
+                {completeMutation.error instanceof ApiError ? completeMutation.error.message : 'Something went wrong.'}
+              </p>
+            )}
+            <button
+              type="button"
+              disabled={completeMutation.isPending}
+              onClick={() =>
+                isFinalActionableStep ? completeMutation.mutate(undefined, { onSuccess: goNext }) : goNext()
+              }
+              className="mt-8 flex w-full items-center justify-center gap-2 rounded-md bg-accent px-5 py-2.5 font-display text-white enabled:cursor-pointer enabled:hover:bg-accent/90 disabled:opacity-40"
+            >
+              {isFinalActionableStep && completeMutation.isPending ? 'Continuing…' : 'Confirm and Continue'}
+            </button>
+          </>
+        )}
+
+        {step === 'confirm-delete' && keptAdmin && usersToDelete.length > 0 && (
           <>
             <BackLink onClick={goBack} />
             <h1 className="font-display text-2xl font-medium text-ink">Delete the other accounts?</h1>
             <p className="mt-2 text-sm text-ink-soft">
               {toLabel} supports only one account. <strong className="text-ink">{keptAdmin.displayName}</strong> will
-              become that account, and the following {candidates.length - 1} account
-              {candidates.length - 1 === 1 ? '' : 's'} will be permanently deleted:
+              become that account, and the following {usersToDelete.length} account
+              {usersToDelete.length === 1 ? '' : 's'} will be permanently deleted:
             </p>
             <ul className="mt-4 flex flex-col gap-2">
-              {candidates
-                .filter((u) => u.id !== keptAdmin.id)
-                .map((user) => (
-                  <li key={user.id} className="rounded-md border border-[#f3d4ce] bg-[#fbe9e7] px-3 py-2 text-sm text-ink">
-                    <span className="font-medium">{user.displayName}</span>
-                  </li>
-                ))}
+              {usersToDelete.map((user) => (
+                <li key={user.id} className="rounded-md border border-[#f3d4ce] bg-[#fbe9e7] px-3 py-2 text-sm text-ink">
+                  <span className="font-medium">{user.displayName}</span>
+                </li>
+              ))}
             </ul>
             <p className="mt-4 text-xs text-ink-soft">
               This is the last step — until you click "Delete accounts now" below, you can still switch{' '}
