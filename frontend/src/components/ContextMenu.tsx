@@ -14,6 +14,12 @@ export interface ContextMenuItem {
   label: string
   onSelect: () => void
   destructive?: boolean
+  /** Renders as a faint, non-clickable row — a permission the viewer
+   * doesn't hold, same "can't act on it, so don't let it look actionable"
+   * treatment every other permission-gated control in this app uses. */
+  disabled?: boolean
+  /** Shown as the row's own title/tooltip when disabled — explains why. */
+  disabledReason?: string
 }
 
 export interface ContextMenuHandle {
@@ -180,12 +186,16 @@ export const ContextMenu = forwardRef<ContextMenuHandle, ContextMenuProps>(funct
             <button
               key={item.label}
               role="menuitem"
+              disabled={item.disabled}
+              title={item.disabled ? item.disabledReason : undefined}
               onClick={() => {
                 item.onSelect()
                 setPosition(null)
               }}
-              className={`block w-full px-3 py-1.5 text-left text-sm hover:bg-paper ${
-                item.destructive ? 'text-red-700' : 'text-ink'
+              className={`block w-full px-3 py-1.5 text-left text-sm ${
+                item.disabled
+                  ? 'cursor-not-allowed text-ink-soft/50'
+                  : `hover:bg-paper ${item.destructive ? 'text-red-700' : 'text-ink'}`
               }`}
             >
               {item.label}

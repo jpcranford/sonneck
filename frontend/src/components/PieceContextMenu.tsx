@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { deletePiece, updatePiece } from '../api/pieces'
 import { ApiError } from '../api/client'
 import type { Piece } from '../api/types'
+import { useAuth } from '../lib/AuthContext'
 import { pieceToWriteRequest } from '../lib/pieceToWriteRequest'
 import { ContextMenu, type ContextMenuHandle } from './ContextMenu'
 import { EditPieceModal } from './EditPieceModal'
@@ -27,6 +28,7 @@ export const PieceContextMenu = forwardRef<ContextMenuHandle, PieceContextMenuPr
   function PieceContextMenu({ piece, children, hideTriggerButton, siblingPieces }, ref) {
     const [editOpen, setEditOpen] = useState(false)
     const queryClient = useQueryClient()
+    const canEdit = useAuth().permissions.includes('edit')
 
     // Same full-replace PATCH pattern as PiecePage's own favorite toggle
     // (its keyboard-shortcut "F" and header heart button) — kept here as a
@@ -66,7 +68,12 @@ export const PieceContextMenu = forwardRef<ContextMenuHandle, PieceContextMenuPr
               label: piece.favorite ? 'Remove from Favorites' : 'Add to Favorites',
               onSelect: () => favoriteMutation.mutate(),
             },
-            { label: 'Edit Piece', onSelect: () => setEditOpen(true) },
+            {
+              label: 'Edit Piece',
+              onSelect: () => setEditOpen(true),
+              disabled: !canEdit,
+              disabledReason: "You don't have permission to edit",
+            },
             {
               label: 'Delete Piece',
               destructive: true,

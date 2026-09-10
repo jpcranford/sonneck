@@ -310,6 +310,7 @@ export function BookDetailsPage() {
   const navigate = useNavigate()
   const me = useAuth()
   const canDownload = me.permissions.includes('download')
+  const canEdit = me.permissions.includes('edit')
 
   const [viewMode, setViewMode] = useViewPreference('book-details-pieces')
   const [bookEditOpen, setBookEditOpen] = useState(false)
@@ -451,14 +452,17 @@ export function BookDetailsPage() {
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target?.isContentEditable) {
         return
       }
-      if (event.key.toLowerCase() === 'e') {
+      // No permission, no shortcut — mirrors the toolbar button's own
+      // disabled state instead of opening a modal the user couldn't have
+      // reached by clicking anyway.
+      if (event.key.toLowerCase() === 'e' && canEdit) {
         event.preventDefault()
         setBookEditOpen(true)
       }
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
-  }, [book, bookEditOpen])
+  }, [book, bookEditOpen, canEdit])
 
   const notFound = bookError instanceof ApiError && bookError.code === 'NOT_FOUND'
 
@@ -641,8 +645,10 @@ export function BookDetailsPage() {
             <button
               type="button"
               onClick={() => setBookEditOpen(true)}
+              disabled={!canEdit}
               aria-label="Edit Book"
-              className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-sm whitespace-nowrap text-ink hover:border-accent max-[360px]:w-[38px] max-[360px]:px-0"
+              title={canEdit ? undefined : "You don't have permission to edit"}
+              className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-sm whitespace-nowrap text-ink hover:border-accent disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border max-[360px]:w-[38px] max-[360px]:px-0"
             >
               <IconEditFilled size={16} />
               <span className="max-[360px]:hidden">Edit Book</span>

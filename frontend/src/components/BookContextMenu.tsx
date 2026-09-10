@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { deleteBook } from '../api/books'
 import { ApiError } from '../api/client'
 import type { Book } from '../api/types'
+import { useAuth } from '../lib/AuthContext'
 import { ContextMenu, type ContextMenuHandle } from './ContextMenu'
 import { EditBookModal } from './EditBookModal'
 
@@ -22,6 +23,7 @@ export const BookContextMenu = forwardRef<ContextMenuHandle, BookContextMenuProp
   function BookContextMenu({ book, children, hideTriggerButton }, ref) {
     const [editOpen, setEditOpen] = useState(false)
     const queryClient = useQueryClient()
+    const canEdit = useAuth().permissions.includes('edit')
 
     // Cascade delete, not the lighter unlink-pieces or empty-books-only
     // alternatives: removes the Book *and* every Piece referencing it in
@@ -57,7 +59,12 @@ export const BookContextMenu = forwardRef<ContextMenuHandle, BookContextMenuProp
           ref={ref}
           hideTriggerButton={hideTriggerButton}
           items={[
-            { label: 'Edit Book', onSelect: () => setEditOpen(true) },
+            {
+              label: 'Edit Book',
+              onSelect: () => setEditOpen(true),
+              disabled: !canEdit,
+              disabledReason: "You don't have permission to edit",
+            },
             {
               label: 'Delete Book',
               destructive: true,

@@ -196,12 +196,14 @@ function ActionButton({
   label,
   onClick,
   disabled,
+  title,
   className = '',
 }: {
   icon: ReactNode
   label: string
   onClick?: () => void
   disabled?: boolean
+  title?: string
   className?: string
 }) {
   return (
@@ -209,6 +211,7 @@ function ActionButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
+      title={title}
       className={`flex cursor-pointer items-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-sm whitespace-nowrap text-ink hover:border-accent disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border ${className}`}
     >
       {icon}
@@ -306,6 +309,7 @@ export function PiecePage() {
 
   const me = useAuth()
   const canDownload = me.permissions.includes('download')
+  const canEdit = me.permissions.includes('edit')
 
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [downloadOpen, setDownloadOpen] = useState(false)
@@ -347,6 +351,10 @@ export function PiecePage() {
       }
       const key = event.key.toLowerCase()
       if (key === 'e') {
+        // No permission, no shortcut — mirrors the toolbar button's own
+        // disabled state instead of opening a modal the user couldn't have
+        // reached by clicking anyway.
+        if (!canEdit) return
         event.preventDefault()
         setEditOpen(true)
       } else if (key === 'f') {
@@ -356,8 +364,8 @@ export function PiecePage() {
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- favoriteMutation is a fresh object every render (useMutation, not memoized); depending on it would tear down/re-add this listener on every render for no behavioral difference. piece/editOpen are the only real dependencies.
-  }, [piece, editOpen])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- favoriteMutation is a fresh object every render (useMutation, not memoized); depending on it would tear down/re-add this listener on every render for no behavioral difference. piece/editOpen/canEdit are the only real dependencies.
+  }, [piece, editOpen, canEdit])
 
   const replaceMutation = useMutation({
     mutationFn: (file: File) => {
@@ -517,6 +525,8 @@ export function PiecePage() {
               icon={<IconEditFilled size={16} />}
               label="Edit Piece"
               onClick={() => setEditOpen(true)}
+              disabled={!canEdit}
+              title={canEdit ? undefined : "You don't have permission to edit"}
             />
           </div>
         )}

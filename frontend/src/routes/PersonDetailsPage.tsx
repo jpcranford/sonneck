@@ -36,6 +36,7 @@ import { TagPills } from '../components/TagPills'
 import { joinNames, personCreditPart } from '../lib/joinNames'
 import { CONTENT_MAX_W } from '../lib/layout'
 import { PALETTE } from '../lib/pieceSplitLogic'
+import { useAuth } from '../lib/AuthContext'
 import { usePageTitle } from '../lib/usePageTitle'
 import { useViewPreference } from '../lib/useViewPreference'
 import { yearWrittenSource } from '../lib/yearWrittenSource'
@@ -386,6 +387,8 @@ export function PersonDetailsPage() {
   const personId = Number(id)
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const me = useAuth()
+  const canEdit = me.permissions.includes('edit')
 
   const [workViewMode, setWorkViewMode] = useViewPreference('person-details-works', 'list')
   const [editOpen, setEditOpen] = useState(false)
@@ -448,14 +451,17 @@ export function PersonDetailsPage() {
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target?.isContentEditable) {
         return
       }
-      if (event.key.toLowerCase() === 'e') {
+      // No permission, no shortcut — mirrors the header button's own
+      // disabled state instead of opening a modal the user couldn't have
+      // reached by clicking anyway.
+      if (event.key.toLowerCase() === 'e' && canEdit) {
         event.preventDefault()
         setEditOpen(true)
       }
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
-  }, [person, editOpen])
+  }, [person, editOpen, canEdit])
 
   const removePortraitMutation = useMutation({
     mutationFn: () => removePersonPortrait(personId),
@@ -541,7 +547,9 @@ export function PersonDetailsPage() {
             <button
               type="button"
               onClick={() => setSplitOpen(true)}
-              className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-sm whitespace-nowrap text-ink hover:border-accent"
+              disabled={!canEdit}
+              title={canEdit ? undefined : "You don't have permission to edit"}
+              className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-sm whitespace-nowrap text-ink hover:border-accent disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border"
             >
               <IconArrowsSplit2 size={16} />
               <span className="max-[420px]:hidden">Split People</span>
@@ -549,8 +557,10 @@ export function PersonDetailsPage() {
             <button
               type="button"
               onClick={() => setEditOpen(true)}
+              disabled={!canEdit}
               aria-label="Edit Person"
-              className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-sm whitespace-nowrap text-ink hover:border-accent max-[360px]:w-[38px] max-[360px]:px-0"
+              title={canEdit ? undefined : "You don't have permission to edit"}
+              className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-sm whitespace-nowrap text-ink hover:border-accent disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border max-[360px]:w-[38px] max-[360px]:px-0"
             >
               <IconEditFilled size={16} />
               <span className="max-[360px]:hidden">Edit Person</span>
