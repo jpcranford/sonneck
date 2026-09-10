@@ -345,7 +345,7 @@ export function UploadPage() {
           <button
             type="button"
             onClick={() => setStage('landing')}
-            className="flex items-center gap-1.5 self-start text-base text-ink-soft hover:text-ink"
+            className="flex cursor-pointer items-center gap-1.5 self-start text-base text-ink-soft hover:text-ink"
           >
             <IconArrowLeft size={24} />
             Back

@@ -113,7 +113,7 @@ export function Sidebar() {
           type="button"
           onClick={() => setCollapsed((value) => !value)}
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          className="flex size-[30px] shrink-0 items-center justify-center rounded-md border border-sidebar-border text-sidebar-text-dim hover:text-sidebar-text"
+          className="flex size-[30px] shrink-0 cursor-pointer items-center justify-center rounded-md border border-sidebar-border text-sidebar-text-dim hover:text-sidebar-text"
         >
           {collapsed ? (
             <IconLayoutSidebarLeftExpandFilled size={16} />
