@@ -39,13 +39,11 @@ import {
   type UpdateLibrarySettingsRequest,
 } from '../api/admin'
 
-// Admin Settings — real build of the approved mockup (Option B jump-nav +
-// bordered section cards — /mockup/admin-settings, master plan Phases
-// 6/9), wired to the real endpoints: Users/Security/Library-counts/
-// Sheet-Types/Instruments already existed from Phase 10; Library Settings
-// and Version/Check-for-updates are new this phase (memory
-// project_multiuser_build.md's Phase 13 section) — see
-// internal/handlers/librarysettings.go/version.go.
+// Admin Settings — matches /mockup/admin-settings' Option B jump-nav +
+// bordered section cards, wired to the real endpoints: Users/Security/
+// Library-counts/Sheet-Types/Instruments, plus Library Settings and
+// Version/Check-for-updates (see internal/handlers/librarysettings.go/
+// version.go).
 //
 // Every preview-only mechanism from the mockup is gone: IdentityStateToggle,
 // EnvSimulatorStrip, and the "Preview build identity" BUILD_FIXTURES toggle
@@ -57,8 +55,8 @@ const ALL_PERMS: Permission[] = [
   'read', 'download', 'practice', 'edit', 'upload', 'create', 'delete', 'admin',
 ]
 
-// Matches the locked permission mapping (master plan's "Permission model"
-// section) — kept in sync with that doc, not re-derived independently.
+// Matches CLAUDE.md's permission mapping — kept in sync with that doc,
+// not re-derived independently.
 const PERM_DESCRIPTIONS: Record<Permission, string> = {
   read: 'View and search pieces, books, and people.',
   download: "Download a piece's file.",

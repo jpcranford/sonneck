@@ -140,9 +140,9 @@ function EffectiveValue({
   source?: string
 }) {
   if (!value) return <span className="text-ink-soft/50">—</span>
-  // A Fragment, not an inline-flex wrapper span — real bug found live
-  // (2026-09-05, against the composer row specifically, a long list of
-  // names): `inline-flex` makes this an atomic inline-level box from the
+  // A Fragment, not an inline-flex wrapper span — a real bug found
+  // against the composer row specifically (a long list of names):
+  // `inline-flex` makes this an atomic inline-level box from the
   // *outer* paragraph's own perspective, sized once via shrink-to-fit
   // against the available width. That resolved width doesn't reliably
   // match the box's own longest wrapped-text line — browsers can size it
@@ -266,12 +266,12 @@ export function PiecePage() {
         // A freshly uploaded piece can legitimately have neither a
         // composer nor an arranger yet — handleCreatePiece deliberately
         // skips api.ValidatePiece's composer-or-arranger requirement,
-        // which only applies to the Edit Piece/Book save flows (found
-        // live, 2026-09-04: a real title-only piece was rendering the tab
-        // title as "CoverLetter by" with a dangling "by" and nothing
-        // after it). Same "omit the segment cleanly, including its own
-        // separator" convention downloadFilename already uses server-side
-        // for this exact kind of optional piece.
+        // which only applies to the Edit Piece/Book save flows (a
+        // title-only piece would otherwise render the tab title as
+        // "CoverLetter by" with a dangling "by" and nothing after it).
+        // Same "omit the segment cleanly, including its own separator"
+        // convention downloadFilename already uses server-side for this
+        // exact kind of optional piece.
         const credit = pieceTitleCredit(
           piece.composer.values.map((p) => p.name),
           piece.arranger.values.map((p) => p.name),
@@ -1154,9 +1154,9 @@ export function PiecePage() {
                   <p className="text-sm text-ink-soft">
                     {/* Composer/Arranger names link to their own Person
                         Details page — same IIFE pattern as this page's own
-                        header row above and BookDetailsPage.tsx's header,
-                        ported here per direct report. formatBookMeta/
-                        bookComposerPart stay plain strings for every other
+                        header row above and BookDetailsPage.tsx's header.
+                        formatBookMeta/bookComposerPart stay plain strings
+                        for every other
                         caller (grid/list cards) — this is a JSX-capable
                         rebuild of bookComposerPart's own three-way
                         composer(+arranger) → arranger-only → publisher

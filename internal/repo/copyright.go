@@ -33,8 +33,8 @@ import (
 // 'inCopyright' pick the calculation hasn't (yet) overridden shows no year,
 // matching the badge design (design artifact §5). Also nil for a sticky
 // 'publicDomain'/'likelyPublicDomain' pick whose own calc.ExpiryYear hasn't
-// actually arrived yet (calc.IsLikelyPD false) — found live, 2026-09-05: an
-// explicit publicDomain override with a copyrightYear the calculation
+// actually arrived yet (calc.IsLikelyPD false) — found live: an explicit
+// publicDomain override with a copyrightYear the calculation
 // disagrees with was surfacing that future date anyway, rendering as the
 // self-contradictory "Public domain as of 2060" (a status claiming *already*
 // PD, qualified by a year that hasn't happened). buildCitation already

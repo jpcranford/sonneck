@@ -2,9 +2,9 @@ package models
 
 import "time"
 
-// Permission values (master plan's "Permission model" section) — an
-// independent multi-select checklist per user, not a hierarchical tier.
-// Admin short-circuits every check to true (see repo.RequirePermission).
+// Permission values — an independent multi-select checklist per user, not
+// a hierarchical tier. Admin short-circuits every check to true (see
+// repo.RequirePermission).
 const (
 	PermissionRead     = "read"
 	PermissionDownload = "download"
@@ -24,8 +24,8 @@ var AllPermissions = []string{
 }
 
 // User is an account row (migration 00024, extended by 00025/00027). In
-// none/singlepass mode there is always exactly one (id=1) — OIDC (Phase 14)
-// is the only mode that ever creates a second.
+// none/singlepass mode there is always exactly one (id=1) — OIDC is the
+// only mode that ever creates a second.
 type User struct {
 	ID           int64
 	DisplayName  string
@@ -39,7 +39,7 @@ type User struct {
 }
 
 // HasPermission reports whether u holds perm directly, or holds "admin"
-// (which implies every permission — master plan's Permission model).
+// (which implies every permission).
 func (u *User) HasPermission(perm string) bool {
 	for _, p := range u.Permissions {
 		if p == perm || p == PermissionAdmin {

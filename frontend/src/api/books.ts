@@ -23,9 +23,9 @@ interface ListBooksParams {
   /** Comma-separated on the wire, same multi-select convention as
    * SearchPiecesParams's own keyId/instrumentId/sheetTypeId/userTagId —
    * see that file's comment for why an array param is enough here. Each
-   * has an exclude* sibling (direct request, 2026-09-05 — the Filter
-   * Drawer's segmented exclude/neutral/include control), same shape as
-   * pieces.ts's own excludeKeyId etc. */
+   * has an exclude* sibling — the Filter Drawer's segmented
+   * exclude/neutral/include control, same shape as pieces.ts's own
+   * excludeKeyId etc. */
   sheetTypeId?: number[]
   excludeSheetTypeId?: number[]
   instrumentId?: number[]

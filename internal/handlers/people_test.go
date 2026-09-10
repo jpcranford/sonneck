@@ -343,8 +343,7 @@ func TestSearchPieces_FiltersByPersonIdIncludingBookInheritance(t *testing.T) {
 	}
 }
 
-// TestSearchPieces_PersonIdFilterIsNotPaginated is the real reported bug,
-// 2026-09-01 ("why is Person Details capped at 50 pieces?") — personId
+// TestSearchPieces_PersonIdFilterIsNotPaginated covers a real bug: personId
 // used to fall through to the same default limit=50 every other piece
 // search gets, even though Person Details itself renders the whole works
 // list at once with no "load more"/infinite-scroll affordance the way the

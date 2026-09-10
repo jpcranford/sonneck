@@ -5,16 +5,15 @@ import { useMockupTitle } from '../lib/useMockupTitle'
 // *screen*), but a documentation "mockup" of internal/handlers/citation.go's
 // own branching logic — a standing decision-flow reference in the same
 // spirit as this app's other mockups, under the same mockup-parity rule
-// (CLAUDE.md > Frontend / feedback_mockup_first_standing_rule.md): whenever
+// (CLAUDE.md > Frontend's mockup-first standing rule): whenever
 // citation.go's actual branching changes, this page gets ported in the same
-// pass, not left to drift. Full standing rule (including how to regenerate
-// the flowchart image below): memory frontend_citation_logic_mockup.md.
+// pass, not left to drift.
 //
-// The flowchart itself is a real Mermaid diagram (direct request,
-// 2026-09-03 — a hand-rolled CSS box/arrow version read as genuinely
-// ambiguous about where Yes/No splits happened once a wide sibling branch
-// pushed the next one onto its own row below it), source + regeneration
-// command in ../assets/diagrams/citation-logic-flowchart.mmd. Its Path A
+// The flowchart itself is a real Mermaid diagram (a hand-rolled CSS
+// box/arrow version read as genuinely ambiguous about where Yes/No splits
+// happened once a wide sibling branch pushed the next one onto its own
+// row below it), source + regeneration command in
+// ../assets/diagrams/citation-logic-flowchart.mmd. Its Path A
 // leaf nodes (A1-A3) are intentionally short labels, not the full citation
 // text — the LEAVES constant below carries the actual worked example for
 // each, cross-referenced by that same id, so the diagram stays legible

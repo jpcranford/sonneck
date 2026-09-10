@@ -49,8 +49,8 @@ var pieceSortColumns = map[string]sortColumnFunc{
 	// yearWritten is book-inheritable (design doc §3) and TEXT, not INTEGER
 	// (free text, e.g. "ca. 1708-1711") — same two concerns bookSortColumns'
 	// own yearPublished already handles individually, combined here. The
-	// COALESCE mirrors repo.resolveYearWritten exactly (direct follow-up
-	// request extending the original piece-then-book fallback): piece's own
+	// COALESCE mirrors repo.resolveYearWritten exactly (extending the
+	// original piece-then-book fallback): piece's own
 	// non-blank year_written wins outright, else the piece's own
 	// copyright_year (cast to text so COALESCE's return type stays
 	// consistent — it's an INTEGER column, the other two are TEXT), else
@@ -140,8 +140,8 @@ func (s *Server) handleSearchPieces(w http.ResponseWriter, r *http.Request) {
 
 	// sourceBookId: the Book Details page's pieces grid/list — every piece
 	// belonging to this book. Sorted by start page ascending instead of the
-	// default newest-first order below, with a tie-break the design review
-	// asked for: when two pieces share a start page (e.g. a short reprise
+	// default newest-first order below, with a tie-break: when two pieces
+	// share a start page (e.g. a short reprise
 	// that opens on the same page the piece before it is still finishing),
 	// the 1-page one sorts first. No LIMIT/OFFSET either — a book's own
 	// piece count is the natural bound, and the page renders all of them
@@ -181,12 +181,8 @@ func (s *Server) handleSearchPieces(w http.ResponseWriter, r *http.Request) {
 	// the frontend renders either as a single full list with no "load
 	// more"/infinite-scroll affordance, so a silent LIMIT 50 would just
 	// drop real results off the end with no way for the user to reach
-	// them. personId added 2026-09-01, direct report ("why is Person
-	// Details capped at 50 pieces?") — the exact same class of bug the
-	// Piece Library itself had before infinite scroll was added there
-	// (2026-08-23), just never fixed for this page since it was built
-	// without ever hitting a person credited on more than 50 pieces during
-	// development.
+	// them — the same class of bug the Piece Library itself had before
+	// infinite scroll was added there.
 	limit := 50
 	offset := 0
 	if !byBook && !byPerson {
@@ -467,8 +463,8 @@ func idListClause(name, subqueryTable, subqueryCol string, ids []int64, excl boo
 // params — keyId/sheetTypeId/instrumentId/userTagId/favorite/
 // practiceStatus/bookless/hasImslpNumber, plus each one's exclude*
 // counterpart (excludeKeyId/excludeSheetTypeId/excludeInstrumentId/
-// excludeUserTagId/excludePracticeStatus — direct request, 2026-09-05, the
-// Filter Drawer's segmented exclude/neutral/include control) — into one
+// excludeUserTagId/excludePracticeStatus — the Filter Drawer's segmented
+// exclude/neutral/include control) — into one
 // namedClause per active filter. Shared by handleSearchPieces (which
 // flattens every clause into one WHERE exactly as it did before this
 // existed) and handlePieceFacets (which needs "every active filter except
@@ -565,8 +561,8 @@ func buildPieceFilterClauses(w http.ResponseWriter, q url.Values, userID int64) 
 	}
 
 	// practiceStatusSlot: the sidebar's fixed Want to Learn/Currently
-	// Practicing/Learned views (direct feedback — renaming a status in User
-	// Settings must not break these). Matches practice_statuses.sidebar_slot
+	// Practicing/Learned views — renaming a status in User Settings must not
+	// break these. Matches practice_statuses.sidebar_slot
 	// (migration 00026) instead of the live name — set once when a status is
 	// seeded, untouched by RenamePracticeStatus, so a rename never affects
 	// which pieces these three views show. "practicing" naturally OR-matches
@@ -584,9 +580,9 @@ func buildPieceFilterClauses(w http.ResponseWriter, q url.Values, userID int64) 
 
 	// bookless: pieces with no sourceBookId at all (design doc §3/§5 — a
 	// piece with no book is a normal, first-class case, e.g. a single
-	// downloaded score). Genuinely tri-state now (direct request,
-	// 2026-09-05) — true → bookless only, false → book-having only, absent
-	// → no constraint. IS NULL/IS NOT NULL are already exact complements
+	// downloaded score). Genuinely tri-state — true → bookless only,
+	// false → book-having only, absent → no constraint. IS NULL/IS NOT
+	// NULL are already exact complements
 	// (no NULL-propagation risk the way a bare column IN(...) check has),
 	// so no negateClause wrapper is needed here.
 	if v := q.Get("bookless"); v != "" {
@@ -608,7 +604,7 @@ func buildPieceFilterClauses(w http.ResponseWriter, q url.Values, userID int64) 
 	// presence/non-blankness rather than a specific id match; NULLIF(TRIM(
 	// ...), '') IS NOT NULL is this file's own established non-blank test,
 	// matching the composer sort expression above and resolveStringField's
-	// isBlank check). Genuinely tri-state now (direct request, 2026-09-05).
+	// isBlank check). Genuinely tri-state.
 	if v := q.Get("hasImslpNumber"); v != "" {
 		has, err := strconv.ParseBool(v)
 		if err != nil {
@@ -789,9 +785,9 @@ func quoteFTSToken(f string) string {
 // start. handleSearchPieces retries via sanitizeTrigramFTSQuery/
 // pieces_fts_trigram (migration 00019) when this finds nothing, covering a
 // mid-word fragment ("crack" finding "Nutcracker") that isn't a prefix of
-// anything. Neither is fuzzy/typo-tolerant matching (a misspelled letter
-// still won't match either way) — see the true-fuzzy-search research saved
-// to memory for what that would take.
+// anything. Neither tier is fuzzy/typo-tolerant matching — a misspelled
+// letter still won't match either way — that's the third tier,
+// runFuzzyQuery below (internal/fuzzy).
 //
 // repo.NormalizeAmpersand runs first so "&" and "and" are interchangeable
 // in either direction — pieces_fts's own indexed content gets the identical
@@ -815,9 +811,9 @@ func sanitizeFTSQuery(query string) string {
 // tokenizer already matches a token anywhere inside a word (that's the
 // point of the fallback), so the prefix operator doesn't add anything and
 // isn't needed. A token shorter than 3 characters (trigram's own minimum)
-// simply matches nothing rather than erroring — confirmed directly against
-// this project's actual pinned driver before relying on it, not assumed
-// from SQLite's docs alone.
+// simply matches nothing rather than erroring — verified against this
+// project's actual pinned driver before relying on it, not assumed from
+// SQLite's docs alone.
 func sanitizeTrigramFTSQuery(query string) string {
 	fields := strings.Fields(repo.NormalizeAmpersand(query))
 	if len(fields) == 0 {

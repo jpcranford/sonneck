@@ -103,8 +103,8 @@ const PRACTICE_STATUS_OPTIONS = [
   { value: 'Dropped', label: 'Dropped' },
 ]
 
-// Public Domain Badge feature (design artifact, phase 1) — order matches
-// the original design table exactly. Descriptions render under each row
+// Public Domain Badge feature — order matches the original design table
+// exactly. Descriptions render under each row
 // in the open menu AND under whichever value is currently effective
 // (SingleSelect's new description support, below) — this is the one
 // field in this modal that needs that, so the extension is opt-in/
@@ -212,8 +212,8 @@ interface FormValues {
   copyrightYear: string
   copyrightHolder: string
   copyrightSlug: string
-  // US renewal follow-up (direct request, 2026-09-03) — copyrightRenewed
-  // only ever matters, and only ever shows, for en-US pieces whose
+  // US renewal follow-up — copyrightRenewed only ever matters, and only
+  // ever shows, for en-US pieces whose
   // Copyright Year falls in 1923-1963 (the window where a work's term
   // actually depended on a separate renewal filing — see the section
   // header comment above the renewal toggle below for the full picture).
@@ -487,9 +487,9 @@ function TagComboBox({
     .filter((o) =>
       filterOption
         ? filterOption(o, query)
-        : // Spaces stripped from both sides (direct request, 2026-09-05,
-          // mockup-parity with the real TagComboBox.tsx's own
-          // normalizeForSearch) — "toml" matches "Tom Lehrer".
+        : // Spaces stripped from both sides — mockup-parity with the real
+          // TagComboBox.tsx's own normalizeForSearch — "toml" matches
+          // "Tom Lehrer".
           o.name.toLowerCase().replace(/\s+/g, '').includes(query.toLowerCase().replace(/\s+/g, '')),
     )
   const exactMatch = options.some((o) => o.name.toLowerCase() === query.trim().toLowerCase())
@@ -1036,14 +1036,14 @@ export function EditPieceModalMockup() {
   // the grown total: T = rest + panel = 2*rest, panel/T = 0.5.
   //
   // (2) The closed dialog's rendered height is frequently already less
-  // than the true content it's showing — confirmed directly: on a dialog
-  // whose fields alone already exceed Modal's max-h-[90vh] cap, the body
-  // is already internally scrolling even with the preview collapsed, so
-  // "closed dialog height" reads as the 90vh cap itself, not the fields'
-  // real (larger) height. Sizing the panel off that number silently
-  // treats an already-clipped quantity as if it were the true total, and
-  // materially overshoots 50% of the actually-rendered dialog once opened
-  // — reproduced directly this way, not a guess.
+  // than the true content it's showing: on a dialog whose fields alone
+  // already exceed Modal's max-h-[90vh] cap, the body is already
+  // internally scrolling even with the preview collapsed, so "closed
+  // dialog height" reads as the 90vh cap itself, not the fields' real
+  // (larger) height. Sizing the panel off that number silently treats an
+  // already-clipped quantity as if it were the true total, and
+  // materially overshoots 50% of the actually-rendered dialog once
+  // opened.
   //
   // The fix measures the pieces that make up "rest" directly, each
   // unclipped by Modal's own overflow ancestor (a plain child of an
@@ -1678,12 +1678,11 @@ export function EditPieceModalMockup() {
             </div>
           </div>
 
-          {/* Musical Details (was "Piece Details", which was itself renamed
-              from "Classification" earlier the same day — Sheet Type/
-              Instruments, then Key(s)/Duration, plus the tempo-calc
-              disclosure tied to Duration. Your Tags moved out to Personal —
-              it's the user's own organizational label, not a musical-
-              classification fact about the piece. */}
+          {/* Musical Details — Sheet Type/Instruments, then Key(s)/Duration,
+              plus the tempo-calc disclosure tied to Duration. Your Tags
+              lives in Personal instead — it's the user's own
+              organizational label, not a musical-classification fact about
+              the piece. */}
           <div className="flex flex-col gap-3 border-t border-border pt-4">
             <SectionHeading>Musical Details</SectionHeading>
             {/* Sheet Type/Instruments share a row, first in this section.
@@ -1998,14 +1997,10 @@ export function EditPieceModalMockup() {
             )}
           </div>
 
-          {/* Copyright — Public Domain Badge feature (design artifact,
-              phase 1). Own collapsible section at the very bottom, same
-              "collapsed by default, nothing new for someone who's never
-              touched this feature" posture as Piece Details' own
-              Advanced/Get Info panel. Moved back here (direct follow-up —
-              a prior pass had relocated it up into the lead section) after
-              only the Copyright Status field, then the whole section,
-              spent time up there. */}
+          {/* Copyright — Public Domain Badge feature. Own collapsible
+              section at the very bottom, same "collapsed by default,
+              nothing new for someone who's never touched this feature"
+              posture as Piece Details' own Advanced/Get Info panel. */}
           <div className="border-t border-border pt-4">
             {/* Text styling matches SectionHeading (Frontmatter/Musical
                 Details/Personal above) exactly — same pattern Book
@@ -2100,8 +2095,7 @@ export function EditPieceModalMockup() {
                     from the copyright year above, regardless of which year
                     within its filing window the renewal happened), and the
                     citation's own "(renewed)" marker doesn't need a
-                    specific year either (direct follow-up, dropped after
-                    confirming the calc reasoning). */}
+                    specific year either. */}
                 {inUSRenewalWindow(watch('copyrightYear')) && (
                   <div className="flex items-center gap-1.5 rounded-md border border-dashed border-border p-3">
                     <Controller

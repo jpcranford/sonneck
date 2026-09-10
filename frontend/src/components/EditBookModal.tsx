@@ -39,9 +39,8 @@ interface EditBookModalProps {
 
 interface FormValues {
   bookTitle: string
-  // Composer/Arranger (composer/arranger overhaul, Stage C) are ordered
-  // Person lists now — real TagComboBox fields, same shape as
-  // `instruments` below.
+  // Composer/Arranger are ordered Person lists — real TagComboBox fields,
+  // same shape as `instruments` below.
   composer: Tag[]
   arranger: Tag[]
   yearPublished: string
@@ -111,9 +110,9 @@ function toIntOrNull(value: string): number | null {
 }
 
 // Public Domain Badge feature — order matches the original design table
-// exactly (design artifact, locked); same list as EditPieceModal.tsx's own
-// copy (option lists are always duplicated per-caller in this app, only
-// the real shared *components* — SingleSelect — aren't).
+// exactly; same list as EditPieceModal.tsx's own copy (option lists are
+// always duplicated per-caller in this app, only the real shared
+// *components* — SingleSelect — aren't).
 const COPYRIGHT_STATUS_OPTIONS = [
   {
     value: 'publicDomain',
@@ -236,8 +235,8 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
     queryKey: ['instruments'],
     queryFn: listInstruments,
   })
-  // People catalog (composer/arranger overhaul, Stage C) — same
-  // unpaginated lookup convention as every other field here.
+  // People catalog — same unpaginated lookup convention as every other
+  // field here.
   const { data: peopleOptions = [] } = useQuery({ queryKey: ['people'], queryFn: () => listPeople() })
   const sheetTypeSelectOptions = [
     { value: '', label: '—' },
@@ -262,10 +261,9 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
       const filled = new Set<string>()
       const current = getValues()
       // Only fields currently blank — meant to save typing, not silently
-      // overwrite something already entered. Composer is now an ordered
-      // Person list (composer/arranger overhaul, Stage C) — same
-      // placeholder-id append EditPieceModal.tsx's own version of this
-      // uses, resolved server-side by name on save.
+      // overwrite something already entered. Composer is an ordered
+      // Person list — same placeholder-id append EditPieceModal.tsx's own
+      // version of this uses, resolved server-side by name on save.
       if (current.composer.length === 0 && info.composer) {
         setValue('composer', [{ id: -1, name: info.composer }])
         filled.add('composer')
@@ -360,13 +358,13 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
       open={open}
       onClose={onClose}
       labelledBy="edit-book-title"
-      // lg, not xl — matches EditPieceModal.tsx's own size, direct request
-      // 2026-09-05: at exactly iPad-portrait's 768px viewport, an xl
-      // (max-w-3xl = 768px) modal has zero margin on either side, touching
-      // both screen edges — EditPieceModal's own 2-column field layout
-      // already proves lg (max-w-2xl = 672px) has enough room for the same
-      // shape of form, contrary to this size's own original "xl is for a
-      // two-column layout" reasoning (Modal.tsx's own comment).
+      // lg, not xl — matches EditPieceModal.tsx's own size: at exactly
+      // iPad-portrait's 768px viewport, an xl (max-w-3xl = 768px) modal
+      // has zero margin on either side, touching both screen edges —
+      // EditPieceModal's own 2-column field layout already proves lg
+      // (max-w-2xl = 672px) has enough room for the same shape of form,
+      // contrary to this size's own original "xl is for a two-column
+      // layout" reasoning (Modal.tsx's own comment).
       size="lg"
       header={
         // -mx-6/px-6 bleeds the line to the dialog's true edges — same
@@ -625,9 +623,9 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
             left, Description spanning the same height on the right — the
             one genuinely tall field gets the one genuinely tall column.
             gap-3 here too (not gap-5) — every multi-column row in this
-            form uses the same gutter width, a direct fix from design
-            review (a 20px gutter here against 12px everywhere else
-            visibly narrowed this column against its neighbors). */}
+            form uses the same gutter width (a 20px gutter here against
+            12px everywhere else visibly narrowed this column against its
+            neighbors). */}
         <div className="flex flex-col gap-3 min-[525px]:flex-row">
           <div className="flex min-w-0 flex-1 flex-col gap-4">
             <Controller

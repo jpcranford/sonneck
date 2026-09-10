@@ -273,8 +273,8 @@ export function UploadPieceAboutMockup() {
   } = useForm<FormValues>({ defaultValues })
 
   return (
-    // min-h-dvh + justify-center (ported from the real build, revised
-    // 2026-09-05) — AppShell's <main> only gets whatever's left over after
+    // min-h-dvh + justify-center (ported from the real build) —
+    // AppShell's <main> only gets whatever's left over after
     // its own sibling <footer> takes a share of the same flex-col budget,
     // which silently zeroes out justify-center's own "extra space to
     // distribute" once a stage's content gets tall enough (confirmed live
@@ -418,8 +418,8 @@ export function UploadPieceAboutMockup() {
               </div>
             </div>
 
-            {/* Year Written/IMSLP No. swapped in for Key(s)/Sheet Type
-                (direct follow-up) — both read as quick identifying facts
+            {/* Year Written/IMSLP No. swapped in for Key(s)/Sheet Type —
+                both read as quick identifying facts
                 worth a glance without opening "More details," where
                 Key(s)/Sheet Type now live instead. */}
             <div className="flex flex-col gap-3 min-[525px]:flex-row">

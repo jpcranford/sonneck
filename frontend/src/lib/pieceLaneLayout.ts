@@ -6,17 +6,12 @@ import type { Piece } from './pieceSplitLogic'
 // page length reads directly as the shape's own width, on top of the
 // per-tile border treatment in BookUploadSplitStep.tsx/UploadBookSplitMockup.tsx
 // (solid start, diagonal split at a shared/single boundary, no border for a
-// plain member or a still-open piece's dashed border). Originally built
-// mockup-local ("not promoted into lib/pieceSplitLogic.ts alongside
-// computeLayout — this is presentational grouping, not the tested
-// page-to-piece assignment itself, and the design isn't approved for the
-// real component yet") — promoted here once it *was* approved and ported
-// into the real BookUploadSplitStep.tsx, so both call sites share one
-// implementation instead of two hand-synced copies. Kept out of
-// pieceSplitLogic.ts itself (rather than merged in) since that file's own
-// header comment scopes it specifically to the tested page-assignment
-// algorithm — this is presentational grid/CSS math, a different kind of
-// shared code.
+// plain member or a still-open piece's dashed border). Shared by both the
+// real component and its mockup, one implementation instead of two
+// hand-synced copies. Kept out of pieceSplitLogic.ts itself (rather than
+// merged in) since that file's own header comment scopes it specifically
+// to the tested page-assignment algorithm — this is presentational
+// grid/CSS math, a different kind of shared code.
 
 // Matches the grid's own `grid-cols-3 sm:grid-cols-6` breakpoint exactly —
 // this needs to know the *actual* column count to compute which row/column
@@ -52,8 +47,8 @@ export interface LaneSegment {
   // i.e. this segment is A or C in an A/bridge/C trio sharing one page, not
   // one half of a plain 2-piece split. Changes where laneDiagonalMaskStyle
   // puts this segment's own cut: a plain boundary's two segments meet at the
-  // shared centerline with no gap (found 2026-08-30 as the "weird
-  // overlaying" bug report — see that function's own comment), but here a
+  // shared centerline with no gap (the fix for a "weird overlaying" bug —
+  // see that function's own comment), but here a
   // third segment (the bridge's own narrow band) occupies that centerline,
   // so this segment's cut needs to stop at the band's *outer* edge instead,
   // leaving room for the band rather than painting through the middle of it.
@@ -137,7 +132,7 @@ export function computeLaneSegments(pieces: Piece[], columns: number): LaneSegme
 // The lane wraps both the thumbnail *and* its caption below — but it used
 // to share the *exact* same footprint as the tile+caption content, edge
 // for edge, which read as the lane visibly touching the thumbnail with
-// zero breathing room (direct report, 2026-08-30). LANE_OUTSET_PX expands
+// zero breathing room. LANE_OUTSET_PX expands
 // the lane symmetrically beyond that footprint on every side (negative
 // margin, not padding — the tile+caption content itself is unchanged, the
 // lane's own box just grows around it), so there's a hair of visible
@@ -170,7 +165,7 @@ export const CAPTION_RESERVE_PX = 20
 // lane's full box does not, in general, land on the same real-world line
 // the tile border's own identically-named stop does.
 //
-// A first fix (2026-08-30) patched just the "50%" case with a fixed pixel
+// A first fix patched just the "50%" case with a fixed pixel
 // correction (Δy·cosθ, derived from the caption's own fixed height) — it
 // worked for the ordinary 2-way shared/single split, but a follow-up
 // report on the 3-way "double" split ("the lane frames should match the
@@ -212,9 +207,9 @@ const CAPTION_EXCLUDED_HEIGHT = `calc(100% - ${CAPTION_RESERVE_PX}px)`
 // *left and right* edges (the line's real slope is a true 45°, and every
 // lane segment here is taller than the single column-width the mask is
 // scoped to), never anywhere near a corner. Squaring was therefore
-// flattening corners the mask never actually touched — found 2026-08-30
-// via a direct report ("the lane frame for the two 'split' statuses isn't
-// rounded on the corners"), reproduced most clearly on a `single` page
+// flattening corners the mask never actually touched — the bug this fixes
+// ("the lane frame for the two 'split' statuses isn't rounded on the
+// corners") reproduced most clearly on a `single` page
 // (both overlapping segments confined to one column, so the wrongly-
 // squared corner was impossible to miss). Removed entirely at every call
 // site — plain `rounded-[10px]` now applies uniformly, and the mask cuts
@@ -227,9 +222,9 @@ export function laneDiagonalMaskStyle(seg: LaneSegment): React.CSSProperties {
   // A segment carrying *both* flags is either a genuine "finish previous
   // and split twice" middle bridge — always exactly one page/column wide,
   // the only way a single piece can be pinched between two neighbors on
-  // both sides at once — or, found 2026-08-30 via a direct report
-  // ("chained splits don't render the caption strip"), a genuinely
-  // different case this was never designed for: a *multi-page* piece
+  // both sides at once — or a genuinely different case this was never
+  // designed for, found via the bug "chained splits don't render the
+  // caption strip": a *multi-page* piece
   // chained between two *separate* ordinary shared/single boundaries (its
   // own start is one shared page, its own end a different shared page
   // later on — e.g. piece2 spans pages 8–9, page 8 shares with piece1 and
@@ -344,9 +339,9 @@ export function laneDiagonalMaskStyle(seg: LaneSegment): React.CSSProperties {
     // visible" side. A third solid-fill layer restores that — plain full
     // visibility across the edge column's own caption-height strip, no
     // diagonal needed there since the line has already fully resolved by
-    // that point. Found 2026-08-30, same day as the alignment fix that
-    // introduced this regression: reported directly as "the bottom of the
-    // lane frame doesn't render."
+    // that point. This is the fix for a regression introduced by the
+    // alignment fix above, reported as "the bottom of the lane frame
+    // doesn't render."
     const captionFill = `linear-gradient(to bottom, transparent 0%, transparent ${CAPTION_EXCLUDED_HEIGHT}, black ${CAPTION_EXCLUDED_HEIGHT})`
     image =
       `linear-gradient(to right, transparent 0%, transparent ${edgeFrac}%, black ${edgeFrac}%), ` +

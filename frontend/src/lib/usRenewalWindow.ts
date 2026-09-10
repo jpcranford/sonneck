@@ -1,4 +1,4 @@
-// US renewal follow-up (2026-09-03) — pure logic, shared the same way
+// US renewal follow-up — pure logic, shared the same way
 // copyrightBadge.ts/formatPieceMeta.ts are: both mockups (EditPieceModalMockup.tsx,
 // EditBookModalMockup.tsx) and, later, both real components need the exact
 // same threshold, and a legally-sensitive year range is exactly the kind of

@@ -1,5 +1,5 @@
-// Shared content-width ceilings (project_responsive_device_plan, Phase 2) —
-// AppShell.tsx's <main> has no width limit of its own (design doc left this
+// Shared content-width ceilings — AppShell.tsx's <main> has no width limit
+// of its own (design doc left this
 // unconstrained on purpose, since different pages want different caps), so
 // without one of these a page just stretches to fill whatever's left after
 // the sidebar — fine on a laptop, absurd on an ultrawide monitor. Plain

@@ -64,7 +64,7 @@ func (s *Server) handleListUserTags(w http.ResponseWriter, r *http.Request) {
 }
 
 // --- Admin Settings' Lookup Tables: create/rename/delete/merge for
-// SheetType and Instrument (master plan's Backend architecture). Every
+// SheetType and Instrument. Every
 // piece/book affected by either path needs its search-index row resynced
 // (CLAUDE.md > Search) — repo.PieceIDsUsing{SheetType,Instrument} collects
 // the affected set BEFORE the delete/merge itself runs, while the old id is
@@ -265,10 +265,9 @@ func (s *Server) handleListPracticeStatuses(w http.ResponseWriter, r *http.Reque
 	api.WriteData(w, http.StatusOK, statuses)
 }
 
-// --- Your Tags / Practice Status create/delete/merge (master plan's
-// Backend architecture) — user-scoped (read permission only, not
-// admin-gated: this is the calling user's own private data), split across
-// user_tags and practice_statuses.
+// --- Your Tags / Practice Status create/delete/merge — user-scoped (read
+// permission only, not admin-gated: this is the calling user's own private
+// data), split across user_tags and practice_statuses.
 
 func (s *Server) handleCreateUserTag(w http.ResponseWriter, r *http.Request) {
 	user, ok := s.requirePermission(w, r, models.PermissionRead)
@@ -292,10 +291,9 @@ func (s *Server) handleCreateUserTag(w http.ResponseWriter, r *http.Request) {
 	api.WriteData(w, http.StatusCreated, repo.Tag{ID: id, Name: req.Name})
 }
 
-// handleRenameUserTag is User Settings' Your Tags card inline rename
-// (master plan Phase 12) — unlike the admin lookup tables' rename above,
-// user tags are indexed in pieces_fts (CLAUDE.md > Search's corrected note:
-// "user tags genuinely are indexed"), so every piece carrying this tag
+// handleRenameUserTag is User Settings' Your Tags card inline rename —
+// unlike the admin lookup tables' rename above,
+// user tags are indexed in pieces_fts (CLAUDE.md > Search), so every piece carrying this tag
 // needs its search-index row resynced with the new name, same as a
 // merge/delete.
 func (s *Server) handleRenameUserTag(w http.ResponseWriter, r *http.Request) {
@@ -425,7 +423,7 @@ func (s *Server) handleCreatePracticeStatus(w http.ResponseWriter, r *http.Reque
 }
 
 // handleRenamePracticeStatus is User Settings' Practice Status card inline
-// rename (master plan Phase 12). No search-index resync needed — practice
+// rename. No search-index resync needed — practice
 // status isn't indexed in pieces_fts, unlike a user tag rename above.
 func (s *Server) handleRenamePracticeStatus(w http.ResponseWriter, r *http.Request) {
 	user, ok := s.requirePermission(w, r, models.PermissionRead)

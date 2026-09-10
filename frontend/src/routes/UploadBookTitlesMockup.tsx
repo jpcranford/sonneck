@@ -140,7 +140,7 @@ const BOOK_COMPOSER = ''
 const BOOK_ARRANGER = ''
 // Blank here (see BOOK_COMPOSER/BOOK_ARRANGER's own comment above) — set
 // alongside a real BOOK_COMPOSER to preview the third case, where both
-// people fields disappear entirely (direct request, 2026-09-02): a book
+// people fields disappear entirely: a book
 // that already has a composer *and* a confirmed IMSLP number is a
 // single-work catalog entry, nothing left to disambiguate per piece.
 const BOOK_IMSLP_NUMBER = ''
@@ -247,7 +247,7 @@ function PieceThumb({ title, page }: { title: string | null; page: number }) {
 // worse, changing scroll position under a *stationary* mouse can change
 // what's actually under the cursor, triggering a mouseleave → unmount →
 // scrollHeight-shrinks-back → mouseenter-again oscillation. Both
-// confirmed directly while building the real version — see that file's
+// verified while building the real version — see that file's
 // own copy of this component for the full trace. position: fixed
 // sidesteps this entirely: a fixed-position descendant never contributes
 // to an ancestor's scrollable content, regardless of size or position,
@@ -359,7 +359,7 @@ function HoverPagePreview({ piece, onPreview }: { piece: PieceFixture; onPreview
 // before/after this one"), which showed the wrong number here (a piece
 // index masquerading as a page number) and made it impossible to check a
 // skipped page without leaving this screen and going back to Screen 4.
-// Fixed 2026-08-26 to match the real build (BookUploadTitlesStep.tsx):
+// Matches the real build (BookUploadTitlesStep.tsx):
 // resolves whichever piece (if any) owns the current page via
 // pieceForPage, rendering a blank PieceThumb for a page that isn't in
 // any piece's range.
@@ -558,7 +558,7 @@ export function UploadBookTitlesMockup() {
   // name regardless, so this isn't a behavior change for that case, just
   // a reminder of why it's still safe to apply unconditionally).
   //
-  // shouldValidate deliberately omitted (found firing 2026-08-27): this is
+  // shouldValidate deliberately omitted: this is
   // a formatting convenience, not a submit attempt — a piece with a still-
   // blank Title (very plausible mid-wizard, before every row's been typed
   // in yet) would otherwise light up a "required" error the instant
@@ -619,8 +619,8 @@ export function UploadBookTitlesMockup() {
   // see. This checks *presence* only (does the array have anything in it),
   // not format — TagComboBox's own "pick existing or create new" flow
   // can't produce a blank/malformed entry, so there's nothing else worth
-  // validating here (direct instruction: format validation on top of that
-  // would be redundant). Composer/arrangerField's own onChange re-triggers
+  // validating here — format validation on top of that would be
+  // redundant. Composer/arrangerField's own onChange re-triggers
   // the sibling's validation immediately (not on blur, unlike the old
   // textarea version — TagComboBox's interaction model is pick-or-create,
   // not continuous typing with a natural blur point per keystroke), so

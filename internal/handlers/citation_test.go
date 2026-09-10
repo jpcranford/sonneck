@@ -295,8 +295,7 @@ func TestCitation_ISBNHiddenWhenImslpPresent(t *testing.T) {
 	decodeData(t, rec, &citation)
 
 	// The piece owns this IMSLP number directly (not inherited from the
-	// book), so per the book/piece-opus citation follow-up (direct request,
-	// 2026-09-03) the whole publish sentence — where ISBN would otherwise
+	// book), so the whole publish sentence — where ISBN would otherwise
 	// have shown — is dropped entirely, not just the ISBN within it: a
 	// piece already pinned to its own IMSLP record doesn't need a second
 	// sentence restating facts that record already carries.
@@ -344,7 +343,7 @@ func TestCitation_ISBN10Hyphenation(t *testing.T) {
 }
 
 // The book's own opus number always renders next to the book's name once
-// the book has one (direct request, 2026-09-03) — when the piece's own
+// the book has one — when the piece's own
 // effective opus number incorporates it (spaces ignored), only the
 // piece's own distinguishing remainder renders, as a bare prefix on the
 // title (no comma, no parens) rather than the book's opus number
@@ -375,9 +374,8 @@ func TestCitation_BookOpusNumberMovesToBookNameWhenPieceOpusIncorporatesIt(t *te
 	}
 	decodeData(t, rec, &citation)
 
-	// An opus match means the piece is part of a greater work (direct
-	// request, 2026-09-03 follow-up), so the book's title/opus fold
-	// straight into this one sentence — same shape a flat/public-domain
+	// An opus match means the piece is part of a greater work, so the
+	// book's title/opus fold straight into this one sentence — same shape a flat/public-domain
 	// citation already uses — rather than a separate "Published in ..."
 	// sentence; there's no publisher/IMSLP/ISBN on record here for a
 	// publish sentence to add anyway.
@@ -490,9 +488,9 @@ func TestCitation_FlatCitationMovesBookOpusToBookNameForPublicDomainPiece(t *tes
 }
 
 // A computed 'likelyPublicDomain' status never gets a trailing note — it's
-// derived from the calculation itself, so it can never contradict it
-// (direct follow-up request: drop the "Public domain." addendum by
-// default, keeping it only for the one case covered by the test above).
+// derived from the calculation itself, so it can never contradict it: the
+// "Public domain." addendum is dropped by default, kept only for the one
+// case covered by the test above.
 func TestCitation_LikelyPublicDomainGetsNoTrailingNote(t *testing.T) {
 	h := newTestServer(t)
 	dir := t.TempDir()
@@ -514,8 +512,8 @@ func TestCitation_LikelyPublicDomainGetsNoTrailingNote(t *testing.T) {
 	}
 	decodeData(t, citeRec, &citation)
 
-	// yearWritten falls back to the piece's own copyrightYear when blank
-	// (direct follow-up request) — this piece never set yearWritten, so
+	// yearWritten falls back to the piece's own copyrightYear when blank —
+	// this piece never set yearWritten, so
 	// "1700" now correctly appears, sourced from copyrightYear.
 	want := `Someone, "Solo", 1700.`
 	if citation.Citation != want {
@@ -549,15 +547,15 @@ func TestCitation_ExplicitPublicDomainAgreeingWithCalculationGetsNoTrailingNote(
 	}
 	decodeData(t, citeRec, &citation)
 
-	// yearWritten falls back to the piece's own copyrightYear when blank
-	// (direct follow-up request) — same reasoning as the test above.
+	// yearWritten falls back to the piece's own copyrightYear when blank —
+	// same reasoning as the test above.
 	want := `Someone, "Solo", 1700.`
 	if citation.Citation != want {
 		t.Errorf("citation = %q, want %q", citation.Citation, want)
 	}
 }
 
-// Real bug found live, 2026-09-05: buildFlatCitation only ends its own
+// Real bug: buildFlatCitation only ends its own
 // output in a period when yearWritten is present (a bare citation with no
 // year legitimately has no trailing period on its own — see e.g.
 // TestCitation_ArrangerAloneWithNoComposer). Appending the "Public domain."
@@ -629,13 +627,13 @@ func TestCitation_CopyrightClauseGetsPeriodWhenFlatCitationHasNoYear(t *testing.
 	}
 }
 
-// Real bug found live, 2026-09-05: an explicit 'publicDomain' pick that
+// Real bug: an explicit 'publicDomain' pick that
 // contradicts the calculation (copyrightYear recent enough that the term
 // hasn't expired yet) used to substitute the piece's own CopyrightSlug for
 // the trailing "Public domain." note when one was set — "Tom Lehrer,
 // 'Smut', 1965. Released into public domain on November 26, 2022." instead
 // of "... Public domain." — reading as the slug silently overriding the PD
-// status rather than clarifying it. Direct product decision: the trailing
+// status rather than clarifying it. The trailing
 // note is always the bare literal now, regardless of CopyrightSlug (which
 // still displays on its own in Piece Details' Advanced/Get Info panel).
 func TestCitation_PublicDomainOverrideNeverShowsCopyrightSlug(t *testing.T) {
@@ -703,15 +701,15 @@ func TestCitation_ShowsBookOpusNumberWhenNotContainedInPieceOpusNumber(t *testin
 }
 
 // The following four tests cover the full opus-match / IMSLP-ownership
-// matrix the two-sentence citation follow-up (direct request, 2026-09-03)
-// introduced. "Opus matches, piece owns IMSLP" is covered by the request's
-// own worked example below; "opus doesn't match, piece owns IMSLP" is
-// already covered by TestCitation_ISBNHiddenWhenImslpPresent above (that
-// book has no workOpusNumber at all, so nothing to match against); "opus
-// doesn't match, neither owns IMSLP" is TestCitation_ShowsBookOpusNumberWhenNotContainedInPieceOpusNumber
-// above, unchanged from the original single "Published in" format.
+// matrix the two-sentence citation format introduces. "Opus matches, piece
+// owns IMSLP" is covered by the worked example below; "opus doesn't match,
+// piece owns IMSLP" is already covered by TestCitation_ISBNHiddenWhenImslpPresent
+// above (that book has no workOpusNumber at all, so nothing to match
+// against); "opus doesn't match, neither owns IMSLP" is
+// TestCitation_ShowsBookOpusNumberWhenNotContainedInPieceOpusNumber above,
+// unchanged from the original single "Published in" format.
 
-// The request's own worked example: opus matches (book "part of a greater
+// Worked example: opus matches (book "part of a greater
 // work"), and the piece owns its IMSLP number directly — book title/opus
 // fold into the one sentence, the IMSLP number goes right there with them,
 // and there's no second "Published..." sentence at all.

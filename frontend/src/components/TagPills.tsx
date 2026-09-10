@@ -10,7 +10,7 @@ interface TagPillsProps {
   // Optional — omitted (or null) shows nothing, same as every caller
   // before this prop existed (e.g. Book Details' own piece cards, which
   // deliberately don't opt in). The Piece Library's list view is the one
-  // caller that passes this, per direct request — see PieceListCard.tsx.
+  // caller that passes this — see PieceListCard.tsx.
   practiceStatus?: PracticeStatus | null
   // Optional spacing above the pill row itself — passed through onto the
   // root div (which is what returns null when there's nothing to show), so
@@ -34,17 +34,17 @@ interface TagPillsProps {
 // chevron, not one independent pill per key.
 //
 // The three neutral pills below carry a real `bg-paper` background, not
-// just a border on transparent — found 2026-08-30 as a real bug: a
-// transparent pill inside a row with `hover:bg-accent-soft` (this
-// component's own real callers include exactly that — Book Details' and
-// Person Details' list views) let the row's own hover tint show straight
-// through, reading as if the pill itself "turned green" on hover instead
-// of staying a fixed neutral color. `bg-paper` (not `bg-paper-sunken`,
-// tried first and corrected via direct feedback) keeps the pill visually
-// quiet against the page's own resting background — a border-only outline
-// with a fixed, non-transparent fill, not a visibly distinct "chip."
-// Ported into `BookDetailsSample.tsx`'s own local `PiecePills` duplicate
-// (mockup-vs-real convention — that file doesn't import this component).
+// just a border on transparent — a real bug: a transparent pill inside a
+// row with `hover:bg-accent-soft` (this component's own real callers
+// include exactly that — Book Details' and Person Details' list views)
+// let the row's own hover tint show straight through, reading as if the
+// pill itself "turned green" on hover instead of staying a fixed neutral
+// color. `bg-paper` (not `bg-paper-sunken`, tried first) keeps the pill
+// visually quiet against the page's own resting background — a
+// border-only outline with a fixed, non-transparent fill, not a visibly
+// distinct "chip." Ported into `BookDetailsSample.tsx`'s own local
+// `PiecePills` duplicate (mockup-vs-real convention — that file doesn't
+// import this component).
 export function TagPills({
   keys,
   sheetType,

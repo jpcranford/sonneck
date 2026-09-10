@@ -1,6 +1,5 @@
 // Package oidcauth wraps the OAuth2/OIDC authorization-code exchange for
-// multi-user support's OIDC mode (master plan Phase 14,
-// precious-kindling-pretzel.md). Kept separate from internal/config
+// multi-user support's OIDC mode. Kept separate from internal/config
 // (which stays a pure env-var parse-and-validate package, no network I/O)
 // because constructing an Authenticator does one real network call —
 // OIDC discovery, GET {issuer}/.well-known/openid-configuration — so it's
@@ -8,8 +7,7 @@
 // cfg.AuthMethod == "oidc".
 //
 // go-oidc (RP-only, never the IdP/server side — the only role this app
-// ever needs) + golang.org/x/oauth2, both pure Go: memory
-// project_oidc_multiuser_plan.md's own library research.
+// ever needs) + golang.org/x/oauth2, both pure Go.
 package oidcauth
 
 import (
@@ -78,9 +76,8 @@ func (a *Authenticator) AuthCodeURL(state string) string {
 }
 
 // Claims is the subset of standard OIDC claims this app actually uses —
-// sub for identity, name/picture for display (master plan's Phase 4
-// forward note: re-fetch/update the avatar on every login, not just the
-// first).
+// sub for identity, name/picture for display (the avatar is re-fetched and
+// updated on every login, not just the first).
 type Claims struct {
 	Subject string
 	Name    string

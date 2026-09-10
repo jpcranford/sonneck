@@ -219,9 +219,9 @@ func isBlank(s string) bool {
 	return strings.TrimSpace(s) == ""
 }
 
-// resolveYearWritten implements YearWritten's own extended fallback chain
-// (direct follow-up request): the piece's own YearWritten if set, else the
-// piece's own CopyrightYear (a piece can legitimately have an accurate
+// resolveYearWritten implements YearWritten's own extended fallback chain:
+// the piece's own YearWritten if set, else the piece's own CopyrightYear (a
+// piece can legitimately have an accurate
 // copyright year on record with no separate written-year note), else the
 // book's YearPublished — the original two-level fallback resolveStringField
 // still handles for every other field. Both fallback steps are marked

@@ -2,14 +2,14 @@
 // composer, opus/catalogue number, and composition year, given the site's
 // own per-file "IMSLP#####" identifier — design doc §13's "IMSLP live
 // autofill," deferred there specifically because "the API/parsing
-// integration" needed real research first. That research (2026-08-27):
+// integration" needed real research first:
 //
 //   - The number itself isn't part of IMSLP's own wikitext/MediaWiki
 //     content model at all — every file on a real work page's wikitext is
 //     keyed by a "PMLPxxxxx-filename.pdf" string, never an "IMSLP#####"
-//     one (confirmed directly: pulled the real wikitext for Schumann's
-//     Album für die Jugend, Op.68 and grepped every file entry). The
-//     number is injected into *rendered* HTML by a separate extension.
+//     one (verified by pulling the real wikitext for Schumann's Album für
+//     die Jugend, Op.68 and grepping every file entry). The number is
+//     injected into *rendered* HTML by a separate extension.
 //   - The human-facing page meant to resolve a bare number
 //     (Special:ImagefromIndex/#####) sits behind a JS-based redirect a
 //     server-side HTTP client can't follow: a real request against it
@@ -42,8 +42,8 @@
 // only exists in *rendered* HTML, though, not wikitext — its wikitext
 // form is one of dozens of different citation templates ({{P|...}},
 // {{SchumannComplete|...}}, {{MssAu|...}}, ...) that only resolve to
-// plain text through the render pipeline. Confirmed directly against
-// real files: the extension IMSLP renders file listings with wraps each
+// plain text through the render pipeline. Verified against real files:
+// the extension IMSLP renders file listings with wraps each
 // one in `<div id="IMSLP<number>" ...>`, immediately followed by a
 // `<table class="we_edition_info">` containing a "Publisher Info." row
 // whose <td> holds something like `Milan: <a ...>Ricordi</a>, 1897.
@@ -429,7 +429,7 @@ var (
 // fields (common; IMSLP is community-maintained and often incomplete) is
 // a normal result, not a failure. Composer comes from the page title, not
 // the wikitext, since work pages have no "|Composer=" field of their own
-// (confirmed directly — composer is only ever encoded in the title's own
+// (verified directly — composer is only ever encoded in the title's own
 // "(Last, First)" suffix).
 func parseWorkInfo(title, wikitext string) *WorkInfo {
 	info := &WorkInfo{}

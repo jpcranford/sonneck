@@ -23,17 +23,12 @@ import { useMockupTitle } from '../lib/useMockupTitle'
 import { WIDE_CONTENT_MAX_W } from '../lib/layout'
 
 // ---------------------------------------------------------------------
-// DESIGN MOCKUP for the People Library page (Phase 3 of the composer/
-// arranger overhaul — see the approved Phase 1/2 Artifacts for the shape/
-// layout decisions this ports into a real, interactive route: People
-// Library https://claude.ai/code/artifact/7ccc402f-c3d3-4e48-9b29-49eeeb717e92
-// and Person Details https://claude.ai/code/artifact/ba5e0a91-b177-4f79-b6f6-bf9d1de0bad8).
-// Same toolbar/grid/list/Filter-Drawer/Sort shell as
-// PieceLibrarySample.tsx/BooksLibrarySample.tsx — the genuinely new part
-// is the Person card itself (oval thumbnail, locked in Phase 1) and the
-// "Show all composers" default filter. Not wired to the API; cards aren't
-// real links (Person Details doesn't exist as a real route yet — that's
-// Phase 4).
+// DESIGN MOCKUP for the People Library page — same toolbar/grid/list/
+// Filter-Drawer/Sort shell as PieceLibrarySample.tsx/BooksLibrarySample.tsx
+// — the genuinely new part is the Person card itself (oval thumbnail)
+// and the "Show all composers" default filter. Not wired to the API;
+// cards aren't real links (fixture data only, same as every other
+// Sample mockup in this app).
 // ---------------------------------------------------------------------
 
 interface MockPerson {
@@ -46,12 +41,11 @@ interface MockPerson {
   paletteIndex: number
 }
 
-// Same 17-person set (same names, piece counts, death years) as the
-// approved Phase 1 artifact, for continuity across the whole design/
-// mockup arc — birthYear added on top, per direct feedback on Phase 2
-// that both years (not just death) belong on a Person. The last four
-// (≤2 pieces, no years — standing in for a generic/placeholder arranger
-// entry) are what "Show all composers" reveals.
+// Same 17-person fixture set (names, piece counts, death years) across
+// this whole design/mockup arc — birthYear added on top, since both
+// years (not just death) belong on a Person. The last four (≤2 pieces,
+// no years — standing in for a generic/placeholder arranger entry) are
+// what "Show all composers" reveals.
 const MOCK_PEOPLE: MockPerson[] = [
   { id: 1, name: 'Johann Sebastian Bach', birthYear: 1685, deathYear: 1750, pieceCount: 47, avatarKind: 'initials', paletteIndex: 0 },
   { id: 2, name: 'Wolfgang Amadeus Mozart', birthYear: 1756, deathYear: 1791, pieceCount: 31, avatarKind: 'bust', paletteIndex: 1 },
@@ -122,21 +116,16 @@ function BustSilhouette() {
   )
 }
 
-// The one genuinely new visual decision this whole overhaul needed a
-// comparison Artifact for — Oval, locked 2026-08-30 (see the People
-// Library artifact's own shape-switcher). aspect-[3/4] + a true 50%
-// border-radius is what actually produces an oval from a portrait-ratio
-// box. Real bug found live (2026-08-30): Tailwind's `rounded-full`
-// resolves to a fixed huge *pixel* radius (`calc(infinity * 1px)`), not a
-// percentage — on a non-square box that clips to a stadium/pill shape
-// (flat sides, semicircular caps), not an ellipse, since the corner
-// radius gets capped at half the *shorter* side regardless of the box's
-// own aspect ratio. `rounded-[50%]` forces the percentage form instead,
-// which CSS computes independently per axis (50% of width, 50% of
-// height), producing a true ellipse inscribed in the box — this is what
-// both approved Artifacts already used directly as raw CSS
-// (`border-radius: 50%`), so the mismatch was mockup-only, not a design
-// regression.
+// Oval avatar shape: aspect-[3/4] + a true 50% border-radius is what
+// actually produces an oval from a portrait-ratio box. Tailwind's
+// `rounded-full` resolves to a fixed huge *pixel* radius
+// (`calc(infinity * 1px)`), not a percentage — on a non-square box that
+// clips to a stadium/pill shape (flat sides, semicircular caps), not an
+// ellipse, since the corner radius gets capped at half the *shorter*
+// side regardless of the box's own aspect ratio. `rounded-[50%]` forces
+// the percentage form instead, which CSS computes independently per axis
+// (50% of width, 50% of height), producing a true ellipse inscribed in
+// the box.
 function PersonAvatar({ person, className }: { person: MockPerson; className: string }) {
   const color = PALETTE[person.paletteIndex % PALETTE.length]
   return (
@@ -162,10 +151,10 @@ function PersonAvatar({ person, className }: { person: MockPerson; className: st
 
 // Edit/Delete, same shape as BookContextMenu.tsx — Delete is real against
 // this mockup's own local state (cheap, harmless, and demonstrates the
-// interaction fully); Edit is a stub for now, since the real Edit Person
-// modal doesn't exist as a mockup yet (that's Phase 5) and Person Details
-// itself doesn't either (Phase 4) — right-clicking a card today can only
-// prove the menu itself, not open anything real.
+// interaction fully); Edit is a stub — this mockup's cards stay unlinked
+// fixture data regardless of what the real Edit Person modal
+// (EditPersonModalMockup.tsx / components/EditPersonModal.tsx) or Person
+// Details page now does.
 function PersonContextMenu({
   person,
   onDelete,
@@ -199,8 +188,8 @@ function PersonGridCard({ person, onDelete }: { person: MockPerson; onDelete: ()
   const lifespan = formatLifespan(person)
   return (
     <PersonContextMenu person={person} onDelete={onDelete}>
-      {/* Centered under the portrait (direct instruction) — a deliberate
-          break from the Book/Piece grid card convention (left-aligned),
+      {/* Centered under the portrait — a deliberate break from the
+          Book/Piece grid card convention (left-aligned),
           since a name/dates lockup under a portrait reads as a caption,
           not a list item, the same reasoning a museum placard or a
           contact card centers its own text under a photo. Lifespan and
@@ -247,10 +236,10 @@ function PersonListRow({ person, onDelete }: { person: MockPerson; onDelete: () 
 // Piece/Book have (Key/Instrument/Sheet Type don't apply to a Person).
 // ---------------------------------------------------------------------
 
-// Three-way segmented control (direct request, 2026-09-05, ported from
-// PieceLibrarySample.tsx/BooksLibrarySample.tsx once approved there — see
+// Three-way segmented control, ported from
+// PieceLibrarySample.tsx/BooksLibrarySample.tsx — see
 // PieceLibrarySample.tsx's own comment on TriState/dimensionState/
-// setDimensionState for the full reasoning, unchanged here) —
+// setDimensionState for the full reasoning, unchanged here —
 // exclude/neutral/include per facet value, replacing the old plain
 // checkbox. Era/Century both get it (genuine per-person categorical
 // facets); `showAll` does not — it's a display-mode threshold override
@@ -309,8 +298,8 @@ function getEra(person: MockPerson): Era | null {
 }
 
 // Century filter: every century a person's lifespan actually *touches*,
-// not just the century they were born or died in (direct instruction) —
-// Beethoven (1770-1827) matches both 18th and 19th century. A single known
+// not just the century they were born or died in — Beethoven
+// (1770-1827) matches both 18th and 19th century. A single known
 // year (birth or death alone) still matches its own one century; neither
 // known matches none.
 function century(year: number): number {
@@ -670,7 +659,7 @@ function sortPeople(people: MockPerson[], field: PersonSortField, direction: Sor
 // New Person — deliberately minimal (design doc §5's "no required fields
 // beyond what's genuinely needed" reasoning, NewBookModal's own precedent
 // above): just Name (required) and the two year fields. Bio/portrait
-// belong to the real Edit Person modal (Phase 5), not creation.
+// belong to the real Edit Person modal, not creation.
 // ---------------------------------------------------------------------
 
 interface NewPersonFormValues {
@@ -876,13 +865,11 @@ export function PeopleLibrarySample() {
     <div className="flex flex-1 flex-col">
       {/* Ported from PieceLibrarySample.tsx's toolbar, via BooksLibrarySample.tsx
           (which worked out the New-Button pairing pattern first — read that
-          file's own comment for the full reasoning, and memory
-          project_responsive_device_plan.md for the complete narrative,
-          including an lg:-breakpoint attempt that was tried and reverted).
+          file's own comment for the full reasoning).
           Same left(toggle)/center(search)/right(Filters→Sort) grid, same
-          sm:/2xl: breakpoints (kept identical to Piece/Books on direct
-          instruction, including the accepted narrow Search-width dip right
-          at md:768 where the sidebar appears), same icon-only-Filters
+          sm:/2xl: breakpoints (kept identical to Piece/Books, including the
+          accepted narrow Search-width dip right at md:768 where the sidebar
+          appears), same icon-only-Filters
           squeezed band, same h-[38px]/exact-px-floor fixes. "New Person"
           pairs with Search specifically (same row at narrow widths,
           immediately to its right at wide ones), folded into Search's own
@@ -1011,7 +998,8 @@ export function PeopleLibrarySample() {
         <div className="rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-4 py-2 text-sm text-ink-soft">
           Design mockup — <span className="font-medium text-ink">People Library</span>. Search, Filters,
           Sort, grid/list, New Person, and right-click Delete are all genuinely interactive against 17
-          fixture people. Cards aren't real links — Person Details (Phase 4) doesn't exist as a route yet.
+          fixture people. Cards aren't real links — this mockup keeps its own fixture data separate from the
+          real Person Details page.
         </div>
       </div>
 

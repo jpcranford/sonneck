@@ -29,15 +29,15 @@ import { WIDE_CONTENT_MAX_W } from '../lib/layout'
 // same one PieceLibrarySample.tsx serves for the Piece Library: an
 // accurate reference for the real grid/list design, plus whatever's being
 // designed next on top of it. That's currently the same Filter Drawer
-// (Option B, picked 2026-08-27) added to the Piece Library — same system,
-// adjusted for Books' own (much lighter) filter facets: Sheet Type and
-// Instrument only, no Key/tags/Favorite/Practice Status, since those are
-// piece-only fields (design doc §3's Naming/architecture note). Not wired
-// to the API; cards aren't real links.
+// (Option B) added to the Piece Library — same system, adjusted for
+// Books' own (much lighter) filter facets: Sheet Type and Instrument
+// only, no Key/tags/Favorite/Practice Status, since those are piece-only
+// fields (design doc §3's Naming/architecture note). Not wired to the
+// API; cards aren't real links.
 //
-// Facet counts are live/faceted (changed 2026-08-31, matching a real
-// backend switch — internal/handlers/facets.go), same mockup-parity
-// treatment as PieceLibrarySample.tsx's own matchesFiltersExcept.
+// Facet counts are live/faceted (matching the real backend —
+// internal/handlers/facets.go), same mockup-parity treatment as
+// PieceLibrarySample.tsx's own matchesFiltersExcept.
 // ---------------------------------------------------------------------
 
 interface MockBook {
@@ -205,7 +205,7 @@ function BookCoverCard({ book }: { book: MockBook }) {
   const [aspectW, aspectH] = book.coverAspect ?? [2, 3]
   return (
     // h-full + justify-end: kept in sync with BookGridCard.tsx's own fix
-    // (2026-08-27) — the grid container's default align-items: stretch
+    // — the grid container's default align-items: stretch
     // makes every card fill its row's full height, and h-full/justify-end
     // together push the cover+text group to the bottom of that stretched
     // space instead of leaving it top-aligned (which, once covers stopped
@@ -244,9 +244,9 @@ function BookCoverCard({ book }: { book: MockBook }) {
 function BookCatalogRow({ book }: { book: MockBook }) {
   const meta = metaLine(book)
   return (
-    // No border-t/first:border-t-0 here (found and fixed 2026-08-28,
-    // matching the real BookListCard.tsx's own comment on this exact
-    // bug): this card is wrapped in its own per-row container in the
+    // No border-t/first:border-t-0 here (matching the real
+    // BookListCard.tsx's own comment on this exact bug): this card is
+    // wrapped in its own per-row container in the
     // real component (BookContextMenu's div, for right-click/long-press)
     // — this mockup doesn't have that wrapper, but keeps the fix anyway
     // for consistency, since border-t + first:border-t-0 is fragile the
@@ -270,9 +270,9 @@ function BookCatalogRow({ book }: { book: MockBook }) {
 }
 
 // ---------------------------------------------------------------------
-// Sort/Filter (Option B, picked 2026-08-27 — see the Filter Studies
-// comparison artifact and PieceLibrarySample.tsx's own copy of this
-// system, which this is a direct port of). Books only carry two
+// Sort/Filter (Option B — see the Filter Studies comparison artifact and
+// PieceLibrarySample.tsx's own copy of this system, which this is a
+// direct port of). Books only carry two
 // relational filter facets today, Sheet Type and Instrument — no Key,
 // tags, Favorite, or Practice Status, since those are piece-only fields
 // (design doc §3's Naming/architecture note) — so there's no "Show only"
@@ -293,10 +293,10 @@ function distinctInstruments(): string[] {
 const SHEET_TYPE_OPTIONS = distinctBookValues('sheetType')
 const INSTRUMENT_OPTIONS = distinctInstruments()
 
-// Three-way segmented control (direct request, 2026-09-05, ported from
-// PieceLibrarySample.tsx once approved there — see that file's own comment
-// on TriState/dimensionState/setDimensionState/matchesDimension for the
-// full reasoning, unchanged here) — exclude/neutral/include per facet
+// Three-way segmented control, ported from PieceLibrarySample.tsx — see
+// that file's own comment on TriState/dimensionState/setDimensionState/
+// matchesDimension for the full reasoning, unchanged here — exclude/
+// neutral/include per facet
 // value, replacing the old plain checkbox (include-or-not). A dimension's
 // own map only ever stores its non-neutral entries; 'neutral' is the key's
 // absence, not a stored value.
@@ -324,8 +324,8 @@ function matchesTagDimension(map: Record<string, TriState>, bookValues: string[]
   return included.length === 0 || included.some((i) => bookValues.includes(i))
 }
 
-// Live/faceted (changed 2026-08-31, matching the real backend's own
-// switch — internal/handlers/facets.go): a facet's own displayed count
+// Live/faceted (matching the real backend — internal/handlers/facets.go):
+// a facet's own displayed count
 // reflects the OTHER active filter plus the search box, never
 // self-narrowing against its own selection — the mockup's own port of the
 // real backend's combineClauses "exclude" rule, same as
@@ -429,8 +429,7 @@ function BookFacetSection({ title, children }: { title: string; children: React.
 }
 
 // Live update (no draft/"Show results" step — same as PieceLibrarySample's
-// own drawer, changed there 2026-08-27 from an original draft-then-apply
-// design): every checkbox writes straight to the applied filter state, so
+// own drawer): every checkbox writes straight to the applied filter state, so
 // results/pills/badge count all update the instant a box is checked.
 function BookFilterDrawer({
   open,
@@ -835,38 +834,35 @@ export function BooksLibrarySample() {
   return (
     <div className="flex flex-1 flex-col">
       {/* Ported from PieceLibrarySample.tsx's own toolbar (full reasoning
-          there, and in memory project_responsive_device_plan.md) — same
-          left(toggle)/center(search)/right(Filters→Sort) grid, same
-          `sm:`/`2xl:` breakpoints (an `lg:`-based attempt to smooth out
-          the real-but-narrow dip in Search's width right at `md:768`,
-          where the sidebar first appears, was tried and reverted — direct
-          instruction to keep Piece's exact proven breakpoints rather than
-          layer in more fixes; that dip is accepted here, same as it's
-          accepted on Piece itself), same icon-only-Filters squeezed band,
-          same h-[38px]/exact-px-floor fixes (right column's floor values
-          are identical to Piece's — Filters+Sort alone, nothing New-Book-
-          specific baked in).
+          there) — same left(toggle)/center(search)/right(Filters→Sort)
+          grid, same `sm:`/`2xl:` breakpoints (an `lg:`-based attempt to
+          smooth out the real-but-narrow dip in Search's width right at
+          `md:768`, where the sidebar first appears, was tried and
+          reverted in favor of keeping Piece's exact proven breakpoints
+          rather than layering in more fixes; that dip is accepted here,
+          same as it's accepted on Piece itself), same icon-only-Filters
+          squeezed band, same h-[38px]/exact-px-floor fixes (right
+          column's floor values are identical to Piece's — Filters+Sort
+          alone, nothing New-Book-specific baked in).
 
           "New Book" pairs with Search specifically, not with Filters+Sort
           — same row as Search at narrow widths, immediately to Search's
-          right at wide ones (direct request, after an earlier attempt put
-          it in the Filters+Sort cluster instead and needed correcting).
-          Folded into the *same* grid cell Search already owns, as a small
-          flex row (`Search flex-1` + `New Book shrink-0`) rather than a
-          fourth top-level grid column — this cell already collapses to
-          one full-width mobile row and centers as one desktop column, so
-          nesting the pair inside it gets both "shares Search's row" and
-          "rides its right edge" for free, no separate mobile-only markup
-          needed. `justify-center` (not `justify-self-center`, which has
-          nothing to act on once the wrapper is `w-full`) is what actually
-          centers the pair as a unit once Search hits its cap — without
-          it, leftover track space collects as trailing whitespace after
-          New Book instead of splitting evenly around the pair, which
-          looked plainly wrong on a real screenshot (Search+New Book
-          shoved left, matching neither Piece's own centered-Search
-          precedent nor the direct instruction to keep them floating
-          center like it). Never icon-only, unlike Filters — direct
-          instruction, applies here and on People's equivalent button. */}
+          right at wide ones. Folded into the *same* grid cell Search
+          already owns, as a small flex row (`Search flex-1` + `New Book
+          shrink-0`) rather than a fourth top-level grid column — this
+          cell already collapses to one full-width mobile row and centers
+          as one desktop column, so nesting the pair inside it gets both
+          "shares Search's row" and "rides its right edge" for free, no
+          separate mobile-only markup needed. `justify-center` (not
+          `justify-self-center`, which has nothing to act on once the
+          wrapper is `w-full`) is what actually centers the pair as a unit
+          once Search hits its cap — without it, leftover track space
+          collects as trailing whitespace after New Book instead of
+          splitting evenly around the pair, which looked plainly wrong on
+          a real screenshot (Search+New Book shoved left, matching neither
+          Piece's own centered-Search precedent nor the intent to keep
+          them floating center like it). Never icon-only, unlike Filters —
+          same treatment on People's equivalent button. */}
       <div className="sticky top-0 z-10 border-b border-border bg-paper">
         <div className={`${WIDE_CONTENT_MAX_W} flex flex-col gap-3 p-4`}>
           <div className="grid grid-cols-[auto_1fr] items-center gap-3 sm:grid-cols-[auto_1fr_228px] 2xl:grid-cols-[auto_1fr_272px]">

@@ -1,8 +1,7 @@
 import { useState } from 'react'
 
-// Silent per-page grid/list view-mode memory (multi-user support master
-// plan's "Frontend surfaces" note, memory project_multiuser_build.md) —
-// deliberately client-side/per-device (localStorage), not account-scoped
+// Silent per-page grid/list view-mode memory — deliberately client-side/
+// per-device (localStorage), not account-scoped
 // server state: a person's preference can legitimately differ by device
 // (grid on a wide desktop monitor, list on a phone), so this doesn't
 // belong in user_settings. Every page with a grid/list toggle held it as a

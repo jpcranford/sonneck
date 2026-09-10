@@ -1,9 +1,9 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { useMockupTitle } from '../lib/useMockupTitle'
 
-// Phase 1 of project_responsive_device_plan (memory) — a diagnostic
-// reference page, not a screen mockup, same "reference tool" category
-// CitationLogicMockup.tsx already established. Built to have a running,
+// A diagnostic reference page, not a screen mockup — same "reference
+// tool" category CitationLogicMockup.tsx already established. Built to
+// have a running,
 // live source of truth for exactly what a given real device/window
 // actually reports, while working through the rest of that plan's phases,
 // rather than trusting a screenshot's apparent size or a device's marketing
@@ -74,8 +74,7 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
     // Stacked (label above value) below sm, side-by-side above it — several
     // of these labels ("Available screen size (excl. OS taskbar/dock)") are
     // long enough that forcing them onto one line with their value at
-    // iPhone-13-mini width wrapped the value itself onto two lines (found
-    // live, 2026-09-05, testing this page against its own target viewports).
+    // iPhone-13-mini width wrapped the value itself onto two lines.
     <div className="flex flex-col gap-0.5 py-2 text-sm sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
       <span className="shrink-0 text-ink-soft">{label}</span>
       <span className="font-mono text-ink tabular-nums sm:text-right">{children}</span>
@@ -112,10 +111,9 @@ export function DeviceInfoMockup() {
       <div>
         <h1 className="font-display text-xl font-medium text-ink">Device Info</h1>
         <p className="max-w-3xl text-sm text-ink-soft">
-          Live diagnostic reference for the responsive-layout pass (see memory
-          project_responsive_device_plan) — not a screen mockup. Everything below updates as you
-          resize or rotate this window, so a screenshot from a real device is self-describing
-          rather than relying on a marketing spec sheet.
+          Live diagnostic reference for responsive-layout work — not a screen mockup. Everything
+          below updates as you resize or rotate this window, so a screenshot from a real device is
+          self-describing rather than relying on a marketing spec sheet.
         </p>
       </div>
 

@@ -2,7 +2,7 @@ import { apiGet, apiPatch } from './client'
 
 // Mirrors internal/repo/userdata.go's UserSettings — the three
 // admin-screen-visible structured preferences (User Settings' Appearance/
-// Library cards, master plan Phase 12).
+// Library cards).
 export interface UserSettings {
   showBooksInSidebar: boolean
   themePreference: 'light' | 'dark' | 'system'

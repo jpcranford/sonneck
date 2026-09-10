@@ -13,10 +13,9 @@ import (
 	"github.com/jpcranford/sonneck/internal/repo"
 )
 
-// TestSplitNames covers the locked migration-plan wording verbatim (memory
-// project_people_composer_overhaul.md): "split into individual Person rows
-// by any combination of commas/'and'/ampersands (handling a trailing
-// Oxford comma)". This is exactly the class of "silent, permanent
+// TestSplitNames covers SplitNames' own split rule: split into individual
+// Person rows by any combination of commas/'and'/ampersands (handling a
+// trailing Oxford comma). This is exactly the class of "silent, permanent
 // correctness bug" risk CLAUDE.md's Testing section calls out for
 // PDF-extraction — a wrong split here corrupts real historical data with
 // no visible error.

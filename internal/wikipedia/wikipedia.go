@@ -1,18 +1,16 @@
 // Package wikipedia does a live search against Wikipedia for the Edit
 // Person modal's own Wikipedia autofill (composer/arranger overhaul,
-// approved mockup: EditPersonModalMockup.tsx). Unlike internal/imslp's
+// matching EditPersonModalMockup.tsx). Unlike internal/imslp's
 // number-based lookup (a precise identifier resolving to exactly one
 // work), a person's *name* is inherently ambiguous — this returns a real
-// disambiguation list, letting the human pick, same reasoning the
-// mockup's own design already settled on ("Chopin (crater)"/"Chopin
+// disambiguation list, letting the human pick ("Chopin (crater)"/"Chopin
 // Airport" alongside the real composer).
 //
-// Confirmed directly against real requests before writing any parsing
-// logic (2026-08-31): the standard MediaWiki Action API supports
-// combining a search with each result's own lead-paragraph extract in one
-// request (generator=search + prop=extracts), so this needs exactly one
-// HTTP call, not a search call plus N follow-up calls per candidate. Real
-// examples confirmed live:
+// Verified against real requests before writing any parsing logic: the
+// standard MediaWiki Action API supports combining a search with each
+// result's own lead-paragraph extract in one request (generator=search +
+// prop=extracts), so this needs exactly one HTTP call, not a search call
+// plus N follow-up calls per candidate. Real examples confirmed live:
 //   - "Yo-Yo Ma (born October 7, 1955) is an American cellist." — a
 //     living person, single year only.
 //   - "Alexandre Pierre-François Boëly (19 April 1785 – 27 December
@@ -30,10 +28,9 @@
 // JSON object might otherwise have implied).
 //
 // Birth/death years are enriched from Wikidata, not just the lead-
-// paragraph regex below (added 2026-09-01, direct report that the regex
-// heuristic misses real people) — confirmed live that Wikidata is
-// genuinely the more complete, standardized source, not just a cleaner
-// format of the same data: "Randy Hall" (a real musician the regex
+// paragraph regex below (the regex heuristic misses real people) —
+// Wikidata is genuinely the more complete, standardized source, not just
+// a cleaner format of the same data: "Randy Hall" (a real musician the regex
 // heuristic missed) has no birth *date* anywhere on his rendered
 // Wikipedia page at all — his own infobox lists only a birthplace — yet
 // his linked Wikidata item (Q16729582) has one (1958-04-19) on record.
@@ -114,11 +111,11 @@ func Search(ctx context.Context, query string) ([]SearchResult, error) {
 	ctx, cancel := context.WithTimeout(ctx, requestTimeout)
 	defer cancel()
 
-	// exsentences=2, not 1 (changed 2026-09-01, direct report: "just one
-	// often isn't enough" for a human to actually disambiguate) — a second
-	// sentence routinely adds the real disambiguating context a bare first
-	// sentence lacks: confirmed live, "Randy Hall" 's own second sentence
-	// ("Hall helped Davis arrange The Man with the Horn...") is what
+	// exsentences=2, not 1 ("just one often isn't enough" for a human to
+	// actually disambiguate) — a second sentence routinely adds the real
+	// disambiguating context a bare first sentence lacks: "Randy Hall" 's
+	// own second sentence ("Hall helped Davis arrange The Man with the
+	// Horn...") is what
 	// actually explains why he shows up in a "Miles Davis" search at all,
 	// and "Miles Davis discography" 's second sentence is what confirms
 	// it's the same Miles Davis rather than an unrelated list. extractYears
@@ -286,7 +283,7 @@ type wikidataYears struct {
 // {time, precision} shape a date claim has. A single fixed struct type
 // applied uniformly to every property (the first version of this) fails
 // to decode the *entire* claims map the moment any other property is
-// present — confirmed live 2026-09-01 against a real response ("cannot
+// present — confirmed live against a real response ("cannot
 // unmarshal string into ... value of type struct"), not a made-up edge
 // case. Claims is deliberately json.RawMessage per property instead, so
 // only P569/P570 (below) ever get decoded into the date-specific shape;

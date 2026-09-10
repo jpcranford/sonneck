@@ -10,25 +10,16 @@ interface BookGridCardProps {
   book: Book
 }
 
-// Cover sizes to the book's own image aspect ratio (direct instruction,
-// 2026-08-27) — this card used to force every cover into a uniform
-// portrait 2:3 crop, deliberately, so the grid read as a poster wall
-// rather than a scanned-page gallery. That's been reversed: aspect-[2/3]
-// now only reserves space while the real image is loading (dropped the
-// instant onLoad fires, same technique BookDetailsPage.tsx's own header
-// cover uses), so cards in the same row can end up different heights once
-// their images load — that's the accepted tradeoff of matching each
-// book's real shape instead of a uniform poster grid.
+// Cover sizes to the book's own image aspect ratio — aspect-[2/3] only
+// reserves space while the real image is loading (dropped the instant
+// onLoad fires, same technique BookDetailsPage.tsx's own header cover
+// uses), so cards in the same row can end up different heights once their
+// images load — the accepted tradeoff of matching each book's real shape
+// instead of a uniform poster grid.
 //
 // Piece count sits in the bottom-right corner on its own dark pill, not a
-// full-width gradient scrim across the cover — chosen from a 5-option
-// comparison (solid pill, rounded-rect, frosted glass, opaque brand-ink,
-// and a light counterpoint pill) against real colorful/photographic
-// covers, after an earlier scrim-based version (bumped from 10% to 18% to
-// 65% peak opacity trying to hold up against lighter covers) kept reading
-// as either too faint or too heavy-handed against the cover art. The
-// pill's own background does the contrast work now, so the cover
-// underneath stays untouched.
+// full-width gradient scrim across the cover — the pill's own background
+// does the contrast work, so the cover underneath stays untouched.
 export function BookGridCard({ book }: BookGridCardProps) {
   const meta = formatBookMeta(book)
   // hasCustomCover and fileHash are two independent sources a cover can
@@ -80,13 +71,12 @@ export function BookGridCard({ book }: BookGridCardProps) {
             />
           ) : (
             // A manually created book (migration 00014) has no file to
-            // render a cover from — file-x on flat-sunken. Icon color is
-            // a solid pre-blended hex, not a
-            // translucent text-ink-soft/* opacity utility: Tabler icons are
-            // several overlapping <path> strokes, so a translucent color
-            // re-blends at every overlap (e.g. file-x's corners), leaving
-            // visibly darker patches there — found and fixed during that
-            // same review.
+            // render a cover from — file-x on flat-sunken. Icon color is a
+            // solid pre-blended hex, not a translucent text-ink-soft/*
+            // opacity utility: Tabler icons are several overlapping <path>
+            // strokes, so a translucent color re-blends at every overlap
+            // (e.g. file-x's corners), leaving visibly darker patches
+            // there.
             <div className="flex h-full w-full flex-col items-center justify-center gap-2">
               <IconFileX size={28} className="text-[#aea8a0]" />
             </div>

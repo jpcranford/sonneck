@@ -114,10 +114,7 @@ func personNames(ctx context.Context, q repo.Queryer, ids []int64) ([]string, er
 
 // joinPersonNames formats an ordered list of person names as a natural
 // English list: "" / "X" / "X and Y" / "X, Y, and Z" (Oxford comma for
-// 3+) — Go port of the frontend's own joinNames (PersonDetailsSample.tsx),
-// same locked convention (memory project_people_composer_overhaul.md's
-// migration plan: "2 people → 'X and Y'; 3 → 'X, Y, and Z'; 4+ → 'X, Y, Z,
-// and Last'").
+// 3+) — Go port of the frontend's own joinNames (PersonDetailsSample.tsx).
 func joinPersonNames(names []string) string {
 	switch len(names) {
 	case 0:
@@ -160,11 +157,9 @@ type citationInput struct {
 // single flat comma-joined format (buildFlatCitation) is unchanged and
 // still used for every piece except one specific case: a piece with a
 // source book whose status is In Copyright or Copyleft additionally gets
-// the new two-sentence "written / published" split — locked via direct
-// answer to "does the new structure apply everywhere a book exists, or
-// only in-copyright" (only in-copyright/copyleft; a Public Domain piece
-// with a book keeps the flat format, book info folded back into the
-// single list).
+// the new two-sentence "written / published" split (only in-copyright/
+// copyleft; a Public Domain piece with a book keeps the flat format, book
+// info folded back into the single list).
 //
 // Every other combination keeps the flat format, with a trailing
 // "Copyright © {year} {holder}." clause appended for In Copyright/Copyleft
@@ -179,13 +174,12 @@ type citationInput struct {
 // contradict it.
 //
 // This trailing note is always the literal "Public domain." — never the
-// piece's own CopyrightSlug (found live, 2026-09-05: a piece's citation was
-// showing "Released into public domain on November 26, 2022." — its
-// CopyrightSlug — in place of "Public domain.", which read as the slug
-// silently overriding/hiding the actual PD status rather than clarifying
-// it). An earlier version of this feature substituted the slug here when
-// set; that's been dropped as a direct product decision — the slug still
-// displays on its own in Piece Details' Advanced/Get Info panel
+// piece's own CopyrightSlug: a piece's citation once showed "Released into
+// public domain on November 26, 2022." — its CopyrightSlug — in place of
+// "Public domain.", which read as the slug silently overriding/hiding the
+// actual PD status rather than clarifying it. An earlier version of this
+// feature substituted the slug here when set; that's been dropped — the
+// slug still displays on its own in Piece Details' Advanced/Get Info panel
 // ("Copyright details" row) regardless of status, just never folded into
 // the citation's own PD note.
 func buildCitation(in citationInput) string {
@@ -205,10 +199,10 @@ func buildCitation(in citationInput) string {
 			// only ends flat in a period when yearWritten is set (its own
 			// last-component rule, and a citation with no year legitimately
 			// has no trailing period on its own — TestCitation_ArrangerAloneWithNoComposer
-			// et al. cover that bare case). Found live, 2026-09-05: a
-			// yearWritten-less piece's citation read `"A Christmas Carol"
-			// Public domain.` — missing the period that should separate the
-			// title from the appended note. Same gap applied here, just
+			// et al. cover that bare case). A yearWritten-less piece's
+			// citation once read `"A Christmas Carol" Public domain.` —
+			// missing the period that should separate the title from the
+			// appended note. Same gap applied here, just
 			// never surfaced because every existing copyrightClause test
 			// happened to set yearWritten.
 			return endsWithPeriod(flat) + " " + clause
@@ -225,18 +219,18 @@ func buildCitation(in citationInput) string {
 // piece itself, not inherited from its book — the switch buildTwoSentenceCitation
 // uses to decide both where the number is shown (folded into the first
 // sentence, like a flat citation, vs. as its own segment in the publish
-// sentence) and whether the publish sentence exists at all (direct request:
-// a piece already pinned to its own IMSLP record doesn't need a second
-// sentence restating facts that record already carries — a *book*-level
-// IMSLP number doesn't carry that same implication, since the piece itself
-// isn't independently catalogued there).
+// sentence) and whether the publish sentence exists at all: a piece
+// already pinned to its own IMSLP record doesn't need a second sentence
+// restating facts that record already carries — a *book*-level IMSLP
+// number doesn't carry that same implication, since the piece itself isn't
+// independently catalogued there.
 func pieceOwnsImslp(eff *repo.EffectivePiece) bool {
 	return eff.ImslpNumber.Value != "" && !eff.ImslpNumber.Inherited
 }
 
-// buildTwoSentenceCitation is the design artifact §4 structure, extended by
-// two direct follow-up requests on top of the original fixed "written /
-// published" split:
+// buildTwoSentenceCitation is the design artifact §4 structure, extended
+// beyond the original fixed "written / published" split with two further
+// rules:
 //
 //  1. An opus match (the book's own opus number contained in the piece's
 //     effective one — resolvedOpus.matched) means the piece is part of a
@@ -419,9 +413,9 @@ func buildFlatCitation(eff *repo.EffectivePiece, composerNames, arrangerNames []
 // deliberately does NOT reuse this function when the *book* (not the piece)
 // owns the IMSLP number, since that sentence is specifically about the
 // book's own publication facts and treats a book-level IMSLP as one more
-// fact alongside publisher, not a replacement for it (direct request,
-// distinguishing "piece has the IMSLP number" from "book has the IMSLP
-// number" as two different cases).
+// fact alongside publisher, not a replacement for it — distinguishing
+// "piece has the IMSLP number" from "book has the IMSLP number" as two
+// different cases.
 func publisherOrIdentifierParts(eff *repo.EffectivePiece, isbn string) []string {
 	if eff.ImslpNumber.Value != "" {
 		return []string{fmt.Sprintf("IMSLP #%s", stripImslpPrefix(eff.ImslpNumber.Value))}
@@ -465,7 +459,7 @@ func fusePublisherAndID(publisher, publisherID string) string {
 // effective holder to attribute to, matching this codebase's "never
 // render empty punctuation" citation convention.
 //
-// "(renewed)" (US renewal follow-up, direct follow-up request) appears
+// "(renewed)" (US renewal follow-up) appears
 // right after the year, before the holder, whenever CopyrightRenewed is
 // set — bare, no specific year: the exact renewal filing year never
 // affects the term calculation (a renewed pre-1964 US work always gets 95
@@ -578,10 +572,9 @@ func containsIgnoringSpaces(haystack, needle string) bool {
 // render relative to its source book's — computed once by resolveOpus
 // below, shared by buildFlatCitation's single-line format and
 // buildTwoSentenceCitation's two-sentence one, so "Op. 25" renders
-// identically regardless of which shape a given piece's citation takes
-// (direct request, 2026-09-03: move a book's own catalog number up next
-// to the book's name instead of leaving it folded into the piece's own
-// title parenthetical).
+// identically regardless of which shape a given piece's citation takes —
+// a book's own catalog number moves up next to the book's name instead of
+// leaving it folded into the piece's own title parenthetical.
 type resolvedOpus struct {
 	// bookSuffix is appended onto the book title unconditionally whenever
 	// the book has an opus number set (", {bookWorkOpusNumber}") — a
@@ -610,8 +603,8 @@ type resolvedOpus struct {
 	// together in the matched branch, when the piece's opus is identical to
 	// the book's with nothing of its own to add). buildTwoSentenceCitation
 	// uses this directly to decide whether the book's title/opus fold into
-	// its first sentence (direct request: an opus match means "the piece is
-	// part of a greater work," so the book moves up to join it).
+	// its first sentence — an opus match means "the piece is
+	// part of a greater work," so the book moves up to join it.
 	matched bool
 }
 

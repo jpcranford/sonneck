@@ -31,26 +31,19 @@ import {
 import type { PracticeStatusItem, Tag } from '../api/types'
 
 // User Settings — real build of the approved mockup (Option 2, "separate
-// cards per section" — /mockup/user-settings, master plan Phases 5/8),
-// wired to the real endpoints built for this phase: PATCH /api/auth/me
-// (self-rename), POST /api/auth/change-password (self-service, singlepass
-// only), GET/PATCH /api/user-settings (Appearance/Library), and real
-// PATCH .../{id} rename routes for Tags/Practice Status that didn't exist
-// before this phase (the mockup's own create/delete/merge only left rename
-// unbuilt). Reached from the sidebar's account menu (UserMenuButton).
+// cards per section" — /mockup/user-settings), wired to the real
+// endpoints: PATCH /api/auth/me (self-rename), POST /api/auth/change-password
+// (self-service, singlepass only), GET/PATCH /api/user-settings
+// (Appearance/Library), and PATCH .../{id} rename routes for Tags/Practice
+// Status. Reached from the sidebar's account menu (UserMenuButton).
 //
-// Practice Status creation stays muted + "Soon" here too, matching the
-// mockup — corrected same day after a first pass got this backwards
-// (assumed the mockup's own `canAdd={false}` was purely about schema
-// readiness, which POST /api/practice-statuses resolved back in Phase 10,
-// so this page briefly shipped creation enabled). Direct feedback: the
-// real, still-standing reason is independent of schema — each row renders
-// a fixed hardcoded icon (icon_key, migration 00026, matched against
-// PRACTICE_STATUS_ICON_COMPONENTS below), and creating a genuinely new
-// status has no icon-assignment UX decided yet — a fresh row would just
-// have icon_key NULL, same as it does today. Rename/delete/merge on the 5
-// existing rows are unaffected; only *create* is blocked, and only for
-// Practice Status — Your Tags has no such icon and stays fully creatable.
+// Practice Status creation stays muted + "Soon" here, matching the mockup:
+// each row renders a fixed hardcoded icon (icon_key, migration 00026,
+// matched against PRACTICE_STATUS_ICON_COMPONENTS below), and creating a
+// genuinely new status has no icon-assignment UX decided yet — a fresh row
+// would just have icon_key NULL, same as it does today. Rename/delete/merge
+// on the 5 existing rows are unaffected; only *create* is blocked, and only
+// for Practice Status — Your Tags has no such icon and stays fully creatable.
 //
 // The Appearance card's Theme control and the sidebar's own ThemeSwitcher
 // (UserMenuButton.tsx) now share one persisted source — the same
@@ -525,15 +518,11 @@ export function UserSettingsPage() {
                   if (trimmed && trimmed !== me.displayName) renameMutation.mutate(trimmed)
                   else setName(me.displayName)
                 }}
-                // Disabled for OIDC (Phase 14) — that identity's name is the
-                // IdP's to own and gets re-synced on every login
+                // Disabled for OIDC — that identity's name is the IdP's to
+                // own and gets re-synced on every login
                 // (ClaimOrProvisionOIDCUser), so a local edit here would
                 // just be silently overwritten next login; PATCH
-                // /api/auth/me rejects it server-side too. Porting
-                // UserSettingsMockup.tsx's own already-locked design
-                // (disabled={identityKey.startsWith('oidc')}), never wired
-                // into this real page until now since real OIDC login
-                // didn't exist yet to need it.
+                // /api/auth/me rejects it server-side too.
                 disabled={me.authMethod === 'oidc'}
                 className="w-full rounded-md border border-border bg-paper-raised px-2.5 py-1.5 text-sm text-ink disabled:cursor-not-allowed disabled:bg-paper-sunken disabled:text-ink-soft"
               />

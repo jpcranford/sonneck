@@ -37,8 +37,8 @@ export function PageLightbox({
   // button still disables at the *real* first page instead of at a
   // literal "1" that offset numbering may never actually reach.
   minPage?: number
-  // Defaults to '' — only the About step passes "PDF p. " (2026-08-27),
-  // since only that screen has a competing typed "printed page" number
+  // Defaults to '' — only the About step passes "PDF p. ", since only
+  // that screen has a competing typed "printed page" number
   // right next to the lightbox, where a bare "n / N" could otherwise read
   // as that instead of the PDF's own physical page. Every other caller
   // (Piece Details, single-piece upload, the Titles step) has no such

@@ -17,8 +17,8 @@ export interface SortFieldOption<Field extends string> {
 // pattern, same as TagPills/PageCycleControl). Same shared-pill structure
 // as Piece Details' own Download PDF split button (PiecePage.tsx): a
 // div.flex.overflow-hidden.rounded-md wrapping two segments joined by a
-// border-l divider. Roles are the reverse of Download PDF's, per direct
-// instruction: there the text segment is the primary action and the icon
+// border-l divider. Roles are the reverse of Download PDF's: there the
+// text segment is the primary action and the icon
 // opens a menu of alternatives; here the text segment (the field name)
 // opens the menu, since field is the choice with more than two options —
 // the one that actually needs a listbox — while the icon segment is a

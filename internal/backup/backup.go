@@ -80,9 +80,9 @@ func Prune(backupDir string, retentionDays int) error {
 
 // Scheduler owns the running cron job backing the daily backup, and
 // supports rescheduling it live — Admin Settings' Library Settings card
-// (PATCH /api/admin/library-settings, memory project_multiuser_build.md's
-// Phase 13 section) can change the backup schedule at runtime with no
-// restart. Backup retention doesn't need an equivalent Reschedule: the
+// (PATCH /api/admin/library-settings) can change the backup schedule at
+// runtime with no restart. Backup retention doesn't need an equivalent
+// Reschedule: the
 // job closure reads cfg.BackupRetentionDays() fresh every time it fires,
 // so a changed retention value is already live the next time the job runs
 // — only the cron expression itself needs the entry actually replaced.

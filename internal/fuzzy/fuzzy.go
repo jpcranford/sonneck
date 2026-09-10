@@ -105,12 +105,12 @@ func MinWordDistance(text, query string) int {
 
 // MaxDistance is the threshold a query must fall within to count as a
 // fuzzy match — roughly one edit per four characters, rounded UP rather
-// than down (widened a notch 2026-08-28: a 5-character query like "boelu"
-// against "Boëly" is 2 edits — the diaeresis and one more substitution —
-// and floor(5/4)=1 missed it; ceiling division fixes exactly this without
-// changing the threshold at all for a query whose length is already an
-// exact multiple of 4, so this is a narrow correction, not a general
-// loosening). Floored at 1 (even a very short query tolerates one edit)
+// than down: a 5-character query like "boelu" against "Boëly" is 2 edits —
+// the diaeresis and one more substitution — and floor(5/4)=1 misses it;
+// ceiling division fixes exactly this without changing the threshold at
+// all for a query whose length is already an exact multiple of 4, so this
+// is a narrow correction, not a general loosening. Floored at 1 (even a
+// very short query tolerates one edit)
 // and capped at 3 (an unbounded threshold on a long query would start
 // matching too broadly — this is a last-resort fallback tier, not the
 // primary search path, so staying conservative here matters more than

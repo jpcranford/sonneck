@@ -200,8 +200,7 @@ func TestLoad_RejectsNonPositiveBackupRetentionDays(t *testing.T) {
 	}
 }
 
-// The following cover the 2026-09-08 Library Settings persistence work
-// (memory project_multiuser_build.md's Phase 13 section) — config.yml as
+// The following cover Library Settings persistence — config.yml as
 // the real runtime source of truth for backupCron/backupRetentionDays/
 // logLevel/copyrightRegion, env vars winning and persisting back into it.
 

@@ -24,30 +24,26 @@ import {
 } from '@tabler/icons-react'
 import { useMockupTitle } from '../lib/useMockupTitle'
 
-// Sidebar User Menu — multi-user support, Phase 7 of the plan (memory
-// project_multiuser_build.md). Replaces the static, inert "Local Library"
-// footer pill in both Sidebar.tsx (desktop) and MobileNav.tsx (mobile) with
-// a real account menu — approved design is Option 2 from the Phase 4
-// artifact ("Identity card, dark popup", identity-dark), which won over a
-// plain light ContextMenu-style popup and a light-popup identity-card
-// variant.
+// Sidebar User Menu — replaces the static, inert "Local Library" footer
+// pill in both Sidebar.tsx (desktop) and MobileNav.tsx (mobile) with a
+// real account menu ("Identity card, dark popup" style, identity-dark),
+// which won over a plain light ContextMenu-style popup and a light-popup
+// identity-card variant. The real UserMenuButton.tsx now implements this
+// design — this mockup stays as a standing visual reference.
 //
 // Hand-copied from Sidebar.tsx/MobileNav.tsx (nav items, collapse/drawer
 // mechanics) rather than importing them directly — standard mockup
 // convention (frozen, hand-maintained visual reference), and unavoidable
 // here anyway since this mockup's whole point is a change to those files'
-// own footer markup. Only gets reconciled with the real components if this
-// build is approved (Phase 11).
+// own footer markup.
 //
 // Not nested inside <AppShell/> in App.tsx, same reasoning as
 // mobile-nav-drawer and first-launch: this replaces AppShell's own sidebar
 // footer, so nesting it inside the real shell would show two competing
 // footers.
 //
-// Theme switcher added to the popup, same day, per direct feedback — "an
-// elegant light/dark/system mode switcher..., to be built out with the menu
-// in a later phase." Deliberately a compact icon-only sliding-pill toggle
-// (ThemeSwitcher below), not a re-skin of User/Admin Settings' own
+// Theme switcher in the popup: deliberately a compact icon-only
+// sliding-pill toggle (ThemeSwitcher below), not a re-skin of User/Admin Settings' own
 // full-width, text-labeled ThemeControl row — this is a quick-access popup
 // control, not a settings-page field, so the denser form factor fits the
 // context better (the fuller row-based control still exists, and still
@@ -92,11 +88,10 @@ interface Identity {
   showLogout: boolean
 }
 
-// Four states from the approved artifact's own comparison — None/singlepass
-// share the same implicit shared admin account (per the locked plan:
-// singlepass is one shared account behind a password, not distinct named
-// accounts); the two OIDC rows show the admin-vs-member permission split
-// once real distinct accounts exist.
+// Four states — None/singlepass share the same implicit shared admin
+// account (singlepass is one shared account behind a password, not
+// distinct named accounts); the two OIDC rows show the admin-vs-member
+// permission split once real distinct accounts exist.
 const IDENTITIES: Record<IdentityKey, Identity> = {
   none: { label: 'No login', name: 'Admin', sub: 'No login required', isAdmin: true, showLogout: false },
   singlepass: { label: 'Password', name: 'Admin', sub: 'Shared password', isAdmin: true, showLogout: true },
@@ -268,15 +263,15 @@ function UserMenuButton({
         )}
       </button>
 
-      {/* Dark identity-card popup — the approved option. Opens upward
-          (bottom-full) since the trigger sits at the bottom of both the
-          rail and the drawer; left-0 keeps it flush with the trigger's own
-          left edge in both the collapsed (narrow rail) and expanded
-          states, matching the artifact. No overflow:hidden on any ancestor
-          between here and the outer viewport-sized container, so nothing
-          clips it (see AppShell.tsx's own gotcha comment on this — the
-          real Phase 4 bug was a *tightly-sized* demo frame, not a
-          full-viewport container like this one). */}
+      {/* Dark identity-card popup. Opens upward (bottom-full) since the
+          trigger sits at the bottom of both the rail and the drawer;
+          left-0 keeps it flush with the trigger's own left edge in both
+          the collapsed (narrow rail) and expanded states. No
+          overflow:hidden on any ancestor between here and the outer
+          viewport-sized container, so nothing clips it (see
+          AppShell.tsx's own gotcha comment on this — the original bug
+          was a *tightly-sized* demo frame, not a full-viewport container
+          like this one). */}
       <div
         role="menu"
         className={`absolute bottom-full left-0 z-20 mb-2 w-60 origin-bottom-left overflow-hidden rounded-lg border border-sidebar-border bg-sidebar-panel shadow-xl transition-[opacity,transform] duration-100 ${

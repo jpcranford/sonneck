@@ -183,7 +183,7 @@ func CreatePracticeStatus(ctx context.Context, q Queryer, userID int64, name str
 }
 
 // RenamePracticeStatus changes statusID's display name within userID's own
-// set (User Settings' Practice Status card, master plan Phase 12) — via
+// set (User Settings' Practice Status card) — via
 // renameNamedRow (internal/repo/lookup.go), same duplicate/ownership
 // guarantees as RenameUserTag. Not indexed in pieces_fts (unlike a tag
 // rename), so no search-index resync is needed here.
@@ -224,7 +224,7 @@ func DeletePracticeStatus(ctx context.Context, q Queryer, statusID int64, mergeI
 // UserSettings is the small fixed set of admin-screen-visible per-user
 // preferences (migration 00025's user_settings table). JSON tags included
 // (same convention as PracticeStatus/Tag) — GET/PATCH /api/user-settings
-// (master plan Phase 12) return/accept this shape directly.
+// return/accept this shape directly.
 type UserSettings struct {
 	ShowBooksInSidebar bool   `json:"showBooksInSidebar"`
 	ThemePreference    string `json:"themePreference"`
@@ -261,9 +261,9 @@ func UpdateUserSettings(ctx context.Context, q Queryer, userID int64, s UserSett
 
 // SeedNewUserData creates a fresh user's practice_statuses (the same five
 // defaults every existing account was seeded with) and user_settings row —
-// called once at account creation (Phase 14's OIDC first-login provisioning
-// will be the real caller; not exercised by none/singlepass, which never
-// creates a second account).
+// called once at account creation (OIDC's first-login provisioning is the
+// real caller; not exercised by none/singlepass, which never creates a
+// second account).
 func SeedNewUserData(ctx context.Context, q Queryer, userID int64) error {
 	// sidebar_slot/icon_key (migration 00026) — same assignment the
 	// migration's own backfill gives every existing account's rows, kept in

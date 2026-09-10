@@ -182,14 +182,13 @@ const ROW_COLLAPSE_CLASS = 'max-[501px]:grid-cols-[96px_1fr]'
 // exception, which is what actually produces a line under the header too,
 // not just between pieces.
 //
-// Title includes each piece's own effective opus number in parentheses
-// (added 2026-08-30, direct instruction, ported from the same fix on the
-// People Library's own Person Details page) — matches the header card's
-// own `{book.bookTitle} ({book.workOpusNumber})` convention above, applied
-// per-piece here since a piece's own opus can override the book's.
-// PieceGrid deliberately keeps its own title-only treatment (list view
-// only, per the same instruction) — no room for it in that card's much
-// narrower 112px width.
+// Title includes each piece's own effective opus number in parentheses,
+// matching the header card's own `{book.bookTitle} ({book.workOpusNumber})`
+// convention above, applied per-piece here since a piece's own opus can
+// override the book's — same treatment as the People Library's own Person
+// Details page. PieceGrid deliberately keeps its own title-only treatment
+// (list view only) — no room for it in that card's much narrower 112px
+// width.
 function PieceList({ pieces }: { pieces: Piece[] }) {
   return (
     <div className="flex flex-col">
@@ -257,10 +256,10 @@ function PieceList({ pieces }: { pieces: Piece[] }) {
 
 // Original filename value — collapsed state is always exactly one line,
 // real CSS ellipsis (Tailwind's `truncate`: overflow:hidden + text-overflow:
-// ellipsis + white-space:nowrap), never a wrapped second line, simplified
-// from an earlier char-count `.slice()` version per direct follow-up
-// (2026-09-05) — CSS truncates at whatever width the card actually
-// rendered at, so there's no length to precompute or hardcode at all.
+// ellipsis + white-space:nowrap), never a wrapped second line or a
+// hand-rolled character-count `.slice()` — CSS truncates at whatever
+// width the card actually rendered at, so there's no length to
+// precompute or hardcode at all.
 // Tap/click expands to the full value, which *can* wrap across multiple
 // lines (that "never two lines" rule is specifically about the collapsed
 // state) — break-words there for the same long-unbroken-run reason as
@@ -676,12 +675,11 @@ export function BookDetailsPage() {
       {book && (
         <div>
           {/* Header is its own card. Stacked (flex-col) below lg:, side-by-
-              side above it — found live, 2026-09-05 (project_responsive_
-              device_plan, Phase 4): the side-by-side row never collapsed at
+              side above it — the side-by-side row never collapsed at
               any width, so the info column's available width shrank along
               with the viewport (worse still, further eaten by the sidebar
               at md:+), overflowing the original filename past the card's
-              own edge well before the header ever got phone-narrow — real
+              own edge well before the header ever got phone-narrow —
               breakage confirmed at both 375px and iPad-portrait's ~512px
               actual content width (post-sidebar), first genuinely clean
               row layout confirmed at iPad-landscape's ~768px. lg:items-start
@@ -840,10 +838,8 @@ export function BookDetailsPage() {
                       // break point (e.g. an underscore-joined filename)
                       // has an enormous min-content width, forcing this
                       // item wider than its own flex-wrap container rather
-                      // than wrapping (found live testing this page's own
-                      // phone-width layout, project_responsive_device_plan
-                      // Phase 4 follow-up — confirmed via computed styles:
-                      // this div was rendering 298px wide inside a 269px
+                      // than wrapping (confirmed via computed styles: this
+                      // div was rendering 298px wide inside a 269px
                       // parent). min-w-0 lets it shrink to fit; break-words
                       // (overflow-wrap: break-word) is what actually gives
                       // long unbroken runs a place to wrap once it does.

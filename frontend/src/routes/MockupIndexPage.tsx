@@ -19,7 +19,7 @@ const MOCKUPS = [
   {
     to: '/mockup/piece-library',
     name: 'Piece Library — Sort/Filter',
-    note: 'Filter Drawer (Option B of a 4-option comparison, picked 2026-08-27) added to the Piece Library toolbar — Filters button + slide-in drawer (Key/Instrument/Sheet Type/Tags/Status/Favorite), plus a new Sort control. Genuinely interactive against 10 fixture pieces.',
+    note: 'Filter Drawer (Option B of a 4-option comparison) added to the Piece Library toolbar — Filters button + slide-in drawer (Key/Instrument/Sheet Type/Tags/Status/Favorite), plus a new Sort control. Genuinely interactive against 10 fixture pieces.',
   },
   {
     to: '/mockup/books-library',
@@ -29,17 +29,17 @@ const MOCKUPS = [
   {
     to: '/mockup/people-library',
     name: 'People Library',
-    note: 'Composer/arranger overhaul, Phase 3 of 6 — real toolbar/grid/list/Filter Drawer shell (same system as Piece/Books Library) with the locked oval Person card and the "Show all composers" default (>2-piece) filter. Genuinely interactive against 17 fixture people.',
+    note: 'Composer/arranger overhaul — real toolbar/grid/list/Filter Drawer shell (same system as Piece/Books Library) with the oval Person card and the "Show all composers" default (>2-piece) filter. Genuinely interactive against 17 fixture people.',
   },
   {
     to: '/mockup/person-details',
     name: 'Person Details',
-    note: 'Composer/arranger overhaul, Phase 4 of 6 — header card (oval portrait + camera-badge Upload Portrait flow with device/Wikipedia search + drag/zoom adjust, bio, direct book-credit chips) and a works grid/list mirroring Book Details’ own PieceList, plus a Split People modal reusing the real TagComboBox as its ordered replacement picker. Genuinely interactive against one fixture person (Chopin).',
+    note: 'Composer/arranger overhaul — header card (oval portrait + camera-badge Upload Portrait flow with device/Wikipedia search + drag/zoom adjust, bio, book-credit chips) and a works grid/list mirroring Book Details’ own PieceList, plus a Split People modal reusing the real TagComboBox as its ordered replacement picker. Genuinely interactive against one fixture person (Chopin).',
   },
   {
     to: '/mockup/edit-person-modal',
     name: 'Edit Person Modal',
-    note: 'Composer/arranger overhaul, Phase 5 of 6 — Name/Biography/Birth year/Death year, deliberately minimal (no portrait field — that stays on the camera badge, Phase 4). Wikipedia autofill button mimics the real ImslpAutofillButton\'s states/behavior via a mock lookup.',
+    note: 'Composer/arranger overhaul — Name/Biography/Birth year/Death year, deliberately minimal (no portrait field — that stays on the camera badge). Wikipedia autofill button mimics the real ImslpAutofillButton\'s states/behavior via a mock lookup.',
   },
   {
     to: '/mockup/book-details',
@@ -89,32 +89,32 @@ const MOCKUPS = [
   {
     to: '/mockup/device-info',
     name: 'Device Info',
-    note: 'Not a screen mockup — a live diagnostic reference (window/screen size, orientation, devicePixelRatio, current Tailwind breakpoint tier, active nav mode) for the responsive-layout pass across phone/tablet/ultrawide/e-ink widths. See memory project_responsive_device_plan.',
+    note: 'Not a screen mockup — a live diagnostic reference (window/screen size, orientation, devicePixelRatio, current Tailwind breakpoint tier, active nav mode) for the responsive-layout pass across phone/tablet/ultrawide/e-ink widths.',
   },
   {
     to: '/mockup/first-launch',
     name: 'First-Time Launch Flow',
-    note: 'Multi-user support, Phase 2 of the plan (memory project_multiuser_build.md) — Welcome → Library Folder → Security, with a "Preview as Docker/Native" toggle since OIDC and the folder picker both branch on runtime mode. Genuinely interactive against local state; no real backend exists for this yet.',
+    note: 'Multi-user support — Welcome → Library Folder → Security, with a "Preview as Docker/Native" toggle since OIDC and the folder picker both branch on runtime mode. Fixture/preview state only, no real API calls (the real flow is FirstLaunchFlow.tsx).',
   },
   {
     to: '/mockup/sidebar-user-menu',
     name: 'Sidebar User Menu',
-    note: 'Multi-user support, Phase 7 of the plan — replaces the static "Local Library" footer pill (desktop rail + mobile drawer) with a real account menu, the approved Option 2 ("Identity card, dark popup") from the Phase 4 artifact. Switch identity state (None/Password/OIDC Admin/OIDC Member), collapse the rail, or open the mobile drawer to see the menu adapt.',
+    note: 'Multi-user support — replaces the static "Local Library" footer pill (desktop rail + mobile drawer) with a real account menu ("Identity card, dark popup" style). Switch identity state (None/Password/OIDC Admin/OIDC Member), collapse the rail, or open the mobile drawer to see the menu adapt.',
   },
   {
     to: '/mockup/user-settings',
     name: 'User Settings',
-    note: 'Multi-user support, Phase 8 of the plan — the approved Option 2 ("separate cards per section") from the Phase 5 artifact: Account (display name, identity line, Change Password), Appearance (Theme, Dark disabled/"Soon"), Library (Hide Books in sidebar, Paginated views), Your Tags and Practice Status (per-user create/delete/merge, same pattern as Admin Settings\' Lookup Tables). Switch identity state to see the Account card adapt.',
+    note: 'Multi-user support — separate cards per section: Account (display name, identity line, Change Password), Appearance (Theme, Dark disabled/"Soon"), Library (Hide Books in sidebar, Paginated views), Your Tags and Practice Status (per-user create/delete/merge, same pattern as Admin Settings\' Lookup Tables). Switch identity state to see the Account card adapt.',
   },
   {
     to: '/mockup/admin-settings',
     name: 'Admin Settings',
-    note: 'Multi-user support, Phase 9 of the plan — the approved Option B ("single scrolling page, jump-nav") from the Phase 6 artifact, each section switched to its own bordered card to match User Settings\' Option 2 look (same max-width too): Library Settings (every field independently env-var-shadowed; Security is now read-only, env-var-only, no in-app change control — see the Auth Change Flow mockup for how a change gets handled instead), Library counts, Version (identifies the build by commit SHA against GitHub release/pre-release tags, falling back to "Dev build, from commit <SHA> on <date>"), Users (expandable permission grid with a hover/tap description per permission, last-admin lock, per-row delete with a window.confirm() gate), Lookup Tables (inline-editable Sheet Types/Instruments with usage instructions, a "+" to create a new entry, and a per-row delete that opens a real modal to merge into another entry or delete outright). Switch identity state to see the user list change.',
+    note: 'Multi-user support — a single scrolling page with jump-nav, each section in its own bordered card matching User Settings\' card look (same max-width too): Library Settings (every field independently env-var-shadowed; Security is now read-only, env-var-only, no in-app change control — see the Auth Change Flow mockup for how a change gets handled instead), Library counts, Version (identifies the build by commit SHA against GitHub release/pre-release tags, falling back to "Dev build, from commit <SHA> on <date>"), Users (expandable permission grid with a hover/tap description per permission, last-admin lock, per-row delete with a window.confirm() gate), Lookup Tables (inline-editable Sheet Types/Instruments with usage instructions, a "+" to create a new entry, and a per-row delete that opens a real modal to merge into another entry or delete outright). Switch identity state to see the user list change.',
   },
   {
     to: '/mockup/auth-change-flow',
     name: 'Auth Change Flow',
-    note: 'Multi-user support, Phase 16 of the plan — a boot-time gate that replaces Admin Settings\' removed in-app Security-change capability: the app detects its AUTH_METHOD no longer matches what it last ran under and walks the admin through the adjustment, mirroring the first-launch flow\'s own full-page-takeover weight. Reuses the choose-surviving-admin/confirm-delete content Admin Settings briefly held before it was pulled out. Switch the "Simulate detected change" scenario to preview every content path: an OIDC upgrade (informational only), a new-password requirement, a light single-account downgrade, and the full destructive multi-account downgrade.',
+    note: 'Multi-user support — a boot-time gate that replaces Admin Settings\' removed in-app Security-change capability: the app detects its AUTH_METHOD no longer matches what it last ran under and walks the admin through the adjustment, mirroring the first-launch flow\'s own full-page-takeover weight. Reuses the choose-surviving-admin/confirm-delete content Admin Settings briefly held before it was pulled out. Switch the "Simulate detected change" scenario to preview every content path: an OIDC upgrade (informational only), a new-password requirement, a light single-account downgrade, and the full destructive multi-account downgrade.',
   },
   {
     to: '/mockup/login-screen',

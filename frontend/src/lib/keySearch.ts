@@ -15,9 +15,9 @@ function keySearchHaystack(name: string): string {
   return `${lower} ${asciiSymbol} ${asciiWord}`
 }
 
-// Both sides have their whitespace stripped before comparing (direct
-// request, 2026-09-05 — matches TagComboBox's own default-matcher
-// treatment) so a query never has to land on the exact same word boundary
+// Both sides have their whitespace stripped before comparing (matches
+// TagComboBox's own default-matcher treatment) so a query never has to
+// land on the exact same word boundary
 // as the stored name — "bmajor" matches "B♭ Major" the same way "eb major"
 // already did.
 export function matchesKeyQuery(name: string, query: string): boolean {

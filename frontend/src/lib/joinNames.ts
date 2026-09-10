@@ -34,9 +34,8 @@ export function personCreditPart(composerNames: string[], arrangerNames: string[
 // falling back to the arranger's own plain name with no "arr." label when
 // there's no composer at all (a traditional/folk piece crediting only an
 // arranger is a legitimate case, same as everywhere else in this app).
-// Direct decision, 2026-09-04, since usePageTitle's callers need this exact
-// shape and personCreditPart's citation-style "arr." fusion would misfit a
-// tab title.
+// usePageTitle's callers need this exact shape, and personCreditPart's
+// citation-style "arr." fusion would misfit a tab title.
 export function pieceTitleCredit(composerNames: string[], arrangerNames: string[]): string {
   return composerNames.length > 0 ? joinNames(composerNames) : joinNames(arrangerNames)
 }

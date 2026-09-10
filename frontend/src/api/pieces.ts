@@ -70,11 +70,11 @@ export interface SearchPiecesParams {
    * (OR-matched), not single-choice. Passing an array here is enough:
    * URLSearchParams.set(key, String(array)) already comma-joins it, same
    * mechanism practiceStatus already relied on before these gained
-   * multi-select too. Each has an exclude* sibling below (direct request,
-   * 2026-09-05 — the Filter Drawer's segmented exclude/neutral/include
-   * control) — the two are independent params, not one signed list, so a
-   * value can appear in at most one of the pair (the drawer's own
-   * three-state model already guarantees this; the backend doesn't). */
+   * multi-select too. Each has an exclude* sibling below — the Filter
+   * Drawer's segmented exclude/neutral/include control — the two are
+   * independent params, not one signed list, so a value can appear in at
+   * most one of the pair (the drawer's own three-state model already
+   * guarantees this; the backend doesn't). */
   keyId?: number[]
   excludeKeyId?: number[]
   sheetTypeId?: number[]
@@ -94,10 +94,9 @@ export interface SearchPiecesParams {
    * the other, never both. */
   practiceStatusSlot?: 'want_to_learn' | 'practicing' | 'learned'
   /** Pieces with no sourceBookId at all (design doc §3/§5 — a normal,
-   * first-class case, e.g. a single downloaded score). Genuinely tri-state
-   * now (direct request, 2026-09-05) — `true` books-none only, `false`
-   * book-having only, omitted no constraint, same shape `favorite` already
-   * had. */
+   * first-class case, e.g. a single downloaded score). Genuinely
+   * tri-state — `true` books-none only, `false` book-having only, omitted
+   * no constraint, same shape `favorite` already had. */
   bookless?: boolean
   /** Pieces with a non-blank *effective* IMSLP number (own or inherited
    * from their book) — same tri-state shape as `bookless` now. */
@@ -130,11 +129,10 @@ export function searchPieces(params: SearchPiecesParams = {}): Promise<Piece[]> 
 }
 
 /** One filter-drawer facet option (e.g. one Key) paired with how many
- * pieces currently match it. Live/faceted (changed 2026-08-31) — see
- * internal/handlers/facets.go's own doc comment: a value's own count
- * reflects what checking it would add on top of every OTHER active filter
- * and the current search box text, not a count that self-narrows against
- * its own selection. */
+ * pieces currently match it. Live/faceted — see internal/handlers/
+ * facets.go's own doc comment: a value's own count reflects what checking
+ * it would add on top of every OTHER active filter and the current search
+ * box text, not a count that self-narrows against its own selection. */
 export interface FacetCount {
   id: number
   name: string

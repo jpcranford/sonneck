@@ -9,7 +9,7 @@ import (
 )
 
 // Fixtures below are trimmed-down copies of real rendered HTML pulled
-// live from imslp.org (2026-08-27) — not hand-invented shapes — for the
+// live from imslp.org — not hand-invented shapes — for the
 // Tosti/Ricordi file (101781), a Schumann/Schuberth file, and a Schumann
 // holograph-manuscript file (971830, genuinely has no publisher/plate on
 // record).

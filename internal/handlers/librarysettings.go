@@ -10,9 +10,8 @@ import (
 	"github.com/jpcranford/sonneck/internal/models"
 )
 
-// handleGetLibrarySettings is Admin Settings' Library Settings card (memory
-// project_multiuser_build.md's Phase 13 section) — current effective value
-// + envSet flag for each of the 4 fields.
+// handleGetLibrarySettings is Admin Settings' Library Settings card —
+// current effective value + envSet flag for each of the 4 fields.
 func (s *Server) handleGetLibrarySettings(w http.ResponseWriter, r *http.Request) {
 	if _, ok := s.requirePermission(w, r, models.PermissionAdmin); !ok {
 		return
@@ -34,7 +33,7 @@ func (s *Server) librarySettingsResponse() api.LibrarySettingsResponse {
 }
 
 // handleUpdateLibrarySettings validates, persists (internal/libraryconfig,
-// DATA_DIR/config.yml — not SQLite, a deliberate confirmed choice, see the
+// DATA_DIR/config.yml — not SQLite, a deliberate choice, see the
 // DTO's own doc comment), and live-applies each of the 4 fields: a changed
 // backupCron reschedules the actual running cron job
 // (Server.BackupScheduler), backupRetentionDays/copyrightRegion are plain

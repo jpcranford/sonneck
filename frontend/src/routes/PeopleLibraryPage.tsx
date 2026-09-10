@@ -66,8 +66,7 @@ function initials(name: string): string {
 // Oval — aspect-[3/4] + rounded-[50%] (a true percentage border-radius,
 // computed independently per axis), not rounded-full (a fixed huge pixel
 // radius that clips a non-square box to a stadium shape, not an ellipse).
-// Locked in the approved Phase 1/2 Artifacts; see PeopleLibrarySample.tsx's
-// own comment for the real bug this fixed.
+// See PeopleLibrarySample.tsx's own comment for the real bug this fixed.
 function PersonAvatar({ person, className }: { person: Person; className: string }) {
   const color = PALETTE[person.id % PALETTE.length]
   return (
@@ -97,7 +96,7 @@ function PersonGridCard({ person }: { person: Person }) {
       {/* Centered under the portrait — a name/dates lockup under a
           portrait reads as a caption, not a list item, same reasoning a
           museum placard or contact card centers its own text under a
-          photo (locked in the Phase 1 artifact review). */}
+          photo. */}
       <ClickableCard
         to={`/people/${person.id}`}
         state={{ backLabel: 'People' }}
@@ -134,16 +133,16 @@ function PersonListRow({ person }: { person: Person }) {
 
 // ---------------------------------------------------------------------
 // Filter drawer — same "Show only" + Musical Era + Century sections as
-// the approved mockup. Era/Century are computed client-side (no backend
+// the mockup. Era/Century are computed client-side (no backend
 // facet endpoint for either — a Person's own dataset is small, same
 // assumption Key/Instrument's fixed-list lookups already make), directly
 // porting PeopleLibrarySample.tsx's own getEra/getCenturies/ordinal logic.
 // ---------------------------------------------------------------------
 
-// Three-way segmented control (direct request, 2026-09-05, real build of
-// PeopleLibrarySample.tsx's own approved mockup — see
-// PieceLibrarySample.tsx's own TriState/dimensionState/setDimensionState
-// comment for the full reasoning, unchanged here). Era/Century both get
+// Three-way segmented control, mirroring PeopleLibrarySample.tsx's own
+// mockup — see PieceLibrarySample.tsx's own TriState/dimensionState/
+// setDimensionState comment for the full reasoning, unchanged here.
+// Era/Century both get
 // it (genuine per-person categorical facets); `showAll` does not — it's a
 // display-mode threshold override ("show people below the normal
 // >2-piece cutoff too"), not an include/exclude filter over some
@@ -389,8 +388,7 @@ function PersonFilterDrawer({
 // through the shared components/SortControl.tsx (this page used to carry
 // its own local PersonSortControl duplicate, keyed by display label
 // rather than a machine key — consolidated so People matches how
-// Piece/Books already share this component, per direct instruction when
-// the toolbar itself got ported onto the shared LibraryToolbar).
+// Piece/Books already share this component).
 // ---------------------------------------------------------------------
 
 type PersonSortField = 'name' | 'pieceCount' | 'birthYear' | 'deathYear' | 'dateAdded'

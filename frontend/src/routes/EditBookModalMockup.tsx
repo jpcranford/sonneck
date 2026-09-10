@@ -46,12 +46,11 @@ const INSTRUMENT_OPTIONS: Tag[] = [
 const MOCK_BOOK_TITLE = 'Album for the Young'
 const MOCK_PIECE_COUNT = 6
 
-// Public Domain Badge feature (design artifact, phase 1) — same order/
-// wording as EditPieceModalMockup.tsx's own copy of this list (option
-// lists are always duplicated per-mockup in this app, same as
-// SHEET_TYPE_OPTIONS just above already being its own separate copy from
-// that file's; only the real shared *components* — SingleSelect,
-// TagComboBox — aren't).
+// Public Domain Badge feature — same order/wording as
+// EditPieceModalMockup.tsx's own copy of this list (option lists are
+// always duplicated per-mockup in this app, same as SHEET_TYPE_OPTIONS
+// just above already being its own separate copy from that file's; only
+// the real shared *components* — SingleSelect, TagComboBox — aren't).
 const COPYRIGHT_STATUS_OPTIONS = [
   {
     value: 'publicDomain',
@@ -119,7 +118,7 @@ const defaultValues: FormValues = {
   // Public Domain Badge feature — all blank, demonstrating a Book that's
   // never touched this feature: the Copyright Status trigger shows a
   // plain "Not set" (Book has nothing to calculate a live default from,
-  // unlike Piece — see the design artifact's own §7 note on this).
+  // unlike Piece).
   copyrightStatus: '',
   copyrightYear: '',
   copyrightHolder: '',
@@ -128,9 +127,8 @@ const defaultValues: FormValues = {
 }
 
 type SaveState = 'idle' | 'saving' | 'saved'
-// Timings match the approved "Book Save Animation" artifact exactly —
-// long enough that the stripe motion and the "Saved" checkmark are both
-// clearly visible, not just a flash.
+// Timings are long enough that the stripe motion and the "Saved"
+// checkmark are both clearly visible, not just a flash.
 const SAVING_MS = 1400
 const SAVED_MS = 1100
 
@@ -188,8 +186,8 @@ export function EditBookModalMockup() {
         onClose={() => setOpen(false)}
         labelledBy="edit-book-mockup-title"
         // lg, not xl — mockup-parity with the real EditBookModal.tsx's own
-        // size change (2026-09-05): matches EditPieceModal.tsx, fixes zero
-        // side-margin at iPad-portrait's 768px viewport.
+        // size (matches EditPieceModal.tsx), fixing zero side-margin at
+        // iPad-portrait's 768px viewport.
         size="lg"
         header={
           // -mx-6/px-6 bleeds the line to the dialog's true edges rather
@@ -233,15 +231,14 @@ export function EditBookModalMockup() {
               >
                 Cancel
               </button>
-              {/* Save carries the progress state itself (locked "A" footer).
-                  min-w, not a fixed width — "Updating N pieces…" is longer
-                  than "Save"/"Saved", and should push the button wider to
-                  stay on one line rather than wrap and grow taller instead
-                  (whitespace-nowrap is what actually prevents the wrap;
-                  min-w just keeps the idle state from looking undersized)
-                  — same pattern as UploadBookConfirmMockup.tsx's own
-                  stripe-animated Import button, ported here since this
-                  button had the same bug. */}
+              {/* Save carries the progress state itself, not a separate
+                  progress indicator. min-w, not a fixed width — "Updating N
+                  pieces…" is longer than "Save"/"Saved", and should push the
+                  button wider to stay on one line rather than wrap and grow
+                  taller instead (whitespace-nowrap is what actually prevents
+                  the wrap; min-w just keeps the idle state from looking
+                  undersized) — same pattern as UploadBookConfirmMockup.tsx's
+                  own stripe-animated Import button. */}
               <button
                 type="submit"
                 form="edit-book-form"
@@ -456,15 +453,14 @@ export function EditBookModalMockup() {
             </div>
           </div>
 
-          {/* Copyright — Public Domain Badge feature (design artifact,
-              phase 1). Same collapsed-by-default posture as the Piece
-              Edit menu's own Copyright section. No InheritedNote wiring
-              here (unlike Piece's version) — Book is the top of the
-              inheritance chain, nothing for it to inherit from, and its
-              Copyright Status trigger has no live-calculated default to
-              show either (needs an effective copyright year + composer
-              death years, both pulled *through* Piece → Book inheritance
-              — see the design artifact's own §7 note), so it just shows
+          {/* Copyright — Public Domain Badge feature. Same collapsed-by-
+              default posture as the Piece Edit menu's own Copyright
+              section. No InheritedNote wiring here (unlike Piece's
+              version) — Book is the top of the inheritance chain, nothing
+              for it to inherit from, and its Copyright Status trigger has
+              no live-calculated default to show either (needs an
+              effective copyright year + composer death years, both
+              pulled *through* Piece → Book inheritance), so it just shows
               a plain "Not set" placeholder instead. */}
           <div className="border-t border-border pt-4">
             {/* Text styling matches EditPieceModal.tsx's own Copyright
@@ -535,12 +531,12 @@ export function EditBookModalMockup() {
                 </div>
 
                 {/* US renewal follow-up — same gate/shape as
-                    EditPieceModalMockup.tsx's copy (direct request: Book
-                    gets this too, since pieces inherit its Copyright Year).
-                    Just the toggle — no separate renewal-year field: the
-                    exact filing year never changes the calculation (see
-                    that file's own comment for the full reasoning), and
-                    the citation's own "(renewed)" marker doesn't need a
+                    EditPieceModalMockup.tsx's copy; Book gets this too
+                    since pieces inherit its Copyright Year. Just the
+                    toggle — no separate renewal-year field: the exact
+                    filing year never changes the calculation (see that
+                    file's own comment for the full reasoning), and the
+                    citation's own "(renewed)" marker doesn't need a
                     specific year either. */}
                 {inUSRenewalWindow(watch('copyrightYear')) && (
                   <div className="flex items-center gap-1.5 rounded-md border border-dashed border-border p-3">

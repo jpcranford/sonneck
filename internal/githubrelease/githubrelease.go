@@ -1,6 +1,5 @@
-// Package githubrelease backs Admin Settings' Version section (memory
-// project_multiuser_build.md's Phase 13 section) — a thin, read-only
-// client for GitHub's public releases + compare APIs, hardcoded to this
+// Package githubrelease backs Admin Settings' Version section — a thin,
+// read-only client for GitHub's public releases + compare APIs, hardcoded to this
 // project's own repo (never user-configurable — no deployment should ever
 // point its own update-check at a fork's release feed instead of
 // upstream's).

@@ -162,9 +162,9 @@ func TestSearchPieces_FiltersByMultipleKeyIds(t *testing.T) {
 // TestSearchPieces_FiltersByBookAndSortsByStartPageWithTieBreak covers the
 // Book Details page's pieces grid/list: sourceBookId scopes results to
 // just that book (a piece from elsewhere must never appear), sorted by
-// start page ascending rather than the default newest-first order — with
-// the design review's tie-break rule when two pieces share a start page
-// (e.g. a short reprise opening on the same page the piece before it is
+// start page ascending rather than the default newest-first order — with a
+// tie-break rule when two pieces share a start page (e.g. a short reprise
+// opening on the same page the piece before it is
 // still finishing): the 1-page one sorts first. The tie is forced by hand
 // via a PATCH (sourcePageStart is "purely cosmetic," design doc §3 — a
 // real, expected way for two pieces to end up sharing a start page, not a
@@ -458,9 +458,9 @@ func TestSearchPieces_QueryFallsBackToFuzzyForTypos(t *testing.T) {
 		{"nutkracker suite", nutcracker.ID}, // inserted letter, whole-phrase typo
 		{"tchaikovski", nutcracker.ID},      // composer typo
 		{"andantno", andantino.ID},          // title typo
-		// Regression case, reported directly: MaxDistance's old floor(5/4)=1
-		// threshold missed this (2 real edits: the diaeresis, "u" for "y") —
-		// fixed by switching to ceiling division (internal/fuzzy.go).
+		// Regression case: MaxDistance's old floor(5/4)=1 threshold missed
+		// this (2 real edits: the diaeresis, "u" for "y") — fixed by
+		// switching to ceiling division (internal/fuzzy.go).
 		{"boelu", boely.ID},
 	} {
 		rec := doJSON(t, h, http.MethodGet, "/api/pieces?query="+url.QueryEscape(tc.query), nil)
@@ -780,8 +780,8 @@ func TestSearchPieces_SortsByYearWrittenFallsBackToBookYearWritten(t *testing.T)
 }
 
 // TestSearchPieces_SortsByYearWrittenFallsBackToCopyrightYear covers the
-// extended fallback chain (direct follow-up request): a piece with no
-// yearWritten of its own but a copyrightYear on record sorts by THAT year —
+// extended fallback chain: a piece with no yearWritten of its own but a
+// copyrightYear on record sorts by THAT year —
 // distinctly from, and at a higher priority than, its book's yearPublished
 // (own_no_year below has no source book at all, so this specifically
 // isolates the copyright-year step rather than conflating it with the

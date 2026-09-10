@@ -13,10 +13,8 @@ import { WIDE_CONTENT_MAX_W } from '../lib/layout'
  * Shared toolbar for the Piece/Book/Person Library pages — search
  * (centered, capped at max-w-xl), a paired optional "+New X" button that
  * rides Search's own right edge, Filters+Sort right-aligned, view toggle
- * left-aligned. Full design history (every dead end, every direct
- * correction) is in memory `project_responsive_device_plan.md` — read
- * that before changing this component, since several things here look
- * like they could be simplified but aren't:
+ * left-aligned. Several things here look like they could be simplified
+ * but aren't:
  *
  * - The middle grid track is `1fr`, the two side tracks are rigid exact
  *   values (`auto` for the toggle, a directly-measured exact px for
@@ -55,9 +53,9 @@ import { WIDE_CONTENT_MAX_W } from '../lib/layout'
  *   track) — this is what makes the pair float centered as a unit once
  *   Search hits its cap, instead of packing flex-start with all the
  *   leftover space trailing after the New button.
- * - `newButton` is never icon-only, unlike Filters (direct instruction)
- *   — don't add a responsive icon-only variant for it later without
- *   checking that's still wanted.
+ * - `newButton` is never icon-only, unlike Filters — don't add a
+ *   responsive icon-only variant for it later without checking that's
+ *   still wanted.
  * - Breakpoints are `sm:`/`2xl:`, matching Piece's original proven design
  *   exactly — an `lg:`-based attempt to smooth out the real (but narrow)
  *   Search-width dip right at `md:768` (where the sidebar appears) was

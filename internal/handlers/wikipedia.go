@@ -44,7 +44,7 @@ func (s *Server) handleWikipediaSearch(w http.ResponseWriter, r *http.Request) {
 // by handleWikipediaSearch) to its lead image URL — Upload Portrait's own
 // "use this Wikipedia result as my portrait source" step. The frontend
 // loads the returned URL directly into a cross-origin-enabled <img> for
-// its own client-side crop/zoom canvas (confirmed live, 2026-08-31:
+// its own client-side crop/zoom canvas (confirmed live:
 // upload.wikimedia.org serves Access-Control-Allow-Origin: *, so no
 // server-side image proxy is needed here — this endpoint only resolves
 // *which* URL to use, it never fetches or re-serves the image bytes

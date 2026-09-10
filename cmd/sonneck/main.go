@@ -20,12 +20,11 @@ import (
 )
 
 // buildSHA/buildDate are overridden at build time via -ldflags
-// (Dockerfile's `go build` step, memory project_multiuser_build.md's Phase
-// 13 section) — a plain `go run`/`go build` invocation straight from the
-// repo (this project's own whole dev loop included) keeps these literal
-// defaults, which internal/handlers' version.go treats as a real sentinel
-// ("running from source," never attempts a GitHub check against them) —
-// see that file's own isDevBuild.
+// (Dockerfile's `go build` step) — a plain `go run`/`go build` invocation
+// straight from the repo keeps these literal defaults, which
+// internal/handlers' version.go treats as a real sentinel ("running from
+// source," never attempts a GitHub check against them) — see that file's
+// own isDevBuild.
 var (
 	buildSHA  = "dev"
 	buildDate = "unknown"
@@ -104,11 +103,7 @@ func main() {
 	// returns nothing for the *entire* existing library (not just the new
 	// column) the moment such a migration runs, until someone happens to
 	// know to run the `rebuild-search-index` CLI subcommand by hand.
-	// Confirmed happening for real, not just in theory — reproduced live
-	// against a real dev database that had just been upgraded past
-	// migration 00021: search for a query matching an existing piece's own
-	// title returned zero results, even though the piece was still fully
-	// present in the library. SearchIndexNeedsRebuild is a cheap two-COUNT
+	// SearchIndexNeedsRebuild is a cheap two-COUNT
 	// check (same "one query, run on every boot" cost as peoplemigrate.
 	// Pending), so a healthy library pays almost nothing here; only a
 	// genuinely out-of-sync index triggers the full rebuild. Best-effort/
@@ -133,7 +128,7 @@ func main() {
 	}
 	defer scheduler.Stop()
 
-	// OIDC discovery (Phase 14) — a real network call, so it's kept out of
+	// OIDC discovery is a real network call, so it's kept out of
 	// config.Load() (which stays pure parse-and-validate) and done here
 	// instead, once, at startup — fail fast, same posture as every other
 	// required-when-applicable config value, just one step later since this
@@ -186,8 +181,7 @@ func runSubcommand(name string, conn *sql.DB, cfg *config.Config, logger *slog.L
 		}
 		logger.Info("thumbnail regeneration completed", "count", count)
 	case "cleanup-thumbnails":
-		// Fourth instance of the CLI-subcommand admin pattern (CLAUDE.md >
-		// Search). Also safe against a live server, same reasoning as
+		// Also safe against a live server, same reasoning as
 		// regenerate-thumbnails above — cache-directory writes only, atomic
 		// renames throughout. Unlike regenerate-thumbnails' full wipe-and-
 		// rebuild-every-piece-thumbnail, this only touches entries that are
@@ -202,8 +196,7 @@ func runSubcommand(name string, conn *sql.DB, cfg *config.Config, logger *slog.L
 		}
 		logger.Info("thumbnail cleanup completed", "removed", result.Removed, "regenerated", result.Regenerated)
 	case "migrate-people":
-		// Fifth instance of the CLI-subcommand admin pattern (CLAUDE.md >
-		// Search). Safe against a live server (WAL mode) — reads/writes go
+		// Safe against a live server (WAL mode) — reads/writes go
 		// through the same repo layer every real request already uses, no
 		// raw connection tricks. Idempotent: safe to re-run. Kept as a
 		// manual subcommand even though this same backfill now also runs
@@ -220,8 +213,6 @@ func runSubcommand(name string, conn *sql.DB, cfg *config.Config, logger *slog.L
 			"piecesMigrated", result.PiecesMigrated, "piecesSkipped", result.PiecesSkipped,
 			"booksMigrated", result.BooksMigrated, "booksSkipped", result.BooksSkipped)
 	case "reset-password":
-		// Sixth instance of the CLI-subcommand admin pattern (CLAUDE.md >
-		// Search), locked in the master plan's own "Auth methods" section.
 		// Clears password_hash on the local admin row (id=1, the one
 		// account singlepass mode ever has) — a lockout recovery path for
 		// an operator who's forgotten it, reachable only via shell/docker
@@ -239,8 +230,7 @@ func runSubcommand(name string, conn *sql.DB, cfg *config.Config, logger *slog.L
 		}
 		logger.Info("password reset completed", "userId", 1)
 	case "link-oidc-account":
-		// Seventh instance of the CLI-subcommand admin pattern (CLAUDE.md >
-		// Search), master plan Phase 14. Manually links an existing users
+		// Manually links an existing users
 		// row to an OIDC subject — for cases the automatic first-login
 		// claim/auto-provision (repo.ClaimOrProvisionOIDCUser) doesn't
 		// cover: re-linking after a subject needs correcting, or
@@ -265,8 +255,7 @@ func runSubcommand(name string, conn *sql.DB, cfg *config.Config, logger *slog.L
 		}
 		logger.Info("oidc account linked", "userId", user.ID, "displayName", user.DisplayName)
 	case "export-csv":
-		// Third instance of the CLI-subcommand admin pattern (CLAUDE.md >
-		// Search). Also safe against a live server — WAL mode lets these
+		// Also safe against a live server — WAL mode lets these
 		// SELECTs run alongside real writes, and this only ever reads.
 		exportDir := filepath.Join(cfg.DataDir, "export")
 		path, err := export.RunCSV(context.Background(), conn, exportDir)

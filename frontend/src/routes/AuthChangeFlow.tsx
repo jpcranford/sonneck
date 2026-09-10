@@ -12,11 +12,11 @@ import { getAuthChangeCandidates, completeAuthChange } from '../api/authChange'
 import { ApiError } from '../api/client'
 import { afterMinDuration } from '../lib/minDuration'
 
-// Auth Change flow — multi-user support, master plan Phase 16. Real build
-// of the already-approved AuthChangeFlowMockup.tsx (see that file's own
-// header comment for the full design history) — a boot-time gate, the
-// exact same architectural shape FirstLaunchFlow.tsx already uses, reached
-// whenever App.tsx sees a non-null GET /api/config authChangePending.
+// Auth Change flow — matches AuthChangeFlowMockup.tsx (see that file's
+// own header comment for the full design rationale). A boot-time gate,
+// the exact same architectural shape FirstLaunchFlow.tsx already uses,
+// reached whenever App.tsx sees a non-null GET /api/config
+// authChangePending.
 //
 // The mockup's five fixture SCENARIOS are gone — pending (this component's
 // one real prop, straight from AppConfig) already carries everything
@@ -155,17 +155,22 @@ export function AuthChangeFlow({
   // The choose-admin step's own radio list is the admin-eligible subset —
   // only an admin can become none/singlepass mode's one implicit account.
   const admins = candidates.filter((u) => u.isAdmin)
-  // A genuinely single-account downgrade has exactly one candidate and no
-  // choose-admin step to have set keptAdminId from — resolve it directly
-  // rather than requiring an explicit selection for an account that was
-  // never actually a choice. Doesn't touch the multi-account case (more
-  // than one candidate) at all, which still relies on a real click.
-  const keptAdmin = candidates.length === 1 ? candidates[0] : (candidates.find((u) => u.id === keptAdminId) ?? null)
+  // A single existing account, or a multi-account downgrade with only one
+  // eligible admin, both have no real choice to make — resolve keptAdmin
+  // directly rather than requiring a click on a selection that was never
+  // actually optional. Only a genuine multi-admin case (more than one
+  // candidate in `admins`) still relies on a real click into keptAdminId.
+  const keptAdmin =
+    candidates.length === 1
+      ? candidates[0]
+      : admins.length === 1
+        ? admins[0]
+        : (candidates.find((u) => u.id === keptAdminId) ?? null)
   const usersToDelete = candidates.filter((u) => u.id !== keptAdmin?.id)
 
   const completeMutation = useMutation({
     mutationFn: () =>
-      completeAuthChange({ password: pending.needsPassword ? password : undefined, keepUserId: keptAdminId ?? undefined }),
+      completeAuthChange({ password: pending.needsPassword ? password : undefined, keepUserId: keptAdmin?.id ?? undefined }),
   })
 
   function goNext() {
@@ -180,7 +185,7 @@ export function AuthChangeFlow({
   // 'updating' can sit non-interactively between confirm-delete and 'done'.
   const actionableSteps = steps.filter((s) => s !== 'updating' && s !== 'done')
   const isFinalActionableStep = step === actionableSteps[actionableSteps.length - 1]
-  const chooseAdminCanContinue = step !== 'choose-admin' || keptAdminId !== null
+  const chooseAdminCanContinue = step !== 'choose-admin' || keptAdmin !== null
 
   // The 'done' step's own button is the one place ['config'] actually gets
   // invalidated — see this file's own header comment for why that's
@@ -285,35 +290,55 @@ export function AuthChangeFlow({
         {step === 'choose-admin' && (
           <>
             <BackLink onClick={goBack} />
-            <h1 className="font-display text-2xl font-medium text-ink">Multiple admins found</h1>
-            <p className="mt-1 text-sm text-ink-soft">
-              {toLabel} supports only one account, and only an existing admin can become it. Choose which account to
-              keep — every other account will be deleted next.
-            </p>
-            {candidatesQuery.isLoading ? (
-              <p className="mt-6 text-sm text-ink-soft">Loading accounts…</p>
+            {admins.length === 1 ? (
+              <>
+                <h1 className="font-display text-2xl font-medium text-ink">Only one admin found</h1>
+                <p className="mt-1 text-sm text-ink-soft">
+                  {toLabel} supports only one account, and only an existing admin can become it — every other
+                  account will be deleted next.
+                </p>
+                <div className="mt-6 flex items-center gap-3 rounded-lg border border-accent bg-accent-soft p-3.5">
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-paper-sunken text-ink-soft">
+                    <IconUserCircle size={16} />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-sm font-medium text-ink">{admins[0].displayName}</span>
+                  </span>
+                </div>
+              </>
             ) : (
-              <div className="mt-6 flex flex-col gap-3" role="radiogroup" aria-label="Choose the surviving admin account">
-                {admins.map((admin) => (
-                  <button
-                    key={admin.id}
-                    type="button"
-                    onClick={() => setKeptAdminId(admin.id)}
-                    role="radio"
-                    aria-checked={keptAdminId === admin.id}
-                    className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3.5 text-left ${
-                      keptAdminId === admin.id ? 'border-accent bg-accent-soft' : 'border-border bg-paper-raised hover:border-accent/50'
-                    }`}
-                  >
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-paper-sunken text-ink-soft">
-                      <IconUserCircle size={16} />
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block text-sm font-medium text-ink">{admin.displayName}</span>
-                    </span>
-                  </button>
-                ))}
-              </div>
+              <>
+                <h1 className="font-display text-2xl font-medium text-ink">Multiple admins found</h1>
+                <p className="mt-1 text-sm text-ink-soft">
+                  {toLabel} supports only one account, and only an existing admin can become it. Choose which
+                  account to keep — every other account will be deleted next.
+                </p>
+                {candidatesQuery.isLoading ? (
+                  <p className="mt-6 text-sm text-ink-soft">Loading accounts…</p>
+                ) : (
+                  <div className="mt-6 flex flex-col gap-3" role="radiogroup" aria-label="Choose the surviving admin account">
+                    {admins.map((admin) => (
+                      <button
+                        key={admin.id}
+                        type="button"
+                        onClick={() => setKeptAdminId(admin.id)}
+                        role="radio"
+                        aria-checked={keptAdminId === admin.id}
+                        className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3.5 text-left ${
+                          keptAdminId === admin.id ? 'border-accent bg-accent-soft' : 'border-border bg-paper-raised hover:border-accent/50'
+                        }`}
+                      >
+                        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-paper-sunken text-ink-soft">
+                          <IconUserCircle size={16} />
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block text-sm font-medium text-ink">{admin.displayName}</span>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
             <ReversibleNote fromLabel={fromLabel} isFinalStep={isFinalActionableStep} />
             <button

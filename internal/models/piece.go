@@ -11,8 +11,8 @@ type Piece struct {
 	Title string // never book-inheritable
 
 	// Favorite/UserNotes/PracticeStatus moved OFF Piece entirely in
-	// migration 00025 (multi-user support, Phase 10) — each is now genuinely
-	// per-user data (piece_favorites/piece_user_notes/piece_practice_status),
+	// migration 00025 (multi-user support) — each is now genuinely per-user
+	// data (piece_favorites/piece_user_notes/piece_practice_status),
 	// which a single bool/string field on this shared struct could never
 	// represent once more than one account can view the same piece. See
 	// repo.UserPieceData/GetUserPieceData/SetUserPieceData — fetched/written

@@ -74,12 +74,11 @@ func TestDownloadFilename(t *testing.T) {
 	}
 }
 
-// TestDownloadFilename_PreservesCommas is a real bug found live (2026-09-02):
-// unsafeFilenameChars used to exclude comma, so joinPersonNames' own
+// TestDownloadFilename_PreservesCommas is a real bug: unsafeFilenameChars
+// used to exclude comma, so joinPersonNames' own
 // Oxford-comma join of a multi-person composer credit ("Jimmy Page, John
 // Paul Jones, and John Bonham") came out of downloadFilename with every
-// comma replaced by "_" — confirmed against a real download's
-// Content-Disposition header before fixing it. Asserts the literal comma
+// comma replaced by "_". Asserts the literal comma
 // survives, not just a sanitized-vs-sanitized comparison (which wouldn't
 // have caught this — TestDownloadFilename's own "arranger used when
 // composer is blank" case has a comma in its title too, but compares
@@ -96,8 +95,8 @@ func TestDownloadFilename_PreservesCommas(t *testing.T) {
 	}
 }
 
-// TestSanitizeFilename_FoldsDiacritics is a real bug found live
-// (2026-09-05): unsafeFilenameChars only allows plain ASCII letters, so
+// TestSanitizeFilename_FoldsDiacritics is a real bug: unsafeFilenameChars
+// only allows plain ASCII letters, so
 // every accented character in a composer/title fell to its "_"
 // replacement instead of its closest ASCII equivalent —
 // "Frédéric Chopin.pdf" was downloading as "Fr_d_ric_Chopin.pdf". Covers

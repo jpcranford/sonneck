@@ -2,17 +2,16 @@ import { IconMinus, IconPlus, IconSlash, IconX } from '@tabler/icons-react'
 import type { PieceFacets } from '../api/pieces'
 import { dimensionState, setDimensionState, type PieceFilterState, type TriState } from '../lib/pieceFilterState'
 
-// Real build of PieceLibrarySample.tsx's own FilterDrawer (mockup approved
-// 2026-08-27, Option B of a 4-option comparison). Live-updating (every
-// change writes straight into filters, no separate draft state), per the
-// mockup's own iteration. PieceFilterState/EMPTY_PIECE_FILTERS/
+// Real build of PieceLibrarySample.tsx's own FilterDrawer (Option B of a
+// 4-option comparison). Live-updating (every change writes straight into
+// filters, no separate draft state), per the mockup's own iteration.
+// PieceFilterState/EMPTY_PIECE_FILTERS/
 // activePieceFilterCount live in lib/pieceFilterState.ts, not here
 // (react-refresh/only-export-components — CLAUDE.md > Frontend).
 //
-// Segmented exclude/neutral/include control per row (direct request,
-// 2026-09-05, ported from the mockup once approved there — see
+// Segmented exclude/neutral/include control per row — see
 // PieceLibrarySample.tsx's own TriStateControl comment for the full
-// reasoning) replaces the old plain checkbox.
+// reasoning — replaces the old plain checkbox.
 
 function FacetSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (

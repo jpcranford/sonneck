@@ -21,9 +21,8 @@ import (
 )
 
 // oxfordCommaAndPattern/bareAndPattern/ampersandPattern together implement
-// the locked migration-plan wording (memory
-// project_people_composer_overhaul.md): split on "any combination of
-// commas/'and'/ampersands (handling a trailing Oxford comma)". Order
+// this package's own split rule: split on any combination of
+// commas/'and'/ampersands (handling a trailing Oxford comma). Order
 // matters — the Oxford-comma pattern must run first, or a plain "and"
 // replacement would leave a stray empty segment between two commas
 // ("X, Y, and Z" → naively replacing " and " alone gives "X, Y, , Z").

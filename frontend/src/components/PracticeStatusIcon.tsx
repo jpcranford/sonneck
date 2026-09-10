@@ -22,9 +22,8 @@ import type { PracticeStatus } from '../api/types'
 // 00026) the way User Settings' own list does (GET /api/practice-statuses
 // returns it; GET /api/pieces doesn't carry a status's iconKey, only its
 // live name). A status renamed away from one of these five simply renders
-// with no icon here. Real crash found and fixed the same day this went
-// from a closed enum to a genuinely open set: PRACTICE_STATUS_ICONS used
-// to be typed Record<PracticeStatus, …> and index into it unconditionally,
+// with no icon here. Real crash fixed here: PRACTICE_STATUS_ICONS used to
+// be typed Record<PracticeStatus, …> and index into it unconditionally,
 // so any renamed status threw "Element type is invalid" the instant a
 // piece carrying it rendered anywhere — this now degrades to "no icon",
 // not a crash.

@@ -26,17 +26,11 @@ import { useMockupTitle } from '../lib/useMockupTitle'
 import type { Tag } from '../api/types'
 
 // ---------------------------------------------------------------------
-// DESIGN MOCKUP for the Person Details page (Phase 4 of the composer/
-// arranger overhaul — see the approved Phase 2 Artifact for the shape/
-// layout decisions this ports into a real, interactive route:
-// https://claude.ai/code/artifact/ba5e0a91-b177-4f79-b6f6-bf9d1de0bad8).
-// That artifact bundled three tab-switchable screens (Details, Upload
-// Portrait, Split People) — this mockup keeps the same scope, but as one
-// real page with two real modals off it (Upload Portrait via the avatar's
-// camera badge, Split People via its own toolbar button), matching how the
-// real app actually navigates rather than an artifact's own tab switcher.
-// Edit Person (name/bio/years/IMSLP autofill fields) is a stub here on
-// purpose — that's Phase 5's own mockup, not this one.
+// DESIGN MOCKUP for the Person Details page — one real page with two
+// real modals off it (Upload Portrait via the avatar's camera badge,
+// Split People via its own toolbar button). Edit Person (name/bio/years/
+// IMSLP autofill fields) is a stub here on purpose — that's
+// EditPersonModalMockup.tsx's own job, not this one.
 //
 // Not wired to the API — one fixture Person (Chopin, continuing the same
 // id/name/years/paletteIndex as PeopleLibrarySample.tsx's own fixture #3
@@ -45,12 +39,12 @@ import type { Tag } from '../api/types'
 // since these piece ids don't exist in any real database — same "cards
 // aren't real links yet" posture PeopleLibrarySample.tsx already
 // established for its own person cards. They do get the same right-click/
-// long-press context menu the real page's works list has (added
-// 2026-08-31, mockup-parity — see workContextMenuItems below): the
-// favorite toggle is genuinely interactive against local state, same as
-// the avatar's own hasPortrait toggle; Edit/Delete Piece use the same
-// lastAction stub-message convention as Edit Person, since there's
-// nothing real to open/delete here either.
+// long-press context menu the real page's works list has (see
+// workContextMenuItems below): the favorite toggle is genuinely
+// interactive against local state, same as the avatar's own hasPortrait
+// toggle; Edit/Delete Piece use the same lastAction stub-message
+// convention as Edit Person, since there's nothing real to open/delete
+// here either.
 // ---------------------------------------------------------------------
 
 interface MockWork {
@@ -69,9 +63,9 @@ interface MockWork {
   // directly here instead as the simplest faithful stand-in. See
   // yearWrittenLabel below for how the distinction reaches the screen: a
   // genuinely book-inherited year gets "{year} (pub.)"; a piece's own
-  // Copyright Year borrowed for this field does not (direct request,
-  // 2026-09-06 — real bug found live, a copyright-year-sourced year had
-  // been mislabeled identically to a book-inherited one).
+  // Copyright Year borrowed for this field does not, since that value
+  // isn't actually "published" anything — it's the piece's own data,
+  // just borrowed onto this field.
   yearWritten: { value: string; inherited: boolean; source?: 'book' | 'copyrightYear' } | null
   role: 'Composer' | 'Arranger'
   // The work's own full composer/arranger credit (not just this person's
@@ -165,9 +159,9 @@ const MOCK_WORKS: MockWork[] = [
     id: 106,
     title: 'Military Polonaise',
     opus: 'Op. 40 No. 1',
-    // Deliberately shares 1836 with work 107 below (was 1838) — the two
-    // now collide on year, so the new opus-number tiebreaker (2026-09-03)
-    // is actually exercised: this work's "Op. 40 No. 1" (opusSortKey 40)
+    // Deliberately shares 1836 with work 107 below — the two now collide
+    // on year, so the opus-number tiebreaker is actually exercised: this
+    // work's "Op. 40 No. 1" (opusSortKey 40)
     // must sort ahead of 107's opus-less null (sorts last), not fall back
     // to a coincidentally-correct title comparison.
     yearWritten: { value: '1836', inherited: false },
@@ -205,8 +199,8 @@ const MOCK_WORKS: MockWork[] = [
     sheetType: { id: 1, name: 'Solo Piano' },
     userTags: [],
   },
-  // Demonstrates the inherited-year "(pub.)" case (direct request,
-  // 2026-09-03) — this piece has no Year Written of its own, so its
+  // Demonstrates the inherited-year "(pub.)" case — this piece has no
+  // Year Written of its own, so its
   // effective year comes from its book's Year Published field instead.
   // Shown as "1833 (pub.)" rather than a bare year, so it reads as "this
   // is when the book came out," not "this is when the piece was written"
@@ -227,8 +221,8 @@ const MOCK_WORKS: MockWork[] = [
     sheetType: { id: 1, name: 'Solo Piano' },
     userTags: [],
   },
-  // Demonstrates the *other* inherited-year case, added alongside the
-  // real bug fix (2026-09-06): this piece has its own Copyright Year set
+  // Demonstrates the *other* inherited-year case: this piece has its own
+  // Copyright Year set
   // but no Year Written of its own, so resolveYearWritten's middle
   // fallback tier kicks in — inherited, same as the book-inherited case
   // above, but from a completely different field. Shown as a bare "1836"
@@ -253,13 +247,13 @@ const MOCK_WORKS: MockWork[] = [
 // Chronological, not grouped by role — sortWorks (defined below; function
 // declarations hoist, so this module-level use ahead of its own textual
 // definition is fine) mixes Composer and Arranger credits into one flat
-// list, per direct instruction not to sort arranger credits separately.
+// list — arranger credits aren't sorted separately.
 const SORTED_WORKS = sortWorks(MOCK_WORKS)
 
 // Direct book-level credits (Book.composer/arranger naming this person
-// specifically, not just a piece inheriting it) — locked as a small chip
-// strip above the works list, not a second section, per the Phase 2
-// artifact's own "Works section lists pieces only" decision.
+// specifically, not just a piece inheriting it) — shown as a small chip
+// strip above the works list, not a second section, matching the "Works
+// section lists pieces only" decision.
 interface MockBookCredit {
   id: number
   title: string
@@ -300,7 +294,7 @@ function formatLifespan(birthYear: number | null, deathYear: number | null): str
   return null
 }
 
-// Migration plan's own join convention (CLAUDE.md / project memory): 2 →
+// Standard Oxford-comma join convention: 2 →
 // "X and Y"; 3 → "X, Y, and Z"; 4+ → "X, Y, Z, and Last". Reused here for
 // Split People's own preview line, since it's the same multi-person
 // display format the real composer/arranger fields will need once built.
@@ -312,8 +306,7 @@ function joinNames(names: string[]): string {
 }
 
 // Parenthetical, matching Book Details' own title+opus convention
-// (BookDetailsPage.tsx: `{book.bookTitle}{book.workOpusNumber ? \` (${book.workOpusNumber})\` : ''}`)
-// — not the comma-joined form this used before (direct correction).
+// (BookDetailsPage.tsx: `{book.bookTitle}{book.workOpusNumber ? \` (${book.workOpusNumber})\` : ''}`).
 function workTitle(work: MockWork): string {
   return work.opus ? `${work.title} (${work.opus})` : work.title
 }
@@ -327,7 +320,7 @@ function pagesLabel(work: MockWork): string {
 // own list view uses (BookDetailsPage.tsx's pieceMetaLine, ported
 // verbatim: composer/arranger comma-fused, composer-or-arranger fallback
 // when only one is set), with this work's own book credit appended at the
-// end (direct instruction). A bookless work simply drops that last
+// end. A bookless work simply drops that last
 // segment — `filter(Boolean).join(' • ')` already omits it cleanly, same
 // "hide missing metadata" rule as everywhere else, no separate bookTitle
 // conditional needed anymore.
@@ -345,13 +338,11 @@ function workMetaLine(work: MockWork): string {
 
 // Display label for a work's year: bare value when it's the piece's own
 // Year Written, "{year} (pub.)" only when it's inherited from the book's
-// Year Published (direct request, 2026-09-03; format changed same day
-// from a leading "pub. {year}" to this trailing form per direct
-// follow-up) — the suffix is a rendering-only concern layered on top of
-// the same underlying value/inherited pair workYearSortKey reads below,
-// so the two never disagree about what year a work actually sorts under.
-// Real bug found live (2026-09-06) and fixed alongside the real page
-// (PersonDetailsPage.tsx): `inherited` alone can't say *which* fallback
+// Year Published — the suffix is a rendering-only concern layered on top
+// of the same underlying value/inherited pair workYearSortKey reads
+// below, so the two never disagree about what year a work actually
+// sorts under. Fixed alongside the real page (PersonDetailsPage.tsx):
+// `inherited` alone can't say *which* fallback
 // tier produced the value — a piece with its own Copyright Year set but
 // no Year Written also gets `inherited: true` here (resolveYearWritten's
 // own deliberate simplification, reusing one flag rather than adding a
@@ -364,7 +355,7 @@ function yearWrittenLabel(yearWritten: MockWork['yearWritten']): string {
 }
 
 // Sort key for "sort by year written, arranger credits mixed in with
-// everything else" (direct instruction) — no separate grouping by role,
+// everything else" — no separate grouping by role,
 // just one flat chronological list. yearWritten.value can be a range
 // ("1830–1832"), so this sorts on the first number found rather than
 // requiring a clean single year; a work with no year at all sorts last
@@ -387,8 +378,7 @@ function workYearSortKey(work: MockWork): number {
 // alphabetical title tiebreak instead of piece-number order (see
 // PersonDetailsPage.tsx's own compareOpus for the full writeup — ported
 // here for mockup-parity). `localeCompare`'s built-in `numeric: true` mode
-// handles this in one line. A work with no opus at all sorts last (direct
-// request, 2026-09-03).
+// handles this in one line. A work with no opus at all sorts last.
 function compareOpus(a: string | null, b: string | null): number {
   if (!a && !b) return 0
   if (!a) return 1
@@ -402,8 +392,8 @@ function titleSortKey(title: string): string {
   return title.replace(/^(a|an|the)\s+/i, '').toLowerCase()
 }
 // Year written first, then opus number, then title A→Z as the final
-// tiebreaker (direct request, 2026-09-03 — opus inserted as the new middle
-// key between the existing year-then-title chain from 2026-09-01).
+// tiebreaker (opus inserted as a middle key between the year-then-title
+// chain).
 function sortWorks(works: MockWork[]): MockWork[] {
   return [...works].sort((a, b) => {
     const yearDiff = workYearSortKey(a) - workYearSortKey(b)
@@ -417,8 +407,8 @@ function sortWorks(works: MockWork[]): MockWork[] {
 // Only the Arranger role gets called out — Composer is the expected/
 // default credit on a composer's own Details page, so "as Composer" on
 // every single row read as noise; only the exception (an arranger credit)
-// is worth a badge (direct instruction: "only arrangers should be set
-// apart"). Capitalized role noun, not just the whole phrase.
+// is worth a badge — "only arrangers should be set apart." Capitalized
+// role noun, not just the whole phrase.
 function RoleBadge({ role }: { role: 'Composer' | 'Arranger' }) {
   if (role !== 'Arranger') return null
   return (
@@ -426,7 +416,7 @@ function RoleBadge({ role }: { role: 'Composer' | 'Arranger' }) {
     // as a child of the work title's own <p>, which sets font-display
     // (Libre Baskerville) for the title text; without an explicit
     // override here the badge silently inherited that serif instead of
-    // the app's default sans, found via direct report.
+    // the app's default sans.
     <span className="shrink-0 rounded-full bg-paper-sunken px-2 py-0.5 font-sans text-[0.65rem] font-medium text-ink-soft">
       as Arranger
     </span>
@@ -495,10 +485,9 @@ function PersonAvatar({
 
 // ---------------------------------------------------------------------
 // Works list — grid mirrors BookDetailsPage.tsx's own PieceGrid; list
-// mirrors its PieceList near-exactly, per the Phase 2 artifact's locked
-// decision ("List view rebuilt to directly mirror BookDetailsPage.tsx's
-// real PieceList"). The one structural difference: this page's own left
-// column is Year Written, not a page range (a Person has no page
+// mirrors its PieceList near-exactly. The one structural difference:
+// this page's own left column is Year Written, not a page range (a
+// Person has no page
 // provenance of their own), and the meta line under the title is
 // book-only now that year has its own column — composer/arranger doesn't
 // belong in that meta line either, since we're already looking at exactly
@@ -649,9 +638,9 @@ function WorkList({
 
 // ---------------------------------------------------------------------
 // Upload Portrait — device upload OR Wikipedia search, then a real
-// drag-to-pan + zoom-slider adjust step against the oval frame (Phase 2
-// artifact's own three-screen scope, folded into one modal here since
-// this is a real page flow, not a tab-switched artifact).
+// drag-to-pan + zoom-slider adjust step against the oval frame, folded
+// into one modal since this is a real page flow, not a tab-switched
+// artifact.
 // ---------------------------------------------------------------------
 
 interface WikiResult {
@@ -661,17 +650,16 @@ interface WikiResult {
   relevant: boolean
 }
 
-// Deliberately includes irrelevant noise (a crater, an airport) — locked
-// in the Phase 2 artifact review specifically to demonstrate why a human
-// still has to pick the right result, not just take the first hit.
+// Deliberately includes irrelevant noise (a crater, an airport) to
+// demonstrate why a human still has to pick the right result, not just
+// take the first hit.
 const WIKI_RESULTS: WikiResult[] = [
   {
     title: 'Frédéric Chopin',
     // Two real sentences, matching the real backend's own exsentences=2
-    // (changed 2026-09-01, "just one often isn't enough") and this file's
-    // line-clamp-2 treatment right below — long enough to actually wrap
-    // to a real second line, not just a CSS change with nothing here
-    // long enough to show it.
+    // and this file's line-clamp-2 treatment right below — long enough
+    // to actually wrap to a real second line, not just a CSS change with
+    // nothing here long enough to show it.
     description:
       'Polish composer and virtuoso pianist (1810–1849). Widely regarded as one of the greatest composers for the piano, celebrated for his mazurkas, nocturnes, and études.',
     thumbColor: '#5c8a8a',
@@ -851,9 +839,8 @@ function UploadPortraitModal({
                         {result.title}
                       </span>
                       {/* line-clamp-2, not truncate — mockup-parity with
-                          the real Upload Portrait/Edit Person's own fix
-                          (2026-09-01, "just one [line] often isn't
-                          enough"). */}
+                          the real Upload Portrait/Edit Person's own fix;
+                          a single line often isn't enough. */}
                       <span className="line-clamp-2 text-xs text-ink-soft">{result.description}</span>
                     </span>
                     {!result.relevant && (
@@ -908,8 +895,7 @@ function UploadPortraitModal({
 // ---------------------------------------------------------------------
 // Split People — reuses the real, shared TagComboBox (pillStyle="paper",
 // multiple) as its ordered replacement-picker: the exact suggest-existing-
-// or-create-new widget the real composer/arranger fields will use once
-// built (Phase 6), per the Phase 2 artifact's own locked decision.
+// or-create-new widget the real composer/arranger fields use.
 // ---------------------------------------------------------------------
 
 function SplitPeopleModal({
@@ -1035,15 +1021,15 @@ export function PersonDetailsSample() {
   }
 
   function handleEditPerson() {
-    setLastAction('Mock action: this opens the Edit Person modal, not built until Phase 5.')
+    setLastAction('Mock action: this opens the Edit Person modal — see EditPersonModalMockup.tsx / the real EditPersonModal.tsx.')
   }
 
   // Keyboard shortcut: E opens the edit menu — mirrors the real
-  // PersonDetailsPage.tsx (added 2026-08-31, mockup-parity), which itself
-  // matches PiecePage.tsx's/BookDetailsPage.tsx's own E shortcut. Calls
-  // the exact same handler the "Edit Person" button does above (the same
-  // Phase-5-stub message, not a real modal — this mockup doesn't have
-  // one). Skipped while Upload Portrait or Split People is open (both are
+  // PersonDetailsPage.tsx, which itself matches PiecePage.tsx's/
+  // BookDetailsPage.tsx's own E shortcut. Calls the exact same handler
+  // the "Edit Person" button does above (the same stub message, not a
+  // real modal — this mockup doesn't have one). Skipped while Upload
+  // Portrait or Split People is open (both are
   // real, interactive modals here with their own text fields) or while
   // focus is in any text-entry element, so typing "e" elsewhere is never
   // intercepted. `repeat` guards against a held-down key re-firing the
@@ -1101,7 +1087,7 @@ export function PersonDetailsSample() {
           </button>
           <button
             type="button"
-            title="Coming in Phase 5 — Edit Person modal"
+            title="Opens the Edit Person modal (stub in this mockup)"
             onClick={handleEditPerson}
             className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-sm whitespace-nowrap text-ink hover:border-accent max-[360px]:w-[38px] max-[360px]:px-0"
           >
@@ -1117,8 +1103,8 @@ export function PersonDetailsSample() {
           portrait (right-click the avatar, or its camera badge), Upload Portrait's device/Wikipedia +
           drag-to-pan/zoom adjust step, Split People's ordered replacement picker, the works grid/list
           toggle, and right-click/long-press on a work (favorite toggle is real; Edit/Delete Piece are
-          stubs) are all genuinely interactive against one fixture person. Edit Person is a stub —
-          that's Phase 5 — but its "E" keyboard shortcut (matching the real page) still fires the same
+          stubs) are all genuinely interactive against one fixture person. Edit Person is a stub in
+          this mockup, but its "E" keyboard shortcut (matching the real page) still fires the same
           stub message.
         </div>
       </div>
@@ -1139,14 +1125,13 @@ export function PersonDetailsSample() {
 
       <div className="overflow-hidden rounded-2xl border border-border bg-paper-raised shadow-sm">
         {/* Stacked below lg:, side-by-side above it — mockup-parity port of
-            the real PersonDetailsPage.tsx's own fix (project_responsive_
-            device_plan, Phase 4): at phone width the name/credit-chip
-            column had nowhere near enough room beside the fixed 150px
-            avatar. */}
+            the real PersonDetailsPage.tsx's own fix: at phone width the
+            name/credit-chip column had nowhere near enough room beside
+            the fixed 150px avatar. */}
         <div className="flex flex-col gap-6 p-7 lg:flex-row lg:items-start">
           {/* Camera badge is the only visible edit trigger on the portrait
-              itself (locked in the Phase 2 artifact review) — no separate
-              always-visible toolbar button for it, mirroring Book Details'
+              itself — no separate always-visible toolbar button for it,
+              mirroring Book Details'
               own "no redundant triggers" cover treatment. Right-click/
               long-press still works too, same ContextMenu component Book
               Details uses for its own cover image. */}

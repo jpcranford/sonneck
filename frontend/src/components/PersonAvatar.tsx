@@ -2,7 +2,7 @@ import { getPersonPortraitUrl } from '../api/people'
 import type { Person } from '../api/types'
 import { PALETTE } from '../lib/pieceSplitLogic'
 
-// Extracted from PersonDetailsPage.tsx (2026-09-02) once EditPersonModal.tsx
+// Extracted from PersonDetailsPage.tsx once EditPersonModal.tsx
 // needed the exact same oval-portrait treatment for its own new left
 // column — two *real* pages/components sharing one real widget is this
 // codebase's normal pattern (TagPills, PageCycleControl, SortControl),

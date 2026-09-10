@@ -14,11 +14,10 @@ import (
 // deliberately, not shared code, since one is Go and one is TypeScript.
 const minSinglepassPasswordLength = 8
 
-// handleCompleteSetup persists the first-time launch flow's Security step
-// (memory project_multiuser_build.md, Phase 3) — auth_method plus a hashed
-// password for singlepass. This is the one real backend slice that flow
-// needs; actual login-wall enforcement (sessions, requirePermission on
-// every other endpoint) is a later "Backend changes" phase, not this one.
+// handleCompleteSetup persists the first-time launch flow's Security step —
+// auth_method plus a hashed password for singlepass. This is the one real
+// backend slice that flow needs; actual login-wall enforcement (sessions,
+// requirePermission on every other endpoint) is handled elsewhere, not here.
 //
 // Only runs once per install: rejects if first-launch has already
 // completed, so this can't double as an open, unauthenticated way to reset
@@ -61,8 +60,8 @@ func (s *Server) handleCompleteSetup(w http.ResponseWriter, r *http.Request) {
 	case "none", "oidc":
 		// passwordHash stays nil — "oidc" only reaches here via the env-var
 		// override above (the picker UI this endpoint serves never offers
-		// it as a selectable option — memory project_multiuser_build.md:
-		// OIDC is env-var-only, never settable through this flow).
+		// it as a selectable option — OIDC is env-var-only, never settable
+		// through this flow).
 	case "singlepass":
 		if req.Password == nil || len(*req.Password) < minSinglepassPasswordLength {
 			api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "password must be at least 8 characters")

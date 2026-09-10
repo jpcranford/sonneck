@@ -2,12 +2,12 @@
 // see lib/navItems.ts for the established precedent, CLAUDE.md > Frontend's
 // "React lint gotchas" note).
 
-// Three-way segmented control (direct request, 2026-09-05, real build of
-// BooksLibrarySample.tsx's own approved mockup — see pieceFilterState.ts's
-// own TriState comment for the full reasoning, unchanged here). Ids are
-// stored as string keys purely so both dimensions can share the same
-// dimensionState/setDimensionState helpers every other filter drawer uses;
-// convert back with Number(k) wherever a real numeric id is needed.
+// Three-way segmented control matching BooksLibrarySample.tsx's mockup —
+// see pieceFilterState.ts's own TriState comment for the full reasoning,
+// unchanged here. Ids are stored as string keys purely so both dimensions
+// can share the same dimensionState/setDimensionState helpers every other
+// filter drawer uses; convert back with Number(k) wherever a real numeric
+// id is needed.
 export type TriState = 'exclude' | 'neutral' | 'include'
 
 export interface BookFilterState {

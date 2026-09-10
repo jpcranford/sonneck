@@ -24,8 +24,7 @@
 // because at the tier-matched value it read as near-identical to a color
 // it replaced, terracotta because at the tier-matched value it measured
 // the lowest contrast of any palette color against the app's own paper
-// background. Full derivation (hue math, rejected intermediates, both
-// tier-exception bugs) saved in memory, project_split_palette_expansion.
+// background.
 export const PALETTE = [
   '#7a9c6b',
   '#b87aaf',
@@ -65,9 +64,8 @@ export interface PageAssignments {
   // that predate this field (tests, the real wizard/step, which don't
   // expose this state in their UI yet) don't need updating.
   single?: Set<number>
-  // "Finish previous and split twice" (added 2026-08-30, mockup-only so
-  // far — not yet exposed in BookUploadSplitStep.tsx's own menu). The
-  // natural extension of `shared` and `single` combined: this page both
+  // "Finish previous and split twice" — the natural extension of `shared`
+  // and `single` combined: this page both
   // finishes whatever piece was running before it (`shared`'s own
   // behavior) *and* begins its own immediately-closed one-page piece
   // before that (`single`'s own bridge behavior), before finally

@@ -80,8 +80,8 @@ const sampleBook = {
   isbn: '9783795345352' as string | null,
   // Long enough (matches a real IMSLP-sourced scan's own naming
   // convention) to exercise the truncate-with-ellipsis/tap-to-expand
-  // behavior (project_responsive_device_plan, Phase 4 follow-up) — the
-  // short version this fixture used before never demonstrated it.
+  // behavior — the short version this fixture used before never
+  // demonstrated it.
   originalFilename: 'IMSLP04154-Schumann_Album_fuer_die_Jugend_Op_68.pdf',
   importedAt: 'Aug 12, 2026',
 }
@@ -338,13 +338,12 @@ function SheetThumb() {
 // avoiding. Needs the equivalent gate added when this ports over (step 6).
 //
 // The three neutral (keys/sheetType/instruments) pills carry a real
-// `bg-paper`, not just a border on transparent — ported from the same fix
-// on the real, shared `TagPills.tsx` (2026-08-30): a transparent pill let
-// this row's own `hover:bg-accent-soft` show straight through, reading as
-// if the pill "turned green" on hover. `bg-paper`, not `bg-paper-sunken`
-// (tried first, corrected via direct feedback) — keeps the pill quiet
-// against the page's own resting background rather than a visibly
-// distinct chip.
+// `bg-paper`, not just a border on transparent — matches the same fix on
+// the real, shared `TagPills.tsx`: a transparent pill let this row's own
+// `hover:bg-accent-soft` show straight through, reading as if the pill
+// "turned green" on hover. `bg-paper`, not `bg-paper-sunken` — keeps the
+// pill quiet against the page's own resting background rather than a
+// visibly distinct chip.
 function PiecePills({ piece }: { piece: SamplePiece }) {
   if (
     !piece.keys.length &&
@@ -451,11 +450,11 @@ function PieceGrid({ pieces }: { pieces: SamplePiece[] }) {
 const THUMB_HIDE_CLASS = 'max-[501px]:hidden'
 const ROW_COLLAPSE_CLASS = 'max-[501px]:grid-cols-[96px_1fr]'
 
-// Title includes each piece's own opus number in parentheses (added
-// 2026-08-30, direct instruction, ported from the same fix on Person
-// Details) — matches the header's own bookTitle+workOpusNumber
-// convention above. PieceGrid (this file's grid-view companion) keeps its
-// own title-only treatment, per the same instruction ("list view" only).
+// Title includes each piece's own opus number in parentheses, matching
+// the header's own bookTitle+workOpusNumber convention above — same
+// treatment as the real fix on Person Details. PieceGrid (this file's
+// grid-view companion) keeps its own title-only treatment ("list view"
+// only).
 function PieceList({ pieces }: { pieces: SamplePiece[] }) {
   return (
     <div className="flex flex-col">
@@ -505,8 +504,8 @@ function PieceList({ pieces }: { pieces: SamplePiece[] }) {
 // Tap/click expands to the full value, which *can* wrap across multiple
 // lines (that "never two lines" rule is specifically about the collapsed
 // state). Mockup-parity port of BookDetailsPage.tsx's own identical
-// component (project_responsive_device_plan, Phase 4 follow-up) — see that
-// file's own comment for the full reasoning, including why the button
+// component — see that file's own comment for the full reasoning,
+// including why the button
 // needs block+w-full rather than relying on its default inline-block
 // shrink-to-fit sizing (padding alone fed back into that sizing and made
 // the button overflow rather than leaving breathing room).
@@ -632,7 +631,7 @@ export function BookDetailsSample() {
   const [customCoverUrl, setCustomCoverUrl] = useState<string | null>(null)
   const coverFileInputRef = useRef<HTMLInputElement>(null)
 
-  // Ported from BookDetailsPage.tsx's own fix (2026-08-27): the cover box
+  // Ported from BookDetailsPage.tsx's own fix: the cover box
   // no longer force-crops into aspect-[2/3]. customCoverUrl is a real
   // uploaded image (via URL.createObjectURL below), so it gets the same
   // onLoad/loading-placeholder treatment as the real page. SheetThumb (the
@@ -817,10 +816,9 @@ export function BookDetailsSample() {
       <div>
         <div className="overflow-hidden rounded-2xl border border-border bg-paper-raised shadow-sm">
           {/* Stacked below lg:, side-by-side above it — mockup-parity port
-              of the real BookDetailsPage.tsx's own fix (project_responsive_
-              device_plan, Phase 4): this row never collapsed at any width,
-              overflowing the filename past the card at phone/iPad-portrait
-              widths. */}
+              of the real BookDetailsPage.tsx's own fix: this row never
+              collapsed at any width, overflowing the filename past the
+              card at phone/iPad-portrait widths. */}
           <div className="flex flex-col gap-6 p-7 lg:flex-row lg:items-start">
             {/* Custom cover upload, combining trigger "D" (header toolbar
                 button, below) with trigger "E" (this context menu).

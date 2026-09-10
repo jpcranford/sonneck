@@ -22,28 +22,24 @@ import { WIDE_CONTENT_MAX_W } from '../lib/layout'
 
 // ---------------------------------------------------------------------
 // DESIGN MOCKUP — Piece Library sort/filter (Option B, "Filter Drawer",
-// picked 2026-08-27 from a 4-option comparison artifact — see that
-// artifact for the other three and why this one won: it's the option
-// that ages best once more facets show up later, e.g. a future custom-
-// fields feature, design doc §13, without ever crowding the toolbar).
+// picked from a 4-option comparison — the option that ages best once
+// more facets show up later, e.g. a future custom-fields feature, design
+// doc §13, without ever crowding the toolbar).
 // Not wired to the API — the piece list below is a fixed local fixture,
 // and cards aren't real links (same convention as BooksLibrarySample.tsx).
 //
-// The Piece Library's real toolbar today (PieceBrowseView.tsx) is just
-// Search + grid/list toggle — no sort or filter UI exists yet at all,
-// even though the backend already accepts keyId/instrumentId/
-// sheetTypeId/userTagId/favorite/practiceStatus as search params. This
-// mockup is that real toolbar plus the new Filters button + drawer + Sort
-// control, so the diff against the real page is exactly the new
-// functionality, not a reimagined toolbar.
+// The real Piece Library toolbar (components/PieceBrowseView.tsx) has
+// since been built out to match this mockup's own Filters button + drawer
+// + Sort control, via the shared LibraryToolbar/PieceFilterDrawer/
+// SortControl components — kept as a standing design reference now that
+// the real page mirrors it.
 //
-// Facet counts are live/faceted (changed 2026-08-31, matching a real
-// backend switch — internal/handlers/facets.go), not the whole-library
-// static counts this mockup originally shipped with: matchesFiltersExcept
-// below is the mockup's own client-side port of the real backend's
-// combineClauses "every OTHER active filter, never your own selection"
-// rule, kept behaviorally in sync per this app's standing mockup-parity
-// convention even though this fixture has no real backend to call.
+// Facet counts are live/faceted, matching the real backend
+// (internal/handlers/facets.go): matchesFiltersExcept below is the
+// mockup's own client-side port of the real backend's combineClauses
+// "every OTHER active filter, never your own selection" rule, kept
+// behaviorally in sync per this app's standing mockup-parity convention
+// even though this fixture has no real backend to call.
 // ---------------------------------------------------------------------
 
 interface MockPiece {
@@ -125,8 +121,8 @@ const SHEET_TYPE_OPTIONS = distinct('sheetType')
 const USER_TAG_OPTIONS = distinct('userTags')
 const STATUS_OPTIONS: MockPiece['practiceStatus'][] = ['Want to Learn', 'Learning', 'Learned', 'Stalled']
 
-// Live/faceted (changed 2026-08-31, matching the real backend's own
-// switch — internal/handlers/facets.go): a facet's own displayed count
+// Live/faceted, matching the real backend's own switch —
+// internal/handlers/facets.go: a facet's own displayed count
 // reflects every OTHER currently active filter plus the search box, but
 // never self-narrows against its own selection — the standard multi-
 // select faceted-search rule. `exclude` names the FilterState key this
@@ -210,7 +206,7 @@ function PieceThumb({ seed }: { seed: number }) {
   )
 }
 
-// Three-way segmented control (direct request, 2026-09-05) — replaces the
+// Three-way segmented control — replaces the
 // old plain checkbox (include-or-not) on every facet row with a real
 // exclude/neutral/include choice, so "any key but D Major" or "must not be
 // a Favorite" is expressible, not just "must be." 'neutral' is the
@@ -271,8 +267,8 @@ function activeFilterCount(f: FilterState): number {
   )
 }
 
-// Field and direction as two separate controls (chosen 2026-08-27 from a
-// 4-option comparison — this one over two adjacent dropdowns or one
+// Field and direction as two separate controls (chosen from a 4-option
+// comparison — this one over two adjacent dropdowns or one
 // combined "Title A–Z"/"Title Z–A" list: most compact, and a single
 // icon toggle for a binary choice fits this app's device-aware "buttons
 // over menus" convention better than a second dropdown would).
@@ -296,14 +292,14 @@ const DIRECTION_LABEL: Record<SortField, Record<SortDirection, string>> = {
   'Year Written': { asc: 'Earliest first', desc: 'Latest first' },
 }
 
-// One fused, segmented button (changed 2026-08-27) — same shared-pill
+// One fused, segmented button — same shared-pill
 // structure as Piece Details' own Download PDF split button
 // (PiecePage.tsx: a div.flex.overflow-hidden.rounded-md wrapping two
 // segments joined by a border-l divider, with the dropdown panel
 // positioned off a separate outer `relative` wrapper so overflow-hidden
 // on the inner pill can't clip it — see that file's own comment on why
 // the positioning context has to live one level up). Roles are the
-// reverse of Download PDF's, per direct instruction: there, the text
+// reverse of Download PDF's: there, the text
 // segment is the primary action (a real download link) and the icon
 // segment opens a menu of alternatives. Here, the text segment (the
 // field name) is what opens the menu — field is the choice with more
@@ -459,7 +455,7 @@ function FilterDrawer({
         </p>
 
         <div className="flex-1 overflow-y-auto px-4 py-2">
-          {/* Moved to the top (2026-08-27) — these two are whole-library
+          {/* Moved to the top — these two are whole-library
               toggles, not a facet you narrow down within, so they read
               better as the first thing you see rather than buried after
               five scrollable option lists. Rendered as FacetRows (with
@@ -549,7 +545,7 @@ function FilterDrawer({
           </FacetSection>
         </div>
 
-        {/* Just Clear now (2026-08-27) — live update means there's no
+        {/* Just Clear now — live update means there's no
             "commit" step left for an Apply/Show-results button to do;
             results already reflect every checkbox the instant it's
             clicked. Clear stays because it's still a real time-saver over
@@ -800,9 +796,7 @@ export function PieceLibrarySample() {
   const [sortField, setSortField] = useState<SortField>('Date Added')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
   const [drawerOpen, setDrawerOpen] = useState(false)
-  // Live update (changed 2026-08-27, was draft-then-"Show results" —
-  // see the Filter Studies comparison artifact's own Option B writeup for
-  // the original reasoning). Every checkbox writes straight to
+  // Live update, not draft-then-"Show results". Every checkbox writes straight to
   // appliedFilters, no separate draft state — results, the pill row, and
   // the Filters badge count all update the instant a box is checked,
   // matching the app's existing "no Apply button" search-as-you-type
@@ -873,7 +867,7 @@ export function PieceLibrarySample() {
         </div>
       </div>
 
-      {/* z-20, matching the real PieceBrowseView.tsx fix (2026-08-28) — the
+      {/* z-20, matching the real PieceBrowseView.tsx fix — the
           grid's practice-status badge is z-10 with no positioned ancestor
           of its own, so it ties with (and DOM-order-wins over) a z-10
           toolbar during scroll. */}
@@ -900,21 +894,20 @@ export function PieceLibrarySample() {
             Filters+Sort its own `minmax(Npx,1fr)` too, which let it claim
             leftover space independently of the toggle's own `1fr` share
             rather than the two splitting it evenly, silently drifting
-            Filters rightward as the viewport widened (confirmed via
-            direct measurement: the gap before Filters grew from 22px to
-            367px while the gap after the toggle stayed a flat 12px the
-            whole time — a real bug, not intended). The two fixed floor
+            Filters rightward as the viewport widened (measured directly:
+            the gap before Filters grew from 22px to 367px while the gap
+            after the toggle stayed a flat 12px the whole time — a real
+            bug, not intended). The two fixed floor
             values are the *exact* measured content width (plus ~1px),
             not a padded guess — an earlier ~10px safety margin was
             itself the source of a small constant (not growing) gap in
             front of Filters even below Search's cap, where the row's
             uniform gap-3 should be the only spacing.
 
-            Confirmed this design's growing-but-symmetric gap around
-            Search (once it's at its 576px cap and the bar has more room
-            than the toolbar's content needs) is the intended behavior —
-            asked directly rather than assumed, since it's a real design
-            choice, not a bug: the toolbar stays capped+centered as a
+            This design's growing-but-symmetric gap around Search (once
+            it's at its 576px cap and the bar has more room than the
+            toolbar's content needs) is the intended behavior, not a bug:
+            the toolbar stays capped+centered as a
             whole (matching the content grid), Search likewise centers
             within it, and toggle/Filters+Sort stay pinned to their own
             sides. `searchWidth` grows continuously as the viewport
@@ -926,11 +919,11 @@ export function PieceLibrarySample() {
             shared height every neighbor in this row renders at (toggle
             and Sort control both wrap their inner buttons in their own
             bordered shell, adding 2px beyond the 36px those inner buttons
-            report on their own), confirmed via direct measurement rather
-            than assumed from the padding recipe alone.
+            report on their own), measured directly rather than assumed
+            from the padding recipe alone.
 
             Below `sm:`, 2 explicit grid rows instead of a plain
-            single-column stack (direct request) — toggle and Filters+Sort
+            single-column stack — toggle and Filters+Sort
             share the first row (still left/right-aligned), Search alone
             spans both columns below. "Filters" shows its full text label
             here too (this row has no Search competing for its space, and
@@ -942,14 +935,10 @@ export function PieceLibrarySample() {
             app's actual measured ~1400px problem threshold — a custom
             `min-[1400px]:` arbitrary breakpoint was tried first, but
             doesn't reliably sort against a *named* one (`sm:`) in this
-            project's Tailwind build (confirmed directly in the compiled
+            project's Tailwind build (verified in the compiled
             stylesheet: the arbitrary rule landed *before* `sm:`'s in
             source order, so `sm:` silently won past both thresholds).
-            Two real named breakpoints don't have that problem.
-
-            Full narrative for all of the above (every dead end, every
-            wrong first guess) is in memory `project_responsive_device_
-            plan.md`, not here — this comment states current behavior. */}
+            Two real named breakpoints don't have that problem. */}
         <div className={`${WIDE_CONTENT_MAX_W} flex flex-col gap-3 p-4`}>
           <div className="grid grid-cols-[auto_1fr] items-center gap-3 sm:grid-cols-[auto_1fr_215px] 2xl:grid-cols-[auto_1fr_259px]">
             <div className="col-start-1 row-start-1 flex shrink-0 items-center justify-self-start gap-1 rounded-md border border-border p-0.5 sm:col-start-auto sm:row-start-auto">
@@ -1075,8 +1064,7 @@ export function PieceLibrarySample() {
               >
                 <div className="relative aspect-[180/132] w-full overflow-hidden border-b border-border bg-border">
                   <PieceThumb seed={piece.id} />
-                  {/* Was missing here (found 2026-08-28 double-checking
-                      this view against the real PieceGridCard.tsx) — the
+                  {/* Mockup-parity with the real PieceGridCard.tsx — the
                       soft white scrim behind the badge, so it stays
                       legible against real, varied scan/cover artwork
                       rather than just this mockup's own light placeholder
@@ -1115,8 +1103,8 @@ export function PieceLibrarySample() {
         )}
 
         {/* Spacing-only match for PieceBrowseView.tsx's own infinite-scroll
-            sentinel (found missing here 2026-08-27 — this mockup's
-            fixture has no pagination to actually intersection-observe,
+            sentinel — this mockup's fixture has no pagination to
+            actually intersection-observe,
             but the real page's p-4 sentinel div still occupies this much
             space below the grid even at rest/empty, and skipping it left
             this mockup sitting noticeably tighter against the footer than

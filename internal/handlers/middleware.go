@@ -60,8 +60,7 @@ var publicAPIPaths = map[string]bool{
 // following the same "one shared helper, not a blanket route-metadata
 // middleware" convention CLAUDE.md's Permission model section calls for,
 // since requirements vary per-handler in a way this single middleware can't
-// express. Slots in after recoverMiddleware (server.go's New), same seam
-// memory project_oidc_multiuser_plan.md already identified.
+// express. Slots in after recoverMiddleware (server.go's New).
 func authMiddleware(next http.Handler, db *sql.DB, cfg *config.Config) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !strings.HasPrefix(r.URL.Path, "/api/") || publicAPIPaths[r.URL.Path] {

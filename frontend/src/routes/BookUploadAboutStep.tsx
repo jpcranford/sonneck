@@ -51,9 +51,8 @@ interface FormValues {
 
 // Composer/Arranger are ordered Person lists (composer/arranger overhaul,
 // migration 00020) — real TagComboBox fields, same shape and pattern as
-// EditBookModal.tsx's own Stage C retrofit (this screen was deliberately
-// left on a plain-text comma bridge at the time, out of that stage's named
-// scope; closed 2026-09-01, direct request).
+// EditBookModal.tsx's own retrofit (this screen was originally left on a
+// plain-text comma bridge, since closed to match).
 function bookToFormValues(book: Book): FormValues {
   return {
     bookTitle: book.bookTitle,
@@ -412,8 +411,8 @@ export function BookUploadAboutStep({
               rather than the raw PDF position — see
               ConfirmImportRequest.PageOffset (internal/handlers/wizard.go).
               Dashed border, matching EditPieceModal.tsx's own Copyright/
-              Book Details disclosure boxes (direct request, 2026-09-05) —
-              reads as an optional/secondary settings box rather than a
+              Book Details disclosure boxes — reads as an optional/
+              secondary settings box rather than a
               regular solid-bordered field, same visual language this app
               already uses for "you probably don't need to touch this"
               sections. No bg-paper-raised here (the copyright box has none

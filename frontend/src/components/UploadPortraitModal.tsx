@@ -13,11 +13,10 @@ import { getWikipediaPageImage, searchWikipedia, type WikipediaSearchResult } fr
 import { ApiError } from '../api/client'
 import { Modal } from './Modal'
 
-// Person Details' own Upload Portrait flow — real build of the approved
-// Phase 2 Artifact / PersonDetailsSample.tsx mockup (device upload OR
-// Wikipedia search, then a drag-to-pan + zoom-slider adjust step against
-// the oval frame), wired to a real chosen image instead of a fixture
-// illustration.
+// Person Details' own Upload Portrait flow — real build of the
+// PersonDetailsSample.tsx mockup (device upload OR Wikipedia search, then
+// a drag-to-pan + zoom-slider adjust step against the oval frame), wired
+// to a real chosen image instead of a fixture illustration.
 //
 // The "crop" is genuinely applied, not just a visual preview: Save
 // renders the exact pan/zoom transform the user sees onto an offscreen
@@ -26,10 +25,9 @@ import { Modal } from './Modal'
 // POST /api/people/{id}/portrait endpoint the plain file-picker version
 // used, so no server-side cropping endpoint was needed — a client-side
 // canvas can do the whole job. A Wikipedia-sourced image is loaded with
-// crossOrigin="anonymous"; confirmed live (2026-08-31) that
-// upload.wikimedia.org serves Access-Control-Allow-Origin: *, so this
-// doesn't taint the canvas the way a plain cross-origin <img> normally
-// would.
+// crossOrigin="anonymous"; confirmed live that upload.wikimedia.org
+// serves Access-Control-Allow-Origin: *, so this doesn't taint the canvas
+// the way a plain cross-origin <img> normally would.
 
 interface UploadPortraitModalProps {
   open: boolean
@@ -358,8 +356,8 @@ export function UploadPortraitModal({ open, onClose, personId, personName }: Upl
                         {result.title}
                       </span>
                       {/* line-clamp-2, not truncate — same fix as
-                          EditPersonModal.tsx's own Wikipedia results panel
-                          (2026-09-01): this shares the exact same
+                          EditPersonModal.tsx's own Wikipedia results
+                          panel: this shares the exact same
                           searchWikipedia API/result shape, so the backend's
                           own exsentences=2 change already means there's a
                           second sentence's worth of real disambiguating

@@ -21,10 +21,10 @@ export function listPracticeStatuses(): Promise<PracticeStatusItem[]> {
   return apiGet<PracticeStatusItem[]>('/api/practice-statuses')
 }
 
-// Your Tags / Practice Status create/rename/delete-or-merge (User Settings,
-// master plan Phase 12) — both share the exact same request/response shape
-// server-side (internal/handlers/lookup.go), so one small set of functions
-// covers both, parameterized by the resource path.
+// Your Tags / Practice Status create/rename/delete-or-merge (User
+// Settings) — both share the exact same request/response shape
+// server-side (internal/handlers/lookup.go), so one small set of
+// functions covers both, parameterized by the resource path.
 type UserListResource = 'tags' | 'practice-statuses'
 
 export function createUserListItem(resource: UserListResource, name: string): Promise<Tag> {

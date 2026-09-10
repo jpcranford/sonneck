@@ -31,10 +31,9 @@ export interface NavItem {
 
 export const NAV_ITEMS: NavItem[] = [
   { to: '/', label: 'Library', icon: IconLibrary },
-  // Renamed from "Composers" 2026-08-30 — composers/arrangers are a real
-  // Person entity now (People Library/Person Details, composer/arranger
-  // overhaul Stage B), not just a plain string on Piece/Book. Route moved
-  // from the old /composers placeholder to /people to match.
+  // Composer/arranger is a real Person entity (People Library/Person
+  // Details), not just a plain string on Piece/Book, so this route is
+  // /people rather than /composers.
   { to: '/people', label: 'People', icon: IconUser },
   { to: '/books', label: 'Books', icon: IconBooks },
   { to: '/upload', label: 'Upload', icon: IconCloudUpload, permission: 'upload' },

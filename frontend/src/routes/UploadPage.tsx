@@ -86,7 +86,7 @@ export function UploadPage() {
   // Generic "Upload" on the landing fork (before Piece/Book is even
   // chosen), then specific once it is — every piece-flow stage after that
   // choice (select/uploading/details/success) reads "Upload Piece", the
-  // book placeholder reads "Upload Book" (direct decision, 2026-09-04).
+  // book placeholder reads "Upload Book".
   usePageTitle(stage === 'landing' ? 'Upload' : stage === 'book' ? 'Upload Book' : 'Upload Piece')
   const [fileError, setFileError] = useState<string | null>(null)
   const [progress, setProgress] = useState(0)
@@ -102,8 +102,8 @@ export function UploadPage() {
   const [previewPage, setPreviewPage] = useState(1)
   const [lightboxOpen, setLightboxOpen] = useState(false)
   // "More details"/"From a book?" collapsible sections (Option B of a
-  // 3-way comparison, approved 2026-09-04 — see mockup/upload-piece-about)
-  // — collapsed by default, same posture/trigger styling as
+  // 3-way comparison — see mockup/upload-piece-about) — collapsed by
+  // default, same posture/trigger styling as
   // EditPieceModal.tsx's own Copyright/Book Details sections.
   const [moreDetailsOpen, setMoreDetailsOpen] = useState(false)
   const [bookOpen, setBookOpen] = useState(false)
@@ -255,8 +255,8 @@ export function UploadPage() {
   }
 
   return (
-    // min-h-dvh is scoped to the 'details' stage only (revised 2026-09-05,
-    // real bug found live) — it was originally applied to this whole shared
+    // min-h-dvh is scoped to the 'details' stage only — a real bug found
+    // live: it was originally applied to this whole shared
     // wrapper unconditionally, which forced every stage (including the
     // short landing/select/uploading/success ones) to claim a full
     // viewport's height for itself. That div sits inside AppShell's
@@ -596,9 +596,7 @@ export function UploadPage() {
 
               {/* Year Written/IMSLP No. — both read as quick identifying
                   facts worth a glance without opening "More details" below,
-                  where Key(s)/Sheet Type live instead (direct follow-up,
-                  swapped from an earlier pass that had it the other way
-                  around). */}
+                  where Key(s)/Sheet Type live instead. */}
               <div className="flex flex-col gap-3 min-[525px]:flex-row">
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
                   <label htmlFor="yearWritten" className="text-sm text-ink-soft">
@@ -623,8 +621,8 @@ export function UploadPage() {
                 </div>
               </div>
 
-              {/* "More details" — Option B of a 3-way comparison Artifact
-                  (approved 2026-09-04, mockup/upload-piece-about), same
+              {/* "More details" — Option B of a 3-way comparison (see
+                  mockup/upload-piece-about), same
                   collapsed-by-default trigger pattern as EditPieceModal.tsx's
                   own Copyright/Book Details sections (text-xs uppercase
                   tracking-wide + rotating chevron, dashed-border panel).

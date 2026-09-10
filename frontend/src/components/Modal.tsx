@@ -7,8 +7,8 @@ const TRANSITION_MS = 150
 
 // Module-level stack of currently-open modals, oldest first — lets a
 // nested modal (opened while another Modal is already open, e.g. Upload
-// Portrait opened from inside Edit Person, added 2026-09-02) claim Escape
-// for itself instead of every open modal's own independent document
+// Portrait opened from inside Edit Person) claim Escape for itself
+// instead of every open modal's own independent document
 // keydown listener racing for the same event. Real bug found live: with
 // no coordination, BOTH modals' listeners are genuinely registered on
 // `document`, but the FIRST-opened (background) modal's listener is also
@@ -36,9 +36,9 @@ interface ModalProps {
    * the Book and Person Properties Edit Menus (§16) use for their own
    * two-column field layouts — `lg` turned out to have enough room for
    * that shape of form after all. 'xl' (max-w-3xl) is unused for now
-   * (found, 2026-09-05, to leave zero side margin at iPad portrait's
-   * exact 768px viewport — a modal isn't width-constrained by the
-   * sidebar, so it sizes against the full raw viewport) — kept available
+   * (leaves zero side margin at iPad portrait's exact 768px viewport —
+   * a modal isn't width-constrained by the sidebar, so it sizes against
+   * the full raw viewport) — kept available
    * for a genuinely wider future need, not removed on spec. Collapses to
    * a single column below `sm` regardless of this prop. */
   size?: 'md' | 'lg' | 'xl'
@@ -77,7 +77,7 @@ export function Modal({ open, onClose, labelledBy, children, size = 'md', header
   // pending, so the effect's cleanup can cancel the right one regardless
   // of which of the two frames the effect gets torn down on.
   const rafRef = useRef(0)
-  // Escape-blurs-before-close (direct request) needs to know whether the
+  // Escape-blurs-before-close needs to know whether the
   // currently focused element is actually inside *this* dialog, not just
   // that something text-entry-like is focused somewhere on the page.
   const dialogRef = useRef<HTMLDivElement>(null)
@@ -171,9 +171,9 @@ export function Modal({ open, onClose, labelledBy, children, size = 'md', header
       const top = openModalStack[openModalStack.length - 1]
       if (top?.id !== stackIdRef.current) return
 
-      // First Escape with the cursor inside a field just unfocuses it
-      // (direct request) — a second Escape, with nothing left to blur,
-      // closes the modal. Scoped to this dialog's own subtree so a field
+      // First Escape with the cursor inside a field just unfocuses it — a
+      // second Escape, with nothing left to blur, closes the modal.
+      // Scoped to this dialog's own subtree so a field
       // focused in some other part of the page (shouldn't happen while a
       // modal's open, but not guaranteed) can't suppress the close.
       const active = document.activeElement as HTMLElement | null

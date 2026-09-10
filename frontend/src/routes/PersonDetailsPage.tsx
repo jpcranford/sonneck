@@ -97,16 +97,16 @@ function roleFor(piece: Piece, personId: number): 'Composer' | 'Arranger' {
 // (repo/effective.go's resolveYearWritten, three-level fallback: piece's
 // own Year Written, else piece's own Copyright Year, else book's Year
 // Published — see lib/yearWrittenSource.ts, the same helper
-// EditPieceModal.tsx already uses to label its own InheritedNote). Real
-// bug found live (2026-09-06, direct report): a piece with its own
-// Copyright Year set but no Year Written also has `inherited: true` on
-// this field (a deliberate simplification in resolveYearWritten — it
-// reuses the same Inherited flag rather than adding a third UI state),
-// but that value isn't actually "published" anything — it's the piece's
-// own explicit data on a different field, just borrowed here. Labeling it
-// "(pub.)" the same as a genuinely book-inherited year misrepresented one
-// fact as another, and (found alongside the report) could visually break
-// this page's own year-then-opus-then-title sort ordering for a set of
+// EditPieceModal.tsx already uses to label its own InheritedNote). A
+// piece with its own Copyright Year set but no Year Written also has
+// `inherited: true` on this field (a deliberate simplification in
+// resolveYearWritten — it reuses the same Inherited flag rather than
+// adding a third UI state), but that value isn't actually "published"
+// anything — it's the piece's own explicit data on a different field,
+// just borrowed here. Labeling it "(pub.)" the same as a genuinely
+// book-inherited year misrepresented one fact as another, and could
+// visually break this page's own year-then-opus-then-title sort ordering
+// for a set of
 // same-opus pieces sharing one book — a piece with a stray own Copyright
 // Year jumps to a completely different year tier than its siblings, who
 // all correctly show the book's own Year Published, with nothing here to
@@ -137,7 +137,7 @@ function workYearSortKey(piece: Piece): number {
 // handles this in one line — it compares embedded digit runs
 // numerically wherever they appear in the string, so "No. 2" sorts before
 // "No. 10" — rather than a hand-rolled multi-number array comparison. A
-// piece with no opus at all sorts last (direct request, 2026-09-03).
+// piece with no opus at all sorts last.
 function compareOpus(a: Piece, b: Piece): number {
   const av = a.workOpusNumber.value
   const bv = b.workOpusNumber.value
@@ -156,8 +156,8 @@ function titleSortKey(title: string): string {
   return title.replace(/^(a|an|the)\s+/i, '').toLowerCase()
 }
 // Year written first, then opus number, then title A→Z as the final
-// tiebreaker (direct request, 2026-09-03 — opus inserted as the new middle
-// key between the existing year-then-title chain from 2026-09-01). A
+// tiebreaker (opus inserted as a middle key between the year-then-title
+// chain). A
 // year-less/opus-less work still sorts last within its tier (both sort
 // keys' own +Infinity), then alphabetically among itself.
 function sortWorks(pieces: Piece[]): Piece[] {
@@ -590,8 +590,7 @@ export function PersonDetailsPage() {
           <div className="overflow-hidden rounded-2xl border border-border bg-paper-raised shadow-sm">
             {/* Stacked (flex-col) below lg:, side-by-side above it —
                 mockup-parity fix with Book Details' own identical header
-                bug (project_responsive_device_plan, Phase 4): at phone
-                width the name/credit-chip column had nowhere near enough
+                bug: at phone width the name/credit-chip column had nowhere near enough
                 room beside a fixed 150px avatar, wrapping the name
                 awkwardly mid-word and clipping the credit chip's own text.
                 lg:items-start only, not on the base flex-col: default

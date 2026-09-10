@@ -217,8 +217,8 @@ func CreateUserTag(ctx context.Context, q Queryer, ownerUserID int64, name strin
 }
 
 // RenameUserTag changes tagID's display name within ownerUserID's own
-// vocabulary (User Settings' Your Tags card, master plan Phase 12) — via
-// renameNamedRow (internal/repo/lookup.go), so a duplicate name within that
+// vocabulary (User Settings' Your Tags card) — via renameNamedRow
+// (internal/repo/lookup.go), so a duplicate name within that
 // same owner's set reports ErrDuplicateName, and a tagID belonging to a
 // different owner reports ErrNotFound rather than silently renaming
 // someone else's tag.

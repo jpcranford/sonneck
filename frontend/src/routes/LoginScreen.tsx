@@ -17,22 +17,19 @@ const OIDC_ERROR_MESSAGES: Record<string, string> = {
   internal: 'Something went wrong signing you in — try again.',
 }
 
-// Boot-time login gate — multi-user support, Phase 11 of the master plan
-// (memory project_multiuser_build.md). Not itself named as a phase in that
-// plan's own 16-phase list (a real gap flagged and confirmed with the user
-// directly this session): singlepass mode had real backend enforcement
-// since Phase 10, but no frontend surface to actually log in through until
-// this — exactly the lockout risk README.md's own Security section already
-// warned about. Rendered by App.tsx's AuthGate whenever GET /api/auth/me
-// comes back 401 (no valid session cookie) — never reached in `none` mode,
-// since that mode's implicit id=1 user always resolves with no session
-// needed at all (authMiddleware).
+// Boot-time login gate — the frontend surface for singlepass mode's
+// backend-enforced login, the lockout risk README.md's own Security
+// section warns about a self-hosted install to watch for. Rendered by
+// App.tsx's AuthGate whenever GET /api/auth/me comes back 401 (no valid
+// session cookie) — never reached in `none` mode, since that mode's
+// implicit id=1 user always resolves with no session needed at all
+// (authMiddleware).
 //
 // Same full-page-takeover visual language as FirstLaunchFlow.tsx (bg-paper,
 // centered column, SonneckWordmark, PasswordFields-style show/hide input,
-// text-red-700 error line) — not a mockup-first build, since no design
-// mockup exists for this screen; it's small enough, and similar enough to
-// FirstLaunchFlow's own Security step, not to need one.
+// text-red-700 error line). LoginScreenMockup.tsx (/mockup/login-screen)
+// is a visual port of this real component, built after the fact rather
+// than mockup-first — keep the two in sync.
 export function LoginScreen({
   authMethod,
   oidcProviderName,
@@ -74,7 +71,7 @@ export function LoginScreen({
     },
   })
 
-  // OIDC (Phase 14) — a real top-level navigation to the IdP, not an
+  // OIDC — a real top-level navigation to the IdP, not an
   // in-app action, so this is a genuine <a>, not a click-handled button
   // (CLAUDE.md > Frontend's own "card navigation needs a real <a>"
   // convention, same underlying reason).

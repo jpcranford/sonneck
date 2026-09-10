@@ -20,11 +20,11 @@ export interface AppConfig {
   authMethodSetByEnv: boolean
   firstLaunchCompleted: boolean
   dataDir?: string
-  // oidcProviderName (Phase 14) — only present when authMethod is 'oidc';
-  // drives LoginScreen.tsx's "Sign in with {name}" button text.
+  // oidcProviderName — only present when authMethod is 'oidc'; drives
+  // LoginScreen.tsx's "Sign in with {name}" button text.
   oidcProviderName?: string
-  // authChangePending (Phase 16) — non-null means the resolved auth method
-  // no longer matches what the app last ran under (an operator changed
+  // authChangePending — non-null means the resolved auth method no longer
+  // matches what the app last ran under (an operator changed
   // AUTH_METHOD since the previous boot). App.tsx gates on this exactly
   // parallel to firstLaunchCompleted, rendering AuthChangeFlow instead of
   // the normal routes until it's resolved. needsPassword/multiAccount let

@@ -42,8 +42,7 @@ func (s *Server) pendingAuthChange(w http.ResponseWriter, r *http.Request) (targ
 // own doc comment for why confirm-delete needs the full list), each flagged
 // IsAdmin so the choose-admin step's own radio list can still filter down
 // to just the eligible survivors. Deliberately public (see this file's own
-// package doc note in oidc.go's sibling reasoning, and
-// precious-kindling-pretzel.md's Phase 16 section) — nobody can be logged
+// package doc note in oidc.go's sibling reasoning) — nobody can be logged
 // in yet under whichever method just became active, so this can't be
 // permission-gated the normal way; it's self-guarded by pendingAuthChange
 // instead.
@@ -122,9 +121,9 @@ func (s *Server) handleAuthChangeComplete(w http.ResponseWriter, r *http.Request
 		}
 
 		if target == "singlepass" {
-			// A submitted password always wins when present — found via
-			// live verification, not assumed: an earlier draft only used
-			// it when the remaining account (id=1) had no password_hash
+			// A submitted password always wins when present: an earlier
+			// draft only used it when the remaining account (id=1) had no
+			// password_hash
 			// yet, which is right for the single-account case but wrong
 			// here for a real, if narrow, sequence — singlepass, then
 			// upgraded to oidc (id=1's old hash survives dormant, never

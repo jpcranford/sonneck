@@ -321,8 +321,8 @@ type CleanupThumbnailsResult struct {
 // will, because both are scoped to one book at the moment something
 // happens to it:
 //   - Book thumbnails left behind by a book deleted before the
-//     purgeBookPageThumbnails fix existed (CLAUDE.md > File handling,
-//     2026-08-24) — permanently orphaned until something like this runs.
+//     purgeBookPageThumbnails fix existed (CLAUDE.md > File handling) —
+//     permanently orphaned until something like this runs.
 //   - Stale (page 2+, or page-1-with-a-custom-cover) book thumbnails for
 //     every book imported before purgeStaleBookThumbnailsAfterImport
 //     existed — that fix only runs at the moment of a *new* import, not

@@ -14,7 +14,7 @@
 // only (see below), so a title like "Somewhere (reprise)" has "(reprise)"
 // as one whole token — without "(" in this set, nothing inside ever
 // followed one of the other recognized separators, so it stayed entirely
-// lowercase (found 2026-08-27, not just under-capitalized). Lowercases
+// lowercase, not just under-capitalized. Lowercases
 // everything else first, so this also normalizes ALL-CAPS or sTrAnGe-CaSe
 // input, not just plain lowercase.
 function capitalizeWord(word: string): string {
@@ -46,9 +46,9 @@ export function titleCase(input: string): string {
       // whitespace leaves "(the" as one token — see capitalizeWord's own
       // comment) always gets capitalized right after the "(", the same
       // way the first word of the title itself does — even when that
-      // word would normally be a lowercase minor word mid-title. Found
-      // 2026-08-30: the minor-word branch below returns word.toLowerCase()
-      // directly, which was overriding capitalizeWord's own paren-aware
+      // word would normally be a lowercase minor word mid-title. Without
+      // this check, the minor-word branch below returns word.toLowerCase()
+      // directly, which overrides capitalizeWord's own paren-aware
       // capitalization for exactly this case ("(the" staying "(the"
       // instead of becoming "(The").
       const opensParenthetical = word.startsWith('(')
@@ -72,9 +72,9 @@ const NAME_PARTICLES = new Set([
 
 // Joins two credited names in one field ("Rodgers and Hammerstein",
 // "Gilbert and Sullivan") — unlike NAME_PARTICLES above, this never
-// capitalizes regardless of position (found 2026-08-30: it isn't a name
-// particle that reads oddly only when it leads, it's a plain conjunction
-// that should never read as part of anyone's name).
+// capitalizes regardless of position: it isn't a name particle that reads
+// oddly only when it leads, it's a plain conjunction that should never
+// read as part of anyone's name.
 const NAME_CONJUNCTIONS = new Set(['and'])
 
 export function nameCase(input: string): string {

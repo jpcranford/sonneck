@@ -45,9 +45,9 @@ const DIRECTION_LABEL: Record<BookSortField, Record<SortDirection, string>> = {
 // it reads as recognizably a library view, with a deliberately different
 // card design in the content area itself (combines a cover grid and a
 // catalog list behind the view toggle). Real build of
-// BooksLibrarySample.tsx's mockup (Option B Filter Drawer, approved
-// 2026-08-27, same system as PieceBrowseView.tsx) — Filters/Sort/drawer
-// added on top of the pre-existing search+grid/list toolbar.
+// BooksLibrarySample.tsx's mockup (Option B Filter Drawer, same system as
+// PieceBrowseView.tsx) — Filters/Sort/drawer added on top of the
+// pre-existing search+grid/list toolbar.
 export function BooksPage() {
   usePageTitle('Books')
   const canEdit = useAuth().permissions.includes('edit')
@@ -61,8 +61,8 @@ export function BooksPage() {
   const debouncedQuery = useDebouncedValue(query)
   const debouncedDrawerFilters = useDebouncedValue(drawerFilters)
 
-  // Live/faceted (changed 2026-08-31 — see internal/handlers/facets.go's
-  // own doc comment): each option's count reflects every OTHER active
+  // Live/faceted (see internal/handlers/facets.go's own doc comment):
+  // each option's count reflects every OTHER active
   // filter and the current search box text, never self-narrowing against
   // its own selection. Keyed/fetched with the same debounced query+
   // filters the books list itself uses, same reasoning as

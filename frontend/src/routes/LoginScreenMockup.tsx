@@ -3,16 +3,15 @@ import { IconAlertTriangle, IconEye, IconEyeOff } from '@tabler/icons-react'
 import { useMockupTitle } from '../lib/useMockupTitle'
 import { SonneckWordmark } from '../components/SonneckWordmark'
 
-// Login Screen — multi-user support. The real LoginScreen.tsx (Phase 11,
-// extended for OIDC in Phase 14) was built without a mockup of its own at
-// the time — small enough, and close enough to FirstLaunchFlow.tsx's own
-// Security step, that it didn't seem to need one. Built after the fact,
-// requested directly, so the Auth Change Flow mockup (below) has something
-// real to preview as the screen a completed transition hands the user off
-// to, rather than describing it only in prose.
+// Login Screen mockup. The real LoginScreen.tsx was built without a
+// mockup of its own — small enough, and close enough to
+// FirstLaunchFlow.tsx's own Security step, that it didn't seem to need
+// one. Built after the fact, so the Auth Change Flow mockup has
+// something real to preview as the screen a completed transition hands
+// the user off to, rather than describing it only in prose.
 //
-// A direct visual port of the real component's four reachable states — no
-// real API calls, no real /api/auth/oidc/login navigation (the "Sign in
+// A visual port of the real component's four reachable states — no real
+// API calls, no real /api/auth/oidc/login navigation (the "Sign in
 // with…" control below is a plain button, not the real <a href>, since
 // there's nowhere real for it to go from a mockup).
 
@@ -73,12 +72,12 @@ export function LoginScreenMockup() {
             <p className="text-sm text-ink-soft">Sign in to continue.</p>
           </div>
           {oidcError && <p className="text-xs text-red-700">{oidcError}</p>}
-          {/* w-auto + min-w, not w-full — per direct feedback, this and the
-              Log In button below read too wide stretched to the full form
-              width. min-w keeps a short label (or "Log In") from looking
-              cramped; w-auto (no max-w) lets this one specifically keep
-              growing for a genuinely long EXTERNAL_PROVIDER name rather
-              than wrapping or truncating it. */}
+          {/* w-auto + min-w, not w-full — this and the Log In button
+              below read too wide stretched to the full form width. min-w
+              keeps a short label (or "Log In") from looking cramped;
+              w-auto (no max-w) lets this one specifically keep growing
+              for a genuinely long EXTERNAL_PROVIDER name rather than
+              wrapping or truncating it. */}
           <button
             type="button"
             className="flex w-auto min-w-[180px] cursor-pointer items-center justify-center gap-2 rounded-md bg-accent px-8 py-2.5 font-display text-white hover:bg-accent/90"

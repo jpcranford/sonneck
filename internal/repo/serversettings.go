@@ -8,15 +8,14 @@ import (
 )
 
 // ServerSettings is the id=1 singleton row backing the first-time launch
-// flow, and eventually the rest of the multi-user auth-method
-// configuration — see CLAUDE.md > Config's "server_settings" deviation
-// from "no settings table in v1" once that section is updated (memory
-// project_multiuser_build.md).
+// flow and the rest of the multi-user auth-method configuration — see
+// CLAUDE.md > Config's "server_settings" deviation from "no settings table
+// in v1".
 type ServerSettings struct {
 	AuthMethod             *string
 	FirstLaunchCompletedAt *time.Time
-	// LastActiveAuthMethod (migration 00028, master plan Phase 16) is the
-	// boot-time comparison baseline for the Auth Change flow — nil until
+	// LastActiveAuthMethod (migration 00028) is the boot-time comparison
+	// baseline for the Auth Change flow — nil until
 	// first-launch completes, then kept in sync by every write path below
 	// that changes what's actually running. See GetServerSettings's own
 	// callers (handleGetConfig's authChangePending) for how the mismatch
@@ -41,13 +40,13 @@ func GetServerSettings(ctx context.Context, q Queryer) (*ServerSettings, error) 
 }
 
 // CompleteFirstLaunch persists the first-time launch flow's Security step
-// and marks setup done — the real backend slice that flow needs (Phase 3
-// of memory project_multiuser_build.md). Real login-wall enforcement
-// (sessions, requirePermission) is a later phase, not this one.
+// and marks setup done — the real backend slice that flow needs. Real
+// login-wall enforcement (sessions, requirePermission) is handled
+// elsewhere, not here.
 // passwordHash is nil for "none"/"oidc", set for "singlepass" — passing
 // nil also clears any password set by an earlier run of this flow (e.g.
 // after a DB restore), rather than leaving a stale hash behind.
-// authMethod is also written to last_active_auth_method (Phase 16) — the
+// authMethod is also written to last_active_auth_method — the
 // caller (handleCompleteSetup) has already resolved any env-var override
 // before calling this, so the value stored here is always the method the
 // app is genuinely about to run under, not just whatever was submitted.
@@ -71,7 +70,7 @@ func CompleteFirstLaunch(ctx context.Context, q Queryer, authMethod string, pass
 // change re-stamping it would be a real, if minor, semantic drift with
 // nothing else in this app depending on the distinction, but not worth
 // introducing for no benefit). Also writes last_active_auth_method to the
-// same value (Phase 16) — an in-app change here is already fully
+// same value — an in-app change here is already fully
 // consistent between stored and active, so it must never itself trigger
 // the boot-time Auth Change flow on the next boot; that flow exists for
 // externally-driven changes (the env var moving) this endpoint never
@@ -87,8 +86,8 @@ func UpdateAuthMethod(ctx context.Context, q Queryer, authMethod string) error {
 // SetLastActiveAuthMethod persists just the Auth Change flow's own
 // completion (POST /api/auth-change/complete) — deliberately does NOT
 // touch server_settings.auth_method (the stored first-launch/admin
-// fallback), per this plan's own locked design: an env-var-driven
-// transition should keep re-gating behind this same flow if the env var is
+// fallback): an env-var-driven transition should keep re-gating behind
+// this same flow if the env var is
 // later removed and resolution falls back to a stale stored choice, not
 // silently start trusting a value nobody explicitly confirmed.
 func SetLastActiveAuthMethod(ctx context.Context, q Queryer, authMethod string) error {
@@ -97,7 +96,7 @@ func SetLastActiveAuthMethod(ctx context.Context, q Queryer, authMethod string) 
 }
 
 // ResolveAuthMethod is the one shared implementation of the env-var-wins
-// resolution order (master plan's Auth methods table): cfgAuthMethod (from
+// resolution order: cfgAuthMethod (from
 // AUTH_METHOD, "" if unset) wins if set, else settings.AuthMethod (the
 // first-launch choice) if that's been made, else "none". Used by both
 // GET /api/config and authMiddleware — CLAUDE.md's "one shared helper, not

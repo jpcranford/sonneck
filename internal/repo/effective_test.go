@@ -559,8 +559,8 @@ func TestResolveEffective_CopyrightRenewedInheritance(t *testing.T) {
 }
 
 // TestResolveEffective_YearWrittenFallsBackToCopyrightYearThenBook covers
-// YearWritten's own extended fallback chain (direct follow-up request):
-// piece's own YearWritten, else piece's own CopyrightYear, else the book's
+// YearWritten's own extended fallback chain: piece's own YearWritten, else
+// piece's own CopyrightYear, else the book's
 // YearPublished. Both fallback steps are marked Inherited (a deliberate
 // simplification, reusing the existing "Inherited from book"/"(pub.)" UI
 // as-is even for the CopyrightYear step, which isn't really from the book —

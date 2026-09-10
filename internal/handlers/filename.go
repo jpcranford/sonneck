@@ -43,8 +43,8 @@ func detectImslpNumber(filename string) *string {
 // header or confuse a filesystem, for the download filename hint
 // (handleDownloadPieceFile, handleDownloadBookFile) derived from free-text
 // fields. Parens are allowed (not stripped) specifically for
-// downloadFilename's "(yearWritten)" segment below. Comma allowed too (found
-// 2026-09-02, real bug): joinPersonNames' own Oxford-comma joining of a
+// downloadFilename's "(yearWritten)" segment below. Comma allowed too — a real bug:
+// joinPersonNames' own Oxford-comma joining of a
 // multi-person composer/arranger credit ("Jimmy Page, John Paul Jones, and
 // John Bonham") was getting every comma replaced with "_" here, since a
 // comma wasn't in the allowed set — a real title can legitimately carry one
@@ -57,7 +57,7 @@ var unsafeFilenameChars = regexp.MustCompile(`[^a-zA-Z0-9 _(),-]+`)
 // diacriticStripper decomposes precomposed accented letters (é → e +
 // combining acute) and drops the combining mark, so a composer/title with
 // diacritics degrades to its closest ASCII letter instead of falling
-// straight to unsafeFilenameChars' "_" replacement below (found 2026-09-05:
+// straight to unsafeFilenameChars' "_" replacement below (real bug found:
 // "Frédéric Chopin - Nocturne.pdf" was downloading as
 // "Fr_d_ric_Chopin_-_Nocturne.pdf").
 var diacriticStripper = transform.Chain(norm.NFD, runes.Remove(runes.In(unicode.Mn)), norm.NFC)

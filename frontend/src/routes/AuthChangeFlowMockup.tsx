@@ -3,24 +3,22 @@ import { IconAlertTriangle, IconArrowLeft, IconCircleCheck, IconLoader2, IconUse
 import { useMockupTitle } from '../lib/useMockupTitle'
 import { afterMinDuration } from '../lib/minDuration'
 
-// Auth Change flow — multi-user support, Phase 16 of the plan (memory
-// project_multiuser_build.md / precious-kindling-pretzel.md's own "Auth
-// Change flow" section). Built the same day Admin Settings' in-app
-// Security "Change…" capability was removed entirely per direct
-// feedback — security is now env-var-only, with zero in-app way to
-// change AUTH_METHOD post-launch. In its place: the app detects an
-// AUTH_METHOD change at boot (resolved value vs. a new stored
+// Auth Change flow — a boot-time gate, the exact same architectural shape
+// FirstLaunchFlow.tsx already uses to gate the app before first-launch
+// completes. Security has no in-app way to change AUTH_METHOD
+// post-launch — it's env-var-only. In its place: the app detects an
+// AUTH_METHOD change at boot (resolved value vs. a stored
 // `server_settings.last_active_auth_method`) and gates the whole app
-// behind this flow, the exact same architectural shape FirstLaunchFlow.tsx
-// already uses to gate the app before first-launch completes — just
-// triggered by a different condition, and only ever reached *after*
-// first-launch is already done.
+// behind this flow, triggered by that detected change rather than by
+// first-launch, and only ever reached *after* first-launch is already
+// done.
 //
-// Reuses, rather than reinvents, the exact content the removed Security
-// modal/downgrade-flow used to hold: the choose-admin and confirm-delete
-// screens below are close to a direct port of what briefly existed in
-// AdminSettingsMockup.tsx before it was pulled out — that work wasn't
-// wasted, it just moved from an in-app admin action to a boot-time gate.
+// Reuses, rather than reinvents, the content that briefly existed in
+// AdminSettingsMockup.tsx's own in-app Security "Change…"
+// modal/downgrade-flow before it was pulled out of there: the
+// choose-admin and confirm-delete screens below are close to a direct
+// port of that content, just moved from an in-app admin action to a
+// boot-time gate.
 //
 // Six fixture SCENARIOS cover every meaningfully-different content path a
 // real AUTH_METHOD transition can take (a dev-only "Simulate detected
@@ -36,108 +34,89 @@ import { afterMinDuration } from '../lib/minDuration'
 // destructive confirm since the other, non-admin account still has to
 // go), and downgrading from a genuinely *multi-admin* OIDC setup (the
 // full destructive choose-admin + confirm-delete sequence). The step
-// sequence itself is
-// computed per scenario (`computeSteps`), not hardcoded, so composing two
-// needs at once — e.g. the last scenario needs both a new password *and*
-// the destructive downgrade — falls out naturally rather than needing a
-// sixth hand-written case.
+// sequence itself is computed per scenario (`computeSteps`), not
+// hardcoded, so composing two needs at once — e.g. the last scenario
+// needs both a new password *and* the destructive downgrade — falls out
+// naturally rather than needing a sixth hand-written case.
 //
-// Direct-feedback revisions after the real build was already live-
-// verified: the OIDC-upgrade intro copy was vague about what actually
-// happens to existing data — reworded to say plainly that nothing is lost
-// and the first person to sign in takes control of the existing account,
-// both in the intro's own paragraph and in its closing reassurance line
-// (a dedicated line for this one scenario, not the shared ReversibleNote
+// The OIDC-upgrade intro copy states plainly that nothing is lost and the
+// first person to sign in takes control of the existing account, both in
+// the intro's own paragraph and in its closing reassurance line (a
+// dedicated line for this one scenario, not the shared ReversibleNote
 // below — that component's own "switch back and nothing is lost" framing
 // only covers reverting, not the fact that *proceeding* is just as safe,
 // which only genuinely holds for this specific lossless-upgrade case).
-// An earlier pass also added an embedded preview of the Login Screen to
-// the 'done' step, plus a "you land on the real Login Screen next" note —
-// removed per direct feedback: the preview was superfluous once
-// /mockup/login-screen exists as its own real reference, and mockups
-// should read as the as-built copy, not carry mockup-to-mockup asides
-// like "see its own mockup for every state."
+// The 'done' step deliberately has no embedded preview of the Login
+// Screen — /mockup/login-screen already exists as its own real reference,
+// and a mockup should read as the as-built copy, not carry mockup-to-
+// mockup asides like "see its own mockup for every state."
 //
-// 'done' gained a real, genuine primary button per further direct
-// feedback — a real design decision, not an oversight the first pass
-// missed: every other step in this flow already ends on an explicit
-// button the person clicks to move forward, so silently auto-transitioning
-// away the instant the last one succeeds (this app's other boot-time gate,
-// FirstLaunchFlow.tsx, does exactly that, with no equivalent final button
-// of its own) would be the one step in this whole flow that doesn't ask
-// for a deliberate "yes, continue" — worth breaking that precedent here on
-// purpose. Labeled "Continue to Library" for a `none` target (no login
-// screen to hand off to) or "Continue to Sign In" otherwise. In this
-// mockup it re-runs the current scenario (`selectScenario`) rather than
-// going anywhere real, the same stand-in every other "what happens next"
+// 'done' ends on a real, genuine primary button rather than
+// auto-transitioning — a deliberate divergence from this app's other
+// boot-time gate, FirstLaunchFlow.tsx, which does auto-transition with no
+// equivalent final button of its own: every other step in this flow
+// already ends on an explicit button click to move forward, so silently
+// vanishing the instant the last one succeeds would be the one step in
+// this whole flow that doesn't ask for a deliberate "yes, continue".
+// Labeled "Continue to Library" for a `none` target (no login screen to
+// hand off to) or "Continue to Sign In" otherwise. In this mockup it
+// re-runs the current scenario (`selectScenario`) rather than going
+// anywhere real, the same stand-in every other "what happens next"
 // control here already uses — the top `ScenarioPicker` remains the one
-// actual way to switch scenarios, this button and the old dedicated
-// "Restart this scenario" link (now folded into it, not kept as a second
-// control) were both just this screen's own way of looping the demo.
+// actual way to switch scenarios.
 //
-// The destructive path's own confirm-delete button was relabeled "Delete
-// accounts now" (was "...and continue") specifically to stop reading like
-// it's the same kind of "continue" as the new button above — this one's
-// click is the actual, immediate, irreversible trigger, not a step toward
-// a later confirmation, and the added warning icon reinforces that same
-// point visually, not just in the copy.
+// The destructive path's own confirm-delete button reads "Delete accounts
+// now", not "...and continue" — it needs to read as the actual,
+// immediate, irreversible trigger, not a step toward a later
+// confirmation, and the warning icon reinforces that same point visually,
+// not just in the copy. choose-admin's own button reads "Review
+// Deletion" rather than a bare "Continue" (every other non-destructive
+// step's wording) since it's the last click before the confirm-delete
+// screen — naming what that screen actually is reads as more deliberate.
+// confirm-delete's "Delete accounts now" carries more visual weight
+// (larger padding/text) on top of its existing red/icon treatment, so the
+// two buttons read as an escalating pair rather than two
+// identically-styled steps.
 //
-// A further pass strengthened both buttons in the destructive path per
-// direct feedback: choose-admin's own "Continue" (bare navigation wording,
-// same as every other non-destructive step) was relabeled "Review
-// Deletion" — it's the last click before the confirm-delete screen, so
-// naming what that screen actually is reads as more deliberate than a
-// generic "Continue" would. confirm-delete's "Delete accounts now" got
-// more visual weight (larger padding/text) on top of its existing
-// red/icon treatment, so the two buttons read as an escalating pair
-// rather than two identically-styled steps.
+// A genuine 'updating' step sits between confirm-delete and 'done' —
+// clicking "Delete accounts now" doesn't jump straight to "All set"; it
+// shows a full-screen spinner for a guaranteed minimum 2.5s
+// (`afterMinDuration`, the same shared "a fast mutation needs an
+// artificial minimum display duration" helper used elsewhere, imported
+// here as-is since it's pure logic with no markup of its own — the one
+// kind of real-code import mockups are allowed) before auto-advancing to
+// 'done' with no click needed. Real backend work (the destructive
+// downgrade transaction, an OIDC discovery call if switching to OIDC,
+// session issuance) is genuinely async in the shipped app, unlike this
+// mockup's own fixture data — the spinner reflects that real wait, not
+// just decorates a fake one. Scoped to the destructive path specifically,
+// not every scenario — the lighter scenarios apply near-instantly with
+// nothing worth narrating a wait for.
 //
-// A genuine new step, 'updating', now sits between confirm-delete and
-// 'done' — clicking "Delete accounts now" no longer jumps straight to
-// "All set"; it shows a full-screen spinner for a guaranteed minimum 2.5s
-// (`afterMinDuration`, the same shared helper CLAUDE.md's own "a fast
-// mutation needs an artificial minimum display duration" gotcha already
-// established elsewhere, imported here as-is since it's pure logic with
-// no markup of its own — the one kind of real-code import mockups are
-// allowed) before auto-advancing to 'done' with no click needed. Real
-// backend work (the destructive downgrade transaction, an OIDC discovery
-// call if switching to OIDC, session issuance) is genuinely async in the
-// shipped app, unlike this mockup's own fixture data — the spinner reflects
-// that real wait, not just decorates a fake one. Scoped to the destructive
-// path specifically, not every scenario — the lighter scenarios apply
-// near-instantly with nothing worth narrating a wait for.
-//
-// Color corrections per direct feedback, all pulling 'done'/'updating' back
-// from accent to neutral: the spinner (`IconLoader2`) and the checkmark
-// (`IconCircleCheckFilled`) both read as `text-ink`, not `text-accent` —
-// neutral "something happened" indicators, not accent-colored elements
-// competing with the red confirm button that precedes them. 'done's own
-// "Continue to Sign In"/"Continue to Library" button was likewise pulled
-// back from solid `bg-accent` to this app's standard secondary/white
+// 'done'/'updating' are pulled back from accent to neutral: the spinner
+// (`IconLoader2`) and the checkmark (`IconCircleCheckFilled`) both read
+// as `text-ink`, not `text-accent` — neutral "something happened"
+// indicators, not accent-colored elements competing with the red confirm
+// button that precedes them. 'done's own "Continue to Sign In"/"Continue
+// to Library" button is likewise this app's standard secondary/white
 // button treatment (`border border-border bg-paper-raised text-ink
 // hover:border-accent` — the same recipe used everywhere else in the app
 // for a lower-emphasis action, e.g. FirstLaunchMockup.tsx's own "Preview
-// again") — it's the literal end of the flow, not a decision point that
-// needs to compete visually with the buttons that actually drove it
-// forward.
+// again") rather than solid `bg-accent` — it's the literal end of the
+// flow, not a decision point that needs to compete visually with the
+// buttons that actually drove it forward.
 //
-// Rough edge fixed here for review, not yet ported to the real
-// AuthChangeFlow.tsx: reaching a multi-account downgrade with only one
-// eligible admin among those accounts used to still walk through
-// choose-admin's "Multiple admins found" screen with a single, already-
-// obvious option. computeSteps already conditioned that step on
-// `admins.length > 1`, and selectScenario already pre-selected a lone
-// admin as keptAdminId — the actual gap was that no fixture scenario ever
-// exercised the multi-account/single-admin combination, so this path was
-// never reachable to preview or confirm correct. New scenario
-// 'oidc-to-none-lone-admin' (now the default, so it's the first thing
-// shown) exercises it: intro goes straight to confirm-delete with the
-// lone admin already selected as survivor, no dead-end "choose between
-// one option" screen in between. The real component's own version of this
-// fix is trickier (its admin count only becomes known once
-// GET /api/auth-change/candidates resolves, needing a real effect-driven
-// step skip rather than a pure computation over already-known fixture
-// data) — see project_multiuser_build.md's Phase 16 section.
+// A multi-account downgrade with only one eligible admin: here,
+// computeSteps conditions the choose-admin step on `admins.length > 1`
+// (known synchronously from fixture data) and selectScenario pre-selects
+// the lone admin as keptAdminId, so scenario 'oidc-to-none-lone-admin'
+// (the default) skips the step entirely and goes straight to
+// confirm-delete. The real component can't know admin count until
+// GET /api/auth-change/candidates resolves, so it takes a different but
+// equivalent-UX approach instead of skipping the step outright: it always
+// renders choose-admin, but shows a plain single-admin confirmation (no
+// redundant one-option radio group) whenever the resolved admin count is
+// 1, with keptAdmin auto-derived rather than requiring a click.
 
 type AuthMethod = 'none' | 'singlepass' | 'oidc'
 
@@ -292,7 +271,7 @@ function ScenarioPicker({
   )
 }
 
-// Reassurance copy, per direct feedback: nothing this flow does actually
+// Reassurance copy: nothing this flow does actually
 // takes effect until the very last actionable step's own button is
 // clicked — the operator can switch AUTH_METHOD back to whatever it was
 // before at any earlier point and lose nothing. Shown on every step but
@@ -404,7 +383,7 @@ export function AuthChangeFlowMockup() {
 
       <div className="w-full max-w-md">
         <div className="mb-6 rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-4 py-2 text-xs text-ink-soft">
-          Reference sample — <span className="font-medium text-ink">Auth Change flow (Phase 16)</span>. A
+          Reference sample — <span className="font-medium text-ink">Auth Change flow</span>. A
           boot-time gate, reached only when the app detects its resolved <code>AUTH_METHOD</code> no longer
           matches what it last ran under. Switch the scenario above to preview every content path.
         </div>

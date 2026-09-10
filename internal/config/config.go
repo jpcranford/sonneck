@@ -61,13 +61,11 @@ type Config struct {
 	// made through the first-time launch flow (persisted in
 	// server_settings, see repo.GetServerSettings) governs instead. When
 	// non-empty this always wins over that stored choice — see
-	// GET /api/config's resolution order (memory project_multiuser_build.md).
+	// GET /api/config's resolution order.
 	AuthMethod string
 
-	// OIDC (Phase 14) — all seven read only when AuthMethod == "oidc"
-	// (env-var-only, master plan's Auth methods table); see
-	// precious-kindling-pretzel.md's Phase 14 section for the full table of
-	// what each does and its default. None of these do network I/O here —
+	// OIDC — all seven read only when AuthMethod == "oidc" (env-var-only).
+	// None of these do network I/O here —
 	// the one call that needs it (discovery) is internal/oidcauth.New,
 	// a separate startup step for exactly that reason.
 	OIDCIssuerURL          string
@@ -206,7 +204,7 @@ func ValidateBackupRetentionDays(days int) error {
 // surfacing a bad value mid-request.
 //
 // Library Settings (backupCron/backupRetentionDays/logLevel/
-// copyrightRegion) merge two sources, confirmed 2026-09-08: an env var,
+// copyrightRegion) merge two sources: an env var,
 // when set, always wins and gets written back into config.yml (so the file
 // stays the honest record of "what's actually running," even though env
 // vars only ever apply at process start); when unset, the file's own
@@ -278,10 +276,9 @@ func Load() (*Config, error) {
 
 	// DATA_DIR itself needs to exist before config.yml can be read/written —
 	// in practice always true by this point (a Docker bind-mount target is
-	// created empty by Docker itself even against a nonexistent host path,
-	// memory project_docker_bindmount_permissions.md), but MkdirAll is
-	// idempotent and cheap, so there's no reason not to guarantee it here
-	// too rather than assume.
+	// created empty by Docker itself even against a nonexistent host path),
+	// but MkdirAll is idempotent and cheap, so there's no reason not to
+	// guarantee it here too rather than assume.
 	if err := os.MkdirAll(cfg.DataDir, 0o755); err != nil {
 		return nil, fmt.Errorf("creating data directory: %w", err)
 	}

@@ -139,8 +139,7 @@ func TestPieceFacets_HasImslpNumberCountIsInheritanceAware(t *testing.T) {
 }
 
 // TestPieceFacets_NarrowByOtherActiveFilter is the core faceted-navigation
-// behavior (changed 2026-08-31 from "always static, whole-library" — see
-// PieceFacets's own doc comment): a facet's displayed count reflects every
+// behavior (see PieceFacets's own doc comment): a facet's displayed count reflects every
 // OTHER currently active filter, but never self-narrows against its own
 // selection. Two keys (C Major, D Major) each paired with one of two
 // instruments (Piano, Violin) — filtering to instrumentId=Piano must

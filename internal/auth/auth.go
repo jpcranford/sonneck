@@ -1,8 +1,5 @@
-// Package auth is the session/password layer for multi-user support (Phase
-// 10 of the plan, memory project_multiuser_build.md) — issuing/looking up
-// session tokens and hashing/checking passwords. OIDC's own exchange
-// (Phase 14) lives here too once that phase builds it; nothing OIDC-shaped
-// exists yet.
+// Package auth is the session/password layer for multi-user support —
+// issuing/looking up session tokens and hashing/checking passwords.
 package auth
 
 import (
@@ -21,9 +18,9 @@ import (
 const SessionTTL = 30 * 24 * time.Hour
 
 // SessionCookieName is the cookie both singlepass and OIDC sessions use —
-// deliberately the same mechanism for both modes (master plan's Auth
-// methods table), so authMiddleware has exactly one session-lookup path
-// regardless of which login method issued it.
+// deliberately the same mechanism for both modes, so authMiddleware has
+// exactly one session-lookup path regardless of which login method issued
+// it.
 const SessionCookieName = "sonneck_session"
 
 // NewSessionToken generates a cryptographically random, URL-safe session

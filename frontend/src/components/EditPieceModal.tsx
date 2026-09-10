@@ -66,10 +66,8 @@ interface EditPieceModalProps {
 
 interface FormValues {
   title: string
-  // Composer/Arranger (composer/arranger overhaul, Stage C) are ordered
-  // Person lists now — real TagComboBox fields, same shape as `keys`
-  // below, not the plain comma-separated-text bridge Stage B used as a
-  // stopgap.
+  // Composer/Arranger are ordered Person lists — real TagComboBox fields,
+  // same shape as `keys` below.
   composer: Tag[]
   arranger: Tag[]
   keys: Tag[]
@@ -112,9 +110,9 @@ interface FormValues {
 }
 
 // Public Domain Badge feature — order matches the original design table
-// exactly (design artifact, locked). Descriptions render under each row in
-// the open menu AND under whichever value is currently effective
-// (SingleSelect's description support).
+// exactly. Descriptions render under each row in the open menu AND under
+// whichever value is currently effective (SingleSelect's description
+// support).
 const COPYRIGHT_STATUS_OPTIONS = [
   {
     value: 'publicDomain',
@@ -149,9 +147,9 @@ function ownValue(field: { value: string; inherited: boolean }): string {
   return field.inherited ? '' : field.value
 }
 
-// Same ownValue treatment, for Composer/Arranger's ordered Person lists
-// (composer/arranger overhaul, Stage C) — empty when inherited (so saving
-// with nothing picked keeps inheriting), the piece's own list otherwise.
+// Same ownValue treatment, for Composer/Arranger's ordered Person lists —
+// empty when inherited (so saving with nothing picked keeps inheriting),
+// the piece's own list otherwise.
 // Mirrors Instruments' own field below exactly (`piece.instruments.values`
 // when overridden, `[]` when inherited).
 function ownTagList(field: { values: Tag[]; inherited: boolean }): Tag[] {
@@ -351,8 +349,8 @@ export function EditPieceModal({
   // the grown total: T = rest + panel = 2*rest, panel/T = 0.5.
   //
   // (2) The closed dialog's rendered height is frequently already less
-  // than the true content it's showing — confirmed directly: on a dialog
-  // whose fields alone already exceed Modal's max-h-[90vh] cap, the body
+  // than the true content it's showing — on a dialog whose fields alone
+  // already exceed Modal's max-h-[90vh] cap, the body
   // is already internally scrolling even with the preview collapsed, so
   // "closed dialog height" reads as the 90vh cap itself, not the fields'
   // real (larger) height. Sizing the panel off that number silently
@@ -493,8 +491,8 @@ export function EditPieceModal({
     queryKey: ['practiceStatuses'],
     queryFn: listPracticeStatuses,
   })
-  // People catalog (composer/arranger overhaul, Stage C) — reused
-  // unpaginated as the Composer/Arranger TagComboBox's own option source,
+  // People catalog — reused unpaginated as the Composer/Arranger
+  // TagComboBox's own option source,
   // same "small personal-library scale" assumption every other lookup
   // list here already makes.
   const { data: peopleOptions = [] } = useQuery({ queryKey: ['people'], queryFn: () => listPeople() })
@@ -535,9 +533,8 @@ export function EditPieceModal({
       // typing, not silently overwrite something already entered,
       // book-inherited or not (same rule as the design mockup this is
       // built from).
-      // Composer is now an ordered Person list (composer/arranger
-      // overhaul, Stage C) — IMSLP only ever resolves a single composer
-      // name, appended as a placeholder-id entry the same way
+      // Composer is an ordered Person list — IMSLP only ever resolves a
+      // single composer name, appended as a placeholder-id entry the same way
       // TagComboBox's own "create new" affordance does; the real id is
       // resolved server-side by name on save, same as every other
       // find-or-create tag field.
@@ -615,9 +612,9 @@ export function EditPieceModal({
     onError: () => setIsSaving(false),
   })
 
-  // Split into two submit paths (toolbar/nav comparison artifact, Option
-  // D, approved 2026-09-02) now that Save and Save & Close are genuinely
-  // different actions — "Save" alone no longer implies closing. Kept as
+  // Split into two submit paths now that Save and Save & Close are
+  // genuinely different actions — "Save" alone no longer implies closing.
+  // Kept as
   // two named functions (not one closeAfter-parameterized factory) so
   // handleFormKeyDown/the footer buttons/the new no-field-focused shortcut
   // effect below can all reference them directly, same shape
@@ -666,9 +663,9 @@ export function EditPieceModal({
     handleSubmit(onSubmitStayOpen)()
   }
 
-  // No-field-focused shortcuts (toolbar/nav comparison artifact, Option D,
-  // approved 2026-09-02): Left/Right cycle siblings, Enter is "Save, keep
-  // editing," Shift+Enter is "Save & Close" — but ONLY while nothing text-
+  // No-field-focused shortcuts: Left/Right cycle siblings, Enter is "Save,
+  // keep editing," Shift+Enter is "Save & Close" — but ONLY while nothing
+  // text-
   // entry-like has focus, so this never collides with typing in a field
   // (the guard mirrors the tag check PiecePage.tsx/BookDetailsPage.tsx/
   // PersonDetailsPage.tsx already use for their own page-level shortcuts)
@@ -838,8 +835,7 @@ export function EditPieceModal({
         </div>
       }
       footer={
-        // Option D (toolbar/nav comparison artifact, approved 2026-09-02):
-        // one row, two zones — sibling-piece nav on the left (hidden
+        // One row, two zones — sibling-piece nav on the left (hidden
         // entirely when showSiblingNav is false), Cancel/Save/Save & Close
         // on the right. Save & Close is the accent-filled primary action —
         // plain Save is a secondary, outlined action instead. Its
@@ -1413,12 +1409,12 @@ export function EditPieceModal({
 
         {/* Book Details — the Source Book search field, plus the page
             range. Own collapsible section at the very end of the form,
-            same "collapsed by default" posture as Copyright below it
-            (direct follow-up request) — it's about where this piece lives
-            inside its source book, not a fact about the piece itself the
-            way every section above it is, so it doesn't need to compete
-            with the piece's own bibliographic fields for early attention
-            either collapsed or open. Source Book itself still sits above
+            same "collapsed by default" posture as Copyright below it —
+            it's about where this piece lives inside its source book, not
+            a fact about the piece itself the way every section above it
+            is, so it doesn't need to compete with the piece's own
+            bibliographic fields for early attention either collapsed or
+            open. Source Book itself still sits above
             the page range within the panel — picking a different book is
             the thing that makes "page 22–24 of what?" answerable, so it
             still reads first within the section. key={piece.id} on
@@ -1488,10 +1484,7 @@ export function EditPieceModal({
         {/* Copyright — Public Domain Badge feature. Own collapsible
             section at the very bottom, same "collapsed by default, nothing
             new for someone who's never touched this feature" posture as
-            Piece Details' own Advanced/Get Info panel. Moved back here
-            (direct follow-up — a prior pass had relocated it up into the
-            lead section) after only the Copyright Status field, then the
-            whole section, spent time up there. */}
+            Piece Details' own Advanced/Get Info panel. */}
         <div className="border-t border-border pt-4">
           {/* Text styling matches SectionHeading (Frontmatter/Musical
               Details/Personal above) exactly — same pattern Book Details'

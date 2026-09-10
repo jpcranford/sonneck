@@ -4,9 +4,9 @@
 // isPending/a manual save-state flag — a moving-stripe animation, a
 // "Saving…" button label — can mount and unmount before it's ever
 // actually painted, which reads as nothing having happened rather than
-// as a fast success. Real bug found 2026-08-26: the Book Properties Edit
-// Menu's stripe-animated Save button (EditBookModal.tsx) never visibly
-// animated because its "saving" state lasted ~10ms.
+// as a fast success. Real bug this fixes: the Book Properties Edit Menu's
+// stripe-animated Save button (EditBookModal.tsx) never visibly animated
+// because its "saving" state lasted ~10ms.
 //
 // Call this from a mutation's onSuccess, passing the Date.now() captured
 // right before mutate() was called, to guarantee the in-progress state

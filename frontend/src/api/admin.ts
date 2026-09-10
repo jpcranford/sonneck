@@ -1,7 +1,6 @@
 import { apiDelete, apiGet, apiPatch, apiPost } from './client'
 import type { Tag } from './types'
 
-// Admin Settings (master plan Phase 13, memory project_multiuser_build.md).
 // Every endpoint here is admin-permission-gated server-side
 // (internal/handlers/admin.go/librarysettings.go/version.go) — distinct
 // from api/lookups.ts's user-scoped Tags/Practice Status functions, which

@@ -29,9 +29,9 @@ type OIDCAuthenticator interface {
 // pair ever needs to read it.
 const oidcStateCookieName = "sonneck_oidc_state"
 
-// handleOIDCLogin redirects to the IdP's own authorization endpoint —
-// master plan Phase 14. Only meaningful when the server is actually
-// configured for OIDC; s.OIDCAuth is nil otherwise (mirrors
+// handleOIDCLogin redirects to the IdP's own authorization endpoint. Only
+// meaningful when the server is actually configured for OIDC; s.OIDCAuth is
+// nil otherwise (mirrors
 // s.BackupScheduler's own "nil when not applicable" convention), which a
 // client could only reach by hitting this URL directly in a non-oidc
 // deployment.

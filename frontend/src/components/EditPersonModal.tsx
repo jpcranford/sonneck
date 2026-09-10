@@ -29,35 +29,30 @@ import { Modal } from './Modal'
 import { PersonAvatar } from './PersonAvatar'
 import { UploadPortraitModal } from './UploadPortraitModal'
 
-// The real Edit Person modal (composer/arranger overhaul, Phase 5's
-// approved mockup: EditPersonModalMockup.tsx, /mockup/edit-person-modal,
-// left intact as a standing reference). Deliberately minimal — "should be
-// very minimal" per the original brief — Name/Biography/Birth year/Death
-// year, same 4 fields as always.
+// The real Edit Person modal (approved mockup: EditPersonModalMockup.tsx,
+// /mockup/edit-person-modal, left intact as a standing reference).
+// Deliberately minimal — Name/Biography/Birth year/Death year, same 4
+// fields as always.
 //
-// Portrait editing gained a second trigger here (2026-09-01, direct
-// request, mockup approved same day: "incorporate the thumb edit field
-// into the modal... similar to how upload book step 3 is laid out with
-// the page thumb small and off to the side") — reversing Phase 2's
-// original "camera badge is the ONLY trigger" decision. `size="lg"` (same
-// as EditBookModal.tsx and EditPieceModal.tsx — `xl` turned out to leave
-// zero side margin at iPad portrait's 768px viewport), a small
-// `PersonAvatar` pinned to the left with a plain
+// Portrait editing has a second trigger here alongside Person Details'
+// own camera badge: `size="lg"` (same as EditBookModal.tsx and
+// EditPieceModal.tsx — `xl` leaves zero side margin at iPad portrait's
+// 768px viewport), a small `PersonAvatar` pinned to the left with a plain
 // "Change Portrait" button underneath opening the already-built
 // `UploadPortraitModal` (crop/zoom, real Wikipedia image search) — the
 // exact same modal Person Details' own camera badge already opens, just
 // nested here too rather than only reachable from the avatar itself.
 //
-// Wikipedia search-and-pick autofill (added once GET /api/wikipedia/search
-// existed) mirrors the mockup's own interaction exactly — NOT a single-
-// click instant fill like ImslpAutofillButton: an IMSLP number is a
-// precise identifier resolving to exactly one work/file, but a person's
-// *name* searched against Wikipedia is inherently ambiguous (the same
-// ambiguity Upload Portrait's own Wikipedia search has to solve for the
-// portrait image itself — "Chopin (crater)"/"Chopin Airport" alongside
-// the real composer). Clicking the cloud icon opens a real disambiguation
-// results panel; the human still has to confirm which article is the
-// right person before anything gets filled.
+// Wikipedia search-and-pick autofill mirrors the mockup's own interaction
+// exactly — NOT a single-click instant fill like ImslpAutofillButton: an
+// IMSLP number is a precise identifier resolving to exactly one
+// work/file, but a person's *name* searched against Wikipedia is
+// inherently ambiguous (the same ambiguity Upload Portrait's own
+// Wikipedia search has to solve for the portrait image itself — "Chopin
+// (crater)"/"Chopin Airport" alongside the real composer). Clicking the
+// cloud icon opens a real disambiguation results panel; the human still
+// has to confirm which article is the right person before anything gets
+// filled.
 
 interface EditPersonModalProps {
   person: Person
@@ -111,8 +106,7 @@ const HIGHLIGHT_MS = 2400
 // right-aligned/vertically-centered placement convention as a password
 // field's show/hide toggle. Both the Wikipedia brand mark and the cloud/
 // status icon live inside ONE button, a single click target, not a
-// decorative icon beside a separate clickable one (locked in the
-// mockup's own review).
+// decorative icon beside a separate clickable one.
 function WikipediaAutofillButton({
   state,
   valid,
@@ -152,14 +146,14 @@ export function EditPersonModal({ person, open, onClose }: EditPersonModalProps)
   const queryClient = useQueryClient()
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [uploadPortraitOpen, setUploadPortraitOpen] = useState(false)
-  // Stable reference, not an inline arrow at the call site below — real
-  // bug found live (2026-09-02): an inline `() => setUploadPortraitOpen(false)`
-  // is a new function every render, and this component re-renders on every
-  // Name keystroke (watch('name') for the Wikipedia autofill). That churn
-  // made UploadPortraitModal's own internal Modal re-run its
-  // Escape-listener effect (deps [open, onClose]) constantly — harmless on
-  // its own, but a real, reproducible bug once both modals are open at
-  // once: pressing Escape fires this outer Modal's own listener first,
+  // Stable reference, not an inline arrow at the call site below — an
+  // inline `() => setUploadPortraitOpen(false)` is a new function every
+  // render, and this component re-renders on every Name keystroke
+  // (watch('name') for the Wikipedia autofill). That churn made
+  // UploadPortraitModal's own internal Modal re-run its Escape-listener
+  // effect (deps [open, onClose]) constantly — harmless on its own, but a
+  // real, reproducible bug once both modals are open at once: pressing
+  // Escape fires this outer Modal's own listener first,
   // whose onClose triggers a synchronous-ish re-render here, which tears
   // down and re-adds UploadPortraitModal's listener *during* the same
   // native event dispatch pass — removing a listener mid-dispatch means
@@ -204,8 +198,8 @@ export function EditPersonModal({ person, open, onClose }: EditPersonModalProps)
       // (CLAUDE.md's own "React lint gotchas" entry).
       setSaveState('idle')
     }
-    // Deliberately `person.id`, not `person` itself (real bug found live,
-    // 2026-09-02) — the nested UploadPortraitModal's own success handler
+    // Deliberately `person.id`, not `person` itself — the nested
+    // UploadPortraitModal's own success handler
     // calls `queryClient.setQueryData(['person', personId], updated)`,
     // which gives PersonDetailsPage's `person` query a new object
     // reference the instant a portrait upload finishes, while this modal
@@ -371,10 +365,10 @@ export function EditPersonModal({ person, open, onClose }: EditPersonModalProps)
         open={open}
         onClose={onClose}
         labelledBy="edit-person-title"
-        // lg, not xl — matches EditPieceModal.tsx's own size, same direct
-        // request/reasoning as EditBookModal.tsx's own identical change
-        // (2026-09-05): at exactly iPad-portrait's 768px viewport, an xl
-        // (max-w-3xl = 768px) modal has zero margin on either side.
+        // lg, not xl — matches EditPieceModal.tsx's own size (see
+        // EditBookModal.tsx's identical comment): at exactly
+        // iPad-portrait's 768px viewport, an xl (max-w-3xl = 768px) modal
+        // has zero margin on either side.
         size="lg"
         header={
           <div className="-mx-6 flex items-start justify-between gap-4 border-b border-border px-6 pb-4">
@@ -458,10 +452,10 @@ export function EditPersonModal({ person, open, onClose }: EditPersonModalProps)
             trigger button underneath" shape as BookUploadAboutStep.tsx's
             own cover-preview column. Fixed w-[150px] at every breakpoint,
             not just sm: — an oval avatar stretched to a mobile viewport's
-            full width looked oversized/orphaned in testing (found live,
-            mockup-first), unlike a 2:3 page thumb at the same size;
-            centered via mx-auto/sm:mx-0 when stacked. Not sticky — this
-            modal's own field list is short enough it rarely scrolls. */}
+            full width looked oversized/orphaned in testing, unlike a 2:3
+            page thumb at the same size; centered via mx-auto/sm:mx-0 when
+            stacked. Not sticky — this modal's own field list is short
+            enough it rarely scrolls. */}
           <div className="mx-auto flex w-[150px] shrink-0 flex-col gap-2.5 sm:mx-0">
             <PersonAvatar person={person} className="w-full shadow-sm" />
             <button
@@ -558,21 +552,20 @@ export function EditPersonModal({ person, open, onClose }: EditPersonModalProps)
                   No Wikipedia results found.
                 </p>
               )}
-              {/* No "not this one" hint on a result missing birth/death years
-                (removed 2026-09-01, direct report) — the mockup's own
-                fixture data (crater/airport noise) made that a reliable
-                signal by construction, but it isn't one against real
-                Wikipedia search results: confirmed live (query "Miles
-                Davis") that a real, legitimate, possibly-correct person —
-                "Randy Hall," a real musician/producer — comes back with
-                birthYear/deathYear both null, since his own lead paragraph
-                just doesn't state a year in the parseable format
-                internal/wikipedia's heuristic looks for. Flagging a real
-                candidate as "not this one" on a parsing miss is actively
-                misleading, not merely unhelpful. `result.description` (the
-                actual disambiguator, always shown) still does the real
-                work here — this hint was always a bonus nudge on top of
-                it, never load-bearing. */}
+              {/* No "not this one" hint on a result missing birth/death
+                years — the mockup's own fixture data (crater/airport
+                noise) made that a reliable signal by construction, but it
+                isn't one against real Wikipedia search results: a real,
+                legitimate, possibly-correct person can come back with
+                birthYear/deathYear both null (e.g. "Randy Hall," a real
+                musician/producer, whose own lead paragraph doesn't state a
+                year in the parseable format internal/wikipedia's
+                heuristic looks for). Flagging a real candidate as "not
+                this one" on a parsing miss is actively misleading, not
+                merely unhelpful. `result.description` (the actual
+                disambiguator, always shown) still does the real work
+                here — this hint was always a bonus nudge on top of it,
+                never load-bearing. */}
               {wikiResults.map((result) => (
                 <button
                   key={result.title}
@@ -589,10 +582,9 @@ export function EditPersonModal({ person, open, onClose }: EditPersonModalProps)
                     </span>
                     {/* line-clamp-2, not truncate (single line) — one line
                       routinely isn't enough to actually disambiguate two
-                      similarly-titled results (direct report, 2026-09-01),
-                      and the backend now fetches a second sentence
-                      specifically to fill this (internal/wikipedia.Search's
-                      own exsentences=2). */}
+                      similarly-titled results, and the backend fetches a
+                      second sentence specifically to fill this
+                      (internal/wikipedia.Search's own exsentences=2). */}
                     <span className="line-clamp-2 text-xs text-ink-soft">{result.description}</span>
                   </span>
                 </button>

@@ -34,9 +34,7 @@ type StatusCount struct {
 	Count  int    `json:"count"`
 }
 
-// PieceFacets/BookFacets are live, faceted-navigation counts (changed
-// 2026-08-31 — see this file's own history for the earlier "deliberately
-// static" design): each count reflects how many pieces/books would match
+// PieceFacets/BookFacets are live, faceted-navigation counts: each count reflects how many pieces/books would match
 // if that value were checked *in addition to* every other currently
 // active filter and the current search box text — the standard
 // multi-select faceted-search rule (an option's own count never

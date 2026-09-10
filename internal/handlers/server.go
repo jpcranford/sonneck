@@ -28,14 +28,13 @@ type Server struct {
 	BackupScheduler *backup.Scheduler
 	// BuildSHA/BuildDate are ldflags-injected at build time (Dockerfile),
 	// "dev"/"unknown" otherwise — Admin Settings' Version section's own
-	// running-build identity (memory project_multiuser_build.md's Phase 13
-	// section).
+	// running-build identity.
 	BuildSHA     string
 	BuildDate    string
 	versionCache *versionCache
 
-	// OIDCAuth is nil unless the resolved auth method is genuinely "oidc"
-	// (master plan Phase 14) — mirrors BackupScheduler's own "nil in
+	// OIDCAuth is nil unless the resolved auth method is genuinely "oidc" —
+	// mirrors BackupScheduler's own "nil in
 	// test/CLI-subcommand construction" convention. handleOIDCLogin/
 	// handleOIDCCallback check for nil before using it. Typed as the local
 	// OIDCAuthenticator interface (oidc.go), not the concrete
@@ -51,8 +50,8 @@ type Server struct {
 // scheduler/buildSHA/buildDate all back Admin Settings' Library
 // Settings/Version sections — a test or CLI-subcommand caller that never
 // reaches those routes can pass nil/""/"" for all three. oidcAuth is nil
-// unless cfg.AuthMethod == "oidc" (master plan Phase 14) — constructed once
-// in cmd/sonneck/main.go, since it does a real network call (OIDC
+// unless cfg.AuthMethod == "oidc" — constructed once in cmd/sonneck/main.go,
+// since it does a real network call (OIDC
 // discovery) that config.Load() itself deliberately never makes.
 func New(db *sql.DB, cfg *config.Config, logger *slog.Logger, frontend fs.FS, scheduler *backup.Scheduler, buildSHA, buildDate string, oidcAuth OIDCAuthenticator) http.Handler {
 	s := &Server{
@@ -71,32 +70,28 @@ func New(db *sql.DB, cfg *config.Config, logger *slog.Logger, frontend fs.FS, sc
 	// not the whole config.Config (most of which is server-internal —
 	// directories, cron schedule — with no frontend use).
 	mux.HandleFunc("GET /api/config", s.handleGetConfig)
-	// First-time launch flow (multi-user support, memory
-	// project_multiuser_build.md's Phase 3) — the one real endpoint that
-	// flow needs; see handleCompleteSetup's own comment for what it does
-	// and doesn't gate.
+	// First-time launch flow — the one real endpoint that flow needs; see
+	// handleCompleteSetup's own comment for what it does and doesn't gate.
 	mux.HandleFunc("POST /api/setup/complete", s.handleCompleteSetup)
 
-	// Auth (multi-user support, Phase 10) — session issuance/lookup/expiry.
-	// GET /api/auth/me is the frontend's own single source of truth for
-	// "who am I, what can I do" (route guards, the sidebar user menu).
+	// Auth — session issuance/lookup/expiry. GET /api/auth/me is the
+	// frontend's own single source of truth for "who am I, what can I do"
+	// (route guards, the sidebar user menu).
 	mux.HandleFunc("POST /api/auth/login", s.handleLogin)
 	mux.HandleFunc("POST /api/auth/logout", s.handleLogout)
 	mux.HandleFunc("GET /api/auth/me", s.handleGetMe)
-	// OIDC (Phase 14) — the IdP redirect and its callback, both reachable
-	// pre-session (authMiddleware's publicAPIPaths).
+	// OIDC — the IdP redirect and its callback, both reachable pre-session
+	// (authMiddleware's publicAPIPaths).
 	mux.HandleFunc("GET /api/auth/oidc/login", s.handleOIDCLogin)
 	mux.HandleFunc("GET /api/auth/oidc/callback", s.handleOIDCCallback)
-	// Auth Change flow (Phase 16) — reachable pre-session by necessity
-	// (nobody can be logged in yet under whichever method just became
-	// active), self-guarded by re-deriving authChangePending server-side
-	// rather than trusting the client, same posture as
-	// POST /api/setup/complete.
+	// Auth Change flow — reachable pre-session by necessity (nobody can be
+	// logged in yet under whichever method just became active),
+	// self-guarded by re-deriving authChangePending server-side rather than
+	// trusting the client, same posture as POST /api/setup/complete.
 	mux.HandleFunc("GET /api/auth-change/candidates", s.handleAuthChangeCandidates)
 	mux.HandleFunc("POST /api/auth-change/complete", s.handleAuthChangeComplete)
-	// User Settings' Account card (multi-user support, Phase 12) —
-	// self-rename and self-service password change, distinct from the
-	// admin-only equivalents under /api/admin/*.
+	// User Settings' Account card — self-rename and self-service password
+	// change, distinct from the admin-only equivalents under /api/admin/*.
 	mux.HandleFunc("PATCH /api/auth/me", s.handleUpdateMe)
 	mux.HandleFunc("POST /api/auth/change-password", s.handleChangePassword)
 
@@ -107,8 +102,8 @@ func New(db *sql.DB, cfg *config.Config, logger *slog.Logger, frontend fs.FS, sc
 	mux.HandleFunc("GET /api/practice-statuses", s.handleListPracticeStatuses)
 	mux.HandleFunc("GET /api/imslp/lookup", s.handleImslpLookup)
 
-	// Your Tags / Practice Status create/delete/merge (multi-user support,
-	// Phase 10) — user-scoped, not admin-gated (read permission only).
+	// Your Tags / Practice Status create/delete/merge — user-scoped, not
+	// admin-gated (read permission only).
 	mux.HandleFunc("POST /api/tags", s.handleCreateUserTag)
 	mux.HandleFunc("PATCH /api/tags/{id}", s.handleRenameUserTag)
 	mux.HandleFunc("DELETE /api/tags/{id}", s.handleDeleteUserTag)
@@ -116,13 +111,13 @@ func New(db *sql.DB, cfg *config.Config, logger *slog.Logger, frontend fs.FS, sc
 	mux.HandleFunc("PATCH /api/practice-statuses/{id}", s.handleRenamePracticeStatus)
 	mux.HandleFunc("DELETE /api/practice-statuses/{id}", s.handleDeletePracticeStatus)
 
-	// User Settings' Appearance/Library cards (multi-user support, Phase
-	// 12) — read permission only, the calling user's own preferences.
+	// User Settings' Appearance/Library cards — read permission only, the
+	// calling user's own preferences.
 	mux.HandleFunc("GET /api/user-settings", s.handleGetUserSettings)
 	mux.HandleFunc("PATCH /api/user-settings", s.handleUpdateUserSettings)
 
-	// Admin Settings (multi-user support, Phase 10) — every route below is
-	// `admin`-gated inside its own handler (requirePermission).
+	// Admin Settings — every route below is `admin`-gated inside its own
+	// handler (requirePermission).
 	mux.HandleFunc("GET /api/admin/users", s.handleListAdminUsers)
 	mux.HandleFunc("PATCH /api/admin/users/{id}", s.handleSetUserPermissions)
 	mux.HandleFunc("DELETE /api/admin/users/{id}", s.handleDeleteAdminUser)
@@ -134,8 +129,7 @@ func New(db *sql.DB, cfg *config.Config, logger *slog.Logger, frontend fs.FS, sc
 	mux.HandleFunc("POST /api/admin/instruments", s.handleCreateInstrument)
 	mux.HandleFunc("PATCH /api/admin/instruments/{id}", s.handleRenameInstrument)
 	mux.HandleFunc("DELETE /api/admin/instruments/{id}", s.handleDeleteInstrument)
-	// Library Settings + Version (Phase 13) — the two Admin Settings gaps
-	// Phase 10 left unbuilt; see librarysettings.go/version.go.
+	// Library Settings + Version — see librarysettings.go/version.go.
 	mux.HandleFunc("GET /api/admin/library-settings", s.handleGetLibrarySettings)
 	mux.HandleFunc("PATCH /api/admin/library-settings", s.handleUpdateLibrarySettings)
 	mux.HandleFunc("GET /api/admin/version", s.handleGetVersion)
@@ -256,10 +250,10 @@ func (s *Server) handleGetConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Resolution order (memory project_multiuser_build.md): env var wins if
-	// set, else the stored first-launch choice, else "none" — the frontend
-	// never re-derives this itself, it just reads the already-resolved
-	// value here. Shared with authMiddleware via repo.ResolveAuthMethod.
+	// Resolution order: env var wins if set, else the stored first-launch
+	// choice, else "none" — the frontend never re-derives this itself, it
+	// just reads the already-resolved value here. Shared with
+	// authMiddleware via repo.ResolveAuthMethod.
 	authMethod := repo.ResolveAuthMethod(s.Cfg.AuthMethod, settings)
 
 	resp := api.ConfigResponse{
@@ -274,7 +268,7 @@ func (s *Server) handleGetConfig(w http.ResponseWriter, r *http.Request) {
 	if authMethod == "oidc" {
 		resp.OIDCProviderName = &s.Cfg.ExternalProvider
 	}
-	// Auth Change flow (Phase 16) — a fresh install has LastActiveAuthMethod
+	// Auth Change flow — a fresh install has LastActiveAuthMethod
 	// == nil (never set until first-launch completes), so this is never
 	// pending before then; App.tsx also only checks it after
 	// firstLaunchCompleted, so the ordering doesn't strictly depend on this

@@ -23,20 +23,14 @@ export interface WizardDraftData {
   bookId: number
   step: WizardDraftStep
   pageCount: number
-  // `single` ("Begin and split," added post-launch — see
-  // lib/pieceSplitLogic.ts's own PageAssignments.single comment) was
-  // missing from this type entirely for a while after that feature
-  // shipped (real bug, found 2026-08-29): every "Begin and split" page
-  // silently reverted to a plain page across a reload, since neither the
-  // save nor the restore side of the draft ever touched it. A draft saved
-  // before this field existed now simply fails isWizardDraftData below
-  // and is treated as no draft at all, same low-stakes fallback as
-  // pageOffset's own precedent right below.
-  //
-  // `double` ("Finish previous and split twice") hit the exact same bug
-  // for the exact same reason when it was ported into the real component —
-  // added here now, same treatment: a draft saved before this field
-  // existed simply fails isWizardDraftData and is treated as no draft.
+  // `single` ("Begin and split" — see lib/pieceSplitLogic.ts's own
+  // PageAssignments.single comment) and `double` ("Finish previous and
+  // split twice") both need to stay in this type and in isWizardDraftData
+  // below: a draft saved before one of these fields existed must fail
+  // isWizardDraftData and be treated as no draft at all (same low-stakes
+  // fallback as pageOffset's own precedent right below), rather than
+  // silently reverting that page's assignment across a reload because the
+  // save/restore path never touched the field.
   pageAssignments: {
     starts: number[]
     skips: number[]

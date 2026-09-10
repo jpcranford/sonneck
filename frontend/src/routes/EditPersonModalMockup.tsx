@@ -16,48 +16,41 @@ import { PALETTE } from '../lib/pieceSplitLogic'
 import { useMockupTitle } from '../lib/useMockupTitle'
 
 // ---------------------------------------------------------------------
-// DESIGN MOCKUP — Edit Person modal (composer/arranger overhaul, Phase 5
-// of 6 — see the approved Phase 1/2 Artifacts and the built Phase 3/4
-// mockups: /mockup/people-library, /mockup/person-details). Not wired to
-// real data — Save replays the same idle→saving→saved stripe-animation
-// sequence EditBookModalMockup.tsx already established, and the
-// Wikipedia autofill mimics real Wikipedia-search behavior via a local
-// mock lookup — there's no real endpoint yet, that's Phase 6.
+// DESIGN MOCKUP — Edit Person modal. Not wired to real data — Save
+// replays the same idle→saving→saved stripe-animation sequence
+// EditBookModalMockup.tsx already established, and the Wikipedia
+// autofill mimics real Wikipedia-search behavior via a local mock lookup
+// (the real component, components/EditPersonModal.tsx, calls the actual
+// Wikipedia endpoint).
 //
-// Deliberately minimal — "should be very minimal" was the original brief
-// for Person — Name, Bio, Birth Year, Death Year, same 4 fields as before.
+// Deliberately minimal — Name, Bio, Birth Year, Death Year, same 4
+// fields as before.
 //
-// Portrait now has an edit trigger here too (added 2026-09-01, direct
-// request: "incorporate the thumb edit field into the modal... similar to
-// how upload book step 3 is laid out with the page thumb small and off to
-// the side") — reversing Phase 2's original "camera badge is the ONLY
-// trigger" decision, the same way this modal's own field list has grown
-// past "very minimal" in spirit if not in field count. Layout mirrors
-// BookUploadAboutStep.tsx's own cover-preview column exactly: a small
-// portrait box pinned to the left (fixed `w-[150px]` at every breakpoint,
-// not just `sm:` — an oval avatar stretched to a mobile viewport's full
-// width looked oversized/orphaned in testing, unlike a book page thumb at
-// the same width; centered via `mx-auto`/`sm:mx-0` when stacked, matching
-// PersonDetailsPage.tsx's own header avatar width), a plain trigger button
-// underneath it, fields flowing in the wider right column — `size="lg"`
-// on Modal (revised from `xl`, which left zero side margin at iPad
-// portrait's 768px viewport — see Modal.tsx's own size doc comment). The
-// button here is a stub
-// (`lastAction`, PersonDetailsSample.tsx's own established stub-message
-// pattern, adopted here too) — the real component nests the already-built
-// UploadPortraitModal (crop/zoom, real Wikipedia image search) the same
-// way PersonDetailsPage.tsx already triggers it, just from this modal
-// instead of only the avatar's own camera badge.
+// Portrait has an edit trigger here too, alongside the avatar's own
+// camera badge. Layout mirrors BookUploadAboutStep.tsx's own
+// cover-preview column: a small portrait box pinned to the left (fixed
+// `w-[150px]` at every breakpoint, not just `sm:` — an oval avatar
+// stretched to a mobile viewport's full width looks oversized/orphaned,
+// unlike a book page thumb at the same width; centered via
+// `mx-auto`/`sm:mx-0` when stacked, matching PersonDetailsPage.tsx's own
+// header avatar width), a plain trigger button underneath it, fields
+// flowing in the wider right column — `size="lg"` on Modal (not `xl`,
+// which leaves zero side margin at iPad-portrait's 768px viewport — see
+// Modal.tsx's own size doc comment). The button here is a stub
+// (`lastAction`, PersonDetailsSample.tsx's own stub-message pattern) —
+// the real component nests UploadPortraitModal (crop/zoom, real
+// Wikipedia image search) the same way PersonDetailsPage.tsx already
+// triggers it, just from this modal instead of only the avatar's own
+// camera badge.
 //
-// Wikipedia autofill is a search-and-pick flow, NOT a single-click
-// instant fill — a real, direct correction after the first pass shipped
-// with an IMSLP-style one-click "cloud download" button. IMSLP's own
-// autofill can do that because an IMSLP number is a precise identifier
-// that resolves to exactly one work/file; a person's *name* searched
-// against Wikipedia is inherently ambiguous (the same ambiguity Upload
-// Portrait's own Wikipedia search already had to solve for the portrait
-// image — "Chopin (crater)"/"Chopin Airport" alongside the real
-// composer). So clicking the cloud icon here opens a results list (same
+// Wikipedia autofill is a search-and-pick flow, not a single-click
+// instant fill, unlike IMSLP's one-click "cloud download" button — an
+// IMSLP number is a precise identifier that resolves to exactly one
+// work/file, but a person's *name* searched against Wikipedia is
+// inherently ambiguous (the same ambiguity Upload Portrait's own
+// Wikipedia search already had to solve for the portrait image —
+// "Chopin (crater)"/"Chopin Airport" alongside the real composer). So
+// clicking the cloud icon here opens a results list (same
 // noise-inclusion fixture as Upload Portrait, for continuity) rather than
 // silently picking a "best" match — the human still has to confirm which
 // article is actually the right person before anything gets filled.
@@ -94,23 +87,20 @@ interface WikiSearchResult {
 }
 
 // A name-keyed mock search — stands in for a real Wikipedia search/parse
-// call (Phase 6). Same noise-inclusion fixture as
-// PersonDetailsSample.tsx's own Upload Portrait flow (continuity across
-// this project's mockups): the real composer alongside two irrelevant
-// articles that also match "Chopin," each with no birth/death year of its
-// own, so picking one deliberately fills nothing. Any name not in this
-// table returns an empty result list — handled gracefully (a "No results"
-// row, not an error), same "a normal empty result" posture the real
-// IMSLP lookup already has for an unrecognized number.
+// call. Same noise-inclusion fixture as PersonDetailsSample.tsx's own
+// Upload Portrait flow: the real composer alongside two irrelevant
+// articles that also match "Chopin," each with no birth/death year of
+// its own, so picking one deliberately fills nothing. Any name not in
+// this table returns an empty result list — handled gracefully (a "No
+// results" row, not an error), same posture the real IMSLP lookup has
+// for an unrecognized number.
 const MOCK_WIKI_SEARCH: Record<string, WikiSearchResult[]> = {
   'frédéric chopin': [
     {
       title: 'Frédéric Chopin',
       // Two real sentences, not one — matches the real backend's own
-      // exsentences=2 (changed 2026-09-01, "just one often isn't enough"),
-      // and actually demonstrates the results panel's line-clamp-2
-      // treatment wrapping to a real second line, not just a CSS change
-      // with nothing in this fixture long enough to show it.
+      // exsentences=2, and demonstrates the results panel's line-clamp-2
+      // treatment wrapping to a real second line.
       description:
         'Polish composer and virtuoso pianist (1810–1849). Widely regarded as one of the greatest composers for the piano, celebrated for his mazurkas, nocturnes, and études.',
       thumbColor: '#5c8a8a',
@@ -136,25 +126,23 @@ const MOCK_WIKI_SEARCH: Record<string, WikiSearchResult[]> = {
 
 // Same faint pre-blended tones as the real ImslpAutofillButton.tsx
 // (#9d9892/#c9c2b6, never a translucent opacity utility), kept as a local
-// mockup-only duplicate rather than a shared component, since there's no
-// real Wikipedia lookup to wire it to yet. Sits inside the Name field
-// itself — the thing that actually drives the search, since a person has
-// no separate numeric identifier the way IMSLP does — same right-aligned/
-// vertically-centered placement convention as a password field's
-// show/hide toggle. 'open' (results panel showing) reads the same as
-// 'idle' visually — the panel itself is what signals state, not the
-// button — but is tracked separately so a second click on the button
+// mockup-only duplicate rather than a shared component. Sits inside the
+// Name field itself — the thing that actually drives the search, since a
+// person has no separate numeric identifier the way IMSLP does — same
+// right-aligned/vertically-centered placement convention as a password
+// field's show/hide toggle. 'open' (results panel showing) reads the
+// same as 'idle' visually — the panel itself is what signals state, not
+// the button — but is tracked separately so a second click on the button
 // while results are already open toggles them closed instead of
 // re-searching.
 // Both the Wikipedia brand mark and the cloud/status icon live inside
-// ONE button, not a decorative icon beside a separate clickable one — a
-// single target, direct correction after a first pass split them into
-// two adjacent elements. Tight gap-1 (closer than the field-level icon
-// spacing elsewhere in this app) since they're one composite affordance
-// now, not two independent icons that happen to sit near each other.
-// Self-positioning again (absolute top-1/2 right-2.5 -translate-y-1/2) —
-// same placement convention as a password field's show/hide toggle, and
-// the real ImslpAutofillButton.tsx's own single-icon version of this.
+// ONE button, a single target, not a decorative icon beside a separate
+// clickable one. Tight gap-1 (closer than the field-level icon spacing
+// elsewhere in this app) since they're one composite affordance, not two
+// independent icons that happen to sit near each other. Self-positioning
+// (absolute top-1/2 right-2.5 -translate-y-1/2) — same placement
+// convention as a password field's show/hide toggle, and the real
+// ImslpAutofillButton.tsx's own single-icon version of this.
 function WikipediaAutofillButton({
   state,
   valid,
@@ -185,7 +173,7 @@ function WikipediaAutofillButton({
 }
 
 type SaveState = 'idle' | 'saving' | 'saved'
-// Same timings as EditBookModalMockup.tsx's own locked "Save Animation."
+// Same timings as EditBookModalMockup.tsx's own Save animation.
 const SAVING_MS = 1400
 const SAVED_MS = 1100
 // How long a just-autofilled field's ring stays visible — matches the
@@ -257,15 +245,14 @@ export function EditPersonModalMockup() {
 
   // The results panel renders through a portal to document.body with
   // JS-computed position: fixed coordinates — not position: absolute
-  // inside the field's own wrapper — for the exact same reason
-  // TagComboBox.tsx's own dropdown needed this fix (2026-08-30, see that
-  // file's own comment and CLAUDE.md's gotcha log): this modal's dialog
-  // has overflow-hidden for its rounded corners, which clips ANY
-  // absolutely-positioned descendant regardless of that descendant's own
-  // `position` value, unless it's moved out of that DOM subtree
-  // entirely. z-[60] for the same reason too — higher than Modal's own
-  // z-50, so the results panel isn't painted underneath the dialog's
-  // footer.
+  // inside the field's own wrapper — same reason TagComboBox.tsx's own
+  // dropdown needs this (see CLAUDE.md's overflow-hidden/fixed-position
+  // gotcha): this modal's dialog has overflow-hidden for its rounded
+  // corners, which clips ANY absolutely-positioned descendant regardless
+  // of that descendant's own `position` value, unless it's moved out of
+  // that DOM subtree entirely. z-[60] for the same reason too — higher
+  // than Modal's own z-50, so the results panel isn't painted underneath
+  // the dialog's footer.
   const [panelRect, setPanelRect] = useState<{ top: number; left: number; width: number } | null>(null)
   useLayoutEffect(() => {
     if (wikiState !== 'open') return
@@ -397,8 +384,8 @@ export function EditPersonModalMockup() {
         onClose={() => setOpen(false)}
         labelledBy="edit-person-mockup-title"
         // lg, not xl — mockup-parity with the real EditPersonModal.tsx's
-        // own size change (2026-09-05): matches EditPieceModal.tsx, fixes
-        // zero side-margin at iPad-portrait's 768px viewport.
+        // own size (matches EditPieceModal.tsx), fixing zero side-margin
+        // at iPad-portrait's 768px viewport.
         size="lg"
         header={
           <div className="-mx-6 flex items-start justify-between gap-4 border-b border-border px-6 pb-4">
@@ -564,16 +551,13 @@ export function EditPersonModalMockup() {
             {wikiResults.length === 0 && (
               <p className="px-3 py-2.5 text-sm text-ink-soft italic">No Wikipedia results found.</p>
             )}
-            {/* No "not this one" hint (removed 2026-09-01, mockup-parity —
-                see EditPersonModal.tsx's own comment on this exact block):
-                real Wikipedia data proved the birthYear/deathYear-missing
-                heuristic unreliable — a real, legitimate person can come
-                back with no parseable year — so it's gone from the real
-                component; kept in sync here even though this file's own
-                fixture data (MOCK_WIKI_SEARCH) was curated so the heuristic
-                happened to work by construction, since the underlying
-                design idea is retired, not just its real-data
-                reliability. */}
+            {/* No "not this one" hint — real Wikipedia data proved the
+                birthYear/deathYear-missing heuristic unreliable (a real,
+                legitimate person can come back with no parseable year),
+                so it's gone from the real component (EditPersonModal.tsx)
+                and kept in sync here even though this file's own fixture
+                data was curated so the heuristic happens to work by
+                construction. */}
             {wikiResults.map((result) => (
               <button
                 key={result.title}
@@ -592,8 +576,8 @@ export function EditPersonModalMockup() {
                     {result.title}
                   </span>
                   {/* line-clamp-2, not truncate — mockup-parity with
-                      EditPersonModal.tsx's own fix (2026-09-01, "just one
-                      [line] often isn't enough"). */}
+                      EditPersonModal.tsx's own fix; a single line often
+                      isn't enough for the description text. */}
                   <span className="line-clamp-2 text-xs text-ink-soft">{result.description}</span>
                 </span>
               </button>

@@ -1,7 +1,6 @@
 import { apiGet, apiPost } from './client'
 
-// Auth Change flow (master plan Phase 16) — both endpoints are reachable
-// pre-session by necessity (nobody can be logged in yet under whichever
+// Auth Change flow — both endpoints are reachable pre-session by necessity (nobody can be logged in yet under whichever
 // method just became active), self-guarded server-side by re-deriving
 // AppConfig['authChangePending'] rather than trusting the client to only
 // call these when App.tsx's own gate says to.

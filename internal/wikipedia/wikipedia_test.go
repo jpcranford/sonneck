@@ -10,8 +10,8 @@ import (
 // TestExtractYears covers the locked heuristic (this file's own top
 // comment): the first non-nested parenthetical group containing at least
 // one 4-digit year is treated as the subject's own birth/death dates.
-// Every case here is a real extract confirmed live against en.wikipedia.org
-// (2026-08-31), not invented shapes.
+// Every case here is a real extract confirmed live against en.wikipedia.org,
+// not invented shapes.
 func TestExtractYears(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -171,8 +171,8 @@ func TestSearch_BlankQueryMakesNoRequest(t *testing.T) {
 }
 
 // TestParseWikidataYear covers the real time-value shape confirmed live
-// against Wikidata (2026-09-01) — "+1958-04-19T00:00:00Z" for Randy Hall's
-// own P569 claim — plus the precision/sign/range edge cases.
+// against Wikidata — "+1958-04-19T00:00:00Z" for Randy Hall's own P569
+// claim — plus the precision/sign/range edge cases.
 func TestParseWikidataYear(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -259,7 +259,7 @@ func TestSearch_WikidataFillsInWhatTheExtractRegexMisses(t *testing.T) {
 }
 
 // TestFetchWikidataYears_IgnoresOtherClaimTypesWithDifferentValueShapes is
-// the real bug caught live 2026-09-01 building this feature: a real
+// a real bug caught live while building this feature: a real
 // Wikidata item's claims object carries dozens of properties beyond
 // P569/P570 (occupation, external IDs, ...), each with a completely
 // different mainsnak.datavalue.value shape (an item reference here, a

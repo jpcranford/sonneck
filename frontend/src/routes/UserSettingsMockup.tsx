@@ -15,87 +15,69 @@ import { Modal } from '../components/Modal'
 import { Toggle } from '../components/Toggle'
 import { useMockupTitle } from '../lib/useMockupTitle'
 
-// User Settings — multi-user support, Phase 8 of the plan (memory
-// project_multiuser_build.md). Real build of the approved Phase 5 artifact:
-// Option 2 ("separate cards per section" — switched over from Option 1
-// after direct feedback that the single-divided-card build didn't read the
-// same as the artifact) — Account/Appearance/Library each get their own
-// bordered card with a serif heading, rather than one shared card split by
-// eyebrow labels. Reached from the sidebar's account menu (Phase 7's
-// Option 2 identity-card popup) — not built as a real route destination
-// there yet, this is a standalone mockup like every other /mockup/* page.
+// User Settings — Option 2 ("separate cards per section"):
+// Account/Appearance/Library each get their own bordered card with a
+// serif heading, rather than one shared card split by eyebrow labels.
+// Reached from the sidebar's account menu mockup (identity-card popup) —
+// not built as a real route destination there, this is a standalone
+// mockup like every other /mockup/* page.
 //
-// Applies the relabel noted when Phase 5 was approved: "Infinite scroll" →
-// "Paginated views." **Corrected 2026-09-07, during an audit**: this was
-// first built on the wrong premise that `content_view_mode` defaults to
-// `'paginated'` (checked = paginated = "the default"). It doesn't — the
-// real, already-shipped `PieceBrowseView.tsx` has no pagination at all,
-// only infinite scroll (a real `useInfiniteQuery` + `IntersectionObserver`
-// sentinel), unconditionally, so migration 00024's column now correctly
-// defaults to `'infinite'` (Data model section, precious-kindling-pretzel.md).
-// "Paginated views" is still the right label — it names the genuinely
-// opt-in, not-yet-built action, same pattern as "Hide Books in sidebar"
-// below — it just needed the default flipped: unchecked = infinite = the
-// real default, checked = paginated = the opt-in feature.
+// "Paginated views" names the genuinely opt-in, not-yet-built action
+// (same pattern "Hide Books in sidebar" below uses): the real,
+// already-shipped `PieceBrowseView.tsx` has no pagination at all, only
+// infinite scroll (a real `useInfiniteQuery` + `IntersectionObserver`
+// sentinel), unconditionally, so migration 00024's `content_view_mode`
+// column defaults to `'infinite'` — unchecked = infinite = the real
+// default, checked = paginated = the opt-in feature.
 //
-// "Show Books in sidebar" was relabeled to "Hide Books in sidebar" per
-// direct feedback — same "label names the opt-in *action*, not the
-// default state" pattern "Paginated views" now also follows: checked =
-// hidden = NOT the default, default is unchecked/false (books shown).
+// "Hide Books in sidebar" — same "label names the opt-in *action*, not
+// the default state" pattern "Paginated views" follows: checked = hidden
+// = NOT the default, default is unchecked/false (books shown).
 //
-// Reuses the real Toggle.tsx component directly (not hand-copied) — one of
-// the few pre-existing components stable enough to share into a mockup
-// (same exception CLAUDE.md's mockup-first rule already carves out for
-// pure presentational logic; Toggle has no page-specific markup of its own
-// to drift from). The Theme segmented control is hand-built instead, since
-// no equivalent shared component exists yet.
+// Reuses the real Toggle.tsx component directly (not hand-copied) — one
+// of the few pre-existing components stable enough to share into a
+// mockup (same exception CLAUDE.md's mockup-first rule already carves
+// out for pure presentational logic; Toggle has no page-specific markup
+// of its own to drift from). The Theme segmented control is hand-built
+// instead, since no equivalent shared component exists yet.
 //
-// Your Tags / Practice Status, added per direct feedback: the same
-// create/delete/merge pattern just built for Admin Settings' Lookup Tables
-// (a per-item delete button opening a real modal to merge into another
-// entry or delete outright, plus a circular dashed-plus "add" button),
-// scoped here instead of there because both lists are genuinely per-user
-// data, not shared/library-wide — Tags per CLAUDE.md's own Concurrency
-// section ("userTags is confirmed to become a fully private per-user
-// vocabulary," which this migration is), Practice Status because making it
-// renameable/creatable at all is a **new, per-user** capability (see this
-// file's own header note below on the real schema this needs). The footer
-// note below ("lookup renames" are admin-only) still refers only to Sheet
+// Your Tags / Practice Status share the same create/delete/merge pattern
+// as Admin Settings' Lookup Tables (a per-item delete button opening a
+// real modal to merge into another entry or delete outright, plus a
+// circular dashed-plus "add" button), scoped here instead of there
+// because both lists are genuinely per-user data, not shared/library-wide
+// — Tags per CLAUDE.md's own Concurrency section (`userTags` is a fully
+// private per-user vocabulary), Practice Status because
+// renaming/creating it at all is a per-user capability. The footer note
+// below ("lookup renames" are admin-only) still refers only to Sheet
 // Types/Instruments — those stay global/admin-owned; nothing here
 // contradicts that.
 //
-// Combined into one "Your Tags & Practice Status" card, same day, per
-// direct feedback to match Admin Settings' own Lookup Tables layout: one
-// bordered card, a `grid grid-cols-1 gap-6 sm:grid-cols-2` two-column
-// interior (1 column on mobile, 2 from `sm` up), each column keeping its
-// own uppercase label + explanatory paragraph above its `EditableList`
-// (unlike Lookup Tables, whose two columns share one card-level
-// description — Tags/Practice Status genuinely need different copy, so
-// each column keeps its own). Previously two separate `SettingsCard`s.
+// Combined into one "Your Tags & Practice Status" card matching Admin
+// Settings' own Lookup Tables layout: one bordered card, a
+// `grid grid-cols-1 gap-6 sm:grid-cols-2` two-column interior (1 column
+// on mobile, 2 from `sm` up), each column keeping its own uppercase
+// label + explanatory paragraph above its `EditableList` (unlike Lookup
+// Tables, whose two columns share one card-level description — Tags/
+// Practice Status genuinely need different copy, so each column keeps
+// its own).
 //
-// Real schema implication noted here at the time, since resolved: a real
-// `practice_statuses` table (id/name/owner_user_id, same shape as
-// `user_tags`) shipped in Phase 10, and the sidebar's Want to
-// Learn/Currently Practicing/Learned nav items' own fixed-name assumption
-// (this comment's original "bigger open question") was resolved in Phase
-// 11 — kept as fixed English names, since a rename/delete degrades
-// gracefully to that view's normal empty state rather than needing a new
-// "pin to sidebar" mechanism (memory project_multiuser_build.md's own
-// Phase 11 section has the full reasoning).
+// `practice_statuses` (id/name/owner_user_id, same shape as `user_tags`)
+// is a real per-user table; the sidebar's Want to Learn/Currently
+// Practicing/Learned nav items keep fixed English names regardless — a
+// rename/delete degrades gracefully to that view's normal empty state
+// rather than needing a "pin to sidebar" mechanism.
 //
-// **Practice Status create is disabled — corrected 2026-09-08**: a same-day
-// edit briefly re-enabled it on the mistaken belief that the only reason it
-// was ever off was the schema not existing yet. Wrong — the schema gap
-// was real back when `canAdd={false}` first shipped, but the reason that
-// still holds today, direct feedback confirmed, is independent of schema:
-// each row renders a fixed hardcoded icon (`PRACTICE_STATUS_ICON_BY_ID`
-// below), and creating a genuinely new status raises a real, still-open
-// product question — how does a user pick or get assigned an icon for one?
-// — that hasn't been decided. `canAdd={false}` stays until that's resolved,
-// same muted-icon-plus-"Soon"-pill treatment as any other not-yet-real
-// control in this file. Rename/delete/merge on the 5 existing rows (each
-// already has a fixed, known icon) are unaffected — only *creating a new
-// row* is blocked, since only that path has no icon to assign yet.
+// Practice Status create is disabled (`canAdd={false}`), independent of
+// schema: each row renders a fixed hardcoded icon
+// (`PRACTICE_STATUS_ICON_BY_ID` below), and creating a genuinely new
+// status raises a real, still-open product question — how does a user
+// pick or get assigned an icon for one? — that hasn't been decided.
+// `canAdd={false}` stays until that's resolved, same muted-icon-plus-
+// "Soon"-pill treatment as any other not-yet-real control in this file.
+// Rename/delete/merge on the 5 existing rows (each already has a fixed,
+// known icon) are unaffected — only *creating a new row* is blocked,
+// since only that path has no icon to assign yet.
 
 type IdentityKey = 'none' | 'singlepass' | 'oidc-admin' | 'oidc-member'
 
@@ -211,14 +193,15 @@ function SettingsRow({
   label: string
   help: string
   control: React.ReactNode
-  // Neither field behind this row has a real backend yet — migration
-  // 00024's user_settings.show_books_in_sidebar/content_view_mode columns
-  // are planned but not built until Phase 10 (backend)/12 (this page's own
-  // real build). The control stays visible and genuinely toggleable in this
-  // mockup (so the two states can still be previewed), but muted + tagged,
-  // same "Soon" pill ThemeControl's own Dark option already uses — pointer-
-  // events aren't actually blocked, unlike a real disabled control, since
-  // there's no live-app consequence to prevent here yet.
+  // Neither field behind this row has a real backend wired into this
+  // mockup — migration 00024's user_settings.show_books_in_sidebar/
+  // content_view_mode columns are real and live in the actual
+  // UserSettingsPage.tsx (GET/PATCH /api/user-settings). The control
+  // stays visible and genuinely toggleable in this mockup (so the two
+  // states can still be previewed), but muted + tagged, same "Soon" pill
+  // ThemeControl's own Dark option already uses — pointer-events aren't
+  // actually blocked, unlike a real disabled control, since there's no
+  // live-app consequence to prevent here.
   soon?: boolean
 }) {
   return (
@@ -398,9 +381,9 @@ export function UserSettingsMockup() {
   // default true, before the label flipped to "Hide Books in sidebar".
   const [hideBooksInSidebar, setHideBooksInSidebar] = useState(false)
   // Default false (not paginated — infinite scroll shown, the real
-  // default) — corrected 2026-09-07, see this file's own header comment.
-  // Migration 00024's user_settings.content_view_mode defaults to
-  // 'infinite', matching PieceBrowseView.tsx's actual current behavior.
+  // default) — see this file's own header comment. Migration 00024's
+  // user_settings.content_view_mode defaults to 'infinite', matching
+  // PieceBrowseView.tsx's actual current behavior.
   const [paginatedViews, setPaginatedViews] = useState(false)
 
   const [userLists, setUserLists] = useState<Record<UserListKey, ListItem[]>>(INITIAL_USER_LISTS)

@@ -96,7 +96,7 @@ func TestCheck_RunningBuildIsExactlyTheLatestRelease(t *testing.T) {
 }
 
 // TestCheck_PrereleaseAheadOfLatestStable is the exact case the original,
-// unrefined design got wrong (master plan's own forward note): a
+// unrefined design got wrong: a
 // pre-release/dev build that's already ahead of the latest official
 // release must not be reported as "an update is available."
 func TestCheck_PrereleaseAheadOfLatestStable(t *testing.T) {

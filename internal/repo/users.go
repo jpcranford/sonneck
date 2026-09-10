@@ -55,8 +55,8 @@ func getUserByOIDCSubject(ctx context.Context, q Queryer, subject string) (*mode
 
 // ListUsers returns every account, each with its permission set loaded —
 // the Admin Settings Users screen's one source of truth. In none/singlepass
-// mode this is always exactly the one seeded row; OIDC (Phase 14) is the
-// only mode that ever adds more.
+// mode this is always exactly the one seeded row; OIDC is the only mode
+// that ever adds more.
 func ListUsers(ctx context.Context, q Queryer) ([]*models.User, error) {
 	rows, err := q.QueryContext(ctx,
 		`SELECT id, display_name, password_hash, oidc_subject, avatar_url, created_at FROM users ORDER BY id`)
@@ -141,7 +141,7 @@ func SetUserPasswordHash(ctx context.Context, q Queryer, userID int64, hash *str
 }
 
 // UpdateDisplayName renames userID's own account — User Settings' Account
-// card (master plan Phase 12), PATCH /api/auth/me. No uniqueness constraint
+// card, PATCH /api/auth/me. No uniqueness constraint
 // on display_name (unlike a tag/lookup name) — two accounts sharing a
 // display name is a cosmetic collision, not a data-integrity concern.
 func UpdateDisplayName(ctx context.Context, q Queryer, userID int64, displayName string) error {
@@ -157,8 +157,8 @@ func UpdateDisplayName(ctx context.Context, q Queryer, userID int64, displayName
 var ErrOIDCRegistrationDisabled = errors.New("oidc registration disabled")
 
 // ClaimOrProvisionOIDCUser is the OIDC callback's one piece of account
-// resolution logic (master plan Phase 14), run inside the caller's own
-// transaction (q is expected to be a *sql.Tx):
+// resolution logic, run inside the caller's own transaction (q is
+// expected to be a *sql.Tx):
 //
 //  1. subject already linked to a row → log them in. avatarURL and
 //     displayName are both re-synced from this login's fresh claims (an
@@ -167,8 +167,8 @@ var ErrOIDCRegistrationDisabled = errors.New("oidc registration disabled")
 //     accordingly), not just set once at creation.
 //  2. No such row, and id=1 (the seeded local admin) has never been
 //     claimed by any OIDC login yet → claim it. This condition *is* "the
-//     very first OIDC login" (master plan's Auth methods table) — no
-//     separate counter needed. Existing permissions/favorites/tags/notes
+//     very first OIDC login" — no separate counter needed. Existing
+//     permissions/favorites/tags/notes
 //     on that row are untouched.
 //  3. No such row, id=1 already claimed by someone else → auto-provision a
 //     new row (display_name/avatar_url/oidc_subject from the claim,
@@ -286,8 +286,8 @@ func DeleteUser(ctx context.Context, q Queryer, id int64) error {
 
 // ApplyAuthChangeDowngrade collapses a multi-account OIDC install down to
 // the single implicit account none/singlepass mode requires (Auth Change
-// flow, master plan Phase 16) — the destructive transaction the removed
-// POST /api/admin/security's original downgrade design moved into: it
+// flow) — the destructive transaction the removed POST /api/admin/security's
+// original downgrade design moved into: it
 // doesn't disappear with that endpoint, it just moves to run here,
 // automatically, once the frontend flow's own confirm-delete step has
 // already gotten the operator's confirmation (this function performs no

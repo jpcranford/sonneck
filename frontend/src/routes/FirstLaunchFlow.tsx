@@ -18,19 +18,18 @@ import { ApiError } from '../api/client'
 import { completeSetup } from '../api/setup'
 import { SonneckWordmark } from '../components/SonneckWordmark'
 
-// First-Time Launch Flow — multi-user support, Phase 3 of the approved
-// master plan (memory project_multiuser_build.md): real build of
-// FirstLaunchMockup.tsx (/mockup/first-launch, kept as a standing design
-// reference) — same layout/behavior, wired to the actual server instead of
-// fixture data. If the two ever look different, that's either a bug or a
-// change that needs porting to both.
+// First-Time Launch Flow — real build of FirstLaunchMockup.tsx
+// (/mockup/first-launch, kept as a standing design reference) — same
+// layout/behavior, wired to the actual server instead of fixture data.
+// If the two ever look different, that's either a bug or a change that
+// needs porting to both.
 //
 // Two deliberate simplifications vs. the mockup, since neither has a real
 // counterpart yet: no "Preview as Docker/Native" toggle (no native/Wails
-// build exists — see memory project_wails_native_app_investigation.md —
-// so the Folder step only has Docker's read-only path-confirmation
-// variant, and the Security step's OIDC card only ever shows the Docker
-// wording). Both need a real native branch once that build exists.
+// build exists, so the Folder step only has Docker's read-only
+// path-confirmation variant, and the Security step's OIDC card only ever
+// shows the Docker wording). Both need a real native branch once that
+// build exists.
 //
 // App.tsx renders this in place of the real app for as long as
 // config.firstLaunchCompleted is false, and passes down the same
@@ -409,14 +408,12 @@ function SecurityStep({
   )
 }
 
-// Parity with AuthChangeFlow.tsx's own 'done' step (master plan Phase 16):
-// ink checkmark (not accent), a real method-aware "Continue to
-// Library"/"Continue to Sign In" button (not a generic "Continue to
-// Sonneck" — singlepass mode's own handleCompleteSetup never issues a
-// session, so that choice genuinely lands on LoginScreen next, not the
-// library), and the identical white-style button treatment/sizing. Copy
-// ported from FirstLaunchMockup.tsx's own already-approved DoneStep, which
-// had this method-aware nuance the real component never picked up.
+// Parity with AuthChangeFlow.tsx's own 'done' step: ink checkmark (not
+// accent), a real method-aware "Continue to Library"/"Continue to Sign
+// In" button (not a generic "Continue to Sonneck" — singlepass mode's
+// own handleCompleteSetup never issues a session, so that choice
+// genuinely lands on LoginScreen next, not the library), and the
+// identical white-style button treatment/sizing.
 function DoneStep({ authMethod, onContinue }: { authMethod: 'none' | 'singlepass'; onContinue: () => void }) {
   return (
     <div className="flex w-full max-w-md flex-col items-center gap-4 text-center">

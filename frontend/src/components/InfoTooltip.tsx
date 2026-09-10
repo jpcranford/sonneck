@@ -63,8 +63,8 @@ interface InfoTooltipProps {
  * but then silently clipped this exact tooltip's text whenever it was
  * actually opened near an edge, trading one bug for a worse one).
  *
- * Vertically flips instead of clamping — found live (2026-08-30) via the
- * People Library filter drawer's "Show all composers" row, the first row
+ * Vertically flips instead of clamping — found live via the People
+ * Library filter drawer's "Show all composers" row, the first row
  * of a scrollable drawer body: the bubble's default open-upward placement
  * (`bottom-full`) had nowhere to go above the trigger within that
  * scrollable ancestor, so its top portion rendered clipped clean off. A

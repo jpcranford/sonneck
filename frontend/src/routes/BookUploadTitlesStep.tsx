@@ -30,8 +30,8 @@ import { TOTAL_WIZARD_STEPS } from './BookUploadWizard'
 // neither composer nor arranger — see requireComposerOrArranger below.
 // Uses the shared PageLightbox (components/PageLightbox.tsx) for the tap-
 // to-preview overlay. Browses the *whole book* by raw physical page, not
-// just the pieces (fixed 2026-08-26) — it originally cycled between
-// pieces only (prev/next meant "the piece before/after this one"), which
+// just the pieces — it originally cycled between pieces only (prev/next
+// meant "the piece before/after this one"), which
 // displayed a piece index as if it were a page number and made it
 // impossible to check a skipped page without leaving this screen and
 // going back to the Split step. A user reviewing piece names still needs
@@ -100,7 +100,7 @@ function useIsDesktop() {
 //    hovering, even one whose clamp math is provably correct — still
 //    contributes its transformed bounds to its nearest *scrolling*
 //    ancestor's scrollable-overflow region for as long as it's mounted.
-//    Confirmed directly: this wizard's row list sits inside AppShell's
+//    Confirmed: this wizard's row list sits inside AppShell's
 //    own scroll container, and mounting/positioning the popup measurably
 //    changed that container's scrollHeight (677px → 712px in one real
 //    trace). If the container's scrollTop needs to be re-clamped to a
@@ -109,7 +109,7 @@ function useIsDesktop() {
 //    or, worse, changing scroll position under a *stationary* mouse
 //    changes what element is actually under the cursor, which can
 //    trigger a mouseleave → unmount → scrollHeight-shrinks-back →
-//    mouseenter-again oscillation (confirmed directly too: the popup
+//    mouseenter-again oscillation (confirmed independently: the popup
 //    mounting and unmounting in a tight loop, multiple times a second,
 //    for a row positioned exactly where this could happen).
 // 2. position: fixed removes the popup from any ancestor's scrollable
@@ -283,7 +283,7 @@ export function BookUploadTitlesStep({
   const { data: peopleOptions = [] } = useQuery({ queryKey: ['people'], queryFn: () => listPeople() })
 
   // Autosaves to the wizard's lifted pieceFields on every field edit, not
-  // just on Back/Next (found 2026-08-27) — previously, closing the tab or
+  // just on Back/Next — previously, closing the tab or
   // crashing mid-typing on this step lost everything typed since the last
   // Back/Next, including from the wizard's own localStorage draft
   // (BookUploadWizard.tsx's save-draft effect keys off pieceFields, so it
@@ -318,7 +318,7 @@ export function BookUploadTitlesStep({
   // specific edition/work, so every piece in this book is by the same
   // already-named composer with nothing left to disambiguate per piece.
   // Hides Composer *and* Arranger both, not just Arranger the way
-  // bookHasArranger alone does below — direct request, 2026-09-02.
+  // bookHasArranger alone does below.
   const bookHasConfirmedAttribution = !!bookComposer && !!bookImslpNumber
   const showComposerField = !bookHasConfirmedAttribution
   const showArrangerField = !bookHasArranger && !bookHasConfirmedAttribution
@@ -360,8 +360,8 @@ export function BookUploadTitlesStep({
   // (raw OCR/filename-derived casing), and is a no-op against an existing
   // catalog pick's already-correctly-cased name.
   //
-  // shouldValidate deliberately omitted (found firing 2026-08-27, ported
-  // from UploadBookTitlesMockup.tsx's own fix): this is a formatting
+  // shouldValidate deliberately omitted (matches UploadBookTitlesMockup.tsx's
+  // own fix): this is a formatting
   // convenience, not a submit attempt — a piece with a still-blank Title
   // (very plausible mid-wizard, before every row's been typed in yet)
   // would otherwise light up a "required" error the instant Capitalize is
@@ -403,9 +403,9 @@ export function BookUploadTitlesStep({
   // This checks *presence* only (does the array have anything in it), not
   // format — TagComboBox's own "pick existing or create new" flow can't
   // produce a blank/malformed entry, so there's nothing else worth
-  // validating here (direct instruction, porting the mockup's own fix:
-  // "the new tag format is validation enough" / "check to make sure
-  // content is still present, but validating text format is unnecessary").
+  // validating here (matches the mockup's own fix: "the new tag format is
+  // validation enough" / "check to make sure content is still present,
+  // but validating text format is unnecessary").
   function composerOrArrangerRules(field: 'composer' | 'arranger', index: number) {
     const other = field === 'composer' ? 'arranger' : 'composer'
     return {

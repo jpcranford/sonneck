@@ -539,14 +539,13 @@ type PersonSplitRequest struct {
 }
 
 // ConfigResponse is GET /api/config's shape — a deliberately narrow slice
-// of server config the frontend needs at runtime (CLAUDE.md > Config),
-// grown for the first-time launch flow (memory project_multiuser_build.md):
+// of server config the frontend needs at runtime (CLAUDE.md > Config).
 // AuthMethod is already resolved (env var wins, else the stored
 // first-launch choice, else "none" — the frontend never re-derives this
 // order itself); AuthMethodSetByEnv tells the Security step whether to
 // show the picker at all or a locked "set by environment variable" state,
 // same convention the Admin Settings screen's own env-var-shadowed fields
-// will use. DataDir is only ever populated while first-launch hasn't
+// use. DataDir is only ever populated while first-launch hasn't
 // completed yet — the Library Folder step's own confirmation display, not
 // exposed once setup is done and there's no more reason for an unauthenticated
 // endpoint to keep announcing a host filesystem path.
@@ -556,10 +555,10 @@ type ConfigResponse struct {
 	AuthMethodSetByEnv   bool    `json:"authMethodSetByEnv"`
 	FirstLaunchCompleted bool    `json:"firstLaunchCompleted"`
 	DataDir              *string `json:"dataDir,omitempty"`
-	// OIDCProviderName (Phase 14) — only meaningful when AuthMethod is
+	// OIDCProviderName — only meaningful when AuthMethod is
 	// "oidc"; drives LoginScreen.tsx's "Sign in with {name}" button text.
 	OIDCProviderName *string `json:"oidcProviderName,omitempty"`
-	// AuthChangePending (Phase 16) — non-nil means the resolved auth
+	// AuthChangePending — non-nil means the resolved auth
 	// method no longer matches what the app last ran under (an operator
 	// changed AUTH_METHOD since the previous boot). App.tsx gates on this
 	// exactly parallel to FirstLaunchCompleted, rendering AuthChangeFlow
@@ -631,8 +630,7 @@ type SetupCompleteRequest struct {
 }
 
 // LoginRequest is POST /api/auth/login's body — singlepass mode's only
-// login UI (master plan's Auth methods table; `none` has no login, `oidc`
-// redirects to the IdP instead, Phase 14).
+// login UI (`none` has no login, `oidc` redirects to the IdP instead).
 type LoginRequest struct {
 	Password string `json:"password"`
 }
@@ -645,7 +643,7 @@ type AuthMeResponse struct {
 	DisplayName string   `json:"displayName"`
 	Permissions []string `json:"permissions"`
 	AuthMethod  string   `json:"authMethod"`
-	// AvatarURL (Phase 14) — nil for none/singlepass, and for an OIDC
+	// AvatarURL — nil for none/singlepass, and for an OIDC
 	// account whose IdP never supplied a "picture" claim.
 	AvatarURL *string `json:"avatarUrl"`
 }
@@ -663,8 +661,8 @@ type AdminUserResponse struct {
 }
 
 // SetUserPermissionsRequest is PATCH /api/admin/users/{id}'s body — a full
-// replace of the permission set (master plan's Permission model: an
-// independent multi-select checklist, not incremental add/remove).
+// replace of the permission set (an independent multi-select checklist,
+// not incremental add/remove).
 type SetUserPermissionsRequest struct {
 	Permissions []string `json:"permissions"`
 }
@@ -691,24 +689,23 @@ type LookupRenameRequest struct {
 // LookupDeleteRequest is every merge-or-delete-outright endpoint's shared
 // body shape (admin Lookup Tables, user Tags, user Practice Status) —
 // MergeIntoID present means reassign-then-delete, absent means delete
-// outright (master plan's Backend architecture section).
+// outright.
 type LookupDeleteRequest struct {
 	MergeIntoID *int64 `json:"mergeIntoId"`
 }
 
 // UpdateMeRequest is PATCH /api/auth/me's body — User Settings' Account
-// card self-rename (master plan Phase 12). No permission beyond being
+// card self-rename. No permission beyond being
 // authenticated is needed; a user can only ever rename themselves.
 type UpdateMeRequest struct {
 	DisplayName string `json:"displayName"`
 }
 
 // ChangePasswordRequest is POST /api/auth/change-password's body — User
-// Settings' Account card "Change Password" action, singlepass only (master
-// plan Phase 12). Distinct from AdminSecurityRequest's admin-only
-// set-or-clear: this always requires the caller's own CurrentPassword,
-// since it's self-service rather than an admin acting on someone else's
-// account.
+// Settings' Account card "Change Password" action, singlepass only.
+// Distinct from AdminSecurityRequest's admin-only set-or-clear: this
+// always requires the caller's own CurrentPassword, since it's
+// self-service rather than an admin acting on someone else's account.
 type ChangePasswordRequest struct {
 	CurrentPassword string `json:"currentPassword"`
 	NewPassword     string `json:"newPassword"`
@@ -722,10 +719,9 @@ type LibraryCountsResponse struct {
 }
 
 // LibrarySettingsResponse/UpdateLibrarySettingsRequest back Admin Settings'
-// "Library Settings" card (memory project_multiuser_build.md's Phase 13
-// section) — a second deliberate exception to CLAUDE.md > Config's "no
-// settings table in v1" (server_settings/auth_method was the first),
-// confirmed 2026-09-08: these 4 fields persist to DATA_DIR/config.yml
+// "Library Settings" card — a second deliberate exception to CLAUDE.md >
+// Config's "no settings table in v1" (server_settings/auth_method was the
+// first): these 4 fields persist to DATA_DIR/config.yml
 // (internal/libraryconfig) instead, not SQLite. Each field's own *SetByEnv
 // flag drives the frontend's "Set by environment variable" pill — same
 // convention GET /api/config's AuthMethodSetByEnv already established.
@@ -752,8 +748,8 @@ type UpdateLibrarySettingsRequest struct {
 	CopyrightRegion     string `json:"copyrightRegion"`
 }
 
-// VersionResponse backs Admin Settings' Version section (same memory
-// section as above). MatchedRelease/CheckStatus/AvailableVersion/CheckedAt
+// VersionResponse backs Admin Settings' Version section.
+// MatchedRelease/CheckStatus/AvailableVersion/CheckedAt
 // are all nil until a check has actually run this process's lifetime (a
 // background check kicks one off lazily on the first real page view, and
 // "Check for updates" forces a fresh one when the cache is stale) — the

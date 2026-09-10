@@ -9,9 +9,8 @@ import (
 	"github.com/pressly/goose/v3"
 )
 
-// TestMigrationPreservesRelationalData guards against a real incident
-// (2026-09-08, memory feedback_migration_fk_cascade_wipe.md): a migration
-// that rebuilds a table (CREATE ..._new / copy / DROP / RENAME — needed
+// TestMigrationPreservesRelationalData guards against a real incident: a
+// migration that rebuilds a table (CREATE ..._new / copy / DROP / RENAME — needed
 // whenever SQLite can't ALTER a UNIQUE constraint or DROP a
 // CHECK-constrained column in place) while the foreign_keys pragma is on
 // silently cascade-deletes every row in every OTHER table that references

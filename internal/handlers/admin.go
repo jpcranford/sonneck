@@ -19,7 +19,7 @@ func buildAdminUserResponse(u *models.User, isLastAdmin bool) api.AdminUserRespo
 }
 
 // handleListAdminUsers is Admin Settings' Users screen — in none/singlepass
-// mode always exactly the one seeded account; OIDC (Phase 14) is the only
+// mode always exactly the one seeded account; OIDC is the only
 // mode that ever adds more.
 func (s *Server) handleListAdminUsers(w http.ResponseWriter, r *http.Request) {
 	if _, ok := s.requirePermission(w, r, models.PermissionAdmin); !ok {
@@ -111,9 +111,9 @@ func (s *Server) handleSetUserPermissions(w http.ResponseWriter, r *http.Request
 	api.WriteData(w, http.StatusOK, resp)
 }
 
-// handleDeleteAdminUser removes only this app's own users row (master
-// plan's Backend architecture) — cascades via ON DELETE CASCADE, can't
-// touch anything at the identity provider itself. Guarded the same way
+// handleDeleteAdminUser removes only this app's own users row — cascades
+// via ON DELETE CASCADE, can't touch anything at the identity provider
+// itself. Guarded the same way
 // handleSetUserPermissions is: never leaves the install with no admin.
 func (s *Server) handleDeleteAdminUser(w http.ResponseWriter, r *http.Request) {
 	if _, ok := s.requirePermission(w, r, models.PermissionAdmin); !ok {
@@ -157,15 +157,13 @@ func isValidPermission(p string) bool {
 	return false
 }
 
-// handleAdminSecurity is POST /api/admin/security (master plan's Backend
-// architecture, revived 2026-09-08 in a deliberately narrower scope than
-// its first design): reachable only while the *current* resolved auth
-// method is none/singlepass (never oidc — that stays permanently
-// env-var-only, unreachable from any UI) and AUTH_METHOD isn't itself
-// env-set. Switching between none/singlepass never risks losing an
-// account, since both modes are always exactly the one implicit account —
-// none of the destructive multi-account downgrade machinery Phase 16's
-// Auth Change flow handles applies to this path.
+// handleAdminSecurity is POST /api/admin/security: reachable only while
+// the *current* resolved auth method is none/singlepass (never oidc —
+// that stays permanently env-var-only, unreachable from any UI) and
+// AUTH_METHOD isn't itself env-set. Switching between none/singlepass
+// never risks losing an account, since both modes are always exactly the
+// one implicit account — none of the destructive multi-account downgrade
+// machinery the Auth Change flow handles applies to this path.
 func (s *Server) handleAdminSecurity(w http.ResponseWriter, r *http.Request) {
 	if _, ok := s.requirePermission(w, r, models.PermissionAdmin); !ok {
 		return

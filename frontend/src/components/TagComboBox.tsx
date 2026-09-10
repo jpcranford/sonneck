@@ -6,8 +6,8 @@ import { InheritedNote } from './InheritedNote'
 
 // Strips diacritics and whitespace before comparing — e.g. so typing
 // "Boely" (no diaeresis) matches "Alexandre Boëly", and typing "toml"
-// (direct request, 2026-09-05 — the space-stripping half) matches
-// "Tom Lehrer" since "TomLehrer" (spaces stripped) starts with it. NFD
+// matches "Tom Lehrer" since "TomLehrer" (spaces stripped) starts with
+// it. NFD
 // decomposition splits a base letter from its combining diacritical mark
 // (U+0300-036F covers the whole combining-marks block), so stripping that
 // range after normalizing reduces "ë"/"é"/"ö"/etc. down to their plain
@@ -76,13 +76,12 @@ export function TagComboBox({
   sequenceStyle?: boolean
   // Overrides the create-new row's leading label — every existing caller
   // is a genuine "tag" (Key/Instrument/user tag), so 'New tag' stays the
-  // default; the Split People modal's replacement picker (composer-
-  // arranger overhaul) is the first caller picking real *people*, not
-  // tags, so "New tag: 'X'" read wrong there — passes 'New person'
-  // instead.
+  // default; the Split People modal's replacement picker is the first
+  // caller picking real *people*, not tags, so "New tag: 'X'" read wrong
+  // there — passes 'New person' instead.
   newOptionLabel?: string
-  // Brief highlight ring after an autofill (IMSLP, composer/arranger
-  // overhaul Stage C) just filled this field — same `transition-shadow
+  // Brief highlight ring after an autofill (IMSLP) just filled this
+  // field — same `transition-shadow
   // duration-700 ring-2 ring-accent-on-dark` convention every plain-input
   // autofill target already uses elsewhere in this app (EditPieceModal.tsx's
   // Opus/Publisher/etc. fields). Caller clears it after ~2.4s, same timing.
@@ -111,9 +110,9 @@ export function TagComboBox({
   // classes TagPills.tsx's own neutral keys/sheetType/instruments pills
   // use) is for shared catalog data that just happens to be picked via
   // this same component — Composer/Arranger's Person entities are exactly
-  // this (found 2026-09-01: they'd been defaulting to the per-user accent
-  // treatment since the Stage C retrofit, which read as claiming they were
-  // user-specific data the way Your Tags is). No effect when sequenceStyle
+  // this (they'd been defaulting to the per-user accent treatment, which
+  // read as claiming they were user-specific data the way Your Tags is).
+  // No effect when sequenceStyle
   // is set, which renders no pill background at all.
   pillStyle?: 'accent' | 'paper'
 }) {
@@ -218,8 +217,8 @@ export function TagComboBox({
 
   // The dropdown renders through a portal straight to document.body (see
   // the render below) rather than as a plain `position: absolute` child of
-  // the wrapper div above — found necessary 2026-08-30 fixing a real
-  // reported bug: this field, used inside Modal.tsx's own dialog (e.g. the
+  // the wrapper div above — found necessary fixing a real bug: this field,
+  // used inside Modal.tsx's own dialog (e.g. the
   // Split People modal's ordered replacement picker), had its dropdown
   // silently clipped by the dialog's own `overflow-hidden` (needed there
   // for its rounded corners). `overflow: hidden` clips ALL descendants

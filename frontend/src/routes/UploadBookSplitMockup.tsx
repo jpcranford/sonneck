@@ -109,9 +109,9 @@ interface PageMenuItem {
 // a skip) — this just triggers that shape directly, on request, instead
 // of only as a side effect of a skip.
 //
-// "Finish previous and split twice" (target: 'double', added 2026-08-30,
-// direct request — mockup-only pending approval, see PageAssignments'
-// own comment in pieceSplitLogic.ts) sits right after "Finish previous
+// "Finish previous and split twice" (target: 'double' — see
+// PageAssignments' own comment in pieceSplitLogic.ts, the real shared
+// logic this mockup and the real wizard both use) sits right after "Finish previous
 // and split" — it's that same behavior *plus* "Begin and split" chained
 // onto it: the previous piece still finishes exactly here, but instead of
 // the new piece starting directly, a brand-new one-page piece closes
@@ -148,13 +148,13 @@ function pageMenuItems(page: number): PageMenuItem[] {
   ]
 }
 
-// Group Lane (design doc: the "Piece Length Indicator" comparison
-// artifact) — a light tint fill connecting the thumbnails of one piece, so
-// its true page length reads directly as the shape's own width, on top of
-// the existing per-tile border treatment. Promoted to lib/pieceLaneLayout.ts
-// once approved and ported into the real BookUploadSplitStep.tsx, so both
-// call sites share one implementation instead of two hand-synced copies —
-// see that file's own header comment for the full reasoning.
+// Group Lane (design doc: the "Piece Length Indicator" comparison) — a
+// light tint fill connecting the thumbnails of one piece, so its true
+// page length reads directly as the shape's own width, on top of the
+// existing per-tile border treatment. Lives in lib/pieceLaneLayout.ts,
+// shared with the real BookUploadSplitStep.tsx so both call sites use one
+// implementation instead of two hand-synced copies — see that file's own
+// header comment for the full reasoning.
 
 function PageThumb({ page, printedPage }: { page: number; printedPage: number }) {
   const blank = page === 4
@@ -531,15 +531,15 @@ export function UploadBookSplitMockup() {
             //
             // Real per-side `border-*-color`/`border-*-style` properties
             // (dividing at the box's own corners, not the diagonal) were
-            // tried and reverted 2026-08-30 — direct correction: it moved
-            // the color divider away from the diagonal offset the original
-            // gradient design used, and it was applied to 'single' too,
-            // which shouldn't get any dashed treatment at all (see below).
+            // tried and reverted: it moved the color divider away from the
+            // diagonal offset the original gradient design used, and it
+            // was applied to 'single' too, which shouldn't get any dashed
+            // treatment at all (see below).
             let borderStyle: React.CSSProperties = {}
             let sharedGradient: string | null = null
             if (badgeKind === 'skip') {
-              // No border at all (added 2026-08-30, direct request) — kept
-              // as an invisible, same-width border via a transparent color
+              // No border at all — kept as an invisible, same-width
+              // border via a transparent color
               // rather than dropping border-width itself, so the grid
               // doesn't visually jump when a page toggles to/from skip. A
               // skipped page is excluded content, not a piece boundary, so
@@ -557,19 +557,10 @@ export function UploadBookSplitMockup() {
               // to visually match, so it stays full strength, same as any
               // other start page would.
               //
-              // No dashed overlay on this half (removed 2026-08-30, direct
-              // request: "remove the dashed part from 'finish and split'")
-              // — both halves are now a plain solid fill, same treatment
-              // 'single' already gets just below (and the same reasoning:
-              // the Group Lane fill already carries the "continues from
+              // No dashed overlay on this half — both halves are a plain
+              // solid fill, same treatment 'single' gets just below (the
+              // Group Lane fill already carries the "continues from
               // before" signal, so the border doesn't need to as well).
-              // This is a reversal of the same-day fix right below in
-              // 'single''s own comment ("no dashed overlay ... direct
-              // correction") — that one was about *never* dashing this
-              // half in the first place for a semantically-different
-              // reason (both halves of 'single' are beginnings); this one
-              // is the later, broader decision that dashed borders aren't
-              // needed here at all anymore, for any badge kind.
               const prevPiece = pieces[pieceIdx - 1]
               const prevIsBridgeCounterpart = prevPiece && prevPiece.start === piece.start
               const prevColor = prevPiece
@@ -580,13 +571,12 @@ export function UploadBookSplitMockup() {
               sharedGradient = `linear-gradient(135deg, ${prevColor} 50%, ${piece.color} 50%)`
             } else if (badgeKind === 'single') {
               // Same two-color diagonal as 'shared' just above, but no
-              // dashed overlay (direct correction 2026-08-30: "Begin and
-              // split" is a piece-*beginning* status, not a continuation —
-              // neither half here is "riding along from before": the first
-              // half is a brand-new synthetic one-page piece that closes
-              // immediately, the second is the piece that begins right
-              // after it. Both are beginnings, so both stay solid, exactly
-              // as this looked before any of today's changes). Both halves
+              // dashed overlay: "Begin and split" is a piece-*beginning*
+              // status, not a continuation — neither half here is "riding
+              // along from before": the first half is a brand-new
+              // synthetic one-page piece that closes immediately, the
+              // second is the piece that begins right after it. Both are
+              // beginnings, so both stay solid. Both halves
               // stay full strength (not tinted) — pieces[pieceIdx-1] is
               // always the synthetic one-page piece computeLayout pushes
               // immediately before the continuing piece for a 'single'
@@ -633,9 +623,8 @@ export function UploadBookSplitMockup() {
               // belongs to.
               borderStyle = { borderStyle: 'dashed', borderColor: `${piece.color}61` } // ~38% alpha
             } else {
-              // Plain member page (badgeKind null) — no badge, no border
-              // (removed 2026-08-30, direct request: "try removing the
-              // dashed lines from plain pages"). Kept as an invisible,
+              // Plain member page (badgeKind null) — no badge, no border.
+              // Kept as an invisible,
               // same-width transparent border rather than dropping
               // border-width itself, same reasoning as the 'skip' case
               // above — no grid reflow as a page's state changes. The
@@ -747,14 +736,14 @@ export function UploadBookSplitMockup() {
           })}
         </div>
 
-        {/* Row-wrap continuation marks (added 2026-08-30, direct report: a
-            lane simply stopping at the row's right edge was
-            indistinguishable from a piece that genuinely ends there by
-            coincidence) — Tabler's own `IconCircleCaretRightFilled`/
-            `...LeftFilled` (24px, colored solid to the wrapping lane's own
-            color — swapped in for the visually-similar `IconCircleChevron*`
-            pair, direct request, since the caret notch reads bigger/bolder
-            at the same 24px size than the thinner chevron did), stacked
+        {/* Row-wrap continuation marks — a lane simply stopping at the
+            row's right edge was indistinguishable from a piece that
+            genuinely ends there by coincidence. Tabler's own
+            `IconCircleCaretRightFilled`/`...LeftFilled` (24px, colored
+            solid to the wrapping lane's own color — swapped in for the
+            visually-similar `IconCircleChevron*` pair, since the caret
+            notch reads bigger/bolder at the same 24px size than the
+            thinner chevron did), stacked
             *on top of* a same-size, paper-colored `IconCircleFilled`
             backdrop, at whichever edge the *same* piece actually continues
             across, pointing in the direction it continues.

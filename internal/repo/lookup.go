@@ -85,12 +85,10 @@ func FindOrCreateSheetType(ctx context.Context, q Queryer, name string) (int64, 
 }
 
 // --- Admin Settings' Lookup Tables: create/rename/delete/merge for
-// SheetType and Instrument (master plan's Backend architecture, locked
-// 2026-09-07 per direct feedback on the Phase 9 mockup). Key is
-// deliberately not included here — it never got this same create/delete/
-// merge treatment in the mockup (sequenceStyle's own ordered-list nature
-// makes "merge" a poor fit), so it stays rename-only via FindOrCreateKey's
-// existing pick-or-type pattern.
+// SheetType and Instrument. Key is deliberately not included here — it
+// never got this same create/delete/merge treatment in the mockup
+// (sequenceStyle's own ordered-list nature makes "merge" a poor fit), so
+// it stays rename-only via FindOrCreateKey's existing pick-or-type pattern.
 
 // CreateSheetType/CreateInstrument add a new row — a plain wrapper over
 // each table's own AUTOINCREMENT insert, kept separate from
@@ -174,8 +172,8 @@ func RenameInstrument(ctx context.Context, q Queryer, id int64, name string) err
 // renameNamedRow is the owner-scoped counterpart to createNamedRow — the
 // shared "reject a duplicate name (within that owner's own set) with
 // ErrDuplicateName, else rename" shape behind RenameUserTag/
-// RenamePracticeStatus (master plan Phase 12, User Settings' Tags/Practice
-// Status inline rename). The UPDATE itself is scoped by ownerID too, not
+// RenamePracticeStatus (User Settings' Tags/Practice Status inline rename).
+// The UPDATE itself is scoped by ownerID too, not
 // just id — the caller never separately confirms ownership before calling
 // this, so a rename attempt against a row belonging to a different user
 // affects zero rows and reports ErrNotFound, the same as if the id didn't

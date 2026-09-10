@@ -52,8 +52,7 @@ func TestCopyrightStatus_PossiblyPublicDomainWhenRenewalUnconfirmed(t *testing.T
 // Same year, but explicitly marked NOT renewed — same effective status as
 // the unconfirmed case above, since this app deliberately treats "actively
 // said no" and "never answered" identically (a plain boolean, not
-// tri-state, by direct product decision — see
-// repo.ResolveCopyrightStatus's own comment).
+// tri-state — see repo.ResolveCopyrightStatus's own comment).
 func TestCopyrightStatus_PossiblyPublicDomainWhenExplicitlyNotRenewed(t *testing.T) {
 	h := newTestServer(t)
 	dir := t.TempDir()
@@ -150,7 +149,7 @@ func TestCopyrightStatus_LikelyPublicDomainOutsideRenewalWindow(t *testing.T) {
 	}
 }
 
-// Real bug found live, 2026-09-05: an explicit 'publicDomain' pick is
+// Real bug: an explicit 'publicDomain' pick is
 // sticky (the calculation can never override it back to inCopyright), but
 // this piece's own copyrightYear (1965) puts the calculation's own 95-year
 // term expiry at 2060 — still in the future. The tooltip was rendering

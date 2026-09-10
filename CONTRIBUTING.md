@@ -7,7 +7,7 @@ If anything here is wrong, confusing, or out of date, that's itself a welcome bu
 > [!NOTE]
 > I said it in the README and I'll say it again here: this has involved a *lot* of AI-assisted development (probably too much tbh), and I'll welcome the eyes and/or code of any human who wants to make it more secure, reliable, robust, or just plain cleaner.
 > 
-> If you have the experience to be able to confidently clean up the code, I'll happily accept *any* contributions you want to give.
+> If you have the experience to be able to confidently clean up or even just comment on the code, I'll happily accept *any* contributions you want to give.
 
 ## Table of contents
 
@@ -66,6 +66,7 @@ sonneck/
 ├── cmd/sonneck/main.go        # Entry point — server bootstrap + CLI subcommands
 ├── internal/
 │   ├── api/                   # {data}/{error} response envelope, shared field validation
+│   ├── auth/                   # Session tokens, password hashing (multi-user support)
 │   ├── backup/                # Scheduled VACUUM INTO snapshot job
 │   ├── config/                # Env var parsing — validated at startup, fails fast
 │   ├── copyright/              # Public domain badge's region-rule term calculation (region table embedded from regions.json)
@@ -73,9 +74,12 @@ sonneck/
 │   │   └── migrations/        # goose migration files, one per schema change
 │   ├── export/                # CSV export (admin CLI command)
 │   ├── fuzzy/                  # Typo-tolerant search — Damerau-Levenshtein distance as a registered SQLite scalar function
+│   ├── githubrelease/           # GitHub releases/compare API client backing Admin Settings' version check
 │   ├── handlers/               # HTTP handlers — one file per resource area
 │   ├── imslp/                  # Live IMSLP lookup (composer/opus/year/publisher by IMSLP number) — see its own package doc comment
+│   ├── libraryconfig/           # DATA_DIR/config.yml load/save for Admin Settings' Library Settings card
 │   ├── models/                # Core domain structs (Piece, Book, Person, lookups)
+│   ├── oidcauth/                # OIDC discovery/token exchange (multi-user support)
 │   ├── pdf/                    # Page splitting/thumbnail generation via poppler-utils
 │   ├── peoplemigrate/           # One-shot backfill splitting legacy composer/arranger strings into Person rows (admin CLI command, also runs automatically on startup)
 │   ├── repo/                   # All SQL lives here — the only layer that touches the DB
@@ -83,14 +87,16 @@ sonneck/
 │   ├── testutil/               # Shared test fixtures (e.g. minimal valid PDFs)
 │   ├── webui/                  # Embeds the built frontend (//go:embed) for the single-binary/Docker deployment — see the Docker section below
 │   ├── wikipedia/               # Live Wikipedia search + Wikidata birth/death-year enrichment for Person autofill
-│   └── wizard/                 # Book-import wizard's page-range validation logic
+│   ├── wizard/                 # Book-import wizard's page-range validation logic
+│   └── yearparse/               # Leading-year extraction for sort=yearWritten/yearPublished, as a registered SQLite scalar function
 ├── frontend/
 │   └── src/
 │       ├── api/                # Typed fetch wrappers, one per backend resource
+│       ├── assets/              # Self-hosted fonts, brand SVGs, diagrams
 │       ├── components/         # Shared UI components
 │       ├── hooks/               # Shared React hooks
 │       ├── lib/                 # Pure helper logic (formatting, split-page math, etc.)
-│       └── routes/              # One file per page, wired up in App.tsx
+│       └── routes/              # One file per page (including /mockup/* design references), wired up in App.tsx
 ├── data/                       # Local dev library (DB, files, cache) — gitignored
 ├── design-review/              # Local screenshot/comparison scratch space — gitignored
 ├── .github/workflows/          # docker-publish.yml — see the Docker section below
@@ -154,6 +160,8 @@ go run github.com/pressly/goose/v3/cmd/goose@latest \
 
 Write both the `-- +goose Up` and `-- +goose Down` sections. If a down migration is necessarily lossy (e.g. collapsing a many-to-many relationship back down), say so in a comment right there in the file — see `00008_piece_keys_many_to_many.sql` for a real example of this.
 
+**If your migration rebuilds an existing table** (the `CREATE ..._new` / copy rows / `DROP TABLE <old>` / `RENAME` pattern — needed whenever SQLite can't `ALTER` a `UNIQUE` constraint or `DROP COLUMN` a column with its own `CHECK`), and anything else references that table via `ON DELETE CASCADE`, bracket the `DROP TABLE` in `PRAGMA foreign_keys = OFF;`/`PRAGMA foreign_keys = ON;` with a `-- +goose NO TRANSACTION` directive. This project's connections run with foreign keys enabled, which makes `DROP TABLE` perform an implicit `DELETE FROM` first — genuinely firing cascades into every referencing table, not just dropping schema. Migration `00025`'s own header comment has a real, fixed example to copy, and `internal/db/migration_safety_test.go` is a regression guard for exactly this class of bug (it seeds real rows in every FK-child table before migrating, and asserts they survive) — run it against any migration that rebuilds a table with real dependents.
+
 Migrations run automatically against `$DATA_DIR` on every backend startup (including `go run`), so you don't need a separate step to apply one locally — just restart the backend.
 
 ## Conventions & house rules
@@ -161,11 +169,13 @@ Migrations run automatically against `$DATA_DIR` on every backend startup (inclu
 `CLAUDE.md` is the canonical source for this project's conventions — originally written as house rules for AI-assisted sessions, but it doubles as the most complete, current description of how the codebase actually works, including every place real behavior deviates from the original design doc and why. Skim it before making a non-trivial change; it'll save you from re-deciding something that was already deliberated. A few of the most load-bearing rules, pulled up here so they're not easy to miss:
 
 - **API responses** always go through the `{data}`/`{error}` envelope above — no per-handler improvisation.
+- **Permission checks**: any handler that needs one calls `requirePermission(w, r, models.PermissionX)` as its first line — the one shared gate, not a blanket route-metadata middleware (requirements vary too much per-handler for that). See `CLAUDE.md` > Multi-user support for the current `read`/`download`/`practice`/`edit`/`upload`/`create`/`delete`/`admin` mapping if you're adding a new endpoint.
 - **Logging** uses the standard library's `log/slog` with structured fields (`logger.Info("piece deleted", "pieceId", piece.ID)`), not string interpolation. Destructive-but-expected actions (deletions, file replacement) log at `INFO`, not `DEBUG`/`WARN`.
 - **File hashing** is SHA-256, streamed incrementally — never buffer a full upload into memory before hashing.
 - **Frontend type-checking**: `frontend/tsconfig.json` is a solution-style config (`{ files: [], references: [...] }`). Running `tsc --noEmit -p .` against it is a silent no-op — it type-checks nothing and reports no errors either way. Always run `tsc --noEmit -p tsconfig.app.json` instead.
 - **Frontend data fetching** goes through TanStack Query — not ad-hoc `useEffect`/`useState` per component.
 - **Frontend forms** use `react-hook-form` with light client-side validation only (required fields, obviously-plausible ranges). The backend remains the sole authority for everything else — don't build a second, parallel validation schema that has to be kept in sync by hand.
+- **A control the viewer's own permissions can't actually use** (checked via `useAuth().permissions`) renders as a real disabled element with a real container `opacity` and a `title` explaining why — never a normal clickable control that would just 403, and never a translucent color applied directly to a multi-path icon (see `CLAUDE.md`'s icon-color rule).
 - **This project's React Compiler setup is stricter than default React advice on two points**: it flags reading a ref's `.current` during render, not just writing one (a value that needs to persist across renders has to be real `useState`, updated from an event handler or effect — never a ref read inline in the render body), and it flags a bare `setState` call directly inside a plain `useEffect` body (prefer updating state from the specific event handler that causes the change).
 
 ## Testing

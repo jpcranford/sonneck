@@ -15,20 +15,15 @@ import { logout } from '../api/auth'
 import { getUserSettings, updateUserSettings, type UserSettings } from '../api/userSettings'
 import { useAuth } from '../lib/AuthContext'
 
-// Real build of the approved Sidebar User Menu mockup (Option 2, "identity
-// card, dark popup" — /mockup/sidebar-user-menu, master plan Phases 4/7),
-// wired to real GET /api/auth/me data via AuthContext instead of the
-// mockup's own IDENTITIES fixture. Master plan Phase 11. Shared between
-// Sidebar.tsx (desktop rail) and MobileNav.tsx (mobile drawer) — same
-// trigger + popup either side, the drawer just sits in a wider column
-// (collapsed is always false there).
+// Real build of the Sidebar User Menu mockup (Option 2, "identity card,
+// dark popup" — /mockup/sidebar-user-menu), wired to real GET
+// /api/auth/me data via AuthContext instead of the mockup's own
+// IDENTITIES fixture. Shared between Sidebar.tsx (desktop rail) and
+// MobileNav.tsx (mobile drawer) — same trigger + popup either side, the
+// drawer just sits in a wider column (collapsed is always false there).
 //
-// One deliberate simplification vs. the mockup, confirmed directly the
-// session this was built: no identity "sub" line (the mockup's email/
-// description text — real AuthMe still carries no email field, even now
-// that OIDC (Phase 14) is real; the identity/avatar row below is the real
-// counterpart instead). The authMethod-derived blurb stands in for that
-// line using data that already exists.
+// AuthMe carries no email field, so this authMethod-derived blurb stands
+// in for the mockup's identity "sub" line, using data that already exists.
 const AUTH_METHOD_BLURB: Record<string, string> = {
   none: 'No login required',
   singlepass: 'Shared password',
@@ -36,7 +31,7 @@ const AUTH_METHOD_BLURB: Record<string, string> = {
 }
 
 // Ported from the mockup's own ThemeSwitcher (SidebarUserMenuMockup.tsx).
-// Real persistence as of master plan Phase 12 — shares the exact same
+// Real persistence — shares the exact same
 // ['user-settings'] query/mutation as User Settings' own Appearance card
 // (UserSettingsPage.tsx), so changing the theme in either place updates
 // the other immediately and survives a reload. Dark stays disabled — no
@@ -51,8 +46,8 @@ const THEME_OPTIONS: { key: ThemePreview; icon: ComponentType<{ size?: number; c
 ]
 
 // Compact icon-only sliding-pill toggle — deliberately not a re-skin of the
-// full-width, text-labeled ThemeControl row planned for User/Admin
-// Settings (Phase 12/13); this popup control is small enough that the
+// full-width, text-labeled ThemeControl row in User/Admin
+// Settings; this popup control is small enough that the
 // active option's highlight is a real absolute-positioned pill that slides
 // between icons (translateX by index × button width) rather than each
 // button flipping its own background independently.
@@ -147,8 +142,8 @@ export function UserMenuButton({ collapsed }: { collapsed: boolean }) {
   }, [open])
 
   const isAdmin = me.permissions.includes('admin')
-  // Hidden entirely in `none` mode (master plan's Frontend surfaces
-  // section) — there's no session to log out of, since every request there
+  // Hidden entirely in `none` mode — there's no session to log out of,
+  // since every request there
   // resolves to the same implicit id=1 user with zero session overhead.
   const showLogout = me.authMethod !== 'none'
 

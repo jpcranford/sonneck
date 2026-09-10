@@ -9,11 +9,11 @@ import (
 )
 
 // handleGetUserSettings/handleUpdateUserSettings back User Settings'
-// Appearance/Library cards (master plan Phase 12) — the three
-// admin-screen-visible structured preferences (show/hide Books in sidebar,
-// theme, pagination mode) that migration 00025's user_settings table and
-// repo.GetUserSettings/UpdateUserSettings have carried since Phase 10, with
-// no HTTP surface until now. Read/write is `read`-permission only, not
+// Appearance/Library cards — the three admin-screen-visible structured
+// preferences (show/hide Books in sidebar, theme, pagination mode) that
+// migration 00025's user_settings table and
+// repo.GetUserSettings/UpdateUserSettings have carried, with no HTTP
+// surface until now. Read/write is `read`-permission only, not
 // admin-gated — this is the calling user's own data, same scoping as
 // Tags/Practice Status above.
 //

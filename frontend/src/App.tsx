@@ -49,10 +49,9 @@ import { SetlistPage } from './routes/SetlistPage'
 import { NotFoundPage } from './routes/NotFoundPage'
 
 function App() {
-  // First-time launch flow (multi-user support, memory
-  // project_multiuser_build.md's Phase 3) — gates the entire app behind
-  // setup completion, not just a route, since nothing else is meant to be
-  // reachable until it's done. Same ['config'] query key FirstLaunchFlow
+  // First-time launch flow — gates the entire app behind setup completion,
+  // not just a route, since nothing else is meant to be reachable until
+  // it's done. Same ['config'] query key FirstLaunchFlow
   // itself invalidates on a successful Finish Setup, so completing it
   // swaps this component out automatically once the refetch lands.
   //
@@ -69,8 +68,8 @@ function App() {
     return <FirstLaunchFlow config={config} />
   }
 
-  // Auth Change flow (multi-user support, master plan Phase 16) — checked
-  // after firstLaunchCompleted (a fresh install's very first boot has no
+  // Auth Change flow — checked after firstLaunchCompleted (a fresh
+  // install's very first boot has no
   // prior last_active_auth_method to mismatch against, so that path always
   // goes through FirstLaunchFlow above instead, never this). A non-null
   // authChangePending means the resolved AUTH_METHOD no longer matches
@@ -83,10 +82,9 @@ function App() {
   return <AuthGate authMethod={config?.authMethod ?? 'none'} oidcProviderName={config?.oidcProviderName} />
 }
 
-// AuthGate — multi-user support, master plan Phase 11 (memory
-// project_multiuser_build.md). The real login-wall counterpart to
-// FirstLaunchFlow's own gate above, reached only once first-launch is
-// already done. Resolves GET /api/auth/me before rendering anything real:
+// AuthGate — the real login-wall counterpart to FirstLaunchFlow's own gate
+// above, reached only once first-launch is already done. Resolves GET
+// /api/auth/me before rendering anything real:
 // `none` mode always resolves (authMiddleware's implicit id=1 user, no
 // session needed), so this never shows LoginScreen there; `singlepass`/
 // `oidc` get a genuine 401 straight from authMiddleware when there's no
@@ -139,11 +137,9 @@ function AppRoutes() {
         <Route path="books/:id" element={<BookDetailsPage />} />
         <Route path="people" element={<PeopleLibraryPage />} />
         <Route path="people/:id" element={<PersonDetailsPage />} />
-        {/* Real routes (shell scope) for the sidebar user menu's Settings/
-            Admin links — master plan Phase 11. /settings is real as of
-            Phase 12 (against the approved /mockup/user-settings design);
-            /admin is still a ComingSoon stub until Phase 13 builds it
-            against /mockup/admin-settings. */}
+        {/* Settings and Admin routes, linked from the sidebar user menu —
+            both real, matching their /mockup/user-settings and
+            /mockup/admin-settings counterparts. */}
         <Route path="settings" element={<UserSettingsPage />} />
         <Route path="admin" element={<AdminPage />} />
         {/* Design mockups and reference samples — unlinked from the main

@@ -270,7 +270,7 @@ function PageLightbox({
           >
             <IconChevronLeft size={16} />
           </button>
-          {/* "PDF p." prefix added (2026-08-27) to match the inline cycler
+          {/* "PDF p." prefix matches the inline cycler
               below the main preview (this screen's own "PDF p. {n} / {N}"
               capsule, added for the same reason — this screen also has a
               printed-page number input right next to it, and a bare "n /
@@ -537,8 +537,7 @@ export function UploadBookAboutMockup() {
               physical page + this offset for every piece at import,
               rather than the raw PDF position. */}
           {/* Dashed border, matching EditPieceModal.tsx's own Copyright/
-              Book Details disclosure boxes (direct request, 2026-09-05) —
-              reads as an optional/secondary settings box rather than a
+              Book Details disclosure boxes — reads as an optional/secondary settings box rather than a
               regular solid-bordered field, same visual language this app
               already uses for "you probably don't need to touch this"
               sections. No bg-paper-raised here (the copyright box has none

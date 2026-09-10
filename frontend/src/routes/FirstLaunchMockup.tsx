@@ -17,17 +17,13 @@ import {
 import { SonneckWordmark } from '../components/SonneckWordmark'
 import { useMockupTitle } from '../lib/useMockupTitle'
 
-// First-Time Launch Flow — multi-user support, Phase 2 of the approved
-// master plan (project_multiuser_build.md / precious-kindling-pretzel.md):
-// Welcome → Library Folder → Security. Design mockup only — no real
-// backend exists yet for any of this (server_settings, AUTH_METHOD
-// resolution, folder validation), so every interaction below is against
-// local fixture/preview state, not a real API. The Docker-vs-native
-// branching on the Folder and Security steps is real planned behavior
-// (a native build has no volume mount to read a path from, and per the
-// plan OIDC is Docker/env-var-only, never settable through this UI) —
-// previewable here via the "Preview as" toggle since there's no real
-// runtime-mode detection built yet to drive it live.
+// First-Time Launch Flow mockup — Welcome → Library Folder → Security.
+// Fixture/preview state only, no real API calls (the real flow is
+// FirstLaunchFlow.tsx). The Docker-vs-native branching on the Folder and
+// Security steps is real planned behavior — a native build has no volume
+// mount to read a path from, and OIDC is Docker/env-var-only, never
+// settable through this UI — previewable here via the "Preview as"
+// toggle since there's no real runtime-mode detection to drive it live.
 
 const TOTAL_STEPS = 2 // Welcome is an unnumbered intro, same convention as the Book Upload Wizard's own File step (no "Step X of N" chrome there either)
 
@@ -393,10 +389,10 @@ function SecurityStep({
 
 // Parity with AuthChangeFlowMockup.tsx's own 'done' step: ink checkmark
 // (not accent) and a real method-aware "Continue to Library"/"Continue to
-// Sign In" label/sizing, ported into the real FirstLaunchFlow.tsx in the
-// same pass — singlepass mode never issues a session on completion, so
-// that choice genuinely lands on LoginScreen next, not the library. Click
-// target stays this mockup's own restart loop (`onRestart`), same stand-in
+// Sign In" label/sizing (also ported into the real FirstLaunchFlow.tsx) —
+// singlepass mode never issues a session on completion, so that choice
+// genuinely lands on LoginScreen next, not the library. Click target
+// stays this mockup's own restart loop (`onRestart`), same stand-in
 // every other "what happens next" control in this file already uses —
 // there's nowhere real for it to navigate to from a mockup.
 function DoneStep({ choice, onRestart }: { choice: AuthChoice; onRestart: () => void }) {

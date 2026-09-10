@@ -157,14 +157,13 @@ const samplePiece = {
   beatsPerMeasure: 3,
   fileHash: 'e71c2f9b8a4d5e6f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f',
   pageCount: 3,
-  // Public Domain Badge feature (design artifact, phase 1) — copyrightYear
-  // set (unlike before) so the citation's copyright clause has a real year
-  // to show once the preview toggle below lands on a clause-showing state.
-  // copyrightHolder deliberately left blank — demonstrates the new
-  // "falls back to effective Publisher" citation rule (§4 of the artifact)
-  // every time the clause renders, rather than needing a second fixture.
-  // copyrightSlug deliberately has no trailing period, demonstrating the
-  // citation's own auto-appended one.
+  // Public Domain Badge feature — copyrightYear set (unlike before) so
+  // the citation's copyright clause has a real year to show once the
+  // preview toggle below lands on a clause-showing state. copyrightHolder
+  // deliberately left blank — demonstrates the "falls back to effective
+  // Publisher" citation rule every time the clause renders, rather than
+  // needing a second fixture. copyrightSlug deliberately has no trailing
+  // period, demonstrating the citation's own auto-appended one.
   copyrightYear: 1877 as number | null,
   copyrightHolder: null as string | null,
   copyrightSlug: 'Arrangement by Louis Köhler' as string | null,
@@ -172,16 +171,14 @@ const samplePiece = {
   updatedAt: '2026-08-16T09:41:17Z',
 }
 
-// Public Domain Badge feature (design artifact, phase 1) — the badge's
-// effective status has no real calculation engine to drive it here (this
-// mockup has no Person.deathYear/region-table data model at all), so a
-// small preview toggle (below, next to the "Reference sample" banner)
-// stands in for it instead: pick any of the four states and both the
-// badge AND the citation respond, live. Option A (bare icon, no circle
-// chip) + Grass green — both "chosen for now" in the design artifact §5.
+// Public Domain Badge feature — the badge's effective status has no real
+// calculation engine to drive it here (this mockup has no
+// Person.deathYear/region-table data model at all), so a small preview
+// toggle (below, next to the "Reference sample" banner) stands in for it
+// instead: pick any of the four states and both the badge AND the
+// citation respond, live. Bare icon (no circle chip) + Grass green.
 // CopyrightStatus itself is the real api/types.ts one (imported above),
-// not a locally-duplicated copy — this mockup predates that type existing
-// at all, ported once the real build caught up.
+// not a locally-duplicated copy.
 
 // COPYRIGHT_BADGE_META/copyrightTooltipText now live in the shared
 // lib/copyrightBadge.ts, imported above — real, non-markup, non-visual
@@ -197,10 +194,10 @@ const samplePiece = {
 const MOCK_EXPIRY_YEAR = 1926
 
 // copyrightSlug gets an auto-appended period if it doesn't already end in
-// one (design artifact §4) — same rule the copyright clause's own holder
-// segment follows. Falls back to the literal "Public domain." when unset,
-// per direct request: a Public Domain/Likely Public Domain piece's
-// citation still ends with its own copyright-details note (just never the
+// one — same rule the copyright clause's own holder segment follows.
+// Falls back to the literal "Public domain." when unset: a Public
+// Domain/Likely Public Domain piece's citation still ends with its own
+// copyright-details note (just never the
 // "Copyright © {year} {holder}" part, which has nothing to assert once
 // there's no copyright to attribute) rather than ending bare.
 function publicDomainNote(slug: string | null): string {
@@ -225,14 +222,14 @@ function publicDomainNote(slug: string | null): string {
 // independent rule.
 const FLAT_CITATION =
   'Robert Schumann, arr. Louis Köhler, Album für die Jugend, "No. 9, Volksliedchen (Little Folk Song)" (Op. 68, No. 9), IMSLP #04154, 1848.'
-// Copyright Holder falls back to effective Publisher when unset (design
-// artifact §4/§7) — samplePiece.copyrightHolder is null above, so this
-// reads "G. Schirmer" (the piece's own effective publisher), not a blank.
+// Copyright Holder falls back to effective Publisher when unset —
+// samplePiece.copyrightHolder is null above, so this reads "G. Schirmer"
+// (the piece's own effective publisher), not a blank.
 // The trailing period on "Köhler" is auto-appended by the citation logic
 // (copyrightSlug itself has none, per the fixture's own comment above).
 const COPYRIGHT_CLAUSE = 'Copyright © 1877 G. Schirmer. Arrangement by Louis Köhler.'
-// The new two-sentence "written / published" split (design artifact §4) —
-// used only when a book is present AND the status shows a copyright
+// The two-sentence "written / published" split — used only when a book
+// is present AND the status shows a copyright
 // clause (In Copyright, Copyleft). Public Domain/Likely Public Domain
 // never use this structure (see sampleCitationFor below) — they keep the
 // flat format, just with a different trailing note.
@@ -636,10 +633,10 @@ export function PieceDetailsSample() {
         Not wired to real data; Edit is inert here on purpose.
       </div>
 
-      {/* Public Domain Badge feature (design artifact, phase 1) — mockup-
-          only preview control, no equivalent in the real page (there, the
-          badge is driven by ResolveEffective's live computation, not a
-          click). Picking a state here updates both the badge below (in
+      {/* Public Domain Badge feature — mockup-only preview control, no
+          equivalent in the real page (there, the badge is driven by
+          ResolveEffective's live computation, not a click). Picking a
+          state here updates both the badge below (in
           the Year written row) and the citation at the bottom of the
           page. */}
       <div className="flex flex-wrap items-center gap-2 rounded-md border border-dashed border-border px-4 py-2 text-xs">
@@ -944,9 +941,8 @@ export function PieceDetailsSample() {
               <DetailRow label="Year written">
                 <span className="inline-flex items-center gap-2">
                   <EffectiveValue value={piece.yearWritten.value} inherited={piece.yearWritten.inherited} />
-                  {/* Public domain badge — Option A (bare icon, no circle
-                      chip) + Grass green, both "chosen for now" in the
-                      design artifact §5. Driven by the mockup-only preview
+                  {/* Public domain badge — bare icon (no circle chip) +
+                      Grass green. Driven by the mockup-only preview
                       toggle above, not a real calculation — see
                       COPYRIGHT_BADGE_META's own comment.
                       showPointerCursor={false} — this reads as status

@@ -14,121 +14,92 @@ import { InfoTooltip } from '../components/InfoTooltip'
 import { Modal } from '../components/Modal'
 import { useMockupTitle } from '../lib/useMockupTitle'
 
-// Admin Settings — multi-user support, Phase 9 of the plan (memory
-// project_multiuser_build.md). Real build of the approved Phase 6 artifact:
-// Option B ("single scrolling page, pill-style jump-nav") for the overall
-// structure (one continuous page, no tab state), but each section renders
-// as its own bordered card rather than one shared panel with dividers —
-// switched over per direct feedback to match User Settings' own Phase 8
-// Option 2 ("separate cards per section") look, so the two settings pages
-// read consistently. The jump-nav pills (the part of Option B that
-// actually distinguished it from Option A) are unchanged — still one
-// strip above the section cards, still real same-page anchor links.
+// Admin Settings — Option B ("single scrolling page, pill-style jump-nav")
+// for the overall structure (one continuous page, no tab state), with each
+// section rendered as its own bordered card rather than one shared panel
+// with dividers, matching User Settings' own "separate cards per section"
+// look so the two settings pages read consistently. The jump-nav pills
+// (the part of Option B that actually distinguishes it from Option A) sit
+// as one strip above the section cards, using real same-page anchor links.
 //
-// Applies both forward notes locked when Phase 6 was approved:
-// 1. The Version section's copy now explicitly warns that the check only
-//    ever compares against official GitHub releases — a :dev/:beta install
-//    can be genuinely ahead of the latest release shown here with no way
-//    for the check to know that. **Superseded 2026-09-08, see below** — the
-//    check itself was refined so this is no longer a caveat the copy has
-//    to apologize for; it's now genuinely handled.
-// 2. EVERY Library Settings field (not just Backup schedule, the only one
-//    the artifact actually demoed locked) independently shows "Set by
-//    environment variable" the moment its own env var is set, with env
-//    always winning. Demonstrated here via a dev-only "Simulate env vars
-//    set" preview strip — not part of the shipped design, just how this
-//    mockup proves every field (not only one) can independently flip.
+// EVERY Library Settings field (not just Backup schedule) independently
+// shows "Set by environment variable" the moment its own env var is set,
+// with env always winning. Demonstrated here via a dev-only "Simulate env
+// vars set" preview strip — not part of the shipped design, just how this
+// mockup proves every field (not only one) can independently flip.
 //
-// One real backend gap the Phase 6 artifact's own footer flagged, still
-// unbuilt (Phase 13 dependency, not a design blocker): no runtime version
-// identity exists yet to power the Version section below.
+// Version identification: rather than a plain "vX.Y.Z" baked in at build
+// time, the real mechanism identifies a build by its own commit SHA
+// (injected at build time) checked against GitHub's release *and*
+// pre-release tags — that tag's name if one points at this exact commit,
+// else "Dev build, from commit <shortSHA> on <date>". See BUILD_FIXTURES/
+// the Version section's own "Preview build identity" control below, which
+// previews all three outcomes (not a real toggle — the shipped page only
+// ever has one true build identity to report; the real backend for this
+// now exists, AdminPage.tsx, and this mockup stays fixture-driven as its
+// own frozen reference).
 //
-// Version identification was tweaked per direct feedback after this phase
-// was first approved: rather than a plain "vX.Y.Z" baked in at build time,
-// the real mechanism identifies a build by its own commit SHA (injected at
-// build time, same Phase 13 dependency as above) checked against GitHub's
-// release *and* pre-release tags — that tag's name if one points at this
-// exact commit, else "Dev build, from commit <shortSHA> on <date>". See
-// BUILD_FIXTURES/the Version section's own "Preview build identity"
-// control below, which previews all three outcomes (not a real toggle —
-// the shipped page only ever has one true build identity to report).
-//
-// "Check for updates" refined 2026-09-08, per direct feedback on the
-// master plan (precious-kindling-pretzel.md's Status/Backend architecture
-// sections) — plan-only at the time, now ported into this mockup's copy
-// and preview states. The real endpoint won't just compare against the
-// latest official release and call it a day; it double-checks (GitHub's
+// "Check for updates": the real endpoint doesn't just compare against the
+// latest official release and call it a day — it double-checks (GitHub's
 // compare API, keyed off the same injected commit SHA the build-identity
 // mechanism above already needs) whether the *running* commit is actually
-// behind that release before ever claiming "update available" — so a
+// behind that release before ever claiming "update available", so a
 // pre-release/dev build that's already ahead of the latest official
 // release correctly shows "ahead," not a false update prompt. Each
-// BUILD_FIXTURES entry now carries its own `checkResult` ('upToDate' for
-// the tagged-release fixture, 'ahead' for the pre-release one, 'behind'
-// for the dev one) so flipping through the existing "Preview build
-// identity" toggle also previews all three check outcomes, without a
-// second toggle control. The footer copy's old apologetic "it may already
-// be newer than what's shown here" caveat is gone, replaced by copy
-// describing the real fix, plus a line about result caching (a real
-// concern flagged the same round: this control can get clicked repeatedly
-// over the weeks between releases, so results are cached server-side
-// rather than re-hitting GitHub every time).
+// BUILD_FIXTURES entry carries its own `checkResult` ('upToDate' for the
+// tagged-release fixture, 'ahead' for the pre-release one, 'behind' for
+// the dev one) so the existing "Preview build identity" toggle also
+// previews all three check outcomes, without a second toggle control.
+// Results are cached server-side rather than re-hitting GitHub on every
+// click, since this control can get clicked repeatedly over the weeks
+// between releases.
 //
-// Security's in-app "Change…" flow (a modal chooser, plus a two-step
-// downgrade-from-multi-user flow reusing FirstLaunchFlow.tsx's own
-// full-page-takeover weight for the destructive "delete every other
-// account" case) was built here, then removed entirely per direct
-// feedback: any change touching OIDC (or downgrading away from a
-// multi-account OIDC install) is env-var-only, full stop. The
-// destructive-downgrade content that flow used to hold (choose which
-// admin survives, confirm deleting the rest) wasn't thrown away — it's
-// the reason **Phase 16, "Build — Auth Change flow,"** exists: the app
-// detects an `AUTH_METHOD` change at boot (comparing the resolved value
-// against a stored "last known" one) and walks the admin through exactly
-// that same choose-then-confirm content as a startup gate. See
-// `/mockup/auth-change-flow` and the master plan's own "Auth Change flow"
-// design section.
+// Security has no in-app "Change…" flow for OIDC: any change touching
+// OIDC (or downgrading away from a multi-account OIDC install) is
+// env-var-only, full stop. The destructive-downgrade content this would
+// need (choose which admin survives, confirm deleting the rest) instead
+// lives in the Auth Change flow — the app detects an `AUTH_METHOD` change
+// at boot (comparing the resolved value against a stored "last known"
+// one) and walks the admin through that same choose-then-confirm content
+// as a startup gate. See `/mockup/auth-change-flow` and the real
+// AuthChangeFlow.tsx.
 //
-// **Re-added per direct feedback, narrower than what was removed**: while
-// the *current* method is `none` or `singlepass` (never `oidc` — that
-// stays permanently env-var-only and unreachable from here) and `AUTH_METHOD`
-// isn't itself env-set (the existing env-shadow pill still wins otherwise),
-// a "Change…" button reappears — a small modal choosing "No login" or
-// "Password" (add/reset/remove a password by picking Password with a new
-// value, blank to keep the current one, or picking No login to clear it).
-// No downgrade risk exists in this scope at all — `none`/`singlepass` are
-// always exactly one implicit account either way, so there's nothing to
-// lose and no need for the destructive full-screen flow above; this is a
-// direct, immediate, un-gated save, unlike the boot-time Auth Change flow
-// OIDC transitions still require.
+// A narrower "Change…" button does still exist: while the *current*
+// method is `none` or `singlepass` (never `oidc` — that stays permanently
+// env-var-only and unreachable from here) and `AUTH_METHOD` isn't itself
+// env-set (the existing env-shadow pill still wins otherwise), a
+// "Change…" button opens a small modal choosing "No login" or "Password"
+// (add/reset/remove a password by picking Password with a new value,
+// blank to keep the current one, or picking No login to clear it). No
+// downgrade risk exists in this scope — `none`/`singlepass` are always
+// exactly one implicit account either way, so there's nothing to lose and
+// no need for the destructive full-screen flow above; this is a direct,
+// immediate, un-gated save, unlike the boot-time Auth Change flow OIDC
+// transitions still require.
 //
-// **Follow-up fix, same day**: `identityKey === 'oidc'` used to render its
-// own bespoke "OIDC is never changeable here" static text, separate from
-// the normal env-var-shadow pill every other field uses. Direct feedback:
-// OIDC is *always* env-var-set for real (there's no other way it's ever
-// enabled), so that distinction was fake — an active `oidc` identity now
-// just forces `envSet` true for this one field (`EnvSimulatorStrip`'s own
-// Security checkbox is force-checked and disabled to match, rather than
-// letting it show an impossible "OIDC, but not env-set" combination), and
-// the field falls back to the one standard pill every other field already
-// uses. Simpler code too — `control` is unconditionally the Change button
-// now, since `LibraryField` never even renders it once `envSet` is true.
+// OIDC is *always* env-var-set in practice (there's no other way it's
+// ever enabled), so an active `oidc` identity forces `envSet` true for
+// this field (`EnvSimulatorStrip`'s own Security checkbox is
+// force-checked and disabled to match, rather than showing an impossible
+// "OIDC, but not env-set" combination) and falls back to the one standard
+// env-shadow pill every other field already uses, rather than a bespoke
+// "OIDC is never changeable here" static text.
 //
-// Users gained a per-row delete (trash icon, guarded by the same
+// Each user row has a delete (trash icon), guarded by the same
 // `isLastAdmin` check the permission grid already uses, confirmed via a
 // plain `window.confirm()` matching `BookContextMenu.tsx`'s existing
-// hard-delete convention rather than a custom dialog).
+// hard-delete convention rather than a custom dialog.
 //
-// Lookup Tables gained create/delete, per direct feedback: a circular "+"
-// at the end of each column appends a new blank row (auto-focused via
+// Lookup Tables support create/delete: a circular "+" at the end of each
+// column appends a new blank row (auto-focused via
 // `lastAddedLookupIdRef`, self-removed on blur if left empty — no stray
-// unnamed entries), and each existing row's own delete button opens a real
-// modal asking whether to merge the entry into another one in the same
-// column (a live dropdown of the others) or delete it outright, rather
-// than deleting immediately — the two destructive paths differ only in
-// framing here (both just remove the entry from this mockup's own
-// fixture; a real backend would additionally reassign every piece/book
-// tagged with it before removing the row on the merge path).
+// unnamed entries), and each existing row's own delete button opens a
+// real modal asking whether to merge the entry into another one in the
+// same column (a live dropdown of the others) or delete it outright,
+// rather than deleting immediately — the two destructive paths differ
+// only in framing here (both just remove the entry from this mockup's
+// own fixture; a real backend would additionally reassign every
+// piece/book tagged with it before removing the row on the merge path).
 
 type IdentityKey = 'none' | 'singlepass' | 'oidc'
 
@@ -142,9 +113,9 @@ const IDENTITY_LABELS: Record<IdentityKey, string> = {
 // fixture value UserSettingsMockup.tsx's own IDENTITIES record already
 // uses for its "Signed in via {provider} as {email}" line, kept in sync
 // deliberately rather than reinvented here. Real data comes from the
-// already-planned `EXTERNAL_PROVIDER` env var (Auth methods table, master
-// plan) — the display name an operator sets alongside the other OIDC_*
-// vars, not something this screen would ever let an admin type in.
+// `EXTERNAL_PROVIDER` env var — the display name an operator sets
+// alongside the other OIDC_* vars, not something this screen would ever
+// let an admin type in.
 const SECURITY_STATUS: Record<IdentityKey, string> = {
   none: 'No login',
   singlepass: 'Password',
@@ -163,10 +134,9 @@ const ALL_PERMS = [
 ] as const
 type Permission = (typeof ALL_PERMS)[number]
 
-// Matches the locked permission-mapping in the master plan
-// (precious-kindling-pretzel.md's own "Permission model" section) — kept
-// in sync with that doc, not re-derived independently, since Phase 10's
-// real backend enforces exactly this mapping.
+// Matches CLAUDE.md's permission mapping — kept in sync with that doc,
+// not re-derived independently, since the real backend enforces exactly
+// this mapping.
 const PERM_DESCRIPTIONS: Record<Permission, string> = {
   read: 'View and search pieces, books, and people.',
   download: "Download a piece's file.",
@@ -200,23 +170,21 @@ const INITIAL_USERS: Record<IdentityKey, AdminUser[]> = {
   ],
 }
 
-// Version identification, tweaked per direct feedback: rather than a
-// version string baked in at build time, the real check would compare this
-// build's own commit SHA (injected at build time, same Phase 13 dependency
-// already noted below) against GitHub's release *and* pre-release tags —
-// showing that tag's name if one points at this exact commit, else a dev
-// build identified by its own short SHA + commit date. BUILD_FIXTURES
-// previews all three outcomes; not a real toggle in the shipped page,
-// which only ever has one real build identity to report.
+// Version identification: rather than a version string baked in at build
+// time, the real check compares this build's own commit SHA (injected at
+// build time) against GitHub's release *and* pre-release tags — showing
+// that tag's name if one points at this exact commit, else a dev build
+// identified by its own short SHA + commit date. BUILD_FIXTURES previews
+// all three outcomes; not a real toggle in the shipped page, which only
+// ever has one real build identity to report.
 //
-// Each fixture also carries its own `checkResult` (added 2026-09-08, see
-// this file's header comment) so the same "Preview build identity" toggle
-// doubles as a preview of "Check for updates"' three possible outcomes —
-// the tagged release is already current (`upToDate`), the tagged
-// pre-release is genuinely ahead of the latest official release
-// (`ahead` — the exact case the old naive check would've gotten wrong),
-// and the dev build is genuinely behind it (`behind`, with a real
-// `availableVersion` to surface).
+// Each fixture also carries its own `checkResult` so the same "Preview
+// build identity" toggle doubles as a preview of "Check for updates"'
+// three possible outcomes — the tagged release is already current
+// (`upToDate`), the tagged pre-release is genuinely ahead of the latest
+// official release (`ahead` — the exact case a naive check would get
+// wrong), and the dev build is genuinely behind it (`behind`, with a
+// real `availableVersion` to surface).
 type BuildKind = 'release' | 'prerelease' | 'dev'
 type CheckResult = 'upToDate' | 'ahead' | 'behind'
 
@@ -236,8 +204,7 @@ const BUILD_FIXTURES: Record<
     shortSha: 'a1b2c3d',
     commitDate: '2026-08-30',
     // No "v" prefix — real release tags are bare numbers ("0.5", "0.5.1"),
-    // confirmed against this repo's own actual releases; fixed 2026-09-09
-    // after this fixture drifted from that real convention.
+    // confirmed against this repo's own actual releases.
     releaseName: '0.5',
     checkResult: 'upToDate',
   },
@@ -766,9 +733,9 @@ export function AdminSettingsMockup() {
               help={`Currently: ${SECURITY_STATUS[identityKey]}`}
               envKey="security"
               // OIDC is *always* env-var-set — it's the only way it's ever
-              // enabled, never selectable through any UI (Auth methods
-              // table, master plan) — so an active `oidc` identity forces
-              // this true regardless of the dev-only simulator checkbox
+              // enabled, never selectable through any UI — so an active
+              // `oidc` identity forces this true regardless of the dev-only
+              // simulator checkbox
               // below, which only exists to preview the other 4 fields
               // and would otherwise let `oidc` render as if unset, an
               // impossible real-world combination.

@@ -2,10 +2,9 @@
 // see lib/navItems.ts for the established precedent this follows, CLAUDE.md
 // > Frontend's "React lint gotchas" note).
 
-// Three-way segmented control (direct request, 2026-09-05, real build of
-// PieceLibrarySample.tsx's own approved mockup — see that file's
-// TriState/dimensionState/setDimensionState comment for the full
-// reasoning). Every array-valued facet (keyId/instrumentId/sheetTypeId/
+// Three-way segmented control matching PieceLibrarySample.tsx's mockup —
+// see that file's TriState/dimensionState/setDimensionState comment for
+// the full reasoning. Every array-valued facet (keyId/instrumentId/sheetTypeId/
 // userTagId/practiceStatus) becomes a `Record<string, TriState>` — only
 // non-neutral entries stored, 'neutral' is a key's absence — and every
 // plain-boolean facet (favorite/bookless/hasImslpNumber) becomes a bare

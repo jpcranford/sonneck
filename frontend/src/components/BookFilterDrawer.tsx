@@ -11,10 +11,9 @@ import { dimensionState, setDimensionState, type BookFilterState, type TriState 
 // activeBookFilterCount live in lib/bookFilterState.ts, not here
 // (react-refresh/only-export-components — CLAUDE.md > Frontend).
 //
-// Segmented exclude/neutral/include control per row (direct request,
-// 2026-09-05, ported from the mockup once approved there — see
+// Segmented exclude/neutral/include control per row — see
 // PieceLibrarySample.tsx's own TriStateControl comment for the full
-// reasoning) replaces the old plain checkbox.
+// reasoning — replaces the old plain checkbox.
 
 function FacetSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (

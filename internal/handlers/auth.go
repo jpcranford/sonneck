@@ -30,7 +30,7 @@ func isSecureRequest(r *http.Request, trustProxyHTTPS bool) bool {
 }
 
 // issueSession mints a session token, persists it, and sets the cookie —
-// shared by handleLogin (singlepass) and handleOIDCCallback (Phase 14), so
+// shared by handleLogin (singlepass) and handleOIDCCallback, so
 // the two login paths can't drift on cookie flags or TTL.
 func (s *Server) issueSession(w http.ResponseWriter, r *http.Request, userID int64) error {
 	token, err := auth.NewSessionToken()
@@ -57,8 +57,8 @@ func (s *Server) issueSession(w http.ResponseWriter, r *http.Request, userID int
 }
 
 // handleLogin is the singlepass password check — the only login UI that
-// exists pre-OIDC (master plan's Auth methods table: `none` has no login at
-// all, `oidc` redirects to the IdP instead, Phase 14). Only reachable when
+// exists pre-OIDC (`none` has no login at
+// all, `oidc` redirects to the IdP instead). Only reachable when
 // the resolved auth method is genuinely singlepass; `none`/`oidc` reject
 // outright rather than silently no-op, since a client hitting this by
 // mistake deserves a real error, not a confusing false "success".
@@ -80,8 +80,8 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// singlepass mode always has exactly one implicit account (master
-	// plan's Auth methods table) — id=1, same row `none` mode uses.
+	// singlepass mode always has exactly one implicit account — id=1, same
+	// row `none` mode uses.
 	user, err := repo.GetUserByID(ctx, s.DB, 1)
 	if err != nil {
 		s.writeError(w, err)
@@ -151,13 +151,13 @@ func (s *Server) handleGetMe(w http.ResponseWriter, r *http.Request) {
 	api.WriteData(w, http.StatusOK, resp)
 }
 
-// handleUpdateMe is User Settings' Account card self-rename (master plan
-// Phase 12) — a user can only ever rename themselves, so this needs no
+// handleUpdateMe is User Settings' Account card self-rename — a user can
+// only ever rename themselves, so this needs no
 // permission beyond being authenticated (models.PermissionRead is the
 // lowest bar every real account already has). Unlike PATCH
 // /api/admin/users/{id} (permissions only, admin-gated, any user), this
 // never takes a target id — always the calling user's own row. Rejected
-// outright for an OIDC account (Phase 14) — that identity's name is the
+// outright for an OIDC account — that identity's name is the
 // IdP's to own and gets re-synced on every login (ClaimOrProvisionOIDCUser),
 // so a local rename here would just be silently overwritten on next login;
 // UserSettingsPage.tsx's own Account field is disabled for the same reason,
@@ -203,7 +203,7 @@ func (s *Server) handleUpdateMe(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleChangePassword is User Settings' Account card "Change Password"
-// action (master plan Phase 12) — self-service, singlepass only. Distinct
+// action — self-service, singlepass only. Distinct
 // from POST /api/admin/security's admin-only set-or-clear (which never asks
 // for the account's own current password) and from the reset-password CLI
 // (which just clears the hash for lockout recovery) — this is the normal,
