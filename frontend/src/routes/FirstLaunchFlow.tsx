@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   IconArrowLeft,
@@ -16,14 +16,7 @@ import {
 import type { AppConfig } from '../api/config'
 import { ApiError } from '../api/client'
 import { completeSetup } from '../api/setup'
-import { afterMinDuration } from '../lib/minDuration'
 import { SonneckWordmark } from '../components/SonneckWordmark'
-
-// A meaningful confirmation screen ("You're all set"), not just a stripe
-// animation's in-progress flicker — matches EditBookModal.tsx's own
-// SAVED_DISPLAY_MS for the same "read a real success message" purpose,
-// rather than lib/minDuration.ts's shorter generic default.
-const DONE_DISPLAY_MS = 900
 
 // First-Time Launch Flow — multi-user support, Phase 3 of the approved
 // master plan (memory project_multiuser_build.md): real build of
@@ -416,18 +409,30 @@ function SecurityStep({
   )
 }
 
-function DoneStep({ onContinue }: { onContinue: () => void }) {
+// Parity with AuthChangeFlow.tsx's own 'done' step (master plan Phase 16):
+// ink checkmark (not accent), a real method-aware "Continue to
+// Library"/"Continue to Sign In" button (not a generic "Continue to
+// Sonneck" — singlepass mode's own handleCompleteSetup never issues a
+// session, so that choice genuinely lands on LoginScreen next, not the
+// library), and the identical white-style button treatment/sizing. Copy
+// ported from FirstLaunchMockup.tsx's own already-approved DoneStep, which
+// had this method-aware nuance the real component never picked up.
+function DoneStep({ authMethod, onContinue }: { authMethod: 'none' | 'singlepass'; onContinue: () => void }) {
   return (
     <div className="flex w-full max-w-md flex-col items-center gap-4 text-center">
-      <IconCircleCheckFilled size={40} className="text-accent" />
+      <IconCircleCheckFilled size={40} className="text-ink" />
       <h1 className="font-display text-2xl font-medium text-ink">You're all set</h1>
-      <p className="text-sm text-ink-soft">Taking you into your library…</p>
+      <p className="text-sm text-ink-soft">
+        {authMethod === 'none'
+          ? 'No login is required — Sonneck is ready to use. You can add a password or full sign-in later from Admin Settings.'
+          : 'Your password is set. Sign in on your next visit to get started.'}
+      </p>
       <button
         type="button"
         onClick={onContinue}
-        className="mt-2 flex cursor-pointer items-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent"
+        className="mt-8 flex w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-5 py-2.5 font-display text-ink hover:border-accent"
       >
-        Continue to Sonneck
+        {authMethod === 'none' ? 'Continue to Library' : 'Continue to Sign In'}
       </button>
     </div>
   )
@@ -439,40 +444,23 @@ interface FirstLaunchFlowProps {
 
 export function FirstLaunchFlow({ config }: FirstLaunchFlowProps) {
   const [step, setStep] = useState<Step>('welcome')
+  // Which method Finish Setup actually submitted — DoneStep's own copy/
+  // button label depend on it (singlepass never issues a session on
+  // completion, so that choice genuinely lands on LoginScreen next, not
+  // the library — see DoneStep's own comment).
+  const [finishedAuthMethod, setFinishedAuthMethod] = useState<'none' | 'singlepass'>('none')
   const queryClient = useQueryClient()
-  // Date.now() capture lives in mutationFn, not before mutate() is called —
-  // same reasoning as EditBookModal.tsx's own saveStartedAtRef: mutationFn
-  // is only ever invoked from mutate() itself, so it's unambiguous to the
-  // react-hooks/purity lint rule in a way capturing it inline in an event
-  // handler further up isn't always.
-  const setupStartedAtRef = useRef(0)
 
   const completeMutation = useMutation({
-    mutationFn: (vars: { authMethod: 'none' | 'singlepass'; password?: string }) => {
-      setupStartedAtRef.current = Date.now()
-      return completeSetup(vars.authMethod, vars.password)
-    },
-    onSuccess: () => {
-      setStep('done')
-      // This app's mutations hit a local SQLite backend and routinely
-      // resolve in under a paint frame (lib/minDuration.ts) — confirmed
-      // live here: an earlier pass invalidating immediately let the
-      // refetched config (firstLaunchCompleted: true) reach App.tsx and
-      // unmount this component before "You're all set" was ever actually
-      // painted, skipping straight to the real app. Deferring the
-      // invalidation itself (not just the visual state) is what actually
-      // guarantees the confirmation screen gets seen — App.tsx holds the
-      // same ['config'] query and swaps to the real app on its own once
-      // this refetch lands; the Done screen's own button is a defensive
-      // fallback in case that's ever slow.
-      afterMinDuration(
-        setupStartedAtRef.current,
-        () => {
-          void queryClient.invalidateQueries({ queryKey: ['config'] })
-        },
-        DONE_DISPLAY_MS,
-      )
-    },
+    mutationFn: (vars: { authMethod: 'none' | 'singlepass'; password?: string }) =>
+      completeSetup(vars.authMethod, vars.password),
+    // Parity with AuthChangeFlow.tsx's own completion step: no automatic
+    // ['config'] invalidation here — App.tsx only ever swaps this component
+    // out for the real app once DoneStep's own "Continue to Library"/
+    // "Continue to Sign In" button is actually clicked, same as every
+    // earlier step in this flow already ends on an explicit click rather
+    // than silently vanishing the instant a mutation resolves.
+    onSuccess: () => setStep('done'),
   })
 
   return (
@@ -489,7 +477,10 @@ export function FirstLaunchFlow({ config }: FirstLaunchFlowProps) {
         <SecurityStep
           config={config}
           onBack={() => setStep('folder')}
-          onFinish={(authMethod, password) => completeMutation.mutate({ authMethod, password })}
+          onFinish={(authMethod, password) => {
+            setFinishedAuthMethod(authMethod)
+            completeMutation.mutate({ authMethod, password })
+          }}
           pending={completeMutation.isPending}
           errorMessage={
             completeMutation.isError
@@ -501,7 +492,10 @@ export function FirstLaunchFlow({ config }: FirstLaunchFlowProps) {
         />
       )}
       {step === 'done' && (
-        <DoneStep onContinue={() => void queryClient.invalidateQueries({ queryKey: ['config'] })} />
+        <DoneStep
+          authMethod={finishedAuthMethod}
+          onContinue={() => void queryClient.invalidateQueries({ queryKey: ['config'] })}
+        />
       )}
     </div>
   )

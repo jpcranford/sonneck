@@ -391,10 +391,18 @@ function SecurityStep({
   )
 }
 
+// Parity with AuthChangeFlowMockup.tsx's own 'done' step: ink checkmark
+// (not accent) and a real method-aware "Continue to Library"/"Continue to
+// Sign In" label/sizing, ported into the real FirstLaunchFlow.tsx in the
+// same pass — singlepass mode never issues a session on completion, so
+// that choice genuinely lands on LoginScreen next, not the library. Click
+// target stays this mockup's own restart loop (`onRestart`), same stand-in
+// every other "what happens next" control in this file already uses —
+// there's nowhere real for it to navigate to from a mockup.
 function DoneStep({ choice, onRestart }: { choice: AuthChoice; onRestart: () => void }) {
   return (
     <div className="flex w-full max-w-md flex-col items-center gap-4 text-center">
-      <IconCircleCheckFilled size={40} className="text-accent" />
+      <IconCircleCheckFilled size={40} className="text-ink" />
       <h1 className="font-display text-2xl font-medium text-ink">You're all set</h1>
       <p className="text-sm text-ink-soft">
         {choice === 'none'
@@ -404,9 +412,9 @@ function DoneStep({ choice, onRestart }: { choice: AuthChoice; onRestart: () => 
       <button
         type="button"
         onClick={onRestart}
-        className="mt-2 flex cursor-pointer items-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent"
+        className="mt-8 flex w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-5 py-2.5 font-display text-ink hover:border-accent"
       >
-        Preview again
+        {choice === 'none' ? 'Continue to Library' : 'Continue to Sign In'}
       </button>
     </div>
   )
