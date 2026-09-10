@@ -50,8 +50,15 @@ func normalizeISBN(raw *string) *string {
 
 // handleUploadBook is the import wizard's step 1 (design doc §5): upload
 // the book PDF, dedupe on hash match, render nothing yet (thumbnails are
-// rendered on demand per-page — see handleBookPageThumbnail).
+// rendered on demand per-page — see handleBookPageThumbnail). Requires both
+// `edit` and `upload` — confirmed directly 2026-09-09: `edit` covers "adds
+// real library metadata" (same permission handleCreateBookManual/
+// handleCreatePerson need), `upload` covers "accepts a file"; uploading and
+// splitting a book file needs both, not either alone.
 func (s *Server) handleUploadBook(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requirePermission(w, r, models.PermissionEdit); !ok {
+		return
+	}
 	if _, ok := s.requirePermission(w, r, models.PermissionUpload); !ok {
 		return
 	}
@@ -125,9 +132,13 @@ func (s *Server) handleUploadBook(w http.ResponseWriter, r *http.Request) {
 // The resulting Book has no file (migration 00014) and, since nothing can
 // attach a Piece to a book with no original PDF to split, no path to ever
 // gaining one either — it exists purely as a placeholder record a user can
-// fill in ahead of actually having the sheet music.
+// fill in ahead of actually having the sheet music. Requires `edit`, not
+// `upload` — confirmed directly 2026-09-09: this never touches a file, so
+// the permission it needs is the same "adds real library metadata" one
+// handleCreatePerson already uses, not the file-accepting one
+// handleUploadBook (above) needs on top of that same `edit` requirement.
 func (s *Server) handleCreateBookManual(w http.ResponseWriter, r *http.Request) {
-	if _, ok := s.requirePermission(w, r, models.PermissionUpload); !ok {
+	if _, ok := s.requirePermission(w, r, models.PermissionEdit); !ok {
 		return
 	}
 	var req api.BookCreateRequest
