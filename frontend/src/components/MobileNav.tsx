@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import { IconMenu2, IconX } from '@tabler/icons-react'
 import { NAV_ITEMS, SECONDARY_NAV_ITEMS, SETLISTS, type NavItem } from '../lib/navItems'
+import { useAuth } from '../lib/AuthContext'
 import { UserMenuButton } from './UserMenuButton'
 
 // Mobile-only top bar + left drawer — the classic hamburger-drawer
@@ -54,26 +55,50 @@ export function MobileNavTopBar({ onOpen }: { onOpen: () => void }) {
 // parity audit's "undersized tap targets" finding, which this partly
 // addresses).
 function DrawerNavList({ items, onNavigate }: { items: NavItem[]; onNavigate: () => void }) {
+  const me = useAuth()
   return (
     <nav className="flex flex-col gap-1 px-2">
-      {items.map(({ to, label, icon: Icon }) => (
-        <NavLink
-          key={to}
-          to={to}
-          end={to === '/'}
-          onClick={onNavigate}
-          className={({ isActive }) =>
-            `flex h-11 items-center gap-3 rounded-md px-3 font-display text-[0.95rem] font-medium ${
-              isActive ? 'bg-sidebar-panel text-sidebar-text' : 'text-sidebar-text hover:bg-white/5'
-            }`
-          }
-        >
-          <Icon size={22} className="text-sidebar-text" />
-          {/* relative top-[0.6px]: same eye-calibrated fix as Sidebar.tsx's
-              own NavItemsList — see that file's comment. */}
-          <span className="relative top-[0.6px] truncate">{label}</span>
-        </NavLink>
-      ))}
+      {items.map(({ to, label, icon: Icon, permission }) => {
+        const blocked = permission && !me.permissions.includes(permission)
+        const content = (
+          <>
+            <Icon size={22} className="text-sidebar-text" />
+            {/* relative top-[0.6px]: same eye-calibrated fix as
+                Sidebar.tsx's own NavItemsList — see that file's comment. */}
+            <span className="relative top-[0.6px] truncate">{label}</span>
+          </>
+        )
+        if (blocked) {
+          // Same real-opacity-on-the-whole-row treatment as Sidebar.tsx's
+          // own NavItemsList, and for the same reason — see that file's
+          // comment on why a translucent color can't sit directly on
+          // IconCloudUpload's three overlapping paths.
+          return (
+            <span
+              key={to}
+              title="You don't have permission to upload"
+              className="flex h-11 cursor-not-allowed items-center gap-3 rounded-md px-3 font-display text-[0.95rem] font-medium text-sidebar-text opacity-40"
+            >
+              {content}
+            </span>
+          )
+        }
+        return (
+          <NavLink
+            key={to}
+            to={to}
+            end={to === '/'}
+            onClick={onNavigate}
+            className={({ isActive }) =>
+              `flex h-11 items-center gap-3 rounded-md px-3 font-display text-[0.95rem] font-medium ${
+                isActive ? 'bg-sidebar-panel text-sidebar-text' : 'text-sidebar-text hover:bg-white/5'
+              }`
+            }
+          >
+            {content}
+          </NavLink>
+        )
+      })}
     </nav>
   )
 }

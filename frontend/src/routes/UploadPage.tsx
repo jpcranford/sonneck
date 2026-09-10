@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   IconArrowLeft,
@@ -21,6 +21,7 @@ import { listPeople } from '../api/people'
 import { listInstruments, listKeys, listSheetTypes } from '../api/lookups'
 import { ApiError } from '../api/client'
 import type { Piece, Tag } from '../api/types'
+import { useAuth } from '../lib/AuthContext'
 import { loadWizardDraft } from '../lib/useWizardDraft'
 import { matchesKeyQuery } from '../lib/keySearch'
 import { usePageTitle } from '../lib/usePageTitle'
@@ -73,6 +74,7 @@ interface DetailsForm {
 type Stage = 'landing' | 'select' | 'uploading' | 'details' | 'success' | 'book'
 
 export function UploadPage() {
+  const me = useAuth()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   // A hard reload mid-wizard would otherwise strand the user on the plain
@@ -221,6 +223,20 @@ export function UploadPage() {
     uploadMutation.reset()
     saveMutation.reset()
     if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  // Same route-guard convention as AdminPage.tsx's own admin check — the
+  // sidebar/mobile-drawer nav link is already faded+non-navigating for a
+  // user without `upload` (navItems.ts), but a direct URL visit needs its
+  // own server-side-mirroring guard too, same defense-in-depth reasoning.
+  // Placed here, at the first JSX return, rather than before this
+  // component's own hooks further up — react-hooks/rules-of-hooks
+  // (correctly) doesn't allow an early return ahead of a hook call, and
+  // this component's hooks are too deeply woven through its body to hoist
+  // above a single top-of-function guard the way AdminPage.tsx's own
+  // (call-two-hooks-then-guard, nothing else) shape allowed.
+  if (!me.permissions.includes('upload')) {
+    return <Navigate to="/" replace />
   }
 
   // The book wizard's own steps are wide (max-w-4xl) and manage their own

@@ -5,49 +5,83 @@ import {
   IconLayoutSidebarLeftExpandFilled,
 } from '@tabler/icons-react'
 import { NAV_ITEMS, SECONDARY_NAV_ITEMS, SETLISTS, type NavItem } from '../lib/navItems'
+import { useAuth } from '../lib/AuthContext'
 import { UserMenuButton } from './UserMenuButton'
 
 // Shared between the primary nav group and the secondary (Favorites/
 // Currently Practicing) group below the divider — same link styling
 // either side, just a different item list.
 function NavItemsList({ items, collapsed }: { items: NavItem[]; collapsed: boolean }) {
+  const me = useAuth()
   return (
     <nav className="flex flex-col gap-1 px-2">
-      {items.map(({ to, label, icon: Icon }) => (
-        <NavLink
-          key={to}
-          to={to}
-          end={to === '/'}
-          title={collapsed ? label : undefined}
-          className={({ isActive }) =>
-            `flex h-10 items-center gap-3 rounded-md px-2 font-display text-[0.95rem] font-medium ${
-              collapsed ? 'justify-center' : ''
-            } ${
-              isActive ? 'bg-sidebar-panel text-sidebar-text' : 'text-sidebar-text hover:bg-white/5'
-            }`
-          }
-        >
-          {/* Icon always matches the adjacent label's own color
-              (text-sidebar-text, same in both nav states — only the
-              background changes on active) rather than a dimmed pre-blend
-              or an accent tint of its own; a visibly different icon color
-              next to same-colored text reads as a mismatch, not a
-              deliberate highlight. No longer needs the isActive
-              render-prop now that the icon doesn't vary by nav state
-              either. */}
-          <Icon size={22} className="text-sidebar-text" />
-          {/* relative top-[0.6px]: picked by eye against the real render
-              (fonts, hover background) via a throwaway calibration tool
-              (SidebarAlignDebug.tsx, since removed) — a prior attempt
-              based on a headless-Chromium pixel measurement nudged the
-              wrong direction/amount, since font hinting differs by
-              rendering engine and a measurement in one browser isn't a
-              reliable stand-in for another. Icons needed no offset. */}
-          {!collapsed && (
-            <span className="relative top-[0.6px] truncate">{label}</span>
-          )}
-        </NavLink>
-      ))}
+      {items.map(({ to, label, icon: Icon, permission }) => {
+        const blocked = permission && !me.permissions.includes(permission)
+        const content = (
+          <>
+            {/* Icon always matches the adjacent label's own color
+                (text-sidebar-text, same in both nav states — only the
+                background changes on active) rather than a dimmed
+                pre-blend or an accent tint of its own; a visibly different
+                icon color next to same-colored text reads as a mismatch,
+                not a deliberate highlight. No longer needs the isActive
+                render-prop now that the icon doesn't vary by nav state
+                either. */}
+            <Icon size={22} className="text-sidebar-text" />
+            {/* relative top-[0.6px]: picked by eye against the real render
+                (fonts, hover background) via a throwaway calibration tool
+                (SidebarAlignDebug.tsx, since removed) — a prior attempt
+                based on a headless-Chromium pixel measurement nudged the
+                wrong direction/amount, since font hinting differs by
+                rendering engine and a measurement in one browser isn't a
+                reliable stand-in for another. Icons needed no offset. */}
+            {!collapsed && (
+              <span className="relative top-[0.6px] truncate">{label}</span>
+            )}
+          </>
+        )
+        if (blocked) {
+          // A real <span>, not a disabled NavLink — react-router's Link
+          // has no disabled concept, and there's no navigation worth
+          // preserving for cmd/ctrl-click when the destination just
+          // redirects straight back out (UploadPage.tsx's own route
+          // guard) anyway. Faded via a real `opacity` on this one
+          // container, not a translucent text color — the icon inside
+          // (IconCloudUpload) is three separate overlapping <path>s
+          // sharing one stroke color, and CLAUDE.md's own icon-color rule
+          // is specific about why that combination needs a group-opacity
+          // composite instead: a translucent color applied directly would
+          // re-blend unevenly wherever those paths meet.
+          return (
+            <span
+              key={to}
+              title={collapsed ? label : "You don't have permission to upload"}
+              className={`flex h-10 cursor-not-allowed items-center gap-3 rounded-md px-2 font-display text-[0.95rem] font-medium text-sidebar-text opacity-40 ${
+                collapsed ? 'justify-center' : ''
+              }`}
+            >
+              {content}
+            </span>
+          )
+        }
+        return (
+          <NavLink
+            key={to}
+            to={to}
+            end={to === '/'}
+            title={collapsed ? label : undefined}
+            className={({ isActive }) =>
+              `flex h-10 items-center gap-3 rounded-md px-2 font-display text-[0.95rem] font-medium ${
+                collapsed ? 'justify-center' : ''
+              } ${
+                isActive ? 'bg-sidebar-panel text-sidebar-text' : 'text-sidebar-text hover:bg-white/5'
+              }`
+            }
+          >
+            {content}
+          </NavLink>
+        )
+      })}
     </nav>
   )
 }

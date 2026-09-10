@@ -19,6 +19,14 @@ export interface NavItem {
   to: string
   label: string
   icon: ComponentType<{ size?: number; className?: string }>
+  /** When set, this item renders as a faint, non-navigating row instead of
+   * a real link for a viewer who lacks this permission — same "can't act
+   * on it, so don't let it look actionable" treatment as every other
+   * permission-gated control in this app (PiecePage.tsx's Download/Edit
+   * buttons, ContextMenu.tsx's own disabled items). Checked by
+   * Sidebar.tsx's NavItemsList and MobileNav.tsx's DrawerNavList, both of
+   * which render this same NAV_ITEMS list. */
+  permission?: string
 }
 
 export const NAV_ITEMS: NavItem[] = [
@@ -29,7 +37,7 @@ export const NAV_ITEMS: NavItem[] = [
   // from the old /composers placeholder to /people to match.
   { to: '/people', label: 'People', icon: IconUser },
   { to: '/books', label: 'Books', icon: IconBooks },
-  { to: '/upload', label: 'Upload', icon: IconCloudUpload },
+  { to: '/upload', label: 'Upload', icon: IconCloudUpload, permission: 'upload' },
 ]
 
 // Personal/filtered views of the library, not browsing surfaces in their
