@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"net/http"
 	"strings"
 	"time"
@@ -12,16 +11,34 @@ import (
 	"github.com/jpcranford/sonneck/internal/repo"
 )
 
+// isSecureRequest reports whether r arrived over a genuinely secure
+// connection — either TLS terminated directly by this process (r.TLS !=
+// nil; in practice this app always binds plain HTTP, so this is mostly
+// future-proofing) or, only when the operator has explicitly opted in via
+// TRUST_PROXY_HTTPS, a reverse proxy's X-Forwarded-Proto: https header
+// (config.Config.TrustProxyHTTPS's own doc comment has the full reasoning).
+// Every cookie this app sets gets its Secure flag from this, not a
+// hardcoded value, so a plain-HTTP LAN deployment (this app's primary
+// documented use, README's own CAUTION callout) still gets a working
+// cookie at all, while a reverse-proxied HTTPS deployment gets the
+// stricter flag automatically instead of needing a code change.
+func isSecureRequest(r *http.Request, trustProxyHTTPS bool) bool {
+	if r.TLS != nil {
+		return true
+	}
+	return trustProxyHTTPS && r.Header.Get("X-Forwarded-Proto") == "https"
+}
+
 // issueSession mints a session token, persists it, and sets the cookie —
 // shared by handleLogin (singlepass) and handleOIDCCallback (Phase 14), so
 // the two login paths can't drift on cookie flags or TTL.
-func (s *Server) issueSession(w http.ResponseWriter, ctx context.Context, userID int64) error {
+func (s *Server) issueSession(w http.ResponseWriter, r *http.Request, userID int64) error {
 	token, err := auth.NewSessionToken()
 	if err != nil {
 		return err
 	}
 	expiresAt := time.Now().Add(auth.SessionTTL)
-	if err := repo.CreateSession(ctx, s.DB, token, userID, expiresAt); err != nil {
+	if err := repo.CreateSession(r.Context(), s.DB, token, userID, expiresAt); err != nil {
 		return err
 	}
 	http.SetCookie(w, &http.Cookie{
@@ -31,10 +48,9 @@ func (s *Server) issueSession(w http.ResponseWriter, ctx context.Context, userID
 		Expires:  expiresAt,
 		HttpOnly: true,
 		// SameSite=Lax, not Strict — Strict would break the OIDC
-		// redirect-back flow; not Secure — this app is commonly reached
-		// over plain HTTP on a LAN (CLAUDE.md's own clipboard-API note
-		// makes the same point), so forcing Secure would silently stop the
-		// browser from ever sending the cookie back.
+		// redirect-back flow. Secure is conditional (isSecureRequest, above)
+		// rather than hardcoded either way — see its own comment.
+		Secure:   isSecureRequest(r, s.Cfg.TrustProxyHTTPS),
 		SameSite: http.SameSiteLaxMode,
 	})
 	return nil
@@ -76,7 +92,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := s.issueSession(w, ctx, user.ID); err != nil {
+	if err := s.issueSession(w, r, user.ID); err != nil {
 		s.writeError(w, err)
 		return
 	}
@@ -105,6 +121,7 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 		MaxAge:   -1,
 		HttpOnly: true,
+		Secure:   isSecureRequest(r, s.Cfg.TrustProxyHTTPS),
 		SameSite: http.SameSiteLaxMode,
 	})
 	api.WriteData(w, http.StatusOK, map[string]bool{"ok": true})

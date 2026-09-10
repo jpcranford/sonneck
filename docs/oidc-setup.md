@@ -16,6 +16,7 @@ Setup is by env var only; picking it on the first-launch setup screen just shows
 | `EXTERNAL_PROVIDER` | `your identity provider` | Display name shown on the "Sign in with…" button. |
 | `OIDC_ALLOW_REGISTRATION` | `true` | Whether a person signing in for the first time automatically gets an account (with `OIDC_DEFAULT_PERMISSIONS` below), or is rejected until an admin pre-provisions them via `link-oidc-account`. |
 | `OIDC_DEFAULT_PERMISSIONS` | `read` | Comma-separated permissions (`read`, `download`, `practice`, `edit`, `upload`, `create`, `delete`, `admin`) granted to a newly auto-provisioned account. |
+| `TRUST_PROXY_HTTPS` | `false` | Set to `true` only if a reverse proxy (nginx, Caddy, Tailscale Funnel, etc.) sits in front of Sonneck, genuinely terminates HTTPS, and forwards to it locally — this marks the session/sign-in cookies `Secure` so they're never sent back over plain HTTP. Leave it `false` for a plain-HTTP LAN deployment with nothing in front of it; setting it without a real HTTPS-terminating proxy would make login silently stop working, since browsers refuse to send a `Secure` cookie over a non-HTTPS connection. |
 
 If Sonneck can't reach your identity provider's discovery document at startup with these values, the server fails to start with a clear error rather than starting in a broken state.
 

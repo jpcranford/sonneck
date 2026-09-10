@@ -51,6 +51,7 @@ func (s *Server) handleOIDCLogin(w http.ResponseWriter, r *http.Request) {
 		Path:     "/api/auth/oidc",
 		MaxAge:   int((5 * time.Minute).Seconds()),
 		HttpOnly: true,
+		Secure:   isSecureRequest(r, s.Cfg.TrustProxyHTTPS),
 		SameSite: http.SameSiteLaxMode,
 	})
 	http.Redirect(w, r, s.OIDCAuth.AuthCodeURL(state), http.StatusFound)
@@ -73,6 +74,7 @@ func (s *Server) handleOIDCCallback(w http.ResponseWriter, r *http.Request) {
 	// outcome.
 	http.SetCookie(w, &http.Cookie{
 		Name: oidcStateCookieName, Value: "", Path: "/api/auth/oidc", MaxAge: -1, HttpOnly: true,
+		Secure: isSecureRequest(r, s.Cfg.TrustProxyHTTPS),
 	})
 
 	cookie, err := r.Cookie(oidcStateCookieName)
@@ -115,7 +117,7 @@ func (s *Server) handleOIDCCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := s.issueSession(w, r.Context(), user.ID); err != nil {
+	if err := s.issueSession(w, r, user.ID); err != nil {
 		s.Logger.Error("oidc session issuance failed", "error", err)
 		http.Redirect(w, r, "/?oidcError=internal", http.StatusFound)
 		return

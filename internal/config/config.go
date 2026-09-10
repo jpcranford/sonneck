@@ -78,6 +78,24 @@ type Config struct {
 	OIDCAllowRegistration  bool
 	OIDCDefaultPermissions []string
 
+	// TrustProxyHTTPS (default false) — whether X-Forwarded-Proto: https
+	// from a reverse proxy is trusted as reason to mark the session/OIDC
+	// state cookies Secure. Off by default because this app's primary
+	// documented deployment (README's own CAUTION callout) is plain HTTP on
+	// a LAN with nothing in front of it — forcing Secure there would
+	// silently break login entirely, since browsers refuse to send a
+	// Secure cookie back over a non-HTTPS connection. Set
+	// TRUST_PROXY_HTTPS=true only when a reverse proxy (nginx, Caddy,
+	// Tailscale Funnel, etc.) genuinely terminates HTTPS in front of this
+	// app and forwards to it locally — that proxy is expected to set or
+	// overwrite X-Forwarded-Proto itself. A client that could reach this
+	// app directly and forge the header gains nothing from doing so: the
+	// browser, not this app, is what actually refuses to send a
+	// Secure-flagged cookie back over plain HTTP, so a forged header at
+	// worst reproduces the same "cookie doesn't come back" failure mode a
+	// misconfigured direct-HTTP deployment already has without this flag.
+	TrustProxyHTTPS bool
+
 	mu                  sync.RWMutex
 	backupCron          string
 	backupRetentionDays int
@@ -204,6 +222,14 @@ func Load() (*Config, error) {
 		AuthMethod:     getEnv("AUTH_METHOD", ""),
 	}
 	cfg.BackupDir = getEnv("BACKUP_DIR", cfg.DataDir+"/backups")
+
+	if v := os.Getenv("TRUST_PROXY_HTTPS"); v != "" {
+		parsed, err := strconv.ParseBool(v)
+		if err != nil {
+			return nil, fmt.Errorf("TRUST_PROXY_HTTPS must be a boolean, got %q", v)
+		}
+		cfg.TrustProxyHTTPS = parsed
+	}
 
 	switch cfg.AuthMethod {
 	case "", "none", "singlepass", "oidc":
