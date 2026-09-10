@@ -163,6 +163,15 @@ func TestAuthChangeCandidates_RequiresMultiAccountOIDCDowngrade(t *testing.T) {
 		[]string{models.PermissionRead, models.PermissionAdmin}, true); err != nil {
 		t.Fatalf("provisioning second admin: %v", err)
 	}
+	// A non-admin third account — the whole point of this test's own fix:
+	// this endpoint's response must include every account, not just the
+	// admin-eligible survivors, since confirm-delete needs to report
+	// *everyone* who's actually about to be deleted
+	// (repo.ApplyAuthChangeDowngrade has no admin-only carve-out).
+	if _, err := repo.ClaimOrProvisionOIDCUser(ctx, conn, "sub-3", "Sam", nil,
+		[]string{models.PermissionRead}, true); err != nil {
+		t.Fatalf("provisioning non-admin: %v", err)
+	}
 	rec = doJSON(t, restarted, http.MethodGet, "/api/auth-change/candidates", nil)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("multi-account downgrade: status = %d, want 200, body %s", rec.Code, rec.Body.String())
@@ -170,10 +179,24 @@ func TestAuthChangeCandidates_RequiresMultiAccountOIDCDowngrade(t *testing.T) {
 	var candidates []struct {
 		ID          int64  `json:"id"`
 		DisplayName string `json:"displayName"`
+		IsAdmin     bool   `json:"isAdmin"`
 	}
 	decodeData(t, rec, &candidates)
-	if len(candidates) != 2 {
-		t.Errorf("candidates = %+v, want both id=1 and Alex (both admins)", candidates)
+	if len(candidates) != 3 {
+		t.Fatalf("candidates = %+v, want all 3 accounts (id=1, Alex, Sam), not just admins", candidates)
+	}
+	byName := map[string]bool{}
+	for _, u := range candidates {
+		byName[u.DisplayName] = u.IsAdmin
+	}
+	if isAdmin, ok := byName["Original"]; !ok || !isAdmin {
+		t.Errorf("candidates = %+v, want Original present with isAdmin true", candidates)
+	}
+	if isAdmin, ok := byName["Alex"]; !ok || !isAdmin {
+		t.Errorf("candidates = %+v, want Alex present with isAdmin true", candidates)
+	}
+	if isAdmin, ok := byName["Sam"]; !ok || isAdmin {
+		t.Errorf("candidates = %+v, want Sam present with isAdmin false", candidates)
 	}
 }
 
@@ -210,17 +233,19 @@ func TestAuthChangeComplete_MultiAccountDowngrade_ValidatesAndCollapses(t *testi
 		t.Fatalf("missing keepUserId: status = %d, want 400", rec.Code)
 	}
 
-	// A non-admin keepUserId (Sam): rejected. Alex's real id comes from the
-	// flow's own public candidates endpoint (/api/admin/users is
-	// permission-gated and unreachable pre-session here, same as every
-	// other admin route) — Sam is a real account but not an admin, so
-	// won't appear there at all; its id is looked up directly against the
-	// DB instead, purely so this exercises the "valid account, wrong
-	// permission" 400 path rather than the "no such account" one.
+	// A non-admin keepUserId (Sam): rejected. Both ids come from the flow's
+	// own public candidates endpoint (/api/admin/users is permission-gated
+	// and unreachable pre-session here, same as every other admin route) —
+	// Sam is a real account, present in this response same as the admins
+	// (this endpoint returns everyone, not just admin-eligible survivors),
+	// just flagged isAdmin: false, which is exactly what exercises the
+	// "valid account, wrong permission" 400 path below rather than the "no
+	// such account" one.
 	candidatesRec := doJSON(t, restarted, http.MethodGet, "/api/auth-change/candidates", nil)
 	var candidates []struct {
 		ID          int64  `json:"id"`
 		DisplayName string `json:"displayName"`
+		IsAdmin     bool   `json:"isAdmin"`
 	}
 	decodeData(t, candidatesRec, &candidates)
 	var samID, alexID int64
@@ -228,9 +253,15 @@ func TestAuthChangeComplete_MultiAccountDowngrade_ValidatesAndCollapses(t *testi
 		if u.DisplayName == "Alex" {
 			alexID = u.ID
 		}
+		if u.DisplayName == "Sam" {
+			samID = u.ID
+			if u.IsAdmin {
+				t.Errorf("Sam should not be reported as admin: %+v", u)
+			}
+		}
 	}
-	if err := conn.QueryRowContext(ctx, `SELECT id FROM users WHERE display_name = 'Sam'`).Scan(&samID); err != nil {
-		t.Fatalf("looking up Sam's id: %v", err)
+	if samID == 0 || alexID == 0 {
+		t.Fatalf("candidates = %+v, want both Sam and Alex present", candidates)
 	}
 	rec = doJSON(t, restarted, http.MethodPost, "/api/auth-change/complete",
 		map[string]any{"password": "correcthorse", "keepUserId": samID})

@@ -116,7 +116,13 @@ export function AuthChangeFlow({
     queryFn: getAuthChangeCandidates,
     enabled: pending.multiAccount,
   })
+  // Every existing account — confirm-delete needs the complete list to
+  // correctly report everyone who's actually about to be deleted, not just
+  // the admin-eligible ones below.
   const candidates = candidatesQuery.data ?? []
+  // The choose-admin step's own radio list is the admin-eligible subset —
+  // only an admin can become none/singlepass mode's one implicit account.
+  const admins = candidates.filter((u) => u.isAdmin)
   const keptAdmin = candidates.find((u) => u.id === keptAdminId) ?? null
 
   const completeMutation = useMutation({
@@ -250,7 +256,7 @@ export function AuthChangeFlow({
               <p className="mt-6 text-sm text-ink-soft">Loading accounts…</p>
             ) : (
               <div className="mt-6 flex flex-col gap-3" role="radiogroup" aria-label="Choose the surviving admin account">
-                {candidates.map((admin) => (
+                {admins.map((admin) => (
                   <button
                     key={admin.id}
                     type="button"

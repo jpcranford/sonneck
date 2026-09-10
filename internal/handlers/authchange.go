@@ -33,13 +33,17 @@ func (s *Server) pendingAuthChange(w http.ResponseWriter, r *http.Request) (targ
 }
 
 // handleAuthChangeCandidates is GET /api/auth-change/candidates — the
-// "choose which admin survives" step's data, only meaningful when the
-// pending target is none/singlepass and more than one account currently
-// exists. Deliberately public (see this file's own package doc note in
-// oidc.go's sibling reasoning, and precious-kindling-pretzel.md's Phase 16
-// section) — nobody can be logged in yet under whichever method just
-// became active, so this can't be permission-gated the normal way; it's
-// self-guarded by pendingAuthChange instead.
+// destructive downgrade's account data, only meaningful when the pending
+// target is none/singlepass and more than one account currently exists.
+// Returns every account (not just admins — see AuthChangeCandidateResponse's
+// own doc comment for why confirm-delete needs the full list), each flagged
+// IsAdmin so the choose-admin step's own radio list can still filter down
+// to just the eligible survivors. Deliberately public (see this file's own
+// package doc note in oidc.go's sibling reasoning, and
+// precious-kindling-pretzel.md's Phase 16 section) — nobody can be logged
+// in yet under whichever method just became active, so this can't be
+// permission-gated the normal way; it's self-guarded by pendingAuthChange
+// instead.
 func (s *Server) handleAuthChangeCandidates(w http.ResponseWriter, r *http.Request) {
 	target, ok := s.pendingAuthChange(w, r)
 	if !ok {
@@ -60,9 +64,9 @@ func (s *Server) handleAuthChangeCandidates(w http.ResponseWriter, r *http.Reque
 	}
 	resp := make([]api.AuthChangeCandidateResponse, 0, len(users))
 	for _, u := range users {
-		if u.HasPermission(models.PermissionAdmin) {
-			resp = append(resp, api.AuthChangeCandidateResponse{ID: u.ID, DisplayName: u.DisplayName})
-		}
+		resp = append(resp, api.AuthChangeCandidateResponse{
+			ID: u.ID, DisplayName: u.DisplayName, IsAdmin: u.HasPermission(models.PermissionAdmin),
+		})
 	}
 	api.WriteData(w, http.StatusOK, resp)
 }

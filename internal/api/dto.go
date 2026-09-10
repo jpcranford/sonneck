@@ -589,15 +589,25 @@ type AuthChangePendingResponse struct {
 }
 
 // AuthChangeCandidateResponse is one entry in GET /api/auth-change/
-// candidates' list — an admin account eligible to survive a multi-account
-// OIDC-to-single-account downgrade. No email/avatar field — unlike the
-// AuthChangeFlowMockup.tsx reference this ports, models.User carries no
-// email at all, and the survivor's avatar is cleared during the downgrade
-// regardless (repo.ApplyAuthChangeDowngrade), so it wouldn't outlive the
-// choice anyway.
+// candidates' list — despite the name, every existing account, not just
+// the admin-eligible ones: the choose-admin step's own radio list still
+// only offers whichever entries have IsAdmin true, but confirm-delete
+// needs the complete account list to correctly report *everyone* who's
+// actually about to be deleted (repo.ApplyAuthChangeDowngrade's own
+// `DELETE FROM users WHERE id != 1` has no admin-only carve-out — a
+// non-admin household member's account is just as gone). Filtering this
+// response to admins-only server-side was the original shape and a real
+// bug: confirm-delete's own "following N accounts will be deleted" count
+// silently excluded every non-admin account, capable of reading as "0
+// accounts" when only one admin existed among several total accounts. No
+// email/avatar field — unlike the AuthChangeFlowMockup.tsx reference this
+// ports, models.User carries no email at all, and the survivor's avatar is
+// cleared during the downgrade regardless (repo.ApplyAuthChangeDowngrade),
+// so it wouldn't outlive the choice anyway.
 type AuthChangeCandidateResponse struct {
 	ID          int64  `json:"id"`
 	DisplayName string `json:"displayName"`
+	IsAdmin     bool   `json:"isAdmin"`
 }
 
 // AuthChangeCompleteRequest is POST /api/auth-change/complete's body.
