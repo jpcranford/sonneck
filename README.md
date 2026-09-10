@@ -160,6 +160,8 @@ This has been a series of learning exercises for me while I build a desperately-
 
 That being said, I still don’t trust it– I’ll gladly welcome the contributions of any human that wants to make this project more secure, reliable, robust, or just plain cleaner.
 
+<span style="display:inline-flex;align-items:center;gap:8px;padding:4px 12px 4px 4px;background:#0d1117;border:1px solid #0F888044;font-family:monospace"><span style="background:#0F8880;color:#cdd9e5;padding:3px 8px;font-size:11px;font-weight:600;letter-spacing:.06em">AICL-3</span><span style="font-size:12px;color:#cdd9e5">AI-ideated</span><a href="https://aiclscale.org" style="font-size:10px;color:#5eead4;text-decoration:none;margin-left:4px">aiclscale.org</a></span>
+
 ## Acknowledgements
 - My beautiful girlfriend, for helping design the logo
 - The frontend serif typeface is [Libre Baskerville](https://github.com/impallari/Libre-Baskerville) by Pablo Impallari, [Google Fonts](https://fonts.google.com/), licensed under the [SIL Open Font License 1.1](https://fonts.google.com/specimen/Libre+Baskerville/license). Self-hosted rather than loaded from Google Fonts at runtime.
