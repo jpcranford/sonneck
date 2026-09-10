@@ -10,8 +10,8 @@ import {
   IconEyeOff,
   IconFolderOpen,
   IconInfoCircle,
-  IconKey,
   IconLockOpen2,
+  IconPassword,
   IconShieldLock,
 } from '@tabler/icons-react'
 import { SonneckWordmark } from '../components/SonneckWordmark'
@@ -290,7 +290,7 @@ function SecurityStep({
         />
         <SecurityCard
           selected={choice === 'singlepass'}
-          icon={<IconKey size={16} />}
+          icon={<IconPassword size={16} />}
           title="Password"
           description="A single shared password gates the whole app — still just one shared account behind it, now locked."
           onSelect={() => setChoice('singlepass')}

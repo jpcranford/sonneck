@@ -9,8 +9,8 @@ import {
   IconEyeOff,
   IconFolderOpen,
   IconInfoCircle,
-  IconKey,
   IconLockOpen2,
+  IconPassword,
   IconShieldLock,
 } from '@tabler/icons-react'
 import type { AppConfig } from '../api/config'
@@ -196,7 +196,7 @@ function LockedSecurityNotice({ authMethod }: { authMethod: AppConfig['authMetho
       description: 'Anyone with network access to this app can use it, as one shared account.',
     },
     singlepass: {
-      icon: <IconKey size={16} />,
+      icon: <IconPassword size={16} />,
       title: 'Password',
       description: 'A single shared password gates the whole app — still just one shared account behind it.',
     },
@@ -347,7 +347,7 @@ function SecurityStep({
             />
             <SecurityCard
               selected={choice === 'singlepass'}
-              icon={<IconKey size={16} />}
+              icon={<IconPassword size={16} />}
               title="Password"
               description="A single shared password gates the whole app — still just one shared account behind it, now locked."
               onSelect={() => setChoice('singlepass')}

@@ -5,8 +5,8 @@ import {
   IconCircleDashedPlus,
   IconExternalLink,
   IconInfoCircle,
-  IconKey,
   IconLockOpen2,
+  IconPassword,
   IconTrash,
   IconUserCircle,
 } from '@tabler/icons-react'
@@ -1071,7 +1071,7 @@ export function AdminSettingsMockup() {
           />
           <SecurityCard
             selected={securityChoice === 'singlepass'}
-            icon={<IconKey size={15} />}
+            icon={<IconPassword size={15} />}
             title="Password"
             description="A single shared password gates the whole app — still just one shared account behind it, now locked."
             onSelect={() => setSecurityChoice('singlepass')}
