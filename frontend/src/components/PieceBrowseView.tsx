@@ -20,13 +20,13 @@ import {
 } from '../lib/pieceFilterState'
 import { WIDE_CONTENT_MAX_W } from '../lib/layout'
 import { usePageTitle } from '../lib/usePageTitle'
+import { useViewPreference } from '../lib/useViewPreference'
 
 // Matches the backend's own default (internal/handlers/search.go) — passed
 // explicitly here rather than relying on that default, since this is also
 // the page size `getNextPageParam` below uses to detect the last page.
 const PAGE_SIZE = 50
 
-type ViewMode = 'grid' | 'list'
 type SortField = 'dateAdded' | 'title' | 'composer' | 'yearWritten'
 
 const SORT_FIELDS: SortFieldOption<SortField>[] = [
@@ -117,7 +117,11 @@ export function PieceBrowseView({
   // need to keep in sync with it.
   usePageTitle(backLabel)
   const [query, setQuery] = useState('')
-  const [viewMode, setViewMode] = useState<ViewMode>('grid')
+  // Keyed by backLabel so each of this component's callers (Library,
+  // Favorites, Want to Learn, Currently Practicing, Learned) remembers its
+  // own grid/list choice independently, not one shared toggle across all
+  // five.
+  const [viewMode, setViewMode] = useViewPreference(`pieces:${backLabel}`)
   const [sortField, setSortField] = useState<SortField>('dateAdded')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
   const [drawerOpen, setDrawerOpen] = useState(false)

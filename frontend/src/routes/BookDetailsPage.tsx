@@ -28,6 +28,7 @@ import { hyphenateISBN, isbnSearchUrl } from '../lib/isbn'
 import { joinNames, personCreditPart } from '../lib/joinNames'
 import { CONTENT_MAX_W } from '../lib/layout'
 import { usePageTitle } from '../lib/usePageTitle'
+import { useViewPreference } from '../lib/useViewPreference'
 import { ClickableCard } from '../components/ClickableCard'
 import { ContextMenu } from '../components/ContextMenu'
 import { EditBookModal } from '../components/EditBookModal'
@@ -307,7 +308,7 @@ export function BookDetailsPage() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
 
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  const [viewMode, setViewMode] = useViewPreference('book-details-pieces')
   const [bookEditOpen, setBookEditOpen] = useState(false)
   const coverFileInputRef = useRef<HTMLInputElement>(null)
   // Original filename can genuinely run long (an IMSLP-sourced scan's own

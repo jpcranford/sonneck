@@ -37,6 +37,7 @@ import { joinNames, personCreditPart } from '../lib/joinNames'
 import { CONTENT_MAX_W } from '../lib/layout'
 import { PALETTE } from '../lib/pieceSplitLogic'
 import { usePageTitle } from '../lib/usePageTitle'
+import { useViewPreference } from '../lib/useViewPreference'
 import { yearWrittenSource } from '../lib/yearWrittenSource'
 
 // The real Person Details page (/people/:id) — composer/arranger overhaul,
@@ -386,7 +387,7 @@ export function PersonDetailsPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
 
-  const [workViewMode, setWorkViewMode] = useState<'grid' | 'list'>('list')
+  const [workViewMode, setWorkViewMode] = useViewPreference('person-details-works', 'list')
   const [editOpen, setEditOpen] = useState(false)
   const [splitOpen, setSplitOpen] = useState(false)
   const [uploadPortraitOpen, setUploadPortraitOpen] = useState(false)

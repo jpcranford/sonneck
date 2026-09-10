@@ -16,6 +16,7 @@ import { type SortDirection, type SortFieldOption } from '../components/SortCont
 import { LibraryToolbar } from '../components/LibraryToolbar'
 import { WIDE_CONTENT_MAX_W } from '../lib/layout'
 import { usePageTitle } from '../lib/usePageTitle'
+import { useViewPreference } from '../lib/useViewPreference'
 
 // The real People Library (/people) — composer/arranger overhaul, Stage B.
 // Real build of PeopleLibrarySample.tsx (/mockup/people-library, kept as a
@@ -529,8 +530,6 @@ function NewPersonModal({
   )
 }
 
-type ViewMode = 'grid' | 'list'
-
 function toIntOrNull(value: string): number | null {
   if (value.trim() === '') return null
   const n = Number(value)
@@ -542,7 +541,7 @@ export function PeopleLibraryPage() {
   const queryClient = useQueryClient()
   const [query, setQuery] = useState('')
   const debouncedQuery = useDebouncedValue(query, 250)
-  const [viewMode, setViewMode] = useState<ViewMode>('grid')
+  const [viewMode, setViewMode] = useViewPreference('people')
   const [newPersonOpen, setNewPersonOpen] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [filters, setFilters] = useState<PersonFilterState>(EMPTY_PERSON_FILTERS)

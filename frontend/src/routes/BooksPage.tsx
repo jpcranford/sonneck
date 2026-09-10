@@ -20,8 +20,8 @@ import {
 } from '../lib/bookFilterState'
 import { WIDE_CONTENT_MAX_W } from '../lib/layout'
 import { usePageTitle } from '../lib/usePageTitle'
+import { useViewPreference } from '../lib/useViewPreference'
 
-type ViewMode = 'grid' | 'list'
 type BookSortField = 'dateAdded' | 'title' | 'composer' | 'yearPublished'
 
 const SORT_FIELDS: SortFieldOption<BookSortField>[] = [
@@ -50,7 +50,7 @@ const DIRECTION_LABEL: Record<BookSortField, Record<SortDirection, string>> = {
 export function BooksPage() {
   usePageTitle('Books')
   const [query, setQuery] = useState('')
-  const [viewMode, setViewMode] = useState<ViewMode>('grid')
+  const [viewMode, setViewMode] = useViewPreference('books')
   const [newBookOpen, setNewBookOpen] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [drawerFilters, setDrawerFilters] = useState<BookFilterState>(EMPTY_BOOK_FILTERS)
