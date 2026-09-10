@@ -20,7 +20,7 @@ import {
 import { listPeople } from '../api/people'
 import { getPieceThumbnailUrl, updatePiece } from '../api/pieces'
 import { lookupImslp } from '../api/imslp'
-import { listInstruments, listKeys, listSheetTypes, listUserTags } from '../api/lookups'
+import { listInstruments, listKeys, listPracticeStatuses, listSheetTypes, listUserTags } from '../api/lookups'
 import { getConfig } from '../api/config'
 import { ApiError } from '../api/client'
 import { COPYRIGHT_BADGE_META } from '../lib/copyrightBadge'
@@ -139,15 +139,6 @@ const COPYRIGHT_STATUS_OPTIONS = [
     description:
       'A license like Creative Commons has been attached to this piece. Same auto-upgrade as In Copyright if the calculation later says the term expired anyway.',
   },
-]
-
-const PRACTICE_STATUS_OPTIONS = [
-  { value: '', label: 'No status set' },
-  { value: 'Want to Learn', label: 'Want to Learn' },
-  { value: 'Learning', label: 'Learning' },
-  { value: 'Learned', label: 'Learned' },
-  { value: 'Stalled', label: 'Stalled' },
-  { value: 'Dropped', label: 'Dropped' },
 ]
 
 // A book-inheritable field's "own value falling back to blank" for the
@@ -492,6 +483,16 @@ export function EditPieceModal({
     queryFn: listInstruments,
   })
   const { data: userTagOptions = [] } = useQuery({ queryKey: ['userTags'], queryFn: listUserTags })
+  // Live-fetched, not the old hardcoded five-name list — a status renamed
+  // (or created) in User Settings now shows up here correctly instead of
+  // silently falling back to a bare '—' (SingleSelect's own fallback for a
+  // value with no matching option). practiceStatus itself is already the
+  // calling user's own per-user data (GetUserPieceData), so it can never
+  // name a status outside this same live list.
+  const { data: practiceStatusOptions = [] } = useQuery({
+    queryKey: ['practiceStatuses'],
+    queryFn: listPracticeStatuses,
+  })
   // People catalog (composer/arranger overhaul, Stage C) — reused
   // unpaginated as the Composer/Arranger TagComboBox's own option source,
   // same "small personal-library scale" assumption every other lookup
@@ -501,6 +502,10 @@ export function EditPieceModal({
   const sheetTypeSelectOptions = [
     { value: '', label: '—' },
     ...sheetTypeOptions.map((o) => ({ value: o.name, label: o.name })),
+  ]
+  const practiceStatusSelectOptions = [
+    { value: '', label: 'No status set' },
+    ...practiceStatusOptions.map((o) => ({ value: o.name, label: o.name })),
   ]
 
   const bpm = Number(watch('bpm'))
@@ -1372,7 +1377,7 @@ export function EditPieceModal({
                 render={({ field }) => (
                   <SingleSelect
                     label="Practice status"
-                    options={PRACTICE_STATUS_OPTIONS}
+                    options={practiceStatusSelectOptions}
                     value={field.value}
                     onChange={field.onChange}
                   />
