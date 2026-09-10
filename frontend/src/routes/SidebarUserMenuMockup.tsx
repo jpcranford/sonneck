@@ -288,10 +288,10 @@ function UserMenuButton({
             <IconUserFilled size={17} />
           </span>
           <div className="min-w-0">
-            <p className="flex items-center gap-1.5 truncate text-[0.92rem] font-medium text-sidebar-text">
-              <span className="truncate">{identity.name}</span>
+            <p className="break-words text-[0.92rem] font-medium text-sidebar-text">
+              {identity.name}
               {identity.isAdmin && (
-                <span className="shrink-0 rounded-full bg-accent px-1.5 py-px text-[0.62rem] font-bold tracking-wide text-white uppercase">
+                <span className="ml-1.5 inline-block translate-y-[-1px] rounded-full bg-accent px-1.5 py-px align-middle text-[0.62rem] font-bold tracking-wide whitespace-nowrap text-white uppercase">
                   Admin
                 </span>
               )}
