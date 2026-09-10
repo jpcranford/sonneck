@@ -34,7 +34,10 @@ Sonneck is currently built to live “in an office with a printer”, so to spea
 
 ## Installation
 
-Two ways of installing Sonneck: there's the native Mac and Windows apps for an easier install (see the [releases](https://github.com/jpcranford/sonneck/releases) page to download) or you can use Docker, which is recommended if you intend on using SSO or hosting over the web.
+Two ways of installing Sonneck: there's the native Mac and Windows apps for an easier install or you can use Docker, which is recommended if you intend on using SSO or hosting over the web.
+
+### Native apps (macOS/Windows)
+Coming soon. When I roll this out, they'll be generated on release and put under the [releases](https://github.com/jpcranford/sonneck/releases) page.
 
 ### Docker Compose
 There's a [`docker-compose.yml`](docker-compose.yml) file in this repo and linked to the releases, complete with helpful comments explaining some common options.
@@ -56,11 +59,7 @@ To quit the program, just use `docker compose down`. Easy peasy.
 ***But what about `docker run`?*** I'm sure there's some web tool out there that can helpfully convert the docker compose to a run command. Said tool would be more accurate than I.
 
 > [!WARNING]
-> By default, Sonneck has **no login and no access control of its own** — anyone who can reach the server over the network can use the full API, with no separation between "trusted operator" and "anonymous visitor." It should go without saying but **do not put it on the open internet like this.** If you must expose it to the internet, consider the following options, listed in rough order of greatest to least security:
-> 
-> 1. **Sign in with…** (OIDC/SSO) has a real working sign-in flow, with named accounts and per-user permissions managed from Admin Settings (see [Security](#security) below).
-> 2. Deploy it behind a private network / VPN / Tailscale, or put an authenticating reverse proxy in front of it (e.g. Basic Auth, Authelia).
-> 3. **Password** mode has a real login screen and gates the app behind a shared password. Not as secure as Tailscale or a proper auth solution, but if you need it on a shared private-ish network, it's better than nothing.
+> Sonneck first launches with no security enabled (see [Security](#security) below). Until the user enables a password or SSO support, anyone who can reach the server over the network can use the full API, with no separation between "trusted operator" and "anonymous visitor." It should go without saying but **do not expose it on the open internet like this.**
 > 
 > Seriously, if you open it to the internet and a bunch of ne'er-do-wells put sketchy stuff on your server don't come crying to me.
 
@@ -96,9 +95,12 @@ All configuration is via environment variables, validated at startup — the pro
 | `AUTH_METHOD` | (unset) | One of `none`, `singlepass`, `oidc` — see [Security](#security) below |
 
 ### Security
-On first launch, a setup screen walks you through picking a security mode — **No login**, **Password** (a single shared password, set right there), or **Sign in with…** (OIDC/SSO, greyed out here unless it's already configured via environment variables — it needs secrets a pre-auth web form can't safely collect, so it's env-var-only, see [OIDC / SSO setup](docs/oidc-setup.md)). Setting `AUTH_METHOD` yourself locks that screen to your choice instead of leaving it pickable (a `singlepass` password is still entered there either way, since a password itself has no environment-variable equivalent).
+Sonneck supports the following authentication methods, in order of least to greatest security (and from simplest to least complex):
+1. **No password.** Anyone that can access Sonneck can do anything. One user, full admin. If you're just running this as an app on your computer and not gonna use another device, go ahead.
+2. **Password** mode locks the app behind a single password. If you're on a shared computer or planning on using Sonneck on multiple devices, I recommend this option. I haven't enforced any rules for the password other than length, so make it as simple or complex as makes you feel safe. 
+3. **Sign in with…** (OIDC/SSO) mode. The sign-in page kicks you over to your SSO provider for sign-in, and once you sign in the SSO provider gives Sonneck your name and profile pic. Sonneck Admins can manage user permissions in Admin Settings. IMO this will be overkill for all but the biggest libraries.
 
-Real request-level enforcement exists server-side: in **Password**/**Sign in with…** mode, every request other than a small public set (server config, first-launch setup, login) requires a valid session, checked on every request — not just a first-launch-screen preference the rest of the app ignores. **Password** mode has a real login screen to match — pick it and you'll be asked for the password on your next visit, exactly as you'd expect. **Sign in with…** now has a genuinely working flow too, redirecting to your identity provider and back — see [OIDC / SSO setup](docs/oidc-setup.md) for the full environment variable list and how accounts get created. Named user accounts and per-user permissions are real either way; the admin/user settings screens are too — Admin Settings' Users screen is where you manage everyone's permissions once they're in.
+On first launch, a setup screen walks you through picking one of the above (OIDC/SSO is greyed out unless it's already configured — see [OIDC / SSO setup](docs/oidc-setup.md) for details). Setting `AUTH_METHOD` yourself locks that screen to your choice instead of leaving it pickable (a `singlepass` password is still entered there either way, since a password itself has no environment-variable equivalent).
 
 ### Public domain badge
 A piece's badge is one of four states: **In Public Domain** or **Copyleft** (both set explicitly by you), or **Likely Public Domain** / **In Copyright** (computed automatically). The computed states use a small, checked-in region-rule table, reviewed against IMSLP's [Copyright Made Simple](https://imslp.org/wiki/IMSLP:Copyright_Made_Simple) and [Public domain](https://imslp.org/wiki/Public_domain) pages. `COPYRIGHT_REGION` (above) picks which region's rule applies to your whole library — the U.S. rule is based on the copyright year alone; the EU/UK/Canada rules are based on the composer's death year (falling back to an approximation from the copyright year if no death year is on record).
@@ -147,7 +149,6 @@ DATA_DIR=./data go run ./cmd/sonneck <command>
 - **Native desktop app builds.** For some reason, the venn diagram of "people who play from sheet music" and "people who know what Docker is" is shockingly small.
 - Support for a folder of image files to be uploaded/assembled into pieces
 - A way to rename user tags, sheet types, etc. from the interface — honestly, this one's probably waiting on the auth support, when I slice off a *bunch* of user settings into their own menu (dark/light mode preference, citation style choice, etc.)
-- Offline mode? for remote gigs? Still thinking about how to accomplish this one. Contributions would be welcome.
 - Server-side printer support? Unsure about this one, but essentially the server would have a dedicated printer with the same settings saved, boiling a whole process down into a simple "Send to Printer" button. Dunno if this is achievable or just a fever dream.
 
 ## About the name
@@ -156,11 +157,16 @@ Sonneck is named after **Oscar Sonneck** (1873–1928), an American musicologist
 And most importantly, his last name sounded great for an app. :wink:
 
 ## AI disclaimer
+
+<p align="left">
+  <a href="https://aiclscale.org">
+    <img alt="AICL-3 AI-ideated" src=".github/assets/aicl-3-badge.svg" width="300">
+  </a>
+</p>
+
 This has been a series of learning exercises for me while I build a desperately-needed toolkit for my own use. While I had a quite a lot of ideas and built out a meticulously detailed framework, specifications, and guardrails, and contributed code and designed assets as I went, I did use AI, especially for much of the raw building-from-scratch gruntwork and bug-finding (hours of work became mere *seconds!*).
 
 That being said, I still don’t trust it– I’ll gladly welcome the contributions of any human that wants to make this project more secure, reliable, robust, or just plain cleaner.
-
-<span style="display:inline-flex;align-items:center;gap:8px;padding:4px 12px 4px 4px;background:#0d1117;border:1px solid #0F888044;font-family:monospace"><span style="background:#0F8880;color:#cdd9e5;padding:3px 8px;font-size:11px;font-weight:600;letter-spacing:.06em">AICL-3</span><span style="font-size:12px;color:#cdd9e5">AI-ideated</span><a href="https://aiclscale.org" style="font-size:10px;color:#5eead4;text-decoration:none;margin-left:4px">aiclscale.org</a></span>
 
 ## Acknowledgements
 - My beautiful girlfriend, for helping design the logo
