@@ -52,16 +52,12 @@ docker compose up -d
 
 The compose file takes care of the fiddly bits like remembering where you put your data folder and mounting it to the right place in the container.
 
-Create the `data` folder yourself before the first run. If you don't, Docker will create it for you as root when the container starts, which may cause write issues. If you hit a permission error on startup, it's almost always this; `sudo chown -R 1000:1000 ./data` will fix it.
+**Create the `data` folder yourself before the first run.** If you don't, Docker will create it for you as root when the container starts, which may cause write issues. If you hit a permission error on startup, it's almost always this; fix it by running `sudo chown -R 1000:1000 ./data` on the host machine.
 
-To quit the program, just use `docker compose down`. Easy peasy.
-
-***But what about `docker run`?*** I'm sure there's some web tool out there that can helpfully convert the docker compose to a run command. Said tool would be more accurate than I.
+***But what about `docker run`?*** I'm sure there's some web tool out there that can helpfully convert the docker compose to a run command. Such a tool would be more accurate than I.
 
 > [!WARNING]
-> Sonneck first launches with no security enabled (see [Security](#security) below). Until the user enables a password or SSO support, anyone who can reach the server over the network can use the full API, with no separation between "trusted operator" and "anonymous visitor." It should go without saying but **do not expose it on the open internet like this.**
-> 
-> Seriously, if you open it to the internet and a bunch of ne'er-do-wells put sketchy stuff on your server don't come crying to me.
+> Sonneck on Docker first launches with no security enabled and open to the network (see [Security](#security) below). Until you enable a password or SSO support, anyone who can reach the server over the network can use the full API, with no separation between "trusted operator" and "anonymous visitor." It should go without saying but **do not expose it on the open internet like this.**
 
 ### Running locally
 Check the `CONTRIBUTING.md` file for full local run instructions. Here's the TL;DR for those that understand what it means.
@@ -136,19 +132,17 @@ DATA_DIR=./data go run ./cmd/sonneck <command>
 | `rebuild-search-index` | Drops and repopulates the full-text search index (`pieces_fts`) from the database's core tables. | The index is derived data — safe to rebuild any time it's suspected out of sync. |
 | `regenerate-thumbnails` | Clears `$DATA_DIR/cache/thumbnails` and re-renders every page of every piece from scratch, also sweeping up any orphaned entries left over from deleted pieces. | If a cached thumbnail is ever suspected corrupted or stale — no need to know which cache entries are actually bad. |
 | `cleanup-thumbnails` | A lighter touch than `regenerate-thumbnails`: leaves everything that's already correct alone, and only removes cached page images nothing can read anymore (a deleted book/piece's leftovers, or a book's own pages once it's been fully imported into pieces) or re-renders ones that are actually corrupted. | Routine housekeeping — safe to run any time, and if you had a pre-v0.3 library it's worth running once after upgrading to reclaim space from book thumbnails your library accumulated before this existed. |
-| `export-csv` | Writes a full export of your library data to `$DATA_DIR/export/<timestamp>/` — one CSV file per database table (books, pieces, tags, keys, and so on). Read-only; doesn't touch the database or any existing files. | Any time you want your data out of Sonneck as plain CSV — a one-off backup in a format other tools can read, or just to take it with you. |
 | `reset-password` | Clears the stored password for **Password** mode's shared account, so a fresh one has to be set the next time it's configured. | If you've forgotten that password. |
 | `link-oidc-account <user-id-or-name> <subject>` | Links an existing account to a specific identity-provider identity, without waiting for that person to sign in first. See [OIDC / SSO setup](docs/oidc-setup.md). | If `OIDC_ALLOW_REGISTRATION=false` and you need to pre-provision someone, or to fix an account that got linked to the wrong identity. |
+| `export-csv` | Writes a full export of your library data to `$DATA_DIR/export/<timestamp>/` — one CSV file per database table (books, pieces, tags, keys, and so on). Read-only; doesn't touch the database or any existing files. | Any time you want your data out of Sonneck as plain CSV — a one-off backup in a format other tools can read, or just to take it with you. |
 
 ## Planned features
 - **Dark mode.** Dear God, my eyes.
 - **Setlists!** Plan out sets with the piece duration and tempo values.
-- **Auth support.** Lock your collection behind a simple password, or utilize a separate OIDC system for multi-user support. User notes, annotations, and tags stay saved per-user.
 - **Configurable citation format.** Just in case you don't like the defaults.
-- **Sheet Viewer!** The practice view every app like this seems to have, with Bluetooth page turner support, server-saved annotations, and a built-in metronome, possibly with some simple gap support. Maybe some music theory references too, why not; it's not like the circle of fifths has changed in the last 400 years
+- **Sheet Viewer!** The practice view every app like this seems to have, with Bluetooth page turner support, server-saved annotations, and a built-in metronome, possibly with some simple gap support there. Maybe some music theory references too, why not; it's not like the circle of fifths has changed in the last 400 years.
 - **Native desktop app builds.** For some reason, the venn diagram of "people who play from sheet music" and "people who know what Docker is" is shockingly small.
-- Support for a folder of image files to be uploaded/assembled into pieces
-- A way to rename user tags, sheet types, etc. from the interface — honestly, this one's probably waiting on the auth support, when I slice off a *bunch* of user settings into their own menu (dark/light mode preference, citation style choice, etc.)
+- Support for image files, and also support for a folder of image files to be uploaded/assembled into a piece
 - Server-side printer support? Unsure about this one, but essentially the server would have a dedicated printer with the same settings saved, boiling a whole process down into a simple "Send to Printer" button. Dunno if this is achievable or just a fever dream.
 
 ## About the name
@@ -172,7 +166,7 @@ That being said, I still don’t trust it– I’ll gladly welcome the contribut
 - My beautiful girlfriend, for helping design the logo
 - The frontend serif typeface is [Libre Baskerville](https://github.com/impallari/Libre-Baskerville) by Pablo Impallari, [Google Fonts](https://fonts.google.com/), licensed under the [SIL Open Font License 1.1](https://fonts.google.com/specimen/Libre+Baskerville/license). Self-hosted rather than loaded from Google Fonts at runtime.
 - The frontend sans-serif typeface is [Cabin](https://github.com/impallari/Cabin) by Impallari Type and Rodrigo Fuenzalida, also for Google Fonts and licensed under the SIL Open Font License 1.1. Self-hosted rather than loaded from Google Fonts at runtime.
-- The cursive S logo is taken from the [Gwendolyn](https://github.com/googlefonts/gwendolyn) font's capital S (what luck, it looking like a treble clef!) and the rest of the wordmark was built with [Mea Culpa](https://github.com/googlefonts/mea-culpa). Both fonts were designed by Robert Leuschke for Google Fonts and licensed under the SIL Open Font License 1.1. Logo and wordmark rendered as SVG and self-hosted.
+- The cursive S logo is taken from the [Gwendolyn](https://github.com/googlefonts/gwendolyn) font's capital S and the rest of the wordmark was built with [Mea Culpa](https://github.com/googlefonts/mea-culpa). Both fonts were designed by Robert Leuschke for Google Fonts and licensed under the SIL Open Font License 1.1. Logo and wordmark rendered as SVG and self-hosted.
 - The music symbols supported in Markdown fields (`:forte:`, `:flat:`, `:segno:`, and the rest) render via [Bravura Text](https://github.com/steinbergmedia/bravura), the SMuFL music-notation font from Steinberg Media Technologies, licensed under the SIL Open Font License 1.1. Self-hosted as a tiny subset (a few KB, not the ~3MB full release) containing only the specific glyphs this app supports.
 - My inspirations, for showing me what's possible with modern tech. [RomM](https://github.com/rommapp/romm), [Plex](https://www.plex.tv/your-media/), and [Calibre](https://calibre-ebook.com/) stand out.
 - Despite some passing resemblance in name, we are in no way affiliated with a certain blue runs-fast creature. Whatever species it claims to be.

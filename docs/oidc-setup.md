@@ -4,6 +4,11 @@
 
 Setup is by env var only; picking it on the first-launch setup screen just shows an explanation, since it needs secrets (a client secret, a redirect URI) that a pre-auth web form can't safely collect. Set `AUTH_METHOD=oidc` plus the variables below, and restart.
 
+> [!IMPORTANT]
+> Sonneck makes it easy to organize and access your own sheet music library across every device you own, but it doesn't make copyrighted sheet music free to share with other people. If you invite others onto your library, that's still just as much a copyright decision as handing someone a photocopy: only give access to pieces they're actually entitled to (public domain, they own a copy, they have a license, etc). The public domain badge helps you sort out what's freely shareable — everything else is on you. 
+> 
+> TL;DR: Please enjoy responsibly.
+
 ## Environment variables
 
 | Variable | Default | Notes |
