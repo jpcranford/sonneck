@@ -310,6 +310,7 @@ export function PiecePage() {
   const me = useAuth()
   const canDownload = me.permissions.includes('download')
   const canEdit = me.permissions.includes('edit')
+  const canDelete = me.permissions.includes('delete')
 
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [downloadOpen, setDownloadOpen] = useState(false)
@@ -498,9 +499,9 @@ export function PiecePage() {
             <button
               type="button"
               onClick={handleDelete}
-              disabled={deleteMutation.isPending}
+              disabled={!canDelete || deleteMutation.isPending}
               aria-label="Delete Piece"
-              title="Delete Piece"
+              title={canDelete ? 'Delete Piece' : "You don't have permission to delete"}
               className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-red-700 hover:border-red-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border"
             >
               <IconTrash size={18} />

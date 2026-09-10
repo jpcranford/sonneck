@@ -311,6 +311,7 @@ export function BookDetailsPage() {
   const me = useAuth()
   const canDownload = me.permissions.includes('download')
   const canEdit = me.permissions.includes('edit')
+  const canDelete = me.permissions.includes('delete')
 
   const [viewMode, setViewMode] = useViewPreference('book-details-pieces')
   const [bookEditOpen, setBookEditOpen] = useState(false)
@@ -583,9 +584,9 @@ export function BookDetailsPage() {
             <button
               type="button"
               onClick={handleDelete}
-              disabled={deleteMutation.isPending}
+              disabled={!canDelete || deleteMutation.isPending}
               aria-label="Delete Book"
-              title="Delete Book"
+              title={canDelete ? 'Delete Book' : "You don't have permission to delete"}
               className="flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-red-700 hover:border-red-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border"
             >
               <IconTrash size={16} />

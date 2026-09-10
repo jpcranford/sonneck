@@ -389,6 +389,7 @@ export function PersonDetailsPage() {
   const queryClient = useQueryClient()
   const me = useAuth()
   const canEdit = me.permissions.includes('edit')
+  const canDelete = me.permissions.includes('delete')
 
   const [workViewMode, setWorkViewMode] = useViewPreference('person-details-works', 'list')
   const [editOpen, setEditOpen] = useState(false)
@@ -536,9 +537,9 @@ export function PersonDetailsPage() {
             <button
               type="button"
               onClick={handleDelete}
-              disabled={deleteMutation.isPending}
+              disabled={!canDelete || deleteMutation.isPending}
               aria-label="Delete Person"
-              title="Delete Person"
+              title={canDelete ? 'Delete Person' : "You don't have permission to delete"}
               className="flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-red-700 hover:border-red-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border"
             >
               <IconTrash size={16} />

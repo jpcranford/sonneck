@@ -29,6 +29,7 @@ export const PieceContextMenu = forwardRef<ContextMenuHandle, PieceContextMenuPr
     const [editOpen, setEditOpen] = useState(false)
     const queryClient = useQueryClient()
     const canEdit = useAuth().permissions.includes('edit')
+    const canDelete = useAuth().permissions.includes('delete')
 
     // Same full-replace PATCH pattern as PiecePage's own favorite toggle
     // (its keyboard-shortcut "F" and header heart button) — kept here as a
@@ -77,6 +78,8 @@ export const PieceContextMenu = forwardRef<ContextMenuHandle, PieceContextMenuPr
             {
               label: 'Delete Piece',
               destructive: true,
+              disabled: !canDelete,
+              disabledReason: "You don't have permission to delete",
               onSelect: () => {
                 if (window.confirm(`Delete "${piece.title}"? This can't be undone.`)) {
                   deleteMutation.mutate()

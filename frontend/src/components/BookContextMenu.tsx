@@ -24,6 +24,7 @@ export const BookContextMenu = forwardRef<ContextMenuHandle, BookContextMenuProp
     const [editOpen, setEditOpen] = useState(false)
     const queryClient = useQueryClient()
     const canEdit = useAuth().permissions.includes('edit')
+    const canDelete = useAuth().permissions.includes('delete')
 
     // Cascade delete, not the lighter unlink-pieces or empty-books-only
     // alternatives: removes the Book *and* every Piece referencing it in
@@ -68,6 +69,8 @@ export const BookContextMenu = forwardRef<ContextMenuHandle, BookContextMenuProp
             {
               label: 'Delete Book',
               destructive: true,
+              disabled: !canDelete,
+              disabledReason: "You don't have permission to delete",
               onSelect: () => {
                 if (window.confirm(confirmMessage())) {
                   deleteMutation.mutate()

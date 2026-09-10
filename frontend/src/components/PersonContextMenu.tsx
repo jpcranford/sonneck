@@ -26,6 +26,7 @@ export const PersonContextMenu = forwardRef<ContextMenuHandle, PersonContextMenu
     const [editOpen, setEditOpen] = useState(false)
     const queryClient = useQueryClient()
     const canEdit = useAuth().permissions.includes('edit')
+    const canDelete = useAuth().permissions.includes('delete')
 
     const deleteMutation = useMutation({
       mutationFn: () => deletePerson(person.id),
@@ -55,6 +56,8 @@ export const PersonContextMenu = forwardRef<ContextMenuHandle, PersonContextMenu
             {
               label: 'Delete Person',
               destructive: true,
+              disabled: !canDelete,
+              disabledReason: "You don't have permission to delete",
               onSelect: () => {
                 if (window.confirm(`Delete "${person.name}"? This can't be undone.`)) {
                   deleteMutation.mutate()
