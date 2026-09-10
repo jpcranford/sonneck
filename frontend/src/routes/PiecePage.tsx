@@ -27,6 +27,7 @@ import { copyToClipboard } from '../lib/clipboard'
 import { COPYRIGHT_BADGE_META, copyrightTooltipText } from '../lib/copyrightBadge'
 import { hyphenateISBN } from '../lib/isbn'
 import { joinNames, pieceTitleCredit } from '../lib/joinNames'
+import { useAuth } from '../lib/AuthContext'
 import { usePageTitle } from '../lib/usePageTitle'
 import { yearWrittenSource } from '../lib/yearWrittenSource'
 import { PersonNameLinks } from '../components/PersonNameLinks'
@@ -302,6 +303,9 @@ export function PiecePage() {
     setPageResetFor(pieceId)
     setPage(piece.thumbnailPage)
   }
+
+  const me = useAuth()
+  const canDownload = me.permissions.includes('download')
 
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [downloadOpen, setDownloadOpen] = useState(false)
@@ -642,24 +646,43 @@ export function PiecePage() {
                   from reading the JSX alone. */}
               <div className="relative">
                 <div className="flex overflow-hidden rounded-md">
-                  <a
-                    href={getPieceFileUrl(piece.id)}
-                    download
-                    className="flex items-center gap-2 bg-accent px-4 py-2 font-display text-sm text-white hover:bg-accent/90"
-                  >
-                    <IconDownload size={16} />
-                    Download PDF
-                  </a>
+                  {canDownload ? (
+                    <a
+                      href={getPieceFileUrl(piece.id)}
+                      download
+                      className="flex items-center gap-2 bg-accent px-4 py-2 font-display text-sm text-white hover:bg-accent/90"
+                    >
+                      <IconDownload size={16} />
+                      Download PDF
+                    </a>
+                  ) : (
+                    // A real disabled <button>, not an <a> stripped of its
+                    // href — anchors have no native disabled state, and this
+                    // permission genuinely blocks the action rather than
+                    // just discouraging it, so there's no navigation worth
+                    // preserving for cmd/ctrl-click the way ClickableCard's
+                    // own convention protects real links.
+                    <button
+                      type="button"
+                      disabled
+                      title="You don't have permission to download files"
+                      className="flex cursor-not-allowed items-center gap-2 bg-accent px-4 py-2 font-display text-sm text-white opacity-40"
+                    >
+                      <IconDownload size={16} />
+                      Download PDF
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => setDownloadOpen((o) => !o)}
+                    disabled={!canDownload}
                     aria-label="More download options"
-                    className="flex items-center justify-center border-l border-white/25 bg-accent px-2 text-white hover:bg-accent/90"
+                    className="flex items-center justify-center border-l border-white/25 bg-accent px-2 text-white enabled:hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <IconChevronDownFilled size={16} />
                   </button>
                 </div>
-                {downloadOpen && (
+                {downloadOpen && canDownload && (
                   <div className="absolute top-full left-0 z-10 mt-1 w-64 overflow-hidden rounded-md border border-border bg-paper-raised py-1 text-left shadow-lg">
                     <a
                       href={getPieceFileUrl(piece.id)}

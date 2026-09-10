@@ -26,6 +26,7 @@ import { ApiError } from '../api/client'
 import type { Piece } from '../api/types'
 import { hyphenateISBN, isbnSearchUrl } from '../lib/isbn'
 import { joinNames, personCreditPart } from '../lib/joinNames'
+import { useAuth } from '../lib/AuthContext'
 import { CONTENT_MAX_W } from '../lib/layout'
 import { usePageTitle } from '../lib/usePageTitle'
 import { useViewPreference } from '../lib/useViewPreference'
@@ -307,6 +308,8 @@ export function BookDetailsPage() {
   const bookId = Number(id)
   const queryClient = useQueryClient()
   const navigate = useNavigate()
+  const me = useAuth()
+  const canDownload = me.permissions.includes('download')
 
   const [viewMode, setViewMode] = useViewPreference('book-details-pieces')
   const [bookEditOpen, setBookEditOpen] = useState(false)
@@ -584,7 +587,7 @@ export function BookDetailsPage() {
               <IconTrash size={16} />
             </button>
             <span aria-hidden="true" className="h-6 w-px self-center bg-border" />
-            {book.fileHash ? (
+            {book.fileHash && canDownload ? (
               <a
                 href={getBookFileUrl(book.id)}
                 target="_blank"
@@ -597,12 +600,15 @@ export function BookDetailsPage() {
               </a>
             ) : (
               <span
-                title="No original file on record"
+                title={book.fileHash ? "You don't have permission to download files" : 'No original file on record'}
                 // text-[#aea9a4] is a solid pre-blend of ink-soft at 50%
                 // over this span's own bg-paper-raised (white) background —
                 // not a translucent text-ink-soft/50 utility. IconFileTypePdf
                 // is a multi-path icon, so a translucent color would
-                // re-blend (and visibly darken) at every path overlap.
+                // re-blend (and visibly darken) at every path overlap. Same
+                // faint/inert treatment for both reasons a file isn't
+                // openable here — no file at all, or a real one this user
+                // lacks the download permission for.
                 className="flex w-[38px] cursor-not-allowed items-center justify-center rounded-md border border-border bg-paper-raised text-[#aea9a4]"
               >
                 <IconFileTypePdf size={16} />
