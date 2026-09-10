@@ -154,7 +154,7 @@ And most importantly, his last name sounded great for an app. :wink:
 
 <p align="left">
   <a href="https://aiclscale.org">
-    <img alt="AICL-3 AI-ideated" src=".github/assets/aicl-3-badge.svg" width="300">
+    <img alt="AICL-4 Expert vision, AI execution" src=".github/assets/aicl-4-badge.svg" width="300">
   </a>
 </p>
 
