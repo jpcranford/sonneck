@@ -619,8 +619,8 @@ function VersionSection() {
   return (
     <SectionBlock id="version" title="Version">
       <div className="flex flex-col gap-3">
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-sm text-ink">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+          <span className="min-w-0 text-sm text-ink">
             {version?.runningFromSource ? (
               <>
                 Running from source <span className="text-ink-soft">(not a packaged build)</span>
@@ -631,34 +631,43 @@ function VersionSection() {
               </>
             )}
           </span>
-          {version?.runningFromSource ? (
-            <span className="text-sm text-ink-soft" title="No GitHub check runs against a build with no injected commit identity">
-              Not applicable
-            </span>
-          ) : version?.checkStatus === 'behind' ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#fbe9e7] px-2.5 py-1 text-sm text-[#b45309]">
-              version {version.availableVersion} available
-              {releaseUrl && (
-                <a href={releaseUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-0.5 text-inherit underline">
-                  View release <IconExternalLink size={12} />
-                </a>
-              )}
-            </span>
-          ) : version?.checkStatus === 'upToDate' || version?.checkStatus === 'ahead' ? (
-            <span className="inline-flex items-center gap-1.5 text-sm text-[#3fa34d]">
-              <IconCircleCheck size={14} className="text-[#3fa34d]" />
-              {version.checkStatus === 'ahead' ? 'Ahead of the latest release' : 'Up to date'}
-            </span>
-          ) : (
-            <button
-              type="button"
-              disabled={checkMutation.isPending}
-              onClick={() => checkMutation.mutate()}
-              className="cursor-pointer rounded-md border border-border bg-paper-raised px-3 py-1.5 text-sm text-ink hover:border-accent disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {checkMutation.isPending ? 'Checking…' : 'Check for updates'}
-            </button>
-          )}
+          {/* Same mobile-stacking convention as UserSettingsPage.tsx's own
+              SettingsRow — self-end keeps this right-aligned even while
+              stacked full-width below `sm`, sm:self-auto reverts to the
+              row's own items-center once side-by-side. Without it, this
+              long running-version line and the pill/button next to it
+              wrapped into each other at in-between widths instead of
+              cleanly stacking. */}
+          <div className="shrink-0 self-end sm:self-auto">
+            {version?.runningFromSource ? (
+              <span className="text-sm text-ink-soft" title="No GitHub check runs against a build with no injected commit identity">
+                Not applicable
+              </span>
+            ) : version?.checkStatus === 'behind' ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#fbe9e7] px-2.5 py-1 text-sm text-[#b45309]">
+                version {version.availableVersion} available
+                {releaseUrl && (
+                  <a href={releaseUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-0.5 text-inherit underline">
+                    View release <IconExternalLink size={12} />
+                  </a>
+                )}
+              </span>
+            ) : version?.checkStatus === 'upToDate' || version?.checkStatus === 'ahead' ? (
+              <span className="inline-flex items-center gap-1.5 text-sm text-[#3fa34d]">
+                <IconCircleCheck size={14} className="text-[#3fa34d]" />
+                {version.checkStatus === 'ahead' ? 'Ahead of the latest release' : 'Up to date'}
+              </span>
+            ) : (
+              <button
+                type="button"
+                disabled={checkMutation.isPending}
+                onClick={() => checkMutation.mutate()}
+                className="cursor-pointer rounded-md border border-border bg-paper-raised px-3 py-1.5 text-sm text-ink hover:border-accent disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {checkMutation.isPending ? 'Checking…' : 'Check for updates'}
+              </button>
+            )}
+          </div>
         </div>
         {version?.checkedAt && (
           <p className="text-xs text-ink-soft">Checked just now. Reload the page to check again.</p>

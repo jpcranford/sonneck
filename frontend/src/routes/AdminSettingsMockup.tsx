@@ -797,33 +797,39 @@ export function AdminSettingsMockup() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-sm text-ink">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+              <span className="min-w-0 text-sm text-ink">
                 Running <strong>{runningLabel}</strong>
               </span>
-              {updateChecked ? (
-                build.checkResult === 'behind' ? (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-[#fbe9e7] px-2.5 py-1 text-sm text-[#b45309]">
-                    version {build.availableVersion} available
-                    <a href="#" className="inline-flex items-center gap-0.5 text-inherit underline">
-                      View release <IconExternalLink size={12} />
-                    </a>
-                  </span>
+              {/* Same mobile-stacking convention as UserSettingsMockup.tsx's
+                  own SettingsRow — self-end keeps this right-aligned even
+                  while stacked full-width below `sm`, sm:self-auto reverts
+                  to the row's own items-center once side-by-side. */}
+              <div className="shrink-0 self-end sm:self-auto">
+                {updateChecked ? (
+                  build.checkResult === 'behind' ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#fbe9e7] px-2.5 py-1 text-sm text-[#b45309]">
+                      version {build.availableVersion} available
+                      <a href="#" className="inline-flex items-center gap-0.5 text-inherit underline">
+                        View release <IconExternalLink size={12} />
+                      </a>
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 text-sm text-[#3fa34d]">
+                      <IconCircleCheck size={14} className="text-[#3fa34d]" />
+                      {build.checkResult === 'ahead' ? 'Ahead of the latest release' : 'Up to date'}
+                    </span>
+                  )
                 ) : (
-                  <span className="inline-flex items-center gap-1.5 text-sm text-[#3fa34d]">
-                    <IconCircleCheck size={14} className="text-[#3fa34d]" />
-                    {build.checkResult === 'ahead' ? 'Ahead of the latest release' : 'Up to date'}
-                  </span>
-                )
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setUpdateChecked(true)}
-                  className="cursor-pointer rounded-md border border-border bg-paper-raised px-3 py-1.5 text-sm text-ink hover:border-accent"
-                >
-                  Check for updates
-                </button>
-              )}
+                  <button
+                    type="button"
+                    onClick={() => setUpdateChecked(true)}
+                    className="cursor-pointer rounded-md border border-border bg-paper-raised px-3 py-1.5 text-sm text-ink hover:border-accent"
+                  >
+                    Check for updates
+                  </button>
+                )}
+              </div>
             </div>
             {updateChecked && (
               <p className="text-xs text-ink-soft">Checked just now. Reload the page to check again.</p>
