@@ -120,9 +120,23 @@ SectionEnd
 Section "uninstall"
     !insertmacro wails.setShellContext
 
+    ; WebView2's DataPath always lives under the actual logged-in user's own
+    ; roaming profile (the app runs as that user, never as a machine-wide
+    ; service) — but wails.setShellContext just switched $AppData to the
+    ; all-users ProgramData folder for a machine-scope (admin) install, so
+    ; the RMDir below would silently target a directory that never existed,
+    ; leaving the real WebView2 cache/profile behind on every machine-scope
+    ; uninstall. Force the per-user context just for this one removal.
+    SetShellVarContext current
     RMDir /r "$AppData\${PRODUCT_EXECUTABLE}" # Remove the WebView2 DataPath
+    !insertmacro wails.setShellContext
 
     RMDir /r $INSTDIR
+    ; RMDir /r above only removes the nested product subfolder
+    ; ($INSTDIR, e.g. ...\Sonneck\Sonneck\) — this cleans up the now-empty
+    ; company-name parent too. Plain RMDir (no /r) no-ops on a non-empty
+    ; dir, so this is safe even if something unexpected is still there.
+    RMDir "$INSTDIR\.."
 
     Delete "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk"
     Delete "$DESKTOP\${INFO_PRODUCTNAME}.lnk"
