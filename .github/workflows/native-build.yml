@@ -1,11 +1,16 @@
 name: Native build validation
 
-# Phase 6 (project_wails_native_app_investigation memory) — validates that
-# the native Wails build actually compiles, bundles poppler, and packages
-# successfully on both target OSes. Mirrors docker-publish.yml's own
-# "push to main runs a validation build only" posture (CLAUDE.md >
-# Docker/build) — this is NOT the release/artifact-publish pipeline
-# (that's Phase 8's job, matching this project's existing phase split).
+# Phase 6 (project_wails_native_app_investigation memory) built the build/
+# package pipeline itself (validation-only, mirroring docker-publish.yml's
+# own "push runs a validation build only" posture — CLAUDE.md > Docker/
+# build). Phase 8 added the actual release-publish half: a `release`
+# event (types: [released, prereleased]) runs the *exact same* proven
+# pipeline and then attaches the resulting installer to that GitHub
+# Release directly (`gh release upload`), version-named. Unlike
+# docker-publish.yml there's no floating-tag/multi-arch-manifest
+# complexity to replicate here — a native installer is just a file, so
+# "publish" is just "upload it to the release," no separate merge/nightly/
+# sync-latest jobs needed.
 #
 # Every step below reuses a recipe already empirically proven for real in
 # this project's own investigation, not a fresh guess:
@@ -37,6 +42,14 @@ name: Native build validation
 #     see build/windows/installer/project.nsi's own hand-customization),
 #     and both use upload-artifact v7's `archive: false` so the actual
 #     download is that one file directly, not a zip-of-a-zip.
+#
+# Deliberately temporary, per direct instruction: `push` still fires on
+# `native-build-test` for now, so pushing there keeps producing full,
+# real, downloadable installers to test-drive/tweak — same as every prior
+# phase's own verification loop. Once that's done, this list drops back to
+# `[main]` only (matching docker-publish.yml's own push-to-main-only
+# posture) before this branch merges — a deliberate follow-up, not done in
+# this same pass.
 
 on:
   push:
@@ -48,6 +61,8 @@ on:
       - 'go.mod'
       - 'go.sum'
       - '.github/workflows/native-build.yml'
+  release:
+    types: [released, prereleased]
   workflow_dispatch:
 
 env:
@@ -64,6 +79,12 @@ env:
 jobs:
   build-macos:
     runs-on: macos-latest
+    # contents: write only for this job's own final "Attach to the GitHub
+    # Release" step (release events only) — every other step here just
+    # reads/builds, matching docker-publish.yml's own per-job permission
+    # scoping rather than widening the token workflow-wide.
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v7
 
@@ -89,6 +110,33 @@ jobs:
 
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ env.WAILS_VERSION }}
+
+      # Rewrites wails.json's info.productVersion to the release's own tag
+      # (e.g. "0.5" or "0.5.1" — CLAUDE.md's own confirmed bare-number
+      # convention, never "v"-prefixed) padded out to the strict X.X.X
+      # NSIS/Info.plist both require (project.nsi's own template appends
+      # one more ".0" on top of this to make X.X.X.X — Phase 6's own
+      # "invalid VIFileVersion format" bug came from skipping this exact
+      # normalization). Runs on *every* trigger, not just release events —
+      # falls back to the same "0.0.1" placeholder Phase 6 already used
+      # when there's no release tag (push/workflow_dispatch), so this
+      # logic stays exercised on ordinary CI runs too rather than only
+      # ever being tested during an actual release.
+      - name: Set build version
+        id: version
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          if [ -z "$TAG" ]; then
+            VERSION="0.0.1"
+          else
+            IFS='.' read -r -a parts <<< "$TAG"
+            while [ "${#parts[@]}" -lt 3 ]; do parts+=("0"); done
+            VERSION="${parts[0]}.${parts[1]}.${parts[2]}"
+          fi
+          echo "Building version $VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          jq --arg v "$VERSION" '.info.productVersion = $v' cmd/sonneck-desktop/wails.json > /tmp/wails.json.tmp
+          mv /tmp/wails.json.tmp cmd/sonneck-desktop/wails.json
 
       # Proven recipe (Phase 1, re-verified Phase 6): binaries land in
       # bin/, their dylibs in a *sibling* libs/ folder — dylibbundler's
@@ -185,8 +233,30 @@ jobs:
           path: cmd/sonneck-desktop/build/bin/Sonneck.dmg
           archive: false
 
+      # Release events only — attaches a version-named copy directly to
+      # the GitHub Release (both "released" and "prereleased", per direct
+      # instruction: a pre-release should get a real, downloadable native
+      # build too, not just the stable channel). RELEASE_TAG goes through
+      # env: rather than direct ${{ }} interpolation in the script body,
+      # same reasoning as docker-publish.yml's own "Attach docker-
+      # compose.yml to the release" step — a crafted tag name could
+      # otherwise inject shell syntax.
+      - name: Attach to the GitHub Release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          cp cmd/sonneck-desktop/build/bin/Sonneck.dmg "Sonneck-$VERSION-macOS.dmg"
+          gh release upload "$RELEASE_TAG" "Sonneck-$VERSION-macOS.dmg" --clobber
+
   build-windows:
     runs-on: windows-latest
+    # See build-macos' identical comment — contents: write only for this
+    # job's own release-attach step.
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v7
 
@@ -207,6 +277,28 @@ jobs:
 
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ env.WAILS_VERSION }}
+
+      # PowerShell equivalent of build-macos' identical "Set build version"
+      # step — see that step's own comment for the full reasoning
+      # (X.X.X normalization, why this runs on every trigger).
+      - name: Set build version
+        id: version
+        shell: pwsh
+        run: |
+          $Tag = "${{ github.event.release.tag_name }}"
+          if ([string]::IsNullOrEmpty($Tag)) {
+            $Version = "0.0.1"
+          } else {
+            $parts = @($Tag -split '\.')
+            while ($parts.Count -lt 3) { $parts += "0" }
+            $Version = "$($parts[0]).$($parts[1]).$($parts[2])"
+          }
+          Write-Host "Building version $Version"
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "version=$Version"
+
+          $json = Get-Content cmd\sonneck-desktop\wails.json -Raw | ConvertFrom-Json
+          $json.info.productVersion = $Version
+          $json | ConvertTo-Json -Depth 10 | Set-Content cmd\sonneck-desktop\wails.json
 
       # Real, previously-run recipe (Phase 2's own windows-latest CI spike)
       # — the release zip ships every .exe with its .dll dependencies flat
@@ -301,3 +393,17 @@ jobs:
         with:
           path: cmd/sonneck-desktop/build/bin/*-installer.exe
           archive: false
+
+      # See build-macos' identical step for the full reasoning.
+      - name: Attach to the GitHub Release
+        if: github.event_name == 'release'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          $installer = Get-ChildItem cmd\sonneck-desktop\build\bin -Filter *-installer.exe | Select-Object -First 1
+          $renamed = "Sonneck-$env:VERSION-Windows-installer.exe"
+          Copy-Item $installer.FullName $renamed
+          gh release upload $env:RELEASE_TAG $renamed --clobber

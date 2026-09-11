@@ -37,7 +37,18 @@ Sonneck is currently built to live “in an office with a printer”, so to spea
 Two ways of installing Sonneck: there's the native Mac and Windows apps for an easier install or you can use Docker, which is recommended if you intend on using SSO or hosting over the web.
 
 ### Native apps (macOS/Windows)
-Coming soon. When I roll this out, they'll be generated on release and put under the [releases](https://github.com/jpcranford/sonneck/releases) page.
+Grab the latest installer from the [releases](https://github.com/jpcranford/sonneck/releases) page — `Sonneck-<version>-macOS.dmg` (a universal binary, runs natively on both Apple Silicon and Intel) or `Sonneck-<version>-Windows-installer.exe`. No Docker, no terminal — just open it up.
+
+On first launch you'll pick where your library lives (defaults to a `Sonneck Library` folder inside your Music folder) and how you want to sign in, the same first-launch flow Docker gets. Everything else — Admin Settings, backups, the public domain badge, all of it — works identically to the Docker version; the only native-only extras are in Admin Settings' **Share on Network** section (off by default — a native app only talks to itself over `localhost` until you turn it on, so other devices on your network can reach it too) and a **Library location** control to move your library to a different folder later.
+
+> [!NOTE]
+> These installers aren't code-signed (that costs real money per year per platform, and this is a hobby project) — so your OS will warn you before the first launch:
+> - **macOS**: Gatekeeper will say the app "cannot be opened because it is from an unidentified developer." Right-click (or Control-click) the app and choose **Open**, then confirm **Open** again in the dialog that follows — you only need to do this once. (If you already double-clicked it and got a plain "can't be opened" message with no Open option, go to **System Settings → Privacy & Security**, scroll down, and click **Open Anyway** next to the Sonneck mention.)
+> - **Windows**: SmartScreen will say "Windows protected your PC." Click **More info**, then **Run anyway**.
+>
+> This is expected for any unsigned app, not a sign something's wrong — it's the price of admission for a free, open-source, self-hosted tool. Every release is built directly from this repo's own source by GitHub Actions \(see [`native-build.yml`](.github/workflows/native-build.yml)\) — nothing hidden happens between the code here and the file you download.
+
+Since a native install has no Docker/reverse-proxy layer in front of it, **OIDC/SSO sign-in isn't available** — it needs secrets and a registered redirect URI a native app has no safe place to hold. Use Docker instead if you want that (see [Security](#security) below).
 
 ### Docker Compose
 There's a [`docker-compose.yml`](docker-compose.yml) file in this repo and linked to the releases, complete with helpful comments explaining some common options.
