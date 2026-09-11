@@ -10,7 +10,7 @@
   "info": {
     "companyName": "Sonneck",
     "productName": "Sonneck",
-    "productVersion": "0.0.0-dev",
+    "productVersion": "0.0.1",
     "copyright": "GPL-3.0",
     "comments": "Your own sheet music library"
   }
