@@ -22,7 +22,7 @@ name: Native build validation
 
 on:
   push:
-    branches: [main]
+    branches: [main, native-build-test]
     paths:
       - 'cmd/sonneck-desktop/**'
       - 'internal/**'
