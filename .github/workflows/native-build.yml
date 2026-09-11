@@ -19,6 +19,24 @@ name: Native build validation
 #     CLI injects them) but DOES still need CGO_LDFLAGS="-framework
 #     UniformTypeIdentifiers" on macOS even through the official CLI —
 #     both confirmed empirically, not assumed.
+#
+# Two real bugs found from this workflow's own first live run, both fixed:
+#   - windows-latest doesn't ship `makensis` — `wails build -nsis` doesn't
+#     error when it's missing, it just prints a warning and silently
+#     builds a bare .exe with no installer at all. Fixed by installing
+#     NSIS via Chocolatey first, plus a real post-build check that fails
+#     loudly if no installer ever gets produced, so this can't regress
+#     back to silent again.
+#   - Both platforms' own build/bin directories are full of build-only
+#     cruft (the pre-install .exe, staged poppler, WebView2 temp files) —
+#     uploading that whole directory produced an artifact that was
+#     confusing to open and, worse, wasn't the single all-inclusive
+#     installer a release actually needs. Fixed: macOS packages into a
+#     real .dmg (hdiutil, preinstalled), Windows uploads only the NSIS
+#     installer .exe (which now genuinely bundles poppler inside it too —
+#     see build/windows/installer/project.nsi's own hand-customization),
+#     and both use upload-artifact v7's `archive: false` so the actual
+#     download is that one file directly, not a zip-of-a-zip.
 
 on:
   push:
@@ -40,13 +58,13 @@ jobs:
   build-macos:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version: ${{ env.GO_VERSION }}
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
 
@@ -104,6 +122,19 @@ jobs:
           cp -R poppler-bundle/bin poppler-bundle/libs "$APP/Contents/Resources/poppler/"
           codesign --force --deep --sign - "$APP"
 
+      # A bare .app inside a GitHub Actions artifact download is a real,
+      # justified complaint (direct feedback) — GitHub always wraps every
+      # artifact download in its own zip regardless of content (an
+      # unavoidable platform behavior, not something this workflow
+      # controls), but what's *inside* that zip should be the one file a
+      # real user expects: a standard macOS .dmg, not a loose .app folder
+      # they have to know to drag out themselves. hdiutil is preinstalled
+      # on every macos-latest runner — no extra tool needed.
+      - name: Package into a .dmg
+        run: |
+          hdiutil create -volname "Sonneck" -srcfolder "cmd/sonneck-desktop/build/bin/Sonneck.app" \
+            -ov -format UDZO "cmd/sonneck-desktop/build/bin/Sonneck.dmg"
+
       # Real proof, not a bare launch check: upload a real generated PDF
       # through the actual production HTTP endpoint and confirm a real
       # pageCount comes back — the same check this phase's own local
@@ -137,21 +168,26 @@ jobs:
           echo "$RESPONSE"
           echo "$RESPONSE" | grep -q '"pageCount":1' || (echo "bundled poppler did not report the expected page count" && exit 1)
 
-      - uses: actions/upload-artifact@v4
+      # archive: false (upload-artifact v7) skips GitHub's own zip-wrapping
+      # for a single-file upload — the download is the real .dmg itself,
+      # not a zip containing a zip-shaped .dmg. `name` is deliberately
+      # omitted: v7 ignores it under archive: false and names the artifact
+      # after the uploaded file instead (Sonneck.dmg).
+      - uses: actions/upload-artifact@v7
         with:
-          name: sonneck-macos-universal
-          path: cmd/sonneck-desktop/build/bin/Sonneck.app
+          path: cmd/sonneck-desktop/build/bin/Sonneck.dmg
+          archive: false
 
   build-windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version: ${{ env.GO_VERSION }}
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
 
@@ -168,7 +204,12 @@ jobs:
       # Real, previously-run recipe (Phase 2's own windows-latest CI spike)
       # — the release zip ships every .exe with its .dll dependencies flat
       # in one folder, no separate bin/libs split the way dylibbundler's
-      # macOS output needs.
+      # macOS output needs. Staged directly at the final build/bin/poppler
+      # location (not a separate staging dir) — cmd/sonneck-desktop's own
+      # customized project.nsi (build/windows/installer/project.nsi) reads
+      # from exactly this path, relative, to bundle it *inside* the
+      # installer, so it has to already be here before `wails build -nsis`
+      # runs below, not copied in afterward.
       - name: Bundle poppler-utils (Windows)
         shell: pwsh
         env:
@@ -179,8 +220,18 @@ jobs:
           Expand-Archive -Path $zip.FullName -DestinationPath poppler-extracted
           $binDir = (Get-ChildItem -Recurse poppler-extracted -Filter pdftoppm.exe | Select-Object -First 1).DirectoryName
           if (-not $binDir) { throw "pdftoppm.exe not found in the extracted release" }
-          New-Item -ItemType Directory -Force -Path poppler-bundle | Out-Null
-          Copy-Item "$binDir\*" poppler-bundle\
+          New-Item -ItemType Directory -Force -Path cmd\sonneck-desktop\build\bin\poppler | Out-Null
+          Copy-Item "$binDir\*" cmd\sonneck-desktop\build\bin\poppler\
+
+      # windows-latest doesn't ship makensis by default — confirmed by a
+      # real prior run of this workflow, which built a bare .exe with no
+      # installer and only a silent "Warning: Cannot create installer:
+      # makensis not found" buried in the build log to show for it.
+      # Chocolatey (preinstalled on every windows-latest runner) is the
+      # standard way to get it.
+      - name: Install NSIS
+        shell: pwsh
+        run: choco install nsis -y
 
       - name: Build native app (NSIS installer)
         working-directory: cmd/sonneck-desktop
@@ -189,15 +240,9 @@ jobs:
           & "$(go env GOPATH)\bin\wails.exe" build -nsis `
             -ldflags "-X main.buildSHA=${{ github.sha }} -X main.buildTarget=native"
 
-      # Windows has no bundle-signature concern the way macOS does — a
-      # plain folder copy next to the .exe, matching
-      # resolvePopplerBinDir's own "poppler folder next to the .exe"
-      # convention for this OS.
-      - name: Place bundled poppler next to the built executable
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force -Path cmd\sonneck-desktop\build\bin\poppler | Out-Null
-          Copy-Item poppler-bundle\* cmd\sonneck-desktop\build\bin\poppler\ -Recurse
+          if (-not (Get-ChildItem build\bin -Filter *-installer.exe)) {
+            throw "no installer .exe was produced - makensis likely failed silently again"
+          }
 
       - name: Smoke-test the built exe
         shell: pwsh
@@ -226,7 +271,12 @@ jobs:
           $response = Invoke-RestMethod -Uri http://127.0.0.1:26163/api/books -Method Post -Form $form -Headers @{ "X-Requested-With" = "XMLHttpRequest" }
           if ($response.data.pageCount -ne 1) { throw "bundled poppler did not report the expected page count" }
 
-      - uses: actions/upload-artifact@v4
+      # Upload only the installer itself, not the whole build/bin directory
+      # (which also has the bare pre-install .exe, the staged poppler
+      # folder, and Wails' own WebView2 bootstrapper temp files) — one
+      # clean file, matching the macOS job's own single-.dmg upload.
+      # archive: false skips GitHub's own zip-wrapping the same way.
+      - uses: actions/upload-artifact@v7
         with:
-          name: sonneck-windows
-          path: cmd/sonneck-desktop/build/bin
+          path: cmd/sonneck-desktop/build/bin/*-installer.exe
+          archive: false
