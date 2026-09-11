@@ -1,0 +1,17 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "Sonneck",
+  "outputfilename": "sonneck-desktop",
+  "frontend:install": "",
+  "frontend:build": "",
+  "author": {
+    "name": "Sonneck"
+  },
+  "info": {
+    "companyName": "Sonneck",
+    "productName": "Sonneck",
+    "productVersion": "0.0.0-dev",
+    "copyright": "GPL-3.0",
+    "comments": "Your own sheet music library"
+  }
+}

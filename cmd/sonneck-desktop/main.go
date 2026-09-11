@@ -1,0 +1,251 @@
+// Command sonneck-desktop is Sonneck's native (Wails) entry point —
+// project_wails_native_app_investigation memory's Phase 6. Reuses the
+// exact same handlers.New(...) http.Handler cmd/sonneck/main.go builds
+// (the architecture-fit claim proven for real in Phase 2's throwaway
+// spike, cmd/sonneck-desktop-spike, now made permanent here) via
+// wails.Run's AssetServer.Handler option — zero adapter code, zero new
+// API surface.
+//
+// Deliberately does NOT support the admin-CLI subcommand pattern
+// (rebuild-search-index, reset-password, etc.) that cmd/sonneck/main.go
+// has — a native app is launched by double-click, not a terminal, so
+// there's no realistic operator typing `sonneck-desktop rebuild-search-
+// index`. A scope decision, not an oversight; revisit if a real need
+// for CLI-subcommand parity on native surfaces later.
+package main
+
+import (
+	"context"
+	"io"
+	"log/slog"
+	"net/http"
+	"os"
+	"path/filepath"
+	"runtime"
+
+	"github.com/jpcranford/sonneck/internal/applog"
+	"github.com/jpcranford/sonneck/internal/backup"
+	"github.com/jpcranford/sonneck/internal/config"
+	"github.com/jpcranford/sonneck/internal/db"
+	"github.com/jpcranford/sonneck/internal/handlers"
+	"github.com/jpcranford/sonneck/internal/nativeconfig"
+	"github.com/jpcranford/sonneck/internal/netinfo"
+	"github.com/jpcranford/sonneck/internal/oidcauth"
+	"github.com/jpcranford/sonneck/internal/peoplemigrate"
+	"github.com/jpcranford/sonneck/internal/repo"
+	"github.com/jpcranford/sonneck/internal/webui"
+	"github.com/wailsapp/wails/v2"
+	"github.com/wailsapp/wails/v2/pkg/options"
+	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+)
+
+// buildSHA/buildDate/buildTarget are overridden at build time via
+// -ldflags, exactly mirroring cmd/sonneck/main.go's own convention
+// (Phase 3's locked decision: keep buildTarget ldflags-driven in *both*
+// binaries, not a hardcoded const here, purely for consistency — this
+// binary's real build step should still pass
+// -X main.buildTarget=native explicitly rather than relying on the
+// default alone).
+var (
+	buildSHA    = "dev"
+	buildDate   = "unknown"
+	buildTarget = "native"
+)
+
+// resolvePopplerBinDir returns the directory a CI-packaged release
+// bundles poppler-utils into, or "" if it isn't present (e.g. a local
+// `wails build`/dev run with no bundling step) — "" falls through to
+// internal/pdf's existing PATH-based lookup, so local development keeps
+// working against a system-installed poppler exactly like it does today.
+// macOS bundles into Contents/Resources/poppler alongside the executable
+// (Contents/MacOS/<exe>), matching the already-proven dylibbundler output
+// layout from Phase 1/2's spikes; Windows has no bundle convention, so
+// poppler sits in a `poppler` folder next to the .exe in the same install
+// directory.
+//
+// internal/pdf.toolPath (internal/pdf/pdf.go) joins PDF_BIN_DIR directly
+// against a bare tool name ("pdfinfo", etc.) — no "bin" segment of its
+// own — so this must return a directory that directly *contains* the
+// three binaries, not their parent. That distinction matters differently
+// per OS: dylibbundler's own real output (Phase 6, empirically re-tested
+// against a real generated PDF, not assumed) puts the binaries in a `bin/`
+// subfolder with their dylibs in a *sibling* `libs/` folder (the binaries'
+// own baked-in rpath is literally "@executable_path/../libs/", regardless
+// of whatever destination folder name a `-d` flag was given — a real,
+// easy-to-miss mismatch if the two don't end up named to match), so macOS
+// needs the extra "bin" join below. The Windows poppler-windows release
+// ships every .exe and its .dll dependencies flat in one folder
+// (confirmed via Phase 2's real windows-latest CI run,
+// poppler-extracted\poppler-26.07.0\Library\bin\) with no separate
+// lib-folder split — so Windows' own resolved directory already directly
+// contains the binaries with no extra segment needed.
+func resolvePopplerBinDir() string {
+	exe, err := os.Executable()
+	if err != nil {
+		return ""
+	}
+	exe, err = filepath.EvalSymlinks(exe)
+	if err != nil {
+		return ""
+	}
+
+	var dir string
+	if runtime.GOOS == "darwin" {
+		contentsDir := filepath.Dir(filepath.Dir(exe)) // .../Contents/MacOS/<exe> -> .../Contents
+		dir = filepath.Join(contentsDir, "Resources", "poppler", "bin")
+	} else {
+		dir = filepath.Join(filepath.Dir(exe), "poppler")
+	}
+
+	if _, err := os.Stat(dir); err != nil {
+		return ""
+	}
+	return dir
+}
+
+func main() {
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	slog.SetDefault(logger)
+
+	// Native-only settings (project_wails_native_app_investigation memory's
+	// Phase 3): a chosen library path and Share on Network both live in a
+	// small local JSON file, not an env var — nothing else sets DATA_DIR/
+	// PDF_BIN_DIR for a double-clicked native app the way a docker-compose
+	// environment: block or the dev tooling recipe does. Missing file ==
+	// zero-value Settings (nativeconfig.Load's own documented behavior),
+	// so a first-ever launch just falls through to config.Load()'s own
+	// GOOS-aware default (internal/config.defaultDataDir) and a
+	// PATH-based poppler lookup below.
+	settingsPath, err := nativeconfig.DefaultPath()
+	if err != nil {
+		logger.Error("failed to resolve native settings path", "error", err)
+		os.Exit(1)
+	}
+	settings, err := nativeconfig.Load(settingsPath)
+	if err != nil {
+		logger.Error("failed to load native settings", "error", err, "path", settingsPath)
+		os.Exit(1)
+	}
+	if settings.LibraryPath != "" {
+		os.Setenv("DATA_DIR", settings.LibraryPath)
+	}
+	if popplerDir := resolvePopplerBinDir(); popplerDir != "" {
+		os.Setenv("PDF_BIN_DIR", popplerDir)
+	}
+
+	cfg, err := config.Load()
+	if err != nil {
+		logger.Error("invalid configuration", "error", err)
+		os.Exit(1)
+	}
+
+	logWriter, err := applog.NewRotatingWriter(cfg.LogsDir)
+	if err != nil {
+		logger.Error("failed to open log file", "error", err, "path", cfg.LogsDir)
+		os.Exit(1)
+	}
+	defer logWriter.Close()
+
+	logger = slog.New(slog.NewJSONHandler(io.MultiWriter(os.Stdout, logWriter), &slog.HandlerOptions{Level: cfg.LogLevelVar}))
+	slog.SetDefault(logger)
+
+	dbPath := filepath.Join(cfg.DataDir, "db", "sonneck.sqlite")
+	if err := os.MkdirAll(filepath.Dir(dbPath), 0o755); err != nil {
+		logger.Error("failed to create database directory", "error", err, "path", filepath.Dir(dbPath))
+		os.Exit(1)
+	}
+
+	conn, err := db.Open(dbPath)
+	if err != nil {
+		logger.Error("failed to open database", "error", err)
+		os.Exit(1)
+	}
+	defer conn.Close()
+
+	// Same auto-heal steps as cmd/sonneck/main.go's own startup path — see
+	// that file's comments for the full reasoning (peoplemigrate backfill,
+	// search-index self-heal). Kept in sync deliberately; no CLI-subcommand
+	// fallback exists here (this file's own header comment), so these
+	// automatic paths are this binary's *only* way either ever runs.
+	if result, err := peoplemigrate.Run(context.Background(), conn); err != nil {
+		logger.Error("people migration failed", "error", err)
+	} else if result.PiecesMigrated > 0 || result.BooksMigrated > 0 {
+		logger.Info("people migration completed",
+			"piecesMigrated", result.PiecesMigrated, "piecesSkipped", result.PiecesSkipped,
+			"booksMigrated", result.BooksMigrated, "booksSkipped", result.BooksSkipped)
+	}
+
+	if needsRebuild, err := repo.SearchIndexNeedsRebuild(context.Background(), conn); err != nil {
+		logger.Error("search index rebuild check failed", "error", err)
+	} else if needsRebuild {
+		if err := repo.RebuildSearchIndex(context.Background(), conn); err != nil {
+			logger.Error("automatic search index rebuild failed", "error", err)
+		} else {
+			logger.Info("automatic search index rebuild completed")
+		}
+	}
+
+	scheduler, err := backup.StartScheduler(cfg.BackupCron(), conn, cfg.BackupDir, cfg.LogsDir, cfg, logger)
+	if err != nil {
+		logger.Error("failed to start backup scheduler", "error", err)
+		os.Exit(1)
+	}
+	defer scheduler.Stop()
+
+	// OIDC stays env-var-only exactly as documented (CLAUDE.md > Multi-user
+	// support) — the first-launch UI never offers it on native, but nothing
+	// technically stops an operator from setting OIDC_* env vars even on a
+	// native install, so this binary supports it for parity rather than
+	// silently ignoring a config an unusual deployment might actually set.
+	var oidcAuth *oidcauth.Authenticator
+	if cfg.AuthMethod == "oidc" {
+		oidcAuth, err = oidcauth.New(context.Background(), cfg)
+		if err != nil {
+			logger.Error("failed to configure OIDC", "error", err)
+			os.Exit(1)
+		}
+	}
+
+	frontend, err := webui.FS()
+	if err != nil {
+		logger.Error("failed to load embedded frontend", "error", err)
+		os.Exit(1)
+	}
+
+	handler := handlers.New(conn, cfg, logger, frontend, scheduler, buildSHA, buildDate, buildTarget, oidcAuth)
+
+	ln, err := netinfo.ListenWithFallback(buildTarget, cfg.Port, settings.ShareOnNetwork)
+	if err != nil {
+		logger.Error("failed to bind listener", "error", err, "port", cfg.Port)
+		os.Exit(1)
+	}
+	logger.Info("starting server", "address", ln.Addr().String(), "shareOnNetwork", settings.ShareOnNetwork)
+
+	// Two separate consumers of the same handler, deliberately, not a
+	// mistake: wails.Run's own AssetServer.Handler below serves the native
+	// webview window itself, entirely in-process — confirmed in Phase 2's
+	// spike to need no real TCP port at all (no extra listening port ever
+	// showed up in that spike's own lsof check). A real net.Listener is a
+	// second, independent thing this binary needs on top of that — the one
+	// that actually makes Share on Network possible, since another device
+	// on the LAN has no way to reach into Wails' own internal webview
+	// channel.
+	go func() {
+		if err := http.Serve(ln, handler); err != nil {
+			logger.Error("server stopped", "error", err)
+		}
+	}()
+
+	err = wails.Run(&options.App{
+		Title:  "Sonneck",
+		Width:  1200,
+		Height: 800,
+		AssetServer: &assetserver.Options{
+			Handler: handler,
+		},
+	})
+	if err != nil {
+		logger.Error("wails run failed", "error", err)
+		os.Exit(1)
+	}
+}

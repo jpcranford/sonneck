@@ -1,0 +1,232 @@
+name: Native build validation
+
+# Phase 6 (project_wails_native_app_investigation memory) — validates that
+# the native Wails build actually compiles, bundles poppler, and packages
+# successfully on both target OSes. Mirrors docker-publish.yml's own
+# "push to main runs a validation build only" posture (CLAUDE.md >
+# Docker/build) — this is NOT the release/artifact-publish pipeline
+# (that's Phase 8's job, matching this project's existing phase split).
+#
+# Every step below reuses a recipe already empirically proven for real in
+# this project's own investigation, not a fresh guess:
+#   - macOS poppler bundling (Homebrew + dylibbundler) — re-verified this
+#     phase against a real .app bundle with a fully stripped PATH (zero
+#     Homebrew reachable) uploading a real PDF through the actual
+#     POST /api/books endpoint and getting a real pageCount back.
+#   - Windows poppler bundling (oschwartz10612/poppler-windows) — verified
+#     for real on an actual windows-latest runner (Phase 2).
+#   - `wails build` itself needs no manual -tags desktop,production (the
+#     CLI injects them) but DOES still need CGO_LDFLAGS="-framework
+#     UniformTypeIdentifiers" on macOS even through the official CLI —
+#     both confirmed empirically, not assumed.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'cmd/sonneck-desktop/**'
+      - 'internal/**'
+      - 'frontend/**'
+      - 'go.mod'
+      - 'go.sum'
+      - '.github/workflows/native-build.yml'
+  workflow_dispatch:
+
+env:
+  WAILS_VERSION: v2.15.0
+  GO_VERSION: '1.23'
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # The same embedded frontend the Docker image uses (internal/webui's
+      # go:embed) — cmd/sonneck-desktop has no frontend build of its own
+      # (wails.json's frontend:install/build are deliberately empty, see
+      # that file's own comment), so this step has to run first or the Go
+      # build embeds whatever placeholder index.html happens to already
+      # be checked in.
+      - name: Build the embedded frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ env.WAILS_VERSION }}
+
+      # Proven recipe (Phase 1, re-verified Phase 6): binaries land in
+      # bin/, their dylibs in a *sibling* libs/ folder — dylibbundler's
+      # binaries reference "@executable_path/../libs/" as their own baked-
+      # in rpath regardless of whatever name is passed to -d, so the
+      # destination folder MUST be named "libs" (not "lib") or this
+      # silently produces binaries that fail to load their own
+      # dependencies at runtime. Confirmed by actually renaming it wrong
+      # once during this phase's own testing and watching it matter.
+      - name: Bundle poppler-utils (macOS)
+        run: |
+          brew install poppler dylibbundler
+          mkdir -p poppler-bundle/bin poppler-bundle/libs
+          cp "$(brew --prefix poppler)/bin/pdfinfo" "$(brew --prefix poppler)/bin/pdftoppm" "$(brew --prefix poppler)/bin/pdftocairo" poppler-bundle/bin/
+          dylibbundler -od -b \
+            -x poppler-bundle/bin/pdfinfo -x poppler-bundle/bin/pdftoppm -x poppler-bundle/bin/pdftocairo \
+            -d poppler-bundle/libs \
+            -s "$(brew --prefix poppler)/lib" -s "$(brew --prefix)/lib"
+
+      - name: Build native app (universal binary)
+        working-directory: cmd/sonneck-desktop
+        env:
+          CGO_LDFLAGS: "-framework UniformTypeIdentifiers"
+        run: |
+          "$(go env GOPATH)/bin/wails" build -platform darwin/universal \
+            -ldflags "-X main.buildSHA=${{ github.sha }} -X main.buildTarget=native"
+
+      # Modifying a bundle's contents after Wails' own self-sign step
+      # invalidates that signature — codesign has to run again, once,
+      # after poppler is actually in place. Ad-hoc (`--sign -`) is
+      # consistent with this project's own accepted v1 posture (unsigned
+      # distribution, CLAUDE.md's own "Gatekeeper warning, accepted
+      # tradeoff" note) — no real certificate exists to sign with anyway.
+      - name: Inject bundled poppler and re-sign
+        run: |
+          APP="cmd/sonneck-desktop/build/bin/Sonneck.app"
+          mkdir -p "$APP/Contents/Resources/poppler"
+          cp -R poppler-bundle/bin poppler-bundle/libs "$APP/Contents/Resources/poppler/"
+          codesign --force --deep --sign - "$APP"
+
+      # Real proof, not a bare launch check: upload a real generated PDF
+      # through the actual production HTTP endpoint and confirm a real
+      # pageCount comes back — the same check this phase's own local
+      # testing used to prove the bundled poppler binary (not some
+      # ambient system one) is what actually served the request.
+      - name: Smoke-test the built app
+        run: |
+          cat > /tmp/genpdf.go <<'EOF'
+          package main
+          import ("bytes";"fmt";"os")
+          func main() {
+            var buf bytes.Buffer
+            buf.WriteString("%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>\nendobj\n")
+            xrefStart := buf.Len()
+            fmt.Fprintf(&buf, "xref\n0 4\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n0000000115 00000 n \ntrailer\n<< /Size 4 /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n", xrefStart)
+            os.WriteFile("/tmp/smoke-test.pdf", buf.Bytes(), 0o644)
+          }
+          EOF
+          go run /tmp/genpdf.go
+
+          "cmd/sonneck-desktop/build/bin/Sonneck.app/Contents/MacOS/sonneck-desktop" &
+          for i in $(seq 1 20); do
+            curl -sf http://127.0.0.1:26163/healthz > /dev/null && break
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:26163/healthz
+
+          RESPONSE=$(curl -sf -X POST http://127.0.0.1:26163/api/books \
+            -H "X-Requested-With: XMLHttpRequest" \
+            -F "file=@/tmp/smoke-test.pdf")
+          echo "$RESPONSE"
+          echo "$RESPONSE" | grep -q '"pageCount":1' || (echo "bundled poppler did not report the expected page count" && exit 1)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sonneck-macos-universal
+          path: cmd/sonneck-desktop/build/bin/Sonneck.app
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Build the embedded frontend
+        working-directory: frontend
+        shell: pwsh
+        run: |
+          npm ci
+          npm run build
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ env.WAILS_VERSION }}
+
+      # Real, previously-run recipe (Phase 2's own windows-latest CI spike)
+      # — the release zip ships every .exe with its .dll dependencies flat
+      # in one folder, no separate bin/libs split the way dylibbundler's
+      # macOS output needs.
+      - name: Bundle poppler-utils (Windows)
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download --repo oschwartz10612/poppler-windows --pattern "*.zip" --dir poppler-dl --clobber
+          $zip = Get-ChildItem poppler-dl -Filter *.zip | Select-Object -First 1
+          Expand-Archive -Path $zip.FullName -DestinationPath poppler-extracted
+          $binDir = (Get-ChildItem -Recurse poppler-extracted -Filter pdftoppm.exe | Select-Object -First 1).DirectoryName
+          if (-not $binDir) { throw "pdftoppm.exe not found in the extracted release" }
+          New-Item -ItemType Directory -Force -Path poppler-bundle | Out-Null
+          Copy-Item "$binDir\*" poppler-bundle\
+
+      - name: Build native app (NSIS installer)
+        working-directory: cmd/sonneck-desktop
+        shell: pwsh
+        run: |
+          & "$(go env GOPATH)\bin\wails.exe" build -nsis `
+            -ldflags "-X main.buildSHA=${{ github.sha }} -X main.buildTarget=native"
+
+      # Windows has no bundle-signature concern the way macOS does — a
+      # plain folder copy next to the .exe, matching
+      # resolvePopplerBinDir's own "poppler folder next to the .exe"
+      # convention for this OS.
+      - name: Place bundled poppler next to the built executable
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path cmd\sonneck-desktop\build\bin\poppler | Out-Null
+          Copy-Item poppler-bundle\* cmd\sonneck-desktop\build\bin\poppler\ -Recurse
+
+      - name: Smoke-test the built exe
+        shell: pwsh
+        run: |
+          @'
+          package main
+          import ("bytes";"fmt";"os")
+          func main() {
+            var buf bytes.Buffer
+            buf.WriteString("%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>\nendobj\n")
+            xrefStart := buf.Len()
+            fmt.Fprintf(&buf, "xref\n0 4\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n0000000115 00000 n \ntrailer\n<< /Size 4 /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n", xrefStart)
+            os.WriteFile("smoke-test.pdf", buf.Bytes(), 0o644)
+          }
+          '@ | Out-File -Encoding utf8 genpdf.go
+          go run genpdf.go
+
+          Start-Process -FilePath "cmd\sonneck-desktop\build\bin\sonneck-desktop.exe"
+          $ok = $false
+          for ($i = 0; $i -lt 20; $i++) {
+            try { Invoke-RestMethod http://127.0.0.1:26163/healthz; $ok = $true; break } catch { Start-Sleep -Seconds 1 }
+          }
+          if (-not $ok) { throw "app did not come up" }
+
+          $form = @{ file = Get-Item "smoke-test.pdf" }
+          $response = Invoke-RestMethod -Uri http://127.0.0.1:26163/api/books -Method Post -Form $form -Headers @{ "X-Requested-With" = "XMLHttpRequest" }
+          if ($response.data.pageCount -ne 1) { throw "bundled poppler did not report the expected page count" }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sonneck-windows
+          path: cmd/sonneck-desktop/build/bin
