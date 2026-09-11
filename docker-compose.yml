@@ -11,6 +11,7 @@ services:
       # BACKUP_RETENTION_DAYS: "30"
       # LOG_LEVEL: info               # debug | info | warn | error — turn up to debug if you're troubleshooting
       # COPYRIGHT_REGION: en-US       # en-US | eu-generic | en-GB | ca — which public-domain rule the "Likely Public Domain" badge uses, default = en-US
+      # AUTH_METHOD: none             # none | singlepass | oidc — locks the first-launch security choice instead of leaving it pickable, see README's "Security" section
       TZ: UTC # set to your own timezone (e.g. America/New_York) so BACKUP_CRON fires when you expect
     healthcheck:
       test: ["CMD", "wget", "-q", "-O-", "http://localhost:8080/healthz"]
