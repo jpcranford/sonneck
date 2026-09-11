@@ -90,7 +90,7 @@ func (s *Server) stageUpload(w http.ResponseWriter, r *http.Request, stagingDir 
 		return "", "", 0, false
 	}
 
-	pageCount, err = pdf.PageCount(r.Context(), tempPath)
+	pageCount, err = pdf.PageCount(r.Context(), s.Cfg.PDFBinDir, tempPath)
 	if err != nil {
 		os.Remove(tempPath)
 		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "uploaded file is not a valid PDF")
@@ -156,7 +156,7 @@ func (s *Server) renderThumbnailToTemp(ctx context.Context, cacheDir, srcPath st
 	tmpFile.Close()
 	os.Remove(tmpFile.Name())
 
-	return pdf.RenderThumbnail(ctx, srcPath, page, dpi, tmpPrefix)
+	return pdf.RenderThumbnail(ctx, s.Cfg.PDFBinDir, srcPath, page, dpi, tmpPrefix)
 }
 
 // regenerateThumbnail force-renders page of srcPath, unconditionally

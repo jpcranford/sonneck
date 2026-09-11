@@ -27,9 +27,16 @@ import (
 // internal/handlers' version.go treats as a real sentinel ("running from
 // source," never attempts a GitHub check against them) — see that file's
 // own isDevBuild.
+// buildTarget follows the same ldflags-injection convention, locked in
+// project_wails_native_app_investigation.md's Phase 3 — "docker" here
+// (this binary), overridden to "native" only by whatever build step
+// produces the separate native entry point (working name
+// cmd/sonneck-desktop, not yet built). GET /api/config's own buildTarget
+// field is this value verbatim.
 var (
-	buildSHA  = "dev"
-	buildDate = "unknown"
+	buildSHA    = "dev"
+	buildDate   = "unknown"
+	buildTarget = "docker"
 )
 
 func main() {
@@ -161,7 +168,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	handler := handlers.New(conn, cfg, logger, frontend, scheduler, buildSHA, buildDate, oidcAuth)
+	handler := handlers.New(conn, cfg, logger, frontend, scheduler, buildSHA, buildDate, buildTarget, oidcAuth)
 
 	logger.Info("starting server", "port", cfg.Port)
 	if err := http.ListenAndServe(":"+cfg.Port, handler); err != nil {

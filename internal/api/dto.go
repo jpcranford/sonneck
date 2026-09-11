@@ -555,6 +555,12 @@ type ConfigResponse struct {
 	AuthMethodSetByEnv   bool    `json:"authMethodSetByEnv"`
 	FirstLaunchCompleted bool    `json:"firstLaunchCompleted"`
 	DataDir              *string `json:"dataDir,omitempty"`
+	// BuildTarget — "docker" or "native", ldflags-injected at build time
+	// exactly like BuildSHA/BuildDate (project_wails_native_app_investigation
+	// memory's Phase 3, locked 2026-09-11) — the one signal every
+	// native-only UI branch (First Launch's real folder picker, Admin
+	// Settings' Share on Network / reset-library-location) gates on.
+	BuildTarget string `json:"buildTarget"`
 	// OIDCProviderName — only meaningful when AuthMethod is
 	// "oidc"; drives LoginScreen.tsx's "Sign in with {name}" button text.
 	OIDCProviderName *string `json:"oidcProviderName,omitempty"`

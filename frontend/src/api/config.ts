@@ -20,6 +20,15 @@ export interface AppConfig {
   authMethodSetByEnv: boolean
   firstLaunchCompleted: boolean
   dataDir?: string
+  // buildTarget — 'docker' or 'native', ldflags-injected at build time
+  // exactly like the Admin Settings Version section's own build-identity
+  // strings (project_wails_native_app_investigation memory's Phase 3,
+  // locked 2026-09-11). No native build exists yet, so this is always
+  // 'docker' today — the field exists now so First Launch/Admin Settings'
+  // eventual native-only branches (Phase 4-7 of that plan) have a real
+  // signal to gate on once they're built, rather than needing a backend
+  // change alongside their own frontend work.
+  buildTarget: 'docker' | 'native'
   // oidcProviderName — only present when authMethod is 'oidc'; drives
   // LoginScreen.tsx's "Sign in with {name}" button text.
   oidcProviderName?: string

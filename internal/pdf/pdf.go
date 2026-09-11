@@ -8,13 +8,34 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 )
 
-// PageCount returns a PDF's total page count via pdfinfo.
-func PageCount(ctx context.Context, path string) (int, error) {
-	out, err := exec.CommandContext(ctx, "pdfinfo", path).Output()
+// toolPath resolves a poppler-utils tool name against an optional binDir.
+// binDir == "" (Docker/dev's only mode today — nothing sets
+// config.Config.PDFBinDir yet) keeps today's PATH-resolved behavior
+// unchanged, via a bare command name. A non-empty binDir is native-only
+// (project_wails_native_app_investigation memory's Phase 3/6) — a native
+// build bundles its own poppler binaries rather than relying on a system
+// PATH, since there's no `apt-get install` equivalent for an end user's
+// machine. Windows binaries carry the .exe suffix; macOS/Linux don't.
+func toolPath(binDir, name string) string {
+	if binDir == "" {
+		return name
+	}
+	if runtime.GOOS == "windows" {
+		name += ".exe"
+	}
+	return filepath.Join(binDir, name)
+}
+
+// PageCount returns a PDF's total page count via pdfinfo. binDir is "" for
+// today's PATH-resolved Docker/dev behavior — see toolPath.
+func PageCount(ctx context.Context, binDir, path string) (int, error) {
+	out, err := exec.CommandContext(ctx, toolPath(binDir, "pdfinfo"), path).Output()
 	if err != nil {
 		return 0, fmt.Errorf("pdfinfo %s: %w", path, err)
 	}
@@ -37,13 +58,14 @@ func PageCount(ctx context.Context, path string) (int, error) {
 // from src into a new standalone PDF at dst, via pdftocairo.
 //
 // Extraction happens once, at import time, not on-demand at download time
-// (design doc §5) — the result is a permanent file, not a cache.
-func ExtractPages(ctx context.Context, src string, first, last int, dst string) error {
+// (design doc §5) — the result is a permanent file, not a cache. binDir is
+// "" for today's PATH-resolved Docker/dev behavior — see toolPath.
+func ExtractPages(ctx context.Context, binDir, src string, first, last int, dst string) error {
 	if first < 1 || last < first {
 		return fmt.Errorf("invalid page range [%d, %d]", first, last)
 	}
 
-	cmd := exec.CommandContext(ctx, "pdftocairo", "-pdf",
+	cmd := exec.CommandContext(ctx, toolPath(binDir, "pdftocairo"), "-pdf",
 		"-f", strconv.Itoa(first), "-l", strconv.Itoa(last), src, dst)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("pdftocairo -f %d -l %d %s: %w: %s", first, last, src, err, out)
@@ -63,9 +85,10 @@ func ExtractPages(ctx context.Context, src string, first, last int, dst string) 
 // the page actually looks, everywhere the original book file (not yet
 // pdftocairo-extracted, which already crops to CropBox by default) is the
 // thumbnail source — i.e. every book-page thumbnail in the import wizard,
-// before a piece has been split out of it.
-func RenderThumbnail(ctx context.Context, src string, page, dpi int, outPrefix string) (string, error) {
-	cmd := exec.CommandContext(ctx, "pdftoppm", "-png", "-cropbox",
+// before a piece has been split out of it. binDir is "" for today's
+// PATH-resolved Docker/dev behavior — see toolPath.
+func RenderThumbnail(ctx context.Context, binDir, src string, page, dpi int, outPrefix string) (string, error) {
+	cmd := exec.CommandContext(ctx, toolPath(binDir, "pdftoppm"), "-png", "-cropbox",
 		"-f", strconv.Itoa(page), "-l", strconv.Itoa(page),
 		"-r", strconv.Itoa(dpi), "-singlefile", src, outPrefix)
 	if out, err := cmd.CombinedOutput(); err != nil {

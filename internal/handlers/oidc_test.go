@@ -63,7 +63,7 @@ func newOIDCTestServer(t *testing.T, fake handlers.OIDCAuthenticator, allowRegis
 		t.Fatalf("loading embedded frontend: %v", err)
 	}
 
-	return handlers.New(conn, cfg, logger, frontend, nil, "", "", fake), conn
+	return handlers.New(conn, cfg, logger, frontend, nil, "", "", "docker", fake), conn
 }
 
 // startOIDCLogin drives GET /api/auth/oidc/login and returns the state
@@ -197,7 +197,7 @@ func TestOIDCCallback_RegistrationDisabledRejectsUnknownSubject(t *testing.T) {
 	claimServer.ServeHTTP(httptest.NewRecorder(), req)
 
 	// Same DB, registration-disabled server, unknown subject.
-	rejecting := handlers.New(conn, &config.Config{DataDir: t.TempDir(), LogLevelVar: &slog.LevelVar{}, AuthMethod: "oidc"}, slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError})), mustFS(t), nil, "", "", fake)
+	rejecting := handlers.New(conn, &config.Config{DataDir: t.TempDir(), LogLevelVar: &slog.LevelVar{}, AuthMethod: "oidc"}, slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError})), mustFS(t), nil, "", "", "docker", fake)
 	stateCookie2 := startOIDCLogin(t, rejecting)
 	req2 := httptest.NewRequest(http.MethodGet, "/api/auth/oidc/callback?code=xyz&state="+stateCookie2.Value, nil)
 	req2.AddCookie(stateCookie2)

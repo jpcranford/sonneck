@@ -32,6 +32,11 @@ type Server struct {
 	BuildSHA        string
 	BuildDate       string
 	releaseIdentity *releaseIdentity
+	// BuildTarget — "docker" (default) or "native", ldflags-injected
+	// exactly like BuildSHA/BuildDate (project_wails_native_app_investigation
+	// memory's Phase 3) — GET /api/config's own signal for every
+	// native-only frontend branch.
+	BuildTarget string
 
 	// OIDCAuth is nil unless the resolved auth method is genuinely "oidc" —
 	// mirrors BackupScheduler's own "nil in
@@ -53,11 +58,12 @@ type Server struct {
 // unless cfg.AuthMethod == "oidc" — constructed once in cmd/sonneck/main.go,
 // since it does a real network call (OIDC
 // discovery) that config.Load() itself deliberately never makes.
-func New(db *sql.DB, cfg *config.Config, logger *slog.Logger, frontend fs.FS, scheduler *backup.Scheduler, buildSHA, buildDate string, oidcAuth OIDCAuthenticator) http.Handler {
+func New(db *sql.DB, cfg *config.Config, logger *slog.Logger, frontend fs.FS, scheduler *backup.Scheduler, buildSHA, buildDate, buildTarget string, oidcAuth OIDCAuthenticator) http.Handler {
 	s := &Server{
 		DB: db, Cfg: cfg, Logger: logger,
 		BackupScheduler: scheduler, BuildSHA: buildSHA, BuildDate: buildDate,
 		releaseIdentity: &releaseIdentity{},
+		BuildTarget:     buildTarget,
 		OIDCAuth:        oidcAuth,
 	}
 
@@ -261,6 +267,7 @@ func (s *Server) handleGetConfig(w http.ResponseWriter, r *http.Request) {
 		AuthMethod:           authMethod,
 		AuthMethodSetByEnv:   s.Cfg.AuthMethod != "",
 		FirstLaunchCompleted: settings.FirstLaunchCompletedAt != nil,
+		BuildTarget:          s.BuildTarget,
 	}
 	if !resp.FirstLaunchCompleted {
 		resp.DataDir = &s.Cfg.DataDir

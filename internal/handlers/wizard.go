@@ -82,7 +82,7 @@ func (s *Server) handleConfirmImport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	totalPages, err := pdf.PageCount(r.Context(), *book.FilePath)
+	totalPages, err := pdf.PageCount(r.Context(), s.Cfg.PDFBinDir, *book.FilePath)
 	if err != nil {
 		s.writeError(w, err)
 		return
@@ -124,7 +124,7 @@ func (s *Server) handleConfirmImport(w http.ResponseWriter, r *http.Request) {
 		tempPath := tmp.Name()
 		tmp.Close()
 
-		if err := pdf.ExtractPages(r.Context(), *book.FilePath, rg.Start, rg.End, tempPath); err != nil {
+		if err := pdf.ExtractPages(r.Context(), s.Cfg.PDFBinDir, *book.FilePath, rg.Start, rg.End, tempPath); err != nil {
 			os.Remove(tempPath)
 			s.writeError(w, err)
 			return

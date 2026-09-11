@@ -15,7 +15,7 @@ func TestPageCount_MatchesFixture(t *testing.T) {
 	src := filepath.Join(dir, "fixture.pdf")
 	testutil.WriteFixturePDF(t, src, 7)
 
-	got, err := pdf.PageCount(context.Background(), src)
+	got, err := pdf.PageCount(context.Background(), "", src)
 	if err != nil {
 		t.Fatalf("PageCount: %v", err)
 	}
@@ -30,11 +30,11 @@ func TestExtractPages_ProducesFileWithExactPageCount(t *testing.T) {
 	testutil.WriteFixturePDF(t, src, 10)
 
 	dst := filepath.Join(dir, "piece.pdf")
-	if err := pdf.ExtractPages(context.Background(), src, 4, 8, dst); err != nil {
+	if err := pdf.ExtractPages(context.Background(), "", src, 4, 8, dst); err != nil {
 		t.Fatalf("ExtractPages: %v", err)
 	}
 
-	got, err := pdf.PageCount(context.Background(), dst)
+	got, err := pdf.PageCount(context.Background(), "", dst)
 	if err != nil {
 		t.Fatalf("PageCount on extracted file: %v", err)
 	}
@@ -48,7 +48,7 @@ func TestExtractPages_RejectsInvalidRange(t *testing.T) {
 	src := filepath.Join(dir, "book.pdf")
 	testutil.WriteFixturePDF(t, src, 5)
 
-	if err := pdf.ExtractPages(context.Background(), src, 3, 2, filepath.Join(dir, "out.pdf")); err == nil {
+	if err := pdf.ExtractPages(context.Background(), "", src, 3, 2, filepath.Join(dir, "out.pdf")); err == nil {
 		t.Error("ExtractPages with last < first = nil error, want an error")
 	}
 }
@@ -59,7 +59,7 @@ func TestRenderThumbnail_WritesExpectedPNG(t *testing.T) {
 	testutil.WriteFixturePDF(t, src, 3)
 
 	outPrefix := filepath.Join(dir, "thumb")
-	path, err := pdf.RenderThumbnail(context.Background(), src, 2, 72, outPrefix)
+	path, err := pdf.RenderThumbnail(context.Background(), "", src, 2, 72, outPrefix)
 	if err != nil {
 		t.Fatalf("RenderThumbnail: %v", err)
 	}

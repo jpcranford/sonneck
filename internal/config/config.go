@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -58,6 +59,14 @@ type Config struct {
 	BackupDir      string
 	LogsDir        string
 	CitationFormat string
+	// PDFBinDir — "" (default, Docker/dev's only mode today) keeps
+	// poppler-utils resolved via PATH, unchanged. A native build (not yet
+	// built — project_wails_native_app_investigation memory's Phase 6)
+	// sets this to point at its own bundled poppler binaries, since there's
+	// no system-wide `apt-get install` equivalent to rely on. Threaded
+	// into internal/pdf's three functions by every call site in
+	// internal/handlers.
+	PDFBinDir string
 	// AuthMethod (multi-user support) — "" if unset, meaning the choice
 	// made through the first-time launch flow (persisted in
 	// server_settings, see repo.GetServerSettings) governs instead. When
@@ -200,6 +209,27 @@ func ValidateBackupRetentionDays(days int) error {
 	return nil
 }
 
+// defaultDataDir is DATA_DIR's fallback when unset — "/data" on Linux
+// (this binary only ever runs inside a Docker container there, matching
+// the compose file's bind mount) and, on darwin/windows, the user's own
+// Music folder (project_wails_native_app_investigation memory's Phase 3,
+// locked 2026-09-11: "~/Music/Sonneck Library" — discoverable/backup-able
+// by the musician it belongs to, not an opaque app-support path). No
+// native entry point sets DATA_DIR explicitly yet (Phase 6, not built),
+// but this fallback needs to be correct now regardless — the disposable-
+// backend dev recipe and the real Docker deploy both always pass DATA_DIR
+// explicitly, so this only matters once something doesn't.
+func defaultDataDir() string {
+	if runtime.GOOS == "linux" {
+		return "/data"
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "/data"
+	}
+	return filepath.Join(home, "Music", "Sonneck Library")
+}
+
 // Load reads and validates configuration from the environment plus
 // DATA_DIR/config.yml, failing fast per CLAUDE.md > Config rather than
 // surfacing a bad value mid-request.
@@ -216,9 +246,10 @@ func ValidateBackupRetentionDays(days int) error {
 func Load() (*Config, error) {
 	cfg := &Config{
 		Port:           getEnv("PORT", "8080"),
-		DataDir:        getEnv("DATA_DIR", "/data"),
+		DataDir:        getEnv("DATA_DIR", defaultDataDir()),
 		CitationFormat: getEnv("CITATION_FORMAT", defaultCitationFormat),
 		AuthMethod:     getEnv("AUTH_METHOD", ""),
+		PDFBinDir:      getEnv("PDF_BIN_DIR", ""),
 	}
 	cfg.BackupDir = getEnv("BACKUP_DIR", cfg.DataDir+"/backups")
 	// LogsDir has no env override, unlike BackupDir — it's always a fixed
