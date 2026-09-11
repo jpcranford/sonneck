@@ -9,12 +9,8 @@
         <string>{{.OutputFilename}}</string>
         <key>CFBundleIdentifier</key>
         <!-- Not "com.wails.sonneck" (Wails' own generic default template) —
-             a real reverse-DNS identifier for this app specifically. No
-             confirmed domain/publisher convention exists yet for Sonneck;
-             this is a reasonable placeholder to revisit once one is
-             decided, not a final business decision made unilaterally
-             here. -->
-        <string>com.sonneck.desktop</string>
+             a real reverse-DNS identifier for this app specifically. -->
+        <string>app.sonneck.desktop</string>
         <key>CFBundleVersion</key>
         <string>{{.Info.ProductVersion}}</string>
         <key>CFBundleGetInfoString</key>
