@@ -40,6 +40,7 @@ import (
 	"github.com/jpcranford/sonneck/internal/webui"
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
+	"github.com/wailsapp/wails/v2/pkg/options/mac"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -359,6 +360,22 @@ func main() {
 		OnStartup: func(ctx context.Context) {
 			setDesktopContext(ctx)
 		},
+		// A real, confirmed Wails v2 gotcha, not an oversight left as
+		// "just accept the zero value": internal/frontend/desktop/darwin/
+		// window.go only ever sets its own internal `zoomable` C variable
+		// (default false) when options.App.Mac is non-nil — with Mac left
+		// nil (as this was until this fix), the green traffic-light
+		// button gets explicitly *disabled* (WailsContext.m's CreateWindow:
+		// `if (!zoomable && resizable) { ... setEnabled: NO }`), not just
+		// left at some default "maximize" behavior. A present-but-empty
+		// &mac.Options{} is enough — DisableZoom's own Go zero value is
+		// already false, so this alone restores a normal, clickable zoom
+		// button. Native Spaces-based fullscreen (the green button's
+		// hover-to-fullscreen affordance, Cmd+Ctrl+F) is a separate,
+		// deeper Wails v2 limitation this does NOT fix — see
+		// project_wails_native_app_investigation memory for the full
+		// writeup and upstream reference (wailsapp/wails#2582).
+		Mac: &mac.Options{},
 	})
 	if err != nil {
 		logger.Error("wails run failed", "error", err)
