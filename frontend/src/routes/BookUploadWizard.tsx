@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import { IconBook2, IconCircleCheckFilled } from '@tabler/icons-react'
 import { deleteBook, getBook } from '../api/books'
 import { ApiError } from '../api/client'
 import type { Book, Piece as ApiPiece, Tag } from '../api/types'
+import { useDebouncedValue } from '../hooks/useDebouncedValue'
 import { joinNames } from '../lib/joinNames'
 import { computeLayout, type PageAssignments, type Piece } from '../lib/pieceSplitLogic'
 import { scrollAppContentToTop } from '../lib/scrollContainer'
@@ -262,6 +263,39 @@ export function BookUploadWizard({ onExit }: BookUploadWizardProps) {
     }
   }, [book])
 
+  // Debounced separately from pieceFields itself — the Titles step
+  // (BookUploadTitlesStep.tsx) already flushes pieceFields immediately on
+  // every blur/tag-pick (a hard guarantee independent of its own 300ms
+  // keystroke-debounce, per that file's own comment), which is correct
+  // and cheap as a plain state update. But this effect's own
+  // saveWizardDraft call is a *synchronous* JSON.stringify +
+  // localStorage.setItem of the whole draft — with 200+ pieces, doing
+  // that on every single flush (not just every keystroke, every blur and
+  // every composer/arranger pick) is what actually made the step "slow to
+  // a crawl": each edit forced a full-draft serialize/write on the main
+  // thread, growing more expensive as more pieces accumulate real title/
+  // composer/arranger content. Debouncing just the localStorage write
+  // (not the React state, which stays immediate for Back-navigation
+  // correctness) coalesces a burst of edits into one write — same
+  // "recovery convenience, not a hard guarantee" tradeoff this file's own
+  // 300ms watch()-debounce already accepts, just extended to cover the
+  // disk write too.
+  const debouncedPieceFields = useDebouncedValue(pieceFields, 500)
+
+  // Memoized specifically so BookUploadTitlesStep's memoized per-row
+  // components (DesktopPieceRow/MobilePieceRow) can actually bail out of
+  // re-rendering on an unrelated row's edit — pageAssignments/pageCount
+  // are untouched while editing pieceFields at the Titles step, so this
+  // keeps returning the exact same `pieces` array (and same per-piece
+  // object references) across every pieceFields-triggered re-render.
+  // Without this, computeLayout would build a brand-new array of brand-
+  // new objects on every render regardless, defeating React.memo's own
+  // shallow prop comparison on `piece` for every single row. Must sit
+  // above every early return below (Rules of Hooks) — it used to be a
+  // plain (non-hook) local a few dozen lines further down, back when it
+  // didn't need to survive across renders.
+  const pieces = useMemo(() => computeLayout(pageAssignments, pageCount), [pageAssignments, pageCount])
+
   useEffect(() => {
     if (!book || step === 'file') return
     saveWizardDraft({
@@ -275,10 +309,10 @@ export function BookUploadWizard({ onExit }: BookUploadWizardProps) {
         single: [...(pageAssignments.single ?? [])],
         double: [...(pageAssignments.double ?? [])],
       },
-      pieceFields,
+      pieceFields: debouncedPieceFields,
       pageOffset,
     })
-  }, [book, step, pageCount, pageAssignments, pieceFields, pageOffset])
+  }, [book, step, pageCount, pageAssignments, debouncedPieceFields, pageOffset])
 
   function handleUploaded(uploadedBook: Book, uploadedPageCount: number, size: number) {
     setBook(uploadedBook)
@@ -415,8 +449,6 @@ export function BookUploadWizard({ onExit }: BookUploadWizardProps) {
       />
     )
   }
-
-  const pieces = computeLayout(pageAssignments, pageCount)
 
   if (step === 'titles') {
     return (

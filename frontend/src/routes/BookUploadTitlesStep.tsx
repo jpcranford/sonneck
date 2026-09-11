@@ -1,5 +1,21 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type FocusEvent } from 'react'
-import { Controller, useForm } from 'react-hook-form'
+import {
+  memo,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type FocusEvent,
+} from 'react'
+import {
+  Controller,
+  useForm,
+  useFormState,
+  type Control,
+  type UseFormGetValues,
+  type UseFormRegister,
+  type UseFormTrigger,
+} from 'react-hook-form'
 import { useQuery } from '@tanstack/react-query'
 import {
   IconAlertTriangle,
@@ -65,6 +81,120 @@ function formatPieceLabel(piece: Piece, pageOffset: number) {
 
 interface FormValues {
   pieces: { title: string; composer: Tag[]; arranger: Tag[] }[]
+}
+
+// Real bug found live-testing the perf fix below (a genuine, pre-existing
+// data-loss bug, not something the perf refactor introduced — confirmed
+// against git history): every "flush to the wizard's lifted pieceFields"
+// call site passed `getValues().pieces` straight through. react-hook-form
+// doesn't necessarily hand back a fresh array/object graph on every
+// getValues() call — for fields that still trace back to this form's own
+// `defaultValues` (itself literally `pieceFields` from BookUploadWizard,
+// passed in uncloned), RHF can return a reference that's the *same
+// object* already sitting in the wizard's own React state, mutated in
+// place as more fields change. The first flush after mount looks fine (a
+// genuinely new array vs. the initial empty one, so React re-renders
+// normally) — but once that first flush's reference gets adopted into
+// parent state, every *later* flush can hand back that exact same
+// reference, and React's setState bails out on `Object.is(new, old)`
+// without re-rendering, even though the array's own contents have moved
+// on. Confirmed live via instrumentation: `getValues().pieces ===
+// pieceFields` was `true` starting from a row's second edit onward, and
+// the wizard's own pieceFields state (and therefore the localStorage
+// draft) silently stopped updating from that point on — while the DOM/
+// RHF's own live values stayed correct throughout, so it read as "typing
+// still works, but autosave randomly stops," matching a real user report
+// of "hit or miss, only a word here or there" gets saved. Fix: every
+// flush clones both the array and each piece object fresh, so the
+// reference handed to setPieceFields can never alias anything RHF might
+// still be mutating.
+function clonePieces(pieces: FormValues['pieces']): FormValues['pieces'] {
+  return pieces.map((p) => ({ ...p }))
+}
+
+// Pulled out of the row-render body (originally private closures inside
+// this component) so DesktopPieceRow/MobilePieceRow below can call them
+// with their own row-scoped `index`, without needing the whole component
+// re-created per row — register/getValues/trigger are stable RHF
+// references, so these are cheap plain functions, not hooks.
+//
+// Same immediate-flush-on-blur reasoning the Composer/Arranger
+// TagComboBox fields flush on every onChange for: the debounced watch()
+// autosave in BookUploadTitlesStep (300ms after the last keystroke)
+// already covers "still typing when the tab crashes," but leaves a real,
+// if narrow, race — a keystroke followed by a reload/navigation within
+// that 300ms window wouldn't have flushed yet. A field's onBlur is a hard
+// guarantee independent of the timer.
+function titleFieldProps(
+  register: UseFormRegister<FormValues>,
+  getValues: UseFormGetValues<FormValues>,
+  onFieldFlush: (pieces: FormValues['pieces']) => void,
+  index: number,
+) {
+  const registered = register(`pieces.${index}.title`, { required: true, maxLength: 255 })
+  return {
+    ...registered,
+    ref: (el: HTMLTextAreaElement | null) => {
+      registered.ref(el)
+      autosizeTextarea(el)
+    },
+    onChange: (event: ChangeEvent<HTMLTextAreaElement>) => {
+      void registered.onChange(event)
+      autosizeTextarea(event.currentTarget)
+    },
+    onBlur: (event: FocusEvent<HTMLTextAreaElement>) => {
+      registered.onBlur(event)
+      onFieldFlush(clonePieces(getValues().pieces))
+    },
+  }
+}
+
+// Composer and Arranger validate each other: either one having at least
+// one person satisfies both — but only when requireComposerOrArranger is
+// true in the first place. This checks *presence* only (does the array
+// have anything in it), not format — TagComboBox's own "pick existing or
+// create new" flow can't produce a blank/malformed entry.
+function composerOrArrangerRules(
+  getValues: UseFormGetValues<FormValues>,
+  requireComposerOrArranger: boolean,
+  field: 'composer' | 'arranger',
+  index: number,
+) {
+  const other = field === 'composer' ? 'arranger' : 'composer'
+  return {
+    validate: (value: Tag[]) =>
+      !requireComposerOrArranger ||
+      value.length > 0 ||
+      getValues(`pieces.${index}.${other}`).length > 0 ||
+      'Composer or arranger required',
+  }
+}
+
+// Every prop here must be reference-stable across a re-render caused by
+// editing a *different* row, or the React.memo wrapper on the two row
+// components below can't bail out of re-rendering — the entire reason
+// they're memoized in the first place (see the perf note above
+// DesktopPieceRow). `control`/`register`/`getValues`/`trigger` are all
+// stable per react-hook-form's own API contract; `piece` is stable
+// because BookUploadWizard.tsx memoizes the `pieces` array it computes
+// this from; `onFieldFlush` is the wizard's plain useState setter
+// (setPieceFields), also stable; `setPreviewPage` is this component's own
+// useState setter.
+interface PieceRowProps {
+  control: Control<FormValues>
+  index: number
+  piece: Piece
+  bookId: number
+  pageOffset: number
+  showComposerField: boolean
+  showArrangerField: boolean
+  requireComposerOrArranger: boolean
+  peopleOptions: Tag[]
+  register: UseFormRegister<FormValues>
+  getValues: UseFormGetValues<FormValues>
+  trigger: UseFormTrigger<FormValues>
+  onFieldFlush: (pieces: FormValues['pieces']) => void
+  setPreviewPage: (page: number) => void
 }
 
 // Same real-conditional-render fix as the mockup — see that file's own
@@ -244,6 +374,288 @@ function HoverPagePreview({
   )
 }
 
+// Perf fix (real report: "lags with 200+ pieces, eventually slows to a
+// crawl as the user fills it all out"). Originally every row lived inline
+// in one big pieces.map() inside BookUploadTitlesStep's own render, and
+// the component read `formState: { errors }` at the top — a subscription
+// to the *entire* form's error object. With that shape, editing a single
+// field anywhere (a keystroke's validation, a blur, a composer/arranger
+// pick) forced React to reconcile every row's JSX on every single edit,
+// including 200+ TagComboBox/Controller instances and their own
+// re-renders — the cost scaled with total piece count, not with what
+// actually changed, which is exactly why it got worse the further into a
+// large book someone got (more rows mounted, same full-list reconciliation
+// on every keystroke).
+//
+// Fix, the standard react-hook-form pattern for large dynamic lists:
+// isolate each row into its own component, wrap it in React.memo, and
+// scope its error subscription to just its own three fields via
+// useFormState({ name: [...] }) instead of the parent's blanket
+// `formState.errors`. Now an edit to row 173 only re-renders row 173 —
+// see PieceRowProps' own comment above for what has to stay reference-
+// stable for the memo to actually take effect.
+const DesktopPieceRow = memo(function DesktopPieceRow({
+  control,
+  index,
+  piece,
+  bookId,
+  pageOffset,
+  showComposerField,
+  showArrangerField,
+  requireComposerOrArranger,
+  peopleOptions,
+  register,
+  getValues,
+  trigger,
+  onFieldFlush,
+  setPreviewPage,
+}: PieceRowProps) {
+  const { errors } = useFormState({
+    control,
+    name: [`pieces.${index}.title`, `pieces.${index}.composer`, `pieces.${index}.arranger`],
+  })
+  const titleError = errors.pieces?.[index]?.title
+  const composerError = errors.pieces?.[index]?.composer
+  const arrangerError = errors.pieces?.[index]?.arranger
+
+  return (
+    <div className={`flex gap-3.5 px-3 py-3 ${index % 2 === 0 ? 'bg-paper-sunken' : ''}`}>
+      <div className="flex w-28 shrink-0 flex-col gap-1.5">
+        <HoverPagePreview
+          piece={piece}
+          bookId={bookId}
+          onPreview={() => setPreviewPage(piece.start)}
+        />
+        <span className="text-xs text-ink-soft">
+          Piece {index + 1} • {formatPieceLabel(piece, pageOffset)}
+        </span>
+      </div>
+      <div className="flex min-w-0 flex-1 flex-col gap-2.5">
+        <div className="min-w-0">
+          <label className="mb-1 block text-sm text-ink-soft">
+            Title <span className="text-red-700">*</span>
+          </label>
+          <textarea
+            rows={1}
+            className={`w-full resize-none overflow-hidden rounded-md border bg-paper-raised px-2.5 py-[11px] text-sm text-ink ${
+              titleError ? 'border-red-700' : 'border-border'
+            }`}
+            placeholder="Title"
+            onKeyDown={preventTextareaNewline}
+            {...titleFieldProps(register, getValues, onFieldFlush, index)}
+          />
+          {titleError && (
+            <span className="mt-0.5 flex items-center gap-1 text-xs text-red-700">
+              <IconAlertTriangle size={10} />
+              Required
+            </span>
+          )}
+        </div>
+        {showComposerField && (
+          <div className="flex gap-2.5">
+            <div className="min-w-0 flex-1">
+              <Controller
+                name={`pieces.${index}.composer`}
+                control={control}
+                rules={composerOrArrangerRules(getValues, requireComposerOrArranger, 'composer', index)}
+                render={({ field }) => (
+                  <TagComboBox
+                    label="Composer"
+                    options={peopleOptions}
+                    selected={field.value}
+                    multiple
+                    onChange={(next) => {
+                      field.onChange(next)
+                      void trigger(`pieces.${index}.arranger`)
+                      onFieldFlush(clonePieces(getValues().pieces))
+                    }}
+                    pillStyle="paper"
+                    newOptionLabel="New person"
+                  />
+                )}
+              />
+              {composerError && (
+                <span className="mt-0.5 flex items-center gap-1 text-xs text-red-700">
+                  <IconAlertTriangle size={10} />
+                  {composerError.message}
+                </span>
+              )}
+            </div>
+            {showArrangerField && (
+              <div className="min-w-0 flex-1">
+                <Controller
+                  name={`pieces.${index}.arranger`}
+                  control={control}
+                  rules={composerOrArrangerRules(getValues, requireComposerOrArranger, 'arranger', index)}
+                  render={({ field }) => (
+                    <TagComboBox
+                      label="Arranger"
+                      options={peopleOptions}
+                      selected={field.value}
+                      multiple
+                      onChange={(next) => {
+                        field.onChange(next)
+                        void trigger(`pieces.${index}.composer`)
+                        onFieldFlush(clonePieces(getValues().pieces))
+                      }}
+                      pillStyle="paper"
+                      newOptionLabel="New person"
+                    />
+                  )}
+                />
+                {arrangerError && (
+                  <span className="mt-0.5 flex items-center gap-1 text-xs text-red-700">
+                    <IconAlertTriangle size={10} />
+                    {arrangerError.message}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+})
+
+// Mobile counterpart — same per-row isolation, no HoverPagePreview (touch
+// has no hover; the tap-to-open overlay below is its equivalent), stacked
+// Composer/Arranger instead of a side-by-side split.
+const MobilePieceRow = memo(function MobilePieceRow({
+  control,
+  index,
+  piece,
+  bookId,
+  pageOffset,
+  showComposerField,
+  showArrangerField,
+  requireComposerOrArranger,
+  peopleOptions,
+  register,
+  getValues,
+  trigger,
+  onFieldFlush,
+  setPreviewPage,
+}: PieceRowProps) {
+  const { errors } = useFormState({
+    control,
+    name: [`pieces.${index}.title`, `pieces.${index}.composer`, `pieces.${index}.arranger`],
+  })
+  const titleError = errors.pieces?.[index]?.title
+  const composerError = errors.pieces?.[index]?.composer
+  const arrangerError = errors.pieces?.[index]?.arranger
+
+  return (
+    <div
+      className={`flex items-start gap-3.5 px-4 py-3.5 ${index % 2 === 0 ? 'bg-paper-sunken' : ''}`}
+    >
+      {/* Piece label sits under the thumbnail, same stacked media column
+          as the desktop layout. */}
+      <div className="flex w-[115px] shrink-0 flex-col gap-1.5">
+        <button
+          type="button"
+          onClick={() => setPreviewPage(piece.start)}
+          title="Tap to preview page"
+          className="relative aspect-[180/132] w-full cursor-pointer overflow-hidden rounded-lg"
+          style={{ border: `1.5px solid ${piece.color}` }}
+        >
+          <img
+            src={getBookPageThumbnailUrl(bookId, piece.start)}
+            alt=""
+            loading="lazy"
+            className="h-full w-full object-cover object-top"
+          />
+        </button>
+        <span className="text-sm text-ink-soft">
+          Piece {index + 1} • {formatPieceLabel(piece, pageOffset)}
+        </span>
+      </div>
+      <div className="flex min-w-0 flex-1 flex-col gap-2.5">
+        <div>
+          <label className="mb-1 block text-sm text-ink-soft">
+            Title <span className="text-red-700">*</span>
+          </label>
+          <textarea
+            rows={1}
+            className={`w-full resize-none overflow-hidden rounded-md border bg-paper-raised px-3 py-2 text-base text-ink ${
+              titleError ? 'border-red-700' : 'border-border'
+            }`}
+            placeholder="Title"
+            onKeyDown={preventTextareaNewline}
+            {...titleFieldProps(register, getValues, onFieldFlush, index)}
+          />
+          {titleError && (
+            <span className="mt-1 flex items-center gap-1 text-xs text-red-700">
+              <IconAlertTriangle size={10} />
+              Required
+            </span>
+          )}
+        </div>
+        {showComposerField && (
+          <div>
+            <Controller
+              name={`pieces.${index}.composer`}
+              control={control}
+              rules={composerOrArrangerRules(getValues, requireComposerOrArranger, 'composer', index)}
+              render={({ field }) => (
+                <TagComboBox
+                  label="Composer"
+                  options={peopleOptions}
+                  selected={field.value}
+                  multiple
+                  onChange={(next) => {
+                    field.onChange(next)
+                    void trigger(`pieces.${index}.arranger`)
+                    onFieldFlush(clonePieces(getValues().pieces))
+                  }}
+                  pillStyle="paper"
+                  newOptionLabel="New person"
+                />
+              )}
+            />
+            {composerError && (
+              <span className="mt-1 flex items-center gap-1 text-xs text-red-700">
+                <IconAlertTriangle size={10} />
+                {composerError.message}
+              </span>
+            )}
+          </div>
+        )}
+        {showArrangerField && (
+          <div>
+            <Controller
+              name={`pieces.${index}.arranger`}
+              control={control}
+              rules={composerOrArrangerRules(getValues, requireComposerOrArranger, 'arranger', index)}
+              render={({ field }) => (
+                <TagComboBox
+                  label="Arranger"
+                  options={peopleOptions}
+                  selected={field.value}
+                  multiple
+                  onChange={(next) => {
+                    field.onChange(next)
+                    void trigger(`pieces.${index}.composer`)
+                    onFieldFlush(clonePieces(getValues().pieces))
+                  }}
+                  pillStyle="paper"
+                  newOptionLabel="New person"
+                />
+              )}
+            />
+            {arrangerError && (
+              <span className="mt-1 flex items-center gap-1 text-xs text-red-700">
+                <IconAlertTriangle size={10} />
+                {arrangerError.message}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+})
+
 interface BookUploadTitlesStepProps {
   bookId: number
   bookComposer: string | null
@@ -291,8 +703,15 @@ export function BookUploadTitlesStep({
     setValue,
     trigger,
     watch,
-    formState: { errors },
   } = useForm<FormValues>({ defaultValues: { pieces: pieceFields } })
+  // Deliberately NOT destructuring `formState: { errors }` here anymore —
+  // that subscribed this whole component (which renders every row) to
+  // the entire form's error object, forcing a full re-render of all 200+
+  // rows on any single field's validation change. Each row now scopes its
+  // own error subscription via useFormState inside
+  // DesktopPieceRow/MobilePieceRow — see the perf comment above those
+  // components. handleSubmit still validates the whole form internally on
+  // submit; it doesn't need this component to also subscribe to errors.
 
   // People catalog (composer/arranger overhaul, Stage C pattern) — same
   // unpaginated listPeople() call as EditPieceModal.tsx/EditBookModal.tsx/
@@ -321,7 +740,7 @@ export function BookUploadTitlesStep({
     const subscription = watch(() => {
       if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current)
       autosaveTimerRef.current = setTimeout(() => {
-        onChange(getValues().pieces)
+        onChange(clonePieces(getValues().pieces))
       }, 300)
     })
     return () => {
@@ -349,7 +768,12 @@ export function BookUploadTitlesStep({
   const requireComposerOrArranger = !bookComposer && !bookArranger
 
   function onSubmit(data: FormValues) {
-    onChange(data.pieces)
+    // Cloned for the same reason every other flush call site is — see
+    // clonePieces' own comment. handleSubmit's own payload is less likely
+    // to alias pieceFields directly, but the cost of cloning 200-odd small
+    // objects is trivial next to the risk of silently reintroducing the
+    // same bug here.
+    onChange(clonePieces(data.pieces))
     onNext()
   }
 
@@ -362,7 +786,7 @@ export function BookUploadTitlesStep({
   // Back has nothing to block on, it just needs to flush whatever's
   // currently in the form, valid or not, before the step unmounts.
   function handleBack() {
-    onChange(getValues().pieces)
+    onChange(clonePieces(getValues().pieces))
     onBack()
   }
 
@@ -412,77 +836,11 @@ export function BookUploadTitlesStep({
       .forEach((el) => autosizeTextarea(el as HTMLTextAreaElement))
   }
 
-  // Composer and Arranger validate each other: either one having at least
-  // one person satisfies both — but only when requireComposerOrArranger is
-  // true in the first place. When Arranger is hidden (showArrangerField
-  // false), requireComposerOrArranger is always false too — the book's own
-  // arranger already satisfies the requirement via inheritance — so this
-  // never blocks submission on a field the user can no longer even see.
-  // This checks *presence* only (does the array have anything in it), not
-  // format — TagComboBox's own "pick existing or create new" flow can't
-  // produce a blank/malformed entry, so there's nothing else worth
-  // validating here (matches the mockup's own fix: "the new tag format is
-  // validation enough" / "check to make sure content is still present,
-  // but validating text format is unnecessary").
-  function composerOrArrangerRules(field: 'composer' | 'arranger', index: number) {
-    const other = field === 'composer' ? 'arranger' : 'composer'
-    return {
-      validate: (value: Tag[]) =>
-        !requireComposerOrArranger ||
-        value.length > 0 ||
-        getValues(`pieces.${index}.${other}`).length > 0 ||
-        'Composer or arranger required',
-    }
-  }
-
-  // Applied inline in each Controller's onChange below (composer/arranger
-  // × desktop/mobile — 4 call sites): (1) re-triggers the sibling field's
-  // validation immediately, so adding an Arranger clears a Composer error
-  // that was showing (not just the reverse — RHF's own validate function
-  // reads the sibling's current value fine on its own, but doesn't know to
-  // *re-run* the sibling's validation when a different field changes
-  // without this nudge), and (2) flushes the change to the wizard's lifted
-  // pieceFields immediately — the same "hard guarantee independent of the
-  // debounced watch() autosave above" reasoning titleField's own onBlur
-  // flush exists for, just triggered per value-change here instead of
-  // per-blur: TagComboBox's interaction model is pick-or-create, not
-  // continuous typing with a natural blur point per keystroke, so there's
-  // no separate "typing is done" moment to wait for the way a plain text
-  // field has.
-
-  // Same immediate-flush-on-blur reasoning the Composer/Arranger
-  // TagComboBox fields above flush on every onChange for, pulled into its
-  // own helper since Title has no sibling-validation logic to also wrap
-  // register's onBlur for. The debounced watch() autosave above (300ms
-  // after the last keystroke) already covers "still typing when the tab
-  // crashes," but leaves a real, if narrow, race: a keystroke followed by a
-  // reload/navigation within that 300ms window wouldn't have flushed yet.
-  // A field's onBlur is a hard guarantee independent of the timer — RHF's
-  // own input handling already updates its internal state on every
-  // keystroke, so getValues() here reflects the just-typed value the
-  // moment focus actually leaves the field, which is exactly "navigating
-  // away from a field" rather than "some fixed time after it."
-  function titleField(index: number) {
-    const registered = register(`pieces.${index}.title`, { required: true, maxLength: 255 })
-    return {
-      ...registered,
-      // Composer/Arranger are TagComboBox fields now, not textareas, but
-      // still need this same ref/onChange autosize wiring for Title's own
-      // <textarea>.
-      ref: (el: HTMLTextAreaElement | null) => {
-        registered.ref(el)
-        autosizeTextarea(el)
-      },
-      onChange: (event: ChangeEvent<HTMLTextAreaElement>) => {
-        void registered.onChange(event)
-        autosizeTextarea(event.currentTarget)
-      },
-      onBlur: (event: FocusEvent<HTMLTextAreaElement>) => {
-        registered.onBlur(event)
-        onChange(getValues().pieces)
-      },
-    }
-  }
+  // Composer/Arranger's sibling-revalidation-on-change and Title's
+  // flush-on-blur wiring (both formerly defined here as closures) now
+  // live in the module-level titleFieldProps/composerOrArrangerRules
+  // helpers above, called from inside each memoized row component instead
+  // — see the perf comment above DesktopPieceRow for why they moved.
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-6 md:p-8">
@@ -562,260 +920,49 @@ export function BookUploadTitlesStep({
             the way a single grid could label once. */}
         {isDesktop && (
           <div className="flex flex-col border-t border-border">
-            {pieces.map((piece, index) => {
-              const titleError = errors.pieces?.[index]?.title
-              const composerError = errors.pieces?.[index]?.composer
-              const arrangerError = errors.pieces?.[index]?.arranger
-              return (
-                <div
-                  key={index}
-                  className={`flex gap-3.5 px-3 py-3 ${index % 2 === 0 ? 'bg-paper-sunken' : ''}`}
-                >
-                  <div className="flex w-28 shrink-0 flex-col gap-1.5">
-                    {/* Desktop-only hover popover, on top of the existing
-                        tap-to-open overlay rather than replacing it — a
-                        mouse is guaranteed on desktop, so a hover preview
-                        doesn't run into the "no hover-dependent
-                        interactions" device-aware rule (CLAUDE.md): that
-                        rule exists for touch parity, and touch users
-                        already have the tap-to-open overlay below as
-                        their equivalent path. See HoverPagePreview's own
-                        comment for why this needs real hover-position
-                        measurement (not pure CSS group-hover) and why
-                        it's its own component rather than inlined here. */}
-                    <HoverPagePreview
-                      piece={piece}
-                      bookId={bookId}
-                      onPreview={() => setPreviewPage(piece.start)}
-                    />
-                    <span className="text-xs text-ink-soft">
-                      Piece {index + 1} • {formatPieceLabel(piece, pageOffset)}
-                    </span>
-                  </div>
-                  <div className="flex min-w-0 flex-1 flex-col gap-2.5">
-                    <div className="min-w-0">
-                      {/* Label matches TagComboBox's own label (text-sm,
-                          regular weight) instead of the smaller bold-caps
-                          style the old shared column header used — that
-                          style was carried over by habit when this row
-                          stopped being a grid, but nothing next to it
-                          uses it anymore, so it read as a mismatched font.
-                          Padding is py-[11px] (not py-1.5) so the box's
-                          measured height lands at exactly 42px — the same
-                          height TagComboBox's own min-h-[42px] wrapper
-                          resolves to (confirmed via live boundingClientRect
-                          on the mockup, not just the Tailwind spacing
-                          scale's nearest step) — so Title, Composer, and
-                          Arranger's boxes line up instead of Title sitting
-                          visibly shorter. */}
-                      <label className="mb-1 block text-sm text-ink-soft">
-                        Title <span className="text-red-700">*</span>
-                      </label>
-                      <textarea
-                        rows={1}
-                        className={`w-full resize-none overflow-hidden rounded-md border bg-paper-raised px-2.5 py-[11px] text-sm text-ink ${
-                          titleError ? 'border-red-700' : 'border-border'
-                        }`}
-                        placeholder="Title"
-                        onKeyDown={preventTextareaNewline}
-                        {...titleField(index)}
-                      />
-                      {titleError && (
-                        <span className="mt-0.5 flex items-center gap-1 text-xs text-red-700">
-                          <IconAlertTriangle size={10} />
-                          Required
-                        </span>
-                      )}
-                    </div>
-                    {showComposerField && (
-                      <div className="flex gap-2.5">
-                        <div className="min-w-0 flex-1">
-                          <Controller
-                            name={`pieces.${index}.composer`}
-                            control={control}
-                            rules={composerOrArrangerRules('composer', index)}
-                            render={({ field }) => (
-                              <TagComboBox
-                                label="Composer"
-                                options={peopleOptions}
-                                selected={field.value}
-                                multiple
-                                onChange={(next) => {
-                                  field.onChange(next)
-                                  void trigger(`pieces.${index}.arranger`)
-                                  onChange(getValues().pieces)
-                                }}
-                                pillStyle="paper"
-                                newOptionLabel="New person"
-                              />
-                            )}
-                          />
-                          {composerError && (
-                            <span className="mt-0.5 flex items-center gap-1 text-xs text-red-700">
-                              <IconAlertTriangle size={10} />
-                              {composerError.message}
-                            </span>
-                          )}
-                        </div>
-                        {showArrangerField && (
-                          <div className="min-w-0 flex-1">
-                            <Controller
-                              name={`pieces.${index}.arranger`}
-                              control={control}
-                              rules={composerOrArrangerRules('arranger', index)}
-                              render={({ field }) => (
-                                <TagComboBox
-                                  label="Arranger"
-                                  options={peopleOptions}
-                                  selected={field.value}
-                                  multiple
-                                  onChange={(next) => {
-                                    field.onChange(next)
-                                    void trigger(`pieces.${index}.composer`)
-                                    onChange(getValues().pieces)
-                                  }}
-                                  pillStyle="paper"
-                                  newOptionLabel="New person"
-                                />
-                              )}
-                            />
-                            {arrangerError && (
-                              <span className="mt-0.5 flex items-center gap-1 text-xs text-red-700">
-                                <IconAlertTriangle size={10} />
-                                {arrangerError.message}
-                              </span>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
+            {pieces.map((piece, index) => (
+              <DesktopPieceRow
+                key={index}
+                control={control}
+                index={index}
+                piece={piece}
+                bookId={bookId}
+                pageOffset={pageOffset}
+                showComposerField={showComposerField}
+                showArrangerField={showArrangerField}
+                requireComposerOrArranger={requireComposerOrArranger}
+                peopleOptions={peopleOptions}
+                register={register}
+                getValues={getValues}
+                trigger={trigger}
+                onFieldFlush={onChange}
+                setPreviewPage={setPreviewPage}
+              />
+            ))}
           </div>
         )}
 
         {!isDesktop && (
           <div className="flex flex-col border-t border-border">
-            {pieces.map((piece, index) => {
-              const titleError = errors.pieces?.[index]?.title
-              const composerError = errors.pieces?.[index]?.composer
-              const arrangerError = errors.pieces?.[index]?.arranger
-              return (
-                <div
-                  key={index}
-                  className={`flex items-start gap-3.5 px-4 py-3.5 ${index % 2 === 0 ? 'bg-paper-sunken' : ''}`}
-                >
-                  {/* Piece label sits under the thumbnail, same stacked
-                      media column as the desktop layout — it used to
-                      float above Title inside the fields column instead,
-                      which put it to the *side* of the thumbnail rather
-                      than under it. */}
-                  <div className="flex w-[115px] shrink-0 flex-col gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setPreviewPage(piece.start)}
-                      title="Tap to preview page"
-                      className="relative aspect-[180/132] w-full cursor-pointer overflow-hidden rounded-lg"
-                      style={{ border: `1.5px solid ${piece.color}` }}
-                    >
-                      <img
-                        src={getBookPageThumbnailUrl(bookId, piece.start)}
-                        alt=""
-                        loading="lazy"
-                        className="h-full w-full object-cover object-top"
-                      />
-                    </button>
-                    <span className="text-sm text-ink-soft">
-                      Piece {index + 1} • {formatPieceLabel(piece, pageOffset)}
-                    </span>
-                  </div>
-                  <div className="flex min-w-0 flex-1 flex-col gap-2.5">
-                    <div>
-                      <label className="mb-1 block text-sm text-ink-soft">
-                        Title <span className="text-red-700">*</span>
-                      </label>
-                      <textarea
-                        rows={1}
-                        className={`w-full resize-none overflow-hidden rounded-md border bg-paper-raised px-3 py-2 text-base text-ink ${
-                          titleError ? 'border-red-700' : 'border-border'
-                        }`}
-                        placeholder="Title"
-                        onKeyDown={preventTextareaNewline}
-                        {...titleField(index)}
-                      />
-                      {titleError && (
-                        <span className="mt-1 flex items-center gap-1 text-xs text-red-700">
-                          <IconAlertTriangle size={10} />
-                          Required
-                        </span>
-                      )}
-                    </div>
-                    {showComposerField && (
-                      <div>
-                        <Controller
-                          name={`pieces.${index}.composer`}
-                          control={control}
-                          rules={composerOrArrangerRules('composer', index)}
-                          render={({ field }) => (
-                            <TagComboBox
-                              label="Composer"
-                              options={peopleOptions}
-                              selected={field.value}
-                              multiple
-                              onChange={(next) => {
-                                field.onChange(next)
-                                void trigger(`pieces.${index}.arranger`)
-                                onChange(getValues().pieces)
-                              }}
-                              pillStyle="paper"
-                              newOptionLabel="New person"
-                            />
-                          )}
-                        />
-                        {composerError && (
-                          <span className="mt-1 flex items-center gap-1 text-xs text-red-700">
-                            <IconAlertTriangle size={10} />
-                            {composerError.message}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                    {showArrangerField && (
-                      <div>
-                        <Controller
-                          name={`pieces.${index}.arranger`}
-                          control={control}
-                          rules={composerOrArrangerRules('arranger', index)}
-                          render={({ field }) => (
-                            <TagComboBox
-                              label="Arranger"
-                              options={peopleOptions}
-                              selected={field.value}
-                              multiple
-                              onChange={(next) => {
-                                field.onChange(next)
-                                void trigger(`pieces.${index}.composer`)
-                                onChange(getValues().pieces)
-                              }}
-                              pillStyle="paper"
-                              newOptionLabel="New person"
-                            />
-                          )}
-                        />
-                        {arrangerError && (
-                          <span className="mt-1 flex items-center gap-1 text-xs text-red-700">
-                            <IconAlertTriangle size={10} />
-                            {arrangerError.message}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
+            {pieces.map((piece, index) => (
+              <MobilePieceRow
+                key={index}
+                control={control}
+                index={index}
+                piece={piece}
+                bookId={bookId}
+                pageOffset={pageOffset}
+                showComposerField={showComposerField}
+                showArrangerField={showArrangerField}
+                requireComposerOrArranger={requireComposerOrArranger}
+                peopleOptions={peopleOptions}
+                register={register}
+                getValues={getValues}
+                trigger={trigger}
+                onFieldFlush={onChange}
+                setPreviewPage={setPreviewPage}
+              />
+            ))}
           </div>
         )}
 
