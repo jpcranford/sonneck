@@ -3,11 +3,13 @@ package main
 import (
 	"context"
 	"database/sql"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
 
+	"github.com/jpcranford/sonneck/internal/applog"
 	"github.com/jpcranford/sonneck/internal/backup"
 	"github.com/jpcranford/sonneck/internal/config"
 	"github.com/jpcranford/sonneck/internal/db"
@@ -44,7 +46,18 @@ func main() {
 		os.Exit(1)
 	}
 
-	logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: cfg.LogLevelVar}))
+	// DATA_DIR/logs (internal/applog) gets a real log file alongside stdout
+	// — a rolling one-file-per-day log, pruned by the same daily job/
+	// retention setting that already prunes old backups (see
+	// internal/backup.Scheduler's own doc comment).
+	logWriter, err := applog.NewRotatingWriter(cfg.LogsDir)
+	if err != nil {
+		logger.Error("failed to open log file", "error", err, "path", cfg.LogsDir)
+		os.Exit(1)
+	}
+	defer logWriter.Close()
+
+	logger = slog.New(slog.NewJSONHandler(io.MultiWriter(os.Stdout, logWriter), &slog.HandlerOptions{Level: cfg.LogLevelVar}))
 	slog.SetDefault(logger)
 
 	dbPath := filepath.Join(cfg.DataDir, "db", "sonneck.sqlite")
@@ -121,7 +134,7 @@ func main() {
 		}
 	}
 
-	scheduler, err := backup.StartScheduler(cfg.BackupCron(), conn, cfg.BackupDir, cfg, logger)
+	scheduler, err := backup.StartScheduler(cfg.BackupCron(), conn, cfg.BackupDir, cfg.LogsDir, cfg, logger)
 	if err != nil {
 		logger.Error("failed to start backup scheduler", "error", err)
 		os.Exit(1)

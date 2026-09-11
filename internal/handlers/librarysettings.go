@@ -112,7 +112,7 @@ func (s *Server) handleUpdateLibrarySettings(w http.ResponseWriter, r *http.Requ
 	s.Cfg.SetCopyrightRegion(req.CopyrightRegion)
 	s.Cfg.LogLevelVar.Set(parsedLevel)
 	if cronChanged && s.BackupScheduler != nil {
-		if err := s.BackupScheduler.Reschedule(req.BackupCron, s.DB, s.Cfg.BackupDir, s.Cfg, s.Logger); err != nil {
+		if err := s.BackupScheduler.Reschedule(req.BackupCron, s.DB, s.Cfg.BackupDir, s.Cfg.LogsDir, s.Cfg, s.Logger); err != nil {
 			s.writeError(w, err)
 			return
 		}

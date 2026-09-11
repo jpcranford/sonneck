@@ -169,6 +169,7 @@ Full design history (region-rule research, badge visual options, every locked de
 ## Operational basics
 - `/healthz` endpoint, used by the Docker healthcheck.
 - Backup: daily `VACUUM INTO` snapshot of the SQLite DB. Restore: stop container → replace the DB file → restart. Documented in the README, not just implied.
+- **Logs** (`internal/applog`): every log line written to stdout is also written to `DATA_DIR/logs/sonneck-YYYY-MM-DD.log` (one file per day, via a hand-rolled `io.Writer` in the `slog.NewJSONHandler`'s `io.MultiWriter` — no rotation library, matching this project's minimal-dependency posture). `logs/` is a fixed sibling of `db/`/`backups/`/`cache/`/`library/` under `DATA_DIR`, with no env-var override (unlike `BackupDir`/`BACKUP_DIR`) and no new Admin Settings field — retention deliberately reuses `BackupRetentionDays` rather than getting its own setting. Pruning is a straight port of `backup.Prune`'s own logic (flat directory scan, `ModTime()` vs. a `retentionDays`-ago cutoff, `os.Remove` — not filename date parsing) and runs inside `backup.Scheduler`'s existing daily job, right after backup pruning, so log retention rides the same cron firing with zero new scheduling code.
 
 ## Search
 SQLite FTS5, not a separate search engine like Bleve (design doc §2's own reasoning — StashApp's approach was the starting inspiration; FTS5 achieves the same goal with less operational overhead at this project's scale).

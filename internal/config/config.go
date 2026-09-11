@@ -56,6 +56,7 @@ type Config struct {
 	Port           string
 	DataDir        string
 	BackupDir      string
+	LogsDir        string
 	CitationFormat string
 	// AuthMethod (multi-user support) — "" if unset, meaning the choice
 	// made through the first-time launch flow (persisted in
@@ -220,6 +221,10 @@ func Load() (*Config, error) {
 		AuthMethod:     getEnv("AUTH_METHOD", ""),
 	}
 	cfg.BackupDir = getEnv("BACKUP_DIR", cfg.DataDir+"/backups")
+	// LogsDir has no env override, unlike BackupDir — it's always a fixed
+	// sibling of db/, backups/, cache/, library/ under DATA_DIR, the same
+	// as cache/ and library/ (CLAUDE.md > Operational basics).
+	cfg.LogsDir = filepath.Join(cfg.DataDir, "logs")
 
 	if v := os.Getenv("TRUST_PROXY_HTTPS"); v != "" {
 		parsed, err := strconv.ParseBool(v)

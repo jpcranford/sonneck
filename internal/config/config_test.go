@@ -50,6 +50,9 @@ func TestLoad_DefaultsWhenUnset(t *testing.T) {
 	if cfg.BackupDir != cfg.DataDir+"/backups" {
 		t.Errorf("BackupDir = %q, want %q", cfg.BackupDir, cfg.DataDir+"/backups")
 	}
+	if cfg.LogsDir != cfg.DataDir+"/logs" {
+		t.Errorf("LogsDir = %q, want %q", cfg.LogsDir, cfg.DataDir+"/logs")
+	}
 	if cfg.BackupCron() != "0 3 * * *" {
 		t.Errorf("BackupCron() = %q, want %q", cfg.BackupCron(), "0 3 * * *")
 	}

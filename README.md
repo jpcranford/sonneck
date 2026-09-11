@@ -76,12 +76,12 @@ npm run dev
 
 ## Advanced options
 ### Configuration
-All configuration is via environment variables, validated at startup — the process exits immediately with a clear error if something's invalid (e.g. an unparseable cron expression), rather than failing later mid-request. Four of these (`BACKUP_CRON`, `BACKUP_RETENTION_DAYS`, `LOG_LEVEL`, `COPYRIGHT_REGION`) can also be changed live from Admin Settings once you're signed in as an admin — no restart needed. An env var always wins if set (locking that field in Admin Settings); otherwise the value you set through Admin Settings is saved to `config.yml` at the root of your library folder and takes effect immediately.
+Nearly all configuration can be done via environment variables (validated at startup, and the process exits immediately with a clear error if something's invalid e.g. an unparseable cron expression). Several of these (`BACKUP_CRON`, `BACKUP_RETENTION_DAYS`, `LOG_LEVEL`, `COPYRIGHT_REGION`) can also be changed live from Admin Settings once you're signed in as an admin — no restart needed. An env var always wins if set (locking that field in Admin Settings); otherwise the value you set through Admin Settings is saved to `config.yml` at the root of your library folder and takes effect immediately.
 
 | Variable | Default | Notes |
 |---|---|---|
 | `PORT` | `8080` | HTTP listen port. If you're using Docker, use port remapping instead. |
-| `DATA_DIR` | `/data` | Root of the database, library files, and backups |
+| `DATA_DIR` | `/data` | Root of the database, library files, backups, and logs |
 | `BACKUP_DIR` | `$DATA_DIR/backups` | Where daily DB snapshots are written |
 | `BACKUP_CRON` | `0 3 * * *` | Standard cron expression for the daily backup job |
 | `BACKUP_RETENTION_DAYS` | `30` | Backups older than this are pruned after each run |
@@ -104,7 +104,7 @@ A piece's badge is one of four states: **In Public Domain** or **Copyleft** (bot
 > [!IMPORTANT]
 > **This is not legal advice.** The calculation is a labeled approximation meant to be a useful starting point, not a determination you should rely on without your own judgment. Especially in the US, there are some edge cases that can throw normal rules out the window; the [Hirtle chart](https://commons.wikimedia.org/wiki/Commons:Hirtle_chart#Works_except_sound_recordings_and_architecture) lays out more of those in detail. When in doubt, verify independently before treating a piece as public domain. To be absolutely sure, consult an appropriate lawyer.
 
-### Backup & restore
+### Backups & logs
 **Backup:** a scheduled job, automatically done by the database using the above environment variables. Backups still retained can be found at `$BACKUP_DIR/sonneck-YYYY-MM-DD.sqlite`.
 
 This backs up the **database only**. The `library/` folder (original book PDFs and extracted piece PDFs) is not included — that's on you to back up separately via your own volume/NAS snapshot/rclone-to-Dropbox/etc. mechanism.
@@ -114,7 +114,9 @@ This backs up the **database only**. The `library/` folder (original book PDFs a
 2. Replace `$DATA_DIR/db/sonneck.sqlite` with the desired backup file (e.g. `cp $DATA_DIR/backups/sonneck-2026-08-01.sqlite $DATA_DIR/db/sonneck.sqlite`).
 3. Start the server again.
 
-## Admin CLI commands
+**Logs:** Every log line (the same structured JSON that goes to stdout/`docker logs`) is also written to `$DATA_DIR/logs/sonneck-YYYY-MM-DD.log`, one file per day. Old log files are pruned on the same schedule and to the same `BACKUP_RETENTION_DAYS` window as backups — no separate log-retention setting.
+
+### Admin CLI commands
 Maintenance actions are exposed as subcommands on the same binary rather than HTTP endpoints, since they're more actions for server owners than mere admins. They're safe to run against a live server; they rely on SQLite's WAL mode (already enabled) and, where they touch on-disk files, write via a temp-file-then-atomic-rename so a concurrent request never sees a partial result.
 
 If you're using Docker, do

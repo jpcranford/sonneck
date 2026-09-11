@@ -2,7 +2,10 @@
 // VACUUM INTO a timestamped file, on a schedule driven by BACKUP_CRON, with
 // BACKUP_RETENTION_DAYS pruning. It backs up the SQLite database only — the
 // library folder (books/pieces) is left to the user's own volume/NAS
-// backup, per design doc §17.
+// backup, per design doc §17. The same daily job also prunes DATA_DIR/logs
+// (internal/applog) to the same BACKUP_RETENTION_DAYS value — see
+// Scheduler's own doc comment for why logs ride on this schedule rather
+// than getting one of their own.
 package backup
 
 import (
@@ -17,6 +20,7 @@ import (
 
 	"github.com/robfig/cron/v3"
 
+	"github.com/jpcranford/sonneck/internal/applog"
 	"github.com/jpcranford/sonneck/internal/config"
 )
 
@@ -86,6 +90,12 @@ func Prune(backupDir string, retentionDays int) error {
 // job closure reads cfg.BackupRetentionDays() fresh every time it fires,
 // so a changed retention value is already live the next time the job runs
 // — only the cron expression itself needs the entry actually replaced.
+// Log pruning (DATA_DIR/logs, internal/applog) piggybacks on this exact
+// same job rather than getting its own cron entry/setting — it already
+// needs a daily "read current retention, delete anything older" prune,
+// which this job already does once a day for backups; a second schedule
+// for the identical operation on a different directory would be pure
+// duplication.
 type Scheduler struct {
 	cron *cron.Cron
 
@@ -93,7 +103,7 @@ type Scheduler struct {
 	entryID cron.EntryID
 }
 
-func (s *Scheduler) job(db *sql.DB, backupDir string, cfg *config.Config, logger *slog.Logger) func() {
+func (s *Scheduler) job(db *sql.DB, backupDir, logsDir string, cfg *config.Config, logger *slog.Logger) func() {
 	return func() {
 		path, err := Run(context.Background(), db, backupDir)
 		if err != nil {
@@ -108,6 +118,15 @@ func (s *Scheduler) job(db *sql.DB, backupDir string, cfg *config.Config, logger
 			return
 		}
 		logger.Info("backup pruning completed", "retentionDays", retentionDays)
+
+		// Log pruning free-rides on the same daily job and the same
+		// retention setting — no separate schedule/setting for it, see
+		// this package's own doc comment and internal/applog's.
+		if err := applog.Prune(logsDir, retentionDays); err != nil {
+			logger.Error("log pruning failed", "error", err)
+			return
+		}
+		logger.Info("log pruning completed", "retentionDays", retentionDays)
 	}
 }
 
@@ -115,11 +134,11 @@ func (s *Scheduler) job(db *sql.DB, backupDir string, cfg *config.Config, logger
 // entry is removed and a new one added, rather than mutating the existing
 // entry in place (robfig/cron has no such API). Safe to call from a
 // concurrent HTTP handler; guarded by mu against a concurrent Reschedule.
-func (s *Scheduler) Reschedule(newCronExpr string, db *sql.DB, backupDir string, cfg *config.Config, logger *slog.Logger) error {
+func (s *Scheduler) Reschedule(newCronExpr string, db *sql.DB, backupDir, logsDir string, cfg *config.Config, logger *slog.Logger) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	id, err := s.cron.AddFunc(newCronExpr, s.job(db, backupDir, cfg, logger))
+	id, err := s.cron.AddFunc(newCronExpr, s.job(db, backupDir, logsDir, cfg, logger))
 	if err != nil {
 		return fmt.Errorf("scheduling backup cron %q: %w", newCronExpr, err)
 	}
@@ -134,15 +153,16 @@ func (s *Scheduler) Stop() {
 	s.cron.Stop()
 }
 
-// StartScheduler registers a cron job (BACKUP_CRON) that runs Run then
-// Prune, logging both outcomes. Backups are a routine, expected operation
-// — successes log at INFO, same as deletions/replacements (CLAUDE.md >
+// StartScheduler registers a cron job (BACKUP_CRON) that runs Run, Prune,
+// then applog.Prune (DATA_DIR/logs, same BACKUP_RETENTION_DAYS value),
+// logging every outcome. Backups are a routine, expected operation —
+// successes log at INFO, same as deletions/replacements (CLAUDE.md >
 // Logging); only actual failures escalate to ERROR. Returns a *Scheduler
 // (rather than the bare *cron.Cron this used to return) so callers can
 // Reschedule it live later.
-func StartScheduler(cronExpr string, db *sql.DB, backupDir string, cfg *config.Config, logger *slog.Logger) (*Scheduler, error) {
+func StartScheduler(cronExpr string, db *sql.DB, backupDir, logsDir string, cfg *config.Config, logger *slog.Logger) (*Scheduler, error) {
 	s := &Scheduler{cron: cron.New()}
-	id, err := s.cron.AddFunc(cronExpr, s.job(db, backupDir, cfg, logger))
+	id, err := s.cron.AddFunc(cronExpr, s.job(db, backupDir, logsDir, cfg, logger))
 	if err != nil {
 		return nil, fmt.Errorf("scheduling backup cron %q: %w", cronExpr, err)
 	}
