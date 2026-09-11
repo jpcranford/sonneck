@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { IconMinus, IconPlus, IconSlash, IconX, IconXFilled } from '@tabler/icons-react'
@@ -438,10 +438,25 @@ function NewPersonModal({
     formState: { errors },
   } = useForm<NewPersonFormValues>({ defaultValues: { name: '', birthYear: '', deathYear: '' } })
 
-  function handleClose() {
-    reset()
-    onClose()
-  }
+  // Real bug fix: a successful create used to leave every field showing
+  // what was just submitted — this modal's own `onSubmit` only ever
+  // handed the data up to the parent's mutation, and nothing ever called
+  // `reset()` on that path (only Cancel/X did, directly). Can't just
+  // reset unconditionally inside `onSubmit` either
+  // (unlike PeopleLibrarySample.tsx's own fixture version, which has no
+  // real async request to fail) — a real failed create leaves this modal
+  // open with an alert() and the typed values intentionally preserved for
+  // an immediate retry, so resetting there would wipe a name mid-retry
+  // before the user even knows whether it succeeded. Watching `open`
+  // itself is the one signal both paths actually share: the parent only
+  // flips it back to false once the mutation has genuinely succeeded (see
+  // its own onSuccess), never on error — so resetting exactly when `open`
+  // goes false covers Cancel/X *and* a real successful create, and still
+  // leaves values alone through a failed one.
+  useEffect(() => {
+    if (!open) reset()
+  }, [open, reset])
+
   function onSubmit(data: NewPersonFormValues) {
     onCreate(data)
   }
@@ -449,7 +464,7 @@ function NewPersonModal({
   return (
     <Modal
       open={open}
-      onClose={handleClose}
+      onClose={onClose}
       labelledBy="new-person-title"
       header={
         <div className="flex items-start justify-between gap-4">
@@ -458,7 +473,7 @@ function NewPersonModal({
           </h2>
           <button
             type="button"
-            onClick={handleClose}
+            onClick={onClose}
             aria-label="Close"
             className="mt-1 shrink-0 cursor-pointer text-ink-soft hover:text-accent"
           >
@@ -470,7 +485,7 @@ function NewPersonModal({
         <div className="flex justify-end gap-2">
           <button
             type="button"
-            onClick={handleClose}
+            onClick={onClose}
             disabled={isCreating}
             className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent disabled:cursor-default disabled:opacity-45"
           >
