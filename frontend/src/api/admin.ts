@@ -86,10 +86,15 @@ export function updateLibrarySettings(req: UpdateLibrarySettingsRequest): Promis
 }
 
 // Version / Check for Updates — mirrors internal/api/dto.go's
-// VersionResponse. checkStatus/matchedRelease/availableVersion/checkedAt
-// are all null until a check has actually run this server process's
-// lifetime (GET never triggers one itself, beyond a one-time lazy
-// background warm-up — see internal/handlers/version.go). runningFromSource
+// VersionResponse. matchedRelease is resolved once, lazily, the first time
+// GET /api/admin/version is called this server process's lifetime, and
+// cached until the process restarts — GET never triggers a fresh lookup
+// itself beyond that one-time warm-up. checkStatus/availableVersion/
+// checkedAt are different: they're never cached server-side at all, and
+// only ever populated by this same response object right after a real
+// POST /api/admin/version/check call — GET always returns them null, so a
+// page reload always shows "Check for updates" as a fresh button, never a
+// stale previous result (see internal/handlers/version.go). runningFromSource
 // means this binary has no injected build identity at all (a plain
 // `go run`/`go build` straight from the repo, this project's own whole dev
 // loop included, not just a Docker image) — no check ever runs against it.

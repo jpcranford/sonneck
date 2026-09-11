@@ -29,9 +29,9 @@ type Server struct {
 	// BuildSHA/BuildDate are ldflags-injected at build time (Dockerfile),
 	// "dev"/"unknown" otherwise — Admin Settings' Version section's own
 	// running-build identity.
-	BuildSHA     string
-	BuildDate    string
-	versionCache *versionCache
+	BuildSHA        string
+	BuildDate       string
+	releaseIdentity *releaseIdentity
 
 	// OIDCAuth is nil unless the resolved auth method is genuinely "oidc" —
 	// mirrors BackupScheduler's own "nil in
@@ -57,8 +57,8 @@ func New(db *sql.DB, cfg *config.Config, logger *slog.Logger, frontend fs.FS, sc
 	s := &Server{
 		DB: db, Cfg: cfg, Logger: logger,
 		BackupScheduler: scheduler, BuildSHA: buildSHA, BuildDate: buildDate,
-		versionCache: &versionCache{},
-		OIDCAuth:     oidcAuth,
+		releaseIdentity: &releaseIdentity{},
+		OIDCAuth:        oidcAuth,
 	}
 
 	mux := http.NewServeMux()

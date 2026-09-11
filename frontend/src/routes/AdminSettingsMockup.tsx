@@ -50,9 +50,10 @@ import { useMockupTitle } from '../lib/useMockupTitle'
 // tagged-release fixture, 'ahead' for the pre-release one, 'behind' for
 // the dev one) so the existing "Preview build identity" toggle also
 // previews all three check outcomes, without a second toggle control.
-// Results are cached server-side rather than re-hitting GitHub on every
-// click, since this control can get clicked repeatedly over the weeks
-// between releases.
+// The running build's own identity (which release tag it matches, if any)
+// is resolved once and cached until the server restarts, but a "Check for
+// updates" click is never cached — each click is a fresh check, and a page
+// reload always shows the plain button again rather than a stale result.
 //
 // Security has no in-app "Change…" flow for OIDC: any change touching
 // OIDC (or downgrading away from a multi-account OIDC install) is
@@ -825,7 +826,7 @@ export function AdminSettingsMockup() {
               )}
             </div>
             {updateChecked && (
-              <p className="text-xs text-ink-soft">Checked just now — cached for a while, so checking again soon reuses this result instead of asking GitHub every time.</p>
+              <p className="text-xs text-ink-soft">Checked just now. Reload the page to check again.</p>
             )}
             <p className="text-xs text-ink-soft">
               Shows the build you're running and checks GitHub for anything newer — without falsely
