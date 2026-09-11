@@ -175,11 +175,25 @@ function formatPieceLabel(piece: PieceFixture) {
 // as the same italic "(blank)" label Screen 4's PageThumb uses, staff
 // lines omitted, so a blank page still reads as deliberately blank
 // rather than as a piece with no name.
-function PieceThumb({ title, page }: { title: string | null; page: number }) {
+function PieceThumb({
+  title,
+  page,
+  className = 'block h-auto w-full',
+}: {
+  title: string | null
+  page: number
+  className?: string
+}) {
   const staffGroupYs = [58, 91, 124, 157, 190, 223]
   const lineOffsets = [0, 3.5, 7, 10.5, 14]
   return (
-    <svg viewBox="0 0 200 260" className="block h-auto w-full">
+    // width/height attributes (matching viewBox 1:1) give the SVG a real
+    // intrinsic size to scale from — w-auto/h-auto + max-w/max-h alone
+    // collapse it to ~0, since a viewBox with no width/height attributes
+    // only establishes an aspect ratio, not an absolute intrinsic size for
+    // the CSS box model to size a "max-height under auto width" popup
+    // against.
+    <svg viewBox="0 0 200 260" width={200} height={260} className={className}>
       <rect
         x="0.5"
         y="0.5"
@@ -264,10 +278,10 @@ function PieceThumb({ title, page }: { title: string | null; page: number }) {
 // foreknowledge of the popup's own height), then this effect measures
 // its actual rendered height and recenters it on the trigger — clamped
 // to the viewport, nudging up/down only as much as needed to clear
-// whichever edge it would've clipped, bottom taking priority over top in
-// the (rare) case a popup taller than the viewport would violate both,
-// same precedence InfoTooltip.tsx's own left/right clamp uses for
-// right-over-left.
+// whichever edge it would've clipped. The popup's own max-height (see its
+// own comment below) keeps it from ever being taller than the viewport in
+// the first place, so this clamp always has enough room to satisfy both
+// edges — no top-vs-bottom priority call needed.
 function HoverPagePreview({ piece, onPreview }: { piece: PieceFixture; onPreview: () => void }) {
   const [hovering, setHovering] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -336,9 +350,24 @@ function HoverPagePreview({ piece, onPreview }: { piece: PieceFixture; onPreview
         <div
           ref={popupRef}
           style={{ border: `2px solid ${piece.color}`, top: pos.top, left: pos.left }}
-          className="pointer-events-none fixed z-20 w-[420px] overflow-hidden rounded-md shadow-xl"
+          className="pointer-events-none fixed z-20 overflow-hidden rounded-md shadow-xl"
         >
-          <PieceThumb title={piece.title} page={piece.start + PAGE_OFFSET} />
+          {/* max-w/max-h (not a fixed width) — a full-page image at 420px
+              wide can render taller than a short viewport, which the
+              position clamp above can reposition around but never fully
+              avoid clipping once the popup is simply taller than the
+              screen. w-auto/h-auto are load-bearing, not redundant with
+              the max- versions: without an explicit auto basis, the SVG
+              has no clear starting size to apply the max-constraints
+              against and can collapse to ~0. Capping both dimensions this
+              way lets the SVG's own viewBox scale it down proportionally
+              when needed, so the popup is always small enough to fit
+              before the position clamp ever runs. */}
+          <PieceThumb
+            title={piece.title}
+            page={piece.start + PAGE_OFFSET}
+            className="block h-auto w-auto max-h-[calc(100vh-16px)] max-w-[420px]"
+          />
         </div>
       )}
     </div>

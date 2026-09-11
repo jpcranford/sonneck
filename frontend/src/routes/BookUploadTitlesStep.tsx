@@ -129,10 +129,10 @@ function useIsDesktop() {
 // image's rendered height depends on its real aspect ratio), then this
 // effect measures its actual rendered height and recenters it on the
 // trigger — clamped to the viewport, nudging up/down only as much as
-// needed to clear whichever edge it would've clipped, bottom taking
-// priority over top in the (rare) case a popup taller than the viewport
-// would violate both, same precedence InfoTooltip.tsx's own left/right
-// clamp uses for right-over-left.
+// needed to clear whichever edge it would've clipped. The popup's own
+// max-height (see its own comment below) keeps it from ever being taller
+// than the viewport in the first place, so this clamp always has enough
+// room to satisfy both edges — no top-vs-bottom priority call needed.
 function HoverPagePreview({
   piece,
   bookId,
@@ -217,9 +217,27 @@ function HoverPagePreview({
         <div
           ref={popupRef}
           style={{ border: `2px solid ${piece.color}`, top: pos.top, left: pos.left }}
-          className="pointer-events-none fixed z-20 w-[420px] overflow-hidden rounded-md shadow-xl"
+          className="pointer-events-none fixed z-20 overflow-hidden rounded-md shadow-xl"
         >
-          <img src={getBookPageThumbnailUrl(bookId, piece.start)} alt="" className="block h-auto w-full" />
+          {/* max-w/max-h (not a fixed width) — a full-page image at 420px
+              wide can render taller than a short viewport, which the
+              position clamp below can reposition around but never fully
+              avoid clipping once the popup is simply taller than the
+              screen. w-auto/h-auto are load-bearing, not redundant with
+              the max- versions: without an explicit auto basis, the
+              browser has no clear starting size to apply the max-
+              constraints against and the image can collapse to ~0.
+              Capping both dimensions this way lets the browser's own
+              default replaced-element scaling shrink the image
+              proportionally (no object-fit needed) so the popup is now
+              *always* small enough to fit before the position clamp ever
+              runs, so that clamp never hits its old "bottom has to win,
+              something clips" case. */}
+          <img
+            src={getBookPageThumbnailUrl(bookId, piece.start)}
+            alt=""
+            className="block h-auto w-auto max-h-[calc(100vh-16px)] max-w-[420px]"
+          />
         </div>
       )}
     </div>
