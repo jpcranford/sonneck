@@ -493,8 +493,7 @@ export function UserSettingsMockup() {
         <SettingsCard title="Library">
           <SettingsRow
             label='Hide "Books" in sidebar'
-            help="Books stay reachable from a piece's own Edit menu even when hidden here."
-            soon
+            help="Books stay editable and browsable from the Source Book link on a piece's own Details page even when hidden here."
             control={
               <Toggle checked={hideBooksInSidebar} onChange={setHideBooksInSidebar} label="" id="hide-books" />
             }

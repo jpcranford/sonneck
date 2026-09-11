@@ -563,8 +563,7 @@ export function UserSettingsPage() {
         <SettingsCard title="Library">
           <SettingsRow
             label='Hide "Books" in sidebar'
-            help="Books stay reachable from a piece's own Edit menu even when hidden here."
-            soon
+            help="Books stay editable and browsable from the Source Book link on a piece's own Details page even when hidden here."
             control={
               // Inverse polarity, deliberately: the stored field is
               // showBooksInSidebar (default true — books shown), but this

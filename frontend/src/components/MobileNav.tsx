@@ -1,7 +1,9 @@
 import { NavLink } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { IconMenu2, IconX } from '@tabler/icons-react'
 import { NAV_ITEMS, SECONDARY_NAV_ITEMS, SETLISTS, type NavItem } from '../lib/navItems'
 import { useAuth } from '../lib/AuthContext'
+import { getUserSettings } from '../api/userSettings'
 import { UserMenuButton } from './UserMenuButton'
 
 // Mobile-only top bar + left drawer — the classic hamburger-drawer
@@ -56,9 +58,14 @@ export function MobileNavTopBar({ onOpen }: { onOpen: () => void }) {
 // addresses).
 function DrawerNavList({ items, onNavigate }: { items: NavItem[]; onNavigate: () => void }) {
   const me = useAuth()
+  // "Hide Books in sidebar" — same personal display preference as
+  // Sidebar.tsx's own NavItemsList; see that file's comment.
+  const { data: settings } = useQuery({ queryKey: ['user-settings'], queryFn: getUserSettings })
+  const showBooks = settings?.showBooksInSidebar ?? true
+  const visibleItems = showBooks ? items : items.filter((item) => item.to !== '/books')
   return (
     <nav className="flex flex-col gap-1 px-2">
-      {items.map(({ to, label, icon: Icon, permission }) => {
+      {visibleItems.map(({ to, label, icon: Icon, permission }) => {
         const blocked = permission && !me.permissions.includes(permission)
         const content = (
           <>

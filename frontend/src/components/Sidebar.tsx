@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import {
   IconLayoutSidebarLeftCollapseFilled,
   IconLayoutSidebarLeftExpandFilled,
 } from '@tabler/icons-react'
 import { NAV_ITEMS, SECONDARY_NAV_ITEMS, SETLISTS, type NavItem } from '../lib/navItems'
 import { useAuth } from '../lib/AuthContext'
+import { getUserSettings } from '../api/userSettings'
 import { UserMenuButton } from './UserMenuButton'
 
 // Shared between the primary nav group and the secondary (Favorites/
@@ -13,9 +15,17 @@ import { UserMenuButton } from './UserMenuButton'
 // either side, just a different item list.
 function NavItemsList({ items, collapsed }: { items: NavItem[]; collapsed: boolean }) {
   const me = useAuth()
+  // "Hide Books in sidebar" (User Settings' Library card) — a personal
+  // display preference, not a permission gate, so this hides the item
+  // outright rather than fading it like a `permission`-blocked one below.
+  // Defaults to shown while the query is still loading, matching the
+  // real column's own DEFAULT 1 (shown) — never flashes hidden then shown.
+  const { data: settings } = useQuery({ queryKey: ['user-settings'], queryFn: getUserSettings })
+  const showBooks = settings?.showBooksInSidebar ?? true
+  const visibleItems = showBooks ? items : items.filter((item) => item.to !== '/books')
   return (
     <nav className="flex flex-col gap-1 px-2">
-      {items.map(({ to, label, icon: Icon, permission }) => {
+      {visibleItems.map(({ to, label, icon: Icon, permission }) => {
         const blocked = permission && !me.permissions.includes(permission)
         const content = (
           <>
