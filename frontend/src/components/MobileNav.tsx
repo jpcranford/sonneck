@@ -24,18 +24,18 @@ import { UserMenuButton } from './UserMenuButton'
 // design call, not something this comment update decides on its own.
 //
 // Split into two components, not one, because the mockup's own layout
-// puts them in two different places in the tree: the top bar is a normal
-// (non-sticky) child of the scrollable content column — it scrolls away
-// with the page, matching the mockup's own behavior, which was approved
-// as-is — while the scrim + drawer are fixed-position overlays anchored
-// to the whole viewport. AppShell.tsx owns the shared `open` state and
-// renders MobileNavTopBar inside its scroll container and
-// MobileNavDrawer as a top-level sibling, next to the (desktop-only,
-// `hidden md:block`) Sidebar.
+// puts them in two different places in the tree: the top bar is a child
+// of the scrollable content column (not a sibling anchored to the
+// viewport, like the drawer below) but stays pinned via `sticky top-0`
+// while that column scrolls underneath it, while the scrim + drawer are
+// fixed-position overlays anchored to the whole viewport. AppShell.tsx
+// owns the shared `open` state and renders MobileNavTopBar inside its
+// scroll container and MobileNavDrawer as a top-level sibling, next to
+// the (desktop-only, `hidden md:block`) Sidebar.
 
 export function MobileNavTopBar({ onOpen }: { onOpen: () => void }) {
   return (
-    <div className="flex h-14 shrink-0 items-center gap-3 border-b border-sidebar-border bg-sidebar-bg px-3 md:hidden">
+    <div className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b border-sidebar-border bg-sidebar-bg px-3 md:hidden">
       <button
         type="button"
         onClick={onOpen}
