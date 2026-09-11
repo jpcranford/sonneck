@@ -83,7 +83,7 @@ export function BookGridCard({ book }: BookGridCardProps) {
           )}
           <span className="absolute right-2 bottom-1.5 flex items-center gap-1 rounded-full bg-[rgba(28,24,21,0.82)] px-[7px] py-[2px] text-[0.7rem] font-semibold text-white">
             {book.pieceCount}
-            <IconClefStaff size={10} />
+            <IconClefStaff size={12} />
           </span>
         </div>
         {/* min-h-[58px] pins this block to a constant height (2-line
