@@ -9,13 +9,20 @@
 // free rather than needing its own separate code path.
 //
 // project_wails_native_app_investigation memory's Phase 3 (locked
-// 2026-09-11) — groundwork only. Nothing calls ListenAddress or LocalIPs
-// yet; no native entry point exists (Phase 6) to bind a listener from, and
-// no endpoint surfaces LocalIPs to the frontend yet (Phase 7's Admin
-// Settings "Share on Network" section, not yet designed — Phase 4).
+// 2026-09-11). ListenWithFallback is real and wired into
+// cmd/sonneck/main.go's actual listen call — Docker's own behavior is
+// unchanged (one attempt, every interface) since buildTarget stays
+// "docker" there. ListenAddress/LocalIPs otherwise stay groundwork: no
+// native entry point exists yet (Phase 6) to ever pass buildTarget ==
+// "native" or shareOnNetwork == true, and no endpoint surfaces LocalIPs to
+// the frontend yet (Phase 7's Admin Settings "Share on Network" section,
+// still mid-design — Phase 4).
 package netinfo
 
-import "net"
+import (
+	"net"
+	"strconv"
+)
 
 // ListenAddress returns the address main() should bind its HTTP listener
 // to. Docker (buildTarget != "native") always binds every interface,
@@ -30,6 +37,46 @@ func ListenAddress(buildTarget, port string, shareOnNetwork bool) string {
 		return ":" + port
 	}
 	return "127.0.0.1:" + port
+}
+
+// maxFallbackAttempts bounds how far ListenWithFallback climbs above the
+// configured port before giving up — 26163 (native's own default port,
+// see internal/config.defaultPort) through 26172, a small, clearly-related
+// range rather than scanning arbitrarily far.
+const maxFallbackAttempts = 9
+
+// ListenWithFallback binds an HTTP listener for port, retrying on the next
+// port up (bounded by maxFallbackAttempts) only for native builds, and
+// only when the configured port is already taken — Phase 3 addendum,
+// project_wails_native_app_investigation memory, locked 2026-09-11. Docker
+// (buildTarget != "native") always makes exactly one attempt, identical to
+// this app's behavior before this function existed: a Docker deploy's
+// whole port story is the operator's own docker-compose.yml mapping, and
+// silently rebinding to some other port here would desync from it with no
+// way for the operator to even notice. Native has no operator standing by
+// to read a log line and fix a config file — a musician just wants the
+// app to open — so it's worth the extra attempts, especially since 8080
+// (Docker's own default, the same PORT env var either build reads) is a
+// genuinely common port elsewhere on a real machine, unlike native's own
+// default (see defaultPort's own comment for why 26163 specifically).
+func ListenWithFallback(buildTarget, port string, shareOnNetwork bool) (net.Listener, error) {
+	ln, err := net.Listen("tcp", ListenAddress(buildTarget, port, shareOnNetwork))
+	if err == nil || buildTarget != "native" {
+		return ln, err
+	}
+
+	basePort, convErr := strconv.Atoi(port)
+	if convErr != nil {
+		return nil, err // the original bind error is more meaningful than a bad port string
+	}
+	for i := 1; i <= maxFallbackAttempts; i++ {
+		candidate := strconv.Itoa(basePort + i)
+		ln, err = net.Listen("tcp", ListenAddress(buildTarget, candidate, shareOnNetwork))
+		if err == nil {
+			return ln, nil
+		}
+	}
+	return nil, err
 }
 
 // LocalIPs returns this machine's own non-loopback IPv4 addresses — the

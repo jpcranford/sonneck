@@ -230,6 +230,22 @@ func defaultDataDir() string {
 	return filepath.Join(home, "Music", "Sonneck Library")
 }
 
+// defaultPort is PORT's fallback when unset — "8080" on Linux (Docker
+// convention, mirroring defaultDataDir's own Linux-means-Docker reasoning)
+// and, on darwin/windows, "26163" — middle C's frequency, 261.63 Hz, read
+// as a port number. Picked deliberately over reusing 8080 for native too:
+// 8080 is a genuinely common port elsewhere on a real machine (Jenkins,
+// Tomcat, countless local dev servers), and unlike Docker, a native build
+// has no operator standing by to notice a bind failure and fix a compose
+// file — see internal/netinfo.ListenWithFallback, which additionally
+// falls back through a small range above this port if it's taken anyway.
+func defaultPort() string {
+	if runtime.GOOS == "linux" {
+		return "8080"
+	}
+	return "26163"
+}
+
 // Load reads and validates configuration from the environment plus
 // DATA_DIR/config.yml, failing fast per CLAUDE.md > Config rather than
 // surfacing a bad value mid-request.
@@ -245,7 +261,7 @@ func defaultDataDir() string {
 // the value came from the environment or the file.
 func Load() (*Config, error) {
 	cfg := &Config{
-		Port:           getEnv("PORT", "8080"),
+		Port:           getEnv("PORT", defaultPort()),
 		DataDir:        getEnv("DATA_DIR", defaultDataDir()),
 		CitationFormat: getEnv("CITATION_FORMAT", defaultCitationFormat),
 		AuthMethod:     getEnv("AUTH_METHOD", ""),

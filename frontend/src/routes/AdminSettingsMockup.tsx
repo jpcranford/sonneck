@@ -1,14 +1,20 @@
 import { useRef, useState } from 'react'
 import {
+  IconBrandDocker,
   IconChevronDown,
   IconCircleCheck,
   IconCircleDashedPlus,
+  IconCopy,
+  IconDeviceDesktop,
   IconExternalLink,
   IconInfoCircle,
   IconLockOpen2,
   IconPassword,
+  IconQrcode,
   IconTrash,
   IconUserCircle,
+  IconWifi,
+  IconWifiOff,
 } from '@tabler/icons-react'
 import { InfoTooltip } from '../components/InfoTooltip'
 import { Modal } from '../components/Modal'
@@ -101,6 +107,75 @@ import { useMockupTitle } from '../lib/useMockupTitle'
 // only in framing here (both just remove the entry from this mockup's
 // own fixture; a real backend would additionally reassign every
 // piece/book tagged with it before removing the row on the merge path).
+
+// Docker/Native preview toggle — this page's first-ever need for one
+// (project_wails_native_app_investigation memory's Phase 4/5, locked
+// 2026-09-11: "Share on Network" + "reset library location" are both
+// native-build-only, and this mockup previously had none — SecurityCard's
+// own comment below used to explain why it didn't need one). Hand-copied
+// from FirstLaunchMockup.tsx's own RuntimeModeToggle/RuntimeMode, same
+// convention as SecurityCard's own hand-copy — mockups don't share
+// component code (CLAUDE.md's mockup-first rule), only plain
+// presentational logic.
+type RuntimeMode = 'docker' | 'native'
+
+// Same fictional user/path as FirstLaunchMockup.tsx's own
+// NATIVE_FIXTURE_PATHS[0] — deliberately kept in sync rather than
+// reinvented, so a reader comparing the two mockups sees one consistent
+// "Jamie's machine" story rather than two different fake paths.
+const NATIVE_LIBRARY_PATH = '/Users/jamie/Music/Sonneck Library'
+
+// Reset-library-location's fixture candidate folders — same rotate-
+// through-a-short-list convention as FirstLaunchMockup.tsx's own
+// NATIVE_FIXTURE_PATHS, one entry per "Choose a different folder…" click.
+const LIBRARY_LOCATION_CANDIDATES = [
+  '/Users/jamie/Documents/Sheet Music',
+  '/Volumes/Archive/Sonneck',
+  '/Users/jamie/Music/Sonneck Library',
+]
+
+// Share on Network's fixture addresses — Option C's own locked layout
+// (status pill + one primary address + collapsed "+N more"), port
+// matches the real native default (`internal/config.defaultPort` —
+// middle C's frequency, 261.63 Hz, chosen over 8080 since that's a
+// genuinely common port elsewhere on a real machine).
+const NATIVE_LAN_ADDRESSES = ['192.168.1.42:26163', '10.0.0.14:26163']
+
+// How long the imminent-switch-off fade plays before the restart banner
+// appears — matches the fade wrapper's own `duration-300` below, so the
+// banner shows up right as the fade finishes rather than popping in
+// mid-transition or leaving an awkward gap after it.
+const RESTART_BANNER_DELAY_MS = 300
+
+function RuntimeModeToggle({ mode, onChange }: { mode: RuntimeMode; onChange: (m: RuntimeMode) => void }) {
+  return (
+    <div className="fixed top-28 right-3 z-20 flex items-center gap-2 rounded-md border border-dashed border-border bg-paper-raised px-2.5 py-1.5 text-xs text-ink-soft shadow-sm md:top-14">
+      <span>Preview as</span>
+      <div className="flex overflow-hidden rounded border border-border">
+        <button
+          type="button"
+          onClick={() => onChange('docker')}
+          className={`flex cursor-pointer items-center gap-1 px-2 py-1 ${
+            mode === 'docker' ? 'bg-accent text-white' : 'bg-paper hover:bg-paper-sunken'
+          }`}
+        >
+          <IconBrandDocker size={13} />
+          Docker
+        </button>
+        <button
+          type="button"
+          onClick={() => onChange('native')}
+          className={`flex cursor-pointer items-center gap-1 px-2 py-1 ${
+            mode === 'native' ? 'bg-accent text-white' : 'bg-paper hover:bg-paper-sunken'
+          }`}
+        >
+          <IconDeviceDesktop size={13} />
+          Native
+        </button>
+      </div>
+    </div>
+  )
+}
 
 type IdentityKey = 'none' | 'singlepass' | 'oidc'
 
@@ -248,7 +323,11 @@ const INITIAL_LOOKUP_TABLES: Record<LookupColumn, LookupItem[]> = {
   ],
 }
 
-const JUMP_LINKS = [
+// Share on Network only appears while previewing native — nativeOnly
+// filters it out of the pill strip in Docker mode, matching the section
+// itself (SectionBlock) only rendering there too.
+const JUMP_LINKS: { id: string; label: string; nativeOnly?: boolean }[] = [
+  { id: 'share-network', label: 'Share on Network', nativeOnly: true },
   { id: 'library-settings', label: 'Library Settings' },
   { id: 'library', label: 'Library' },
   { id: 'version', label: 'Version' },
@@ -381,10 +460,12 @@ function LibraryField({
 
 // Radio-card chooser for the Security "Change…" modal below — hand-copied
 // from FirstLaunchMockup.tsx's own SecurityCard/SecurityStep (same visual
-// language), simplified twice over from the version this file briefly had
-// before: no Docker/Native runtime-mode branch (Admin Settings has no such
-// preview toggle), and — new this pass — no "Sign in with…" card at all,
-// since OIDC is permanently out of scope for anything reachable from here.
+// language), simplified from the version this file briefly had before: no
+// "Sign in with…" card at all, since OIDC is permanently out of scope for
+// anything reachable from here. (This page's own Docker/Native toggle,
+// above, exists for Share on Network/reset-library-location — Security
+// itself has no native-only branch, so this component still doesn't need
+// one.)
 function SecurityCard({
   selected,
   icon,
@@ -439,15 +520,23 @@ function SecurityCard({
 function SectionBlock({
   id,
   title,
+  headerExtra,
   children,
 }: {
   id: string
   title: string
+  // Only Share on Network needs this (its status pill, "● Shared on this
+  // network") — every other section's title is plain text, so this stays
+  // optional rather than every SectionBlock call site passing undefined.
+  headerExtra?: React.ReactNode
   children: React.ReactNode
 }) {
   return (
     <div id={id} className="scroll-mt-20 rounded-lg border border-border bg-paper-raised p-5">
-      <h2 className="mb-3 font-display text-base font-medium text-ink">{title}</h2>
+      <h2 className="mb-3 flex items-center font-display text-base font-medium text-ink">
+        {title}
+        {headerExtra}
+      </h2>
       {children}
     </div>
   )
@@ -463,6 +552,65 @@ export function AdminSettingsMockup() {
   const [identityKey, setIdentityKey] = useState<IdentityKey>('none')
   const [users, setUsers] = useState<Record<IdentityKey, AdminUser[]>>(INITIAL_USERS)
   const [openUserId, setOpenUserId] = useState<number | null>(null)
+
+  const [runtimeMode, setRuntimeMode] = useState<RuntimeMode>('docker')
+  // shareOnNetwork is the toggle's own chosen value — what Sonneck will do
+  // after the next restart. appliedShareOnNetwork is what's actually live
+  // right now (a real restart is the only thing that moves it) — the
+  // locked "restart required, not live-rebind" decision means these two
+  // can genuinely disagree, and the UI needs to be honest about which one
+  // it's showing at any given moment (status pill + address/QR panel both
+  // reflect the live value, never the pending one — showing a "reachable"
+  // address that isn't actually reachable yet would be actively
+  // misleading).
+  const [shareOnNetwork, setShareOnNetwork] = useState(true)
+  const [appliedShareOnNetwork, setAppliedShareOnNetwork] = useState(true)
+  const restartPending = shareOnNetwork !== appliedShareOnNetwork
+  // Still live, but about to turn off once restarted — the one direction
+  // that actually has something to fade (the reverse, pending-*on*, has
+  // no address/QR panel showing yet at all, since that stays gated on the
+  // live value below).
+  const imminentSwitchOff = restartPending && !shareOnNetwork
+  // The restart banner deliberately waits for the fade above to actually
+  // play before it appears — popping in at the same instant as the fade
+  // starts read as simultaneous/cluttered rather than one thing causing
+  // the other. Driven directly from the two event handlers that change
+  // restartPending (the toggle and Restart Now below), not a useEffect
+  // watching restartPending — this project's React Compiler setup flags
+  // setState called synchronously in an effect body (CLAUDE.md's own
+  // documented gotcha); a timer started from the actual click handler
+  // avoids that entirely. Hides instantly (no delay) the moment
+  // restartPending clears — only the appearance is staggered, not the
+  // disappearance.
+  const [showRestartBanner, setShowRestartBanner] = useState(false)
+  const restartBannerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  function clearRestartBannerTimer() {
+    if (restartBannerTimerRef.current !== null) {
+      clearTimeout(restartBannerTimerRef.current)
+      restartBannerTimerRef.current = null
+    }
+  }
+
+  function toggleShareOnNetwork() {
+    const next = !shareOnNetwork
+    setShareOnNetwork(next)
+    clearRestartBannerTimer()
+    if (next === appliedShareOnNetwork) {
+      // Toggled back to match what's actually live — nothing pending
+      // anymore, hide immediately.
+      setShowRestartBanner(false)
+    } else {
+      restartBannerTimerRef.current = setTimeout(() => setShowRestartBanner(true), RESTART_BANNER_DELAY_MS)
+    }
+  }
+
+  function restartNow() {
+    clearRestartBannerTimer()
+    setAppliedShareOnNetwork(shareOnNetwork)
+    setShowRestartBanner(false)
+  }
+  const [showAllAddresses, setShowAllAddresses] = useState(false)
 
   const [backupRetentionDays, setBackupRetentionDays] = useState(30)
   const [logLevel, setLogLevel] = useState<'debug' | 'info' | 'warn' | 'error'>('info')
@@ -485,6 +633,34 @@ export function AdminSettingsMockup() {
     : `Dev build, from commit ${build.shortSha} on ${build.commitDate}`
 
   const currentUsers = users[identityKey]
+
+  // Reset library location — native-only (Docker's mount point is a
+  // deploy-time decision, not something this page could change). "Change…"
+  // picks the next fixture candidate; the real build's folder picker
+  // replaces this with an actual OS dialog. moveExisting mirrors the
+  // locked design's two choices — move the current library's contents to
+  // the new folder, or just point there going forward without moving
+  // anything.
+  const [libraryPath, setLibraryPath] = useState(NATIVE_LIBRARY_PATH)
+  const [libraryLocationModalOpen, setLibraryLocationModalOpen] = useState(false)
+  const [candidateLibraryPath, setCandidateLibraryPath] = useState(LIBRARY_LOCATION_CANDIDATES[0])
+  const [moveExisting, setMoveExisting] = useState(true)
+
+  function openLibraryLocationModal() {
+    setCandidateLibraryPath(LIBRARY_LOCATION_CANDIDATES[0])
+    setMoveExisting(true)
+    setLibraryLocationModalOpen(true)
+  }
+
+  function cycleCandidateLibraryPath() {
+    const currentIndex = LIBRARY_LOCATION_CANDIDATES.indexOf(candidateLibraryPath)
+    setCandidateLibraryPath(LIBRARY_LOCATION_CANDIDATES[(currentIndex + 1) % LIBRARY_LOCATION_CANDIDATES.length])
+  }
+
+  function saveLibraryLocation() {
+    setLibraryPath(candidateLibraryPath)
+    setLibraryLocationModalOpen(false)
+  }
 
   // Security "Change…" — only ever reachable while the current method is
   // `none`/`singlepass` (never `oidc`) and AUTH_METHOD isn't itself
@@ -633,6 +809,7 @@ export function AdminSettingsMockup() {
           setOpenUserId(null)
         }}
       />
+      <RuntimeModeToggle mode={runtimeMode} onChange={setRuntimeMode} />
 
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-4">
         <div className="rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-4 py-2 text-sm text-ink-soft">
@@ -654,7 +831,7 @@ export function AdminSettingsMockup() {
         />
 
         <div className="flex flex-wrap gap-1.5 rounded-lg border border-border bg-paper-raised p-4">
-          {JUMP_LINKS.map((link) => (
+          {JUMP_LINKS.filter((link) => !link.nativeOnly || runtimeMode === 'native').map((link) => (
             <a
               key={link.id}
               href={`#${link.id}`}
@@ -664,6 +841,140 @@ export function AdminSettingsMockup() {
             </a>
           ))}
         </div>
+
+        {runtimeMode === 'native' && (
+          <SectionBlock
+            id="share-network"
+            title="Share on Network"
+            headerExtra={
+              // Reflects appliedShareOnNetwork (the live truth), never the
+              // pending toggle value — see that state's own comment above.
+              appliedShareOnNetwork ? (
+                <span className="ml-2.5 inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-0.5 text-xs font-semibold text-accent">
+                  <IconWifi size={12} />
+                  Shared on this network
+                </span>
+              ) : (
+                <span className="ml-2.5 inline-flex items-center gap-1.5 rounded-full bg-paper-sunken px-2.5 py-0.5 text-xs font-semibold text-ink-soft">
+                  <IconWifiOff size={12} />
+                  Private to this device
+                </span>
+              )
+            }
+          >
+            <div className="flex items-center justify-between gap-4 py-1">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-ink">Share on network</p>
+                <p className="mt-0.5 text-xs text-ink-soft">
+                  Off by default — turn on to reach Sonneck from another device.
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={shareOnNetwork}
+                onClick={toggleShareOnNetwork}
+                className={`relative h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors ${
+                  shareOnNetwork ? 'bg-accent' : 'bg-border'
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 size-5 rounded-full bg-white transition-all ${
+                    shareOnNetwork ? 'left-5' : 'left-0.5'
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* Restart-pending banner — the toggle's chosen value has
+                diverged from what's actually live. Deliberately gated on
+                showRestartBanner, not restartPending directly, so it
+                appears only after the fade below has had a moment to
+                play (RESTART_BANNER_DELAY_MS) rather than popping in at
+                the same instant the fade starts. "Restart Now" is a real,
+                working affordance here (not just instructive text telling
+                the user to quit and reopen the app themselves) — the real
+                build (Phase 7) should make this a genuine native
+                app-restart action, per the same "everything here is real
+                and clickable" standard as the rest of this mockup. */}
+            {showRestartBanner && (
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-3.5 py-2.5">
+                <p className="flex items-center gap-1.5 text-xs font-medium text-ink">
+                  <IconInfoCircle size={14} className="shrink-0 text-accent" />
+                  Restart Sonneck to {shareOnNetwork ? 'start sharing on this network' : 'stop sharing on this network'}.
+                </p>
+                <button
+                  type="button"
+                  onClick={restartNow}
+                  className="shrink-0 cursor-pointer rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white hover:bg-accent/90"
+                >
+                  Restart Now
+                </button>
+              </div>
+            )}
+
+            {appliedShareOnNetwork && (
+              <div
+                className={`transition-opacity duration-300 ${imminentSwitchOff ? 'pointer-events-none opacity-40' : ''}`}
+                aria-hidden={imminentSwitchOff}
+              >
+                <div className="mt-3 flex flex-wrap items-center gap-3 rounded-lg bg-paper-sunken p-3">
+                  <div className="flex min-w-0 flex-1 items-center justify-between gap-3 rounded-md bg-paper-raised px-3.5 py-2.5">
+                    <span className="truncate font-mono text-base font-semibold text-ink">
+                      http://{NATIVE_LAN_ADDRESSES[0]}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => void navigator.clipboard?.writeText(`http://${NATIVE_LAN_ADDRESSES[0]}`)}
+                      className="flex shrink-0 cursor-pointer items-center gap-1 text-xs text-ink-soft hover:text-ink"
+                    >
+                      <IconCopy size={14} />
+                      Copy
+                    </button>
+                  </div>
+                  {/* Fixed white card regardless of theme — a QR code needs
+                      real dark-on-light contrast to stay scannable, one of
+                      the rare intentional exceptions to "every color comes
+                      from a token." The real build (Phase 7) renders a
+                      genuine QR code from this address via a real npm
+                      library, same as the design Artifact proved with
+                      qrcodejs; IconQrcode stands in here since a mockup
+                      fixture has no live address to encode. */}
+                  <div
+                    className="flex size-[4.25rem] shrink-0 items-center justify-center rounded-md border border-border bg-white text-ink"
+                    title={`http://${NATIVE_LAN_ADDRESSES[0]}`}
+                  >
+                    <IconQrcode size={44} stroke={1.5} />
+                  </div>
+                </div>
+                {NATIVE_LAN_ADDRESSES.length > 1 && (
+                  <div className="mt-2">
+                    {showAllAddresses ? (
+                      <ul className="flex flex-col gap-1">
+                        {NATIVE_LAN_ADDRESSES.slice(1).map((addr) => (
+                          <li key={addr} className="font-mono text-xs text-ink-soft">
+                            http://{addr}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setShowAllAddresses(true)}
+                        className="cursor-pointer text-xs text-accent underline underline-offset-2 hover:text-accent/80"
+                      >
+                        +{NATIVE_LAN_ADDRESSES.length - 1} more address
+                      </button>
+                    )}
+                  </div>
+                )}
+                <p className="mt-2 text-xs text-ink-soft">
+                  Scan with a phone camera, or open the address above from another device on this network.
+                </p>
+              </div>
+            )}
+          </SectionBlock>
+        )}
 
         <SectionBlock id="library-settings" title="Library Settings">
           <div className="divide-y divide-border">
@@ -751,6 +1062,23 @@ export function AdminSettingsMockup() {
                 </button>
               }
             />
+            {runtimeMode === 'native' && (
+              <div className="flex items-center justify-between gap-4 py-2.5">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-ink">Library location</p>
+                  <p className="mt-0.5 truncate font-mono text-xs text-ink-soft">{libraryPath}</p>
+                </div>
+                <div className="shrink-0">
+                  <button
+                    type="button"
+                    onClick={openLibraryLocationModal}
+                    className="cursor-pointer rounded-md border border-border bg-paper-raised px-3 py-1.5 text-sm text-ink hover:border-accent"
+                  >
+                    Change…
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </SectionBlock>
 
@@ -1084,6 +1412,80 @@ export function AdminSettingsMockup() {
           Switching to "No login" clears the current password entirely — the next person to switch back to
           "Password" has to set a new one.
         </p>
+      </Modal>
+
+      <Modal
+        open={libraryLocationModalOpen}
+        onClose={() => setLibraryLocationModalOpen(false)}
+        labelledBy="library-location-modal-title"
+        footer={
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setLibraryLocationModalOpen(false)}
+              className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 text-sm text-ink hover:bg-paper"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={saveLibraryLocation}
+              className="cursor-pointer rounded-md bg-accent px-4 py-2 text-sm text-white hover:bg-accent/90"
+            >
+              Save changes
+            </button>
+          </div>
+        }
+      >
+        <h2 id="library-location-modal-title" className="font-display text-lg font-medium text-ink">
+          Change library location
+        </h2>
+        <p className="mt-1 text-sm text-ink-soft">Choose a new folder for Sonneck's library.</p>
+
+        <div className="mt-4 flex items-center gap-3 rounded-md border border-border bg-paper-sunken px-3.5 py-2.5">
+          <span className="min-w-0 flex-1 truncate font-mono text-sm text-ink">{candidateLibraryPath}</span>
+          <button
+            type="button"
+            onClick={cycleCandidateLibraryPath}
+            className="shrink-0 cursor-pointer rounded-md border border-border bg-paper-raised px-2.5 py-1 text-xs text-ink hover:border-accent"
+          >
+            Choose a different folder…
+          </button>
+        </div>
+
+        <div className="mt-4 flex flex-col gap-2" role="radiogroup" aria-label="What happens to your current library">
+          <label className="flex cursor-pointer items-start gap-2.5 rounded-md border border-border p-3 has-checked:border-accent has-checked:bg-accent-soft">
+            <input
+              type="radio"
+              name="move-existing"
+              checked={moveExisting}
+              onChange={() => setMoveExisting(true)}
+              className="mt-0.5 accent-accent"
+            />
+            <span>
+              <span className="block text-sm font-medium text-ink">Move everything here</span>
+              <span className="block text-xs text-ink-soft">
+                Your books, pieces, and database move from {libraryPath} to the new folder.
+              </span>
+            </span>
+          </label>
+          <label className="flex cursor-pointer items-start gap-2.5 rounded-md border border-border p-3 has-checked:border-accent has-checked:bg-accent-soft">
+            <input
+              type="radio"
+              name="move-existing"
+              checked={!moveExisting}
+              onChange={() => setMoveExisting(false)}
+              className="mt-0.5 accent-accent"
+            />
+            <span>
+              <span className="block text-sm font-medium text-ink">Just use this folder going forward</span>
+              <span className="block text-xs text-ink-soft">
+                Nothing moves — point Sonneck at the new folder as-is (useful for an already-populated or empty
+                folder).
+              </span>
+            </span>
+          </label>
+        </div>
       </Modal>
 
       <Modal

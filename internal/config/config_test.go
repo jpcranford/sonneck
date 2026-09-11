@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -44,8 +45,16 @@ func TestLoad_DefaultsWhenUnset(t *testing.T) {
 		t.Fatalf("Load: %v", err)
 	}
 
-	if cfg.Port != "8080" {
-		t.Errorf("Port = %q, want %q", cfg.Port, "8080")
+	// Port's default is GOOS-aware (internal/config.defaultPort) —
+	// "8080" on Linux (Docker convention), "26163" (middle C's frequency)
+	// on darwin/windows — project_wails_native_app_investigation memory's
+	// Phase 3 addendum, locked 2026-09-11.
+	wantPort := "8080"
+	if runtime.GOOS != "linux" {
+		wantPort = "26163"
+	}
+	if cfg.Port != wantPort {
+		t.Errorf("Port = %q, want %q", cfg.Port, wantPort)
 	}
 	if cfg.BackupDir != cfg.DataDir+"/backups" {
 		t.Errorf("BackupDir = %q, want %q", cfg.BackupDir, cfg.DataDir+"/backups")

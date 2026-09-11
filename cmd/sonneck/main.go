@@ -15,6 +15,7 @@ import (
 	"github.com/jpcranford/sonneck/internal/db"
 	"github.com/jpcranford/sonneck/internal/export"
 	"github.com/jpcranford/sonneck/internal/handlers"
+	"github.com/jpcranford/sonneck/internal/netinfo"
 	"github.com/jpcranford/sonneck/internal/oidcauth"
 	"github.com/jpcranford/sonneck/internal/peoplemigrate"
 	"github.com/jpcranford/sonneck/internal/repo"
@@ -170,8 +171,19 @@ func main() {
 
 	handler := handlers.New(conn, cfg, logger, frontend, scheduler, buildSHA, buildDate, buildTarget, oidcAuth)
 
-	logger.Info("starting server", "port", cfg.Port)
-	if err := http.ListenAndServe(":"+cfg.Port, handler); err != nil {
+	// shareOnNetwork is always false here — this binary's buildTarget stays
+	// "docker" (see the var block above), and ListenAddress/ListenWithFallback
+	// only ever consult shareOnNetwork when buildTarget == "native", so this
+	// call is unconditionally today's exact prior behavior (one bind attempt,
+	// every interface). The real native entry point (Phase 6, not yet built)
+	// will pass its own nativeconfig.Settings.ShareOnNetwork here instead.
+	ln, err := netinfo.ListenWithFallback(buildTarget, cfg.Port, false)
+	if err != nil {
+		logger.Error("failed to bind listener", "error", err, "port", cfg.Port)
+		os.Exit(1)
+	}
+	logger.Info("starting server", "address", ln.Addr().String())
+	if err := http.Serve(ln, handler); err != nil {
 		logger.Error("server stopped", "error", err)
 		os.Exit(1)
 	}
