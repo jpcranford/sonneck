@@ -102,11 +102,26 @@ jobs:
       # that file's own comment), so this step has to run first or the Go
       # build embeds whatever placeholder index.html happens to already
       # be checked in.
+      # Mirrors the Dockerfile's own frontend-builder stage exactly
+      # (Dockerfile: `COPY --from=frontend-builder /build/frontend/dist/.
+      # ./internal/webui/dist/`) — internal/webui's own go:embed only ever
+      # sees whatever's physically on disk under internal/webui/dist/ at
+      # compile time, and that directory's checked-in content is
+      # deliberately just a placeholder index.html (internal/webui/webui.go's
+      # own doc comment). Missing this copy step is a real bug this
+      # workflow shipped with since Phase 6 — every prior verification
+      # pass only ever hit the JSON API directly (curl against
+      # /api/native/settings etc.), never actually loaded the page in a
+      # browser, so a built app silently served the placeholder's own
+      # "this is a placeholder" text instead of the real UI until a real
+      # user actually opened one and reported it.
       - name: Build the embedded frontend
         working-directory: frontend
         run: |
           npm ci
           npm run build
+          rm -rf ../internal/webui/dist
+          cp -r dist ../internal/webui/dist
 
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ env.WAILS_VERSION }}
@@ -217,6 +232,18 @@ jobs:
           done
           curl -sf http://127.0.0.1:26163/healthz
 
+          # Real regression guard for a real bug this workflow shipped
+          # with undetected through Phases 6-8 (project_wails_native_app_
+          # investigation memory): every check here used to hit only the
+          # JSON API, so a build silently embedding internal/webui/dist's
+          # own committed placeholder (instead of the real frontend)
+          # passed clean every single time — "the backend works" and "the
+          # app actually renders" are genuinely separate claims. Caught
+          # only once a real user actually opened a real built app.
+          PAGE=$(curl -sf http://127.0.0.1:26163/)
+          echo "$PAGE" | grep -q "This is a placeholder" && (echo "embedded frontend is the placeholder, not the real build — the copy-into-internal/webui/dist step above didn't run or didn't work" && exit 1)
+          echo "$PAGE" | grep -q '<div id="root">' || (echo "served page doesn't look like the real app shell" && exit 1)
+
           RESPONSE=$(curl -sf -X POST http://127.0.0.1:26163/api/books \
             -H "X-Requested-With: XMLHttpRequest" \
             -F "file=@/tmp/smoke-test.pdf")
@@ -268,12 +295,16 @@ jobs:
         with:
           node-version: '22'
 
+      # PowerShell equivalent of build-macos' identical step — see that
+      # step's own comment for why this copy is required at all.
       - name: Build the embedded frontend
         working-directory: frontend
         shell: pwsh
         run: |
           npm ci
           npm run build
+          Remove-Item -Recurse -Force ..\internal\webui\dist -ErrorAction SilentlyContinue
+          Copy-Item -Recurse dist ..\internal\webui\dist
 
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ env.WAILS_VERSION }}
@@ -379,6 +410,14 @@ jobs:
             try { Invoke-RestMethod http://127.0.0.1:26163/healthz; $ok = $true; break } catch { Start-Sleep -Seconds 1 }
           }
           if (-not $ok) { throw "app did not come up" }
+
+          # See build-macos' identical check for the real bug this guards
+          # against (a build silently embedding the placeholder frontend
+          # instead of the real one, undetected for three whole phases
+          # since every prior check here only ever hit the JSON API).
+          $page = Invoke-RestMethod http://127.0.0.1:26163/
+          if ($page -match "This is a placeholder") { throw "embedded frontend is the placeholder, not the real build - the copy-into-internal/webui/dist step above didn't run or didn't work" }
+          if ($page -notmatch '<div id="root">') { throw "served page doesn't look like the real app shell" }
 
           $form = @{ file = Get-Item "smoke-test.pdf" }
           $response = Invoke-RestMethod -Uri http://127.0.0.1:26163/api/books -Method Post -Form $form -Headers @{ "X-Requested-With" = "XMLHttpRequest" }
