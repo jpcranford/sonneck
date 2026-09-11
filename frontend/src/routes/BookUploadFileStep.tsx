@@ -96,7 +96,7 @@ export function BookUploadFileStep({ onBack, onUploaded }: BookUploadFileStepPro
             const file = event.dataTransfer.files[0]
             if (file) beginUpload(file)
           }}
-          className={`flex w-full flex-col items-center gap-3 rounded-2xl border-2 border-dashed p-12 text-center transition-colors ${
+          className={`flex w-full cursor-pointer flex-col items-center gap-3 rounded-2xl border-2 border-dashed p-12 text-center transition-colors ${
             dragOver
               ? 'border-accent bg-accent-soft'
               : 'border-border bg-paper-raised hover:border-accent'

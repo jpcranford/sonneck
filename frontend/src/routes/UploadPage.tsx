@@ -305,7 +305,7 @@ export function UploadPage() {
             <button
               type="button"
               onClick={() => setStage('select')}
-              className="flex items-start gap-3.5 rounded-xl border-[1.5px] border-border bg-paper-raised p-4 text-left transition-colors hover:border-accent"
+              className="flex cursor-pointer items-start gap-3.5 rounded-xl border-[1.5px] border-border bg-paper-raised p-4 text-left transition-colors hover:border-accent"
             >
               <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-paper-sunken text-ink-soft">
                 <IconFileMusic size={19} />
@@ -322,7 +322,7 @@ export function UploadPage() {
             <button
               type="button"
               onClick={() => setStage('book')}
-              className="flex items-start gap-3.5 rounded-xl border-[1.5px] border-border bg-paper-raised p-4 text-left transition-colors hover:border-accent"
+              className="flex cursor-pointer items-start gap-3.5 rounded-xl border-[1.5px] border-border bg-paper-raised p-4 text-left transition-colors hover:border-accent"
             >
               <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-paper-sunken text-ink-soft">
                 <IconBook2 size={19} />
@@ -364,7 +364,7 @@ export function UploadPage() {
               const file = event.dataTransfer.files[0]
               if (file) beginUpload(file)
             }}
-            className={`flex w-full flex-col items-center gap-3 rounded-2xl border-2 border-dashed p-12 text-center transition-colors ${
+            className={`flex w-full cursor-pointer flex-col items-center gap-3 rounded-2xl border-2 border-dashed p-12 text-center transition-colors ${
               dragOver
                 ? 'border-accent bg-accent-soft'
                 : 'border-border bg-paper-raised hover:border-accent'
