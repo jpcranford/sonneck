@@ -144,7 +144,7 @@ export function MobileNavDrawer({ open, onClose }: { open: boolean; onClose: () 
           </div>
         </div>
 
-        <UserMenuButton collapsed={false} />
+        <UserMenuButton collapsed={false} onNavigate={onClose} />
       </aside>
     </>
   )

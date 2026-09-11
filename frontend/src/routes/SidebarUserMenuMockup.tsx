@@ -206,11 +206,13 @@ function UserMenuButton({
   collapsed,
   theme,
   onThemeChange,
+  onNavigate,
 }: {
   identity: Identity
   collapsed: boolean
   theme: ThemePreview
   onThemeChange: (theme: ThemePreview) => void
+  onNavigate?: () => void
 }) {
   const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -300,7 +302,10 @@ function UserMenuButton({
         <div className="p-1.5">
           <button
             type="button"
-            onClick={() => setOpen(false)}
+            onClick={() => {
+              setOpen(false)
+              onNavigate?.()
+            }}
             role="menuitem"
             className="flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-[0.85rem] text-sidebar-text hover:bg-white/5"
           >
@@ -310,7 +315,10 @@ function UserMenuButton({
           {identity.isAdmin && (
             <button
               type="button"
-              onClick={() => setOpen(false)}
+              onClick={() => {
+                setOpen(false)
+                onNavigate?.()
+              }}
               role="menuitem"
               className="flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-[0.85rem] text-sidebar-text hover:bg-white/5"
             >
@@ -520,7 +528,13 @@ export function SidebarUserMenuMockup() {
           </div>
         </div>
 
-        <UserMenuButton identity={identity} collapsed={false} theme={theme} onThemeChange={setTheme} />
+        <UserMenuButton
+          identity={identity}
+          collapsed={false}
+          theme={theme}
+          onThemeChange={setTheme}
+          onNavigate={() => setDrawerOpen(false)}
+        />
       </aside>
     </div>
   )

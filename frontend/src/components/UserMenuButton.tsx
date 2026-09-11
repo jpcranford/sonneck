@@ -88,7 +88,7 @@ function ThemeSwitcher({ theme, onChange }: { theme: ThemePreview; onChange: (th
   )
 }
 
-export function UserMenuButton({ collapsed }: { collapsed: boolean }) {
+export function UserMenuButton({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: () => void }) {
   const me = useAuth()
   const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -213,7 +213,10 @@ export function UserMenuButton({ collapsed }: { collapsed: boolean }) {
         <div className="p-1.5">
           <Link
             to="/settings"
-            onClick={() => setOpen(false)}
+            onClick={() => {
+              setOpen(false)
+              onNavigate?.()
+            }}
             role="menuitem"
             className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-[0.85rem] text-sidebar-text hover:bg-white/5"
           >
@@ -223,7 +226,10 @@ export function UserMenuButton({ collapsed }: { collapsed: boolean }) {
           {isAdmin && (
             <Link
               to="/admin"
-              onClick={() => setOpen(false)}
+              onClick={() => {
+                setOpen(false)
+                onNavigate?.()
+              }}
               role="menuitem"
               className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-[0.85rem] text-sidebar-text hover:bg-white/5"
             >
