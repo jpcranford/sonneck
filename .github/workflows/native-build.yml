@@ -52,7 +52,14 @@ on:
 
 env:
   WAILS_VERSION: v2.15.0
-  GO_VERSION: '1.23'
+  # Matches the Dockerfile's own golang:1.26-bookworm pin, not an
+  # independently-chosen version — this repo's go.mod already requires
+  # "go 1.26.6"; '1.23' (this file's original value) was simply wrong and
+  # only surfaced once Wails v2.15.0 itself started requiring go >= 1.25.0
+  # (`go install` failed outright: "requires go >= 1.25.0 (running go
+  # 1.23.12)", a real CI failure caught on this exact workflow's own
+  # second real run).
+  GO_VERSION: '1.26'
 
 jobs:
   build-macos:
