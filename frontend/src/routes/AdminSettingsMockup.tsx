@@ -328,9 +328,8 @@ const INITIAL_LOOKUP_TABLES: Record<LookupColumn, LookupItem[]> = {
 // itself (SectionBlock) only rendering there too.
 const JUMP_LINKS: { id: string; label: string; nativeOnly?: boolean }[] = [
   { id: 'share-network', label: 'Share on Network', nativeOnly: true },
-  { id: 'library-settings', label: 'Library Settings' },
-  { id: 'library', label: 'Library' },
   { id: 'version', label: 'Version' },
+  { id: 'library-settings', label: 'Library Settings' },
   { id: 'users', label: 'Users' },
   { id: 'lookup', label: 'Lookup Tables' },
 ]
@@ -993,8 +992,89 @@ export function AdminSettingsMockup() {
           </SectionBlock>
         )}
 
+        <SectionBlock id="version" title="Version">
+          <div className="flex flex-col gap-3">
+            {/* Dev-only preview control — the real page has exactly one
+                build identity to report, computed server-side by matching
+                this build's own injected commit SHA against GitHub's
+                release + pre-release tags. This lets all three outcomes be
+                reviewed without three separate real builds. */}
+            <div className="flex flex-wrap items-center gap-2 rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-3 py-2 text-xs text-ink-soft">
+              <span className="font-medium text-ink">Preview build identity:</span>
+              <div className="flex overflow-hidden rounded border border-border">
+                {(Object.keys(BUILD_FIXTURES) as BuildKind[]).map((key) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setBuildKind(key)}
+                    className={`cursor-pointer px-2 py-1 ${
+                      buildKind === key ? 'bg-accent text-white' : 'bg-paper hover:bg-paper-sunken'
+                    }`}
+                  >
+                    {BUILD_FIXTURES[key].label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+              <span className="min-w-0 text-sm text-ink">
+                Running <strong>{runningLabel}</strong>
+              </span>
+              {/* Same mobile-stacking convention as UserSettingsMockup.tsx's
+                  own SettingsRow — self-end keeps this right-aligned even
+                  while stacked full-width below `sm`, sm:self-auto reverts
+                  to the row's own items-center once side-by-side. */}
+              <div className="shrink-0 self-end sm:self-auto">
+                {updateChecked ? (
+                  build.checkResult === 'behind' ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#fbe9e7] px-2.5 py-1 text-sm text-[#b45309]">
+                      version {build.availableVersion} available
+                      <a href="#" className="inline-flex items-center gap-0.5 text-inherit underline">
+                        View release <IconExternalLink size={12} />
+                      </a>
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 text-sm text-[#3fa34d]">
+                      <IconCircleCheck size={14} className="text-[#3fa34d]" />
+                      {build.checkResult === 'ahead' ? 'Ahead of the latest release' : 'Up to date'}
+                    </span>
+                  )
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setUpdateChecked(true)}
+                    className="cursor-pointer rounded-md border border-border bg-paper-raised px-3 py-1.5 text-sm text-ink hover:border-accent"
+                  >
+                    Check for updates
+                  </button>
+                )}
+              </div>
+            </div>
+            {updateChecked && (
+              <p className="text-xs text-ink-soft">Checked just now. Reload the page to check again.</p>
+            )}
+            <p className="text-xs text-ink-soft">
+              Shows the build you're running and checks GitHub for anything newer — without falsely
+              flagging a preview or dev build that's already ahead of the latest release.
+            </p>
+          </div>
+        </SectionBlock>
+
         <SectionBlock id="library-settings" title="Library Settings">
           <div className="divide-y divide-border">
+            <div className="flex gap-3 py-2.5">
+              {[
+                { label: 'Pieces', value: 342 },
+                { label: 'Books', value: 58 },
+                { label: 'People', value: 27 },
+              ].map((stat) => (
+                <div key={stat.label} className="flex-1 rounded-md border border-border py-3 text-center">
+                  <p className="font-display text-2xl font-bold text-ink">{stat.value}</p>
+                  <p className="mt-0.5 text-xs tracking-wide text-ink-soft uppercase">{stat.label}</p>
+                </div>
+              ))}
+            </div>
             <LibraryField
               label="Backup schedule"
               help="Standard cron expression"
@@ -1112,93 +1192,6 @@ export function AdminSettingsMockup() {
               </button>
             </div>
           )}
-        </SectionBlock>
-
-        <SectionBlock id="library" title="Library">
-          <div className="flex gap-3">
-            {[
-              { label: 'Pieces', value: 342 },
-              { label: 'Books', value: 58 },
-              { label: 'People', value: 27 },
-            ].map((stat) => (
-              <div
-                key={stat.label}
-                className="flex-1 rounded-md border border-border py-3 text-center"
-              >
-                <p className="font-display text-2xl font-bold text-ink">{stat.value}</p>
-                <p className="mt-0.5 text-xs tracking-wide text-ink-soft uppercase">{stat.label}</p>
-              </div>
-            ))}
-          </div>
-        </SectionBlock>
-
-        <SectionBlock id="version" title="Version">
-          <div className="flex flex-col gap-3">
-            {/* Dev-only preview control — the real page has exactly one
-                build identity to report, computed server-side by matching
-                this build's own injected commit SHA against GitHub's
-                release + pre-release tags. This lets all three outcomes be
-                reviewed without three separate real builds. */}
-            <div className="flex flex-wrap items-center gap-2 rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-3 py-2 text-xs text-ink-soft">
-              <span className="font-medium text-ink">Preview build identity:</span>
-              <div className="flex overflow-hidden rounded border border-border">
-                {(Object.keys(BUILD_FIXTURES) as BuildKind[]).map((key) => (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setBuildKind(key)}
-                    className={`cursor-pointer px-2 py-1 ${
-                      buildKind === key ? 'bg-accent text-white' : 'bg-paper hover:bg-paper-sunken'
-                    }`}
-                  >
-                    {BUILD_FIXTURES[key].label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-              <span className="min-w-0 text-sm text-ink">
-                Running <strong>{runningLabel}</strong>
-              </span>
-              {/* Same mobile-stacking convention as UserSettingsMockup.tsx's
-                  own SettingsRow — self-end keeps this right-aligned even
-                  while stacked full-width below `sm`, sm:self-auto reverts
-                  to the row's own items-center once side-by-side. */}
-              <div className="shrink-0 self-end sm:self-auto">
-                {updateChecked ? (
-                  build.checkResult === 'behind' ? (
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#fbe9e7] px-2.5 py-1 text-sm text-[#b45309]">
-                      version {build.availableVersion} available
-                      <a href="#" className="inline-flex items-center gap-0.5 text-inherit underline">
-                        View release <IconExternalLink size={12} />
-                      </a>
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1.5 text-sm text-[#3fa34d]">
-                      <IconCircleCheck size={14} className="text-[#3fa34d]" />
-                      {build.checkResult === 'ahead' ? 'Ahead of the latest release' : 'Up to date'}
-                    </span>
-                  )
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setUpdateChecked(true)}
-                    className="cursor-pointer rounded-md border border-border bg-paper-raised px-3 py-1.5 text-sm text-ink hover:border-accent"
-                  >
-                    Check for updates
-                  </button>
-                )}
-              </div>
-            </div>
-            {updateChecked && (
-              <p className="text-xs text-ink-soft">Checked just now. Reload the page to check again.</p>
-            )}
-            <p className="text-xs text-ink-soft">
-              Shows the build you're running and checks GitHub for anything newer — without falsely
-              flagging a preview or dev build that's already ahead of the latest release.
-            </p>
-          </div>
         </SectionBlock>
 
         <SectionBlock id="users" title="Users">

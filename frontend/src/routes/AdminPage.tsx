@@ -77,9 +77,8 @@ const PERM_DESCRIPTIONS: Record<Permission, string> = {
 
 const JUMP_LINKS = [
   { id: 'share-network', label: 'Share on Network', nativeOnly: true },
-  { id: 'library-settings', label: 'Library Settings' },
-  { id: 'library', label: 'Library' },
   { id: 'version', label: 'Version' },
+  { id: 'library-settings', label: 'Library Settings' },
   { id: 'users', label: 'Users' },
   { id: 'lookup', label: 'Lookup Tables' },
 ]
@@ -1046,6 +1045,7 @@ function LibrarySettingsSection() {
   })
   const [libraryLocationModalOpen, setLibraryLocationModalOpen] = useState(false)
   const restartMutation = useMutation({ mutationFn: restartNativeApp })
+  const { data: counts } = useQuery({ queryKey: ['admin', 'library-counts'], queryFn: getLibraryCounts })
 
   function patch(partial: Partial<UpdateLibrarySettingsRequest>) {
     if (!settings) return
@@ -1063,6 +1063,18 @@ function LibrarySettingsSection() {
   return (
     <SectionBlock id="library-settings" title="Library Settings">
       <div className="divide-y divide-border">
+        <div className="flex gap-3 py-2.5">
+          {[
+            { label: 'Pieces', value: counts?.pieces ?? 0 },
+            { label: 'Books', value: counts?.books ?? 0 },
+            { label: 'People', value: counts?.people ?? 0 },
+          ].map((stat) => (
+            <div key={stat.label} className="flex-1 rounded-md border border-border py-3 text-center">
+              <p className="font-display text-2xl font-bold text-ink">{stat.value}</p>
+              <p className="mt-0.5 text-xs tracking-wide text-ink-soft uppercase">{stat.label}</p>
+            </div>
+          ))}
+        </div>
         <LibraryField
           label="Backup schedule"
           help="Standard cron expression"
@@ -1191,26 +1203,6 @@ function LibrarySettingsSection() {
   )
 }
 
-function LibrarySection() {
-  const { data: counts } = useQuery({ queryKey: ['admin', 'library-counts'], queryFn: getLibraryCounts })
-  return (
-    <SectionBlock id="library" title="Library">
-      <div className="flex gap-3">
-        {[
-          { label: 'Pieces', value: counts?.pieces ?? 0 },
-          { label: 'Books', value: counts?.books ?? 0 },
-          { label: 'People', value: counts?.people ?? 0 },
-        ].map((stat) => (
-          <div key={stat.label} className="flex-1 rounded-md border border-border py-3 text-center">
-            <p className="font-display text-2xl font-bold text-ink">{stat.value}</p>
-            <p className="mt-0.5 text-xs tracking-wide text-ink-soft uppercase">{stat.label}</p>
-          </div>
-        ))}
-      </div>
-    </SectionBlock>
-  )
-}
-
 export function AdminPage() {
   usePageTitle('Admin Settings')
   const me = useAuth()
@@ -1234,9 +1226,8 @@ export function AdminPage() {
         </div>
 
         {isNative && <ShareOnNetworkSection />}
-        <LibrarySettingsSection />
-        <LibrarySection />
         <VersionSection />
+        <LibrarySettingsSection />
         <UsersSection />
         <LookupTablesSection />
       </div>
