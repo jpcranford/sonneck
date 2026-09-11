@@ -799,3 +799,48 @@ func BuildAuthMeResponse(user *models.User, authMethod string) (*AuthMeResponse,
 		AvatarURL:   user.AvatarURL,
 	}, nil
 }
+
+// NativeSettingsResponse backs Admin Settings' "Share on Network"/"Library
+// location" cards on a native build only (project_wails_native_app_
+// investigation memory's Phase 7) — GET 404s outright on Docker
+// (BuildTarget != "native"), since none of this is meaningful there.
+//
+// ShareOnNetwork/LibraryPath are the *persisted* choice (nativeconfig.json,
+// what a restart will apply); AppliedShareOnNetwork/AppliedLibraryPath are
+// what this running process actually booted with — a real restart is the
+// only thing that ever moves the Applied* pair, mirroring the already-
+// locked "restart required, not live-rebind" decision (Phase 4). The
+// frontend diffs the two pairs itself to render the same restart-pending
+// banner/status-pill honesty the approved mockup already built.
+// PendingLibraryPath is non-empty exactly when a library-location change
+// is waiting on a restart to actually move/repoint (nil once applied).
+type NativeSettingsResponse struct {
+	ShareOnNetwork        bool     `json:"shareOnNetwork"`
+	AppliedShareOnNetwork bool     `json:"appliedShareOnNetwork"`
+	LibraryPath           string   `json:"libraryPath"`
+	PendingLibraryPath    *string  `json:"pendingLibraryPath,omitempty"`
+	Port                  string   `json:"port"`
+	LocalIPs              []string `json:"localIPs"`
+}
+
+// UpdateNativeSettingsRequest is a partial-update body (unlike this app's
+// usual full-replace PATCH convention) — Share on Network and Library
+// location are two independent controls on the page that never submit
+// together, and Share on Network specifically must persist on every single
+// toggle click regardless of whether Library location has ever been
+// touched (Phase 4's locked design: persisting is decoupled from
+// applying). LibraryPath/MoveExisting only take effect together — setting
+// LibraryPath without MoveExisting means "just point there," matching the
+// approved mockup's own two-choice modal.
+type UpdateNativeSettingsRequest struct {
+	ShareOnNetwork *bool   `json:"shareOnNetwork,omitempty"`
+	LibraryPath    *string `json:"libraryPath,omitempty"`
+	MoveExisting   bool    `json:"moveExisting,omitempty"`
+}
+
+// ChooseFolderResponse is empty-Path (not an error) when the user cancels
+// the native OS folder dialog — a cancel is a normal, expected outcome, not
+// a failure.
+type ChooseFolderResponse struct {
+	Path string `json:"path"`
+}

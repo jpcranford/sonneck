@@ -15,6 +15,7 @@ import {
 } from '@tabler/icons-react'
 import type { AppConfig } from '../api/config'
 import { ApiError } from '../api/client'
+import { chooseNativeFolder, restartNativeApp, updateNativeSettings } from '../api/native'
 import { completeSetup } from '../api/setup'
 import { SonneckWordmark } from '../components/SonneckWordmark'
 
@@ -24,12 +25,21 @@ import { SonneckWordmark } from '../components/SonneckWordmark'
 // If the two ever look different, that's either a bug or a change that
 // needs porting to both.
 //
-// Two deliberate simplifications vs. the mockup, since neither has a real
-// counterpart yet: no "Preview as Docker/Native" toggle (no native/Wails
-// build exists, so the Folder step only has Docker's read-only
-// path-confirmation variant, and the Security step's OIDC card only ever
-// shows the Docker wording). Both need a real native branch once that
-// build exists.
+// FolderStep's native branch (Phase 7) is one deliberate expansion beyond
+// the mockup, which only ever previews it with fixture paths: picking a
+// folder here doesn't just update local state — DATA_DIR is resolved once
+// at process start (internal/config.Load, before db.Open), so a changed
+// library path genuinely can't take effect without a real restart. Picking
+// a *different* folder than the one currently in use (config.dataDir)
+// persists it (PATCH /api/native/settings — no moveExisting, always
+// point-only here, since there's nothing to move yet on a first launch —
+// see the Library location card's own comment in AdminPage.tsx for the
+// "move existing" case that only makes sense post-setup) and immediately
+// restarts, skipping the rest of this wizard entirely: the new process
+// naturally lands back on a fresh Welcome screen if the chosen folder has
+// no completed setup of its own, or straight into the real app if it does
+// (the mockup's own "Choose an empty folder, or one that already has a
+// Sonneck library in it" copy already describes exactly this).
 //
 // App.tsx renders this in place of the real app for as long as
 // config.firstLaunchCompleted is false, and passes down the same
@@ -97,7 +107,45 @@ function WelcomeStep({ onStart }: { onStart: () => void }) {
   )
 }
 
-function FolderStep({ dataDir, onBack, onNext }: { dataDir: string; onBack: () => void; onNext: () => void }) {
+// RestartingStep replaces the whole wizard the instant a native folder
+// switch is confirmed — the current process is about to quit and a fresh
+// one relaunch, so there's no "Continue" to offer here, unlike every other
+// step in this flow.
+function RestartingStep() {
+  return (
+    <div className="flex w-full max-w-md flex-col items-center gap-4 text-center">
+      <div className="size-8 animate-spin rounded-full border-2 border-border border-t-accent" />
+      <h1 className="font-display text-2xl font-medium text-ink">Switching libraries…</h1>
+      <p className="text-sm text-ink-soft">Sonneck is restarting to use your new folder.</p>
+    </div>
+  )
+}
+
+function FolderStep({ config, onBack, onNext }: { config: AppConfig; onBack: () => void; onNext: () => void }) {
+  const isNative = config.buildTarget === 'native'
+  const [restarting, setRestarting] = useState(false)
+  const [switchError, setSwitchError] = useState<string | null>(null)
+
+  const switchFolderMutation = useMutation({
+    mutationFn: async (path: string) => {
+      await updateNativeSettings({ libraryPath: path })
+      await restartNativeApp()
+    },
+    onError: () => setSwitchError('Could not switch to that folder. Try again.'),
+    onSuccess: () => setRestarting(true),
+  })
+
+  async function handleBrowse() {
+    setSwitchError(null)
+    const { path } = await chooseNativeFolder()
+    if (!path || path === config.dataDir) return // canceled, or picked the folder already in use
+    switchFolderMutation.mutate(path)
+  }
+
+  if (restarting) {
+    return <RestartingStep />
+  }
+
   return (
     <div className="flex w-full max-w-md flex-col">
       <WizardChrome step={1} onBack={onBack} />
@@ -107,18 +155,45 @@ function FolderStep({ dataDir, onBack, onNext }: { dataDir: string; onBack: () =
       </p>
 
       <div className="mt-6 flex flex-col gap-2.5">
-        <div className="flex items-center gap-3 rounded-md border border-border bg-paper-sunken px-4 py-3">
-          <IconFolderOpen size={20} className="shrink-0 text-ink-soft" />
-          <div className="min-w-0 flex-1">
-            <p className="truncate font-mono text-sm text-ink">{dataDir}</p>
-            <p className="text-xs text-ink-soft">Mounted via your docker-compose.yml volume</p>
-          </div>
-        </div>
-        <p className="flex items-start gap-1.5 text-xs text-ink-soft">
-          <IconInfoCircle size={14} className="mt-0.5 shrink-0" />
-          Running in Docker, your library location is set by the volume mount, not from here. To use a different
-          folder, point the mount at it and restart the container.
-        </p>
+        {isNative ? (
+          <>
+            <div className="flex items-center gap-2">
+              <input
+                readOnly
+                value={config.dataDir ?? ''}
+                className="min-w-0 flex-1 truncate rounded-md border border-border bg-paper-raised px-3 py-2 font-mono text-sm text-ink"
+              />
+              <button
+                type="button"
+                onClick={handleBrowse}
+                disabled={switchFolderMutation.isPending}
+                className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-border bg-paper-raised px-3 py-2 text-sm text-ink hover:border-accent disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <IconFolderOpen size={16} />
+                Browse…
+              </button>
+            </div>
+            <p className="text-xs text-ink-soft">
+              Choose an empty folder, or one that already has a Sonneck library in it.
+            </p>
+            {switchError && <p className="text-xs text-red-700">{switchError}</p>}
+          </>
+        ) : (
+          <>
+            <div className="flex items-center gap-3 rounded-md border border-border bg-paper-sunken px-4 py-3">
+              <IconFolderOpen size={20} className="shrink-0 text-ink-soft" />
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-mono text-sm text-ink">{config.dataDir ?? '/data'}</p>
+                <p className="text-xs text-ink-soft">Mounted via your docker-compose.yml volume</p>
+              </div>
+            </div>
+            <p className="flex items-start gap-1.5 text-xs text-ink-soft">
+              <IconInfoCircle size={14} className="mt-0.5 shrink-0" />
+              Running in Docker, your library location is set by the volume mount, not from here. To use a different
+              folder, point the mount at it and restart the container.
+            </p>
+          </>
+        )}
       </div>
 
       <button
@@ -375,18 +450,24 @@ function SecurityStep({
               <p className="flex items-start gap-1.5 text-xs text-ink-soft">
                 <IconInfoCircle size={14} className="mt-0.5 shrink-0" />
                 <span>
-                  Configure via <code className="rounded bg-paper-sunken px-1 py-0.5">OIDC_*</code> environment
-                  variables.{' '}
-                  <a
-                    href="https://github.com/jpcranford/sonneck/blob/main/docs/oidc-setup.md"
-                    target="_blank"
-                    rel="noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="inline-flex items-center gap-0.5 text-accent underline hover:text-accent/80"
-                  >
-                    Setup guide
-                    <IconExternalLink size={12} />
-                  </a>
+                  {config.buildTarget === 'native' ? (
+                    'Only available when running Sonneck via Docker.'
+                  ) : (
+                    <>
+                      Configure via <code className="rounded bg-paper-sunken px-1 py-0.5">OIDC_*</code> environment
+                      variables.{' '}
+                      <a
+                        href="https://github.com/jpcranford/sonneck/blob/main/docs/oidc-setup.md"
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center gap-0.5 text-accent underline hover:text-accent/80"
+                      >
+                        Setup guide
+                        <IconExternalLink size={12} />
+                      </a>
+                    </>
+                  )}
                 </span>
               </p>
             </SecurityCard>
@@ -464,11 +545,7 @@ export function FirstLaunchFlow({ config }: FirstLaunchFlowProps) {
     <div className="flex min-h-dvh flex-col items-center justify-center bg-paper p-6">
       {step === 'welcome' && <WelcomeStep onStart={() => setStep('folder')} />}
       {step === 'folder' && (
-        <FolderStep
-          dataDir={config.dataDir ?? '/data'}
-          onBack={() => setStep('welcome')}
-          onNext={() => setStep('security')}
-        />
+        <FolderStep config={config} onBack={() => setStep('welcome')} onNext={() => setStep('security')} />
       )}
       {step === 'security' && (
         <SecurityStep

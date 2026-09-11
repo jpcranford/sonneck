@@ -169,7 +169,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	handler := handlers.New(conn, cfg, logger, frontend, scheduler, buildSHA, buildDate, buildTarget, oidcAuth)
+	handler := handlers.New(conn, cfg, logger, frontend, scheduler, buildSHA, buildDate, buildTarget, oidcAuth, nil)
 
 	// shareOnNetwork is always false here — this binary's buildTarget stays
 	// "docker" (see the var block above), and ListenAddress/ListenWithFallback

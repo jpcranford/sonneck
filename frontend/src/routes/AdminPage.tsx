@@ -1,24 +1,31 @@
-import { useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Navigate } from 'react-router-dom'
+import QRCode from 'qrcode'
 import {
   IconChevronDown,
   IconCircleCheck,
   IconCircleDashedPlus,
+  IconCopy,
   IconExternalLink,
+  IconFolderOpen,
   IconInfoCircle,
   IconLockOpen2,
   IconPassword,
   IconTrash,
   IconUserCircle,
+  IconWifi,
+  IconWifiOff,
 } from '@tabler/icons-react'
 import { InfoTooltip } from '../components/InfoTooltip'
 import { Modal } from '../components/Modal'
 import { usePageTitle } from '../lib/usePageTitle'
 import { useAuth } from '../lib/AuthContext'
+import { copyToClipboard } from '../lib/clipboard'
 import { ApiError } from '../api/client'
 import { getConfig } from '../api/config'
 import { listInstruments, listSheetTypes } from '../api/lookups'
+import { chooseNativeFolder, getNativeSettings, restartNativeApp, updateNativeSettings } from '../api/native'
 import type { Tag } from '../api/types'
 import {
   checkForUpdates,
@@ -69,6 +76,7 @@ const PERM_DESCRIPTIONS: Record<Permission, string> = {
 }
 
 const JUMP_LINKS = [
+  { id: 'share-network', label: 'Share on Network', nativeOnly: true },
   { id: 'library-settings', label: 'Library Settings' },
   { id: 'library', label: 'Library' },
   { id: 'version', label: 'Version' },
@@ -76,10 +84,29 @@ const JUMP_LINKS = [
   { id: 'lookup', label: 'Lookup Tables' },
 ]
 
-function SectionBlock({ id, title, children }: { id: string; title: string; children: ReactNode }) {
+// Matches AdminSettingsMockup.tsx's own delay — long enough that the fade
+// on the address/QR panel (ShareOnNetworkSection below) has a moment to
+// play before the restart banner pops in beside it, short enough not to
+// feel sluggish.
+const RESTART_BANNER_DELAY_MS = 300
+
+function SectionBlock({
+  id,
+  title,
+  headerExtra,
+  children,
+}: {
+  id: string
+  title: string
+  headerExtra?: ReactNode
+  children: ReactNode
+}) {
   return (
     <div id={id} className="scroll-mt-20 rounded-lg border border-border bg-paper-raised p-5">
-      <h2 className="mb-3 font-display text-base font-medium text-ink">{title}</h2>
+      <h2 className="mb-3 flex items-center font-display text-base font-medium text-ink">
+        {title}
+        {headerExtra}
+      </h2>
       {children}
     </div>
   )
@@ -681,6 +708,324 @@ function VersionSection() {
   )
 }
 
+// QRCodeCanvas draws a real, genuinely-encoded QR code entirely client-side
+// (the `qrcode` package's browser build, canvas output) — never a remote
+// QR-generation API, per the locked design-Artifact decision
+// (project_wails_native_app_investigation memory's Phase 4): sending a
+// user's own LAN address to a third party just to render a code for
+// something that only ever needs to work on that LAN is both a real
+// privacy leak and a pointless internet dependency for a local-network
+// feature. Fixed white background regardless of theme (CLAUDE.md's own
+// documented exception for this control) — a QR code needs real
+// dark-on-light contrast to stay scannable.
+function QRCodeCanvas({ value, size }: { value: string; size: number }) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  useEffect(() => {
+    if (!canvasRef.current) return
+    void QRCode.toCanvas(canvasRef.current, value, { width: size, margin: 0, color: { dark: '#1a1a1a', light: '#ffffff' } })
+  }, [value, size])
+  return <canvas ref={canvasRef} width={size} height={size} className="block" />
+}
+
+// ShareOnNetworkSection is a real build of the approved design Artifact's
+// Option C (project_wails_native_app_investigation memory's Phase 4) —
+// status pill in the header, restart-required toggle, primary LAN address
+// + real QR code once live. shareOnNetwork/libraryPath are the persisted
+// choice (what a restart will apply); appliedShareOnNetwork is what this
+// running process actually booted with — only a real restart
+// (handleRestartNow, POST /api/native/restart) ever moves the latter, so
+// the status pill and address/QR panel both track *applied*, never the
+// pending toggle value, exactly like the mockup's own locked reasoning.
+function ShareOnNetworkSection() {
+  const { data: settings } = useQuery({ queryKey: ['native-settings'], queryFn: getNativeSettings })
+  const queryClient = useQueryClient()
+  const patchMutation = useMutation({
+    mutationFn: updateNativeSettings,
+    onSuccess: (updated) => queryClient.setQueryData(['native-settings'], updated),
+  })
+  const restartMutation = useMutation({ mutationFn: restartNativeApp })
+
+  const [showAllAddresses, setShowAllAddresses] = useState(false)
+  const [showRestartBanner, setShowRestartBanner] = useState(false)
+  const restartBannerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  function clearRestartBannerTimer() {
+    if (restartBannerTimerRef.current !== null) {
+      clearTimeout(restartBannerTimerRef.current)
+      restartBannerTimerRef.current = null
+    }
+  }
+
+  if (!settings) return null
+
+  const restartPending = settings.shareOnNetwork !== settings.appliedShareOnNetwork
+  // Still live, but about to turn off once restarted — the one direction
+  // that actually has something to fade (the reverse, pending-*on*, has no
+  // address/QR panel showing yet at all, since that stays gated on the
+  // applied value below).
+  const imminentSwitchOff = restartPending && !settings.shareOnNetwork
+
+  function toggleShareOnNetwork() {
+    const next = !settings!.shareOnNetwork
+    clearRestartBannerTimer()
+    patchMutation.mutate({ shareOnNetwork: next })
+    if (next === settings!.appliedShareOnNetwork) {
+      setShowRestartBanner(false)
+    } else {
+      restartBannerTimerRef.current = setTimeout(() => setShowRestartBanner(true), RESTART_BANNER_DELAY_MS)
+    }
+  }
+
+  function handleRestartNow() {
+    clearRestartBannerTimer()
+    setShowRestartBanner(false)
+    restartMutation.mutate()
+  }
+
+  const primaryAddress = settings.localIPs[0] ? `http://${settings.localIPs[0]}:${settings.port}` : null
+
+  return (
+    <SectionBlock
+      id="share-network"
+      title="Share on Network"
+      headerExtra={
+        settings.appliedShareOnNetwork ? (
+          <span className="ml-2.5 inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-0.5 text-xs font-semibold text-accent">
+            <IconWifi size={12} />
+            Shared on this network
+          </span>
+        ) : (
+          <span className="ml-2.5 inline-flex items-center gap-1.5 rounded-full bg-paper-sunken px-2.5 py-0.5 text-xs font-semibold text-ink-soft">
+            <IconWifiOff size={12} />
+            Private to this device
+          </span>
+        )
+      }
+    >
+      <div className="flex items-center justify-between gap-4 py-1">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-ink">Share on network</p>
+          <p className="mt-0.5 text-xs text-ink-soft">Off by default — turn on to reach Sonneck from another device.</p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={settings.shareOnNetwork}
+          onClick={toggleShareOnNetwork}
+          className={`relative h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors ${
+            settings.shareOnNetwork ? 'bg-accent' : 'bg-border'
+          }`}
+        >
+          <span
+            className={`absolute top-0.5 size-5 rounded-full bg-white transition-all ${
+              settings.shareOnNetwork ? 'left-5' : 'left-0.5'
+            }`}
+          />
+        </button>
+      </div>
+
+      {showRestartBanner && (
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-3.5 py-2.5">
+          <p className="flex items-center gap-1.5 text-xs font-medium text-ink">
+            <IconInfoCircle size={14} className="shrink-0 text-accent" />
+            Restart Sonneck to {settings.shareOnNetwork ? 'start sharing on this network' : 'stop sharing on this network'}.
+          </p>
+          <button
+            type="button"
+            onClick={handleRestartNow}
+            disabled={restartMutation.isPending}
+            className="shrink-0 cursor-pointer rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {restartMutation.isPending ? 'Restarting…' : 'Restart Now'}
+          </button>
+        </div>
+      )}
+
+      {settings.appliedShareOnNetwork && primaryAddress && (
+        <div
+          className={`transition-opacity duration-300 ${imminentSwitchOff ? 'pointer-events-none opacity-40' : ''}`}
+          aria-hidden={imminentSwitchOff}
+        >
+          <div className="mt-3 flex flex-wrap items-center gap-3 rounded-lg bg-paper-sunken p-3">
+            <div className="flex min-w-0 flex-1 items-center justify-between gap-3 rounded-md bg-paper-raised px-3.5 py-2.5">
+              <span className="truncate font-mono text-base font-semibold text-ink">{primaryAddress}</span>
+              <button
+                type="button"
+                onClick={() => void copyToClipboard(primaryAddress)}
+                className="flex shrink-0 cursor-pointer items-center gap-1 text-xs text-ink-soft hover:text-ink"
+              >
+                <IconCopy size={14} />
+                Copy
+              </button>
+            </div>
+            <div
+              className="flex size-[4.25rem] shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-white"
+              title={primaryAddress}
+            >
+              <QRCodeCanvas value={primaryAddress} size={60} />
+            </div>
+          </div>
+          {settings.localIPs.length > 1 && (
+            <div className="mt-2">
+              {showAllAddresses ? (
+                <ul className="flex flex-col gap-1">
+                  {settings.localIPs.slice(1).map((ip) => (
+                    <li key={ip} className="font-mono text-xs text-ink-soft">
+                      http://{ip}:{settings.port}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowAllAddresses(true)}
+                  className="cursor-pointer text-xs text-accent underline underline-offset-2 hover:text-accent/80"
+                >
+                  +{settings.localIPs.length - 1} more address
+                </button>
+              )}
+            </div>
+          )}
+          <p className="mt-2 text-xs text-ink-soft">
+            Scan with a phone camera, or open the address above from another device on this network.
+          </p>
+        </div>
+      )}
+    </SectionBlock>
+  )
+}
+
+// LibraryLocationModal is a real build of the approved mockup's own
+// "Change library location" modal — the fixture-cycling "Choose a
+// different folder…" button is now a real native OS folder dialog
+// (chooseNativeFolder), and "Save changes" persists via PATCH
+// /api/native/settings rather than updating local-only state, since
+// DATA_DIR can't change without a real restart (see FirstLaunchFlow.tsx's
+// own header comment for the identical underlying reason). The
+// move-vs-point choice is real too: moveExisting true physically moves the
+// current library's contents at the next restart
+// (nativeconfig.ApplyPendingLibraryMove, cmd/sonneck-desktop/main.go),
+// false just repoints. Neither happens synchronously here — this modal's
+// own "Save changes" only ever records the pending choice; LibraryField's
+// own restart-pending row (LibrarySettingsSection below) is what actually
+// triggers the move via a real restart.
+function LibraryLocationModal({
+  open,
+  onClose,
+  currentPath,
+}: {
+  open: boolean
+  onClose: () => void
+  currentPath: string
+}) {
+  const queryClient = useQueryClient()
+  const [candidatePath, setCandidatePath] = useState(currentPath)
+  const [moveExisting, setMoveExisting] = useState(true)
+
+  const chooseMutation = useMutation({
+    mutationFn: chooseNativeFolder,
+    onSuccess: ({ path }) => {
+      if (path) setCandidatePath(path)
+    },
+  })
+
+  const saveMutation = useMutation({
+    mutationFn: () => updateNativeSettings({ libraryPath: candidatePath, moveExisting }),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(['native-settings'], updated)
+      onClose()
+    },
+  })
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      labelledBy="library-location-modal-title"
+      footer={
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 text-sm text-ink hover:bg-paper"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={candidatePath === currentPath || saveMutation.isPending}
+            onClick={() => saveMutation.mutate()}
+            className="cursor-pointer rounded-md bg-accent px-4 py-2 text-sm text-white enabled:hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {saveMutation.isPending ? 'Saving…' : 'Save changes'}
+          </button>
+        </div>
+      }
+    >
+      <h2 id="library-location-modal-title" className="font-display text-lg font-medium text-ink">
+        Change library location
+      </h2>
+      <p className="mt-1 text-sm text-ink-soft">Choose a new folder for Sonneck's library.</p>
+
+      <div className="mt-4 flex items-center gap-3 rounded-md border border-border bg-paper-sunken px-3.5 py-2.5">
+        <span className="min-w-0 flex-1 truncate font-mono text-sm text-ink">{candidatePath}</span>
+        <button
+          type="button"
+          onClick={() => chooseMutation.mutate()}
+          disabled={chooseMutation.isPending}
+          className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-border bg-paper-raised px-2.5 py-1 text-xs text-ink hover:border-accent disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <IconFolderOpen size={14} />
+          Choose a different folder…
+        </button>
+      </div>
+
+      <div className="mt-4 flex flex-col gap-2" role="radiogroup" aria-label="What happens to your current library">
+        <label className="flex cursor-pointer items-start gap-2.5 rounded-md border border-border p-3 has-checked:border-accent has-checked:bg-accent-soft">
+          <input
+            type="radio"
+            name="move-existing"
+            checked={moveExisting}
+            onChange={() => setMoveExisting(true)}
+            className="mt-0.5 accent-accent"
+          />
+          <span>
+            <span className="block text-sm font-medium text-ink">Move everything here</span>
+            <span className="block text-xs text-ink-soft">
+              Your books, pieces, and database move from {currentPath} to the new folder.
+            </span>
+          </span>
+        </label>
+        <label className="flex cursor-pointer items-start gap-2.5 rounded-md border border-border p-3 has-checked:border-accent has-checked:bg-accent-soft">
+          <input
+            type="radio"
+            name="move-existing"
+            checked={!moveExisting}
+            onChange={() => setMoveExisting(false)}
+            className="mt-0.5 accent-accent"
+          />
+          <span>
+            <span className="block text-sm font-medium text-ink">Just use this folder going forward</span>
+            <span className="block text-xs text-ink-soft">
+              Nothing moves — point Sonneck at the new folder as-is (useful for an already-populated or empty folder).
+            </span>
+          </span>
+        </label>
+      </div>
+
+      {saveMutation.isError && (
+        <p className="mt-3 text-xs text-red-700">
+          {saveMutation.error instanceof ApiError ? saveMutation.error.message : 'Something went wrong.'}
+        </p>
+      )}
+      <p className="mt-3 flex items-start gap-1.5 text-xs text-ink-soft">
+        <IconInfoCircle size={14} className="mt-0.5 shrink-0" />
+        Takes effect after a restart — you'll get a "Restart Now" button once this is saved.
+      </p>
+    </Modal>
+  )
+}
+
 function LibrarySettingsSection() {
   const { data: settings } = useQuery({ queryKey: ['admin', 'library-settings'], queryFn: getLibrarySettings })
   const queryClient = useQueryClient()
@@ -692,6 +1037,15 @@ function LibrarySettingsSection() {
   const [securityModalOpen, setSecurityModalOpen] = useState(false)
   const { data: config } = useQuery({ queryKey: ['config'], queryFn: getConfig })
   const me = useAuth()
+  const isNative = config?.buildTarget === 'native'
+
+  const { data: nativeSettings } = useQuery({
+    queryKey: ['native-settings'],
+    queryFn: getNativeSettings,
+    enabled: isNative,
+  })
+  const [libraryLocationModalOpen, setLibraryLocationModalOpen] = useState(false)
+  const restartMutation = useMutation({ mutationFn: restartNativeApp })
 
   function patch(partial: Partial<UpdateLibrarySettingsRequest>) {
     if (!settings) return
@@ -789,8 +1143,50 @@ function LibrarySettingsSection() {
             </button>
           }
         />
+        {isNative && nativeSettings && (
+          <div className="flex items-center justify-between gap-4 py-2.5">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-ink">Library location</p>
+              <p className="mt-0.5 truncate font-mono text-xs text-ink-soft">{nativeSettings.libraryPath}</p>
+            </div>
+            <div className="shrink-0">
+              <button
+                type="button"
+                onClick={() => setLibraryLocationModalOpen(true)}
+                className="cursor-pointer rounded-md border border-border bg-paper-raised px-3 py-1.5 text-sm text-ink hover:border-accent"
+              >
+                Change…
+              </button>
+            </div>
+          </div>
+        )}
       </div>
+
+      {isNative && nativeSettings?.pendingLibraryPath && (
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-3.5 py-2.5">
+          <p className="flex items-center gap-1.5 text-xs font-medium text-ink">
+            <IconInfoCircle size={14} className="shrink-0 text-accent" />
+            Restart Sonneck to switch to {nativeSettings.pendingLibraryPath}.
+          </p>
+          <button
+            type="button"
+            onClick={() => restartMutation.mutate()}
+            disabled={restartMutation.isPending}
+            className="shrink-0 cursor-pointer rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {restartMutation.isPending ? 'Restarting…' : 'Restart Now'}
+          </button>
+        </div>
+      )}
+
       <SecurityChangeModal open={securityModalOpen} onClose={() => setSecurityModalOpen(false)} currentMethod={me.authMethod} />
+      {isNative && nativeSettings && (
+        <LibraryLocationModal
+          open={libraryLocationModalOpen}
+          onClose={() => setLibraryLocationModalOpen(false)}
+          currentPath={nativeSettings.libraryPath}
+        />
+      )}
     </SectionBlock>
   )
 }
@@ -818,6 +1214,8 @@ function LibrarySection() {
 export function AdminPage() {
   usePageTitle('Admin Settings')
   const me = useAuth()
+  const { data: config } = useQuery({ queryKey: ['config'], queryFn: getConfig })
+  const isNative = config?.buildTarget === 'native'
   if (!me.permissions.includes('admin')) {
     return <Navigate to="/" replace />
   }
@@ -828,13 +1226,14 @@ export function AdminPage() {
         <h1 className="font-display text-xl font-medium text-ink">Admin Settings</h1>
 
         <div className="flex flex-wrap gap-1.5 rounded-lg border border-border bg-paper-raised p-4">
-          {JUMP_LINKS.map((link) => (
+          {JUMP_LINKS.filter((link) => !link.nativeOnly || isNative).map((link) => (
             <a key={link.id} href={`#${link.id}`} className="rounded-full bg-paper-sunken px-2.5 py-1 text-xs text-ink-soft hover:bg-accent-soft hover:text-accent">
               {link.label}
             </a>
           ))}
         </div>
 
+        {isNative && <ShareOnNetworkSection />}
         <LibrarySettingsSection />
         <LibrarySection />
         <VersionSection />

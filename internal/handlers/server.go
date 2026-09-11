@@ -46,6 +46,11 @@ type Server struct {
 	// *oidcauth.Authenticator, so tests can inject a fake with no real
 	// network/JWT-signing involved.
 	OIDCAuth OIDCAuthenticator
+
+	// Native is nil for every Docker/test/CLI-subcommand construction — see
+	// NativeOptions' own doc comment (native.go). Every /api/native/*
+	// handler checks it via requireNativeAccess before using it.
+	Native *NativeOptions
 }
 
 // New wires up the full HTTP surface — the /api endpoints below, /healthz,
@@ -58,13 +63,14 @@ type Server struct {
 // unless cfg.AuthMethod == "oidc" — constructed once in cmd/sonneck/main.go,
 // since it does a real network call (OIDC
 // discovery) that config.Load() itself deliberately never makes.
-func New(db *sql.DB, cfg *config.Config, logger *slog.Logger, frontend fs.FS, scheduler *backup.Scheduler, buildSHA, buildDate, buildTarget string, oidcAuth OIDCAuthenticator) http.Handler {
+func New(db *sql.DB, cfg *config.Config, logger *slog.Logger, frontend fs.FS, scheduler *backup.Scheduler, buildSHA, buildDate, buildTarget string, oidcAuth OIDCAuthenticator, native *NativeOptions) http.Handler {
 	s := &Server{
 		DB: db, Cfg: cfg, Logger: logger,
 		BackupScheduler: scheduler, BuildSHA: buildSHA, BuildDate: buildDate,
 		releaseIdentity: &releaseIdentity{},
 		BuildTarget:     buildTarget,
 		OIDCAuth:        oidcAuth,
+		Native:          native,
 	}
 
 	mux := http.NewServeMux()
@@ -140,6 +146,16 @@ func New(db *sql.DB, cfg *config.Config, logger *slog.Logger, frontend fs.FS, sc
 	mux.HandleFunc("PATCH /api/admin/library-settings", s.handleUpdateLibrarySettings)
 	mux.HandleFunc("GET /api/admin/version", s.handleGetVersion)
 	mux.HandleFunc("POST /api/admin/version/check", s.handleCheckForUpdates)
+
+	// Native-only (Admin Settings' Share on Network/Library location cards,
+	// First Launch's native folder step) — 404s on Docker, gated by
+	// requireNativeAccess (native.go), not a blanket admin check, since the
+	// First Launch flow needs write access to these before any session can
+	// exist. Also in middleware.go's preFirstLaunchOnlyPaths.
+	mux.HandleFunc("GET /api/native/settings", s.handleGetNativeSettings)
+	mux.HandleFunc("PATCH /api/native/settings", s.handleUpdateNativeSettings)
+	mux.HandleFunc("POST /api/native/choose-folder", s.handleChooseNativeFolder)
+	mux.HandleFunc("POST /api/native/restart", s.handleNativeRestart)
 	// Wikipedia autofill (composer/arranger overhaul) — shared by the Edit
 	// Person modal's own autofill button and Upload Portrait's "search
 	// Wikipedia" source step, same "one endpoint, two callers" reasoning

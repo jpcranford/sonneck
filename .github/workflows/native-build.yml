@@ -1,0 +1,439 @@
+name: Native Release
+
+# Builds Sonneck's native macOS/Windows apps and publishes them as GitHub
+# Release assets (project_wails_native_app_investigation memory, Phases
+# 6-8). Only ever runs on a real `release` event (types: [released,
+# prereleased]) or a manual workflow_dispatch — there's no separate
+# push-triggered validation tier the way docker-publish.yml has, since a
+# native build's full pipeline (poppler bundling, codesigning, NSIS
+# packaging, a real smoke-test launch) is expensive enough that running it
+# on every push isn't worth it once this is past its own active
+# development. Unlike docker-publish.yml there's also no floating-tag/
+# multi-arch-manifest complexity to replicate — a native installer is just
+# a file, so "publish" is just "upload it to the release" (`gh release
+# upload`), no separate merge/nightly/sync-latest jobs needed.
+#
+# Every step below reuses a recipe already empirically proven for real in
+# this project's own investigation, not a fresh guess:
+#   - macOS poppler bundling (Homebrew + dylibbundler) — re-verified this
+#     phase against a real .app bundle with a fully stripped PATH (zero
+#     Homebrew reachable) uploading a real PDF through the actual
+#     POST /api/books endpoint and getting a real pageCount back.
+#   - Windows poppler bundling (oschwartz10612/poppler-windows) — verified
+#     for real on an actual windows-latest runner (Phase 2).
+#   - `wails build` itself needs no manual -tags desktop,production (the
+#     CLI injects them) but DOES still need CGO_LDFLAGS="-framework
+#     UniformTypeIdentifiers" on macOS even through the official CLI —
+#     both confirmed empirically, not assumed.
+#
+# Real bugs found across this workflow's own live runs, all fixed:
+#   - windows-latest doesn't ship `makensis` — `wails build -nsis` doesn't
+#     error when it's missing, it just prints a warning and silently
+#     builds a bare .exe with no installer at all. Fixed by installing
+#     NSIS via Chocolatey first, plus a real post-build check that fails
+#     loudly if no installer ever gets produced, so this can't regress
+#     back to silent again.
+#   - Both platforms' own build/bin directories are full of build-only
+#     cruft (the pre-install .exe, staged poppler, WebView2 temp files) —
+#     uploading that whole directory produced an artifact that was
+#     confusing to open and, worse, wasn't the single all-inclusive
+#     installer a release actually needs. Fixed: macOS packages into a
+#     real .dmg (hdiutil, preinstalled), Windows uploads only the NSIS
+#     installer .exe (which now genuinely bundles poppler inside it too —
+#     see build/windows/installer/project.nsi's own hand-customization),
+#     and both use upload-artifact v7's `archive: false` so the actual
+#     download is that one file directly, not a zip-of-a-zip.
+#   - The embedded frontend was silently the committed placeholder, not
+#     the real build, on every run this workflow ever produced until a
+#     real user actually opened a built app and saw it — "Build the
+#     embedded frontend" ran `npm run build` but never copied the output
+#     into internal/webui/dist/ the way the Dockerfile's own frontend
+#     stage does. Fixed, plus a real regression check (grep for the
+#     placeholder's own text, and for the real app shell's `<div
+#     id="root">`) added to both smoke-test steps so this can't ship
+#     silently again.
+
+on:
+  release:
+    types: [released, prereleased]
+  workflow_dispatch:
+
+env:
+  WAILS_VERSION: v2.15.0
+  # Matches the Dockerfile's own golang:1.26-bookworm pin, not an
+  # independently-chosen version — this repo's go.mod already requires
+  # "go 1.26.6"; '1.23' (this file's original value) was simply wrong and
+  # only surfaced once Wails v2.15.0 itself started requiring go >= 1.25.0
+  # (`go install` failed outright: "requires go >= 1.25.0 (running go
+  # 1.23.12)", a real CI failure caught on this exact workflow's own
+  # second real run).
+  GO_VERSION: '1.26'
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    # contents: write only for this job's own final "Attach to the GitHub
+    # Release" step (release events only) — every other step here just
+    # reads/builds, matching docker-publish.yml's own per-job permission
+    # scoping rather than widening the token workflow-wide.
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      # The same embedded frontend the Docker image uses (internal/webui's
+      # go:embed) — cmd/sonneck-desktop has no frontend build of its own
+      # (wails.json's frontend:install/build are deliberately empty, see
+      # that file's own comment), so this step has to run first or the Go
+      # build embeds whatever placeholder index.html happens to already
+      # be checked in.
+      # Mirrors the Dockerfile's own frontend-builder stage exactly
+      # (Dockerfile: `COPY --from=frontend-builder /build/frontend/dist/.
+      # ./internal/webui/dist/`) — internal/webui's own go:embed only ever
+      # sees whatever's physically on disk under internal/webui/dist/ at
+      # compile time, and that directory's checked-in content is
+      # deliberately just a placeholder index.html (internal/webui/webui.go's
+      # own doc comment). Missing this copy step is a real bug this
+      # workflow shipped with since Phase 6 — every prior verification
+      # pass only ever hit the JSON API directly (curl against
+      # /api/native/settings etc.), never actually loaded the page in a
+      # browser, so a built app silently served the placeholder's own
+      # "this is a placeholder" text instead of the real UI until a real
+      # user actually opened one and reported it.
+      - name: Build the embedded frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+          rm -rf ../internal/webui/dist
+          cp -r dist ../internal/webui/dist
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ env.WAILS_VERSION }}
+
+      # Rewrites wails.json's info.productVersion to the release's own tag
+      # (e.g. "0.5" or "0.5.1" — CLAUDE.md's own confirmed bare-number
+      # convention, never "v"-prefixed) padded out to the strict X.X.X
+      # NSIS/Info.plist both require (project.nsi's own template appends
+      # one more ".0" on top of this to make X.X.X.X — Phase 6's own
+      # "invalid VIFileVersion format" bug came from skipping this exact
+      # normalization). Falls back to the same "0.0.1" placeholder Phase 6
+      # already used when there's no release tag at all — a manual
+      # workflow_dispatch run, the only other way this workflow triggers.
+      - name: Set build version
+        id: version
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          if [ -z "$TAG" ]; then
+            VERSION="0.0.1"
+          else
+            IFS='.' read -r -a parts <<< "$TAG"
+            while [ "${#parts[@]}" -lt 3 ]; do parts+=("0"); done
+            VERSION="${parts[0]}.${parts[1]}.${parts[2]}"
+          fi
+          echo "Building version $VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          jq --arg v "$VERSION" '.info.productVersion = $v' cmd/sonneck-desktop/wails.json > /tmp/wails.json.tmp
+          mv /tmp/wails.json.tmp cmd/sonneck-desktop/wails.json
+
+      # Proven recipe (Phase 1, re-verified Phase 6): binaries land in
+      # bin/, their dylibs in a *sibling* libs/ folder — dylibbundler's
+      # binaries reference "@executable_path/../libs/" as their own baked-
+      # in rpath regardless of whatever name is passed to -d, so the
+      # destination folder MUST be named "libs" (not "lib") or this
+      # silently produces binaries that fail to load their own
+      # dependencies at runtime. Confirmed by actually renaming it wrong
+      # once during this phase's own testing and watching it matter.
+      - name: Bundle poppler-utils (macOS)
+        run: |
+          brew install poppler dylibbundler
+          mkdir -p poppler-bundle/bin poppler-bundle/libs
+          cp "$(brew --prefix poppler)/bin/pdfinfo" "$(brew --prefix poppler)/bin/pdftoppm" "$(brew --prefix poppler)/bin/pdftocairo" poppler-bundle/bin/
+          dylibbundler -od -b \
+            -x poppler-bundle/bin/pdfinfo -x poppler-bundle/bin/pdftoppm -x poppler-bundle/bin/pdftocairo \
+            -d poppler-bundle/libs \
+            -s "$(brew --prefix poppler)/lib" -s "$(brew --prefix)/lib"
+
+      - name: Build native app (universal binary)
+        working-directory: cmd/sonneck-desktop
+        env:
+          CGO_LDFLAGS: "-framework UniformTypeIdentifiers"
+        run: |
+          "$(go env GOPATH)/bin/wails" build -platform darwin/universal \
+            -ldflags "-X main.buildSHA=${{ github.sha }} -X main.buildTarget=native"
+
+      # Modifying a bundle's contents after Wails' own self-sign step
+      # invalidates that signature — codesign has to run again, once,
+      # after poppler is actually in place. Ad-hoc (`--sign -`) is
+      # consistent with this project's own accepted v1 posture (unsigned
+      # distribution, CLAUDE.md's own "Gatekeeper warning, accepted
+      # tradeoff" note) — no real certificate exists to sign with anyway.
+      - name: Inject bundled poppler and re-sign
+        run: |
+          APP="cmd/sonneck-desktop/build/bin/Sonneck.app"
+          mkdir -p "$APP/Contents/Resources/poppler"
+          cp -R poppler-bundle/bin poppler-bundle/libs "$APP/Contents/Resources/poppler/"
+          codesign --force --deep --sign - "$APP"
+
+      # A bare .app inside a GitHub Actions artifact download is a real,
+      # justified complaint (direct feedback) — GitHub always wraps every
+      # artifact download in its own zip regardless of content (an
+      # unavoidable platform behavior, not something this workflow
+      # controls), but what's *inside* that zip should be the one file a
+      # real user expects: a standard macOS .dmg, not a loose .app folder
+      # they have to know to drag out themselves. hdiutil is preinstalled
+      # on every macos-latest runner — no extra tool needed.
+      - name: Package into a .dmg
+        run: |
+          hdiutil create -volname "Sonneck" -srcfolder "cmd/sonneck-desktop/build/bin/Sonneck.app" \
+            -ov -format UDZO "cmd/sonneck-desktop/build/bin/Sonneck.dmg"
+
+      # Real proof, not a bare launch check: upload a real generated PDF
+      # through the actual production HTTP endpoint and confirm a real
+      # pageCount comes back — the same check this phase's own local
+      # testing used to prove the bundled poppler binary (not some
+      # ambient system one) is what actually served the request.
+      - name: Smoke-test the built app
+        run: |
+          cat > /tmp/genpdf.go <<'EOF'
+          package main
+          import ("bytes";"fmt";"os")
+          func main() {
+            var buf bytes.Buffer
+            buf.WriteString("%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>\nendobj\n")
+            xrefStart := buf.Len()
+            fmt.Fprintf(&buf, "xref\n0 4\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n0000000115 00000 n \ntrailer\n<< /Size 4 /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n", xrefStart)
+            os.WriteFile("/tmp/smoke-test.pdf", buf.Bytes(), 0o644)
+          }
+          EOF
+          go run /tmp/genpdf.go
+
+          "cmd/sonneck-desktop/build/bin/Sonneck.app/Contents/MacOS/sonneck-desktop" &
+          for i in $(seq 1 20); do
+            curl -sf http://127.0.0.1:26163/healthz > /dev/null && break
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:26163/healthz
+
+          # Real regression guard for a real bug this workflow shipped
+          # with undetected through Phases 6-8 (project_wails_native_app_
+          # investigation memory): every check here used to hit only the
+          # JSON API, so a build silently embedding internal/webui/dist's
+          # own committed placeholder (instead of the real frontend)
+          # passed clean every single time — "the backend works" and "the
+          # app actually renders" are genuinely separate claims. Caught
+          # only once a real user actually opened a real built app.
+          PAGE=$(curl -sf http://127.0.0.1:26163/)
+          echo "$PAGE" | grep -q "This is a placeholder" && (echo "embedded frontend is the placeholder, not the real build — the copy-into-internal/webui/dist step above didn't run or didn't work" && exit 1)
+          echo "$PAGE" | grep -q '<div id="root">' || (echo "served page doesn't look like the real app shell" && exit 1)
+
+          RESPONSE=$(curl -sf -X POST http://127.0.0.1:26163/api/books \
+            -H "X-Requested-With: XMLHttpRequest" \
+            -F "file=@/tmp/smoke-test.pdf")
+          echo "$RESPONSE"
+          echo "$RESPONSE" | grep -q '"pageCount":1' || (echo "bundled poppler did not report the expected page count" && exit 1)
+
+      # archive: false (upload-artifact v7) skips GitHub's own zip-wrapping
+      # for a single-file upload — the download is the real .dmg itself,
+      # not a zip containing a zip-shaped .dmg. `name` is deliberately
+      # omitted: v7 ignores it under archive: false and names the artifact
+      # after the uploaded file instead (Sonneck.dmg).
+      - uses: actions/upload-artifact@v7
+        with:
+          path: cmd/sonneck-desktop/build/bin/Sonneck.dmg
+          archive: false
+
+      # Release events only — attaches a version-named copy directly to
+      # the GitHub Release (both "released" and "prereleased", per direct
+      # instruction: a pre-release should get a real, downloadable native
+      # build too, not just the stable channel). RELEASE_TAG goes through
+      # env: rather than direct ${{ }} interpolation in the script body,
+      # same reasoning as docker-publish.yml's own "Attach docker-
+      # compose.yml to the release" step — a crafted tag name could
+      # otherwise inject shell syntax.
+      - name: Attach to the GitHub Release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          cp cmd/sonneck-desktop/build/bin/Sonneck.dmg "Sonneck-$VERSION-macOS.dmg"
+          gh release upload "$RELEASE_TAG" "Sonneck-$VERSION-macOS.dmg" --clobber
+
+  build-windows:
+    runs-on: windows-latest
+    # See build-macos' identical comment — contents: write only for this
+    # job's own release-attach step.
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      # PowerShell equivalent of build-macos' identical step — see that
+      # step's own comment for why this copy is required at all.
+      - name: Build the embedded frontend
+        working-directory: frontend
+        shell: pwsh
+        run: |
+          npm ci
+          npm run build
+          Remove-Item -Recurse -Force ..\internal\webui\dist -ErrorAction SilentlyContinue
+          Copy-Item -Recurse dist ..\internal\webui\dist
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ env.WAILS_VERSION }}
+
+      # PowerShell equivalent of build-macos' identical "Set build version"
+      # step — see that step's own comment for the full reasoning
+      # (X.X.X normalization, why this runs on every trigger).
+      - name: Set build version
+        id: version
+        shell: pwsh
+        run: |
+          $Tag = "${{ github.event.release.tag_name }}"
+          if ([string]::IsNullOrEmpty($Tag)) {
+            $Version = "0.0.1"
+          } else {
+            $parts = @($Tag -split '\.')
+            while ($parts.Count -lt 3) { $parts += "0" }
+            $Version = "$($parts[0]).$($parts[1]).$($parts[2])"
+          }
+          Write-Host "Building version $Version"
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "version=$Version"
+
+          $json = Get-Content cmd\sonneck-desktop\wails.json -Raw | ConvertFrom-Json
+          $json.info.productVersion = $Version
+          $json | ConvertTo-Json -Depth 10 | Set-Content cmd\sonneck-desktop\wails.json
+
+      # Real, previously-run recipe (Phase 2's own windows-latest CI spike)
+      # — the release zip ships every .exe with its .dll dependencies flat
+      # in one folder, no separate bin/libs split the way dylibbundler's
+      # macOS output needs. Staged directly at the final build/bin/poppler
+      # location (not a separate staging dir) — cmd/sonneck-desktop's own
+      # customized project.nsi (build/windows/installer/project.nsi) reads
+      # from exactly this path, relative, to bundle it *inside* the
+      # installer, so it has to already be here before `wails build -nsis`
+      # runs below, not copied in afterward.
+      - name: Bundle poppler-utils (Windows)
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download --repo oschwartz10612/poppler-windows --pattern "*.zip" --dir poppler-dl --clobber
+          $zip = Get-ChildItem poppler-dl -Filter *.zip | Select-Object -First 1
+          Expand-Archive -Path $zip.FullName -DestinationPath poppler-extracted
+          $binDir = (Get-ChildItem -Recurse poppler-extracted -Filter pdftoppm.exe | Select-Object -First 1).DirectoryName
+          if (-not $binDir) { throw "pdftoppm.exe not found in the extracted release" }
+          New-Item -ItemType Directory -Force -Path cmd\sonneck-desktop\build\bin\poppler | Out-Null
+          Copy-Item "$binDir\*" cmd\sonneck-desktop\build\bin\poppler\
+
+      # windows-latest doesn't ship makensis by default — confirmed by a
+      # real prior run of this workflow, which built a bare .exe with no
+      # installer and only a silent "Warning: Cannot create installer:
+      # makensis not found" buried in the build log to show for it.
+      # Chocolatey (preinstalled on every windows-latest runner) is the
+      # standard way to get it.
+      # `choco install` genuinely installs NSIS (confirmed via a real CI
+      # run: "Deployed to 'C:\Program Files (x86)\NSIS'"), but that alone
+      # isn't enough — a real, previously-unknown gotcha found by actually
+      # running this: the machine-PATH update Chocolatey's own installer
+      # makes never reached the *next* step, because the Actions runner
+      # spawns each step from an environment snapshot it already cached,
+      # not a fresh read of the registry — so `makensis` stayed
+      # unreachable and `wails build -nsis` silently produced no installer
+      # again, exactly the failure mode the throw-if-missing check below
+      # exists to catch. Fixed the correct, documented way: append the
+      # install dir to $GITHUB_PATH explicitly, which *is* guaranteed to
+      # propagate to every later step in this job.
+      - name: Install NSIS
+        shell: pwsh
+        run: |
+          choco install nsis -y
+          Add-Content -Path $env:GITHUB_PATH -Value 'C:\Program Files (x86)\NSIS'
+
+      - name: Build native app (NSIS installer)
+        working-directory: cmd/sonneck-desktop
+        shell: pwsh
+        run: |
+          & "$(go env GOPATH)\bin\wails.exe" build -nsis `
+            -ldflags "-X main.buildSHA=${{ github.sha }} -X main.buildTarget=native"
+
+          if (-not (Get-ChildItem build\bin -Filter *-installer.exe)) {
+            throw "no installer .exe was produced - makensis likely failed silently again"
+          }
+
+      - name: Smoke-test the built exe
+        shell: pwsh
+        run: |
+          @'
+          package main
+          import ("bytes";"fmt";"os")
+          func main() {
+            var buf bytes.Buffer
+            buf.WriteString("%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>\nendobj\n")
+            xrefStart := buf.Len()
+            fmt.Fprintf(&buf, "xref\n0 4\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n0000000115 00000 n \ntrailer\n<< /Size 4 /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n", xrefStart)
+            os.WriteFile("smoke-test.pdf", buf.Bytes(), 0o644)
+          }
+          '@ | Out-File -Encoding utf8 genpdf.go
+          go run genpdf.go
+
+          Start-Process -FilePath "cmd\sonneck-desktop\build\bin\sonneck-desktop.exe"
+          $ok = $false
+          for ($i = 0; $i -lt 20; $i++) {
+            try { Invoke-RestMethod http://127.0.0.1:26163/healthz; $ok = $true; break } catch { Start-Sleep -Seconds 1 }
+          }
+          if (-not $ok) { throw "app did not come up" }
+
+          # See build-macos' identical check for the real bug this guards
+          # against (a build silently embedding the placeholder frontend
+          # instead of the real one, undetected for three whole phases
+          # since every prior check here only ever hit the JSON API).
+          $page = Invoke-RestMethod http://127.0.0.1:26163/
+          if ($page -match "This is a placeholder") { throw "embedded frontend is the placeholder, not the real build - the copy-into-internal/webui/dist step above didn't run or didn't work" }
+          if ($page -notmatch '<div id="root">') { throw "served page doesn't look like the real app shell" }
+
+          $form = @{ file = Get-Item "smoke-test.pdf" }
+          $response = Invoke-RestMethod -Uri http://127.0.0.1:26163/api/books -Method Post -Form $form -Headers @{ "X-Requested-With" = "XMLHttpRequest" }
+          if ($response.data.pageCount -ne 1) { throw "bundled poppler did not report the expected page count" }
+
+      # Upload only the installer itself, not the whole build/bin directory
+      # (which also has the bare pre-install .exe, the staged poppler
+      # folder, and Wails' own WebView2 bootstrapper temp files) — one
+      # clean file, matching the macOS job's own single-.dmg upload.
+      # archive: false skips GitHub's own zip-wrapping the same way.
+      - uses: actions/upload-artifact@v7
+        with:
+          path: cmd/sonneck-desktop/build/bin/*-installer.exe
+          archive: false
+
+      # See build-macos' identical step for the full reasoning.
+      - name: Attach to the GitHub Release
+        if: github.event_name == 'release'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          $installer = Get-ChildItem cmd\sonneck-desktop\build\bin -Filter *-installer.exe | Select-Object -First 1
+          $renamed = "Sonneck-$env:VERSION-Windows-installer.exe"
+          Copy-Item $installer.FullName $renamed
+          gh release upload $env:RELEASE_TAG $renamed --clobber
