@@ -236,9 +236,23 @@ jobs:
       # makensis not found" buried in the build log to show for it.
       # Chocolatey (preinstalled on every windows-latest runner) is the
       # standard way to get it.
+      # `choco install` genuinely installs NSIS (confirmed via a real CI
+      # run: "Deployed to 'C:\Program Files (x86)\NSIS'"), but that alone
+      # isn't enough — a real, previously-unknown gotcha found by actually
+      # running this: the machine-PATH update Chocolatey's own installer
+      # makes never reached the *next* step, because the Actions runner
+      # spawns each step from an environment snapshot it already cached,
+      # not a fresh read of the registry — so `makensis` stayed
+      # unreachable and `wails build -nsis` silently produced no installer
+      # again, exactly the failure mode the throw-if-missing check below
+      # exists to catch. Fixed the correct, documented way: append the
+      # install dir to $GITHUB_PATH explicitly, which *is* guaranteed to
+      # propagate to every later step in this job.
       - name: Install NSIS
         shell: pwsh
-        run: choco install nsis -y
+        run: |
+          choco install nsis -y
+          Add-Content -Path $env:GITHUB_PATH -Value 'C:\Program Files (x86)\NSIS'
 
       - name: Build native app (NSIS installer)
         working-directory: cmd/sonneck-desktop
