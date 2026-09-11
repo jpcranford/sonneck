@@ -1,16 +1,17 @@
-name: Native build validation
+name: Native Release
 
-# Phase 6 (project_wails_native_app_investigation memory) built the build/
-# package pipeline itself (validation-only, mirroring docker-publish.yml's
-# own "push runs a validation build only" posture — CLAUDE.md > Docker/
-# build). Phase 8 added the actual release-publish half: a `release`
-# event (types: [released, prereleased]) runs the *exact same* proven
-# pipeline and then attaches the resulting installer to that GitHub
-# Release directly (`gh release upload`), version-named. Unlike
-# docker-publish.yml there's no floating-tag/multi-arch-manifest
-# complexity to replicate here — a native installer is just a file, so
-# "publish" is just "upload it to the release," no separate merge/nightly/
-# sync-latest jobs needed.
+# Builds Sonneck's native macOS/Windows apps and publishes them as GitHub
+# Release assets (project_wails_native_app_investigation memory, Phases
+# 6-8). Only ever runs on a real `release` event (types: [released,
+# prereleased]) or a manual workflow_dispatch — there's no separate
+# push-triggered validation tier the way docker-publish.yml has, since a
+# native build's full pipeline (poppler bundling, codesigning, NSIS
+# packaging, a real smoke-test launch) is expensive enough that running it
+# on every push isn't worth it once this is past its own active
+# development. Unlike docker-publish.yml there's also no floating-tag/
+# multi-arch-manifest complexity to replicate — a native installer is just
+# a file, so "publish" is just "upload it to the release" (`gh release
+# upload`), no separate merge/nightly/sync-latest jobs needed.
 #
 # Every step below reuses a recipe already empirically proven for real in
 # this project's own investigation, not a fresh guess:
@@ -25,7 +26,7 @@ name: Native build validation
 #     UniformTypeIdentifiers" on macOS even through the official CLI —
 #     both confirmed empirically, not assumed.
 #
-# Two real bugs found from this workflow's own first live run, both fixed:
+# Real bugs found across this workflow's own live runs, all fixed:
 #   - windows-latest doesn't ship `makensis` — `wails build -nsis` doesn't
 #     error when it's missing, it just prints a warning and silently
 #     builds a bare .exe with no installer at all. Fixed by installing
@@ -42,25 +43,17 @@ name: Native build validation
 #     see build/windows/installer/project.nsi's own hand-customization),
 #     and both use upload-artifact v7's `archive: false` so the actual
 #     download is that one file directly, not a zip-of-a-zip.
-#
-# Deliberately temporary, per direct instruction: `push` still fires on
-# `native-build-test` for now, so pushing there keeps producing full,
-# real, downloadable installers to test-drive/tweak — same as every prior
-# phase's own verification loop. Once that's done, this list drops back to
-# `[main]` only (matching docker-publish.yml's own push-to-main-only
-# posture) before this branch merges — a deliberate follow-up, not done in
-# this same pass.
+#   - The embedded frontend was silently the committed placeholder, not
+#     the real build, on every run this workflow ever produced until a
+#     real user actually opened a built app and saw it — "Build the
+#     embedded frontend" ran `npm run build` but never copied the output
+#     into internal/webui/dist/ the way the Dockerfile's own frontend
+#     stage does. Fixed, plus a real regression check (grep for the
+#     placeholder's own text, and for the real app shell's `<div
+#     id="root">`) added to both smoke-test steps so this can't ship
+#     silently again.
 
 on:
-  push:
-    branches: [main, native-build-test]
-    paths:
-      - 'cmd/sonneck-desktop/**'
-      - 'internal/**'
-      - 'frontend/**'
-      - 'go.mod'
-      - 'go.sum'
-      - '.github/workflows/native-build.yml'
   release:
     types: [released, prereleased]
   workflow_dispatch:
@@ -132,11 +125,9 @@ jobs:
       # NSIS/Info.plist both require (project.nsi's own template appends
       # one more ".0" on top of this to make X.X.X.X — Phase 6's own
       # "invalid VIFileVersion format" bug came from skipping this exact
-      # normalization). Runs on *every* trigger, not just release events —
-      # falls back to the same "0.0.1" placeholder Phase 6 already used
-      # when there's no release tag (push/workflow_dispatch), so this
-      # logic stays exercised on ordinary CI runs too rather than only
-      # ever being tested during an actual release.
+      # normalization). Falls back to the same "0.0.1" placeholder Phase 6
+      # already used when there's no release tag at all — a manual
+      # workflow_dispatch run, the only other way this workflow triggers.
       - name: Set build version
         id: version
         run: |
