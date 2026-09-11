@@ -378,7 +378,7 @@ function SecurityStep({
                   Configure via <code className="rounded bg-paper-sunken px-1 py-0.5">OIDC_*</code> environment
                   variables.{' '}
                   <a
-                    href="https://github.com/jpcranford/sonneck#advanced-options"
+                    href="https://github.com/jpcranford/sonneck/blob/main/docs/oidc-setup.md"
                     target="_blank"
                     rel="noreferrer"
                     onClick={(e) => e.stopPropagation()}
