@@ -591,6 +591,8 @@ export function UserSettingsPage() {
                 onChange={(checked) => patchSettings({ contentViewMode: checked ? 'paginated' : 'infinite' })}
                 label=""
                 id="paginated-views"
+                disabled
+                title="Coming soon — nothing in the app reads this yet"
               />
             }
           />

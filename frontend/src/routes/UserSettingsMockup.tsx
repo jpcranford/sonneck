@@ -502,7 +502,16 @@ export function UserSettingsMockup() {
             label="Paginated views"
             help="When off, library views scroll continuously instead of using page controls."
             soon
-            control={<Toggle checked={paginatedViews} onChange={setPaginatedViews} label="" id="paginated-views" />}
+            control={
+              <Toggle
+                checked={paginatedViews}
+                onChange={setPaginatedViews}
+                label=""
+                id="paginated-views"
+                disabled
+                title="Coming soon — nothing in the app reads this yet"
+              />
+            }
           />
         </SettingsCard>
 

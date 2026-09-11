@@ -14,23 +14,36 @@ export function Toggle({
   onChange,
   label,
   id,
+  disabled,
+  title,
 }: {
   checked: boolean
   onChange: (checked: boolean) => void
   label: ReactNode
   id?: string
+  // "Coming soon" settings (e.g. User Settings' Paginated views) and
+  // permission-gated controls both need this — a real disabled state, not
+  // just an onChange that's never wired up, since the switch/label pair
+  // would otherwise still visibly track clicks (the thumb slides, the
+  // track recolors) for a setting that either does nothing yet or the
+  // viewer can't actually change, matching CLAUDE.md's own permission-
+  // aware UI gating convention (real `disabled`, faint container opacity,
+  // a `title` explaining why).
+  disabled?: boolean
+  title?: string
 }) {
   return (
-    <div className="flex items-center gap-2">
+    <div className={`flex items-center gap-2 ${disabled ? 'opacity-50' : ''}`} title={title}>
       <button
         id={id}
         type="button"
         role="switch"
         aria-checked={checked}
+        disabled={disabled}
         onClick={() => onChange(!checked)}
-        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors focus-visible:outline focus-visible:outline-accent ${
-          checked ? 'bg-accent' : 'bg-border'
-        }`}
+        className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus-visible:outline focus-visible:outline-accent ${
+          disabled ? 'cursor-not-allowed' : 'cursor-pointer'
+        } ${checked ? 'bg-accent' : 'bg-border'}`}
       >
         <span
           className={`inline-block size-3.5 transform rounded-full bg-paper-raised shadow transition-transform ${
@@ -39,8 +52,8 @@ export function Toggle({
         />
       </button>
       <span
-        className="cursor-pointer text-sm text-ink select-none"
-        onClick={() => onChange(!checked)}
+        className={`text-sm text-ink select-none ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+        onClick={() => !disabled && onChange(!checked)}
       >
         {label}
       </span>
