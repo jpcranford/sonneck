@@ -641,7 +641,17 @@ export function AdminSettingsMockup() {
   // locked design's two choices — move the current library's contents to
   // the new folder, or just point there going forward without moving
   // anything.
+  //
+  // "Save changes" is pending-until-restart, ported in from the real
+  // build (Phase 7) after this mockup's own first pass wrongly modeled it
+  // as applying immediately — DATA_DIR can't actually change without a
+  // real process restart (same underlying reason Share on Network's own
+  // toggle above is restart-required, not live-rebind), so this needed
+  // the identical "Restart Now" pattern, just scoped to its own row
+  // instead of the Share on Network card's header pill.
   const [libraryPath, setLibraryPath] = useState(NATIVE_LIBRARY_PATH)
+  const [pendingLibraryPath, setPendingLibraryPath] = useState<string | null>(null)
+  const [libraryRestarting, setLibraryRestarting] = useState(false)
   const [libraryLocationModalOpen, setLibraryLocationModalOpen] = useState(false)
   const [candidateLibraryPath, setCandidateLibraryPath] = useState(LIBRARY_LOCATION_CANDIDATES[0])
   const [moveExisting, setMoveExisting] = useState(true)
@@ -658,8 +668,15 @@ export function AdminSettingsMockup() {
   }
 
   function saveLibraryLocation() {
-    setLibraryPath(candidateLibraryPath)
+    setPendingLibraryPath(candidateLibraryPath)
     setLibraryLocationModalOpen(false)
+  }
+
+  function restartLibraryNow() {
+    setLibraryRestarting(true)
+    if (pendingLibraryPath) setLibraryPath(pendingLibraryPath)
+    setPendingLibraryPath(null)
+    setLibraryRestarting(false)
   }
 
   // Security "Change…" — only ever reachable while the current method is
@@ -1080,6 +1097,21 @@ export function AdminSettingsMockup() {
               </div>
             )}
           </div>
+          {runtimeMode === 'native' && pendingLibraryPath && (
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-3.5 py-2.5">
+              <p className="flex items-center gap-1.5 text-xs font-medium text-ink">
+                <IconInfoCircle size={14} className="shrink-0 text-accent" />
+                Restart Sonneck to switch to {pendingLibraryPath}.
+              </p>
+              <button
+                type="button"
+                onClick={restartLibraryNow}
+                className="shrink-0 cursor-pointer rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white hover:bg-accent/90"
+              >
+                {libraryRestarting ? 'Restarting…' : 'Restart Now'}
+              </button>
+            </div>
+          )}
         </SectionBlock>
 
         <SectionBlock id="library" title="Library">

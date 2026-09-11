@@ -16,12 +16,16 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sync"
+	"time"
 
 	"github.com/jpcranford/sonneck/internal/applog"
 	"github.com/jpcranford/sonneck/internal/backup"
@@ -37,6 +41,7 @@ import (
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // buildSHA/buildDate/buildTarget are overridden at build time via
@@ -79,6 +84,88 @@ var (
 // poppler-extracted\poppler-26.07.0\Library\bin\) with no separate
 // lib-folder split — so Windows' own resolved directory already directly
 // contains the binaries with no extra segment needed.
+// desktopCtx is the context.Context Wails hands OnStartup, needed by
+// chooseFolder (runtime.OpenDirectoryDialog) and requestRestart
+// (runtime.Quit) — both real HTTP handler functions (handlers.NativeOptions,
+// internal/handlers/native.go) that run on their own goroutines, entirely
+// independent of Wails' own callback. A package-level var guarded by a
+// mutex, not passed as a constructor param, because it genuinely doesn't
+// exist yet at the point handlers.New is called (wails.Run hasn't started
+// its own event loop, so OnStartup hasn't fired) — the closures below
+// capture a reference to this var and read it fresh at call time, not its
+// value at construction.
+var (
+	desktopCtxMu sync.RWMutex
+	desktopCtx   context.Context
+)
+
+func setDesktopContext(ctx context.Context) {
+	desktopCtxMu.Lock()
+	defer desktopCtxMu.Unlock()
+	desktopCtx = ctx
+}
+
+func getDesktopContext() context.Context {
+	desktopCtxMu.RLock()
+	defer desktopCtxMu.RUnlock()
+	return desktopCtx
+}
+
+// chooseFolder opens a real native OS folder dialog — the First Launch
+// flow's "Browse…" and Admin Settings' "Choose a different folder…" both
+// go through this one function via handlers.NativeOptions.ChooseFolder.
+// An empty desktopCtx (the dialog requested before OnStartup has ever
+// fired — not realistically reachable once the window is actually up and
+// serving HTTP requests, but defensive regardless) is reported as an error
+// rather than silently returning "", which handleChooseNativeFolder would
+// otherwise indistinguishably treat as a plain user cancel.
+func chooseFolder(currentPath string) (string, error) {
+	ctx := getDesktopContext()
+	if ctx == nil {
+		return "", fmt.Errorf("native folder picker not available yet (still starting up)")
+	}
+	return wailsruntime.OpenDirectoryDialog(ctx, wailsruntime.OpenDialogOptions{
+		Title:            "Choose your Sonneck library folder",
+		DefaultDirectory: currentPath,
+	})
+}
+
+// requestRestart spawns a fresh copy of this same process, then asks the
+// *current* one to shut down gracefully — a real wailsruntime.Quit (which
+// makes wails.Run below return normally, so every deferred cleanup in
+// main(), especially conn.Close(), actually runs) rather than a raw
+// os.Exit, which would skip all of that and could leave the SQLite
+// WAL/SHM files in a state the new process's own nativeconfig.
+// ApplyPendingLibraryMove then has to retry against (see that function's
+// own moveRetryAttempts comment for the full reasoning — spawning the new
+// process concurrently with this shutdown, rather than fully
+// synchronizing the two, is a deliberate simplicity/safety tradeoff that
+// function's bounded retry exists to absorb). Falls back to a plain
+// os.Exit only if desktopCtx was somehow never set (defensive, not a
+// realistic path once the window is actually up).
+func requestRestart() error {
+	exe, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("resolving own executable path: %w", err)
+	}
+	cmd := exec.Command(exe, os.Args[1:]...)
+	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("spawning relaunched process: %w", err)
+	}
+	go func() {
+		// A brief pause so this HTTP response actually reaches the client
+		// before the process starts tearing itself down.
+		time.Sleep(250 * time.Millisecond)
+		if ctx := getDesktopContext(); ctx != nil {
+			wailsruntime.Quit(ctx)
+		} else {
+			os.Exit(0)
+		}
+	}()
+	return nil
+}
+
 func resolvePopplerBinDir() string {
 	exe, err := os.Executable()
 	if err != nil {
@@ -114,7 +201,7 @@ func main() {
 	// environment: block or the dev tooling recipe does. Missing file ==
 	// zero-value Settings (nativeconfig.Load's own documented behavior),
 	// so a first-ever launch just falls through to config.Load()'s own
-	// GOOS-aware default (internal/config.defaultDataDir) and a
+	// GOOS-aware default (internal/config.DefaultDataDir) and a
 	// PATH-based poppler lookup below.
 	settingsPath, err := nativeconfig.DefaultPath()
 	if err != nil {
@@ -126,6 +213,23 @@ func main() {
 		logger.Error("failed to load native settings", "error", err, "path", settingsPath)
 		os.Exit(1)
 	}
+
+	// Phase 7: apply a library-location change chosen (but not yet
+	// applied) on a prior run — First Launch's folder step or Admin
+	// Settings' "Library location" control, both via PATCH
+	// /api/native/settings, which only ever writes PendingLibraryPath/
+	// PendingMoveExisting, never LibraryPath itself directly. This is the
+	// one safe place to do it: strictly before config.Load()/db.Open(),
+	// so nothing has opened a database under either the old or new path
+	// yet. A failed move is non-fatal by design (see that function's own
+	// doc comment) — settings comes back unchanged and this process just
+	// boots against whatever it was already using.
+	if applied, err := nativeconfig.ApplyPendingLibraryMove(logger, settingsPath, settings); err != nil {
+		logger.Error("failed to apply pending library location change", "error", err)
+	} else {
+		settings = applied
+	}
+
 	if settings.LibraryPath != "" {
 		os.Setenv("DATA_DIR", settings.LibraryPath)
 	}
@@ -212,7 +316,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	handler := handlers.New(conn, cfg, logger, frontend, scheduler, buildSHA, buildDate, buildTarget, oidcAuth)
+	handler := handlers.New(conn, cfg, logger, frontend, scheduler, buildSHA, buildDate, buildTarget, oidcAuth, &handlers.NativeOptions{
+		SettingsPath:          settingsPath,
+		AppliedShareOnNetwork: settings.ShareOnNetwork,
+		ChooseFolder:          chooseFolder,
+		RequestRestart:        requestRestart,
+	})
 
 	ln, err := netinfo.ListenWithFallback(buildTarget, cfg.Port, settings.ShareOnNetwork)
 	if err != nil {
@@ -242,6 +351,13 @@ func main() {
 		Height: 800,
 		AssetServer: &assetserver.Options{
 			Handler: handler,
+		},
+		// OnStartup is Wails' own hook for the one thing this binary needs
+		// its real window context for — chooseFolder/requestRestart above,
+		// both otherwise-plain HTTP handler functions that have no other
+		// way to reach it.
+		OnStartup: func(ctx context.Context) {
+			setDesktopContext(ctx)
 		},
 	})
 	if err != nil {

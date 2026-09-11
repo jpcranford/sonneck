@@ -27,7 +27,7 @@ func serverWithAuthMethod(t *testing.T, conn *sql.DB, authMethod string) http.Ha
 	cfg.SetBackupRetentionDays(30)
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
 	frontend := mustFS(t)
-	return handlers.New(conn, cfg, logger, frontend, nil, "", "", "docker", nil)
+	return handlers.New(conn, cfg, logger, frontend, nil, "", "", "docker", nil, nil)
 }
 
 func TestAuthChangeEndpoints_409WhenNothingPending(t *testing.T) {

@@ -128,5 +128,5 @@ func newSinglepassServerWithPassword(t *testing.T, password string, trustProxyHT
 	cfg.SetBackupRetentionDays(30)
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
 	frontend := mustFS(t)
-	return handlers.New(conn, cfg, logger, frontend, nil, "", "", "docker", nil)
+	return handlers.New(conn, cfg, logger, frontend, nil, "", "", "docker", nil, nil)
 }

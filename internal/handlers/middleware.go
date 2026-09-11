@@ -52,6 +52,27 @@ var publicAPIPaths = map[string]bool{
 	"/api/auth-change/complete":   true,
 }
 
+// preFirstLaunchOnlyPaths (project_wails_native_app_investigation memory's
+// Phase 7) are public only until first-launch completes — unlike
+// publicAPIPaths' permanently-open paths, these fall through to normal
+// session/permission handling once it has. The First Launch flow's native
+// folder step needs to persist a chosen library path and trigger a real
+// app restart before any session can possibly exist (the exact same
+// "reachable pre-session by necessity" reasoning POST /api/setup/complete
+// already established) — but /api/native/* also has a genuine post-setup,
+// admin-gated use (Admin Settings' Share on Network/Library location
+// controls), so it can't just live in publicAPIPaths permanently: that
+// would leave an unauthenticated LAN request free to flip Share on Network
+// or repoint the library folder at will once Share on Network is actually
+// on. Each handler still calls requireNativeAccess (internal/handlers/
+// native.go) itself, which re-derives the same first-launch check
+// server-side rather than trusting this table alone.
+var preFirstLaunchOnlyPaths = map[string]bool{
+	"/api/native/settings":      true,
+	"/api/native/choose-folder": true,
+	"/api/native/restart":       true,
+}
+
 // authMiddleware resolves the request's user — the implicit id=1 row in
 // `none` mode (no session needed at all, identical zero-overhead behavior to
 // the pre-multi-user app), or the session cookie's owner in `singlepass`/
@@ -74,6 +95,12 @@ func authMiddleware(next http.Handler, db *sql.DB, cfg *config.Config) http.Hand
 			api.WriteError(w, http.StatusInternalServerError, api.CodeInternalError, "internal error")
 			return
 		}
+
+		if settings.FirstLaunchCompletedAt == nil && preFirstLaunchOnlyPaths[r.URL.Path] {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		authMethod := repo.ResolveAuthMethod(cfg.AuthMethod, settings)
 
 		var user *models.User

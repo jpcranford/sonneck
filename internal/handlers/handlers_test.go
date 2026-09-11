@@ -64,7 +64,7 @@ func newTestServerWithDataDir(t *testing.T) (http.Handler, string, *sql.DB) {
 		t.Fatalf("loading embedded frontend: %v", err)
 	}
 
-	return handlers.New(conn, cfg, logger, frontend, nil, "", "", "docker", nil), dataDir, conn
+	return handlers.New(conn, cfg, logger, frontend, nil, "", "", "docker", nil, nil), dataDir, conn
 }
 
 // writeFixturePDF is a thin wrapper over the shared fixture generator

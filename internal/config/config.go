@@ -209,17 +209,18 @@ func ValidateBackupRetentionDays(days int) error {
 	return nil
 }
 
-// defaultDataDir is DATA_DIR's fallback when unset — "/data" on Linux
+// DefaultDataDir is DATA_DIR's fallback when unset — "/data" on Linux
 // (this binary only ever runs inside a Docker container there, matching
 // the compose file's bind mount) and, on darwin/windows, the user's own
 // Music folder (project_wails_native_app_investigation memory's Phase 3,
 // locked 2026-09-11: "~/Music/Sonneck Library" — discoverable/backup-able
-// by the musician it belongs to, not an opaque app-support path). No
-// native entry point sets DATA_DIR explicitly yet (Phase 6, not built),
-// but this fallback needs to be correct now regardless — the disposable-
-// backend dev recipe and the real Docker deploy both always pass DATA_DIR
-// explicitly, so this only matters once something doesn't.
-func defaultDataDir() string {
+// by the musician it belongs to, not an opaque app-support path). Exported
+// (Phase 7) so cmd/sonneck-desktop/internal/nativeconfig can compute "what
+// directory is a native install currently using" without duplicating this
+// logic — needed to know which folder to move data *out of* when the
+// library location changes (nativeconfig.Settings.LibraryPath is empty
+// until a user has ever picked something other than this default).
+func DefaultDataDir() string {
 	if runtime.GOOS == "linux" {
 		return "/data"
 	}
@@ -262,7 +263,7 @@ func defaultPort() string {
 func Load() (*Config, error) {
 	cfg := &Config{
 		Port:           getEnv("PORT", defaultPort()),
-		DataDir:        getEnv("DATA_DIR", defaultDataDir()),
+		DataDir:        getEnv("DATA_DIR", DefaultDataDir()),
 		CitationFormat: getEnv("CITATION_FORMAT", defaultCitationFormat),
 		AuthMethod:     getEnv("AUTH_METHOD", ""),
 		PDFBinDir:      getEnv("PDF_BIN_DIR", ""),
