@@ -661,7 +661,7 @@ func (s *Server) handleBookPageThumbnail(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	thumbPath, err := s.cachedThumbnail(r.Context(), *b.FilePath, page, 100, fmt.Sprintf("book-%d-page-%d", id, page))
+	thumbPath, err := s.cachedThumbnail(r.Context(), *b.FilePath, page, ThumbnailDPI, fmt.Sprintf("book-%d-page-%d", id, page))
 	if err != nil {
 		s.writeError(w, err)
 		return
@@ -730,7 +730,7 @@ func (s *Server) handleGetBookCover(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if b.FilePath != nil {
-		thumbPath, err := s.cachedThumbnail(r.Context(), *b.FilePath, 1, 100, fmt.Sprintf("book-%d-page-1", id))
+		thumbPath, err := s.cachedThumbnail(r.Context(), *b.FilePath, 1, ThumbnailDPI, fmt.Sprintf("book-%d-page-1", id))
 		if err != nil {
 			s.writeError(w, err)
 			return

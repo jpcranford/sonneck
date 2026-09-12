@@ -100,6 +100,17 @@ func (s *Server) stageUpload(w http.ResponseWriter, r *http.Request, stagingDir 
 	return tempPath, hash, pageCount, true
 }
 
+// ThumbnailDPI is the pdftoppm render resolution for every piece/book page
+// thumbnail — grid cards, Piece/Book Details previews, and the lightbox zoom
+// alike (none of these request a different size; see PiecePage.tsx's
+// getPieceThumbnailUrl reuse). When the Sheet Viewer is built, it will need
+// a sharper render (260 DPI) than a thumbnail needs — add a second named
+// constant then rather than overwriting this one. Note that the on-disk
+// cache key (cacheKey below) is derived only from piece/book ID and page
+// number, not DPI, so introducing a second resolution needs a cache-key
+// change (e.g. a suffix) to let both sizes be cached side by side.
+const ThumbnailDPI = 100
+
 // cachedThumbnail returns the path to a cached page-thumbnail PNG for
 // srcPath, rendering (via pdftoppm) and caching it under cacheKey on a
 // miss. Used by both handlePieceThumbnail and handleBookPageThumbnail.
@@ -221,7 +232,7 @@ func (s *Server) RegenerateThumbnails(ctx context.Context) (int, error) {
 		}
 		for page := 1; page <= p.PageCount; page++ {
 			cacheKey := fmt.Sprintf("piece-%d-page-%d", p.ID, page)
-			if _, err := s.regenerateThumbnail(ctx, p.FilePath, page, 100, cacheKey); err != nil {
+			if _, err := s.regenerateThumbnail(ctx, p.FilePath, page, ThumbnailDPI, cacheKey); err != nil {
 				return count, fmt.Errorf("piece %d page %d: %w", p.ID, page, err)
 			}
 			count++
@@ -419,7 +430,7 @@ func (s *Server) CleanupThumbnails(ctx context.Context) (CleanupThumbnailsResult
 
 			if isCorruptPNG(fullPath) {
 				cacheKey := strings.TrimSuffix(name, ".png")
-				if _, err := s.regenerateThumbnail(ctx, *book.FilePath, page, 100, cacheKey); err != nil {
+				if _, err := s.regenerateThumbnail(ctx, *book.FilePath, page, ThumbnailDPI, cacheKey); err != nil {
 					return result, fmt.Errorf("regenerating %s: %w", name, err)
 				}
 				result.Regenerated++
@@ -456,7 +467,7 @@ func (s *Server) CleanupThumbnails(ctx context.Context) (CleanupThumbnailsResult
 
 			if isCorruptPNG(fullPath) {
 				cacheKey := strings.TrimSuffix(name, ".png")
-				if _, err := s.regenerateThumbnail(ctx, piece.FilePath, page, 100, cacheKey); err != nil {
+				if _, err := s.regenerateThumbnail(ctx, piece.FilePath, page, ThumbnailDPI, cacheKey); err != nil {
 					return result, fmt.Errorf("regenerating %s: %w", name, err)
 				}
 				result.Regenerated++

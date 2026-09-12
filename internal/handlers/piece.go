@@ -430,7 +430,7 @@ func (s *Server) handlePieceThumbnail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	thumbPath, err := s.cachedThumbnail(r.Context(), p.FilePath, page, 100, fmt.Sprintf("piece-%d-page-%d", id, page))
+	thumbPath, err := s.cachedThumbnail(r.Context(), p.FilePath, page, ThumbnailDPI, fmt.Sprintf("piece-%d-page-%d", id, page))
 	if err != nil {
 		s.writeError(w, err)
 		return
