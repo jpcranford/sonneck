@@ -11,6 +11,7 @@ import {
   IconChevronRightFilled,
   IconCopy,
   IconDice5,
+  IconDotsVertical,
   IconEditFilled,
   IconDownload,
   IconExternalLink,
@@ -18,6 +19,7 @@ import {
   IconHeartFilled,
   IconImageInPicture,
   IconMusic,
+  IconPlayerPlay,
   IconRefresh,
   IconTrash,
 } from '@tabler/icons-react'
@@ -314,6 +316,7 @@ export function PiecePage() {
 
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [downloadOpen, setDownloadOpen] = useState(false)
+  const [moreActionsOpen, setMoreActionsOpen] = useState(false)
   const [replaceConfirming, setReplaceConfirming] = useState(false)
   const [replaceProgress, setReplaceProgress] = useState(0)
   const [advancedOpen, setAdvancedOpen] = useState(false)
@@ -644,6 +647,30 @@ export function PiecePage() {
                 shows, so both sit with the preview rather than in the info
                 column's field list. */}
             <div className="flex flex-wrap items-center justify-center gap-2">
+              {/* Play — the future Sheet Viewer's entry point (design doc
+                  §13, not built yet), given the accent-solid treatment
+                  Download PDF used to own alone, since this is now the
+                  page's one primary action. Labeled "Play" itself, with
+                  the "not wired up yet" fact carried by a real InfoTooltip
+                  (this page's own existing hover/tap-to-open convention,
+                  e.g. the copyright badge above) — a native `disabled`
+                  button can't be hovered/tapped to reveal anything, so
+                  this stays a genuinely clickable trigger. Faint (opacity)
+                  + showPointerCursor={false} (same "status display, not a
+                  control" treatment the copyright badge already uses)
+                  reads as "not really live yet" without disabling the
+                  tooltip itself. Ported from the already-approved mockup
+                  (/mockup/piece-details). */}
+              <InfoTooltip
+                message="Coming soon — will play through the future Sheet Viewer."
+                ariaLabel="Play (coming soon with the Sheet Viewer)"
+                showPointerCursor={false}
+                triggerClassName="flex items-center gap-2 rounded-md bg-accent px-4 py-2 font-display text-sm text-white opacity-50"
+              >
+                <IconPlayerPlay size={16} />
+                Play
+              </InfoTooltip>
+
               {/* Positioning context lives on this outer div, not the
                   inner pill — the inner div's own overflow-hidden (needed
                   so the two buttons share one rounded pill outline) was
@@ -656,28 +683,32 @@ export function PiecePage() {
                   styles/bounding-box during live verification, not visible
                   from reading the JSX alone. */}
               <div className="relative">
-                <div className="flex overflow-hidden rounded-md">
+                {/* Download PDF — still a split button (main action + a
+                    caret opening "Download Piece PDF"/"Download PDF +
+                    Annotations"), but recolored to the same bordered/
+                    paper-raised palette every other action button here
+                    uses, now that Play owns the accent-solid treatment —
+                    ported from the mockup once approved there. The real
+                    `canDownload` permission gate is unchanged: a genuine
+                    disabled &lt;button&gt; (not an &lt;a&gt; stripped of its href)
+                    when the caller lacks `download`, same reasoning as
+                    before. */}
+                <div className="flex overflow-hidden rounded-md border border-border">
                   {canDownload ? (
                     <a
                       href={getPieceFileUrl(piece.id)}
                       download
-                      className="flex items-center gap-2 bg-accent px-4 py-2 font-display text-sm text-white hover:bg-accent/90"
+                      className="flex items-center gap-2 bg-paper-raised px-4 py-2 font-display text-sm text-ink hover:bg-accent-soft"
                     >
                       <IconDownload size={16} />
                       Download PDF
                     </a>
                   ) : (
-                    // A real disabled <button>, not an <a> stripped of its
-                    // href — anchors have no native disabled state, and this
-                    // permission genuinely blocks the action rather than
-                    // just discouraging it, so there's no navigation worth
-                    // preserving for cmd/ctrl-click the way ClickableCard's
-                    // own convention protects real links.
                     <button
                       type="button"
                       disabled
                       title="You don't have permission to download files"
-                      className="flex cursor-not-allowed items-center gap-2 bg-accent px-4 py-2 font-display text-sm text-white opacity-40"
+                      className="flex cursor-not-allowed items-center gap-2 bg-paper-raised px-4 py-2 font-display text-sm text-ink opacity-50"
                     >
                       <IconDownload size={16} />
                       Download PDF
@@ -688,7 +719,7 @@ export function PiecePage() {
                     onClick={() => setDownloadOpen((o) => !o)}
                     disabled={!canDownload}
                     aria-label="More download options"
-                    className="flex items-center justify-center border-l border-white/25 bg-accent px-2 text-white enabled:hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-40"
+                    className="flex items-center justify-center border-l border-border bg-paper-raised px-2 text-ink enabled:hover:bg-accent-soft disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <IconChevronDownFilled size={16} />
                   </button>
@@ -714,17 +745,49 @@ export function PiecePage() {
                 )}
               </div>
 
-              <ActionButton
-                icon={<IconRefresh size={16} />}
-                label="Replace File"
-                onClick={() => setReplaceConfirming(true)}
-              />
-              <ActionButton
-                icon={<IconImageInPicture size={16} />}
-                label="Use Page as Thumbnail"
-                onClick={() => setThumbnailMutation.mutate(page)}
-                disabled={page === piece.thumbnailPage || setThumbnailMutation.isPending}
-              />
+              {/* Consolidates the two remaining, less-frequent file actions
+                  behind one icon-only overflow button — same "kebab menu"
+                  convention as ContextMenu.tsx's own "More actions"
+                  trigger elsewhere in this app, rather than a fourth/fifth
+                  labeled button competing for space in this row. Ported
+                  from the mockup once approved there. */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setMoreActionsOpen((o) => !o)}
+                  aria-label="More actions"
+                  className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent"
+                >
+                  <IconDotsVertical size={18} />
+                </button>
+                {moreActionsOpen && (
+                  <div className="absolute top-full right-0 z-10 mt-1 w-64 overflow-hidden rounded-md border border-border bg-paper-raised py-1 text-left shadow-lg">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setReplaceConfirming(true)
+                        setMoreActionsOpen(false)
+                      }}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-accent-soft"
+                    >
+                      <IconRefresh size={16} />
+                      Replace File
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setThumbnailMutation.mutate(page)
+                        setMoreActionsOpen(false)
+                      }}
+                      disabled={page === piece.thumbnailPage || setThumbnailMutation.isPending}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-accent-soft disabled:cursor-not-allowed disabled:text-ink-soft/50 disabled:hover:bg-transparent"
+                    >
+                      <IconImageInPicture size={16} />
+                      Use Page as Thumbnail
+                    </button>
+                  </div>
+                )}
+              </div>
               <input
                 ref={replaceFileInputRef}
                 type="file"
@@ -965,12 +1028,16 @@ export function PiecePage() {
                 Advanced/Get Info box below is the one exception: its
                 fields always render, dash or not. */}
             <div className="divide-y divide-border border-t border-border">
-              {piece.instruments.values.length > 0 && (
-                <DetailRow label="Instruments">
-                  <span className="inline-flex items-center gap-1.5">
-                    {piece.instruments.values.map((tag) => tag.name).join(', ')}
-                    {piece.instruments.inherited && <InheritedNote />}
-                  </span>
+              {/* Reordered 2026-09-12 per direct instruction, ported from
+                  the already-approved mockup: Opus -> Year written ->
+                  Instruments -> IMSLP -> Publisher -> Source pages
+                  (fallback) -> Duration. */}
+              {piece.workOpusNumber.value && (
+                <DetailRow label="Opus / catalog no.">
+                  <EffectiveValue
+                    value={piece.workOpusNumber.value}
+                    inherited={piece.workOpusNumber.inherited}
+                  />
                 </DetailRow>
               )}
               {piece.yearWritten.value && (
@@ -1006,12 +1073,12 @@ export function PiecePage() {
                   </span>
                 </DetailRow>
               )}
-              {piece.workOpusNumber.value && (
-                <DetailRow label="Opus / catalog no.">
-                  <EffectiveValue
-                    value={piece.workOpusNumber.value}
-                    inherited={piece.workOpusNumber.inherited}
-                  />
+              {piece.instruments.values.length > 0 && (
+                <DetailRow label="Instruments">
+                  <span className="inline-flex items-center gap-1.5">
+                    {piece.instruments.values.map((tag) => tag.name).join(', ')}
+                    {piece.instruments.inherited && <InheritedNote />}
+                  </span>
                 </DetailRow>
               )}
               {piece.imslpNumber.value && (
@@ -1049,7 +1116,16 @@ export function PiecePage() {
                   </span>
                 </DetailRow>
               )}
-              {piece.sourcePageStart != null && (
+              {/* Now shown *inside* the Source Book card itself (below,
+                  folded into its composer/year line) whenever that card
+                  renders — a strictly more specific, better-placed home
+                  for the exact same fact. Only falls back to this bare
+                  DetailRow when there's no book to attach it to — a piece
+                  can carry sourcePageStart/End as historical provenance
+                  after its sourceBookId was cleared (File replacement,
+                  §14), and that case still needs *somewhere* to show the
+                  range. */}
+              {piece.sourcePageStart != null && !piece.sourceBookId && (
                 <DetailRow label="Source pages">
                   {/* sourcePageEnd is independently nullable (EditPieceModal's
                       two fields aren't linked) — falling back to
@@ -1181,7 +1257,23 @@ export function PiecePage() {
                       ) : (
                         book.publisher
                       )
-                      const parts = [composerPart, book.yearPublished].filter(
+                      // This piece's own extraction range joins composer/
+                      // year as one more bullet-joined segment here, rather
+                      // than getting a dedicated row or a header badge —
+                      // see the "Source pages" DetailRow's own comment
+                      // above for why this is now that fact's primary home.
+                      // A non-breaking space between "p."/"pp." and the
+                      // number(s) — found live against a long composer
+                      // name (Charles Villiers Stanford) wrapping this
+                      // line: a plain space let the browser split "pp."
+                      // from "18–25" at the wrap point, which read oddly.
+                      const pageRangeText =
+                        piece.sourcePageStart != null
+                          ? (piece.sourcePageEnd ?? piece.sourcePageStart) === piece.sourcePageStart
+                            ? `p.\u00A0${piece.sourcePageStart}`
+                            : `pp.\u00A0${piece.sourcePageStart}–${piece.sourcePageEnd}`
+                          : null
+                      const parts = [composerPart, book.yearPublished, pageRangeText].filter(
                         (part): part is NonNullable<typeof part> => !!part,
                       )
                       if (parts.length === 0) {
