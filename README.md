@@ -24,8 +24,8 @@ Sonneck is currently built to live “in an office with a printer”, so to spea
 - **Use it from any device.** Any device with a browser can use every feature of Sonneck, with everything you do saved to the library. Edit metadata on your phone, mark up your score on your tablet (feature [coming soon](#planned-features):tm:), or build a setlist on your computer.
 - **Real cataloging, not a folder of PDFs.** Input key(s), instruments, sheet type, opus number, ISBN, and your own tags, plus a one-click citation generator that collects it all for you, ready to be pasted into a program template or group chat.
 - **Composers and arrangers are real people, not text fields.** Each one gets their own page — portrait, bio, birth/death years, and every piece and book they're credited on — browsable from a dedicated People library. A piece or book can credit more than one composer or arranger, in the right order (think "Gilbert and Sullivan," or a hymn with a separate composer and arranger).
-- **Metadata that works for you.** Give it an IMSLP catalog number and it'll auto-fill composer, opus number, year, and publisher for you. The citation line adapts to show only the fields you've actually filled in, and descriptions/performer notes support Markdown — including shortcode music symbols like `:mf:` for a mezzo-forte marking (see the [emoji doc](docs/music-emoji.md) for the full list).
-- **Pieces inherit properties from their books.** Set a book's composer, publisher, and year once. Every piece inside it inherits the information automatically, you only ever need to override the pieces that are actually different.
+- **Metadata that works for you.** Give it an IMSLP catalog number and it'll auto-fill composer, opus number, year, and publisher for you. The citation line adapts to show only the fields you've actually filled in, and descriptions/user notes support Markdown — including shortcode music symbols like `:mf:` for a mezzo-forte marking (see the [emoji doc](docs/music-emoji.md) for the full list).
+- **Book-to-piece inheritance.** Set a book's composer, publisher, and year once. Every piece inside it inherits the information automatically, you only ever need to override the pieces that are actually different.
 - **Public domain badge.** A small badge shows whether a piece is Public Domain, Likely Public Domain, Copyleft, or In Copyright — computed automatically from the copyright year and composer death year(s) where possible, or set explicitly when you know better. See [Public domain badge](#public-domain-badge) below for how the calculation works and its limitations.
 - **Search that keeps up with you.** Full-text fuzzy search across your whole library as you type. Grid views are optimized for number of items shown at once, while list views show you the most detail about each piece without having to open it up.
 - **Track your wishlist.** Ever forget you were learning a piece only to rediscover it weeks later at the bottom of your bag? Or buy pieces to learn, only for them to get lost in the stacks? No more! Use the practice status and filter views to track what you want to play, what you have in progress, and even the stuff you never want to touch again! Take *that*, [Sorabji](https://www.youtube.com/watch?v=_OrAewTxBrc)!
@@ -46,7 +46,7 @@ On first launch you'll pick where your library lives (defaults to a `Sonneck Lib
 > - **macOS**: Gatekeeper will say the app "cannot be opened because it is from an unidentified developer." Right-click (or Control-click) the app and choose **Open**, then confirm **Open** again in the dialog that follows — you only need to do this once. (If you already double-clicked it and got a plain "can't be opened" message with no Open option, go to **System Settings → Privacy & Security**, scroll down, and click **Open Anyway** next to the Sonneck mention.)
 > - **Windows**: SmartScreen will say "Windows protected your PC." Click **More info**, then **Run anyway**.
 >
-> This is expected for any unsigned app, not a sign something's wrong — it's the price of admission for a free, open-source, self-hosted tool. Every release is built directly from this repo's own source by GitHub Actions \(see [`native-build.yml`](.github/workflows/native-build.yml)\) — nothing hidden happens between the code here and the file you download.
+> This is expected for any unsigned app, not a sign something's wrong — it's the price of admission for a free, open-source tool. Every release is built directly from this repo's own source by GitHub Actions \(see [`native-build.yml`](.github/workflows/native-build.yml)\) — nothing hidden happens between the code here and the file you download.
 
 Since a native install has no Docker/reverse-proxy layer in front of it, **OIDC/SSO sign-in isn't available** — it needs secrets and a registered redirect URI a native app has no safe place to hold. Use Docker instead if you want that (see [Security](#security) below).
 
@@ -91,12 +91,12 @@ Nearly all configuration can be done via environment variables (validated at sta
 
 | Variable | Default | Notes |
 |---|---|---|
-| `PORT` | `8080` | HTTP listen port. If you're using Docker, use port remapping instead. |
+| `PORT` | `8080` | HTTP listen port. Really only useful for dev work; native apps handle port selection automatically, and if you're using Docker, use port remapping instead. |
 | `DATA_DIR` | `/data` | Root of the database, library files, backups, and logs |
 | `BACKUP_DIR` | `$DATA_DIR/backups` | Where daily DB snapshots are written |
 | `BACKUP_CRON` | `0 3 * * *` | Standard cron expression for the daily backup job |
-| `BACKUP_RETENTION_DAYS` | `30` | Backups older than this are pruned after each run |
-| `CITATION_FORMAT` | (built-in template) | Reserved for future configurable citation formatting; the fixed v1 citation format doesn't currently read this |
+| `BACKUP_RETENTION_DAYS` | `30` | Backups and logs older than this are pruned at launch |
+| `CITATION_FORMAT` | (built-in template) | Reserved for future use. |
 | `LOG_LEVEL` | `info` | One of `debug`, `info`, `warn`, `error` (case-insensitive). Turn this up to `debug` on a deployed instance if you need more detail while diagnosing an issue |
 | `COPYRIGHT_REGION` | `en-US` | One of `en-US`, `eu-generic`, `en-GB`, `ca` — which region's rule the "Likely Public Domain" badge calculation uses. See [Public domain badge](#public-domain-badge) below |
 | `AUTH_METHOD` | (unset) | One of `none`, `singlepass`, `oidc` — see [Security](#security) below |
@@ -104,7 +104,7 @@ Nearly all configuration can be done via environment variables (validated at sta
 ### Security
 Sonneck supports the following authentication methods, in order of least to greatest security (and from simplest to least complex):
 1. **No password.** Anyone that can access Sonneck can do anything. One user, full admin. If you're just running this as an app on your computer and not gonna use another device, go ahead.
-2. **Password** mode locks the app behind a single password. If you're on a shared computer or planning on using Sonneck on multiple devices, I recommend this option. I haven't enforced any rules for the password other than length, so make it as simple or complex as makes you feel safe. 
+2. **Password** mode locks the app behind a single password. If you're on a shared computer or planning on using Sonneck on multiple devices, I recommend this option at the very least. I haven't enforced any rules for the password other than length, so make it as simple or complex as makes you feel safe doing.
 3. **Sign in with…** (OIDC/SSO) mode. The sign-in page kicks you over to your SSO provider for sign-in, and once you sign in the SSO provider gives Sonneck your name and profile pic. Sonneck Admins can manage user permissions in Admin Settings. IMO this will be overkill for all but the biggest libraries.
 
 On first launch, a setup screen walks you through picking one of the above (OIDC/SSO is greyed out unless it's already configured — see [OIDC / SSO setup](docs/oidc-setup.md) for details). Setting `AUTH_METHOD` yourself locks that screen to your choice instead of leaving it pickable (a `singlepass` password is still entered there either way, since a password itself has no environment-variable equivalent).
