@@ -1,16 +1,16 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import {
   IconArrowLeft,
   IconArrowRight,
-  IconArrowsSplit2,
+  IconBoxMultiple1,
   IconBoxMultiple2,
+  IconBoxMultiple3,
+  IconChevronRightPipe,
   IconCircleCaretLeftFilled,
   IconCircleCaretRightFilled,
   IconCircleFilled,
   IconFile,
-  IconScissors,
-  IconArrowsLeftRight,
   IconDots,
   IconX,
 } from '@tabler/icons-react'
@@ -25,7 +25,6 @@ import {
   applyRangeAction,
   computeLayout,
   currentCycleState,
-  cyclePage,
   formatPageList,
   pieceIndexForPage,
   setPageState,
@@ -86,6 +85,11 @@ interface PageMenuItem {
   label: string
   icon: ReactNode
   target: CycleState
+  // Whether this mode finishes a piece that's already been running since
+  // earlier pages — rendered as the same IconChevronRightPipe tile the
+  // page's own corner badge shows for 'shared'/'double', so "finishes
+  // previous" reads identically in both places instead of only on the tile.
+  finishesPrevious?: boolean
 }
 
 // Long-press (touch) or right-click (desktop) opens a menu offering every
@@ -95,57 +99,107 @@ interface PageMenuItem {
 // its three real states (see setPageState's comment on why 'shared' isn't
 // one of them).
 //
-// "Begin and split" (target: 'single', added post-launch) is menu-only,
-// not part of the plain tap cycle (see CYCLE_ORDER's own comment in
-// pieceSplitLogic.ts) — it's a distinct capability from "Finish previous
-// and split" just above it: that one shares a page
-// between two pieces where the *first* of the two was already running
-// from earlier pages. This one closes a brand-new, self-contained
-// one-page piece right on this exact page — cleanly split from whatever
-// ran before it — and, on that same page, begins a second piece that
-// stays open, continuing forward exactly like any other piece start
-// would. One page belonging to two Piece entries this way isn't a new
-// shape (see computeLayout's own synthetic-bridge case for `shared` after
-// a skip) — this just triggers that shape directly, on request, instead
-// of only as a side effect of a skip.
-//
-// "Finish previous and split twice" (target: 'double' — see
-// PageAssignments' own comment in pieceSplitLogic.ts, the real shared
-// logic this mockup and the real wizard both use) sits right after "Finish previous
-// and split" — it's that same behavior *plus* "Begin and split" chained
-// onto it: the previous piece still finishes exactly here, but instead of
-// the new piece starting directly, a brand-new one-page piece closes
-// immediately first, *then* the real continuing piece begins. Three
-// Piece entries share this one page. `IconArrowsSplit2` (replacing "Begin
-// and split"'s previous `IconCrop`, then briefly `IconBoxMultiple1`) reads
-// as a two-way fork, echoing `IconArrowsLeftRight`'s own arrow language
-// for "Finish previous and split" just above it — `IconBoxMultiple2`
-// stays for "twice," the one place the "how many bridge pieces" counting
-// language is still useful.
+// Icon encodes how many pieces *begin* on this exact page — one
+// (IconBoxMultiple1) for 'start'/'shared', two (IconBoxMultiple2) for
+// 'single'/'double' — "Begin and split" and "Finish previous and split
+// twice" both close a synthetic one-page bridge piece here in addition to
+// the piece that continues forward (see PageAssignments' own comment in
+// pieceSplitLogic.ts). Whether a piece already running from before also
+// finishes right on this page is a separate, independent axis — carried
+// by `finishesPrevious` above, not folded into the count icon itself.
 function pageMenuItems(page: number): PageMenuItem[] {
   if (page === 1) {
     return [
-      { label: 'Start piece here', icon: <IconScissors size={14} />, target: 'start' },
-      { label: 'Begin and split', icon: <IconArrowsSplit2 size={14} />, target: 'single' },
+      { label: 'Start piece here', icon: <IconBoxMultiple1 size={14} />, target: 'start' },
+      { label: 'Start two pieces', icon: <IconBoxMultiple2 size={14} />, target: 'single' },
       { label: 'Skip this page', icon: <IconX size={14} />, target: 'skip' },
     ]
   }
   return [
-    { label: 'Start a new piece', icon: <IconScissors size={14} />, target: 'start' },
+    { label: 'Start a new piece', icon: <IconBoxMultiple1 size={14} />, target: 'start' },
     {
-      label: 'Finish previous and split',
-      icon: <IconArrowsLeftRight size={14} />,
+      label: 'Finish previous and start a new piece',
+      icon: <IconBoxMultiple1 size={14} />,
       target: 'shared',
+      finishesPrevious: true,
     },
+    { label: 'Start two pieces', icon: <IconBoxMultiple2 size={14} />, target: 'single' },
     {
-      label: 'Finish previous and split twice',
+      label: 'Finish previous and start two pieces',
       icon: <IconBoxMultiple2 size={14} />,
       target: 'double',
+      finishesPrevious: true,
     },
-    { label: 'Begin and split', icon: <IconArrowsSplit2 size={14} />, target: 'single' },
+    { label: 'Start three pieces', icon: <IconBoxMultiple3 size={14} />, target: 'triple' },
     { label: 'Skip this page', icon: <IconX size={14} />, target: 'skip' },
-    { label: 'Clear (plain page)', icon: <IconFile size={14} />, target: 'normal' },
+    { label: 'Reset page', icon: <IconFile size={14} />, target: 'normal' },
   ]
+}
+
+// Preview-only tap-cycle override — the real ring (pieceSplitLogic.ts's
+// own CYCLE_ORDER/cyclePage) only steps through skip/start/shared/normal
+// today, deliberately leaving 'single'/'double' reachable through the
+// long-press menu alone. This local copy previews "every option, tap or
+// menu" (matching the menu's own new order above) without editing that
+// shared, tested file ahead of approval — pieceSplitLogic.ts is genuinely
+// one implementation for both this mockup and the real wizard step (see
+// its own header comment), so a change there takes effect in the real,
+// already-shipped step immediately, not just in this preview. Once
+// approved, this extension moves into CYCLE_ORDER itself and this local
+// copy goes away.
+const PREVIEW_CYCLE_ORDER: CycleState[] = [
+  'start',
+  'shared',
+  'single',
+  'double',
+  'triple',
+  'skip',
+  'normal',
+]
+// Page 1 has no real previous piece to finish, so 'shared'/'double' stay
+// unreachable there even in this preview — same restriction the menu
+// above already applies. currentCycleState(1, ...) reports 'normal' (not
+// 'start') for a plain, unmarked page 1 — see that function's own
+// comment — so 'normal' stands in for "start" in this page's own ring.
+const PREVIEW_PAGE_ONE_CYCLE_ORDER: CycleState[] = ['normal', 'single', 'skip']
+
+// 'shared'/'double' stay reachable through the long-press menu regardless
+// (computeLayout already gives either one a synthetic bridge piece to
+// "finish" when the page right before is a skip — see PageAssignments'
+// own comment on that), but a plain tap cycling straight to "finish
+// previous" right after a page you just marked skipped reads as
+// misleading — there's nothing actually running into this page for it to
+// finish. Drop both from the ring for exactly that one adjacency, rather
+// than everywhere.
+function cycleOrderForPage(page: number, state: PageAssignments): CycleState[] {
+  if (!state.skips.has(page - 1)) return PREVIEW_CYCLE_ORDER
+  return PREVIEW_CYCLE_ORDER.filter((s) => s !== 'shared' && s !== 'double')
+}
+
+function previewCyclePage(
+  page: number,
+  state: PageAssignments,
+  pageCount: number,
+  direction: 'forward' | 'backward',
+  alreadyTouched: boolean,
+): PageAssignments {
+  if (page === 1) {
+    const order = PREVIEW_PAGE_ONE_CYCLE_ORDER
+    const currentIndex = order.indexOf(currentCycleState(page, state))
+    const delta = direction === 'forward' ? 1 : -1
+    const next = order[(currentIndex + delta + order.length) % order.length]
+    return setPageState(page, next, state, pageCount)
+  }
+  // A page's very first interaction always marks it as a new piece start,
+  // same as the real cyclePage — only from there does it enter the ring.
+  if (!alreadyTouched) {
+    return setPageState(page, 'start', state, pageCount)
+  }
+  const order = cycleOrderForPage(page, state)
+  const currentIndex = order.indexOf(currentCycleState(page, state))
+  const delta = direction === 'forward' ? 1 : -1
+  const next = order[(currentIndex + delta + order.length) % order.length]
+  return setPageState(page, next, state, pageCount)
 }
 
 // Group Lane (design doc: the "Piece Length Indicator" comparison) — a
@@ -192,33 +246,36 @@ export function UploadBookSplitMockup() {
   useMockupTitle('Upload — Split the Book')
 
   const [state, setState] = useState<PageAssignments>(INITIAL_STATE)
-  const [dragAnchor, setDragAnchor] = useState<number | null>(null)
-  const [dragCurrent, setDragCurrent] = useState<number | null>(null)
-  // Separate from dragAnchor !== null: a resolved range keeps dragAnchor
-  // set (so the action bar stays up) after the pointer is released, but
-  // must stop *tracking new pages* the instant the button/finger lifts.
-  // The original bug used dragAnchor !== null for both "is there a
-  // pending selection" and "should pointer-enter still move it" — so
-  // just moving the mouse afterward (no button held) kept silently
-  // growing or shrinking the selection.
+  // The resolved multi-page range (shift-click's own target, see below) —
+  // real state, since it drives the highlight overlay and the floating
+  // action bar's visibility.
+  const [selection, setSelection] = useState<[number, number] | null>(null)
+  // The last *plain*-clicked page — a shift-click ranges from here to
+  // whatever page is shift-clicked next, same "anchor stays fixed until a
+  // plain click moves it" convention file managers use for range-select.
+  // A ref, not state: it has no visual representation of its own (only
+  // the resolved `selection` above needs to trigger a re-render), so
+  // there's nothing for it to usefully cause one for.
+  const anchorRef = useRef<number | null>(null)
+  // Which page the pointer actually went down on — read by the global
+  // pointerup handler below to know which page a resolved tap/shift-click
+  // applies to.
+  const pressedPageRef = useRef<number | null>(null)
   const isPointerDownRef = useRef(false)
-  const gridRef = useRef<HTMLDivElement>(null)
-  // Pages that have had at least one real interaction (tap, shift-tap,
-  // menu pick, or drag-range action) — see cyclePage's own comment for
-  // why the tap cycle needs this instead of just reading current state.
-  // A ref, not React state: it only ever needs to be read from inside
-  // event handlers when the next mutation is computed, never during
-  // render, so there's nothing for it to usefully trigger a re-render for.
+  // Set once the long-press timer (or a right-click) has already opened
+  // the context menu for this exact press — checked by the pointerup
+  // handler so releasing the button afterward doesn't *also* resolve as a
+  // tap/shift-click on top of whatever the menu already did.
+  const suppressTapRef = useRef(false)
+  // Pages that have had at least one real interaction (tap, menu pick, or
+  // drag-range action) — see cyclePage's own comment for why the tap
+  // cycle needs this instead of just reading current state. A ref, not
+  // React state: it only ever needs to be read from inside event handlers
+  // when the next mutation is computed, never during render, so there's
+  // nothing for it to usefully trigger a re-render for.
   const touchedRef = useRef<Set<number>>(new Set())
-  // Which page a click/tap started on was shift-held — read by the global
-  // pointerup handler below, which is where the tap actually resolves
-  // into a cyclePage call (see its own comment for why that's a separate
-  // effect rather than living directly on the pointerdown handler).
-  const shiftHeldRef = useRef(false)
   // Long-press (touch) / right-click (desktop) opens this instead of
-  // resolving as a tap — same underlying pointerdown/pointerup lifecycle
-  // as drag-select, not a second parallel touch-event system, so the two
-  // can't double-fire against each other on the same gesture.
+  // resolving as a tap.
   const [contextMenu, setContextMenu] = useState<{ page: number; x: number; y: number } | null>(
     null,
   )
@@ -230,10 +287,6 @@ export function UploadBookSplitMockup() {
   const columns = useGridColumns()
   const laneSegments = computeLaneSegments(pieces, columns)
   const totalRows = Math.ceil(PAGE_COUNT / columns)
-  const selection =
-    dragAnchor !== null && dragCurrent !== null && dragAnchor !== dragCurrent
-      ? [Math.min(dragAnchor, dragCurrent), Math.max(dragAnchor, dragCurrent)]
-      : null
 
   function clearLongPressTimer() {
     if (longPressTimerRef.current) {
@@ -242,78 +295,59 @@ export function UploadBookSplitMockup() {
     }
   }
 
+  // A single global listener rather than a per-tile onClick: it needs to
+  // run even if the pointer drifted slightly between down and up (pointer
+  // capture, set in onPointerDown below, keeps both targeting the same
+  // tile regardless), and it's the one place that already knows whether a
+  // long-press/right-click beat it to opening the menu for this exact
+  // press (`suppressTapRef`). Refs only in its closure (no state read), so
+  // this never needs to re-subscribe.
   useEffect(() => {
-    function handlePointerUp() {
+    function handlePointerUp(event: PointerEvent) {
+      if (!isPointerDownRef.current) return
       isPointerDownRef.current = false
       clearLongPressTimer()
-      if (dragAnchor !== null && dragAnchor === dragCurrent) {
-        // No real drag happened — treat as a plain tap. Shift reverses
-        // the cycle direction (captured at pointerdown time, since by the
-        // time this fires — a separate global listener — the key may
-        // already have been released).
-        const wasTouched = touchedRef.current.has(dragAnchor)
-        touchedRef.current.add(dragAnchor)
-        setState((s) =>
-          cyclePage(
-            dragAnchor,
-            s,
-            PAGE_COUNT,
-            shiftHeldRef.current ? 'backward' : 'forward',
-            wasTouched,
-          ),
-        )
-        setDragAnchor(null)
-        setDragCurrent(null)
+      if (suppressTapRef.current) {
+        // The long-press timer (or a right-click) already opened the
+        // context menu for this exact press — releasing the button here
+        // must not *also* resolve as a tap/shift-click on top of that.
+        suppressTapRef.current = false
+        return
       }
-      // A genuine range stays selected (action bar visible) until the
-      // user resolves or cancels it — releasing the pointer doesn't
-      // discard the selection on its own.
+      const page = pressedPageRef.current
+      if (page === null) return
+      if (event.shiftKey && anchorRef.current !== null && anchorRef.current !== page) {
+        // Range from the fixed anchor to this page — never cycles state,
+        // and never moves the anchor, so a further shift-click can still
+        // extend/shrink the same range from that same fixed point.
+        setSelection([Math.min(anchorRef.current, page), Math.max(anchorRef.current, page)])
+        return
+      }
+      // A plain click (or a shift-click with no usable anchor yet): cycle
+      // this page's state, adopt it as the new anchor, and drop any
+      // pending range — a plain click always starts fresh.
+      const wasTouched = touchedRef.current.has(page)
+      touchedRef.current.add(page)
+      setState((s) => previewCyclePage(page, s, PAGE_COUNT, 'forward', wasTouched))
+      anchorRef.current = page
+      setSelection(null)
     }
     window.addEventListener('pointerup', handlePointerUp)
     return () => window.removeEventListener('pointerup', handlePointerUp)
-  }, [dragAnchor, dragCurrent])
-
-  // Container-level move tracking + elementFromPoint hit-testing instead
-  // of a per-cell onPointerEnter — touch pointers implicitly capture to
-  // whichever cell received the pointerdown, so onPointerEnter on the
-  // *other* cells never fires during a real finger-drag (this only
-  // worked in the earlier version by accident, with a mouse, which
-  // doesn't capture the same way — checked directly, since "does it work
-  // the same on touch" isn't something to assume). Reading coordinates
-  // off the bubbled event and hit-testing manually works identically for
-  // mouse and touch.
-  const handlePointerMove = useCallback((event: React.PointerEvent) => {
-    if (!isPointerDownRef.current) return
-    // A finger/cursor that's clearly moving is dragging to select a
-    // range, not holding still for a long-press — cancel the pending
-    // timer rather than popping the menu out from under it.
-    if (longPressTimerRef.current && longPressOriginRef.current) {
-      const dx = event.clientX - longPressOriginRef.current.x
-      const dy = event.clientY - longPressOriginRef.current.y
-      if (Math.hypot(dx, dy) > LONG_PRESS_MOVE_CANCEL_PX) clearLongPressTimer()
-    }
-    const el = document.elementFromPoint(event.clientX, event.clientY)
-    const cell = el?.closest<HTMLElement>('[data-page]')
-    if (cell) {
-      const page = Number(cell.dataset.page)
-      setDragCurrent(page)
-    }
   }, [])
 
   function clearSelection() {
-    setDragAnchor(null)
-    setDragCurrent(null)
+    anchorRef.current = null
+    setSelection(null)
   }
 
   // Shared by the long-press timer and the right-click handler — both
-  // cancel whatever the ordinary tap/drag lifecycle had in flight (so
-  // release doesn't *also* fire a tap on top of opening the menu) and
-  // open the menu at the same point.
+  // mark this press as already handled (via suppressTapRef, so the
+  // pointerup listener above doesn't also resolve it as a tap) and open
+  // the menu at the same point.
   function openPageMenu(page: number, x: number, y: number) {
-    isPointerDownRef.current = false
+    suppressTapRef.current = true
     clearLongPressTimer()
-    setDragAnchor(null)
-    setDragCurrent(null)
     setContextMenu({ page, x, y })
   }
 
@@ -412,9 +446,9 @@ export function UploadBookSplitMockup() {
         <h1 className="font-display text-2xl font-medium text-ink">Mark where each piece begins</h1>
         <p className="text-sm text-ink-soft">
           Tap a page to start a new piece there, tap again to also mark it as finishing the piece
-          before it, again to clear it, and again to skip it — shift-click to step backward instead.
-          Press and hold, then drag, to select a run of pages at once. Long-press or right-click a
-          page to pick its state directly.
+          before it, again to clear it, and again to skip it. Shift-click a second page to select
+          every page in between as one run. Long-press or right-click a page to pick its state
+          directly.
         </p>
       </div>
 
@@ -466,11 +500,7 @@ export function UploadBookSplitMockup() {
           ))}
         </div>
 
-        <div
-          ref={gridRef}
-          className="relative grid grid-cols-3 gap-3 touch-none select-none sm:grid-cols-6"
-          onPointerMove={handlePointerMove}
-        >
+        <div className="relative grid grid-cols-3 gap-3 touch-none select-none sm:grid-cols-6">
           {Array.from({ length: PAGE_COUNT }, (_, i) => i + 1).map((page) => {
             const isSkip = state.skips.has(page)
             const pieceIdx = pieceIndexForPage(pieces, page)
@@ -479,6 +509,7 @@ export function UploadBookSplitMockup() {
             const isSharedStart = isStart && state.shared.has(page)
             const isSingleStart = isStart && (state.single?.has(page) ?? false)
             const isDoubleStart = isStart && (state.double?.has(page) ?? false)
+            const isTripleStart = isStart && (state.triple?.has(page) ?? false)
             // Guarded with !isSkip so this can never be true for a page
             // that's also marked skip — pieceIndexForPage doesn't know
             // about skip status (it's a pure position lookup), so without
@@ -501,12 +532,22 @@ export function UploadBookSplitMockup() {
             // is guarded above, and starts/skips are kept disjoint
             // everywhere state changes), so this order is safe as well as
             // requested — not fighting the invariants to get it. 'single',
-            // 'double', and 'shared' never collide with each other either
-            // (setPageState keeps them mutually exclusive), so their
-            // relative order here doesn't matter in practice — newest/most
-            // specific marks first ('double', then 'single').
-            const badgeKind: 'single' | 'double' | 'start' | 'shared' | 'pending' | 'skip' | null =
-              isDoubleStart
+            // 'double', 'triple', and 'shared' never collide with each
+            // other either (setPageState keeps them mutually exclusive), so
+            // their relative order here doesn't matter in practice —
+            // newest/most specific marks first ('triple', then 'double',
+            // then 'single').
+            const badgeKind:
+              | 'single'
+              | 'double'
+              | 'triple'
+              | 'start'
+              | 'shared'
+              | 'pending'
+              | 'skip'
+              | null = isTripleStart
+              ? 'triple'
+              : isDoubleStart
                 ? 'double'
                 : isSingleStart
                   ? 'single'
@@ -611,6 +652,21 @@ export function UploadBookSplitMockup() {
                   : `${prevPiece.color}61`
                 : piece.color
               sharedGradient = `linear-gradient(135deg, ${prevColor} 33%, ${middleColor} 33% 67%, ${piece.color} 67%)`
+            } else if (badgeKind === 'triple') {
+              // "Start three pieces" — also a three-stop diagonal, same
+              // shape as 'double' just above, but never finishing anything
+              // that ran before it: both pieces[pieceIdx-1] and
+              // pieces[pieceIdx-2] are computeLayout's own two synthetic
+              // one-page bridges for this exact start (pushed
+              // unconditionally, same "always a genuine same-page
+              // beginning" reasoning 'single'/'double' already use) — so,
+              // unlike 'double', neither ever needs prevColor's tinting:
+              // there's no real earlier piece in this picture at all.
+              const bridge2 = pieces[pieceIdx - 1]
+              const bridge2Color = bridge2 ? bridge2.color : piece.color
+              const bridge1 = pieces[pieceIdx - 2]
+              const bridge1Color = bridge1 ? bridge1.color : piece.color
+              sharedGradient = `linear-gradient(135deg, ${bridge1Color} 33%, ${bridge2Color} 33% 67%, ${piece.color} 67%)`
             } else if (badgeKind === 'start') {
               borderStyle = { borderColor: piece.color }
             } else if (badgeKind === 'pending') {
@@ -646,25 +702,44 @@ export function UploadBookSplitMockup() {
                   // plain click/tap always has button 0 (touch's synthetic
                   // primary contact included), but a real right-click's
                   // pointerdown fires before its contextmenu event, so
-                  // without this guard it would also arm the drag-select/
-                  // long-press state machine below, and releasing the
-                  // right button then fired the same single-page cyclePage
-                  // toggle a left click would — the reported bug: right-
-                  // click did both, not just open the menu. Bail before
-                  // touching any state so the only thing a right-click
-                  // does is what onContextMenu below already handles.
+                  // without this guard it would also arm the long-press
+                  // timer below, and releasing the right button then fired
+                  // the same single-page cycle a left click would — the
+                  // reported bug: right-click did both, not just open the
+                  // menu. Bail before touching any state so the only thing
+                  // a right-click does is what onContextMenu below already
+                  // handles.
                   if (e.button !== 0) return
                   e.preventDefault()
+                  // Keeps subsequent pointermove/pointerup events targeting
+                  // this exact tile even if the pointer drifts elsewhere
+                  // before release — this is what lets the plain onPointerUp
+                  // listener below always know which page was actually
+                  // pressed, and lets the move-cancels-long-press check just
+                  // below fire reliably for a mouse (unlike touch, a mouse
+                  // isn't implicitly captured to its down target).
+                  e.currentTarget.setPointerCapture(e.pointerId)
                   isPointerDownRef.current = true
-                  shiftHeldRef.current = e.shiftKey
-                  setDragAnchor(page)
-                  setDragCurrent(page)
+                  suppressTapRef.current = false
+                  pressedPageRef.current = page
                   longPressOriginRef.current = { x: e.clientX, y: e.clientY }
                   clearLongPressTimer()
                   const { clientX, clientY } = e
                   longPressTimerRef.current = setTimeout(() => {
                     openPageMenu(page, clientX, clientY)
                   }, LONG_PRESS_MS)
+                }}
+                onPointerMove={(e) => {
+                  // A finger/cursor that's clearly moving is a scroll or a
+                  // drag, not holding still for a long-press — cancel the
+                  // pending timer rather than popping the menu out from
+                  // under it. No range-tracking here anymore — a range is
+                  // now formed by two separate clicks (shift-click), never
+                  // by dragging.
+                  if (!isPointerDownRef.current || !longPressOriginRef.current) return
+                  const dx = e.clientX - longPressOriginRef.current.x
+                  const dy = e.clientY - longPressOriginRef.current.y
+                  if (Math.hypot(dx, dy) > LONG_PRESS_MOVE_CANCEL_PX) clearLongPressTimer()
                 }}
                 onContextMenu={(e) => {
                   e.preventDefault()
@@ -694,13 +769,32 @@ export function UploadBookSplitMockup() {
                   <div className="pointer-events-none absolute inset-0 rounded-md bg-accent/15 outline outline-3 outline-offset-2 outline-accent" />
                 )}
                 {badgeKind && (
-                  <span className="absolute top-1 right-1 flex size-[18px] items-center justify-center rounded bg-ink/75 text-white">
-                    {badgeKind === 'skip' && <IconX size={11} />}
-                    {badgeKind === 'shared' && <IconArrowsLeftRight size={11} />}
-                    {badgeKind === 'start' && <IconScissors size={11} />}
-                    {badgeKind === 'single' && <IconArrowsSplit2 size={11} />}
-                    {badgeKind === 'double' && <IconBoxMultiple2 size={11} />}
-                    {badgeKind === 'pending' && <IconDots size={12} />}
+                  <span className="absolute top-1 right-1 flex items-center gap-1">
+                    {/* A second, distinct tile — not folded into the mode
+                        badge itself — for the two modes where a piece
+                        already running from earlier pages finishes right
+                        here ('shared'/'double', both "Finish previous and
+                        split..."): the pipe marks where that incoming piece
+                        stops, the chevron whichever direction it arrived
+                        from. 'pending' (a plain member page riding along
+                        inside a still-open piece) doesn't get one — that's
+                        a derived state, not a mode the menu ever offers to
+                        pick, and the Group Lane fill already carries its
+                        own "continues" signal across every such page. */}
+                    {(badgeKind === 'shared' || badgeKind === 'double') && (
+                      <span className="flex size-6 items-center justify-center rounded-md bg-ink/75 text-white">
+                        <IconChevronRightPipe size={14} />
+                      </span>
+                    )}
+                    <span className="flex size-6 items-center justify-center rounded-md bg-ink/75 text-white">
+                      {badgeKind === 'skip' && <IconX size={14} />}
+                      {badgeKind === 'shared' && <IconBoxMultiple1 size={14} />}
+                      {badgeKind === 'start' && <IconBoxMultiple1 size={14} />}
+                      {badgeKind === 'single' && <IconBoxMultiple2 size={14} />}
+                      {badgeKind === 'double' && <IconBoxMultiple2 size={14} />}
+                      {badgeKind === 'triple' && <IconBoxMultiple3 size={14} />}
+                      {badgeKind === 'pending' && <IconDots size={14} />}
+                    </span>
                   </span>
                 )}
                 {/* In normal flow, inside this same per-page grid cell —
@@ -962,7 +1056,10 @@ export function UploadBookSplitMockup() {
                       : 'cursor-pointer text-ink hover:bg-paper'
                   }`}
                 >
-                  <span className="text-ink-soft">{item.icon}</span>
+                  <span className="flex items-center gap-1 text-ink-soft">
+                    {item.finishesPrevious && <IconChevronRightPipe size={14} />}
+                    {item.icon}
+                  </span>
                   {item.label}
                 </button>
               )

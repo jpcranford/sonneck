@@ -80,6 +80,19 @@ export interface PageAssignments {
   // this one is never meaningful there and setPageState makes no special
   // case for it.
   double?: Set<number>
+  // "Start three pieces" — the same "one immediately-closed one-page
+  // bridge, then a second piece that stays open" shape `single` produces,
+  // just with *two* closed bridges in a row before the real continuing
+  // piece begins: this page closes two separate one-page pieces, one
+  // right after the other, then begins a third that stays open,
+  // continuing forward. Never finishes whatever ran before it — unlike
+  // `double`, whose "twice" chains a finish-previous split onto a
+  // begin-split, this is purely two `single`-style begin-splits back to
+  // back, so it needs no skip-adjacent stand-in the way `shared`/`double`
+  // do. Independent of `starts` for the same reason `single`/`double` are.
+  // Not currently offered on page 1's own menu (no real need for it there
+  // yet), but nothing here stops it from working if that changes later.
+  triple?: Set<number>
 }
 
 export interface Piece {
@@ -126,11 +139,14 @@ export function normalizeSplits(state: PageAssignments, pageCount: number): Page
 export function computeLayout(state: PageAssignments, pageCount: number): Piece[] {
   const single = state.single ?? new Set<number>()
   const double = state.double ?? new Set<number>()
-  // Union with `single`/`double`, not just `state.starts` — both are
-  // independent of `starts` (see PageAssignments' own comments on why,
-  // page 1 in particular for `single`) but still need their own entry in
-  // this array for the loop below to give them a piece.
-  let starts = [...new Set([...state.starts, ...single, ...double])].sort((a, b) => a - b)
+  const triple = state.triple ?? new Set<number>()
+  // Union with `single`/`double`/`triple`, not just `state.starts` — all
+  // three are independent of `starts` (see PageAssignments' own comments
+  // on why, page 1 in particular for `single`) but still need their own
+  // entry in this array for the loop below to give them a piece.
+  let starts = [...new Set([...state.starts, ...single, ...double, ...triple])].sort(
+    (a, b) => a - b,
+  )
   // Page 1 implicitly starts the first piece by default (tapping it isn't
   // required) — but only while it isn't explicitly skipped. A skipped
   // page 1 must not silently remain "part of a piece" just because of
@@ -169,23 +185,35 @@ export function computeLayout(state: PageAssignments, pageCount: number): Piece[
       })
     }
 
-    // "Begin and split" (`single`) and "finish previous and split twice"
-    // (`double`) both always produce the same synthetic-bridge shape as
-    // the shared-after-skip case just above, unconditionally rather than
-    // only when the preceding page happens to be a skip — this page
-    // closes its own one-page piece immediately (pushed here, its own
-    // array slot, its own color) *and* — falling through to the normal
-    // end computation right below with the exact same `start` — also
-    // begins a second piece from that same page, staying open and
-    // continuing forward exactly like any other piece start would. For
-    // `double` this is the *second* of its two split points — the first
-    // (finishing whatever ran before) is handled by the block above (a
-    // skip-adjacent stand-in) or by the previous iteration's own `end`
-    // computation below (the ordinary case, extending the real previous
-    // piece's `end` to reach here) — never both at once for a `double`
-    // that isn't skip-adjacent, since a real previous piece can't also
-    // need a synthetic stand-in.
-    if (single.has(start) || double.has(start)) {
+    // "Begin and split" (`single`), "finish previous and split twice"
+    // (`double`), and "start three pieces" (`triple`) all always produce
+    // the same synthetic-bridge shape as the shared-after-skip case just
+    // above, unconditionally rather than only when the preceding page
+    // happens to be a skip — this page closes its own one-page piece
+    // immediately (pushed here, its own array slot, its own color) *and*
+    // — falling through to the normal end computation right below with
+    // the exact same `start` — also begins a second piece from that same
+    // page, staying open and continuing forward exactly like any other
+    // piece start would. For `double` this is the *second* of its two
+    // split points — the first (finishing whatever ran before) is
+    // handled by the block above (a skip-adjacent stand-in) or by the
+    // previous iteration's own `end` computation below (the ordinary
+    // case, extending the real previous piece's `end` to reach here) —
+    // never both at once for a `double` that isn't skip-adjacent, since a
+    // real previous piece can't also need a synthetic stand-in.
+    if (single.has(start) || double.has(start) || triple.has(start)) {
+      pieces.push({
+        start,
+        end: start,
+        isLast: false,
+        color: PALETTE[pieces.length % PALETTE.length],
+      })
+    }
+    // `triple` closes a *second* one-page bridge right after the first —
+    // it never finishes anything that ran before it (unlike `double`, it
+    // has no "first split point" to also handle), so this is simply the
+    // block above run twice for `triple` specifically.
+    if (triple.has(start)) {
       pieces.push({
         start,
         end: start,
@@ -222,7 +250,7 @@ export function pieceIndexForPage(pieces: Piece[], page: number): number {
   return idx
 }
 
-export type CycleState = 'normal' | 'start' | 'shared' | 'single' | 'double' | 'skip'
+export type CycleState = 'normal' | 'start' | 'shared' | 'single' | 'double' | 'triple' | 'skip'
 
 // Sets a page directly to one of its reachable states, bypassing the tap
 // cycle — used by both cyclePage (below) and the long-press/right-click
@@ -239,7 +267,11 @@ export type CycleState = 'normal' | 'start' | 'shared' | 'single' | 'double' | '
 // previous and split twice," added later still) needs a real previous
 // piece to finish the same way 'shared' does, so — like 'shared' — it's
 // simply never offered on page 1's own menu and has no explicit handling
-// in the page-1 branch below.
+// in the page-1 branch below. 'triple' ("start three pieces," added
+// later still) needs no previous piece at all — it's purely two
+// `single`-style begin-splits back to back — but isn't currently exposed
+// on page 1's own menu either, so it gets no explicit page-1 handling for
+// now (nothing below would actually stop it from working there).
 export function setPageState(
   page: number,
   target: CycleState,
@@ -251,17 +283,19 @@ export function setPageState(
   const shared = new Set(state.shared)
   const single = new Set(state.single ?? [])
   const double = new Set(state.double ?? [])
+  const triple = new Set(state.triple ?? [])
 
   if (page === 1) {
     single.delete(1)
     double.delete(1)
+    triple.delete(1)
     if (target === 'skip') {
       skips.add(1)
     } else {
       skips.delete(1)
       if (target === 'single') single.add(1)
     }
-    return normalizeSplits({ starts, skips, shared, single, double }, pageCount)
+    return normalizeSplits({ starts, skips, shared, single, double, triple }, pageCount)
   }
 
   starts.delete(page)
@@ -269,6 +303,7 @@ export function setPageState(
   skips.delete(page)
   single.delete(page)
   double.delete(page)
+  triple.delete(page)
   if (target === 'start') {
     starts.add(page)
   } else if (target === 'shared') {
@@ -283,40 +318,65 @@ export function setPageState(
     // way `shared` is) — computeLayout unions `double` into its own
     // working `starts` array at read time instead.
     double.add(page)
+  } else if (target === 'triple') {
+    // Same independence from `starts` as `single`/`double`.
+    triple.add(page)
   }
-  return normalizeSplits({ starts, skips, shared, single, double }, pageCount)
+  return normalizeSplits({ starts, skips, shared, single, double, triple }, pageCount)
 }
 
 export function currentCycleState(page: number, state: PageAssignments): CycleState {
   if (state.skips.has(page)) return 'skip'
   if (state.single?.has(page)) return 'single'
   if (state.double?.has(page)) return 'double'
+  if (state.triple?.has(page)) return 'triple'
   if (state.starts.has(page)) return state.shared.has(page) ? 'shared' : 'start'
   return 'normal'
 }
 
-// 'normal' sits between 'shared' and 'skip', not at the front — the ring
-// only governs a page that's already partway through being marked.
-// Whatever a page's data looks like on load (nothing marked at all) is
-// deliberately *not* a position in this ring; see cyclePage's own comment
-// for why that distinction needs separate tracking.
-//
-// 'single' ("begin and split") is deliberately left out of this ring —
-// it's reachable only via the long-press/right-click menu, same as every
-// other state is also reachable there, but without also lengthening the
-// plain tap cycle for the common case. Tapping a page that's currently
-// 'single' falls out of the ring at whichever end the tap direction
-// implies (CYCLE_ORDER.indexOf returns -1, so the wraparound math lands
-// on 'start' going forward or 'normal' going backward) — an accepted,
-// intentional fallback, not a bug: 'single' is meant to be a deliberate
-// long-press choice, not something a quick tap should be able to land on
-// or need to tap past.
-export const CYCLE_ORDER: CycleState[] = ['start', 'shared', 'normal', 'skip']
+// Every reachable state, in tap order — 'single'/'double'/'triple' used to
+// be long-press-menu-only (a plain tap skipped straight past them), but a
+// direct request extended the plain tap cycle to reach everything the menu
+// already offers, in the same order the menu lists them. 'normal' sits
+// last, right before wrapping back to 'skip' -> 'start'.
+export const CYCLE_ORDER: CycleState[] = [
+  'start',
+  'shared',
+  'single',
+  'double',
+  'triple',
+  'skip',
+  'normal',
+]
+// Page 1 has no real previous piece to finish, so 'shared'/'double' are
+// never reachable there at all (same restriction the menu applies) —
+// its own ring is just the three states it actually supports.
+// currentCycleState(1, ...) reports 'normal' (not 'start') for a plain,
+// untouched page 1 — see that function's own comment — so 'normal' stands
+// in for "start" in this ring.
+export const PAGE_ONE_CYCLE_ORDER: CycleState[] = ['normal', 'single', 'skip']
+
+// 'shared'/'double' ("finish previous...") stay fully reachable through
+// the long-press/right-click menu regardless of what's on the page before
+// (computeLayout already gives either one a synthetic bridge piece to
+// "finish" when that page is a skip — see PageAssignments' own comment on
+// `double`) — but landing on "finish previous" via a plain tap, right
+// after a page you just marked skipped, reads as misleading: there's
+// nothing actually running into this page for it to finish. Drop both
+// from the ring for exactly that one adjacency, not everywhere.
+function cycleOrderForPage(page: number, state: PageAssignments): CycleState[] {
+  if (!state.skips.has(page - 1)) return CYCLE_ORDER
+  return CYCLE_ORDER.filter((s) => s !== 'shared' && s !== 'double')
+}
 
 // Tap cycle for a single page: starts a piece -> also finishes the
-// previous piece -> cleared back to a plain page -> skipped -> starts a
-// piece again, and so on. Shift-click (direction: 'backward') walks the
-// same four states in reverse.
+// previous piece -> ... -> skipped -> cleared back to a plain page ->
+// starts a piece again, and so on (see CYCLE_ORDER above for the exact
+// order). `direction: 'backward'` walks the same ring in reverse — no
+// longer reachable from a plain click in the real UI (shift-click now
+// selects a page range instead, see BookUploadSplitStep.tsx), but every
+// state still needs a well-defined "previous" neighbor, so the parameter
+// stays.
 //
 // The cycle only begins once a page has actually been interacted with —
 // `alreadyTouched` (a page-number set the caller maintains across the
@@ -344,14 +404,19 @@ export function cyclePage(
   alreadyTouched = false,
 ): PageAssignments {
   if (page === 1) {
-    return setPageState(page, state.skips.has(1) ? 'normal' : 'skip', state, pageCount)
+    const order = PAGE_ONE_CYCLE_ORDER
+    const currentIndex = order.indexOf(currentCycleState(page, state))
+    const delta = direction === 'forward' ? 1 : -1
+    const next = order[(currentIndex + delta + order.length) % order.length]
+    return setPageState(page, next, state, pageCount)
   }
   if (!alreadyTouched) {
     return setPageState(page, 'start', state, pageCount)
   }
-  const currentIndex = CYCLE_ORDER.indexOf(currentCycleState(page, state))
+  const order = cycleOrderForPage(page, state)
+  const currentIndex = order.indexOf(currentCycleState(page, state))
   const delta = direction === 'forward' ? 1 : -1
-  const next = CYCLE_ORDER[(currentIndex + delta + CYCLE_ORDER.length) % CYCLE_ORDER.length]
+  const next = order[(currentIndex + delta + order.length) % order.length]
   return setPageState(page, next, state, pageCount)
 }
 
@@ -367,19 +432,21 @@ export function applyRangeAction(
   const shared = new Set(state.shared)
   const single = new Set(state.single ?? [])
   const double = new Set(state.double ?? [])
+  const triple = new Set(state.triple ?? [])
   for (let p = lo; p <= hi; p++) {
     starts.delete(p)
     shared.delete(p)
     skips.delete(p)
     single.delete(p)
     double.delete(p)
+    triple.delete(p)
   }
   if (action === 'group') {
     if (lo !== 1) starts.add(lo)
   } else {
     for (let p = lo; p <= hi; p++) skips.add(p)
   }
-  return normalizeSplits({ starts, skips, shared, single, double }, pageCount)
+  return normalizeSplits({ starts, skips, shared, single, double, triple }, pageCount)
 }
 
 // Compact page-list formatting for the Skipped pill — "4, 5, 6" reads as

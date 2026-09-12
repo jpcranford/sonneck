@@ -155,31 +155,82 @@ describe('the tap cycle', () => {
     expect(backward.starts.has(2)).toBe(true)
   })
 
-  it('cycles start -> shared -> normal -> skip -> start once touched', () => {
+  it('cycles through every reachable state once touched: start -> shared -> single -> double -> triple -> skip -> normal -> start', () => {
     let state = emptyAssignments()
     state = cyclePage(2, state, 8, 'forward', false) // untouched -> start
-    expect(state.starts.has(2) && !state.shared.has(2)).toBe(true)
+    expect(currentCycleState(2, state)).toBe('start')
 
     state = cyclePage(2, state, 8, 'forward', true) // start -> shared
-    expect(state.starts.has(2) && state.shared.has(2)).toBe(true)
+    expect(currentCycleState(2, state)).toBe('shared')
 
-    state = cyclePage(2, state, 8, 'forward', true) // shared -> normal
-    expect(state.starts.has(2)).toBe(false)
-    expect(state.skips.has(2)).toBe(false)
+    state = cyclePage(2, state, 8, 'forward', true) // shared -> single
+    expect(currentCycleState(2, state)).toBe('single')
 
-    state = cyclePage(2, state, 8, 'forward', true) // normal -> skip
-    expect(state.skips.has(2)).toBe(true)
+    state = cyclePage(2, state, 8, 'forward', true) // single -> double
+    expect(currentCycleState(2, state)).toBe('double')
 
-    state = cyclePage(2, state, 8, 'forward', true) // skip -> start (wraps)
-    expect(state.starts.has(2) && !state.shared.has(2)).toBe(true)
+    state = cyclePage(2, state, 8, 'forward', true) // double -> triple
+    expect(currentCycleState(2, state)).toBe('triple')
+
+    state = cyclePage(2, state, 8, 'forward', true) // triple -> skip
+    expect(currentCycleState(2, state)).toBe('skip')
+
+    state = cyclePage(2, state, 8, 'forward', true) // skip -> normal
+    expect(currentCycleState(2, state)).toBe('normal')
+
+    state = cyclePage(2, state, 8, 'forward', true) // normal -> start (wraps)
+    expect(currentCycleState(2, state)).toBe('start')
   })
 
-  it('page 1 only ever toggles between start and skip', () => {
+  it('walks the same ring in reverse when cycling backward', () => {
     let state = emptyAssignments()
+    state = setPageState(2, 'double', state, 8)
+    state = cyclePage(2, state, 8, 'backward', true) // double -> single
+    expect(currentCycleState(2, state)).toBe('single')
+    state = cyclePage(2, state, 8, 'backward', true) // single -> shared
+    expect(currentCycleState(2, state)).toBe('shared')
+    state = cyclePage(2, state, 8, 'backward', true) // shared -> start
+    expect(currentCycleState(2, state)).toBe('start')
+  })
+
+  it('drops "finish previous" options (shared/double) from the ring for a page right after a skip, since nothing runs into it to finish', () => {
+    let state: PageAssignments = { starts: new Set(), skips: new Set([3]), shared: new Set() }
+    // page 4 sits right after skipped page 3.
+    state = cyclePage(4, state, 8, 'forward', false) // untouched -> start
+    expect(currentCycleState(4, state)).toBe('start')
+
+    state = cyclePage(4, state, 8, 'forward', true) // start -> single (shared skipped over)
+    expect(currentCycleState(4, state)).toBe('single')
+
+    state = cyclePage(4, state, 8, 'forward', true) // single -> triple (double skipped over)
+    expect(currentCycleState(4, state)).toBe('triple')
+
+    state = cyclePage(4, state, 8, 'forward', true) // triple -> skip
+    expect(currentCycleState(4, state)).toBe('skip')
+
+    state = cyclePage(4, state, 8, 'forward', true) // skip -> normal, which
+    // normalizeSplits immediately re-promotes to an implicit start — a
+    // plain page can never sit right after a skip.
+    expect(currentCycleState(4, state)).toBe('start')
+
+    // The long-press/right-click menu still offers 'shared'/'double'
+    // directly regardless — only the plain tap cycle excludes them.
+    state = setPageState(4, 'shared', state, 8)
+    expect(currentCycleState(4, state)).toBe('shared')
+  })
+
+  it("page 1 cycles through its own reduced ring: start ('normal') -> single -> skip -> start", () => {
+    let state = emptyAssignments()
+    expect(currentCycleState(1, state)).toBe('normal') // page 1's implicit, untouched default
+
     state = cyclePage(1, state, 8)
-    expect(state.skips.has(1)).toBe(true)
+    expect(currentCycleState(1, state)).toBe('single')
+
     state = cyclePage(1, state, 8)
-    expect(state.skips.has(1)).toBe(false)
+    expect(currentCycleState(1, state)).toBe('skip')
+
+    state = cyclePage(1, state, 8)
+    expect(currentCycleState(1, state)).toBe('normal')
   })
 })
 
@@ -300,13 +351,13 @@ describe('"begin and split" (a page that is both a complete one-page piece AND t
     expect(currentCycleState(1, page1State)).toBe('normal')
   })
 
-  it('a page marked single is excluded from the plain tap cycle, landing on start/normal at either end', () => {
+  it('sits between shared and double in the tap cycle', () => {
     let state: PageAssignments = { starts: new Set(), skips: new Set(), shared: new Set() }
     state = setPageState(4, 'single', state, 8)
     const forward = cyclePage(4, state, 8, 'forward', true)
-    expect(currentCycleState(4, forward)).toBe('start')
+    expect(currentCycleState(4, forward)).toBe('double')
     const backward = cyclePage(4, state, 8, 'backward', true)
-    expect(currentCycleState(4, backward)).toBe('normal')
+    expect(currentCycleState(4, backward)).toBe('shared')
   })
 
   it('applyRangeAction clears a single mark on any page it touches', () => {
@@ -451,13 +502,13 @@ describe('"finish previous and split twice" (a page that finishes the previous p
     expect(currentCycleState(4, state)).toBe('shared')
   })
 
-  it('a page marked double is excluded from the plain tap cycle, landing on start/normal at either end', () => {
+  it('sits between single and triple in the tap cycle', () => {
     let state: PageAssignments = { starts: new Set(), skips: new Set(), shared: new Set() }
     state = setPageState(4, 'double', state, 8)
     const forward = cyclePage(4, state, 8, 'forward', true)
-    expect(currentCycleState(4, forward)).toBe('start')
+    expect(currentCycleState(4, forward)).toBe('triple')
     const backward = cyclePage(4, state, 8, 'backward', true)
-    expect(currentCycleState(4, backward)).toBe('normal')
+    expect(currentCycleState(4, backward)).toBe('single')
   })
 
   it('applyRangeAction clears a double mark on any page it touches', () => {
@@ -507,6 +558,151 @@ describe('"finish previous and split twice" (a page that finishes the previous p
             expect(count, `skipped page ${pg} should be covered 0 times`).toBe(0)
           } else {
             const maxAllowed = double.has(pg) ? 3 : 1
+            expect(count, `page ${pg} coverage`).toBeGreaterThan(0)
+            expect(
+              count,
+              `page ${pg} coverage should not exceed ${maxAllowed}`,
+            ).toBeLessThanOrEqual(maxAllowed)
+          }
+        }
+      }
+    }
+    expect(checked).toBeGreaterThan(0)
+  })
+})
+
+describe('"start three pieces" (a page that closes two one-page bridges in a row, then begins a third, open piece)', () => {
+  it('closes two one-page pieces back to back, then begins a third, open piece — all sharing the marked page, and never touching whatever ran before it', () => {
+    const state: PageAssignments = {
+      starts: new Set(),
+      skips: new Set(),
+      shared: new Set(),
+      triple: new Set([5]),
+    }
+    const pieces = computeLayout(normalizeSplits(state, 8), 8)
+    expect(pieces.map((p) => [p.start, p.end])).toEqual([
+      [1, 4], // the real previous piece, ending cleanly before the marked page
+      [5, 5], // the first synthetic one-page bridge
+      [5, 5], // the second synthetic one-page bridge
+      [5, 8], // the new, open continuing piece
+    ])
+    const colors = pieces.map((p) => p.color)
+    expect(new Set(colors).size).toBe(4) // all four distinct — positional coloring
+  })
+
+  it('never finishes a real previous piece — a skip right before it changes nothing, since there is no "finish previous" step to stand in for', () => {
+    const state: PageAssignments = {
+      starts: new Set([3]),
+      skips: new Set([2]),
+      triple: new Set([3]),
+      shared: new Set(),
+    }
+    const pieces = computeLayout(state, 8)
+    expect(pieces.map((p) => [p.start, p.end])).toEqual([
+      [1, 1],
+      [3, 3],
+      [3, 3],
+      [3, 8],
+    ])
+    const colors = pieces.map((p) => p.color)
+    expect(new Set(colors).size).toBe(4)
+  })
+
+  it('works as the very last page: the "continuing" piece has nowhere to continue to, so it also degenerates to that one page', () => {
+    const state: PageAssignments = {
+      starts: new Set(),
+      skips: new Set(),
+      shared: new Set(),
+      triple: new Set([8]),
+    }
+    const pieces = computeLayout(normalizeSplits(state, 8), 8)
+    expect(pieces.map((p) => [p.start, p.end])).toEqual([
+      [1, 7],
+      [8, 8],
+      [8, 8],
+      [8, 8],
+    ])
+  })
+
+  it('setPageState marks a page triple and clears it via any other target', () => {
+    let state: PageAssignments = { starts: new Set(), skips: new Set(), shared: new Set() }
+    state = setPageState(5, 'triple', state, 8)
+    expect(currentCycleState(5, state)).toBe('triple')
+    expect(state.starts.has(5)).toBe(false) // independent of `starts`, like `single`/`double`
+
+    state = setPageState(5, 'start', state, 8)
+    expect(currentCycleState(5, state)).toBe('start')
+    expect(state.triple?.has(5)).toBe(false)
+  })
+
+  it('is mutually exclusive with single, shared, and double — setting one clears the others', () => {
+    let state: PageAssignments = { starts: new Set(), skips: new Set(), shared: new Set() }
+    state = setPageState(4, 'double', state, 8)
+    state = setPageState(4, 'triple', state, 8)
+    expect(state.double?.has(4)).toBe(false)
+    expect(currentCycleState(4, state)).toBe('triple')
+
+    state = setPageState(4, 'shared', state, 8)
+    expect(state.triple?.has(4)).toBe(false)
+    expect(currentCycleState(4, state)).toBe('shared')
+  })
+
+  it('sits between double and skip in the tap cycle', () => {
+    let state: PageAssignments = { starts: new Set(), skips: new Set(), shared: new Set() }
+    state = setPageState(4, 'triple', state, 8)
+    const forward = cyclePage(4, state, 8, 'forward', true)
+    expect(currentCycleState(4, forward)).toBe('skip')
+    const backward = cyclePage(4, state, 8, 'backward', true)
+    expect(currentCycleState(4, backward)).toBe('double')
+  })
+
+  it('applyRangeAction clears a triple mark on any page it touches', () => {
+    let state: PageAssignments = { starts: new Set(), skips: new Set(), shared: new Set() }
+    state = setPageState(4, 'triple', state, 8)
+    state = applyRangeAction('group', 3, 5, state, 8)
+    expect(state.triple?.has(4)).toBe(false)
+  })
+
+  it('every reachable triple/skip combination produces correct, non-corrupt coverage (brute force) — a triple page is legitimately covered up to 3 times', () => {
+    const PAGE_COUNT = 5
+    const pages = Array.from({ length: PAGE_COUNT }, (_, i) => i + 1)
+
+    function* subsets<T>(arr: T[]): Generator<Set<T>> {
+      for (let mask = 0; mask < 1 << arr.length; mask++) {
+        const s = new Set<T>()
+        for (let i = 0; i < arr.length; i++) if (mask & (1 << i)) s.add(arr[i])
+        yield s
+      }
+    }
+
+    let checked = 0
+    for (const skips of subsets(pages)) {
+      for (const triple of subsets(pages)) {
+        let overlap = false
+        for (const t of triple) if (skips.has(t)) overlap = true
+        if (overlap) continue
+        checked++
+        const raw: PageAssignments = { starts: new Set(), skips, shared: new Set(), triple }
+        const state = normalizeSplits(raw, PAGE_COUNT)
+        const pieces = computeLayout(state, PAGE_COUNT)
+
+        const coverage = new Map<number, number>()
+        for (const piece of pieces) {
+          if (piece.start > piece.end) {
+            throw new Error(
+              `piece start (${piece.start}) > end (${piece.end}) for state ${JSON.stringify(state)}`,
+            )
+          }
+          for (let pg = piece.start; pg <= piece.end; pg++) {
+            coverage.set(pg, (coverage.get(pg) ?? 0) + 1)
+          }
+        }
+        for (let pg = 1; pg <= PAGE_COUNT; pg++) {
+          const count = coverage.get(pg) ?? 0
+          if (skips.has(pg)) {
+            expect(count, `skipped page ${pg} should be covered 0 times`).toBe(0)
+          } else {
+            const maxAllowed = triple.has(pg) ? 3 : 1
             expect(count, `page ${pg} coverage`).toBeGreaterThan(0)
             expect(
               count,
