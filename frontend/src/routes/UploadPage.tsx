@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -101,6 +101,19 @@ export function UploadPage() {
   // thumb always showed.
   const [previewPage, setPreviewPage] = useState(1)
   const [lightboxOpen, setLightboxOpen] = useState(false)
+  // Tracks whether the current page's own thumbnail has actually finished
+  // loading — see the preview frame's own comment below for why this
+  // exists (a real bug: a plain min-h reserved-space box, sized for a
+  // portrait page, locked every page to that shape and top-aligned a
+  // landscape page inside it instead of letting it render at its own
+  // shape). Reset per page, same as BookGridCard.tsx's own coverLoaded
+  // reset on a changed cover source — cycling to a page whose thumbnail
+  // isn't cached yet should show the placeholder again, not the previous
+  // page's now-stale "loaded" state.
+  const [thumbLoaded, setThumbLoaded] = useState(false)
+  useEffect(() => {
+    setThumbLoaded(false)
+  }, [previewPage])
   // "More details"/"From a book?" collapsible sections (Option B of a
   // 3-way comparison — see mockup/upload-piece-about) — collapsed by
   // default, same posture/trigger styling as
@@ -469,19 +482,32 @@ export function UploadPage() {
               replaces — thumb on the left, fields + Save stacked on the
               right rather than spanning the full row under it. */}
           <div className="flex flex-col items-start gap-7 sm:flex-row">
-            {/* Same reserved-frame fix as the Book Upload Wizard's cover
+            {/* Same reserved-frame need as the Book Upload Wizard's cover
                 preview (BookUploadAboutStep.tsx): thumbnail generation is
                 synchronous and can take a real moment right after upload
                 (internal/handlers/piece.go's handlePieceThumbnail), so
                 without a reserved box this panel read as empty during that
-                gap. min-h (not a fixed aspect-ratio box like the book
-                cover's) — this thumb deliberately shows the full,
-                uncropped page rather than a cropped "cover" treatment, so
-                the box must be free to grow taller than the placeholder
-                once the real image loads, not clipped to a fixed ratio.
-                440px ≈ this wrapper's 340px width at a typical US Letter
-                page's aspect ratio, just a reasonable placeholder guess. */}
-            <div className="relative w-full max-w-[340px] min-h-[440px] shrink-0 overflow-hidden rounded-lg border border-border bg-paper-sunken shadow-sm sm:w-[340px]">
+                gap. But unlike that cover preview — a deliberately cropped
+                "cover" treatment that's fine locked to a fixed aspect ratio
+                — this thumb shows the full, uncropped page, whose shape
+                varies per page (a real, confirmed bug found live: an
+                unconditional min-h-[440px], sized for a typical portrait
+                Letter page at this wrapper's 340px width, stayed applied
+                even once a landscape page's real image had loaded and
+                rendered much shorter than that reserved height — the whole
+                frame kept its portrait shape with the actual image
+                top-aligned inside it, floating over empty sunken
+                background rather than the frame matching the page's own
+                shape. PiecePage.tsx's own preview column hit and fixed
+                this identical class of bug already — see its own comment
+                for the "no forced aspect ratio, h-auto w-full only" fix;
+                here the reserved min-h is needed only until the real image
+                has actually loaded (thumbLoaded), matching BookGridCard's
+                conditional-placeholder technique instead of applying
+                unconditionally forever. */}
+            <div
+              className={`relative w-full max-w-[340px] shrink-0 overflow-hidden rounded-lg border border-border bg-paper-sunken shadow-sm sm:w-[340px] ${thumbLoaded ? '' : 'min-h-[440px]'}`}
+            >
               <button
                 type="button"
                 onClick={() => setLightboxOpen(true)}
@@ -491,8 +517,9 @@ export function UploadPage() {
                 <img
                   key={previewPage}
                   src={getPieceThumbnailUrl(piece.id, previewPage)}
+                  onLoad={() => setThumbLoaded(true)}
                   alt={`Page ${previewPage} of ${piece.title}`}
-                  className="h-auto w-full"
+                  className={thumbLoaded ? 'h-auto w-full' : 'invisible h-0 w-full'}
                 />
               </button>
               <div
