@@ -53,9 +53,13 @@ const FIXTURE_PIECES: FixturePiece[] = [
 
 // "Nov 1" — short month + day, no year (this popover only ever shows a
 // setlist's own upcoming gig date, never one far enough out that the year
-// would be ambiguous).
+// would be ambiguous). Locale left undefined, like every other date call in
+// this app (PiecePage.tsx, SetlistDetailsMockup.tsx's formatAbsoluteDate,
+// ...) — the browser/OS's own default locale decides language and
+// month/day ordering, this only pins the *format* (short month + numeric
+// day, no year), not the locale that renders it.
 function formatShortDate(gigDate: string): string {
-  return new Date(gigDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  return new Date(gigDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
 // Shared checkbox row, used by both the search dropdown and the quick list
