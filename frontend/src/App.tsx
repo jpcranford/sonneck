@@ -20,6 +20,7 @@ import { PieceDetailsSample } from './routes/PieceDetailsSample'
 import { EditPieceModalMockup } from './routes/EditPieceModalMockup'
 import { PieceLibrarySample } from './routes/PieceLibrarySample'
 import { AddToSetlistMockup } from './routes/AddToSetlistMockup'
+import { SetlistDetailsMockup } from './routes/SetlistDetailsMockup'
 import { BooksLibrarySample } from './routes/BooksLibrarySample'
 import { PeopleLibrarySample } from './routes/PeopleLibrarySample'
 import { PersonDetailsSample } from './routes/PersonDetailsSample'
@@ -153,6 +154,7 @@ function AppRoutes() {
         <Route path="mockup/edit-piece-modal" element={<EditPieceModalMockup />} />
         <Route path="mockup/piece-library" element={<PieceLibrarySample />} />
         <Route path="mockup/add-to-setlist" element={<AddToSetlistMockup />} />
+        <Route path="mockup/setlist-details" element={<SetlistDetailsMockup />} />
         <Route path="mockup/books-library" element={<BooksLibrarySample />} />
         <Route path="mockup/people-library" element={<PeopleLibrarySample />} />
         <Route path="mockup/person-details" element={<PersonDetailsSample />} />

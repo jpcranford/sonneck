@@ -27,6 +27,11 @@ const MOCKUPS = [
     note: 'Setlists feature, Phase 5 — the Library grid/list cards’ new right-click "Add to Setlist" item and the "already in a setlist" indicator next to the favorite heart. Right-click/long-press a card to try the picker.',
   },
   {
+    to: '/mockup/setlist-details',
+    name: 'Setlist Details',
+    note: 'Setlists feature, Phase 6 — the full Setlist Details page (§13), built against the approved "Stats dashboard" layout and rough-in decisions: relative gig date, role labels, non-piece entries (one with a note callout, one toggled to count as music), a real Archive/Unarchive confirm modal, and each row’s right-click menu. Play/Edit/Add Entries are inert (later phases); Archive and Remove are real.',
+  },
+  {
     to: '/mockup/books-library',
     name: 'Books Library — Sort/Filter',
     note: 'Grid/list match the real BookGridCard/BookListCard exactly, plus the same Filter Drawer + Sort control added to the Piece Library, adjusted for Books’ lighter facets (Sheet Type/Instrument only). Genuinely interactive against 8 fixture books.',
