@@ -22,6 +22,11 @@ const MOCKUPS = [
     note: 'Filter Drawer (Option B of a 4-option comparison) added to the Piece Library toolbar — Filters button + slide-in drawer (Key/Instrument/Sheet Type/Tags/Status/Favorite), plus a new Sort control. Genuinely interactive against 10 fixture pieces.',
   },
   {
+    to: '/mockup/add-to-setlist',
+    name: 'Add to Setlist',
+    note: 'Setlists feature, Phase 5 — the Library grid/list cards’ new right-click "Add to Setlist" item and the "already in a setlist" indicator next to the favorite heart. Right-click/long-press a card to try the picker.',
+  },
+  {
     to: '/mockup/books-library',
     name: 'Books Library — Sort/Filter',
     note: 'Grid/list match the real BookGridCard/BookListCard exactly, plus the same Filter Drawer + Sort control added to the Piece Library, adjusted for Books’ lighter facets (Sheet Type/Instrument only). Genuinely interactive against 8 fixture books.',
@@ -100,6 +105,11 @@ const MOCKUPS = [
     to: '/mockup/sidebar-user-menu',
     name: 'Sidebar User Menu',
     note: 'Multi-user support — replaces the static "Local Library" footer pill (desktop rail + mobile drawer) with a real account menu ("Identity card, dark popup" style). Switch identity state (None/Password/OIDC Admin/OIDC Member), collapse the rail, or open the mobile drawer to see the menu adapt.',
+  },
+  {
+    to: '/mockup/sidebar-setlists',
+    name: 'Sidebar Setlists',
+    note: 'Setlists feature, Phase 5 — replaces the inert "Coming soon" Setlists placeholder with a divider, an "Upcoming Sets" heading, 5 fixture setlists (real gig dates relative to today, soonest first), and a "⋯" menu for View All/Archive (both still-unbuilt, Phase 10). Try collapsing the rail or the mobile drawer.',
   },
   {
     to: '/mockup/user-settings',

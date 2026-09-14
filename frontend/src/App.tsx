@@ -19,6 +19,7 @@ import { MockupIndexPage } from './routes/MockupIndexPage'
 import { PieceDetailsSample } from './routes/PieceDetailsSample'
 import { EditPieceModalMockup } from './routes/EditPieceModalMockup'
 import { PieceLibrarySample } from './routes/PieceLibrarySample'
+import { AddToSetlistMockup } from './routes/AddToSetlistMockup'
 import { BooksLibrarySample } from './routes/BooksLibrarySample'
 import { PeopleLibrarySample } from './routes/PeopleLibrarySample'
 import { PersonDetailsSample } from './routes/PersonDetailsSample'
@@ -32,6 +33,7 @@ import { UploadBookTitlesMockup } from './routes/UploadBookTitlesMockup'
 import { UploadBookConfirmMockup } from './routes/UploadBookConfirmMockup'
 import { MobileNavDrawerMockup } from './routes/MobileNavDrawerMockup'
 import { SidebarUserMenuMockup } from './routes/SidebarUserMenuMockup'
+import { SidebarSetlistsMockup } from './routes/SidebarSetlistsMockup'
 import { UserSettingsMockup } from './routes/UserSettingsMockup'
 import { AdminSettingsMockup } from './routes/AdminSettingsMockup'
 import { AuthChangeFlowMockup } from './routes/AuthChangeFlowMockup'
@@ -150,6 +152,7 @@ function AppRoutes() {
         <Route path="mockup/piece-details" element={<PieceDetailsSample />} />
         <Route path="mockup/edit-piece-modal" element={<EditPieceModalMockup />} />
         <Route path="mockup/piece-library" element={<PieceLibrarySample />} />
+        <Route path="mockup/add-to-setlist" element={<AddToSetlistMockup />} />
         <Route path="mockup/books-library" element={<BooksLibrarySample />} />
         <Route path="mockup/people-library" element={<PeopleLibrarySample />} />
         <Route path="mockup/person-details" element={<PersonDetailsSample />} />
@@ -189,6 +192,10 @@ function AppRoutes() {
           nesting it inside the real shell would show a second, competing
           footer alongside this one's. */}
       <Route path="mockup/sidebar-user-menu" element={<SidebarUserMenuMockup />} />
+      {/* Also not nested inside <AppShell /> — replaces the real shell's
+          own Setlists section (both the desktop rail and MobileNavDrawer),
+          same reasoning as sidebar-user-menu above. */}
+      <Route path="mockup/sidebar-setlists" element={<SidebarSetlistsMockup />} />
       {/* Also not nested inside <AppShell /> — a full-page boot-time gate,
           same reasoning as first-launch above (reached before the real app
           — sidebar included — is ever shown). */}

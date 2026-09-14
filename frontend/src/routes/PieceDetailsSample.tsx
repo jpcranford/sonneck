@@ -4,6 +4,8 @@ import {
   IconArrowLeft,
   IconArrowsDiagonal,
   IconBook2,
+  IconCalendarEventFilled,
+  IconCalendarFilled,
   IconChevronDownFilled,
   IconChevronLeft,
   IconChevronRight,
@@ -26,7 +28,9 @@ import {
 import type { CopyrightStatus, PracticeStatus } from '../api/types'
 import { copyToClipboard } from '../lib/clipboard'
 import { COPYRIGHT_BADGE_META, copyrightTooltipText } from '../lib/copyrightBadge'
+import { AddToSetlistPicker } from './AddToSetlistMockup'
 import { InfoTooltip } from '../components/InfoTooltip'
+import { ALL_MOCK_SETLISTS } from '../lib/setlistsMockupFixture'
 import { MarkdownText } from '../components/MarkdownText'
 import { PracticeStatusIcon } from '../components/PracticeStatusIcon'
 import { hyphenateISBN } from '../lib/isbn'
@@ -507,6 +511,14 @@ export function PieceDetailsSample() {
   const [favorite, setFavorite] = useState(piece.favorite)
   const [downloadOpen, setDownloadOpen] = useState(false)
   const [moreActionsOpen, setMoreActionsOpen] = useState(false)
+  const [addToSetlistOpen, setAddToSetlistOpen] = useState(false)
+  // Starts already in one setlist, fixture-only — demonstrates the "this
+  // piece is already in a setlist" indicator next to the favorite heart
+  // without needing an extra click first.
+  // Starts in two setlists (not just one) so the InfoTooltip below
+  // demonstrates the real "In X, Y" multi-setlist joined message, not just
+  // the single-name case.
+  const [pieceSetlistIds, setPieceSetlistIds] = useState<string[]>(['1', '2'])
   const [replaceConfirming, setReplaceConfirming] = useState(false)
   // Simulated version of PiecePage.tsx's replaceMutation.isPending state —
   // there's no real upload here, but the progress-bar UI itself is part of
@@ -627,6 +639,44 @@ export function PieceDetailsSample() {
           >
             <IconDice5 size={18} />
           </button>
+          {/* Add to Setlist (decision 2) — one of this feature's three
+              add-to-setlist entry points (the others: the Library
+              grid/list card's own context menu, and the Setlist page's
+              own bulk "Add pieces" picker). A direct correction, same
+              round: moved here — the top toolbar, not the lower
+              Play/Download button row — since this action is about the
+              piece as a whole, the same category as Delete/Edit right next
+              to it, not a file/playback action. Positioned immediately to
+              the left of Edit Piece (a second direct correction) — both
+              are "editing/organizing the piece" actions, grouped together
+              with no divider between them. Its popover is the exact same
+              AddToSetlistPicker the Library grid/list cards use (imported,
+              not hand-copied a second time — a direct instruction this
+              round overriding this feature's own earlier "share only the
+              data, not the component" plan), anchored under this specific
+              button via the wrapping relative div rather than spanning
+              the whole toolbar's width. */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setAddToSetlistOpen((o) => !o)}
+              aria-label="Add to Setlist"
+              title="Add to Setlist"
+              className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent"
+            >
+              <IconCalendarEventFilled size={18} />
+            </button>
+            {addToSetlistOpen && (
+              <AddToSetlistPicker
+                allSetlists={ALL_MOCK_SETLISTS}
+                setlistIds={pieceSetlistIds}
+                onToggle={(id) =>
+                  setPieceSetlistIds((ids) => (ids.includes(id) ? ids.filter((i) => i !== id) : [...ids, id]))
+                }
+                onClose={() => setAddToSetlistOpen(false)}
+              />
+            )}
+          </div>
           <ActionButton icon={<IconEditFilled size={16} />} label="Edit Piece" disabled />
         </div>
       </div>
@@ -896,6 +946,27 @@ export function PieceDetailsSample() {
             <div className="flex items-start justify-between gap-4">
               <h1 className="font-display text-3xl font-medium text-ink">{piece.title}</h1>
               <div className="mt-1 flex shrink-0 items-center gap-3">
+                {/* "Already in a setlist" indicator (decision 6) — a pure
+                    status display, not a control, same reasoning as the
+                    copyright badge: needs a real tap-accessible tooltip
+                    (InfoTooltip), not a hover-only native title, so a touch
+                    device can still learn which setlist(s) it's naming.
+                    Filled icon, same "solid = affirmative state" precedent
+                    as the favorite heart right next to it — only ever
+                    rendered when the piece is actually in at least one. */}
+                {pieceSetlistIds.length > 0 && (
+                  <InfoTooltip
+                    message={`In ${pieceSetlistIds
+                      .map((id) => ALL_MOCK_SETLISTS.find((s) => s.id === id)?.name)
+                      .filter(Boolean)
+                      .join(', ')}`}
+                    ariaLabel="This piece is in a setlist"
+                    showPointerCursor={false}
+                    triggerClassName="text-accent"
+                  >
+                    <IconCalendarFilled size={20} />
+                  </InfoTooltip>
+                )}
                 {/* Edit moved to the top toolbar (a proper labeled button,
                     not an icon-only one) — see this file's top-of-page
                     comment. Favorite stays here; it's a one-tap toggle, not
