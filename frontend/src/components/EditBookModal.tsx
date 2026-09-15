@@ -384,7 +384,7 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="mt-1 shrink-0 text-ink-soft hover:text-accent"
+            className="mt-1 shrink-0 cursor-pointer text-ink-soft hover:text-accent"
           >
             <IconXFilled size={22} />
           </button>
@@ -412,7 +412,7 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
               type="button"
               onClick={onClose}
               disabled={saving}
-              className="rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent disabled:cursor-default disabled:opacity-45"
+              className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent disabled:cursor-default disabled:opacity-45"
             >
               Cancel
             </button>
@@ -431,7 +431,7 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
               type="submit"
               form="edit-book-form"
               disabled={saving}
-              className="relative flex min-w-[190px] shrink-0 items-center justify-center overflow-hidden rounded-md bg-accent px-4 py-2 font-display whitespace-nowrap text-white disabled:cursor-default"
+              className="relative flex min-w-[190px] shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md bg-accent px-4 py-2 font-display whitespace-nowrap text-white disabled:cursor-default"
             >
               {saveState === 'saving' && (
                 <span
