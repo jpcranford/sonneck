@@ -1,9 +1,9 @@
 import { useRef, useState, type KeyboardEvent } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { IconInfoCircle, IconSearch } from '@tabler/icons-react'
+import { IconSearch } from '@tabler/icons-react'
 import { listBooks } from '../api/books'
 import { useDebouncedValue } from '../hooks/useDebouncedValue'
-import { InfoTooltip } from './InfoTooltip'
+import { InfoIconTooltip } from './InfoIconTooltip'
 
 // Search-as-you-type book picker for the piece's sourceBookId (Book
 // Details section, above the page-range fields — design doc §15). Styled
@@ -85,13 +85,10 @@ export function SourceBookField({
     <div className="flex flex-col gap-1">
       <label htmlFor="f-source-book" className="flex items-center gap-1 text-sm text-ink-soft">
         Source book
-        <InfoTooltip
+        <InfoIconTooltip
           message="Use this to match with an existing book. If the book hasn't been created yet, go do that and come back here."
           ariaLabel="What Source book means"
-          triggerClassName="text-[#9d9892] hover:text-ink-soft"
-        >
-          <IconInfoCircle size={13} />
-        </InfoTooltip>
+        />
       </label>
       <div className="relative">
         <IconSearch

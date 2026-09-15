@@ -17,7 +17,7 @@ import {
   IconWifi,
   IconWifiOff,
 } from '@tabler/icons-react'
-import { InfoTooltip } from '../components/InfoTooltip'
+import { InfoIconTooltip } from '../components/InfoIconTooltip'
 import { Modal } from '../components/Modal'
 import { usePageTitle } from '../lib/usePageTitle'
 import { useAuth } from '../lib/AuthContext'
@@ -383,9 +383,7 @@ function UsersSection() {
                           />
                           {perm}
                         </label>
-                        <InfoTooltip message={PERM_DESCRIPTIONS[perm]} ariaLabel={`What "${perm}" allows`} triggerClassName="text-ink-soft/60 hover:text-ink-soft">
-                          <IconInfoCircle size={12} />
-                        </InfoTooltip>
+                        <InfoIconTooltip message={PERM_DESCRIPTIONS[perm]} ariaLabel={`What "${perm}" allows`} />
                       </div>
                     )
                   })}

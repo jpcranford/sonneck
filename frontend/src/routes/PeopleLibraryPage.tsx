@@ -9,7 +9,7 @@ import { useDebouncedValue } from '../hooks/useDebouncedValue'
 import { afterMinDuration } from '../lib/minDuration'
 import { PALETTE } from '../lib/pieceSplitLogic'
 import { ClickableCard } from '../components/ClickableCard'
-import { InfoTooltip } from '../components/InfoTooltip'
+import { InfoIconTooltip } from '../components/InfoIconTooltip'
 import { Modal } from '../components/Modal'
 import { PersonContextMenu } from '../components/PersonContextMenu'
 import { type SortDirection, type SortFieldOption } from '../components/SortControl'
@@ -343,13 +343,10 @@ function PersonFilterDrawer({
               />
               <span className="flex flex-1 items-center gap-1.5">
                 Show all composers
-                <InfoTooltip
+                <InfoIconTooltip
                   message="By default, only people credited on more than 2 pieces are shown, so one-off arrangers and duplicate/misspelled entries from older data don't clutter this list. Check this to see everyone."
                   ariaLabel="What does this mean?"
-                  triggerClassName="flex size-4 items-center justify-center rounded-full border border-ink-soft/60 text-[0.6rem] font-bold text-ink-soft"
-                >
-                  i
-                </InfoTooltip>
+                />
               </span>
             </label>
           </FacetSection>

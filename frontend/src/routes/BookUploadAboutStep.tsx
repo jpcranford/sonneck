@@ -8,7 +8,6 @@ import {
   IconChevronLeft,
   IconChevronRightFilled,
   IconCheck,
-  IconInfoCircle,
   IconAlertTriangle,
   IconRotate,
   IconX,
@@ -21,7 +20,7 @@ import { ApiError } from '../api/client'
 import type { Book, BookWriteRequest, Tag } from '../api/types'
 import { TagComboBox } from '../components/TagComboBox'
 import { SingleSelect } from '../components/SingleSelect'
-import { InfoTooltip } from '../components/InfoTooltip'
+import { InfoIconTooltip } from '../components/InfoIconTooltip'
 import { PageLightbox } from '../components/PageLightbox'
 import { ImslpAutofillButton } from '../components/ImslpAutofillButton'
 import { TOTAL_WIZARD_STEPS } from './BookUploadWizard'
@@ -483,13 +482,10 @@ export function BookUploadAboutStep({
                     newOptionLabel="New person"
                     highlighted={imslpFilledFields.has('composer')}
                     labelExtra={
-                      <InfoTooltip
+                      <InfoIconTooltip
                         message="If neither composer nor arranger is set here, you will be later prompted to enter one for each piece."
                         ariaLabel="What happens if Composer and Arranger are both left blank"
-                        triggerClassName="text-[#9d9892] hover:text-ink-soft"
-                      >
-                        <IconInfoCircle size={13} />
-                      </InfoTooltip>
+                      />
                     }
                   />
                 )}

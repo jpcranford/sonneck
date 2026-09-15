@@ -10,7 +10,6 @@ import {
   IconCheck,
   IconCloudDownload,
   IconCloudOff,
-  IconInfoCircle,
   IconLoader2,
   IconRotate,
   IconX,
@@ -19,7 +18,7 @@ import {
 import type { Tag } from '../api/types'
 import { TagComboBox } from '../components/TagComboBox'
 import { SingleSelect } from '../components/SingleSelect'
-import { InfoTooltip } from '../components/InfoTooltip'
+import { InfoIconTooltip } from '../components/InfoIconTooltip'
 import { useMockupTitle } from '../lib/useMockupTitle'
 
 // ---------------------------------------------------------------------
@@ -619,13 +618,10 @@ export function UploadBookAboutMockup() {
                     newOptionLabel="New person"
                     highlighted={imslpFilledFields.has('composer')}
                     labelExtra={
-                      <InfoTooltip
+                      <InfoIconTooltip
                         message="If neither composer nor arranger is set here, you will be later prompted to enter one for each piece."
                         ariaLabel="What happens if Composer and Arranger are both left blank"
-                        triggerClassName="text-[#9d9892] hover:text-ink-soft"
-                      >
-                        <IconInfoCircle size={13} />
-                      </InfoTooltip>
+                      />
                     }
                   />
                 )}

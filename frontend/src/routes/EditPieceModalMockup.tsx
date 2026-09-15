@@ -17,13 +17,12 @@ import {
   IconChevronRightFilled,
   IconCloudDownload,
   IconCloudOff,
-  IconInfoCircle,
   IconLoader2,
   IconSearch,
   IconXFilled,
 } from '@tabler/icons-react'
 import { Modal } from '../components/Modal'
-import { InfoTooltip } from '../components/InfoTooltip'
+import { InfoIconTooltip } from '../components/InfoIconTooltip'
 import { Toggle } from '../components/Toggle'
 import { PageCycleControl } from '../components/PageCycleControl'
 import { matchesKeyQuery } from '../lib/keySearch'
@@ -913,14 +912,10 @@ function SourceBookField({
     <div className="flex flex-col gap-1">
       <label htmlFor="f-source-book" className="flex items-center gap-1 text-sm text-ink-soft">
         Source book
-        <InfoTooltip
+        <InfoIconTooltip
           message="Use this to match with an existing book. If the book hasn't been created yet, go do that and come back here."
           ariaLabel="What Source book means"
-          // Solid pre-blend, not opacity — overlapping icon strokes would re-blend unevenly under real translucency.
-          triggerClassName="text-[#9d9892] hover:text-ink-soft"
-        >
-          <IconInfoCircle size={13} />
-        </InfoTooltip>
+        />
       </label>
       <div className="relative">
         <IconSearch
@@ -1571,14 +1566,10 @@ export function EditPieceModalMockup() {
               <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <label htmlFor="f-opus" className="flex items-center gap-1 text-sm text-ink-soft">
                   Opus / catalog no.
-                  <InfoTooltip
+                  <InfoIconTooltip
                     message="If this piece is part of a larger work which has a number assigned, enter that number."
                     ariaLabel="What Opus / catalog no. means"
-                    // Solid pre-blend, not opacity — overlapping icon strokes would re-blend unevenly under real translucency.
-                    triggerClassName="text-[#9d9892] hover:text-ink-soft"
-                  >
-                    <IconInfoCircle size={13} />
-                  </InfoTooltip>
+                  />
                 </label>
                 <input
                   id="f-opus"
@@ -1639,14 +1630,10 @@ export function EditPieceModalMockup() {
               <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <label htmlFor="f-publisher-id" className="flex items-center gap-1 text-sm text-ink-soft">
                   Publisher ID
-                  <InfoTooltip
+                  <InfoIconTooltip
                     message="Publisher serial or engraving plate number. Typically found in bottom margin notes."
                     ariaLabel="What Publisher ID means"
-                    // Solid pre-blend, not opacity — overlapping icon strokes would re-blend unevenly under real translucency.
-                    triggerClassName="text-[#9d9892] hover:text-ink-soft"
-                  >
-                    <IconInfoCircle size={13} />
-                  </InfoTooltip>
+                  />
                 </label>
                 <input
                   id="f-publisher-id"
@@ -2043,13 +2030,10 @@ export function EditPieceModalMockup() {
                       className="flex items-center gap-1 text-sm text-ink-soft"
                     >
                       Copyright year
-                      <InfoTooltip
+                      <InfoIconTooltip
                         message="Enter the year copyright was first established for this piece — usually the year of first publication."
                         ariaLabel="What Copyright year means"
-                        triggerClassName="text-[#9d9892] hover:text-ink-soft"
-                      >
-                        <IconInfoCircle size={13} />
-                      </InfoTooltip>
+                      />
                     </label>
                     <input
                       id="f-copyright-year"
@@ -2109,13 +2093,10 @@ export function EditPieceModalMockup() {
                         />
                       )}
                     />
-                    <InfoTooltip
+                    <InfoIconTooltip
                       message={`US works published ${US_RENEWAL_WINDOW_START}–${US_RENEWAL_WINDOW_END} needed a separate renewal filing to keep protection past the first 28 years. Enable this if your source shows a "(renewed …)" note next to the copyright year above.`}
                       ariaLabel="What 'This work was renewed' means"
-                      triggerClassName="text-[#9d9892] hover:text-ink-soft"
-                    >
-                      <IconInfoCircle size={13} />
-                    </InfoTooltip>
+                    />
                   </div>
                 )}
 

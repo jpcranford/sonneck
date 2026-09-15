@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { IconAlertTriangle, IconChevronRight, IconCheck, IconInfoCircle, IconXFilled } from '@tabler/icons-react'
+import { IconAlertTriangle, IconChevronRight, IconCheck, IconXFilled } from '@tabler/icons-react'
 import { updateBook } from '../api/books'
 import { lookupImslp } from '../api/imslp'
 import { listInstruments, listSheetTypes } from '../api/lookups'
@@ -12,7 +12,7 @@ import { afterMinDuration } from '../lib/minDuration'
 import { US_RENEWAL_WINDOW_START, US_RENEWAL_WINDOW_END, inUSRenewalWindow } from '../lib/usRenewalWindow'
 import type { Book, BookWriteRequest, Tag } from '../api/types'
 import { Modal } from './Modal'
-import { InfoTooltip } from './InfoTooltip'
+import { InfoIconTooltip } from './InfoIconTooltip'
 import { ImslpAutofillButton } from './ImslpAutofillButton'
 import { TagComboBox } from './TagComboBox'
 import { SingleSelect } from './SingleSelect'
@@ -720,13 +720,10 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
                   <label htmlFor="f-copyright-year" className="flex items-center gap-1 text-sm text-ink-soft">
                     Copyright year
-                    <InfoTooltip
+                    <InfoIconTooltip
                       message="Enter the year copyright was first established for this book — usually the year of first publication."
                       ariaLabel="What Copyright year means"
-                      triggerClassName="text-[#9d9892] hover:text-ink-soft"
-                    >
-                      <IconInfoCircle size={13} />
-                    </InfoTooltip>
+                    />
                   </label>
                   <input
                     id="f-copyright-year"
@@ -763,13 +760,10 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
                       />
                     )}
                   />
-                  <InfoTooltip
+                  <InfoIconTooltip
                     message={`US works published ${US_RENEWAL_WINDOW_START}–${US_RENEWAL_WINDOW_END} needed a separate renewal filing to keep protection past the first 28 years. Enable this if your source shows a "(renewed …)" note next to the copyright year above.`}
                     ariaLabel="What 'This work was renewed' means"
-                    triggerClassName="text-[#9d9892] hover:text-ink-soft"
-                  >
-                    <IconInfoCircle size={13} />
-                  </InfoTooltip>
+                  />
                 </div>
               )}
 

@@ -1,11 +1,11 @@
 import { useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { Controller, useForm } from 'react-hook-form'
-import { IconCheck, IconChevronRight, IconInfoCircle, IconXFilled } from '@tabler/icons-react'
+import { IconCheck, IconChevronRight, IconXFilled } from '@tabler/icons-react'
 import type { Tag } from '../api/types'
 import { Modal } from '../components/Modal'
 import { TagComboBox } from '../components/TagComboBox'
 import { SingleSelect } from '../components/SingleSelect'
-import { InfoTooltip } from '../components/InfoTooltip'
+import { InfoIconTooltip } from '../components/InfoIconTooltip'
 import { Toggle } from '../components/Toggle'
 import { useMockupTitle } from '../lib/useMockupTitle'
 import { US_RENEWAL_WINDOW_START, US_RENEWAL_WINDOW_END, inUSRenewalWindow } from '../lib/usRenewalWindow'
@@ -504,13 +504,10 @@ export function EditBookModalMockup() {
                       className="flex items-center gap-1 text-sm text-ink-soft"
                     >
                       Copyright year
-                      <InfoTooltip
+                      <InfoIconTooltip
                         message="Enter the year copyright was first established for this book — usually the year of first publication."
                         ariaLabel="What Copyright year means"
-                        triggerClassName="text-[#9d9892] hover:text-ink-soft"
-                      >
-                        <IconInfoCircle size={13} />
-                      </InfoTooltip>
+                      />
                     </label>
                     <input
                       id="f-copyright-year"
@@ -551,13 +548,10 @@ export function EditBookModalMockup() {
                         />
                       )}
                     />
-                    <InfoTooltip
+                    <InfoIconTooltip
                       message={`US works published ${US_RENEWAL_WINDOW_START}–${US_RENEWAL_WINDOW_END} needed a separate renewal filing to keep protection past the first 28 years. Enable this if your source shows a "(renewed …)" note next to the copyright year above.`}
                       ariaLabel="What 'This work was renewed' means"
-                      triggerClassName="text-[#9d9892] hover:text-ink-soft"
-                    >
-                      <IconInfoCircle size={13} />
-                    </InfoTooltip>
+                    />
                   </div>
                 )}
 

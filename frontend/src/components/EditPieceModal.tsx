@@ -14,7 +14,6 @@ import {
   IconChevronLeft,
   IconChevronRight,
   IconChevronRightFilled,
-  IconInfoCircle,
   IconXFilled,
 } from '@tabler/icons-react'
 import { listPeople } from '../api/people'
@@ -31,7 +30,7 @@ import { US_RENEWAL_WINDOW_START, US_RENEWAL_WINDOW_END, inUSRenewalWindow } fro
 import { yearWrittenSource } from '../lib/yearWrittenSource'
 import type { Piece, PieceWriteRequest, PracticeStatus, Tag } from '../api/types'
 import { Modal } from './Modal'
-import { InfoTooltip } from './InfoTooltip'
+import { InfoIconTooltip } from './InfoIconTooltip'
 import { InheritedNote } from './InheritedNote'
 import { ImslpAutofillButton } from './ImslpAutofillButton'
 import { TagComboBox } from './TagComboBox'
@@ -1028,16 +1027,10 @@ export function EditPieceModal({
             <div className="flex min-w-0 flex-1 flex-col gap-1">
               <label htmlFor="f-opus" className="flex items-center gap-1 text-sm text-ink-soft">
                 Opus / catalog no.
-                <InfoTooltip
+                <InfoIconTooltip
                   message="If this piece is part of a larger work which has a number assigned, enter that number."
                   ariaLabel="What Opus / catalog no. means"
-                  // Solid pre-blend, not opacity — IconInfoCircle is
-                  // multi-path, a translucent color double-blends at the
-                  // overlaps.
-                  triggerClassName="text-[#9d9892] hover:text-ink-soft"
-                >
-                  <IconInfoCircle size={13} />
-                </InfoTooltip>
+                />
               </label>
               <input
                 id="f-opus"
@@ -1104,16 +1097,10 @@ export function EditPieceModal({
             <div className="flex min-w-0 flex-1 flex-col gap-1">
               <label htmlFor="f-publisher-id" className="flex items-center gap-1 text-sm text-ink-soft">
                 Publisher ID
-                <InfoTooltip
+                <InfoIconTooltip
                   message="Publisher serial or engraving plate number. Typically found in bottom margin notes."
                   ariaLabel="What Publisher ID means"
-                  // Solid pre-blend, not opacity — IconInfoCircle is
-                  // multi-path, a translucent color double-blends at the
-                  // overlaps.
-                  triggerClassName="text-[#9d9892] hover:text-ink-soft"
-                >
-                  <IconInfoCircle size={13} />
-                </InfoTooltip>
+                />
               </label>
               <input
                 id="f-publisher-id"
@@ -1524,13 +1511,10 @@ export function EditPieceModal({
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
                   <label htmlFor="f-copyright-year" className="flex items-center gap-1 text-sm text-ink-soft">
                     Copyright year
-                    <InfoTooltip
+                    <InfoIconTooltip
                       message="Enter the year copyright was first established for this piece — usually the year of first publication."
                       ariaLabel="What Copyright year means"
-                      triggerClassName="text-[#9d9892] hover:text-ink-soft"
-                    >
-                      <IconInfoCircle size={13} />
-                    </InfoTooltip>
+                    />
                   </label>
                   <input
                     id="f-copyright-year"
@@ -1593,13 +1577,10 @@ export function EditPieceModal({
                         />
                       )}
                     />
-                    <InfoTooltip
+                    <InfoIconTooltip
                       message={`US works published ${US_RENEWAL_WINDOW_START}–${US_RENEWAL_WINDOW_END} needed a separate renewal filing to keep protection past the first 28 years. Enable this if your source shows a "(renewed …)" note next to the copyright year above.`}
                       ariaLabel="What 'This work was renewed' means"
-                      triggerClassName="text-[#9d9892] hover:text-ink-soft"
-                    >
-                      <IconInfoCircle size={13} />
-                    </InfoTooltip>
+                    />
                   </div>
                   {watch('copyrightRenewed') === '' && piece.copyrightRenewed.inherited && (
                     <InheritedNote

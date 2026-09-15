@@ -257,7 +257,16 @@ export function InfoTooltip({
         ref={bubbleRef}
         role="tooltip"
         style={{ transform: `translateX(calc(-50% + ${shiftPx}px))` }}
-        className={`pointer-events-none absolute left-1/2 z-10 w-max max-w-[220px] rounded-md bg-ink px-2 py-1 text-center text-xs text-paper shadow-md transition-opacity ${
+        // font-sans is explicit, not incidental — this bubble is a sibling
+        // of the trigger `<button>` above, not a descendant of it, so it
+        // has no defense against whatever font-family happens to be active
+        // wherever a caller nests this component. Found live: a caller
+        // that placed this inside a `font-display` (serif) ancestor got a
+        // serif tooltip message, since nothing here overrode the
+        // inheritance. Pinning it here, once, means every caller (present
+        // and future) is immune regardless of where they nest it, instead
+        // of each one needing to remember its own reset.
+        className={`pointer-events-none absolute left-1/2 z-10 w-max max-w-[220px] rounded-md bg-ink px-2 py-1 text-center font-sans text-xs text-paper shadow-md transition-opacity ${
           placeBelow ? 'top-full mt-1.5' : 'bottom-full mb-1.5'
         } ${open ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
       >
