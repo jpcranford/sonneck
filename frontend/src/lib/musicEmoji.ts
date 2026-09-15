@@ -1,5 +1,5 @@
 import { findAndReplace } from 'mdast-util-find-and-replace'
-import type { Root } from 'mdast'
+import type { Root, Text } from 'mdast'
 import type { Plugin } from 'unified'
 
 // Shortcode -> the literal Unicode character it stands for. Values are the
@@ -63,8 +63,12 @@ const shortcodePattern = new RegExp(
   'g',
 )
 
-// Turns a `:shortcode:` into the plain Unicode character it stands for —
-// by the time this reaches the DOM it's ordinary text; the Bravura Text
+// Turns a `:shortcode:` into the plain Unicode character it stands for,
+// wrapped in a `not-italic` span so the glyph never inherits an ancestor's
+// italic styling (an `*emphasis*` run, or a page rendering the whole field
+// itself in italics) — Bravura Text has no italic face of its own, so an
+// inherited `font-style: italic` would otherwise synthesize a faux-slanted
+// version of what's meant to be a precise musical symbol. The Bravura Text
 // @font-face (index.css) is what actually renders that character as a
 // music glyph, this plugin does no font/rendering work itself. Built on
 // mdast-util-find-and-replace (already a transitive dependency via
@@ -74,6 +78,17 @@ const shortcodePattern = new RegExp(
 // nodes, which already excludes code spans/blocks (those store their
 // content as a plain string value, not child text nodes) — so someone
 // showing ":flat:" as a literal example inside a code span is untouched.
+// The replacement stays a `Text` node (never a raw HTML string — this file
+// has no rehype-raw, deliberately, see MarkdownText.tsx) with mdast-to-hast's
+// own `data.hName`/`data.hProperties` convention doing the actual wrapping,
+// so no custom remark-rehype handler is needed just for this.
 export const remarkMusicEmoji: Plugin<[], Root> = () => (tree) => {
-  findAndReplace(tree, [shortcodePattern, (_match: string, code: string) => MUSIC_SHORTCODES[code]])
+  findAndReplace(tree, [
+    shortcodePattern,
+    (_match: string, code: string): Text => ({
+      type: 'text',
+      value: MUSIC_SHORTCODES[code],
+      data: { hName: 'span', hProperties: { className: ['not-italic'] } },
+    }),
+  ])
 }

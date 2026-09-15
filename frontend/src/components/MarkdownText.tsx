@@ -22,10 +22,12 @@ import { remarkMusicEmoji } from '../lib/musicEmoji'
 // be visually out of proportion to where it's embedded.
 //
 // remarkMusicEmoji (frontend/src/lib/musicEmoji.ts) turns a supported
-// `:shortcode:` into a plain Unicode character; font-music on the wrapper
-// below (index.css) is what actually renders that character as a music
-// symbol via Bravura Text's unicode-range, scoped to just this component's
-// output rather than app-wide.
+// `:shortcode:` into a plain Unicode character, wrapped in its own
+// `not-italic` span so it never inherits italic styling (e.g. from
+// `*emphasis*`); font-music on the wrapper below (index.css) is what
+// actually renders that character as a music symbol via Bravura Text's
+// unicode-range, scoped to just this component's output rather than
+// app-wide.
 const components: Components = {
   p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
   ul: ({ children }) => <ul className="mb-2 list-disc space-y-0.5 pl-5 last:mb-0">{children}</ul>,
