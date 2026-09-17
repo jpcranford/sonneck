@@ -286,6 +286,25 @@ export function EditProgramModal({
   // doesn't change).
   const pieceSearchInputRef = useRef<HTMLInputElement>(null)
   const customNameInputRef = useRef<HTMLInputElement>(null)
+  // The one currently-open expanding block — the piece search, the bottom
+  // add-row's own custom-entry form, or an existing entry's inline edit
+  // form — whichever is rendered right now (addRowMode/editingEntryId are
+  // kept mutually exclusive by openPieceSearch/openAddCustomForm/
+  // openEditCustomForm, so only one of the three is ever mounted at once,
+  // and this one ref can just always point at it). See the effect below for
+  // why this exists rather than relying on the focused input's own
+  // implicit autofocus-scroll.
+  const expandedRef = useRef<HTMLElement | null>(null)
+  // A callback ref, not `expandedRef` passed directly — the two elements it
+  // attaches to (the search block's own <div>, the custom form's <form>)
+  // are different concrete DOM types, and a plain RefObject<HTMLElement>
+  // isn't assignable to either one's own more specific Ref<HTMLDivElement>/
+  // Ref<HTMLFormElement> prop. A callback ref's parameter type is
+  // contravariant, so one typed as accepting the wider HTMLElement | null
+  // is assignable at both call sites.
+  const setExpandedRef = useCallback((node: HTMLElement | null) => {
+    expandedRef.current = node
+  }, [])
 
   const libraryPieceIdsInProgram = useMemo(() => {
     const ids = new Set<string>()
@@ -312,6 +331,11 @@ export function EditProgramModal({
   }
 
   function openPieceSearch() {
+    // Closes any inline custom-entry edit that might be open — the two
+    // flows share the same customName/customDuration/etc. state, and
+    // leaving an inline edit form open underneath the search would read as
+    // two things active at once for no reason.
+    setEditingEntryId(null)
     setPieceQuery('')
     setSearchHighlight(-1)
     setAddRowMode('search')
@@ -376,22 +400,35 @@ export function EditProgramModal({
     setAddRowMode('custom')
   }
 
+  // Renders inline, in this entry's own position in the list — not the
+  // bottom add-row. A real reported bug: this used to also call
+  // `setAddRowMode('custom')`, which pointed the shared form at the
+  // add-row's own render slot at the *end* of the list, so clicking a
+  // card's pencil opened the edit form down at the bottom instead of at
+  // the card that was actually clicked. `editingEntryId` alone now decides
+  // where the form renders (see the entries map below); any bottom add-row
+  // that was already open (search or custom) gets closed first — only one
+  // expanding block is ever open at a time (also what lets `expandedRef`
+  // below stay a single ref rather than three).
   function openEditCustomForm(entry: ProgramCustomEntry) {
+    if (addRowMode !== 'buttons') closeAddRow()
     setEditingEntryId(entry.id)
     setCustomName(entry.title)
     setCustomDuration(entry.durationSeconds != null ? formatDuration(entry.durationSeconds) : '')
     setCustomDescription(entry.description ?? '')
     setCustomCountsAsMusic(entry.countsAsMusic ?? false)
-    setAddRowMode('custom')
   }
 
+  // Closes whichever of the two mutually-exclusive custom-form flows is
+  // actually open — an inline edit (editingEntryId set) or the bottom
+  // add-row's own "+ Custom Entry" form (addRowMode === 'custom').
   function closeCustomForm() {
     setEditingEntryId(null)
     setCustomName('')
     setCustomDuration('')
     setCustomDescription('')
     setCustomCountsAsMusic(false)
-    closeAddRow()
+    if (addRowMode === 'custom') closeAddRow()
   }
 
   // Direct instruction: the "+ Piece" / "+ Custom Entry" row itself never
@@ -649,7 +686,136 @@ export function EditProgramModal({
     onClose()
   }
 
+  // Scrolls whichever block just opened (piece search / custom-entry add /
+  // an existing entry's inline edit) fully into view — a real reported
+  // bug: opening "+ Piece" and opening an existing custom entry's inline
+  // edit could both leave most of the newly-expanded content below the
+  // fold, unscrolled-to. There was no explicit scroll code anywhere before
+  // this — all of it rode on the autoFocus'd input's own implicit browser
+  // scroll-into-view, which turned out to be genuinely unreliable, not
+  // just under-built for two of the three cases: live-measured via
+  // Playwright, that implicit behavior landed on two different Chromium
+  // heuristics (a big "center it" jump vs. a tiny "nudge the last few
+  // clipped pixels" nudge) depending on whether the focused input happened
+  // to fall just inside or just outside the viewport before scrolling — a
+  // ~30px difference in each form's own top padding was enough to flip
+  // which one Chromium picked, which is exactly why "+ Custom Entry"
+  // looked like it worked while "+ Piece" didn't, with no actual scroll
+  // logic behind either of them.
+  //
+  // Plain scrollTop arithmetic on the modal body, not `Element.scrollIntoView`
+  // — simpler (no separate API/options to reason about) and it's what lets
+  // EXTRA_PEEK exist at all: `scrollIntoView({block: 'nearest'})` stops
+  // flush with the block's own bottom edge, which reads as "cut off right
+  // there" even though it's actually the whole block; a few extra px past
+  // that (until the *next* row/section would start) makes it visually
+  // obvious there's nothing more hiding below.
+  useEffect(() => {
+    if (addRowMode === 'buttons' && editingEntryId === null) return
+    const target = expandedRef.current
+    const container = target?.closest('.overflow-y-auto') as HTMLElement | null
+    if (!target || !container) return
+    const targetRect = target.getBoundingClientRect()
+    const containerRect = container.getBoundingClientRect()
+    const EXTRA_PEEK = 16
+    if (targetRect.bottom > containerRect.bottom) {
+      container.scrollTop += targetRect.bottom - containerRect.bottom + EXTRA_PEEK
+    } else if (targetRect.top < containerRect.top) {
+      container.scrollTop -= containerRect.top - targetRect.top
+    }
+  }, [addRowMode, editingEntryId])
+
   const draggingEntry = draggingId ? programEntries.find((e) => e.id === draggingId) : undefined
+
+  // Shared by both places a custom entry's fields get edited — the bottom
+  // add-row's own "+ Custom Entry" form, and (see the entries map below) an
+  // existing custom entry's inline edit form, opened via its own pencil
+  // icon. Only one of the two is ever open at once (openEditCustomForm/
+  // openPieceSearch/openAddCustomForm all close the other), so both call
+  // sites can safely share the same customName/customDuration/etc. state —
+  // `wrapperClassName` is the one real difference, styling this as either a
+  // section nested inside the add-row's own bordered wrapper, or a
+  // standalone card sitting in the entry's own list position.
+  function renderCustomEntryForm(key: string, wrapperClassName: string) {
+    return (
+      <form
+        key={key}
+        ref={setExpandedRef}
+        onSubmit={(event) => {
+          event.preventDefault()
+          submitCustomForm()
+        }}
+        className={wrapperClassName}
+      >
+        <button
+          type="button"
+          onClick={closeCustomForm}
+          aria-label="Cancel custom entry"
+          className="absolute top-2 right-2 cursor-pointer rounded p-1 text-ink-soft hover:bg-paper-sunken hover:text-ink"
+        >
+          <IconX size={13} />
+        </button>
+        <label htmlFor="f-custom-name" className="text-sm text-ink-soft">
+          Name
+        </label>
+        <input
+          ref={customNameInputRef}
+          id="f-custom-name"
+          type="text"
+          autoFocus
+          value={customName}
+          onChange={(event) => setCustomName(event.target.value)}
+          placeholder="Welcome &amp; Announcements"
+          className="mt-1 mb-2 w-full rounded-md border border-border bg-paper-raised px-3 py-1.5 text-sm text-ink"
+        />
+        <div className="mb-2 flex items-end gap-2">
+          <div className="flex-1">
+            <label htmlFor="f-custom-duration" className="text-sm text-ink-soft">
+              Duration
+            </label>
+            <input
+              id="f-custom-duration"
+              type="text"
+              value={customDuration}
+              onChange={(event) => setCustomDuration(event.target.value)}
+              placeholder="3:00"
+              className="mt-1 w-full rounded-md border border-border bg-paper-raised px-3 py-1.5 text-sm text-ink"
+            />
+          </div>
+          <div className="flex flex-1 py-1.5">
+            <Toggle checked={customCountsAsMusic} onChange={setCustomCountsAsMusic} label="Count as music" />
+          </div>
+        </div>
+        <label htmlFor="f-custom-description" className="text-sm text-ink-soft">
+          Description <span className="text-ink-soft/60 italic">(Markdown supported)</span>
+        </label>
+        <textarea
+          id="f-custom-description"
+          value={customDescription}
+          onChange={(event) => setCustomDescription(event.target.value)}
+          placeholder="Reminder: mention the bake sale sign-up sheet before the offering."
+          rows={2}
+          className="mt-1 mb-3 w-full resize-none rounded-md border border-border bg-paper-raised px-3 py-1.5 text-sm text-ink"
+        />
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={closeCustomForm}
+            className="cursor-pointer rounded-md border border-border bg-paper-raised px-3 py-1.5 text-sm text-ink hover:border-accent"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={!customName.trim()}
+            className="cursor-pointer rounded-md bg-accent px-3 py-1.5 text-sm text-white hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {editingEntryId ? 'Save' : 'Add'}
+          </button>
+        </div>
+      </form>
+    )
+  }
 
   return (
     <>
@@ -711,7 +877,17 @@ export function EditProgramModal({
         onLostPointerCapture={endDrag}
         className="flex flex-col gap-1.5"
       >
-        {programEntries.map((entry) => (
+        {programEntries.map((entry) => {
+          // Inline edit, in this entry's own position — not the bottom
+          // add-row (see renderCustomEntryForm's own comment for the bug
+          // this fixes). Not draggable while its own form is open — the
+          // row swaps to a plain bordered form, no onPointerDown/
+          // data-entry-id, so a drag passing over it just doesn't treat it
+          // as a drop target for the moment it's being edited.
+          if (entry.kind === 'custom' && entry.id === editingEntryId) {
+            return renderCustomEntryForm(entry.id, 'relative rounded-md border border-accent bg-paper-raised p-3')
+          }
+          return (
           <div
             key={entry.id}
             data-entry-id={entry.id}
@@ -772,7 +948,8 @@ export function EditProgramModal({
               <IconX size={14} />
             </button>
           </div>
-        ))}
+          )
+        })}
 
         {/* Add row — ends the list itself. "Bordered Cards" (Option B of a
             4-way style Artifact): a plain bordered box that matches the
@@ -820,7 +997,7 @@ export function EditProgramModal({
           </div>
 
         {addRowMode === 'search' && (
-          <div className="border-t border-border p-2.5">
+          <div ref={setExpandedRef} className="border-t border-border p-2.5">
             <div className="relative">
               <IconSearch size={13} className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-ink-soft/60" />
               <input
@@ -914,106 +1091,21 @@ export function EditProgramModal({
           </div>
         )}
 
-        {addRowMode === 'custom' && (
-          // Field labels/inputs match EditPieceModal/EditBookModal/
-          // EditPersonModal's own real form conventions — sentence-case
-          // `text-sm text-ink-soft` labels (not the small-caps tracked
-          // micro-labels this form used before), `px-3 py-2` inputs on
-          // `bg-paper-raised` at the default text size (not the smaller/
-          // denser `px-2 py-1 text-sm` on plain `bg-paper`), and no custom
-          // `focus:border-accent` override — the app's own global
-          // `:focus-visible` outline (index.css) is what every real modal
-          // field already relies on.
-          // A real <form>, scoped to just this sub-form's own fields — not
-          // the whole modal body, which would make Enter in any of these
-          // fields fire the top-level Save/close instead of this form's own
-          // Add/Save action (the piece-search input above already handles
-          // its own Enter via onKeyDown for the identical reason). Matches
-          // the real modals' own Enter-to-submit convention at the scope it
-          // actually applies here.
-          //
-          // Field/font sizes (`text-sm`, `py-1.5`) and the corner ×
-          // dismiss button both match its "+ Piece" sibling above — the
-          // two add-row sub-forms sit in the exact same slot in the list
-          // and should read as the same weight, not one visibly larger
-          // than the other. The corner × is an addition, not a
-          // replacement — the footer Cancel/Save pair below still does
-          // the same job for anyone who reaches for it instead.
-          <form
-            onSubmit={(event) => {
-              event.preventDefault()
-              submitCustomForm()
-            }}
-            className="relative border-t border-border p-3"
-          >
-            <button
-              type="button"
-              onClick={closeCustomForm}
-              aria-label="Cancel custom entry"
-              className="absolute top-2 right-2 cursor-pointer rounded p-1 text-ink-soft hover:bg-paper-sunken hover:text-ink"
-            >
-              <IconX size={13} />
-            </button>
-            <label htmlFor="f-custom-name" className="text-sm text-ink-soft">
-              Name
-            </label>
-            <input
-              ref={customNameInputRef}
-              id="f-custom-name"
-              type="text"
-              autoFocus
-              value={customName}
-              onChange={(event) => setCustomName(event.target.value)}
-              placeholder="Welcome &amp; Announcements"
-              className="mt-1 mb-2 w-full rounded-md border border-border bg-paper-raised px-3 py-1.5 text-sm text-ink"
-            />
-            <div className="mb-2 flex items-end gap-2">
-              <div className="flex-1">
-                <label htmlFor="f-custom-duration" className="text-sm text-ink-soft">
-                  Duration
-                </label>
-                <input
-                  id="f-custom-duration"
-                  type="text"
-                  value={customDuration}
-                  onChange={(event) => setCustomDuration(event.target.value)}
-                  placeholder="3:00"
-                  className="mt-1 w-full rounded-md border border-border bg-paper-raised px-3 py-1.5 text-sm text-ink"
-                />
-              </div>
-              <div className="flex flex-1 py-1.5">
-                <Toggle checked={customCountsAsMusic} onChange={setCustomCountsAsMusic} label="Count as music" />
-              </div>
-            </div>
-            <label htmlFor="f-custom-description" className="text-sm text-ink-soft">
-              Description <span className="text-ink-soft/60 italic">(Markdown supported)</span>
-            </label>
-            <textarea
-              id="f-custom-description"
-              value={customDescription}
-              onChange={(event) => setCustomDescription(event.target.value)}
-              placeholder="Reminder: mention the bake sale sign-up sheet before the offering."
-              rows={2}
-              className="mt-1 mb-3 w-full resize-none rounded-md border border-border bg-paper-raised px-3 py-1.5 text-sm text-ink"
-            />
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={closeCustomForm}
-                className="cursor-pointer rounded-md border border-border bg-paper-raised px-3 py-1.5 text-sm text-ink hover:border-accent"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={!customName.trim()}
-                className="cursor-pointer rounded-md bg-accent px-3 py-1.5 text-sm text-white hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {editingEntryId ? 'Save' : 'Add'}
-              </button>
-            </div>
-          </form>
-        )}
+        {/* Field labels/inputs match EditPieceModal/EditBookModal/
+            EditPersonModal's own real form conventions — sentence-case
+            `text-sm text-ink-soft` labels, `px-3 py-2` inputs on
+            `bg-paper-raised`, no custom `focus:border-accent` override
+            (the app's own global `:focus-visible` outline is what every
+            real modal field already relies on). Scoped to just this
+            sub-form's own fields, not the whole modal body, so Enter here
+            fires this form's own Add/Save rather than the top-level Save/
+            close (the piece-search input above handles its own Enter via
+            onKeyDown for the identical reason). This is always the *add*
+            case here (`editingEntryId` is null whenever addRowMode is
+            'custom' — see openAddCustomForm/openEditCustomForm) — an
+            existing entry's own edit form renders inline at its own list
+            position instead, via the same renderCustomEntryForm helper. */}
+        {addRowMode === 'custom' && renderCustomEntryForm('add-custom-entry', 'relative border-t border-border p-3')}
         </div>
       </div>
     </Modal>
