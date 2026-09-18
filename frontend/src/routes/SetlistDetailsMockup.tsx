@@ -460,12 +460,18 @@ export function SetlistDetailsMockup() {
           nothing in this codebase does), same single disabled dropdown
           item with the identical "Coming with annotations (§13)" note,
           just relabeled for the whole set rather than one piece. Hover
-          feedback lives on the outer pill (`hover:border-accent`, this
-          app's own established bordered-button convention), not a
-          `hover:bg-accent-soft` tint on each inner segment — a local
-          one-off this split button, PieceDetailsSample.tsx's, and the
-          real PiecePage.tsx's own copy all carried before a direct fix
-          ported the same correction to all three at once. */}
+          feedback: a direct correction — an outer wrapper
+          `hover:border-accent` highlighted the whole pill regardless of
+          which segment was hovered, silently skipping the divider
+          between them (it stayed neutral even while the outer edge went
+          accent). Each segment now owns its own full border instead
+          (the caret pulls `-ml-px` to overlap the label's own right
+          border into one 1px seam at rest), and `hover:z-10` lifts
+          whichever segment is hovered above its neighbor at that shared
+          line before `hover:border-accent` recolors it — so the seam
+          genuinely recolors from whichever side is actually hovered,
+          not always from the same one. Same fix ported to
+          `PieceDetailsSample.tsx` and the real `PiecePage.tsx`. */}
       <div className="flex flex-wrap items-center gap-2">
         <InfoTooltip
           message="Coming soon — will play through the set's pieces one after another via the future Sheet Viewer, with placeholder pages standing in for custom entries. Built once the Sheet Viewer's own core playback exists."
@@ -478,10 +484,22 @@ export function SetlistDetailsMockup() {
         </InfoTooltip>
 
         <div className="relative">
-          <div className="flex overflow-hidden rounded-md border border-border transition-colors hover:border-accent">
+          <div className="flex">
+            {/* Both segments own a full border (not just the outer edges),
+                deliberately — the second button pulls 1px left
+                (`-ml-px`) to sit its own left border exactly on top of
+                the first button's right border, so at rest (both
+                border-border) it still reads as a single 1px seam. On
+                hover, `z-10` lifts that segment's entire border above its
+                neighbor's at the shared pixel line, so the accent color
+                genuinely comes from whichever side is hovered — hover the
+                label and the seam recolors from the label's side; hover
+                the caret and it recolors from the caret's side instead,
+                rather than one segment silently owning the divider no
+                matter which side is hovered. */}
             <button
               type="button"
-              className="flex cursor-pointer items-center gap-2 bg-paper-raised px-4 py-2 font-display text-sm text-ink"
+              className="relative flex cursor-pointer items-center gap-2 rounded-l-md border border-border bg-paper-raised px-4 py-2 font-display text-sm text-ink transition-colors hover:z-10 hover:border-accent"
             >
               <IconDownload size={16} />
               Download Set PDF
@@ -490,7 +508,7 @@ export function SetlistDetailsMockup() {
               type="button"
               onClick={() => setDownloadOpen((o) => !o)}
               aria-label="More download options"
-              className="flex cursor-pointer items-center justify-center border-l border-border bg-paper-raised px-2 text-ink"
+              className="relative -ml-px flex cursor-pointer items-center justify-center rounded-r-md border border-border bg-paper-raised px-2 text-ink transition-colors hover:z-10 hover:border-accent"
             >
               <IconChevronDownFilled size={16} />
             </button>
@@ -542,6 +560,30 @@ export function SetlistDetailsMockup() {
         </div>
       </div>
 
+      {/* Capped narrower than the page's own max-w-6xl (CONTENT_MAX_W) —
+          direct instruction, the full-width Program list read as too wide
+          once real entries were in place. mx-auto too, per a direct
+          follow-up (first left-flush like the description above it, then
+          explicitly asked to center). max-w-3xl read as too thin once
+          centered — bumped to max-w-4xl — then explicitly asked back down
+          to max-w-3xl (this time rendering correctly at that width, per
+          the w-full fix below, unlike the first pass through 3xl before
+          that bug was found).
+
+          w-full is load-bearing, not decoration: this div is a flex item
+          of the page's own outer `flex flex-col` container, and a flex
+          item with an auto margin on its cross axis (mx-auto, here —
+          width is the cross axis in a column flex) has that auto margin
+          override `align-items: stretch` entirely, per the flexbox spec —
+          without w-full, the div sizes to its own *content* width first
+          and only then gets centered in the leftover space, so max-w-*
+          can silently never actually be reached — confirmed live via a
+          real getBoundingClientRect() measurement, not assumed from the
+          classNames alone (it once rendered ~473px wide regardless of
+          whether the cap said 3xl or 4xl). w-full forces it to actually
+          fill the container's width up to that cap before mx-auto
+          centers it. */}
+      <div className="mx-auto w-full max-w-3xl">
       <div className="flex items-center justify-between">
         <h3 className="font-display text-lg font-medium text-ink">Program</h3>
         {/* Real now that the full fold (decision 23) is live — opens the
@@ -657,6 +699,7 @@ export function SetlistDetailsMockup() {
             </>
           )}
         </div>
+      </div>
       </div>
 
       <Modal open={archiveModalOpen} onClose={() => setArchiveModalOpen(false)} labelledBy="archive-setlist-title">
