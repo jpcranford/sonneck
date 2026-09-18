@@ -32,9 +32,9 @@ const MOCKUPS = [
     note: 'Setlists feature, Phase 6 — the full Setlist Details page (§13), built against the approved "Stats dashboard" layout and rough-in decisions: relative gig date, role labels, non-piece entries (one with a note callout, one toggled to count as music), a real Archive/Unarchive confirm modal, and each row’s right-click menu. Play/Edit/Add Entries are inert (later phases); Archive and Remove are real.',
   },
   {
-    to: '/mockup/edit-program',
-    name: 'Edit Program',
-    note: 'Setlists feature, Phase 8 — restyled to a single-column, bordered-card Program list (a 4-option style Artifact\'s "Bordered Cards" direction), with a "+ Piece" / "+ Custom" row ending the list. "+ Piece" opens a search bar prefilled with the 5 most recently edited pieces. Drag-handle reordering and inline custom-entry edit carry over unchanged. Nothing is final until "Save."',
+    to: '/mockup/edit-setlist',
+    name: 'Edit Setlist',
+    note: 'Setlists feature, Phase 10 — decision 23\'s full fold: the former standalone Edit Program modal no longer exists — its own restyled, bordered-card Program list ("+ Piece"/"+ Custom Entry", drag-handle reordering, inline custom-entry edit) now lives as this modal\'s own "Program Order" tab, alongside a "Setlist Details" tab (name/gig date/description). Doubles as the New Setlist create state via the "Open New Setlist" button; "Open on Program Tab" demonstrates the Setlist Details page\'s own "Edit Program" button landing here pre-set to that tab. Whole-setlist delete lives on the Setlist Details page itself, not here. Nothing is final until "Save."',
   },
   {
     to: '/mockup/books-library',

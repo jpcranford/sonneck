@@ -4,9 +4,11 @@ import {
   IconArchive,
   IconArrowLeft,
   IconCalendar,
-  IconCalendarPlus,
+  IconChevronDownFilled,
   IconCopy,
+  IconDownload,
   IconEditFilled,
+  IconListDetails,
   IconPlayerPlay,
   IconTrash,
 } from '@tabler/icons-react'
@@ -275,6 +277,25 @@ export function SetlistDetailsMockup() {
   const [duplicateTitle, setDuplicateTitle] = useState('')
   const [duplicateGigDate, setDuplicateGigDate] = useState('')
   const [editSetlistOpen, setEditSetlistOpen] = useState(false)
+  // Which tab EditSetlistModal lands on the next time it opens — 'details'
+  // for the "Edit setlist" button/"E" shortcut, 'program' for the Program
+  // section's own "Edit Program" button (the full-fold decision: both
+  // trigger buttons on this page open the exact same modal instance now,
+  // never a separate Edit Program modal). EditSetlistModal's own
+  // `initialTab` prop re-syncs to this value on every open, not just once,
+  // so the same modal instance correctly lands on a different tab
+  // depending on which button was clicked last.
+  const [editSetlistTab, setEditSetlistTab] = useState<'details' | 'program'>('details')
+
+  function openEditSetlist(tab: 'details' | 'program') {
+    setEditSetlistTab(tab)
+    setEditSetlistOpen(true)
+  }
+
+  // Download Set PDF's own "+ Annotations" dropdown — same toggle-only
+  // state PiecePage.tsx's own `downloadOpen` uses (no outside-click
+  // dismiss there either, confirmed by reading that file directly).
+  const [downloadOpen, setDownloadOpen] = useState(false)
 
   const displayNumbers = useMemo(() => computeDisplayNumbers(entries), [entries])
   // Only entries with a known duration contribute — omit the duration
@@ -308,7 +329,7 @@ export function SetlistDetailsMockup() {
       }
       if (event.key.toLowerCase() === 'e') {
         event.preventDefault()
-        setEditSetlistOpen(true)
+        openEditSetlist('details')
       }
     }
     document.addEventListener('keydown', onKeyDown)
@@ -359,13 +380,17 @@ export function SetlistDetailsMockup() {
 
       <div className="rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-4 py-2 text-sm text-ink-soft">
         Reference sample — <span className="font-medium text-ink">Setlist Details</span> (design doc §13, Phase 6).
-        Built against the approved Option B ("Stats dashboard") layout and Phase 3's rough-in decisions. Play/Add
-        Entries are inert (their own dependencies — the Sheet Viewer, the bulk picker — aren't built yet); Edit,
-        Archive, Duplicate, and Delete are genuinely interactive — Edit opens EditSetlistMockup.tsx's own real modal
-        (also reachable via the "E" key, same shortcut PiecePage.tsx/BookDetailsPage.tsx/PersonDetailsPage.tsx already
-        use), and Delete reuses the identical window.confirm() pattern those two pages' own icon-only Delete buttons
-        already use — each row can also be removed via its own right-click menu (no standalone button — too easy to
-        hit by accident).
+        Built against the approved Option B ("Stats dashboard") layout and Phase 3's rough-in decisions. Play Set (moved
+        below the description, direct instruction) is inert — its own dependency, the Sheet Viewer's core playback,
+        isn't built yet; Download Set PDF, right next to it, is a literal port of PieceDetailsSample.tsx's own
+        Download PDF split-button/"+ Annotations" dropdown, relabeled for the whole set. Edit setlist, Edit Program,
+        Archive, Duplicate, and Delete are genuinely interactive — Edit setlist and Edit Program both open
+        EditSetlistMockup.tsx's own real modal, landed on its "Setlist Details"/"Program Order" tab respectively (the
+        full-fold decision — there's no separate Edit Program modal anymore), Edit setlist also reachable via the
+        "E" key (same shortcut PiecePage.tsx/BookDetailsPage.tsx/PersonDetailsPage.tsx already use), and Delete
+        reuses the identical window.confirm() pattern those two pages' own icon-only Delete buttons already use —
+        each row can also be removed via its own right-click menu (no standalone button — too easy to hit by
+        accident).
         {archived && (
           <span className="ml-2 rounded-full bg-ink px-2 py-0.5 text-xs font-medium text-paper">Archived</span>
         )}
@@ -396,21 +421,13 @@ export function SetlistDetailsMockup() {
             <IconTrash size={18} />
           </button>
           <span aria-hidden="true" className="h-6 w-px bg-border" />
-          <InfoTooltip
-            message="Coming soon — will play through the future Sheet Viewer."
-            ariaLabel="Play (coming soon with the Sheet Viewer)"
-            showPointerCursor={false}
-            triggerClassName="flex items-center gap-2 rounded-md bg-accent px-4 py-2 font-display text-sm text-white opacity-50"
-          >
-            <IconPlayerPlay size={16} />
-            Play
-          </InfoTooltip>
           {/* Real now that Phase 10's EditSetlistModal exists — the "E"
-              keyboard shortcut above opens this same modal. */}
+              keyboard shortcut above opens this same modal, landed on its
+              "Setlist Details" tab. */}
           <HeaderIconButton
             icon={<IconEditFilled size={16} />}
             label="Edit setlist"
-            onClick={() => setEditSetlistOpen(true)}
+            onClick={() => openEditSetlist('details')}
           />
           <HeaderIconButton icon={<IconCopy size={16} />} label="Duplicate setlist" onClick={openDuplicateModal} />
           <HeaderIconButton
@@ -418,6 +435,70 @@ export function SetlistDetailsMockup() {
             label={archived ? 'Unarchive setlist' : 'Archive setlist'}
             onClick={() => setArchiveModalOpen(true)}
           />
+        </div>
+      </div>
+
+      {/* Play Set / Download Set PDF — moved out of the name/date header row
+          (direct instruction) into their own row directly below the
+          description, since they're the set's own primary actions, not
+          record-management actions like Edit/Duplicate/Archive/Delete
+          above. Play kept its accent-solid treatment and `InfoTooltip`
+          "coming soon" posture (same as before, just relabeled "Play Set"
+          and moved) — genuinely still blocked on the Sheet Viewer's own
+          core playback existing first; direct instruction: it'll play the
+          set's pieces one after another once built, with placeholder pages
+          standing in for custom entries (which have no real pages of their
+          own to show). Download Set PDF is a literal port of
+          PieceDetailsSample.tsx's own Download PDF split-button + "+
+          Annotations" dropdown (re-read directly before building this,
+          not assumed) — same bordered/paper-raised pill, same
+          clickable-but-inert main action (this mockup has no real
+          concatenation endpoint to link to, matching how the real one has
+          no real PDF merge either — nothing in this codebase does), same
+          single disabled dropdown item with the identical "Coming with
+          annotations (§13)" note, just relabeled for the whole set rather
+          than one piece. */}
+      <div className="flex flex-wrap items-center gap-2">
+        <InfoTooltip
+          message="Coming soon — will play through the set's pieces one after another via the future Sheet Viewer, with placeholder pages standing in for custom entries. Built once the Sheet Viewer's own core playback exists."
+          ariaLabel="Play Set (coming soon with the Sheet Viewer)"
+          showPointerCursor={false}
+          triggerClassName="flex items-center gap-2 rounded-md bg-accent px-4 py-2 font-display text-sm text-white opacity-50"
+        >
+          <IconPlayerPlay size={16} />
+          Play Set
+        </InfoTooltip>
+
+        <div className="relative">
+          <div className="flex overflow-hidden rounded-md border border-border">
+            <button
+              type="button"
+              className="flex cursor-pointer items-center gap-2 bg-paper-raised px-4 py-2 font-display text-sm text-ink hover:bg-accent-soft"
+            >
+              <IconDownload size={16} />
+              Download Set PDF
+            </button>
+            <button
+              type="button"
+              onClick={() => setDownloadOpen((o) => !o)}
+              aria-label="More download options"
+              className="flex cursor-pointer items-center justify-center border-l border-border bg-paper-raised px-2 text-ink hover:bg-accent-soft"
+            >
+              <IconChevronDownFilled size={16} />
+            </button>
+          </div>
+          {downloadOpen && (
+            <div className="absolute top-full left-0 z-10 mt-1 w-64 overflow-hidden rounded-md border border-border bg-paper-raised py-1 text-left shadow-lg">
+              <button
+                type="button"
+                disabled
+                className="block w-full cursor-not-allowed px-3 py-2 text-left text-sm text-ink-soft/50"
+              >
+                Download Set PDF + Annotations
+                <span className="block text-xs italic">Coming with annotations (§13)</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -455,15 +536,26 @@ export function SetlistDetailsMockup() {
 
       <div className="flex items-center justify-between">
         <h3 className="font-display text-lg font-medium text-ink">Program</h3>
-        <InfoTooltip
-          message="Coming soon — search/browse the library to add pieces or a custom entry."
-          ariaLabel="Add Entries (coming soon)"
-          showPointerCursor={false}
-          triggerClassName="flex items-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-sm text-ink opacity-50"
+        {/* Real now that the full fold (decision 23) is live — opens the
+            same EditSetlistModal as the header's own "Edit setlist" button,
+            landed on its "Program Order" tab instead of "Setlist Details."
+            Relabeled from "Add Entries" (its own name while this depended
+            on a still-unbuilt separate Edit Program modal) to "Edit
+            Program," matching that tab's own name, since the real action
+            now covers reorder/edit/remove too, not just adding — a real
+            forward note left in the plan when this was first built as
+            inert, now resolved. `IconListDetails`, not `IconCalendarPlus`
+            (that icon is reserved for genuinely "add to a setlist" actions
+            elsewhere — the grid/list context-menu item, the Setlist
+            Library's own bulk add — not this one, which is broader). */}
+        <button
+          type="button"
+          onClick={() => openEditSetlist('program')}
+          className="flex cursor-pointer items-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-sm text-ink hover:border-accent"
         >
-          <IconCalendarPlus size={16} />
-          Add Entries
-        </InfoTooltip>
+          <IconListDetails size={16} />
+          Edit Program
+        </button>
       </div>
 
       {/* Program list (Option F, "Compact list (mobile-based)") — one
@@ -656,6 +748,7 @@ export function SetlistDetailsMockup() {
         open={editSetlistOpen}
         onClose={() => setEditSetlistOpen(false)}
         mode="edit"
+        initialTab={editSetlistTab}
         initialName={setlist.name}
         initialGigDate={setlist.gigDate}
         initialDescription={DESCRIPTION}
