@@ -380,9 +380,9 @@ export function SetlistDetailsMockup() {
 
       <div className="rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-4 py-2 text-sm text-ink-soft">
         Reference sample — <span className="font-medium text-ink">Setlist Details</span> (design doc §13, Phase 6).
-        Built against the approved Option B ("Stats dashboard") layout and Phase 3's rough-in decisions. Play Set (moved
-        below the description, direct instruction) is inert — its own dependency, the Sheet Viewer's core playback,
-        isn't built yet; Download Set PDF, right next to it, is a literal port of PieceDetailsSample.tsx's own
+        Built against the approved Option B ("Stats dashboard") layout and Phase 3's rough-in decisions. Play Set
+        (moved above the description, direct instruction) is inert — its own dependency, the Sheet Viewer's core
+        playback, isn't built yet; Download Set PDF, right next to it, is a literal port of PieceDetailsSample.tsx's own
         Download PDF split-button/"+ Annotations" dropdown, relabeled for the whole set. Edit setlist, Edit Program,
         Archive, Duplicate, and Delete are genuinely interactive — Edit setlist and Edit Program both open
         EditSetlistMockup.tsx's own real modal, landed on its "Setlist Details"/"Program Order" tab respectively (the
@@ -438,26 +438,34 @@ export function SetlistDetailsMockup() {
         </div>
       </div>
 
-      {/* Play Set / Download Set PDF — moved out of the name/date header row
-          (direct instruction) into their own row directly below the
-          description, since they're the set's own primary actions, not
+      {/* Play Set / Download Set PDF — the set's own primary actions, not
           record-management actions like Edit/Duplicate/Archive/Delete
-          above. Play kept its accent-solid treatment and `InfoTooltip`
-          "coming soon" posture (same as before, just relabeled "Play Set"
-          and moved) — genuinely still blocked on the Sheet Viewer's own
-          core playback existing first; direct instruction: it'll play the
-          set's pieces one after another once built, with placeholder pages
-          standing in for custom entries (which have no real pages of their
-          own to show). Download Set PDF is a literal port of
-          PieceDetailsSample.tsx's own Download PDF split-button + "+
-          Annotations" dropdown (re-read directly before building this,
-          not assumed) — same bordered/paper-raised pill, same
-          clickable-but-inert main action (this mockup has no real
-          concatenation endpoint to link to, matching how the real one has
-          no real PDF merge either — nothing in this codebase does), same
-          single disabled dropdown item with the identical "Coming with
-          annotations (§13)" note, just relabeled for the whole set rather
-          than one piece. */}
+          above, so they get their own row rather than joining that group.
+          Tried three positions live (above the description — here, landed
+          back on it after also trying between the description and the
+          stats line, and below the whole description+stats block) before
+          settling back here, direct instruction each time. Play kept its
+          accent-solid treatment and `InfoTooltip` "coming soon" posture
+          (same as before, just relabeled "Play Set") — genuinely still
+          blocked on the Sheet Viewer's own core playback existing first;
+          direct instruction: it'll play the set's pieces one after
+          another once built, with placeholder pages standing in for
+          custom entries (which have no real pages of their own to show).
+          Download Set PDF is a literal port of PieceDetailsSample.tsx's
+          own Download PDF split-button + "+ Annotations" dropdown
+          (re-read directly before building this, not assumed) — same
+          bordered/paper-raised pill, same clickable-but-inert main action
+          (this mockup has no real concatenation endpoint to link to,
+          matching how the real one has no real PDF merge either —
+          nothing in this codebase does), same single disabled dropdown
+          item with the identical "Coming with annotations (§13)" note,
+          just relabeled for the whole set rather than one piece. Hover
+          feedback lives on the outer pill (`hover:border-accent`, this
+          app's own established bordered-button convention), not a
+          `hover:bg-accent-soft` tint on each inner segment — a local
+          one-off this split button, PieceDetailsSample.tsx's, and the
+          real PiecePage.tsx's own copy all carried before a direct fix
+          ported the same correction to all three at once. */}
       <div className="flex flex-wrap items-center gap-2">
         <InfoTooltip
           message="Coming soon — will play through the set's pieces one after another via the future Sheet Viewer, with placeholder pages standing in for custom entries. Built once the Sheet Viewer's own core playback exists."
@@ -470,10 +478,10 @@ export function SetlistDetailsMockup() {
         </InfoTooltip>
 
         <div className="relative">
-          <div className="flex overflow-hidden rounded-md border border-border">
+          <div className="flex overflow-hidden rounded-md border border-border transition-colors hover:border-accent">
             <button
               type="button"
-              className="flex cursor-pointer items-center gap-2 bg-paper-raised px-4 py-2 font-display text-sm text-ink hover:bg-accent-soft"
+              className="flex cursor-pointer items-center gap-2 bg-paper-raised px-4 py-2 font-display text-sm text-ink"
             >
               <IconDownload size={16} />
               Download Set PDF
@@ -482,7 +490,7 @@ export function SetlistDetailsMockup() {
               type="button"
               onClick={() => setDownloadOpen((o) => !o)}
               aria-label="More download options"
-              className="flex cursor-pointer items-center justify-center border-l border-border bg-paper-raised px-2 text-ink hover:bg-accent-soft"
+              className="flex cursor-pointer items-center justify-center border-l border-border bg-paper-raised px-2 text-ink"
             >
               <IconChevronDownFilled size={16} />
             </button>

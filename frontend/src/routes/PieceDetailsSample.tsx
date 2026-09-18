@@ -815,12 +815,24 @@ export function PieceDetailsSample() {
                 overflow menu and back to its own dropdown here, per direct
                 feedback — it reads more naturally as a *download variant*
                 right next to the download action itself than buried among
-                unrelated file actions. */}
+                unrelated file actions. Hover feedback: a direct
+                correction, twice — first an outer-wrapper
+                `hover:border-accent` (highlighted the whole pill
+                regardless of which segment was hovered, silently skipping
+                the divider between them), now per-segment instead. Both
+                buttons own a full border; the caret pulls `-ml-px` to
+                overlap the label's own right border into one 1px seam at
+                rest, and `hover:z-10` lifts whichever segment is hovered
+                above its neighbor at that shared line before
+                `hover:border-accent` recolors it — so the seam genuinely
+                recolors from whichever side is actually hovered. Same fix
+                ported to the real `PiecePage.tsx` and
+                `SetlistDetailsMockup.tsx`'s own Download Set PDF copy. */}
             <div className="relative">
-              <div className="flex overflow-hidden rounded-md border border-border">
+              <div className="flex">
                 <button
                   type="button"
-                  className="flex cursor-pointer items-center gap-2 bg-paper-raised px-4 py-2 font-display text-sm text-ink hover:bg-accent-soft"
+                  className="relative flex cursor-pointer items-center gap-2 rounded-l-md border border-border bg-paper-raised px-4 py-2 font-display text-sm text-ink transition-colors hover:z-10 hover:border-accent"
                 >
                   <IconDownload size={16} />
                   Download PDF
@@ -829,7 +841,7 @@ export function PieceDetailsSample() {
                   type="button"
                   onClick={() => setDownloadOpen((o) => !o)}
                   aria-label="More download options"
-                  className="flex cursor-pointer items-center justify-center border-l border-border bg-paper-raised px-2 text-ink hover:bg-accent-soft"
+                  className="relative -ml-px flex cursor-pointer items-center justify-center rounded-r-md border border-border bg-paper-raised px-2 text-ink transition-colors hover:z-10 hover:border-accent"
                 >
                   <IconChevronDownFilled size={16} />
                 </button>

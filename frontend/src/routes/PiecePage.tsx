@@ -693,12 +693,28 @@ export function PiecePage() {
                     disabled &lt;button&gt; (not an &lt;a&gt; stripped of its href)
                     when the caller lacks `download`, same reasoning as
                     before. */}
-                <div className="flex overflow-hidden rounded-md border border-border">
+                {/* Hover feedback: a direct correction — an outer-wrapper
+                    `hover:border-accent` highlighted the whole pill
+                    regardless of which segment was hovered, silently
+                    skipping the divider between them (it stayed neutral
+                    even while the outer edge went accent). Each segment
+                    now owns its own full border instead; the caret pulls
+                    `-ml-px` to overlap the main action's own right border
+                    into one 1px seam at rest, and `hover:z-10` lifts
+                    whichever segment is hovered above its neighbor at
+                    that shared line before `hover:border-accent` (or
+                    `enabled:hover:*` on the caret, which can be
+                    genuinely disabled) recolors it — so the seam
+                    genuinely recolors from whichever side is actually
+                    hovered, not always from the same one. The disabled
+                    variant of the main action gets no hover classes at
+                    all, matching this page's other disabled buttons. */}
+                <div className="flex">
                   {canDownload ? (
                     <a
                       href={getPieceFileUrl(piece.id)}
                       download
-                      className="flex items-center gap-2 bg-paper-raised px-4 py-2 font-display text-sm text-ink hover:bg-accent-soft"
+                      className="relative flex items-center gap-2 rounded-l-md border border-border bg-paper-raised px-4 py-2 font-display text-sm text-ink transition-colors hover:z-10 hover:border-accent"
                     >
                       <IconDownload size={16} />
                       Download PDF
@@ -708,7 +724,7 @@ export function PiecePage() {
                       type="button"
                       disabled
                       title="You don't have permission to download files"
-                      className="flex cursor-not-allowed items-center gap-2 bg-paper-raised px-4 py-2 font-display text-sm text-ink opacity-50"
+                      className="flex cursor-not-allowed items-center gap-2 rounded-l-md border border-border bg-paper-raised px-4 py-2 font-display text-sm text-ink opacity-50"
                     >
                       <IconDownload size={16} />
                       Download PDF
@@ -719,17 +735,23 @@ export function PiecePage() {
                     onClick={() => setDownloadOpen((o) => !o)}
                     disabled={!canDownload}
                     aria-label="More download options"
-                    className="flex items-center justify-center border-l border-border bg-paper-raised px-2 text-ink enabled:hover:bg-accent-soft disabled:cursor-not-allowed disabled:opacity-50"
+                    className="relative -ml-px flex items-center justify-center rounded-r-md border border-border bg-paper-raised px-2 text-ink transition-colors disabled:cursor-not-allowed disabled:opacity-50 enabled:hover:z-10 enabled:hover:border-accent"
                   >
                     <IconChevronDownFilled size={16} />
                   </button>
                 </div>
                 {downloadOpen && canDownload && (
                   <div className="absolute top-full left-0 z-10 mt-1 w-64 overflow-hidden rounded-md border border-border bg-paper-raised py-1 text-left shadow-lg">
+                    {/* hover:bg-paper, not hover:bg-accent-soft — matches
+                        ContextMenu.tsx's own established dropdown-row
+                        hover convention (no border on a menu row, so a
+                        background tint is the right feedback here, just
+                        the app's own real tint token rather than the
+                        one-off accent-soft this used before). */}
                     <a
                       href={getPieceFileUrl(piece.id)}
                       download
-                      className="block w-full px-3 py-2 text-left text-sm text-ink hover:bg-accent-soft"
+                      className="block w-full px-3 py-2 text-left text-sm text-ink hover:bg-paper"
                     >
                       Download Piece PDF
                     </a>
