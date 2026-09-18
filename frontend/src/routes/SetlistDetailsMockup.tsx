@@ -8,6 +8,7 @@ import {
   IconCopy,
   IconEditFilled,
   IconPlayerPlay,
+  IconTrash,
 } from '@tabler/icons-react'
 import { ContextMenu, type ContextMenuItem } from '../components/ContextMenu'
 import { InfoTooltip } from '../components/InfoTooltip'
@@ -303,6 +304,23 @@ export function SetlistDetailsMockup() {
     setDuplicateModalOpen(false)
   }
 
+  // Same real, hard-delete-with-confirm pattern as PiecePage.tsx/
+  // BookDetailsPage.tsx's own icon-only Delete button — a native
+  // window.confirm(), not a custom Modal, matching this app's standing
+  // convention that a genuinely destructive whole-record delete lives on
+  // the entity's own Details page (or its library right-click menu), never
+  // inside its Edit modal (confirmed by reading PieceContextMenu.tsx/
+  // BookContextMenu.tsx directly). A direct correction, this round — the
+  // Edit Setlist modal (decision 1) originally put whole-setlist delete in
+  // its own footer instead; moved here to actually match the rest of the
+  // app. Real delete-then-navigate-back-to-the-Setlist-Library behavior is
+  // a build-phase concern — this fixture only ever renders the one
+  // setlist, so there's nowhere else to navigate to yet (same posture
+  // confirmDuplicate above already takes).
+  function handleDelete() {
+    window.confirm(`Delete "${setlist.name}"? This can't be undone.`)
+  }
+
   return (
     <div className={`${CONTENT_MAX_W} flex flex-1 flex-col gap-6 px-6 py-6 md:px-8 md:py-8`}>
       <Link to="/mockup" className="inline-flex w-fit items-center gap-1.5 text-sm text-ink-soft hover:text-ink">
@@ -314,8 +332,9 @@ export function SetlistDetailsMockup() {
         Reference sample — <span className="font-medium text-ink">Setlist Details</span> (design doc §13, Phase 6).
         Built against the approved Option B ("Stats dashboard") layout and Phase 3's rough-in decisions. Play/Edit/Add
         Entries are inert (their own dependencies — the Sheet Viewer, the Edit Setlist modal, the bulk picker — aren't
-        built yet); Archive and Duplicate are genuinely interactive, and each row can be removed via its own
-        right-click menu (no standalone button — too easy to hit by accident).
+        built yet); Archive, Duplicate, and Delete are genuinely interactive — Delete reuses the identical
+        window.confirm() pattern PiecePage.tsx/BookDetailsPage.tsx's own icon-only Delete buttons already use — and
+        each row can be removed via its own right-click menu (no standalone button — too easy to hit by accident).
         {archived && (
           <span className="ml-2 rounded-full bg-ink px-2 py-0.5 text-xs font-medium text-paper">Archived</span>
         )}
@@ -332,6 +351,20 @@ export function SetlistDetailsMockup() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {/* Delete setlist, icon-only, leftmost in the group, permanently
+              red — same treatment as PiecePage.tsx's/BookDetailsPage.tsx's
+              own Delete Piece/Delete Book buttons (size-9 bordered square,
+              text-red-700, hover:border-red-700). */}
+          <button
+            type="button"
+            onClick={handleDelete}
+            aria-label="Delete setlist"
+            title="Delete setlist"
+            className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-red-700 hover:border-red-700"
+          >
+            <IconTrash size={18} />
+          </button>
+          <span aria-hidden="true" className="h-6 w-px bg-border" />
           <InfoTooltip
             message="Coming soon — will play through the future Sheet Viewer."
             ariaLabel="Play (coming soon with the Sheet Viewer)"
