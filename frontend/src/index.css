@@ -393,4 +393,21 @@ body {
     outline: 2px solid var(--color-focus);
     outline-offset: 2px;
   }
+
+  /* Standard typographic convention for emphasis nested inside an
+     already-italic block (a quote, a note, anything wrapped in Tailwind's
+     own `italic` utility) — the inner *emphasis* inverts to roman instead
+     of doubling the slant. `<em>`'s own italic comes from the browser's
+     UA stylesheet, which wins regardless of what ancestor it's nested
+     in — without this, `*emphasis*` rendered inside an italic block reads
+     identically to the surrounding text and the emphasis is lost. Scoped
+     to `em` specifically (MarkdownText.tsx's own Markdown-emphasis
+     output, its only real producer in this codebase — a plain body-copy
+     `<em>` elsewhere would need this too, but nothing else uses one) —
+     app-wide by cascade, not per-call-site, so a future italic block that
+     happens to render Markdown gets this automatically with no extra
+     wiring. */
+  .italic em {
+    font-style: normal;
+  }
 }
