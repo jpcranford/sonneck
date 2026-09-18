@@ -382,7 +382,13 @@ export function EditProgramModal({
     } else if (event.key === 'ArrowUp') {
       event.preventDefault()
       setSearchHighlight((h) => (pieceResults.length === 0 ? -1 : (h - 1 + pieceResults.length) % pieceResults.length))
-    } else if (event.key === 'Enter') {
+    } else if (event.key === 'Enter' && !event.shiftKey) {
+      // !shiftKey — Shift+Enter is reserved for the whole-modal Save
+      // shortcut below (`handleFormKeyDown`); same guard `TagComboBox.tsx`
+      // already uses on its own Enter handling for the identical reason
+      // (both are nested Enter-consumers inside a larger keydown-bubbling
+      // surface, and would otherwise also "pick" on a Shift+Enter meant
+      // for the outer Save).
       event.preventDefault()
       const target = pieceResults[searchHighlight]
       if (target) selectPiece(target)
@@ -686,6 +692,24 @@ export function EditProgramModal({
     onClose()
   }
 
+  // This app's standard modal shortcut set beyond Modal.tsx's own free
+  // Escape-to-close handling: Shift+Enter saves, from anywhere in the
+  // modal — the same unconditional `handleFormKeyDown` pattern
+  // EditBookModal.tsx/EditPersonModal.tsx already use (bound to their own
+  // outer `<form onKeyDown>`; this modal has no single wrapping `<form>`
+  // of its own — the Program list and its add-row aren't a form — so this
+  // binds to a plain wrapping `<div>` instead, functionally identical for
+  // a keydown-bubbling purpose). Doesn't special-case Shift+Enter inside
+  // the Description textarea (own real precedent: EditBookModal's own
+  // `handleFormKeyDown` doesn't either — Shift+Enter always means "save,"
+  // even there; plain Enter still inserts a newline natively, uncaptured).
+  function handleFormKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    if (event.key === 'Enter' && event.shiftKey) {
+      event.preventDefault()
+      handleSave()
+    }
+  }
+
   // Scrolls whichever block just opened (piece search / custom-entry add /
   // an existing entry's inline edit) fully into view — a real reported
   // bug: opening "+ Piece" and opening an existing custom entry's inline
@@ -868,6 +892,7 @@ export function EditProgramModal({
         </div>
       }
     >
+      <div onKeyDown={handleFormKeyDown}>
       <p className="mb-2 text-xs font-medium tracking-wide text-ink-soft uppercase">Program ({programEntries.length})</p>
       <div
         ref={listRef}
@@ -1107,6 +1132,7 @@ export function EditProgramModal({
             position instead, via the same renderCustomEntryForm helper. */}
         {addRowMode === 'custom' && renderCustomEntryForm('add-custom-entry', 'relative border-t border-border p-3')}
         </div>
+      </div>
       </div>
     </Modal>
     {draggingId &&

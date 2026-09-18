@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import {
   IconArchive,
@@ -18,6 +18,7 @@ import { CONTENT_MAX_W } from '../lib/layout'
 import { ALL_MOCK_SETLISTS } from '../lib/setlistsMockupFixture'
 import { formatRelativeWeeks } from '../lib/relativeWeeks'
 import { useMockupTitle } from '../lib/useMockupTitle'
+import { EditSetlistModal } from './EditSetlistMockup'
 
 // Setlists design pass, Phase 6 — the real Setlist Details page (§13),
 // built against the approved Phase 2 layout (Option B, "Stats dashboard")
@@ -273,6 +274,7 @@ export function SetlistDetailsMockup() {
   const [duplicateModalOpen, setDuplicateModalOpen] = useState(false)
   const [duplicateTitle, setDuplicateTitle] = useState('')
   const [duplicateGigDate, setDuplicateGigDate] = useState('')
+  const [editSetlistOpen, setEditSetlistOpen] = useState(false)
 
   const displayNumbers = useMemo(() => computeDisplayNumbers(entries), [entries])
   // Only entries with a known duration contribute — omit the duration
@@ -285,6 +287,33 @@ export function SetlistDetailsMockup() {
   function removeEntry(id: string) {
     setEntries((current) => current.filter((e) => e.id !== id))
   }
+
+  // "E" opens Edit Setlist — the same page-level shortcut pattern
+  // PiecePage.tsx/BookDetailsPage.tsx/PersonDetailsPage.tsx already use
+  // (each a hand-copied `useEffect`+`document.addEventListener`, not a
+  // shared hook — matched here rather than introducing one), minus their
+  // own `canEdit` permission check, since this fixture has no real
+  // permission state to gate against (nothing else on this page is
+  // permission-gated either). Same guards otherwise: skip on a held
+  // repeat/Ctrl/Meta/Alt, skip while a text-entry element has focus, skip
+  // while the modal is already open.
+  useEffect(() => {
+    if (editSetlistOpen) return
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return
+      const target = event.target as HTMLElement | null
+      const tag = target?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target?.isContentEditable) {
+        return
+      }
+      if (event.key.toLowerCase() === 'e') {
+        event.preventDefault()
+        setEditSetlistOpen(true)
+      }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [editSetlistOpen])
 
   function confirmArchiveToggle() {
     setArchived((a) => !a)
@@ -330,11 +359,13 @@ export function SetlistDetailsMockup() {
 
       <div className="rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-4 py-2 text-sm text-ink-soft">
         Reference sample — <span className="font-medium text-ink">Setlist Details</span> (design doc §13, Phase 6).
-        Built against the approved Option B ("Stats dashboard") layout and Phase 3's rough-in decisions. Play/Edit/Add
-        Entries are inert (their own dependencies — the Sheet Viewer, the Edit Setlist modal, the bulk picker — aren't
-        built yet); Archive, Duplicate, and Delete are genuinely interactive — Delete reuses the identical
-        window.confirm() pattern PiecePage.tsx/BookDetailsPage.tsx's own icon-only Delete buttons already use — and
-        each row can be removed via its own right-click menu (no standalone button — too easy to hit by accident).
+        Built against the approved Option B ("Stats dashboard") layout and Phase 3's rough-in decisions. Play/Add
+        Entries are inert (their own dependencies — the Sheet Viewer, the bulk picker — aren't built yet); Edit,
+        Archive, Duplicate, and Delete are genuinely interactive — Edit opens EditSetlistMockup.tsx's own real modal
+        (also reachable via the "E" key, same shortcut PiecePage.tsx/BookDetailsPage.tsx/PersonDetailsPage.tsx already
+        use), and Delete reuses the identical window.confirm() pattern those two pages' own icon-only Delete buttons
+        already use — each row can also be removed via its own right-click menu (no standalone button — too easy to
+        hit by accident).
         {archived && (
           <span className="ml-2 rounded-full bg-ink px-2 py-0.5 text-xs font-medium text-paper">Archived</span>
         )}
@@ -374,14 +405,13 @@ export function SetlistDetailsMockup() {
             <IconPlayerPlay size={16} />
             Play
           </InfoTooltip>
-          <InfoTooltip
-            message="Coming soon — rename/reschedule via the Edit Setlist modal."
-            ariaLabel="Edit name/date (coming soon)"
-            showPointerCursor={false}
-            triggerClassName="flex size-9 items-center justify-center rounded-md border border-border bg-paper-raised text-ink-soft opacity-50"
-          >
-            <IconEditFilled size={16} />
-          </InfoTooltip>
+          {/* Real now that Phase 10's EditSetlistModal exists — the "E"
+              keyboard shortcut above opens this same modal. */}
+          <HeaderIconButton
+            icon={<IconEditFilled size={16} />}
+            label="Edit setlist"
+            onClick={() => setEditSetlistOpen(true)}
+          />
           <HeaderIconButton icon={<IconCopy size={16} />} label="Duplicate setlist" onClick={openDuplicateModal} />
           <HeaderIconButton
             icon={<IconArchive size={16} />}
@@ -614,6 +644,23 @@ export function SetlistDetailsMockup() {
           </div>
         </div>
       </Modal>
+
+      {/* EditSetlistMockup.tsx's own exported modal, reused directly rather
+          than re-implemented here (same "exported for reuse" precedent as
+          AddToSetlistPicker/EditProgramModal) — this page's own name/gig
+          date/description fields are already that modal's "Setlist
+          Details" tab. onSave is a no-op close, same posture as this
+          page's own Duplicate confirm: real save-and-reflect-on-this-page
+          behavior is a build-phase concern, not this fixture's. */}
+      <EditSetlistModal
+        open={editSetlistOpen}
+        onClose={() => setEditSetlistOpen(false)}
+        mode="edit"
+        initialName={setlist.name}
+        initialGigDate={setlist.gigDate}
+        initialDescription={DESCRIPTION}
+        onSave={() => {}}
+      />
     </div>
   )
 }
