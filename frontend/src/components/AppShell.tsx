@@ -1,14 +1,38 @@
-import { useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { Outlet } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
+import { IconLoader2 } from '@tabler/icons-react'
 import { Sidebar } from './Sidebar'
 import { MobileNavDrawer, MobileNavTopBar } from './MobileNav'
 import { SonneckMark } from './SonneckMark'
+import { useMediaQuery } from '../hooks/useMediaQuery'
+import { usePullToRefresh } from '../hooks/usePullToRefresh'
 
 export function AppShell() {
   // Owned here, not inside MobileNav itself, because the top bar and the
   // drawer/scrim render in two different places in this tree (see
   // MobileNav.tsx's own comment for why) and need to share one state.
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
+
+  // Pull-to-refresh — mobile/tablet widths only, not desktop (a touch
+  // gesture makes no sense gated purely on chrome, which stays desktop/
+  // tablet-shared at `md`). 1024px, inclusive, matches the responsive
+  // plan's own locked device-target table (project_responsive_device_plan.md)
+  // exactly — iPad 6th gen landscape is 1024×768 and is explicitly called
+  // "Tablet" there, so the cutover needs to include 1024, not exclude it
+  // the way Tailwind's own `lg:` (min-width: 1024px) media query would.
+  const isMobileOrTablet = useMediaQuery('(max-width: 1024px)')
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const queryClient = useQueryClient()
+  // Refetches every currently-mounted query rather than a hard page
+  // reload — cheap, keeps scroll position/local UI state, and is exactly
+  // what "refresh" means for a TanStack-Query-driven app like this one.
+  const refreshActiveQueries = useCallback(() => queryClient.refetchQueries({ type: 'active' }), [queryClient])
+  const { pullDistance, phase, threshold } = usePullToRefresh({
+    containerRef: scrollContainerRef,
+    onRefresh: refreshActiveQueries,
+    enabled: isMobileOrTablet,
+  })
 
   return (
     // h-dvh, not h-screen (100vh) — 100vh stays pinned to a fixed
@@ -49,9 +73,45 @@ export function AppShell() {
           column, so hidden is correct here, not auto. */}
       <div
         id="app-scroll-container"
-        className="flex min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto"
+        ref={scrollContainerRef}
+        className="flex min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-y-contain"
       >
         <MobileNavTopBar onOpen={() => setMobileNavOpen(true)} />
+        {/* Pull-to-refresh indicator — placed AFTER MobileNavTopBar, not
+            before it: that bar is `sticky top-0`, standard mobile-app
+            practice is for it to stay pinned in place while the indicator
+            reveals in the content area below it, not get pushed down by
+            the indicator's own growing height. A real sibling of main/
+            footer inside this same scrolling div, not a fixed overlay —
+            its height (0 normally) IS the pull distance, so growing it
+            pushes `main` down via ordinary layout instead of needing a
+            transform + portal. Works because we're only ever visible
+            while scrollTop is already 0 (usePullToRefresh's own guard) —
+            the container's own top edge and the viewport's top edge are
+            the same point at that moment, and (below `md:`) sit directly
+            under the toolbar's own fixed height. No transition while
+            actively dragging ('pulling'/'ready' only ever happen mid-
+            gesture) — only on release, snapping back to 0 or settling at
+            the fixed refreshing height. */}
+        {isMobileOrTablet && (
+          <div
+            aria-hidden="true"
+            className={`flex shrink-0 items-center justify-center overflow-hidden ${
+              phase === 'pulling' || phase === 'ready' ? '' : 'transition-[height] duration-200'
+            }`}
+            style={{ height: pullDistance }}
+          >
+            <IconLoader2
+              size={22}
+              className={phase === 'refreshing' ? 'animate-spin text-accent' : phase === 'ready' ? 'text-accent' : 'text-ink-soft'}
+              style={
+                phase === 'refreshing'
+                  ? undefined
+                  : { transform: `rotate(${Math.min((pullDistance / threshold) * 180, 180)}deg)` }
+              }
+            />
+          </div>
+        )}
         <main className="flex flex-1 flex-col">
           <Outlet />
         </main>
