@@ -89,7 +89,7 @@ func TestCitation_PublisherIdFusesOntoPublisherName(t *testing.T) {
 	}
 	decodeData(t, citeRec, &citation)
 
-	want := `Someone, "Solo", G. Schirmer #HL50252950. Copyright © G. Schirmer.`
+	want := `Someone, "Solo", G. Schirmer #HL50252950. Copyright © G. Schirmer.`
 	if citation.Citation != want {
 		t.Errorf("citation = %q, want %q", citation.Citation, want)
 	}
@@ -125,7 +125,7 @@ func TestCitation_ImslpNumberSuppressesPublisherAndPublisherId(t *testing.T) {
 	}
 	decodeData(t, citeRec, &citation)
 
-	want := `Someone, "Solo", IMSLP #04154. Copyright © G. Schirmer.`
+	want := `Someone, "Solo", IMSLP #04154. Copyright © G. Schirmer.`
 	if citation.Citation != want {
 		t.Errorf("citation = %q, want %q", citation.Citation, want)
 	}
@@ -260,7 +260,7 @@ func TestCitation_ISBNAppearsAfterPublisherWhenImslpBlank(t *testing.T) {
 	}
 	decodeData(t, rec, &citation)
 
-	want := `Charles-Marie Widor, "Toccata". Published in Six Symphonies, G. Schirmer, ISBN 978-0-13235088-4. Copyright © G. Schirmer.`
+	want := `Charles-Marie Widor, "Toccata". Published in Six Symphonies, G. Schirmer, ISBN 978-0-13235088-4. Copyright © G. Schirmer.`
 	if citation.Citation != want {
 		t.Errorf("citation = %q, want %q", citation.Citation, want)
 	}
@@ -621,7 +621,7 @@ func TestCitation_CopyrightClauseGetsPeriodWhenFlatCitationHasNoYear(t *testing.
 	}
 	decodeData(t, citeRec, &citation)
 
-	want := `Someone, "Solo". Copyright © Test Publishing.`
+	want := `Someone, "Solo". Copyright © Test Publishing.`
 	if citation.Citation != want {
 		t.Errorf("citation = %q, want %q", citation.Citation, want)
 	}
@@ -748,7 +748,7 @@ func TestCitation_OpusMatchWithPieceOwnedImslp(t *testing.T) {
 	}
 	decodeData(t, rec, &citation)
 
-	want := `Charles Villiers Stanford, Six Short Preludes and Postludes, Op. 105, III. "Lento", IMSLP #07953, 1908. Copyright © 2013 Stainer & Bell.`
+	want := `Charles Villiers Stanford, Six Short Preludes and Postludes, Op. 105, III. "Lento", IMSLP #07953, 1908. Copyright © 2013 Stainer & Bell.`
 	if citation.Citation != want {
 		t.Errorf("citation = %q, want %q", citation.Citation, want)
 	}
@@ -797,7 +797,7 @@ func TestCitation_OpusMatchWithBookOwnedImslp(t *testing.T) {
 	}
 	decodeData(t, rec, &citation)
 
-	want := `Jane Doe, Album for the Young, Op. 68, No. 3 "The Reaper's Song", 1878. Published by Henle Verlag, IMSLP #12345, 2015. Copyright © 2015 Henle Verlag.`
+	want := `Jane Doe, Album for the Young, Op. 68, No. 3 "The Reaper's Song", 1878. Published by Henle Verlag, IMSLP #12345, 2015. Copyright © 2015 Henle Verlag.`
 	if citation.Citation != want {
 		t.Errorf("citation = %q, want %q", citation.Citation, want)
 	}
@@ -842,7 +842,7 @@ func TestCitation_OpusMatchWithNoImslpUsesPublishedByWording(t *testing.T) {
 	}
 	decodeData(t, rec, &citation)
 
-	want := `Jane Doe, Album for the Young, Op. 68, No. 3 "The Reaper's Song", 1878. Published by Henle Verlag, 2015. Copyright © 2015 Henle Verlag.`
+	want := `Jane Doe, Album for the Young, Op. 68, No. 3 "The Reaper's Song", 1878. Published by Henle Verlag, 2015. Copyright © 2015 Henle Verlag.`
 	if citation.Citation != want {
 		t.Errorf("citation = %q, want %q", citation.Citation, want)
 	}
@@ -888,7 +888,7 @@ func TestCitation_NoOpusMatchWithBookOwnedImslp(t *testing.T) {
 	}
 	decodeData(t, rec, &citation)
 
-	want := `Jane Doe, "The Reaper's Song" (No. 3), 1878. Published in Album for the Young, Henle Verlag, IMSLP #12345, 2015. Copyright © 2015 Henle Verlag.`
+	want := `Jane Doe, "The Reaper's Song" (No. 3), 1878. Published in Album for the Young, Henle Verlag, IMSLP #12345, 2015. Copyright © 2015 Henle Verlag.`
 	if citation.Citation != want {
 		t.Errorf("citation = %q, want %q", citation.Citation, want)
 	}
@@ -928,7 +928,7 @@ func TestCitation_CopyrightClauseShowsRenewedMarker(t *testing.T) {
 	}
 	decodeData(t, citeRec, &citation)
 
-	want := `Someone, "Solo", 1950. Copyright © 1950 (renewed) Test Publishing.`
+	want := `Someone, "Solo", 1950. Copyright © 1950 (renewed) Test Publishing.`
 	if citation.Citation != want {
 		t.Errorf("citation = %q, want %q", citation.Citation, want)
 	}
@@ -967,7 +967,7 @@ func TestCitation_CopyrightClauseOmitsRenewedMarkerWhenUnset(t *testing.T) {
 	}
 	decodeData(t, citeRec, &citation)
 
-	want := `Someone, "Solo", 1990. Copyright © 1990 Test Publishing.`
+	want := `Someone, "Solo", 1990. Copyright © 1990 Test Publishing.`
 	if citation.Citation != want {
 		t.Errorf("citation = %q, want %q", citation.Citation, want)
 	}
@@ -1001,7 +1001,7 @@ func TestCitation_TitleDoubleQuotesBecomeSingleQuotes(t *testing.T) {
 	}
 	decodeData(t, citeRec, &citation)
 
-	want := `Joe Hisaishi, arr. M. Yamamoto, "Merry-Go-Round of Life from 'Howl's Moving Castle'", Sony/ATV Music Publishing (UK), 2004. Copyright © Sony/ATV Music Publishing (UK).`
+	want := `Joe Hisaishi, arr. M. Yamamoto, "Merry-Go-Round of Life from 'Howl's Moving Castle'", Sony/ATV Music Publishing (UK), 2004. Copyright © Sony/ATV Music Publishing (UK).`
 	if citation.Citation != want {
 		t.Errorf("citation = %q, want %q", citation.Citation, want)
 	}

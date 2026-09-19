@@ -476,15 +476,21 @@ func copyrightClause(eff *repo.EffectivePiece) string {
 		return ""
 	}
 
-	base := "Copyright ©"
+	// A non-breaking space (U+00A0), not a plain space, right after © —
+	// keeps it glued to whatever immediately follows (the year, or the
+	// holder when there's no year) instead of ever wrapping onto its own
+	// line.
+	base := "Copyright © "
 	if eff.CopyrightYear.Value != nil {
-		base += fmt.Sprintf(" %d", *eff.CopyrightYear.Value)
+		base += fmt.Sprintf("%d", *eff.CopyrightYear.Value)
 		if eff.CopyrightRenewed.Value {
 			base += " (renewed)"
 		}
-	}
-	if holder != "" {
-		base += " " + holder
+		if holder != "" {
+			base += " " + holder
+		}
+	} else if holder != "" {
+		base += holder
 	}
 	base = endsWithPeriod(base)
 

@@ -39,8 +39,8 @@ type Leaf = {
 const FLAT_LEAVES: Leaf[] = [
   {
     id: 'A1',
-    pattern: 'Copyleft / In Copyright, no book — + "Copyright © {year} {holder}." clause',
-    example: `Joe Hisaishi, arr. M. Yamamoto, "Merry-Go-Round of Life from 'Howl's Moving Castle'", Sony/ATV Music Publishing (UK), 2004. Copyright © Sony/ATV Music Publishing (UK).`,
+    pattern: 'Copyleft / In Copyright, no book — + "Copyright ©\u00A0{year} {holder}." clause',
+    example: `Joe Hisaishi, arr. M. Yamamoto, "Merry-Go-Round of Life from 'Howl's Moving Castle'", Sony/ATV Music Publishing (UK), 2004. Copyright ©\u00A0Sony/ATV Music Publishing (UK).`,
     source: 'TestCitation_TitleDoubleQuotesBecomeSingleQuotes',
   },
   {
@@ -223,7 +223,7 @@ export function CitationLogicMockup() {
         <LeafTable leaves={TWO_SENTENCE_LEAVES} />
         <p className="max-w-2xl text-xs text-ink-soft">
           Examples above are shown without it, but all six (B1-B6) can additionally end with a
-          trailing <span className="font-mono">Copyright © {'{year}'} {'{holder}'}.</span> clause
+          trailing <span className="font-mono">Copyright ©{'\u00A0'}{'{year}'} {'{holder}'}.</span> clause
           whenever there's a year or holder to attribute to (
           <span className="font-mono">copyrightClause</span>, see below).
         </p>
@@ -272,7 +272,7 @@ export function CitationLogicMockup() {
           <IndependentCard
             name="copyrightClause(eff)"
             description={`Copyright Holder falls back to the piece's effective Publisher when unset. A bare "(renewed)" marker (US renewal follow-up — no specific year, since the exact filing year never changes the term calculation) joins right after the year when CopyrightRenewed is set. Omitted entirely (returns "") when there's neither a year nor a holder to attribute to.`}
-            example={`year 1950, renewed, holder "Test Publisher" → "Copyright © 1950 (renewed) Test Publisher."`}
+            example={`year 1950, renewed, holder "Test Publisher" → "Copyright ©\u00A01950 (renewed) Test Publisher."`}
           />
           <IndependentCard
             name="endsWithPeriod(s)"

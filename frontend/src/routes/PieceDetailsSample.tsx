@@ -233,7 +233,7 @@ const FLAT_CITATION =
 // (the piece's own effective publisher), not a blank.
 // The trailing period on "Köhler" is auto-appended by the citation logic
 // (copyrightSlug itself has none, per the fixture's own comment above).
-const COPYRIGHT_CLAUSE = 'Copyright © 1877 G. Schirmer. Arrangement by Louis Köhler.'
+const COPYRIGHT_CLAUSE = 'Copyright ©\u00A01877 G. Schirmer. Arrangement by Louis Köhler.'
 // The two-sentence "written / published" split — used only when a book
 // is present AND the status shows a copyright
 // clause (In Copyright, Copyleft). Public Domain/Likely Public Domain
