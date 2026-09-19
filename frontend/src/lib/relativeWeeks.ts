@@ -1,8 +1,8 @@
 // Setlist gig dates render as a relative "in N weeks" label rather than an
 // absolute date (Setlists design pass, decision 10) — the sidebar uses the
-// abbreviated "wks" form (space is tight there), the full Setlist Archive
-// page spells "weeks" out in full since it has the room. Both reuse this
-// same week math rather than duplicating it.
+// abbreviated "wks" form (space is tight there), the fuller Setlists
+// Library page spells "weeks" out in full since it has the room. Both
+// reuse this same week math rather than duplicating it.
 export function formatRelativeWeeks(
   dateISO: string,
   { abbreviated = true }: { abbreviated?: boolean } = {},

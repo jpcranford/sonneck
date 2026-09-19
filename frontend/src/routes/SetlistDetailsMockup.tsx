@@ -17,7 +17,7 @@ import { InfoTooltip } from '../components/InfoTooltip'
 import { MarkdownText } from '../components/MarkdownText'
 import { Modal } from '../components/Modal'
 import { CONTENT_MAX_W } from '../lib/layout'
-import { ALL_MOCK_SETLISTS } from '../lib/setlistsMockupFixture'
+import { ALL_MOCK_SETLISTS, type MockSetlist } from '../lib/setlistsMockupFixture'
 import { formatRelativeWeeks } from '../lib/relativeWeeks'
 import { useMockupTitle } from '../lib/useMockupTitle'
 import { EditSetlistModal } from './EditSetlistMockup'
@@ -279,7 +279,11 @@ function HeaderIconButton({
 export function SetlistDetailsMockup() {
   useMockupTitle('Setlist Details')
 
-  const setlist = ALL_MOCK_SETLISTS.find((s) => s.id === '1')!
+  // Non-null assertion on gigDate too, not just the .find() — 'gigDate' is
+  // nullable in the shared fixture's own type now (Setlists Library's own
+  // no-gig-date demo entry), but id '1' ("Sunday Morning Service") always
+  // has one by construction.
+  const setlist = ALL_MOCK_SETLISTS.find((s) => s.id === '1')! as MockSetlist & { gigDate: string }
   const [entries, setEntries] = useState<SetlistEntry[]>(INITIAL_ENTRIES)
   const [archived, setArchived] = useState(false)
   const [archiveModalOpen, setArchiveModalOpen] = useState(false)

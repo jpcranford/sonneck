@@ -42,6 +42,11 @@ const MOCKUPS = [
     note: 'Setlists feature, Phase 11 — a single custom entry\'s own name/duration/"Count as music"/description, reached from that entry\'s right-click "Edit Entry" item on the Setlist Details page. Same field set as the Edit Setlist modal\'s own Program Order tab uses for its inline "edit an existing custom entry" form — deliberately duplicated (a fast single-entry path), not shared.',
   },
   {
+    to: '/mockup/setlists-library',
+    name: 'Setlists Library',
+    note: 'Setlists feature, Phase 12 — the unified /setlists page (was "Setlist Archive" — renamed, since Active is most of what\'s here). Built against Phase 4\'s approved Option C artifact: Active/Archived as two scrolled sections, no toggle, cards in a compact grid (not a list). Every card\'s right-click menu is real: Archive/Unarchive (a genuine Modal confirm, moves the card between sections — offered only when there\'s something meaningful to toggle, not for a setlist already archived purely by a passed gig date), Duplicate (decision 19\'s own forward note), Edit Setlist, and Delete (genuinely removes the card). "New Setlist"/"Edit Setlist" open the real EditSetlistModal in its create/edit states.',
+  },
+  {
     to: '/mockup/books-library',
     name: 'Books Library — Sort/Filter',
     note: 'Grid/list match the real BookGridCard/BookListCard exactly, plus the same Filter Drawer + Sort control added to the Piece Library, adjusted for Books’ lighter facets (Sheet Type/Instrument only). Genuinely interactive against 8 fixture books.',

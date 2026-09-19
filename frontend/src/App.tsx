@@ -23,6 +23,7 @@ import { AddToSetlistMockup } from './routes/AddToSetlistMockup'
 import { SetlistDetailsMockup } from './routes/SetlistDetailsMockup'
 import { EditSetlistMockup } from './routes/EditSetlistMockup'
 import { EditEntryMockup } from './routes/EditEntryMockup'
+import { SetlistsLibraryMockup } from './routes/SetlistsLibraryMockup'
 import { BooksLibrarySample } from './routes/BooksLibrarySample'
 import { PeopleLibrarySample } from './routes/PeopleLibrarySample'
 import { PersonDetailsSample } from './routes/PersonDetailsSample'
@@ -159,6 +160,7 @@ function AppRoutes() {
         <Route path="mockup/setlist-details" element={<SetlistDetailsMockup />} />
         <Route path="mockup/edit-setlist" element={<EditSetlistMockup />} />
         <Route path="mockup/edit-entry" element={<EditEntryMockup />} />
+        <Route path="mockup/setlists-library" element={<SetlistsLibraryMockup />} />
         <Route path="mockup/books-library" element={<BooksLibrarySample />} />
         <Route path="mockup/people-library" element={<PeopleLibrarySample />} />
         <Route path="mockup/person-details" element={<PersonDetailsSample />} />

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ComponentType } from 'react'
-import { NavLink } from 'react-router-dom'
+import { Link, NavLink } from 'react-router-dom'
 import {
   IconLibrary,
   IconBooks,
@@ -27,10 +27,10 @@ import { ALL_MOCK_SETLISTS, getUpcomingSetlists, type MockSetlist } from '../lib
 // correction — an earlier pass had this foldable and labeled "Setlists";
 // both dropped), up to ~5 soonest upcoming setlists sorted by gig date
 // (relative-date rows, abbreviated "wks" form — the fuller "weeks"
-// spelling is the Setlist Archive page's own, more spacious version of the
+// spelling is the Setlists Library page's own, more spacious version of the
 // same underlying formatRelativeWeeks helper), and a "⋯" menu on the
-// section header for "View All Setlists"/"Archive" — both still-unbuilt
-// destinations (Phase 10), so the menu items are inert here on purpose.
+// section header for "View All Setlists"/"Archive" — both real as of
+// Phase 12, linking to SetlistsLibraryMockup.tsx (/mockup/setlists-library).
 //
 // Hand-copied from Sidebar.tsx/MobileNav.tsx (nav items, collapse/drawer
 // mechanics), same standing mockup convention every other sidebar-area
@@ -117,13 +117,14 @@ function DrawerNavList({ items, onNavigate }: { items: NavItem[]; onNavigate: ()
 }
 
 // The "⋯" menu — same dismiss convention as ContextMenu.tsx (outside
-// click/Escape closes it). Both items are inert (no onClick navigation):
-// neither /setlists (View All) nor the Archive section within it exists
-// yet (Phase 10), so there's nowhere real to send a click — a disabled
-// look would be wrong here too, since these aren't permission-gated, just
-// not built yet, so they render as plain unstyled buttons that simply do
-// nothing when clicked, same "reachable, not yet wired" posture as the
-// real SetlistPage.tsx stub itself.
+// click/Escape closes it). Both items are real as of Phase 12
+// (SetlistsLibraryMockup.tsx, /mockup/setlists-library) — decision 12's own
+// "the sidebar menu's 'Archive' item just scrolls/lands on its own
+// section" — "Archive" links straight to that page's `#archived` anchor,
+// "View All Setlists" to the bare page. Not wired to the eventual real
+// `/setlists` route (doesn't exist until Phase 15's real build), same
+// "link to whatever real destination actually exists today" posture
+// SetlistsLibraryMockup.tsx's own cards already take with `/mockup/setlist-details`.
 function SetlistsMenu() {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -158,20 +159,20 @@ function SetlistsMenu() {
       </button>
       {open && (
         <div className="absolute top-6 right-0 z-10 w-44 overflow-hidden rounded-md border border-sidebar-border bg-sidebar-panel py-1 shadow-lg">
-          <button
-            type="button"
+          <Link
+            to="/mockup/setlists-library"
             onClick={() => setOpen(false)}
             className="block w-full cursor-pointer px-3 py-1.5 text-left text-[0.82rem] text-sidebar-text hover:bg-white/5"
           >
             View All Setlists
-          </button>
-          <button
-            type="button"
+          </Link>
+          <Link
+            to="/mockup/setlists-library#archived"
             onClick={() => setOpen(false)}
             className="block w-full cursor-pointer px-3 py-1.5 text-left text-[0.82rem] text-sidebar-text hover:bg-white/5"
           >
             Archive
-          </button>
+          </Link>
         </div>
       )}
     </div>
@@ -184,7 +185,16 @@ function SetlistsMenu() {
 // passed in rather than read off the module-level fixture directly, so the
 // page-level "no upcoming sets" preview switcher below can swap it for an
 // empty array live.
-function SetlistsSection({ collapsed, setlists }: { collapsed: boolean; setlists: MockSetlist[] }) {
+function SetlistsSection({
+  collapsed,
+  setlists,
+}: {
+  collapsed: boolean
+  // Always getUpcomingSetlists' own result (or []) — never the raw fixture
+  // — so gigDate is guaranteed present here, unlike MockSetlist's own now-
+  // nullable field.
+  setlists: (MockSetlist & { gigDate: string })[]
+}) {
   if (collapsed) {
     // Collapsed rail: no room for a label/chevron/menu row at all — just
     // the same single-letter-circle treatment every other collapsed nav
@@ -304,9 +314,9 @@ export function SidebarSetlistsMockup() {
           <p>
             Reference sample — <span className="font-medium text-ink">Sidebar Setlists section</span>. Replaces the
             inert "Coming soon" placeholder with an "Upcoming Sets" heading, the 5 soonest upcoming fixture setlists
-            (real gig dates computed relative to today), and a "⋯" menu for the still-unbuilt View All/Archive
-            destinations (Phase 10) — both inert here on purpose. Try collapsing the rail, or resizing below 768px
-            (or use a phone) for the mobile drawer.
+            (real gig dates computed relative to today), and a "⋯" menu linking to the real Setlists Library mockup
+            (View All Setlists/Archive, Phase 12). Try collapsing the rail, or resizing below 768px (or use a phone)
+            for the mobile drawer.
           </p>
           <div className="flex items-center gap-2 text-xs">
             <span className="font-medium text-ink-soft">Preview:</span>

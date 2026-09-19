@@ -1058,14 +1058,50 @@ export function EditSetlistModal({
               same bordered card, with the active button restyled to look
               pressed (`bg-paper-sunken text-ink`, deliberately not accent —
               accent is this row's own hover language too). */}
-          <div className="rounded-md border border-border bg-paper-raised overflow-hidden">
+          <div className="rounded-md bg-paper-raised overflow-hidden">
             <div className="flex">
+              {/* Per-segment full-border-on-hover, matching PiecePage.tsx's
+                  own Download PDF split button (CLAUDE.md's real
+                  bordered-button convention) — a direct report ("the other
+                  3 sides of the hovered button don't have it") found the
+                  seam-only version below wasn't actually matching that
+                  convention: only the ONE internal edge each button owned
+                  (Piece's right, Custom Entry's left) ever recolored on
+                  hover, leaving top/outer-side untouched since those were
+                  drawn by the wrapper's own border, not the button's.
+                  Fixed by moving top/outer-side ownership onto the buttons
+                  themselves too (the wrapper above no longer draws a border
+                  at all) — each button now owns its own top + outer-side +
+                  seam-side border outright, so a single `hover:border-accent`
+                  (all-sides shorthand — border-bottom stays invisible at
+                  0-width regardless) recolors the button's whole visible
+                  edge at once, the same as the free-standing Download PDF
+                  pill. This is safe from the earlier double-border bug
+                  specifically because the wrapper stopped drawing those
+                  same sides — there's only ever one border painted at any
+                  position, never two stacked. "Custom Entry" still pulls
+                  -ml-px to overlap its own left border onto "Piece"'s right
+                  border into one 1px seam at rest (both border-border);
+                  hover:z-10 lifts whichever segment is actually hovered
+                  above that shared line so only its own side recolors,
+                  leaving its neighbor's untouched. The bottom edge is
+                  unbordered while a panel is expanded below (it's that
+                  panel's own top divider then, shared by whichever button
+                  is active, not "this button's own edge") — but when
+                  neither panel is open (`addRowMode === 'buttons'`, the
+                  collapsed state, e.g. a still-empty Program), nothing else
+                  is left to draw the card's own bottom edge at all, so each
+                  button picks its own `border-b`/`rounded-b-*` back up for
+                  that state specifically (a real gap found live: the first
+                  version of this fix left the bottom of the card open
+                  whenever the row was collapsed, screenshot-reported as
+                  "the bottom has disappeared"). */}
               <button
                 type="button"
                 onClick={() => selectAddMode('search')}
-                className={`flex flex-1 cursor-pointer items-center justify-center gap-1.5 border-r border-border px-3 py-2 text-sm font-medium ${
-                  addRowMode === 'search' ? 'bg-paper-sunken text-ink' : 'text-ink-soft hover:bg-accent-soft hover:text-accent'
-                }`}
+                className={`relative flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-tl-md border-t border-r border-l border-border px-3 py-2 text-sm font-medium transition-colors ${
+                  addRowMode === 'buttons' ? 'rounded-bl-md border-b' : ''
+                } ${addRowMode === 'search' ? 'bg-paper-sunken text-ink' : 'text-ink-soft hover:z-10 hover:border-accent'}`}
               >
                 <IconPlus size={14} />
                 Piece
@@ -1073,9 +1109,9 @@ export function EditSetlistModal({
               <button
                 type="button"
                 onClick={() => selectAddMode('custom')}
-                className={`flex flex-1 cursor-pointer items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium ${
-                  addRowMode === 'custom' ? 'bg-paper-sunken text-ink' : 'text-ink-soft hover:bg-accent-soft hover:text-accent'
-                }`}
+                className={`relative -ml-px flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-tr-md border-t border-r border-l border-border px-3 py-2 text-sm font-medium transition-colors ${
+                  addRowMode === 'buttons' ? 'rounded-br-md border-b' : ''
+                } ${addRowMode === 'custom' ? 'bg-paper-sunken text-ink' : 'text-ink-soft hover:z-10 hover:border-accent'}`}
               >
                 <IconPlus size={14} />
                 Custom Entry
@@ -1083,7 +1119,7 @@ export function EditSetlistModal({
             </div>
 
           {addRowMode === 'search' && (
-            <div ref={setExpandedRef} className="border-t border-border p-2.5">
+            <div ref={setExpandedRef} className="border border-border rounded-b-md p-2.5">
               <div className="relative">
                 <IconSearch size={13} className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-ink-soft/60" />
                 <input
@@ -1172,7 +1208,7 @@ export function EditSetlistModal({
             </div>
           )}
 
-          {addRowMode === 'custom' && renderCustomEntryForm('add-custom-entry', 'relative border-t border-border p-3')}
+          {addRowMode === 'custom' && renderCustomEntryForm('add-custom-entry', 'relative border border-border rounded-b-md p-3')}
           </div>
         </div>
       </div>
