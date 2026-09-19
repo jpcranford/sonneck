@@ -1054,10 +1054,6 @@ export function AdminSettingsMockup() {
             {updateChecked && (
               <p className="text-xs text-ink-soft">Checked just now. Reload the page to check again.</p>
             )}
-            <p className="text-xs text-ink-soft">
-              Shows the build you're running and checks GitHub for anything newer — without falsely
-              flagging a preview or dev build that's already ahead of the latest release.
-            </p>
           </div>
         </SectionBlock>
 
