@@ -178,6 +178,21 @@ func New(db *sql.DB, cfg *config.Config, logger *slog.Logger, frontend fs.FS, sc
 	mux.HandleFunc("POST /api/people/{id}/portrait", s.handleUploadPersonPortrait)
 	mux.HandleFunc("DELETE /api/people/{id}/portrait", s.handleDeletePersonPortrait)
 
+	// Setlists (design doc §13) — POST is the `create` permission's first
+	// and only real consumer (CLAUDE.md > Multi-user support); every other
+	// route here is `read`-gated instead, same "this is the calling user's
+	// own data" posture as Tags/Practice Status, checked inside each
+	// handler via requirePermission rather than route metadata.
+	mux.HandleFunc("GET /api/setlists", s.handleListSetlists)
+	mux.HandleFunc("POST /api/setlists", s.handleCreateSetlist)
+	mux.HandleFunc("GET /api/setlists/{id}", s.handleGetSetlist)
+	mux.HandleFunc("PATCH /api/setlists/{id}", s.handleUpdateSetlist)
+	mux.HandleFunc("DELETE /api/setlists/{id}", s.handleDeleteSetlist)
+	mux.HandleFunc("POST /api/setlists/{id}/entries", s.handleAddSetlistEntry)
+	mux.HandleFunc("PATCH /api/setlists/{id}/entries/{entryId}", s.handleUpdateSetlistEntry)
+	mux.HandleFunc("DELETE /api/setlists/{id}/entries/{entryId}", s.handleRemoveSetlistEntry)
+	mux.HandleFunc("PUT /api/setlists/{id}/entries/order", s.handleReorderSetlistEntries)
+
 	mux.HandleFunc("POST /api/pieces", s.handleCreatePiece)
 	mux.HandleFunc("GET /api/pieces", s.handleSearchPieces)
 	mux.HandleFunc("GET /api/pieces/random", s.handleGetRandomPiece)
