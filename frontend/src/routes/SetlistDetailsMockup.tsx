@@ -21,6 +21,7 @@ import { ALL_MOCK_SETLISTS } from '../lib/setlistsMockupFixture'
 import { formatRelativeWeeks } from '../lib/relativeWeeks'
 import { useMockupTitle } from '../lib/useMockupTitle'
 import { EditSetlistModal } from './EditSetlistMockup'
+import { EditEntryModal, type EditEntryValues } from './EditEntryMockup'
 
 // Setlists design pass, Phase 6 — the real Setlist Details page (§13),
 // built against the approved Phase 2 layout (Option B, "Stats dashboard")
@@ -214,10 +215,19 @@ function computeDisplayNumbers(entries: SetlistEntry[]): (number | null)[] {
 // Each entry's own right-click menu (decision 11: "Edit Piece"/"Remove from
 // Setlist" for a piece entry, "Edit Entry"/"Remove from Setlist" for a
 // custom one — no divider either way, matching PieceContextMenu.tsx's own
-// real precedent).
-function getEntryMenuItems(entry: SetlistEntry, onRemove: (id: string) => void): ContextMenuItem[] {
+// real precedent). "Edit Entry" is real as of Phase 11 (EditEntryMockup.tsx)
+// — "Edit Piece" stays inert (opening the real EditPieceModal for a fixture
+// piece is out of this mockup's own scope, same posture every other inert
+// action on this page takes for a dependency it doesn't actually have).
+function getEntryMenuItems(
+  entry: SetlistEntry,
+  onRemove: (id: string) => void,
+  onEditEntry: (entry: SetlistCustomEntry) => void,
+): ContextMenuItem[] {
   return [
-    entry.kind === 'piece' ? { label: 'Edit Piece', onSelect: () => {} } : { label: 'Edit Entry', onSelect: () => {} },
+    entry.kind === 'piece'
+      ? { label: 'Edit Piece', onSelect: () => {} }
+      : { label: 'Edit Entry', onSelect: () => onEditEntry(entry) },
     { label: 'Remove from Setlist', destructive: true, onSelect: () => onRemove(entry.id) },
   ]
 }
@@ -307,6 +317,36 @@ export function SetlistDetailsMockup() {
 
   function removeEntry(id: string) {
     setEntries((current) => current.filter((e) => e.id !== id))
+  }
+
+  // The custom entry currently open in EditEntryModal (Phase 11), or null
+  // when closed — driving the modal's own `open` directly off this rather
+  // than a separate boolean, so there's never a state where the modal is
+  // open but has no entry to edit.
+  const [editingEntry, setEditingEntry] = useState<SetlistCustomEntry | null>(null)
+
+  // EditEntryModal's own field is named `description`, matching the Edit
+  // Setlist modal's Program tab (decision 22's rename) — this page's own
+  // entry shape still carries the older `note` name (decision 22's own
+  // "worth reconciling... at build time" note, not yet done in mockups).
+  // Translated at this one boundary rather than renaming either side.
+  function saveEntryEdit(values: EditEntryValues) {
+    if (!editingEntry) return
+    const id = editingEntry.id
+    setEntries((current) =>
+      current.map((entry) =>
+        entry.id === id && entry.kind === 'custom'
+          ? {
+              ...entry,
+              title: values.name,
+              durationSeconds: values.durationSeconds,
+              note: values.description,
+              countsAsMusic: values.countsAsMusic,
+            }
+          : entry,
+      ),
+    )
+    setEditingEntry(null)
   }
 
   // "E" opens Edit Setlist — the same page-level shortcut pattern
@@ -621,7 +661,7 @@ export function SetlistDetailsMockup() {
           const number = displayNumbers[i]
           return (
             <div key={entry.id} className="border-b border-border py-2.5 last:border-none">
-              <ContextMenu hideTriggerButton items={getEntryMenuItems(entry, removeEntry)}>
+              <ContextMenu hideTriggerButton items={getEntryMenuItems(entry, removeEntry, setEditingEntry)}>
                 {/* ml-10 below (×3) must match the number column's own width
                     + gap (w-8 + gap-2 = 2rem + 0.5rem = 2.5rem = ml-10) so
                     the role label/secondary line/note line up with the
@@ -804,6 +844,21 @@ export function SetlistDetailsMockup() {
         initialGigDate={setlist.gigDate}
         initialDescription={DESCRIPTION}
         onSave={() => {}}
+      />
+
+      {/* Phase 11 — a custom entry's own right-click "Edit Entry" item
+          (getEntryMenuItems above) opens this real, working modal for that
+          one entry — `open` is driven directly off `editingEntry` being
+          non-null rather than a separate boolean, so there's no state
+          where the modal is open with nothing to edit. */}
+      <EditEntryModal
+        open={editingEntry !== null}
+        onClose={() => setEditingEntry(null)}
+        initialName={editingEntry?.title ?? ''}
+        initialDurationSeconds={editingEntry?.durationSeconds}
+        initialDescription={editingEntry?.note}
+        initialCountsAsMusic={editingEntry?.countsAsMusic}
+        onSave={saveEntryEdit}
       />
     </div>
   )

@@ -37,6 +37,11 @@ const MOCKUPS = [
     note: 'Setlists feature, Phase 10 — decision 23\'s full fold: the former standalone Edit Program modal no longer exists — its own restyled, bordered-card Program list ("+ Piece"/"+ Custom Entry", drag-handle reordering, inline custom-entry edit) now lives as this modal\'s own "Program Order" tab, alongside a "Setlist Details" tab (name/gig date/description). Doubles as the New Setlist create state via the "Open New Setlist" button; "Open on Program Tab" demonstrates the Setlist Details page\'s own "Edit Program" button landing here pre-set to that tab. Whole-setlist delete lives on the Setlist Details page itself, not here. Nothing is final until "Save."',
   },
   {
+    to: '/mockup/edit-entry',
+    name: 'Edit Entry',
+    note: 'Setlists feature, Phase 11 — a single custom entry\'s own name/duration/"Count as music"/description, reached from that entry\'s right-click "Edit Entry" item on the Setlist Details page. Same field set as the Edit Setlist modal\'s own Program Order tab uses for its inline "edit an existing custom entry" form — deliberately duplicated (a fast single-entry path), not shared.',
+  },
+  {
     to: '/mockup/books-library',
     name: 'Books Library — Sort/Filter',
     note: 'Grid/list match the real BookGridCard/BookListCard exactly, plus the same Filter Drawer + Sort control added to the Piece Library, adjusted for Books’ lighter facets (Sheet Type/Instrument only). Genuinely interactive against 8 fixture books.',
