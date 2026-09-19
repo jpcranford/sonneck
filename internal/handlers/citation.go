@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/jpcranford/sonneck/internal/api"
@@ -81,17 +82,18 @@ func (s *Server) handleGetCitation(w http.ResponseWriter, r *http.Request) {
 	}
 
 	citation := buildCitation(citationInput{
-		eff:                eff,
-		composerNames:      composerNames,
-		arrangerNames:      arrangerNames,
-		title:              p.Title,
-		bookTitle:          bookTitle,
-		bookWorkOpusNumber: bookWorkOpusNumber,
-		bookYearPublished:  bookYearPublished,
-		isbn:               bookISBN,
-		hasBook:            hasBook,
-		copyrightStatus:    copyrightStatus,
-		calculatedLikelyPD: calculatedLikelyPD,
+		eff:                    eff,
+		composerNames:          composerNames,
+		arrangerNames:          arrangerNames,
+		title:                  p.Title,
+		bookTitle:              bookTitle,
+		bookWorkOpusNumber:     bookWorkOpusNumber,
+		bookYearPublished:      bookYearPublished,
+		isbn:                   bookISBN,
+		hasBook:                hasBook,
+		copyrightStatus:        copyrightStatus,
+		calculatedLikelyPD:     calculatedLikelyPD,
+		arrangementYearWritten: resolveArrangementYearWritten(p.YearWritten, bookYearPublished, p.CopyrightYear),
 	})
 
 	api.WriteData(w, http.StatusOK, map[string]string{"citation": citation})
@@ -150,6 +152,11 @@ type citationInput struct {
 	// explicit override — see buildCitation's own comment on the one place
 	// this is actually consulted.
 	calculatedLikelyPD bool
+	// arrangementYearWritten is effectiveArrangementYearWritten —
+	// resolveArrangementYearWritten's own result, computed once in
+	// handleGetCitation and consulted only when arrangerNames is
+	// non-empty (buildArrangementSentence).
+	arrangementYearWritten string
 }
 
 // buildCitation implements design doc §6's fixed v1 format, extended by
@@ -189,7 +196,7 @@ func buildCitation(in citationInput) string {
 		return buildTwoSentenceCitation(in)
 	}
 
-	flat := buildFlatCitation(in.eff, in.composerNames, in.arrangerNames, in.title, in.bookTitle, in.bookWorkOpusNumber, in.isbn)
+	flat := buildFlatCitation(in.eff, in.composerNames, in.arrangerNames, in.title, in.bookTitle, in.bookWorkOpusNumber, in.isbn, in.arrangementYearWritten)
 	if showsCopyrightClause {
 		// copyrightClause can legitimately be "" (nothing at all to
 		// attribute) — appending a bare trailing space in that case would
@@ -228,9 +235,47 @@ func pieceOwnsImslp(eff *repo.EffectivePiece) bool {
 	return eff.ImslpNumber.Value != "" && !eff.ImslpNumber.Inherited
 }
 
+// resolveArrangementYearWritten computes the year shown in the citation's
+// "Arrangement by {arranger}, {year}." sentence (buildArrangementSentence)
+// — the same fallback chain repo's own resolveYearWritten uses for the
+// piece's plain YearWritten field (piece's own value, else piece's own
+// CopyrightYear, else the book's YearPublished), with tiers 2 and 3
+// swapped: the book's YearPublished is a better proxy for "when was this
+// arrangement made" than the piece's own copyright year, which may
+// describe the ORIGINAL work's copyright rather than this arrangement's —
+// so it's checked first, ahead of the piece's own copyright year.
+// Citation-only — doesn't change YearWritten's own resolution or anything
+// else exposed on PieceResponse.
+func resolveArrangementYearWritten(pieceYearWritten *string, bookYearPublished string, pieceCopyrightYear *int) string {
+	if pieceYearWritten != nil && strings.TrimSpace(*pieceYearWritten) != "" {
+		return *pieceYearWritten
+	}
+	if bookYearPublished != "" {
+		return bookYearPublished
+	}
+	if pieceCopyrightYear != nil {
+		return strconv.Itoa(*pieceCopyrightYear)
+	}
+	return ""
+}
+
+// buildArrangementSentence is the "Arrangement by {arranger}, {year}."
+// sentence inserted right after sentence 1 whenever one or more arrangers
+// are present — shared by buildFlatCitation and buildTwoSentenceCitation.
+// Its own presence depends only on whether there's an arranger, not on
+// whether a year resolved: with no year anywhere to attribute (year ""),
+// it still renders bare, "Arrangement by {arranger}." — never suppressed
+// just because there's nothing to show after the comma.
+func buildArrangementSentence(arranger, year string) string {
+	if year != "" {
+		return fmt.Sprintf("Arrangement by %s, %s.", arranger, year)
+	}
+	return fmt.Sprintf("Arrangement by %s.", arranger)
+}
+
 // buildTwoSentenceCitation is the design artifact §4 structure, extended
-// beyond the original fixed "written / published" split with two further
-// rules:
+// beyond the original fixed "written / published" split with three
+// further rules:
 //
 //  1. An opus match (the book's own opus number contained in the piece's
 //     effective one — resolvedOpus.matched) means the piece is part of a
@@ -245,6 +290,15 @@ func pieceOwnsImslp(eff *repo.EffectivePiece) bool {
 //     publish sentence, alongside publisher/publisherId rather than
 //     replacing them (a deliberate divergence from publisherOrIdentifierParts'
 //     normal dominant-IMSLP-wins rule — see that function's own comment).
+//  3. An arranger no longer fuses onto the composer in sentence 1 (see
+//     buildArrangementSentence above) — when one or more arrangers are
+//     present, a second sentence, "Arrangement by {arranger},
+//     {effectiveArrangementYearWritten}.", is inserted right after sentence
+//     1 — before the publish sentence and the copyright clause — and
+//     yearWritten is dropped from sentence 1's own end in that case, same as
+//     buildFlatCitation: a bare trailing year would otherwise be ambiguous
+//     between "when the original was written" and "when this arrangement
+//     was made."
 //
 // Only ever called when a book is present.
 func buildTwoSentenceCitation(in citationInput) string {
@@ -255,13 +309,8 @@ func buildTwoSentenceCitation(in citationInput) string {
 	var sentence1 strings.Builder
 	composer := joinPersonNames(in.composerNames)
 	arranger := joinPersonNames(in.arrangerNames)
-	switch {
-	case composer != "" && arranger != "":
-		fmt.Fprintf(&sentence1, "%s, arr. %s, ", composer, arranger)
-	case composer != "":
+	if composer != "" {
 		fmt.Fprintf(&sentence1, "%s, ", composer)
-	case arranger != "":
-		fmt.Fprintf(&sentence1, "arr. %s, ", arranger)
 	}
 
 	if opus.matched {
@@ -283,16 +332,24 @@ func buildTwoSentenceCitation(in citationInput) string {
 	if ownsImslp {
 		fmt.Fprintf(&sentence1, ", IMSLP #%s", stripImslpPrefix(eff.ImslpNumber.Value))
 	}
-	if eff.YearWritten.Value != "" {
+	// yearWritten is dropped here whenever an arranger is present — it
+	// moves into the arrangement sentence below instead (see this
+	// function's own doc comment, rule 3).
+	if arranger == "" && eff.YearWritten.Value != "" {
 		fmt.Fprintf(&sentence1, ", %s", eff.YearWritten.Value)
 	}
 	sentence1.WriteString(".")
 
+	parts := []string{sentence1.String()}
+	if arranger != "" {
+		parts = append(parts, buildArrangementSentence(arranger, in.arrangementYearWritten))
+	}
+
 	if ownsImslp {
 		if clause := copyrightClause(eff); clause != "" {
-			return sentence1.String() + " " + clause
+			parts = append(parts, clause)
 		}
-		return sentence1.String()
+		return strings.Join(parts, " ")
 	}
 
 	var publishParts []string
@@ -316,53 +373,48 @@ func buildTwoSentenceCitation(in citationInput) string {
 		publishParts = append(publishParts, in.bookYearPublished)
 	}
 
-	var sentence2 string
 	if len(publishParts) > 0 {
 		verb := "Published in "
 		if opus.matched {
 			verb = "Published by "
 		}
-		sentence2 = verb + strings.Join(publishParts, ", ") + "."
+		parts = append(parts, verb+strings.Join(publishParts, ", ")+".")
 	}
 
-	clause := copyrightClause(eff)
-	switch {
-	case sentence2 != "" && clause != "":
-		return sentence1.String() + " " + sentence2 + " " + clause
-	case sentence2 != "":
-		return sentence1.String() + " " + sentence2
-	case clause != "":
-		return sentence1.String() + " " + clause
-	default:
-		return sentence1.String()
+	if clause := copyrightClause(eff); clause != "" {
+		parts = append(parts, clause)
 	}
+	return strings.Join(parts, " ")
 }
 
 // buildFlatCitation is the original (pre-Public Domain Badge feature) v1
-// format, unchanged: {composer}, {Book.bookTitle}, "{title}"
-// ({workOpusNumber}), {publisher}, {imslpNumber falling back to
-// publisherId}, {yearWritten} — every blank component omitted entirely,
-// never shown as empty punctuation. This is deliberately not generic
-// CITATION_FORMAT token substitution: blank-field omission doesn't fit a
-// plain-substitution model, and a real conditional template engine is out
-// of scope for now (design doc §6, §13).
+// format: {composer}, {Book.bookTitle}, "{title}" ({workOpusNumber}),
+// {publisher}, {imslpNumber falling back to publisherId}, {yearWritten} —
+// every blank component omitted entirely, never shown as empty
+// punctuation. This is deliberately not generic CITATION_FORMAT token
+// substitution: blank-field omission doesn't fit a plain-substitution
+// model, and a real conditional template engine is out of scope for now
+// (design doc §6, §13).
 //
-// This diverges from §6's spec in several places — arranger, IMSLP/ISBN
-// formatting and fallback precedence, book-opus-number de-duplication,
-// nested-quote handling — see CLAUDE.md > Config for the full list and the
-// reasoning behind each.
-func buildFlatCitation(eff *repo.EffectivePiece, composerNames, arrangerNames []string, title, bookTitle, bookWorkOpusNumber, isbn string) string {
+// An arranger no longer fuses onto the composer here — when one or more
+// arrangers are present, this becomes two sentences instead of one:
+// sentence 1 ends in a period regardless of whether yearWritten would
+// otherwise have supplied one (endsWithPeriod), followed by
+// buildArrangementSentence's own "Arrangement by {arranger},
+// {effectiveArrangementYearWritten}." — yearWritten itself is dropped from
+// sentence 1 in that case, so a bare trailing year is never ambiguous
+// between "when the original was written" and "when this arrangement was
+// made."
+//
+// This diverges from §6's spec in several places — arranger placement,
+// IMSLP/ISBN formatting and fallback precedence, book-opus-number
+// de-duplication, nested-quote handling — see CLAUDE.md > Config for the
+// full list and the reasoning behind each.
+func buildFlatCitation(eff *repo.EffectivePiece, composerNames, arrangerNames []string, title, bookTitle, bookWorkOpusNumber, isbn, arrangementYearWritten string) string {
 	var parts []string
 
-	composer := joinPersonNames(composerNames)
-	arranger := joinPersonNames(arrangerNames)
-	switch {
-	case composer != "" && arranger != "":
-		parts = append(parts, fmt.Sprintf("%s, arr. %s", composer, arranger))
-	case composer != "":
+	if composer := joinPersonNames(composerNames); composer != "" {
 		parts = append(parts, composer)
-	case arranger != "":
-		parts = append(parts, fmt.Sprintf("arr. %s", arranger))
 	}
 
 	opus := resolveOpus(eff.WorkOpusNumber.Value, bookWorkOpusNumber)
@@ -387,15 +439,20 @@ func buildFlatCitation(eff *repo.EffectivePiece, composerNames, arrangerNames []
 
 	parts = append(parts, publisherOrIdentifierParts(eff, isbn)...)
 
-	// yearWritten is always the citation's last component when present, so
-	// appending the period here — rather than after the final Join — lands
-	// it at the very end of the citation without needing a separate
-	// no-op-when-blank check on the whole result.
-	if eff.YearWritten.Value != "" {
-		parts = append(parts, eff.YearWritten.Value+".")
+	arranger := joinPersonNames(arrangerNames)
+	if arranger == "" {
+		// yearWritten is always the citation's last component when
+		// present, so appending the period here — rather than after the
+		// final Join — lands it at the very end of the citation without
+		// needing a separate no-op-when-blank check on the whole result.
+		if eff.YearWritten.Value != "" {
+			parts = append(parts, eff.YearWritten.Value+".")
+		}
+		return strings.Join(parts, ", ")
 	}
 
-	return strings.Join(parts, ", ")
+	sentence1 := endsWithPeriod(strings.Join(parts, ", "))
+	return sentence1 + " " + buildArrangementSentence(arranger, arrangementYearWritten)
 }
 
 // publisherOrIdentifierParts is the shared publisher/publisherId/IMSLP/ISBN

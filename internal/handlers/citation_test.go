@@ -162,10 +162,12 @@ func TestCitation_ImslpNumberGetsHashLabelAndStripsExistingPrefix(t *testing.T) 
 	}
 }
 
-// Arranger fuses onto the composer ("Author, arr. Arranger", no comma
-// before "arr.") — a deliberate reversal of design doc §6's original
-// exclusion of arranger from the citation format (CLAUDE.md > Config).
-func TestCitation_ArrangerFusesOntoComposer(t *testing.T) {
+// An arranger gets its own trailing sentence, "Arrangement by {arranger},
+// {effectiveArrangementYearWritten}." — not fused onto the composer the
+// way it used to be ("Author, arr. Arranger, ..."). No year is set on this
+// piece anywhere (no yearWritten, no book, no copyrightYear), so the
+// sentence renders bare, with no trailing ", {year}".
+func TestCitation_ArrangerGetsOwnSentence(t *testing.T) {
 	h := newTestServer(t)
 	dir := t.TempDir()
 	path := dir + "/piece.pdf"
@@ -186,7 +188,7 @@ func TestCitation_ArrangerFusesOntoComposer(t *testing.T) {
 	}
 	decodeData(t, citeRec, &citation)
 
-	want := `Robert Schumann, arr. J. Someone, "Solo"`
+	want := `Robert Schumann, "Solo". Arrangement by J. Someone.`
 	if citation.Citation != want {
 		t.Errorf("citation = %q, want %q", citation.Citation, want)
 	}
@@ -194,9 +196,9 @@ func TestCitation_ArrangerFusesOntoComposer(t *testing.T) {
 
 // TestCitation_ArrangerAloneWithNoComposer covers the composer-OR-arranger
 // rule's effect on the citation specifically: with no composer at all,
-// the composer segment renders as just "arr. {arranger}" instead of
-// disappearing — the old logic only ever appended arranger onto an
-// already-non-blank composer.
+// sentence 1 has no composer segment to lead with — it's just the bare
+// title — since the arranger no longer renders inline there at all (own
+// sentence below, same as when a composer is present).
 func TestCitation_ArrangerAloneWithNoComposer(t *testing.T) {
 	h := newTestServer(t)
 	dir := t.TempDir()
@@ -217,7 +219,111 @@ func TestCitation_ArrangerAloneWithNoComposer(t *testing.T) {
 	}
 	decodeData(t, citeRec, &citation)
 
-	want := `arr. J. Someone, "Traditional Tune"`
+	want := `"Traditional Tune". Arrangement by J. Someone.`
+	if citation.Citation != want {
+		t.Errorf("citation = %q, want %q", citation.Citation, want)
+	}
+}
+
+// effectiveArrangementYearWritten's own fallback chain (piece's own
+// yearWritten → book's yearPublished → piece's own copyrightYear) differs
+// from plain yearWritten's (piece's own yearWritten → piece's own
+// copyrightYear → book's yearPublished) in exactly one place: tiers 2 and
+// 3 are swapped. This piece's own yearWritten is blank, so both chains
+// skip tier 1 the same way — but its copyrightYear (1920) and its book's
+// yearPublished (2015) are deliberately different values, so the two
+// chains would disagree on tier 2 if this test used plain yearWritten
+// resolution: it would show "1920". The arrangement sentence shows "2015"
+// instead, proving the swap actually took effect rather than the two
+// chains coincidentally agreeing. copyrightStatus is pinned explicitly to
+// "publicDomain" so this stays on the flat-citation path (buildCitation's
+// own hasBook-and-showsCopyrightClause gate) regardless of book presence,
+// and copyrightYear=1920 is old enough that the live calculation agrees
+// with that pick too — no contradiction note, keeping the citation's own
+// tail exactly the "Arrangement by..." sentence this test is about.
+func TestCitation_ArrangementYearPrefersBookYearPublishedOverCopyrightYear(t *testing.T) {
+	h := newTestServer(t)
+	bookID, _ := uploadBook(t, h, "book.pdf", 1)
+	decodeData(t, doJSON(t, h, http.MethodPatch, apiBooksURL(bookID), map[string]any{
+		"bookTitle":     "Songbook",
+		"composers":     []string{"Jane Doe"},
+		"yearPublished": "2015",
+	}), nil)
+
+	confirmRec := doJSON(t, h, http.MethodPost, apiBooksURL(bookID)+"/confirm-import", map[string]any{
+		"ranges": []map[string]any{{"start": 1, "end": 1}},
+		"pieces": []map[string]any{{"title": "Folk Medley"}},
+	})
+	var result struct {
+		Pieces []pieceResponse `json:"pieces"`
+	}
+	decodeData(t, confirmRec, &result)
+	pieceID := result.Pieces[0].ID
+
+	decodeData(t, doJSON(t, h, http.MethodPatch, apiPiecesURL(pieceID), map[string]any{
+		"title":           "Folk Medley",
+		"sourceBookId":    bookID,
+		"composers":       []string{"Jane Doe"},
+		"arrangers":       []string{"Sam Smith"},
+		"copyrightYear":   1920,
+		"copyrightStatus": "publicDomain",
+	}), nil)
+
+	rec := doJSON(t, h, http.MethodGet, apiPiecesURL(pieceID)+"/citation", nil)
+	var citation struct {
+		Citation string `json:"citation"`
+	}
+	decodeData(t, rec, &citation)
+
+	want := `Jane Doe, Songbook, "Folk Medley". Arrangement by Sam Smith, 2015.`
+	if citation.Citation != want {
+		t.Errorf("citation = %q, want %q", citation.Citation, want)
+	}
+}
+
+// The arrangement sentence lands right after sentence 1, ahead of both the
+// "Published by/in..." sentence and the copyright clause — an otherwise
+// identical fixture to TestCitation_OpusMatchWithNoImslpUsesPublishedByWording
+// (same book/piece numbers), just with an arranger added, so sentence 1
+// and the publish sentence read exactly the same as that test, with the
+// new sentence inserted between them.
+func TestCitation_ArrangementSentencePrecedesPublishSentence(t *testing.T) {
+	h := newTestServer(t)
+	bookID, _ := uploadBook(t, h, "book.pdf", 4)
+	decodeData(t, doJSON(t, h, http.MethodPatch, apiBooksURL(bookID), map[string]any{
+		"bookTitle":      "Album for the Young",
+		"composers":      []string{"Jane Doe"},
+		"workOpusNumber": "Op. 68",
+		"publisher":      "Henle Verlag",
+		"yearPublished":  "2015",
+	}), nil)
+
+	confirmRec := doJSON(t, h, http.MethodPost, apiBooksURL(bookID)+"/confirm-import", map[string]any{
+		"ranges": []map[string]any{{"start": 1, "end": 4}},
+		"pieces": []map[string]any{{"title": "The Reaper's Song", "workOpusNumber": "Op. 68, No. 3"}},
+	})
+	var result struct {
+		Pieces []pieceResponse `json:"pieces"`
+	}
+	decodeData(t, confirmRec, &result)
+	pieceID := result.Pieces[0].ID
+
+	decodeData(t, doJSON(t, h, http.MethodPatch, apiPiecesURL(pieceID), map[string]any{
+		"title":          "The Reaper's Song",
+		"sourceBookId":   bookID,
+		"workOpusNumber": "Op. 68, No. 3",
+		"arrangers":      []string{"Alex Arranger"},
+		"yearWritten":    "1878",
+		"copyrightYear":  2015,
+	}), nil)
+
+	rec := doJSON(t, h, http.MethodGet, apiPiecesURL(pieceID)+"/citation", nil)
+	var citation struct {
+		Citation string `json:"citation"`
+	}
+	decodeData(t, rec, &citation)
+
+	want := `Jane Doe, Album for the Young, Op. 68, No. 3 "The Reaper's Song". Arrangement by Alex Arranger, 1878. Published by Henle Verlag, 2015. Copyright © 2015 Henle Verlag.`
 	if citation.Citation != want {
 		t.Errorf("citation = %q, want %q", citation.Citation, want)
 	}
@@ -1001,7 +1107,7 @@ func TestCitation_TitleDoubleQuotesBecomeSingleQuotes(t *testing.T) {
 	}
 	decodeData(t, citeRec, &citation)
 
-	want := `Joe Hisaishi, arr. M. Yamamoto, "Merry-Go-Round of Life from 'Howl's Moving Castle'", Sony/ATV Music Publishing (UK), 2004. Copyright © Sony/ATV Music Publishing (UK).`
+	want := `Joe Hisaishi, "Merry-Go-Round of Life from 'Howl's Moving Castle'", Sony/ATV Music Publishing (UK). Arrangement by M. Yamamoto, 2004. Copyright © Sony/ATV Music Publishing (UK).`
 	if citation.Citation != want {
 		t.Errorf("citation = %q, want %q", citation.Citation, want)
 	}

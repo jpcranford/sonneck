@@ -40,7 +40,7 @@ const FLAT_LEAVES: Leaf[] = [
   {
     id: 'A1',
     pattern: 'Copyleft / In Copyright, no book — + "Copyright ©\u00A0{year} {holder}." clause',
-    example: `Joe Hisaishi, arr. M. Yamamoto, "Merry-Go-Round of Life from 'Howl's Moving Castle'", Sony/ATV Music Publishing (UK), 2004. Copyright ©\u00A0Sony/ATV Music Publishing (UK).`,
+    example: `Joe Hisaishi, "Merry-Go-Round of Life from 'Howl's Moving Castle'", Sony/ATV Music Publishing (UK). Arrangement by M. Yamamoto, 2004. Copyright ©\u00A0Sony/ATV Music Publishing (UK).`,
     source: 'TestCitation_TitleDoubleQuotesBecomeSingleQuotes',
   },
   {
@@ -161,6 +161,76 @@ function LeafTable({ leaves }: { leaves: Leaf[] }) {
   )
 }
 
+// A third leaf family, alongside A1-A3/B1-B6 — "C" for the arranger-credit
+// rule, which cuts across both Path A and Path B rather than living inside
+// either one. `old`/`current` mirror LeafCard's own before/after framing
+// (kept, not just a plain `example`) since seeing the pre-restructuring
+// shape side by side with today's is genuinely part of what this rule is
+// — not just a novelty from when it was still a proposal.
+type ArrangerExample = {
+  id: string
+  label: string
+  old: string
+  current: string
+  note: string
+  source: string
+}
+
+const ARRANGER_EXAMPLES: ArrangerExample[] = [
+  {
+    id: 'C1',
+    label: 'Arranger only (no composer), no year anywhere — the sentence still appears, bare',
+    old: `arr. J. Someone, "Traditional Tune"`,
+    current: `"Traditional Tune". Arrangement by J. Someone.`,
+    note: 'effectiveArrangementYearWritten resolves to nothing (no piece yearWritten, no book, no copyright year) — the sentence still appears since an arranger is present, just without a trailing ", {year}".',
+    source: 'TestCitation_ArrangerAloneWithNoComposer',
+  },
+  {
+    id: 'C2',
+    label: 'The actual rule change: book’s yearPublished wins over the piece’s own copyrightYear',
+    old: `Jane Doe, arr. Sam Smith, Songbook, "Folk Medley", 1920.`,
+    current: `Jane Doe, Songbook, "Folk Medley". Arrangement by Sam Smith, 2015.`,
+    note: 'Piece: yearWritten blank, copyrightYear 1920. Book: yearPublished 2015. Plain yearWritten resolution (piece → copyrightYear → book) would show "1920" — effectiveArrangementYearWritten (piece → book → copyrightYear) shows "2015" instead.',
+    source: 'TestCitation_ArrangementYearPrefersBookYearPublishedOverCopyrightYear',
+  },
+  {
+    id: 'C3',
+    label: 'Has a book, In Copyright/Copyleft (buildTwoSentenceCitation) — placement relative to "Published..."',
+    old: `Jane Doe, arr. Alex Arranger, Album for the Young, Op. 68, No. 3 "The Reaper's Song", 1878. Published by Henle Verlag, 2015. Copyright ©\u00A02015 Henle Verlag.`,
+    current: `Jane Doe, Album for the Young, Op. 68, No. 3 "The Reaper's Song". Arrangement by Alex Arranger, 1878. Published by Henle Verlag, 2015. Copyright ©\u00A02015 Henle Verlag.`,
+    note: 'The sentence lands right after sentence 1, ahead of "Published...” and the copyright clause — both otherwise unchanged.',
+    source: 'TestCitation_ArrangementSentencePrecedesPublishSentence',
+  },
+]
+
+function ArrangerExampleCard({ id, label, old, current, note, source }: ArrangerExample) {
+  return (
+    <div className="flex flex-col gap-2 rounded-lg border border-border bg-paper-raised p-3">
+      <p className="text-xs text-ink-soft">
+        <span className="font-mono font-semibold text-accent">{id}</span> — {label}
+      </p>
+      <div className="flex flex-col gap-1">
+        <p className="text-[0.65rem] font-medium tracking-wide text-ink-soft/70 uppercase">
+          Old format (pre-restructuring)
+        </p>
+        <p className="rounded-md bg-paper-sunken p-2 font-mono text-[0.8em] leading-snug text-ink-soft line-through decoration-ink-soft/40">
+          {old}
+        </p>
+      </div>
+      <div className="flex flex-col gap-1">
+        <p className="text-[0.65rem] font-medium tracking-wide text-ink-soft/70 uppercase">
+          Current
+        </p>
+        <p className="rounded-md bg-paper-sunken p-2 font-mono text-[0.8em] leading-snug text-ink">
+          {current}
+        </p>
+      </div>
+      <p className="text-[0.7rem] text-ink-soft">{note}</p>
+      <p className="break-all text-[0.7rem] text-ink-soft/70">{source}</p>
+    </div>
+  )
+}
+
 function IndependentCard({
   name,
   description,
@@ -227,6 +297,51 @@ export function CitationLogicMockup() {
           whenever there's a year or holder to attribute to (
           <span className="font-mono">copyrightClause</span>, see below).
         </p>
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <div>
+          <h2 className="font-display text-lg font-medium text-ink">
+            Arranger credit — cuts across both paths
+          </h2>
+          <p className="max-w-3xl text-sm text-ink-soft">
+            An arranger no longer fuses onto the composer in sentence 1 (A1's own example above
+            shows the ordinary composer+arranger, year-via-tier-1 case) — it gets a real
+            trailing sentence instead, in both <span className="font-mono">buildFlatCitation</span>{' '}
+            and <span className="font-mono">buildTwoSentenceCitation</span>.
+          </p>
+        </div>
+        <ul className="max-w-3xl list-disc pl-5 text-sm text-ink-soft">
+          <li>
+            <span className="font-mono">arr. {'{arranger}'}</span> is removed from the composer
+            segment entirely — sentence 1 becomes plain{' '}
+            <span className="font-mono">"{'{composer}'}, {'{title}'}, {'{yearWritten}'}."</span>
+          </li>
+          <li>
+            Whenever one or more arrangers are present, a new sentence follows immediately after
+            sentence 1 (before "Published..." in Path B):{' '}
+            <span className="font-mono">"Arrangement by {'{arranger}'}, {'{effectiveArrangementYearWritten}'}."</span>
+          </li>
+          <li>
+            When that sentence is present, <span className="font-mono">yearWritten</span> is
+            dropped from the end of sentence 1 — it now only ever describes the arrangement,
+            never the original work, avoiding one bare year meaning two different things.
+          </li>
+          <li>
+            <span className="font-mono">effectiveArrangementYearWritten</span>{' '}
+            (resolveArrangementYearWritten) uses the same fallback chain as{' '}
+            <span className="font-mono">yearWritten</span> (piece's own → ... → book's), with
+            one change: <strong>book's yearPublished takes precedence over the piece's own
+            copyrightYear</strong> — piece.yearWritten → book.yearPublished →
+            piece.copyrightYear, vs. plain yearWritten's piece.yearWritten → piece.copyrightYear{' '}
+            → book.yearPublished. See C2 below.
+          </li>
+        </ul>
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          {ARRANGER_EXAMPLES.map((example) => (
+            <ArrangerExampleCard key={example.id} {...example} />
+          ))}
+        </div>
       </section>
 
       <section className="flex flex-col gap-3">

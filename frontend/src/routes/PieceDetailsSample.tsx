@@ -172,7 +172,7 @@ const samplePiece = {
   // period, demonstrating the citation's own auto-appended one.
   copyrightYear: 1877 as number | null,
   copyrightHolder: null as string | null,
-  copyrightSlug: 'Arrangement by Louis Köhler' as string | null,
+  copyrightSlug: 'First published in the 1877 Schirmer edition' as string | null,
   createdAt: '2026-06-02T14:12:03Z',
   updatedAt: '2026-08-16T09:41:17Z',
 }
@@ -212,34 +212,41 @@ function publicDomainNote(slug: string | null): string {
 }
 
 // Matches buildCitation's current logic exactly (internal/handlers/
-// citation.go), including: arranger fused onto composer ("Robert
-// Schumann, arr. Louis Köhler"); the book's own "Op. 68" dropped from the
-// book-title segment because it's already contained (spaces ignored) in
-// the piece's own "Op. 68, No. 9"; and imslpNumber rendered as
-// "IMSLP #04154" — note samplePiece.imslpNumber below deliberately keeps
-// the old-style "IMSLP04154" raw value (prefix still baked in, as older
-// stored data would have it) specifically to demonstrate that
-// buildCitation strips it at render time regardless of what's actually
-// stored. Also demonstrates: samplePiece.publisher ("G. Schirmer") is
-// deliberately set but does NOT appear in the flat citation's own main
-// segment below — imslpNumber being present suppresses publisher (and
-// publisherId) from that segment entirely; it resurfaces only as the
-// copyright clause's own holder-fallback (see COPYRIGHT_CLAUSE below), an
-// independent rule.
+// citation.go), including: the arranger's own trailing sentence
+// ("Arrangement by Louis Köhler, 1848." — not fused onto the composer
+// anymore, and yearWritten moves out of sentence 1 into this sentence
+// instead, per that year's own resolution); the book's own "Op. 68"
+// dropped from the book-title segment because it's already contained
+// (spaces ignored) in the piece's own "Op. 68, No. 9"; and imslpNumber
+// rendered as "IMSLP #04154" — note samplePiece.imslpNumber below
+// deliberately keeps the old-style "IMSLP04154" raw value (prefix still
+// baked in, as older stored data would have it) specifically to
+// demonstrate that buildCitation strips it at render time regardless of
+// what's actually stored. Also demonstrates: samplePiece.publisher
+// ("G. Schirmer") is deliberately set but does NOT appear in the flat
+// citation's own main segment below — imslpNumber being present
+// suppresses publisher (and publisherId) from that segment entirely; it
+// resurfaces only as the copyright clause's own holder-fallback (see
+// COPYRIGHT_CLAUSE below), an independent rule. The arrangement
+// sentence's own year (1848) stands in for effectiveArrangementYearWritten
+// — this fixture's piece has no raw yearWritten of its own (only the
+// already-inherited eff.yearWritten.value below), so it resolves via that
+// same "1848" the book itself carries, same value the old (pre-
+// restructuring) fused format already showed.
 const FLAT_CITATION =
-  'Robert Schumann, arr. Louis Köhler, Album für die Jugend, "No. 9, Volksliedchen (Little Folk Song)" (Op. 68, No. 9), IMSLP #04154, 1848.'
+  'Robert Schumann, Album für die Jugend, "No. 9, Volksliedchen (Little Folk Song)" (Op. 68, No. 9), IMSLP #04154. Arrangement by Louis Köhler, 1848.'
 // Copyright Holder falls back to effective Publisher when unset —
 // samplePiece.copyrightHolder is null above, so this reads "G. Schirmer"
 // (the piece's own effective publisher), not a blank.
-// The trailing period on "Köhler" is auto-appended by the citation logic
+// The trailing period on "edition" is auto-appended by the citation logic
 // (copyrightSlug itself has none, per the fixture's own comment above).
-const COPYRIGHT_CLAUSE = 'Copyright ©\u00A01877 G. Schirmer. Arrangement by Louis Köhler.'
+const COPYRIGHT_CLAUSE = 'Copyright ©\u00A01877 G. Schirmer. First published in the 1877 Schirmer edition.'
 // The two-sentence "written / published" split — used only when a book
 // is present AND the status shows a copyright
 // clause (In Copyright, Copyleft). Public Domain/Likely Public Domain
 // never use this structure (see sampleCitationFor below) — they keep the
 // flat format, just with a different trailing note.
-const TWO_SENTENCE_CITATION = `Robert Schumann, arr. Louis Köhler, "No. 9, Volksliedchen (Little Folk Song)" (Op. 68, No. 9), 1848. Published in Album für die Jugend, IMSLP #04154, 1848. ${COPYRIGHT_CLAUSE}`
+const TWO_SENTENCE_CITATION = `Robert Schumann, "No. 9, Volksliedchen (Little Folk Song)" (Op. 68, No. 9). Arrangement by Louis Köhler, 1848. Published in Album für die Jugend, IMSLP #04154, 1848. ${COPYRIGHT_CLAUSE}`
 
 function sampleCitationFor(status: CopyrightStatus): string {
   if (status === 'inCopyright' || status === 'copyleft') return TWO_SENTENCE_CITATION
