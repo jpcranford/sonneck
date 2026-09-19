@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Navigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 import QRCode from 'qrcode'
 import {
   IconChevronDown,
@@ -1200,8 +1200,37 @@ function LibrarySettingsSection() {
 export function AdminPage() {
   usePageTitle('Admin Settings')
   const me = useAuth()
+  const navigate = useNavigate()
   const { data: config } = useQuery({ queryKey: ['config'], queryFn: getConfig })
   const isNative = config?.buildTarget === 'native'
+
+  // Hidden developer shortcut, this page only: Ctrl+Alt+Shift+M (or
+  // Cmd+Opt+Shift+M on Mac — `metaKey`/`altKey` are what those two keys
+  // actually set) jumps straight to the mockups index (`/mockup`). That
+  // catalog has no normal in-app entry point on purpose (design/reference
+  // surface, not end-user navigation), so this is a fast path for anyone
+  // who already knows it exists rather than a discoverable feature.
+  // Requires every modifier at once, which is already enough to keep it
+  // from firing during normal typing — the text-entry/repeat guards below
+  // just match this app's usual shortcut posture (e.g. PiecePage.tsx's own
+  // "E"/"F"), not because this specific chord realistically collides with
+  // anything. Registered unconditionally, before the admin-permission
+  // early return below, so hook order stays the same on every render.
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.repeat) return
+      if (!(event.ctrlKey || event.metaKey) || !event.altKey || !event.shiftKey) return
+      if (event.key.toLowerCase() !== 'm') return
+      const target = event.target as HTMLElement | null
+      const tag = target?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target?.isContentEditable) return
+      event.preventDefault()
+      navigate('/mockup')
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [navigate])
+
   if (!me.permissions.includes('admin')) {
     return <Navigate to="/" replace />
   }
