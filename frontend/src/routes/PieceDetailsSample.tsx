@@ -712,7 +712,15 @@ export function PieceDetailsSample() {
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
         {/* ---- Preview column (§7/§14: dominates ~half the view) ---- */}
-        <div className="flex flex-col gap-3">
+        {/* order-2 lg:order-1: at mobile widths (grid-cols-1) the info
+            column should read first — the piece's title/composer/details
+            matter more there than the thumbnail. Desktop keeps its
+            original left/right placement since both columns' order resets
+            at lg:. The border-t/pt-6 (removed at lg:) is the same
+            mobile-only separator the info column used to carry — it now
+            belongs here instead, since this column is the one that
+            visually trails on mobile. */}
+        <div className="order-2 flex flex-col gap-3 border-t border-border pt-6 lg:order-1 lg:border-t-0 lg:pt-0">
           {/* Same always-full-width fix as PiecePage.tsx — kept in sync
               structurally even though this sample's SVG placeholder is
               always portrait-shaped by construction. */}
@@ -953,7 +961,11 @@ export function PieceDetailsSample() {
         </div>
 
         {/* ---- Info column ---- */}
-        <div className="flex flex-col gap-6 border-t border-border pt-6 lg:border-t-0 lg:pt-0">
+        {/* order-1 lg:order-2: reads first on mobile (see the preview
+            column's own comment above) — it's now the first thing on the
+            page at that width, so it carries no top border of its own; the
+            preview column below carries the separator instead. */}
+        <div className="order-1 flex flex-col gap-6 lg:order-2">
           <div className="flex flex-col gap-2">
             <div className="flex items-start justify-between gap-4">
               <h1 className="font-display text-3xl font-medium text-ink">{piece.title}</h1>

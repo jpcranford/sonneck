@@ -554,7 +554,15 @@ export function PiecePage() {
       {piece && (
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
           {/* ---- Preview column (§7/§14: dominates ~half the view) ---- */}
-          <div className="flex flex-col gap-3">
+          {/* order-2 lg:order-1: at mobile widths (grid-cols-1) the info
+              column should read first — the piece's title/composer/details
+              matter more there than the thumbnail. Desktop keeps its
+              original left/right placement since both columns' order
+              resets at lg:. The border-t/pt-6 (removed at lg:) is the same
+              mobile-only separator the info column used to carry — it now
+              belongs here instead, since this column is the one that
+              visually trails on mobile. */}
+          <div className="order-2 flex flex-col gap-3 border-t border-border pt-6 lg:order-1 lg:border-t-0 lg:pt-0">
             {/* No forced aspect ratio here on purpose — a fixed portrait
                 box (the old aspect-[200/260]) made landscape pieces render
                 small and letterboxed inside a tall frame that didn't match
@@ -879,11 +887,11 @@ export function PiecePage() {
           </div>
 
           {/* ---- Info column ---- */}
-          {/* Mobile-only top rule: on desktop this column sits beside the
-              preview column, so nothing needs separating; on mobile the two
-              columns stack (grid-cols-1) and this ends up directly under
-              Your Notes, which reads as a run-on without a visual break. */}
-          <div className="flex flex-col gap-6 border-t border-border pt-6 lg:border-t-0 lg:pt-0">
+          {/* order-1 lg:order-2: reads first on mobile (see the preview
+              column's own comment above) — it's now the first thing on the
+              page at that width, so it carries no top border of its own;
+              the preview column below carries the separator instead. */}
+          <div className="order-1 flex flex-col gap-6 lg:order-2">
             {/* Header: title, edit + favorite, composer, status pills */}
             <div className="flex flex-col gap-2">
               <div className="flex items-start justify-between gap-4">
