@@ -215,6 +215,11 @@ export function SetlistPage() {
     },
     onSuccess: (created) => {
       queryClient.invalidateQueries({ queryKey: ['setlists'] })
+      // React Router reuses this component instance across a /setlists/:id
+      // -> /setlists/:otherId navigation (same route, param-only change),
+      // so duplicateModalOpen would otherwise still read true on the newly
+      // navigated-to setlist's page, reopening this same modal there.
+      setDuplicateModalOpen(false)
       navigate(`/setlists/${created.id}`)
     },
     onError: (err) => window.alert(err instanceof ApiError ? err.message : 'Could not duplicate this setlist.'),
