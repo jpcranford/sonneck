@@ -21,9 +21,9 @@ Sonneck is a bookshelf for your sheet music, whether you have public domain clas
 Sonneck is currently built to live “in an office with a printer”, so to speak, but there are [plans](#planned-features) to add more practice-session features later to turn it into a more well-rounded app.
 
 - **Organize your sheet music library.** Upload individual pieces or entire books — the built-in book splitter and metadata inheritance make quick work of prepping a whole book's worth of pieces to be found later.
-- **Use it from any device.** Any device with a browser can use every feature of Sonneck, with everything you do saved to the library. Edit metadata on your phone, mark up your score on your tablet (feature [coming soon](#planned-features):tm:), or build a setlist on your computer.
-- **Real cataloging, not a folder of PDFs.** Input key(s), instruments, sheet type, opus number, ISBN, and your own tags, plus a one-click citation generator that collects it all for you, ready to be pasted into a program template or group chat.
-- **Composers and arrangers are real people, not text fields.** Each one gets their own page — portrait, bio, birth/death years, and every piece and book they're credited on — browsable from a dedicated People library. A piece or book can credit more than one composer or arranger, in the right order (think "Gilbert and Sullivan," or a hymn with a separate composer and arranger).
+- **Use it from anywhere.** Any device with a browser can use every feature of Sonneck, with everything you do saved to the library. Edit metadata on your phone, mark up your score on your tablet (feature [coming soon](#planned-features)™), or build a setlist on your computer.
+- **Real cataloging, not a folder of PDFs.** Record key(s), instruments, sheet type, opus number, ISBN, and your own tags, plus a one-click citation generator that collects it all for you, ready to be pasted into a program template or group chat.
+- **Composers and arrangers are real people, not text fields.** Each one gets their own page — portrait, bio, birth/death years, and every piece and book they're credited on — browsable from a dedicated People library. A piece or book can credit more than one composer or arranger, in the right order (think "Rodgers and Hart" or a hymn with a separate composer and arranger).
 - **Metadata that works for you.** Give it an IMSLP catalog number and it'll auto-fill composer, opus number, year, and publisher for you. The citation line adapts to show only the fields you've actually filled in, and descriptions/user notes support Markdown — including shortcode music symbols like `:mf:` for a mezzo-forte marking (see the [emoji doc](docs/music-emoji.md) for the full list).
 - **Book-to-piece inheritance.** Set a book's composer, publisher, and year once. Every piece inside it inherits the information automatically, you only ever need to override the pieces that are actually different.
 - **Public domain badge.** A small badge shows whether a piece is Public Domain, Likely Public Domain, Copyleft, or In Copyright — computed automatically from the copyright year and composer death year(s) where possible, or set explicitly when you know better. See [Public domain badge](#public-domain-badge) below for how the calculation works and its limitations.
@@ -46,7 +46,7 @@ On first launch you'll pick where your library lives (defaults to a `Sonneck Lib
 > - **macOS**: Gatekeeper will say the app "cannot be opened because it is from an unidentified developer." Right-click (or Control-click) the app and choose **Open**, then confirm **Open** again in the dialog that follows — you only need to do this once. (If you already double-clicked it and got a plain "can't be opened" message with no Open option, go to **System Settings → Privacy & Security**, scroll down, and click **Open Anyway** next to the Sonneck mention.)
 > - **Windows**: SmartScreen will say "Windows protected your PC." Click **More info**, then **Run anyway**.
 >
-> This is expected for any unsigned app, not a sign something's wrong — it's the price of admission for a free, open-source tool. Every release is built directly from this repo's own source by GitHub Actions \(see [`native-build.yml`](.github/workflows/native-build.yml)\) — nothing hidden happens between the code here and the file you download.
+> This is expected for any unsigned app. Every release is built directly from this repo's own code by GitHub Actions \(see [`native-build.yml`](.github/workflows/native-build.yml)\) — nothing hidden happens between the code here and the file you download.
 
 Since a native install has no Docker/reverse-proxy layer in front of it, **OIDC/SSO sign-in isn't available** — it needs secrets and a registered redirect URI a native app has no safe place to hold. Use Docker instead if you want that (see [Security](#security) below).
 
@@ -76,7 +76,7 @@ Check the `CONTRIBUTING.md` file for full local run instructions. Here's the TL;
 Start the backend:
 ```sh
 cd /sonneck                            # wherever the repo is
-DATA_DIR=./data go run ./cmd/sonneck   # DATA_DIR *must* be passed somehow or it'll fail
+DATA_DIR=./data PORT=8080 go run ./cmd/sonneck   # DATA_DIR *must* be passed somehow or it'll fail
 ```
 
 And because that needs to keep running, in a separate terminal run:
@@ -113,7 +113,7 @@ On first launch, a setup screen walks you through picking one of the above (OIDC
 A piece's badge is one of four states: **In Public Domain** or **Copyleft** (both set explicitly by you), or **Likely Public Domain** / **In Copyright** (computed automatically). The computed states use a small, checked-in region-rule table, reviewed against IMSLP's [Copyright Made Simple](https://imslp.org/wiki/IMSLP:Copyright_Made_Simple) and [Public domain](https://imslp.org/wiki/Public_domain) pages. `COPYRIGHT_REGION` (above) picks which region's rule applies to your whole library — the U.S. rule is based on the copyright year alone; the EU/UK/Canada rules are based on the composer's death year (falling back to an approximation from the copyright year if no death year is on record).
 
 > [!IMPORTANT]
-> **This is not legal advice.** The calculation is a labeled approximation meant to be a useful starting point, not a determination you should rely on without your own judgment. Especially in the US, there are some edge cases that can throw normal rules out the window; the [Hirtle chart](https://commons.wikimedia.org/wiki/Commons:Hirtle_chart#Works_except_sound_recordings_and_architecture) lays out more of those in detail. When in doubt, verify independently before treating a piece as public domain. To be absolutely sure, consult an appropriate lawyer.
+> **This is not legal advice.** The calculation is a labeled approximation meant to be a useful starting point, not a determination you should rely on without your own judgment. Especially in the US, there are some edge cases that can throw normal rules out the window; the [Hirtle chart](https://commons.wikimedia.org/wiki/Commons:Hirtle_chart#Works_except_sound_recordings_and_architecture) lays out more of those in detail. Verify independently before treating a piece as public domain. To be absolutely sure, consult an appropriate lawyer.
 
 ### Backups & logs
 **Backup:** a scheduled job, automatically done by the database using the above environment variables. Backups still retained can be found at `$BACKUP_DIR/sonneck-YYYY-MM-DD.sqlite`.
@@ -143,24 +143,23 @@ DATA_DIR=./data go run ./cmd/sonneck <command>
 | Command | What it does | When to run it |
 |---|---|---|
 | `rebuild-search-index` | Drops and repopulates the full-text search index (`pieces_fts`) from the database's core tables. | The index is derived data — safe to rebuild any time it's suspected out of sync. |
-| `regenerate-thumbnails` | Clears `$DATA_DIR/cache/thumbnails` and re-renders every page of every piece from scratch, also sweeping up any orphaned entries left over from deleted pieces. | If a cached thumbnail is ever suspected corrupted or stale — no need to know which cache entries are actually bad. |
+| `regenerate-thumbnails` | Clears `$DATA_DIR/cache/thumbnails` and re-renders thumbs of every page of every piece from scratch, also sweeping up any orphaned entries left over from deleted pieces. | If a cached thumbnail is ever suspected corrupted or stale — no need to know which cache entries are actually bad. |
 | `cleanup-thumbnails` | A lighter touch than `regenerate-thumbnails`: leaves everything that's already correct alone, and only removes cached page images nothing can read anymore (a deleted book/piece's leftovers, or a book's own pages once it's been fully imported into pieces) or re-renders ones that are actually corrupted. | Routine housekeeping — safe to run any time, and if you had a pre-v0.3 library it's worth running once after upgrading to reclaim space from book thumbnails your library accumulated before this existed. |
 | `migrate-people` | Splits any piece/book still carrying only an old plain-text composer/arranger into real Person records. This already runs automatically on every server startup, so you're unlikely to need it — it's kept as a manual fallback. | To retry by hand after a failed automatic run, or against a different `DATA_DIR`, without restarting the server. |
-| `reset-password` | Clears the stored password for **Password** mode's shared account, so a fresh one has to be set the next time it's configured. | If you've forgotten that password. |
+| `reset-password` | Clears the stored password for **Password** mode's shared account, so a fresh one has to be set the next time the server reboots. | If you've forgotten that password. |
 | `link-oidc-account <user-id-or-name> <subject>` | Links an existing account to a specific identity-provider identity, without waiting for that person to sign in first. See [OIDC / SSO setup](docs/oidc-setup.md). | If `OIDC_ALLOW_REGISTRATION=false` and you need to pre-provision someone, or to fix an account that got linked to the wrong identity. |
 | `export-csv` | Writes a full export of your library data to `$DATA_DIR/export/<timestamp>/` — one CSV file per database table (books, pieces, tags, keys, and so on). Read-only; doesn't touch the database or any existing files. | Any time you want your data out of Sonneck as plain CSV — a one-off backup in a format other tools can read, or just to take it with you. |
 
 ## Planned features
 - **Dark mode.** Dear God, my eyes.
-- **Setlists!** Plan out sets with the piece duration and tempo values.
-- **Configurable citation format.** Just in case you don't like the defaults.
 - **Sheet Viewer!** The practice view every app like this seems to have, with Bluetooth page turner support, server-saved annotations, and a built-in metronome, possibly with some simple gap support there. Maybe some music theory references too, why not; it's not like the circle of fifths has changed in the last 400 years.
-- **Native desktop app builds.** For some reason, the venn diagram of "people who play from sheet music" and "people who know what Docker is" is shockingly small.
+- **Folders, both smart and otherwise.** Save filters to be automatic folders of music– think "pieces I've Learned and are solo pieces for the piano" or "lead sheets from books x, y, and z" accessible under a name in the sidebar.
+- **Configurable citation format.** Just in case you don't like the defaults.
 - Support for image files, and also support for a folder of image files to be uploaded/assembled into a piece
 - Server-side printer support? Unsure about this one, but essentially the server would have a dedicated printer with the same settings saved, boiling a whole process down into a simple "Send to Printer" button. Dunno if this is achievable or just a fever dream.
 
 ## About the name
-Sonneck is named after **Oscar Sonneck** (1873–1928), an American musicologist and librarian. In 1902 he became the first chief of the new Music Division at the Library of Congress, a post he held until 1917; there he built the division's holdings into one of the world's great music collections and devised a classification scheme still in use today, with modifications. After leaving that post, he joined the music publisher G. Schirmer, Inc. (still around today!) and become its vice president in 1921. He's regarded as the founding figure of American musicology — his bibliographic work on early American music laid the groundwork for the field. 
+Sonneck is named after **Oscar Sonneck** (1873–1928), an American musicologist and librarian. In 1902 he became the first chief of the new Music Division at the Library of Congress, a post he held until 1917; there he built the division's holdings into one of the world's great music collections and devised a classification scheme still in use today, with modifications. In 1915, he founded *[The Musical Quarterly](https://en.wikipedia.org/wiki/The_Musical_Quarterly)*, a music-focused academic journal still around today. Around the same time, he also joined the music publisher G. Schirmer, Inc. \(of [yellow cover fame](https://imslp.org/wiki/Schirmer), now part of Hal Leonard and Wise Music Group\) and later became its vice president in 1921. He's regarded as the founding figure of American musicology — his bibliographic work on early American music laid the groundwork for the field. 
 
 And most importantly, his last name sounded great for an app. :wink:
 

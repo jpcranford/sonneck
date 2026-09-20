@@ -67,6 +67,18 @@ export function apiPatch<T>(path: string, body: unknown): Promise<T> {
   })
 }
 
+// The Setlists reorder endpoint (PUT .../entries/order) is this app's first
+// PUT — a full-replacement semantic (the complete new ordering, not a
+// partial patch) is what PUT means here, same body-shape convention as
+// apiPatch otherwise.
+export function apiPut<T>(path: string, body: unknown): Promise<T> {
+  return request<T>(path, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+}
+
 // body is optional — most DELETE endpoints take none, but the merge-or-
 // delete-outright endpoints (Lookup Tables, Your Tags/Practice Status) read
 // an optional mergeIntoId from a real JSON body, same as the backend's own

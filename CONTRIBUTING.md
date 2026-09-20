@@ -123,9 +123,9 @@ A few things worth knowing about that aren't obvious from the tree alone:
 
 **Backend** (from the repo root):
 ```sh
-DATA_DIR=./data go run ./cmd/sonneck
+DATA_DIR=./data PORT=8080 go run ./cmd/sonneck
 ```
-`DATA_DIR` is required — the process won't start without it. This creates `./data` on first run and applies all migrations automatically; you don't need to run `goose` by hand for local dev. The server listens on `:8080` by default (`PORT` to change it). See the README's [Configuration](./README.md#configuration) table for every other env var.
+`DATA_DIR` is required — the process won't start without it. This creates `./data` on first run and applies all migrations automatically; you don't need to run `goose` by hand for local dev. The server listens on `:8080` by default (`PORT` manually specifies it, since it defaults to middle C on some systems). See the README's [Configuration](./README.md#configuration) table for every other env var.
 
 **Frontend** (in a separate terminal, from `frontend/`):
 ```sh

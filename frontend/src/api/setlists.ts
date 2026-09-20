@@ -1,4 +1,4 @@
-import { apiDelete, apiGet, apiPatch, apiPost } from './client'
+import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from './client'
 import type {
   PieceSetlistMembership,
   Setlist,
@@ -40,6 +40,34 @@ export function addSetlistEntry(setlistId: number, req: SetlistEntryInput): Prom
 
 export function removeSetlistEntry(setlistId: number, entryId: number): Promise<{ deleted: boolean }> {
   return apiDelete(`/api/setlists/${setlistId}/entries/${entryId}`)
+}
+
+// PATCH .../entries/{entryId} is a full replace of every field at once
+// (internal/handlers/setlist.go's own setlistEntryUpdateRequest), same
+// convention PATCH /api/setlists/{id} itself follows — a caller must pass
+// the entry's own current `role` through unchanged if it isn't the field
+// being edited, not omit it.
+export interface SetlistEntryUpdateRequest {
+  role: string | null
+  customName?: string | null
+  customDurationSeconds?: number | null
+  customNotes?: string | null
+  customCountsAsMusic: boolean
+}
+
+export function updateSetlistEntry(
+  setlistId: number,
+  entryId: number,
+  req: SetlistEntryUpdateRequest,
+): Promise<SetlistDetail> {
+  return apiPatch<SetlistDetail>(`/api/setlists/${setlistId}/entries/${entryId}`, req)
+}
+
+// PUT .../entries/order — the complete new ordering, sent whole on every
+// drop (decision 22's real drag-to-any-position reorder), not an
+// incremental up/down swap.
+export function reorderSetlistEntries(setlistId: number, entryIds: number[]): Promise<SetlistDetail> {
+  return apiPut<SetlistDetail>(`/api/setlists/${setlistId}/entries/order`, { entryIds })
 }
 
 // getUpcomingSetlists mirrors SidebarSetlistsMockup.tsx's own approved
