@@ -409,15 +409,15 @@ export function SetlistPage() {
                           </span>
                         )}
                         <div className="flex items-baseline gap-2">
-                          <span className="w-8 shrink-0 text-center font-sans text-base tabular-nums text-ink-soft">
+                          <span className="w-8 shrink-0 text-center font-sans text-sm tabular-nums text-ink-soft">
                             {entry.displayNumber ?? '—'}
                           </span>
                           <div className="min-w-0 flex-1">
                             <span
                               className={`block break-words ${
                                 entry.kind === 'piece'
-                                  ? 'font-display text-lg font-medium text-ink'
-                                  : 'font-sans text-base font-normal text-ink-soft italic'
+                                  ? 'font-display text-base font-medium text-ink'
+                                  : 'font-sans text-sm font-normal text-ink-soft italic'
                               }`}
                             >
                               {title}
@@ -430,7 +430,7 @@ export function SetlistPage() {
                           )}
                         </div>
                         {entry.kind === 'piece' && entry.piece ? (
-                          <div className="ml-10 break-words text-sm text-ink-soft">
+                          <div className="ml-10 break-words text-xs text-ink-soft">
                             <MetaLine
                               parts={[
                                 personCreditPart(
@@ -446,7 +446,7 @@ export function SetlistPage() {
                           </div>
                         ) : (
                           entry.customNotes && (
-                            <div className="mt-1 ml-10 rounded border border-border bg-paper-sunken px-2 py-1 text-sm leading-snug text-ink-soft">
+                            <div className="mt-1 ml-10 rounded border border-border bg-paper-sunken px-2 py-1 text-xs leading-snug text-ink-soft">
                               <MarkdownText>{entry.customNotes}</MarkdownText>
                             </div>
                           )
