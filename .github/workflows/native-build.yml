@@ -128,6 +128,16 @@ jobs:
       # normalization). Falls back to the same "0.0.1" placeholder Phase 6
       # already used when there's no release tag at all — a manual
       # workflow_dispatch run, the only other way this workflow triggers.
+      #
+      # A 0.7-beta release tag hit a second, distinct version of that bug
+      # on Windows only, NOT here: NSIS's VIFileVersion/VIProductVersion
+      # require 4 PLAIN INTEGER segments, and a semver-style prerelease
+      # qualifier (-alpha/-beta/-rc) baked into the tag isn't one. macOS's
+      # Info.plist has no such restriction — it tolerates the resulting
+      # "0.7-beta.0" string just fine, so this step is deliberately left
+      # as the plain dot-split-and-pad it always was. See the Windows
+      # job's own "Set build version" step for the actual fix, which is
+      # Windows-specific for exactly this reason.
       - name: Set build version
         id: version
         run: |
@@ -300,27 +310,75 @@ jobs:
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ env.WAILS_VERSION }}
 
-      # PowerShell equivalent of build-macos' identical "Set build version"
-      # step — see that step's own comment for the full reasoning
-      # (X.X.X normalization, why this runs on every trigger).
+      # Sets wails.json's info.productVersion to the release's own tag
+      # VERBATIM (falling back to "0.0.1" with no tag, same placeholder
+      # build-macos' identical step uses) — this is what shows up in the
+      # installer's own file-properties "Product version"/"File version"
+      # strings (VIAddVersionKey below in project.nsi), so it must stay
+      # the real, human-meaningful tag (e.g. "0.7-beta.4"), not some
+      # internal accommodation.
+      #
+      # NSIS's VIProductVersion/VIFileVersion lines are a separate,
+      # stricter requirement: unlike those free-form string keys, they're
+      # binary version-resource fields that must be exactly 4 PLAIN
+      # INTEGER segments — a real tag like "0.7-beta.4" isn't one, and
+      # passing it straight through is exactly what broke a real beta
+      # build (macOS's Info.plist has no such restriction, so its own
+      # "Set build version" step is deliberately left as a plain pass-
+      # through — see that step's comment). Rather than feed a mangled
+      # value back into wails.json (which would also wrongly show up in
+      # the string fields above), a separate NSIS-safe numeric version is
+      # computed here and patched directly into project.nsi's own two
+      # VI*Version lines only, immediately before wails build -nsis runs.
+      # Any -alpha/-beta/-rc[.N] qualifier folds into the numeric patch
+      # slot via non-overlapping bands (alpha=0, beta=100, rc=200) offset
+      # by the qualifier's own iteration number, with any real patch
+      # number multiplied up by 1000 first so it never collides with a
+      # band: "0.7-beta" -> "0.7.100", "0.7-beta.4" -> "0.7.104",
+      # "1.2.3-rc.1" -> "1.2.3201". A tag matching neither the plain
+      # MAJOR.MINOR[.PATCH] convention nor this qualifier extension fails
+      # the build immediately with a clear error rather than silently
+      # producing a malformed version resource, matching this project's
+      # fail-fast-on-invalid-config posture (CLAUDE.md > Config).
       - name: Set build version
         id: version
         shell: pwsh
         run: |
           $Tag = "${{ github.event.release.tag_name }}"
-          if ([string]::IsNullOrEmpty($Tag)) {
-            $Version = "0.0.1"
-          } else {
-            $parts = @($Tag -split '\.')
-            while ($parts.Count -lt 3) { $parts += "0" }
-            $Version = "$($parts[0]).$($parts[1]).$($parts[2])"
-          }
+          $Version = if ([string]::IsNullOrEmpty($Tag)) { "0.0.1" } else { $Tag }
           Write-Host "Building version $Version"
           Add-Content -Path $env:GITHUB_OUTPUT -Value "version=$Version"
 
           $json = Get-Content cmd\sonneck-desktop\wails.json -Raw | ConvertFrom-Json
           $json.info.productVersion = $Version
           $json | ConvertTo-Json -Depth 10 | Set-Content cmd\sonneck-desktop\wails.json
+
+          if ($Version -match '^(\d+)\.(\d+)(?:\.(\d+))?(?:-(alpha|beta|rc)(?:\.(\d+))?)?$') {
+            $Major = $Matches[1]
+            $Minor = $Matches[2]
+            $Patch = if ($Matches[3]) { [int]$Matches[3] } else { 0 }
+            $Qualifier = $Matches[4]
+            $PrereleaseNum = if ($Matches[5]) { [int]$Matches[5] } else { 0 }
+            if ($Qualifier) {
+              $Offset = switch ($Qualifier.ToLower()) {
+                'alpha' { 0 }
+                'beta'  { 100 }
+                'rc'    { 200 }
+              }
+              $Patch = ($Patch * 1000) + $Offset + $PrereleaseNum
+            }
+            $NsisVersion = "$Major.$Minor.$Patch"
+          } else {
+            Write-Error "Release tag '$Version' doesn't match the expected MAJOR.MINOR[.PATCH][-alpha|beta|rc[.N]] format needed for the Windows installer's version resource"
+            exit 1
+          }
+          Write-Host "NSIS version resource: ${NsisVersion}.0"
+
+          $nsiPath = 'cmd\sonneck-desktop\build\windows\installer\project.nsi'
+          $nsiContent = Get-Content $nsiPath -Raw
+          $nsiContent = $nsiContent -replace 'VIProductVersion\s+"\$\{INFO_PRODUCTVERSION\}\.0"', "VIProductVersion `"${NsisVersion}.0`""
+          $nsiContent = $nsiContent -replace 'VIFileVersion\s+"\$\{INFO_PRODUCTVERSION\}\.0"', "VIFileVersion    `"${NsisVersion}.0`""
+          Set-Content -Path $nsiPath -Value $nsiContent
 
       # Real, previously-run recipe (Phase 2's own windows-latest CI spike)
       # — the release zip ships every .exe with its .dll dependencies flat
