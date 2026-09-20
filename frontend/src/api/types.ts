@@ -373,3 +373,96 @@ export interface ConfirmImportRequest {
 export interface ConfirmImportResult {
   pieces: Piece[]
 }
+
+/** GET /api/setlists' own per-row shape (internal/api/setlist.go's
+ * SetlistSummaryResponse) — every total is computed server-side at read
+ * time, never stored (design doc §13). effectiveArchived is the one to
+ * actually branch UI on (decision 3's asymmetric-resolution rule, same
+ * posture as the Public Domain Badge's own copyrightStatus.effective) —
+ * archived is the raw explicit flag alone. */
+export interface Setlist {
+  id: number
+  name: string
+  gigDate: string | null
+  archived: boolean
+  effectiveArchived: boolean
+  entryCount: number
+  totalDurationSeconds: number | null
+  totalPages: number
+  createdAt: string
+  updatedAt: string
+}
+
+/** GET /api/setlists/{id}'s own piece-entry shape (SetlistPieceSummary) —
+ * deliberately narrower than the full Piece type (no copyright/publisher/
+ * IMSLP/etc, none of which a setlist row shows). */
+export interface SetlistPieceSummary {
+  id: number
+  title: string
+  composer: Tag[]
+  arranger: Tag[]
+  keys: Tag[]
+  duration: number | null
+  pageCount: number
+}
+
+/** One row of a Setlist's own ordered "entries" (SetlistEntryResponse) —
+ * either a real piece reference (kind: 'piece', piece set) or a freeform
+ * custom row (kind: 'custom', customName set). displayNumber is computed
+ * fresh on every read (decision 8) — null for a non-counting entry (the
+ * common custom-entry case), never a stored/editable field. */
+export interface SetlistEntry {
+  id: number
+  kind: 'piece' | 'custom'
+  piece?: SetlistPieceSummary
+  customName?: string
+  customDurationSeconds?: number
+  customNotes?: string
+  customCountsAsMusic: boolean
+  role: string | null
+  displayNumber: number | null
+}
+
+/** GET /api/setlists/{id}'s full detail (SetlistResponse) — the summary
+ * shape plus description and the ordered entries themselves. */
+export interface SetlistDetail extends Setlist {
+  description: string | null
+  entries: SetlistEntry[]
+}
+
+export interface SetlistCreateRequest {
+  name: string
+  gigDate?: string | null
+  description?: string | null
+}
+
+export interface SetlistUpdateRequest {
+  name: string
+  gigDate?: string | null
+  description?: string | null
+  archived: boolean
+}
+
+export interface SetlistEntryInput {
+  pieceId?: number
+  customName?: string
+  customDurationSeconds?: number | null
+  customNotes?: string | null
+  customCountsAsMusic?: boolean
+  role?: string | null
+}
+
+/** GET /api/setlists/memberships — one row per (piece, setlist) pairing
+ * across every setlist the calling user owns (repo.PieceSetlistMembership).
+ * The one bulk fetch the "already in a setlist" indicator (grid/list cards,
+ * Piece Details) and the Add to Setlist picker's own checked-state/remove
+ * flow both need — entryId is what DELETE /api/setlists/{id}/entries/{entryId}
+ * needs to address a removal, since a piece can legitimately repeat within
+ * one setlist (decision 4) and there's no other way to name "this piece's
+ * row in this setlist." */
+export interface PieceSetlistMembership {
+  pieceId: number
+  setlistId: number
+  setlistName: string
+  entryId: number
+}

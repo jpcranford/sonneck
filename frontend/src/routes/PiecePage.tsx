@@ -5,6 +5,8 @@ import {
   IconArrowLeft,
   IconArrowsDiagonal,
   IconBook2,
+  IconCalendarEventFilled,
+  IconCalendarFilled,
   IconChevronDownFilled,
   IconChevronLeft,
   IconChevronRight,
@@ -44,6 +46,8 @@ import {
   setPieceThumbnailPage,
   updatePiece,
 } from '../api/pieces'
+import { listPieceSetlistMemberships } from '../api/setlists'
+import { AddToSetlistPicker } from '../components/AddToSetlistPicker'
 import { ApiError } from '../api/client'
 import { pieceToWriteRequest } from '../lib/pieceToWriteRequest'
 import { secondsToMMSS } from '../lib/duration'
@@ -324,7 +328,21 @@ export function PiecePage() {
   const [editOpen, setEditOpen] = useState(false)
   const [bookEditOpen, setBookEditOpen] = useState(false)
   const [copyToast, setCopyToast] = useState<{ x: number; y: number } | null>(null)
+  const [addToSetlistOpen, setAddToSetlistOpen] = useState(false)
+  const addToSetlistButtonRef = useRef<HTMLButtonElement>(null)
   const replaceFileInputRef = useRef<HTMLInputElement>(null)
+
+  // "Already in a setlist" indicator (decision 6) — real as of the
+  // Setlists backend build. Same bulk membership fetch every other real
+  // call site (PieceGridCard/PieceListCard/AddToSetlistPicker) shares.
+  const { data: setlistMemberships = [] } = useQuery({
+    queryKey: ['setlist-memberships'],
+    queryFn: listPieceSetlistMemberships,
+  })
+  const pieceSetlistNames = setlistMemberships
+    .filter((m) => m.pieceId === piece?.id)
+    .map((m) => m.setlistName)
+    .join(', ')
 
   const favoriteMutation = useMutation({
     mutationFn: () =>
@@ -525,6 +543,36 @@ export function PiecePage() {
             >
               <IconDice5 size={18} />
             </button>
+            {/* Add to Setlist (decision 2) — one of this feature's three
+                add-to-setlist entry points (the others: the Library
+                grid/list card's own context menu, and the Setlist page's
+                own bulk "Add pieces" picker, not built yet). Positioned
+                immediately to the left of Edit Piece — both are "editing/
+                organizing the piece" actions, grouped with no divider
+                between them, same as the approved mockup
+                (PieceDetailsSample.tsx). Its popover is the exact same
+                AddToSetlistPicker the Library grid/list cards use —
+                addToSetlistButtonRef anchors its portaled position (see
+                that component's own top comment for why it's a portal). */}
+            <div>
+              <button
+                ref={addToSetlistButtonRef}
+                type="button"
+                onClick={() => setAddToSetlistOpen((o) => !o)}
+                aria-label="Add to Setlist"
+                title="Add to Setlist"
+                className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent"
+              >
+                <IconCalendarEventFilled size={18} />
+              </button>
+              {addToSetlistOpen && (
+                <AddToSetlistPicker
+                  pieceId={piece.id}
+                  anchorRef={addToSetlistButtonRef}
+                  onClose={() => setAddToSetlistOpen(false)}
+                />
+              )}
+            </div>
             <ActionButton
               icon={<IconEditFilled size={16} />}
               label="Edit Piece"
@@ -897,6 +945,25 @@ export function PiecePage() {
               <div className="flex items-start justify-between gap-4">
                 <h1 className="font-display text-3xl font-medium text-ink">{piece.title}</h1>
                 <div className="mt-1 flex shrink-0 items-center gap-3">
+                  {/* "Already in a setlist" indicator (decision 6) — a pure
+                      status display, not a control, same reasoning as the
+                      copyright badge: needs a real tap-accessible tooltip
+                      (InfoTooltip), not a hover-only native title, so a
+                      touch device can still learn which setlist(s) it's
+                      naming. Filled icon, same "solid = affirmative state"
+                      precedent as the favorite heart right next to it —
+                      only ever rendered when the piece is actually in at
+                      least one. */}
+                  {pieceSetlistNames && (
+                    <InfoTooltip
+                      message={`In ${pieceSetlistNames}`}
+                      ariaLabel="This piece is in a setlist"
+                      showPointerCursor={false}
+                      triggerClassName="text-accent"
+                    >
+                      <IconCalendarFilled size={20} />
+                    </InfoTooltip>
+                  )}
                   {/* Edit moved to the top toolbar (a proper labeled
                       button, not an icon-only one) — see this file's
                       top-of-page comment. Favorite stays here; it's a

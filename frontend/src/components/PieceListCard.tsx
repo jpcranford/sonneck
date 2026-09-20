@@ -1,6 +1,8 @@
 import { useState } from 'react'
-import { IconHeartFilled } from '@tabler/icons-react'
+import { useQuery } from '@tanstack/react-query'
+import { IconCalendarFilled, IconHeartFilled } from '@tabler/icons-react'
 import { getPieceThumbnailUrl } from '../api/pieces'
+import { listPieceSetlistMemberships } from '../api/setlists'
 import type { Piece } from '../api/types'
 import { formatPieceMeta } from '../lib/formatPieceMeta'
 import { ClickableCard } from './ClickableCard'
@@ -23,6 +25,17 @@ export function PieceListCard({ piece, backLabel, siblingPieces }: PieceListCard
   const [page, setPage] = useState(piece.thumbnailPage)
   const meta = formatPieceMeta(piece)
 
+  // "Already in a setlist" indicator (decision 6) — same treatment as
+  // PieceGridCard's own; see that file's comment.
+  const { data: memberships = [] } = useQuery({
+    queryKey: ['setlist-memberships'],
+    queryFn: listPieceSetlistMemberships,
+  })
+  const inSetlistNames = memberships
+    .filter((m) => m.pieceId === piece.id)
+    .map((m) => m.setlistName)
+    .join(', ')
+
   return (
     // No visible "⋯" trigger, same as PieceGridCard — right-click
     // (desktop) and ContextMenu's built-in long-press (touch) cover it instead.
@@ -44,6 +57,11 @@ export function PieceListCard({ piece, backLabel, siblingPieces }: PieceListCard
               {piece.favorite && (
                 <span className="shrink-0 text-accent" title="Favorite">
                   <IconHeartFilled size={13} />
+                </span>
+              )}
+              {inSetlistNames && (
+                <span className="shrink-0 text-accent" title={`In ${inSetlistNames}`}>
+                  <IconCalendarFilled size={13} />
                 </span>
               )}
             </p>

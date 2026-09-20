@@ -52,6 +52,7 @@ import { WantToLearnPage } from './routes/WantToLearnPage'
 import { PracticingPage } from './routes/PracticingPage'
 import { LearnedPage } from './routes/LearnedPage'
 import { SetlistPage } from './routes/SetlistPage'
+import { SetlistsLibraryPage } from './routes/SetlistsLibraryPage'
 import { NotFoundPage } from './routes/NotFoundPage'
 
 function App() {
@@ -180,6 +181,7 @@ function AppRoutes() {
         <Route path="want-to-learn" element={<WantToLearnPage />} />
         <Route path="practicing" element={<PracticingPage />} />
         <Route path="learned" element={<LearnedPage />} />
+        <Route path="setlists" element={<SetlistsLibraryPage />} />
         <Route path="setlists/:id" element={<SetlistPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>

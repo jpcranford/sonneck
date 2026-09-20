@@ -204,6 +204,77 @@ func TestAddSetlistEntry_RejectsNeitherPieceNorCustomName(t *testing.T) {
 	}
 }
 
+// TestListPieceSetlistMemberships_ReflectsAddAndRemove covers the bulk
+// membership endpoint the Library grid/list indicator and the Add to
+// Setlist picker's own checked-state/remove flow both depend on — a
+// piece's membership row must appear after adding it to a setlist and
+// disappear after removing it, carrying the real entryId needed to
+// address that removal in the first place.
+func TestListPieceSetlistMemberships_ReflectsAddAndRemove(t *testing.T) {
+	h := newTestServer(t)
+	pieceID := uploadTestPiece(t, h)
+
+	rec := doJSON(t, h, http.MethodGet, "/api/setlists/memberships", nil)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status %d, body %s", rec.Code, rec.Body.String())
+	}
+	if strings.Contains(rec.Body.String(), `"data":null`) {
+		t.Errorf("body = %s, want an empty array, not null", rec.Body.String())
+	}
+	var memberships []struct {
+		PieceID   int64 `json:"pieceId"`
+		SetlistID int64 `json:"setlistId"`
+		EntryID   int64 `json:"entryId"`
+	}
+	decodeData(t, rec, &memberships)
+	if len(memberships) != 0 {
+		t.Fatalf("memberships before adding anything = %+v, want empty", memberships)
+	}
+
+	rec = doJSON(t, h, http.MethodPost, "/api/setlists", map[string]any{"name": "Program"})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("create setlist: status %d, body %s", rec.Code, rec.Body.String())
+	}
+	var setlist struct {
+		ID int64 `json:"id"`
+	}
+	decodeData(t, rec, &setlist)
+
+	rec = doJSON(t, h, http.MethodPost, setlistURL(setlist.ID, "/entries"), map[string]any{"pieceId": pieceID})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("add entry: status %d, body %s", rec.Code, rec.Body.String())
+	}
+	var added struct {
+		Entries []struct {
+			ID int64 `json:"id"`
+		} `json:"entries"`
+	}
+	decodeData(t, rec, &added)
+	entryID := added.Entries[0].ID
+
+	rec = doJSON(t, h, http.MethodGet, "/api/setlists/memberships", nil)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status %d, body %s", rec.Code, rec.Body.String())
+	}
+	decodeData(t, rec, &memberships)
+	if len(memberships) != 1 || memberships[0].PieceID != pieceID || memberships[0].SetlistID != setlist.ID || memberships[0].EntryID != entryID {
+		t.Fatalf("memberships after adding = %+v, want one row for piece %d / setlist %d / entry %d", memberships, pieceID, setlist.ID, entryID)
+	}
+
+	rec = doJSON(t, h, http.MethodDelete, setlistURL(setlist.ID, "/entries/"+strconv.FormatInt(entryID, 10)), nil)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("remove entry: status %d, body %s", rec.Code, rec.Body.String())
+	}
+	rec = doJSON(t, h, http.MethodGet, "/api/setlists/memberships", nil)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status %d, body %s", rec.Code, rec.Body.String())
+	}
+	decodeData(t, rec, &memberships)
+	if len(memberships) != 0 {
+		t.Fatalf("memberships after removing = %+v, want empty", memberships)
+	}
+}
+
 func setlistURL(id int64, suffix string) string {
 	return "/api/setlists/" + strconv.FormatInt(id, 10) + suffix
 }

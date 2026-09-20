@@ -1,4 +1,4 @@
-import { forwardRef, useState, type ReactNode } from 'react'
+import { forwardRef, useRef, useState, type ReactNode } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { deletePiece, updatePiece } from '../api/pieces'
 import { ApiError } from '../api/client'
@@ -7,6 +7,7 @@ import { useAuth } from '../lib/AuthContext'
 import { pieceToWriteRequest } from '../lib/pieceToWriteRequest'
 import { ContextMenu, type ContextMenuHandle } from './ContextMenu'
 import { EditPieceModal } from './EditPieceModal'
+import { AddToSetlistPicker } from './AddToSetlistPicker'
 
 interface PieceContextMenuProps {
   piece: Piece
@@ -27,6 +28,8 @@ interface PieceContextMenuProps {
 export const PieceContextMenu = forwardRef<ContextMenuHandle, PieceContextMenuProps>(
   function PieceContextMenu({ piece, children, hideTriggerButton, siblingPieces }, ref) {
     const [editOpen, setEditOpen] = useState(false)
+    const [pickerOpen, setPickerOpen] = useState(false)
+    const cardRef = useRef<HTMLDivElement>(null)
     const queryClient = useQueryClient()
     const canEdit = useAuth().permissions.includes('edit')
     const canDelete = useAuth().permissions.includes('delete')
@@ -60,7 +63,10 @@ export const PieceContextMenu = forwardRef<ContextMenuHandle, PieceContextMenuPr
     })
 
     return (
-      <>
+      // cardRef anchors AddToSetlistPicker's own portaled popup under the
+      // card's bottom-right corner (see that component's own top comment
+      // for why it's a portal, not plain CSS-relative positioning).
+      <div ref={cardRef}>
         <ContextMenu
           ref={ref}
           hideTriggerButton={hideTriggerButton}
@@ -68,6 +74,10 @@ export const PieceContextMenu = forwardRef<ContextMenuHandle, PieceContextMenuPr
             {
               label: piece.favorite ? 'Remove from Favorites' : 'Add to Favorites',
               onSelect: () => favoriteMutation.mutate(),
+            },
+            {
+              label: 'Add to Setlist',
+              onSelect: () => setPickerOpen(true),
             },
             {
               label: 'Edit Piece',
@@ -96,7 +106,10 @@ export const PieceContextMenu = forwardRef<ContextMenuHandle, PieceContextMenuPr
           onClose={() => setEditOpen(false)}
           siblingPieces={siblingPieces}
         />
-      </>
+        {pickerOpen && (
+          <AddToSetlistPicker pieceId={piece.id} anchorRef={cardRef} onClose={() => setPickerOpen(false)} />
+        )}
+      </div>
     )
   },
 )

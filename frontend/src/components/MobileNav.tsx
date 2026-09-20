@@ -1,17 +1,20 @@
 import { NavLink } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { IconMenu2, IconX } from '@tabler/icons-react'
-import { NAV_ITEMS, SECONDARY_NAV_ITEMS, SETLISTS, type NavItem } from '../lib/navItems'
+import { NAV_ITEMS, SECONDARY_NAV_ITEMS, type NavItem } from '../lib/navItems'
 import { useAuth } from '../lib/AuthContext'
 import { getUserSettings } from '../api/userSettings'
+import { listSetlists, getUpcomingSetlists } from '../api/setlists'
 import { UserMenuButton } from './UserMenuButton'
+import { SetlistsSection } from './SidebarSetlists'
 
 // Mobile-only top bar + left drawer — the classic hamburger-drawer
 // pattern, chosen over a top-fold panel, a bottom sheet, and a bottom tab
 // bar. Replaces the permanently-docked icon-only rail Sidebar.tsx used to
 // fall back to below 768px with a slim top bar + a slide-in drawer that's
 // entirely absent from the screen until asked for. Shares Sidebar.tsx's
-// real NAV_ITEMS/SECONDARY_NAV_ITEMS/SETLISTS data directly.
+// real NAV_ITEMS/SECONDARY_NAV_ITEMS data directly, plus the same real
+// Setlists query/section Sidebar.tsx's own rail uses.
 //
 // Deliberately logo-less — went through the full wordmark, then
 // mark-plus-text, then mark-only, before landing here. The wordmark hit a
@@ -111,6 +114,11 @@ function DrawerNavList({ items, onNavigate }: { items: NavItem[]; onNavigate: ()
 }
 
 export function MobileNavDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
+  // Real as of the Setlists backend build — same query Sidebar.tsx's own
+  // desktop rail uses, sharing its cache entry.
+  const { data: setlists = [] } = useQuery({ queryKey: ['setlists'], queryFn: listSetlists })
+  const upcomingSetlists = getUpcomingSetlists(setlists, 5)
+
   return (
     <>
       <div
@@ -140,16 +148,7 @@ export function MobileNavDrawer({ open, onClose }: { open: boolean; onClose: () 
         <div className="mx-3 my-3 border-t border-sidebar-border" />
         <DrawerNavList items={SECONDARY_NAV_ITEMS} onNavigate={onClose} />
 
-        <div className="mt-6 flex flex-1 flex-col overflow-y-auto px-2">
-          <span className="px-3 text-xs tracking-wide text-sidebar-text-dim uppercase">Setlists</span>
-          <div className="mt-1 flex flex-col">
-            {SETLISTS.length === 0 && (
-              <span className="truncate rounded-md px-3 py-2 font-display text-[0.95rem] font-medium text-sidebar-text">
-                Coming soon
-              </span>
-            )}
-          </div>
-        </div>
+        <SetlistsSection collapsed={false} setlists={upcomingSetlists} />
 
         <UserMenuButton collapsed={false} onNavigate={onClose} />
       </aside>

@@ -1,5 +1,7 @@
-import { IconHeartFilled } from '@tabler/icons-react'
+import { useQuery } from '@tanstack/react-query'
+import { IconCalendarFilled, IconHeartFilled } from '@tabler/icons-react'
 import { getPieceThumbnailUrl } from '../api/pieces'
+import { listPieceSetlistMemberships } from '../api/setlists'
 import type { Piece } from '../api/types'
 import { personCreditPart } from '../lib/joinNames'
 import { ClickableCard } from './ClickableCard'
@@ -41,6 +43,20 @@ export function PieceGridCard({ piece, backLabel, siblingPieces }: PieceGridCard
   const meta = [composerPart, piece.yearWritten.value]
     .filter((part): part is string => !!part)
     .join(' • ')
+
+  // "Already in a setlist" indicator (decision 6) — same favorite-heart
+  // precedent this card already follows: inline right after the title,
+  // plain native `title`, not InfoTooltip (a card-level status icon is
+  // self-explanatory enough for a hover tooltip here; contrast with Piece
+  // Details' own indicator, which does use InfoTooltip for touch access).
+  const { data: memberships = [] } = useQuery({
+    queryKey: ['setlist-memberships'],
+    queryFn: listPieceSetlistMemberships,
+  })
+  const inSetlistNames = memberships
+    .filter((m) => m.pieceId === piece.id)
+    .map((m) => m.setlistName)
+    .join(', ')
 
   return (
     // No visible "⋯" trigger on grid cards — a permanently-visible
@@ -102,6 +118,11 @@ export function PieceGridCard({ piece, backLabel, siblingPieces }: PieceGridCard
             {piece.favorite && (
               <span className="shrink-0 text-accent" title="Favorite">
                 <IconHeartFilled size={13} />
+              </span>
+            )}
+            {inSetlistNames && (
+              <span className="shrink-0 text-accent" title={`In ${inSetlistNames}`}>
+                <IconCalendarFilled size={13} />
               </span>
             )}
           </p>

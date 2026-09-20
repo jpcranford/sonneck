@@ -158,7 +158,25 @@ function SetlistsMenu() {
         <IconDots size={14} />
       </button>
       {open && (
-        <div className="absolute top-6 right-0 z-10 w-44 overflow-hidden rounded-md border border-sidebar-border bg-sidebar-panel py-1 shadow-lg">
+        // normal-case — a real bug, found via direct report: this menu is
+        // nested inside the section heading's own uppercase-styled row
+        // ("Upcoming Sets" + this trigger button share one flex container),
+        // and text-transform inherits through CSS regardless of this
+        // popup's own absolute positioning — "View All Setlists"/"Archive"
+        // were rendering as "VIEW ALL SETLISTS"/"ARCHIVE" even though the
+        // source text itself was already correctly Title Case.
+        // w-max (shrink to the widest item's own single-line width),
+        // max-w-[13rem] as a real ceiling rather than a guess — this menu
+        // only ever renders inside the Sidebar's own 256px rail or the
+        // MobileNav drawer (max 288px/85vw), both fixed, known-narrow
+        // containers, so a plain CSS cap is enough (no JS viewport
+        // measurement needed, unlike AddToSetlistPicker's own general-
+        // purpose floating popover). Once content would exceed that cap,
+        // normal CSS text wrapping takes over on its own — no
+        // whitespace-nowrap here, specifically so a hypothetical longer
+        // future item wraps onto a second line instead of overflowing the
+        // sidebar or getting clipped by it.
+        <div className="absolute top-6 right-0 z-10 w-max max-w-[13rem] overflow-hidden rounded-md border border-sidebar-border bg-sidebar-panel py-1 shadow-lg normal-case">
           <Link
             to="/mockup/setlists-library"
             onClick={() => setOpen(false)}

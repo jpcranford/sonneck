@@ -183,6 +183,11 @@ func New(db *sql.DB, cfg *config.Config, logger *slog.Logger, frontend fs.FS, sc
 	// route here is `read`-gated instead, same "this is the calling user's
 	// own data" posture as Tags/Practice Status, checked inside each
 	// handler via requirePermission rather than route metadata.
+	// /memberships sits alongside /{id} as a second specific-literal-path
+	// sibling (same precedent as /pieces/random vs /pieces/{id} above) —
+	// Go 1.22+ resolves the literal over the wildcard regardless of
+	// registration order.
+	mux.HandleFunc("GET /api/setlists/memberships", s.handleListPieceSetlistMemberships)
 	mux.HandleFunc("GET /api/setlists", s.handleListSetlists)
 	mux.HandleFunc("POST /api/setlists", s.handleCreateSetlist)
 	mux.HandleFunc("GET /api/setlists/{id}", s.handleGetSetlist)

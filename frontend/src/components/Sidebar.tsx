@@ -5,10 +5,12 @@ import {
   IconLayoutSidebarLeftCollapseFilled,
   IconLayoutSidebarLeftExpandFilled,
 } from '@tabler/icons-react'
-import { NAV_ITEMS, SECONDARY_NAV_ITEMS, SETLISTS, type NavItem } from '../lib/navItems'
+import { NAV_ITEMS, SECONDARY_NAV_ITEMS, type NavItem } from '../lib/navItems'
 import { useAuth } from '../lib/AuthContext'
 import { getUserSettings } from '../api/userSettings'
+import { listSetlists, getUpcomingSetlists } from '../api/setlists'
 import { UserMenuButton } from './UserMenuButton'
+import { SetlistsSection } from './SidebarSetlists'
 
 // Shared between the primary nav group and the secondary (Favorites/
 // Currently Practicing) group below the divider — same link styling
@@ -104,6 +106,12 @@ export function Sidebar() {
   // toggle below is a separate, persistent desktop preference, unrelated
   // to this.
   const [collapsed, setCollapsed] = useState(false)
+  // Real as of the Setlists backend build — same TanStack-Query-backed
+  // pattern as the "Hide Books in sidebar" setting above. Defaults to []
+  // while loading, same posture as an empty result: no flash, no
+  // placeholder text.
+  const { data: setlists = [] } = useQuery({ queryKey: ['setlists'], queryFn: listSetlists })
+  const upcomingSetlists = getUpcomingSetlists(setlists, 5)
 
   return (
     // h-dvh, not h-screen — same AppShell.tsx gotcha (100vh doesn't track
@@ -139,70 +147,7 @@ export function Sidebar() {
 
       <NavItemsList items={SECONDARY_NAV_ITEMS} collapsed={collapsed} />
 
-      <div className="mt-6 flex flex-1 flex-col overflow-y-auto px-2">
-        {!collapsed && (
-          <span className="px-2 text-xs tracking-wide text-sidebar-text-dim uppercase">
-            Setlists
-          </span>
-        )}
-        <div className={collapsed ? 'mt-1 flex flex-col items-center gap-1' : 'mt-1 flex flex-col'}>
-          {/* No setlist backend yet (design doc §13, same as SETLISTS
-              above) — styled as a real setlist row would be (same
-              size/rounding/font/text color as the NavLinks below) rather
-              than plain prose, so it reads as "a setlist entry, just not
-              a real one yet" instead of an unrelated caption. Still a
-              plain span, not a NavLink, so it has no hover/active state —
-              that alone marks it as inert, without needing dimmer text
-              too. Collapsed view gets the same single-letter-circle
-              treatment as a real setlist would, using "C" for "Coming
-              soon" the same way a real entry uses its own first letter. */}
-          {SETLISTS.length === 0 &&
-            (collapsed ? (
-              <span
-                title="Coming soon"
-                className="flex size-10 items-center justify-center rounded-md font-display text-[0.95rem] font-medium text-sidebar-text"
-              >
-                C
-              </span>
-            ) : (
-              <span className="truncate rounded-md px-2 py-1.5 font-display text-[0.95rem] font-medium text-sidebar-text">
-                Coming soon
-              </span>
-            ))}
-          {SETLISTS.map((setlist) =>
-            collapsed ? (
-              <NavLink
-                key={setlist.id}
-                to={`/setlists/${setlist.id}`}
-                title={setlist.name}
-                className={({ isActive }) =>
-                  `flex size-10 items-center justify-center rounded-md font-display text-[0.95rem] font-medium ${
-                    isActive
-                      ? 'bg-sidebar-panel text-sidebar-text'
-                      : 'text-sidebar-text hover:bg-white/5'
-                  }`
-                }
-              >
-                {setlist.name.charAt(0).toUpperCase()}
-              </NavLink>
-            ) : (
-              <NavLink
-                key={setlist.id}
-                to={`/setlists/${setlist.id}`}
-                className={({ isActive }) =>
-                  `mt-1 truncate rounded-md px-2 py-1.5 font-display text-[0.95rem] font-medium first:mt-0 ${
-                    isActive
-                      ? 'bg-sidebar-panel text-sidebar-text'
-                      : 'text-sidebar-text hover:bg-white/5'
-                  }`
-                }
-              >
-                {setlist.name}
-              </NavLink>
-            ),
-          )}
-        </div>
-      </div>
+      <SetlistsSection collapsed={collapsed} setlists={upcomingSetlists} />
 
       <UserMenuButton collapsed={collapsed} />
     </aside>

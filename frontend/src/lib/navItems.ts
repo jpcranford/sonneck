@@ -53,8 +53,3 @@ export const SECONDARY_NAV_ITEMS: NavItem[] = [
   // Same icon as the "Learned" practice-status pill (PracticeStatusIcon).
   { to: '/learned', label: 'Learned', icon: IconCircleCheckFilled },
 ]
-
-// No setlist backend yet (design doc §13) — this stays empty until that
-// lands, but the section itself is scaffolded now per the locked shell
-// scope.
-export const SETLISTS: { id: string; name: string }[] = []

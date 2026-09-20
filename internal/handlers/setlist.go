@@ -33,6 +33,24 @@ func (s *Server) handleListSetlists(w http.ResponseWriter, r *http.Request) {
 	api.WriteData(w, http.StatusOK, summaries)
 }
 
+// handleListPieceSetlistMemberships answers "which of my setlists is each
+// piece in" in one bulk call — the Library grid/list "already in a
+// setlist" indicator (decision 6) and the Add to Setlist picker's own
+// checked-state/remove flow both need this, and neither can afford one
+// request per visible card.
+func (s *Server) handleListPieceSetlistMemberships(w http.ResponseWriter, r *http.Request) {
+	user, ok := s.requirePermission(w, r, models.PermissionRead)
+	if !ok {
+		return
+	}
+	memberships, err := repo.ListPieceSetlistMemberships(r.Context(), s.DB, user.ID)
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+	api.WriteData(w, http.StatusOK, memberships)
+}
+
 // setlistCreateRequest is POST /api/setlists' own body shape.
 type setlistCreateRequest struct {
 	Name        string  `json:"name"`

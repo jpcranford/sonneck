@@ -222,6 +222,50 @@ func ListSetlistEntries(ctx context.Context, q Queryer, setlistID int64) ([]Setl
 	return entries, rows.Err()
 }
 
+// PieceSetlistMembership is one (piece, setlist) pairing — the "this piece
+// is already in a setlist" indicator (decision 6) and the Add to Setlist
+// picker's own checked-state/remove flow both need to know, for a given
+// piece, which of the user's setlists it's in AND that entry's own id
+// (DELETE /api/setlists/{id}/entries/{entryId} has no other way to
+// address "this piece's row in this setlist," since a piece can
+// legitimately repeat within one setlist — decision 4).
+type PieceSetlistMembership struct {
+	PieceID     int64  `json:"pieceId"`
+	SetlistID   int64  `json:"setlistId"`
+	SetlistName string `json:"setlistName"`
+	EntryID     int64  `json:"entryId"`
+}
+
+// ListPieceSetlistMemberships returns every piece-entry membership across
+// every setlist ownerUserID owns, in one query — the bulk shape a Library
+// grid/list view needs (one fetch, not one request per visible card) and
+// also what the single-piece Add to Setlist picker filters client-side by
+// pieceId. A piece repeated within one setlist (decision 4) yields two
+// separate rows here, each with its own real entryId.
+func ListPieceSetlistMemberships(ctx context.Context, q Queryer, ownerUserID int64) ([]PieceSetlistMembership, error) {
+	rows, err := q.QueryContext(ctx, `
+		SELECT se.piece_id, s.id, s.name, se.id
+		FROM setlist_entries se
+		JOIN setlists s ON s.id = se.setlist_id
+		WHERE s.owner_user_id = ? AND se.piece_id IS NOT NULL
+		ORDER BY se.piece_id, s.id`, ownerUserID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	memberships := []PieceSetlistMembership{}
+	for rows.Next() {
+		var m PieceSetlistMembership
+		if err := rows.Scan(&m.PieceID, &m.SetlistID, &m.SetlistName, &m.EntryID); err != nil {
+			return nil, err
+		}
+		memberships = append(memberships, m)
+	}
+	return memberships, rows.Err()
+}
+
 // GetSetlistEntry loads one entry, scoped to setlistID (already confirmed
 // to belong to the calling user by the caller) — used by handlers that
 // need to know PieceID (i.e. is this a custom entry) before deciding
