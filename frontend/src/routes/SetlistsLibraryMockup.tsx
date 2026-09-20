@@ -68,6 +68,38 @@ function formatAbsoluteDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
 }
 
+// Direct instruction, ported verbatim from the real SetlistsLibraryPage.tsx
+// in the same pass — soonest gigDate first (ISO yyyy-mm-dd strings sort
+// correctly as plain strings), ties broken alphabetically by name, a
+// setlist with no gigDate at all sorts after every dated one regardless of
+// name.
+function sortActiveSetlists(setlists: MockSetlist[]): MockSetlist[] {
+  return [...setlists].sort((a, b) => {
+    if (a.gigDate && b.gigDate) {
+      return a.gigDate !== b.gigDate ? (a.gigDate < b.gigDate ? -1 : 1) : a.name.localeCompare(b.name)
+    }
+    if (a.gigDate) return -1
+    if (b.gigDate) return 1
+    return a.name.localeCompare(b.name)
+  })
+}
+
+// Direct follow-up instruction, same round — Archived is chronological
+// too, but reverse: most-recently-dated first, same as any other history/
+// archive list. A manually-archived setlist with no gigDate at all sorts
+// after every dated one here too, same as Active's own no-date-at-the-end
+// rule.
+function sortArchivedSetlists(setlists: MockSetlist[]): MockSetlist[] {
+  return [...setlists].sort((a, b) => {
+    if (a.gigDate && b.gigDate) {
+      return a.gigDate !== b.gigDate ? (a.gigDate > b.gigDate ? -1 : 1) : a.name.localeCompare(b.name)
+    }
+    if (a.gigDate) return -1
+    if (b.gigDate) return 1
+    return a.name.localeCompare(b.name)
+  })
+}
+
 type ArchiveDirection = 'archive' | 'unarchive' | null
 
 // Whether Archive/Unarchive is even a meaningful action for this setlist —
@@ -207,8 +239,8 @@ export function SetlistsLibraryMockup() {
   const [editTarget, setEditTarget] = useState<MockSetlist | null>(null)
   const [newSetlistOpen, setNewSetlistOpen] = useState(false)
 
-  const active = setlists.filter((s) => !isEffectivelyArchived(s))
-  const archived = setlists.filter((s) => isEffectivelyArchived(s))
+  const active = sortActiveSetlists(setlists.filter((s) => !isEffectivelyArchived(s)))
+  const archived = sortArchivedSetlists(setlists.filter((s) => isEffectivelyArchived(s)))
 
   function openArchiveModal(setlist: MockSetlist) {
     setArchiveTarget(setlist)
