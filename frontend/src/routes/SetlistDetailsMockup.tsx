@@ -612,7 +612,9 @@ export function SetlistDetailsMockup() {
           centered — bumped to max-w-4xl — then explicitly asked back down
           to max-w-3xl (this time rendering correctly at that width, per
           the w-full fix below, unlike the first pass through 3xl before
-          that bug was found).
+          that bug was found). Narrowed further still, direct instruction,
+          once the Program row's own font sizes came down a step — to
+          max-w-xl, applied to the real SetlistPage.tsx in the same pass.
 
           w-full is load-bearing, not decoration: this div is a flex item
           of the page's own outer `flex flex-col` container, and a flex
@@ -627,7 +629,7 @@ export function SetlistDetailsMockup() {
           whether the cap said 3xl or 4xl). w-full forces it to actually
           fill the container's width up to that cap before mx-auto
           centers it. */}
-      <div className="mx-auto w-full max-w-3xl">
+      <div className="mx-auto w-full max-w-xl">
       <div className="flex items-center justify-between">
         <h3 className="font-display text-lg font-medium text-ink">Program</h3>
         {/* Real now that the full fold (decision 23) is live — opens the

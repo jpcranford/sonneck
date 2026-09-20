@@ -377,7 +377,7 @@ export function SetlistPage() {
             </div>
           </div>
 
-          <div className="mx-auto w-full max-w-3xl">
+          <div className="mx-auto w-full max-w-xl">
             <div className="flex items-center justify-between">
               <h3 className="font-display text-lg font-medium text-ink">Program</h3>
               <button
