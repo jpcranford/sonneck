@@ -25,6 +25,7 @@ import type { Piece, SetlistDetail, SetlistEntry } from '../api/types'
 import { personCreditPart } from '../lib/joinNames'
 import { useDebouncedValue } from '../hooks/useDebouncedValue'
 import { InfoTooltip } from './InfoTooltip'
+import { MetaLine } from './MetaLine'
 import { MarkdownText } from './MarkdownText'
 import { Modal } from './Modal'
 import { Toggle } from './Toggle'
@@ -761,11 +762,15 @@ export function EditSetlistModal({ open, onClose, mode, setlistId, initialTab = 
                           </div>
                           {entry.kind === 'piece' ? (
                             <div className="truncate text-xs text-ink-soft">
-                              {personCreditPart(
-                                entry.piece?.composer.map((t) => t.name) ?? [],
-                                entry.piece?.arranger.map((t) => t.name) ?? [],
-                              )}{' '}
-                              <span aria-hidden="true">•</span> {pieceKeysLabel(entry.piece)}
+                              <MetaLine
+                                parts={[
+                                  personCreditPart(
+                                    entry.piece?.composer.map((t) => t.name) ?? [],
+                                    entry.piece?.arranger.map((t) => t.name) ?? [],
+                                  ),
+                                  pieceKeysLabel(entry.piece) || null,
+                                ]}
+                              />
                             </div>
                           ) : (
                             entry.customNotes && (
@@ -890,11 +895,15 @@ export function EditSetlistModal({ open, onClose, mode, setlistId, initialTab = 
                                       )}
                                     </div>
                                     <div className="truncate text-xs text-ink-soft">
-                                      {personCreditPart(
-                                        piece.composer.values.map((p) => p.name),
-                                        piece.arranger.values.map((p) => p.name),
-                                      )}{' '}
-                                      <span aria-hidden="true">•</span> {pieceKeysLabel(piece)}
+                                      <MetaLine
+                                        parts={[
+                                          personCreditPart(
+                                            piece.composer.values.map((p) => p.name),
+                                            piece.arranger.values.map((p) => p.name),
+                                          ),
+                                          pieceKeysLabel(piece) || null,
+                                        ]}
+                                      />
                                     </div>
                                   </div>
                                   {piece.duration != null && (
@@ -956,11 +965,15 @@ export function EditSetlistModal({ open, onClose, mode, setlistId, initialTab = 
               </div>
               {draggingEntry.kind === 'piece' ? (
                 <div className="truncate text-xs text-ink-soft">
-                  {personCreditPart(
-                    draggingEntry.piece?.composer.map((t) => t.name) ?? [],
-                    draggingEntry.piece?.arranger.map((t) => t.name) ?? [],
-                  )}{' '}
-                  <span aria-hidden="true">•</span> {pieceKeysLabel(draggingEntry.piece)}
+                  <MetaLine
+                    parts={[
+                      personCreditPart(
+                        draggingEntry.piece?.composer.map((t) => t.name) ?? [],
+                        draggingEntry.piece?.arranger.map((t) => t.name) ?? [],
+                      ),
+                      pieceKeysLabel(draggingEntry.piece) || null,
+                    ]}
+                  />
                 </div>
               ) : (
                 draggingEntry.customNotes && (

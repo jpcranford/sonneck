@@ -23,6 +23,7 @@ import { EditPieceModal } from '../components/EditPieceModal'
 import { EditSetlistModal } from '../components/EditSetlistModal'
 import { InfoTooltip } from '../components/InfoTooltip'
 import { MarkdownText } from '../components/MarkdownText'
+import { MetaLine } from '../components/MetaLine'
 import { Modal } from '../components/Modal'
 import { CONTENT_MAX_W } from '../lib/layout'
 import { personCreditPart } from '../lib/joinNames'
@@ -430,13 +431,18 @@ export function SetlistPage() {
                         </div>
                         {entry.kind === 'piece' && entry.piece ? (
                           <div className="ml-10 break-words text-sm text-ink-soft">
-                            {personCreditPart(
-                              entry.piece.composer.map((t) => t.name),
-                              entry.piece.arranger.map((t) => t.name),
-                            )}{' '}
-                            <span aria-hidden="true">•</span>{' '}
-                            <KeySequence keys={entry.piece.keys.map((k) => k.name)} />{' '}
-                            <span aria-hidden="true">•</span> {formatPages(entry.piece.pageCount)}
+                            <MetaLine
+                              parts={[
+                                personCreditPart(
+                                  entry.piece.composer.map((t) => t.name),
+                                  entry.piece.arranger.map((t) => t.name),
+                                ),
+                                entry.piece.keys.length > 0 ? (
+                                  <KeySequence keys={entry.piece.keys.map((k) => k.name)} />
+                                ) : null,
+                                formatPages(entry.piece.pageCount),
+                              ]}
+                            />
                           </div>
                         ) : (
                           entry.customNotes && (
