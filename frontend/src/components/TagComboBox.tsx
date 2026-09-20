@@ -2,28 +2,14 @@ import { useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode }
 import { createPortal } from 'react-dom'
 import { IconArrowRight, IconXFilled } from '@tabler/icons-react'
 import type { Tag } from '../api/types'
+import { normalizeForSearch } from '../lib/normalizeForSearch'
 import { InheritedNote } from './InheritedNote'
 
-// Strips diacritics and whitespace before comparing — e.g. so typing
-// "Boely" (no diaeresis) matches "Alexandre Boëly", and typing "toml"
-// matches "Tom Lehrer" since "TomLehrer" (spaces stripped) starts with
-// it. NFD
-// decomposition splits a base letter from its combining diacritical mark
-// (U+0300-036F covers the whole combining-marks block), so stripping that
-// range after normalizing reduces "ë"/"é"/"ö"/etc. down to their plain
-// ASCII base letter; stripping whitespace afterward means a query never
-// has to land on the exact same word boundary as the stored name (a
-// multi-word Instrument/tag name gets the same treatment, not just Person
-// names). Applied to the default substring filter only — a caller with its
-// own filterOption (e.g. the Key(s) picker's matchesKeyQuery) already
-// handles its own matching semantics and isn't touched by this.
-function normalizeForSearch(value: string): string {
-  return value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/\s+/g, '')
-}
+// normalizeForSearch (lib/normalizeForSearch.ts, its own doc comment has
+// the full diacritics/whitespace reasoning) is applied to the default
+// substring filter only — a caller with its own filterOption (e.g. the
+// Key(s) picker's matchesKeyQuery) already handles its own matching
+// semantics and isn't touched by this.
 
 // The real §15 tag-input pattern: typeahead filter against existing
 // options, a "New tag: '‹input›'" option to create on the fly (resolved

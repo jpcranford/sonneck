@@ -15,6 +15,7 @@ import type { Tag } from '../api/types'
 import { TagComboBox } from '../components/TagComboBox'
 import { useMockupTitle } from '../lib/useMockupTitle'
 import { autosizeTextarea, preventTextareaNewline } from '../lib/autosizeTextarea'
+import { normalizeForSearch } from '../lib/normalizeForSearch'
 import { nameCase, titleCase } from '../lib/textCase'
 
 // ---------------------------------------------------------------------
@@ -572,6 +573,35 @@ export function UploadBookTitlesMockup() {
     },
   })
 
+  // Direct instruction, ported from the real build (BookUploadTitlesStep.tsx,
+  // same fix, same reasoning) — a person created fresh via one row's own
+  // "New person" option (TagComboBox's negative-id placeholder tag) should
+  // show up as a suggestion in every other row too, not just live in the
+  // one field it was typed into. No perf-stability concerns here the way
+  // the real build's 200+-row memoization has (this mockup's own render
+  // isn't split into memoized row components), so this is a plain derived
+  // value and a plain state update, no useMemo/useCallback needed.
+  const [locallyCreatedPeople, setLocallyCreatedPeople] = useState<Tag[]>([])
+  function registerNewPeople(tags: Tag[]) {
+    const newOnes = tags.filter((t) => t.id < 0)
+    if (newOnes.length === 0) return
+    setLocallyCreatedPeople((prev) => {
+      let next = prev
+      for (const tag of newOnes) {
+        if (!next.some((t) => normalizeForSearch(t.name) === normalizeForSearch(tag.name))) {
+          next = next === prev ? [...prev, tag] : [...next, tag]
+        }
+      }
+      return next
+    })
+  }
+  const allPeopleOptions = [
+    ...PEOPLE_OPTIONS,
+    ...locallyCreatedPeople.filter(
+      (v) => !PEOPLE_OPTIONS.some((o) => normalizeForSearch(o.name) === normalizeForSearch(v.name)),
+    ),
+  ]
+
   // Bulk-cleans every row in one pass — titleCase for Title, nameCase for
   // each selected Composer/Arranger's own name — see lib/textCase.ts
   // (shared with the real build, not a local copy — it's pure logic, not
@@ -823,11 +853,12 @@ export function UploadBookTitlesMockup() {
                             render={({ field }) => (
                               <TagComboBox
                                 label="Composer"
-                                options={PEOPLE_OPTIONS}
+                                options={allPeopleOptions}
                                 selected={field.value}
                                 multiple
                                 onChange={(next) => {
                                   field.onChange(next)
+                                  registerNewPeople(next)
                                   void trigger(`pieces.${index}.arranger`)
                                 }}
                                 pillStyle="paper"
@@ -851,11 +882,12 @@ export function UploadBookTitlesMockup() {
                               render={({ field }) => (
                                 <TagComboBox
                                   label="Arranger"
-                                  options={PEOPLE_OPTIONS}
+                                  options={allPeopleOptions}
                                   selected={field.value}
                                   multiple
                                   onChange={(next) => {
                                     field.onChange(next)
+                                    registerNewPeople(next)
                                     void trigger(`pieces.${index}.composer`)
                                   }}
                                   pillStyle="paper"
@@ -943,11 +975,12 @@ export function UploadBookTitlesMockup() {
                           render={({ field }) => (
                             <TagComboBox
                               label="Composer"
-                              options={PEOPLE_OPTIONS}
+                              options={allPeopleOptions}
                               selected={field.value}
                               multiple
                               onChange={(next) => {
                                 field.onChange(next)
+                                registerNewPeople(next)
                                 void trigger(`pieces.${index}.arranger`)
                               }}
                               pillStyle="paper"
@@ -972,11 +1005,12 @@ export function UploadBookTitlesMockup() {
                           render={({ field }) => (
                             <TagComboBox
                               label="Arranger"
-                              options={PEOPLE_OPTIONS}
+                              options={allPeopleOptions}
                               selected={field.value}
                               multiple
                               onChange={(next) => {
                                 field.onChange(next)
+                                registerNewPeople(next)
                                 void trigger(`pieces.${index}.composer`)
                               }}
                               pillStyle="paper"

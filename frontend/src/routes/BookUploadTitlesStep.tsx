@@ -1,7 +1,9 @@
 import {
   memo,
+  useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type ChangeEvent,
@@ -30,6 +32,7 @@ import type { Tag } from '../api/types'
 import { PageLightbox } from '../components/PageLightbox'
 import { TagComboBox } from '../components/TagComboBox'
 import { autosizeTextarea, preventTextareaNewline } from '../lib/autosizeTextarea'
+import { normalizeForSearch } from '../lib/normalizeForSearch'
 import type { Piece } from '../lib/pieceSplitLogic'
 import { nameCase, titleCase } from '../lib/textCase'
 import { TOTAL_WIZARD_STEPS } from './BookUploadWizard'
@@ -179,7 +182,11 @@ function composerOrArrangerRules(
 // because BookUploadWizard.tsx memoizes the `pieces` array it computes
 // this from; `onFieldFlush` is the wizard's plain useState setter
 // (setPieceFields), also stable; `setPreviewPage` is this component's own
-// useState setter.
+// useState setter; `registerNewPeople` is a useCallback with an empty dep
+// array (see its own definition below) — also stable across every render.
+// `peopleOptions` itself is the one prop here that's allowed to actually
+// change reference — see allPeopleOptions' own comment for why that stays
+// rare (a genuinely new person, not just any edit anywhere in the book).
 interface PieceRowProps {
   control: Control<FormValues>
   index: number
@@ -194,6 +201,7 @@ interface PieceRowProps {
   getValues: UseFormGetValues<FormValues>
   trigger: UseFormTrigger<FormValues>
   onFieldFlush: (pieces: FormValues['pieces']) => void
+  registerNewPeople: (tags: Tag[]) => void
   setPreviewPage: (page: number) => void
 }
 
@@ -408,6 +416,7 @@ const DesktopPieceRow = memo(function DesktopPieceRow({
   getValues,
   trigger,
   onFieldFlush,
+  registerNewPeople,
   setPreviewPage,
 }: PieceRowProps) {
   const { errors } = useFormState({
@@ -466,6 +475,7 @@ const DesktopPieceRow = memo(function DesktopPieceRow({
                     multiple
                     onChange={(next) => {
                       field.onChange(next)
+                      registerNewPeople(next)
                       void trigger(`pieces.${index}.arranger`)
                       onFieldFlush(clonePieces(getValues().pieces))
                     }}
@@ -495,6 +505,7 @@ const DesktopPieceRow = memo(function DesktopPieceRow({
                       multiple
                       onChange={(next) => {
                         field.onChange(next)
+                        registerNewPeople(next)
                         void trigger(`pieces.${index}.composer`)
                         onFieldFlush(clonePieces(getValues().pieces))
                       }}
@@ -535,6 +546,7 @@ const MobilePieceRow = memo(function MobilePieceRow({
   getValues,
   trigger,
   onFieldFlush,
+  registerNewPeople,
   setPreviewPage,
 }: PieceRowProps) {
   const { errors } = useFormState({
@@ -605,6 +617,7 @@ const MobilePieceRow = memo(function MobilePieceRow({
                   multiple
                   onChange={(next) => {
                     field.onChange(next)
+                    registerNewPeople(next)
                     void trigger(`pieces.${index}.arranger`)
                     onFieldFlush(clonePieces(getValues().pieces))
                   }}
@@ -635,6 +648,7 @@ const MobilePieceRow = memo(function MobilePieceRow({
                   multiple
                   onChange={(next) => {
                     field.onChange(next)
+                    registerNewPeople(next)
                     void trigger(`pieces.${index}.composer`)
                     onFieldFlush(clonePieces(getValues().pieces))
                   }}
@@ -718,6 +732,60 @@ export function BookUploadTitlesStep({
   // BookUploadAboutStep.tsx's own Composer/Arranger TagComboBox option
   // source.
   const { data: peopleOptions = [] } = useQuery({ queryKey: ['people'], queryFn: () => listPeople() })
+
+  // A person created via one row's own "New person" option (TagComboBox's
+  // negative-id placeholder tag, resolved by name at import time — this
+  // book hasn't actually been imported yet, so nothing was really created
+  // server-side) used to only ever exist in that one row's own field
+  // value — a second piece by the same not-yet-real composer had no way to
+  // pick it back up as a suggestion, forcing it to be retyped/recreated as
+  // its own separate "new person" in every row that needed it. This tracks
+  // every such person across the whole book so every row's dropdown can
+  // suggest it, same as a real catalog entry — direct instruction.
+  //
+  // Deliberately its own useState updated from the one specific place a
+  // new person can actually appear (registerNewPeople, called from each
+  // row's own Composer/Arranger onChange below), not a useEffect watching
+  // pieceFields as a whole — pieceFields' own reference changes on every
+  // field edit in the book, including plain title keystrokes nowhere near
+  // a person, and this state has to stay reference-stable across those or
+  // every one of 200+ memoized rows loses its own bailout (see
+  // DesktopPieceRow's perf comment above — allPeopleOptions below is a
+  // prop shared by every row, so an unnecessary reference change here
+  // would reintroduce exactly the class of regression that comment
+  // describes). The setter's own functional-updater form bails out to the
+  // same prior array reference whenever nothing new was actually added.
+  const [locallyCreatedPeople, setLocallyCreatedPeople] = useState<Tag[]>([])
+  const registerNewPeople = useCallback((tags: Tag[]) => {
+    const newOnes = tags.filter((t) => t.id < 0)
+    if (newOnes.length === 0) return
+    setLocallyCreatedPeople((prev) => {
+      let next = prev
+      for (const tag of newOnes) {
+        if (!next.some((t) => normalizeForSearch(t.name) === normalizeForSearch(tag.name))) {
+          next = next === prev ? [...prev, tag] : [...next, tag]
+        }
+      }
+      return next
+    })
+  }, [])
+
+  // The merged list every row's own Composer/Arranger actually renders
+  // against — real catalog entries plus this book's own not-yet-real
+  // people. A locally-created name that happens to already exist in the
+  // real catalog is filtered back out here defensively, though in
+  // practice TagComboBox's own exactMatch check already prevents "New
+  // person" from ever being offered for a name that's already a real
+  // option, so this should never actually trigger.
+  const allPeopleOptions = useMemo(
+    () => [
+      ...peopleOptions,
+      ...locallyCreatedPeople.filter(
+        (v) => !peopleOptions.some((o) => normalizeForSearch(o.name) === normalizeForSearch(v.name)),
+      ),
+    ],
+    [peopleOptions, locallyCreatedPeople],
+  )
 
   // Autosaves to the wizard's lifted pieceFields on every field edit, not
   // just on Back/Next — previously, closing the tab or
@@ -931,11 +999,12 @@ export function BookUploadTitlesStep({
                 showComposerField={showComposerField}
                 showArrangerField={showArrangerField}
                 requireComposerOrArranger={requireComposerOrArranger}
-                peopleOptions={peopleOptions}
+                peopleOptions={allPeopleOptions}
                 register={register}
                 getValues={getValues}
                 trigger={trigger}
                 onFieldFlush={onChange}
+                registerNewPeople={registerNewPeople}
                 setPreviewPage={setPreviewPage}
               />
             ))}
@@ -955,11 +1024,12 @@ export function BookUploadTitlesStep({
                 showComposerField={showComposerField}
                 showArrangerField={showArrangerField}
                 requireComposerOrArranger={requireComposerOrArranger}
-                peopleOptions={peopleOptions}
+                peopleOptions={allPeopleOptions}
                 register={register}
                 getValues={getValues}
                 trigger={trigger}
                 onFieldFlush={onChange}
+                registerNewPeople={registerNewPeople}
                 setPreviewPage={setPreviewPage}
               />
             ))}
