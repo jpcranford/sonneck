@@ -220,7 +220,7 @@ Piece/book descriptions and a piece's own notes support a small set of `:shortco
 3. Open a pull request with a clear description of *why*, not just *what* — the diff already shows what changed; the description is where the reasoning goes; that's genuinely more useful to a future reader than a restatement of the diff.
 4. If your change touches a documented convention or a deliberate deviation described in `CLAUDE.md`, update that file in the same PR rather than leaving it stale.
 
-Commit messages: a clear, present-tense summary line is enough. No required format beyond that.
+Commit messages: a clear, present-tense summary line is enough. No required format beyond that. One thing *not* to include: a `Co-Authored-By: <AI tool>` trailer or a "Generated with ..." badge, even if you used one to help write the change — see [Recognition](#recognition) below for why.
 
 ## Reporting bugs & suggesting features
 
@@ -233,6 +233,8 @@ No formal document yet — this is a small project at an early stage. The short 
 ## Recognition
 
 Contributors get credited — see the README's [Acknowledgements](./README.md#acknowledgements) section for the existing pattern (design credits, font licenses, etc.). Meaningful code contributions will get the same treatment.
+
+This project has involved a lot of AI-assisted development (see the note at the top of this file), but an AI coding tool isn't a contributor — it's a tool, same category as an editor or a compiler, not a person who gets listed alongside one. (I’m not branding my new porch deck with “Co-built by Black & Decker,” now am I?) No AI tool gets added to Contributors/Acknowledgements, and no commit or PR in this repo should carry a `Co-Authored-By: <AI>` trailer or a "Generated with ..." badge crediting one, no matter how much of the diff it helped produce. If you used one, that's fine — just own the result yourself, the same way you'd own code from any other tool.
 
 ## Questions
 
