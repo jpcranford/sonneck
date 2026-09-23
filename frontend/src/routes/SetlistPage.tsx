@@ -24,6 +24,7 @@ import {
   updateSetlist,
 } from '../api/setlists'
 import type { SetlistEntry } from '../api/types'
+import { ClickableCard } from '../components/ClickableCard'
 import { ContextMenu, type ContextMenuItem } from '../components/ContextMenu'
 import { EditEntryModal } from '../components/EditEntryModal'
 import { EditPieceModal } from '../components/EditPieceModal'
@@ -408,61 +409,80 @@ export function SetlistPage() {
                 setlist.entries.map((entry) => {
                   const title = entry.kind === 'piece' ? (entry.piece?.title ?? '') : (entry.customName ?? '')
                   const durationSeconds = entry.kind === 'piece' ? entry.piece?.duration : entry.customDurationSeconds
+                  const rowContent = (
+                    <>
+                      {entry.kind === 'piece' && entry.role && (
+                        <span className="ml-10 block text-[0.65rem] font-medium tracking-wide text-ink-soft uppercase [font-variant:small-caps]">
+                          {entry.role}
+                        </span>
+                      )}
+                      <div className="flex items-baseline gap-2">
+                        <span className="w-8 shrink-0 text-center font-sans text-sm tabular-nums text-ink-soft">
+                          {entry.displayNumber ?? '—'}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <span
+                            className={`block break-words ${
+                              entry.kind === 'piece'
+                                ? 'font-display text-base font-medium text-ink'
+                                : 'font-sans text-sm font-normal text-ink-soft italic'
+                            }`}
+                          >
+                            {title}
+                          </span>
+                        </div>
+                        {durationSeconds != null && (
+                          <span className="shrink-0 font-mono text-sm tabular-nums text-ink-soft">
+                            {formatDuration(durationSeconds)}
+                          </span>
+                        )}
+                      </div>
+                      {entry.kind === 'piece' && entry.piece ? (
+                        <div className="ml-10 break-words text-xs text-ink-soft">
+                          <MetaLine
+                            parts={[
+                              personCreditPart(
+                                entry.piece.composer.map((t) => t.name),
+                                entry.piece.arranger.map((t) => t.name),
+                              ),
+                              entry.piece.keys.length > 0 ? (
+                                <KeySequence keys={entry.piece.keys.map((k) => k.name)} />
+                              ) : null,
+                              formatPages(entry.piece.pageCount),
+                            ]}
+                          />
+                        </div>
+                      ) : (
+                        entry.customNotes && (
+                          <div className="mt-1 ml-10 rounded border border-border bg-paper-sunken px-2 py-1 text-xs leading-snug text-ink-soft">
+                            <MarkdownText>{entry.customNotes}</MarkdownText>
+                          </div>
+                        )
+                      )}
+                    </>
+                  )
                   return (
-                    <div key={entry.id} className="border-b border-border py-2.5 last:border-none">
+                    <div key={entry.id} className="border-b border-border last:border-none">
                       <ContextMenu
                         hideTriggerButton
                         items={getEntryMenuItems(entry, setEditingPieceId, setEditingEntry, setEditingRoleEntry, (entryId) =>
                           removeMutation.mutate(entryId),
                         )}
                       >
-                        {entry.kind === 'piece' && entry.role && (
-                          <span className="ml-10 block text-[0.65rem] font-medium tracking-wide text-ink-soft uppercase [font-variant:small-caps]">
-                            {entry.role}
-                          </span>
-                        )}
-                        <div className="flex items-baseline gap-2">
-                          <span className="w-8 shrink-0 text-center font-sans text-sm tabular-nums text-ink-soft">
-                            {entry.displayNumber ?? '—'}
-                          </span>
-                          <div className="min-w-0 flex-1">
-                            <span
-                              className={`block break-words ${
-                                entry.kind === 'piece'
-                                  ? 'font-display text-base font-medium text-ink'
-                                  : 'font-sans text-sm font-normal text-ink-soft italic'
-                              }`}
-                            >
-                              {title}
-                            </span>
-                          </div>
-                          {durationSeconds != null && (
-                            <span className="shrink-0 font-mono text-sm tabular-nums text-ink-soft">
-                              {formatDuration(durationSeconds)}
-                            </span>
-                          )}
-                        </div>
+                        {/* A piece row is a real link to its Piece Details page
+                            (ClickableCard — cmd/middle-click open a new tab);
+                            hover treatment matches Book Details' own linked
+                            piece rows. A custom entry has no page to open. */}
                         {entry.kind === 'piece' && entry.piece ? (
-                          <div className="ml-10 break-words text-xs text-ink-soft">
-                            <MetaLine
-                              parts={[
-                                personCreditPart(
-                                  entry.piece.composer.map((t) => t.name),
-                                  entry.piece.arranger.map((t) => t.name),
-                                ),
-                                entry.piece.keys.length > 0 ? (
-                                  <KeySequence keys={entry.piece.keys.map((k) => k.name)} />
-                                ) : null,
-                                formatPages(entry.piece.pageCount),
-                              ]}
-                            />
-                          </div>
+                          <ClickableCard
+                            to={`/pieces/${entry.piece.id}`}
+                            state={{ backLabel: 'Setlist' }}
+                            className="-mx-1.5 block px-1.5 py-2.5 text-left hover:rounded-md hover:bg-accent-soft"
+                          >
+                            {rowContent}
+                          </ClickableCard>
                         ) : (
-                          entry.customNotes && (
-                            <div className="mt-1 ml-10 rounded border border-border bg-paper-sunken px-2 py-1 text-xs leading-snug text-ink-soft">
-                              <MarkdownText>{entry.customNotes}</MarkdownText>
-                            </div>
-                          )
+                          <div className="py-2.5">{rowContent}</div>
                         )}
                       </ContextMenu>
                     </div>

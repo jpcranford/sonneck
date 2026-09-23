@@ -651,53 +651,72 @@ export function SetlistDetailsMockup() {
       <div className="flex flex-col">
         {entries.map((entry, i) => {
           const number = displayNumbers[i]
-          return (
-            <div key={entry.id} className="border-b border-border py-2.5 last:border-none">
-              <ContextMenu hideTriggerButton items={getEntryMenuItems(entry, removeEntry, setEditingEntry, setEditingRoleEntry)}>
-                {/* ml-10 below (×3) must match the number column's own width
-                    + gap (w-8 + gap-2 = 2rem + 0.5rem = 2.5rem = ml-10) so
-                    the role label/secondary line/note line up with the
-                    title itself, not the number. (Was ml-6/w-4 before the
-                    number column was widened/enlarged — keep these two in
-                    lockstep, a previous mismatch here was a real
-                    live-reported bug.) */}
-                {entry.kind === 'piece' && entry.role && (
-                  <span className="ml-10 block text-[0.65rem] font-medium tracking-wide text-ink-soft uppercase [font-variant:small-caps]">
-                    {entry.role}
+          const rowContent = (
+            <>
+              {/* ml-10 below (×3) must match the number column's own width
+                  + gap (w-8 + gap-2 = 2rem + 0.5rem = 2.5rem = ml-10) so
+                  the role label/secondary line/note line up with the
+                  title itself, not the number. (Was ml-6/w-4 before the
+                  number column was widened/enlarged — keep these two in
+                  lockstep, a previous mismatch here was a real
+                  live-reported bug.) */}
+              {entry.kind === 'piece' && entry.role && (
+                <span className="ml-10 block text-[0.65rem] font-medium tracking-wide text-ink-soft uppercase [font-variant:small-caps]">
+                  {entry.role}
+                </span>
+              )}
+              <div className="flex items-baseline gap-2">
+                <span className="w-8 shrink-0 text-center font-sans text-sm tabular-nums text-ink-soft">
+                  {number ?? '—'}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <span
+                    className={`block break-words ${
+                      entry.kind === 'piece'
+                        ? 'font-display text-base font-medium text-ink'
+                        : 'font-sans text-sm font-normal text-ink-soft italic'
+                    }`}
+                  >
+                    {entry.title}
+                  </span>
+                </div>
+                {entry.durationSeconds != null && (
+                  <span className="shrink-0 font-mono text-sm tabular-nums text-ink-soft">
+                    {formatDuration(entry.durationSeconds)}
                   </span>
                 )}
-                <div className="flex items-baseline gap-2">
-                  <span className="w-8 shrink-0 text-center font-sans text-sm tabular-nums text-ink-soft">
-                    {number ?? '—'}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <span
-                      className={`block break-words ${
-                        entry.kind === 'piece'
-                          ? 'font-display text-base font-medium text-ink'
-                          : 'font-sans text-sm font-normal text-ink-soft italic'
-                      }`}
-                    >
-                      {entry.title}
-                    </span>
-                  </div>
-                  {entry.durationSeconds != null && (
-                    <span className="shrink-0 font-mono text-sm tabular-nums text-ink-soft">
-                      {formatDuration(entry.durationSeconds)}
-                    </span>
-                  )}
+              </div>
+              {entry.kind === 'piece' ? (
+                <div className="ml-10 break-words text-xs text-ink-soft">
+                  {entry.composer} <span aria-hidden="true">•</span> <KeySequence keys={entry.keys} />{' '}
+                  <span aria-hidden="true">•</span> {formatPages(entry.pages)}
                 </div>
-                {entry.kind === 'piece' ? (
-                  <div className="ml-10 break-words text-xs text-ink-soft">
-                    {entry.composer} <span aria-hidden="true">•</span> <KeySequence keys={entry.keys} />{' '}
-                    <span aria-hidden="true">•</span> {formatPages(entry.pages)}
+              ) : (
+                entry.note && (
+                  <div className="mt-1 ml-10 rounded border border-border bg-paper-sunken px-2 py-1 text-xs leading-snug text-ink-soft">
+                    {entry.note}
                   </div>
+                )
+              )}
+            </>
+          )
+          return (
+            <div key={entry.id} className="border-b border-border last:border-none">
+              <ContextMenu hideTriggerButton items={getEntryMenuItems(entry, removeEntry, setEditingEntry, setEditingRoleEntry)}>
+                {/* A piece row links to its Piece Details page (here, the
+                    Piece Details mockup) — a real <Link>, matching
+                    SetlistPage.tsx's ClickableCard, with Book Details' own
+                    linked-row hover treatment. Custom entries don't link. */}
+                {entry.kind === 'piece' ? (
+                  <Link
+                    to="/mockup/piece-details"
+                    state={{ backLabel: 'Setlist' }}
+                    className="-mx-1.5 block cursor-pointer px-1.5 py-2.5 text-left hover:rounded-md hover:bg-accent-soft"
+                  >
+                    {rowContent}
+                  </Link>
                 ) : (
-                  entry.note && (
-                    <div className="mt-1 ml-10 rounded border border-border bg-paper-sunken px-2 py-1 text-xs leading-snug text-ink-soft">
-                      {entry.note}
-                    </div>
-                  )
+                  <div className="py-2.5">{rowContent}</div>
                 )}
               </ContextMenu>
             </div>
