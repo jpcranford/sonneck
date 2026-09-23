@@ -73,6 +73,25 @@ func ExtractPages(ctx context.Context, binDir, src string, first, last int, dst 
 	return nil
 }
 
+// Merge concatenates srcPaths, in order, into a single output PDF at dst,
+// via pdfunite — poppler's own PDF-object parser, considerably more
+// robust against real-world files (scanned/printed PDFs, unusual
+// producers) than a hand-rolled pure-Go PDF-object parser turned out to
+// be (internal/setlistpdf's own package doc explains the real crash this
+// replaced). binDir is "" for today's PATH-resolved Docker/dev behavior —
+// see toolPath.
+func Merge(ctx context.Context, binDir string, srcPaths []string, dst string) error {
+	if len(srcPaths) == 0 {
+		return fmt.Errorf("no source PDFs to merge")
+	}
+	args := append(append([]string{}, srcPaths...), dst)
+	cmd := exec.CommandContext(ctx, toolPath(binDir, "pdfunite"), args...)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("pdfunite %s: %w: %s", strings.Join(srcPaths, " "), err, out)
+	}
+	return nil
+}
+
 // RenderThumbnail renders a single page of src as a PNG at outPrefix+".png"
 // via pdftoppm, for the import wizard's split step and the basic piece
 // preview (design doc §5, §7).

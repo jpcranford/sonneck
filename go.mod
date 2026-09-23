@@ -3,6 +3,7 @@ module github.com/jpcranford/sonneck
 go 1.26.6
 
 require (
+	codeberg.org/go-pdf/fpdf v0.12.0
 	github.com/coreos/go-oidc/v3 v3.21.0
 	github.com/pressly/goose/v3 v3.27.3
 	github.com/robfig/cron/v3 v3.0.1

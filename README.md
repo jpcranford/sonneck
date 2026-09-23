@@ -29,6 +29,7 @@ Sonneck is currently built to live “in an office with a printer”, so to spea
 - **Public domain badge.** A small badge shows whether a piece is Public Domain, Likely Public Domain, Copyleft, or In Copyright — computed automatically from the copyright year and composer death year(s) where possible, or set explicitly when you know better. See [Public domain badge](#public-domain-badge) below for how the calculation works and its limitations.
 - **Search that keeps up with you.** Full-text fuzzy search across your whole library as you type. Grid views are optimized for number of items shown at once, while list views show you the most detail about each piece without having to open it up.
 - **Track your wishlist.** Ever forget you were learning a piece only to rediscover it weeks later at the bottom of your bag? Or buy pieces to learn, only for them to get lost in the stacks? No more! Use the practice status and filter views to track what you want to play, what you have in progress, and even the stuff you never want to touch again! Take *that*, [Sorabji](https://www.youtube.com/watch?v=_OrAewTxBrc)!
+- **Plan your sets.** Setlists can contain a gig date, title, description, and any number of pieces and custom entries that you require. Check the auto-calculated total duration and page count from its details page, reorder things to flow better, and even export the entire set as one combined PDF for convenient backup to another device.
 - **A truly *responsive* workflow.** None of that "resize-and-rerender-everything" lag. Resize and it's good to go, instantly. Useful keyboard shortcuts throughout, plus right-click (desktop)/long-press (mobile) context menus for quick edits within library views.
 - **It's completely yours.** Self-hosted, one SQLite file, daily automatic backups. No algorithm, no callbacks to some centralized analytics server. It’s a tool for you: use it, break it, repurpose it, join us (or don’t) in making it better. Or even leave– a full CSV export is available at any time. If it turns out Sonneck isn't the right place for your music, the information you enter (and the time you take doing so) is still yours.
 
@@ -75,8 +76,9 @@ Check the `CONTRIBUTING.md` file for full local run instructions. Here's the TL;
 
 Start the backend:
 ```sh
-cd /sonneck                            # wherever the repo is
-DATA_DIR=./data PORT=8080 go run ./cmd/sonneck   # DATA_DIR *must* be passed somehow or it'll fail
+cd /sonneck   # wherever the repo is
+DATA_DIR=./data PORT=8080 go run ./cmd/sonneck
+# DATA_DIR *must* be passed somehow or it'll fail
 ```
 
 And because that needs to keep running, in a separate terminal run:
@@ -152,16 +154,16 @@ DATA_DIR=./data go run ./cmd/sonneck <command>
 
 ## Planned features
 - **Dark mode.** Dear God, my eyes.
+- Support for image files, and also support for a folder of image files to be uploaded/assembled into a piece
 - **Sheet Viewer!** The practice view every app like this seems to have, with Bluetooth page turner support, server-saved annotations, and a built-in metronome, possibly with some simple gap support there. Maybe some music theory references too, why not; it's not like the circle of fifths has changed in the last 400 years.
 - **Folders, both smart and otherwise.** Save filters to be automatic folders of music– think "pieces I've Learned and are solo pieces for the piano" or "lead sheets from books x, y, and z" accessible under a name in the sidebar.
 - **Configurable citation format.** Just in case you don't like the defaults.
-- Support for image files, and also support for a folder of image files to be uploaded/assembled into a piece
 - Server-side printer support? Unsure about this one, but essentially the server would have a dedicated printer with the same settings saved, boiling a whole process down into a simple "Send to Printer" button. Dunno if this is achievable or just a fever dream.
 
 ## About the name
-Sonneck is named after **Oscar Sonneck** (1873–1928), an American musicologist and librarian. In 1902 he became the first chief of the new Music Division at the Library of Congress, a post he held until 1917; there he built the division's holdings into one of the world's great music collections and devised a classification scheme still in use today, with modifications. In 1915, he founded *[The Musical Quarterly](https://en.wikipedia.org/wiki/The_Musical_Quarterly)*, a music-focused academic journal still around today. Around the same time, he also joined the music publisher G. Schirmer, Inc. \(of [yellow cover fame](https://imslp.org/wiki/Schirmer), now part of Hal Leonard and Wise Music Group\) and later became its vice president in 1921. He's regarded as the founding figure of American musicology — his bibliographic work on early American music laid the groundwork for the field. 
+Sonneck is named after **Oscar Sonneck** (1873–1928), an American musicologist and librarian. In 1902 he became the first chief of the new Music Division at the Library of Congress, a post he held until 1917; there he built the division's holdings into one of the world's great music collections and devised a classification scheme still in use today, with modifications. In 1915, he founded *[The Musical Quarterly](https://en.wikipedia.org/wiki/The_Musical_Quarterly)*, a music-focused academic journal still around today. Around the same time, he also joined the music publisher G. Schirmer, Inc. \(of [yellow cover fame](https://imslp.org/wiki/Schirmer), now part of Hal Leonard and Wise Music Group\) and later became its vice president in 1921. 
 
-And most importantly, his last name sounded great for an app. :wink:
+He's regarded as the founding figure of American musicology — his bibliographic work on early American music laid the groundwork for the field, and most importantly, his last name sounded great for an app. :wink:
 
 ## AI disclaimer
 

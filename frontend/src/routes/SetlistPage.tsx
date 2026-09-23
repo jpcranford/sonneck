@@ -15,7 +15,15 @@ import {
 } from '@tabler/icons-react'
 import { ApiError } from '../api/client'
 import { getPiece } from '../api/pieces'
-import { addSetlistEntry, createSetlist, deleteSetlist, getSetlist, removeSetlistEntry, updateSetlist } from '../api/setlists'
+import {
+  addSetlistEntry,
+  createSetlist,
+  deleteSetlist,
+  getSetlist,
+  getSetlistPdfUrl,
+  removeSetlistEntry,
+  updateSetlist,
+} from '../api/setlists'
 import type { SetlistEntry } from '../api/types'
 import { ContextMenu, type ContextMenuItem } from '../components/ContextMenu'
 import { EditEntryModal } from '../components/EditEntryModal'
@@ -331,13 +339,14 @@ export function SetlistPage() {
 
             <div className="relative">
               <div className="flex">
-                <button
-                  type="button"
+                <a
+                  href={getSetlistPdfUrl(setlistId)}
+                  download
                   className="relative flex cursor-pointer items-center gap-2 rounded-l-md border border-border bg-paper-raised px-4 py-2 font-display text-sm text-ink transition-colors hover:z-10 hover:border-accent"
                 >
                   <IconDownload size={16} />
                   Download Set PDF
-                </button>
+                </a>
                 <button
                   type="button"
                   onClick={() => setDownloadOpen((o) => !o)}
