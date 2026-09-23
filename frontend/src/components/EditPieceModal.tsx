@@ -603,6 +603,13 @@ export function EditPieceModal({
     onSuccess: (_updated, variables) => {
       queryClient.invalidateQueries({ queryKey: ['pieces'] })
       queryClient.invalidateQueries({ queryKey: ['piece'] })
+      // Setlist responses embed their own copy of each piece's title/
+      // credits/keys/duration/pages (SetlistPieceSummary), and the Setlists
+      // Library's cards show per-setlist totals derived from them — both go
+      // stale on a piece edit unless refetched. ['setlist'] prefix-matches
+      // every ['setlist', id] detail query.
+      queryClient.invalidateQueries({ queryKey: ['setlist'] })
+      queryClient.invalidateQueries({ queryKey: ['setlists'] })
       afterMinDuration(saveStartedAtRef.current, () => {
         setIsSaving(false)
         if (variables.closeAfter) onClose()
