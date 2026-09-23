@@ -3,11 +3,16 @@
 // per custom (non-piece) entry, and a colophon, concatenated with each
 // piece entry's own real PDF pages into one merged document.
 //
-// Drawing and merging both go through codeberg.org/go-pdf/fpdf (the
-// maintained continuation of the archived jung-kurt/gofpdf) plus its
-// contrib/gofpdi sub-package for importing a piece's own real pages — see
-// the "Download Set PDF" section of this project's plan file for the full
-// library survey and the reasoning behind this choice.
+// The four generated page types are drawn via codeberg.org/go-pdf/fpdf
+// (the maintained continuation of the archived jung-kurt/gofpdf). Merging
+// those generated pages with each piece's own real PDF file is done via
+// poppler's pdfunite (internal/pdf.Merge), not an in-process PDF-import
+// library — an earlier version used fpdf's own contrib/gofpdi sub-package
+// to import a piece's pages directly, and that panicked on an entirely
+// ordinary real-world PDF (see CLAUDE.md > Setlists and this project's
+// plan file for the full story); pdfunite handles real-world files far
+// more robustly and, since poppler-utils is already a dependency this app
+// bundles everywhere, cost nothing new to add.
 package setlistpdf
 
 // Shape is the physical page size used for the four generated page
@@ -58,11 +63,21 @@ type Entry struct {
 }
 
 // rowsPerTOCPage is how many program rows fit on one table-of-contents
-// page at the locked design's own font sizes and margins. A fixed
-// constant, not a computed estimate — the TOC page's own header block
-// height is the same regardless of entry count, so this figure is exact
-// for a given page shape's usable height, not approximate.
-const rowsPerTOCPage = 32
+// page at the locked design's own font sizes and margins (pages.go's
+// drawTOC — marginTop/rowHeight there and this constant must be kept in
+// sync by hand, since Go embeds no shared computation between the two
+// without threading page geometry through ComputeLayout's own signature).
+// Sized conservatively for Letter (792pt tall, the shorter of the two
+// supported shapes — drawTOC uses one uniform row count regardless of
+// shape, same simplification as before) — A4's extra ~50pt of height
+// gets some unused slack rather than a shape-aware row count, an existing
+// simplification this value doesn't change. 28, not a computed estimate:
+// the first TOC page's header block (name/date/"Program" label/column
+// header/rule) leaves y=130 before the first row at drawTOC's current
+// sizing, and 792-130, divided by the 22pt row height, comfortably fits
+// 28 rows with real margin (ends at y=740, 52pt of clearance) before the
+// bottom of the page.
+const rowsPerTOCPage = 28
 
 // Layout is the deterministic page plan for one export, computed once
 // before any drawing happens: every generated page's place in the packet,

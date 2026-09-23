@@ -48,6 +48,11 @@ func rgb(r, g, b int) rgbColor { return rgbColor{r, g, b} }
 const (
 	fontDisplay = "LibreBaskerville"
 	fontSans    = "Cabin"
+	// fontSymbol is a dedicated family for the music-symbol shortcode
+	// glyphs (drawRichText) — always drawn upright/regular regardless of
+	// the surrounding text's own bold/italic state, matching the web
+	// app's own `not-italic` wrapper span (musicEmoji.ts) exactly.
+	fontSymbol = "BravuraText"
 )
 
 func registerFonts(pdf *fpdf.Fpdf) {
@@ -57,10 +62,12 @@ func registerFonts(pdf *fpdf.Fpdf) {
 	pdf.AddUTF8FontFromBytes(fontSans, "", fontCabinRegular)
 	pdf.AddUTF8FontFromBytes(fontSans, "I", fontCabinItalic)
 	pdf.AddUTF8FontFromBytes(fontSans, "B", fontCabinBold)
+	pdf.AddUTF8FontFromBytes(fontSans, "BI", fontCabinBoldItalic)
 	// fpdf keys fonts by (family, style) only — "semibold" has no style
 	// flag of its own, so it's registered as a distinct family name
 	// instead of trying to misuse the regular/bold/italic style slots.
 	pdf.AddUTF8FontFromBytes(fontSans+"SemiBold", "", fontCabinSemiBold)
+	pdf.AddUTF8FontFromBytes(fontSymbol, "", fontBravuraText)
 }
 
 func setColor(pdf *fpdf.Fpdf, c rgbColor) { pdf.SetTextColor(c.r, c.g, c.b) }
@@ -207,13 +214,13 @@ func Generate(ctx context.Context, binDir string, input Input) ([]byte, error) {
 // appeared, not just where it would otherwise fail to render.
 func diamondDivider(pdf *fpdf.Fpdf, centerX, y, ruleWidth float64) {
 	setDraw(pdf, colorBorder)
-	pdf.SetLineWidth(0.75)
-	pdf.Line(centerX-ruleWidth-4, y, centerX-4, y)
-	pdf.Line(centerX+4, y, centerX+ruleWidth+4, y)
+	pdf.SetLineWidth(1)
+	pdf.Line(centerX-ruleWidth-7, y, centerX-7, y)
+	pdf.Line(centerX+7, y, centerX+ruleWidth+7, y)
 	setFill(pdf, colorAccent)
 	pdf.TransformBegin()
 	pdf.TransformRotate(45, centerX, y)
-	pdf.Rect(centerX-2, y-2, 4, 4, "F")
+	pdf.Rect(centerX-3.5, y-3.5, 7, 7, "F")
 	pdf.TransformEnd()
 }
 
@@ -224,5 +231,11 @@ func formatDuration(seconds int) string {
 }
 
 func joinKeys(keys []string) string {
-	return strings.Join(keys, " → ") // chevron-joined, matches the app's own key-sequence convention
+	// U+203A (›), not U+2192 (→) — matches the real app's own key-sequence
+	// rendering exactly (PiecePage.tsx's modulating-key row uses a literal
+	// "›" span, not an arrow icon or the RIGHTWARDS ARROW codepoint). Found
+	// live: neither embedded font contains a U+2192 glyph at all, so the
+	// original choice rendered as a tofu box in every real generated TOC;
+	// U+203A is present in both.
+	return strings.Join(keys, " › ")
 }

@@ -63,7 +63,7 @@ func TestComputeLayout_SinglePieceMultiPageAdvancesStartPageCorrectly(t *testing
 }
 
 func TestComputeLayout_TOCOverflowsToSecondPage(t *testing.T) {
-	entries := make([]setlistpdf.Entry, 40) // > rowsPerTOCPage(32)
+	entries := make([]setlistpdf.Entry, 35) // > rowsPerTOCPage(28)
 	l := setlistpdf.ComputeLayout(entries)
 	if l.TOCPageCount != 2 {
 		t.Errorf("TOCPageCount = %d, want 2", l.TOCPageCount)
@@ -75,7 +75,7 @@ func TestComputeLayout_TOCOverflowsToSecondPage(t *testing.T) {
 }
 
 func TestComputeLayout_ExactlyOneTOCPageBoundary(t *testing.T) {
-	entries := make([]setlistpdf.Entry, 32) // exactly rowsPerTOCPage
+	entries := make([]setlistpdf.Entry, 28) // exactly rowsPerTOCPage
 	l := setlistpdf.ComputeLayout(entries)
 	if l.TOCPageCount != 1 {
 		t.Errorf("TOCPageCount = %d, want 1 at the exact boundary", l.TOCPageCount)
