@@ -22,6 +22,7 @@ import { formatRelativeWeeks } from '../lib/relativeWeeks'
 import { useMockupTitle } from '../lib/useMockupTitle'
 import { EditSetlistModal } from './EditSetlistMockup'
 import { EditEntryModal, type EditEntryValues } from './EditEntryMockup'
+import { EditRoleModal } from './EditRoleMockup'
 
 // Setlists design pass, Phase 6 — the real Setlist Details page (§13),
 // built against the approved Phase 2 layout (Option B, "Stats dashboard")
@@ -219,15 +220,23 @@ function computeDisplayNumbers(entries: SetlistEntry[]): (number | null)[] {
 // — "Edit Piece" stays inert (opening the real EditPieceModal for a fixture
 // piece is out of this mockup's own scope, same posture every other inert
 // action on this page takes for a dependency it doesn't actually have).
+// A piece entry also gets "Add Role" (no role yet) / "Edit Role" (one set),
+// opening EditRoleMockup.tsx's single-text-box modal.
 function getEntryMenuItems(
   entry: SetlistEntry,
   onRemove: (id: string) => void,
   onEditEntry: (entry: SetlistCustomEntry) => void,
+  onEditRole: (entry: SetlistPieceEntry) => void,
 ): ContextMenuItem[] {
+  if (entry.kind === 'piece') {
+    return [
+      { label: 'Edit Piece', onSelect: () => {} },
+      { label: entry.role ? 'Edit Role' : 'Add Role', onSelect: () => onEditRole(entry) },
+      { label: 'Remove from Setlist', destructive: true, onSelect: () => onRemove(entry.id) },
+    ]
+  }
   return [
-    entry.kind === 'piece'
-      ? { label: 'Edit Piece', onSelect: () => {} }
-      : { label: 'Edit Entry', onSelect: () => onEditEntry(entry) },
+    { label: 'Edit Entry', onSelect: () => onEditEntry(entry) },
     { label: 'Remove from Setlist', destructive: true, onSelect: () => onRemove(entry.id) },
   ]
 }
@@ -324,6 +333,14 @@ export function SetlistDetailsMockup() {
   // than a separate boolean, so there's never a state where the modal is
   // open but has no entry to edit.
   const [editingEntry, setEditingEntry] = useState<SetlistCustomEntry | null>(null)
+  // The piece entry currently open in EditRoleModal, or null.
+  const [editingRoleEntry, setEditingRoleEntry] = useState<SetlistPieceEntry | null>(null)
+
+  function saveRole(role: string | undefined) {
+    if (!editingRoleEntry) return
+    const id = editingRoleEntry.id
+    setEntries((current) => current.map((e) => (e.id === id && e.kind === 'piece' ? { ...e, role } : e)))
+  }
 
   // EditEntryModal's own field is named `description`, matching the Edit
   // Setlist modal's Program tab (decision 22's rename) — this page's own
@@ -636,7 +653,7 @@ export function SetlistDetailsMockup() {
           const number = displayNumbers[i]
           return (
             <div key={entry.id} className="border-b border-border py-2.5 last:border-none">
-              <ContextMenu hideTriggerButton items={getEntryMenuItems(entry, removeEntry, setEditingEntry)}>
+              <ContextMenu hideTriggerButton items={getEntryMenuItems(entry, removeEntry, setEditingEntry, setEditingRoleEntry)}>
                 {/* ml-10 below (×3) must match the number column's own width
                     + gap (w-8 + gap-2 = 2rem + 0.5rem = 2.5rem = ml-10) so
                     the role label/secondary line/note line up with the
@@ -834,6 +851,14 @@ export function SetlistDetailsMockup() {
         initialDescription={editingEntry?.note}
         initialCountsAsMusic={editingEntry?.countsAsMusic}
         onSave={saveEntryEdit}
+      />
+
+      <EditRoleModal
+        open={editingRoleEntry !== null}
+        onClose={() => setEditingRoleEntry(null)}
+        pieceTitle={editingRoleEntry?.title ?? ''}
+        initialRole={editingRoleEntry?.role}
+        onSave={saveRole}
       />
     </div>
   )

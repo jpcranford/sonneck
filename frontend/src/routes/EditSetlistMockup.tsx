@@ -375,6 +375,39 @@ export function EditSetlistModal({
     setProgramEntries((current) => current.filter((e) => e.id !== id))
   }
 
+  // A piece row's pencil opens an inline role card in the row's own
+  // position — the same card treatment a custom row's pencil gets, not
+  // EditRoleMockup.tsx's modal (that stays for Setlist Details' own
+  // right-click, where there's no list to edit inline). Shares
+  // `editingEntryId` with the custom inline form, so the two (and the
+  // bottom add-row, which clears it) stay mutually exclusive and the
+  // scroll-into-view effect below covers this card too.
+  const [roleDraft, setRoleDraft] = useState('')
+  const [roleDraftHadRole, setRoleDraftHadRole] = useState(false)
+
+  function openEditRoleForm(entry: ProgramPieceEntry) {
+    if (addRowMode !== 'buttons') closeAddRow()
+    setEditingEntryId(entry.id)
+    setRoleDraft(entry.role ?? '')
+    setRoleDraftHadRole(Boolean(entry.role))
+  }
+
+  function closeRoleForm() {
+    setEditingEntryId(null)
+    setRoleDraft('')
+    setRoleDraftHadRole(false)
+  }
+
+  // Empty is only a valid save when it means "remove the existing role" —
+  // same rule as EditRoleMockup.tsx's modal.
+  function submitRoleForm() {
+    const role = roleDraft.trim() || undefined
+    if (!role && !roleDraftHadRole) return
+    const id = editingEntryId
+    setProgramEntries((current) => current.map((e) => (e.id === id && e.kind === 'piece' ? { ...e, role } : e)))
+    closeRoleForm()
+  }
+
   function openPieceSearch() {
     // Closes any inline custom-entry edit that might be open — the two
     // flows share the same customName/customDuration/etc. state, and
@@ -813,6 +846,63 @@ export function EditSetlistModal({
     )
   }
 
+  // The inline role card — same chrome as renderCustomEntryForm's inline
+  // edit (accent border, corner ×, compact py-1.5 field, Cancel/Save), with
+  // the piece's own title kept visible so it's clear which row it edits.
+  function renderRoleForm(entry: ProgramPieceEntry) {
+    const canSave = roleDraft.trim() !== '' || roleDraftHadRole
+    return (
+      <form
+        key={entry.id}
+        ref={setExpandedRef}
+        onSubmit={(event) => {
+          event.preventDefault()
+          submitRoleForm()
+        }}
+        className="relative rounded-md border border-accent bg-paper-raised p-3"
+      >
+        <button
+          type="button"
+          onClick={closeRoleForm}
+          aria-label="Cancel role edit"
+          className="absolute top-2 right-2 cursor-pointer rounded p-1 text-ink-soft hover:bg-paper-sunken hover:text-ink"
+        >
+          <IconX size={13} />
+        </button>
+        <div className="mb-2 truncate pr-6 font-display text-sm font-medium text-ink">{entry.title}</div>
+        <label htmlFor="f-entry-role-inline" className="text-sm text-ink-soft">
+          Role
+        </label>
+        <input
+          id="f-entry-role-inline"
+          type="text"
+          autoFocus
+          value={roleDraft}
+          onChange={(event) => setRoleDraft(event.target.value)}
+          placeholder="Prelude"
+          className={`mt-1 w-full rounded-md border border-border bg-paper-raised px-3 py-1.5 text-sm text-ink ${roleDraftHadRole ? 'mb-1' : 'mb-3'}`}
+        />
+        {roleDraftHadRole && <p className="mb-3 text-xs text-ink-soft italic">Leave blank and save to remove the role.</p>}
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={closeRoleForm}
+            className="cursor-pointer rounded-md border border-border bg-paper-raised px-3 py-1.5 text-sm text-ink hover:border-accent"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={!canSave}
+            className="cursor-pointer rounded-md bg-accent px-3 py-1.5 text-sm text-white hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Save
+          </button>
+        </div>
+      </form>
+    )
+  }
+
   return (
     <>
     <Modal
@@ -987,6 +1077,9 @@ export function EditSetlistModal({
             if (entry.kind === 'custom' && entry.id === editingEntryId) {
               return renderCustomEntryForm(entry.id, 'relative rounded-md border border-accent bg-paper-raised p-3')
             }
+            if (entry.kind === 'piece' && entry.id === editingEntryId) {
+              return renderRoleForm(entry)
+            }
             return (
             <div
               key={entry.id}
@@ -1002,17 +1095,24 @@ export function EditSetlistModal({
               >
                 <IconGripVertical size={14} />
               </span>
-              {entry.kind === 'custom' && (
-                <button
-                  type="button"
-                  onClick={() => openEditCustomForm(entry)}
-                  aria-label={`Edit ${entry.title}`}
-                  className="no-drag mt-0.5 shrink-0 cursor-pointer text-ink-soft hover:text-accent"
-                >
-                  <IconPencil size={13} />
-                </button>
-              )}
+              {/* A custom row's pencil opens its own inline form; a piece
+                  row's pencil opens an inline role card (the only thing
+                  about a piece entry that's the setlist's own to edit). */}
+              <button
+                type="button"
+                onClick={() => (entry.kind === 'custom' ? openEditCustomForm(entry) : openEditRoleForm(entry))}
+                aria-label={entry.kind === 'custom' ? `Edit ${entry.title}` : `${entry.role ? 'Edit' : 'Add'} role for ${entry.title}`}
+                title={entry.kind === 'piece' ? (entry.role ? 'Edit role' : 'Add role') : undefined}
+                className="no-drag mt-0.5 shrink-0 cursor-pointer text-ink-soft hover:text-accent"
+              >
+                <IconPencil size={13} />
+              </button>
               <div className="min-w-0 flex-1">
+                {entry.kind === 'piece' && entry.role && (
+                  <div className="truncate text-[0.65rem] font-medium tracking-wide text-ink-soft uppercase [font-variant:small-caps]">
+                    {entry.role}
+                  </div>
+                )}
                 <div
                   className={`truncate ${
                     entry.kind === 'piece'
@@ -1243,12 +1343,15 @@ export function EditSetlistModal({
           <span className="mr-1 shrink-0 self-center text-ink-soft/50">
             <IconGripVertical size={14} />
           </span>
-          {draggingEntry.kind === 'custom' && (
-            <span className="mt-0.5 shrink-0 text-ink-soft">
-              <IconPencil size={13} />
-            </span>
-          )}
+          <span className="mt-0.5 shrink-0 text-ink-soft">
+            <IconPencil size={13} />
+          </span>
           <div className="min-w-0 flex-1">
+            {draggingEntry.kind === 'piece' && draggingEntry.role && (
+              <div className="truncate text-[0.65rem] font-medium tracking-wide text-ink-soft uppercase [font-variant:small-caps]">
+                {draggingEntry.role}
+              </div>
+            )}
             <div
               className={`truncate ${
                 draggingEntry.kind === 'piece'

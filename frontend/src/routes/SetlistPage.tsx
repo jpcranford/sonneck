@@ -27,6 +27,7 @@ import type { SetlistEntry } from '../api/types'
 import { ContextMenu, type ContextMenuItem } from '../components/ContextMenu'
 import { EditEntryModal } from '../components/EditEntryModal'
 import { EditPieceModal } from '../components/EditPieceModal'
+import { EditRoleModal } from '../components/EditRoleModal'
 import { EditSetlistModal } from '../components/EditSetlistModal'
 import { InfoTooltip } from '../components/InfoTooltip'
 import { MarkdownText } from '../components/MarkdownText'
@@ -73,16 +74,24 @@ function formatAbsoluteDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
 }
 
+// A piece entry also gets "Add Role" (no role yet) / "Edit Role" (one set),
+// opening EditRoleModal.
 function getEntryMenuItems(
   entry: SetlistEntry,
   onEditPiece: (pieceId: number) => void,
   onEditEntry: (entry: SetlistEntry) => void,
+  onEditRole: (entry: SetlistEntry) => void,
   onRemove: (entryId: number) => void,
 ): ContextMenuItem[] {
+  if (entry.kind === 'piece') {
+    return [
+      { label: 'Edit Piece', onSelect: () => entry.piece && onEditPiece(entry.piece.id) },
+      { label: entry.role ? 'Edit Role' : 'Add Role', onSelect: () => onEditRole(entry) },
+      { label: 'Remove from Setlist', destructive: true, onSelect: () => onRemove(entry.id) },
+    ]
+  }
   return [
-    entry.kind === 'piece'
-      ? { label: 'Edit Piece', onSelect: () => entry.piece && onEditPiece(entry.piece.id) }
-      : { label: 'Edit Entry', onSelect: () => onEditEntry(entry) },
+    { label: 'Edit Entry', onSelect: () => onEditEntry(entry) },
     { label: 'Remove from Setlist', destructive: true, onSelect: () => onRemove(entry.id) },
   ]
 }
@@ -144,6 +153,7 @@ export function SetlistPage() {
   const [editSetlistOpen, setEditSetlistOpen] = useState(false)
   const [editSetlistTab, setEditSetlistTab] = useState<'details' | 'program'>('details')
   const [editingEntry, setEditingEntry] = useState<SetlistEntry | null>(null)
+  const [editingRoleEntry, setEditingRoleEntry] = useState<SetlistEntry | null>(null)
   const [editingPieceId, setEditingPieceId] = useState<number | null>(null)
 
   function openEditSetlist(tab: 'details' | 'program') {
@@ -402,7 +412,9 @@ export function SetlistPage() {
                     <div key={entry.id} className="border-b border-border py-2.5 last:border-none">
                       <ContextMenu
                         hideTriggerButton
-                        items={getEntryMenuItems(entry, setEditingPieceId, setEditingEntry, (entryId) => removeMutation.mutate(entryId))}
+                        items={getEntryMenuItems(entry, setEditingPieceId, setEditingEntry, setEditingRoleEntry, (entryId) =>
+                          removeMutation.mutate(entryId),
+                        )}
                       >
                         {entry.kind === 'piece' && entry.role && (
                           <span className="ml-10 block text-[0.65rem] font-medium tracking-wide text-ink-soft uppercase [font-variant:small-caps]">
@@ -577,6 +589,13 @@ export function SetlistPage() {
             onClose={() => setEditingEntry(null)}
             setlistId={setlistId}
             entry={editingEntry}
+          />
+
+          <EditRoleModal
+            open={editingRoleEntry !== null}
+            onClose={() => setEditingRoleEntry(null)}
+            setlistId={setlistId}
+            entry={editingRoleEntry}
           />
 
           {editingPiece && (
