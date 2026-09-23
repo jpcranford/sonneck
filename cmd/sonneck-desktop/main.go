@@ -51,11 +51,13 @@ import (
 // binaries, not a hardcoded const here, purely for consistency — this
 // binary's real build step should still pass
 // -X main.buildTarget=native explicitly rather than relying on the
-// default alone).
+// default alone). buildVersion is the release tag (e.g. "0.7-beta"),
+// injected by native-build.yml only on a real release — "" otherwise.
 var (
-	buildSHA    = "dev"
-	buildDate   = "unknown"
-	buildTarget = "native"
+	buildSHA     = "dev"
+	buildDate    = "unknown"
+	buildVersion = ""
+	buildTarget  = "native"
 )
 
 // resolvePopplerBinDir returns the directory a CI-packaged release
@@ -317,7 +319,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	handler := handlers.New(conn, cfg, logger, frontend, scheduler, buildSHA, buildDate, buildTarget, oidcAuth, &handlers.NativeOptions{
+	handler := handlers.New(conn, cfg, logger, frontend, scheduler, buildSHA, buildDate, buildVersion, buildTarget, oidcAuth, &handlers.NativeOptions{
 		SettingsPath:          settingsPath,
 		AppliedShareOnNetwork: settings.ShareOnNetwork,
 		ChooseFolder:          chooseFolder,

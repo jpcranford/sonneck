@@ -28,6 +28,10 @@ FROM golang:1.26-bookworm AS backend-builder
 # already treats as "running from source, don't attempt a GitHub check."
 ARG BUILD_SHA=dev
 ARG BUILD_DATE=unknown
+# BUILD_VERSION is the release tag (e.g. "0.7-beta") — passed only for a
+# real release build, empty otherwise (Admin Settings then falls back to
+# matching BUILD_SHA against GitHub's tags at runtime).
+ARG BUILD_VERSION=
 WORKDIR /build
 COPY go.mod go.sum ./
 RUN go mod download
@@ -41,7 +45,7 @@ COPY --from=frontend-builder /build/frontend/dist/. ./internal/webui/dist/
 # robfig/cron are both pure Go — see CLAUDE.md > Config/File handling),
 # so a fully static binary needs nothing from the build image at runtime.
 RUN CGO_ENABLED=0 go build -trimpath \
-        -ldflags="-s -w -X main.buildSHA=${BUILD_SHA} -X main.buildDate=${BUILD_DATE}" \
+        -ldflags="-s -w -X main.buildSHA=${BUILD_SHA} -X main.buildDate=${BUILD_DATE} -X main.buildVersion=${BUILD_VERSION}" \
         -o /out/sonneck ./cmd/sonneck
 
 # ---- Stage 3: runtime ----

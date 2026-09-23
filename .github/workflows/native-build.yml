@@ -176,9 +176,13 @@ jobs:
         working-directory: cmd/sonneck-desktop
         env:
           CGO_LDFLAGS: "-framework UniformTypeIdentifiers"
+          # Release tag (empty on a manual dispatch) — baked in as
+          # main.buildVersion, Admin Settings' version label.
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
+          BUILD_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           "$(go env GOPATH)/bin/wails" build -platform darwin/universal \
-            -ldflags "-X main.buildSHA=${{ github.sha }} -X main.buildTarget=native"
+            -ldflags "-X main.buildSHA=${{ github.sha }} -X main.buildDate=$BUILD_DATE -X main.buildVersion=$RELEASE_TAG -X main.buildTarget=native"
 
       # Modifying a bundle's contents after Wails' own self-sign step
       # invalidates that signature — codesign has to run again, once,
@@ -429,9 +433,14 @@ jobs:
       - name: Build native app (NSIS installer)
         working-directory: cmd/sonneck-desktop
         shell: pwsh
+        env:
+          # Release tag (empty on a manual dispatch) — baked in as
+          # main.buildVersion, Admin Settings' version label.
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
+          $buildDate = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
           & "$(go env GOPATH)\bin\wails.exe" build -nsis `
-            -ldflags "-X main.buildSHA=${{ github.sha }} -X main.buildTarget=native"
+            -ldflags "-X main.buildSHA=${{ github.sha }} -X main.buildDate=$buildDate -X main.buildVersion=$env:RELEASE_TAG -X main.buildTarget=native"
 
           if (-not (Get-ChildItem build\bin -Filter *-installer.exe)) {
             throw "no installer .exe was produced - makensis likely failed silently again"

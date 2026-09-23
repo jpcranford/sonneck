@@ -46,7 +46,7 @@ func newNativeTestServer(t *testing.T, authMethod string, native *handlers.Nativ
 		t.Fatalf("loading embedded frontend: %v", err)
 	}
 
-	return handlers.New(conn, cfg, logger, frontend, nil, "", "", "native", nil, native), conn
+	return handlers.New(conn, cfg, logger, frontend, nil, "", "", "", "native", nil, native), conn
 }
 
 func fakeNativeOptions(t *testing.T) (*handlers.NativeOptions, *bool) {

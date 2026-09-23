@@ -34,10 +34,14 @@ import (
 // produces the separate native entry point (working name
 // cmd/sonneck-desktop, not yet built). GET /api/config's own buildTarget
 // field is this value verbatim.
+// buildVersion is the release tag (e.g. "0.7-beta"), injected only by the
+// release workflows — "" otherwise, in which case Admin Settings falls back
+// to matching buildSHA against GitHub's tags at runtime.
 var (
-	buildSHA    = "dev"
-	buildDate   = "unknown"
-	buildTarget = "docker"
+	buildSHA     = "dev"
+	buildDate    = "unknown"
+	buildVersion = ""
+	buildTarget  = "docker"
 )
 
 func main() {
@@ -169,7 +173,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	handler := handlers.New(conn, cfg, logger, frontend, scheduler, buildSHA, buildDate, buildTarget, oidcAuth, nil)
+	handler := handlers.New(conn, cfg, logger, frontend, scheduler, buildSHA, buildDate, buildVersion, buildTarget, oidcAuth, nil)
 
 	// shareOnNetwork is always false here — this binary's buildTarget stays
 	// "docker" (see the var block above), and ListenAddress/ListenWithFallback

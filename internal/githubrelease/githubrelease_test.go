@@ -17,7 +17,21 @@ import (
 // a "base...head" pair to a status string.
 func fakeGitHub(t *testing.T, releases []Release, compareFn func(base, head string) string) *httptest.Server {
 	t.Helper()
+	return fakeGitHubWithTags(t, releases, nil, compareFn)
+}
+
+// fakeGitHubWithTags also serves the tag list. A nil tags slice leaves that
+// endpoint unregistered (404), exercising Check's compare-only fallback.
+func fakeGitHubWithTags(t *testing.T, releases []Release, tags []Tag, compareFn func(base, head string) string) *httptest.Server {
+	t.Helper()
 	mux := http.NewServeMux()
+	if tags != nil {
+		mux.HandleFunc("/repos/jpcranford/sonneck/tags", func(w http.ResponseWriter, r *http.Request) {
+			if err := json.NewEncoder(w).Encode(tags); err != nil {
+				t.Fatalf("encoding fake tags response: %v", err)
+			}
+		})
+	}
 	mux.HandleFunc("/repos/jpcranford/sonneck/releases", func(w http.ResponseWriter, r *http.Request) {
 		if err := json.NewEncoder(w).Encode(releases); err != nil {
 			t.Fatalf("encoding fake releases response: %v", err)
@@ -148,5 +162,59 @@ func TestListReleases_DropsDrafts(t *testing.T) {
 	}
 	if len(releases) != 1 || releases[0].TagName != "v1.0.0" {
 		t.Errorf("ListReleases = %+v, want only the non-draft release", releases)
+	}
+}
+
+func tagAt(name, sha string) Tag {
+	var t Tag
+	t.Name = name
+	t.Commit.SHA = sha
+	return t
+}
+
+// An older pre-release build (its commit is exactly the 0.7-beta tag) still
+// knows its own version once a newer release (0.7-beta.2) exists — it isn't
+// identical to either the newest release or the newest stable one, so only
+// the tag-list lookup can find it.
+func TestCheck_MatchesOlderReleaseViaTagList(t *testing.T) {
+	releases := []Release{
+		{TagName: "0.7-beta.2", Prerelease: true},
+		{TagName: "0.7-beta", Prerelease: true},
+		{TagName: "0.6", Prerelease: false},
+	}
+	tags := []Tag{tagAt("0.7-beta.2", "bbbb"), tagAt("0.7-beta", "aaaa"), tagAt("0.6", "6666")}
+	srv := fakeGitHubWithTags(t, releases, tags, func(base, head string) string {
+		if base == "0.7-beta.2" {
+			return "behind"
+		}
+		return "ahead"
+	})
+	withFakeAPIBase(t, srv.URL)
+
+	result, err := Check(context.Background(), "aaaa")
+	if err != nil {
+		t.Fatalf("Check: %v", err)
+	}
+	if result.MatchedRelease != "0.7-beta" {
+		t.Errorf("MatchedRelease = %q, want %q", result.MatchedRelease, "0.7-beta")
+	}
+	if result.Status != CheckStatusAhead {
+		t.Errorf("Status = %q, want %q (ahead of the latest stable 0.6)", result.Status, CheckStatusAhead)
+	}
+}
+
+// A tag that isn't a published (non-draft) release never counts as a match.
+func TestCheck_IgnoresTagsWithoutARelease(t *testing.T) {
+	releases := []Release{{TagName: "0.6", Prerelease: false}}
+	tags := []Tag{tagAt("scratch-tag", "aaaa"), tagAt("0.6", "6666")}
+	srv := fakeGitHubWithTags(t, releases, tags, func(base, head string) string { return "ahead" })
+	withFakeAPIBase(t, srv.URL)
+
+	result, err := Check(context.Background(), "aaaa")
+	if err != nil {
+		t.Fatalf("Check: %v", err)
+	}
+	if result.MatchedRelease != "" {
+		t.Errorf("MatchedRelease = %q, want none", result.MatchedRelease)
 	}
 }

@@ -29,8 +29,13 @@ type Server struct {
 	// BuildSHA/BuildDate are ldflags-injected at build time (Dockerfile),
 	// "dev"/"unknown" otherwise — Admin Settings' Version section's own
 	// running-build identity.
-	BuildSHA        string
-	BuildDate       string
+	BuildSHA  string
+	BuildDate string
+	// BuildVersion is the release tag this binary was built from (e.g.
+	// "0.7-beta"), ldflags-injected by the release workflows only — "" for
+	// dev builds and non-release CI builds. When set it IS the running
+	// build's identity (no GitHub lookup needed); see version.go.
+	BuildVersion    string
 	releaseIdentity *releaseIdentity
 	// BuildTarget — "docker" (default) or "native", ldflags-injected
 	// exactly like BuildSHA/BuildDate (project_wails_native_app_investigation
@@ -63,10 +68,10 @@ type Server struct {
 // unless cfg.AuthMethod == "oidc" — constructed once in cmd/sonneck/main.go,
 // since it does a real network call (OIDC
 // discovery) that config.Load() itself deliberately never makes.
-func New(db *sql.DB, cfg *config.Config, logger *slog.Logger, frontend fs.FS, scheduler *backup.Scheduler, buildSHA, buildDate, buildTarget string, oidcAuth OIDCAuthenticator, native *NativeOptions) http.Handler {
+func New(db *sql.DB, cfg *config.Config, logger *slog.Logger, frontend fs.FS, scheduler *backup.Scheduler, buildSHA, buildDate, buildVersion, buildTarget string, oidcAuth OIDCAuthenticator, native *NativeOptions) http.Handler {
 	s := &Server{
 		DB: db, Cfg: cfg, Logger: logger,
-		BackupScheduler: scheduler, BuildSHA: buildSHA, BuildDate: buildDate,
+		BackupScheduler: scheduler, BuildSHA: buildSHA, BuildDate: buildDate, BuildVersion: buildVersion,
 		releaseIdentity: &releaseIdentity{},
 		BuildTarget:     buildTarget,
 		OIDCAuth:        oidcAuth,

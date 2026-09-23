@@ -78,9 +78,18 @@ func (s *Server) resolveReleaseIdentity(ctx context.Context) {
 // nil here always). handleCheckForUpdates fills those in on its own
 // response directly, never through this shared builder, so GET
 // /api/admin/version can't ever surface a stale check result.
+//
+// A release build's own injected BuildVersion is authoritative and always
+// wins — known at startup, no network needed (so it shows on the very first
+// view, offline, and regardless of GitHub's unauthenticated rate limit).
+// Only a build without one (a manual/nightly build) falls back to the
+// runtime tag lookup cached in releaseIdentity.
 func (s *Server) versionResponse() api.VersionResponse {
 	resp := api.VersionResponse{RunningSHA: s.BuildSHA, RunningDate: s.BuildDate, RunningFromSource: s.isDevBuild()}
-	if _, matchedRelease := s.releaseIdentity.get(); matchedRelease != "" {
+	if s.BuildVersion != "" {
+		v := s.BuildVersion
+		resp.MatchedRelease = &v
+	} else if _, matchedRelease := s.releaseIdentity.get(); matchedRelease != "" {
 		resp.MatchedRelease = &matchedRelease
 	}
 	return resp
@@ -100,7 +109,7 @@ func (s *Server) handleGetVersion(w http.ResponseWriter, r *http.Request) {
 	if _, ok := s.requirePermission(w, r, models.PermissionAdmin); !ok {
 		return
 	}
-	if resolved, _ := s.releaseIdentity.get(); !resolved && !s.isDevBuild() {
+	if resolved, _ := s.releaseIdentity.get(); !resolved && !s.isDevBuild() && s.BuildVersion == "" {
 		go s.resolveReleaseIdentity(context.Background())
 	}
 	api.WriteData(w, http.StatusOK, s.versionResponse())
@@ -132,7 +141,7 @@ func (s *Server) handleCheckForUpdates(w http.ResponseWriter, r *http.Request) {
 		api.WriteData(w, http.StatusOK, resp)
 		return
 	}
-	if result.MatchedRelease != "" {
+	if result.MatchedRelease != "" && s.BuildVersion == "" {
 		s.releaseIdentity.set(result.MatchedRelease)
 		resp.MatchedRelease = &result.MatchedRelease
 	}

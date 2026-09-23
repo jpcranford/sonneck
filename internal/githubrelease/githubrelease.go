@@ -62,6 +62,44 @@ func ListReleases(ctx context.Context) ([]Release, error) {
 	return releases, nil
 }
 
+// Tag is the slice of GitHub's tag-list object this package uses: the tag's
+// name and the commit it points at (already dereferenced for annotated
+// tags, so it's directly comparable to a running build's commit SHA).
+type Tag struct {
+	Name   string `json:"name"`
+	Commit struct {
+		SHA string `json:"sha"`
+	} `json:"commit"`
+}
+
+// ListTags fetches the repo's tags (up to 100, newest first — far more than
+// this project's release history needs).
+func ListTags(ctx context.Context) ([]Tag, error) {
+	url := fmt.Sprintf("%s/repos/%s/%s/tags?per_page=100", apiBase, Owner, Repo)
+	var tags []Tag
+	if err := getJSON(ctx, url, &tags); err != nil {
+		return nil, err
+	}
+	return tags, nil
+}
+
+// releaseTagForCommit returns the name of a (non-draft) release whose tag
+// points at exactly runningSHA, or "" when none does. Checks every release,
+// not just the newest ones, so an older build (e.g. a 0.7-beta binary once
+// 0.7-beta.2 exists) still recognizes its own version.
+func releaseTagForCommit(runningSHA string, releases []Release, tags []Tag) string {
+	isRelease := make(map[string]bool, len(releases))
+	for _, r := range releases {
+		isRelease[r.TagName] = true
+	}
+	for _, t := range tags {
+		if isRelease[t.Name] && t.Commit.SHA != "" && t.Commit.SHA == runningSHA {
+			return t.Name
+		}
+	}
+	return ""
+}
+
 // CompareStatus is GitHub's own compare-API vocabulary — "ahead"/"behind"
 // are from base's perspective looking at head (behind means head is
 // missing commits base has; ahead means head has commits base doesn't).
@@ -114,8 +152,9 @@ const (
 )
 
 // Check determines runningSHA's relationship to this repo's releases.
-// Bounded to at most 1 releases-list call + 2 compare calls (the latest
-// release overall, plus the latest non-prerelease release if different) —
+// Bounded to 1 releases-list call + 1 tags-list call + at most 2 compare
+// calls (the latest release overall, plus the latest non-prerelease release
+// if different) —
 // never one compare per historical tag, which would both cost unbounded
 // API calls and need a separate tag-to-commit resolution step (annotated
 // vs. lightweight tags dereference differently; compare sidesteps that
@@ -140,11 +179,18 @@ func Check(ctx context.Context, runningSHA string) (*CheckResult, error) {
 
 	result := &CheckResult{Status: CheckStatusUnknown}
 
+	// Exact tag match against every release, via the tag list. Best-effort:
+	// if the tag list can't be fetched, the "identical to the latest
+	// release" compare below still catches the common case.
+	if tags, err := ListTags(ctx); err == nil {
+		result.MatchedRelease = releaseTagForCommit(runningSHA, releases, tags)
+	}
+
 	overallStatus, err := Compare(ctx, latestOverall.TagName, runningSHA)
 	if err != nil {
 		return nil, err
 	}
-	if overallStatus == StatusIdentical {
+	if overallStatus == StatusIdentical && result.MatchedRelease == "" {
 		result.MatchedRelease = latestOverall.TagName
 	}
 
