@@ -212,10 +212,9 @@ function publicDomainNote(slug: string | null): string {
 }
 
 // Matches buildCitation's current logic exactly (internal/handlers/
-// citation.go), including: the arranger's own trailing sentence
-// ("Arrangement by Louis Köhler, 1848." — not fused onto the composer
-// anymore, and yearWritten moves out of sentence 1 into this sentence
-// instead, per that year's own resolution); the book's own "Op. 68"
+// citation.go), including: the arranger inline right after the title
+// (", arr. Louis Köhler"), with the trailing year then being the
+// arrangement year; the book's own "Op. 68"
 // dropped from the book-title segment because it's already contained
 // (spaces ignored) in the piece's own "Op. 68, No. 9"; and imslpNumber
 // rendered as "IMSLP #04154" — note samplePiece.imslpNumber below
@@ -227,15 +226,16 @@ function publicDomainNote(slug: string | null): string {
 // citation's own main segment below — imslpNumber being present
 // suppresses publisher (and publisherId) from that segment entirely; it
 // resurfaces only as the copyright clause's own holder-fallback (see
-// COPYRIGHT_CLAUSE below), an independent rule. The arrangement
-// sentence's own year (1848) stands in for effectiveArrangementYearWritten
+// COPYRIGHT_CLAUSE below), an independent rule. The trailing year (1848)
+// stands in for effectiveArrangementYearWritten
 // — this fixture's piece has no raw yearWritten of its own (only the
 // already-inherited eff.yearWritten.value below), so it resolves via that
 // same "1848" the book itself carries, same value the old (pre-
 // restructuring) fused format already showed.
 const FLAT_CITATION =
-  'Robert Schumann, Album für die Jugend, "No. 9, Volksliedchen (Little Folk Song)" (Op. 68, No. 9), IMSLP #04154. Arrangement by Louis Köhler, 1848.'
-// Copyright Holder falls back to effective Publisher when unset —
+  'Robert Schumann, Album für die Jugend, "No. 9, Volksliedchen (Little Folk Song)" (Op. 68, No. 9), arr. Louis Köhler, IMSLP #04154, 1848.'
+// Copyright Holder falls back to effective Publisher when unset (or to the
+// arranger(s)/composer(s) when that publisher is "self-published") —
 // samplePiece.copyrightHolder is null above, so this reads "G. Schirmer"
 // (the piece's own effective publisher), not a blank.
 // The trailing period on "edition" is auto-appended by the citation logic
@@ -246,7 +246,7 @@ const COPYRIGHT_CLAUSE = 'Copyright ©\u00A01877 G. Schirmer. First published in
 // clause (In Copyright, Copyleft). Public Domain/Likely Public Domain
 // never use this structure (see sampleCitationFor below) — they keep the
 // flat format, just with a different trailing note.
-const TWO_SENTENCE_CITATION = `Robert Schumann, "No. 9, Volksliedchen (Little Folk Song)" (Op. 68, No. 9). Arrangement by Louis Köhler, 1848. Published in Album für die Jugend, IMSLP #04154, 1848. ${COPYRIGHT_CLAUSE}`
+const TWO_SENTENCE_CITATION = `Robert Schumann, "No. 9, Volksliedchen (Little Folk Song)" (Op. 68, No. 9), arr. Louis Köhler, 1848. Published in Album für die Jugend, IMSLP #04154, 1848. ${COPYRIGHT_CLAUSE}`
 
 function sampleCitationFor(status: CopyrightStatus): string {
   if (status === 'inCopyright' || status === 'copyleft') return TWO_SENTENCE_CITATION

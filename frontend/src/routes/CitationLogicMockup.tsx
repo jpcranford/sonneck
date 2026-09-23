@@ -40,7 +40,7 @@ const FLAT_LEAVES: Leaf[] = [
   {
     id: 'A1',
     pattern: 'Copyleft / In Copyright, no book — + "Copyright ©\u00A0{year} {holder}." clause',
-    example: `Joe Hisaishi, "Merry-Go-Round of Life from 'Howl's Moving Castle'", Sony/ATV Music Publishing (UK). Arrangement by M. Yamamoto, 2004. Copyright ©\u00A0Sony/ATV Music Publishing (UK).`,
+    example: `Joe Hisaishi, "Merry-Go-Round of Life from 'Howl's Moving Castle'", arr. M. Yamamoto, Sony/ATV Music Publishing (UK), 2004. Copyright ©\u00A0Sony/ATV Music Publishing (UK).`,
     source: 'TestCitation_TitleDoubleQuotesBecomeSingleQuotes',
   },
   {
@@ -179,27 +179,27 @@ type ArrangerExample = {
 const ARRANGER_EXAMPLES: ArrangerExample[] = [
   {
     id: 'C1',
-    label: 'Arranger only (no composer), no year anywhere — the sentence still appears, bare',
-    old: `arr. J. Someone, "Traditional Tune"`,
-    current: `"Traditional Tune". Arrangement by J. Someone.`,
-    note: 'effectiveArrangementYearWritten resolves to nothing (no piece yearWritten, no book, no copyright year) — the sentence still appears since an arranger is present, just without a trailing ", {year}".',
+    label: 'Arranger only (no composer), no year anywhere — ends bare after the arranger',
+    old: `"Traditional Tune". Arrangement by J. Someone.`,
+    current: `"Traditional Tune", arr. J. Someone`,
+    note: 'effectiveArrangementYearWritten resolves to nothing (no piece yearWritten, no book, no copyright year), so there is no trailing year or period, same as any other year-less citation.',
     source: 'TestCitation_ArrangerAloneWithNoComposer',
   },
   {
     id: 'C2',
-    label: 'The actual rule change: book’s yearPublished wins over the piece’s own copyrightYear',
-    old: `Jane Doe, arr. Sam Smith, Songbook, "Folk Medley", 1920.`,
-    current: `Jane Doe, Songbook, "Folk Medley". Arrangement by Sam Smith, 2015.`,
+    label: 'Arrangement year: book’s yearPublished wins over the piece’s own copyrightYear',
+    old: `Jane Doe, Songbook, "Folk Medley". Arrangement by Sam Smith, 2015.`,
+    current: `Jane Doe, Songbook, "Folk Medley", arr. Sam Smith, 2015.`,
     note: 'Piece: yearWritten blank, copyrightYear 1920. Book: yearPublished 2015. Plain yearWritten resolution (piece → copyrightYear → book) would show "1920" — effectiveArrangementYearWritten (piece → book → copyrightYear) shows "2015" instead.',
     source: 'TestCitation_ArrangementYearPrefersBookYearPublishedOverCopyrightYear',
   },
   {
     id: 'C3',
     label: 'Has a book, In Copyright/Copyleft (buildTwoSentenceCitation) — placement relative to "Published..."',
-    old: `Jane Doe, arr. Alex Arranger, Album for the Young, Op. 68, No. 3 "The Reaper's Song", 1878. Published by Henle Verlag, 2015. Copyright ©\u00A02015 Henle Verlag.`,
-    current: `Jane Doe, Album for the Young, Op. 68, No. 3 "The Reaper's Song". Arrangement by Alex Arranger, 1878. Published by Henle Verlag, 2015. Copyright ©\u00A02015 Henle Verlag.`,
-    note: 'The sentence lands right after sentence 1, ahead of "Published...” and the copyright clause — both otherwise unchanged.',
-    source: 'TestCitation_ArrangementSentencePrecedesPublishSentence',
+    old: `Jane Doe, Album for the Young, Op. 68, No. 3 "The Reaper's Song". Arrangement by Alex Arranger, 1878. Published by Henle Verlag, 2015. Copyright ©\u00A02015 Henle Verlag.`,
+    current: `Jane Doe, Album for the Young, Op. 68, No. 3 "The Reaper's Song", arr. Alex Arranger, 1878. Published by Henle Verlag, 2015. Copyright ©\u00A02015 Henle Verlag.`,
+    note: '"arr." joins sentence 1 right after the title, with the arrangement year ending it. The "Published..." sentence and the copyright clause are unchanged.',
+    source: 'TestCitation_ArrangerInlineInTwoSentenceCitation',
   },
 ]
 
@@ -211,7 +211,7 @@ function ArrangerExampleCard({ id, label, old, current, note, source }: Arranger
       </p>
       <div className="flex flex-col gap-1">
         <p className="text-[0.65rem] font-medium tracking-wide text-ink-soft/70 uppercase">
-          Old format (pre-restructuring)
+          Previous format (separate arranger sentence)
         </p>
         <p className="rounded-md bg-paper-sunken p-2 font-mono text-[0.8em] leading-snug text-ink-soft line-through decoration-ink-soft/40">
           {old}
@@ -305,36 +305,34 @@ export function CitationLogicMockup() {
             Arranger credit — cuts across both paths
           </h2>
           <p className="max-w-3xl text-sm text-ink-soft">
-            An arranger no longer fuses onto the composer in sentence 1 (A1's own example above
-            shows the ordinary composer+arranger, year-via-tier-1 case) — it gets a real
-            trailing sentence instead, in both <span className="font-mono">buildFlatCitation</span>{' '}
-            and <span className="font-mono">buildTwoSentenceCitation</span>.
+            An arranger renders inline, right after the title (and its opus parenthetical), in
+            both <span className="font-mono">buildFlatCitation</span> and{' '}
+            <span className="font-mono">buildTwoSentenceCitation</span>. Nothing else in the line
+            moves: IMSLP, publisher/ID, ISBN, book and opus all stay where they were.
           </p>
         </div>
         <ul className="max-w-3xl list-disc pl-5 text-sm text-ink-soft">
           <li>
-            <span className="font-mono">arr. {'{arranger}'}</span> is removed from the composer
-            segment entirely — sentence 1 becomes plain{' '}
-            <span className="font-mono">"{'{composer}'}, {'{title}'}, {'{yearWritten}'}."</span>
+            Format:{' '}
+            <span className="font-mono">
+              {'{composer}'}, "{'{title}'}", arr. {'{arranger}'}, {'{publisher/ID}'}, {'{year}'}.
+            </span>{' '}
+            (Path B: <span className="font-mono">arr.</span> joins sentence 1 the same way, before
+            "Published...".)
           </li>
           <li>
-            Whenever one or more arrangers are present, a new sentence follows immediately after
-            sentence 1 (before "Published..." in Path B):{' '}
-            <span className="font-mono">"Arrangement by {'{arranger}'}, {'{effectiveArrangementYearWritten}'}."</span>
+            The separate <span className="font-mono">"Arrangement by {'{arranger}'}, {'{year}'}."</span>{' '}
+            sentence is gone.
           </li>
           <li>
-            When that sentence is present, <span className="font-mono">yearWritten</span> is
-            dropped from the end of sentence 1 — it now only ever describes the arrangement,
-            never the original work, avoiding one bare year meaning two different things.
-          </li>
-          <li>
+            With an arranger, the trailing year is{' '}
             <span className="font-mono">effectiveArrangementYearWritten</span>{' '}
-            (resolveArrangementYearWritten) uses the same fallback chain as{' '}
-            <span className="font-mono">yearWritten</span> (piece's own → ... → book's), with
-            one change: <strong>book's yearPublished takes precedence over the piece's own
-            copyrightYear</strong> — piece.yearWritten → book.yearPublished →
-            piece.copyrightYear, vs. plain yearWritten's piece.yearWritten → piece.copyrightYear{' '}
-            → book.yearPublished. See C2 below.
+            (resolveArrangementYearWritten): the same fallback chain as{' '}
+            <span className="font-mono">yearWritten</span> with one change:{' '}
+            <strong>book's yearPublished takes precedence over the piece's own copyrightYear</strong>{' '}
+            (piece.yearWritten → book.yearPublished → piece.copyrightYear, vs. plain
+            yearWritten's piece.yearWritten → piece.copyrightYear → book.yearPublished). See C2
+            below.
           </li>
         </ul>
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
@@ -386,7 +384,7 @@ export function CitationLogicMockup() {
           />
           <IndependentCard
             name="copyrightClause(eff)"
-            description={`Copyright Holder falls back to the piece's effective Publisher when unset. A bare "(renewed)" marker (US renewal follow-up — no specific year, since the exact filing year never changes the term calculation) joins right after the year when CopyrightRenewed is set. Omitted entirely (returns "") when there's neither a year nor a holder to attribute to.`}
+            description={`Copyright Holder falls back when unset: to the arranger(s), else the composer(s), when the effective Publisher is "self-published" (compared ignoring case, spaces and punctuation, so "Self-Published", "self published" and "SELF PUBLISHED." all match); otherwise to the effective Publisher. An entered holder always wins. A bare "(renewed)" marker (US renewal follow-up — no specific year, since the exact filing year never changes the term calculation) joins right after the year when CopyrightRenewed is set. Omitted entirely (returns "") when there's neither a year nor a holder to attribute to.`}
             example={`year 1950, renewed, holder "Test Publisher" → "Copyright ©\u00A01950 (renewed) Test Publisher."`}
           />
           <IndependentCard

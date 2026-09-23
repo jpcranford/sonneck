@@ -17,7 +17,7 @@ flowchart TD
     D1{"Has a source book AND<br/>status is Copyleft or<br/>In Copyright?"}
     Start --> D1
 
-    D1 -- No --> Flat["buildFlatCitation<br/>composer, book title+opus (if present),<br/>quoted title, identifier, yearWritten"]
+    D1 -- No --> Flat["buildFlatCitation<br/>composer, book title+opus (if present),<br/>quoted title, arr. arranger (if present),<br/>identifier, year"]
     D1 -- Yes --> Two["buildTwoSentenceCitation<br/>sentence 1, then a publish sentence<br/>unless suppressed"]
 
     Flat --> D2{"What's the<br/>effective status?"}

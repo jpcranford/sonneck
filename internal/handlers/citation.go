@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/jpcranford/sonneck/internal/api"
 	"github.com/jpcranford/sonneck/internal/models"
@@ -154,8 +155,8 @@ type citationInput struct {
 	calculatedLikelyPD bool
 	// arrangementYearWritten is effectiveArrangementYearWritten —
 	// resolveArrangementYearWritten's own result, computed once in
-	// handleGetCitation and consulted only when arrangerNames is
-	// non-empty (buildArrangementSentence).
+	// handleGetCitation and used as the citation's year in place of plain
+	// yearWritten only when arrangerNames is non-empty (citationYear).
 	arrangementYearWritten string
 }
 
@@ -201,7 +202,7 @@ func buildCitation(in citationInput) string {
 		// copyrightClause can legitimately be "" (nothing at all to
 		// attribute) — appending a bare trailing space in that case would
 		// be a real, if subtle, formatting bug.
-		if clause := copyrightClause(in.eff); clause != "" {
+		if clause := copyrightClause(in.eff, in.composerNames, in.arrangerNames); clause != "" {
 			// endsWithPeriod(flat), not flat + " " + clause: buildFlatCitation
 			// only ends flat in a period when yearWritten is set (its own
 			// last-component rule, and a citation with no year legitimately
@@ -235,9 +236,8 @@ func pieceOwnsImslp(eff *repo.EffectivePiece) bool {
 	return eff.ImslpNumber.Value != "" && !eff.ImslpNumber.Inherited
 }
 
-// resolveArrangementYearWritten computes the year shown in the citation's
-// "Arrangement by {arranger}, {year}." sentence (buildArrangementSentence)
-// — the same fallback chain repo's own resolveYearWritten uses for the
+// resolveArrangementYearWritten computes the year a citation ends with when
+// the piece has an arranger (citationYear) — the same fallback chain repo's own resolveYearWritten uses for the
 // piece's plain YearWritten field (piece's own value, else piece's own
 // CopyrightYear, else the book's YearPublished), with tiers 2 and 3
 // swapped: the book's YearPublished is a better proxy for "when was this
@@ -259,18 +259,17 @@ func resolveArrangementYearWritten(pieceYearWritten *string, bookYearPublished s
 	return ""
 }
 
-// buildArrangementSentence is the "Arrangement by {arranger}, {year}."
-// sentence inserted right after sentence 1 whenever one or more arrangers
-// are present — shared by buildFlatCitation and buildTwoSentenceCitation.
-// Its own presence depends only on whether there's an arranger, not on
-// whether a year resolved: with no year anywhere to attribute (year ""),
-// it still renders bare, "Arrangement by {arranger}." — never suppressed
-// just because there's nothing to show after the comma.
-func buildArrangementSentence(arranger, year string) string {
-	if year != "" {
-		return fmt.Sprintf("Arrangement by %s, %s.", arranger, year)
+// citationYear is the year a citation's first sentence ends with: the
+// arrangement year (resolveArrangementYearWritten) whenever the piece has an
+// arranger (the year then dates the arrangement, and the book's year is a
+// better proxy for that than the piece's own copyright year), else the
+// piece's plain effective yearWritten. Shared by buildFlatCitation and
+// buildTwoSentenceCitation.
+func citationYear(eff *repo.EffectivePiece, arranger, arrangementYearWritten string) string {
+	if arranger != "" {
+		return arrangementYearWritten
 	}
-	return fmt.Sprintf("Arrangement by %s.", arranger)
+	return eff.YearWritten.Value
 }
 
 // buildTwoSentenceCitation is the design artifact §4 structure, extended
@@ -290,15 +289,10 @@ func buildArrangementSentence(arranger, year string) string {
 //     publish sentence, alongside publisher/publisherId rather than
 //     replacing them (a deliberate divergence from publisherOrIdentifierParts'
 //     normal dominant-IMSLP-wins rule — see that function's own comment).
-//  3. An arranger no longer fuses onto the composer in sentence 1 (see
-//     buildArrangementSentence above) — when one or more arrangers are
-//     present, a second sentence, "Arrangement by {arranger},
-//     {effectiveArrangementYearWritten}.", is inserted right after sentence
-//     1 — before the publish sentence and the copyright clause — and
-//     yearWritten is dropped from sentence 1's own end in that case, same as
-//     buildFlatCitation: a bare trailing year would otherwise be ambiguous
-//     between "when the original was written" and "when this arrangement
-//     was made."
+//  3. An arranger renders inline in sentence 1 as ", arr. {arranger}",
+//     right after the title (and its opus parenthetical), same placement
+//     as buildFlatCitation, and sentence 1's year becomes the arrangement
+//     year (citationYear).
 //
 // Only ever called when a book is present.
 func buildTwoSentenceCitation(in citationInput) string {
@@ -329,24 +323,21 @@ func buildTwoSentenceCitation(in citationInput) string {
 	if opus.titleParen != "" {
 		fmt.Fprintf(&sentence1, " (%s)", opus.titleParen)
 	}
+	if arranger != "" {
+		fmt.Fprintf(&sentence1, ", arr. %s", arranger)
+	}
 	if ownsImslp {
 		fmt.Fprintf(&sentence1, ", IMSLP #%s", stripImslpPrefix(eff.ImslpNumber.Value))
 	}
-	// yearWritten is dropped here whenever an arranger is present — it
-	// moves into the arrangement sentence below instead (see this
-	// function's own doc comment, rule 3).
-	if arranger == "" && eff.YearWritten.Value != "" {
-		fmt.Fprintf(&sentence1, ", %s", eff.YearWritten.Value)
+	if year := citationYear(eff, arranger, in.arrangementYearWritten); year != "" {
+		fmt.Fprintf(&sentence1, ", %s", year)
 	}
 	sentence1.WriteString(".")
 
 	parts := []string{sentence1.String()}
-	if arranger != "" {
-		parts = append(parts, buildArrangementSentence(arranger, in.arrangementYearWritten))
-	}
 
 	if ownsImslp {
-		if clause := copyrightClause(eff); clause != "" {
+		if clause := copyrightClause(eff, in.composerNames, in.arrangerNames); clause != "" {
 			parts = append(parts, clause)
 		}
 		return strings.Join(parts, " ")
@@ -381,7 +372,7 @@ func buildTwoSentenceCitation(in citationInput) string {
 		parts = append(parts, verb+strings.Join(publishParts, ", ")+".")
 	}
 
-	if clause := copyrightClause(eff); clause != "" {
+	if clause := copyrightClause(eff, in.composerNames, in.arrangerNames); clause != "" {
 		parts = append(parts, clause)
 	}
 	return strings.Join(parts, " ")
@@ -389,22 +380,17 @@ func buildTwoSentenceCitation(in citationInput) string {
 
 // buildFlatCitation is the original (pre-Public Domain Badge feature) v1
 // format: {composer}, {Book.bookTitle}, "{title}" ({workOpusNumber}),
-// {publisher}, {imslpNumber falling back to publisherId}, {yearWritten} —
+// arr. {arranger}, {publisher}, {imslpNumber falling back to publisherId},
+// {yearWritten} —
 // every blank component omitted entirely, never shown as empty
 // punctuation. This is deliberately not generic CITATION_FORMAT token
 // substitution: blank-field omission doesn't fit a plain-substitution
 // model, and a real conditional template engine is out of scope for now
 // (design doc §6, §13).
 //
-// An arranger no longer fuses onto the composer here — when one or more
-// arrangers are present, this becomes two sentences instead of one:
-// sentence 1 ends in a period regardless of whether yearWritten would
-// otherwise have supplied one (endsWithPeriod), followed by
-// buildArrangementSentence's own "Arrangement by {arranger},
-// {effectiveArrangementYearWritten}." — yearWritten itself is dropped from
-// sentence 1 in that case, so a bare trailing year is never ambiguous
-// between "when the original was written" and "when this arrangement was
-// made."
+// An arranger renders inline as its own "arr. {arranger}" part right after
+// the title, and the trailing year becomes the arrangement year
+// (citationYear): one line either way, nothing else in it moves.
 //
 // This diverges from §6's spec in several places — arranger placement,
 // IMSLP/ISBN formatting and fallback precedence, book-opus-number
@@ -437,22 +423,21 @@ func buildFlatCitation(eff *repo.EffectivePiece, composerNames, arrangerNames []
 	}
 	parts = append(parts, titlePart)
 
-	parts = append(parts, publisherOrIdentifierParts(eff, isbn)...)
-
 	arranger := joinPersonNames(arrangerNames)
-	if arranger == "" {
-		// yearWritten is always the citation's last component when
-		// present, so appending the period here — rather than after the
-		// final Join — lands it at the very end of the citation without
-		// needing a separate no-op-when-blank check on the whole result.
-		if eff.YearWritten.Value != "" {
-			parts = append(parts, eff.YearWritten.Value+".")
-		}
-		return strings.Join(parts, ", ")
+	if arranger != "" {
+		parts = append(parts, "arr. "+arranger)
 	}
 
-	sentence1 := endsWithPeriod(strings.Join(parts, ", "))
-	return sentence1 + " " + buildArrangementSentence(arranger, arrangementYearWritten)
+	parts = append(parts, publisherOrIdentifierParts(eff, isbn)...)
+
+	// The year is always the citation's last component when present, so
+	// appending the period here, rather than after the final Join, lands
+	// it at the very end of the citation without needing a separate
+	// no-op-when-blank check on the whole result.
+	if year := citationYear(eff, arranger, arrangementYearWritten); year != "" {
+		parts = append(parts, year+".")
+	}
+	return strings.Join(parts, ", ")
 }
 
 // publisherOrIdentifierParts is the shared publisher/publisherId/IMSLP/ISBN
@@ -510,9 +495,12 @@ func fusePublisherAndID(publisher, publisherID string) string {
 
 // copyrightClause is the "Copyright © {year} (renewed) {holder}. {slug}"
 // trailing note for an In Copyright/Copyleft piece (design artifact §4).
-// CopyrightHolder falls back to the piece's effective Publisher when
-// unset — citation-only, doesn't change what's stored/displayed anywhere
-// else. Omitted entirely (returns "") when there's neither a year nor an
+// CopyrightHolder falls back when unset (citation-only, doesn't change
+// what's stored/displayed anywhere else): to the arranger(s), else the
+// composer(s), when the effective publisher is "self-published"
+// (isSelfPublished), since the work's own creator holds it rather than a
+// literal "Self-Published" imprint; otherwise to the effective Publisher.
+// An explicitly entered holder always wins. Omitted entirely (returns "") when there's neither a year nor an
 // effective holder to attribute to, matching this codebase's "never
 // render empty punctuation" citation convention.
 //
@@ -524,8 +512,14 @@ func fusePublisherAndID(publisher, publisherID string) string {
 // its filing window the renewal happened — see
 // internal/copyright.ComputeLikelyPublicDomain's own doc comment), so
 // there's nothing more precise to add here than the bare fact itself.
-func copyrightClause(eff *repo.EffectivePiece) string {
+func copyrightClause(eff *repo.EffectivePiece, composerNames, arrangerNames []string) string {
 	holder := eff.CopyrightHolder.Value
+	if holder == "" && isSelfPublished(eff.Publisher.Value) {
+		holder = joinPersonNames(arrangerNames)
+		if holder == "" {
+			holder = joinPersonNames(composerNames)
+		}
+	}
 	if holder == "" {
 		holder = eff.Publisher.Value
 	}
@@ -555,6 +549,20 @@ func copyrightClause(eff *repo.EffectivePiece) string {
 		base += " " + endsWithPeriod(eff.CopyrightSlug.Value)
 	}
 	return base
+}
+
+// isSelfPublished reports whether a publisher value means "self-published",
+// ignoring case, spaces, and punctuation: "Self-Published", "self
+// published", "SELF PUBLISHED." and "Self–published" all match. Only
+// letters and digits are compared.
+func isSelfPublished(publisher string) bool {
+	var b strings.Builder
+	for _, r := range publisher {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			b.WriteRune(unicode.ToLower(r))
+		}
+	}
+	return b.String() == "selfpublished"
 }
 
 // endsWithPeriod appends a trailing period only if s doesn't already have

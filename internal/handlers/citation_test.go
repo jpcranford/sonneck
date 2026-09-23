@@ -162,12 +162,12 @@ func TestCitation_ImslpNumberGetsHashLabelAndStripsExistingPrefix(t *testing.T) 
 	}
 }
 
-// An arranger gets its own trailing sentence, "Arrangement by {arranger},
-// {effectiveArrangementYearWritten}." — not fused onto the composer the
-// way it used to be ("Author, arr. Arranger, ..."). No year is set on this
-// piece anywhere (no yearWritten, no book, no copyrightYear), so the
-// sentence renders bare, with no trailing ", {year}".
-func TestCitation_ArrangerGetsOwnSentence(t *testing.T) {
+// An arranger renders inline right after the title as ", arr. {arranger}"
+// (no separate sentence). No year is set on this piece anywhere (no
+// yearWritten, no book, no copyrightYear), so the citation ends bare, with
+// no trailing year or period, the same no-year convention every other
+// citation follows.
+func TestCitation_ArrangerRendersInlineAfterTitle(t *testing.T) {
 	h := newTestServer(t)
 	dir := t.TempDir()
 	path := dir + "/piece.pdf"
@@ -188,7 +188,7 @@ func TestCitation_ArrangerGetsOwnSentence(t *testing.T) {
 	}
 	decodeData(t, citeRec, &citation)
 
-	want := `Robert Schumann, "Solo". Arrangement by J. Someone.`
+	want := `Robert Schumann, "Solo", arr. J. Someone`
 	if citation.Citation != want {
 		t.Errorf("citation = %q, want %q", citation.Citation, want)
 	}
@@ -196,9 +196,7 @@ func TestCitation_ArrangerGetsOwnSentence(t *testing.T) {
 
 // TestCitation_ArrangerAloneWithNoComposer covers the composer-OR-arranger
 // rule's effect on the citation specifically: with no composer at all,
-// sentence 1 has no composer segment to lead with — it's just the bare
-// title — since the arranger no longer renders inline there at all (own
-// sentence below, same as when a composer is present).
+// the citation leads with the bare title, then the inline arranger.
 func TestCitation_ArrangerAloneWithNoComposer(t *testing.T) {
 	h := newTestServer(t)
 	dir := t.TempDir()
@@ -219,7 +217,7 @@ func TestCitation_ArrangerAloneWithNoComposer(t *testing.T) {
 	}
 	decodeData(t, citeRec, &citation)
 
-	want := `"Traditional Tune". Arrangement by J. Someone.`
+	want := `"Traditional Tune", arr. J. Someone`
 	if citation.Citation != want {
 		t.Errorf("citation = %q, want %q", citation.Citation, want)
 	}
@@ -233,14 +231,14 @@ func TestCitation_ArrangerAloneWithNoComposer(t *testing.T) {
 // skip tier 1 the same way — but its copyrightYear (1920) and its book's
 // yearPublished (2015) are deliberately different values, so the two
 // chains would disagree on tier 2 if this test used plain yearWritten
-// resolution: it would show "1920". The arrangement sentence shows "2015"
+// resolution: it would show "1920". The citation's year shows "2015"
 // instead, proving the swap actually took effect rather than the two
 // chains coincidentally agreeing. copyrightStatus is pinned explicitly to
 // "publicDomain" so this stays on the flat-citation path (buildCitation's
 // own hasBook-and-showsCopyrightClause gate) regardless of book presence,
 // and copyrightYear=1920 is old enough that the live calculation agrees
 // with that pick too — no contradiction note, keeping the citation's own
-// tail exactly the "Arrangement by..." sentence this test is about.
+// tail exactly the arranger/year this test is about.
 func TestCitation_ArrangementYearPrefersBookYearPublishedOverCopyrightYear(t *testing.T) {
 	h := newTestServer(t)
 	bookID, _ := uploadBook(t, h, "book.pdf", 1)
@@ -275,19 +273,19 @@ func TestCitation_ArrangementYearPrefersBookYearPublishedOverCopyrightYear(t *te
 	}
 	decodeData(t, rec, &citation)
 
-	want := `Jane Doe, Songbook, "Folk Medley". Arrangement by Sam Smith, 2015.`
+	want := `Jane Doe, Songbook, "Folk Medley", arr. Sam Smith, 2015.`
 	if citation.Citation != want {
 		t.Errorf("citation = %q, want %q", citation.Citation, want)
 	}
 }
 
-// The arrangement sentence lands right after sentence 1, ahead of both the
-// "Published by/in..." sentence and the copyright clause — an otherwise
-// identical fixture to TestCitation_OpusMatchWithNoImslpUsesPublishedByWording
-// (same book/piece numbers), just with an arranger added, so sentence 1
-// and the publish sentence read exactly the same as that test, with the
-// new sentence inserted between them.
-func TestCitation_ArrangementSentencePrecedesPublishSentence(t *testing.T) {
+// In the two-sentence "written / published" citation the arranger goes
+// inline in sentence 1, right after the title, with the arrangement year
+// ending that sentence. Otherwise identical fixture to
+// TestCitation_OpusMatchWithNoImslpUsesPublishedByWording (same book/piece
+// numbers), so the publish sentence and copyright clause read exactly the
+// same as that test.
+func TestCitation_ArrangerInlineInTwoSentenceCitation(t *testing.T) {
 	h := newTestServer(t)
 	bookID, _ := uploadBook(t, h, "book.pdf", 4)
 	decodeData(t, doJSON(t, h, http.MethodPatch, apiBooksURL(bookID), map[string]any{
@@ -323,7 +321,7 @@ func TestCitation_ArrangementSentencePrecedesPublishSentence(t *testing.T) {
 	}
 	decodeData(t, rec, &citation)
 
-	want := `Jane Doe, Album for the Young, Op. 68, No. 3 "The Reaper's Song". Arrangement by Alex Arranger, 1878. Published by Henle Verlag, 2015. Copyright © 2015 Henle Verlag.`
+	want := `Jane Doe, Album for the Young, Op. 68, No. 3 "The Reaper's Song", arr. Alex Arranger, 1878. Published by Henle Verlag, 2015. Copyright © 2015 Henle Verlag.`
 	if citation.Citation != want {
 		t.Errorf("citation = %q, want %q", citation.Citation, want)
 	}
@@ -1107,8 +1105,107 @@ func TestCitation_TitleDoubleQuotesBecomeSingleQuotes(t *testing.T) {
 	}
 	decodeData(t, citeRec, &citation)
 
-	want := `Joe Hisaishi, "Merry-Go-Round of Life from 'Howl's Moving Castle'", Sony/ATV Music Publishing (UK). Arrangement by M. Yamamoto, 2004. Copyright © Sony/ATV Music Publishing (UK).`
+	want := `Joe Hisaishi, "Merry-Go-Round of Life from 'Howl's Moving Castle'", arr. M. Yamamoto, Sony/ATV Music Publishing (UK), 2004. Copyright © Sony/ATV Music Publishing (UK).`
 	if citation.Citation != want {
 		t.Errorf("citation = %q, want %q", citation.Citation, want)
+	}
+}
+
+// An arranger only adds its inline ", arr. {arranger}". Every other part of
+// the line (here the piece's own IMSLP number) stays exactly where it was.
+func TestCitation_ArrangerKeepsImslpInPlace(t *testing.T) {
+	h := newTestServer(t)
+	dir := t.TempDir()
+	path := dir + "/piece.pdf"
+	writeFixturePDF(t, path, 1)
+	rec := recordRequest(h, multipartUpload(t, "/api/pieces", "piece.pdf", readAll(t, path)))
+	var uploaded pieceResponse
+	decodeData(t, rec, &uploaded)
+
+	decodeData(t, doJSON(t, h, http.MethodPatch, apiPiecesURL(uploaded.ID), map[string]any{
+		"title":       "Solo",
+		"composers":   []string{"Someone"},
+		"arrangers":   []string{"J. Arranger"},
+		"imslpNumber": "04154",
+		"yearWritten": "1901",
+	}), nil)
+
+	citeRec := doJSON(t, h, http.MethodGet, apiPiecesURL(uploaded.ID)+"/citation", nil)
+	var citation struct {
+		Citation string `json:"citation"`
+	}
+	decodeData(t, citeRec, &citation)
+
+	want := `Someone, "Solo", arr. J. Arranger, IMSLP #04154, 1901.`
+	if citation.Citation != want {
+		t.Errorf("citation = %q, want %q", citation.Citation, want)
+	}
+}
+
+// selfPublishedCitation uploads a piece with the given fields, In Copyright
+// (copyright year 2021, no book), and returns its citation.
+func selfPublishedCitation(t *testing.T, fields map[string]any) string {
+	t.Helper()
+	h := newTestServer(t)
+	dir := t.TempDir()
+	path := dir + "/piece.pdf"
+	writeFixturePDF(t, path, 1)
+	rec := recordRequest(h, multipartUpload(t, "/api/pieces", "piece.pdf", readAll(t, path)))
+	var uploaded pieceResponse
+	decodeData(t, rec, &uploaded)
+
+	body := map[string]any{"title": "Solo", "copyrightYear": 2021}
+	for k, v := range fields {
+		body[k] = v
+	}
+	decodeData(t, doJSON(t, h, http.MethodPatch, apiPiecesURL(uploaded.ID), body), nil)
+
+	citeRec := doJSON(t, h, http.MethodGet, apiPiecesURL(uploaded.ID)+"/citation", nil)
+	var citation struct {
+		Citation string `json:"citation"`
+	}
+	decodeData(t, citeRec, &citation)
+	return citation.Citation
+}
+
+// A "self-published" publisher (any case/spacing/punctuation) with no
+// explicit copyright holder credits the arranger(s), not the literal
+// publisher text.
+func TestCitation_SelfPublishedHolderFallsBackToArranger(t *testing.T) {
+	got := selfPublishedCitation(t, map[string]any{
+		"composers": []string{"Jane Composer"},
+		"arrangers": []string{"Sam Arranger", "Pat Arranger"},
+		"publisher": "SELF published",
+	})
+	want := `Jane Composer, "Solo", arr. Sam Arranger and Pat Arranger, SELF published, 2021. Copyright © 2021 Sam Arranger and Pat Arranger.`
+	if got != want {
+		t.Errorf("citation = %q, want %q", got, want)
+	}
+}
+
+// No arranger: the self-published fallback credits the composer(s).
+func TestCitation_SelfPublishedHolderFallsBackToComposer(t *testing.T) {
+	got := selfPublishedCitation(t, map[string]any{
+		"composers": []string{"Jane Composer"},
+		"publisher": "Self-Published",
+	})
+	want := `Jane Composer, "Solo", Self-Published, 2021. Copyright © 2021 Jane Composer.`
+	if got != want {
+		t.Errorf("citation = %q, want %q", got, want)
+	}
+}
+
+// An explicitly entered copyright holder always wins over the
+// self-published fallback.
+func TestCitation_SelfPublishedExplicitHolderWins(t *testing.T) {
+	got := selfPublishedCitation(t, map[string]any{
+		"composers":       []string{"Jane Composer"},
+		"arrangers":       []string{"Sam Arranger"},
+		"publisher":       "Self-Published",
+		"copyrightHolder": "Doe Music LLC",
+	})
+	want := `Jane Composer, "Solo", arr. Sam Arranger, Self-Published, 2021. Copyright © 2021 Doe Music LLC.`
+	if got != want {
+		t.Errorf("citation = %q, want %q", got, want)
 	}
 }
