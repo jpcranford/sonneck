@@ -306,10 +306,6 @@ export function SetlistDetailsMockup() {
     setEditSetlistOpen(true)
   }
 
-  // Download Set PDF's own "+ Annotations" dropdown — same toggle-only
-  // state PiecePage.tsx's own `downloadOpen` uses (no outside-click
-  // dismiss there either, confirmed by reading that file directly).
-  const [downloadOpen, setDownloadOpen] = useState(false)
 
   const displayNumbers = useMemo(() => computeDisplayNumbers(entries), [entries])
   // Only entries with a known duration contribute — omit the duration
@@ -426,8 +422,8 @@ export function SetlistDetailsMockup() {
         Reference sample — <span className="font-medium text-ink">Setlist Details</span> (design doc §13, Phase 6).
         Built against the approved Option B ("Stats dashboard") layout and Phase 3's rough-in decisions. Play Set
         (moved above the description, direct instruction) is inert — its own dependency, the Sheet Viewer's core
-        playback, isn't built yet; Download Set PDF, right next to it, is a literal port of PieceDetailsSample.tsx's own
-        Download PDF split-button/"+ Annotations" dropdown, relabeled for the whole set. Edit setlist, Edit Program,
+        playback, isn't built yet; Download Set PDF, right next to it, is temporarily
+        inert too, while the generated PDF's design is revisited. Edit setlist, Edit Program,
         Archive, Duplicate, and Delete are genuinely interactive — Edit setlist and Edit Program both open
         EditSetlistMockup.tsx's own real modal, landed on its "Setlist Details"/"Program Order" tab respectively (the
         full-fold decision — there's no separate Edit Program modal anymore), Edit setlist also reachable via the
@@ -527,49 +523,22 @@ export function SetlistDetailsMockup() {
           Play Set
         </InfoTooltip>
 
-        <div className="relative">
-          <div className="flex">
-            {/* Both segments own a full border (not just the outer edges),
-                deliberately — the second button pulls 1px left
-                (`-ml-px`) to sit its own left border exactly on top of
-                the first button's right border, so at rest (both
-                border-border) it still reads as a single 1px seam. On
-                hover, `z-10` lifts that segment's entire border above its
-                neighbor's at the shared pixel line, so the accent color
-                genuinely comes from whichever side is hovered — hover the
-                label and the seam recolors from the label's side; hover
-                the caret and it recolors from the caret's side instead,
-                rather than one segment silently owning the divider no
-                matter which side is hovered. */}
-            <button
-              type="button"
-              className="relative flex cursor-pointer items-center gap-2 rounded-l-md border border-border bg-paper-raised px-4 py-2 font-display text-sm text-ink transition-colors hover:z-10 hover:border-accent"
-            >
-              <IconDownload size={16} />
-              Download Set PDF
-            </button>
-            <button
-              type="button"
-              onClick={() => setDownloadOpen((o) => !o)}
-              aria-label="More download options"
-              className="relative -ml-px flex cursor-pointer items-center justify-center rounded-r-md border border-border bg-paper-raised px-2 text-ink transition-colors hover:z-10 hover:border-accent"
-            >
-              <IconChevronDownFilled size={16} />
-            </button>
-          </div>
-          {downloadOpen && (
-            <div className="absolute top-full left-0 z-10 mt-1 w-64 overflow-hidden rounded-md border border-border bg-paper-raised py-1 text-left shadow-lg">
-              <button
-                type="button"
-                disabled
-                className="block w-full cursor-not-allowed px-3 py-2 text-left text-sm text-ink-soft/50"
-              >
-                Download Set PDF + Annotations
-                <span className="block text-xs italic">Coming with annotations (§13)</span>
-              </button>
-            </div>
-          )}
-        </div>
+        {/* Temporarily inert while the generated PDF's design is revisited —
+            mirrors SetlistPage.tsx. Same InfoTooltip posture as Play Set. */}
+        <InfoTooltip
+          message="Temporarily unavailable — the Set PDF is being redesigned and will return in a later update."
+          ariaLabel="Download Set PDF (temporarily unavailable)"
+          showPointerCursor={false}
+          triggerClassName="flex opacity-50"
+        >
+          <span className="flex items-center gap-2 rounded-l-md border border-border bg-paper-raised px-4 py-2 font-display text-sm text-ink">
+            <IconDownload size={16} />
+            Download Set PDF
+          </span>
+          <span className="-ml-px flex items-center justify-center rounded-r-md border border-border bg-paper-raised px-2 text-ink">
+            <IconChevronDownFilled size={16} />
+          </span>
+        </InfoTooltip>
       </div>
 
       {/* Description + summary fields — locked to BookDetailsPage.tsx's own

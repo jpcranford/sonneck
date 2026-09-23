@@ -15,3 +15,4 @@ frontend/vite.throwaway.config.ts
 # itself stays committed so the directory exists without it.
 cmd/sonneck-desktop/build/bin/
 cmd/sonneck-desktop/frontend/wailsjs/
+/.codebase-memory

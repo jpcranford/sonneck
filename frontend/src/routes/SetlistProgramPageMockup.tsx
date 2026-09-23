@@ -120,6 +120,12 @@ export function SetlistProgramPageMockup() {
         locked page directions, in packet order: Cover, Table of Contents, a Generated Program Page (for a custom,
         non-piece entry), and Colophon — each chosen from its own wider comparison pass. Only the cover and colophon
         carry any reference to the app itself.
+        <div className="mt-2">
+          The ❧ fleuron on the Cover and Generated Program Page now renders via a real self-hosted candidate font
+          (Noto Sans Symbols 2, subsetted) rather than an unstyled character — neither Libre Baskerville nor Cabin
+          contains this glyph, so the real PDF generator currently falls back to a hand-drawn diamond ornament
+          instead. Live comparison, not yet a locked decision.
+        </div>
         <div className="mt-3 flex items-center gap-2">
           <span className="text-xs font-medium text-ink-soft">Page shape:</span>
           {SHAPES.map((s) => (
@@ -146,7 +152,15 @@ export function SetlistProgramPageMockup() {
           <PageShell ratio={shape.ratio}>
             <div className="absolute inset-4 border border-border" />
             <div className="absolute inset-6 flex flex-col items-center justify-center gap-2.5 border border-border/60 px-8 text-center">
-              <span className="text-xl text-accent" aria-hidden="true">
+              {/* Fleuron Symbol (Noto Sans Symbols 2, self-hosted subset,
+                  index.css) — the real candidate glyph for this divider
+                  mark, not the browser's own uncontrolled system
+                  fallback for an unstyled U+2767. Neither Libre
+                  Baskerville nor Cabin contains this glyph; the real PDF
+                  generator currently falls back to a hand-drawn diamond
+                  ornament instead — this is a live comparison, not yet a
+                  locked decision. */}
+              <span className="text-xl text-accent" style={{ fontFamily: 'Fleuron Symbol' }} aria-hidden="true">
                 ❧
               </span>
               <span className="text-xs font-semibold tracking-wide text-ink-soft uppercase">{SETLIST.gigDate}</span>
@@ -215,7 +229,7 @@ export function SetlistProgramPageMockup() {
           </div>
           <PageShell ratio={shape.ratio}>
             <div className="absolute inset-6 flex flex-col items-center justify-center gap-3 border border-border px-8 text-center">
-              <span className="text-xl text-accent" aria-hidden="true">
+              <span className="text-xl text-accent" style={{ fontFamily: 'Fleuron Symbol' }} aria-hidden="true">
                 ❧
               </span>
               {entry.role && (

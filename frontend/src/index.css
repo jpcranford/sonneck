@@ -287,6 +287,27 @@
     U+ED60-ED64, U+1D11E, U+1D121, U+1D122;
 }
 
+/* Noto Sans Symbols 2 (Google, SIL OFL 1.1) — exploratory candidate for
+   the ❧ (U+2767, FLORAL HEART) fleuron the Setlist Program Page designs
+   use as a divider mark. Neither Libre Baskerville nor Cabin contains
+   this glyph in any weight (confirmed via fc-query), so the real "Download
+   Set PDF" generator (internal/setlistpdf) currently falls back to a
+   hand-drawn diamond-and-rule ornament instead — this font-face exists so
+   SetlistProgramPageMockup.tsx can show the *actual* candidate glyph
+   in-place, rather than whatever a viewer's own system happens to
+   substitute for an unstyled Unicode character, which isn't a reliable
+   comparison. Subsetted with fonttools (pyftsubset) down to exactly this
+   one codepoint — 2.5KB, not the full ~1.2MB release file. Not yet used
+   by the real PDF generator; this is mockup-only pending a decision. */
+@font-face {
+  font-family: 'Fleuron Symbol';
+  font-style: normal;
+  font-weight: normal;
+  font-display: swap;
+  src: url('./assets/fonts/noto-symbols2-fleuron-subset.woff2') format('woff2');
+  unicode-range: U+2767;
+}
+
 /* Design tokens. Tailwind v4's CSS-first config: these become usable as
    e.g. bg-paper, text-ink, font-display utilities. */
 @theme {
