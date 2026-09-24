@@ -34,6 +34,7 @@ import { joinNames, pieceTitleCredit } from '../lib/joinNames'
 import { useAuth } from '../lib/AuthContext'
 import { usePageTitle } from '../lib/usePageTitle'
 import { yearWrittenSource } from '../lib/yearWrittenSource'
+import { DownloadLink } from '../components/DownloadLink'
 import { PersonNameLinks } from '../components/PersonNameLinks'
 import {
   deletePiece,
@@ -767,14 +768,13 @@ export function PiecePage() {
                     all, matching this page's other disabled buttons. */}
                 <div className="flex">
                   {canDownload ? (
-                    <a
+                    <DownloadLink
                       href={getPieceFileUrl(piece.id)}
-                      download
                       className="relative flex items-center gap-2 rounded-l-md border border-border bg-paper-raised px-4 py-2 font-display text-sm text-ink transition-colors hover:z-10 hover:border-accent"
                     >
                       <IconDownload size={16} />
                       Download PDF
-                    </a>
+                    </DownloadLink>
                   ) : (
                     <button
                       type="button"
@@ -804,13 +804,12 @@ export function PiecePage() {
                         background tint is the right feedback here, just
                         the app's own real tint token rather than the
                         one-off accent-soft this used before). */}
-                    <a
+                    <DownloadLink
                       href={getPieceFileUrl(piece.id)}
-                      download
                       className="block w-full px-3 py-2 text-left text-sm text-ink hover:bg-paper"
                     >
                       Download Piece PDF
-                    </a>
+                    </DownloadLink>
                     <button
                       type="button"
                       disabled
