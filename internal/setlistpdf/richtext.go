@@ -4,6 +4,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"unicode"
 
 	"codeberg.org/go-pdf/fpdf"
 )
@@ -71,6 +72,11 @@ type richWord struct {
 	bold, italic bool
 	symbol       bool // draw via fontSymbol instead of the caller's base family
 	breakBefore  bool // this word starts a new visual line (a single \n in the source)
+	// glued: no whitespace separated this from the previous word in the
+	// source (a style or shortcode boundary inside one word, e.g. the "."
+	// in "*subito :pp:*."), so it's drawn with no space before it and
+	// never wrapped away from it.
+	glued bool
 }
 
 type richParagraph struct {
@@ -122,30 +128,34 @@ func parseRichText(markdown string, ambientItalic bool) []richParagraph {
 // resulting segment (see richEmphasis's own doc comment for why), finally
 // splitting everything into individual whitespace-separated words
 // carrying their own resolved style, so drawRichText can wrap at word
-// boundaries without losing which style each word belongs to.
+// boundaries without losing which style each word belongs to. A word
+// that touches the previous one with no whitespace between them in the
+// source — across a style or shortcode boundary — is marked glued.
 func tokenizeLine(line string, ambientItalic bool) []richWord {
-	var words []richWord
+	// runs is the line in source order, each piece with its resolved
+	// style; whitespace is still inside the plain runs at this point.
+	type run struct {
+		text                 string
+		bold, italic, symbol bool
+	}
+	var runs []run
 
 	// appendSegment resolves any :shortcode: tokens within one already
-	// emphasis-resolved segment, splitting the rest into plain words
+	// emphasis-resolved segment, keeping the text around them as runs
 	// carrying the given (bold, italic) style.
 	appendSegment := func(text string, bold, italic bool) {
 		last := 0
 		for _, m := range richShortcode.FindAllStringSubmatchIndex(text, -1) {
-			for _, w := range strings.Fields(text[last:m[0]]) {
-				words = append(words, richWord{text: w, bold: bold, italic: italic})
-			}
+			runs = append(runs, run{text: text[last:m[0]], bold: bold, italic: italic})
 			// The regex's own alternation is built directly from
 			// musicShortcodes' keys, so a match here can never miss the
 			// map — an unrecognized :name: simply never matches this
 			// pattern at all and falls through as ordinary plain text
-			// (including its colons) below.
-			words = append(words, richWord{text: string(musicShortcodes[text[m[2]:m[3]]]), symbol: true})
+			// (including its colons).
+			runs = append(runs, run{text: string(musicShortcodes[text[m[2]:m[3]]]), symbol: true})
 			last = m[1]
 		}
-		for _, w := range strings.Fields(text[last:]) {
-			words = append(words, richWord{text: w, bold: bold, italic: italic})
-		}
+		runs = append(runs, run{text: text[last:], bold: bold, italic: italic})
 	}
 
 	last := 0
@@ -162,6 +172,34 @@ func tokenizeLine(line string, ambientItalic bool) []richWord {
 		last = m[1]
 	}
 	appendSegment(line[last:], false, ambientItalic)
+
+	var words []richWord
+	spaceBefore := true // nothing to glue to at the start of a line
+	for _, r := range runs {
+		if r.symbol {
+			words = append(words, richWord{text: r.text, symbol: true, glued: !spaceBefore})
+			spaceBefore = false
+			continue
+		}
+		start := -1
+		for i, c := range r.text {
+			if unicode.IsSpace(c) {
+				if start >= 0 {
+					words = append(words, richWord{text: r.text[start:i], bold: r.bold, italic: r.italic, glued: !spaceBefore})
+					start = -1
+				}
+				spaceBefore = true
+				continue
+			}
+			if start < 0 {
+				start = i
+			}
+		}
+		if start >= 0 {
+			words = append(words, richWord{text: r.text[start:], bold: r.bold, italic: r.italic, glued: !spaceBefore})
+			spaceBefore = false
+		}
+	}
 	return words
 }
 
@@ -213,21 +251,37 @@ func wrapRichParagraph(pdf *fpdf.Fpdf, para richParagraph, colWidth float64, bas
 		}
 		current = richLine{}
 	}
-	for _, w := range para.words {
-		family, style := richStyleFor(w, baseFamily)
-		pdf.SetFont(family, style, baseSize)
-		ww := kernedWidth(pdf, family, style, baseSize, w.text, tracking)
+	words := para.words
+	for i := 0; i < len(words); {
+		// A word plus any glued to it wraps as one unit.
+		j := i + 1
+		for j < len(words) && words[j].glued {
+			j++
+		}
+		group := make([]placedWord, 0, j-i)
+		groupWidth := 0.0
+		for k, w := range words[i:j] {
+			family, style := richStyleFor(w, baseFamily)
+			pdf.SetFont(family, style, baseSize)
+			ww := kernedWidth(pdf, family, style, baseSize, w.text, tracking)
+			if k > 0 {
+				groupWidth += tracking
+			}
+			group = append(group, placedWord{w: w, width: ww})
+			groupWidth += ww
+		}
 
-		needsBreak := w.breakBefore && len(current.words) > 0
-		overflows := len(current.words) > 0 && current.width+sp+ww > colWidth
+		needsBreak := words[i].breakBefore && len(current.words) > 0
+		overflows := len(current.words) > 0 && current.width+sp+groupWidth > colWidth
 		if needsBreak || overflows {
 			flush()
 		}
 		if len(current.words) > 0 {
 			current.width += sp
 		}
-		current.words = append(current.words, placedWord{w: w, width: ww})
-		current.width += ww
+		current.words = append(current.words, group...)
+		current.width += groupWidth
+		i = j
 	}
 	flush()
 	return lines
@@ -271,7 +325,11 @@ func drawRichText(pdf *fpdf.Fpdf, x0, y, colWidth, lineHeight, paragraphSpacing 
 			baseline := y + fpdfCellBaseline*baseSize
 			for i, pw := range line.words {
 				if i > 0 {
-					x += sp
+					if pw.w.glued {
+						x += tracking
+					} else {
+						x += sp
+					}
 				}
 				family, style := richStyleFor(pw.w, baseFamily)
 				pdf.SetFont(family, style, baseSize)

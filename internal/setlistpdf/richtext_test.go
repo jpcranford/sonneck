@@ -117,3 +117,62 @@ func TestParseRichText_UnknownShortcodeLeftLiteral(t *testing.T) {
 		t.Errorf("unrecognized shortcode text should be left as literal plain text")
 	}
 }
+
+func TestParseRichText_GluedAcrossStyleAndShortcodeBoundaries(t *testing.T) {
+	// Punctuation touching an emphasis span or a shortcode in the source
+	// stays attached — no space before it — while real spaces still
+	// separate words.
+	cases := []struct {
+		source string
+		want   []string // each word, prefixed "+" when glued to the previous
+	}{
+		{"before the *subito :pp:*.", []string{"before", "the", "subito", string(rune(0xE52B)), "+."}},
+		{"with *emphasis*, then", []string{"with", "emphasis", "+,", "then"}},
+		{"in B:flat: major", []string{"in", "B", "+" + string(rune(0x266D)), "major"}},
+		{"**bold**text", []string{"bold", "+text"}},
+		{"a :ff: b", []string{"a", string(rune(0xE52F)), "b"}},
+	}
+	for _, c := range cases {
+		words := parseRichText(c.source, false)[0].words
+		var got []string
+		for _, w := range words {
+			if w.glued {
+				got = append(got, "+"+w.text)
+			} else {
+				got = append(got, w.text)
+			}
+		}
+		if len(got) != len(c.want) {
+			t.Errorf("%q: words = %q, want %q", c.source, got, c.want)
+			continue
+		}
+		for i := range got {
+			if got[i] != c.want[i] {
+				t.Errorf("%q: words = %q, want %q", c.source, got, c.want)
+				break
+			}
+		}
+	}
+}
+
+func TestWrapRichParagraph_NeverSplitsGluedWords(t *testing.T) {
+	pdf := newTestPDF()
+	para := parseRichText("aaaa bbbb *cccc*.", false)[0]
+	pdf.SetFont(fontSans, "", 12)
+	// Wide enough for "aaaa bbbb cccc" but not the trailing "."; the "."
+	// must carry "cccc" down with it rather than wrap alone.
+	width := kernedWidth(pdf, fontSans, "", 12, "aaaa bbbb cccc", 0) + 0.5
+	lines := wrapRichParagraph(pdf, para, width, fontSans, 12, 0)
+	last := lines[len(lines)-1].words
+	if len(last) < 2 || last[0].w.text != "cccc" || last[1].w.text != "." {
+		var got [][]string
+		for _, l := range lines {
+			var ws []string
+			for _, w := range l.words {
+				ws = append(ws, w.w.text)
+			}
+			got = append(got, ws)
+		}
+		t.Errorf("lines = %q, want the glued \"cccc\" + \".\" moved to the last line together", got)
+	}
+}
