@@ -197,10 +197,13 @@ type placedWord struct {
 }
 
 // wrapRichParagraph breaks one paragraph into lines no wider than
-// colWidth, measuring each word in its own resolved font.
-func wrapRichParagraph(pdf *fpdf.Fpdf, para richParagraph, colWidth float64, baseFamily string, baseSize float64) []richLine {
+// colWidth, measuring each word kerned in its own resolved font (see
+// kerning.go). tracking is extra space between characters, as CSS
+// letter-spacing adds it — a word boundary carries it twice (after the
+// word's last letter, and after the space).
+func wrapRichParagraph(pdf *fpdf.Fpdf, para richParagraph, colWidth float64, baseFamily string, baseSize, tracking float64) []richLine {
 	pdf.SetFont(baseFamily, "", baseSize)
-	sp := pdf.GetStringWidth(" ")
+	sp := pdf.GetStringWidth(" ") + 2*tracking
 
 	var lines []richLine
 	var current richLine
@@ -213,7 +216,7 @@ func wrapRichParagraph(pdf *fpdf.Fpdf, para richParagraph, colWidth float64, bas
 	for _, w := range para.words {
 		family, style := richStyleFor(w, baseFamily)
 		pdf.SetFont(family, style, baseSize)
-		ww := pdf.GetStringWidth(w.text)
+		ww := kernedWidth(pdf, family, style, baseSize, w.text, tracking)
 
 		needsBreak := w.breakBefore && len(current.words) > 0
 		overflows := len(current.words) > 0 && current.width+sp+ww > colWidth
@@ -233,36 +236,39 @@ func wrapRichParagraph(pdf *fpdf.Fpdf, para richParagraph, colWidth float64, bas
 // richTextHeight is the vertical space drawRichText would use for the same
 // arguments — every wrapped line's lineHeight, plus paragraphSpacing
 // between paragraphs — without drawing anything.
-func richTextHeight(pdf *fpdf.Fpdf, colWidth, lineHeight, paragraphSpacing float64, baseFamily string, baseSize float64, paragraphs []richParagraph) float64 {
+func richTextHeight(pdf *fpdf.Fpdf, colWidth, lineHeight, paragraphSpacing float64, baseFamily string, baseSize, tracking float64, paragraphs []richParagraph) float64 {
 	h := 0.0
 	for pi, para := range paragraphs {
 		if pi > 0 {
 			h += paragraphSpacing
 		}
-		h += float64(len(wrapRichParagraph(pdf, para, colWidth, baseFamily, baseSize))) * lineHeight
+		h += float64(len(wrapRichParagraph(pdf, para, colWidth, baseFamily, baseSize, tracking))) * lineHeight
 	}
 	return h
 }
 
 // drawRichText renders parsed paragraphs word-wrapped within colWidth,
 // starting at (x0, y), returning the y position just past the last line
-// drawn. align is "C" (centered, the cover page's description) or "L"
-// (left-aligned, a custom entry's own description). Blank lines between
-// paragraphs get a touch of extra spacing (paragraphSpacing) beyond the
-// ordinary lineHeight.
-func drawRichText(pdf *fpdf.Fpdf, x0, y, colWidth, lineHeight, paragraphSpacing float64, align string, baseFamily string, baseSize float64, baseColor rgbColor, paragraphs []richParagraph) float64 {
+// drawn. y is a zero-height fpdf cell's top — each line's baseline sits
+// fpdfCellBaseline×size below it. align is "C" (centered, the cover page's
+// description) or "L" (left-aligned, a custom entry's own description).
+// Blank lines between paragraphs get a touch of extra spacing
+// (paragraphSpacing) beyond the ordinary lineHeight. tracking is extra
+// space between characters (0 for none); text is kerned either way.
+func drawRichText(pdf *fpdf.Fpdf, x0, y, colWidth, lineHeight, paragraphSpacing float64, align string, baseFamily string, baseSize, tracking float64, baseColor rgbColor, paragraphs []richParagraph) float64 {
 	pdf.SetFont(baseFamily, "", baseSize)
-	sp := pdf.GetStringWidth(" ")
+	sp := pdf.GetStringWidth(" ") + 2*tracking
 
 	for pi, para := range paragraphs {
 		if pi > 0 {
 			y += paragraphSpacing
 		}
-		for _, line := range wrapRichParagraph(pdf, para, colWidth, baseFamily, baseSize) {
+		for _, line := range wrapRichParagraph(pdf, para, colWidth, baseFamily, baseSize, tracking) {
 			x := x0
 			if align == "C" {
 				x = x0 + (colWidth-line.width)/2
 			}
+			baseline := y + fpdfCellBaseline*baseSize
 			for i, pw := range line.words {
 				if i > 0 {
 					x += sp
@@ -270,8 +276,7 @@ func drawRichText(pdf *fpdf.Fpdf, x0, y, colWidth, lineHeight, paragraphSpacing 
 				family, style := richStyleFor(pw.w, baseFamily)
 				pdf.SetFont(family, style, baseSize)
 				setColor(pdf, baseColor)
-				pdf.SetXY(x, y)
-				pdf.CellFormat(pw.width, 0, pw.w.text, "", 0, "L", false, 0, "")
+				drawKerned(pdf, family, style, baseSize, x, baseline, pw.w.text, tracking)
 				x += pw.width
 			}
 			y += lineHeight

@@ -40,6 +40,7 @@ const (
 	coverRuleMargin   = 2.0
 	coverDescSize     = 12 * cabinOptical
 	coverDescLeading  = 1.4
+	coverDescTracking = 0.02 // em, the app's own Cabin tracking
 )
 
 // Cabin reads smaller than Libre Baskerville at the same size (x-height
@@ -99,20 +100,24 @@ func drawCover(pdf *fpdf.Fpdf, size fpdf.SizeType, s Setlist) {
 		blocks = append(blocks, block{lineHeight, func(top float64) {
 			pdf.SetFont(fontSans, "", coverDateSize)
 			setColor(pdf, colorInkSoft)
-			drawTrackedCentered(pdf, w, baselineIn(top, lineHeight, coverDateSize, cabinAscent, cabinDescent),
-				toUpper(s.GigDate), coverDateTracking*coverDateSize)
+			date := toUpper(s.GigDate)
+			tracking := coverDateTracking * coverDateSize
+			dateW := kernedWidth(pdf, fontSans, "", coverDateSize, date, tracking)
+			drawKerned(pdf, fontSans, "", coverDateSize, (w-dateW)/2,
+				baselineIn(top, lineHeight, coverDateSize, cabinAscent, cabinDescent), date, tracking)
 		}})
 	}
 
 	pdf.SetFont(fontDisplay, "B", coverTitleSize)
-	titleLines := pdf.SplitText(s.Name, coverColumnWidth)
+	titleLines := kernedLines(pdf, fontDisplay, "B", coverTitleSize, s.Name, 0, coverColumnWidth)
 	titleLineHeight := (baskervilleBoldAscent + baskervilleBoldDescent) * coverTitleSize
 	blocks = append(blocks, block{float64(len(titleLines)) * titleLineHeight, func(top float64) {
 		pdf.SetFont(fontDisplay, "B", coverTitleSize)
 		setColor(pdf, colorInk)
 		for i, line := range titleLines {
 			baseline := baselineIn(top+float64(i)*titleLineHeight, titleLineHeight, coverTitleSize, baskervilleBoldAscent, baskervilleBoldDescent)
-			pdf.Text((w-pdf.GetStringWidth(line))/2, baseline, line)
+			lineW := kernedWidth(pdf, fontDisplay, "B", coverTitleSize, line, 0)
+			drawKerned(pdf, fontDisplay, "B", coverTitleSize, (w-lineW)/2, baseline, line, 0)
 		}
 	}})
 
@@ -127,17 +132,15 @@ func drawCover(pdf *fpdf.Fpdf, size fpdf.SizeType, s Setlist) {
 		// mirrors index.css's `.italic em { font-style: normal }` rule
 		// (see richtext.go's own doc comment): the block's own base style
 		// is italic, so a *marked* span inverts to roman instead of
-		// double-italicizing. Line breaks can land a word differently
-		// from the mockup's: the browser kerns and tracks Cabin, fpdf does
-		// neither.
+		// double-italicizing.
 		paragraphs := parseRichText(s.Description, true)
 		lineHeight := coverDescLeading * coverDescSize
 		paragraphSpacing := lineHeight / 2
-		height := richTextHeight(pdf, coverColumnWidth, lineHeight, paragraphSpacing, fontSans, coverDescSize, paragraphs)
+		height := richTextHeight(pdf, coverColumnWidth, lineHeight, paragraphSpacing, fontSans, coverDescSize, coverDescTracking*coverDescSize, paragraphs)
 		blocks = append(blocks, block{height, func(top float64) {
 			firstBaseline := baselineIn(top, lineHeight, coverDescSize, cabinAscent, cabinDescent)
 			drawRichText(pdf, (w-coverColumnWidth)/2, firstBaseline-fpdfCellBaseline*coverDescSize,
-				coverColumnWidth, lineHeight, paragraphSpacing, "C", fontSans, coverDescSize, colorInkSoft, paragraphs)
+				coverColumnWidth, lineHeight, paragraphSpacing, "C", fontSans, coverDescSize, coverDescTracking*coverDescSize, colorInkSoft, paragraphs)
 		}})
 	}
 
@@ -156,24 +159,6 @@ func drawCover(pdf *fpdf.Fpdf, size fpdf.SizeType, s Setlist) {
 	for _, b := range blocks {
 		b.draw(top)
 		top += b.height + coverGap
-	}
-}
-
-// drawTrackedCentered draws one line centered on the page with extra
-// spacing between letters — fpdf has no letter-spacing, so each character
-// is placed individually. Tracking goes between letters only, so the line
-// stays optically centered.
-func drawTrackedCentered(pdf *fpdf.Fpdf, pageWidth, baseline float64, text string, tracking float64) {
-	runes := []rune(text)
-	width := tracking * float64(max(len(runes)-1, 0))
-	for _, r := range runes {
-		width += pdf.GetStringWidth(string(r))
-	}
-	x := (pageWidth - width) / 2
-	for _, r := range runes {
-		ch := string(r)
-		pdf.Text(x, baseline, ch)
-		x += pdf.GetStringWidth(ch) + tracking
 	}
 }
 
@@ -399,7 +384,7 @@ func drawProgramPage(pdf *fpdf.Fpdf, size fpdf.SizeType, e Entry) {
 		// ambientItalic=false here: a *marked* span renders italic as
 		// normal, matching index.css when there's no ancestor `.italic`
 		// to invert against.
-		y = drawRichText(pdf, x0, y, colWidth, 18, 6, "C", fontSans, 14, colorInkSoft, parseRichText(*e.CustomNotes, false))
+		y = drawRichText(pdf, x0, y, colWidth, 18, 6, "C", fontSans, 14, 0, colorInkSoft, parseRichText(*e.CustomNotes, false))
 		y += 10
 	}
 
