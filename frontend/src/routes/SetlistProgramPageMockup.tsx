@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { IconArrowLeft } from '@tabler/icons-react'
 import { SonneckMark } from '../components/SonneckMark'
+import { GARAMOND_FLEURON_ASPECT, GARAMOND_FLEURON_PATH, GARAMOND_FLEURON_VIEWBOX } from '../lib/garamondFleuron'
 import { CONTENT_MAX_W } from '../lib/layout'
 import { useMockupTitle } from '../lib/useMockupTitle'
 
@@ -87,16 +88,59 @@ const ENTRIES: PreviewEntry[] = [
   },
 ]
 
+// widthPt: the page's real width in PDF points, for the cover's
+// point-exact sizing below.
 const SHAPES = [
-  { key: 'letter', label: 'Letter', ratio: '8.5 / 11' },
-  { key: 'a4', label: 'A4', ratio: '210 / 297' },
+  { key: 'letter', label: 'Letter', ratio: '8.5 / 11', widthPt: 612 },
+  { key: 'a4', label: 'A4', ratio: '210 / 297', widthPt: 595 },
 ] as const
 
-function PageShell({ ratio, children }: { ratio: string; children: React.ReactNode }) {
+// The cover's three solid print colors, on pure white — fixed hexes rather
+// than theme tokens, since the printed page never follows the app's theme.
+const PRINT_INK = '#1c1815'
+const PRINT_FAINT = '#5c5349'
+const PRINT_FAINTER = '#b3a99e'
+
+// Cabin reads smaller than Libre Baskerville at the same size (x-height
+// .490 vs .530), so its sizes are scaled up by this factor to match.
+const CABIN_OPTICAL = 1.08
+
+function PageShell({
+  ratio,
+  className = 'bg-paper-raised',
+  children,
+}: {
+  ratio: string
+  className?: string
+  children: React.ReactNode
+}) {
   return (
-    <div className="relative w-full max-w-[440px] bg-paper-raised shadow-lg" style={{ aspectRatio: ratio }}>
+    <div
+      className={`relative w-full max-w-[440px] shadow-lg ${className}`}
+      style={{ aspectRatio: ratio, containerType: 'inline-size' }}
+    >
       {children}
     </div>
+  )
+}
+
+function Fleuron({ height, rotated = false, style }: { height: string; rotated?: boolean; style?: React.CSSProperties }) {
+  return (
+    <svg
+      viewBox={GARAMOND_FLEURON_VIEWBOX}
+      aria-hidden="true"
+      focusable="false"
+      style={{
+        display: 'block',
+        flexShrink: 0,
+        height,
+        width: `calc(${height} * ${GARAMOND_FLEURON_ASPECT})`,
+        transform: rotated ? 'rotate(180deg)' : undefined,
+        ...style,
+      }}
+    >
+      <path fill="currentColor" fillRule="evenodd" d={GARAMOND_FLEURON_PATH} />
+    </svg>
   )
 }
 
@@ -107,6 +151,8 @@ export function SetlistProgramPageMockup() {
   const entry = ENTRIES.find((e) => e.key === entryKey) ?? ENTRIES[0]
   const shape = SHAPES.find((s) => s.key === shapeKey) ?? SHAPES[0]
   const hasInfo = Boolean(entry.duration || entry.description)
+  // A length in real PDF points, scaled to this preview's rendered width.
+  const pt = (n: number) => `calc(${n} * 100cqw / ${shape.widthPt})`
 
   return (
     <div className={`${CONTENT_MAX_W} flex flex-1 flex-col gap-6 px-6 py-6 md:px-8 md:py-8`}>
@@ -121,10 +167,10 @@ export function SetlistProgramPageMockup() {
         non-piece entry), and Colophon — each chosen from its own wider comparison pass. Only the cover and colophon
         carry any reference to the app itself.
         <div className="mt-2">
-          The ❧ fleuron on the Cover and Generated Program Page now renders via a real self-hosted candidate font
-          (Noto Sans Symbols 2, subsetted) rather than an unstyled character — neither Libre Baskerville nor Cabin
-          contains this glyph, so the real PDF generator currently falls back to a hand-drawn diamond ornament
-          instead. Live comparison, not yet a locked decision.
+          The Cover is the locked redesign, drawn at true point sizes: two frames, Bringhurst's classical type
+          scale, three solid print colors on white, and the Garamond fleuron (redrawn from a 1927 printing of
+          Caslon's English Flowers no. 1) upright above and rotated below. The fleuron also marks the Generated
+          Program Page. internal/setlistpdf draws the Cover from these same point values.
         </div>
         <div className="mt-3 flex items-center gap-2">
           <span className="text-xs font-medium text-ink-soft">Page shape:</span>
@@ -149,28 +195,53 @@ export function SetlistProgramPageMockup() {
         {/* Cover */}
         <section className="flex flex-col items-center gap-3">
           <h2 className="font-display text-xl text-ink">Cover Page</h2>
-          <PageShell ratio={shape.ratio}>
-            <div className="absolute inset-4 border border-border" />
-            <div className="absolute inset-6 flex flex-col items-center justify-center gap-2.5 border border-border/60 px-8 text-center">
-              {/* Fleuron Symbol (Noto Sans Symbols 2, self-hosted subset,
-                  index.css) — the real candidate glyph for this divider
-                  mark, not the browser's own uncontrolled system
-                  fallback for an unstyled U+2767. Neither Libre
-                  Baskerville nor Cabin contains this glyph; the real PDF
-                  generator currently falls back to a hand-drawn diamond
-                  ornament instead — this is a live comparison, not yet a
-                  locked decision. */}
-              <span className="text-xl text-accent" style={{ fontFamily: 'Fleuron Symbol' }} aria-hidden="true">
-                ❧
+          <PageShell ratio={shape.ratio} className="bg-white">
+            <div className="absolute" style={{ inset: pt(36), border: `${pt(1)} solid ${PRINT_FAINTER}` }} />
+            <div
+              className="absolute flex flex-col items-center justify-center text-center"
+              style={{
+                inset: pt(44),
+                border: `${pt(1)} solid ${PRINT_FAINTER}`,
+                gap: pt(10),
+                padding: `0 ${pt(32)}`,
+              }}
+            >
+              <Fleuron height={pt(21)} style={{ color: PRINT_FAINTER, marginBottom: pt(8) }} />
+              <span
+                className="font-sans uppercase"
+                style={{
+                  fontSize: pt(11 * CABIN_OPTICAL),
+                  fontWeight: 400,
+                  letterSpacing: '0.1em',
+                  color: PRINT_FAINT,
+                }}
+              >
+                {SETLIST.gigDate}
               </span>
-              <span className="text-xs font-semibold tracking-wide text-ink-soft uppercase">{SETLIST.gigDate}</span>
-              <span className="font-display text-2xl font-semibold text-ink">{SETLIST.name}</span>
-              <div className="flex items-center gap-2" aria-hidden="true">
-                <span className="h-px w-7 bg-border" />
-                <span className="h-1.5 w-1.5 rotate-45 bg-accent" />
-                <span className="h-px w-7 bg-border" />
-              </div>
-              <p className="max-w-[85%] text-sm text-ink-soft italic">{COVER_DESCRIPTION}</p>
+              <span
+                className="font-display"
+                style={{ fontSize: pt(24), fontWeight: 700, color: PRINT_INK, width: pt(233) }}
+              >
+                {SETLIST.name}
+              </span>
+              <span
+                aria-hidden="true"
+                style={{ height: pt(1), width: pt(24), background: PRINT_FAINTER, margin: `${pt(2)} 0` }}
+              />
+              <p
+                className="font-sans italic"
+                style={{
+                  fontSize: pt(12 * CABIN_OPTICAL),
+                  letterSpacing: '0.02em',
+                  lineHeight: 1.4,
+                  color: PRINT_FAINT,
+                  width: pt(233),
+                  margin: 0,
+                }}
+              >
+                {COVER_DESCRIPTION}
+              </p>
+              <Fleuron height={pt(21)} rotated style={{ color: PRINT_FAINTER, marginTop: pt(8) }} />
             </div>
           </PageShell>
         </section>
@@ -229,8 +300,8 @@ export function SetlistProgramPageMockup() {
           </div>
           <PageShell ratio={shape.ratio}>
             <div className="absolute inset-6 flex flex-col items-center justify-center gap-3 border border-border px-8 text-center">
-              <span className="text-xl text-accent" style={{ fontFamily: 'Fleuron Symbol' }} aria-hidden="true">
-                ❧
+              <span className="text-accent">
+                <Fleuron height="1.25rem" />
               </span>
               {entry.role && (
                 <span className="text-xs font-semibold tracking-wide text-ink-soft uppercase">{entry.role}</span>

@@ -184,6 +184,66 @@ func richStyleFor(w richWord, baseFamily string) (family, style string) {
 	return baseFamily, ""
 }
 
+// richLine is one wrapped line of a paragraph: its words, each with its
+// own measured width, plus the line's total width including spaces.
+type richLine struct {
+	words []placedWord
+	width float64
+}
+
+type placedWord struct {
+	w     richWord
+	width float64
+}
+
+// wrapRichParagraph breaks one paragraph into lines no wider than
+// colWidth, measuring each word in its own resolved font.
+func wrapRichParagraph(pdf *fpdf.Fpdf, para richParagraph, colWidth float64, baseFamily string, baseSize float64) []richLine {
+	pdf.SetFont(baseFamily, "", baseSize)
+	sp := pdf.GetStringWidth(" ")
+
+	var lines []richLine
+	var current richLine
+	flush := func() {
+		if len(current.words) > 0 {
+			lines = append(lines, current)
+		}
+		current = richLine{}
+	}
+	for _, w := range para.words {
+		family, style := richStyleFor(w, baseFamily)
+		pdf.SetFont(family, style, baseSize)
+		ww := pdf.GetStringWidth(w.text)
+
+		needsBreak := w.breakBefore && len(current.words) > 0
+		overflows := len(current.words) > 0 && current.width+sp+ww > colWidth
+		if needsBreak || overflows {
+			flush()
+		}
+		if len(current.words) > 0 {
+			current.width += sp
+		}
+		current.words = append(current.words, placedWord{w: w, width: ww})
+		current.width += ww
+	}
+	flush()
+	return lines
+}
+
+// richTextHeight is the vertical space drawRichText would use for the same
+// arguments — every wrapped line's lineHeight, plus paragraphSpacing
+// between paragraphs — without drawing anything.
+func richTextHeight(pdf *fpdf.Fpdf, colWidth, lineHeight, paragraphSpacing float64, baseFamily string, baseSize float64, paragraphs []richParagraph) float64 {
+	h := 0.0
+	for pi, para := range paragraphs {
+		if pi > 0 {
+			h += paragraphSpacing
+		}
+		h += float64(len(wrapRichParagraph(pdf, para, colWidth, baseFamily, baseSize))) * lineHeight
+	}
+	return h
+}
+
 // drawRichText renders parsed paragraphs word-wrapped within colWidth,
 // starting at (x0, y), returning the y position just past the last line
 // drawn. align is "C" (centered, the cover page's description) or "L"
@@ -191,66 +251,21 @@ func richStyleFor(w richWord, baseFamily string) (family, style string) {
 // paragraphs get a touch of extra spacing (paragraphSpacing) beyond the
 // ordinary lineHeight.
 func drawRichText(pdf *fpdf.Fpdf, x0, y, colWidth, lineHeight, paragraphSpacing float64, align string, baseFamily string, baseSize float64, baseColor rgbColor, paragraphs []richParagraph) float64 {
-	spaceWidth := func(family, style string) float64 {
-		pdf.SetFont(family, style, baseSize)
-		return pdf.GetStringWidth(" ")
-	}
+	pdf.SetFont(baseFamily, "", baseSize)
+	sp := pdf.GetStringWidth(" ")
 
 	for pi, para := range paragraphs {
 		if pi > 0 {
 			y += paragraphSpacing
 		}
-
-		type placedWord struct {
-			w     richWord
-			width float64
-		}
-		var lines [][]placedWord
-		var current []placedWord
-		var currentWidth float64
-
-		flush := func() {
-			if len(current) > 0 {
-				lines = append(lines, current)
-			}
-			current = nil
-			currentWidth = 0
-		}
-
-		for _, w := range para.words {
-			family, style := richStyleFor(w, baseFamily)
-			pdf.SetFont(family, style, baseSize)
-			ww := pdf.GetStringWidth(w.text)
-			sp := spaceWidth(baseFamily, "")
-
-			needsBreak := w.breakBefore && len(current) > 0
-			overflows := len(current) > 0 && currentWidth+sp+ww > colWidth
-			if needsBreak || overflows {
-				flush()
-			}
-			if len(current) > 0 {
-				currentWidth += sp
-			}
-			current = append(current, placedWord{w: w, width: ww})
-			currentWidth += ww
-		}
-		flush()
-
-		for _, line := range lines {
-			lineWidth := 0.0
-			for i, pw := range line {
-				if i > 0 {
-					lineWidth += spaceWidth(baseFamily, "")
-				}
-				lineWidth += pw.width
-			}
+		for _, line := range wrapRichParagraph(pdf, para, colWidth, baseFamily, baseSize) {
 			x := x0
 			if align == "C" {
-				x = x0 + (colWidth-lineWidth)/2
+				x = x0 + (colWidth-line.width)/2
 			}
-			for i, pw := range line {
+			for i, pw := range line.words {
 				if i > 0 {
-					x += spaceWidth(baseFamily, "")
+					x += sp
 				}
 				family, style := richStyleFor(pw.w, baseFamily)
 				pdf.SetFont(family, style, baseSize)

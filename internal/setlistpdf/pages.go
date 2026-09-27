@@ -23,36 +23,103 @@ func centeredParagraph(pdf *fpdf.Fpdf, pageWidth, y, colWidth, lineHeight float6
 	return pdf.GetY()
 }
 
+// The cover's layout, in points — the locked design, drawn at these same
+// values by SetlistProgramPageMockup.tsx's Cover.
+const (
+	coverOuterInset   = 36.0 // clears a printer's ¼" no-print margin
+	coverInnerInset   = 44.0
+	coverSidePadding  = 32.0
+	coverColumnWidth  = 233.0
+	coverGap          = 10.0
+	coverFleuronSize  = 21.0
+	coverFleuronSpace = 8.0 // between each fleuron and the text it frames
+	coverDateSize     = 11 * cabinOptical
+	coverDateTracking = 0.10 // em
+	coverTitleSize    = 24.0
+	coverRuleWidth    = 24.0
+	coverRuleMargin   = 2.0
+	coverDescSize     = 12 * cabinOptical
+	coverDescLeading  = 1.4
+)
+
+// Cabin reads smaller than Libre Baskerville at the same size (x-height
+// .490 vs .530), so its sizes are scaled up by this factor to match.
+const cabinOptical = 1.08
+
+// Each font's line-box extents above and below the baseline, as a
+// fraction of its size (hhea ascender/descender, no line gap) — what a
+// browser's `line-height: normal` spans, used to place baselines where the
+// mockup's flex layout puts them.
+const (
+	cabinAscent            = 0.965
+	cabinDescent           = 0.25
+	baskervilleBoldAscent  = 0.97
+	baskervilleBoldDescent = 0.27
+)
+
+// fpdf's CellFormat draws a zero-height cell's baseline this far below the
+// cell's y, as a fraction of the font size.
+const fpdfCellBaseline = 0.3
+
+// baselineIn is where text of the given size and ascent/descent sits in a
+// line box of lineHeight starting at top — half-leading above and below,
+// as CSS does.
+func baselineIn(top, lineHeight, size, ascent, descent float64) float64 {
+	return top + (lineHeight-(ascent+descent)*size)/2 + ascent*size
+}
+
+// drawCover draws the cover as one vertically centered stack inside the
+// inner frame: fleuron, date, title, a short rule, description, and the
+// same fleuron rotated 180°. An absent date or description drops out of
+// the stack along with its gap.
 func drawCover(pdf *fpdf.Fpdf, size fpdf.SizeType, s Setlist) {
 	pdf.AddPageFormat("P", size)
-	w := size.Wd
+	w, h := size.Wd, size.Ht
 
-	outerInset := 24.0
-	innerInset := 36.0
-	setDraw(pdf, colorBorder)
+	// A 1pt stroke is centered on its path, so each frame's path sits half
+	// a point inside its inset to span exactly [inset, inset+1].
+	setDraw(pdf, colorFainter)
 	pdf.SetLineWidth(1)
-	pdf.Rect(outerInset, outerInset, w-2*outerInset, size.Ht-2*outerInset, "D")
-	pdf.Rect(innerInset, innerInset, w-2*innerInset, size.Ht-2*innerInset, "D")
-
-	y := size.Ht/2 - 110
-
-	diamondDivider(pdf, w/2, y, 0) // a bare centered mark, no flanking rules at the very top
-	y += 30
-
-	if s.GigDate != "" {
-		pdf.SetFont(fontSans+"SemiBold", "", 13)
-		setColor(pdf, colorInkSoft)
-		centeredLine(pdf, w, y, upperTracked(s.GigDate))
-		y += 26
+	for _, inset := range []float64{coverOuterInset + 0.5, coverInnerInset + 0.5} {
+		pdf.Rect(inset, inset, w-2*inset, h-2*inset, "D")
 	}
 
-	pdf.SetFont(fontDisplay, "B", 30)
-	setColor(pdf, colorInk)
-	y = centeredParagraph(pdf, w, y, w-2*innerInset-40, 34, s.Name)
-	y += 18
+	type block struct {
+		height float64
+		draw   func(top float64)
+	}
+	var blocks []block
 
-	diamondDivider(pdf, w/2, y, 34)
-	y += 28
+	blocks = append(blocks, block{coverFleuronSize + coverFleuronSpace, func(top float64) {
+		drawFleuron(pdf, (w-fleuronWidth(coverFleuronSize))/2, top, coverFleuronSize, false, colorFainter)
+	}})
+
+	if s.GigDate != "" {
+		lineHeight := (cabinAscent + cabinDescent) * coverDateSize
+		blocks = append(blocks, block{lineHeight, func(top float64) {
+			pdf.SetFont(fontSans, "", coverDateSize)
+			setColor(pdf, colorInkSoft)
+			drawTrackedCentered(pdf, w, baselineIn(top, lineHeight, coverDateSize, cabinAscent, cabinDescent),
+				toUpper(s.GigDate), coverDateTracking*coverDateSize)
+		}})
+	}
+
+	pdf.SetFont(fontDisplay, "B", coverTitleSize)
+	titleLines := pdf.SplitText(s.Name, coverColumnWidth)
+	titleLineHeight := (baskervilleBoldAscent + baskervilleBoldDescent) * coverTitleSize
+	blocks = append(blocks, block{float64(len(titleLines)) * titleLineHeight, func(top float64) {
+		pdf.SetFont(fontDisplay, "B", coverTitleSize)
+		setColor(pdf, colorInk)
+		for i, line := range titleLines {
+			baseline := baselineIn(top+float64(i)*titleLineHeight, titleLineHeight, coverTitleSize, baskervilleBoldAscent, baskervilleBoldDescent)
+			pdf.Text((w-pdf.GetStringWidth(line))/2, baseline, line)
+		}
+	}})
+
+	blocks = append(blocks, block{1 + 2*coverRuleMargin, func(top float64) {
+		setFill(pdf, colorFainter)
+		pdf.Rect((w-coverRuleWidth)/2, top+coverRuleMargin, coverRuleWidth, 1, "F")
+	}})
 
 	if s.Description != "" {
 		// Real Markdown + :shortcode: rendering, matching how this field
@@ -60,8 +127,53 @@ func drawCover(pdf *fpdf.Fpdf, size fpdf.SizeType, s Setlist) {
 		// mirrors index.css's `.italic em { font-style: normal }` rule
 		// (see richtext.go's own doc comment): the block's own base style
 		// is italic, so a *marked* span inverts to roman instead of
-		// double-italicizing.
-		drawRichText(pdf, innerInset+30, y, w-2*innerInset-60, 19, 6, "C", fontSans, 15, colorInkSoft, parseRichText(s.Description, true))
+		// double-italicizing. Line breaks can land a word differently
+		// from the mockup's: the browser kerns and tracks Cabin, fpdf does
+		// neither.
+		paragraphs := parseRichText(s.Description, true)
+		lineHeight := coverDescLeading * coverDescSize
+		paragraphSpacing := lineHeight / 2
+		height := richTextHeight(pdf, coverColumnWidth, lineHeight, paragraphSpacing, fontSans, coverDescSize, paragraphs)
+		blocks = append(blocks, block{height, func(top float64) {
+			firstBaseline := baselineIn(top, lineHeight, coverDescSize, cabinAscent, cabinDescent)
+			drawRichText(pdf, (w-coverColumnWidth)/2, firstBaseline-fpdfCellBaseline*coverDescSize,
+				coverColumnWidth, lineHeight, paragraphSpacing, "C", fontSans, coverDescSize, colorInkSoft, paragraphs)
+		}})
+	}
+
+	blocks = append(blocks, block{coverFleuronSpace + coverFleuronSize, func(top float64) {
+		drawFleuron(pdf, (w-fleuronWidth(coverFleuronSize))/2, top+coverFleuronSpace, coverFleuronSize, true, colorFainter)
+	}})
+
+	total := coverGap * float64(len(blocks)-1)
+	for _, b := range blocks {
+		total += b.height
+	}
+	// Centered within the inner frame's content box (inside its 1pt border).
+	contentTop := coverInnerInset + 1
+	contentHeight := h - 2*contentTop
+	top := contentTop + (contentHeight-total)/2
+	for _, b := range blocks {
+		b.draw(top)
+		top += b.height + coverGap
+	}
+}
+
+// drawTrackedCentered draws one line centered on the page with extra
+// spacing between letters — fpdf has no letter-spacing, so each character
+// is placed individually. Tracking goes between letters only, so the line
+// stays optically centered.
+func drawTrackedCentered(pdf *fpdf.Fpdf, pageWidth, baseline float64, text string, tracking float64) {
+	runes := []rune(text)
+	width := tracking * float64(max(len(runes)-1, 0))
+	for _, r := range runes {
+		width += pdf.GetStringWidth(string(r))
+	}
+	x := (pageWidth - width) / 2
+	for _, r := range runes {
+		ch := string(r)
+		pdf.Text(x, baseline, ch)
+		x += pdf.GetStringWidth(ch) + tracking
 	}
 }
 
@@ -258,7 +370,8 @@ func drawProgramPage(pdf *fpdf.Fpdf, size fpdf.SizeType, e Entry) {
 	x0 := (w - colWidth) / 2
 	y := size.Ht/2 - 95
 
-	diamondDivider(pdf, w/2, y, 0)
+	const fleuronSize = 24.0
+	drawFleuron(pdf, (w-fleuronWidth(fleuronSize))/2, y-fleuronSize/2, fleuronSize, false, colorAccent)
 	y += 30
 
 	if e.CustomRole != nil && *e.CustomRole != "" {

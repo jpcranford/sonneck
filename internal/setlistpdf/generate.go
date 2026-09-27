@@ -30,9 +30,12 @@ var pageSize = map[Shape]fpdf.SizeType{
 // this generated PDF is meant to look like it belongs to the same app,
 // not a separately-invented palette.
 var (
-	colorInk        = rgb(0x1c, 0x18, 0x15)
-	colorInkSoft    = rgb(0x5c, 0x53, 0x49)
-	colorBorder     = rgb(0xe4, 0xe0, 0xd8)
+	colorInk     = rgb(0x1c, 0x18, 0x15)
+	colorInkSoft = rgb(0x5c, 0x53, 0x49)
+	colorBorder  = rgb(0xe4, 0xe0, 0xd8)
+	// colorFainter is the cover's third print color (frames, rule,
+	// fleurons) — a solid tone, never an opacity, so it prints as drawn.
+	colorFainter    = rgb(0xb3, 0xa9, 0x9e)
 	colorAccent     = rgb(0x3f, 0x5c, 0x3f)
 	colorAccentSoft = rgb(0xe3, 0xe9, 0xe0)
 )
@@ -205,13 +208,8 @@ func Generate(ctx context.Context, binDir string, input Input) ([]byte, error) {
 	return os.ReadFile(mergedPath)
 }
 
-// diamondDivider draws the small rule-diamond-rule ornament every locked
-// page design uses in place of the mockup's own literal "❧" fleuron —
-// live-verified that no embedded weight of either Libre Baskerville or
-// Cabin actually contains a glyph for U+2767, so this hand-drawn device
-// (already part of the same design language, used elsewhere as the
-// "has more to say below" divider) stands in everywhere the fleuron
-// appeared, not just where it would otherwise fail to render.
+// diamondDivider draws the small rule-diamond-rule ornament the Generated
+// Program Page uses between a custom entry's name and its details.
 func diamondDivider(pdf *fpdf.Fpdf, centerX, y, ruleWidth float64) {
 	setDraw(pdf, colorBorder)
 	pdf.SetLineWidth(1)

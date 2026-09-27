@@ -88,12 +88,8 @@ export function getUpcomingSetlists(setlists: Setlist[], limit = 5): (Setlist & 
 // getSetlistPdfUrl mirrors api/pieces.ts's own getPieceFileUrl — a plain
 // URL string, no fetch wrapper. The response is a binary PDF, not this
 // app's usual {data}/{error} JSON envelope, so none of this file's other
-// apiGet/apiPost/etc. helpers apply; the real download flow is a plain
-// `<a href={getSetlistPdfUrl(id)} download>` (see SetlistPage.tsx), same
-// as PiecePage.tsx's own Download PDF button — the browser's native
-// navigation handles the binary response once the server sets
-// Content-Disposition/Content-Type correctly, no JS-side blob dance
-// needed.
+// apiGet/apiPost/etc. helpers apply; SetlistPage.tsx hands it to
+// components/DownloadLink, same as PiecePage.tsx's own Download PDF button.
 export function getSetlistPdfUrl(id: number): string {
   return `/api/setlists/${id}/pdf`
 }

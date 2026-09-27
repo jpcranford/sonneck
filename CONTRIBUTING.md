@@ -19,6 +19,7 @@ If anything here is wrong, confusing, or out of date, that's itself a welcome bu
 - [Conventions & house rules](#conventions--house-rules)
 - [Testing](#testing)
 - [Music symbol shortcodes](#music-symbol-shortcodes)
+- [Setlist PDF fleuron](#setlist-pdf-fleuron)
 - [Making a change](#making-a-change)
 - [Reporting bugs & suggesting features](#reporting-bugs--suggesting-features)
 - [Code of conduct](#code-of-conduct)
@@ -212,6 +213,21 @@ Piece/book descriptions and a piece's own notes support a small set of `:shortco
   ```
   This script reads `MUSIC_SHORTCODES` directly and renders each symbol from the actual shipped font subset (`frontend/src/assets/fonts/bravura-text-subset.woff2`) via Playwright, so the images can't quietly drift out of sync with what the app actually ships. Needs a Chromium binary the first time — `npx playwright install chromium` if you don't already have one.
 - A few symbols also have a second, non-inserted Unicode codepoint that the `Bravura Text` `@font-face` (`frontend/src/index.css`) is *also* the preferred font for, so pasting or typing the character directly (not via a shortcode) still renders correctly: `flat`/`natural`/`sharp` each additionally cover their SMuFL "alternate code" form (U+ED60–U+ED62), and `treble`/`alto`/`bass` each additionally cover the standard Unicode musical-symbol codepoint (U+1D11E, U+1D121, U+1D122). See that `@font-face`'s `unicode-range` for the exact list.
+
+## Setlist PDF fleuron
+
+The ornament on generated setlist covers exists as two byte-identical copies of one SVG: `frontend/src/assets/ornaments/garamond-fleuron.svg` (the mockup, via `frontend/src/lib/garamondFleuron.ts`) and `internal/setlistpdf/assets/garamond-fleuron.svg` (the PDF, via `go:embed`). Neither build can reach the other's tree, hence the copy. If you change it:
+
+- Edit the frontend copy, then copy it over the Go one. `TestFleuronMatchesFrontendCopy` fails if the two differ.
+- Keep it one `<path>` with `fill-rule="evenodd"` and `fill="currentColor"`, using only absolute `M`, `C` and `Z` commands — `internal/setlistpdf/fleuron.go`'s parser rejects anything else rather than drawing it wrong.
+- It's a standalone XML file, so a comment inside it can't contain `--`.
+- Keep its credit in the README's Acknowledgements accurate.
+
+Using it somewhere new:
+
+- **Borders:** the flower repeats cleanly edge to edge. Place copies side by side at a pitch equal to their rendered width to rebuild the original border; a small negative gap tightens it the way the metal type set.
+- **Accessibility:** it's decorative. Inlined, give it `aria-hidden="true"` and `focusable="false"`; as an `<img>`, `alt=""`.
+- **Inline with text:** it looks best at about 1–1.2× the text's cap height, with `vertical-align: middle` or a slight negative offset.
 
 ## Making a change
 

@@ -20,12 +20,14 @@ import {
   createSetlist,
   deleteSetlist,
   getSetlist,
+  getSetlistPdfUrl,
   removeSetlistEntry,
   updateSetlist,
 } from '../api/setlists'
 import type { SetlistEntry } from '../api/types'
 import { ClickableCard } from '../components/ClickableCard'
 import { ContextMenu, type ContextMenuItem } from '../components/ContextMenu'
+import { DownloadLink } from '../components/DownloadLink'
 import { EditEntryModal } from '../components/EditEntryModal'
 import { EditPieceModal } from '../components/EditPieceModal'
 import { EditRoleModal } from '../components/EditRoleModal'
@@ -34,6 +36,7 @@ import { InfoTooltip } from '../components/InfoTooltip'
 import { MarkdownText } from '../components/MarkdownText'
 import { MetaLine } from '../components/MetaLine'
 import { Modal } from '../components/Modal'
+import { useAuth } from '../lib/AuthContext'
 import { CONTENT_MAX_W } from '../lib/layout'
 import { personCreditPart } from '../lib/joinNames'
 import { formatRelativeWeeks } from '../lib/relativeWeeks'
@@ -133,6 +136,7 @@ export function SetlistPage() {
   const setlistId = Number(id)
   const queryClient = useQueryClient()
   const navigate = useNavigate()
+  const canDownload = useAuth().permissions.includes('download')
 
   const {
     data: setlist,
@@ -153,6 +157,7 @@ export function SetlistPage() {
   const [duplicateGigDate, setDuplicateGigDate] = useState('')
   const [editSetlistOpen, setEditSetlistOpen] = useState(false)
   const [editSetlistTab, setEditSetlistTab] = useState<'details' | 'program'>('details')
+  const [downloadOpen, setDownloadOpen] = useState(false)
   const [editingEntry, setEditingEntry] = useState<SetlistEntry | null>(null)
   const [editingRoleEntry, setEditingRoleEntry] = useState<SetlistEntry | null>(null)
   const [editingPieceId, setEditingPieceId] = useState<number | null>(null)
@@ -346,23 +351,46 @@ export function SetlistPage() {
               Play Set
             </InfoTooltip>
 
-            {/* Temporarily inert while the generated PDF's design is revisited —
-                GET /api/setlists/{id}/pdf itself still works; only this entry
-                point is switched off. Same InfoTooltip posture as Play Set. */}
-            <InfoTooltip
-              message="Temporarily unavailable — the Set PDF is being redesigned and will return in a later update."
-              ariaLabel="Download Set PDF (temporarily unavailable)"
-              showPointerCursor={false}
-              triggerClassName="flex opacity-50"
-            >
-              <span className="flex items-center gap-2 rounded-l-md border border-border bg-paper-raised px-4 py-2 font-display text-sm text-ink">
-                <IconDownload size={16} />
-                Download Set PDF
-              </span>
-              <span className="-ml-px flex items-center justify-center rounded-r-md border border-border bg-paper-raised px-2 text-ink">
-                <IconChevronDownFilled size={16} />
-              </span>
-            </InfoTooltip>
+            <div className="relative">
+              <div className="flex">
+                {canDownload ? (
+                  <DownloadLink
+                    href={getSetlistPdfUrl(setlistId)}
+                    className="relative flex cursor-pointer items-center gap-2 rounded-l-md border border-border bg-paper-raised px-4 py-2 font-display text-sm text-ink transition-colors hover:z-10 hover:border-accent"
+                  >
+                    <IconDownload size={16} />
+                    Download Set PDF
+                  </DownloadLink>
+                ) : (
+                  <button
+                    type="button"
+                    disabled
+                    title="You don't have permission to download files"
+                    className="flex cursor-not-allowed items-center gap-2 rounded-l-md border border-border bg-paper-raised px-4 py-2 font-display text-sm text-ink opacity-50"
+                  >
+                    <IconDownload size={16} />
+                    Download Set PDF
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setDownloadOpen((o) => !o)}
+                  disabled={!canDownload}
+                  aria-label="More download options"
+                  className="relative -ml-px flex items-center justify-center rounded-r-md border border-border bg-paper-raised px-2 text-ink transition-colors disabled:cursor-not-allowed disabled:opacity-50 enabled:cursor-pointer enabled:hover:z-10 enabled:hover:border-accent"
+                >
+                  <IconChevronDownFilled size={16} />
+                </button>
+              </div>
+              {downloadOpen && canDownload && (
+                <div className="absolute top-full left-0 z-10 mt-1 w-64 overflow-hidden rounded-md border border-border bg-paper-raised py-1 text-left shadow-lg">
+                  <button type="button" disabled className="block w-full cursor-not-allowed px-3 py-2 text-left text-sm text-ink-soft/50">
+                    Download Set PDF + Annotations
+                    <span className="block text-xs italic">Coming with annotations (§13)</span>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           <div>
