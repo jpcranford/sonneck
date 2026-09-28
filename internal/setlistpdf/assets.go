@@ -48,7 +48,9 @@ var fontCabinBoldItalic []byte
 // recent upstream release), so the subset was converted CFF->TrueType via
 // fonttools' cu2qu-based otf2ttf after subsetting, not before — subsetting
 // first keeps the conversion's cubic-to-quadratic curve-fitting work
-// scoped to only the 26 glyphs this app actually uses.
+// scoped to only the 26 glyphs this app actually uses. Then padded to
+// 0.08em of side bearing per glyph by frontend/scripts/pad-bravura-subset.py,
+// the same as the web subset (CONTRIBUTING.md > Music symbol shortcodes).
 //
 //go:embed assets/fonts/BravuraText-subset.ttf
 var fontBravuraText []byte

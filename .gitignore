@@ -16,3 +16,6 @@ frontend/vite.throwaway.config.ts
 cmd/sonneck-desktop/build/bin/
 cmd/sonneck-desktop/frontend/wailsjs/
 /.codebase-memory
+
+# Python venv for the font tooling (CONTRIBUTING.md > Music symbol shortcodes)
+.venv/

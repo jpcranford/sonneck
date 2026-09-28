@@ -299,7 +299,12 @@
    codepoints / the standard Unicode musical-symbol codepoints for the
    same glyphs, included so this font is still what renders them if
    they ever show up literally (pasted in, or typed by hand) rather than
-   via a shortcode. */
+   via a shortcode.
+   Upstream Bravura is an engraving font with no side bearings (and the
+   dynamics overhang to the left), which crowds a symbol set inline with
+   text ("E♭"); this subset has been padded to 0.08em of clear space on
+   each side by frontend/scripts/pad-bravura-subset.py — rerun it after
+   any re-subset (CONTRIBUTING.md > Music symbol shortcodes). */
 @font-face {
   font-family: 'Bravura Text';
   font-style: normal;

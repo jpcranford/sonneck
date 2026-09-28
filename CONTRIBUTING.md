@@ -212,6 +212,11 @@ Piece/book descriptions and a piece's own notes support a small set of `:shortco
   npm run generate:music-emoji-images
   ```
   This script reads `MUSIC_SHORTCODES` directly and renders each symbol from the actual shipped font subset (`frontend/src/assets/fonts/bravura-text-subset.woff2`) via Playwright, so the images can't quietly drift out of sync with what the app actually ships. Needs a Chromium binary the first time — `npx playwright install chromium` if you don't already have one.
+- Both copies of the font subset — `frontend/src/assets/fonts/bravura-text-subset.woff2` (web) and `internal/setlistpdf/assets/fonts/BravuraText-subset.ttf` (the Setlist PDF, converted to TrueType since the PDF library can't read Bravura's CFF outlines) — are **padded** after subsetting. Upstream Bravura is an engraving font with no side bearings, and its dynamics overhang to the left, so set inline with text an accidental crowds the letter before it ("E♭") and a dynamic nearly touches the previous word. `frontend/scripts/pad-bravura-subset.py` gives every glyph 0.08em of clear space on each side. If you re-subset either file from the upstream release, run it on the new file (it refuses a font that's already padded, so it can't double the spacing), then regenerate the preview images above:
+  ```sh
+  python3 -m venv .venv && .venv/bin/pip install fonttools brotli
+  .venv/bin/python frontend/scripts/pad-bravura-subset.py frontend/src/assets/fonts/bravura-text-subset.woff2 internal/setlistpdf/assets/fonts/BravuraText-subset.ttf
+  ```
 - A few symbols also have a second, non-inserted Unicode codepoint that the `Bravura Text` `@font-face` (`frontend/src/index.css`) is *also* the preferred font for, so pasting or typing the character directly (not via a shortcode) still renders correctly: `flat`/`natural`/`sharp` each additionally cover their SMuFL "alternate code" form (U+ED60–U+ED62), and `treble`/`alto`/`bass` each additionally cover the standard Unicode musical-symbol codepoint (U+1D11E, U+1D121, U+1D122). See that `@font-face`'s `unicode-range` for the exact list.
 
 ## Setlist PDF fleuron
