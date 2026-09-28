@@ -23,6 +23,7 @@ import { useMockupTitle } from '../lib/useMockupTitle'
 import { EditSetlistModal } from './EditSetlistMockup'
 import { EditEntryModal, type EditEntryValues } from './EditEntryMockup'
 import { EditRoleModal } from './EditRoleMockup'
+import { formatDateOnly } from '../lib/dateOnly'
 
 // Setlists design pass, Phase 6 — the real Setlist Details page (§13),
 // built against the approved Phase 2 layout (Option B, "Stats dashboard")
@@ -197,7 +198,7 @@ function formatPages(pages: number): string {
 }
 
 function formatAbsoluteDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
+  return formatDateOnly(iso, { year: 'numeric', month: 'long', day: 'numeric' })
 }
 
 // Running count of "counts as music" entries (decision 8) — a piece entry

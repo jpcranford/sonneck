@@ -9,6 +9,7 @@ import { formatRelativeWeeks } from '../lib/relativeWeeks'
 import { ALL_MOCK_SETLISTS, isEffectivelyArchived, type MockSetlist } from '../lib/setlistsMockupFixture'
 import { useMockupTitle } from '../lib/useMockupTitle'
 import { EditSetlistModal } from './EditSetlistMockup'
+import { formatDateOnly, todayDateOnly } from '../lib/dateOnly'
 
 // Setlists design pass, Phase 12 — the setlists browse page (§13), built
 // against Phase 4's approved artifact: Option C, one unified `/setlists`
@@ -65,7 +66,7 @@ function formatDuration(seconds: number): string {
 // feature's own real precedent, once one exists, wins over an earlier
 // comparison artifact's rougher styling.
 function formatAbsoluteDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
+  return formatDateOnly(iso, { year: 'numeric', month: 'long', day: 'numeric' })
 }
 
 // Direct instruction, ported verbatim from the real SetlistsLibraryPage.tsx
@@ -113,7 +114,7 @@ type ArchiveDirection = 'archive' | 'unarchive' | null
 // alongside the absolute one when there's still something to be relative
 // *to*.
 function archiveDirectionFor(setlist: MockSetlist): ArchiveDirection {
-  const upcoming = !setlist.gigDate || new Date(setlist.gigDate).getTime() >= Date.now()
+  const upcoming = !setlist.gigDate || setlist.gigDate >= todayDateOnly()
   if (!upcoming) return null
   return setlist.archived ? 'unarchive' : 'archive'
 }

@@ -41,6 +41,7 @@ import { CONTENT_MAX_W } from '../lib/layout'
 import { personCreditPart } from '../lib/joinNames'
 import { formatRelativeWeeks } from '../lib/relativeWeeks'
 import { usePageTitle } from '../lib/usePageTitle'
+import { formatDateOnly } from '../lib/dateOnly'
 
 // The real Setlist Details page (§13) — built against SetlistDetailsMockup.tsx
 // (the approved Phase 6 mockup, incl. its own Round 1-10 polish and the
@@ -75,7 +76,7 @@ function formatPages(pages: number): string {
 }
 
 function formatAbsoluteDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
+  return formatDateOnly(iso, { year: 'numeric', month: 'long', day: 'numeric' })
 }
 
 // A piece entry also gets "Add Role" (no role yet) / "Edit Role" (one set),

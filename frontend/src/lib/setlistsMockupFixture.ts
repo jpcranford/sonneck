@@ -1,3 +1,5 @@
+import { todayDateOnly } from './dateOnly'
+
 // Setlists design pass — the one shared "my setlists" fixture universe for
 // every mockup that needs it (SidebarSetlistsMockup.tsx, AddToSetlistMockup.tsx,
 // PieceDetailsSample.tsx), rather than each hand-copying its own similarly-
@@ -13,10 +15,8 @@ export interface MockSetlist {
   // Nullable, matching the real data model (`setlists.gig_date` is a
   // nullable ISO date column) — a setlist can exist with nothing scheduled
   // yet. Only setlist '9' below actually exercises this; every other
-  // mockup that reads this fixture (Sidebar, AddToSetlistPicker) already
-  // treats a non-comparable date as "not upcoming" for free, since
-  // `new Date(undefined).getTime()` is `NaN` and every comparison against
-  // `NaN` is false.
+  // mockup that reads this fixture (Sidebar, AddToSetlistPicker) treats a
+  // missing date as "not upcoming" (see getUpcomingSetlists' null check).
   gigDate?: string
   // The Setlists Library page's own card fields (decision 12/Frontend
   // surfaces item 1) — entry/duration/page summary, and the explicit
@@ -37,7 +37,10 @@ export interface MockSetlist {
 export function daysFromNow(days: number): string {
   const d = new Date()
   d.setDate(d.getDate() + days)
-  return d.toISOString().slice(0, 10)
+  // The local calendar date — toISOString() would give the UTC one, a day
+  // ahead during a US evening.
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
 // The first five ids/names/offsets match this feature's original sidebar
@@ -83,8 +86,8 @@ export function getUpcomingSetlists(
   limit = 5,
 ): (MockSetlist & { gigDate: string })[] {
   return [...setlists]
-    .filter((s): s is MockSetlist & { gigDate: string } => s.gigDate != null && new Date(s.gigDate).getTime() >= Date.now())
-    .sort((a, b) => new Date(a.gigDate).getTime() - new Date(b.gigDate).getTime())
+    .filter((s): s is MockSetlist & { gigDate: string } => s.gigDate != null && s.gigDate >= todayDateOnly())
+    .sort((a, b) => (a.gigDate < b.gigDate ? -1 : a.gigDate > b.gigDate ? 1 : 0))
     .slice(0, limit)
 }
 
@@ -97,5 +100,5 @@ export function getUpcomingSetlists(
 export function isEffectivelyArchived(setlist: MockSetlist): boolean {
   if (setlist.archived) return true
   if (!setlist.gigDate) return false
-  return new Date(setlist.gigDate).getTime() < Date.now()
+  return setlist.gigDate < todayDateOnly()
 }

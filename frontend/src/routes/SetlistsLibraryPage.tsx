@@ -12,6 +12,7 @@ import { Modal } from '../components/Modal'
 import { CONTENT_MAX_W } from '../lib/layout'
 import { formatRelativeWeeks } from '../lib/relativeWeeks'
 import { usePageTitle } from '../lib/usePageTitle'
+import { formatDateOnly, todayDateOnly } from '../lib/dateOnly'
 
 // The real Setlists Library page (§13, decision 12) — built against
 // SetlistsLibraryMockup.tsx (the approved Phase 12 mockup: one unified
@@ -26,7 +27,7 @@ function formatDuration(seconds: number): string {
 }
 
 function formatAbsoluteDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
+  return formatDateOnly(iso, { year: 'numeric', month: 'long', day: 'numeric' })
 }
 
 // Direct instruction — soonest gigDate first (ISO yyyy-mm-dd strings sort
@@ -71,7 +72,7 @@ type ArchiveDirection = 'archive' | 'unarchive' | null
 // — mirrors SetlistPage.tsx's own Archive/Unarchive confirm-gated
 // mechanism (decision 14) for consistency.
 function archiveDirectionFor(setlist: Setlist): ArchiveDirection {
-  const upcoming = !setlist.gigDate || new Date(setlist.gigDate).getTime() >= Date.now()
+  const upcoming = !setlist.gigDate || setlist.gigDate >= todayDateOnly()
   if (!upcoming) return null
   return setlist.archived ? 'unarchive' : 'archive'
 }

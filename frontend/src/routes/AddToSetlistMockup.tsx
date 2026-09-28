@@ -17,6 +17,7 @@ import {
 import { ContextMenu } from '../components/ContextMenu'
 import { ALL_MOCK_SETLISTS, getUpcomingSetlists, type MockSetlist } from '../lib/setlistsMockupFixture'
 import { useMockupTitle } from '../lib/useMockupTitle'
+import { formatDateOnly } from '../lib/dateOnly'
 
 // Setlists design pass, Phase 5 — the Library grid/list cards' own "Add to
 // Setlist" entry point (one of the feature's three, alongside Piece
@@ -59,7 +60,7 @@ const FIXTURE_PIECES: FixturePiece[] = [
 // month/day ordering, this only pins the *format* (short month + numeric
 // day, no year), not the locale that renders it.
 function formatShortDate(gigDate: string): string {
-  return new Date(gigDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  return formatDateOnly(gigDate, { month: 'short', day: 'numeric' })
 }
 
 // Shared checkbox row, used by both the search dropdown and the quick list

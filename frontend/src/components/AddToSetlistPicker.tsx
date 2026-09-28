@@ -14,6 +14,7 @@ import { IconCalendarPlus, IconCheck, IconSearch, IconXFilled } from '@tabler/ic
 import { addSetlistEntry, getUpcomingSetlists, listPieceSetlistMemberships, listSetlists, removeSetlistEntry } from '../api/setlists'
 import { ApiError } from '../api/client'
 import type { Setlist } from '../api/types'
+import { formatDateOnly } from '../lib/dateOnly'
 
 // Real port of AddToSetlistMockup.tsx's own exported AddToSetlistPicker
 // (Setlists design pass, Phase 5 mockup approved; this is Phase 14's real
@@ -40,7 +41,7 @@ import type { Setlist } from '../api/types'
 // formatShortDate: this popover only ever shows a setlist's own upcoming
 // gig date, never one far enough out that the year would be ambiguous.
 function formatShortDate(gigDate: string): string {
-  return new Date(gigDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  return formatDateOnly(gigDate, { month: 'short', day: 'numeric' })
 }
 
 function SetlistToggleRow({

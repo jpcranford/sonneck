@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { IconArrowLeft } from '@tabler/icons-react'
 import { SonneckMark } from '../components/SonneckMark'
 import { GARAMOND_FLEURON_ASPECT, GARAMOND_FLEURON_PATH, GARAMOND_FLEURON_VIEWBOX } from '../lib/garamondFleuron'
+import { formatDateOnly } from '../lib/dateOnly'
 import { CONTENT_MAX_W } from '../lib/layout'
 import { useMockupTitle } from '../lib/useMockupTitle'
 
@@ -23,31 +24,158 @@ import { useMockupTitle } from '../lib/useMockupTitle'
 // neither control exists on a real generated page, which always shows
 // exactly one entry at one fixed shape.
 
-const SETLIST = { name: 'Sunday Morning Service', gigDate: 'October 4, 2026' }
+const SETLIST = { name: 'Sunday Morning Service', gigDate: '2026-10-04' }
+const LONG_DATE: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'long', day: 'numeric' }
 const COVER_DESCRIPTION =
   'Traditional hymns and choral music for the first Sunday of October — all are welcome to join in the congregational singing.'
 const COLOPHON_TYPEFACES = 'Set in Libre Baskerville and Cabin.'
 
-interface ProgramEntry {
+// Table of contents fixtures — the two programs the locked design was
+// settled against: a short one-page service, and a long Lessons and Carols
+// that runs onto a continuation page. `keys` are real stored key names
+// ("E♭ Major"); page numbers are computed, as in the real packet (cover,
+// then the TOC's own pages, then each entry in order).
+interface TocEntry {
+  title: string
+  piece: boolean
+  keys?: string[]
+  role?: string
+  seconds?: number
+  pages: number
+  countsAsMusic?: boolean
+}
+
+interface TocProgram {
+  key: 'short' | 'long'
+  label: string
   name: string
-  kind: 'piece' | 'custom'
-  num: number | null
-  paren: string | null
+  gigDate: string
+  // How many rows the first TOC page holds. The real PDF measures this
+  // (a long setlist name or wrapped titles leave room for fewer); here it's
+  // what that measurement gives for each fixture at Letter size.
+  firstPageRows: number
+  entries: TocEntry[]
+}
+
+const P = (title: string, keys: string[], seconds: number, pages: number, role?: string): TocEntry => ({
+  title, piece: true, keys, seconds, pages, role,
+})
+const C = (title: string, role?: string, seconds?: number, countsAsMusic = false): TocEntry => ({
+  title, piece: false, role, seconds, pages: 1, countsAsMusic,
+})
+
+const TOC_PROGRAMS: TocProgram[] = [
+  {
+    key: 'short',
+    label: 'Sunday service (one page)',
+    name: 'Sunday Morning Service',
+    gigDate: '2026-10-04',
+    firstPageRows: 7,
+    entries: [
+      C('Prelude', undefined, 180),
+      P('Holy, Holy, Holy', ['D Major', 'E♭ Major'], 165, 2),
+      C('Welcome & Announcements'),
+      P('How Great Thou Art', ['B♭ Major', 'C Major'], 220, 3, 'Anthem'),
+      C('Congregational Response', 'Offertory', 90, true),
+      P('Amazing Grace', ['G Major'], 195, 2),
+      C('Benediction', 'Closing'),
+    ],
+  },
+  {
+    key: 'long',
+    label: 'Lessons and Carols (two pages)',
+    name: 'A Festival of Nine Lessons and Carols',
+    gigDate: '2026-12-13',
+    firstPageRows: 18,
+    entries: [
+      C('Organ Voluntary', 'Prelude', 300),
+      P('Once in Royal David’s City', ['F Major'], 270, 2, 'Processional'),
+      C('Bidding Prayer'),
+      C('First Lesson', 'Genesis 3', 120),
+      P('Adam Lay Ybounden', ['C♯ Minor'], 100, 1),
+      C('Second Lesson', 'Genesis 22', 150),
+      P('The Truth from Above', ['D Minor'], 190, 2),
+      C('Third Lesson', 'Isaiah 9', 120),
+      P('In the Bleak Midwinter (Cranham), with Descant for Upper Voices', ['F Major', 'G Major'], 285, 3),
+      P('Es ist ein Ros entsprungen', ['F Major'], 170, 1),
+      C('Fourth Lesson', 'Isaiah 11', 135),
+      P('Lo, How a Rose E’er Blooming', ['F Major'], 180, 2),
+      P('Gabriel’s Message', ['G Minor'], 160, 1),
+      C('Fifth Lesson', 'Luke 1', 150),
+      P('Ave Maria', ['F Major'], 270, 3),
+      P('Magnificat', ['E Major', 'A Minor', 'C Major'], 320, 4, 'Anthem'),
+      C('Sixth Lesson', 'Luke 2', 120),
+      P('Infant Holy, Infant Lowly', ['F Major'], 130, 1),
+      P('A Spotless Rose', ['E♭ Major'], 175, 2),
+      C('Seventh Lesson', 'Luke 2', 120),
+      P('Shepherd’s Pipe Carol', ['E♭ Major'], 200, 4),
+      P('While Shepherds Watched Their Flocks', ['D Major'], 180, 1),
+      C('Eighth Lesson', 'Matthew 2', 150),
+      P('Coventry Carol', ['G Minor'], 165, 1),
+      P('The Three Kings', ['C Major'], 210, 2),
+      C('Ninth Lesson', 'John 1', 180),
+      P('Hark! The Herald Angels Sing', ['F Major', 'G Major'], 220, 2, 'Recessional'),
+      P('O Come, All Ye Faithful (Adeste Fideles), with Last-Verse Reharmonization', ['G Major', 'A Major'], 255, 3),
+      C('Collect and Blessing', 'Closing'),
+      C('Organ Voluntary', 'Postlude', 240),
+      C('Reception'),
+    ],
+  },
+]
+
+// The TOC's short key form: the stored name read case- and space-
+// insensitively — a major key is just its note, a minor key gets "m"
+// ("E Major" › "A Minor" › "C Major" reads "E › Am › C"). A name that isn't
+// "<note> major/minor" shows as stored.
+function shortKey(name: string): string {
+  const match = name.toLowerCase().replace(/\s+/g, '').match(/^(.+?)(major|minor)$/)
+  if (!match) return name
+  return match[1].charAt(0).toUpperCase() + match[1].slice(1) + (match[2] === 'minor' ? 'm' : '')
+}
+
+// A row's own duration: m:ss, or h:mm:ss from an hour up.
+function formatRowDuration(seconds: number): string {
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  const s = String(seconds % 60).padStart(2, '0')
+  return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${s}` : `${m}:${s}`
+}
+
+// The header's total, to the nearest minute: "approximately 1 hour 28 minutes".
+function formatApproximateTotal(seconds: number): string {
+  const minutes = Math.max(1, Math.round(seconds / 60))
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  const unit = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
+  return `approximately ${[h ? unit(h, 'hour') : '', m ? unit(m, 'minute') : ''].filter(Boolean).join(' ')}`
+}
+
+interface TocRow {
+  num: string
+  title: string
+  piece: boolean
+  meta: string
   page: number
 }
 
-// Matches the fixture used throughout this feature's design pass — total
-// pages (11) includes the four generated pages alongside the three
-// pieces' own 7 pages of real sheet music.
-const PROGRAM: ProgramEntry[] = [
-  { name: 'Prelude', kind: 'custom', num: null, paren: '3:00', page: 1 },
-  { name: 'Holy, Holy, Holy', kind: 'piece', num: 1, paren: 'Eb • 2:45', page: 2 },
-  { name: 'Welcome & Announcements', kind: 'custom', num: null, paren: null, page: 4 },
-  { name: 'How Great Thou Art', kind: 'piece', num: 2, paren: 'F • 3:40', page: 5 },
-  { name: 'Congregational Response', kind: 'custom', num: 3, paren: 'Offertory • 1:30', page: 8 },
-  { name: 'Amazing Grace', kind: 'piece', num: 4, paren: 'G • 3:15', page: 9 },
-  { name: 'Benediction', kind: 'custom', num: null, paren: 'Closing', page: 11 },
-]
+// One row per entry: the display number (an en dash for an entry that
+// doesn't count as music), the parenthetical — role • keys • duration for a
+// piece, role • duration for a custom entry, any part absent — and the page
+// the entry starts on.
+function tocRows(program: TocProgram, tocPages: number): TocRow[] {
+  let page = 1 + tocPages
+  let num = 0
+  return program.entries.map((e) => {
+    page += 1
+    const start = page
+    page += e.pages - 1
+    const counts = e.piece || Boolean(e.countsAsMusic)
+    if (counts) num += 1
+    const keys = e.keys?.length ? e.keys.map(shortKey).join(' › ') : undefined
+    const meta = [e.role, keys, e.seconds ? formatRowDuration(e.seconds) : undefined].filter(Boolean).join(' • ')
+    return { num: counts ? String(num) : '–', title: e.title, piece: e.piece, meta, page: start }
+  })
+}
 
 interface PreviewEntry {
   key: string
@@ -148,11 +276,17 @@ export function SetlistProgramPageMockup() {
   useMockupTitle('Download Set PDF')
   const [entryKey, setEntryKey] = useState(ENTRIES[2].key)
   const [shapeKey, setShapeKey] = useState<(typeof SHAPES)[number]['key']>('letter')
+  const [tocKey, setTocKey] = useState<TocProgram['key']>('short')
   const entry = ENTRIES.find((e) => e.key === entryKey) ?? ENTRIES[0]
   const shape = SHAPES.find((s) => s.key === shapeKey) ?? SHAPES[0]
   const hasInfo = Boolean(entry.duration || entry.description)
   // A length in real PDF points, scaled to this preview's rendered width.
   const pt = (n: number) => `calc(${n} * 100cqw / ${shape.widthPt})`
+  const toc = TOC_PROGRAMS.find((p) => p.key === tocKey) ?? TOC_PROGRAMS[0]
+  const tocPages = toc.entries.length > toc.firstPageRows ? 2 : 1
+  const allTocRows = tocRows(toc, tocPages)
+  const tocPageRows = tocPages === 1 ? [allTocRows] : [allTocRows.slice(0, toc.firstPageRows), allTocRows.slice(toc.firstPageRows)]
+  const tocTotalSeconds = toc.entries.reduce((sum, e) => sum + (e.seconds ?? 0), 0)
 
   return (
     <div className={`${CONTENT_MAX_W} flex flex-1 flex-col gap-6 px-6 py-6 md:px-8 md:py-8`}>
@@ -171,6 +305,11 @@ export function SetlistProgramPageMockup() {
           scale, three solid print colors on white, and the Garamond fleuron (redrawn from a 1927 printing of
           Caslon's English Flowers no. 1) upright above and rotated below. The fleuron also marks the Generated
           Program Page. internal/setlistpdf draws the Cover from these same point values.
+        </div>
+        <div className="mt-2">
+          The Table of Contents is the locked redesign too, also in true points, shown for a one-page program and one
+          that runs onto a continuation page. The real PDF measures how many rows fit (a long setlist name or wrapped
+          titles leave room for fewer); internal/setlistpdf still draws the previous TOC until it's ported.
         </div>
         <div className="mt-3 flex items-center gap-2">
           <span className="text-xs font-medium text-ink-soft">Page shape:</span>
@@ -216,7 +355,7 @@ export function SetlistProgramPageMockup() {
                   color: PRINT_FAINT,
                 }}
               >
-                {SETLIST.gigDate}
+                {formatDateOnly(SETLIST.gigDate, LONG_DATE)}
               </span>
               <span
                 className="font-display"
@@ -246,36 +385,139 @@ export function SetlistProgramPageMockup() {
           </PageShell>
         </section>
 
-        {/* Table of contents */}
+        {/* Table of contents — the locked design, in true points: 72pt
+            margins on every side; the setlist name at 2x the 12pt body;
+            one small-caps header row repeated on each continuation page;
+            Libre Baskerville rows with wrapped titles hanging under the
+            title column; the Cabin parenthetical at 9pt; dot leaders on
+            the baseline, stopping 3pt short of the page number. */}
         <section className="flex flex-col items-center gap-3">
           <h2 className="font-display text-xl text-ink">Table of Contents</h2>
-          <PageShell ratio={shape.ratio}>
-            <div className="flex h-full flex-col px-7 pt-6 pb-5">
-              <div className="font-display text-base font-bold text-ink">{SETLIST.name}</div>
-              <div className="mt-0.5 text-sm text-ink-soft">{SETLIST.gigDate} &bull; approx. 14:10</div>
-              <div className="mt-2.5 text-xs font-semibold tracking-wide text-ink-soft uppercase">Program</div>
-              <div className="mt-2 flex border-b border-border pb-1 text-[11px] font-semibold tracking-wide text-ink-soft uppercase">
-                <span className="mr-1.5 w-5 flex-none" />
-                <span className="flex-1">Title</span>
-                <span>Pg.</span>
-              </div>
-              {PROGRAM.map((e) => (
-                <div key={e.name} className="flex items-baseline py-1">
-                  <span className="mr-1.5 w-5 flex-none text-right text-xs text-ink-soft">{e.num ?? '–'}</span>
-                  <span className="flex-shrink truncate">
-                    {e.kind === 'piece' ? (
-                      <span className="font-display text-sm text-ink">{e.name}</span>
-                    ) : (
-                      <span className="text-xs text-ink-soft italic">{e.name}</span>
-                    )}
-                    {e.paren && <span className="text-[11px] text-ink-soft"> ({e.paren})</span>}
-                  </span>
-                  <span className="mx-1.5 mb-0.5 h-px min-w-2.5 flex-1 border-b border-dotted border-ink/30" />
-                  <span className="flex-none text-xs text-ink tabular-nums">{e.page}</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-medium text-ink-soft">Program:</span>
+            {TOC_PROGRAMS.map((p) => (
+              <button
+                key={p.key}
+                type="button"
+                onClick={() => setTocKey(p.key)}
+                className={`cursor-pointer rounded-full border px-2.5 py-1 text-xs ${
+                  tocKey === p.key
+                    ? 'border-accent bg-accent-soft text-accent'
+                    : 'border-border text-ink-soft hover:text-ink'
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex w-full flex-wrap justify-center gap-6">
+            {tocPageRows.map((rows, pageIndex) => (
+              <PageShell key={pageIndex} ratio={shape.ratio} className="bg-white">
+                <div
+                  className="absolute flex flex-col"
+                  style={{ left: pt(72), right: pt(72), top: pt(72) }}
+                >
+                  {pageIndex === 0 && (
+                    <div className="flex flex-col" style={{ gap: pt(4), marginBottom: pt(24) }}>
+                      <span
+                        className="font-display"
+                        style={{ fontSize: pt(24), fontWeight: 700, lineHeight: 1.24, color: PRINT_INK }}
+                      >
+                        {toc.name}
+                      </span>
+                      <span
+                        className="font-sans"
+                        style={{
+                          fontSize: pt(12 * CABIN_OPTICAL),
+                          letterSpacing: '0.02em',
+                          lineHeight: 1.4,
+                          color: PRINT_FAINT,
+                        }}
+                      >
+                        {formatDateOnly(toc.gigDate, LONG_DATE)} &bull; {formatApproximateTotal(tocTotalSeconds)}
+                      </span>
+                    </div>
+                  )}
+                  <div
+                    className="font-sans flex items-baseline uppercase"
+                    style={{
+                      paddingBottom: pt(5),
+                      borderBottom: `${pt(1)} solid ${PRINT_FAINTER}`,
+                      fontSize: pt(9 * CABIN_OPTICAL),
+                      letterSpacing: '0.1em',
+                      lineHeight: 1.4,
+                      color: PRINT_FAINT,
+                    }}
+                  >
+                    <span className="grow">{pageIndex === 0 ? 'Program' : 'Program, continued'}</span>
+                    <span>Page</span>
+                  </div>
+                  <div className="flex flex-col" style={{ gap: pt(12), marginTop: pt(10) }}>
+                    {rows.map((row) => (
+                      <div
+                        key={row.page}
+                        className="flex"
+                        style={{ alignItems: 'last baseline', lineHeight: pt(12 * 1.24) }}
+                      >
+                        {/* The number sits inside the title's first line, so
+                            it shares that line's baseline; wrapped lines hang
+                            under the title, past it. */}
+                        <span
+                          className="min-w-0"
+                          style={{ flex: '0 1 auto', paddingLeft: pt(34), textIndent: `calc(-1 * ${pt(34)})` }}
+                        >
+                          <span
+                            className="font-display inline-block text-right tabular-nums"
+                            style={{ width: pt(24), marginRight: pt(10), textIndent: 0, fontSize: pt(12), color: PRINT_FAINT }}
+                          >
+                            {row.num}
+                          </span>
+                          {row.piece ? (
+                            <span className="font-display" style={{ fontSize: pt(12), fontWeight: 500, color: PRINT_INK }}>
+                              {row.title}
+                            </span>
+                          ) : (
+                            <span className="font-display italic" style={{ fontSize: pt(12), color: PRINT_FAINT }}>
+                              {row.title}
+                            </span>
+                          )}
+                          {row.meta && (
+                            <>
+                              {' '}
+                              <span
+                                className="font-sans whitespace-nowrap"
+                                style={{ fontSize: pt(9 * CABIN_OPTICAL), letterSpacing: '0.02em', color: PRINT_FAINT }}
+                              >
+                                ({row.meta})
+                              </span>
+                            </>
+                          )}
+                        </span>
+                        <span
+                          aria-hidden="true"
+                          style={{
+                            flex: `1 0 ${pt(24)}`,
+                            height: pt(2),
+                            margin: `0 ${pt(3)} 0 ${pt(6)}`,
+                            backgroundImage: `radial-gradient(circle at ${pt(1)} ${pt(1)}, ${PRINT_FAINTER} ${pt(0.7)}, transparent ${pt(0.95)})`,
+                            backgroundSize: `${pt(4)} ${pt(2)}`,
+                            backgroundRepeat: 'repeat-x',
+                            backgroundPosition: 'right bottom',
+                          }}
+                        />
+                        <span
+                          className="font-display flex-none text-right tabular-nums"
+                          style={{ minWidth: pt(16), fontSize: pt(12), color: PRINT_INK }}
+                        >
+                          {row.page}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              ))}
-            </div>
-          </PageShell>
+              </PageShell>
+            ))}
+          </div>
         </section>
 
         {/* Generated program page */}
@@ -331,7 +573,7 @@ export function SetlistProgramPageMockup() {
               <div className="text-xs leading-relaxed text-ink-soft">
                 {COLOPHON_TYPEFACES}
                 <br />
-                Generated {SETLIST.gigDate}.
+                Generated {formatDateOnly(SETLIST.gigDate, LONG_DATE)}.
               </div>
               <span className="h-px w-6 bg-border" aria-hidden="true" />
               <SonneckMark className="h-4 w-auto text-ink-soft" />
