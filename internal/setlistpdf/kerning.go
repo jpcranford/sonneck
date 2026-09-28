@@ -43,6 +43,41 @@ var kerningFonts = func() map[string]*sfnt.Font {
 	return fonts
 }()
 
+// symbolFont is the Bravura Text subset, parsed only to know which
+// characters it covers — the fallback for music symbols (♭/♯/♮ in a key
+// name or title) that neither Cabin nor Libre Baskerville has, the way the
+// browser falls back through the app's font stacks (index.css).
+var symbolFont = func() *sfnt.Font {
+	f, err := sfnt.Parse(fontBravuraText)
+	if err != nil {
+		panic("setlistpdf: parsing embedded font " + fontSymbol + ": " + err.Error())
+	}
+	return f
+}()
+
+// hasGlyph reports whether f maps r to a real glyph.
+func hasGlyph(f *sfnt.Font, buf *sfnt.Buffer, r rune) bool {
+	g, err := f.GlyphIndex(buf, r)
+	return err == nil && g != 0
+}
+
+// fontFor picks the font one character is drawn in: the requested
+// family/style when it has the glyph, else Bravura Text when that does
+// (a music symbol), else the requested font anyway. Spaces always stay in
+// the requested font.
+func fontFor(family, style string, r rune, buf *sfnt.Buffer) (string, string) {
+	if r == ' ' || family == fontSymbol {
+		return family, style
+	}
+	if f := kerningFonts[family+style]; f != nil && hasGlyph(f, buf, r) {
+		return family, style
+	}
+	if hasGlyph(symbolFont, buf, r) {
+		return fontSymbol, ""
+	}
+	return family, style
+}
+
 // kerner resolves kerning for one font at one size. Each call site makes
 // its own (sfnt.Buffer isn't safe to share across goroutines, and
 // concurrent exports are possible).
@@ -85,43 +120,63 @@ func (k *kerner) pair(a, b rune) float64 {
 }
 
 // kernedAdvances returns each character's advance (its own width, plus the
-// kerning to the next character, plus tracking between characters) in
-// the current fpdf font. The last character carries no trailing tracking,
-// so a line's width is just the sum.
-func kernedAdvances(pdf *fpdf.Fpdf, family, style string, size float64, text string, tracking float64) []float64 {
+// kerning to the next character, plus tracking between characters) and
+// the font it's drawn in (see fontFor). The last character carries no
+// trailing tracking, so a line's width is just the sum. family/style/size
+// is the text's own font; fpdf is left set to it afterwards.
+func kernedAdvances(pdf *fpdf.Fpdf, family, style string, size float64, text string, tracking float64) ([]float64, [][2]string) {
 	runes := []rune(text)
-	k := newKerner(family, style, size)
-	adv := make([]float64, len(runes))
+	var buf sfnt.Buffer
+	fonts := make([][2]string, len(runes))
 	for i, r := range runes {
+		f, st := fontFor(family, style, r, &buf)
+		fonts[i] = [2]string{f, st}
+	}
+	adv := make([]float64, len(runes))
+	kerners := map[[2]string]*kerner{}
+	for i, r := range runes {
+		pdf.SetFont(fonts[i][0], fonts[i][1], size)
 		adv[i] = pdf.GetStringWidth(string(r))
 		if i+1 < len(runes) {
-			adv[i] += k.pair(r, runes[i+1]) + tracking
+			// Kerning only between two characters in the same font.
+			if fonts[i+1] == fonts[i] {
+				k := kerners[fonts[i]]
+				if k == nil {
+					k = newKerner(fonts[i][0], fonts[i][1], size)
+					kerners[fonts[i]] = k
+				}
+				adv[i] += k.pair(r, runes[i+1])
+			}
+			adv[i] += tracking
 		}
 	}
-	return adv
+	pdf.SetFont(family, style, size)
+	return adv, fonts
 }
 
-// kernedWidth is text's drawn width in the current fpdf font (which must
-// be family/style/size).
+// kernedWidth is text's drawn width in family/style/size.
 func kernedWidth(pdf *fpdf.Fpdf, family, style string, size float64, text string, tracking float64) float64 {
+	adv, _ := kernedAdvances(pdf, family, style, size, text, tracking)
 	w := 0.0
-	for _, a := range kernedAdvances(pdf, family, style, size, text, tracking) {
+	for _, a := range adv {
 		w += a
 	}
 	return w
 }
 
-// drawKerned draws text with its left edge at x and its baseline at y, in
-// the current fpdf font (which must be family/style/size), returning the
-// x just past it.
+// drawKerned draws text in family/style/size with its left edge at x and
+// its baseline at y, returning the x just past it. The current text color
+// is used for every character, fallback symbols included.
 func drawKerned(pdf *fpdf.Fpdf, family, style string, size, x, baseline float64, text string, tracking float64) float64 {
-	adv := kernedAdvances(pdf, family, style, size, text, tracking)
+	adv, fonts := kernedAdvances(pdf, family, style, size, text, tracking)
 	for i, r := range []rune(text) {
 		if r != ' ' {
+			pdf.SetFont(fonts[i][0], fonts[i][1], size)
 			pdf.Text(x, baseline, string(r))
 		}
 		x += adv[i]
 	}
+	pdf.SetFont(family, style, size)
 	return x
 }
 

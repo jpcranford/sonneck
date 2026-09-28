@@ -319,8 +319,12 @@
 /* Design tokens. Tailwind v4's CSS-first config: these become usable as
    e.g. bg-paper, text-ink, font-display utilities. */
 @theme {
-  --font-display: 'Libre Baskerville', Georgia, 'Times New Roman', serif;
-  --font-sans: 'Cabin', -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  /* 'Bravura Text' second in both stacks: neither Libre Baskerville nor
+     Cabin has ♭/♯/♮ (or any other music symbol), so a key name or title
+     containing one falls through to Bravura instead of a random system
+     font — its unicode-range keeps it to just those codepoints. */
+  --font-display: 'Libre Baskerville', 'Bravura Text', Georgia, 'Times New Roman', serif;
+  --font-sans: 'Cabin', 'Bravura Text', -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --font-music: 'Bravura Text', 'Cabin', -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   /* Cabin reads a touch tighter than Rethink Sans at body sizes — dialed
      in live against the real Piece Details mockup (comparison Artifact,

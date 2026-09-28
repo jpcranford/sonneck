@@ -64,3 +64,21 @@ func TestKernedLines(t *testing.T) {
 		t.Errorf("single long word split into %q", got)
 	}
 }
+
+func TestMusicSymbolsFallBackToBravura(t *testing.T) {
+	pdf := newTestPDF()
+	for _, family := range []string{fontSans, fontDisplay} {
+		adv, fonts := kernedAdvances(pdf, family, "", 12, "B♭", 0)
+		if fonts[0][0] != family {
+			t.Errorf("%s: \"B\" drawn in %s, want the text's own font", family, fonts[0][0])
+		}
+		if fonts[1][0] != fontSymbol {
+			t.Errorf("%s: \"♭\" drawn in %s, want %s (the text font has no flat)", family, fonts[1][0], fontSymbol)
+		}
+		// Measured in Bravura's own width, with no cross-font kerning.
+		pdf.SetFont(fontSymbol, "", 12)
+		if want := pdf.GetStringWidth("♭"); math.Abs(adv[1]-want) > 1e-9 {
+			t.Errorf("%s: flat advance %.3f, want Bravura's %.3f", family, adv[1], want)
+		}
+	}
+}
