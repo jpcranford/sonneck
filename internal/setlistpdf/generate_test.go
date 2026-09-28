@@ -39,9 +39,7 @@ func TestGenerate_RealOutputPageCountMatchesComputedLayout(t *testing.T) {
 		{IsPiece: false, CustomName: "Benediction"},
 	}
 
-	layout := setlistpdf.ComputeLayout(entries)
-
-	out, err := setlistpdf.Generate(context.Background(), "", setlistpdf.Input{
+	input := setlistpdf.Input{
 		Setlist: setlistpdf.Setlist{
 			Name:        "Sunday Morning Service",
 			GigDate:     "October 4, 2026",
@@ -50,7 +48,10 @@ func TestGenerate_RealOutputPageCountMatchesComputedLayout(t *testing.T) {
 		Entries: entries,
 		Shape:   setlistpdf.ShapeLetter,
 		Now:     time.Date(2026, 9, 22, 0, 0, 0, 0, time.UTC),
-	})
+	}
+	layout := setlistpdf.Paginate(input)
+
+	out, err := setlistpdf.Generate(context.Background(), "", input)
 	if err != nil {
 		t.Fatalf("Generate: %v", err)
 	}
@@ -90,14 +91,15 @@ func TestGenerate_AdjacentPieceEntries(t *testing.T) {
 		{IsPiece: true, PieceTitle: "First", PieceFilePath: piece1, PiecePageCount: 1},
 		{IsPiece: true, PieceTitle: "Second", PieceFilePath: piece2, PiecePageCount: 3},
 	}
-	layout := setlistpdf.ComputeLayout(entries)
-
-	out, err := setlistpdf.Generate(context.Background(), "", setlistpdf.Input{
+	input := setlistpdf.Input{
 		Setlist: setlistpdf.Setlist{Name: "Adjacent Pieces"},
 		Entries: entries,
 		Shape:   setlistpdf.ShapeLetter,
 		Now:     time.Now(),
-	})
+	}
+	layout := setlistpdf.Paginate(input)
+
+	out, err := setlistpdf.Generate(context.Background(), "", input)
 	if err != nil {
 		t.Fatalf("Generate: %v", err)
 	}
@@ -112,6 +114,55 @@ func TestGenerate_AdjacentPieceEntries(t *testing.T) {
 	}
 	if got != layout.TotalPages {
 		t.Errorf("real output page count = %d, want %d (from ComputeLayout)", got, layout.TotalPages)
+	}
+}
+
+// TestGenerate_MultiPageTOCPageCountMatches is the real-output check for a
+// program long enough that the table of contents runs onto continuation
+// pages: every entry's page number depends on how many TOC pages there are,
+// so the drawn packet must have exactly the page count the measured plan
+// predicted.
+func TestGenerate_MultiPageTOCPageCountMatches(t *testing.T) {
+	dir := t.TempDir()
+	piece := filepath.Join(dir, "piece.pdf")
+	testutil.WriteFixturePDF(t, piece, 2)
+
+	var entries []setlistpdf.Entry
+	for i := range 45 {
+		if i%3 == 0 {
+			entries = append(entries, setlistpdf.Entry{CustomName: "A Spoken Lesson From the Prophet Isaiah, Chapter Nine"})
+			continue
+		}
+		n := len(entries) + 1
+		entries = append(entries, setlistpdf.Entry{IsPiece: true, DisplayNumber: &n, PieceTitle: "In the Bleak Midwinter (Cranham), with Descant for Upper Voices",
+			PieceKeys: []string{"F Major", "G Major"}, PieceFilePath: piece, PiecePageCount: 2})
+	}
+	for _, shape := range []setlistpdf.Shape{setlistpdf.ShapeLetter, setlistpdf.ShapeA4} {
+		input := setlistpdf.Input{
+			Setlist: setlistpdf.Setlist{Name: "A Festival of Nine Lessons and Carols, With Readings and Anthems for the Season", GigDate: "December 13, 2026"},
+			Entries: entries,
+			Shape:   shape,
+			Now:     time.Now(),
+		}
+		layout := setlistpdf.Paginate(input)
+		if layout.TOCPageCount < 2 {
+			t.Fatalf("%s: TOCPageCount = %d, want a multi-page TOC for this fixture", shape, layout.TOCPageCount)
+		}
+		out, err := setlistpdf.Generate(context.Background(), "", input)
+		if err != nil {
+			t.Fatalf("%s: Generate: %v", shape, err)
+		}
+		outPath := filepath.Join(dir, string(shape)+".pdf")
+		if err := os.WriteFile(outPath, out, 0o644); err != nil {
+			t.Fatal(err)
+		}
+		got, err := pdf.PageCount(context.Background(), "", outPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got != layout.TotalPages {
+			t.Errorf("%s: real output page count = %d, want %d (TOC %d pages)", shape, got, layout.TotalPages, layout.TOCPageCount)
+		}
 	}
 }
 

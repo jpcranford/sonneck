@@ -1,9 +1,6 @@
 package setlistpdf
 
 import (
-	"fmt"
-	"time"
-
 	"codeberg.org/go-pdf/fpdf"
 )
 
@@ -171,177 +168,6 @@ func upperTracked(s string) string {
 	return toUpper(s)
 }
 
-func drawTOC(pdf *fpdf.Fpdf, size fpdf.SizeType, layout Layout, s Setlist, entries []Entry) {
-	const (
-		marginX   = 36.0
-		marginTop = 44.0
-		rowHeight = 22.0
-		numColW   = 26.0
-		pageColW  = 34.0
-	)
-	w := size.Wd
-	contentW := w - 2*marginX
-
-	rowsPerPage := rowsPerTOCPage
-	pageIdx := 0
-	rowOnPage := 0
-	var y float64
-
-	newPage := func(first bool) {
-		pdf.AddPageFormat("P", size)
-		y = marginTop
-		if first {
-			pdf.SetFont(fontDisplay, "B", 21)
-			setColor(pdf, colorInk)
-			pdf.SetXY(marginX, y)
-			pdf.CellFormat(contentW, 0, s.Name, "", 0, "L", false, 0, "")
-			y += 24
-
-			pdf.SetFont(fontSans, "", 14)
-			setColor(pdf, colorInkSoft)
-			line := s.GigDate
-			if total := TotalDurationSeconds(entries); total != nil {
-				if line != "" {
-					line += "  •  "
-				}
-				line += "approx. " + formatDuration(*total)
-			}
-			pdf.SetXY(marginX, y)
-			pdf.CellFormat(contentW, 0, line, "", 0, "L", false, 0, "")
-			y += 22
-
-			pdf.SetFont(fontSans+"SemiBold", "", 11)
-			setColor(pdf, colorInkSoft)
-			pdf.SetXY(marginX, y)
-			pdf.CellFormat(contentW, 0, upperTracked("Program"), "", 0, "L", false, 0, "")
-			y += 20
-		} else {
-			pdf.SetFont(fontSans, "I", 12)
-			setColor(pdf, colorInkSoft)
-			pdf.SetXY(marginX, y)
-			pdf.CellFormat(contentW, 0, "Program, continued", "", 0, "L", false, 0, "")
-			y += 20
-		}
-
-		pdf.SetFont(fontSans+"SemiBold", "", 10)
-		setColor(pdf, colorInkSoft)
-		pdf.SetXY(marginX, y)
-		pdf.CellFormat(numColW, 0, "", "", 0, "L", false, 0, "")
-		pdf.CellFormat(contentW-numColW-pageColW, 0, upperTracked("Title"), "", 0, "L", false, 0, "")
-		pdf.CellFormat(pageColW, 0, upperTracked("Pg."), "", 0, "R", false, 0, "")
-		y += 6
-		setDraw(pdf, colorBorder)
-		pdf.SetLineWidth(1)
-		pdf.Line(marginX, y, w-marginX, y)
-		y += 14
-		rowOnPage = 0
-	}
-
-	newPage(true)
-
-	for i, e := range entries {
-		if rowOnPage >= rowsPerPage {
-			pageIdx++
-			newPage(false)
-		}
-		rowOnPage++
-
-		numStr := "–"
-		if e.DisplayNumber != nil {
-			numStr = fmt.Sprintf("%d", *e.DisplayNumber)
-		}
-		pdf.SetFont(fontSans, "", 13)
-		setColor(pdf, colorInkSoft)
-		pdf.SetXY(marginX, y)
-		pdf.CellFormat(numColW, rowHeight, numStr, "", 0, "R", false, 0, "")
-
-		title := e.PieceTitle
-		meta := ""
-		if e.IsPiece {
-			pdf.SetFont(fontDisplay, "", 15)
-			setColor(pdf, colorInk)
-			if len(e.PieceKeys) > 0 {
-				meta = joinKeys(e.PieceKeys)
-			}
-			if e.PieceDuration != nil {
-				if meta != "" {
-					meta += " • "
-				}
-				meta += formatDuration(*e.PieceDuration)
-			}
-		} else {
-			title = e.CustomName
-			pdf.SetFont(fontSans, "I", 13)
-			setColor(pdf, colorInkSoft)
-			if e.CustomRole != nil {
-				meta = *e.CustomRole
-			}
-			if e.CustomDurationSeconds != nil {
-				if meta != "" {
-					meta += " • "
-				}
-				meta += formatDuration(*e.CustomDurationSeconds)
-			}
-		}
-
-		pageStr := fmt.Sprintf("%d", layout.EntryStartPage[i])
-		pageStrW := pdf.GetStringWidth(pageStr) + 2
-
-		titleX := marginX + numColW + 6
-		leaderEndX := w - marginX - pageStrW
-		availW := leaderEndX - titleX - 8 // leave a small gap before the leader/page number
-
-		fullTitle := title
-		if meta != "" {
-			fullTitle = title + "  (" + meta + ")"
-		}
-		titleW := pdf.GetStringWidth(fullTitle)
-
-		pdf.SetXY(titleX, y)
-		var lineEndY, leaderStartX float64
-		if titleW <= availW {
-			// The common case: fits on one line. Position the dotted
-			// leader right after the title's own real rendered width —
-			// not a fixed reserved offset — so it never overlaps a long
-			// title or leaves an oddly wide gap after a short one (found
-			// live: the original fixed-offset version did both).
-			pdf.CellFormat(titleW, rowHeight, fullTitle, "", 0, "L", false, 0, "")
-			lineEndY = y + rowHeight
-			leaderStartX = titleX + titleW + 4
-		} else {
-			// A genuinely long title: wrap rather than truncate (a real
-			// generated program must never silently drop text) — fpdf
-			// has no ellipsis primitive worth the complexity here. The
-			// leader/page number still anchor to the row's first line,
-			// but with nothing reliable to measure that first line's own
-			// wrapped width against, the leader is omitted for this row
-			// rather than risking the same overlap this fix addresses.
-			pdf.MultiCell(availW, rowHeight, fullTitle, "", "L", false)
-			lineEndY = pdf.GetY()
-			leaderStartX = leaderEndX
-		}
-
-		if leaderStartX < leaderEndX-2 {
-			setDraw(pdf, colorBorder)
-			pdf.SetLineWidth(0.5)
-			pdf.SetDashPattern([]float64{1, 1.5}, 0)
-			pdf.Line(leaderStartX, y+rowHeight-6, leaderEndX-2, y+rowHeight-6)
-			pdf.SetDashPattern(nil, 0)
-		}
-
-		pdf.SetFont(fontSans, "", 13)
-		setColor(pdf, colorInk)
-		pdf.SetXY(leaderEndX, y)
-		pdf.CellFormat(pageStrW, rowHeight, pageStr, "", 0, "R", false, 0, "")
-
-		if lineEndY > y+rowHeight {
-			y = lineEndY
-		} else {
-			y += rowHeight
-		}
-	}
-}
-
 func drawProgramPage(pdf *fpdf.Fpdf, size fpdf.SizeType, e Entry) {
 	pdf.AddPageFormat("P", size)
 	w := size.Wd
@@ -395,7 +221,7 @@ func drawProgramPage(pdf *fpdf.Fpdf, size fpdf.SizeType, e Entry) {
 	}
 }
 
-func drawColophon(pdf *fpdf.Fpdf, size fpdf.SizeType, now time.Time) {
+func drawColophon(pdf *fpdf.Fpdf, size fpdf.SizeType, generated string) {
 	pdf.AddPageFormat("P", size)
 	w := size.Wd
 
@@ -405,7 +231,7 @@ func drawColophon(pdf *fpdf.Fpdf, size fpdf.SizeType, now time.Time) {
 	setColor(pdf, colorInkSoft)
 	centeredLine(pdf, w, y, "Set in Libre Baskerville and Cabin.")
 	y += 16
-	centeredLine(pdf, w, y, "Generated "+now.Format("January 2, 2006")+".")
+	centeredLine(pdf, w, y, "Generated "+generated+".")
 	y += 28
 
 	setDraw(pdf, colorBorder)

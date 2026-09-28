@@ -50,10 +50,13 @@ func (s *Server) handleDownloadSetlistPDF(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	// Dates are written in the requester's own locale (Accept-Language).
+	// The gig date is a calendar day: parsed and formatted with no timezone.
+	formatDate := longDateFormatter(r)
 	var gigDate string
 	if setlist.GigDate != nil {
 		if t, parseErr := time.Parse("2006-01-02", *setlist.GigDate); parseErr == nil {
-			gigDate = t.Format("January 2, 2006")
+			gigDate = formatDate(t)
 		}
 	}
 	description := ""
@@ -67,9 +70,10 @@ func (s *Server) handleDownloadSetlistPDF(w http.ResponseWriter, r *http.Request
 			GigDate:     gigDate,
 			Description: description,
 		},
-		Entries: entries,
-		Shape:   setlistpdf.ShapeForRegion(s.Cfg.CopyrightRegion()),
-		Now:     time.Now(),
+		Entries:    entries,
+		Shape:      setlistpdf.ShapeForRegion(s.Cfg.CopyrightRegion()),
+		Now:        time.Now(),
+		FormatDate: formatDate,
 	})
 	if err != nil {
 		s.writeError(w, err)
@@ -105,6 +109,7 @@ func buildPDFEntries(r *http.Request, db *sql.DB, in []api.SetlistEntryResponse)
 				IsPiece:        true,
 				DisplayNumber:  e.DisplayNumber,
 				PieceTitle:     e.Piece.Title,
+				PieceRole:      e.Role,
 				PieceKeys:      keys,
 				PieceDuration:  e.Piece.Duration,
 				PieceFilePath:  piece.FilePath,

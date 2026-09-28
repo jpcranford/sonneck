@@ -50,6 +50,7 @@ type Entry struct {
 
 	// Piece fields, meaningful only when IsPiece is true.
 	PieceTitle     string
+	PieceRole      *string  // the entry's own role label, e.g. "Anthem"
 	PieceKeys      []string // e.g. ["Eb"]; more than one for a modulating piece
 	PieceDuration  *int     // seconds
 	PieceFilePath  string
@@ -62,23 +63,6 @@ type Entry struct {
 	CustomNotes           *string
 }
 
-// rowsPerTOCPage is how many program rows fit on one table-of-contents
-// page at the locked design's own font sizes and margins (pages.go's
-// drawTOC — marginTop/rowHeight there and this constant must be kept in
-// sync by hand, since Go embeds no shared computation between the two
-// without threading page geometry through ComputeLayout's own signature).
-// Sized conservatively for Letter (792pt tall, the shorter of the two
-// supported shapes — drawTOC uses one uniform row count regardless of
-// shape, same simplification as before) — A4's extra ~50pt of height
-// gets some unused slack rather than a shape-aware row count, an existing
-// simplification this value doesn't change. 28, not a computed estimate:
-// the first TOC page's header block (name/date/"Program" label/column
-// header/rule) leaves y=130 before the first row at drawTOC's current
-// sizing, and 792-130, divided by the 22pt row height, comfortably fits
-// 28 rows with real margin (ends at y=740, 52pt of clearance) before the
-// bottom of the page.
-const rowsPerTOCPage = 28
-
 // Layout is the deterministic page plan for one export, computed once
 // before any drawing happens: every generated page's place in the packet,
 // and — critically — the page each program entry's own content begins
@@ -90,15 +74,13 @@ type Layout struct {
 	TotalPages     int
 }
 
-// ComputeLayout walks entries in order and returns the full page plan.
+// ComputeLayout walks entries in order and returns the full page plan for
+// a table of contents tocPages long (measured by planTOC — see Paginate).
 // Page 1 is always the cover; TOC pages follow; then each entry consumes
 // either its own real PageCount (a piece) or exactly one page (a custom
 // entry, generated); the colophon is the final page.
-func ComputeLayout(entries []Entry) Layout {
-	tocPages := 1
-	if n := len(entries); n > rowsPerTOCPage {
-		tocPages = (n + rowsPerTOCPage - 1) / rowsPerTOCPage
-	}
+func ComputeLayout(entries []Entry, tocPages int) Layout {
+	tocPages = max(tocPages, 1)
 
 	starts := make([]int, len(entries))
 	page := 1 + tocPages // last page number consumed by cover + TOC

@@ -26,6 +26,7 @@ var kerningFonts = func() map[string]*sfnt.Font {
 		fontDisplay:           fontLibreBaskervilleRegular,
 		fontDisplay + "I":     fontLibreBaskervilleItalic,
 		fontDisplay + "B":     fontLibreBaskervilleBold,
+		fontDisplayMedium:     fontLibreBaskervilleMedium,
 		fontSans:              fontCabinRegular,
 		fontSans + "I":        fontCabinItalic,
 		fontSans + "B":        fontCabinBold,
@@ -202,4 +203,20 @@ func kernedLines(pdf *fpdf.Fpdf, family, style string, size float64, text string
 		lines = append(lines, line)
 	}
 	return lines
+}
+
+// CanDraw reports whether every character of text has a glyph in the text
+// font the packet's dates are set in (Cabin) or the Bravura fallback — for
+// a caller choosing a locale's date format, which may be in a script these
+// fonts don't cover.
+func CanDraw(text string) bool {
+	var buf sfnt.Buffer
+	cabin := kerningFonts[fontSans]
+	for _, r := range text {
+		if r == ' ' || hasGlyph(cabin, &buf, r) || hasGlyph(symbolFont, &buf, r) {
+			continue
+		}
+		return false
+	}
+	return true
 }

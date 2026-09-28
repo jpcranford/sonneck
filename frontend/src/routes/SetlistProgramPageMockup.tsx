@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { IconArrowLeft } from '@tabler/icons-react'
 import { SonneckMark } from '../components/SonneckMark'
@@ -50,10 +50,6 @@ interface TocProgram {
   label: string
   name: string
   gigDate: string
-  // How many rows the first TOC page holds. The real PDF measures this
-  // (a long setlist name or wrapped titles leave room for fewer); here it's
-  // what that measurement gives for each fixture at Letter size.
-  firstPageRows: number
   entries: TocEntry[]
 }
 
@@ -70,7 +66,6 @@ const TOC_PROGRAMS: TocProgram[] = [
     label: 'Sunday service (one page)',
     name: 'Sunday Morning Service',
     gigDate: '2026-10-04',
-    firstPageRows: 7,
     entries: [
       C('Prelude', undefined, 180),
       P('Holy, Holy, Holy', ['D Major', 'E♭ Major'], 165, 2),
@@ -86,7 +81,6 @@ const TOC_PROGRAMS: TocProgram[] = [
     label: 'Lessons and Carols (two pages)',
     name: 'A Festival of Nine Lessons and Carols',
     gigDate: '2026-12-13',
-    firstPageRows: 18,
     entries: [
       C('Organ Voluntary', 'Prelude', 300),
       P('Once in Royal David’s City', ['F Major'], 270, 2, 'Processional'),
@@ -141,6 +135,38 @@ function formatRowDuration(seconds: number): string {
   return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${s}` : `${m}:${s}`
 }
 
+// A key sequence, joined the way the app joins one everywhere else
+// (Piece Details, library card pills, Setlist Details): a regular-weight ›,
+// lighter than the keys, with a little space each side — for print the
+// app's 55% opacity becomes the solid fainter ink.
+function KeyChevrons({ keys }: { keys: string[] }) {
+  return keys.map((key, i) => (
+    <span key={i}>
+      {i > 0 && (
+        <span aria-hidden="true" style={{ margin: '0 0.3em', fontWeight: 400, color: PRINT_FAINTER }}>
+          ›
+        </span>
+      )}
+      {key}
+    </span>
+  ))
+}
+
+// A row's parenthetical: role • keys • duration, whichever are present.
+function tocParenthetical(row: TocRow) {
+  const parts = [
+    row.role,
+    row.keys.length > 0 ? <KeyChevrons keys={row.keys} /> : undefined,
+    row.duration,
+  ].filter((part) => part !== undefined)
+  return parts.map((part, i) => (
+    <span key={i}>
+      {i > 0 && ' • '}
+      {part}
+    </span>
+  ))
+}
+
 // The header's total, to the nearest minute: "approximately 1 hour 28 minutes".
 function formatApproximateTotal(seconds: number): string {
   const minutes = Math.max(1, Math.round(seconds / 60))
@@ -154,7 +180,11 @@ interface TocRow {
   num: string
   title: string
   piece: boolean
-  meta: string
+  // The parenthetical's parts, in order: role, the key sequence (short
+  // keys, drawn with chevrons between them), duration — any may be absent.
+  role?: string
+  keys: string[]
+  duration?: string
   page: number
 }
 
@@ -171,9 +201,15 @@ function tocRows(program: TocProgram, tocPages: number): TocRow[] {
     page += e.pages - 1
     const counts = e.piece || Boolean(e.countsAsMusic)
     if (counts) num += 1
-    const keys = e.keys?.length ? e.keys.map(shortKey).join(' › ') : undefined
-    const meta = [e.role, keys, e.seconds ? formatRowDuration(e.seconds) : undefined].filter(Boolean).join(' • ')
-    return { num: counts ? String(num) : '–', title: e.title, piece: e.piece, meta, page: start }
+    return {
+      num: counts ? String(num) : '–',
+      title: e.title,
+      piece: e.piece,
+      role: e.role,
+      keys: (e.keys ?? []).map(shortKey),
+      duration: e.seconds ? formatRowDuration(e.seconds) : undefined,
+      page: start,
+    }
   })
 }
 
@@ -216,12 +252,17 @@ const ENTRIES: PreviewEntry[] = [
   },
 ]
 
-// widthPt: the page's real width in PDF points, for the cover's
-// point-exact sizing below.
+// widthPt/heightPt: the page's real size in PDF points (matching
+// internal/setlistpdf's pageSize), for the point-exact sizing below.
 const SHAPES = [
-  { key: 'letter', label: 'Letter', ratio: '8.5 / 11', widthPt: 612 },
-  { key: 'a4', label: 'A4', ratio: '210 / 297', widthPt: 595 },
+  { key: 'letter', label: 'Letter', ratio: '8.5 / 11', widthPt: 612, heightPt: 792 },
+  { key: 'a4', label: 'A4', ratio: '210 / 297', widthPt: 595.28, heightPt: 841.89 },
 ] as const
+
+// Every TOC page's margin, on all four sides.
+const TOC_MARGIN = 72
+// The space between the header row's rule and the first program row.
+const TOC_ROWS_TOP_GAP = 10
 
 // The cover's three solid print colors, on pure white — fixed hexes rather
 // than theme tokens, since the printed page never follows the app's theme.
@@ -283,10 +324,175 @@ export function SetlistProgramPageMockup() {
   // A length in real PDF points, scaled to this preview's rendered width.
   const pt = (n: number) => `calc(${n} * 100cqw / ${shape.widthPt})`
   const toc = TOC_PROGRAMS.find((p) => p.key === tocKey) ?? TOC_PROGRAMS[0]
-  const tocPages = toc.entries.length > toc.firstPageRows ? 2 : 1
-  const allTocRows = tocRows(toc, tocPages)
-  const tocPageRows = tocPages === 1 ? [allTocRows] : [allTocRows.slice(0, toc.firstPageRows), allTocRows.slice(toc.firstPageRows)]
+  // TOC pagination, the way the real PDF does it: lay every row out once
+  // (the hidden measuring page below), measure the header and each row's
+  // real height — wrapped titles included — and start a new page whenever
+  // the next row would cross the bottom margin. Continuation pages begin at
+  // the top margin with only the header row. `breaks` are the indices of
+  // each continuation page's first row; the page count they imply feeds
+  // every entry's page number.
+  const tocMeasureRef = useRef<HTMLDivElement>(null)
+  const [tocLayout, setTocLayout] = useState<{ key: string; breaks: number[] } | null>(null)
+  const tocLayoutKey = `${toc.key}:${shape.key}`
+  const tocBreaks = tocLayout?.key === tocLayoutKey ? tocLayout.breaks : []
+  const tocPageCount = tocBreaks.length + 1
+  const allTocRows = tocRows(toc, tocPageCount)
+  const tocPageRows = [0, ...tocBreaks].map((start, i) => allTocRows.slice(start, tocBreaks[i] ?? allTocRows.length))
   const tocTotalSeconds = toc.entries.reduce((sum, e) => sum + (e.seconds ?? 0), 0)
+
+  const renderTocPage = (rows: TocRow[], pageIndex: number) => (
+    <PageShell key={pageIndex} ratio={shape.ratio} className="bg-white">
+      <div
+        className="absolute flex flex-col"
+        style={{ left: pt(TOC_MARGIN), right: pt(TOC_MARGIN), top: pt(TOC_MARGIN) }}
+      >
+        {pageIndex === 0 && (
+          <div className="flex flex-col" style={{ gap: pt(4), marginBottom: pt(24) }}>
+            <span
+              className="font-display"
+              style={{ fontSize: pt(24), fontWeight: 700, lineHeight: 1.24, color: PRINT_INK }}
+            >
+              {toc.name}
+            </span>
+            <span
+              className="font-sans"
+              style={{
+                fontSize: pt(12 * CABIN_OPTICAL),
+                letterSpacing: '0.02em',
+                lineHeight: 1.4,
+                color: PRINT_FAINT,
+              }}
+            >
+              {formatDateOnly(toc.gigDate, LONG_DATE)} &bull; {formatApproximateTotal(tocTotalSeconds)}
+            </span>
+          </div>
+        )}
+        <div
+          data-toc-label
+          className="font-sans flex items-baseline uppercase"
+          style={{
+            paddingBottom: pt(5),
+            borderBottom: `${pt(1)} solid ${PRINT_FAINTER}`,
+            fontSize: pt(9 * CABIN_OPTICAL),
+            letterSpacing: '0.1em',
+            lineHeight: 1.4,
+            color: PRINT_FAINT,
+          }}
+        >
+          <span className="grow">{pageIndex === 0 ? 'Program' : 'Program, continued'}</span>
+          <span>Page</span>
+        </div>
+        <div className="flex flex-col" style={{ gap: pt(12), marginTop: pt(TOC_ROWS_TOP_GAP) }}>
+          {rows.map((row) => (
+            // The row itself is Baskerville 12pt, so each line box
+            // is sized by the title's own font — a line that
+            // started from a different font (the page's default
+            // Cabin 16px) would grow taller than its line-height
+            // once the Baskerville and 9pt Cabin runs sit on its
+            // baseline. The PDF places baselines at an exact pitch,
+            // so this keeps the mockup's rows the same height.
+            <div
+              key={row.page}
+              data-toc-row
+              className="font-display flex"
+              style={{ alignItems: 'last baseline', fontSize: pt(12), lineHeight: pt(12 * 1.24) }}
+            >
+              {/* The number sits inside the title's first line, so
+                  it shares that line's baseline; wrapped lines hang
+                  under the title, past it. */}
+              <span
+                className="min-w-0"
+                style={{ flex: '0 1 auto', paddingLeft: pt(34), textIndent: `calc(-1 * ${pt(34)})` }}
+              >
+                <span
+                  className="font-display inline-block text-right tabular-nums"
+                  style={{ width: pt(24), marginRight: pt(10), textIndent: 0, fontSize: pt(12), color: PRINT_FAINT }}
+                >
+                  {row.num}
+                </span>
+                {row.piece ? (
+                  <span className="font-display" style={{ fontSize: pt(12), fontWeight: 500, color: PRINT_INK }}>
+                    {row.title}
+                  </span>
+                ) : (
+                  <span className="font-display italic" style={{ fontSize: pt(12), color: PRINT_FAINT }}>
+                    {row.title}
+                  </span>
+                )}
+                {(row.role || row.keys.length > 0 || row.duration) && (
+                  <>
+                    {' '}
+                    <span
+                      className="font-sans whitespace-nowrap"
+                      style={{ fontSize: pt(9 * CABIN_OPTICAL), letterSpacing: '0.02em', lineHeight: 1, color: PRINT_FAINT }}
+                    >
+                      ({tocParenthetical(row)})
+                    </span>
+                  </>
+                )}
+              </span>
+              <span
+                aria-hidden="true"
+                style={{
+                  flex: `1 0 ${pt(24)}`,
+                  height: pt(2),
+                  margin: `0 ${pt(3)} 0 ${pt(6)}`,
+                  backgroundImage: `radial-gradient(circle at ${pt(1)} ${pt(1)}, ${PRINT_FAINTER} ${pt(0.7)}, transparent ${pt(0.95)})`,
+                  backgroundSize: `${pt(4)} ${pt(2)}`,
+                  backgroundRepeat: 'repeat-x',
+                  backgroundPosition: 'right bottom',
+                }}
+              />
+              <span
+                className="font-display flex-none text-right tabular-nums"
+                style={{ minWidth: pt(16), fontSize: pt(12), color: PRINT_INK }}
+              >
+                {row.page}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </PageShell>
+  )
+
+  useEffect(() => {
+    const el = tocMeasureRef.current
+    if (!el) return
+    let cancelled = false
+    const measure = () => {
+      if (cancelled) return
+      const shell = el.firstElementChild?.getBoundingClientRect()
+      const label = el.querySelector('[data-toc-label]')
+      if (!shell || !label || shell.width === 0) return
+      const toPt = shape.widthPt / shell.width
+      const bottomLimit = shape.heightPt - TOC_MARGIN
+      // Where a continuation page's first row starts: the top margin, the
+      // header row, and its gap.
+      const continuationTop = TOC_MARGIN + label.getBoundingClientRect().height * toPt + TOC_ROWS_TOP_GAP
+      const breaks: number[] = []
+      let shift = 0 // added to a measured position to place it on its own page
+      el.querySelectorAll('[data-toc-row]').forEach((row, i) => {
+        const r = row.getBoundingClientRect()
+        const top = (r.top - shell.top) * toPt
+        const bottom = (r.bottom - shell.top) * toPt
+        if (bottom + shift > bottomLimit && i > (breaks[breaks.length - 1] ?? 0)) {
+          breaks.push(i)
+          shift = continuationTop - top
+        }
+      })
+      setTocLayout((prev) =>
+        prev?.key === tocLayoutKey && prev.breaks.join() === breaks.join() ? prev : { key: tocLayoutKey, breaks },
+      )
+    }
+    void document.fonts.ready.then(measure)
+    const observer = new ResizeObserver(measure)
+    observer.observe(el)
+    return () => {
+      cancelled = true
+      observer.disconnect()
+    }
+  }, [tocLayoutKey, tocPageCount, shape.widthPt, shape.heightPt])
 
   return (
     <div className={`${CONTENT_MAX_W} flex flex-1 flex-col gap-6 px-6 py-6 md:px-8 md:py-8`}>
@@ -391,7 +597,7 @@ export function SetlistProgramPageMockup() {
             Libre Baskerville rows with wrapped titles hanging under the
             title column; the Cabin parenthetical at 9pt; dot leaders on
             the baseline, stopping 3pt short of the page number. */}
-        <section className="flex flex-col items-center gap-3">
+        <section className="relative flex flex-col items-center gap-3">
           <h2 className="font-display text-xl text-ink">Table of Contents</h2>
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-medium text-ink-soft">Program:</span>
@@ -411,112 +617,16 @@ export function SetlistProgramPageMockup() {
             ))}
           </div>
           <div className="flex w-full flex-wrap justify-center gap-6">
-            {tocPageRows.map((rows, pageIndex) => (
-              <PageShell key={pageIndex} ratio={shape.ratio} className="bg-white">
-                <div
-                  className="absolute flex flex-col"
-                  style={{ left: pt(72), right: pt(72), top: pt(72) }}
-                >
-                  {pageIndex === 0 && (
-                    <div className="flex flex-col" style={{ gap: pt(4), marginBottom: pt(24) }}>
-                      <span
-                        className="font-display"
-                        style={{ fontSize: pt(24), fontWeight: 700, lineHeight: 1.24, color: PRINT_INK }}
-                      >
-                        {toc.name}
-                      </span>
-                      <span
-                        className="font-sans"
-                        style={{
-                          fontSize: pt(12 * CABIN_OPTICAL),
-                          letterSpacing: '0.02em',
-                          lineHeight: 1.4,
-                          color: PRINT_FAINT,
-                        }}
-                      >
-                        {formatDateOnly(toc.gigDate, LONG_DATE)} &bull; {formatApproximateTotal(tocTotalSeconds)}
-                      </span>
-                    </div>
-                  )}
-                  <div
-                    className="font-sans flex items-baseline uppercase"
-                    style={{
-                      paddingBottom: pt(5),
-                      borderBottom: `${pt(1)} solid ${PRINT_FAINTER}`,
-                      fontSize: pt(9 * CABIN_OPTICAL),
-                      letterSpacing: '0.1em',
-                      lineHeight: 1.4,
-                      color: PRINT_FAINT,
-                    }}
-                  >
-                    <span className="grow">{pageIndex === 0 ? 'Program' : 'Program, continued'}</span>
-                    <span>Page</span>
-                  </div>
-                  <div className="flex flex-col" style={{ gap: pt(12), marginTop: pt(10) }}>
-                    {rows.map((row) => (
-                      <div
-                        key={row.page}
-                        className="flex"
-                        style={{ alignItems: 'last baseline', lineHeight: pt(12 * 1.24) }}
-                      >
-                        {/* The number sits inside the title's first line, so
-                            it shares that line's baseline; wrapped lines hang
-                            under the title, past it. */}
-                        <span
-                          className="min-w-0"
-                          style={{ flex: '0 1 auto', paddingLeft: pt(34), textIndent: `calc(-1 * ${pt(34)})` }}
-                        >
-                          <span
-                            className="font-display inline-block text-right tabular-nums"
-                            style={{ width: pt(24), marginRight: pt(10), textIndent: 0, fontSize: pt(12), color: PRINT_FAINT }}
-                          >
-                            {row.num}
-                          </span>
-                          {row.piece ? (
-                            <span className="font-display" style={{ fontSize: pt(12), fontWeight: 500, color: PRINT_INK }}>
-                              {row.title}
-                            </span>
-                          ) : (
-                            <span className="font-display italic" style={{ fontSize: pt(12), color: PRINT_FAINT }}>
-                              {row.title}
-                            </span>
-                          )}
-                          {row.meta && (
-                            <>
-                              {' '}
-                              <span
-                                className="font-sans whitespace-nowrap"
-                                style={{ fontSize: pt(9 * CABIN_OPTICAL), letterSpacing: '0.02em', color: PRINT_FAINT }}
-                              >
-                                ({row.meta})
-                              </span>
-                            </>
-                          )}
-                        </span>
-                        <span
-                          aria-hidden="true"
-                          style={{
-                            flex: `1 0 ${pt(24)}`,
-                            height: pt(2),
-                            margin: `0 ${pt(3)} 0 ${pt(6)}`,
-                            backgroundImage: `radial-gradient(circle at ${pt(1)} ${pt(1)}, ${PRINT_FAINTER} ${pt(0.7)}, transparent ${pt(0.95)})`,
-                            backgroundSize: `${pt(4)} ${pt(2)}`,
-                            backgroundRepeat: 'repeat-x',
-                            backgroundPosition: 'right bottom',
-                          }}
-                        />
-                        <span
-                          className="font-display flex-none text-right tabular-nums"
-                          style={{ minWidth: pt(16), fontSize: pt(12), color: PRINT_INK }}
-                        >
-                          {row.page}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </PageShell>
-            ))}
+            {tocPageRows.map((rows, pageIndex) => renderTocPage(rows, pageIndex))}
+          </div>
+          {/* The measuring page: the same markup with every row on it, laid
+              out at the visible pages' width, never shown. */}
+          <div
+            ref={tocMeasureRef}
+            aria-hidden="true"
+            className="pointer-events-none invisible absolute inset-x-0 top-0 flex justify-center"
+          >
+            {renderTocPage(allTocRows, 0)}
           </div>
         </section>
 

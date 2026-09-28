@@ -62,6 +62,7 @@ func registerFonts(pdf *fpdf.Fpdf) {
 	pdf.AddUTF8FontFromBytes(fontDisplay, "", fontLibreBaskervilleRegular)
 	pdf.AddUTF8FontFromBytes(fontDisplay, "I", fontLibreBaskervilleItalic)
 	pdf.AddUTF8FontFromBytes(fontDisplay, "B", fontLibreBaskervilleBold)
+	pdf.AddUTF8FontFromBytes(fontDisplayMedium, "", fontLibreBaskervilleMedium)
 	pdf.AddUTF8FontFromBytes(fontSans, "", fontCabinRegular)
 	pdf.AddUTF8FontFromBytes(fontSans, "I", fontCabinItalic)
 	pdf.AddUTF8FontFromBytes(fontSans, "B", fontCabinBold)
@@ -93,6 +94,10 @@ type Input struct {
 	Entries []Entry
 	Shape   Shape
 	Now     time.Time // generation timestamp for the colophon's "Generated" line
+	// FormatDate formats a date for the reader (the colophon's "Generated"
+	// date), in their locale; nil means US English ("January 2, 2006"). The
+	// gig date arrives already formatted, in Setlist.GigDate.
+	FormatDate func(time.Time) string
 }
 
 // Generate produces the complete merged PDF for one setlist export: a
@@ -122,11 +127,7 @@ type Input struct {
 // files plus real piece files is concatenated by pdfunite into the
 // final output.
 func Generate(ctx context.Context, binDir string, input Input) ([]byte, error) {
-	shape := input.Shape
-	if shape == "" {
-		shape = ShapeLetter
-	}
-	size := pageSize[shape]
+	size := input.pageSize()
 
 	tmpDir, err := os.MkdirTemp("", "setlistpdf-*")
 	if err != nil {
@@ -134,18 +135,7 @@ func Generate(ctx context.Context, binDir string, input Input) ([]byte, error) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	newDoc := func() *fpdf.Fpdf {
-		pdf := fpdf.NewCustom(&fpdf.InitType{
-			OrientationStr: "P",
-			UnitStr:        unit,
-			SizeStr:        "",
-			Size:           size,
-		})
-		registerFonts(pdf)
-		pdf.SetAutoPageBreak(false, 0)
-		pdf.SetMargins(0, 0, 0)
-		return pdf
-	}
+	newDoc := func() *fpdf.Fpdf { return newDocument(size) }
 
 	var segments []string
 	segIdx := 0
@@ -175,11 +165,11 @@ func Generate(ctx context.Context, binDir string, input Input) ([]byte, error) {
 		return nil
 	}
 
-	layout := ComputeLayout(input.Entries)
+	_, toc := paginate(input)
 
 	pdf := newDoc()
 	drawCover(pdf, size, input.Setlist)
-	drawTOC(pdf, size, layout, input.Setlist, input.Entries)
+	drawTOC(pdf, size, toc)
 
 	for _, e := range input.Entries {
 		if e.IsPiece {
@@ -196,7 +186,7 @@ func Generate(ctx context.Context, binDir string, input Input) ([]byte, error) {
 		drawProgramPage(pdf, size, e)
 	}
 
-	drawColophon(pdf, size, input.Now)
+	drawColophon(pdf, size, input.formatDate(input.Now))
 	if err := flush(pdf); err != nil {
 		return nil, fmt.Errorf("finalizing colophon: %w", err)
 	}
@@ -222,18 +212,79 @@ func diamondDivider(pdf *fpdf.Fpdf, centerX, y, ruleWidth float64) {
 	pdf.TransformEnd()
 }
 
+// formatDuration is m:ss, or h:mm:ss from an hour up.
 func formatDuration(seconds int) string {
-	m := seconds / 60
-	s := seconds % 60
+	h, m, s := seconds/3600, seconds%3600/60, seconds%60
+	if h > 0 {
+		return fmt.Sprintf("%d:%02d:%02d", h, m, s)
+	}
 	return fmt.Sprintf("%d:%02d", m, s)
 }
 
-func joinKeys(keys []string) string {
-	// U+203A (›), not U+2192 (→) — matches the real app's own key-sequence
-	// rendering exactly (PiecePage.tsx's modulating-key row uses a literal
-	// "›" span, not an arrow icon or the RIGHTWARDS ARROW codepoint). Found
-	// live: neither embedded font contains a U+2192 glyph at all, so the
-	// original choice rendered as a tofu box in every real generated TOC;
-	// U+203A is present in both.
-	return strings.Join(keys, " › ")
+func newDocument(size fpdf.SizeType) *fpdf.Fpdf {
+	pdf := fpdf.NewCustom(&fpdf.InitType{
+		OrientationStr: "P",
+		UnitStr:        unit,
+		SizeStr:        "",
+		Size:           size,
+	})
+	registerFonts(pdf)
+	pdf.SetAutoPageBreak(false, 0)
+	pdf.SetMargins(0, 0, 0)
+	return pdf
+}
+
+func (in Input) pageSize() fpdf.SizeType {
+	if in.Shape == "" {
+		return pageSize[ShapeLetter]
+	}
+	return pageSize[in.Shape]
+}
+
+func (in Input) formatDate(t time.Time) string {
+	if in.FormatDate != nil {
+		return in.FormatDate(t)
+	}
+	return t.Format("January 2, 2006")
+}
+
+// tocMeta is the TOC header's second line: the gig date and the total
+// duration, whichever the setlist has.
+func (in Input) tocMeta() string {
+	var parts []string
+	if in.Setlist.GigDate != "" {
+		parts = append(parts, in.Setlist.GigDate)
+	}
+	if total := TotalDurationSeconds(in.Entries); total != nil {
+		parts = append(parts, formatApproximately(*total))
+	}
+	return strings.Join(parts, " • ")
+}
+
+// paginate measures the table of contents and returns the packet's page
+// plan along with it. The TOC's own page count moves every entry's page
+// number, and the page numbers' widths feed back into how rows wrap, so it
+// repeats until the page count settles (in practice, once or twice).
+func paginate(in Input) (Layout, tocPlan) {
+	size := in.pageSize()
+	measure := newDocument(size)
+	tocPages := 1
+	var layout Layout
+	var plan tocPlan
+	for range 5 {
+		layout = ComputeLayout(in.Entries, tocPages)
+		plan = planTOC(measure, size, in.Setlist, in.tocMeta(), in.Entries, layout)
+		if len(plan.pages) == tocPages {
+			break
+		}
+		tocPages = len(plan.pages)
+	}
+	return layout, plan
+}
+
+// Paginate is the page plan Generate draws to — the TOC measured and paged
+// the same way — without drawing anything.
+func Paginate(in Input) Layout {
+	layout, _ := paginate(in)
+	return layout
 }

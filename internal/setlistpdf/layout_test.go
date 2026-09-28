@@ -10,7 +10,7 @@ import (
 func intp(n int) *int { return &n }
 
 func TestComputeLayout_Empty(t *testing.T) {
-	l := setlistpdf.ComputeLayout(nil)
+	l := setlistpdf.ComputeLayout(nil, 1)
 	if l.TOCPageCount != 1 {
 		t.Errorf("TOCPageCount = %d, want 1", l.TOCPageCount)
 	}
@@ -32,7 +32,7 @@ func TestComputeLayout_MixedEntries(t *testing.T) {
 		{IsPiece: false},                   // custom, 1 page -> page 6
 		{IsPiece: true, PiecePageCount: 3}, // piece, 3 pages -> pages 7-9
 	}
-	l := setlistpdf.ComputeLayout(entries)
+	l := setlistpdf.ComputeLayout(entries, 1)
 	want := []int{3, 4, 6, 7}
 	if !reflect.DeepEqual(l.EntryStartPage, want) {
 		t.Errorf("EntryStartPage = %v, want %v", l.EntryStartPage, want)
@@ -53,7 +53,7 @@ func TestComputeLayout_SinglePieceMultiPageAdvancesStartPageCorrectly(t *testing
 		{IsPiece: true, PiecePageCount: 5},
 		{IsPiece: false},
 	}
-	l := setlistpdf.ComputeLayout(entries)
+	l := setlistpdf.ComputeLayout(entries, 1)
 	if l.EntryStartPage[0] != 3 {
 		t.Errorf("first entry start = %d, want 3", l.EntryStartPage[0])
 	}
@@ -62,23 +62,18 @@ func TestComputeLayout_SinglePieceMultiPageAdvancesStartPageCorrectly(t *testing
 	}
 }
 
-func TestComputeLayout_TOCOverflowsToSecondPage(t *testing.T) {
-	entries := make([]setlistpdf.Entry, 35) // > rowsPerTOCPage(28)
-	l := setlistpdf.ComputeLayout(entries)
-	if l.TOCPageCount != 2 {
-		t.Errorf("TOCPageCount = %d, want 2", l.TOCPageCount)
+func TestComputeLayout_MultiPageTOCShiftsEveryEntry(t *testing.T) {
+	entries := []setlistpdf.Entry{{IsPiece: false}, {IsPiece: true, PiecePageCount: 2}}
+	l := setlistpdf.ComputeLayout(entries, 3)
+	if l.TOCPageCount != 3 {
+		t.Errorf("TOCPageCount = %d, want 3", l.TOCPageCount)
 	}
-	// First entry must start after both cover pages AND both TOC pages.
-	if l.EntryStartPage[0] != 4 {
-		t.Errorf("first entry start = %d, want 4 (1 cover + 2 toc + 1)", l.EntryStartPage[0])
+	// Cover, three TOC pages, then the first entry.
+	if want := []int{5, 6}; !reflect.DeepEqual(l.EntryStartPage, want) {
+		t.Errorf("EntryStartPage = %v, want %v", l.EntryStartPage, want)
 	}
-}
-
-func TestComputeLayout_ExactlyOneTOCPageBoundary(t *testing.T) {
-	entries := make([]setlistpdf.Entry, 28) // exactly rowsPerTOCPage
-	l := setlistpdf.ComputeLayout(entries)
-	if l.TOCPageCount != 1 {
-		t.Errorf("TOCPageCount = %d, want 1 at the exact boundary", l.TOCPageCount)
+	if l.TotalPages != 8 {
+		t.Errorf("TotalPages = %d, want 8", l.TotalPages)
 	}
 }
 

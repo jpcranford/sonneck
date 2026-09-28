@@ -20,6 +20,15 @@ var fontLibreBaskervilleItalic []byte
 //go:embed assets/fonts/LibreBaskerville-Bold.ttf
 var fontLibreBaskervilleBold []byte
 
+// LibreBaskerville-Medium.ttf — weight 500, a TOC piece title's weight (the
+// app's own 500 for piece titles). Google ships Libre Baskerville only as a
+// variable font (wght 400–700, Version 2.005, the same release as the
+// static files above); this is its 500 instance, cut with fonttools'
+// varLib.instancer.
+//
+//go:embed assets/fonts/LibreBaskerville-Medium.ttf
+var fontLibreBaskervilleMedium []byte
+
 //go:embed assets/fonts/Cabin-Regular.ttf
 var fontCabinRegular []byte
 
