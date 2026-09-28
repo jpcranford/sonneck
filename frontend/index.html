@@ -12,7 +12,10 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <link rel="manifest" href="/manifest.webmanifest" />
+    <!-- use-credentials: a manifest is otherwise fetched without cookies,
+         so behind an auth proxy (Cloudflare Access, Authelia…) it gets the
+         proxy's login redirect instead and the installed app has no icon. -->
+    <link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials" />
     <!-- Matches --color-paper (see index.css's design tokens) so Safari's
          chrome (status bar / home-indicator area) blends into the page
          background instead of reading as a separate colored band —
