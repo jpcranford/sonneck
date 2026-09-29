@@ -118,12 +118,14 @@ func drawCover(pdf *fpdf.Fpdf, size fpdf.SizeType, s Setlist) {
 		}
 	}})
 
-	blocks = append(blocks, block{1 + 2*coverRuleMargin, func(top float64) {
-		setFill(pdf, colorFainter)
-		pdf.Rect((w-coverRuleWidth)/2, top+coverRuleMargin, coverRuleWidth, 1, "F")
-	}})
-
 	if s.Description != "" {
+		// The rule separates the title from the description, so it goes
+		// with it.
+		blocks = append(blocks, block{1 + 2*coverRuleMargin, func(top float64) {
+			setFill(pdf, colorFainter)
+			pdf.Rect((w-coverRuleWidth)/2, top+coverRuleMargin, coverRuleWidth, 1, "F")
+		}})
+
 		// Real Markdown + :shortcode: rendering, matching how this field
 		// actually renders in-app (MarkdownText.tsx) — ambientItalic=true
 		// mirrors index.css's `.italic em { font-style: normal }` rule

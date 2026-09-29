@@ -569,23 +569,29 @@ export function SetlistProgramPageMockup() {
               >
                 {SETLIST.name}
               </span>
-              <span
-                aria-hidden="true"
-                style={{ height: pt(1), width: pt(24), background: PRINT_FAINTER, margin: `${pt(2)} 0` }}
-              />
-              <p
-                className="font-sans italic"
-                style={{
-                  fontSize: pt(12 * CABIN_OPTICAL),
-                  letterSpacing: '0.02em',
-                  lineHeight: 1.4,
-                  color: PRINT_FAINT,
-                  width: pt(233),
-                  margin: 0,
-                }}
-              >
-                {COVER_DESCRIPTION}
-              </p>
+              {/* The rule separates title from description, so an absent
+                  description takes it along (drawCover does the same). */}
+              {COVER_DESCRIPTION && (
+                <>
+                  <span
+                    aria-hidden="true"
+                    style={{ height: pt(1), width: pt(24), background: PRINT_FAINTER, margin: `${pt(2)} 0` }}
+                  />
+                  <p
+                    className="font-sans italic"
+                    style={{
+                      fontSize: pt(12 * CABIN_OPTICAL),
+                      letterSpacing: '0.02em',
+                      lineHeight: 1.4,
+                      color: PRINT_FAINT,
+                      width: pt(233),
+                      margin: 0,
+                    }}
+                  >
+                    {COVER_DESCRIPTION}
+                  </p>
+                </>
+              )}
               <Fleuron height={pt(21)} rotated style={{ color: PRINT_FAINTER, marginTop: pt(8) }} />
             </div>
           </PageShell>
