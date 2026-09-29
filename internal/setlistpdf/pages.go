@@ -28,6 +28,7 @@ const (
 	coverSidePadding  = 32.0
 	coverColumnWidth  = 233.0
 	coverGap          = 10.0
+	coverOpticalLift  = 0.04 // of the page height; see drawCover
 	coverFleuronSize  = 21.0
 	coverFleuronSpace = 8.0 // between each fleuron and the text it frames
 	coverDateSize     = 11 * cabinOptical
@@ -151,10 +152,14 @@ func drawCover(pdf *fpdf.Fpdf, size fpdf.SizeType, s Setlist) {
 	for _, b := range blocks {
 		total += b.height
 	}
-	// Centered within the inner frame's content box (inside its 1pt border).
+	// Optically centered within the inner frame's content box (inside its
+	// 1pt border): centered, then lifted by coverOpticalLift of the page
+	// height, since a block centered exactly reads as sitting low. The
+	// stack starts and ends with the fleurons, whose ink fills their box,
+	// so its measured height is its visible height.
 	contentTop := coverInnerInset + 1
 	contentHeight := h - 2*contentTop
-	top := contentTop + (contentHeight-total)/2
+	top := contentTop + (contentHeight-total)/2 - coverOpticalLift*h
 	for _, b := range blocks {
 		b.draw(top)
 		top += b.height + coverGap

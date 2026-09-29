@@ -28,6 +28,8 @@ const SETLIST = { name: 'Sunday Morning Service', gigDate: '2026-10-04' }
 const LONG_DATE: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'long', day: 'numeric' }
 const COVER_DESCRIPTION =
   'Traditional hymns and choral music for the first Sunday of October — all are welcome to join in the congregational singing.'
+// The cover's optical-center lift, as a fraction of the page height.
+const COVER_OPTICAL_LIFT = 0.04
 const COLOPHON_TYPEFACES = 'Set in Libre Baskerville and Cabin.'
 
 // Table of contents fixtures — the two programs the locked design was
@@ -548,7 +550,10 @@ export function SetlistProgramPageMockup() {
                 inset: pt(44),
                 border: `${pt(1)} solid ${PRINT_FAINTER}`,
                 gap: pt(10),
-                padding: `0 ${pt(32)}`,
+                // Bottom padding of twice the lift raises the centered
+                // stack by COVER_OPTICAL_LIFT of the page height (drawCover's
+                // coverOpticalLift): exactly centered reads as sitting low.
+                padding: `0 ${pt(32)} ${pt(2 * COVER_OPTICAL_LIFT * shape.heightPt)}`,
               }}
             >
               <Fleuron height={pt(21)} style={{ color: PRINT_FAINTER, marginBottom: pt(8) }} />
