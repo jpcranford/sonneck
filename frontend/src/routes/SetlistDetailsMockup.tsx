@@ -344,7 +344,9 @@ export function SetlistDetailsMockup() {
   function saveRole(role: string | undefined) {
     if (!editingRoleEntry) return
     const id = editingRoleEntry.id
-    setEntries((current) => current.map((e) => (e.id === id && e.kind === 'piece' ? { ...e, role } : e)))
+    setEntries((current) =>
+      current.map((e) => (e.id === id && e.kind === 'piece' ? { ...e, role } : e)),
+    )
   }
 
   // EditEntryModal's own field is named `description`, matching the Edit
@@ -435,26 +437,33 @@ export function SetlistDetailsMockup() {
 
   return (
     <div className={`${CONTENT_MAX_W} flex flex-1 flex-col gap-6 px-6 py-6 md:px-8 md:py-8`}>
-      <Link to="/mockup" className="inline-flex w-fit items-center gap-1.5 text-sm text-ink-soft hover:text-ink">
+      <Link
+        to="/mockup"
+        className="inline-flex w-fit items-center gap-1.5 text-sm text-ink-soft hover:text-ink"
+      >
         <IconArrowLeft size={20} />
         Setlists
       </Link>
 
       <div className="rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-4 py-2 text-sm text-ink-soft">
-        Reference sample — <span className="font-medium text-ink">Setlist Details</span> (design doc §13, Phase 6).
-        Built against the approved Option B ("Stats dashboard") layout and Phase 3's rough-in decisions. Play Set
-        (moved above the description, direct instruction) is inert — its own dependency, the Sheet Viewer's core
-        playback, isn't built yet; Download Set PDF, right next to it, is a literal port of PieceDetailsSample.tsx's own
-        Download PDF split-button/"+ Annotations" dropdown, relabeled for the whole set. Edit setlist, Edit Program,
-        Archive, Duplicate, and Delete are genuinely interactive — Edit setlist and Edit Program both open
-        EditSetlistMockup.tsx's own real modal, landed on its "Setlist Details"/"Program Order" tab respectively (the
-        full-fold decision — there's no separate Edit Program modal anymore), Edit setlist also reachable via the
-        "E" key (same shortcut PiecePage.tsx/BookDetailsPage.tsx/PersonDetailsPage.tsx already use), and Delete
-        reuses the identical window.confirm() pattern those two pages' own icon-only Delete buttons already use —
-        each row can also be removed via its own right-click menu (no standalone button — too easy to hit by
-        accident).
+        Reference sample — <span className="font-medium text-ink">Setlist Details</span> (design doc
+        §13, Phase 6). Built against the approved Option B ("Stats dashboard") layout and Phase 3's
+        rough-in decisions. Play Set (moved above the description, direct instruction) is inert —
+        its own dependency, the Sheet Viewer's core playback, isn't built yet; Download Set PDF,
+        right next to it, is a literal port of PieceDetailsSample.tsx's own Download PDF
+        split-button/"+ Annotations" dropdown, relabeled for the whole set. Edit setlist, Edit
+        Program, Archive, Duplicate, and Delete are genuinely interactive — Edit setlist and Edit
+        Program both open EditSetlistMockup.tsx's own real modal, landed on its "Setlist
+        Details"/"Program Order" tab respectively (the full-fold decision — there's no separate Edit
+        Program modal anymore), Edit setlist also reachable via the "E" key (same shortcut
+        PiecePage.tsx/BookDetailsPage.tsx/PersonDetailsPage.tsx already use), and Delete reuses the
+        identical window.confirm() pattern those two pages' own icon-only Delete buttons already use
+        — each row can also be removed via its own right-click menu (no standalone button — too easy
+        to hit by accident).
         {archived && (
-          <span className="ml-2 rounded-full bg-ink px-2 py-0.5 text-xs font-medium text-paper">Archived</span>
+          <span className="ml-2 rounded-full bg-ink px-2 py-0.5 text-xs font-medium text-paper">
+            Archived
+          </span>
         )}
       </div>
 
@@ -491,7 +500,11 @@ export function SetlistDetailsMockup() {
             label="Edit setlist"
             onClick={() => openEditSetlist('details')}
           />
-          <HeaderIconButton icon={<IconCopy size={16} />} label="Duplicate setlist" onClick={openDuplicateModal} />
+          <HeaderIconButton
+            icon={<IconCopy size={16} />}
+            label="Duplicate setlist"
+            onClick={openDuplicateModal}
+          />
           <HeaderIconButton
             icon={<IconArchive size={16} />}
             label={archived ? 'Unarchive setlist' : 'Archive setlist'}
@@ -576,15 +589,18 @@ export function SetlistDetailsMockup() {
             </button>
           </div>
           {downloadOpen && (
-            <div className="absolute top-full left-0 z-10 mt-1 w-64 overflow-hidden rounded-md border border-border bg-paper-raised py-1 text-left shadow-lg">
-              <button
-                type="button"
-                disabled
-                className="block w-full cursor-not-allowed px-3 py-2 text-left text-sm text-ink-soft/50"
+            <div className="absolute top-full left-0 z-10 mt-1 w-64 rounded-md border border-border bg-paper-raised py-1 text-left shadow-lg">
+              {/* InfoTooltip, not a disabled button: a disabled element takes no taps,
+                  so on touch there would be no way to learn why it's inert. */}
+              <InfoTooltip
+                message="Coming soon — downloads the whole set's PDF with your annotations drawn on each piece, once annotations exist."
+                ariaLabel="Download Set PDF + Annotations (coming soon with annotations)"
+                showPointerCursor={false}
+                triggerClassName="block w-full px-3 py-2 text-left text-sm text-ink-soft opacity-50"
               >
                 Download Set PDF + Annotations
                 <span className="block text-xs italic">Coming with annotations (§13)</span>
-              </button>
+              </InfoTooltip>
             </div>
           )}
         </div>
@@ -611,12 +627,16 @@ export function SetlistDetailsMockup() {
           </div>
           {hasAnyDuration && (
             <div className="min-w-0 break-words">
-              <dt className="mb-0.5 text-[0.7rem] tracking-wide text-ink-soft uppercase">Approx. Duration</dt>
+              <dt className="mb-0.5 text-[0.7rem] tracking-wide text-ink-soft uppercase">
+                Approx. Duration
+              </dt>
               <dd className="text-[0.88rem] text-ink">{formatDuration(totalDurationSeconds)}</dd>
             </div>
           )}
           <div className="min-w-0 break-words">
-            <dt className="mb-0.5 text-[0.7rem] tracking-wide text-ink-soft uppercase">Total pages</dt>
+            <dt className="mb-0.5 text-[0.7rem] tracking-wide text-ink-soft uppercase">
+              Total pages
+            </dt>
             <dd className="text-[0.88rem] text-ink">{totalPages}</dd>
           </div>
         </div>
@@ -648,9 +668,9 @@ export function SetlistDetailsMockup() {
           fill the container's width up to that cap before mx-auto
           centers it. */}
       <div className="mx-auto w-full max-w-xl">
-      <div className="flex items-center justify-between">
-        <h3 className="font-display text-lg font-medium text-ink">Program</h3>
-        {/* Real now that the full fold (decision 23) is live — opens the
+        <div className="flex items-center justify-between">
+          <h3 className="font-display text-lg font-medium text-ink">Program</h3>
+          {/* Real now that the full fold (decision 23) is live — opens the
             same EditSetlistModal as the header's own "Edit setlist" button,
             landed on its "Program Order" tab instead of "Setlist Details."
             Relabeled from "Add Entries" (its own name while this depended
@@ -662,17 +682,17 @@ export function SetlistDetailsMockup() {
             (that icon is reserved for genuinely "add to a setlist" actions
             elsewhere — the grid/list context-menu item, the Setlist
             Library's own bulk add — not this one, which is broader). */}
-        <button
-          type="button"
-          onClick={() => openEditSetlist('program')}
-          className="flex cursor-pointer items-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-sm text-ink hover:border-accent"
-        >
-          <IconListDetails size={16} />
-          Edit Program
-        </button>
-      </div>
+          <button
+            type="button"
+            onClick={() => openEditSetlist('program')}
+            className="flex cursor-pointer items-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-sm text-ink hover:border-accent"
+          >
+            <IconListDetails size={16} />
+            Edit Program
+          </button>
+        </div>
 
-      {/* Program list (Option F, "Compact list (mobile-based)") — one
+        {/* Program list (Option F, "Compact list (mobile-based)") — one
           unified rendering at every width, no <table> anywhere. Role label
           on its own small-caps line above the title, then a title row
           (number, title, duration) and a secondary line for
@@ -680,82 +700,91 @@ export function SetlistDetailsMockup() {
           as music" tag — the number itself already implies it. No
           standalone Remove button either — too easy to hit by accident;
           reached via the row's own right-click menu instead. */}
-      <div className="flex flex-col">
-        {entries.map((entry, i) => {
-          const number = displayNumbers[i]
-          const rowContent = (
-            <>
-              {/* ml-10 below (×3) must match the number column's own width
+        <div className="flex flex-col">
+          {entries.map((entry, i) => {
+            const number = displayNumbers[i]
+            const rowContent = (
+              <>
+                {/* ml-10 below (×3) must match the number column's own width
                   + gap (w-8 + gap-2 = 2rem + 0.5rem = 2.5rem = ml-10) so
                   the role label/secondary line/note line up with the
                   title itself, not the number. (Was ml-6/w-4 before the
                   number column was widened/enlarged — keep these two in
                   lockstep, a previous mismatch here was a real
                   live-reported bug.) */}
-              {entry.kind === 'piece' && entry.role && (
-                <span className="ml-10 block text-[0.65rem] font-medium tracking-wide text-ink-soft uppercase [font-variant:small-caps]">
-                  {entry.role}
-                </span>
-              )}
-              <div className="flex items-baseline gap-2">
-                <span className="w-8 shrink-0 text-center font-sans text-sm tabular-nums text-ink-soft">
-                  {number ?? '—'}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <span
-                    className={`block break-words ${
-                      entry.kind === 'piece'
-                        ? 'font-display text-base font-medium text-ink'
-                        : 'font-sans text-sm font-normal text-ink-soft italic'
-                    }`}
-                  >
-                    {entry.title}
-                  </span>
-                </div>
-                {entry.durationSeconds != null && (
-                  <span className="shrink-0 font-mono text-sm tabular-nums text-ink-soft">
-                    {formatDuration(entry.durationSeconds)}
+                {entry.kind === 'piece' && entry.role && (
+                  <span className="ml-10 block text-[0.65rem] font-medium tracking-wide text-ink-soft uppercase [font-variant:small-caps]">
+                    {entry.role}
                   </span>
                 )}
-              </div>
-              {entry.kind === 'piece' ? (
-                <div className="ml-10 break-words text-xs text-ink-soft">
-                  {entry.composer} <span aria-hidden="true">•</span> <KeySequence keys={entry.keys} />{' '}
-                  <span aria-hidden="true">•</span> {formatPages(entry.pages)}
-                </div>
-              ) : (
-                entry.note && (
-                  <div className="mt-1 ml-10 rounded border border-border bg-paper-sunken px-2 py-1 text-xs leading-snug text-ink-soft">
-                    {entry.note}
+                <div className="flex items-baseline gap-2">
+                  <span className="w-8 shrink-0 text-center font-sans text-sm tabular-nums text-ink-soft">
+                    {number ?? '—'}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <span
+                      className={`block break-words ${
+                        entry.kind === 'piece'
+                          ? 'font-display text-base font-medium text-ink'
+                          : 'font-sans text-sm font-normal text-ink-soft italic'
+                      }`}
+                    >
+                      {entry.title}
+                    </span>
                   </div>
-                )
-              )}
-            </>
-          )
-          return (
-            <div key={entry.id} className="border-b border-border last:border-none">
-              <ContextMenu hideTriggerButton items={getEntryMenuItems(entry, removeEntry, setEditingEntry, setEditingRoleEntry)}>
-                {/* A piece row links to its Piece Details page (here, the
+                  {entry.durationSeconds != null && (
+                    <span className="shrink-0 font-mono text-sm tabular-nums text-ink-soft">
+                      {formatDuration(entry.durationSeconds)}
+                    </span>
+                  )}
+                </div>
+                {entry.kind === 'piece' ? (
+                  <div className="ml-10 break-words text-xs text-ink-soft">
+                    {entry.composer} <span aria-hidden="true">•</span>{' '}
+                    <KeySequence keys={entry.keys} /> <span aria-hidden="true">•</span>{' '}
+                    {formatPages(entry.pages)}
+                  </div>
+                ) : (
+                  entry.note && (
+                    <div className="mt-1 ml-10 rounded border border-border bg-paper-sunken px-2 py-1 text-xs leading-snug text-ink-soft">
+                      {entry.note}
+                    </div>
+                  )
+                )}
+              </>
+            )
+            return (
+              <div key={entry.id} className="border-b border-border last:border-none">
+                <ContextMenu
+                  hideTriggerButton
+                  items={getEntryMenuItems(
+                    entry,
+                    removeEntry,
+                    setEditingEntry,
+                    setEditingRoleEntry,
+                  )}
+                >
+                  {/* A piece row links to its Piece Details page (here, the
                     Piece Details mockup) — a real <Link>, matching
                     SetlistPage.tsx's ClickableCard, with Book Details' own
                     linked-row hover treatment. Custom entries don't link. */}
-                {entry.kind === 'piece' ? (
-                  <Link
-                    to="/mockup/piece-details"
-                    state={{ backLabel: 'Setlist' }}
-                    className="-mx-1.5 block cursor-pointer px-1.5 py-2.5 text-left hover:rounded-md hover:bg-accent-soft"
-                  >
-                    {rowContent}
-                  </Link>
-                ) : (
-                  <div className="py-2.5">{rowContent}</div>
-                )}
-              </ContextMenu>
-            </div>
-          )
-        })}
+                  {entry.kind === 'piece' ? (
+                    <Link
+                      to="/mockup/piece-details"
+                      state={{ backLabel: 'Setlist' }}
+                      className="-mx-1.5 block cursor-pointer px-1.5 py-2.5 text-left hover:rounded-md hover:bg-accent-soft"
+                    >
+                      {rowContent}
+                    </Link>
+                  ) : (
+                    <div className="py-2.5">{rowContent}</div>
+                  )}
+                </ContextMenu>
+              </div>
+            )
+          })}
 
-        {/* Sum row — replaces the earlier standalone Entries/Approx.
+          {/* Sum row — replaces the earlier standalone Entries/Approx.
             Duration/Total pages stat-card grid (which used to sit above
             this whole section) with a single de-emphasized caption ending
             the Program list itself. Chosen from a 5-option live-switcher
@@ -769,23 +798,27 @@ export function SetlistDetailsMockup() {
             doubles as the separator above this caption. Duration is
             omitted entirely (not shown as a misleading "0:00") when no
             entry in the whole list has one set — see hasAnyDuration. */}
-        <div className="pt-3 text-center text-xs tracking-wide text-ink-soft uppercase">
-          {entries.length} {entries.length === 1 ? 'entry' : 'entries'} <span aria-hidden="true">•</span>{' '}
-          {totalPages} {totalPages === 1 ? 'page' : 'pages'}
-          {hasAnyDuration && (
-            <>
-              {' '}
-              <span aria-hidden="true">•</span>{' '}
-              <span className="font-mono text-xs tracking-normal normal-case tabular-nums">
-                {formatDuration(totalDurationSeconds)}
-              </span>
-            </>
-          )}
+          <div className="pt-3 text-center text-xs tracking-wide text-ink-soft uppercase">
+            {entries.length} {entries.length === 1 ? 'entry' : 'entries'}{' '}
+            <span aria-hidden="true">•</span> {totalPages} {totalPages === 1 ? 'page' : 'pages'}
+            {hasAnyDuration && (
+              <>
+                {' '}
+                <span aria-hidden="true">•</span>{' '}
+                <span className="font-mono text-xs tracking-normal normal-case tabular-nums">
+                  {formatDuration(totalDurationSeconds)}
+                </span>
+              </>
+            )}
+          </div>
         </div>
       </div>
-      </div>
 
-      <Modal open={archiveModalOpen} onClose={() => setArchiveModalOpen(false)} labelledBy="archive-setlist-title">
+      <Modal
+        open={archiveModalOpen}
+        onClose={() => setArchiveModalOpen(false)}
+        labelledBy="archive-setlist-title"
+      >
         <div className="flex flex-col gap-4">
           <div>
             <h2 id="archive-setlist-title" className="font-display text-xl font-medium text-ink">
@@ -816,14 +849,19 @@ export function SetlistDetailsMockup() {
         </div>
       </Modal>
 
-      <Modal open={duplicateModalOpen} onClose={() => setDuplicateModalOpen(false)} labelledBy="duplicate-setlist-title">
+      <Modal
+        open={duplicateModalOpen}
+        onClose={() => setDuplicateModalOpen(false)}
+        labelledBy="duplicate-setlist-title"
+      >
         <div className="flex flex-col gap-4">
           <div>
             <h2 id="duplicate-setlist-title" className="font-display text-xl font-medium text-ink">
               Duplicate this setlist
             </h2>
             <p className="mt-1 text-sm text-ink-soft">
-              Copies every entry in "{setlist.name}" into a new setlist. Both fields below are optional.
+              Copies every entry in "{setlist.name}" into a new setlist. Both fields below are
+              optional.
             </p>
           </div>
           <div className="flex flex-col gap-1.5">
@@ -850,7 +888,9 @@ export function SetlistDetailsMockup() {
               onChange={(event) => setDuplicateGigDate(event.target.value)}
               className="rounded-md border border-border bg-paper px-3 py-2 text-sm text-ink focus:border-accent focus:outline-none"
             />
-            <span className="text-xs text-ink-soft">Leave blank to duplicate without a gig date.</span>
+            <span className="text-xs text-ink-soft">
+              Leave blank to duplicate without a gig date.
+            </span>
           </div>
           <div className="flex justify-end gap-2">
             <button

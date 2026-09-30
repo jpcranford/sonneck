@@ -118,7 +118,15 @@ function KeySequence({ keys }: { keys: string[] }) {
   )
 }
 
-function HeaderIconButton({ icon, label, onClick }: { icon: ReactNode; label: string; onClick: () => void }) {
+function HeaderIconButton({
+  icon,
+  label,
+  onClick,
+}: {
+  icon: ReactNode
+  label: string
+  onClick: () => void
+}) {
   return (
     <button
       type="button"
@@ -175,14 +183,18 @@ export function SetlistPage() {
   })
 
   const hasAnyDuration = useMemo(
-    () => (setlist?.entries ?? []).some((e) => (e.kind === 'piece' ? e.piece?.duration : e.customDurationSeconds) != null),
+    () =>
+      (setlist?.entries ?? []).some(
+        (e) => (e.kind === 'piece' ? e.piece?.duration : e.customDurationSeconds) != null,
+      ),
     [setlist],
   )
 
   const removeMutation = useMutation({
     mutationFn: (entryId: number) => removeSetlistEntry(setlistId, entryId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['setlist', setlistId] }),
-    onError: (err) => window.alert(err instanceof ApiError ? err.message : 'Could not remove that entry.'),
+    onError: (err) =>
+      window.alert(err instanceof ApiError ? err.message : 'Could not remove that entry.'),
   })
 
   const archiveMutation = useMutation({
@@ -198,7 +210,8 @@ export function SetlistPage() {
       queryClient.invalidateQueries({ queryKey: ['setlists'] })
       setArchiveModalOpen(false)
     },
-    onError: (err) => window.alert(err instanceof ApiError ? err.message : 'Could not archive this setlist.'),
+    onError: (err) =>
+      window.alert(err instanceof ApiError ? err.message : 'Could not archive this setlist.'),
   })
 
   const deleteMutation = useMutation({
@@ -207,7 +220,8 @@ export function SetlistPage() {
       queryClient.invalidateQueries({ queryKey: ['setlists'] })
       navigate('/setlists')
     },
-    onError: (err) => window.alert(err instanceof ApiError ? err.message : 'Could not delete this setlist.'),
+    onError: (err) =>
+      window.alert(err instanceof ApiError ? err.message : 'Could not delete this setlist.'),
   })
 
   // Duplicate: creates the new setlist first, then copies every entry into
@@ -245,7 +259,8 @@ export function SetlistPage() {
       setDuplicateModalOpen(false)
       navigate(`/setlists/${created.id}`)
     },
-    onError: (err) => window.alert(err instanceof ApiError ? err.message : 'Could not duplicate this setlist.'),
+    onError: (err) =>
+      window.alert(err instanceof ApiError ? err.message : 'Could not duplicate this setlist.'),
   })
 
   function openDuplicateModal() {
@@ -268,7 +283,8 @@ export function SetlistPage() {
       if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return
       const target = event.target as HTMLElement | null
       const tag = target?.tagName
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target?.isContentEditable) return
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target?.isContentEditable)
+        return
       if (event.key.toLowerCase() === 'e') {
         event.preventDefault()
         openEditSetlist('details')
@@ -280,7 +296,10 @@ export function SetlistPage() {
 
   return (
     <div className={`${CONTENT_MAX_W} flex flex-1 flex-col gap-6 px-6 py-6 md:px-8 md:py-8`}>
-      <Link to="/setlists" className="inline-flex w-fit items-center gap-1.5 text-sm text-ink-soft hover:text-ink">
+      <Link
+        to="/setlists"
+        className="inline-flex w-fit items-center gap-1.5 text-sm text-ink-soft hover:text-ink"
+      >
         <IconArrowLeft size={20} />
         Setlists
       </Link>
@@ -295,7 +314,9 @@ export function SetlistPage() {
       )}
 
       {isError && !notFound && (
-        <p className="text-ink-soft">{error instanceof ApiError ? error.message : 'Could not load this setlist.'}</p>
+        <p className="text-ink-soft">
+          {error instanceof ApiError ? error.message : 'Could not load this setlist.'}
+        </p>
       )}
 
       {setlist && (
@@ -331,8 +352,16 @@ export function SetlistPage() {
                 <IconTrash size={18} />
               </button>
               <span aria-hidden="true" className="h-6 w-px bg-border" />
-              <HeaderIconButton icon={<IconEditFilled size={16} />} label="Edit setlist" onClick={() => openEditSetlist('details')} />
-              <HeaderIconButton icon={<IconCopy size={16} />} label="Duplicate setlist" onClick={openDuplicateModal} />
+              <HeaderIconButton
+                icon={<IconEditFilled size={16} />}
+                label="Edit setlist"
+                onClick={() => openEditSetlist('details')}
+              />
+              <HeaderIconButton
+                icon={<IconCopy size={16} />}
+                label="Duplicate setlist"
+                onClick={openDuplicateModal}
+              />
               <HeaderIconButton
                 icon={<IconArchive size={16} />}
                 label={setlist.archived ? 'Unarchive setlist' : 'Archive setlist'}
@@ -384,11 +413,18 @@ export function SetlistPage() {
                 </button>
               </div>
               {downloadOpen && canDownload && (
-                <div className="absolute top-full left-0 z-10 mt-1 w-64 overflow-hidden rounded-md border border-border bg-paper-raised py-1 text-left shadow-lg">
-                  <button type="button" disabled className="block w-full cursor-not-allowed px-3 py-2 text-left text-sm text-ink-soft/50">
+                <div className="absolute top-full left-0 z-10 mt-1 w-64 rounded-md border border-border bg-paper-raised py-1 text-left shadow-lg">
+                  {/* InfoTooltip, not a disabled button: a disabled element takes no taps,
+                      so on touch there would be no way to learn why it's inert. */}
+                  <InfoTooltip
+                    message="Coming soon — downloads the whole set's PDF with your annotations drawn on each piece, once annotations exist."
+                    ariaLabel="Download Set PDF + Annotations (coming soon with annotations)"
+                    showPointerCursor={false}
+                    triggerClassName="block w-full px-3 py-2 text-left text-sm text-ink-soft opacity-50"
+                  >
                     Download Set PDF + Annotations
                     <span className="block text-xs italic">Coming with annotations (§13)</span>
-                  </button>
+                  </InfoTooltip>
                 </div>
               )}
             </div>
@@ -402,17 +438,25 @@ export function SetlistPage() {
             )}
             <div className="mt-3.5 flex flex-wrap gap-x-8 gap-y-3">
               <div className="min-w-0 break-words">
-                <dt className="mb-0.5 text-[0.7rem] tracking-wide text-ink-soft uppercase">Entries</dt>
+                <dt className="mb-0.5 text-[0.7rem] tracking-wide text-ink-soft uppercase">
+                  Entries
+                </dt>
                 <dd className="text-[0.88rem] text-ink">{setlist.entryCount}</dd>
               </div>
               {hasAnyDuration && setlist.totalDurationSeconds != null && (
                 <div className="min-w-0 break-words">
-                  <dt className="mb-0.5 text-[0.7rem] tracking-wide text-ink-soft uppercase">Approx. Duration</dt>
-                  <dd className="text-[0.88rem] text-ink">{formatDuration(setlist.totalDurationSeconds)}</dd>
+                  <dt className="mb-0.5 text-[0.7rem] tracking-wide text-ink-soft uppercase">
+                    Approx. Duration
+                  </dt>
+                  <dd className="text-[0.88rem] text-ink">
+                    {formatDuration(setlist.totalDurationSeconds)}
+                  </dd>
                 </div>
               )}
               <div className="min-w-0 break-words">
-                <dt className="mb-0.5 text-[0.7rem] tracking-wide text-ink-soft uppercase">Total pages</dt>
+                <dt className="mb-0.5 text-[0.7rem] tracking-wide text-ink-soft uppercase">
+                  Total pages
+                </dt>
                 <dd className="text-[0.88rem] text-ink">{setlist.totalPages}</dd>
               </div>
             </div>
@@ -433,11 +477,15 @@ export function SetlistPage() {
 
             <div className="flex flex-col">
               {setlist.entries.length === 0 ? (
-                <p className="py-6 text-center text-sm text-ink-soft italic">No entries yet — use Edit Program to add some.</p>
+                <p className="py-6 text-center text-sm text-ink-soft italic">
+                  No entries yet — use Edit Program to add some.
+                </p>
               ) : (
                 setlist.entries.map((entry) => {
-                  const title = entry.kind === 'piece' ? (entry.piece?.title ?? '') : (entry.customName ?? '')
-                  const durationSeconds = entry.kind === 'piece' ? entry.piece?.duration : entry.customDurationSeconds
+                  const title =
+                    entry.kind === 'piece' ? (entry.piece?.title ?? '') : (entry.customName ?? '')
+                  const durationSeconds =
+                    entry.kind === 'piece' ? entry.piece?.duration : entry.customDurationSeconds
                   const rowContent = (
                     <>
                       {entry.kind === 'piece' && entry.role && (
@@ -494,8 +542,12 @@ export function SetlistPage() {
                     <div key={entry.id} className="border-b border-border last:border-none">
                       <ContextMenu
                         hideTriggerButton
-                        items={getEntryMenuItems(entry, setEditingPieceId, setEditingEntry, setEditingRoleEntry, (entryId) =>
-                          removeMutation.mutate(entryId),
+                        items={getEntryMenuItems(
+                          entry,
+                          setEditingPieceId,
+                          setEditingEntry,
+                          setEditingRoleEntry,
+                          (entryId) => removeMutation.mutate(entryId),
                         )}
                       >
                         {/* A piece row is a real link to its Piece Details page
@@ -521,8 +573,9 @@ export function SetlistPage() {
 
               {setlist.entries.length > 0 && (
                 <div className="pt-3 text-center text-xs tracking-wide text-ink-soft uppercase">
-                  {setlist.entryCount} {setlist.entryCount === 1 ? 'entry' : 'entries'} <span aria-hidden="true">•</span>{' '}
-                  {setlist.totalPages} {setlist.totalPages === 1 ? 'page' : 'pages'}
+                  {setlist.entryCount} {setlist.entryCount === 1 ? 'entry' : 'entries'}{' '}
+                  <span aria-hidden="true">•</span> {setlist.totalPages}{' '}
+                  {setlist.totalPages === 1 ? 'page' : 'pages'}
                   {hasAnyDuration && setlist.totalDurationSeconds != null && (
                     <>
                       {' '}
@@ -537,10 +590,17 @@ export function SetlistPage() {
             </div>
           </div>
 
-          <Modal open={archiveModalOpen} onClose={() => setArchiveModalOpen(false)} labelledBy="archive-setlist-title">
+          <Modal
+            open={archiveModalOpen}
+            onClose={() => setArchiveModalOpen(false)}
+            labelledBy="archive-setlist-title"
+          >
             <div className="flex flex-col gap-4">
               <div>
-                <h2 id="archive-setlist-title" className="font-display text-xl font-medium text-ink">
+                <h2
+                  id="archive-setlist-title"
+                  className="font-display text-xl font-medium text-ink"
+                >
                   {setlist.archived ? 'Unarchive this setlist?' : 'Archive this setlist?'}
                 </h2>
                 <p className="mt-1 text-sm text-ink-soft">
@@ -569,14 +629,22 @@ export function SetlistPage() {
             </div>
           </Modal>
 
-          <Modal open={duplicateModalOpen} onClose={() => setDuplicateModalOpen(false)} labelledBy="duplicate-setlist-title">
+          <Modal
+            open={duplicateModalOpen}
+            onClose={() => setDuplicateModalOpen(false)}
+            labelledBy="duplicate-setlist-title"
+          >
             <div className="flex flex-col gap-4">
               <div>
-                <h2 id="duplicate-setlist-title" className="font-display text-xl font-medium text-ink">
+                <h2
+                  id="duplicate-setlist-title"
+                  className="font-display text-xl font-medium text-ink"
+                >
                   Duplicate this setlist
                 </h2>
                 <p className="mt-1 text-sm text-ink-soft">
-                  Copies every entry in "{setlist.name}" into a new setlist. Both fields below are optional.
+                  Copies every entry in "{setlist.name}" into a new setlist. Both fields below are
+                  optional.
                 </p>
               </div>
               <div className="flex flex-col gap-1.5">
@@ -603,7 +671,9 @@ export function SetlistPage() {
                   onChange={(event) => setDuplicateGigDate(event.target.value)}
                   className="rounded-md border border-border bg-paper px-3 py-2 text-sm text-ink focus:border-accent focus:outline-none"
                 />
-                <span className="text-xs text-ink-soft">Leave blank to duplicate without a gig date.</span>
+                <span className="text-xs text-ink-soft">
+                  Leave blank to duplicate without a gig date.
+                </span>
               </div>
               <div className="flex justify-end gap-2">
                 <button
@@ -648,7 +718,11 @@ export function SetlistPage() {
           />
 
           {editingPiece && (
-            <EditPieceModal piece={editingPiece} open={editingPieceId !== null} onClose={() => setEditingPieceId(null)} />
+            <EditPieceModal
+              piece={editingPiece}
+              open={editingPieceId !== null}
+              onClose={() => setEditingPieceId(null)}
+            />
           )}
         </>
       )}
