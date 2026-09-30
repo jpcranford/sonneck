@@ -796,7 +796,7 @@ export function PiecePage() {
                     onClick={() => setDownloadOpen((o) => !o)}
                     disabled={!canDownload}
                     aria-label="More download options"
-                    className="relative -ml-px flex items-center justify-center rounded-r-md border border-border bg-paper-raised px-2 text-ink transition-colors disabled:cursor-not-allowed disabled:opacity-50 enabled:hover:z-10 enabled:hover:border-accent"
+                    className="relative -ml-px flex items-center justify-center rounded-r-md border border-border bg-paper-raised px-2 text-ink transition-colors disabled:cursor-not-allowed disabled:opacity-50 enabled:cursor-pointer enabled:hover:z-10 enabled:hover:border-accent"
                   >
                     <IconChevronDownFilled size={16} />
                   </button>
