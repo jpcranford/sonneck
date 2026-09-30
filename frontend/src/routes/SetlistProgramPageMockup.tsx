@@ -2,7 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { IconArrowLeft } from '@tabler/icons-react'
 import { SonneckMark } from '../components/SonneckMark'
-import { GARAMOND_FLEURON_ASPECT, GARAMOND_FLEURON_PATH, GARAMOND_FLEURON_VIEWBOX } from '../lib/garamondFleuron'
+import {
+  GARAMOND_FLEURON_ASPECT,
+  GARAMOND_FLEURON_PATH,
+  GARAMOND_FLEURON_VIEWBOX,
+} from '../lib/garamondFleuron'
 import { formatDateOnly } from '../lib/dateOnly'
 import { CONTENT_MAX_W } from '../lib/layout'
 import { useMockupTitle } from '../lib/useMockupTitle'
@@ -55,11 +59,27 @@ interface TocProgram {
   entries: TocEntry[]
 }
 
-const P = (title: string, keys: string[], seconds: number, pages: number, role?: string): TocEntry => ({
-  title, piece: true, keys, seconds, pages, role,
+const P = (
+  title: string,
+  keys: string[],
+  seconds: number,
+  pages: number,
+  role?: string,
+): TocEntry => ({
+  title,
+  piece: true,
+  keys,
+  seconds,
+  pages,
+  role,
 })
 const C = (title: string, role?: string, seconds?: number, countsAsMusic = false): TocEntry => ({
-  title, piece: false, role, seconds, pages: 1, countsAsMusic,
+  title,
+  piece: false,
+  role,
+  seconds,
+  pages: 1,
+  countsAsMusic,
 })
 
 const TOC_PROGRAMS: TocProgram[] = [
@@ -92,7 +112,12 @@ const TOC_PROGRAMS: TocProgram[] = [
       C('Second Lesson', 'Genesis 22', 150),
       P('The Truth from Above', ['D Minor'], 190, 2),
       C('Third Lesson', 'Isaiah 9', 120),
-      P('In the Bleak Midwinter (Cranham), with Descant for Upper Voices', ['F Major', 'G Major'], 285, 3),
+      P(
+        'In the Bleak Midwinter (Cranham), with Descant for Upper Voices',
+        ['F Major', 'G Major'],
+        285,
+        3,
+      ),
       P('Es ist ein Ros entsprungen', ['F Major'], 170, 1),
       C('Fourth Lesson', 'Isaiah 11', 135),
       P('Lo, How a Rose E’er Blooming', ['F Major'], 180, 2),
@@ -111,7 +136,12 @@ const TOC_PROGRAMS: TocProgram[] = [
       P('The Three Kings', ['C Major'], 210, 2),
       C('Ninth Lesson', 'John 1', 180),
       P('Hark! The Herald Angels Sing', ['F Major', 'G Major'], 220, 2, 'Recessional'),
-      P('O Come, All Ye Faithful (Adeste Fideles), with Last-Verse Reharmonization', ['G Major', 'A Major'], 255, 3),
+      P(
+        'O Come, All Ye Faithful (Adeste Fideles), with Last-Verse Reharmonization',
+        ['G Major', 'A Major'],
+        255,
+        3,
+      ),
       C('Collect and Blessing', 'Closing'),
       C('Organ Voluntary', 'Postlude', 240),
       C('Reception'),
@@ -124,7 +154,10 @@ const TOC_PROGRAMS: TocProgram[] = [
 // ("E Major" › "A Minor" › "C Major" reads "E › Am › C"). A name that isn't
 // "<note> major/minor" shows as stored.
 function shortKey(name: string): string {
-  const match = name.toLowerCase().replace(/\s+/g, '').match(/^(.+?)(major|minor)$/)
+  const match = name
+    .toLowerCase()
+    .replace(/\s+/g, '')
+    .match(/^(.+?)(major|minor)$/)
   if (!match) return name
   return match[1].charAt(0).toUpperCase() + match[1].slice(1) + (match[2] === 'minor' ? 'm' : '')
 }
@@ -145,7 +178,10 @@ function KeyChevrons({ keys }: { keys: string[] }) {
   return keys.map((key, i) => (
     <span key={i}>
       {i > 0 && (
-        <span aria-hidden="true" style={{ margin: '0 0.3em', fontWeight: 400, color: PRINT_FAINTER }}>
+        <span
+          aria-hidden="true"
+          style={{ margin: '0 0.3em', fontWeight: 400, color: PRINT_FAINTER }}
+        >
           ›
         </span>
       )}
@@ -225,7 +261,14 @@ interface PreviewEntry {
 }
 
 const ENTRIES: PreviewEntry[] = [
-  { key: 'prelude', label: 'Prelude', name: 'Prelude', role: null, duration: '3:00', description: null },
+  {
+    key: 'prelude',
+    label: 'Prelude',
+    name: 'Prelude',
+    role: null,
+    duration: '3:00',
+    description: null,
+  },
   {
     key: 'announcements',
     label: 'Announcements',
@@ -243,14 +286,22 @@ const ENTRIES: PreviewEntry[] = [
     duration: '1:30',
     description: null,
   },
-  { key: 'benediction', label: 'Benediction', name: 'Benediction', role: 'Closing', duration: null, description: null },
+  {
+    key: 'benediction',
+    label: 'Benediction',
+    name: 'Benediction',
+    role: 'Closing',
+    duration: null,
+    description: null,
+  },
   {
     key: 'full',
     label: 'All Fields',
     name: 'Special Music',
     role: 'Offertory',
     duration: '4:00',
-    description: 'A guest vocal duet, accompanied by piano, processing down the side aisle during the collection.',
+    description:
+      'A guest vocal duet, accompanied by piano, processing down the side aisle during the collection.',
   },
 ]
 
@@ -295,7 +346,15 @@ function PageShell({
   )
 }
 
-function Fleuron({ height, rotated = false, style }: { height: string; rotated?: boolean; style?: React.CSSProperties }) {
+function Fleuron({
+  height,
+  rotated = false,
+  style,
+}: {
+  height: string
+  rotated?: boolean
+  style?: React.CSSProperties
+}) {
   return (
     <svg
       viewBox={GARAMOND_FLEURON_VIEWBOX}
@@ -322,7 +381,6 @@ export function SetlistProgramPageMockup() {
   const [tocKey, setTocKey] = useState<TocProgram['key']>('short')
   const entry = ENTRIES.find((e) => e.key === entryKey) ?? ENTRIES[0]
   const shape = SHAPES.find((s) => s.key === shapeKey) ?? SHAPES[0]
-  const hasInfo = Boolean(entry.duration || entry.description)
   // A length in real PDF points, scaled to this preview's rendered width.
   const pt = (n: number) => `calc(${n} * 100cqw / ${shape.widthPt})`
   const toc = TOC_PROGRAMS.find((p) => p.key === tocKey) ?? TOC_PROGRAMS[0]
@@ -339,7 +397,9 @@ export function SetlistProgramPageMockup() {
   const tocBreaks = tocLayout?.key === tocLayoutKey ? tocLayout.breaks : []
   const tocPageCount = tocBreaks.length + 1
   const allTocRows = tocRows(toc, tocPageCount)
-  const tocPageRows = [0, ...tocBreaks].map((start, i) => allTocRows.slice(start, tocBreaks[i] ?? allTocRows.length))
+  const tocPageRows = [0, ...tocBreaks].map((start, i) =>
+    allTocRows.slice(start, tocBreaks[i] ?? allTocRows.length),
+  )
   const tocTotalSeconds = toc.entries.reduce((sum, e) => sum + (e.seconds ?? 0), 0)
 
   const renderTocPage = (rows: TocRow[], pageIndex: number) => (
@@ -365,7 +425,8 @@ export function SetlistProgramPageMockup() {
                 color: PRINT_FAINT,
               }}
             >
-              {formatDateOnly(toc.gigDate, LONG_DATE)} &bull; {formatApproximateTotal(tocTotalSeconds)}
+              {formatDateOnly(toc.gigDate, LONG_DATE)} &bull;{' '}
+              {formatApproximateTotal(tocTotalSeconds)}
             </span>
           </div>
         )}
@@ -404,20 +465,36 @@ export function SetlistProgramPageMockup() {
                   under the title, past it. */}
               <span
                 className="min-w-0"
-                style={{ flex: '0 1 auto', paddingLeft: pt(34), textIndent: `calc(-1 * ${pt(34)})` }}
+                style={{
+                  flex: '0 1 auto',
+                  paddingLeft: pt(34),
+                  textIndent: `calc(-1 * ${pt(34)})`,
+                }}
               >
                 <span
                   className="font-display inline-block text-right tabular-nums"
-                  style={{ width: pt(24), marginRight: pt(10), textIndent: 0, fontSize: pt(12), color: PRINT_FAINT }}
+                  style={{
+                    width: pt(24),
+                    marginRight: pt(10),
+                    textIndent: 0,
+                    fontSize: pt(12),
+                    color: PRINT_FAINT,
+                  }}
                 >
                   {row.num}
                 </span>
                 {row.piece ? (
-                  <span className="font-display" style={{ fontSize: pt(12), fontWeight: 500, color: PRINT_INK }}>
+                  <span
+                    className="font-display"
+                    style={{ fontSize: pt(12), fontWeight: 500, color: PRINT_INK }}
+                  >
                     {row.title}
                   </span>
                 ) : (
-                  <span className="font-display italic" style={{ fontSize: pt(12), color: PRINT_FAINT }}>
+                  <span
+                    className="font-display italic"
+                    style={{ fontSize: pt(12), color: PRINT_FAINT }}
+                  >
                     {row.title}
                   </span>
                 )}
@@ -426,7 +503,12 @@ export function SetlistProgramPageMockup() {
                     {' '}
                     <span
                       className="font-sans whitespace-nowrap"
-                      style={{ fontSize: pt(9 * CABIN_OPTICAL), letterSpacing: '0.02em', lineHeight: 1, color: PRINT_FAINT }}
+                      style={{
+                        fontSize: pt(9 * CABIN_OPTICAL),
+                        letterSpacing: '0.02em',
+                        lineHeight: 1,
+                        color: PRINT_FAINT,
+                      }}
                     >
                       ({tocParenthetical(row)})
                     </span>
@@ -471,7 +553,8 @@ export function SetlistProgramPageMockup() {
       const bottomLimit = shape.heightPt - TOC_MARGIN
       // Where a continuation page's first row starts: the top margin, the
       // header row, and its gap.
-      const continuationTop = TOC_MARGIN + label.getBoundingClientRect().height * toPt + TOC_ROWS_TOP_GAP
+      const continuationTop =
+        TOC_MARGIN + label.getBoundingClientRect().height * toPt + TOC_ROWS_TOP_GAP
       const breaks: number[] = []
       let shift = 0 // added to a measured position to place it on its own page
       el.querySelectorAll('[data-toc-row]').forEach((row, i) => {
@@ -484,7 +567,9 @@ export function SetlistProgramPageMockup() {
         }
       })
       setTocLayout((prev) =>
-        prev?.key === tocLayoutKey && prev.breaks.join() === breaks.join() ? prev : { key: tocLayoutKey, breaks },
+        prev?.key === tocLayoutKey && prev.breaks.join() === breaks.join()
+          ? prev
+          : { key: tocLayoutKey, breaks },
       )
     }
     void document.fonts.ready.then(measure)
@@ -498,26 +583,33 @@ export function SetlistProgramPageMockup() {
 
   return (
     <div className={`${CONTENT_MAX_W} flex flex-1 flex-col gap-6 px-6 py-6 md:px-8 md:py-8`}>
-      <Link to="/mockup" className="inline-flex w-fit items-center gap-1.5 text-sm text-ink-soft hover:text-ink">
+      <Link
+        to="/mockup"
+        className="inline-flex w-fit items-center gap-1.5 text-sm text-ink-soft hover:text-ink"
+      >
         <IconArrowLeft size={20} />
         Setlists
       </Link>
 
       <div className="rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-4 py-2 text-sm text-ink-soft">
-        Reference sample — <span className="font-medium text-ink">Download Set PDF</span> (design doc §13). The four
-        locked page directions, in packet order: Cover, Table of Contents, a Generated Program Page (for a custom,
-        non-piece entry), and Colophon — each chosen from its own wider comparison pass. Only the cover and colophon
-        carry any reference to the app itself.
+        Reference sample — <span className="font-medium text-ink">Download Set PDF</span> (design
+        doc §13). The four locked page directions, in packet order: Cover, Table of Contents, a
+        Generated Program Page (for a custom, non-piece entry), and Colophon — each chosen from its
+        own wider comparison pass. Only the cover and colophon carry any reference to the app
+        itself.
         <div className="mt-2">
-          The Cover is the locked redesign, drawn at true point sizes: two frames, Bringhurst's classical type
-          scale, three solid print colors on white, and the Garamond fleuron (redrawn from a 1927 printing of
-          Caslon's English Flowers no. 1) upright above and rotated below. The fleuron also marks the Generated
-          Program Page. internal/setlistpdf draws the Cover from these same point values.
+          The Cover is the locked redesign, drawn at true point sizes: two frames, Bringhurst's
+          classical type scale, three solid print colors on white, and the Garamond fleuron (redrawn
+          from a 1927 printing of Caslon's English Flowers no. 1) upright above and rotated below.
+          The Generated Program Page is its quieter sibling: unframed, marked with a small diamond,
+          optically centered the same way. internal/setlistpdf draws both from these same point
+          values.
         </div>
         <div className="mt-2">
-          The Table of Contents is the locked redesign too, also in true points, shown for a one-page program and one
-          that runs onto a continuation page. The real PDF measures how many rows fit (a long setlist name or wrapped
-          titles leave room for fewer); internal/setlistpdf still draws the previous TOC until it's ported.
+          The Table of Contents is the locked redesign too, also in true points, shown for a
+          one-page program and one that runs onto a continuation page. The real PDF measures how
+          many rows fit (a long setlist name or wrapped titles leave room for fewer);
+          internal/setlistpdf still draws the previous TOC until it's ported.
         </div>
         <div className="mt-3 flex items-center gap-2">
           <span className="text-xs font-medium text-ink-soft">Page shape:</span>
@@ -543,7 +635,10 @@ export function SetlistProgramPageMockup() {
         <section className="flex flex-col items-center gap-3">
           <h2 className="font-display text-xl text-ink">Cover Page</h2>
           <PageShell ratio={shape.ratio} className="bg-white">
-            <div className="absolute" style={{ inset: pt(36), border: `${pt(1)} solid ${PRINT_FAINTER}` }} />
+            <div
+              className="absolute"
+              style={{ inset: pt(36), border: `${pt(1)} solid ${PRINT_FAINTER}` }}
+            />
             <div
               className="absolute flex flex-col items-center justify-center text-center"
               style={{
@@ -563,6 +658,9 @@ export function SetlistProgramPageMockup() {
                   fontSize: pt(11 * CABIN_OPTICAL),
                   fontWeight: 400,
                   letterSpacing: '0.1em',
+                  // The font's own line height, as the PDF measures it —
+                  // not the 1.5 Tailwind's base styles set on the page.
+                  lineHeight: 'normal',
                   color: PRINT_FAINT,
                 }}
               >
@@ -580,7 +678,12 @@ export function SetlistProgramPageMockup() {
                 <>
                   <span
                     aria-hidden="true"
-                    style={{ height: pt(1), width: pt(24), background: PRINT_FAINTER, margin: `${pt(2)} 0` }}
+                    style={{
+                      height: pt(1),
+                      width: pt(24),
+                      background: PRINT_FAINTER,
+                      margin: `${pt(2)} 0`,
+                    }}
                   />
                   <p
                     className="font-sans italic"
@@ -661,43 +764,131 @@ export function SetlistProgramPageMockup() {
               </button>
             ))}
           </div>
-          <PageShell ratio={shape.ratio}>
-            <div className="absolute inset-6 flex flex-col items-center justify-center gap-3 border border-border px-8 text-center">
-              <span className="text-accent">
-                <Fleuron height="1.25rem" />
-              </span>
-              {entry.role && (
-                <span className="text-xs font-semibold tracking-wide text-ink-soft uppercase">{entry.role}</span>
-              )}
-              <span className="font-display text-2xl text-ink italic">{entry.name}</span>
-              {hasInfo && (
-                <div className="flex items-center gap-2" aria-hidden="true">
-                  <span className="h-px w-7 bg-border" />
-                  <span className="h-1.5 w-1.5 rotate-45 bg-accent" />
-                  <span className="h-px w-7 bg-border" />
-                </div>
-              )}
-              {entry.description && <p className="max-w-[85%] text-sm text-ink-soft">{entry.description}</p>}
-              {entry.duration && <span className="text-sm text-ink-soft">{entry.duration}</span>}
+          {/* The locked design, in true points (drawProgramPage draws the
+              same values): an unframed interleaf, optically centered
+              between 72pt margins, in a 288pt column — a small diamond,
+              the role, the name, a rule and the notes (the rule goes with
+              the notes), then the duration. A stack too tall to center
+              starts at the top margin ("safe center"). */}
+          <PageShell ratio={shape.ratio} className="bg-white">
+            <div
+              className="absolute flex flex-col items-center text-center"
+              style={{
+                inset: `${pt(72)} ${pt(72)} ${pt(72 + 2 * COVER_OPTICAL_LIFT * shape.heightPt)}`,
+                justifyContent: 'safe center',
+              }}
+            >
+              <div className="flex flex-col items-center" style={{ gap: pt(10) }}>
+                <span
+                  aria-hidden="true"
+                  style={{
+                    display: 'block',
+                    width: pt(6),
+                    height: pt(6),
+                    background: PRINT_FAINTER,
+                    transform: 'rotate(45deg)',
+                    margin: `${pt(3)} 0 ${pt(11)}`,
+                  }}
+                />
+                {entry.role && (
+                  <span
+                    className="font-sans uppercase"
+                    style={{
+                      fontSize: pt(11 * CABIN_OPTICAL),
+                      letterSpacing: '0.1em',
+                      lineHeight: 'normal',
+                      color: PRINT_FAINT,
+                    }}
+                  >
+                    {entry.role}
+                  </span>
+                )}
+                <span
+                  className="font-display italic"
+                  style={{ fontSize: pt(24), lineHeight: 1.24, color: PRINT_INK, width: pt(288) }}
+                >
+                  {entry.name}
+                </span>
+                {entry.description && (
+                  <>
+                    <span
+                      aria-hidden="true"
+                      style={{
+                        height: pt(1),
+                        width: pt(24),
+                        background: PRINT_FAINTER,
+                        margin: `${pt(2)} 0`,
+                      }}
+                    />
+                    <p
+                      className="font-sans"
+                      style={{
+                        fontSize: pt(12 * CABIN_OPTICAL),
+                        letterSpacing: '0.02em',
+                        lineHeight: 1.4,
+                        color: PRINT_FAINT,
+                        width: pt(288),
+                        margin: 0,
+                      }}
+                    >
+                      {entry.description}
+                    </p>
+                  </>
+                )}
+                {entry.duration && (
+                  <span
+                    className="font-sans uppercase tabular-nums"
+                    style={{
+                      fontSize: pt(11 * CABIN_OPTICAL),
+                      letterSpacing: '0.1em',
+                      lineHeight: 'normal',
+                      color: PRINT_FAINT,
+                      marginTop: pt(8),
+                    }}
+                  >
+                    {entry.duration}
+                  </span>
+                )}
+              </div>
             </div>
           </PageShell>
           <p className="text-xs text-ink-soft">
-            Becomes one page of the concatenated Set PDF, positioned wherever this entry falls in the program order.
+            Becomes one page of the concatenated Set PDF, positioned wherever this entry falls in
+            the program order.
           </p>
         </section>
 
         {/* Colophon */}
         <section className="flex flex-col items-center gap-3">
           <h2 className="font-display text-xl text-ink">Colophon Page</h2>
-          <PageShell ratio={shape.ratio}>
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3.5 px-10 text-center">
-              <div className="text-xs leading-relaxed text-ink-soft">
+          {/* The locked design, in true points (drawColophon draws the same
+              values): set at the foot of the last page, where a book's
+              colophon goes, sitting on the 72pt bottom margin. */}
+          <PageShell ratio={shape.ratio} className="bg-white">
+            <div
+              className="absolute flex flex-col items-center text-center"
+              style={{ left: pt(72), right: pt(72), bottom: pt(72), gap: pt(14) }}
+            >
+              <div
+                className="font-display italic"
+                style={{ fontSize: pt(10), lineHeight: 1.5, color: PRINT_FAINT }}
+              >
                 {COLOPHON_TYPEFACES}
                 <br />
                 Generated {formatDateOnly(SETLIST.gigDate, LONG_DATE)}.
               </div>
-              <span className="h-px w-6 bg-border" aria-hidden="true" />
-              <SonneckMark className="h-4 w-auto text-ink-soft" />
+              <span
+                aria-hidden="true"
+                style={{
+                  display: 'block',
+                  height: pt(1),
+                  width: pt(24),
+                  background: PRINT_FAINTER,
+                }}
+              />
+              <span style={{ display: 'block', height: pt(24), color: PRINT_FAINT }}>
+                <SonneckMark className="h-full w-auto" />
+              </span>
             </div>
           </PageShell>
         </section>

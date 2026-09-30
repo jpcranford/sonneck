@@ -4,22 +4,6 @@ import (
 	"codeberg.org/go-pdf/fpdf"
 )
 
-// centeredLine draws one line of already-set-font text, horizontally
-// centered on the page.
-func centeredLine(pdf *fpdf.Fpdf, pageWidth, y float64, text string) {
-	w := pdf.GetStringWidth(text)
-	pdf.SetXY((pageWidth-w)/2, y)
-	pdf.CellFormat(w, 0, text, "", 0, "C", false, 0, "")
-}
-
-// centeredParagraph wraps text within a centered column of the given
-// width, returning the y position just past the last line drawn.
-func centeredParagraph(pdf *fpdf.Fpdf, pageWidth, y, colWidth, lineHeight float64, text string) float64 {
-	pdf.SetXY((pageWidth-colWidth)/2, y)
-	pdf.MultiCell(colWidth, lineHeight, text, "", "C", false)
-	return pdf.GetY()
-}
-
 // The cover's layout, in points — the locked design, drawn at these same
 // values by SetlistProgramPageMockup.tsx's Cover.
 const (
@@ -166,90 +150,157 @@ func drawCover(pdf *fpdf.Fpdf, size fpdf.SizeType, s Setlist) {
 	}
 }
 
-// upperTracked is a plain uppercase-with-spaces approximation of the
-// app's own letter-spaced/tracked small-caps labels — fpdf has no
-// built-in letter-spacing primitive, so visual "tracking" is approximated
-// by uppercasing (the weight/size drop already does most of the work the
-// browser's own tracking-wide utility does).
-func upperTracked(s string) string {
-	return toUpper(s)
-}
+// The Generated Program Page's layout, in points — the locked design (an
+// unframed interleaf), drawn at these same values by
+// SetlistProgramPageMockup.tsx's Generated Program Page.
+const (
+	programMargin        = 72.0
+	programColumnWidth   = 288.0
+	programGap           = 10.0
+	programDiamondSize   = 6.0 // the square's side, before its 45° turn
+	programDiamondAbove  = 3.0
+	programDiamondBelow  = 11.0
+	programLabelSize     = 11 * cabinOptical
+	programLabelTracking = 0.10 // em
+	programNameSize      = 24.0
+	programNameLeading   = 1.24
+	programDurationSpace = 8.0 // extra, above the duration
+)
 
+// drawProgramPage draws a custom entry's stand-in page as one optically
+// centered stack (see drawCover): a small diamond, the role, the name, a
+// short rule and the notes, then the duration. Each part drops out, with
+// its gap, when the entry doesn't have it; the rule goes with the notes.
+// A stack taller than the space between the margins starts at the top
+// margin rather than above it.
 func drawProgramPage(pdf *fpdf.Fpdf, size fpdf.SizeType, e Entry) {
 	pdf.AddPageFormat("P", size)
-	w := size.Wd
+	w, h := size.Wd, size.Ht
 
-	inset := 32.0
-	setDraw(pdf, colorBorder)
-	pdf.SetLineWidth(1)
-	pdf.Rect(inset, inset, w-2*inset, size.Ht-2*inset, "D")
+	type block struct {
+		height float64
+		draw   func(top float64)
+	}
+	var blocks []block
 
-	colWidth := w - 2*inset - 60
-	x0 := (w - colWidth) / 2
-	y := size.Ht/2 - 95
+	blocks = append(blocks, block{programDiamondAbove + programDiamondSize + programDiamondBelow, func(top float64) {
+		cy := top + programDiamondAbove + programDiamondSize/2
+		setFill(pdf, colorFainter)
+		pdf.TransformBegin()
+		pdf.TransformRotate(45, w/2, cy)
+		pdf.Rect(w/2-programDiamondSize/2, cy-programDiamondSize/2, programDiamondSize, programDiamondSize, "F")
+		pdf.TransformEnd()
+	}})
 
-	const fleuronSize = 24.0
-	drawFleuron(pdf, (w-fleuronWidth(fleuronSize))/2, y-fleuronSize/2, fleuronSize, false, colorAccent)
-	y += 30
+	label := func(text string) block {
+		lineHeight := (cabinAscent + cabinDescent) * programLabelSize
+		return block{lineHeight, func(top float64) {
+			text := toUpper(text)
+			tracking := programLabelTracking * programLabelSize
+			setColor(pdf, colorInkSoft)
+			textW := kernedWidth(pdf, fontSans, "", programLabelSize, text, tracking)
+			drawKerned(pdf, fontSans, "", programLabelSize, (w-textW)/2,
+				baselineIn(top, lineHeight, programLabelSize, cabinAscent, cabinDescent), text, tracking)
+		}}
+	}
 
 	if e.CustomRole != nil && *e.CustomRole != "" {
-		pdf.SetFont(fontSans+"SemiBold", "", 13)
-		setColor(pdf, colorInkSoft)
-		centeredLine(pdf, w, y, upperTracked(*e.CustomRole))
-		y += 26
+		blocks = append(blocks, label(*e.CustomRole))
 	}
 
-	pdf.SetFont(fontDisplay, "I", 28)
-	setColor(pdf, colorInk)
-	y = centeredParagraph(pdf, w, y, colWidth, 32, e.CustomName)
-	y += 14
-
-	hasInfo := e.CustomDurationSeconds != nil || (e.CustomNotes != nil && *e.CustomNotes != "")
-	if hasInfo {
-		diamondDivider(pdf, w/2, y, 34)
-		y += 26
-	}
+	nameLines := kernedLines(pdf, fontDisplay, "I", programNameSize, e.CustomName, 0, programColumnWidth)
+	nameLineHeight := programNameLeading * programNameSize
+	blocks = append(blocks, block{float64(len(nameLines)) * nameLineHeight, func(top float64) {
+		setColor(pdf, colorInk)
+		for i, line := range nameLines {
+			baseline := baselineIn(top+float64(i)*nameLineHeight, nameLineHeight, programNameSize, baskervilleAscent, baskervilleDescent)
+			lineW := kernedWidth(pdf, fontDisplay, "I", programNameSize, line, 0)
+			drawKerned(pdf, fontDisplay, "I", programNameSize, (w-lineW)/2, baseline, line, 0)
+		}
+	}})
 
 	if e.CustomNotes != nil && *e.CustomNotes != "" {
-		// Real Markdown + :shortcode: rendering — see drawCover's own
-		// identical call for the ambientItalic rationale. This block's
-		// base style isn't italic (unlike the cover description), so
-		// ambientItalic=false here: a *marked* span renders italic as
-		// normal, matching index.css when there's no ancestor `.italic`
-		// to invert against.
-		y = drawRichText(pdf, x0, y, colWidth, 18, 6, "C", fontSans, 14, 0, colorInkSoft, parseRichText(*e.CustomNotes, false))
-		y += 10
+		blocks = append(blocks, block{1 + 2*coverRuleMargin, func(top float64) {
+			setFill(pdf, colorFainter)
+			pdf.Rect((w-coverRuleWidth)/2, top+coverRuleMargin, coverRuleWidth, 1, "F")
+		}})
+
+		// Real Markdown + :shortcode: rendering, as on the cover — but this
+		// block's base style isn't italic, so ambientItalic=false: a
+		// *marked* span renders italic as normal.
+		paragraphs := parseRichText(*e.CustomNotes, false)
+		lineHeight := coverDescLeading * coverDescSize
+		paragraphSpacing := lineHeight / 2
+		tracking := coverDescTracking * coverDescSize
+		height := richTextHeight(pdf, programColumnWidth, lineHeight, paragraphSpacing, fontSans, coverDescSize, tracking, paragraphs)
+		blocks = append(blocks, block{height, func(top float64) {
+			firstBaseline := baselineIn(top, lineHeight, coverDescSize, cabinAscent, cabinDescent)
+			drawRichText(pdf, (w-programColumnWidth)/2, firstBaseline-fpdfCellBaseline*coverDescSize,
+				programColumnWidth, lineHeight, paragraphSpacing, "C", fontSans, coverDescSize, tracking, colorInkSoft, paragraphs)
+		}})
 	}
 
 	if e.CustomDurationSeconds != nil {
-		pdf.SetFont(fontSans, "", 14)
-		setColor(pdf, colorInkSoft)
-		centeredLine(pdf, w, y, formatDuration(*e.CustomDurationSeconds))
+		b := label(formatDuration(*e.CustomDurationSeconds))
+		draw := b.draw
+		blocks = append(blocks, block{programDurationSpace + b.height, func(top float64) {
+			draw(top + programDurationSpace)
+		}})
+	}
+
+	total := programGap * float64(len(blocks)-1)
+	for _, b := range blocks {
+		total += b.height
+	}
+	top := programMargin + (h-2*programMargin-total)/2 - coverOpticalLift*h
+	top = max(top, programMargin)
+	for _, b := range blocks {
+		b.draw(top)
+		top += b.height + programGap
 	}
 }
 
+// The colophon's layout, in points — the locked design, drawn at these
+// same values by SetlistProgramPageMockup.tsx's Colophon.
+const (
+	colophonMargin     = 72.0
+	colophonTextSize   = 10.0
+	colophonLeading    = 1.5
+	colophonGap        = 14.0
+	colophonMarkHeight = 24.0
+)
+
+// drawColophon sets the colophon at the foot of the last page, where a
+// book's colophon traditionally goes, sitting on the bottom margin: two
+// lines of Libre Baskerville italic, the 24pt rule, and the S mark.
 func drawColophon(pdf *fpdf.Fpdf, size fpdf.SizeType, generated string) {
 	pdf.AddPageFormat("P", size)
-	w := size.Wd
+	w, h := size.Wd, size.Ht
 
-	y := size.Ht/2 - 50
+	lineHeight := colophonLeading * colophonTextSize
+	var lines []string
+	for _, sentence := range []string{"Set in Libre Baskerville and Cabin.", "Generated " + generated + "."} {
+		lines = append(lines, kernedLines(pdf, fontDisplay, "I", colophonTextSize, sentence, 0, w-2*colophonMargin)...)
+	}
+	textHeight := float64(len(lines)) * lineHeight
+	markH := colophonMarkHeight
+	markW := markH * (1024.0 / 1396.0) // the PNG's own aspect
 
-	pdf.SetFont(fontSans, "", 11)
+	top := h - colophonMargin - (textHeight + colophonGap + 1 + colophonGap + markH)
+
 	setColor(pdf, colorInkSoft)
-	centeredLine(pdf, w, y, "Set in Libre Baskerville and Cabin.")
-	y += 16
-	centeredLine(pdf, w, y, "Generated "+generated+".")
-	y += 28
+	for i, line := range lines {
+		baseline := baselineIn(top+float64(i)*lineHeight, lineHeight, colophonTextSize, baskervilleAscent, baskervilleDescent)
+		lineW := kernedWidth(pdf, fontDisplay, "I", colophonTextSize, line, 0)
+		drawKerned(pdf, fontDisplay, "I", colophonTextSize, (w-lineW)/2, baseline, line, 0)
+	}
+	top += textHeight + colophonGap
 
-	setDraw(pdf, colorBorder)
-	pdf.SetLineWidth(0.75)
-	ruleW := 30.0
-	pdf.Line(w/2-ruleW/2, y, w/2+ruleW/2, y)
-	y += 24
+	setFill(pdf, colorFainter)
+	pdf.Rect((w-coverRuleWidth)/2, top, coverRuleWidth, 1, "F")
+	top += 1 + colophonGap
 
-	markW := 26.0
-	markH := markW * (1396.0 / 1024.0)
 	opt := fpdf.ImageOptions{ImageType: "PNG", ReadDpi: true}
 	pdf.RegisterImageOptionsReader("sonneck-s-mark", opt, bytesReader(sonneckSMarkPNG))
-	pdf.ImageOptions("sonneck-s-mark", w/2-markW/2, y, markW, markH, false, opt, 0, "")
+	pdf.ImageOptions("sonneck-s-mark", (w-markW)/2, top, markW, markH, false, opt, 0, "")
 }

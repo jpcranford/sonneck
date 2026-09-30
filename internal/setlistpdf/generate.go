@@ -32,12 +32,9 @@ var pageSize = map[Shape]fpdf.SizeType{
 var (
 	colorInk     = rgb(0x1c, 0x18, 0x15)
 	colorInkSoft = rgb(0x5c, 0x53, 0x49)
-	colorBorder  = rgb(0xe4, 0xe0, 0xd8)
 	// colorFainter is the cover's third print color (frames, rule,
 	// fleurons) — a solid tone, never an opacity, so it prints as drawn.
-	colorFainter    = rgb(0xb3, 0xa9, 0x9e)
-	colorAccent     = rgb(0x3f, 0x5c, 0x3f)
-	colorAccentSoft = rgb(0xe3, 0xe9, 0xe0)
+	colorFainter = rgb(0xb3, 0xa9, 0x9e)
 )
 
 type rgbColor struct{ r, g, b int }
@@ -196,20 +193,6 @@ func Generate(ctx context.Context, binDir string, input Input) ([]byte, error) {
 		return nil, fmt.Errorf("merging setlist pdf: %w", err)
 	}
 	return os.ReadFile(mergedPath)
-}
-
-// diamondDivider draws the small rule-diamond-rule ornament the Generated
-// Program Page uses between a custom entry's name and its details.
-func diamondDivider(pdf *fpdf.Fpdf, centerX, y, ruleWidth float64) {
-	setDraw(pdf, colorBorder)
-	pdf.SetLineWidth(1)
-	pdf.Line(centerX-ruleWidth-7, y, centerX-7, y)
-	pdf.Line(centerX+7, y, centerX+ruleWidth+7, y)
-	setFill(pdf, colorAccent)
-	pdf.TransformBegin()
-	pdf.TransformRotate(45, centerX, y)
-	pdf.Rect(centerX-3.5, y-3.5, 7, 7, "F")
-	pdf.TransformEnd()
 }
 
 // formatDuration is m:ss, or h:mm:ss from an hour up.
