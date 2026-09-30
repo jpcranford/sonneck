@@ -26,7 +26,7 @@ import { ApiError } from '../api/client'
 import type { Piece } from '../api/types'
 import { hyphenateISBN, isbnSearchUrl } from '../lib/isbn'
 import { joinNames, personCreditPart } from '../lib/joinNames'
-import { useAuth } from '../lib/AuthContext'
+import { hasPermission, useAuth } from '../lib/AuthContext'
 import { CONTENT_MAX_W } from '../lib/layout'
 import { usePageTitle } from '../lib/usePageTitle'
 import { useViewPreference } from '../lib/useViewPreference'
@@ -205,7 +205,9 @@ function PieceList({ pieces }: { pieces: Piece[] }) {
               state={{ backLabel: 'Book' }}
               className={`grid grid-cols-[96px_1fr_56px] items-center gap-3 border-t border-border px-1.5 py-2.5 text-left hover:rounded-md hover:bg-accent-soft ${ROW_COLLAPSE_CLASS}`}
             >
-              <div className="text-sm font-medium tabular-nums text-ink">{pageRangeLabel(piece)}</div>
+              <div className="text-sm font-medium tabular-nums text-ink">
+                {pageRangeLabel(piece)}
+              </div>
               <div className="min-w-0">
                 <p className="flex flex-wrap items-center gap-1.5 font-display text-[0.92rem] font-medium text-ink">
                   {piece.title}
@@ -308,9 +310,9 @@ export function BookDetailsPage() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const me = useAuth()
-  const canDownload = me.permissions.includes('download')
-  const canEdit = me.permissions.includes('edit')
-  const canDelete = me.permissions.includes('delete')
+  const canDownload = hasPermission(me, 'download')
+  const canEdit = hasPermission(me, 'edit')
+  const canDelete = hasPermission(me, 'delete')
 
   const [viewMode, setViewMode] = useViewPreference('book-details-pieces')
   const [bookEditOpen, setBookEditOpen] = useState(false)
@@ -431,7 +433,13 @@ export function BookDetailsPage() {
   const coverContextMenuItems = [
     { label: 'Change Cover Image', onSelect: openCoverFilePicker },
     ...(book?.hasCustomCover
-      ? [{ label: 'Remove Cover Image', onSelect: () => removeCoverMutation.mutate(), destructive: true }]
+      ? [
+          {
+            label: 'Remove Cover Image',
+            onSelect: () => removeCoverMutation.mutate(),
+            destructive: true,
+          },
+        ]
       : []),
   ]
 
@@ -471,7 +479,9 @@ export function BookDetailsPage() {
     if (book.publisher || book.publisherId) {
       fields.push({
         label: 'Publisher',
-        value: [book.publisher, book.publisherId ? `#${book.publisherId}` : null].filter(Boolean).join(' '),
+        value: [book.publisher, book.publisherId ? `#${book.publisherId}` : null]
+          .filter(Boolean)
+          .join(' '),
       })
     }
     if (book.imslpNumber) {
@@ -604,7 +614,11 @@ export function BookDetailsPage() {
               </a>
             ) : (
               <span
-                title={book.fileHash ? "You don't have permission to download files" : 'No original file on record'}
+                title={
+                  book.fileHash
+                    ? "You don't have permission to download files"
+                    : 'No original file on record'
+                }
                 // text-[#aea9a4] is a solid pre-blend of ink-soft at 50%
                 // over this span's own bg-paper-raised (white) background —
                 // not a translucent text-ink-soft/50 utility. IconFileTypePdf
@@ -861,7 +875,9 @@ export function BookDetailsPage() {
           <div className="mt-6 bg-paper">
             <div className="flex flex-wrap items-center justify-between gap-4 px-6 pb-4">
               <h2 className="font-display text-[0.95rem] font-semibold text-ink-soft">
-                {pieces ? `${pieces.length} ${pieces.length === 1 ? 'piece' : 'pieces'} in this book` : '…'}
+                {pieces
+                  ? `${pieces.length} ${pieces.length === 1 ? 'piece' : 'pieces'} in this book`
+                  : '…'}
               </h2>
               <div className="flex shrink-0 items-center gap-1 rounded-md border border-border p-0.5">
                 <button
@@ -900,7 +916,11 @@ export function BookDetailsPage() {
               )}
               {pieces &&
                 pieces.length > 0 &&
-                (viewMode === 'grid' ? <PieceGrid pieces={pieces} /> : <PieceList pieces={pieces} />)}
+                (viewMode === 'grid' ? (
+                  <PieceGrid pieces={pieces} />
+                ) : (
+                  <PieceList pieces={pieces} />
+                ))}
             </div>
           </div>
         </div>

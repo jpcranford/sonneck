@@ -278,3 +278,29 @@ func TestListPieceSetlistMemberships_ReflectsAddAndRemove(t *testing.T) {
 func setlistURL(id int64, suffix string) string {
 	return "/api/setlists/" + strconv.FormatInt(id, 10) + suffix
 }
+
+// Adding a piece to a setlist needs `create`, not just `read` — the app
+// hides every setlist-building control without it, and the server agrees.
+func TestAddSetlistEntry_RequiresCreatePermission(t *testing.T) {
+	h, conn := newTestServerWithDB(t)
+	pieceID := uploadTestPiece(t, h)
+	rec := doJSON(t, h, http.MethodPost, "/api/setlists", map[string]any{"name": "Evensong"})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("create setlist: status %d, body %s", rec.Code, rec.Body.String())
+	}
+	var created struct {
+		ID int64 `json:"id"`
+	}
+	decodeData(t, rec, &created)
+
+	// Straight to the table: `admin` implies every permission, and the
+	// admin API won't demote the last admin.
+	if _, err := conn.Exec(`DELETE FROM user_permissions WHERE user_id = 1 AND permission IN ('admin', 'create')`); err != nil {
+		t.Fatal(err)
+	}
+
+	rec = doJSON(t, h, http.MethodPost, setlistURL(created.ID, "/entries"), map[string]any{"pieceId": pieceID})
+	if rec.Code != http.StatusForbidden {
+		t.Errorf("add entry without create: status %d, want 403 (body %s)", rec.Code, rec.Body.String())
+	}
+}

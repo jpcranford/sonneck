@@ -18,7 +18,7 @@ import {
   type BookFilterState,
   type TriState,
 } from '../lib/bookFilterState'
-import { useAuth } from '../lib/AuthContext'
+import { hasPermission, useAuth } from '../lib/AuthContext'
 import { WIDE_CONTENT_MAX_W } from '../lib/layout'
 import { usePageTitle } from '../lib/usePageTitle'
 import { useViewPreference } from '../lib/useViewPreference'
@@ -50,7 +50,7 @@ const DIRECTION_LABEL: Record<BookSortField, Record<SortDirection, string>> = {
 // pre-existing search+grid/list toolbar.
 export function BooksPage() {
   usePageTitle('Books')
-  const canEdit = useAuth().permissions.includes('edit')
+  const canEdit = hasPermission(useAuth(), 'edit')
   const [query, setQuery] = useState('')
   const [viewMode, setViewMode] = useViewPreference('books')
   const [newBookOpen, setNewBookOpen] = useState(false)
@@ -82,7 +82,10 @@ export function BooksPage() {
     isError,
     error,
   } = useQuery({
-    queryKey: ['books', { query: debouncedQuery, ...debouncedDrawerFilters, sortField, sortDirection }],
+    queryKey: [
+      'books',
+      { query: debouncedQuery, ...debouncedDrawerFilters, sortField, sortDirection },
+    ],
     queryFn: () =>
       listBooks({
         query: debouncedQuery || undefined,
@@ -98,7 +101,12 @@ export function BooksPage() {
     setDrawerFilters((f) => ({ ...f, [field]: setDimensionState(f[field], value, 'neutral') }))
   }
 
-  const pillEntries: { field: keyof BookFilterState; value: string; label: string; state: TriState }[] = [
+  const pillEntries: {
+    field: keyof BookFilterState
+    value: string
+    label: string
+    state: TriState
+  }[] = [
     ...Object.entries(drawerFilters.sheetTypeId).map(([id, state]) => ({
       field: 'sheetTypeId' as const,
       value: id,

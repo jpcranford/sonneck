@@ -193,6 +193,11 @@ func (s *Server) handleAddSetlistEntry(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	// Adding to a setlist is setlist-building, the same as creating one:
+	// without `create`, the app hides every way to do either.
+	if _, ok := s.requirePermission(w, r, models.PermissionCreate); !ok {
+		return
+	}
 	setlistID, ok := pathID(r, "id")
 	if !ok {
 		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid id")

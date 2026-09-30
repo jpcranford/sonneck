@@ -3,11 +3,19 @@ import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { IconPlus } from '@tabler/icons-react'
 import { ApiError } from '../api/client'
-import { addSetlistEntry, createSetlist, deleteSetlist, getSetlist, listSetlists, updateSetlist } from '../api/setlists'
+import {
+  addSetlistEntry,
+  createSetlist,
+  deleteSetlist,
+  getSetlist,
+  listSetlists,
+  updateSetlist,
+} from '../api/setlists'
 import type { Setlist } from '../api/types'
 import { ClickableCard } from '../components/ClickableCard'
 import { ContextMenu, type ContextMenuItem } from '../components/ContextMenu'
 import { EditSetlistModal } from '../components/EditSetlistModal'
+import { hasPermission, useAuth } from '../lib/AuthContext'
 import { Modal } from '../components/Modal'
 import { CONTENT_MAX_W } from '../lib/layout'
 import { formatRelativeWeeks } from '../lib/relativeWeeks'
@@ -37,7 +45,11 @@ function formatAbsoluteDate(iso: string): string {
 function sortActiveSetlists(setlists: Setlist[]): Setlist[] {
   return [...setlists].sort((a, b) => {
     if (a.gigDate && b.gigDate) {
-      return a.gigDate !== b.gigDate ? (a.gigDate < b.gigDate ? -1 : 1) : a.name.localeCompare(b.name)
+      return a.gigDate !== b.gigDate
+        ? a.gigDate < b.gigDate
+          ? -1
+          : 1
+        : a.name.localeCompare(b.name)
     }
     if (a.gigDate) return -1
     if (b.gigDate) return 1
@@ -55,7 +67,11 @@ function sortActiveSetlists(setlists: Setlist[]): Setlist[] {
 function sortArchivedSetlists(setlists: Setlist[]): Setlist[] {
   return [...setlists].sort((a, b) => {
     if (a.gigDate && b.gigDate) {
-      return a.gigDate !== b.gigDate ? (a.gigDate > b.gigDate ? -1 : 1) : a.name.localeCompare(b.name)
+      return a.gigDate !== b.gigDate
+        ? a.gigDate > b.gigDate
+          ? -1
+          : 1
+        : a.name.localeCompare(b.name)
     }
     if (a.gigDate) return -1
     if (b.gigDate) return 1
@@ -86,7 +102,8 @@ function SetlistCard({
 }: {
   setlist: Setlist
   onArchiveToggle: (setlist: Setlist) => void
-  onDuplicate: (setlist: Setlist) => void
+  // Absent without the `create` permission: duplicating makes a setlist.
+  onDuplicate?: (setlist: Setlist) => void
   onEdit: (setlist: Setlist) => void
   onDelete: (setlist: Setlist) => void
 }) {
@@ -95,13 +112,14 @@ function SetlistCard({
 
   const items: ContextMenuItem[] = []
   if (direction) {
-    items.push({ label: direction === 'archive' ? 'Archive' : 'Unarchive', onSelect: () => onArchiveToggle(setlist) })
+    items.push({
+      label: direction === 'archive' ? 'Archive' : 'Unarchive',
+      onSelect: () => onArchiveToggle(setlist),
+    })
   }
-  items.push(
-    { label: 'Edit Setlist', onSelect: () => onEdit(setlist) },
-    { label: 'Duplicate', onSelect: () => onDuplicate(setlist) },
-    { label: 'Delete Setlist', destructive: true, onSelect: () => onDelete(setlist) },
-  )
+  items.push({ label: 'Edit Setlist', onSelect: () => onEdit(setlist) })
+  if (onDuplicate) items.push({ label: 'Duplicate', onSelect: () => onDuplicate(setlist) })
+  items.push({ label: 'Delete Setlist', destructive: true, onSelect: () => onDelete(setlist) })
 
   return (
     <ContextMenu hideTriggerButton items={items}>
@@ -119,7 +137,8 @@ function SetlistCard({
               {isUpcoming && (
                 <>
                   {' '}
-                  <span aria-hidden="true">•</span> {formatRelativeWeeks(setlist.gigDate, { abbreviated: false })}
+                  <span aria-hidden="true">•</span>{' '}
+                  {formatRelativeWeeks(setlist.gigDate, { abbreviated: false })}
                 </>
               )}
             </>
@@ -128,8 +147,9 @@ function SetlistCard({
           )}
         </span>
         <span className="mt-2 text-xs tracking-wide text-ink-soft uppercase">
-          {setlist.entryCount} {setlist.entryCount === 1 ? 'entry' : 'entries'} <span aria-hidden="true">•</span>{' '}
-          {setlist.totalPages} {setlist.totalPages === 1 ? 'page' : 'pages'}
+          {setlist.entryCount} {setlist.entryCount === 1 ? 'entry' : 'entries'}{' '}
+          <span aria-hidden="true">•</span> {setlist.totalPages}{' '}
+          {setlist.totalPages === 1 ? 'page' : 'pages'}
           {setlist.totalDurationSeconds != null && (
             <>
               {' '}
@@ -159,7 +179,7 @@ function SetlistGrid({
 }: {
   setlists: Setlist[]
   onArchiveToggle: (setlist: Setlist) => void
-  onDuplicate: (setlist: Setlist) => void
+  onDuplicate?: (setlist: Setlist) => void
   onEdit: (setlist: Setlist) => void
   onDelete: (setlist: Setlist) => void
 }) {
@@ -182,9 +202,14 @@ function SetlistGrid({
 export function SetlistsLibraryPage() {
   usePageTitle('Setlists')
   const queryClient = useQueryClient()
+  // Without `create`, every way to make a setlist is hidden, not faded.
+  const canCreate = hasPermission(useAuth(), 'create')
   const navigate = useNavigate()
 
-  const { data: setlists = [], isLoading } = useQuery({ queryKey: ['setlists'], queryFn: listSetlists })
+  const { data: setlists = [], isLoading } = useQuery({
+    queryKey: ['setlists'],
+    queryFn: listSetlists,
+  })
 
   const [archiveTarget, setArchiveTarget] = useState<Setlist | null>(null)
   const [editTarget, setEditTarget] = useState<Setlist | null>(null)
@@ -211,13 +236,15 @@ export function SetlistsLibraryPage() {
       queryClient.invalidateQueries({ queryKey: ['setlists'] })
       setArchiveTarget(null)
     },
-    onError: (err) => window.alert(err instanceof ApiError ? err.message : 'Could not archive this setlist.'),
+    onError: (err) =>
+      window.alert(err instanceof ApiError ? err.message : 'Could not archive this setlist.'),
   })
 
   const deleteMutation = useMutation({
     mutationFn: (target: Setlist) => deleteSetlist(target.id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['setlists'] }),
-    onError: (err) => window.alert(err instanceof ApiError ? err.message : 'Could not delete this setlist.'),
+    onError: (err) =>
+      window.alert(err instanceof ApiError ? err.message : 'Could not delete this setlist.'),
   })
 
   // Same duplicate-by-copying-every-entry flow as SetlistPage.tsx's own —
@@ -226,7 +253,11 @@ export function SetlistsLibraryPage() {
   const duplicateMutation = useMutation({
     mutationFn: async (target: Setlist) => {
       const full = await getSetlist(target.id)
-      const created = await createSetlist({ name: `${target.name} (Copy)`, gigDate: target.gigDate, description: full.description })
+      const created = await createSetlist({
+        name: `${target.name} (Copy)`,
+        gigDate: target.gigDate,
+        description: full.description,
+      })
       for (const entry of full.entries) {
         if (entry.kind === 'piece' && entry.piece) {
           await addSetlistEntry(created.id, { pieceId: entry.piece.id, role: entry.role })
@@ -246,11 +277,13 @@ export function SetlistsLibraryPage() {
       queryClient.invalidateQueries({ queryKey: ['setlists'] })
       navigate(`/setlists/${created.id}`)
     },
-    onError: (err) => window.alert(err instanceof ApiError ? err.message : 'Could not duplicate this setlist.'),
+    onError: (err) =>
+      window.alert(err instanceof ApiError ? err.message : 'Could not duplicate this setlist.'),
   })
 
   function confirmDelete(target: Setlist) {
-    if (window.confirm(`Delete "${target.name}"? This can't be undone.`)) deleteMutation.mutate(target)
+    if (window.confirm(`Delete "${target.name}"? This can't be undone.`))
+      deleteMutation.mutate(target)
   }
 
   const archiveDirection = archiveTarget ? archiveDirectionFor(archiveTarget) : null
@@ -259,14 +292,16 @@ export function SetlistsLibraryPage() {
     <div className={`flex flex-1 flex-col gap-6 p-6 md:p-8 ${CONTENT_MAX_W}`}>
       <div className="flex items-center justify-between gap-4">
         <h1 className="font-display text-xl font-medium text-ink">Setlists</h1>
-        <button
-          type="button"
-          onClick={() => setNewSetlistOpen(true)}
-          className="flex cursor-pointer items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 font-display text-sm text-white hover:bg-accent/90"
-        >
-          <IconPlus size={14} />
-          New Setlist
-        </button>
+        {canCreate && (
+          <button
+            type="button"
+            onClick={() => setNewSetlistOpen(true)}
+            className="flex cursor-pointer items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 font-display text-sm text-white hover:bg-accent/90"
+          >
+            <IconPlus size={14} />
+            New Setlist
+          </button>
+        )}
       </div>
 
       {isLoading && <p className="text-ink-soft">Loading…</p>}
@@ -281,7 +316,7 @@ export function SetlistsLibraryPage() {
               <SetlistGrid
                 setlists={active}
                 onArchiveToggle={setArchiveTarget}
-                onDuplicate={(s) => duplicateMutation.mutate(s)}
+                onDuplicate={canCreate ? (s) => duplicateMutation.mutate(s) : undefined}
                 onEdit={setEditTarget}
                 onDelete={confirmDelete}
               />
@@ -296,7 +331,7 @@ export function SetlistsLibraryPage() {
               <SetlistGrid
                 setlists={archived}
                 onArchiveToggle={setArchiveTarget}
-                onDuplicate={(s) => duplicateMutation.mutate(s)}
+                onDuplicate={canCreate ? (s) => duplicateMutation.mutate(s) : undefined}
                 onEdit={setEditTarget}
                 onDelete={confirmDelete}
               />
@@ -305,11 +340,17 @@ export function SetlistsLibraryPage() {
         </>
       )}
 
-      <Modal open={archiveTarget !== null} onClose={() => setArchiveTarget(null)} labelledBy="archive-setlist-title">
+      <Modal
+        open={archiveTarget !== null}
+        onClose={() => setArchiveTarget(null)}
+        labelledBy="archive-setlist-title"
+      >
         <div className="flex flex-col gap-4">
           <div>
             <h2 id="archive-setlist-title" className="font-display text-xl font-medium text-ink">
-              {archiveDirection === 'unarchive' ? 'Unarchive this setlist?' : 'Archive this setlist?'}
+              {archiveDirection === 'unarchive'
+                ? 'Unarchive this setlist?'
+                : 'Archive this setlist?'}
             </h2>
             <p className="mt-1 text-sm text-ink-soft">
               {archiveDirection === 'unarchive'
@@ -345,7 +386,13 @@ export function SetlistsLibraryPage() {
       />
 
       {editTarget && (
-        <EditSetlistModal key={editTarget.id} open={editTarget !== null} onClose={() => setEditTarget(null)} mode="edit" setlistId={editTarget.id} />
+        <EditSetlistModal
+          key={editTarget.id}
+          open={editTarget !== null}
+          onClose={() => setEditTarget(null)}
+          mode="edit"
+          setlistId={editTarget.id}
+        />
       )}
     </div>
   )

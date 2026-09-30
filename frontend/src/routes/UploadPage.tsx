@@ -21,7 +21,7 @@ import { listPeople } from '../api/people'
 import { listInstruments, listKeys, listSheetTypes } from '../api/lookups'
 import { ApiError } from '../api/client'
 import type { Piece, Tag } from '../api/types'
-import { useAuth } from '../lib/AuthContext'
+import { hasPermission, useAuth } from '../lib/AuthContext'
 import { loadWizardDraft } from '../lib/useWizardDraft'
 import { matchesKeyQuery } from '../lib/keySearch'
 import { usePageTitle } from '../lib/usePageTitle'
@@ -135,10 +135,19 @@ export function UploadPage() {
   // People catalog (composer/arranger overhaul, Stage C pattern) — same
   // unpaginated listPeople() call as EditPieceModal.tsx/EditBookModal.tsx/
   // BookUploadAboutStep.tsx's own Composer TagComboBox option source.
-  const { data: peopleOptions = [] } = useQuery({ queryKey: ['people'], queryFn: () => listPeople() })
+  const { data: peopleOptions = [] } = useQuery({
+    queryKey: ['people'],
+    queryFn: () => listPeople(),
+  })
   const { data: keyOptions = [] } = useQuery({ queryKey: ['keys'], queryFn: listKeys })
-  const { data: sheetTypeOptions = [] } = useQuery({ queryKey: ['sheetTypes'], queryFn: listSheetTypes })
-  const { data: instrumentOptions = [] } = useQuery({ queryKey: ['instruments'], queryFn: listInstruments })
+  const { data: sheetTypeOptions = [] } = useQuery({
+    queryKey: ['sheetTypes'],
+    queryFn: listSheetTypes,
+  })
+  const { data: instrumentOptions = [] } = useQuery({
+    queryKey: ['instruments'],
+    queryFn: listInstruments,
+  })
   const sheetTypeSelectOptions = [
     { value: '', label: '—' },
     ...sheetTypeOptions.map((o) => ({ value: o.name, label: o.name })),
@@ -248,7 +257,7 @@ export function UploadPage() {
   // this component's hooks are too deeply woven through its body to hoist
   // above a single top-of-function guard the way AdminPage.tsx's own
   // (call-two-hooks-then-guard, nothing else) shape allowed.
-  if (!me.permissions.includes('upload')) {
+  if (!hasPermission(me, 'upload')) {
     return <Navigate to="/" replace />
   }
 
@@ -473,7 +482,7 @@ export function UploadPage() {
                 else is easy to add later from Piece Details.
               </p>
             </div>
-          {/* Same page cycler + lightbox assembly as PiecePage.tsx's own
+            {/* Same page cycler + lightbox assembly as PiecePage.tsx's own
               preview column (and BookUploadAboutStep.tsx's book-page
               equivalent) — click to enlarge, prev/next through the
               piece's own pages, rather than a single static image of just
@@ -481,8 +490,8 @@ export function UploadPage() {
               deliberately unchanged from the old static thumb it
               replaces — thumb on the left, fields + Save stacked on the
               right rather than spanning the full row under it. */}
-          <div className="flex flex-col items-start gap-7 sm:flex-row">
-            {/* Same reserved-frame need as the Book Upload Wizard's cover
+            <div className="flex flex-col items-start gap-7 sm:flex-row">
+              {/* Same reserved-frame need as the Book Upload Wizard's cover
                 preview (BookUploadAboutStep.tsx): thumbnail generation is
                 synchronous and can take a real moment right after upload
                 (internal/handlers/piece.go's handlePieceThumbnail), so
@@ -505,150 +514,154 @@ export function UploadPage() {
                 has actually loaded (thumbLoaded), matching BookGridCard's
                 conditional-placeholder technique instead of applying
                 unconditionally forever. */}
-            <div
-              className={`relative w-full max-w-[340px] shrink-0 overflow-hidden rounded-lg border border-border bg-paper-sunken shadow-sm sm:w-[340px] ${thumbLoaded ? '' : 'min-h-[440px]'}`}
-            >
-              <button
-                type="button"
-                onClick={() => setLightboxOpen(true)}
-                aria-label={`View page ${previewPage} larger`}
-                className="block w-full cursor-zoom-in"
-              >
-                <img
-                  key={previewPage}
-                  src={getPieceThumbnailUrl(piece.id, previewPage)}
-                  onLoad={() => setThumbLoaded(true)}
-                  alt={`Page ${previewPage} of ${piece.title}`}
-                  className={thumbLoaded ? 'h-auto w-full' : 'invisible h-0 w-full'}
-                />
-              </button>
               <div
-                aria-hidden="true"
-                className="pointer-events-none absolute top-2.5 right-2.5 flex items-center justify-center rounded-full bg-ink/80 p-1.5 text-white shadow-md backdrop-blur-sm"
+                className={`relative w-full max-w-[340px] shrink-0 overflow-hidden rounded-lg border border-border bg-paper-sunken shadow-sm sm:w-[340px] ${thumbLoaded ? '' : 'min-h-[440px]'}`}
               >
-                <IconArrowsDiagonal size={14} />
-              </div>
-              {piece.pageCount > 1 && (
-                <div className="absolute bottom-2.5 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-ink/80 px-2 py-1 shadow-md backdrop-blur-sm">
-                  <button
-                    type="button"
-                    onClick={() => setPreviewPage((p) => Math.max(1, p - 1))}
-                    disabled={previewPage === 1}
-                    aria-label="Previous page"
-                    className="flex size-6 cursor-pointer items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline-accent-on-dark disabled:pointer-events-none disabled:opacity-35"
-                  >
-                    <IconChevronLeft size={14} />
-                  </button>
-                  <span className="text-xs tabular-nums text-white/90">
-                    {previewPage} / {piece.pageCount}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setPreviewPage((p) => Math.min(piece.pageCount, p + 1))}
-                    disabled={previewPage === piece.pageCount}
-                    aria-label="Next page"
-                    className="flex size-6 cursor-pointer items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline-accent-on-dark disabled:pointer-events-none disabled:opacity-35"
-                  >
-                    <IconChevronRightFilled size={14} />
-                  </button>
+                <button
+                  type="button"
+                  onClick={() => setLightboxOpen(true)}
+                  aria-label={`View page ${previewPage} larger`}
+                  className="block w-full cursor-zoom-in"
+                >
+                  <img
+                    key={previewPage}
+                    src={getPieceThumbnailUrl(piece.id, previewPage)}
+                    onLoad={() => setThumbLoaded(true)}
+                    alt={`Page ${previewPage} of ${piece.title}`}
+                    className={thumbLoaded ? 'h-auto w-full' : 'invisible h-0 w-full'}
+                  />
+                </button>
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute top-2.5 right-2.5 flex items-center justify-center rounded-full bg-ink/80 p-1.5 text-white shadow-md backdrop-blur-sm"
+                >
+                  <IconArrowsDiagonal size={14} />
                 </div>
-              )}
-            </div>
-            {lightboxOpen && (
-              <PageLightbox
-                key={previewPage}
-                imageUrl={getPieceThumbnailUrl(piece.id, previewPage)}
-                alt={`Page ${previewPage} of ${piece.title}`}
-                page={previewPage}
-                pageCount={piece.pageCount}
-                onClose={() => setLightboxOpen(false)}
-                onPrev={() => setPreviewPage((p) => Math.max(1, p - 1))}
-                onNext={() => setPreviewPage((p) => Math.min(piece.pageCount, p + 1))}
-              />
-            )}
-            <div className="flex w-full min-w-0 flex-1 flex-col gap-3">
-              <div className="flex flex-col gap-1">
-                <label htmlFor="title" className="text-sm text-ink-soft">
-                  Title <span className="text-ink-soft/60 italic">(Required)</span>
-                </label>
-                <input
-                  id="title"
-                  className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-                  {...register('title', { required: 'Title is required.', maxLength: 255 })}
+                {piece.pageCount > 1 && (
+                  <div className="absolute bottom-2.5 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-ink/80 px-2 py-1 shadow-md backdrop-blur-sm">
+                    <button
+                      type="button"
+                      onClick={() => setPreviewPage((p) => Math.max(1, p - 1))}
+                      disabled={previewPage === 1}
+                      aria-label="Previous page"
+                      className="flex size-6 cursor-pointer items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline-accent-on-dark disabled:pointer-events-none disabled:opacity-35"
+                    >
+                      <IconChevronLeft size={14} />
+                    </button>
+                    <span className="text-xs tabular-nums text-white/90">
+                      {previewPage} / {piece.pageCount}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewPage((p) => Math.min(piece.pageCount, p + 1))}
+                      disabled={previewPage === piece.pageCount}
+                      aria-label="Next page"
+                      className="flex size-6 cursor-pointer items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline-accent-on-dark disabled:pointer-events-none disabled:opacity-35"
+                    >
+                      <IconChevronRightFilled size={14} />
+                    </button>
+                  </div>
+                )}
+              </div>
+              {lightboxOpen && (
+                <PageLightbox
+                  key={previewPage}
+                  imageUrl={getPieceThumbnailUrl(piece.id, previewPage)}
+                  alt={`Page ${previewPage} of ${piece.title}`}
+                  page={previewPage}
+                  pageCount={piece.pageCount}
+                  onClose={() => setLightboxOpen(false)}
+                  onPrev={() => setPreviewPage((p) => Math.max(1, p - 1))}
+                  onNext={() => setPreviewPage((p) => Math.min(piece.pageCount, p + 1))}
                 />
-                {errors.title && <p className="text-sm text-red-700">{errors.title.message}</p>}
-              </div>
-
-              <div className="flex flex-col gap-3 min-[525px]:flex-row">
-                <div className="min-w-0 flex-1">
-                  <Controller
-                    name="composer"
-                    control={control}
-                    rules={{
-                      validate: (value, values) =>
-                        value.length > 0 || values.arranger.length > 0 || 'Composer or Arranger is required.',
-                    }}
-                    render={({ field }) => (
-                      <TagComboBox
-                        label="Composer"
-                        options={peopleOptions}
-                        selected={field.value}
-                        multiple
-                        onChange={field.onChange}
-                        pillStyle="paper"
-                        newOptionLabel="New person"
-                      />
-                    )}
+              )}
+              <div className="flex w-full min-w-0 flex-1 flex-col gap-3">
+                <div className="flex flex-col gap-1">
+                  <label htmlFor="title" className="text-sm text-ink-soft">
+                    Title <span className="text-ink-soft/60 italic">(Required)</span>
+                  </label>
+                  <input
+                    id="title"
+                    className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+                    {...register('title', { required: 'Title is required.', maxLength: 255 })}
                   />
-                  {errors.composer && <p className="text-sm text-red-700">{errors.composer.message}</p>}
+                  {errors.title && <p className="text-sm text-red-700">{errors.title.message}</p>}
                 </div>
-                <div className="min-w-0 flex-1">
-                  <Controller
-                    name="arranger"
-                    control={control}
-                    render={({ field }) => (
-                      <TagComboBox
-                        label="Arranger"
-                        options={peopleOptions}
-                        selected={field.value}
-                        multiple
-                        onChange={field.onChange}
-                        pillStyle="paper"
-                        newOptionLabel="New person"
-                      />
-                    )}
-                  />
-                </div>
-              </div>
 
-              {/* Year Written/IMSLP No. — both read as quick identifying
+                <div className="flex flex-col gap-3 min-[525px]:flex-row">
+                  <div className="min-w-0 flex-1">
+                    <Controller
+                      name="composer"
+                      control={control}
+                      rules={{
+                        validate: (value, values) =>
+                          value.length > 0 ||
+                          values.arranger.length > 0 ||
+                          'Composer or Arranger is required.',
+                      }}
+                      render={({ field }) => (
+                        <TagComboBox
+                          label="Composer"
+                          options={peopleOptions}
+                          selected={field.value}
+                          multiple
+                          onChange={field.onChange}
+                          pillStyle="paper"
+                          newOptionLabel="New person"
+                        />
+                      )}
+                    />
+                    {errors.composer && (
+                      <p className="text-sm text-red-700">{errors.composer.message}</p>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <Controller
+                      name="arranger"
+                      control={control}
+                      render={({ field }) => (
+                        <TagComboBox
+                          label="Arranger"
+                          options={peopleOptions}
+                          selected={field.value}
+                          multiple
+                          onChange={field.onChange}
+                          pillStyle="paper"
+                          newOptionLabel="New person"
+                        />
+                      )}
+                    />
+                  </div>
+                </div>
+
+                {/* Year Written/IMSLP No. — both read as quick identifying
                   facts worth a glance without opening "More details" below,
                   where Key(s)/Sheet Type live instead. */}
-              <div className="flex flex-col gap-3 min-[525px]:flex-row">
-                <div className="flex min-w-0 flex-1 flex-col gap-1">
-                  <label htmlFor="yearWritten" className="text-sm text-ink-soft">
-                    Year Written
-                  </label>
-                  <input
-                    id="yearWritten"
-                    placeholder="e.g. 1905"
-                    className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
-                    {...register('yearWritten', { maxLength: 255 })}
-                  />
+                <div className="flex flex-col gap-3 min-[525px]:flex-row">
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <label htmlFor="yearWritten" className="text-sm text-ink-soft">
+                      Year Written
+                    </label>
+                    <input
+                      id="yearWritten"
+                      placeholder="e.g. 1905"
+                      className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                      {...register('yearWritten', { maxLength: 255 })}
+                    />
+                  </div>
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <label htmlFor="imslpNumber" className="text-sm text-ink-soft">
+                      IMSLP No.
+                    </label>
+                    <input
+                      id="imslpNumber"
+                      className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 font-mono text-ink"
+                      {...register('imslpNumber', { maxLength: 255 })}
+                    />
+                  </div>
                 </div>
-                <div className="flex min-w-0 flex-1 flex-col gap-1">
-                  <label htmlFor="imslpNumber" className="text-sm text-ink-soft">
-                    IMSLP No.
-                  </label>
-                  <input
-                    id="imslpNumber"
-                    className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 font-mono text-ink"
-                    {...register('imslpNumber', { maxLength: 255 })}
-                  />
-                </div>
-              </div>
 
-              {/* "More details" — Option B of a 3-way comparison (see
+                {/* "More details" — Option B of a 3-way comparison (see
                   mockup/upload-piece-about), same
                   collapsed-by-default trigger pattern as EditPieceModal.tsx's
                   own Copyright/Book Details sections (text-xs uppercase
@@ -657,105 +670,109 @@ export function UploadPage() {
                   the always-visible ones above — a plain bg-paper here would
                   read as a different, disabled-looking field treatment
                   rather than just "currently collapsed." */}
-              <div className="border-t border-border pt-3">
-                <button
-                  type="button"
-                  onClick={() => setMoreDetailsOpen((o) => !o)}
-                  className="flex cursor-pointer items-center gap-1 text-xs font-medium tracking-wide text-ink-soft/70 uppercase hover:text-ink"
-                >
-                  <IconChevronRight size={12} className={`transition-transform ${moreDetailsOpen ? 'rotate-90' : ''}`} />
-                  More details
-                </button>
-                {moreDetailsOpen && (
-                  <div className="mt-3 flex flex-col gap-4 rounded-md border border-dashed border-border p-4">
-                    <div className="flex flex-col gap-3 min-[525px]:flex-row">
-                      <div className="flex min-w-0 flex-1 flex-col gap-1">
-                        <label htmlFor="workOpusNumber" className="text-sm text-ink-soft">
-                          Work/Opus Number
-                        </label>
-                        <input
-                          id="workOpusNumber"
-                          placeholder="e.g. Op. 68"
-                          className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
-                          {...register('workOpusNumber', { maxLength: 255 })}
-                        />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <Controller
-                          name="keys"
-                          control={control}
-                          render={({ field }) => (
-                            <TagComboBox
-                              label="Key(s)"
-                              options={keyOptions}
-                              selected={field.value}
-                              multiple
-                              onChange={field.onChange}
-                              filterOption={(o, query) => matchesKeyQuery(o.name, query)}
-                              allowDuplicates
-                              sequenceStyle
-                            />
-                          )}
-                        />
-                      </div>
-                    </div>
-                    <div className="flex flex-col gap-3 min-[525px]:flex-row">
-                      <div className="flex min-w-0 flex-1 flex-col gap-1">
-                        <label htmlFor="publisher" className="text-sm text-ink-soft">
-                          Publisher
-                        </label>
-                        <input
-                          id="publisher"
-                          placeholder="e.g. G. Schirmer"
-                          className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
-                          {...register('publisher', { maxLength: 255 })}
-                        />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <Controller
-                          name="sheetType"
-                          control={control}
-                          render={({ field }) => (
-                            <SingleSelect
-                              label="Sheet Type"
-                              options={sheetTypeSelectOptions}
-                              value={field.value}
-                              onChange={field.onChange}
-                            />
-                          )}
-                        />
-                      </div>
-                    </div>
-                    <Controller
-                      name="instruments"
-                      control={control}
-                      render={({ field }) => (
-                        <TagComboBox
-                          label="Instruments"
-                          options={instrumentOptions}
-                          selected={field.value}
-                          multiple
-                          onChange={field.onChange}
-                        />
-                      )}
+                <div className="border-t border-border pt-3">
+                  <button
+                    type="button"
+                    onClick={() => setMoreDetailsOpen((o) => !o)}
+                    className="flex cursor-pointer items-center gap-1 text-xs font-medium tracking-wide text-ink-soft/70 uppercase hover:text-ink"
+                  >
+                    <IconChevronRight
+                      size={12}
+                      className={`transition-transform ${moreDetailsOpen ? 'rotate-90' : ''}`}
                     />
-                    <div className="flex flex-col gap-1">
-                      <label htmlFor="description" className="text-sm text-ink-soft">
-                        Description <span className="text-ink-soft/60 italic">(Markdown supported)</span>
-                      </label>
-                      <textarea
-                        id="description"
-                        rows={2}
-                        placeholder="Optional notes about this piece…"
-                        className="resize-none rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
-                        {...register('description')}
+                    More details
+                  </button>
+                  {moreDetailsOpen && (
+                    <div className="mt-3 flex flex-col gap-4 rounded-md border border-dashed border-border p-4">
+                      <div className="flex flex-col gap-3 min-[525px]:flex-row">
+                        <div className="flex min-w-0 flex-1 flex-col gap-1">
+                          <label htmlFor="workOpusNumber" className="text-sm text-ink-soft">
+                            Work/Opus Number
+                          </label>
+                          <input
+                            id="workOpusNumber"
+                            placeholder="e.g. Op. 68"
+                            className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                            {...register('workOpusNumber', { maxLength: 255 })}
+                          />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <Controller
+                            name="keys"
+                            control={control}
+                            render={({ field }) => (
+                              <TagComboBox
+                                label="Key(s)"
+                                options={keyOptions}
+                                selected={field.value}
+                                multiple
+                                onChange={field.onChange}
+                                filterOption={(o, query) => matchesKeyQuery(o.name, query)}
+                                allowDuplicates
+                                sequenceStyle
+                              />
+                            )}
+                          />
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-3 min-[525px]:flex-row">
+                        <div className="flex min-w-0 flex-1 flex-col gap-1">
+                          <label htmlFor="publisher" className="text-sm text-ink-soft">
+                            Publisher
+                          </label>
+                          <input
+                            id="publisher"
+                            placeholder="e.g. G. Schirmer"
+                            className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                            {...register('publisher', { maxLength: 255 })}
+                          />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <Controller
+                            name="sheetType"
+                            control={control}
+                            render={({ field }) => (
+                              <SingleSelect
+                                label="Sheet Type"
+                                options={sheetTypeSelectOptions}
+                                value={field.value}
+                                onChange={field.onChange}
+                              />
+                            )}
+                          />
+                        </div>
+                      </div>
+                      <Controller
+                        name="instruments"
+                        control={control}
+                        render={({ field }) => (
+                          <TagComboBox
+                            label="Instruments"
+                            options={instrumentOptions}
+                            selected={field.value}
+                            multiple
+                            onChange={field.onChange}
+                          />
+                        )}
                       />
+                      <div className="flex flex-col gap-1">
+                        <label htmlFor="description" className="text-sm text-ink-soft">
+                          Description{' '}
+                          <span className="text-ink-soft/60 italic">(Markdown supported)</span>
+                        </label>
+                        <textarea
+                          id="description"
+                          rows={2}
+                          placeholder="Optional notes about this piece…"
+                          className="resize-none rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                          {...register('description')}
+                        />
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
 
-              {/* "From a book?" — same collapsible trigger pattern as
+                {/* "From a book?" — same collapsible trigger pattern as
                   above. The single-piece path never gets a chance to
                   associate a sourceBookId at all otherwise, unlike the book
                   wizard (whose confirm-import step sets it automatically)
@@ -769,47 +786,52 @@ export function UploadPage() {
                   field." Fully optional: omitted validation rules, and the
                   write below passes sourceBookId through as-is (null unless
                   a book was picked). */}
-              <div className="border-t border-border pt-3">
-                <button
-                  type="button"
-                  onClick={() => setBookOpen((o) => !o)}
-                  className="flex cursor-pointer items-center gap-1 text-xs font-medium tracking-wide text-ink-soft/70 uppercase hover:text-ink"
-                >
-                  <IconChevronRight size={12} className={`transition-transform ${bookOpen ? 'rotate-90' : ''}`} />
-                  From a book?
-                </button>
-                {bookOpen && (
-                  <div className="mt-3 flex flex-col gap-3 rounded-md border border-dashed border-border p-4">
-                    <div className="flex flex-col gap-1">
-                      <p className="text-sm text-ink-soft">Is this piece from a book already in your library?</p>
-                      <Controller
-                        name="sourceBookId"
-                        control={control}
-                        defaultValue={null}
-                        render={({ field }) => (
-                          <SourceBookField
-                            value={field.value}
-                            onChange={(value) => {
-                              field.onChange(value)
-                              // Clearing the matched book hides the page
-                              // fields below (see the conditional render
-                              // right after this), but hiding them doesn't
-                              // clear their form values on its own —
-                              // without this, a stale 5/7 typed in before
-                              // clearing the book would still get submitted
-                              // alongside sourceBookId: null, orphaned page
-                              // numbers with no book to describe.
-                              if (value == null) {
-                                setValue('sourcePageStart', '')
-                                setValue('sourcePageEnd', '')
-                              }
-                            }}
-                            initialTitle={null}
-                          />
-                        )}
-                      />
-                    </div>
-                    {/* Start/end page, shown only once a book is actually
+                <div className="border-t border-border pt-3">
+                  <button
+                    type="button"
+                    onClick={() => setBookOpen((o) => !o)}
+                    className="flex cursor-pointer items-center gap-1 text-xs font-medium tracking-wide text-ink-soft/70 uppercase hover:text-ink"
+                  >
+                    <IconChevronRight
+                      size={12}
+                      className={`transition-transform ${bookOpen ? 'rotate-90' : ''}`}
+                    />
+                    From a book?
+                  </button>
+                  {bookOpen && (
+                    <div className="mt-3 flex flex-col gap-3 rounded-md border border-dashed border-border p-4">
+                      <div className="flex flex-col gap-1">
+                        <p className="text-sm text-ink-soft">
+                          Is this piece from a book already in your library?
+                        </p>
+                        <Controller
+                          name="sourceBookId"
+                          control={control}
+                          defaultValue={null}
+                          render={({ field }) => (
+                            <SourceBookField
+                              value={field.value}
+                              onChange={(value) => {
+                                field.onChange(value)
+                                // Clearing the matched book hides the page
+                                // fields below (see the conditional render
+                                // right after this), but hiding them doesn't
+                                // clear their form values on its own —
+                                // without this, a stale 5/7 typed in before
+                                // clearing the book would still get submitted
+                                // alongside sourceBookId: null, orphaned page
+                                // numbers with no book to describe.
+                                if (value == null) {
+                                  setValue('sourcePageStart', '')
+                                  setValue('sourcePageEnd', '')
+                                }
+                              }}
+                              initialTitle={null}
+                            />
+                          )}
+                        />
+                      </div>
+                      {/* Start/end page, shown only once a book is actually
                         matched — offering these with no book selected would
                         beg the question "page of what?" Fully optional (no
                         validation rules), same treatment as sourceBookId
@@ -817,53 +839,53 @@ export function UploadPage() {
                         fields, which this mirrors exactly (label text,
                         input type, flex-1 two-up row) since it's the same
                         data. */}
-                    {watchedSourceBookId != null && (
-                      <div className="flex gap-3">
-                        <div className="flex flex-1 flex-col gap-1">
-                          <label htmlFor="sourcePageStart" className="text-sm text-ink-soft">
-                            Start page
-                          </label>
-                          <input
-                            id="sourcePageStart"
-                            type="number"
-                            className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-                            {...register('sourcePageStart')}
-                          />
+                      {watchedSourceBookId != null && (
+                        <div className="flex gap-3">
+                          <div className="flex flex-1 flex-col gap-1">
+                            <label htmlFor="sourcePageStart" className="text-sm text-ink-soft">
+                              Start page
+                            </label>
+                            <input
+                              id="sourcePageStart"
+                              type="number"
+                              className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+                              {...register('sourcePageStart')}
+                            />
+                          </div>
+                          <div className="flex flex-1 flex-col gap-1">
+                            <label htmlFor="sourcePageEnd" className="text-sm text-ink-soft">
+                              End page
+                            </label>
+                            <input
+                              id="sourcePageEnd"
+                              type="number"
+                              className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+                              {...register('sourcePageEnd')}
+                            />
+                          </div>
                         </div>
-                        <div className="flex flex-1 flex-col gap-1">
-                          <label htmlFor="sourcePageEnd" className="text-sm text-ink-soft">
-                            End page
-                          </label>
-                          <input
-                            id="sourcePageEnd"
-                            type="number"
-                            className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-                            {...register('sourcePageEnd')}
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
+                      )}
+                    </div>
+                  )}
+                </div>
 
-              {saveMutation.isError && (
-                <p className="flex items-center gap-2 text-sm text-red-700">
-                  <IconAlertTriangle size={16} />
-                  {saveMutation.error instanceof ApiError
-                    ? saveMutation.error.message
-                    : 'Could not save. Please try again.'}
-                </p>
-              )}
-              <button
-                type="submit"
-                disabled={saveMutation.isPending}
-                className="mt-1 rounded-md bg-accent px-4 py-2 font-display text-white disabled:opacity-60"
-              >
-                {saveMutation.isPending ? 'Saving…' : 'Save'}
-              </button>
+                {saveMutation.isError && (
+                  <p className="flex items-center gap-2 text-sm text-red-700">
+                    <IconAlertTriangle size={16} />
+                    {saveMutation.error instanceof ApiError
+                      ? saveMutation.error.message
+                      : 'Could not save. Please try again.'}
+                  </p>
+                )}
+                <button
+                  type="submit"
+                  disabled={saveMutation.isPending}
+                  className="mt-1 rounded-md bg-accent px-4 py-2 font-display text-white disabled:opacity-60"
+                >
+                  {saveMutation.isPending ? 'Saving…' : 'Save'}
+                </button>
+              </div>
             </div>
-          </div>
           </form>
         </div>
       )}

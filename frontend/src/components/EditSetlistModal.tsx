@@ -33,6 +33,7 @@ import type { Piece, SetlistDetail, SetlistEntry } from '../api/types'
 import { personCreditPart } from '../lib/joinNames'
 import { useDebouncedValue } from '../hooks/useDebouncedValue'
 import { InfoTooltip } from './InfoTooltip'
+import { hasPermission, useAuth } from '../lib/AuthContext'
 import { MetaLine } from './MetaLine'
 import { MarkdownText } from './MarkdownText'
 import { Modal } from './Modal'
@@ -126,6 +127,7 @@ export function EditSetlistModal({
   initialName = '',
 }: EditSetlistModalProps) {
   const queryClient = useQueryClient()
+  const canCreate = hasPermission(useAuth(), 'create')
 
   const [activeTab, setActiveTab] = useState<SetlistModalTab>(initialTab)
   useEffect(() => {
@@ -981,138 +983,145 @@ export function EditSetlistModal({
                     )
                   })}
 
-                  <div className="rounded-md bg-paper-raised overflow-hidden">
-                    <div className="flex">
-                      <button
-                        type="button"
-                        onClick={() => selectAddMode('search')}
-                        className={`relative flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-tl-md border-t border-r border-l border-border px-3 py-2 text-sm font-medium transition-colors ${
-                          addRowMode === 'buttons' ? 'rounded-bl-md border-b' : ''
-                        } ${addRowMode === 'search' ? 'bg-paper-sunken text-ink' : 'text-ink-soft hover:z-10 hover:border-accent'}`}
-                      >
-                        <IconPlus size={14} />
-                        Piece
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => selectAddMode('custom')}
-                        className={`relative -ml-px flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-tr-md border-t border-r border-l border-border px-3 py-2 text-sm font-medium transition-colors ${
-                          addRowMode === 'buttons' ? 'rounded-br-md border-b' : ''
-                        } ${addRowMode === 'custom' ? 'bg-paper-sunken text-ink' : 'text-ink-soft hover:z-10 hover:border-accent'}`}
-                      >
-                        <IconPlus size={14} />
-                        Custom Entry
-                      </button>
-                    </div>
-
-                    {addRowMode === 'search' && (
-                      <div ref={setExpandedRef} className="border border-border rounded-b-md p-2.5">
-                        <div className="relative">
-                          <IconSearch
-                            size={13}
-                            className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-ink-soft/60"
-                          />
-                          <input
-                            ref={pieceSearchInputRef}
-                            type="text"
-                            autoFocus
-                            value={pieceQuery}
-                            onChange={(event) => {
-                              setPieceQuery(event.target.value)
-                              setSearchHighlight(-1)
-                            }}
-                            onKeyDown={onPieceSearchKeyDown}
-                            placeholder="Search pieces…"
-                            aria-label="Search pieces"
-                            className="w-full rounded-md border border-border bg-paper py-1.5 pr-8 pl-7 text-sm text-ink placeholder:text-ink-soft/60 focus:border-accent focus:outline-none"
-                          />
-                          <button
-                            type="button"
-                            onClick={closeAddRow}
-                            aria-label="Cancel adding a piece"
-                            className="absolute top-1/2 right-1.5 -translate-y-1/2 cursor-pointer rounded p-1 text-ink-soft hover:bg-paper-sunken hover:text-ink"
-                          >
-                            <IconX size={13} />
-                          </button>
-                        </div>
-                        <p className="mt-2 mb-1 text-[0.65rem] font-medium tracking-wide text-ink-soft uppercase">
-                          {pieceQuery.trim()
-                            ? `${pieceResults.length} ${pieceResults.length === 1 ? 'match' : 'matches'}`
-                            : 'Recently added'}
-                        </p>
-                        <div className="flex max-h-56 flex-col gap-0.5 overflow-y-auto">
-                          {pieceResults.length === 0 ? (
-                            <p className="px-2 py-4 text-center text-sm text-ink-soft italic">
-                              No matches
-                            </p>
-                          ) : (
-                            pieceResults.map((piece, i) => {
-                              const inProgram = libraryPieceIdsInProgram.has(piece.id)
-                              return (
-                                <div
-                                  key={piece.id}
-                                  role="button"
-                                  tabIndex={0}
-                                  onClick={() => selectPiece(piece)}
-                                  onKeyDown={(event) => {
-                                    if (event.key === 'Enter' || event.key === ' ') {
-                                      event.preventDefault()
-                                      selectPiece(piece)
-                                    }
-                                  }}
-                                  className={`flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-left ${
-                                    i === searchHighlight
-                                      ? 'bg-paper-sunken'
-                                      : 'hover:bg-paper-sunken'
-                                  }`}
-                                >
-                                  <div className="min-w-0 flex-1">
-                                    <div className="flex items-center gap-1.5 font-display text-sm font-medium text-ink">
-                                      <span className="truncate">{piece.title}</span>
-                                      {inProgram && (
-                                        <span onClick={(event) => event.stopPropagation()}>
-                                          <InfoTooltip
-                                            message="Already in this setlist"
-                                            ariaLabel="Already in this setlist"
-                                            showPointerCursor={false}
-                                            triggerClassName="shrink-0 text-accent"
-                                          >
-                                            <IconCalendarFilled size={12} />
-                                          </InfoTooltip>
-                                        </span>
-                                      )}
-                                    </div>
-                                    <div className="truncate text-xs text-ink-soft">
-                                      <MetaLine
-                                        parts={[
-                                          personCreditPart(
-                                            piece.composer.values.map((p) => p.name),
-                                            piece.arranger.values.map((p) => p.name),
-                                          ),
-                                          pieceKeysLabel(piece) || null,
-                                        ]}
-                                      />
-                                    </div>
-                                  </div>
-                                  {piece.duration != null && (
-                                    <span className="shrink-0 font-mono text-xs tabular-nums text-ink-soft">
-                                      {formatDuration(piece.duration)}
-                                    </span>
-                                  )}
-                                </div>
-                              )
-                            })
-                          )}
-                        </div>
+                  {/* Adding entries needs `create` (the server enforces it too);
+                      without it this list can still be reordered and trimmed. */}
+                  {canCreate && (
+                    <div className="rounded-md bg-paper-raised overflow-hidden">
+                      <div className="flex">
+                        <button
+                          type="button"
+                          onClick={() => selectAddMode('search')}
+                          className={`relative flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-tl-md border-t border-r border-l border-border px-3 py-2 text-sm font-medium transition-colors ${
+                            addRowMode === 'buttons' ? 'rounded-bl-md border-b' : ''
+                          } ${addRowMode === 'search' ? 'bg-paper-sunken text-ink' : 'text-ink-soft hover:z-10 hover:border-accent'}`}
+                        >
+                          <IconPlus size={14} />
+                          Piece
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => selectAddMode('custom')}
+                          className={`relative -ml-px flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-tr-md border-t border-r border-l border-border px-3 py-2 text-sm font-medium transition-colors ${
+                            addRowMode === 'buttons' ? 'rounded-br-md border-b' : ''
+                          } ${addRowMode === 'custom' ? 'bg-paper-sunken text-ink' : 'text-ink-soft hover:z-10 hover:border-accent'}`}
+                        >
+                          <IconPlus size={14} />
+                          Custom Entry
+                        </button>
                       </div>
-                    )}
 
-                    {addRowMode === 'custom' &&
-                      renderCustomEntryForm(
-                        'add-custom-entry',
-                        'relative border border-border rounded-b-md p-3',
+                      {addRowMode === 'search' && (
+                        <div
+                          ref={setExpandedRef}
+                          className="border border-border rounded-b-md p-2.5"
+                        >
+                          <div className="relative">
+                            <IconSearch
+                              size={13}
+                              className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-ink-soft/60"
+                            />
+                            <input
+                              ref={pieceSearchInputRef}
+                              type="text"
+                              autoFocus
+                              value={pieceQuery}
+                              onChange={(event) => {
+                                setPieceQuery(event.target.value)
+                                setSearchHighlight(-1)
+                              }}
+                              onKeyDown={onPieceSearchKeyDown}
+                              placeholder="Search pieces…"
+                              aria-label="Search pieces"
+                              className="w-full rounded-md border border-border bg-paper py-1.5 pr-8 pl-7 text-sm text-ink placeholder:text-ink-soft/60 focus:border-accent focus:outline-none"
+                            />
+                            <button
+                              type="button"
+                              onClick={closeAddRow}
+                              aria-label="Cancel adding a piece"
+                              className="absolute top-1/2 right-1.5 -translate-y-1/2 cursor-pointer rounded p-1 text-ink-soft hover:bg-paper-sunken hover:text-ink"
+                            >
+                              <IconX size={13} />
+                            </button>
+                          </div>
+                          <p className="mt-2 mb-1 text-[0.65rem] font-medium tracking-wide text-ink-soft uppercase">
+                            {pieceQuery.trim()
+                              ? `${pieceResults.length} ${pieceResults.length === 1 ? 'match' : 'matches'}`
+                              : 'Recently added'}
+                          </p>
+                          <div className="flex max-h-56 flex-col gap-0.5 overflow-y-auto">
+                            {pieceResults.length === 0 ? (
+                              <p className="px-2 py-4 text-center text-sm text-ink-soft italic">
+                                No matches
+                              </p>
+                            ) : (
+                              pieceResults.map((piece, i) => {
+                                const inProgram = libraryPieceIdsInProgram.has(piece.id)
+                                return (
+                                  <div
+                                    key={piece.id}
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={() => selectPiece(piece)}
+                                    onKeyDown={(event) => {
+                                      if (event.key === 'Enter' || event.key === ' ') {
+                                        event.preventDefault()
+                                        selectPiece(piece)
+                                      }
+                                    }}
+                                    className={`flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-left ${
+                                      i === searchHighlight
+                                        ? 'bg-paper-sunken'
+                                        : 'hover:bg-paper-sunken'
+                                    }`}
+                                  >
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex items-center gap-1.5 font-display text-sm font-medium text-ink">
+                                        <span className="truncate">{piece.title}</span>
+                                        {inProgram && (
+                                          <span onClick={(event) => event.stopPropagation()}>
+                                            <InfoTooltip
+                                              message="Already in this setlist"
+                                              ariaLabel="Already in this setlist"
+                                              showPointerCursor={false}
+                                              triggerClassName="shrink-0 text-accent"
+                                            >
+                                              <IconCalendarFilled size={12} />
+                                            </InfoTooltip>
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div className="truncate text-xs text-ink-soft">
+                                        <MetaLine
+                                          parts={[
+                                            personCreditPart(
+                                              piece.composer.values.map((p) => p.name),
+                                              piece.arranger.values.map((p) => p.name),
+                                            ),
+                                            pieceKeysLabel(piece) || null,
+                                          ]}
+                                        />
+                                      </div>
+                                    </div>
+                                    {piece.duration != null && (
+                                      <span className="shrink-0 font-mono text-xs tabular-nums text-ink-soft">
+                                        {formatDuration(piece.duration)}
+                                      </span>
+                                    )}
+                                  </div>
+                                )
+                              })
+                            )}
+                          </div>
+                        </div>
                       )}
-                  </div>
+
+                      {addRowMode === 'custom' &&
+                        renderCustomEntryForm(
+                          'add-custom-entry',
+                          'relative border border-border rounded-b-md p-3',
+                        )}
+                    </div>
+                  )}
                 </div>
               </>
             )}

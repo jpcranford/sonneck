@@ -6,7 +6,7 @@ import {
   IconLayoutSidebarLeftExpandFilled,
 } from '@tabler/icons-react'
 import { NAV_ITEMS, SECONDARY_NAV_ITEMS, type NavItem } from '../lib/navItems'
-import { useAuth } from '../lib/AuthContext'
+import { hasPermission, useAuth } from '../lib/AuthContext'
 import { getUserSettings } from '../api/userSettings'
 import { listSetlists, getUpcomingSetlists } from '../api/setlists'
 import { UserMenuButton } from './UserMenuButton'
@@ -28,7 +28,7 @@ function NavItemsList({ items, collapsed }: { items: NavItem[]; collapsed: boole
   return (
     <nav className="flex flex-col gap-1 px-2">
       {visibleItems.map(({ to, label, icon: Icon, permission }) => {
-        const blocked = permission && !me.permissions.includes(permission)
+        const blocked = permission && !hasPermission(me, permission)
         const content = (
           <>
             {/* Icon always matches the adjacent label's own color
@@ -47,9 +47,7 @@ function NavItemsList({ items, collapsed }: { items: NavItem[]; collapsed: boole
                 wrong direction/amount, since font hinting differs by
                 rendering engine and a measurement in one browser isn't a
                 reliable stand-in for another. Icons needed no offset. */}
-            {!collapsed && (
-              <span className="relative top-[0.6px] truncate">{label}</span>
-            )}
+            {!collapsed && <span className="relative top-[0.6px] truncate">{label}</span>}
           </>
         )
         if (blocked) {
@@ -86,7 +84,9 @@ function NavItemsList({ items, collapsed }: { items: NavItem[]; collapsed: boole
               `flex h-10 items-center gap-3 rounded-md px-2 font-display text-[0.95rem] font-medium ${
                 collapsed ? 'justify-center' : ''
               } ${
-                isActive ? 'bg-sidebar-panel text-sidebar-text' : 'text-sidebar-text hover:bg-white/5'
+                isActive
+                  ? 'bg-sidebar-panel text-sidebar-text'
+                  : 'text-sidebar-text hover:bg-white/5'
               }`
             }
           >
@@ -110,7 +110,14 @@ export function Sidebar() {
   // pattern as the "Hide Books in sidebar" setting above. Defaults to []
   // while loading, same posture as an empty result: no flash, no
   // placeholder text.
-  const { data: setlists = [] } = useQuery({ queryKey: ['setlists'], queryFn: listSetlists })
+  // Without `create` the whole Upcoming Sets section goes (setlists are
+  // the one thing that permission covers), so there's nothing to fetch.
+  const canCreate = hasPermission(useAuth(), 'create')
+  const { data: setlists = [] } = useQuery({
+    queryKey: ['setlists'],
+    queryFn: listSetlists,
+    enabled: canCreate,
+  })
   const upcomingSetlists = getUpcomingSetlists(setlists, 5)
 
   return (
@@ -147,7 +154,7 @@ export function Sidebar() {
 
       <NavItemsList items={SECONDARY_NAV_ITEMS} collapsed={collapsed} />
 
-      <SetlistsSection collapsed={collapsed} setlists={upcomingSetlists} />
+      {canCreate && <SetlistsSection collapsed={collapsed} setlists={upcomingSetlists} />}
 
       <UserMenuButton collapsed={collapsed} />
     </aside>

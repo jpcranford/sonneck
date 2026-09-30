@@ -1,4 +1,5 @@
 import type { ComponentType } from 'react'
+import type { Permission } from '../api/admin'
 import {
   IconLibrary,
   IconBooks,
@@ -26,7 +27,7 @@ export interface NavItem {
    * buttons, ContextMenu.tsx's own disabled items). Checked by
    * Sidebar.tsx's NavItemsList and MobileNav.tsx's DrawerNavList, both of
    * which render this same NAV_ITEMS list. */
-  permission?: string
+  permission?: Permission
 }
 
 export const NAV_ITEMS: NavItem[] = [

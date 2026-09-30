@@ -14,7 +14,7 @@ import { Modal } from '../components/Modal'
 import { PersonContextMenu } from '../components/PersonContextMenu'
 import { type SortDirection, type SortFieldOption } from '../components/SortControl'
 import { LibraryToolbar } from '../components/LibraryToolbar'
-import { useAuth } from '../lib/AuthContext'
+import { hasPermission, useAuth } from '../lib/AuthContext'
 import { WIDE_CONTENT_MAX_W } from '../lib/layout'
 import { usePageTitle } from '../lib/usePageTitle'
 import { useViewPreference } from '../lib/useViewPreference'
@@ -102,7 +102,10 @@ function PersonGridCard({ person }: { person: Person }) {
         state={{ backLabel: 'People' }}
         className="flex flex-col items-center gap-2 text-center"
       >
-        <PersonAvatar person={person} className="w-full shadow-sm transition-shadow hover:shadow-lg" />
+        <PersonAvatar
+          person={person}
+          className="w-full shadow-sm transition-shadow hover:shadow-lg"
+        />
         <div className="flex flex-col gap-0.5">
           <p className="line-clamp-2 font-display text-sm font-medium text-ink">{person.name}</p>
           {lifespan && <p className="truncate text-xs text-ink-soft">{lifespan}</p>}
@@ -159,7 +162,11 @@ type TriState = 'exclude' | 'neutral' | 'include'
 function dimensionState(map: Record<string, TriState>, value: string): TriState {
   return map[value] ?? 'neutral'
 }
-function setDimensionState(map: Record<string, TriState>, value: string, next: TriState): Record<string, TriState> {
+function setDimensionState(
+  map: Record<string, TriState>,
+  value: string,
+  next: TriState,
+): Record<string, TriState> {
   if (next === 'neutral') {
     return Object.fromEntries(Object.entries(map).filter(([k]) => k !== value))
   }
@@ -173,7 +180,14 @@ interface PersonFilterState {
 }
 const EMPTY_PERSON_FILTERS: PersonFilterState = { showAll: false, era: {}, centuries: {} }
 
-const ERA_ORDER = ['Renaissance & Earlier', 'Baroque', 'Classical', 'Romantic', 'Modern', 'Contemporary'] as const
+const ERA_ORDER = [
+  'Renaissance & Earlier',
+  'Baroque',
+  'Classical',
+  'Romantic',
+  'Modern',
+  'Contemporary',
+] as const
 type Era = (typeof ERA_ORDER)[number]
 
 function getEra(person: Person): Era | null {
@@ -240,7 +254,15 @@ function FacetRow({
   )
 }
 
-function TriStateControl({ state, onChange, label }: { state: TriState; onChange: (next: TriState) => void; label: string }) {
+function TriStateControl({
+  state,
+  onChange,
+  label,
+}: {
+  state: TriState
+  onChange: (next: TriState) => void
+  label: string
+}) {
   return (
     <div className="flex shrink-0 items-center gap-0.5 rounded-md border border-border p-0.5">
       <button
@@ -249,7 +271,9 @@ function TriStateControl({ state, onChange, label }: { state: TriState; onChange
         aria-label={`Exclude ${label}`}
         aria-pressed={state === 'exclude'}
         className={`flex size-6 cursor-pointer items-center justify-center rounded ${
-          state === 'exclude' ? 'bg-red-50 text-red-700' : 'text-ink-soft hover:bg-paper-sunken hover:text-ink'
+          state === 'exclude'
+            ? 'bg-red-50 text-red-700'
+            : 'text-ink-soft hover:bg-paper-sunken hover:text-ink'
         }`}
       >
         <IconMinus size={14} />
@@ -260,7 +284,9 @@ function TriStateControl({ state, onChange, label }: { state: TriState; onChange
         aria-label={`Clear ${label} filter`}
         aria-pressed={state === 'neutral'}
         className={`flex size-6 cursor-pointer items-center justify-center rounded ${
-          state === 'neutral' ? 'bg-paper-sunken text-ink' : 'text-ink-soft hover:bg-paper-sunken hover:text-ink'
+          state === 'neutral'
+            ? 'bg-paper-sunken text-ink'
+            : 'text-ink-soft hover:bg-paper-sunken hover:text-ink'
         }`}
       >
         <IconSlash size={14} />
@@ -271,7 +297,9 @@ function TriStateControl({ state, onChange, label }: { state: TriState; onChange
         aria-label={`Include ${label}`}
         aria-pressed={state === 'include'}
         className={`flex size-6 cursor-pointer items-center justify-center rounded ${
-          state === 'include' ? 'bg-accent-soft text-accent' : 'text-ink-soft hover:bg-paper-sunken hover:text-ink'
+          state === 'include'
+            ? 'bg-accent-soft text-accent'
+            : 'text-ink-soft hover:bg-paper-sunken hover:text-ink'
         }`}
       >
         <IconPlus size={14} />
@@ -327,9 +355,9 @@ function PersonFilterDrawer({
         </div>
 
         <p className="shrink-0 border-b border-border px-4 py-2.5 text-xs leading-snug text-ink-soft">
-          Included options within a section combine with <span className="font-medium text-ink">or</span> — checking
-          two eras, for example, matches people from either. Different sections, and any excluded option, must all
-          match.
+          Included options within a section combine with{' '}
+          <span className="font-medium text-ink">or</span> — checking two eras, for example, matches
+          people from either. Different sections, and any excluded option, must all match.
         </p>
 
         <div className="flex-1 overflow-y-auto px-4 py-2">
@@ -358,7 +386,9 @@ function PersonFilterDrawer({
                 label={era}
                 count={countEra(era)}
                 state={dimensionState(filters.era, era)}
-                onChange={(next) => onChange({ ...filters, era: setDimensionState(filters.era, era, next) })}
+                onChange={(next) =>
+                  onChange({ ...filters, era: setDimensionState(filters.era, era, next) })
+                }
               />
             ))}
           </FacetSection>
@@ -370,7 +400,12 @@ function PersonFilterDrawer({
                 label={`${ordinal(c)} century`}
                 count={countCentury(c)}
                 state={dimensionState(filters.centuries, String(c))}
-                onChange={(next) => onChange({ ...filters, centuries: setDimensionState(filters.centuries, String(c), next) })}
+                onChange={(next) =>
+                  onChange({
+                    ...filters,
+                    centuries: setDimensionState(filters.centuries, String(c), next),
+                  })
+                }
               />
             ))}
           </FacetSection>
@@ -549,7 +584,7 @@ function toIntOrNull(value: string): number | null {
 
 export function PeopleLibraryPage() {
   usePageTitle('People')
-  const canEdit = useAuth().permissions.includes('edit')
+  const canEdit = hasPermission(useAuth(), 'edit')
   const queryClient = useQueryClient()
   const [query, setQuery] = useState('')
   const debouncedQuery = useDebouncedValue(query, 250)
@@ -635,8 +670,18 @@ export function PeopleLibraryPage() {
   function clearFilterPill(field: 'era' | 'centuries', value: string) {
     setFilters((f) => ({ ...f, [field]: setDimensionState(f[field], value, 'neutral') }))
   }
-  const pillEntries: { field: 'era' | 'centuries'; value: string; label: string; state: TriState }[] = [
-    ...Object.entries(filters.era).map(([v, state]) => ({ field: 'era' as const, value: v, label: v, state })),
+  const pillEntries: {
+    field: 'era' | 'centuries'
+    value: string
+    label: string
+    state: TriState
+  }[] = [
+    ...Object.entries(filters.era).map(([v, state]) => ({
+      field: 'era' as const,
+      value: v,
+      label: v,
+      state,
+    })),
     ...Object.entries(filters.centuries).map(([v, state]) => ({
       field: 'centuries' as const,
       value: v,

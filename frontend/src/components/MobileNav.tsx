@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { IconMenu2, IconX } from '@tabler/icons-react'
 import { NAV_ITEMS, SECONDARY_NAV_ITEMS, type NavItem } from '../lib/navItems'
-import { useAuth } from '../lib/AuthContext'
+import { hasPermission, useAuth } from '../lib/AuthContext'
 import { getUserSettings } from '../api/userSettings'
 import { listSetlists, getUpcomingSetlists } from '../api/setlists'
 import { UserMenuButton } from './UserMenuButton'
@@ -69,7 +69,7 @@ function DrawerNavList({ items, onNavigate }: { items: NavItem[]; onNavigate: ()
   return (
     <nav className="flex flex-col gap-1 px-2">
       {visibleItems.map(({ to, label, icon: Icon, permission }) => {
-        const blocked = permission && !me.permissions.includes(permission)
+        const blocked = permission && !hasPermission(me, permission)
         const content = (
           <>
             <Icon size={22} className="text-sidebar-text" />
@@ -101,7 +101,9 @@ function DrawerNavList({ items, onNavigate }: { items: NavItem[]; onNavigate: ()
             onClick={onNavigate}
             className={({ isActive }) =>
               `flex h-11 items-center gap-3 rounded-md px-3 font-display text-[0.95rem] font-medium ${
-                isActive ? 'bg-sidebar-panel text-sidebar-text' : 'text-sidebar-text hover:bg-white/5'
+                isActive
+                  ? 'bg-sidebar-panel text-sidebar-text'
+                  : 'text-sidebar-text hover:bg-white/5'
               }`
             }
           >
@@ -116,7 +118,13 @@ function DrawerNavList({ items, onNavigate }: { items: NavItem[]; onNavigate: ()
 export function MobileNavDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   // Real as of the Setlists backend build — same query Sidebar.tsx's own
   // desktop rail uses, sharing its cache entry.
-  const { data: setlists = [] } = useQuery({ queryKey: ['setlists'], queryFn: listSetlists })
+  // Hidden without `create`, as in Sidebar.tsx.
+  const canCreate = hasPermission(useAuth(), 'create')
+  const { data: setlists = [] } = useQuery({
+    queryKey: ['setlists'],
+    queryFn: listSetlists,
+    enabled: canCreate,
+  })
   const upcomingSetlists = getUpcomingSetlists(setlists, 5)
 
   return (
@@ -148,7 +156,7 @@ export function MobileNavDrawer({ open, onClose }: { open: boolean; onClose: () 
         <div className="mx-3 my-3 border-t border-sidebar-border" />
         <DrawerNavList items={SECONDARY_NAV_ITEMS} onNavigate={onClose} />
 
-        <SetlistsSection collapsed={false} setlists={upcomingSetlists} />
+        {canCreate && <SetlistsSection collapsed={false} setlists={upcomingSetlists} />}
 
         <UserMenuButton collapsed={false} onNavigate={onClose} />
       </aside>

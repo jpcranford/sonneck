@@ -31,7 +31,7 @@ import { copyToClipboard } from '../lib/clipboard'
 import { COPYRIGHT_BADGE_META, copyrightTooltipText } from '../lib/copyrightBadge'
 import { hyphenateISBN } from '../lib/isbn'
 import { joinNames, pieceTitleCredit } from '../lib/joinNames'
-import { useAuth } from '../lib/AuthContext'
+import { hasPermission, useAuth } from '../lib/AuthContext'
 import { usePageTitle } from '../lib/usePageTitle'
 import { yearWrittenSource } from '../lib/yearWrittenSource'
 import { DownloadLink } from '../components/DownloadLink'
@@ -315,9 +315,10 @@ export function PiecePage() {
   }
 
   const me = useAuth()
-  const canDownload = me.permissions.includes('download')
-  const canEdit = me.permissions.includes('edit')
-  const canDelete = me.permissions.includes('delete')
+  const canDownload = hasPermission(me, 'download')
+  const canEdit = hasPermission(me, 'edit')
+  const canDelete = hasPermission(me, 'delete')
+  const canCreate = hasPermission(me, 'create')
 
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [downloadOpen, setDownloadOpen] = useState(false)
@@ -554,26 +555,30 @@ export function PiecePage() {
                 (PieceDetailsSample.tsx). Its popover is the exact same
                 AddToSetlistPicker the Library grid/list cards use —
                 addToSetlistButtonRef anchors its portaled position (see
-                that component's own top comment for why it's a portal). */}
-            <div>
-              <button
-                ref={addToSetlistButtonRef}
-                type="button"
-                onClick={() => setAddToSetlistOpen((o) => !o)}
-                aria-label="Add to Setlist"
-                title="Add to Setlist"
-                className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent"
-              >
-                <IconCalendarEventFilled size={18} />
-              </button>
-              {addToSetlistOpen && (
-                <AddToSetlistPicker
-                  pieceId={piece.id}
-                  anchorRef={addToSetlistButtonRef}
-                  onClose={() => setAddToSetlistOpen(false)}
-                />
-              )}
-            </div>
+                that component's own top comment for why it's a portal).
+                Hidden entirely, not shown faint, without the `create`
+                permission — setlists are the one thing it covers. */}
+            {canCreate && (
+              <div>
+                <button
+                  ref={addToSetlistButtonRef}
+                  type="button"
+                  onClick={() => setAddToSetlistOpen((o) => !o)}
+                  aria-label="Add to Setlist"
+                  title="Add to Setlist"
+                  className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent"
+                >
+                  <IconCalendarEventFilled size={18} />
+                </button>
+                {addToSetlistOpen && (
+                  <AddToSetlistPicker
+                    pieceId={piece.id}
+                    anchorRef={addToSetlistButtonRef}
+                    onClose={() => setAddToSetlistOpen(false)}
+                  />
+                )}
+              </div>
+            )}
             <ActionButton
               icon={<IconEditFilled size={16} />}
               label="Edit Piece"

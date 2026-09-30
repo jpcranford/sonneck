@@ -36,7 +36,7 @@ import { TagPills } from '../components/TagPills'
 import { joinNames, personCreditPart } from '../lib/joinNames'
 import { CONTENT_MAX_W } from '../lib/layout'
 import { PALETTE } from '../lib/pieceSplitLogic'
-import { useAuth } from '../lib/AuthContext'
+import { hasPermission, useAuth } from '../lib/AuthContext'
 import { usePageTitle } from '../lib/usePageTitle'
 import { useViewPreference } from '../lib/useViewPreference'
 import { yearWrittenSource } from '../lib/yearWrittenSource'
@@ -116,7 +116,9 @@ function roleFor(piece: Piece, personId: number): 'Composer' | 'Arranger' {
 function yearWrittenLabel(piece: Piece): string {
   if (!piece.yearWritten.value) return '—'
   if (!piece.yearWritten.inherited) return piece.yearWritten.value
-  return yearWrittenSource(piece) === 'book' ? `${piece.yearWritten.value} (pub.)` : piece.yearWritten.value
+  return yearWrittenSource(piece) === 'book'
+    ? `${piece.yearWritten.value} (pub.)`
+    : piece.yearWritten.value
 }
 
 // yearWritten can be a range ("1830–1832") — sorts on the first number
@@ -214,7 +216,10 @@ function WorkGrid({ pieces, personId }: { pieces: Piece[]; personId: number }) {
             state={{ backLabel: 'Person' }}
             className="flex flex-col overflow-hidden rounded-lg border border-border bg-paper-raised text-left"
           >
-            <WorkThumbnail piece={piece} className="aspect-[180/132] rounded-none border-0 border-b" />
+            <WorkThumbnail
+              piece={piece}
+              className="aspect-[180/132] rounded-none border-0 border-b"
+            />
             <div className="flex flex-col gap-0.5 px-2 py-1.5">
               <p className="flex min-w-0 items-center gap-1 font-display text-[0.8rem] font-medium text-ink">
                 <span className="truncate">{workTitle(piece)}</span>
@@ -252,7 +257,9 @@ function WorkList({ pieces, personId }: { pieces: Piece[]; personId: number }) {
               state={{ backLabel: 'Person' }}
               className={`grid grid-cols-[96px_1fr_56px] items-center gap-3 border-t border-border px-1.5 py-2.5 text-left hover:rounded-md hover:bg-accent-soft ${ROW_COLLAPSE_CLASS}`}
             >
-              <div className="text-center text-sm font-medium tabular-nums text-ink">{yearWrittenLabel(piece)}</div>
+              <div className="text-center text-sm font-medium tabular-nums text-ink">
+                {yearWrittenLabel(piece)}
+              </div>
               <div className="min-w-0">
                 <p className="flex flex-wrap items-center gap-1.5 font-display text-[0.92rem] font-medium text-ink">
                   {workTitle(piece)}
@@ -272,7 +279,10 @@ function WorkList({ pieces, personId }: { pieces: Piece[]; personId: number }) {
                   className="mt-1.5"
                 />
               </div>
-              <WorkThumbnail piece={piece} className={`h-[42px] w-14 rounded-md ${THUMB_HIDE_CLASS}`} />
+              <WorkThumbnail
+                piece={piece}
+                className={`h-[42px] w-14 rounded-md ${THUMB_HIDE_CLASS}`}
+              />
             </ClickableCard>
           </PieceContextMenu>
         ))}
@@ -354,9 +364,9 @@ function SplitPeopleModal({
             Split "{person.name}"
           </h2>
           <p className="mt-1 text-sm text-ink-soft">
-            Reassign every one of this person's current piece and book credits to one or more replacement
-            people, in order. "{person.name}" isn't deleted — they're just left with zero credits
-            afterward.
+            Reassign every one of this person's current piece and book credits to one or more
+            replacement people, in order. "{person.name}" isn't deleted — they're just left with
+            zero credits afterward.
           </p>
         </div>
 
@@ -388,8 +398,8 @@ export function PersonDetailsPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const me = useAuth()
-  const canEdit = me.permissions.includes('edit')
-  const canDelete = me.permissions.includes('delete')
+  const canEdit = hasPermission(me, 'edit')
+  const canDelete = hasPermission(me, 'delete')
 
   const [workViewMode, setWorkViewMode] = useViewPreference('person-details-works', 'list')
   const [editOpen, setEditOpen] = useState(false)
@@ -517,7 +527,13 @@ export function PersonDetailsPage() {
     ? [
         { label: 'Change Portrait', onSelect: () => setUploadPortraitOpen(true) },
         ...(person.hasCustomPortrait
-          ? [{ label: 'Remove Portrait', onSelect: () => removePortraitMutation.mutate(), destructive: true }]
+          ? [
+              {
+                label: 'Remove Portrait',
+                onSelect: () => removePortraitMutation.mutate(),
+                destructive: true,
+              },
+            ]
           : []),
       ]
     : []
@@ -622,7 +638,9 @@ export function PersonDetailsPage() {
 
               <div className="min-w-0 flex-1">
                 <div className="mb-2">
-                  <h1 className="font-display text-[1.35rem] font-medium text-ink">{person.name}</h1>
+                  <h1 className="font-display text-[1.35rem] font-medium text-ink">
+                    {person.name}
+                  </h1>
                   {formatLifespan(person) && (
                     <p className="text-[0.92rem] text-ink-soft">{formatLifespan(person)}</p>
                   )}
@@ -655,7 +673,8 @@ export function PersonDetailsPage() {
                           </span>
                           <span className="font-medium">{book.bookTitle}</span>
                           <span className="text-ink-soft">
-                            as {book.composer.some((p) => p.id === personId) ? 'Composer' : 'Arranger'}
+                            as{' '}
+                            {book.composer.some((p) => p.id === personId) ? 'Composer' : 'Arranger'}
                           </span>
                         </Link>
                       ))}

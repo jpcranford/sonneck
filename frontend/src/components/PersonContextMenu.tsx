@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { deletePerson } from '../api/people'
 import { ApiError } from '../api/client'
 import type { Person } from '../api/types'
-import { useAuth } from '../lib/AuthContext'
+import { hasPermission, useAuth } from '../lib/AuthContext'
 import { ContextMenu, type ContextMenuHandle } from './ContextMenu'
 import { EditPersonModal } from './EditPersonModal'
 
@@ -25,8 +25,8 @@ export const PersonContextMenu = forwardRef<ContextMenuHandle, PersonContextMenu
   function PersonContextMenu({ person, children, hideTriggerButton }, ref) {
     const [editOpen, setEditOpen] = useState(false)
     const queryClient = useQueryClient()
-    const canEdit = useAuth().permissions.includes('edit')
-    const canDelete = useAuth().permissions.includes('delete')
+    const canEdit = hasPermission(useAuth(), 'edit')
+    const canDelete = hasPermission(useAuth(), 'delete')
 
     const deleteMutation = useMutation({
       mutationFn: () => deletePerson(person.id),

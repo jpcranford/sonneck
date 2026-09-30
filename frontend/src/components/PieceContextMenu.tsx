@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { deletePiece, updatePiece } from '../api/pieces'
 import { ApiError } from '../api/client'
 import type { Piece } from '../api/types'
-import { useAuth } from '../lib/AuthContext'
+import { hasPermission, useAuth } from '../lib/AuthContext'
 import { pieceToWriteRequest } from '../lib/pieceToWriteRequest'
 import { ContextMenu, type ContextMenuHandle } from './ContextMenu'
 import { EditPieceModal } from './EditPieceModal'
@@ -31,15 +31,19 @@ export const PieceContextMenu = forwardRef<ContextMenuHandle, PieceContextMenuPr
     const [pickerOpen, setPickerOpen] = useState(false)
     const cardRef = useRef<HTMLDivElement>(null)
     const queryClient = useQueryClient()
-    const canEdit = useAuth().permissions.includes('edit')
-    const canDelete = useAuth().permissions.includes('delete')
+    const canEdit = hasPermission(useAuth(), 'edit')
+    const canDelete = hasPermission(useAuth(), 'delete')
+    // Hidden, not shown faint, without `create`: setlists are the one
+    // thing that permission covers, so there's nothing to offer.
+    const canCreate = hasPermission(useAuth(), 'create')
 
     // Same full-replace PATCH pattern as PiecePage's own favorite toggle
     // (its keyboard-shortcut "F" and header heart button) — kept here as a
     // separate mutation rather than a shared hook since there's nowhere
     // else yet that both need it from outside a piece-details context.
     const favoriteMutation = useMutation({
-      mutationFn: () => updatePiece(piece.id, { ...pieceToWriteRequest(piece), favorite: !piece.favorite }),
+      mutationFn: () =>
+        updatePiece(piece.id, { ...pieceToWriteRequest(piece), favorite: !piece.favorite }),
       onSuccess: (updated) => {
         queryClient.setQueryData(['piece', piece.id], updated)
         queryClient.invalidateQueries({ queryKey: ['pieces'] })
@@ -75,10 +79,9 @@ export const PieceContextMenu = forwardRef<ContextMenuHandle, PieceContextMenuPr
               label: piece.favorite ? 'Remove from Favorites' : 'Add to Favorites',
               onSelect: () => favoriteMutation.mutate(),
             },
-            {
-              label: 'Add to Setlist',
-              onSelect: () => setPickerOpen(true),
-            },
+            ...(canCreate
+              ? [{ label: 'Add to Setlist', onSelect: () => setPickerOpen(true) }]
+              : []),
             {
               label: 'Edit Piece',
               onSelect: () => setEditOpen(true),
@@ -106,8 +109,12 @@ export const PieceContextMenu = forwardRef<ContextMenuHandle, PieceContextMenuPr
           onClose={() => setEditOpen(false)}
           siblingPieces={siblingPieces}
         />
-        {pickerOpen && (
-          <AddToSetlistPicker pieceId={piece.id} anchorRef={cardRef} onClose={() => setPickerOpen(false)} />
+        {canCreate && pickerOpen && (
+          <AddToSetlistPicker
+            pieceId={piece.id}
+            anchorRef={cardRef}
+            onClose={() => setPickerOpen(false)}
+          />
         )}
       </div>
     )

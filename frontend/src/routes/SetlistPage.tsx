@@ -36,7 +36,7 @@ import { InfoTooltip } from '../components/InfoTooltip'
 import { MarkdownText } from '../components/MarkdownText'
 import { MetaLine } from '../components/MetaLine'
 import { Modal } from '../components/Modal'
-import { useAuth } from '../lib/AuthContext'
+import { hasPermission, useAuth } from '../lib/AuthContext'
 import { CONTENT_MAX_W } from '../lib/layout'
 import { personCreditPart } from '../lib/joinNames'
 import { formatRelativeWeeks } from '../lib/relativeWeeks'
@@ -145,7 +145,9 @@ export function SetlistPage() {
   const setlistId = Number(id)
   const queryClient = useQueryClient()
   const navigate = useNavigate()
-  const canDownload = useAuth().permissions.includes('download')
+  const canDownload = hasPermission(useAuth(), 'download')
+  // Duplicating makes a new setlist, so it's hidden without `create`.
+  const canCreate = hasPermission(useAuth(), 'create')
 
   const {
     data: setlist,
@@ -357,11 +359,13 @@ export function SetlistPage() {
                 label="Edit setlist"
                 onClick={() => openEditSetlist('details')}
               />
-              <HeaderIconButton
-                icon={<IconCopy size={16} />}
-                label="Duplicate setlist"
-                onClick={openDuplicateModal}
-              />
+              {canCreate && (
+                <HeaderIconButton
+                  icon={<IconCopy size={16} />}
+                  label="Duplicate setlist"
+                  onClick={openDuplicateModal}
+                />
+              )}
               <HeaderIconButton
                 icon={<IconArchive size={16} />}
                 label={setlist.archived ? 'Unarchive setlist' : 'Archive setlist'}
