@@ -9,7 +9,15 @@ import {
 } from 'react'
 import { createPortal } from 'react-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { IconCalendarFilled, IconGripVertical, IconPencil, IconPlus, IconSearch, IconX, IconXFilled } from '@tabler/icons-react'
+import {
+  IconCalendarFilled,
+  IconGripVertical,
+  IconPencil,
+  IconPlus,
+  IconSearch,
+  IconX,
+  IconXFilled,
+} from '@tabler/icons-react'
 import { ApiError } from '../api/client'
 import { searchPieces } from '../api/pieces'
 import {
@@ -101,11 +109,22 @@ interface EditSetlistModalProps {
   // caller navigate to its new Setlist Details page. Not used in edit
   // mode.
   onCreated?: (setlist: SetlistDetail) => void
+  // Create mode only: the name field's starting value (e.g. what was
+  // already typed into AddToSetlistPicker's search before "New Setlist…").
+  initialName?: string
 }
 
 type AddRowMode = 'buttons' | 'search' | 'custom'
 
-export function EditSetlistModal({ open, onClose, mode, setlistId, initialTab = 'details', onCreated }: EditSetlistModalProps) {
+export function EditSetlistModal({
+  open,
+  onClose,
+  mode,
+  setlistId,
+  initialTab = 'details',
+  onCreated,
+  initialName = '',
+}: EditSetlistModalProps) {
   const queryClient = useQueryClient()
 
   const [activeTab, setActiveTab] = useState<SetlistModalTab>(initialTab)
@@ -139,7 +158,7 @@ export function EditSetlistModal({ open, onClose, mode, setlistId, initialTab = 
     if (detailsSyncedRef.current) return
     if (mode === 'create') {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate: syncs local form state to an external controlled prop (this component's instance persists across open/close), same posture Modal.tsx's own mounted/visible sync takes. Guarded by detailsSyncedRef so it only runs once per open, not on every unrelated re-render.
-      setName('')
+      setName(initialName)
       setGigDate('')
       setDescription('')
       detailsSyncedRef.current = true
@@ -151,7 +170,7 @@ export function EditSetlistModal({ open, onClose, mode, setlistId, initialTab = 
       setDescription(setlistDetail.description ?? '')
       detailsSyncedRef.current = true
     }
-  }, [open, mode, setlistDetail])
+  }, [open, mode, setlistDetail, initialName])
 
   // Local, draggable copy of the Program's entries — mirrors the query's
   // own entries whenever a drag isn't in progress; a drag mutates this
@@ -222,7 +241,8 @@ export function EditSetlistModal({ open, onClose, mode, setlistId, initialTab = 
   const addPieceMutation = useMutation({
     mutationFn: (pieceId: number) => addSetlistEntry(setlistId!, { pieceId }),
     onSuccess: applyUpdatedSetlist,
-    onError: (error) => window.alert(error instanceof ApiError ? error.message : 'Could not add that piece.'),
+    onError: (error) =>
+      window.alert(error instanceof ApiError ? error.message : 'Could not add that piece.'),
   })
 
   const addOrEditCustomMutation = useMutation({
@@ -235,12 +255,16 @@ export function EditSetlistModal({ open, onClose, mode, setlistId, initialTab = 
       }
       if (editingEntryId != null) {
         const existing = entries.find((e) => e.id === editingEntryId)
-        return updateSetlistEntry(setlistId!, editingEntryId, { role: existing?.role ?? null, ...body })
+        return updateSetlistEntry(setlistId!, editingEntryId, {
+          role: existing?.role ?? null,
+          ...body,
+        })
       }
       return addSetlistEntry(setlistId!, body)
     },
     onSuccess: applyUpdatedSetlist,
-    onError: (error) => window.alert(error instanceof ApiError ? error.message : 'Could not save that entry.'),
+    onError: (error) =>
+      window.alert(error instanceof ApiError ? error.message : 'Could not save that entry.'),
   })
 
   // Piece entries only carry `role` on PATCH's full-replace body (their
@@ -249,19 +273,22 @@ export function EditSetlistModal({ open, onClose, mode, setlistId, initialTab = 
     mutationFn: ({ entryId, role }: { entryId: number; role: string | null }) =>
       updateSetlistEntry(setlistId!, entryId, { role, customCountsAsMusic: false }),
     onSuccess: applyUpdatedSetlist,
-    onError: (error) => window.alert(error instanceof ApiError ? error.message : 'Could not save that role.'),
+    onError: (error) =>
+      window.alert(error instanceof ApiError ? error.message : 'Could not save that role.'),
   })
 
   const removeMutation = useMutation({
     mutationFn: (entryId: number) => removeSetlistEntry(setlistId!, entryId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['setlist', setlistId] }),
-    onError: (error) => window.alert(error instanceof ApiError ? error.message : 'Could not remove that entry.'),
+    onError: (error) =>
+      window.alert(error instanceof ApiError ? error.message : 'Could not remove that entry.'),
   })
 
   const reorderMutation = useMutation({
     mutationFn: (entryIds: number[]) => reorderSetlistEntries(setlistId!, entryIds),
     onSuccess: applyUpdatedSetlist,
-    onError: (error) => window.alert(error instanceof ApiError ? error.message : 'Could not save the new order.'),
+    onError: (error) =>
+      window.alert(error instanceof ApiError ? error.message : 'Could not save the new order.'),
   })
 
   function removeEntry(id: number) {
@@ -295,7 +322,9 @@ export function EditSetlistModal({ open, onClose, mode, setlistId, initialTab = 
       setSearchHighlight((h) => (pieceResults.length === 0 ? -1 : (h + 1) % pieceResults.length))
     } else if (event.key === 'ArrowUp') {
       event.preventDefault()
-      setSearchHighlight((h) => (pieceResults.length === 0 ? -1 : (h - 1 + pieceResults.length) % pieceResults.length))
+      setSearchHighlight((h) =>
+        pieceResults.length === 0 ? -1 : (h - 1 + pieceResults.length) % pieceResults.length,
+      )
     } else if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault()
       const target = pieceResults[searchHighlight]
@@ -318,7 +347,9 @@ export function EditSetlistModal({ open, onClose, mode, setlistId, initialTab = 
     if (addRowMode !== 'buttons') closeAddRow()
     setEditingEntryId(entry.id)
     setCustomName(entry.customName ?? '')
-    setCustomDuration(entry.customDurationSeconds != null ? formatDuration(entry.customDurationSeconds) : '')
+    setCustomDuration(
+      entry.customDurationSeconds != null ? formatDuration(entry.customDurationSeconds) : '',
+    )
     setCustomDescription(entry.customNotes ?? '')
     setCustomCountsAsMusic(entry.customCountsAsMusic)
   }
@@ -478,18 +509,28 @@ export function EditSetlistModal({ open, onClose, mode, setlistId, initialTab = 
     if (id == null) return
     const persistedIds = (setlistDetail?.entries ?? []).map((e) => e.id)
     const currentIds = entries.map((e) => e.id)
-    if (persistedIds.length === currentIds.length && persistedIds.every((v, i) => v === currentIds[i])) return
+    if (
+      persistedIds.length === currentIds.length &&
+      persistedIds.every((v, i) => v === currentIds[i])
+    )
+      return
     reorderMutation.mutate(currentIds)
   }
 
   const createMutation = useMutation({
-    mutationFn: () => createSetlist({ name: name.trim(), gigDate: gigDate || null, description: description.trim() || null }),
+    mutationFn: () =>
+      createSetlist({
+        name: name.trim(),
+        gigDate: gigDate || null,
+        description: description.trim() || null,
+      }),
     onSuccess: (created) => {
       queryClient.invalidateQueries({ queryKey: ['setlists'] })
       onCreated?.(created)
       onClose()
     },
-    onError: (error) => window.alert(error instanceof ApiError ? error.message : 'Could not create this setlist.'),
+    onError: (error) =>
+      window.alert(error instanceof ApiError ? error.message : 'Could not create this setlist.'),
   })
 
   const updateDetailsMutation = useMutation({
@@ -505,7 +546,8 @@ export function EditSetlistModal({ open, onClose, mode, setlistId, initialTab = 
       queryClient.invalidateQueries({ queryKey: ['setlists'] })
       onClose()
     },
-    onError: (error) => window.alert(error instanceof ApiError ? error.message : 'Could not save this setlist.'),
+    onError: (error) =>
+      window.alert(error instanceof ApiError ? error.message : 'Could not save this setlist.'),
   })
 
   function handleCancel() {
@@ -599,7 +641,11 @@ export function EditSetlistModal({ open, onClose, mode, setlistId, initialTab = 
             />
           </div>
           <div className="flex flex-1 py-1.5">
-            <Toggle checked={customCountsAsMusic} onChange={setCustomCountsAsMusic} label="Count as music" />
+            <Toggle
+              checked={customCountsAsMusic}
+              onChange={setCustomCountsAsMusic}
+              label="Count as music"
+            />
           </div>
         </div>
         <label htmlFor="f-custom-description" className="text-sm text-ink-soft">
@@ -655,7 +701,9 @@ export function EditSetlistModal({ open, onClose, mode, setlistId, initialTab = 
         >
           <IconX size={13} />
         </button>
-        <div className="mb-2 truncate pr-6 font-display text-sm font-medium text-ink">{entry.piece?.title}</div>
+        <div className="mb-2 truncate pr-6 font-display text-sm font-medium text-ink">
+          {entry.piece?.title}
+        </div>
         <label htmlFor="f-entry-role-inline" className="text-sm text-ink-soft">
           Role
         </label>
@@ -668,7 +716,11 @@ export function EditSetlistModal({ open, onClose, mode, setlistId, initialTab = 
           placeholder="Prelude"
           className={`mt-1 w-full rounded-md border border-border bg-paper-raised px-3 py-1.5 text-sm text-ink ${roleDraftHadRole ? 'mb-1' : 'mb-3'}`}
         />
-        {roleDraftHadRole && <p className="mb-3 text-xs text-ink-soft italic">Leave blank and save to remove the role.</p>}
+        {roleDraftHadRole && (
+          <p className="mb-3 text-xs text-ink-soft italic">
+            Leave blank and save to remove the role.
+          </p>
+        )}
         <div className="flex justify-end gap-2">
           <button
             type="button"
@@ -703,7 +755,9 @@ export function EditSetlistModal({ open, onClose, mode, setlistId, initialTab = 
                 <h2 id="edit-setlist-title" className="font-display text-2xl font-medium text-ink">
                   {mode === 'create' ? 'New setlist' : 'Edit setlist'}
                 </h2>
-                {mode === 'edit' && setlistDetail && <p className="text-sm text-ink-soft">{setlistDetail.name}</p>}
+                {mode === 'edit' && setlistDetail && (
+                  <p className="text-sm text-ink-soft">{setlistDetail.name}</p>
+                )}
               </div>
               <button
                 type="button"
@@ -719,7 +773,9 @@ export function EditSetlistModal({ open, onClose, mode, setlistId, initialTab = 
                 type="button"
                 onClick={() => setActiveTab('details')}
                 className={`-mb-px cursor-pointer border-b-2 pb-2 text-sm font-medium ${
-                  activeTab === 'details' ? 'border-accent text-ink' : 'border-transparent text-ink-soft hover:text-ink'
+                  activeTab === 'details'
+                    ? 'border-accent text-ink'
+                    : 'border-transparent text-ink-soft hover:text-ink'
                 }`}
               >
                 Setlist Details
@@ -728,7 +784,9 @@ export function EditSetlistModal({ open, onClose, mode, setlistId, initialTab = 
                 type="button"
                 onClick={() => setActiveTab('program')}
                 className={`-mb-px cursor-pointer border-b-2 pb-2 text-sm font-medium ${
-                  activeTab === 'program' ? 'border-accent text-ink' : 'border-transparent text-ink-soft hover:text-ink'
+                  activeTab === 'program'
+                    ? 'border-accent text-ink'
+                    : 'border-transparent text-ink-soft hover:text-ink'
                 }`}
               >
                 Program Order
@@ -781,7 +839,9 @@ export function EditSetlistModal({ open, onClose, mode, setlistId, initialTab = 
                 onChange={(event) => setGigDate(event.target.value)}
                 className="w-fit rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
               />
-              <span className="text-xs text-ink-soft">Shown in your browser's own date format.</span>
+              <span className="text-xs text-ink-soft">
+                Shown in your browser's own date format.
+              </span>
             </div>
             <div className="flex flex-col gap-1">
               <label htmlFor="f-setlist-description" className="text-sm text-ink-soft">
@@ -804,7 +864,9 @@ export function EditSetlistModal({ open, onClose, mode, setlistId, initialTab = 
               </p>
             ) : (
               <>
-                <p className="mb-2 text-xs font-medium tracking-wide text-ink-soft uppercase">Program ({entries.length})</p>
+                <p className="mb-2 text-xs font-medium tracking-wide text-ink-soft uppercase">
+                  Program ({entries.length})
+                </p>
                 <div
                   ref={listRef}
                   onPointerMove={onListPointerMove}
@@ -815,13 +877,18 @@ export function EditSetlistModal({ open, onClose, mode, setlistId, initialTab = 
                 >
                   {entries.map((entry) => {
                     if (entry.kind === 'custom' && entry.id === editingEntryId) {
-                      return renderCustomEntryForm(String(entry.id), 'relative rounded-md border border-accent bg-paper-raised p-3')
+                      return renderCustomEntryForm(
+                        String(entry.id),
+                        'relative rounded-md border border-accent bg-paper-raised p-3',
+                      )
                     }
                     if (entry.kind === 'piece' && entry.id === editingEntryId) {
                       return renderRoleForm(entry)
                     }
-                    const title = entry.kind === 'piece' ? (entry.piece?.title ?? '') : (entry.customName ?? '')
-                    const durationSeconds = entry.kind === 'piece' ? entry.piece?.duration : entry.customDurationSeconds
+                    const title =
+                      entry.kind === 'piece' ? (entry.piece?.title ?? '') : (entry.customName ?? '')
+                    const durationSeconds =
+                      entry.kind === 'piece' ? entry.piece?.duration : entry.customDurationSeconds
                     return (
                       <div
                         key={entry.id}
@@ -831,16 +898,33 @@ export function EditSetlistModal({ open, onClose, mode, setlistId, initialTab = 
                           draggingId === entry.id ? 'opacity-40' : ''
                         }`}
                       >
-                        <span aria-hidden="true" className="mr-1 shrink-0 self-center text-ink-soft/50">
+                        <span
+                          aria-hidden="true"
+                          className="mr-1 shrink-0 self-center text-ink-soft/50"
+                        >
                           <IconGripVertical size={14} />
                         </span>
                         {/* A custom row's pencil opens its own inline form; a
                             piece row's opens the inline role card. */}
                         <button
                           type="button"
-                          onClick={() => (entry.kind === 'custom' ? openEditCustomForm(entry) : openEditRoleForm(entry))}
-                          aria-label={entry.kind === 'custom' ? `Edit ${title}` : `${entry.role ? 'Edit' : 'Add'} role for ${title}`}
-                          title={entry.kind === 'piece' ? (entry.role ? 'Edit role' : 'Add role') : undefined}
+                          onClick={() =>
+                            entry.kind === 'custom'
+                              ? openEditCustomForm(entry)
+                              : openEditRoleForm(entry)
+                          }
+                          aria-label={
+                            entry.kind === 'custom'
+                              ? `Edit ${title}`
+                              : `${entry.role ? 'Edit' : 'Add'} role for ${title}`
+                          }
+                          title={
+                            entry.kind === 'piece'
+                              ? entry.role
+                                ? 'Edit role'
+                                : 'Add role'
+                              : undefined
+                          }
                           className="no-drag mt-0.5 shrink-0 cursor-pointer text-ink-soft hover:text-accent"
                         >
                           <IconPencil size={13} />
@@ -958,7 +1042,9 @@ export function EditSetlistModal({ open, onClose, mode, setlistId, initialTab = 
                         </p>
                         <div className="flex max-h-56 flex-col gap-0.5 overflow-y-auto">
                           {pieceResults.length === 0 ? (
-                            <p className="px-2 py-4 text-center text-sm text-ink-soft italic">No matches</p>
+                            <p className="px-2 py-4 text-center text-sm text-ink-soft italic">
+                              No matches
+                            </p>
                           ) : (
                             pieceResults.map((piece, i) => {
                               const inProgram = libraryPieceIdsInProgram.has(piece.id)
@@ -975,7 +1061,9 @@ export function EditSetlistModal({ open, onClose, mode, setlistId, initialTab = 
                                     }
                                   }}
                                   className={`flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-left ${
-                                    i === searchHighlight ? 'bg-paper-sunken' : 'hover:bg-paper-sunken'
+                                    i === searchHighlight
+                                      ? 'bg-paper-sunken'
+                                      : 'hover:bg-paper-sunken'
                                   }`}
                                 >
                                   <div className="min-w-0 flex-1">
@@ -1020,7 +1108,10 @@ export function EditSetlistModal({ open, onClose, mode, setlistId, initialTab = 
                     )}
 
                     {addRowMode === 'custom' &&
-                      renderCustomEntryForm('add-custom-entry', 'relative border border-border rounded-b-md p-3')}
+                      renderCustomEntryForm(
+                        'add-custom-entry',
+                        'relative border border-border rounded-b-md p-3',
+                      )}
                   </div>
                 </div>
               </>
@@ -1064,7 +1155,9 @@ export function EditSetlistModal({ open, onClose, mode, setlistId, initialTab = 
                     : 'font-sans text-sm font-normal text-ink-soft italic'
                 }`}
               >
-                {draggingEntry.kind === 'piece' ? draggingEntry.piece?.title : draggingEntry.customName}
+                {draggingEntry.kind === 'piece'
+                  ? draggingEntry.piece?.title
+                  : draggingEntry.customName}
               </div>
               {draggingEntry.kind === 'piece' ? (
                 <div className="truncate text-xs text-ink-soft">
@@ -1086,9 +1179,15 @@ export function EditSetlistModal({ open, onClose, mode, setlistId, initialTab = 
                 )
               )}
             </div>
-            {(draggingEntry.kind === 'piece' ? draggingEntry.piece?.duration : draggingEntry.customDurationSeconds) != null && (
+            {(draggingEntry.kind === 'piece'
+              ? draggingEntry.piece?.duration
+              : draggingEntry.customDurationSeconds) != null && (
               <span className="mt-0.5 shrink-0 font-mono text-xs tabular-nums text-ink-soft">
-                {formatDuration((draggingEntry.kind === 'piece' ? draggingEntry.piece?.duration : draggingEntry.customDurationSeconds)!)}
+                {formatDuration(
+                  (draggingEntry.kind === 'piece'
+                    ? draggingEntry.piece?.duration
+                    : draggingEntry.customDurationSeconds)!,
+                )}
               </span>
             )}
           </div>,

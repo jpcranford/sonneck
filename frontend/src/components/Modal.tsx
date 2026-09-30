@@ -2,8 +2,9 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 
 // "Very short" pop animation duration — kept as one constant so the
 // unmount-delay timeout below can't drift out of sync with the CSS
-// transition duration it's paired with.
-const TRANSITION_MS = 150
+// transition duration it's paired with. Exported for a caller that has to
+// outlive a closing modal (AddToSetlistPicker unmounts only after it).
+export const MODAL_TRANSITION_MS = 150
 
 // Module-level stack of currently-open modals, oldest first — lets a
 // nested modal (opened while another Modal is already open, e.g. Upload
@@ -66,7 +67,15 @@ interface ModalProps {
  * needs a modal all get identical Escape-to-close and backdrop-click-to-
  * close behavior for free, rather than each screen reimplementing it.
  */
-export function Modal({ open, onClose, labelledBy, children, size = 'md', header, footer }: ModalProps) {
+export function Modal({
+  open,
+  onClose,
+  labelledBy,
+  children,
+  size = 'md',
+  header,
+  footer,
+}: ModalProps) {
   // Stays mounted slightly past `open` going false, so the exit transition
   // (scale/opacity back down) actually has something to animate instead of
   // the dialog just vanishing — `visible` is the one driving the CSS
@@ -143,7 +152,7 @@ export function Modal({ open, onClose, labelledBy, children, size = 'md', header
     setVisible(false)
     // visible already dropped (above) so the exit transition is already
     // playing — wait for it to finish before actually unmounting.
-    const timeout = setTimeout(() => setMounted(false), TRANSITION_MS)
+    const timeout = setTimeout(() => setMounted(false), MODAL_TRANSITION_MS)
     return () => clearTimeout(timeout)
   }, [open])
 

@@ -15,7 +15,13 @@ import {
   IconXFilled,
 } from '@tabler/icons-react'
 import { ContextMenu } from '../components/ContextMenu'
-import { ALL_MOCK_SETLISTS, getUpcomingSetlists, type MockSetlist } from '../lib/setlistsMockupFixture'
+import { MODAL_TRANSITION_MS } from '../components/Modal'
+import { EditSetlistModal } from './EditSetlistMockup'
+import {
+  ALL_MOCK_SETLISTS,
+  getUpcomingSetlists,
+  type MockSetlist,
+} from '../lib/setlistsMockupFixture'
 import { useMockupTitle } from '../lib/useMockupTitle'
 import { formatDateOnly } from '../lib/dateOnly'
 
@@ -48,7 +54,13 @@ interface FixturePiece {
 }
 
 const FIXTURE_PIECES: FixturePiece[] = [
-  { id: 1, title: 'Prelude in C Major, BWV 846', meta: 'J.S. Bach • 1722', favorite: true, setlistIds: ['1'] },
+  {
+    id: 1,
+    title: 'Prelude in C Major, BWV 846',
+    meta: 'J.S. Bach • 1722',
+    favorite: true,
+    setlistIds: ['1'],
+  },
   { id: 2, title: 'Clair de lune', meta: 'Debussy • 1905', favorite: false, setlistIds: [] },
 ]
 
@@ -146,6 +158,12 @@ export function AddToSetlistPicker({
   const [query, setQuery] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
   const [highlighted, setHighlighted] = useState(0)
+  // "New Setlist…" swaps the popover for the New Setlist modal (the same
+  // EditSetlistMockup modal the Setlists Library mockup opens), its name
+  // pre-filled from the search box — the real picker then adds the piece
+  // to the new setlist; this fixture has nowhere to add it. The picker
+  // stays mounted until the modal has finished closing.
+  const [creating, setCreating] = useState<'no' | 'open' | 'closing'>('no')
 
   const quickList = useMemo(() => getUpcomingSetlists(allSetlists, 5), [allSetlists])
   const quickListIds = useMemo(() => new Set(quickList.map((s) => s.id)), [quickList])
@@ -155,13 +173,26 @@ export function AddToSetlistPicker({
   // setlists, not just a second way to reach the same handful.
   const searchResults = useMemo(() => {
     const q = query.trim().toLowerCase()
-    return allSetlists.filter((s) => !quickListIds.has(s.id) && (q === '' || s.name.toLowerCase().includes(q)))
+    return allSetlists.filter(
+      (s) => !quickListIds.has(s.id) && (q === '' || s.name.toLowerCase().includes(q)),
+    )
   }, [allSetlists, quickListIds, query])
 
   // +1 slot for the always-pinned "New Setlist…" row at the end.
   const navigableCount = searchResults.length + 1
 
+  function startCreating() {
+    setSearchOpen(false)
+    setCreating('open')
+  }
+  function finishCreating() {
+    setCreating('closing')
+    setTimeout(onClose, MODAL_TRANSITION_MS)
+  }
+
   useEffect(() => {
+    // The modal handles its own dismissal while it's open.
+    if (creating !== 'no') return
     function onPointerDown(event: MouseEvent) {
       if (ref.current && !ref.current.contains(event.target as Node)) onClose()
     }
@@ -174,7 +205,7 @@ export function AddToSetlistPicker({
       document.removeEventListener('mousedown', onPointerDown)
       document.removeEventListener('keydown', onKeyDown)
     }
-  }, [onClose])
+  }, [onClose, creating])
 
   function onInputKeyDown(event: ReactKeyboardEvent<HTMLInputElement>) {
     if (event.key === 'Escape') {
@@ -195,8 +226,7 @@ export function AddToSetlistPicker({
     } else if (event.key === 'Enter') {
       event.preventDefault()
       if (highlighted < searchResults.length) onToggle(searchResults[highlighted].id)
-      // Highlighting the pinned "New Setlist…" row and pressing Enter is a
-      // no-op here, same as clicking it — inert in this mockup.
+      else startCreating()
     }
   }
 
@@ -207,6 +237,17 @@ export function AddToSetlistPicker({
     event.preventDefault()
   }
 
+  if (creating !== 'no') {
+    return (
+      <EditSetlistModal
+        open={creating === 'open'}
+        onClose={finishCreating}
+        mode="create"
+        initialName={query.trim()}
+      />
+    )
+  }
+
   return (
     <div
       ref={ref}
@@ -214,14 +255,22 @@ export function AddToSetlistPicker({
     >
       <div className="mb-2 flex items-center justify-between px-3">
         <span className="text-xs font-medium text-ink-soft">Add to Setlist</span>
-        <button type="button" onClick={onClose} aria-label="Close" className="cursor-pointer text-ink-soft hover:text-ink">
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          className="cursor-pointer text-ink-soft hover:text-ink"
+        >
           <IconXFilled size={13} />
         </button>
       </div>
 
       <div className="relative px-3">
         <div className="relative">
-          <IconSearch size={13} className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-ink-soft/60" />
+          <IconSearch
+            size={13}
+            className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-ink-soft/60"
+          />
           <input
             type="text"
             value={query}
@@ -260,7 +309,8 @@ export function AddToSetlistPicker({
             <button
               type="button"
               onMouseDown={keepInputFocused}
-              className={`flex w-full items-center gap-2 border-t border-border px-3 py-1.5 text-left text-sm text-ink-soft hover:bg-accent-soft hover:text-ink ${
+              onClick={startCreating}
+              className={`flex w-full cursor-pointer items-center gap-2 border-t border-border px-3 py-1.5 text-left text-sm text-ink-soft hover:bg-accent-soft hover:text-ink ${
                 highlighted === searchResults.length ? 'bg-accent-soft text-ink' : ''
               }`}
             >
@@ -301,13 +351,19 @@ function FixtureGridCard({
 }) {
   const [pickerOpen, setPickerOpen] = useState(false)
   const inSetlist = setlistIds.length > 0
-  const inSetlistNames = setlistIds.map((id) => ALL_MOCK_SETLISTS.find((s) => s.id === id)?.name).filter(Boolean).join(', ')
+  const inSetlistNames = setlistIds
+    .map((id) => ALL_MOCK_SETLISTS.find((s) => s.id === id)?.name)
+    .filter(Boolean)
+    .join(', ')
 
   return (
     <div className="relative">
       <ContextMenu
         items={[
-          { label: piece.favorite ? 'Remove from Favorites' : 'Add to Favorites', onSelect: () => {} },
+          {
+            label: piece.favorite ? 'Remove from Favorites' : 'Add to Favorites',
+            onSelect: () => {},
+          },
           { label: 'Add to Setlist', onSelect: () => setPickerOpen(true) },
           { label: 'Edit Piece', onSelect: () => {} },
           { label: 'Delete Piece', destructive: true, onSelect: () => {} },
@@ -356,13 +412,19 @@ function FixtureListCard({
 }) {
   const [pickerOpen, setPickerOpen] = useState(false)
   const inSetlist = setlistIds.length > 0
-  const inSetlistNames = setlistIds.map((id) => ALL_MOCK_SETLISTS.find((s) => s.id === id)?.name).filter(Boolean).join(', ')
+  const inSetlistNames = setlistIds
+    .map((id) => ALL_MOCK_SETLISTS.find((s) => s.id === id)?.name)
+    .filter(Boolean)
+    .join(', ')
 
   return (
     <div className="relative">
       <ContextMenu
         items={[
-          { label: piece.favorite ? 'Remove from Favorites' : 'Add to Favorites', onSelect: () => {} },
+          {
+            label: piece.favorite ? 'Remove from Favorites' : 'Add to Favorites',
+            onSelect: () => {},
+          },
           { label: 'Add to Setlist', onSelect: () => setPickerOpen(true) },
           { label: 'Edit Piece', onSelect: () => {} },
           { label: 'Delete Piece', destructive: true, onSelect: () => {} },
@@ -419,12 +481,14 @@ export function AddToSetlistMockup() {
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-8 px-6 py-10">
       <div>
-        <h1 className="font-display text-2xl font-medium text-ink">Add to Setlist — Library cards</h1>
+        <h1 className="font-display text-2xl font-medium text-ink">
+          Add to Setlist — Library cards
+        </h1>
         <p className="mt-2 text-sm text-ink-soft">
-          Reference sample — the Library grid/list cards' new right-click "Add to Setlist" item (icon{' '}
-          <IconCalendarPlus size={14} className="inline align-[-2px]" />, shared across every add-to-setlist entry
-          point) and the "already in a setlist" indicator next to the favorite heart. Right-click either card below,
-          or long-press on touch.
+          Reference sample — the Library grid/list cards' new right-click "Add to Setlist" item
+          (icon <IconCalendarPlus size={14} className="inline align-[-2px]" />, shared across every
+          add-to-setlist entry point) and the "already in a setlist" indicator next to the favorite
+          heart. Right-click either card below, or long-press on touch.
         </p>
       </div>
 

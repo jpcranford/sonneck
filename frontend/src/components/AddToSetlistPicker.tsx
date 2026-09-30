@@ -11,10 +11,18 @@ import {
 import { createPortal } from 'react-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { IconCalendarPlus, IconCheck, IconSearch, IconXFilled } from '@tabler/icons-react'
-import { addSetlistEntry, getUpcomingSetlists, listPieceSetlistMemberships, listSetlists, removeSetlistEntry } from '../api/setlists'
+import {
+  addSetlistEntry,
+  getUpcomingSetlists,
+  listPieceSetlistMemberships,
+  listSetlists,
+  removeSetlistEntry,
+} from '../api/setlists'
 import { ApiError } from '../api/client'
 import type { Setlist } from '../api/types'
 import { formatDateOnly } from '../lib/dateOnly'
+import { EditSetlistModal } from './EditSetlistModal'
+import { MODAL_TRANSITION_MS } from './Modal'
 
 // Real port of AddToSetlistMockup.tsx's own exported AddToSetlistPicker
 // (Setlists design pass, Phase 5 mockup approved; this is Phase 14's real
@@ -100,6 +108,11 @@ export function AddToSetlistPicker({
   const [query, setQuery] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
   const [highlighted, setHighlighted] = useState(0)
+  // "New Setlist…" swaps the popover for the real New Setlist modal (the
+  // same EditSetlistModal the Setlists Library uses), then adds this piece
+  // to whatever it creates. The picker stays mounted until the modal has
+  // finished closing ('closing'), since its caller unmounts it on onClose.
+  const [creating, setCreating] = useState<'no' | 'open' | 'closing'>('no')
   const queryClient = useQueryClient()
 
   const [position, setPosition] = useState<{ top: number; right: number } | null>(null)
@@ -124,7 +137,10 @@ export function AddToSetlistPicker({
     queryKey: ['setlist-memberships'],
     queryFn: listPieceSetlistMemberships,
   })
-  const myMemberships = useMemo(() => memberships.filter((m) => m.pieceId === pieceId), [memberships, pieceId])
+  const myMemberships = useMemo(
+    () => memberships.filter((m) => m.pieceId === pieceId),
+    [memberships, pieceId],
+  )
   const checkedIds = useMemo(() => new Set(myMemberships.map((m) => m.setlistId)), [myMemberships])
 
   function invalidate() {
@@ -135,7 +151,9 @@ export function AddToSetlistPicker({
     mutationFn: (setlistId: number) => addSetlistEntry(setlistId, { pieceId }),
     onSuccess: invalidate,
     onError: (error) => {
-      window.alert(error instanceof ApiError ? error.message : 'Could not add this piece to the setlist.')
+      window.alert(
+        error instanceof ApiError ? error.message : 'Could not add this piece to the setlist.',
+      )
     },
   })
   const removeMutation = useMutation({
@@ -143,7 +161,9 @@ export function AddToSetlistPicker({
       removeSetlistEntry(setlistId, entryId),
     onSuccess: invalidate,
     onError: (error) => {
-      window.alert(error instanceof ApiError ? error.message : 'Could not remove this piece from the setlist.')
+      window.alert(
+        error instanceof ApiError ? error.message : 'Could not remove this piece from the setlist.',
+      )
     },
   })
   const pending = addMutation.isPending || removeMutation.isPending
@@ -165,13 +185,26 @@ export function AddToSetlistPicker({
   // setlists, not just a second way to reach the same handful.
   const searchResults = useMemo(() => {
     const q = query.trim().toLowerCase()
-    return allSetlists.filter((s) => !quickListIds.has(s.id) && (q === '' || s.name.toLowerCase().includes(q)))
+    return allSetlists.filter(
+      (s) => !quickListIds.has(s.id) && (q === '' || s.name.toLowerCase().includes(q)),
+    )
   }, [allSetlists, quickListIds, query])
 
   // +1 slot for the always-pinned "New Setlist…" row at the end.
   const navigableCount = searchResults.length + 1
 
+  function startCreating() {
+    setSearchOpen(false)
+    setCreating('open')
+  }
+  function finishCreating() {
+    setCreating('closing')
+    setTimeout(onClose, MODAL_TRANSITION_MS)
+  }
+
   useEffect(() => {
+    // The modal handles its own dismissal while it's open.
+    if (creating !== 'no') return
     function onPointerDown(event: MouseEvent) {
       if (ref.current && !ref.current.contains(event.target as Node)) onClose()
     }
@@ -184,7 +217,7 @@ export function AddToSetlistPicker({
       document.removeEventListener('mousedown', onPointerDown)
       document.removeEventListener('keydown', onKeyDown)
     }
-  }, [onClose])
+  }, [onClose, creating])
 
   function onInputKeyDown(event: ReactKeyboardEvent<HTMLInputElement>) {
     if (event.key === 'Escape') {
@@ -205,9 +238,7 @@ export function AddToSetlistPicker({
     } else if (event.key === 'Enter') {
       event.preventDefault()
       if (highlighted < searchResults.length) toggle(searchResults[highlighted])
-      // Highlighting the pinned "New Setlist…" row and pressing Enter is a
-      // no-op here, same as clicking it — real creation is Phase 15's own
-      // scope (the real Edit Setlist modal isn't ported yet).
+      else startCreating()
     }
   }
 
@@ -216,6 +247,18 @@ export function AddToSetlistPicker({
   // mousedown-preventDefault fix for this exact combobox race.
   function keepInputFocused(event: ReactMouseEvent) {
     event.preventDefault()
+  }
+
+  if (creating !== 'no') {
+    return (
+      <EditSetlistModal
+        open={creating === 'open'}
+        onClose={finishCreating}
+        mode="create"
+        initialName={query.trim()}
+        onCreated={(created) => addMutation.mutate(created.id)}
+      />
+    )
   }
 
   if (!position) return null
@@ -228,14 +271,22 @@ export function AddToSetlistPicker({
     >
       <div className="mb-2 flex items-center justify-between px-3">
         <span className="text-xs font-medium text-ink-soft">Add to Setlist</span>
-        <button type="button" onClick={onClose} aria-label="Close" className="cursor-pointer text-ink-soft hover:text-ink">
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          className="cursor-pointer text-ink-soft hover:text-ink"
+        >
           <IconXFilled size={13} />
         </button>
       </div>
 
       <div className="relative px-3">
         <div className="relative">
-          <IconSearch size={13} className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-ink-soft/60" />
+          <IconSearch
+            size={13}
+            className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-ink-soft/60"
+          />
           <input
             type="text"
             value={query}
@@ -275,7 +326,8 @@ export function AddToSetlistPicker({
             <button
               type="button"
               onMouseDown={keepInputFocused}
-              className={`flex w-full items-center gap-2 border-t border-border px-3 py-1.5 text-left text-sm text-ink-soft hover:bg-accent-soft hover:text-ink ${
+              onClick={startCreating}
+              className={`flex w-full cursor-pointer items-center gap-2 border-t border-border px-3 py-1.5 text-left text-sm text-ink-soft hover:bg-accent-soft hover:text-ink ${
                 highlighted === searchResults.length ? 'bg-accent-soft text-ink' : ''
               }`}
             >

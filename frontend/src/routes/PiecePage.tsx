@@ -797,7 +797,7 @@ export function PiecePage() {
                   </button>
                 </div>
                 {downloadOpen && canDownload && (
-                  <div className="absolute top-full left-0 z-10 mt-1 w-64 overflow-hidden rounded-md border border-border bg-paper-raised py-1 text-left shadow-lg">
+                  <div className="absolute top-full left-0 z-10 mt-1 w-64 rounded-md border border-border bg-paper-raised py-1 text-left shadow-lg">
                     {/* hover:bg-paper, not hover:bg-accent-soft — matches
                         ContextMenu.tsx's own established dropdown-row
                         hover convention (no border on a menu row, so a
@@ -810,14 +810,17 @@ export function PiecePage() {
                     >
                       Download Piece PDF
                     </DownloadLink>
-                    <button
-                      type="button"
-                      disabled
-                      className="block w-full cursor-not-allowed px-3 py-2 text-left text-sm text-ink-soft/50"
+                    {/* InfoTooltip, not a disabled button: a disabled element takes no taps,
+                        so on touch there would be no way to learn why it's inert. */}
+                    <InfoTooltip
+                      message="Coming soon — downloads a copy of this piece's PDF with your annotations drawn on it, once annotations exist."
+                      ariaLabel="Download PDF + Annotations (coming soon with annotations)"
+                      showPointerCursor={false}
+                      triggerClassName="block w-full px-3 py-2 text-left text-sm text-ink-soft opacity-50"
                     >
                       Download PDF + Annotations
                       <span className="block text-xs italic">Coming with annotations (§13)</span>
-                    </button>
+                    </InfoTooltip>
                   </div>
                 )}
               </div>
@@ -1154,7 +1157,10 @@ export function PiecePage() {
                         (InfoTooltip's own default behavior), just no
                         clickable-looking cursor on desktop. */}
                     <InfoTooltip
-                      message={copyrightTooltipText(piece.copyrightStatus.effective, piece.copyrightStatus.expiryYear)}
+                      message={copyrightTooltipText(
+                        piece.copyrightStatus.effective,
+                        piece.copyrightStatus.expiryYear,
+                      )}
                       ariaLabel="Public domain status info"
                       showPointerCursor={false}
                       triggerClassName="flex size-5 shrink-0 items-center justify-center"
@@ -1162,7 +1168,12 @@ export function PiecePage() {
                       {(() => {
                         const Icon = COPYRIGHT_BADGE_META[piece.copyrightStatus.effective].icon
                         return (
-                          <Icon size={15} className={COPYRIGHT_BADGE_META[piece.copyrightStatus.effective].colorClass} />
+                          <Icon
+                            size={15}
+                            className={
+                              COPYRIGHT_BADGE_META[piece.copyrightStatus.effective].colorClass
+                            }
+                          />
                         )
                       })()}
                     </InfoTooltip>
@@ -1205,7 +1216,10 @@ export function PiecePage() {
               {(piece.publisher.value || piece.publisherId.value) && (
                 <DetailRow label="Publisher">
                   <span className="inline-flex items-center gap-1.5">
-                    <EffectiveValue value={piece.publisher.value} inherited={piece.publisher.inherited} />
+                    <EffectiveValue
+                      value={piece.publisher.value}
+                      inherited={piece.publisher.inherited}
+                    />
                     {piece.publisherId.value && (
                       <span className="text-xs text-ink-soft">• {piece.publisherId.value}</span>
                     )}
@@ -1243,7 +1257,9 @@ export function PiecePage() {
                   supporting inputs. Same hide-if-missing rule as the rest
                   of this list — no point in a disclosure with nothing
                   behind it. */}
-              {(piece.bpm != null || piece.measureCount != null || piece.beatsPerMeasure != null) && (
+              {(piece.bpm != null ||
+                piece.measureCount != null ||
+                piece.beatsPerMeasure != null) && (
                 <div className="py-1.5">
                   <button
                     type="button"
@@ -1373,7 +1389,11 @@ export function PiecePage() {
                         (part): part is NonNullable<typeof part> => !!part,
                       )
                       if (parts.length === 0) {
-                        return <span className="text-ink-soft/60 italic">No composer or publisher on file</span>
+                        return (
+                          <span className="text-ink-soft/60 italic">
+                            No composer or publisher on file
+                          </span>
+                        )
                       }
                       return parts.map((part, index) => (
                         <span key={index}>

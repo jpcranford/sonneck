@@ -240,7 +240,8 @@ const FLAT_CITATION =
 // (the piece's own effective publisher), not a blank.
 // The trailing period on "edition" is auto-appended by the citation logic
 // (copyrightSlug itself has none, per the fixture's own comment above).
-const COPYRIGHT_CLAUSE = 'Copyright ©\u00A01877 G. Schirmer. First published in the 1877 Schirmer edition.'
+const COPYRIGHT_CLAUSE =
+  'Copyright ©\u00A01877 G. Schirmer. First published in the 1877 Schirmer edition.'
 // The two-sentence "written / published" split — used only when a book
 // is present AND the status shows a copyright
 // clause (In Copyright, Copyleft). Public Domain/Likely Public Domain
@@ -264,7 +265,14 @@ function SheetPagePlaceholder({ page }: { page: number }) {
       aria-label={`Page ${page} preview`}
     >
       <rect x="0.5" y="0.5" width="199" height="259" fill="#fffdf9" stroke="#e4e0d8" />
-      <text x="100" y="26" textAnchor="middle" fontFamily="Georgia, serif" fontSize="9" fill="#5c5349">
+      <text
+        x="100"
+        y="26"
+        textAnchor="middle"
+        fontFamily="Georgia, serif"
+        fontSize="9"
+        fill="#5c5349"
+      >
         Volksliedchen
       </text>
       {[55, 88, 121, 154, 187, 220].map((y) => (
@@ -274,7 +282,14 @@ function SheetPagePlaceholder({ page }: { page: number }) {
           ))}
         </g>
       ))}
-      <text x="184" y="248" textAnchor="end" fontFamily="Georgia, serif" fontSize="7" fill="#8f857a">
+      <text
+        x="184"
+        y="248"
+        textAnchor="end"
+        fontFamily="Georgia, serif"
+        fontSize="7"
+        fill="#8f857a"
+      >
         {page}
       </text>
     </svg>
@@ -678,7 +693,9 @@ export function PieceDetailsSample() {
                 allSetlists={ALL_MOCK_SETLISTS}
                 setlistIds={pieceSetlistIds}
                 onToggle={(id) =>
-                  setPieceSetlistIds((ids) => (ids.includes(id) ? ids.filter((i) => i !== id) : [...ids, id]))
+                  setPieceSetlistIds((ids) =>
+                    ids.includes(id) ? ids.filter((i) => i !== id) : [...ids, id],
+                  )
                 }
                 onClose={() => setAddToSetlistOpen(false)}
               />
@@ -689,8 +706,8 @@ export function PieceDetailsSample() {
       </div>
 
       <div className="rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-4 py-2 text-sm text-ink-soft">
-        Reference sample — <span className="font-medium text-ink">Piece Details</span> (design doc §14).
-        Not wired to real data; Edit is inert here on purpose.
+        Reference sample — <span className="font-medium text-ink">Piece Details</span> (design doc
+        §14). Not wired to real data; Edit is inert here on purpose.
       </div>
 
       {/* Public Domain Badge feature — mockup-only preview control, no
@@ -862,15 +879,18 @@ export function PieceDetailsSample() {
                 </button>
               </div>
               {downloadOpen && (
-                <div className="absolute top-full left-0 z-10 mt-1 w-64 overflow-hidden rounded-md border border-border bg-paper-raised py-1 text-left shadow-lg">
-                  <button
-                    type="button"
-                    disabled
-                    className="block w-full cursor-not-allowed px-3 py-2 text-left text-sm text-ink-soft/50"
+                <div className="absolute top-full left-0 z-10 mt-1 w-64 rounded-md border border-border bg-paper-raised py-1 text-left shadow-lg">
+                  {/* InfoTooltip, not a disabled button: a disabled element takes no taps,
+                      so on touch there would be no way to learn why it's inert. */}
+                  <InfoTooltip
+                    message="Coming soon — downloads a copy of this piece's PDF with your annotations drawn on it, once annotations exist."
+                    ariaLabel="Download PDF + Annotations (coming soon with annotations)"
+                    showPointerCursor={false}
+                    triggerClassName="block w-full px-3 py-2 text-left text-sm text-ink-soft opacity-50"
                   >
                     Download PDF + Annotations
                     <span className="block text-xs italic">Coming with annotations (§13)</span>
-                  </button>
+                  </InfoTooltip>
                 </div>
               )}
             </div>
@@ -917,7 +937,12 @@ export function PieceDetailsSample() {
                 </div>
               )}
             </div>
-            <input ref={replaceFileInputRef} type="file" accept="application/pdf,.pdf" className="hidden" />
+            <input
+              ref={replaceFileInputRef}
+              type="file"
+              accept="application/pdf,.pdf"
+              className="hidden"
+            />
           </div>
 
           {replaceConfirming && !replacePending && (
@@ -1025,7 +1050,10 @@ export function PieceDetailsSample() {
             <p className="flex flex-wrap items-center gap-1.5 text-ink-soft">
               {piece.composer.value ? (
                 <>
-                  <EffectiveValue value={piece.composer.value} inherited={piece.composer.inherited} />
+                  <EffectiveValue
+                    value={piece.composer.value}
+                    inherited={piece.composer.inherited}
+                  />
                   {piece.arranger.value && <span>• arr. {piece.arranger.value}</span>}
                 </>
               ) : piece.arranger.value ? (
@@ -1100,7 +1128,10 @@ export function PieceDetailsSample() {
             {piece.yearWritten.value && (
               <DetailRow label="Year written">
                 <span className="inline-flex items-center gap-2">
-                  <EffectiveValue value={piece.yearWritten.value} inherited={piece.yearWritten.inherited} />
+                  <EffectiveValue
+                    value={piece.yearWritten.value}
+                    inherited={piece.yearWritten.inherited}
+                  />
                   {/* Public domain badge — bare icon (no circle chip) +
                       Grass green. Driven by the mockup-only preview
                       toggle above, not a real calculation — see
@@ -1112,7 +1143,8 @@ export function PieceDetailsSample() {
                   <InfoTooltip
                     message={copyrightTooltipText(
                       copyrightPreview,
-                      copyrightPreview === 'publicDomain' || copyrightPreview === 'likelyPublicDomain'
+                      copyrightPreview === 'publicDomain' ||
+                        copyrightPreview === 'likelyPublicDomain'
                         ? MOCK_EXPIRY_YEAR
                         : null,
                     )}
@@ -1122,7 +1154,12 @@ export function PieceDetailsSample() {
                   >
                     {(() => {
                       const Icon = COPYRIGHT_BADGE_META[copyrightPreview].icon
-                      return <Icon size={15} className={COPYRIGHT_BADGE_META[copyrightPreview].colorClass} />
+                      return (
+                        <Icon
+                          size={15}
+                          className={COPYRIGHT_BADGE_META[copyrightPreview].colorClass}
+                        />
+                      )
                     })()}
                   </InfoTooltip>
                 </span>
@@ -1162,7 +1199,10 @@ export function PieceDetailsSample() {
             {(piece.publisher.value || piece.publisherId.value) && (
               <DetailRow label="Publisher">
                 <span className="inline-flex items-center gap-1.5">
-                  <EffectiveValue value={piece.publisher.value} inherited={piece.publisher.inherited} />
+                  <EffectiveValue
+                    value={piece.publisher.value}
+                    inherited={piece.publisher.inherited}
+                  />
                   {piece.publisherId.value && (
                     <span className="text-xs text-ink-soft">• {piece.publisherId.value}</span>
                   )}
@@ -1298,7 +1338,9 @@ export function PieceDetailsSample() {
                   ]
                     .filter(Boolean)
                     .join(' • ') || (
-                    <span className="text-ink-soft/60 italic">No composer or publisher on file</span>
+                    <span className="text-ink-soft/60 italic">
+                      No composer or publisher on file
+                    </span>
                   )}
                 </p>
                 {bookIdentifierLabel(book) && (
@@ -1371,7 +1413,9 @@ export function PieceDetailsSample() {
           </div>
 
           <div className="flex flex-col gap-1 border-t border-border pt-4">
-            <span className="text-[0.65rem] tracking-wide text-ink-soft/40 uppercase">Citation</span>
+            <span className="text-[0.65rem] tracking-wide text-ink-soft/40 uppercase">
+              Citation
+            </span>
             <button
               type="button"
               onClick={handleCopyCitation}
