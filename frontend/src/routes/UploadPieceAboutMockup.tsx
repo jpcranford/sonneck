@@ -105,12 +105,33 @@ const defaultValues: FormValues = {
 // UploadBookAboutMockup.tsx's CoverPagePlaceholder already use.
 function SheetPagePlaceholder({ page }: { page: number }) {
   return (
-    <svg viewBox="0 0 200 260" className="h-auto w-full" role="img" aria-label={`Page ${page} preview`}>
+    <svg
+      viewBox="0 0 200 260"
+      className="h-auto w-full"
+      role="img"
+      aria-label={`Page ${page} preview`}
+    >
       <rect x="0.5" y="0.5" width="199" height="259" fill="#fffdf9" stroke="#e4e0d8" />
-      <text x="100" y="24" textAnchor="middle" fontFamily="Georgia, serif" fontSize="10" fontWeight="700" fill="#1c1815">
+      <text
+        x="100"
+        y="24"
+        textAnchor="middle"
+        fontFamily="Georgia, serif"
+        fontSize="10"
+        fontWeight="700"
+        fill="#1c1815"
+      >
         Clair de Lune
       </text>
-      <text x="100" y="35" textAnchor="middle" fontFamily="Georgia, serif" fontSize="6" letterSpacing="1" fill="#5c5349">
+      <text
+        x="100"
+        y="35"
+        textAnchor="middle"
+        fontFamily="Georgia, serif"
+        fontSize="6"
+        letterSpacing="1"
+        fill="#5c5349"
+      >
         CLAUDE DEBUSSY
       </text>
       {[55, 88, 121, 154, 187, 220].map((y) => (
@@ -120,7 +141,14 @@ function SheetPagePlaceholder({ page }: { page: number }) {
           ))}
         </g>
       ))}
-      <text x="184" y="248" textAnchor="end" fontFamily="Georgia, serif" fontSize="7" fill="#8f857a">
+      <text
+        x="184"
+        y="248"
+        textAnchor="end"
+        fontFamily="Georgia, serif"
+        fontSize="7"
+        fill="#8f857a"
+      >
         {page}
       </text>
     </svg>
@@ -252,7 +280,11 @@ function CollapsibleSection({
         <IconChevronRight size={12} className={`transition-transform ${open ? 'rotate-90' : ''}`} />
         {label}
       </button>
-      {open && <div className="mt-3 flex flex-col gap-4 rounded-md border border-dashed border-border p-4">{children}</div>}
+      {open && (
+        <div className="mt-3 flex flex-col gap-4 rounded-md border border-dashed border-border p-4">
+          {children}
+        </div>
+      )}
     </div>
   )
 }
@@ -293,7 +325,10 @@ export function UploadPieceAboutMockup() {
             build this instead calls setStage('select'), returning to the
             drag-and-drop screen exactly the way the 'select' stage's own
             Back button already returns to 'landing'. */}
-        <Link to="/mockup" className="flex w-fit items-center gap-1.5 text-base text-ink-soft hover:text-ink">
+        <Link
+          to="/mockup"
+          className="flex w-fit items-center gap-1.5 text-base text-ink-soft hover:text-ink"
+        >
           <IconArrowLeft size={24} />
           Back
         </Link>
@@ -306,8 +341,8 @@ export function UploadPieceAboutMockup() {
               adapted for a single piece having nothing to inherit from/
               override, and for how little is actually required here. */}
           <p className="text-sm text-ink-soft">
-            Fill in what you know now — Title is the only one that's required, and everything else is
-            easy to add later from Piece Details.
+            Fill in what you know now — Title is the only one that's required, and everything else
+            is easy to add later from Piece Details.
           </p>
         </div>
         <div className="flex flex-col items-start gap-7 sm:flex-row">
@@ -383,7 +418,9 @@ export function UploadPieceAboutMockup() {
                   control={control}
                   rules={{
                     validate: (value, values) =>
-                      value.length > 0 || values.arranger.length > 0 || 'Composer or Arranger is required.',
+                      value.length > 0 ||
+                      values.arranger.length > 0 ||
+                      'Composer or Arranger is required.',
                   }}
                   render={({ field }) => (
                     <TagComboBox
@@ -397,7 +434,9 @@ export function UploadPieceAboutMockup() {
                     />
                   )}
                 />
-                {errors.composer && <p className="text-sm text-red-700">{errors.composer.message}</p>}
+                {errors.composer && (
+                  <p className="text-sm text-red-700">{errors.composer.message}</p>
+                )}
               </div>
               <div className="min-w-0 flex-1">
                 <Controller
@@ -446,7 +485,11 @@ export function UploadPieceAboutMockup() {
               </div>
             </div>
 
-            <CollapsibleSection label="More details" open={moreDetailsOpen} onToggle={() => setMoreDetailsOpen((o) => !o)}>
+            <CollapsibleSection
+              label="More details"
+              open={moreDetailsOpen}
+              onToggle={() => setMoreDetailsOpen((o) => !o)}
+            >
               <div className="flex flex-col gap-3 min-[525px]:flex-row">
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
                   <label htmlFor="f-opus" className="text-sm text-ink-soft">
@@ -510,6 +553,7 @@ export function UploadPieceAboutMockup() {
                 render={({ field }) => (
                   <TagComboBox
                     label="Instruments"
+                    pillStyle="paper"
                     options={INSTRUMENT_OPTIONS}
                     selected={field.value}
                     multiple
@@ -540,15 +584,24 @@ export function UploadPieceAboutMockup() {
                 "no shared markup-bearing component between a mockup and the
                 real thing" convention every other field placeholder-fake in
                 this file follows. */}
-            <CollapsibleSection label="From a book?" open={bookOpen} onToggle={() => setBookOpen((o) => !o)}>
-              <p className="text-sm text-ink-soft">Is this piece from a book already in your library?</p>
+            <CollapsibleSection
+              label="From a book?"
+              open={bookOpen}
+              onToggle={() => setBookOpen((o) => !o)}
+            >
+              <p className="text-sm text-ink-soft">
+                Is this piece from a book already in your library?
+              </p>
               <div className="flex items-center gap-2 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink-soft/60">
                 <IconSearch size={16} />
                 <span className="text-sm italic">Search books…</span>
               </div>
             </CollapsibleSection>
 
-            <button type="submit" className="mt-1 rounded-md bg-accent px-4 py-2 font-display text-white">
+            <button
+              type="submit"
+              className="mt-1 rounded-md bg-accent px-4 py-2 font-display text-white"
+            >
               Save
             </button>
           </div>

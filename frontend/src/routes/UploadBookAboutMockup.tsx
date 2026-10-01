@@ -153,7 +153,9 @@ function ImslpAutofillButton({
     >
       {!valid && <IconCloudOff size={16} />}
       {valid && state === 'idle' && <IconCloudDownload size={16} />}
-      {valid && state === 'fetching' && <IconLoader2 size={16} className="animate-spin text-ink-soft" />}
+      {valid && state === 'fetching' && (
+        <IconLoader2 size={16} className="animate-spin text-ink-soft" />
+      )}
       {valid && state === 'done' && <IconCheck size={16} className="text-accent" />}
     </button>
   )
@@ -165,12 +167,31 @@ function ImslpAutofillButton({
 // uses (PieceDetailsSample.tsx, EditPieceModalMockup.tsx).
 function CoverPagePlaceholder({ page }: { page: number }) {
   return (
-    <svg viewBox="0 0 200 260" className="h-auto w-full" role="img" aria-label={`Page ${page} preview`}>
+    <svg
+      viewBox="0 0 200 260"
+      className="h-auto w-full"
+      role="img"
+      aria-label={`Page ${page} preview`}
+    >
       <rect x="0.5" y="0.5" width="199" height="259" fill="#fffdf9" stroke="#e4e0d8" />
-      <text x="100" y="26" textAnchor="middle" fontFamily="Georgia, serif" fontSize="9" fill="#5c5349">
+      <text
+        x="100"
+        y="26"
+        textAnchor="middle"
+        fontFamily="Georgia, serif"
+        fontSize="9"
+        fill="#5c5349"
+      >
         Album für die Jugend
       </text>
-      <text x="100" y="38" textAnchor="middle" fontFamily="Georgia, serif" fontSize="7" fill="#8f857a">
+      <text
+        x="100"
+        y="38"
+        textAnchor="middle"
+        fontFamily="Georgia, serif"
+        fontSize="7"
+        fill="#8f857a"
+      >
         Op. 68
       </text>
       {[58, 91, 124, 157, 190, 223].map((y) => (
@@ -180,7 +201,14 @@ function CoverPagePlaceholder({ page }: { page: number }) {
           ))}
         </g>
       ))}
-      <text x="184" y="248" textAnchor="end" fontFamily="Georgia, serif" fontSize="7" fill="#8f857a">
+      <text
+        x="184"
+        y="248"
+        textAnchor="end"
+        fontFamily="Georgia, serif"
+        fontSize="7"
+        fill="#8f857a"
+      >
         {page}
       </text>
     </svg>
@@ -401,7 +429,7 @@ export function UploadBookAboutMockup() {
 
   function handleCancelUpload() {
     const confirmed = window.confirm(
-      "Cancel this upload? The uploaded file and its generated page previews will be permanently removed from the server.",
+      'Cancel this upload? The uploaded file and its generated page previews will be permanently removed from the server.',
     )
     if (!confirmed) return
     // Mockup only. Real build: DELETE /api/books/{id} — already
@@ -411,15 +439,19 @@ export function UploadBookAboutMockup() {
     // needs a real fix alongside wiring this button up, not just a call
     // to the existing endpoint as-is. Then returns to the Upload landing
     // page, same "return to start" convention as UploadPage.tsx.
-    console.log('Mockup: cancel confirmed — would delete book + cached thumbnails, return to Upload landing')
+    console.log(
+      'Mockup: cancel confirmed — would delete book + cached thumbnails, return to Upload landing',
+    )
   }
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-6 md:p-8">
       <div className="rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-4 py-2 text-sm text-ink-soft">
         Design mockup —{' '}
-        <span className="font-medium text-ink">Book Upload Wizard, Screen 3 of 6: "About this book"</span> (design
-        doc §5). Not wired to real data.
+        <span className="font-medium text-ink">
+          Book Upload Wizard, Screen 3 of 6: "About this book"
+        </span>{' '}
+        (design doc §5). Not wired to real data.
       </div>
 
       {/* Wizard chrome — locked, carries unchanged through screens 4-6.
@@ -427,7 +459,10 @@ export function UploadBookAboutMockup() {
           wizard flow, just this one screen) — it routes to /mockup, same
           as every other mockup's Back control, so it's never a dead end. */}
       <div className="flex items-center justify-between">
-        <Link to="/mockup" className="flex items-center gap-1.5 text-base text-ink-soft hover:text-ink">
+        <Link
+          to="/mockup"
+          className="flex items-center gap-1.5 text-base text-ink-soft hover:text-ink"
+        >
           <IconArrowLeft size={24} />
           Back
         </Link>
@@ -440,7 +475,11 @@ export function UploadBookAboutMockup() {
               <span
                 key={step}
                 className={`h-1 w-5 rounded-full ${
-                  step < CURRENT_STEP ? 'bg-accent-on-dark' : step === CURRENT_STEP ? 'bg-accent' : 'bg-border'
+                  step < CURRENT_STEP
+                    ? 'bg-accent-on-dark'
+                    : step === CURRENT_STEP
+                      ? 'bg-accent'
+                      : 'bg-border'
                 }`}
               />
             ))}
@@ -455,7 +494,10 @@ export function UploadBookAboutMockup() {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-7 sm:flex-row sm:items-start">
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        className="flex flex-col gap-7 sm:flex-row sm:items-start"
+      >
         {/* Cover column — sticky so it stays visible while the form
             scrolls, 210px wide (sized down from the piece-upload flow's
             own 340px thumb, since this screen has roughly 5x the form
@@ -555,7 +597,8 @@ export function UploadBookAboutMockup() {
               className="w-full rounded-md border border-border bg-paper px-3 py-1.5 text-ink tabular-nums"
             />
             <p className="text-[0.78rem] leading-relaxed text-ink-soft">
-              Flip through the preview until you see a page number, then adjust the number above to match.
+              Flip through the preview until you see a page number, then adjust the number above to
+              match.
             </p>
             {pageOffset !== 0 && (
               <button
@@ -780,6 +823,7 @@ export function UploadBookAboutMockup() {
                   <div className="[&_input::placeholder]:text-ink-soft/40 [&_input::placeholder]:italic">
                     <TagComboBox
                       label="Instruments"
+                      pillStyle="paper"
                       options={INSTRUMENT_OPTIONS}
                       selected={field.value}
                       multiple

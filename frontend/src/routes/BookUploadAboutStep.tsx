@@ -244,7 +244,10 @@ export function BookUploadAboutStep({
   // People catalog (composer/arranger overhaul, Stage C pattern) — same
   // unpaginated listPeople() call as EditPieceModal.tsx/EditBookModal.tsx's
   // own Composer/Arranger TagComboBox option source.
-  const { data: peopleOptions = [] } = useQuery({ queryKey: ['people'], queryFn: () => listPeople() })
+  const { data: peopleOptions = [] } = useQuery({
+    queryKey: ['people'],
+    queryFn: () => listPeople(),
+  })
   const { data: sheetTypeOptions = [] } = useQuery({
     queryKey: ['sheetTypes'],
     queryFn: listSheetTypes,
@@ -430,7 +433,8 @@ export function BookUploadAboutStep({
               className="w-full rounded-md border border-border bg-paper px-3 py-1.5 text-ink tabular-nums"
             />
             <p className="text-[0.78rem] leading-relaxed text-ink-soft">
-              Flip through the preview until you see a page number, then adjust the number above to match.
+              Flip through the preview until you see a page number, then adjust the number above to
+              match.
             </p>
             {pageOffset !== 0 && (
               <button
@@ -643,6 +647,7 @@ export function BookUploadAboutStep({
                   <div className="[&_input::placeholder]:text-ink-soft/40 [&_input::placeholder]:italic">
                     <TagComboBox
                       label="Instruments"
+                      pillStyle="paper"
                       options={instrumentOptions}
                       selected={field.value}
                       multiple

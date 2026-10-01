@@ -748,6 +748,7 @@ export function UploadPage() {
                         render={({ field }) => (
                           <TagComboBox
                             label="Instruments"
+                            pillStyle="paper"
                             options={instrumentOptions}
                             selected={field.value}
                             multiple

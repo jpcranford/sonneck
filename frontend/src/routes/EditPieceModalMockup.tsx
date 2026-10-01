@@ -236,7 +236,8 @@ const defaultValues: FormValues = {
   publisherId: '',
   yearWritten: '',
   imslpNumber: '',
-  description: "A short, wistful A-minor miniature from the Album — one of the more melancholy entries.",
+  description:
+    'A short, wistful A-minor miniature from the Album — one of the more melancholy entries.',
   userNotes: 'Left hand voicing in m.9 keeps tripping me up — slow it down to 60bpm next time.',
   practiceStatus: 'Learning',
   sourceBookId: mockBook.id,
@@ -317,7 +318,14 @@ function SheetPagePlaceholder({ page }: { page: number }) {
       aria-label={`Page ${page} preview`}
     >
       <rect x="0.5" y="0.5" width="199" height="259" fill="#fffdf9" stroke="#e4e0d8" />
-      <text x="100" y="26" textAnchor="middle" fontFamily="Georgia, serif" fontSize="9" fill="#5c5349">
+      <text
+        x="100"
+        y="26"
+        textAnchor="middle"
+        fontFamily="Georgia, serif"
+        fontSize="9"
+        fill="#5c5349"
+      >
         Volksliedchen
       </text>
       {[55, 88, 121, 154, 187, 220].map((y) => (
@@ -327,7 +335,14 @@ function SheetPagePlaceholder({ page }: { page: number }) {
           ))}
         </g>
       ))}
-      <text x="184" y="248" textAnchor="end" fontFamily="Georgia, serif" fontSize="7" fill="#8f857a">
+      <text
+        x="184"
+        y="248"
+        textAnchor="end"
+        fontFamily="Georgia, serif"
+        fontSize="7"
+        fill="#8f857a"
+      >
         {page}
       </text>
     </svg>
@@ -371,7 +386,11 @@ function InheritedNote({
       <span>
         Inherited from {source}: <span className="text-ink italic">{bookValue}</span>
       </span>
-      <button type="button" onClick={onCopy} className="shrink-0 cursor-pointer text-accent hover:underline">
+      <button
+        type="button"
+        onClick={onCopy}
+        className="shrink-0 cursor-pointer text-accent hover:underline"
+      >
         Copy from {source}
       </button>
     </div>
@@ -423,7 +442,9 @@ function ImslpAutofillButton({
     >
       {!valid && <IconCloudOff size={16} />}
       {valid && state === 'idle' && <IconCloudDownload size={16} />}
-      {valid && state === 'fetching' && <IconLoader2 size={16} className="animate-spin text-ink-soft" />}
+      {valid && state === 'fetching' && (
+        <IconLoader2 size={16} className="animate-spin text-ink-soft" />
+      )}
       {valid && state === 'done' && <IconCheck size={16} className="text-accent" />}
     </button>
   )
@@ -440,6 +461,7 @@ function TagComboBox({
   filterOption,
   allowDuplicates,
   sequenceStyle,
+  pillStyle = 'accent',
 }: {
   label: string
   options: TagOption[]
@@ -466,6 +488,9 @@ function TagComboBox({
   // Instruments/Your Tags aren't ordered, so they keep the
   // independent-pill treatment.
   sequenceStyle?: boolean
+  // Same as the real TagComboBox: 'paper' for shared catalog data
+  // (Instruments), 'accent' for the viewer's own (Your tags).
+  pillStyle?: 'accent' | 'paper'
 }) {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
@@ -489,7 +514,10 @@ function TagComboBox({
         : // Spaces stripped from both sides — mockup-parity with the real
           // TagComboBox.tsx's own normalizeForSearch — "toml" matches
           // "Tom Lehrer".
-          o.name.toLowerCase().replace(/\s+/g, '').includes(query.toLowerCase().replace(/\s+/g, '')),
+          o.name
+            .toLowerCase()
+            .replace(/\s+/g, '')
+            .includes(query.toLowerCase().replace(/\s+/g, '')),
     )
   const exactMatch = options.some((o) => o.name.toLowerCase() === query.trim().toLowerCase())
   // Same slice(0, 6) the dropdown itself renders — keyboard nav has to walk
@@ -631,7 +659,11 @@ function TagComboBox({
               // allowDuplicates.
               <span
                 key={`${tag.id}-${index}`}
-                className="flex items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent"
+                className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
+                  pillStyle === 'paper'
+                    ? 'border border-border bg-paper text-ink-soft'
+                    : 'bg-accent-soft text-accent'
+                }`}
               >
                 {tag.name}
                 <button
@@ -816,7 +848,9 @@ function SingleSelect({
           onBlur={() => setTimeout(() => setOpen(false), 150)}
           className="flex w-full cursor-pointer items-center justify-between rounded-md border border-border bg-paper-raised px-3 py-2 text-left text-ink focus:outline focus:outline-2 focus:outline-accent focus:outline-offset-2"
         >
-          <span className={value ? '' : 'text-ink-soft/50'}>{selected?.label ?? placeholder ?? '—'}</span>
+          <span className={value ? '' : 'text-ink-soft/50'}>
+            {selected?.label ?? placeholder ?? '—'}
+          </span>
           {/* Solid pre-blend, not opacity — overlapping icon strokes would re-blend unevenly under real translucency. */}
           <IconChevronDown size={16} className="text-[#9d9892]" />
         </button>
@@ -832,7 +866,9 @@ function SingleSelect({
                   index === highlightedIndex ? 'bg-accent-soft' : ''
                 }`}
               >
-                <span className={`block text-sm ${opt.value === value ? 'text-accent' : 'text-ink'}`}>
+                <span
+                  className={`block text-sm ${opt.value === value ? 'text-accent' : 'text-ink'}`}
+                >
                   {opt.label}
                 </span>
                 {opt.description && (
@@ -1052,8 +1088,8 @@ export function EditPieceModalMockup() {
   const [fieldsRef, fieldsHeight] = useMeasuredHeight()
   const [footerRef, footerHeight] = useMeasuredHeight()
 
-  const [viewportHeight, setViewportHeight] = useState(
-    () => (typeof window === 'undefined' ? 800 : window.innerHeight),
+  const [viewportHeight, setViewportHeight] = useState(() =>
+    typeof window === 'undefined' ? 800 : window.innerHeight,
   )
   useEffect(() => {
     const onResize = () => setViewportHeight(window.innerHeight)
@@ -1303,7 +1339,10 @@ export function EditPieceModalMockup() {
           <div className="flex flex-col gap-3">
             <div ref={titleBlockRef} className="flex items-start justify-between gap-4">
               <div>
-                <h2 id="edit-piece-mockup-title" className="font-display text-2xl font-medium text-ink">
+                <h2
+                  id="edit-piece-mockup-title"
+                  className="font-display text-2xl font-medium text-ink"
+                >
                   Edit piece
                 </h2>
                 {/* watch('title'), not the static defaultValues constant —
@@ -1533,7 +1572,9 @@ export function EditPieceModalMockup() {
                   className={`rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 placeholder:text-ink-soft/40 placeholder:italic ${imslpFilledFields.has('composer') ? 'ring-2 ring-accent-on-dark' : ''}`}
                   {...register('composer', { maxLength: 255 })}
                 />
-                {errors.composer && <p className="text-sm text-red-700">{errors.composer.message}</p>}
+                {errors.composer && (
+                  <p className="text-sm text-red-700">{errors.composer.message}</p>
+                )}
                 {!composer && (
                   <InheritedNote
                     bookValue={mockBook.composer}
@@ -1628,7 +1669,10 @@ export function EditPieceModalMockup() {
                 />
               </div>
               <div className="flex min-w-0 flex-1 flex-col gap-1">
-                <label htmlFor="f-publisher-id" className="flex items-center gap-1 text-sm text-ink-soft">
+                <label
+                  htmlFor="f-publisher-id"
+                  className="flex items-center gap-1 text-sm text-ink-soft"
+                >
                   Publisher ID
                   <InfoIconTooltip
                     message="Publisher serial or engraving plate number. Typically found in bottom margin notes."
@@ -1704,6 +1748,7 @@ export function EditPieceModalMockup() {
                   render={({ field }) => (
                     <TagComboBox
                       label="Instruments"
+                      pillStyle="paper"
                       options={INSTRUMENT_OPTIONS}
                       selected={field.value}
                       multiple
@@ -1779,10 +1824,15 @@ export function EditPieceModalMockup() {
                   placeholder="e.g. 3:45"
                   className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
                   {...register('duration', {
-                    pattern: { value: /^\d+:[0-5]\d$/, message: 'Enter duration as mm:ss (e.g. 3:45).' },
+                    pattern: {
+                      value: /^\d+:[0-5]\d$/,
+                      message: 'Enter duration as mm:ss (e.g. 3:45).',
+                    },
                   })}
                 />
-                {errors.duration && <p className="text-sm text-red-700">{errors.duration.message}</p>}
+                {errors.duration && (
+                  <p className="text-sm text-red-700">{errors.duration.message}</p>
+                )}
               </div>
             </div>
 
@@ -1833,7 +1883,9 @@ export function EditPieceModalMockup() {
                       type="number"
                       min={1}
                       className="w-24 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-                      {...register('measureCount', { min: { value: 1, message: 'Must be positive.' } })}
+                      {...register('measureCount', {
+                        min: { value: 1, message: 'Must be positive.' },
+                      })}
                     />
                   </div>
                   <div className="flex flex-col gap-1">
@@ -1845,7 +1897,9 @@ export function EditPieceModalMockup() {
                       type="number"
                       min={1}
                       className="w-24 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-                      {...register('beatsPerMeasure', { min: { value: 1, message: 'Must be positive.' } })}
+                      {...register('beatsPerMeasure', {
+                        min: { value: 1, message: 'Must be positive.' },
+                      })}
                     />
                   </div>
                   <button
@@ -1953,7 +2007,11 @@ export function EditPieceModalMockup() {
                   name="sourceBookId"
                   control={control}
                   render={({ field }) => (
-                    <SourceBookField value={field.value} onChange={field.onChange} options={SOURCE_BOOK_OPTIONS} />
+                    <SourceBookField
+                      value={field.value}
+                      onChange={field.onChange}
+                      options={SOURCE_BOOK_OPTIONS}
+                    />
                   )}
                 />
                 <div className="flex gap-3">

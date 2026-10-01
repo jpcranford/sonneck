@@ -8,7 +8,11 @@ import { SingleSelect } from '../components/SingleSelect'
 import { InfoIconTooltip } from '../components/InfoIconTooltip'
 import { Toggle } from '../components/Toggle'
 import { useMockupTitle } from '../lib/useMockupTitle'
-import { US_RENEWAL_WINDOW_START, US_RENEWAL_WINDOW_END, inUSRenewalWindow } from '../lib/usRenewalWindow'
+import {
+  US_RENEWAL_WINDOW_START,
+  US_RENEWAL_WINDOW_END,
+  inUSRenewalWindow,
+} from '../lib/usRenewalWindow'
 
 // ---------------------------------------------------------------------
 // DESIGN MOCKUP — Book Properties Edit Menu (design doc §16). Not wired
@@ -114,7 +118,8 @@ const defaultValues: FormValues = {
   // (models.Book.ISBN), same convention imslpNumber already follows.
   isbn: '9780132350884',
   imslpNumber: 'IMSLP04154',
-  description: "Schumann's collection of 43 short pieces for young pianists, composed for his own children.",
+  description:
+    "Schumann's collection of 43 short pieces for young pianists, composed for his own children.",
   // Public Domain Badge feature — all blank, demonstrating a Book that's
   // never touched this feature: the Copyright Status trigger shows a
   // plain "Not set" (Book has nothing to calculate a live default from,
@@ -138,7 +143,13 @@ export function EditBookModalMockup() {
   const [open, setOpen] = useState(true)
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [copyrightOpen, setCopyrightOpen] = useState(false)
-  const { register, control, handleSubmit, watch, formState: { errors } } = useForm<FormValues>({ defaultValues })
+  const {
+    register,
+    control,
+    handleSubmit,
+    watch,
+    formState: { errors },
+  } = useForm<FormValues>({ defaultValues })
 
   // No real PATCH here (mockup) — just runs the same perceived-progress
   // sequence the real Save button will: idle -> saving -> saved -> idle.
@@ -167,8 +178,9 @@ export function EditBookModalMockup() {
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6 md:p-8">
       <div className="rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-4 py-2 text-sm text-ink-soft">
-        Design mockup — <span className="font-medium text-ink">Book Properties Edit Menu</span> (design doc
-        §16). Not wired to real data — Save just replays the approved progress animation.
+        Design mockup — <span className="font-medium text-ink">Book Properties Edit Menu</span>{' '}
+        (design doc §16). Not wired to real data — Save just replays the approved progress
+        animation.
       </div>
 
       {!open && (
@@ -200,7 +212,10 @@ export function EditBookModalMockup() {
           // language instead of introducing a second pattern.
           <div className="-mx-6 flex items-start justify-between gap-4 border-b border-border px-6 pb-4">
             <div>
-              <h2 id="edit-book-mockup-title" className="font-display text-2xl font-medium text-ink">
+              <h2
+                id="edit-book-mockup-title"
+                className="font-display text-2xl font-medium text-ink"
+              >
                 Edit book
               </h2>
               <p className="text-sm text-ink-soft">{MOCK_BOOK_TITLE}</p>
@@ -427,6 +442,7 @@ export function EditBookModalMockup() {
                 render={({ field }) => (
                   <TagComboBox
                     label="Instruments"
+                    pillStyle="paper"
                     options={INSTRUMENT_OPTIONS}
                     selected={field.value}
                     multiple

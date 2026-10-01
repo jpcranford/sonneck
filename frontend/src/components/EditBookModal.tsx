@@ -9,7 +9,11 @@ import { listPeople } from '../api/people'
 import { getConfig } from '../api/config'
 import { ApiError } from '../api/client'
 import { afterMinDuration } from '../lib/minDuration'
-import { US_RENEWAL_WINDOW_START, US_RENEWAL_WINDOW_END, inUSRenewalWindow } from '../lib/usRenewalWindow'
+import {
+  US_RENEWAL_WINDOW_START,
+  US_RENEWAL_WINDOW_END,
+  inUSRenewalWindow,
+} from '../lib/usRenewalWindow'
 import type { Book, BookWriteRequest, Tag } from '../api/types'
 import { Modal } from './Modal'
 import { InfoIconTooltip } from './InfoIconTooltip'
@@ -237,7 +241,10 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
   })
   // People catalog — same unpaginated lookup convention as every other
   // field here.
-  const { data: peopleOptions = [] } = useQuery({ queryKey: ['people'], queryFn: () => listPeople() })
+  const { data: peopleOptions = [] } = useQuery({
+    queryKey: ['people'],
+    queryFn: () => listPeople(),
+  })
   const sheetTypeSelectOptions = [
     { value: '', label: '—' },
     ...sheetTypeOptions.map((o) => ({ value: o.name, label: o.name })),
@@ -646,6 +653,7 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
               render={({ field }) => (
                 <TagComboBox
                   label="Instruments"
+                  pillStyle="paper"
                   options={instrumentOptions}
                   selected={field.value}
                   multiple
@@ -718,7 +726,10 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
               />
               <div className="flex flex-col gap-3 min-[525px]:flex-row">
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
-                  <label htmlFor="f-copyright-year" className="flex items-center gap-1 text-sm text-ink-soft">
+                  <label
+                    htmlFor="f-copyright-year"
+                    className="flex items-center gap-1 text-sm text-ink-soft"
+                  >
                     Copyright year
                     <InfoIconTooltip
                       message="Enter the year copyright was first established for this book — usually the year of first publication."
@@ -747,25 +758,26 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
               {/* US renewal follow-up — same gate/shape as
                   EditPieceModal.tsx's copy, but plain-boolean tri-state (no
                   InheritedNote — Book has nothing to inherit from). */}
-              {appConfig?.copyrightRegion === 'en-US' && inUSRenewalWindow(watch('copyrightYear')) && (
-                <div className="flex items-center gap-1.5 rounded-md border border-dashed border-border p-3">
-                  <Controller
-                    name="copyrightRenewed"
-                    control={control}
-                    render={({ field }) => (
-                      <Toggle
-                        checked={field.value === 'true'}
-                        onChange={(next) => field.onChange(next ? 'true' : 'false')}
-                        label="This work was renewed"
-                      />
-                    )}
-                  />
-                  <InfoIconTooltip
-                    message={`US works published ${US_RENEWAL_WINDOW_START}–${US_RENEWAL_WINDOW_END} needed a separate renewal filing to keep protection past the first 28 years. Enable this if your source shows a "(renewed …)" note next to the copyright year above.`}
-                    ariaLabel="What 'This work was renewed' means"
-                  />
-                </div>
-              )}
+              {appConfig?.copyrightRegion === 'en-US' &&
+                inUSRenewalWindow(watch('copyrightYear')) && (
+                  <div className="flex items-center gap-1.5 rounded-md border border-dashed border-border p-3">
+                    <Controller
+                      name="copyrightRenewed"
+                      control={control}
+                      render={({ field }) => (
+                        <Toggle
+                          checked={field.value === 'true'}
+                          onChange={(next) => field.onChange(next ? 'true' : 'false')}
+                          label="This work was renewed"
+                        />
+                      )}
+                    />
+                    <InfoIconTooltip
+                      message={`US works published ${US_RENEWAL_WINDOW_START}–${US_RENEWAL_WINDOW_END} needed a separate renewal filing to keep protection past the first 28 years. Enable this if your source shows a "(renewed …)" note next to the copyright year above.`}
+                      ariaLabel="What 'This work was renewed' means"
+                    />
+                  </div>
+                )}
 
               <div className="flex min-w-0 flex-col gap-1">
                 <label htmlFor="f-copyright-slug" className="text-sm text-ink-soft">

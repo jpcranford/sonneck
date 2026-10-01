@@ -19,14 +19,24 @@ import {
 import { listPeople } from '../api/people'
 import { getPieceThumbnailUrl, updatePiece } from '../api/pieces'
 import { lookupImslp } from '../api/imslp'
-import { listInstruments, listKeys, listPracticeStatuses, listSheetTypes, listUserTags } from '../api/lookups'
+import {
+  listInstruments,
+  listKeys,
+  listPracticeStatuses,
+  listSheetTypes,
+  listUserTags,
+} from '../api/lookups'
 import { getConfig } from '../api/config'
 import { ApiError } from '../api/client'
 import { COPYRIGHT_BADGE_META } from '../lib/copyrightBadge'
 import { secondsToMMSS, mmssToSeconds } from '../lib/duration'
 import { matchesKeyQuery } from '../lib/keySearch'
 import { afterMinDuration } from '../lib/minDuration'
-import { US_RENEWAL_WINDOW_START, US_RENEWAL_WINDOW_END, inUSRenewalWindow } from '../lib/usRenewalWindow'
+import {
+  US_RENEWAL_WINDOW_START,
+  US_RENEWAL_WINDOW_END,
+  inUSRenewalWindow,
+} from '../lib/usRenewalWindow'
 import { yearWrittenSource } from '../lib/yearWrittenSource'
 import type { Piece, PieceWriteRequest, PracticeStatus, Tag } from '../api/types'
 import { Modal } from './Modal'
@@ -191,7 +201,9 @@ function pieceToFormValues(piece: Piece): FormValues {
         : String(piece.copyrightYear.value),
     copyrightHolder: ownValue(piece.copyrightHolder),
     copyrightSlug: ownValue(piece.copyrightSlug),
-    copyrightRenewed: piece.copyrightRenewed.inherited ? '' : String(piece.copyrightRenewed.value) as 'true' | 'false',
+    copyrightRenewed: piece.copyrightRenewed.inherited
+      ? ''
+      : (String(piece.copyrightRenewed.value) as 'true' | 'false'),
   }
 }
 
@@ -369,8 +381,8 @@ export function EditPieceModal({
   const [fieldsRef, fieldsHeight] = useMeasuredHeight()
   const [footerRef, footerHeight] = useMeasuredHeight()
 
-  const [viewportHeight, setViewportHeight] = useState(
-    () => (typeof window === 'undefined' ? 800 : window.innerHeight),
+  const [viewportHeight, setViewportHeight] = useState(() =>
+    typeof window === 'undefined' ? 800 : window.innerHeight,
   )
   useEffect(() => {
     const onResize = () => setViewportHeight(window.innerHeight)
@@ -494,7 +506,10 @@ export function EditPieceModal({
   // TagComboBox's own option source,
   // same "small personal-library scale" assumption every other lookup
   // list here already makes.
-  const { data: peopleOptions = [] } = useQuery({ queryKey: ['people'], queryFn: () => listPeople() })
+  const { data: peopleOptions = [] } = useQuery({
+    queryKey: ['people'],
+    queryFn: () => listPeople(),
+  })
 
   const sheetTypeSelectOptions = [
     { value: '', label: '—' },
@@ -955,7 +970,11 @@ export function EditPieceModal({
               </label>
               <input
                 id="f-year"
-                placeholder={!watch('yearWritten') && piece.yearWritten.inherited ? piece.yearWritten.value : undefined}
+                placeholder={
+                  !watch('yearWritten') && piece.yearWritten.inherited
+                    ? piece.yearWritten.value
+                    : undefined
+                }
                 className={`rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 placeholder:text-ink-soft/40 placeholder:italic ${imslpFilledFields.has('yearWritten') ? 'ring-2 ring-accent-on-dark' : ''}`}
                 {...register('yearWritten', { maxLength: 255 })}
               />
@@ -992,7 +1011,9 @@ export function EditPieceModal({
                     newOptionLabel="New person"
                     highlighted={imslpFilledFields.has('composer')}
                     bookValue={
-                      piece.composer.inherited ? piece.composer.values.map((p) => p.name).join(', ') : undefined
+                      piece.composer.inherited
+                        ? piece.composer.values.map((p) => p.name).join(', ')
+                        : undefined
                     }
                     onCopy={() => field.onChange(piece.composer.values)}
                   />
@@ -1013,7 +1034,9 @@ export function EditPieceModal({
                     pillStyle="paper"
                     newOptionLabel="New person"
                     bookValue={
-                      piece.arranger.inherited ? piece.arranger.values.map((p) => p.name).join(', ') : undefined
+                      piece.arranger.inherited
+                        ? piece.arranger.values.map((p) => p.name).join(', ')
+                        : undefined
                     }
                     onCopy={() => field.onChange(piece.arranger.values)}
                   />
@@ -1058,7 +1081,11 @@ export function EditPieceModal({
               <div className="relative">
                 <input
                   id="f-imslp"
-                  placeholder={!watch('imslpNumber') && piece.imslpNumber.inherited ? piece.imslpNumber.value : undefined}
+                  placeholder={
+                    !watch('imslpNumber') && piece.imslpNumber.inherited
+                      ? piece.imslpNumber.value
+                      : undefined
+                  }
                   className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 pr-9 font-mono text-ink placeholder:text-ink-soft/40 placeholder:italic"
                   {...register('imslpNumber', { maxLength: 255 })}
                 />
@@ -1096,13 +1123,20 @@ export function EditPieceModal({
               </label>
               <input
                 id="f-publisher"
-                placeholder={!watch('publisher') && piece.publisher.inherited ? piece.publisher.value : undefined}
+                placeholder={
+                  !watch('publisher') && piece.publisher.inherited
+                    ? piece.publisher.value
+                    : undefined
+                }
                 className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 placeholder:text-ink-soft/40 placeholder:italic ${imslpFilledFields.has('publisher') ? 'ring-2 ring-accent-on-dark' : ''}`}
                 {...register('publisher', { maxLength: 255 })}
               />
             </div>
             <div className="flex min-w-0 flex-1 flex-col gap-1">
-              <label htmlFor="f-publisher-id" className="flex items-center gap-1 text-sm text-ink-soft">
+              <label
+                htmlFor="f-publisher-id"
+                className="flex items-center gap-1 text-sm text-ink-soft"
+              >
                 Publisher ID
                 <InfoIconTooltip
                   message="Publisher serial or engraving plate number. Typically found in bottom margin notes."
@@ -1112,7 +1146,9 @@ export function EditPieceModal({
               <input
                 id="f-publisher-id"
                 placeholder={
-                  !watch('publisherId') && piece.publisherId.inherited ? piece.publisherId.value : undefined
+                  !watch('publisherId') && piece.publisherId.inherited
+                    ? piece.publisherId.value
+                    : undefined
                 }
                 className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 placeholder:text-ink-soft/40 placeholder:italic ${imslpFilledFields.has('publisherId') ? 'ring-2 ring-accent-on-dark' : ''}`}
                 {...register('publisherId', { maxLength: 255 })}
@@ -1133,7 +1169,9 @@ export function EditPieceModal({
             !watch('publisherId') &&
             (piece.publisher.inherited || piece.publisherId.inherited) && (
               <InheritedNote
-                bookValue={[piece.publisher.value, piece.publisherId.value].filter(Boolean).join(' • ')}
+                bookValue={[piece.publisher.value, piece.publisherId.value]
+                  .filter(Boolean)
+                  .join(' • ')}
                 onCopy={() => {
                   setValue('publisher', piece.publisher.value)
                   setValue('publisherId', piece.publisherId.value)
@@ -1174,7 +1212,9 @@ export function EditPieceModal({
                     value={field.value}
                     onChange={field.onChange}
                     bookValue={
-                      piece.sheetType.inherited ? (piece.sheetType.value?.name ?? undefined) : undefined
+                      piece.sheetType.inherited
+                        ? (piece.sheetType.value?.name ?? undefined)
+                        : undefined
                     }
                     onCopy={() => field.onChange(piece.sheetType.value?.name ?? '')}
                   />
@@ -1188,6 +1228,7 @@ export function EditPieceModal({
                 render={({ field }) => (
                   <TagComboBox
                     label="Instruments"
+                    pillStyle="paper"
                     options={instrumentOptions}
                     selected={field.value}
                     multiple
@@ -1262,7 +1303,10 @@ export function EditPieceModal({
                 placeholder="e.g. 3:45"
                 className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
                 {...register('duration', {
-                  pattern: { value: /^\d+:[0-5]\d$/, message: 'Enter duration as mm:ss (e.g. 3:45).' },
+                  pattern: {
+                    value: /^\d+:[0-5]\d$/,
+                    message: 'Enter duration as mm:ss (e.g. 3:45).',
+                  },
                 })}
               />
               {errors.duration && <p className="text-sm text-red-700">{errors.duration.message}</p>}
@@ -1318,7 +1362,9 @@ export function EditPieceModal({
                     type="number"
                     min={1}
                     className="w-24 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-                    {...register('measureCount', { min: { value: 1, message: 'Must be positive.' } })}
+                    {...register('measureCount', {
+                      min: { value: 1, message: 'Must be positive.' },
+                    })}
                   />
                 </div>
                 <div className="flex flex-col gap-1">
@@ -1330,7 +1376,9 @@ export function EditPieceModal({
                     type="number"
                     min={1}
                     className="w-24 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-                    {...register('beatsPerMeasure', { min: { value: 1, message: 'Must be positive.' } })}
+                    {...register('beatsPerMeasure', {
+                      min: { value: 1, message: 'Must be positive.' },
+                    })}
                   />
                 </div>
                 <button
@@ -1516,7 +1564,10 @@ export function EditPieceModal({
               />
               <div className="flex flex-col gap-3 min-[525px]:flex-row">
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
-                  <label htmlFor="f-copyright-year" className="flex items-center gap-1 text-sm text-ink-soft">
+                  <label
+                    htmlFor="f-copyright-year"
+                    className="flex items-center gap-1 text-sm text-ink-soft"
+                  >
                     Copyright year
                     <InfoIconTooltip
                       message="Enter the year copyright was first established for this piece — usually the year of first publication."
@@ -1527,19 +1578,23 @@ export function EditPieceModal({
                     id="f-copyright-year"
                     type="number"
                     placeholder={
-                      !watch('copyrightYear') && piece.copyrightYear.inherited && piece.copyrightYear.value != null
+                      !watch('copyrightYear') &&
+                      piece.copyrightYear.inherited &&
+                      piece.copyrightYear.value != null
                         ? String(piece.copyrightYear.value)
                         : undefined
                     }
                     className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
                     {...register('copyrightYear')}
                   />
-                  {!watch('copyrightYear') && piece.copyrightYear.inherited && piece.copyrightYear.value != null && (
-                    <InheritedNote
-                      bookValue={String(piece.copyrightYear.value)}
-                      onCopy={() => setValue('copyrightYear', String(piece.copyrightYear.value))}
-                    />
-                  )}
+                  {!watch('copyrightYear') &&
+                    piece.copyrightYear.inherited &&
+                    piece.copyrightYear.value != null && (
+                      <InheritedNote
+                        bookValue={String(piece.copyrightYear.value)}
+                        onCopy={() => setValue('copyrightYear', String(piece.copyrightYear.value))}
+                      />
+                    )}
                 </div>
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
                   <label htmlFor="f-copyright-holder" className="text-sm text-ink-soft">
@@ -1548,7 +1603,11 @@ export function EditPieceModal({
                   <input
                     id="f-copyright-holder"
                     type="text"
-                    placeholder={!watch('copyrightHolder') && piece.copyrightHolder.inherited ? piece.copyrightHolder.value : undefined}
+                    placeholder={
+                      !watch('copyrightHolder') && piece.copyrightHolder.inherited
+                        ? piece.copyrightHolder.value
+                        : undefined
+                    }
                     className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
                     {...register('copyrightHolder', { maxLength: 255 })}
                   />
@@ -1570,35 +1629,43 @@ export function EditPieceModal({
                   see FormValues' own comment for why a plain boolean would
                   silently freeze an inherited value into a permanent
                   override on every save. */}
-              {appConfig?.copyrightRegion === 'en-US' && inUSRenewalWindow(watch('copyrightYear')) && (
-                <div className="flex flex-col gap-2 rounded-md border border-dashed border-border p-3">
-                  <div className="flex items-center gap-1.5">
-                    <Controller
-                      name="copyrightRenewed"
-                      control={control}
-                      render={({ field }) => (
-                        <Toggle
-                          checked={field.value === '' ? piece.copyrightRenewed.value : field.value === 'true'}
-                          onChange={(next) => field.onChange(next ? 'true' : 'false')}
-                          label="This work was renewed"
-                        />
-                      )}
-                    />
-                    <InfoIconTooltip
-                      message={`US works published ${US_RENEWAL_WINDOW_START}–${US_RENEWAL_WINDOW_END} needed a separate renewal filing to keep protection past the first 28 years. Enable this if your source shows a "(renewed …)" note next to the copyright year above.`}
-                      ariaLabel="What 'This work was renewed' means"
-                    />
+              {appConfig?.copyrightRegion === 'en-US' &&
+                inUSRenewalWindow(watch('copyrightYear')) && (
+                  <div className="flex flex-col gap-2 rounded-md border border-dashed border-border p-3">
+                    <div className="flex items-center gap-1.5">
+                      <Controller
+                        name="copyrightRenewed"
+                        control={control}
+                        render={({ field }) => (
+                          <Toggle
+                            checked={
+                              field.value === ''
+                                ? piece.copyrightRenewed.value
+                                : field.value === 'true'
+                            }
+                            onChange={(next) => field.onChange(next ? 'true' : 'false')}
+                            label="This work was renewed"
+                          />
+                        )}
+                      />
+                      <InfoIconTooltip
+                        message={`US works published ${US_RENEWAL_WINDOW_START}–${US_RENEWAL_WINDOW_END} needed a separate renewal filing to keep protection past the first 28 years. Enable this if your source shows a "(renewed …)" note next to the copyright year above.`}
+                        ariaLabel="What 'This work was renewed' means"
+                      />
+                    </div>
+                    {watch('copyrightRenewed') === '' && piece.copyrightRenewed.inherited && (
+                      <InheritedNote
+                        bookValue={piece.copyrightRenewed.value ? 'Renewed' : 'Not renewed'}
+                        onCopy={() =>
+                          setValue(
+                            'copyrightRenewed',
+                            piece.copyrightRenewed.value ? 'true' : 'false',
+                          )
+                        }
+                      />
+                    )}
                   </div>
-                  {watch('copyrightRenewed') === '' && piece.copyrightRenewed.inherited && (
-                    <InheritedNote
-                      bookValue={piece.copyrightRenewed.value ? 'Renewed' : 'Not renewed'}
-                      onCopy={() =>
-                        setValue('copyrightRenewed', piece.copyrightRenewed.value ? 'true' : 'false')
-                      }
-                    />
-                  )}
-                </div>
-              )}
+                )}
 
               <div className="flex min-w-0 flex-col gap-1">
                 <label htmlFor="f-copyright-slug" className="text-sm text-ink-soft">
