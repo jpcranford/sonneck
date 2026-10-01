@@ -709,6 +709,32 @@ func TestUploadBookCover_OverridesDerivedThumbnail(t *testing.T) {
 	}
 }
 
+// TestUploadBookCover_AcceptsWebP: a WebP cover is accepted and served back
+// as-is with its own content type (decode-only support, golang.org/x/image).
+func TestUploadBookCover_AcceptsWebP(t *testing.T) {
+	h := newTestServer(t)
+	bookID, _ := uploadBook(t, h, "book.pdf", 1)
+
+	// A 2×2 lossless WebP — the Go library can't encode one, so it's inline.
+	webp := []byte{
+		0x52, 0x49, 0x46, 0x46, 0x1e, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50, 0x56, 0x50, 0x38, 0x4c,
+		0x11, 0x00, 0x00, 0x00, 0x2f, 0x01, 0x40, 0x00, 0x00, 0x07, 0x50, 0xae, 0xfe, 0xf4, 0xa7, 0xff,
+		0x81, 0x88, 0xe8, 0x7f, 0x00, 0x00,
+	}
+	uploadRec := recordRequest(h, multipartUpload(t, apiBooksURL(bookID)+"/cover", "cover.webp", webp))
+	if uploadRec.Code != http.StatusOK {
+		t.Fatalf("upload WebP cover: status %d, body %s", uploadRec.Code, uploadRec.Body.String())
+	}
+
+	coverRec := recordRequest(h, httptestGet(t, apiBooksURL(bookID)+"/cover"))
+	if ct := coverRec.Header().Get("Content-Type"); ct != "image/webp" {
+		t.Errorf("cover Content-Type = %q, want image/webp", ct)
+	}
+	if !bytes.Equal(coverRec.Body.Bytes(), webp) {
+		t.Error("served cover doesn't match the uploaded WebP's bytes")
+	}
+}
+
 // TestUploadBookCover_RejectsNonImageFile mirrors stageUpload's own
 // "verify, don't trust the upload" posture for book/piece PDFs — a
 // non-image file must be rejected with a validation error, not silently

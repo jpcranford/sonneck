@@ -19,6 +19,7 @@ import (
 	"github.com/jpcranford/sonneck/internal/models"
 	"github.com/jpcranford/sonneck/internal/repo"
 	"github.com/jpcranford/sonneck/internal/storage"
+	_ "golang.org/x/image/webp" // format registration for image.DecodeConfig — WebP covers/portraits
 )
 
 var (
@@ -675,8 +676,10 @@ func (s *Server) handleBookPageThumbnail(w http.ResponseWriter, r *http.Request)
 // only reads the header, not the full image, so this is cheap regardless of
 // file size) rather than trusting the client-supplied filename/Content-Type,
 // same "don't trust the upload, verify it" posture as stageUpload's own
-// pdf.PageCount check for book/piece PDFs. Only the three formats the Go
-// standard library decodes without a third-party dependency are accepted.
+// pdf.PageCount check for book/piece PDFs. Accepts PNG, JPEG and GIF (the
+// standard library) and WebP (golang.org/x/image, already a dependency —
+// pure Go, decode-only, which is all this needs: the file is stored and
+// served exactly as uploaded, never re-encoded).
 func detectImageContentType(path string) (string, bool) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -695,6 +698,8 @@ func detectImageContentType(path string) (string, bool) {
 		return "image/jpeg", true
 	case "gif":
 		return "image/gif", true
+	case "webp":
+		return "image/webp", true
 	default:
 		return "", false
 	}
@@ -774,7 +779,7 @@ func (s *Server) handleUploadBookCover(w http.ResponseWriter, r *http.Request) {
 	if !valid {
 		os.Remove(tempPath)
 		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError,
-			"uploaded file is not a valid image (PNG, JPEG, or GIF)")
+			"uploaded file is not a valid image (PNG, JPEG, GIF, or WebP)")
 		return
 	}
 

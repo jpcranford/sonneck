@@ -440,7 +440,7 @@ func (s *Server) handleUploadPersonPortrait(w http.ResponseWriter, r *http.Reque
 	if !valid {
 		os.Remove(tempPath)
 		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError,
-			"uploaded file is not a valid image (PNG, JPEG, or GIF)")
+			"uploaded file is not a valid image (PNG, JPEG, GIF, or WebP)")
 		return
 	}
 
