@@ -28,6 +28,7 @@ import {
 } from '../api/lookups'
 import { getConfig } from '../api/config'
 import { ApiError } from '../api/client'
+import { sortPracticeStatuses } from '../lib/practiceStatusOrder'
 import { COPYRIGHT_BADGE_META } from '../lib/copyrightBadge'
 import { secondsToMMSS, mmssToSeconds } from '../lib/duration'
 import { matchesKeyQuery } from '../lib/keySearch'
@@ -517,7 +518,7 @@ export function EditPieceModal({
   ]
   const practiceStatusSelectOptions = [
     { value: '', label: 'No status set' },
-    ...practiceStatusOptions.map((o) => ({ value: o.name, label: o.name })),
+    ...sortPracticeStatuses(practiceStatusOptions).map((o) => ({ value: o.name, label: o.name })),
   ]
 
   const bpm = Number(watch('bpm'))

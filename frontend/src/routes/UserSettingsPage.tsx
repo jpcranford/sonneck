@@ -16,6 +16,7 @@ import {
 } from '@tabler/icons-react'
 import { Modal } from '../components/Modal'
 import { Toggle } from '../components/Toggle'
+import { sortPracticeStatuses } from '../lib/practiceStatusOrder'
 import { usePageTitle } from '../lib/usePageTitle'
 import { useAuth } from '../lib/AuthContext'
 import { ApiError } from '../api/client'
@@ -125,7 +126,9 @@ function ThemeControl({
         disabled={disabled}
         onClick={() => onChange('light')}
         className={`flex cursor-pointer items-center gap-1.5 rounded-l-md border-r border-border px-2.5 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50 ${
-          theme === 'light' ? 'bg-accent text-white' : 'bg-paper-raised text-ink-soft hover:bg-paper-sunken'
+          theme === 'light'
+            ? 'bg-accent text-white'
+            : 'bg-paper-raised text-ink-soft hover:bg-paper-sunken'
         }`}
       >
         <IconSun size={14} />
@@ -148,7 +151,9 @@ function ThemeControl({
         disabled={disabled}
         onClick={() => onChange('system')}
         className={`flex cursor-pointer items-center gap-1.5 rounded-r-md px-2.5 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50 ${
-          theme === 'system' ? 'bg-accent text-white' : 'bg-paper-raised text-ink-soft hover:bg-paper-sunken'
+          theme === 'system'
+            ? 'bg-accent text-white'
+            : 'bg-paper-raised text-ink-soft hover:bg-paper-sunken'
         }`}
       >
         <IconDeviceDesktop size={14} />
@@ -201,7 +206,8 @@ function EditableUserList({
     onSuccess: () => void queryClient.invalidateQueries({ queryKey }),
   })
   const renameMutation = useMutation({
-    mutationFn: (vars: { id: number; name: string }) => renameUserListItem(resource, vars.id, vars.name),
+    mutationFn: (vars: { id: number; name: string }) =>
+      renameUserListItem(resource, vars.id, vars.name),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey }),
   })
 
@@ -300,7 +306,10 @@ function EditableUserList({
           <IconCircleDashedPlus size={22} />
         </button>
       ) : (
-        <div className="mt-3 flex w-full items-center justify-center gap-2" title={`Adding a new ${noun} is coming soon`}>
+        <div
+          className="mt-3 flex w-full items-center justify-center gap-2"
+          title={`Adding a new ${noun} is coming soon`}
+        >
           <IconCircleDashedPlus size={22} className="text-ink-soft/40" />
           <span className="rounded-full bg-ink-soft px-1.5 py-px text-[0.6rem] tracking-wide text-white uppercase">
             Soon
@@ -462,19 +471,26 @@ export function UserSettingsPage() {
   const { data: practiceStatuses = [] } = useQuery({
     queryKey: ['practice-statuses'],
     queryFn: listPracticeStatuses,
+    // Practice order (Want to Learn → Dropped), as everywhere else statuses
+    // are listed — also the order of the delete dialog's merge targets.
+    select: sortPracticeStatuses,
   })
 
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null)
   const [deleteMode, setDeleteMode] = useState<'merge' | 'outright'>('merge')
   const [mergeTargetId, setMergeTargetId] = useState<number | null>(null)
 
-  const listsByResource: Record<UserListResource, Tag[]> = { tags, 'practice-statuses': practiceStatuses }
+  const listsByResource: Record<UserListResource, Tag[]> = {
+    tags,
+    'practice-statuses': practiceStatuses,
+  }
   const otherItems = deleteTarget
     ? listsByResource[deleteTarget.resource].filter((item) => item.id !== deleteTarget.id)
     : []
 
   const deleteMutation = useMutation({
-    mutationFn: (target: DeleteTarget) => deleteUserListItem(target.resource, target.id, mergeTargetId ?? undefined),
+    mutationFn: (target: DeleteTarget) =>
+      deleteUserListItem(target.resource, target.id, mergeTargetId ?? undefined),
     onSuccess: (_result, target) => {
       const queryKey = target.resource === 'tags' ? ['user-tags'] : ['practice-statuses']
       void queryClient.invalidateQueries({ queryKey })
@@ -588,7 +604,9 @@ export function UserSettingsPage() {
             control={
               <Toggle
                 checked={(settings?.contentViewMode ?? 'infinite') === 'paginated'}
-                onChange={(checked) => patchSettings({ contentViewMode: checked ? 'paginated' : 'infinite' })}
+                onChange={(checked) =>
+                  patchSettings({ contentViewMode: checked ? 'paginated' : 'infinite' })
+                }
                 label=""
                 id="paginated-views"
                 disabled
@@ -601,17 +619,23 @@ export function UserSettingsPage() {
         <SettingsCard title="Your Tags & Practice Status">
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
             <div>
-              <p className="mb-1.5 text-xs font-semibold tracking-wide text-ink-soft uppercase">Tags</p>
+              <p className="mb-1.5 text-xs font-semibold tracking-wide text-ink-soft uppercase">
+                Tags
+              </p>
               <p className="mb-3 text-sm text-ink-soft">
-                Private to your account — not shared with anyone else, even other people using this library.
+                Private to your account — not shared with anyone else, even other people using this
+                library.
               </p>
               <EditableUserList resource="tags" items={tags} onOpenDelete={openDelete} />
             </div>
             <div>
-              <p className="mb-1.5 text-xs font-semibold tracking-wide text-ink-soft uppercase">Practice Status</p>
+              <p className="mb-1.5 text-xs font-semibold tracking-wide text-ink-soft uppercase">
+                Practice Status
+              </p>
               <p className="mb-3 text-sm text-ink-soft">
-                The stages a piece moves through as you learn it. Sonneck ships with these five by default —
-                rename them to fit your own workflow. Adding your own statuses is coming soon.
+                The stages a piece moves through as you learn it. Sonneck ships with these five by
+                default — rename them to fit your own workflow. Adding your own statuses is coming
+                soon.
               </p>
               <EditableUserList
                 resource="practice-statuses"
@@ -641,11 +665,17 @@ export function UserSettingsPage() {
             </button>
             <button
               type="button"
-              disabled={(deleteMode === 'merge' && mergeTargetId === null) || deleteMutation.isPending}
+              disabled={
+                (deleteMode === 'merge' && mergeTargetId === null) || deleteMutation.isPending
+              }
               onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget)}
               className="cursor-pointer rounded-md bg-red-700 px-4 py-2 text-sm text-white hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-40"
             >
-              {deleteMutation.isPending ? 'Working…' : deleteMode === 'merge' ? 'Merge and delete' : 'Delete outright'}
+              {deleteMutation.isPending
+                ? 'Working…'
+                : deleteMode === 'merge'
+                  ? 'Merge and delete'
+                  : 'Delete outright'}
             </button>
           </div>
         }
@@ -661,11 +691,17 @@ export function UserSettingsPage() {
                 : 'Choose what happens to pieces already set to this status.'}
             </p>
 
-            <div className="mt-4 flex flex-col gap-3" role="radiogroup" aria-label="Delete or merge">
+            <div
+              className="mt-4 flex flex-col gap-3"
+              role="radiogroup"
+              aria-label="Delete or merge"
+            >
               {otherItems.length > 0 && (
                 <label
                   className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3.5 ${
-                    deleteMode === 'merge' ? 'border-accent bg-accent-soft' : 'border-border bg-paper-raised hover:border-accent/50'
+                    deleteMode === 'merge'
+                      ? 'border-accent bg-accent-soft'
+                      : 'border-border bg-paper-raised hover:border-accent/50'
                   }`}
                 >
                   <input
@@ -679,8 +715,8 @@ export function UserSettingsPage() {
                       Merge into another {deleteTarget.resource === 'tags' ? 'tag' : 'status'}
                     </p>
                     <p className="text-sm text-ink-soft">
-                      Every piece {deleteTarget.resource === 'tags' ? 'tagged' : 'set to'} "{deleteTarget.name}" will
-                      be moved to this one instead.
+                      Every piece {deleteTarget.resource === 'tags' ? 'tagged' : 'set to'} "
+                      {deleteTarget.name}" will be moved to this one instead.
                     </p>
                     {deleteMode === 'merge' && (
                       <select
@@ -701,7 +737,9 @@ export function UserSettingsPage() {
               )}
               <label
                 className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3.5 ${
-                  deleteMode === 'outright' ? 'border-accent bg-accent-soft' : 'border-border bg-paper-raised hover:border-accent/50'
+                  deleteMode === 'outright'
+                    ? 'border-accent bg-accent-soft'
+                    : 'border-border bg-paper-raised hover:border-accent/50'
                 }`}
               >
                 <input

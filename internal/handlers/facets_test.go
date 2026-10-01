@@ -357,3 +357,32 @@ func TestBookFacets_SheetTypeAndInstrumentCounts(t *testing.T) {
 		t.Errorf("instrument counts = %+v, want Violin:1 and Cello:1", instrumentCounts)
 	}
 }
+
+// The Practice Status facet lists statuses in practice order (Want to
+// Learn → Dropped), not alphabetically — the same order as the piece
+// menu's strip and the Edit Piece dropdown.
+func TestPieceFacets_PracticeStatusesInPracticeOrder(t *testing.T) {
+	h := newTestServer(t)
+	for _, status := range []string{"Dropped", "Learning", "Want to Learn"} {
+		p := createTestPiece(t, h, map[string]any{"title": status + " piece"})
+		rec := doJSON(t, h, http.MethodPatch, apiPiecesURL(p.ID)+"/practice-status", map[string]any{"practiceStatus": status})
+		if rec.Code != http.StatusOK {
+			t.Fatalf("set %s: status %d, body %s", status, rec.Code, rec.Body.String())
+		}
+	}
+
+	var facets struct {
+		PracticeStatuses []struct {
+			Status string `json:"status"`
+		} `json:"practiceStatuses"`
+	}
+	decodeData(t, doJSON(t, h, http.MethodGet, "/api/pieces/facets", nil), &facets)
+	var got []string
+	for _, s := range facets.PracticeStatuses {
+		got = append(got, s.Status)
+	}
+	want := []string{"Want to Learn", "Learning", "Dropped"}
+	if len(got) != len(want) || got[0] != want[0] || got[1] != want[1] || got[2] != want[2] {
+		t.Errorf("practice status facet order = %v, want %v", got, want)
+	}
+}

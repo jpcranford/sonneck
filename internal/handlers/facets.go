@@ -214,7 +214,13 @@ func (s *Server) handlePieceFacets(w http.ResponseWriter, r *http.Request) {
 		JOIN practice_statuses ps ON ps.id = pps.status_id
 		JOIN pieces p ON p.id = pps.piece_id`+textJoin+`
 		WHERE `+psFullWhere+`
-		GROUP BY ps.name`, psQueryArgs...)
+		GROUP BY ps.id, ps.name, ps.icon_key
+		-- Practice order (Want to Learn → Dropped) by the durable icon_key,
+		-- matching the frontend's sortPracticeStatuses; statuses without
+		-- one follow by name.
+		ORDER BY CASE ps.icon_key
+			WHEN 'want_to_learn' THEN 0 WHEN 'learning' THEN 1 WHEN 'learned' THEN 2
+			WHEN 'stalled' THEN 3 WHEN 'dropped' THEN 4 ELSE 5 END, ps.name`, psQueryArgs...)
 	if err != nil {
 		s.writeError(w, err)
 		return

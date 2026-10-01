@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { PracticeStatusItem } from '../api/types'
 import { PracticeStatusKeyIcon } from './PracticeStatusIcon'
+import { sortPracticeStatuses } from '../lib/practiceStatusOrder'
 
 // The piece menu's practice status strip (design C′, /mockup/add-to-setlist):
 // one button per status in the viewer's own list, at the top of the menu.
@@ -25,7 +26,7 @@ export function PracticeStatusStrip({
         <span className="truncate font-medium text-ink">{hovered ?? current ?? 'None'}</span>
       </div>
       <div className="flex flex-wrap gap-1" role="radiogroup" aria-label="Practice status">
-        {statuses.map((status) => {
+        {sortPracticeStatuses(statuses).map((status) => {
           const isCurrent = current === status.name
           return (
             <button
