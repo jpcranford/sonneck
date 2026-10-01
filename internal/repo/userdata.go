@@ -93,21 +93,26 @@ func SetUserPieceData(ctx context.Context, q Queryer, userID, pieceID int64, dat
 		return err
 	}
 
+	return SetUserPracticeStatus(ctx, q, userID, pieceID, statusID)
+}
+
+// SetUserPracticeStatus sets userID's practice status for pieceID (a
+// practice_statuses id already checked to be that user's own), or clears it
+// when statusID is nil — leaving their favorite and notes alone. The piece
+// menu's practice status strip writes through this alone.
+func SetUserPracticeStatus(ctx context.Context, q Queryer, userID, pieceID int64, statusID *int64) error {
 	if statusID != nil {
-		if _, err := q.ExecContext(ctx, `
+		_, err := q.ExecContext(ctx, `
 			INSERT INTO piece_practice_status (user_id, piece_id, status_id) VALUES (?, ?, ?)
 			ON CONFLICT (user_id, piece_id) DO UPDATE SET status_id = excluded.status_id`,
 			userID, pieceID, *statusID,
-		); err != nil {
-			return err
-		}
-	} else if _, err := q.ExecContext(ctx,
-		`DELETE FROM piece_practice_status WHERE user_id = ? AND piece_id = ?`, userID, pieceID,
-	); err != nil {
+		)
 		return err
 	}
-
-	return nil
+	_, err := q.ExecContext(ctx,
+		`DELETE FROM piece_practice_status WHERE user_id = ? AND piece_id = ?`, userID, pieceID,
+	)
+	return err
 }
 
 // DeleteUserPieceData removes every per-user row for pieceID across all

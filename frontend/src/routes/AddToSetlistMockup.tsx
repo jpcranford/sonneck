@@ -15,6 +15,7 @@ import {
   IconXFilled,
 } from '@tabler/icons-react'
 import { ContextMenu } from '../components/ContextMenu'
+import { PracticeStatusIcon } from '../components/PracticeStatusIcon'
 import { MODAL_TRANSITION_MS } from '../components/Modal'
 import { EditSetlistModal } from './EditSetlistMockup'
 import {
@@ -51,6 +52,7 @@ interface FixturePiece {
   meta: string
   favorite: boolean
   setlistIds: string[]
+  practiceStatus: string | null
 }
 
 const FIXTURE_PIECES: FixturePiece[] = [
@@ -60,9 +62,77 @@ const FIXTURE_PIECES: FixturePiece[] = [
     meta: 'J.S. Bach • 1722',
     favorite: true,
     setlistIds: ['1'],
+    practiceStatus: 'Learning',
   },
-  { id: 2, title: 'Clair de lune', meta: 'Debussy • 1905', favorite: false, setlistIds: [] },
+  {
+    id: 2,
+    title: 'Clair de lune',
+    meta: 'Debussy • 1905',
+    favorite: false,
+    setlistIds: [],
+    practiceStatus: null,
+  },
 ]
+
+// The five seeded statuses, in their usual order (User Settings, the Filter
+// Drawer). The real build reads the viewer's own list from
+// GET /api/practice-statuses, whose iconKey keeps a renamed status's icon.
+const PRACTICE_STATUSES = ['Want to Learn', 'Learning', 'Learned', 'Stalled', 'Dropped']
+
+// Practice status, set from the right-click / long-press menu (design C′,
+// chosen from a four-way comparison): a labelled strip of the five status
+// icons at the top of the menu, above the actions. One click sets a status
+// and closes the menu; clicking the current one clears it. The label line
+// names whichever icon is hovered or focused, else the current status —
+// the icons never stand alone.
+function PracticeStatusStrip({
+  status,
+  onChange,
+  close,
+}: {
+  status: string | null
+  onChange: (status: string | null) => void
+  close: () => void
+}) {
+  const [hovered, setHovered] = useState<string | null>(null)
+  return (
+    <div className="px-3 pt-1.5 pb-2" onMouseLeave={() => setHovered(null)}>
+      <div className="mb-1.5 flex justify-between gap-3 text-xs text-ink-soft">
+        <span>Practice status</span>
+        <span className="font-medium text-ink">{hovered ?? status ?? 'None'}</span>
+      </div>
+      <div className="flex gap-1" role="radiogroup" aria-label="Practice status">
+        {PRACTICE_STATUSES.map((name) => {
+          const current = status === name
+          return (
+            <button
+              key={name}
+              type="button"
+              role="radio"
+              aria-checked={current}
+              aria-label={current ? `${name} (click to clear)` : name}
+              title={current ? `${name} — click to clear` : name}
+              onMouseEnter={() => setHovered(name)}
+              onFocus={() => setHovered(name)}
+              onBlur={() => setHovered(null)}
+              onClick={() => {
+                onChange(current ? null : name)
+                close()
+              }}
+              className={`flex size-[30px] cursor-pointer items-center justify-center rounded-md border ${
+                current
+                  ? 'border-accent bg-accent-soft text-accent'
+                  : 'border-border bg-paper-raised text-ink-soft hover:border-accent hover:text-ink'
+              }`}
+            >
+              <PracticeStatusIcon status={name} size={16} />
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
 
 // "Nov 1" — short month + day, no year (this popover only ever shows a
 // setlist's own upcoming gig date, never one far enough out that the year
@@ -344,10 +414,14 @@ function FixtureGridCard({
   piece,
   setlistIds,
   onToggleSetlist,
+  practiceStatus,
+  onSetPracticeStatus,
 }: {
   piece: FixturePiece
   setlistIds: string[]
   onToggleSetlist: (id: string) => void
+  practiceStatus: string | null
+  onSetPracticeStatus: (status: string | null) => void
 }) {
   const [pickerOpen, setPickerOpen] = useState(false)
   const inSetlist = setlistIds.length > 0
@@ -359,6 +433,13 @@ function FixtureGridCard({
   return (
     <div className="relative">
       <ContextMenu
+        header={(close) => (
+          <PracticeStatusStrip
+            status={practiceStatus}
+            onChange={onSetPracticeStatus}
+            close={close}
+          />
+        )}
         items={[
           {
             label: piece.favorite ? 'Remove from Favorites' : 'Add to Favorites',
@@ -370,7 +451,14 @@ function FixtureGridCard({
         ]}
       >
         <div className="flex w-56 flex-col overflow-hidden rounded-lg border border-border bg-paper-raised text-left">
-          <div className="aspect-[180/132] w-full border-b border-border bg-paper-sunken" />
+          <div className="relative aspect-[180/132] w-full border-b border-border bg-paper-sunken">
+            {practiceStatus && (
+              <span className="absolute bottom-2 left-2 flex max-w-[calc(100%-3rem)] items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent shadow-sm">
+                <PracticeStatusIcon status={practiceStatus} size={13} className="shrink-0" />
+                <span className="truncate">{practiceStatus}</span>
+              </span>
+            )}
+          </div>
           <div className="flex flex-col gap-1 p-3">
             <p className="flex min-w-0 items-center gap-1.5 font-display text-sm font-medium text-ink">
               <span className="truncate">{piece.title}</span>
@@ -405,10 +493,14 @@ function FixtureListCard({
   piece,
   setlistIds,
   onToggleSetlist,
+  practiceStatus,
+  onSetPracticeStatus,
 }: {
   piece: FixturePiece
   setlistIds: string[]
   onToggleSetlist: (id: string) => void
+  practiceStatus: string | null
+  onSetPracticeStatus: (status: string | null) => void
 }) {
   const [pickerOpen, setPickerOpen] = useState(false)
   const inSetlist = setlistIds.length > 0
@@ -420,6 +512,13 @@ function FixtureListCard({
   return (
     <div className="relative">
       <ContextMenu
+        header={(close) => (
+          <PracticeStatusStrip
+            status={practiceStatus}
+            onChange={onSetPracticeStatus}
+            close={close}
+          />
+        )}
         items={[
           {
             label: piece.favorite ? 'Remove from Favorites' : 'Add to Favorites',
@@ -446,6 +545,12 @@ function FixtureListCard({
               )}
             </p>
             <p className="text-sm text-ink-soft">{piece.meta}</p>
+            {practiceStatus && (
+              <span className="mt-1 flex w-fit items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent">
+                <PracticeStatusIcon status={practiceStatus} size={13} className="shrink-0" />
+                {practiceStatus}
+              </span>
+            )}
           </div>
           <div className="h-[84px] w-[100px] shrink-0 rounded-md border border-border bg-paper-sunken" />
         </div>
@@ -466,6 +571,10 @@ export function AddToSetlistMockup() {
   useMockupTitle('Add to Setlist')
   const [memberships, setMemberships] = useState<Record<number, string[]>>(
     Object.fromEntries(FIXTURE_PIECES.map((p) => [p.id, p.setlistIds])),
+  )
+
+  const [statuses, setStatuses] = useState<Record<number, string | null>>(
+    Object.fromEntries(FIXTURE_PIECES.map((p) => [p.id, p.practiceStatus])),
   )
 
   function toggle(pieceId: number, setlistId: string) {
@@ -490,6 +599,12 @@ export function AddToSetlistMockup() {
           add-to-setlist entry point) and the "already in a setlist" indicator next to the favorite
           heart. Right-click either card below, or long-press on touch.
         </p>
+        <p className="mt-2 text-sm text-ink-soft">
+          The menu also opens with a <b className="font-medium text-ink">practice status strip</b>{' '}
+          (design C′): the five status icons at the top, labelled with whichever one you point at.
+          One click sets a status and closes the menu; clicking the current one clears it. The same
+          menu serves the Library grid and list, Book Details and Person Details.
+        </p>
       </div>
 
       <div>
@@ -501,6 +616,8 @@ export function AddToSetlistMockup() {
               piece={piece}
               setlistIds={memberships[piece.id] ?? []}
               onToggleSetlist={(id) => toggle(piece.id, id)}
+              practiceStatus={statuses[piece.id] ?? null}
+              onSetPracticeStatus={(status) => setStatuses((s) => ({ ...s, [piece.id]: status }))}
             />
           ))}
         </div>
@@ -515,6 +632,8 @@ export function AddToSetlistMockup() {
               piece={piece}
               setlistIds={memberships[piece.id] ?? []}
               onToggleSetlist={(id) => toggle(piece.id, id)}
+              practiceStatus={statuses[piece.id] ?? null}
+              onSetPracticeStatus={(status) => setStatuses((s) => ({ ...s, [piece.id]: status }))}
             />
           ))}
         </div>

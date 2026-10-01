@@ -5,7 +5,7 @@ import {
   IconCircleHalf2,
   IconHourglassEmpty,
 } from '@tabler/icons-react'
-import type { PracticeStatus } from '../api/types'
+import type { PracticeStatus, PracticeStatusItem } from '../api/types'
 
 // One icon per *original seeded* status name: an empty -> half -> full
 // progression across the first three, then an emptied hourglass for
@@ -45,5 +45,30 @@ export function PracticeStatusIcon({
   className?: string
 }) {
   const Icon = PRACTICE_STATUS_ICONS[status]
+  return Icon ? <Icon size={size} className={className} /> : null
+}
+
+// The same five icons keyed by a status's durable icon_key (migration
+// 00026, carried by GET /api/practice-statuses) rather than its live name,
+// so a renamed status keeps its icon — for callers that have the status
+// list itself, like the piece menu's practice status strip.
+const PRACTICE_STATUS_ICONS_BY_KEY: Record<string, typeof IconCircleDashed> = {
+  want_to_learn: IconCircleDashed,
+  learning: IconCircleHalf2,
+  learned: IconCircleCheckFilled,
+  stalled: IconHourglassEmpty,
+  dropped: IconBan,
+}
+
+export function PracticeStatusKeyIcon({
+  iconKey,
+  size,
+  className,
+}: {
+  iconKey: PracticeStatusItem['iconKey']
+  size: number
+  className?: string
+}) {
+  const Icon = iconKey ? PRACTICE_STATUS_ICONS_BY_KEY[iconKey] : undefined
   return Icon ? <Icon size={size} className={className} /> : null
 }

@@ -244,6 +244,64 @@ func (s *Server) handleUpdatePiece(w http.ResponseWriter, r *http.Request) {
 	api.WriteData(w, http.StatusOK, resp)
 }
 
+// handleSetPiecePracticeStatus sets (or, with null, clears) the caller's
+// own practice status for one piece — the piece menu's practice status
+// strip. Gated on `practice`, not `edit`: a practice status is the
+// caller's own data, not library metadata, so it needs neither the full
+// PieceWriteRequest nor the permission to rewrite the piece.
+func (s *Server) handleSetPiecePracticeStatus(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requirePermission(w, r, models.PermissionRead); !ok {
+		return
+	}
+	user, ok := s.requirePermission(w, r, models.PermissionPractice)
+	if !ok {
+		return
+	}
+	id, ok := pathID(r, "id")
+	if !ok {
+		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid piece id")
+		return
+	}
+
+	var req struct {
+		PracticeStatus *string `json:"practiceStatus"`
+	}
+	if err := decodeJSON(r, &req); err != nil {
+		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid request body: "+err.Error())
+		return
+	}
+
+	var resp *api.PieceResponse
+	err := s.withTx(r.Context(), func(tx *sql.Tx) error {
+		p, err := repo.GetPieceByID(r.Context(), tx, id)
+		if err != nil {
+			return err
+		}
+		var statusID *int64
+		if req.PracticeStatus != nil {
+			foundID, found, err := repo.FindPracticeStatusByName(r.Context(), tx, user.ID, *req.PracticeStatus)
+			if err != nil {
+				return err
+			}
+			if !found {
+				return api.ValidationErrors{{Field: "practiceStatus", Message: "does not exist — create it first in Practice Status settings"}}
+			}
+			statusID = &foundID
+		}
+		if err := repo.SetUserPracticeStatus(r.Context(), tx, user.ID, id, statusID); err != nil {
+			return err
+		}
+		resp, err = api.BuildPieceResponse(r.Context(), tx, p, s.Cfg.CopyrightRegion(), user.ID)
+		return err
+	})
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+
+	api.WriteData(w, http.StatusOK, resp)
+}
+
 // handleDeletePiece implements CLAUDE.md > File handling's deletion
 // semantics: hard delete + orphan cleanup, both logged at INFO. The DB
 // transaction (row delete, FTS resync, orphan detection/deletion) commits

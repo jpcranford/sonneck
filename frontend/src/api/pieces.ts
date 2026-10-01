@@ -55,6 +55,12 @@ export function replacePieceFile(
   return apiUpload<Piece>(`/api/pieces/${id}/replace-file`, file, onProgress)
 }
 
+// The caller's own practice status for one piece (null clears it) — needs
+// the `practice` permission, not `edit`.
+export function setPiecePracticeStatus(id: number, practiceStatus: string | null): Promise<Piece> {
+  return apiPatch<Piece>(`/api/pieces/${id}/practice-status`, { practiceStatus })
+}
+
 export function setPieceThumbnailPage(id: number, page: number): Promise<Piece> {
   return apiPatch<Piece>(`/api/pieces/${id}/thumbnail-page`, { page })
 }

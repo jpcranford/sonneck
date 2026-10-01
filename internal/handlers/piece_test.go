@@ -915,3 +915,53 @@ func TestUpdatePiece_400ForMalformedJSON(t *testing.T) {
 		t.Errorf("PATCH with malformed JSON: status %d, want 400", rec.Code)
 	}
 }
+
+// The piece menu's practice status strip: sets and clears the caller's own
+// status without an `edit`-gated full piece write, rejects a status the
+// caller doesn't have, and needs `practice`.
+func TestSetPiecePracticeStatus(t *testing.T) {
+	h, conn := newTestServerWithDB(t)
+	pieceID := uploadTestPiece(t, h)
+	url := apiPiecesURL(pieceID) + "/practice-status"
+
+	type statusOnly struct {
+		PracticeStatus *string `json:"practiceStatus"`
+	}
+	read := func() *string {
+		var got statusOnly
+		decodeData(t, doJSON(t, h, http.MethodGet, apiPiecesURL(pieceID), nil), &got)
+		return got.PracticeStatus
+	}
+
+	rec := doJSON(t, h, http.MethodPatch, url, map[string]any{"practiceStatus": "Learning"})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("set: status %d, body %s", rec.Code, rec.Body.String())
+	}
+	var set statusOnly
+	decodeData(t, rec, &set)
+	if set.PracticeStatus == nil || *set.PracticeStatus != "Learning" {
+		t.Errorf("response practiceStatus = %v, want Learning", set.PracticeStatus)
+	}
+	if got := read(); got == nil || *got != "Learning" {
+		t.Errorf("stored practiceStatus = %v, want Learning", got)
+	}
+
+	if rec := doJSON(t, h, http.MethodPatch, url, map[string]any{"practiceStatus": "Mastered Forever"}); rec.Code != http.StatusBadRequest {
+		t.Errorf("unknown status: status %d, want 400", rec.Code)
+	}
+
+	if rec := doJSON(t, h, http.MethodPatch, url, map[string]any{"practiceStatus": nil}); rec.Code != http.StatusOK {
+		t.Fatalf("clear: status %d, body %s", rec.Code, rec.Body.String())
+	}
+	if got := read(); got != nil {
+		t.Errorf("practiceStatus after clearing = %q, want none", *got)
+	}
+
+	// Straight to the table: `admin` implies every permission.
+	if _, err := conn.Exec(`DELETE FROM user_permissions WHERE user_id = 1 AND permission IN ('admin', 'practice')`); err != nil {
+		t.Fatal(err)
+	}
+	if rec := doJSON(t, h, http.MethodPatch, url, map[string]any{"practiceStatus": "Learning"}); rec.Code != http.StatusForbidden {
+		t.Errorf("without practice: status %d, want 403", rec.Code)
+	}
+}

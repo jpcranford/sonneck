@@ -1,6 +1,7 @@
 import { forwardRef, useRef, useState, type ReactNode } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { deletePiece, updatePiece } from '../api/pieces'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { deletePiece, setPiecePracticeStatus, updatePiece } from '../api/pieces'
+import { listPracticeStatuses } from '../api/lookups'
 import { ApiError } from '../api/client'
 import type { Piece } from '../api/types'
 import { hasPermission, useAuth } from '../lib/AuthContext'
@@ -8,6 +9,7 @@ import { pieceToWriteRequest } from '../lib/pieceToWriteRequest'
 import { ContextMenu, type ContextMenuHandle } from './ContextMenu'
 import { EditPieceModal } from './EditPieceModal'
 import { AddToSetlistPicker } from './AddToSetlistPicker'
+import { PracticeStatusStrip } from './PracticeStatusStrip'
 
 interface PieceContextMenuProps {
   piece: Piece
@@ -23,8 +25,11 @@ interface PieceContextMenuProps {
   siblingPieces?: Piece[]
 }
 
-// Shared right-click menu for piece cards (grid + list): a favorite toggle,
-// "Edit Piece", and, at the end, a destructive "Delete Piece".
+// Shared right-click menu for piece cards (Library grid + list, Book
+// Details, Person Details): the practice status strip on top (hidden
+// without `practice`), then a favorite toggle, "Add to Setlist" (hidden
+// without `create`), "Edit Piece", and, at the end, a destructive
+// "Delete Piece".
 export const PieceContextMenu = forwardRef<ContextMenuHandle, PieceContextMenuProps>(
   function PieceContextMenu({ piece, children, hideTriggerButton, siblingPieces }, ref) {
     const [editOpen, setEditOpen] = useState(false)
@@ -36,6 +41,15 @@ export const PieceContextMenu = forwardRef<ContextMenuHandle, PieceContextMenuPr
     // Hidden, not shown faint, without `create`: setlists are the one
     // thing that permission covers, so there's nothing to offer.
     const canCreate = hasPermission(useAuth(), 'create')
+    // Hidden, not faded, without `practice` — the same call as the
+    // Add to Setlist item above.
+    const canPractice = hasPermission(useAuth(), 'practice')
+    // One shared cache entry for every card on the page.
+    const { data: practiceStatuses = [] } = useQuery({
+      queryKey: ['practice-statuses'],
+      queryFn: listPracticeStatuses,
+      enabled: canPractice,
+    })
 
     // Same full-replace PATCH pattern as PiecePage's own favorite toggle
     // (its keyboard-shortcut "F" and header heart button) — kept here as a
@@ -50,6 +64,20 @@ export const PieceContextMenu = forwardRef<ContextMenuHandle, PieceContextMenuPr
       },
       onError: (error) => {
         window.alert(error instanceof ApiError ? error.message : 'Could not update this piece.')
+      },
+    })
+
+    const practiceStatusMutation = useMutation({
+      mutationFn: (status: string | null) => setPiecePracticeStatus(piece.id, status),
+      onSuccess: (updated) => {
+        queryClient.setQueryData(['piece', piece.id], updated)
+        queryClient.invalidateQueries({ queryKey: ['pieces'] })
+        queryClient.invalidateQueries({ queryKey: ['pieceFacets'] })
+      },
+      onError: (error) => {
+        window.alert(
+          error instanceof ApiError ? error.message : 'Could not set the practice status.',
+        )
       },
     })
 
@@ -74,6 +102,20 @@ export const PieceContextMenu = forwardRef<ContextMenuHandle, PieceContextMenuPr
         <ContextMenu
           ref={ref}
           hideTriggerButton={hideTriggerButton}
+          header={
+            canPractice && practiceStatuses.length > 0
+              ? (close) => (
+                  <PracticeStatusStrip
+                    statuses={practiceStatuses}
+                    current={piece.practiceStatus}
+                    onChange={(status) => {
+                      practiceStatusMutation.mutate(status)
+                      close()
+                    }}
+                  />
+                )
+              : undefined
+          }
           items={[
             {
               label: piece.favorite ? 'Remove from Favorites' : 'Add to Favorites',

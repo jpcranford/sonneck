@@ -24,7 +24,7 @@ const MOCKUPS = [
   {
     to: '/mockup/add-to-setlist',
     name: 'Add to Setlist',
-    note: 'Setlists feature, Phase 5 — the Library grid/list cards’ new right-click "Add to Setlist" item and the "already in a setlist" indicator next to the favorite heart. Right-click/long-press a card to try the picker.',
+    note: 'Setlists feature, Phase 5 — the Library grid/list cards’ new right-click "Add to Setlist" item and the "already in a setlist" indicator next to the favorite heart. The same menu now opens with a practice status strip (design C′). Right-click/long-press a card to try both.',
   },
   {
     to: '/mockup/setlist-details',

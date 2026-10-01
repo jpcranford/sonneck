@@ -35,6 +35,10 @@ interface ContextMenuProps {
   /** Suppresses the built-in "⋯" button when a caller supplies its own
    * custom-positioned trigger via the forwarded ref instead. */
   hideTriggerButton?: boolean
+  /** Custom content above the items, followed by a divider — e.g. the
+   * piece menu's practice status strip. Gets `close` to dismiss the menu
+   * once it has acted, the way choosing an item does. */
+  header?: (close: () => void) => ReactNode
 }
 
 // A long press holds for this long before it counts, matching the rough
@@ -65,7 +69,7 @@ const LONG_PRESS_MOVE_CANCEL_PX = 10
  * card).
  */
 export const ContextMenu = forwardRef<ContextMenuHandle, ContextMenuProps>(function ContextMenu(
-  { items, children, hideTriggerButton },
+  { items, children, hideTriggerButton, header },
   ref,
 ) {
   const [position, setPosition] = useState<{ x: number; y: number } | null>(null)
@@ -182,6 +186,12 @@ export const ContextMenu = forwardRef<ContextMenuHandle, ContextMenuProps>(funct
           style={{ top: position.y, left: position.x }}
           onMouseDown={(event) => event.stopPropagation()}
         >
+          {header && (
+            <>
+              {header(() => setPosition(null))}
+              <div className="my-1 h-px bg-border" />
+            </>
+          )}
           {items.map((item) => (
             <button
               key={item.label}
