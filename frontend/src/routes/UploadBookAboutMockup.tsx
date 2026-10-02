@@ -148,7 +148,7 @@ function ImslpAutofillButton({
       aria-label={valid ? 'Autofill blank fields from IMSLP' : 'No IMSLP number to autofill from'}
       title={valid ? 'Autofill blank fields from IMSLP' : 'No IMSLP number to autofill from'}
       className={`absolute top-1/2 right-2.5 flex size-5 -translate-y-1/2 items-center justify-center disabled:cursor-default ${
-        valid ? 'cursor-pointer text-[#9d9892] hover:text-accent' : 'text-[#c9c2b6]'
+        valid ? 'cursor-pointer text-ink-faint hover:text-accent' : 'text-ink-fainter'
       }`}
     >
       {!valid && <IconCloudOff size={16} />}

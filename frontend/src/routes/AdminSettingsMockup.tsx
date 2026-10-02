@@ -1370,7 +1370,7 @@ export function AdminSettingsMockup() {
                   onClick={() => addLookupItem(column)}
                   aria-label={`Add ${column === 'Sheet Types' ? 'sheet type' : 'instrument'}`}
                   title={`Add ${column === 'Sheet Types' ? 'sheet type' : 'instrument'}`}
-                  className="mt-3 flex w-full cursor-pointer items-center justify-center text-[#9d9892] hover:text-accent"
+                  className="mt-3 flex w-full cursor-pointer items-center justify-center text-ink-faint hover:text-accent"
                 >
                   <IconCircleDashedPlus size={22} />
                 </button>

@@ -124,8 +124,8 @@ const MOCK_WIKI_SEARCH: Record<string, WikiSearchResult[]> = {
   ],
 }
 
-// Same faint pre-blended tones as the real ImslpAutofillButton.tsx
-// (#9d9892/#c9c2b6, never a translucent opacity utility), kept as a local
+// Same faint tones as the real ImslpAutofillButton.tsx (ink-faint /
+// ink-fainter, never a translucent opacity utility), kept as a local
 // mockup-only duplicate rather than a shared component. Sits inside the
 // Name field itself — the thing that actually drives the search, since a
 // person has no separate numeric identifier the way IMSLP does — same
@@ -165,7 +165,7 @@ function WikipediaAutofillButton({
         valid ? 'Search Wikipedia to autofill blank fields' : 'Type a name to search Wikipedia'
       }
       className={`absolute top-1/2 right-2.5 flex -translate-y-1/2 items-center gap-1 disabled:cursor-default ${
-        valid ? 'cursor-pointer text-[#9d9892] hover:text-accent' : 'text-[#c9c2b6]'
+        valid ? 'cursor-pointer text-ink-faint hover:text-accent' : 'text-ink-fainter'
       }`}
     >
       <IconBrandWikipedia size={15} className="shrink-0" aria-hidden="true" />

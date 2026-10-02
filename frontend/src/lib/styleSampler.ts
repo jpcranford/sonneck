@@ -104,8 +104,10 @@ export function parseFontFaces(css: string): Map<string, string[]> {
 }
 
 // Comments mention colors and class names in passing; only code counts.
+// One left-to-right pass, so a `/*` inside a line comment (or `//` inside a
+// block comment) is read as part of that comment, not as a new one.
 export function stripComments(src: string): string {
-  return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`\\])\/\/.*$/gm, '$1')
+  return src.replace(/\/\*[\s\S]*?\*\/|(^|[^:'"`\\])\/\/.*$/gm, (_, before) => before ?? '')
 }
 
 function escapeRe(s: string): string {

@@ -1189,7 +1189,7 @@ export function PieceDetailsSample() {
                     rel="noreferrer"
                     aria-label="View on IMSLP"
                     // Solid pre-blend, not opacity — overlapping icon strokes would re-blend unevenly under real translucency.
-                    className="text-[#9c968f] hover:text-ink-soft"
+                    className="text-ink-faint hover:text-ink-soft"
                   >
                     <IconExternalLink size={13} />
                   </a>
@@ -1242,7 +1242,7 @@ export function PieceDetailsSample() {
                   type="button"
                   onClick={() => setTempoOpen((o) => !o)}
                   // Solid pre-blend (icon + label share one color).
-                  className="flex cursor-pointer items-center gap-1 text-xs text-[#847d75] hover:text-ink-soft"
+                  className="flex cursor-pointer items-center gap-1 text-xs text-ink-muted hover:text-ink-soft"
                 >
                   <IconChevronRight
                     size={12}
@@ -1357,7 +1357,7 @@ export function PieceDetailsSample() {
               type="button"
               onClick={() => setAdvancedOpen((o) => !o)}
               // Solid pre-blend (icon + label share one color).
-              className="flex w-fit cursor-pointer items-center gap-1 text-[#847d75] hover:text-ink-soft"
+              className="flex w-fit cursor-pointer items-center gap-1 text-ink-muted hover:text-ink-soft"
             >
               <IconChevronRight
                 size={13}
@@ -1375,7 +1375,7 @@ export function PieceDetailsSample() {
                       onClick={(event) => handleCopy(piece.fileHash, event)}
                       aria-label="Copy full file hash"
                       // Solid pre-blend, not opacity — overlapping icon strokes would re-blend unevenly under real translucency.
-                      className="cursor-pointer text-[#aca7a1] hover:text-ink-soft"
+                      className="cursor-pointer text-ink-faint hover:text-ink-soft"
                     >
                       <IconCopy size={12} />
                     </button>

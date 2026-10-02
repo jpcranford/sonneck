@@ -71,14 +71,14 @@ export function BookGridCard({ book }: BookGridCardProps) {
             />
           ) : (
             // A manually created book (migration 00014) has no file to
-            // render a cover from — file-x on flat-sunken. Icon color is a
-            // solid pre-blended hex, not a translucent text-ink-soft/*
+            // render a cover from — file-x on flat-sunken. Icon color is
+            // ink-fainter, a solid token, not a translucent ink-soft
             // opacity utility: Tabler icons are several overlapping <path>
             // strokes, so a translucent color re-blends at every overlap
             // (e.g. file-x's corners), leaving visibly darker patches
             // there.
             <div className="flex h-full w-full flex-col items-center justify-center gap-2">
-              <IconFileX size={28} className="text-[#aea8a0]" />
+              <IconFileX size={28} className="text-ink-fainter" />
             </div>
           )}
           <span className="absolute right-2 bottom-1.5 flex items-center gap-1 rounded-full bg-[rgba(28,24,21,0.82)] px-[7px] py-[2px] text-[0.7rem] font-semibold text-white">

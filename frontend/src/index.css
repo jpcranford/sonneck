@@ -348,6 +348,15 @@
   --color-ink: #1c1815;
   /* Secondary text: meta lines, labels, hints, quiet icons. */
   --color-ink-soft: #5c5349;
+  /* The faded inks are ink-soft blended toward the page and kept solid, never
+     an opacity utility: Tabler icons overlap their own strokes, and a
+     see-through color darkens where they cross. */
+  /* Clickable grey text: the Tempo details, Advanced and Calculate from tempo toggles. */
+  --color-ink-muted: #847d75;
+  /* Quiet clickable icons: field chevrons and search, info hints, external links, copy, add rows, tag remove, the footer mark. */
+  --color-ink-faint: #9d9892;
+  /* Things you can't click: the no-file cover icon, the unavailable Open PDF button, list-card chevrons, a disabled autofill. */
+  --color-ink-fainter: #aea9a4;
   /* The page background, and the fill of neutral pills. */
   --color-paper: #fbfaf8;
   /* Anything sitting on the page: cards, modals, menus, fields, secondary buttons. */

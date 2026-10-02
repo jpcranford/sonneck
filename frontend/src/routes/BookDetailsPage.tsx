@@ -501,7 +501,7 @@ export function BookDetailsPage() {
               rel="noreferrer"
               aria-label="View on IMSLP"
               // Solid pre-blend, not opacity — overlapping icon strokes would re-blend unevenly under real translucency.
-              className="text-[#9c968f] hover:text-ink-soft"
+              className="text-ink-faint hover:text-ink-soft"
             >
               <IconExternalLink size={12} />
             </a>
@@ -535,7 +535,7 @@ export function BookDetailsPage() {
               target="_blank"
               rel="noreferrer"
               aria-label="View on isbnsearch.org"
-              className="text-[#9c968f] hover:text-ink-soft"
+              className="text-ink-faint hover:text-ink-soft"
             >
               <IconExternalLink size={12} />
             </a>
@@ -619,15 +619,14 @@ export function BookDetailsPage() {
                     ? "You don't have permission to download files"
                     : 'No original file on record'
                 }
-                // text-[#aea9a4] is a solid pre-blend of ink-soft at 50%
-                // over this span's own bg-paper-raised (white) background —
-                // not a translucent text-ink-soft/50 utility. IconFileTypePdf
+                // text-ink-fainter, a solid token — not a translucent
+                // text-ink-soft/50 utility. IconFileTypePdf
                 // is a multi-path icon, so a translucent color would
                 // re-blend (and visibly darken) at every path overlap. Same
                 // faint/inert treatment for both reasons a file isn't
                 // openable here — no file at all, or a real one this user
                 // lacks the download permission for.
-                className="flex w-[38px] cursor-not-allowed items-center justify-center rounded-md border border-border bg-paper-raised text-[#aea9a4]"
+                className="flex w-[38px] cursor-not-allowed items-center justify-center rounded-md border border-border bg-paper-raised text-ink-fainter"
               >
                 <IconFileTypePdf size={16} />
               </span>
@@ -756,7 +755,7 @@ export function BookDetailsPage() {
                     // review. Solid pre-blended hex, not a translucent opacity
                     // utility — see the matching comment in BookGridCard.tsx.
                     <div className="flex h-full w-full items-center justify-center">
-                      <IconFileX size={28} className="text-[#aea8a0]" />
+                      <IconFileX size={28} className="text-ink-fainter" />
                     </div>
                   )}
                 </div>

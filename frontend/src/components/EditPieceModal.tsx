@@ -1332,7 +1332,7 @@ export function EditPieceModal({
               // Solid pre-blend (icon + label share one color) — identical
               // against a static background either way for the text half,
               // but the chevron icon needs it.
-              className="flex cursor-pointer items-center gap-1 text-xs text-[#9d9892] hover:text-ink-soft"
+              className="flex cursor-pointer items-center gap-1 text-xs text-ink-muted hover:text-ink-soft"
             >
               <IconChevronRight
                 size={12}

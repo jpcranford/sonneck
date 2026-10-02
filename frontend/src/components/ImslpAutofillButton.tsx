@@ -20,9 +20,8 @@ import { IconCheck, IconCloudDownload, IconCloudOff, IconLoader2 } from '@tabler
 // shows cloud-off instead, fainter still than the fetchable state —
 // always visible either way, so the feature is discoverable even when
 // there's nothing to fetch yet, rather than disappearing entirely. Both
-// are solid pre-blend colors (#9d9892 / #c9c2b6, the same two faint
-// tones this codebase already uses elsewhere for "faint icon" and
-// "fainter still, disabled-reading" content respectively), never a
+// are solid colors (ink-faint / ink-fainter, the app's tokens for "faint
+// icon" and "fainter still, disabled-reading" content respectively), never a
 // translucent opacity utility (CLAUDE.md's icon-color rule).
 export function ImslpAutofillButton({
   state,
@@ -42,12 +41,14 @@ export function ImslpAutofillButton({
       aria-label={valid ? 'Autofill blank fields from IMSLP' : 'No IMSLP number to autofill from'}
       title={valid ? 'Autofill blank fields from IMSLP' : 'No IMSLP number to autofill from'}
       className={`absolute top-1/2 right-2.5 flex size-5 -translate-y-1/2 items-center justify-center disabled:cursor-default ${
-        valid ? 'cursor-pointer text-[#9d9892] hover:text-accent' : 'text-[#c9c2b6]'
+        valid ? 'cursor-pointer text-ink-faint hover:text-accent' : 'text-ink-fainter'
       }`}
     >
       {!valid && <IconCloudOff size={16} />}
       {valid && state === 'idle' && <IconCloudDownload size={16} />}
-      {valid && state === 'fetching' && <IconLoader2 size={16} className="animate-spin text-ink-soft" />}
+      {valid && state === 'fetching' && (
+        <IconLoader2 size={16} className="animate-spin text-ink-soft" />
+      )}
       {valid && state === 'done' && <IconCheck size={16} className="text-accent" />}
     </button>
   )

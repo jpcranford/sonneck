@@ -119,9 +119,11 @@ export function SingleSelect({
           onBlur={() => setTimeout(() => setOpen(false), 150)}
           className="flex w-full cursor-pointer items-center justify-between rounded-md border border-border bg-paper-raised px-3 py-2 text-left text-ink focus:outline focus:outline-2 focus:outline-accent focus:outline-offset-2"
         >
-          <span className={value ? '' : 'text-ink-soft/50'}>{selected?.label ?? placeholder ?? '—'}</span>
+          <span className={value ? '' : 'text-ink-soft/50'}>
+            {selected?.label ?? placeholder ?? '—'}
+          </span>
           {/* Solid pre-blend, not opacity — overlapping icon strokes would re-blend unevenly under real translucency. */}
-          <IconChevronDown size={16} className="text-[#9d9892]" />
+          <IconChevronDown size={16} className="text-ink-faint" />
         </button>
         {open && (
           <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border border-border bg-paper-raised py-1 shadow-lg">
@@ -135,7 +137,9 @@ export function SingleSelect({
                   index === highlightedIndex ? 'bg-accent-soft' : ''
                 }`}
               >
-                <span className={`block text-sm ${opt.value === value ? 'text-accent' : 'text-ink'}`}>
+                <span
+                  className={`block text-sm ${opt.value === value ? 'text-accent' : 'text-ink'}`}
+                >
                   {opt.label}
                 </span>
                 {opt.description && (

@@ -15,7 +15,7 @@ interface InfoIconTooltipProps {
  * the Admin Users permission grid): the icon itself, its size (13, no
  * per-caller exceptions — the Admin Users grid used to pass a denser 12,
  * direct instruction removed that variance), and its trigger color — solid
- * pre-blend `#9d9892`, never a translucent opacity utility, since
+ * `ink-faint`, never a translucent opacity utility, since
  * `IconInfoCircle` is multi-path and a translucent color re-blends
  * unevenly at the overlaps (CLAUDE.md's own standing icon-color rule —
  * violated at one of the sites this replaced, `AdminPage.tsx`'s permission
@@ -23,7 +23,11 @@ interface InfoIconTooltipProps {
  */
 export function InfoIconTooltip({ message, ariaLabel }: InfoIconTooltipProps) {
   return (
-    <InfoTooltip message={message} ariaLabel={ariaLabel} triggerClassName="text-[#9d9892] hover:text-ink-soft">
+    <InfoTooltip
+      message={message}
+      ariaLabel={ariaLabel}
+      triggerClassName="text-ink-faint hover:text-ink-soft"
+    >
       <IconInfoCircle size={13} />
     </InfoTooltip>
   )

@@ -342,7 +342,7 @@ function BookCatalogRow({ book }: { book: MockBook }) {
         <span className="mt-1 text-[0.6rem] tracking-wide text-ink-soft uppercase">pieces</span>
       </div>
       {/* Solid pre-blend, not opacity — overlapping icon strokes would re-blend unevenly under real translucency. */}
-      <IconChevronRight size={18} className="shrink-0 text-[#aca7a1]" />
+      <IconChevronRight size={18} className="shrink-0 text-ink-fainter" />
     </div>
   )
 }
@@ -704,7 +704,7 @@ function BookSortControl({
           className="flex cursor-pointer items-center gap-1.5 px-3 py-2 text-sm text-ink hover:bg-paper-sunken"
         >
           {field}
-          <IconChevronDown size={14} className="text-[#9d9892]" />
+          <IconChevronDown size={14} className="text-ink-faint" />
         </button>
         <button
           type="button"

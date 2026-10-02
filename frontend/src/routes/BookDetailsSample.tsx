@@ -560,7 +560,7 @@ function bookFields(
             rel="noreferrer"
             aria-label="View on IMSLP"
             // Solid pre-blend, not opacity — overlapping icon strokes would re-blend unevenly under real translucency.
-            className="text-[#9c968f] hover:text-ink-soft"
+            className="text-ink-faint hover:text-ink-soft"
           >
             <IconExternalLink size={12} />
           </a>
@@ -593,7 +593,7 @@ function bookFields(
             target="_blank"
             rel="noreferrer"
             aria-label="View on isbnsearch.org"
-            className="text-[#9c968f] hover:text-ink-soft"
+            className="text-ink-faint hover:text-ink-soft"
           >
             <IconExternalLink size={12} />
           </a>

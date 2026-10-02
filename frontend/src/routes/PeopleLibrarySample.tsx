@@ -366,7 +366,7 @@ function PersonListRow({ person, onDelete }: { person: MockPerson; onDelete: () 
           <p className="truncate font-display text-base font-medium text-ink">{person.name}</p>
           <p className="truncate text-sm text-ink-soft">{metaLine(person)}</p>
         </div>
-        <IconChevronRight size={18} className="shrink-0 text-[#aca7a1]" />
+        <IconChevronRight size={18} className="shrink-0 text-ink-fainter" />
       </div>
     </PersonContextMenu>
   )
@@ -757,7 +757,7 @@ function PersonSortControl({
           className="flex cursor-pointer items-center gap-1.5 px-3 py-2 text-sm text-ink hover:bg-paper-sunken"
         >
           {field}
-          <IconChevronDown size={14} className="text-[#9d9892]" />
+          <IconChevronDown size={14} className="text-ink-faint" />
         </button>
         <button
           type="button"
