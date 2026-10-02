@@ -1045,7 +1045,7 @@ export function UploadBookTitlesMockup() {
           <button
             type="button"
             onClick={handleCancelUpload}
-            className="flex cursor-pointer items-center gap-1.5 text-base text-danger hover:text-red-800"
+            className="flex cursor-pointer items-center gap-1.5 text-base text-danger hover:text-danger-strong"
           >
             <IconX size={24} />
             Cancel upload

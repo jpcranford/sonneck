@@ -483,7 +483,7 @@ export function AuthChangeFlow({
                   },
                 })
               }}
-              className="mt-8 flex w-full cursor-pointer items-center justify-center gap-2.5 rounded-md bg-danger px-6 py-3.5 font-display text-base font-medium text-white shadow-sm hover:bg-red-800"
+              className="mt-8 flex w-full cursor-pointer items-center justify-center gap-2.5 rounded-md bg-danger px-6 py-3.5 font-display text-base font-medium text-white shadow-sm hover:bg-danger-strong"
             >
               <IconAlertTriangle size={20} />
               Delete accounts now

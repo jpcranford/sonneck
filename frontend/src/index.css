@@ -381,6 +381,8 @@
 
   /* Destructive and excluding actions: delete buttons and links, error text, the "Not …" filter state. */
   --color-danger: #b91c1c;
+  /* Danger's hover: solid red buttons and red text links darken to this. */
+  --color-danger-strong: #991b1b;
   /* The pale fill behind danger: exclude chips, delete-button hovers, accounts about to be deleted. */
   --color-danger-soft: #fbe9e7;
   /* The outline of a danger-soft box, like each account in the Auth Change delete list. */

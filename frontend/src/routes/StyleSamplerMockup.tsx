@@ -288,7 +288,7 @@ function LiteralColorSection({ files }: { files: SourceFile[] | null }) {
     <Section
       id="literal-colors"
       title="Hard-coded colors"
-      intro="Colors written straight into components instead of through a token: hex values and Tailwind palette classes (red-800, white…). A dark mode can’t reach these through the tokens, so each would need its own treatment."
+      intro="Colors written straight into components instead of through a token: hex values and Tailwind palette classes (white, black…). A dark mode can’t reach these through the tokens, so each would need its own treatment."
     >
       {!colors ? (
         <Loading />

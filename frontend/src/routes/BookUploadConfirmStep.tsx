@@ -259,7 +259,7 @@ export function BookUploadConfirmStep({
           type="button"
           onClick={onCancel}
           disabled={cancelPending || importMutation.isPending}
-          className="flex cursor-pointer items-center gap-1.5 text-base text-danger hover:text-red-800 disabled:cursor-default disabled:opacity-45"
+          className="flex cursor-pointer items-center gap-1.5 text-base text-danger hover:text-danger-strong disabled:cursor-default disabled:opacity-45"
         >
           <IconX size={24} />
           Cancel upload

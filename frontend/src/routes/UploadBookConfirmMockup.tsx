@@ -280,7 +280,7 @@ export function UploadBookConfirmMockup() {
               type="button"
               onClick={handleCancelUpload}
               disabled={stage === 'importing'}
-              className="flex cursor-pointer items-center gap-1.5 text-base text-danger hover:text-red-800 disabled:pointer-events-none disabled:opacity-40"
+              className="flex cursor-pointer items-center gap-1.5 text-base text-danger hover:text-danger-strong disabled:pointer-events-none disabled:opacity-40"
             >
               <IconX size={24} />
               Cancel upload

@@ -1561,7 +1561,7 @@ export function AdminSettingsMockup() {
               type="button"
               disabled={lookupDeleteMode === 'merge' && mergeTargetId === null}
               onClick={confirmLookupDelete}
-              className="cursor-pointer rounded-md bg-danger px-4 py-2 text-sm text-white hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-40"
+              className="cursor-pointer rounded-md bg-danger px-4 py-2 text-sm text-white hover:bg-danger-strong disabled:cursor-not-allowed disabled:opacity-40"
             >
               {lookupDeleteMode === 'merge' ? 'Merge and delete' : 'Delete outright'}
             </button>
