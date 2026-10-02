@@ -340,26 +340,41 @@
      leak into text that was never using Cabin in the first place. */
   --tracking-sans: 0.02em;
 
+  /* Colors. The comment directly above each one is its description on
+     /mockup/style-sampler, which reads this block live. */
+  /* Body text and headings on light surfaces. */
   --color-ink: #1c1815;
+  /* Secondary text: meta lines, labels, hints, quiet icons. */
   --color-ink-soft: #5c5349;
+  /* The page background, and the fill of neutral pills. */
   --color-paper: #fbfaf8;
+  /* Anything sitting on the page: cards, modals, menus, fields, secondary buttons. */
   --color-paper-raised: #ffffff;
+  /* Recessed areas: thumbnail wells, segmented-control tracks, inset panels. */
   --color-paper-sunken: #f1eee8;
+  /* Hairlines: card, field and button outlines, dividers, the off switch track. */
   --color-border: #e4e0d8;
 
+  /* The sidebar and mobile nav drawer background. */
   --color-sidebar-bg: #0f0c0b;
+  /* Raised things in the sidebar: the active nav item, the account card and its menu. */
   --color-sidebar-panel: #2f2723;
+  /* Sidebar text and icons. */
   --color-sidebar-text: #d9d0c3;
+  /* Sidebar section headings, dates and quiet controls. */
   --color-sidebar-text-dim: #8f857a;
+  /* The sidebar's edge, its dividers and outlined controls. */
   --color-sidebar-border: #37302b;
 
+  /* Primary buttons, links, selected states, per-user pills' text. */
   --color-accent: #3f5c3f;
+  /* Hover and selected row tints, per-user pills, callouts, active dropzones. */
   --color-accent-soft: #e3e9e0;
+  /* Accent that reads on dark or accent-filled surfaces: the autofill highlight ring, progress stripes. */
   --color-accent-on-dark: #86a67f;
 
-  /* Trying focus == accent (was a distinct teal, #2f6f77) — references
-     accent directly so the two can't drift out of sync if accent ever
-     changes. */
+  /* The keyboard focus outline. Same as accent, referenced directly so
+     the two can't drift apart. */
   --color-focus: var(--color-accent);
 
   /* Moving diagonal-stripe fill for a "working on it, no real percentage

@@ -47,6 +47,7 @@ import { LoginScreenMockup } from './routes/LoginScreenMockup'
 import { CitationLogicMockup } from './routes/CitationLogicMockup'
 import { DeviceInfoMockup } from './routes/DeviceInfoMockup'
 import { FirstLaunchMockup } from './routes/FirstLaunchMockup'
+import { StyleSamplerMockup } from './routes/StyleSamplerMockup'
 import { PeopleLibraryPage } from './routes/PeopleLibraryPage'
 import { PersonDetailsPage } from './routes/PersonDetailsPage'
 import { FavoritesPage } from './routes/FavoritesPage'
@@ -186,6 +187,7 @@ function AppRoutes() {
         <Route path="mockup/device-info" element={<DeviceInfoMockup />} />
         <Route path="mockup/user-settings" element={<UserSettingsMockup />} />
         <Route path="mockup/admin-settings" element={<AdminSettingsMockup />} />
+        <Route path="mockup/style-sampler" element={<StyleSamplerMockup />} />
         <Route path="favorites" element={<FavoritesPage />} />
         <Route path="want-to-learn" element={<WantToLearnPage />} />
         <Route path="practicing" element={<PracticingPage />} />
