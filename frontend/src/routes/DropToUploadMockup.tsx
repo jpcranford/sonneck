@@ -113,8 +113,8 @@ function ChoiceCard({
         {icon}
       </span>
       <span>
-        <span className="block font-display text-[0.98rem] font-medium text-ink">{title}</span>
-        <span className="block text-[0.8rem] text-ink-soft">{detail}</span>
+        <span className="block font-display text-base font-medium text-ink">{title}</span>
+        <span className="block text-xs text-ink-soft">{detail}</span>
       </span>
     </button>
   )

@@ -221,7 +221,7 @@ function WorkGrid({ pieces, personId }: { pieces: Piece[]; personId: number }) {
               className="aspect-[180/132] rounded-none border-0 border-b"
             />
             <div className="flex flex-col gap-0.5 px-2 py-1.5">
-              <p className="flex min-w-0 items-center gap-1 font-display text-[0.8rem] font-medium text-ink">
+              <p className="flex min-w-0 items-center gap-1 font-display text-xs font-medium text-ink">
                 <span className="truncate">{workTitle(piece)}</span>
                 {piece.favorite && (
                   <span className="shrink-0 text-accent" title="Favorite">
@@ -244,7 +244,7 @@ function WorkGrid({ pieces, personId }: { pieces: Piece[]; personId: number }) {
 function WorkList({ pieces, personId }: { pieces: Piece[]; personId: number }) {
   return (
     <div className="flex flex-col">
-      <div className="grid grid-cols-[96px_1fr_56px] gap-3 px-1.5 pb-2.5 text-[0.7rem] font-medium tracking-wide text-ink-soft uppercase">
+      <div className="grid grid-cols-[96px_1fr_56px] gap-3 px-1.5 pb-2.5 text-xs font-medium tracking-wide text-ink-soft uppercase">
         <div className="text-center">Year</div>
         <div>Title</div>
         <div className={THUMB_HIDE_CLASS} />
@@ -261,7 +261,7 @@ function WorkList({ pieces, personId }: { pieces: Piece[]; personId: number }) {
                 {yearWrittenLabel(piece)}
               </div>
               <div className="min-w-0">
-                <p className="flex flex-wrap items-center gap-1.5 font-display text-[0.92rem] font-medium text-ink">
+                <p className="flex flex-wrap items-center gap-1.5 font-display text-sm font-medium text-ink">
                   {workTitle(piece)}
                   {piece.favorite && (
                     <span className="text-accent" title="Favorite">
@@ -638,23 +638,21 @@ export function PersonDetailsPage() {
 
               <div className="min-w-0 flex-1">
                 <div className="mb-2">
-                  <h1 className="font-display text-[1.35rem] font-medium text-ink">
-                    {person.name}
-                  </h1>
+                  <h1 className="font-display text-2xl font-medium text-ink">{person.name}</h1>
                   {formatLifespan(person) && (
-                    <p className="text-[0.92rem] text-ink-soft">{formatLifespan(person)}</p>
+                    <p className="text-base text-ink-soft">{formatLifespan(person)}</p>
                   )}
                 </div>
 
                 {person.bio && (
-                  <div className="max-w-[60ch] text-[0.88rem] text-ink-soft">
+                  <div className="max-w-[60ch] text-sm text-ink-soft">
                     <MarkdownText>{person.bio}</MarkdownText>
                   </div>
                 )}
 
                 {bookCredits && bookCredits.length > 0 && (
                   <div className="mt-3.5">
-                    <dt className="mb-1.5 text-[0.7rem] tracking-wide text-ink-soft uppercase">
+                    <dt className="mb-1.5 text-xs tracking-wide text-ink-soft uppercase">
                       Also credited directly on {bookCredits.length}{' '}
                       {bookCredits.length === 1 ? 'book' : 'books'}
                     </dt>
@@ -687,7 +685,7 @@ export function PersonDetailsPage() {
 
           <div className="bg-paper">
             <div className="flex flex-wrap items-center justify-between gap-4 px-6 pb-4">
-              <h2 className="font-display text-[0.95rem] font-bold text-ink-soft">
+              <h2 className="font-display text-base font-bold text-ink-soft">
                 {works ? `${works.length} ${works.length === 1 ? 'piece' : 'pieces'}` : '…'}
               </h2>
               <div className="flex shrink-0 items-center gap-1 rounded-md border border-border p-0.5">
@@ -719,8 +717,8 @@ export function PersonDetailsPage() {
               {worksLoading && <p className="text-ink-soft">Loading…</p>}
               {works && works.length === 0 && (
                 <div className="py-6 text-center">
-                  <p className="font-display text-ink">No pieces yet</p>
-                  <p className="mt-1 text-sm text-ink-soft">
+                  <p className="font-display font-medium text-ink-muted">No pieces yet</p>
+                  <p className="mt-1 text-sm italic text-ink-muted">
                     Pieces and books crediting this person will appear here.
                   </p>
                 </div>

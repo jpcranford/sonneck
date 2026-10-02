@@ -338,7 +338,9 @@ function BookCatalogRow({ book }: { book: MockBook }) {
         </p>
       </div>
       <div className="flex w-14 shrink-0 flex-col items-center justify-center border-l border-border pl-4">
-        <span className="font-display text-xl leading-none text-accent">{book.pieceCount}</span>
+        <span className="font-display text-xl leading-none font-medium text-ink-soft">
+          {book.pieceCount}
+        </span>
         <span className="mt-1 text-[0.6rem] tracking-wide text-ink-soft uppercase">pieces</span>
       </div>
       {/* Solid pre-blend, not opacity — overlapping icon strokes would re-blend unevenly under real translucency. */}

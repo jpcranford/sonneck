@@ -72,7 +72,7 @@ function DrawerNavList({ items, onNavigate }: { items: NavItem[]; onNavigate: ()
         const blocked = permission && !hasPermission(me, permission)
         const content = (
           <>
-            <Icon size={22} className="text-sidebar-text" />
+            <Icon size={24} className="text-sidebar-text" />
             {/* relative top-[0.6px]: same eye-calibrated fix as
                 Sidebar.tsx's own NavItemsList — see that file's comment. */}
             <span className="relative top-[0.6px] truncate">{label}</span>
@@ -87,7 +87,7 @@ function DrawerNavList({ items, onNavigate }: { items: NavItem[]; onNavigate: ()
             <span
               key={to}
               title="You don't have permission to upload"
-              className="flex h-11 cursor-not-allowed items-center gap-3 rounded-md px-3 font-display text-[0.95rem] font-medium text-sidebar-text opacity-40"
+              className="flex h-11 cursor-not-allowed items-center gap-3 rounded-md px-3 font-display text-base font-medium text-sidebar-text opacity-40"
             >
               {content}
             </span>
@@ -100,7 +100,7 @@ function DrawerNavList({ items, onNavigate }: { items: NavItem[]; onNavigate: ()
             end={to === '/'}
             onClick={onNavigate}
             className={({ isActive }) =>
-              `flex h-11 items-center gap-3 rounded-md px-3 font-display text-[0.95rem] font-medium ${
+              `flex h-11 items-center gap-3 rounded-md px-3 font-display text-base font-medium ${
                 isActive
                   ? 'bg-sidebar-panel text-sidebar-text'
                   : 'text-sidebar-text hover:bg-white/5'

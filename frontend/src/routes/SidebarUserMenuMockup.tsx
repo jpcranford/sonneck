@@ -93,8 +93,20 @@ interface Identity {
 // distinct named accounts); the two OIDC rows show the admin-vs-member
 // permission split once real distinct accounts exist.
 const IDENTITIES: Record<IdentityKey, Identity> = {
-  none: { label: 'No login', name: 'Admin', sub: 'No login required', isAdmin: true, showLogout: false },
-  singlepass: { label: 'Password', name: 'Admin', sub: 'Shared password', isAdmin: true, showLogout: true },
+  none: {
+    label: 'No login',
+    name: 'Admin',
+    sub: 'No login required',
+    isAdmin: true,
+    showLogout: false,
+  },
+  singlepass: {
+    label: 'Password',
+    name: 'Admin',
+    sub: 'Shared password',
+    isAdmin: true,
+    showLogout: true,
+  },
   'oidc-admin': {
     label: 'OIDC — Admin',
     name: 'Jamie Chen',
@@ -146,7 +158,11 @@ function IdentityStateToggle({
 
 type ThemePreview = 'light' | 'dark' | 'system'
 
-const THEME_OPTIONS: { key: ThemePreview; icon: ComponentType<{ size?: number; className?: string }>; label: string }[] = [
+const THEME_OPTIONS: {
+  key: ThemePreview
+  icon: ComponentType<{ size?: number; className?: string }>
+  label: string
+}[] = [
   { key: 'light', icon: IconSun, label: 'Light' },
   { key: 'dark', icon: IconMoon, label: 'Dark' },
   { key: 'system', icon: IconDeviceDesktop, label: 'System' },
@@ -160,7 +176,13 @@ const THEME_OPTIONS: { key: ThemePreview; icon: ComponentType<{ size?: number; c
 // button independently flipping its own background — the small bit of
 // motion is the whole point of "elegant" here, on a control small enough
 // that a plain instant color swap would read as static/dead by comparison.
-function ThemeSwitcher({ theme, onChange }: { theme: ThemePreview; onChange: (theme: ThemePreview) => void }) {
+function ThemeSwitcher({
+  theme,
+  onChange,
+}: {
+  theme: ThemePreview
+  onChange: (theme: ThemePreview) => void
+}) {
   const activeIndex = THEME_OPTIONS.findIndex((option) => option.key === theme)
   return (
     <div className="flex items-center justify-between gap-3 px-3.5 py-2.5">
@@ -257,7 +279,7 @@ function UserMenuButton({
         </span>
         {!collapsed && (
           <>
-            <span className="min-w-0 flex-1 truncate text-left text-[0.95rem] text-sidebar-text">
+            <span className="min-w-0 flex-1 truncate text-left text-base text-sidebar-text">
               {identity.name}
             </span>
             <IconSelector size={15} className="shrink-0 text-sidebar-text-dim" />
@@ -277,7 +299,9 @@ function UserMenuButton({
       <div
         role="menu"
         className={`absolute bottom-full left-0 z-20 mb-2 w-60 origin-bottom-left overflow-hidden rounded-lg border border-sidebar-border bg-sidebar-panel shadow-xl transition-[opacity,transform] duration-100 ${
-          open ? 'pointer-events-auto translate-y-0 opacity-100' : 'pointer-events-none translate-y-1 opacity-0'
+          open
+            ? 'pointer-events-auto translate-y-0 opacity-100'
+            : 'pointer-events-none translate-y-1 opacity-0'
         }`}
       >
         <div className="flex items-center gap-2.5 px-3.5 py-3">
@@ -358,12 +382,12 @@ function RailNavList({ items, collapsed }: { items: NavItem[]; collapsed: boolea
           end={to === '/'}
           title={collapsed ? label : undefined}
           className={({ isActive }) =>
-            `flex h-10 items-center gap-3 rounded-md px-2 font-display text-[0.95rem] font-medium ${
+            `flex h-10 items-center gap-3 rounded-md px-2 font-display text-base font-medium ${
               collapsed ? 'justify-center' : ''
             } ${isActive ? 'bg-sidebar-panel text-sidebar-text' : 'text-sidebar-text hover:bg-white/5'}`
           }
         >
-          <Icon size={22} className="text-sidebar-text" />
+          <Icon size={24} className="text-sidebar-text" />
           {!collapsed && <span className="relative top-[0.6px] truncate">{label}</span>}
         </NavLink>
       ))}
@@ -381,12 +405,12 @@ function DrawerNavList({ items, onNavigate }: { items: NavItem[]; onNavigate: ()
           end={to === '/'}
           onClick={onNavigate}
           className={({ isActive }) =>
-            `flex h-11 items-center gap-3 rounded-md px-3 font-display text-[0.95rem] font-medium ${
+            `flex h-11 items-center gap-3 rounded-md px-3 font-display text-base font-medium ${
               isActive ? 'bg-sidebar-panel text-sidebar-text' : 'text-sidebar-text hover:bg-white/5'
             }`
           }
         >
-          <Icon size={22} className="text-sidebar-text" />
+          <Icon size={24} className="text-sidebar-text" />
           <span className="relative top-[0.6px] truncate">{label}</span>
         </NavLink>
       ))}
@@ -403,12 +427,12 @@ function SetlistsSlot({ collapsed }: { collapsed: boolean }) {
       {collapsed ? (
         <span
           title="Coming soon"
-          className="mt-1 flex size-10 items-center justify-center rounded-md font-display text-[0.95rem] font-medium text-sidebar-text"
+          className="mt-1 flex size-10 items-center justify-center rounded-md font-display text-base font-medium text-sidebar-text"
         >
           C
         </span>
       ) : (
-        <span className="mt-1 truncate rounded-md px-2 py-1.5 font-display text-[0.95rem] font-medium text-sidebar-text">
+        <span className="mt-1 truncate rounded-md px-2 py-1.5 font-display text-base font-medium text-sidebar-text">
           Coming soon
         </span>
       )}
@@ -459,7 +483,12 @@ export function SidebarUserMenuMockup() {
         <RailNavList items={SECONDARY_NAV_ITEMS} collapsed={collapsed} />
         <SetlistsSlot collapsed={collapsed} />
 
-        <UserMenuButton identity={identity} collapsed={collapsed} theme={theme} onThemeChange={setTheme} />
+        <UserMenuButton
+          identity={identity}
+          collapsed={collapsed}
+          theme={theme}
+          onThemeChange={setTheme}
+        />
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto">
@@ -476,11 +505,13 @@ export function SidebarUserMenuMockup() {
 
         <div className="m-4 rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-4 py-2 text-sm text-ink-soft">
           Reference sample —{' '}
-          <span className="font-medium text-ink">Sidebar User Menu, Option 2 (identity card, dark popup)</span>.
-          Replaces the static "Local Library" footer pill with a real account menu. Switch the identity state
-          above, try collapsing the rail (the button at the top of the sidebar), and resize below 768px (or use
-          a phone) to see the mobile drawer's own footer — same trigger and popup, just a wider drawer to sit
-          in.
+          <span className="font-medium text-ink">
+            Sidebar User Menu, Option 2 (identity card, dark popup)
+          </span>
+          . Replaces the static "Local Library" footer pill with a real account menu. Switch the
+          identity state above, try collapsing the rail (the button at the top of the sidebar), and
+          resize below 768px (or use a phone) to see the mobile drawer's own footer — same trigger
+          and popup, just a wider drawer to sit in.
         </div>
 
         <main className="flex flex-1 flex-col gap-3 px-4 pb-8">
@@ -520,9 +551,11 @@ export function SidebarUserMenuMockup() {
         <DrawerNavList items={SECONDARY_NAV_ITEMS} onNavigate={() => setDrawerOpen(false)} />
 
         <div className="mt-6 flex flex-1 flex-col overflow-y-auto px-2">
-          <span className="px-3 text-xs tracking-wide text-sidebar-text-dim uppercase">Setlists</span>
+          <span className="px-3 text-xs tracking-wide text-sidebar-text-dim uppercase">
+            Setlists
+          </span>
           <div className="mt-1 flex flex-col">
-            <span className="truncate rounded-md px-3 py-2 font-display text-[0.95rem] font-medium text-sidebar-text">
+            <span className="truncate rounded-md px-3 py-2 font-display text-base font-medium text-sidebar-text">
               Coming soon
             </span>
           </div>

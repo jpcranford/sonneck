@@ -569,7 +569,7 @@ function WorkGrid({
               className="aspect-[180/132] rounded-none border-0 border-b"
             />
             <div className="flex flex-col gap-0.5 px-2 py-1.5">
-              <p className="flex min-w-0 items-center gap-1 font-display text-[0.8rem] font-medium text-ink">
+              <p className="flex min-w-0 items-center gap-1 font-display text-xs font-medium text-ink">
                 <span className="truncate">{workTitle(work)}</span>
                 {work.favorite && (
                   <span className="shrink-0 text-accent" title="Favorite">
@@ -603,7 +603,7 @@ function WorkList({
 }) {
   return (
     <div className="flex flex-col">
-      <div className="grid grid-cols-[96px_1fr_56px] gap-3 px-1.5 pb-2.5 text-[0.7rem] font-medium tracking-wide text-ink-soft uppercase">
+      <div className="grid grid-cols-[96px_1fr_56px] gap-3 px-1.5 pb-2.5 text-xs font-medium tracking-wide text-ink-soft uppercase">
         <div className="text-center">Year</div>
         <div>Title</div>
         <div className={THUMB_HIDE_CLASS} />
@@ -622,7 +622,7 @@ function WorkList({
                 {yearWrittenLabel(work.yearWritten)}
               </div>
               <div className="min-w-0">
-                <p className="flex flex-wrap items-center gap-1.5 font-display text-[0.92rem] font-medium text-ink">
+                <p className="flex flex-wrap items-center gap-1.5 font-display text-sm font-medium text-ink">
                   {workTitle(work)}
                   {work.favorite && (
                     <span className="text-accent" title="Favorite">
@@ -1200,19 +1200,17 @@ export function PersonDetailsSample() {
 
           <div className="min-w-0 flex-1">
             <div className="mb-2">
-              <h1 className="font-display text-[1.35rem] font-medium text-ink">
-                {MOCK_PERSON.name}
-              </h1>
-              {lifespan && <p className="text-[0.92rem] text-ink-soft">{lifespan}</p>}
+              <h1 className="font-display text-2xl font-medium text-ink">{MOCK_PERSON.name}</h1>
+              {lifespan && <p className="text-base text-ink-soft">{lifespan}</p>}
             </div>
 
-            <div className="max-w-[60ch] text-[0.88rem] text-ink-soft">
+            <div className="max-w-[60ch] text-sm text-ink-soft">
               <MarkdownText>{MOCK_PERSON.bio}</MarkdownText>
             </div>
 
             {MOCK_BOOK_CREDITS.length > 0 && (
               <div className="mt-3.5">
-                <dt className="mb-1.5 text-[0.7rem] tracking-wide text-ink-soft uppercase">
+                <dt className="mb-1.5 text-xs tracking-wide text-ink-soft uppercase">
                   Also credited directly on {MOCK_BOOK_CREDITS.length}{' '}
                   {MOCK_BOOK_CREDITS.length === 1 ? 'book' : 'books'}
                 </dt>
@@ -1247,7 +1245,7 @@ export function PersonDetailsSample() {
           of using the real one). */}
       <div className="bg-paper">
         <div className="flex flex-wrap items-center justify-between gap-4 px-6 pb-4">
-          <h2 className="font-display text-[0.95rem] font-bold text-ink-soft">
+          <h2 className="font-display text-base font-bold text-ink-soft">
             {MOCK_WORKS.length} {MOCK_WORKS.length === 1 ? 'piece' : 'pieces'}
           </h2>
           <div className="flex shrink-0 items-center gap-1 rounded-md border border-border p-0.5">

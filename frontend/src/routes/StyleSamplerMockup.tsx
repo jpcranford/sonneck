@@ -344,30 +344,30 @@ function ExampleWindowSection() {
               return (
                 <span
                   key={label as string}
-                  className={`flex h-10 items-center gap-3 rounded-md px-2 font-display text-[0.95rem] font-medium text-sidebar-text ${
+                  className={`flex h-10 items-center gap-3 rounded-md px-2 font-display text-base font-medium text-sidebar-text ${
                     active ? 'bg-sidebar-panel' : 'hover:bg-white/5'
                   }`}
                 >
-                  <I size={18} />
+                  <I size={24} />
                   {label as string}
                 </span>
               )
             })}
           </nav>
           <div className="mx-2 my-3 border-t border-sidebar-border" />
-          <p className="px-2 text-xs font-semibold tracking-wide text-sidebar-text-dim uppercase">
+          <p className="px-2 text-xs tracking-wide text-sidebar-text-dim uppercase">
             Upcoming Sets
           </p>
-          <span className="mt-1 flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-sidebar-text">
+          <span className="mt-1 flex items-center gap-2 rounded-md px-2 py-1.5 font-display text-base font-medium text-sidebar-text">
             <IconPlaylist size={16} className="text-accent-on-dark" />
             <span className="min-w-0 flex-1 truncate">Lessons and Carols</span>
-            <span className="text-xs text-sidebar-text-dim">Dec 13</span>
+            <span className="font-sans text-xs font-normal text-sidebar-text-dim">Dec 13</span>
           </span>
           <div className="mt-auto flex items-center gap-2 rounded-lg border border-sidebar-border bg-sidebar-panel p-2">
             <span className="flex size-7 items-center justify-center rounded-full bg-accent-on-dark text-xs font-semibold text-sidebar-bg">
               A
             </span>
-            <span className="text-sm text-sidebar-text">Admin</span>
+            <span className="text-base text-sidebar-text">Admin</span>
           </div>
         </aside>
 
@@ -532,7 +532,17 @@ function TypeSection({ files }: { files: SourceFile[] | null }) {
   )
 }
 
+// What a type style is for, where the file list alone doesn't say. Keyed
+// like TypeStyle.key (family|size|weight|italic|uppercase), so a note
+// disappears with its style.
+const TYPE_NOTES: Record<string, string> = {
+  'display|text-sm|400|false|false':
+    'Smaller labelled buttons (modal footer buttons are the larger 16px default): detail-page toolbars (Edit Piece/Book/Person, Download PDF and Download Set PDF, Play and Play Set, Split People, Edit Program), the Setlists Library’s New Setlist, and Edit Piece’s Calculate.',
+  'display|text-sm|400|true|false': 'The citation line on Piece Details (click to copy).',
+}
+
 function TypeRow({ style }: { style: TypeStyle }) {
+  const note = TYPE_NOTES[style.key]
   const weightName =
     { 400: 'regular', 500: 'medium', 600: 'semibold', 700: 'bold' }[style.weight] ??
     String(style.weight)
@@ -557,6 +567,7 @@ function TypeRow({ style }: { style: TypeStyle }) {
           {style.italic && ' • italic'}
           {style.uppercase && ' • uppercase'}
         </p>
+        {note && <p className="mt-0.5 text-xs font-medium text-ink">{note}</p>}
         <UsageLine usage={style.usage} showKinds={false} />
       </div>
     </li>

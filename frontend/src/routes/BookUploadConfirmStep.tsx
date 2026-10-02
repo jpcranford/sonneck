@@ -228,13 +228,9 @@ export function BookUploadConfirmStep({
               />
             </div>
             <div className="flex flex-col gap-px px-2 py-1.5">
-              <p className="truncate font-display text-[0.8rem] font-medium text-ink">
-                {piece.title}
-              </p>
-              <p className="truncate text-[0.7rem] text-ink-soft">{composerArrangerLabel(piece)}</p>
-              <p className="truncate text-[0.7rem] text-ink-soft">
-                {formatPageRange(piece, pageOffset)}
-              </p>
+              <p className="truncate font-display text-sm font-medium text-ink">{piece.title}</p>
+              <p className="truncate text-xs text-ink-soft">{composerArrangerLabel(piece)}</p>
+              <p className="truncate text-xs text-ink-soft">{formatPageRange(piece, pageOffset)}</p>
             </div>
           </div>
         ))}

@@ -419,10 +419,10 @@ export function UploadPage() {
                 <IconFileMusic size={19} />
               </span>
               <span>
-                <span className="block font-display text-[0.98rem] font-medium text-ink">
+                <span className="block font-display text-base font-medium text-ink">
                   Upload a piece
                 </span>
-                <span className="block text-[0.8rem] text-ink-soft">
+                <span className="block text-xs text-ink-soft">
                   One PDF, one piece of music. The common case.
                 </span>
               </span>
@@ -444,10 +444,10 @@ export function UploadPage() {
                 <IconBook2 size={19} />
               </span>
               <span>
-                <span className="block font-display text-[0.98rem] font-medium text-ink">
+                <span className="block font-display text-base font-medium text-ink">
                   Upload a book
                 </span>
-                <span className="block text-[0.8rem] text-ink-soft">
+                <span className="block text-xs text-ink-soft">
                   One PDF containing several pieces — we'll walk you through splitting it up.
                 </span>
               </span>

@@ -39,7 +39,7 @@ function NavItemsList({ items, collapsed }: { items: NavItem[]; collapsed: boole
                 not a deliberate highlight. No longer needs the isActive
                 render-prop now that the icon doesn't vary by nav state
                 either. */}
-            <Icon size={22} className="text-sidebar-text" />
+            <Icon size={24} className="text-sidebar-text" />
             {/* relative top-[0.6px]: picked by eye against the real render
                 (fonts, hover background) via a throwaway calibration tool
                 (SidebarAlignDebug.tsx, since removed) — a prior attempt
@@ -66,7 +66,7 @@ function NavItemsList({ items, collapsed }: { items: NavItem[]; collapsed: boole
             <span
               key={to}
               title={collapsed ? label : "You don't have permission to upload"}
-              className={`flex h-10 cursor-not-allowed items-center gap-3 rounded-md px-2 font-display text-[0.95rem] font-medium text-sidebar-text opacity-40 ${
+              className={`flex h-10 cursor-not-allowed items-center gap-3 rounded-md px-2 font-display text-base font-medium text-sidebar-text opacity-40 ${
                 collapsed ? 'justify-center' : ''
               }`}
             >
@@ -81,7 +81,7 @@ function NavItemsList({ items, collapsed }: { items: NavItem[]; collapsed: boole
             end={to === '/'}
             title={collapsed ? label : undefined}
             className={({ isActive }) =>
-              `flex h-10 items-center gap-3 rounded-md px-2 font-display text-[0.95rem] font-medium ${
+              `flex h-10 items-center gap-3 rounded-md px-2 font-display text-base font-medium ${
                 collapsed ? 'justify-center' : ''
               } ${
                 isActive

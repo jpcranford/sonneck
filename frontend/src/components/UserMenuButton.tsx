@@ -39,7 +39,11 @@ const AUTH_METHOD_BLURB: Record<string, string> = {
 // persistence.
 type ThemePreview = 'light' | 'dark' | 'system'
 
-const THEME_OPTIONS: { key: ThemePreview; icon: ComponentType<{ size?: number; className?: string }>; label: string }[] = [
+const THEME_OPTIONS: {
+  key: ThemePreview
+  icon: ComponentType<{ size?: number; className?: string }>
+  label: string
+}[] = [
   { key: 'light', icon: IconSun, label: 'Light' },
   { key: 'dark', icon: IconMoon, label: 'Dark' },
   { key: 'system', icon: IconDeviceDesktop, label: 'System' },
@@ -51,7 +55,13 @@ const THEME_OPTIONS: { key: ThemePreview; icon: ComponentType<{ size?: number; c
 // active option's highlight is a real absolute-positioned pill that slides
 // between icons (translateX by index × button width) rather than each
 // button flipping its own background independently.
-function ThemeSwitcher({ theme, onChange }: { theme: ThemePreview; onChange: (theme: ThemePreview) => void }) {
+function ThemeSwitcher({
+  theme,
+  onChange,
+}: {
+  theme: ThemePreview
+  onChange: (theme: ThemePreview) => void
+}) {
   const activeIndex = THEME_OPTIONS.findIndex((option) => option.key === theme)
   return (
     <div className="flex items-center justify-between gap-3 px-3.5 py-2.5">
@@ -88,7 +98,13 @@ function ThemeSwitcher({ theme, onChange }: { theme: ThemePreview; onChange: (th
   )
 }
 
-export function UserMenuButton({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: () => void }) {
+export function UserMenuButton({
+  collapsed,
+  onNavigate,
+}: {
+  collapsed: boolean
+  onNavigate?: () => void
+}) {
   const me = useAuth()
   const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -168,7 +184,7 @@ export function UserMenuButton({ collapsed, onNavigate }: { collapsed: boolean; 
         </span>
         {!collapsed && (
           <>
-            <span className="min-w-0 flex-1 truncate text-left text-[0.95rem] text-sidebar-text">
+            <span className="min-w-0 flex-1 truncate text-left text-base text-sidebar-text">
               {me.displayName}
             </span>
             <IconSelector size={15} className="shrink-0 text-sidebar-text-dim" />
@@ -184,7 +200,9 @@ export function UserMenuButton({ collapsed, onNavigate }: { collapsed: boolean; 
       <div
         role="menu"
         className={`absolute bottom-full left-0 z-20 mb-2 w-60 origin-bottom-left overflow-hidden rounded-lg border border-sidebar-border bg-sidebar-panel shadow-xl transition-[opacity,transform] duration-100 ${
-          open ? 'pointer-events-auto translate-y-0 opacity-100' : 'pointer-events-none translate-y-1 opacity-0'
+          open
+            ? 'pointer-events-auto translate-y-0 opacity-100'
+            : 'pointer-events-none translate-y-1 opacity-0'
         }`}
       >
         <div className="flex items-center gap-2.5 px-3.5 py-3">
@@ -204,7 +222,9 @@ export function UserMenuButton({ collapsed, onNavigate }: { collapsed: boolean; 
                 </span>
               )}
             </p>
-            <p className="truncate text-[0.76rem] text-sidebar-text-dim">{AUTH_METHOD_BLURB[me.authMethod]}</p>
+            <p className="truncate text-[0.76rem] text-sidebar-text-dim">
+              {AUTH_METHOD_BLURB[me.authMethod]}
+            </p>
           </div>
         </div>
         <div className="h-px bg-sidebar-border" />

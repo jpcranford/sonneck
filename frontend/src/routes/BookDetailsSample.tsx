@@ -425,7 +425,7 @@ function PieceGrid({ pieces }: { pieces: SamplePiece[] }) {
                 every other favorite heart app-wide regardless of the
                 title's own font size) needs to never get clipped by the
                 truncation itself. */}
-            <p className="flex min-w-0 items-center gap-1 font-display text-[0.8rem] font-medium text-ink">
+            <p className="flex min-w-0 items-center gap-1 font-display text-xs font-medium text-ink">
               <span className="truncate">{piece.title}</span>
               {piece.favorite && (
                 <span className="shrink-0 text-accent" title="Favorite">
@@ -458,7 +458,7 @@ const ROW_COLLAPSE_CLASS = 'max-[501px]:grid-cols-[96px_1fr]'
 function PieceList({ pieces }: { pieces: SamplePiece[] }) {
   return (
     <div className="flex flex-col">
-      <div className="grid grid-cols-[96px_1fr_56px] gap-3 px-1.5 pb-2.5 text-[0.7rem] font-medium tracking-wide text-ink-soft uppercase">
+      <div className="grid grid-cols-[96px_1fr_56px] gap-3 px-1.5 pb-2.5 text-xs font-medium tracking-wide text-ink-soft uppercase">
         <div>Page</div>
         <div>Title</div>
         <div className={THUMB_HIDE_CLASS} />
@@ -470,7 +470,7 @@ function PieceList({ pieces }: { pieces: SamplePiece[] }) {
         >
           <div className="text-sm font-medium tabular-nums text-ink">{pageRangeLabel(piece)}</div>
           <div className="min-w-0">
-            <p className="flex flex-wrap items-center gap-1.5 font-display text-[0.92rem] font-medium text-ink">
+            <p className="flex flex-wrap items-center gap-1.5 font-display text-sm font-medium text-ink">
               {piece.title}
               {piece.workOpusNumber ? ` (${piece.workOpusNumber})` : ''}
               {piece.favorite && (
@@ -888,8 +888,8 @@ export function BookDetailsSample() {
                   its own justify-between wrapper since there's nothing
                   left to push to the opposite side. */}
               <div className="mb-2">
-                <h1 className="font-display text-[1.35rem] font-medium text-ink">{title}</h1>
-                <p className="text-[0.92rem] text-ink-soft">{metaLine}</p>
+                <h1 className="font-display text-2xl font-medium text-ink">{title}</h1>
+                <p className="text-base text-ink-soft">{metaLine}</p>
               </div>
 
               {(sampleBook.sheetType || sampleBook.instruments.length > 0) && (
@@ -911,7 +911,7 @@ export function BookDetailsSample() {
               )}
 
               {sampleBook.description && (
-                <div className="mt-3.5 max-w-[60ch] text-[0.88rem] text-ink-soft">
+                <div className="mt-3.5 max-w-[60ch] text-sm text-ink-soft">
                   <MarkdownText>{sampleBook.description}</MarkdownText>
                 </div>
               )}
@@ -923,10 +923,10 @@ export function BookDetailsSample() {
                     // BookDetailsPage.tsx's own fix — see that file's own
                     // comment for the full reasoning.
                     <div key={field.label} className="min-w-0 break-words">
-                      <dt className="mb-0.5 text-[0.7rem] tracking-wide text-ink-soft uppercase">
+                      <dt className="mb-0.5 text-xs tracking-wide text-ink-soft uppercase">
                         {field.label}
                       </dt>
-                      <dd className="text-[0.88rem] text-ink">{field.value}</dd>
+                      <dd className="text-sm text-ink">{field.value}</dd>
                     </div>
                   ))}
                 </div>
@@ -939,7 +939,7 @@ export function BookDetailsSample() {
             lines above or below the heading row either, just spacing. */}
         <div className="mt-6 bg-paper">
           <div className="flex flex-wrap items-center justify-between gap-4 px-6 pb-4">
-            <h2 className="font-display text-[0.95rem] font-bold text-ink-soft">
+            <h2 className="font-display text-base font-bold text-ink-soft">
               {pieces.length} {pieces.length === 1 ? 'piece' : 'pieces'} in this book
             </h2>
             <div className="flex shrink-0 items-center gap-1 rounded-md border border-border p-0.5">
