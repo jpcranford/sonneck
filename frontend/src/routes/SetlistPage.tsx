@@ -349,7 +349,7 @@ export function SetlistPage() {
                 disabled={deleteMutation.isPending}
                 aria-label="Delete setlist"
                 title="Delete setlist"
-                className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-red-700 hover:border-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-danger hover:border-danger disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <IconTrash size={18} />
               </button>

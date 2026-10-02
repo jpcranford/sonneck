@@ -632,7 +632,7 @@ export function PieceDetailsSample() {
               destructive action already reachable via right-click on a
               library card (PieceContextMenu's "Delete Piece"), also given a
               direct entry point from the page itself. Permanently red
-              (text-red-700, matching ContextMenu's own destructive-item
+              (text-danger, matching ContextMenu's own destructive-item
               color exactly — that color is always-on there too, not a
               hover-only reveal), not red-on-hover. Disabled here like
               Random Piece/Edit Piece below: this fixture has nothing real
@@ -642,7 +642,7 @@ export function PieceDetailsSample() {
             disabled
             aria-label="Delete Piece"
             title="Delete Piece"
-            className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-red-700 hover:border-red-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border"
+            className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-danger hover:border-danger disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border"
           >
             <IconTrash size={18} />
           </button>

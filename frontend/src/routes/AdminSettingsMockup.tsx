@@ -147,7 +147,13 @@ const NATIVE_LAN_ADDRESSES = ['192.168.1.42:26163', '10.0.0.14:26163']
 // mid-transition or leaving an awkward gap after it.
 const RESTART_BANNER_DELAY_MS = 300
 
-function RuntimeModeToggle({ mode, onChange }: { mode: RuntimeMode; onChange: (m: RuntimeMode) => void }) {
+function RuntimeModeToggle({
+  mode,
+  onChange,
+}: {
+  mode: RuntimeMode
+  onChange: (m: RuntimeMode) => void
+}) {
   return (
     <div className="fixed top-28 right-3 z-20 flex items-center gap-2 rounded-md border border-dashed border-border bg-paper-raised px-2.5 py-1.5 text-xs text-ink-soft shadow-sm md:top-14">
       <span>Preview as</span>
@@ -600,7 +606,10 @@ export function AdminSettingsMockup() {
       // anymore, hide immediately.
       setShowRestartBanner(false)
     } else {
-      restartBannerTimerRef.current = setTimeout(() => setShowRestartBanner(true), RESTART_BANNER_DELAY_MS)
+      restartBannerTimerRef.current = setTimeout(
+        () => setShowRestartBanner(true),
+        RESTART_BANNER_DELAY_MS,
+      )
     }
   }
 
@@ -663,7 +672,9 @@ export function AdminSettingsMockup() {
 
   function cycleCandidateLibraryPath() {
     const currentIndex = LIBRARY_LOCATION_CANDIDATES.indexOf(candidateLibraryPath)
-    setCandidateLibraryPath(LIBRARY_LOCATION_CANDIDATES[(currentIndex + 1) % LIBRARY_LOCATION_CANDIDATES.length])
+    setCandidateLibraryPath(
+      LIBRARY_LOCATION_CANDIDATES[(currentIndex + 1) % LIBRARY_LOCATION_CANDIDATES.length],
+    )
   }
 
   function saveLibraryLocation() {
@@ -917,7 +928,11 @@ export function AdminSettingsMockup() {
               <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-3.5 py-2.5">
                 <p className="flex items-center gap-1.5 text-xs font-medium text-ink">
                   <IconInfoCircle size={14} className="shrink-0 text-accent" />
-                  Restart Sonneck to {shareOnNetwork ? 'start sharing on this network' : 'stop sharing on this network'}.
+                  Restart Sonneck to{' '}
+                  {shareOnNetwork
+                    ? 'start sharing on this network'
+                    : 'stop sharing on this network'}
+                  .
                 </p>
                 <button
                   type="button"
@@ -941,7 +956,9 @@ export function AdminSettingsMockup() {
                     </span>
                     <button
                       type="button"
-                      onClick={() => void navigator.clipboard?.writeText(`http://${NATIVE_LAN_ADDRESSES[0]}`)}
+                      onClick={() =>
+                        void navigator.clipboard?.writeText(`http://${NATIVE_LAN_ADDRESSES[0]}`)
+                      }
                       className="flex shrink-0 cursor-pointer items-center gap-1 text-xs text-ink-soft hover:text-ink"
                     >
                       <IconCopy size={14} />
@@ -985,7 +1002,8 @@ export function AdminSettingsMockup() {
                   </div>
                 )}
                 <p className="mt-2 text-xs text-ink-soft">
-                  Scan with a phone camera, or open the address above from another device on this network.
+                  Scan with a phone camera, or open the address above from another device on this
+                  network.
                 </p>
               </div>
             )}
@@ -1028,9 +1046,12 @@ export function AdminSettingsMockup() {
               <div className="shrink-0 self-end sm:self-auto">
                 {updateChecked ? (
                   build.checkResult === 'behind' ? (
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#fbe9e7] px-2.5 py-1 text-sm text-[#b45309]">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-1 text-sm text-accent">
                       version {build.availableVersion} available
-                      <a href="#" className="inline-flex items-center gap-0.5 text-inherit underline">
+                      <a
+                        href="#"
+                        className="inline-flex items-center gap-0.5 text-inherit underline"
+                      >
                         View release <IconExternalLink size={12} />
                       </a>
                     </span>
@@ -1052,7 +1073,9 @@ export function AdminSettingsMockup() {
               </div>
             </div>
             {updateChecked && (
-              <p className="text-xs text-ink-soft">Checked just now. Reload the page to check again.</p>
+              <p className="text-xs text-ink-soft">
+                Checked just now. Reload the page to check again.
+              </p>
             )}
           </div>
         </SectionBlock>
@@ -1065,9 +1088,14 @@ export function AdminSettingsMockup() {
                 { label: 'Books', value: 58 },
                 { label: 'People', value: 27 },
               ].map((stat) => (
-                <div key={stat.label} className="flex-1 rounded-md border border-border py-3 text-center">
+                <div
+                  key={stat.label}
+                  className="flex-1 rounded-md border border-border py-3 text-center"
+                >
                   <p className="font-display text-2xl font-bold text-ink">{stat.value}</p>
-                  <p className="mt-0.5 text-xs tracking-wide text-ink-soft uppercase">{stat.label}</p>
+                  <p className="mt-0.5 text-xs tracking-wide text-ink-soft uppercase">
+                    {stat.label}
+                  </p>
                 </div>
               ))}
             </div>
@@ -1242,7 +1270,7 @@ export function AdminSettingsMockup() {
                           : `Delete ${user.name}`
                       }
                       aria-label={`Delete ${user.name}`}
-                      className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-ink-soft hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-ink-soft"
+                      className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-ink-soft hover:bg-danger-soft hover:text-danger disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-ink-soft"
                     >
                       <IconTrash size={15} />
                     </button>
@@ -1278,7 +1306,10 @@ export function AdminSettingsMockup() {
                               />
                               {perm}
                             </label>
-                            <InfoIconTooltip message={PERM_DESCRIPTIONS[perm]} ariaLabel={`What "${perm}" allows`} />
+                            <InfoIconTooltip
+                              message={PERM_DESCRIPTIONS[perm]}
+                              ariaLabel={`What "${perm}" allows`}
+                            />
                           </div>
                         )
                       })}
@@ -1327,7 +1358,7 @@ export function AdminSettingsMockup() {
                         type="button"
                         onClick={() => openLookupDelete(column, item)}
                         aria-label={`Delete ${item.name || 'this entry'}`}
-                        className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-ink-soft hover:bg-red-50 hover:text-red-700"
+                        className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-ink-soft hover:bg-danger-soft hover:text-danger"
                       >
                         <IconTrash size={14} />
                       </button>
@@ -1415,8 +1446,10 @@ export function AdminSettingsMockup() {
                 className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-sm text-ink"
               />
               {securityPassword.length > 0 && !securityPasswordValid && (
-                <p className="text-xs text-red-700">
-                  {securityPassword.length < 8 ? 'At least 8 characters.' : "Passwords don't match."}
+                <p className="text-xs text-danger">
+                  {securityPassword.length < 8
+                    ? 'At least 8 characters.'
+                    : "Passwords don't match."}
                 </p>
               )}
             </div>
@@ -1424,8 +1457,8 @@ export function AdminSettingsMockup() {
         </div>
 
         <p className="mt-4 text-xs text-ink-soft">
-          Switching to "No login" clears the current password entirely — the next person to switch back to
-          "Password" has to set a new one.
+          Switching to "No login" clears the current password entirely — the next person to switch
+          back to "Password" has to set a new one.
         </p>
       </Modal>
 
@@ -1458,7 +1491,9 @@ export function AdminSettingsMockup() {
         <p className="mt-1 text-sm text-ink-soft">Choose a new folder for Sonneck's library.</p>
 
         <div className="mt-4 flex items-center gap-3 rounded-md border border-border bg-paper-sunken px-3.5 py-2.5">
-          <span className="min-w-0 flex-1 truncate font-mono text-sm text-ink">{candidateLibraryPath}</span>
+          <span className="min-w-0 flex-1 truncate font-mono text-sm text-ink">
+            {candidateLibraryPath}
+          </span>
           <button
             type="button"
             onClick={cycleCandidateLibraryPath}
@@ -1468,7 +1503,11 @@ export function AdminSettingsMockup() {
           </button>
         </div>
 
-        <div className="mt-4 flex flex-col gap-2" role="radiogroup" aria-label="What happens to your current library">
+        <div
+          className="mt-4 flex flex-col gap-2"
+          role="radiogroup"
+          aria-label="What happens to your current library"
+        >
           <label className="flex cursor-pointer items-start gap-2.5 rounded-md border border-border p-3 has-checked:border-accent has-checked:bg-accent-soft">
             <input
               type="radio"
@@ -1493,10 +1532,12 @@ export function AdminSettingsMockup() {
               className="mt-0.5 accent-accent"
             />
             <span>
-              <span className="block text-sm font-medium text-ink">Just use this folder going forward</span>
+              <span className="block text-sm font-medium text-ink">
+                Just use this folder going forward
+              </span>
               <span className="block text-xs text-ink-soft">
-                Nothing moves — point Sonneck at the new folder as-is (useful for an already-populated or empty
-                folder).
+                Nothing moves — point Sonneck at the new folder as-is (useful for an
+                already-populated or empty folder).
               </span>
             </span>
           </label>
@@ -1520,7 +1561,7 @@ export function AdminSettingsMockup() {
               type="button"
               disabled={lookupDeleteMode === 'merge' && mergeTargetId === null}
               onClick={confirmLookupDelete}
-              className="cursor-pointer rounded-md bg-red-700 px-4 py-2 text-sm text-white hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-40"
+              className="cursor-pointer rounded-md bg-danger px-4 py-2 text-sm text-white hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {lookupDeleteMode === 'merge' ? 'Merge and delete' : 'Delete outright'}
             </button>

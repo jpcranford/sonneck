@@ -203,7 +203,8 @@ export function BookUploadConfirmStep({
         <div className="flex items-center gap-2 text-xs text-ink-soft">
           <IconEyeOff size={14} className="shrink-0" />
           {skippedPages.length} page{skippedPages.length === 1 ? '' : 's'} skipped (p.{' '}
-          {formatPageList(skippedPages.map((p) => p + pageOffset))}) — won't be included in any piece
+          {formatPageList(skippedPages.map((p) => p + pageOffset))}) — won't be included in any
+          piece
         </div>
       )}
 
@@ -231,14 +232,16 @@ export function BookUploadConfirmStep({
                 {piece.title}
               </p>
               <p className="truncate text-[0.7rem] text-ink-soft">{composerArrangerLabel(piece)}</p>
-              <p className="truncate text-[0.7rem] text-ink-soft">{formatPageRange(piece, pageOffset)}</p>
+              <p className="truncate text-[0.7rem] text-ink-soft">
+                {formatPageRange(piece, pageOffset)}
+              </p>
             </div>
           </div>
         ))}
       </div>
 
       {importMutation.isError && (
-        <p className="flex items-center gap-2 text-sm text-red-700">
+        <p className="flex items-center gap-2 text-sm text-danger">
           <IconAlertTriangle size={16} />
           {importMutation.error instanceof ApiError
             ? importMutation.error.message
@@ -256,7 +259,7 @@ export function BookUploadConfirmStep({
           type="button"
           onClick={onCancel}
           disabled={cancelPending || importMutation.isPending}
-          className="flex cursor-pointer items-center gap-1.5 text-base text-red-700 hover:text-red-800 disabled:cursor-default disabled:opacity-45"
+          className="flex cursor-pointer items-center gap-1.5 text-base text-danger hover:text-red-800 disabled:cursor-default disabled:opacity-45"
         >
           <IconX size={24} />
           Cancel upload

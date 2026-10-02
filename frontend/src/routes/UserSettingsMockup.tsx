@@ -89,8 +89,18 @@ interface Identity {
 }
 
 const IDENTITIES: Record<IdentityKey, Identity> = {
-  none: { label: 'No login', name: 'Admin', idLine: 'No login required for this server.', showChangePassword: false },
-  singlepass: { label: 'Password', name: 'Admin', idLine: 'Shared password', showChangePassword: true },
+  none: {
+    label: 'No login',
+    name: 'Admin',
+    idLine: 'No login required for this server.',
+    showChangePassword: false,
+  },
+  singlepass: {
+    label: 'Password',
+    name: 'Admin',
+    idLine: 'Shared password',
+    showChangePassword: true,
+  },
   'oidc-admin': {
     label: 'OIDC — Admin',
     name: 'Jamie Chen',
@@ -234,7 +244,9 @@ function ThemeControl({ theme, onChange }: { theme: Theme; onChange: (theme: The
         type="button"
         onClick={() => onChange('light')}
         className={`flex cursor-pointer items-center gap-1.5 rounded-l-md border-r border-border px-2.5 py-1.5 text-sm ${
-          theme === 'light' ? 'bg-accent text-white' : 'bg-paper-raised text-ink-soft hover:bg-paper-sunken'
+          theme === 'light'
+            ? 'bg-accent text-white'
+            : 'bg-paper-raised text-ink-soft hover:bg-paper-sunken'
         }`}
       >
         <IconSun size={14} />
@@ -256,7 +268,9 @@ function ThemeControl({ theme, onChange }: { theme: Theme; onChange: (theme: The
         type="button"
         onClick={() => onChange('system')}
         className={`flex cursor-pointer items-center gap-1.5 rounded-r-md px-2.5 py-1.5 text-sm ${
-          theme === 'system' ? 'bg-accent text-white' : 'bg-paper-raised text-ink-soft hover:bg-paper-sunken'
+          theme === 'system'
+            ? 'bg-accent text-white'
+            : 'bg-paper-raised text-ink-soft hover:bg-paper-sunken'
         }`}
       >
         <IconDeviceDesktop size={14} />
@@ -338,7 +352,7 @@ function EditableList({
               type="button"
               onClick={() => onDelete(item)}
               aria-label={`Delete ${item.name || 'this entry'}`}
-              className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-ink-soft hover:bg-red-50 hover:text-red-700"
+              className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-ink-soft hover:bg-danger-soft hover:text-danger"
             >
               <IconTrash size={14} />
             </button>
@@ -356,7 +370,10 @@ function EditableList({
           <IconCircleDashedPlus size={22} />
         </button>
       ) : (
-        <div className="mt-3 flex w-full items-center justify-center gap-2" title={`Adding a new ${noun} is coming soon`}>
+        <div
+          className="mt-3 flex w-full items-center justify-center gap-2"
+          title={`Adding a new ${noun} is coming soon`}
+        >
           <IconCircleDashedPlus size={22} className="text-ink-soft/40" />
           <span className="rounded-full bg-ink-soft px-1.5 py-px text-[0.6rem] tracking-wide text-white uppercase">
             Soon
@@ -422,7 +439,10 @@ export function UserSettingsMockup() {
       if (!value && existing.name === '') {
         return { ...prev, [listKey]: current.filter((item) => item.id !== id) }
       }
-      return { ...prev, [listKey]: current.map((item) => (item.id === id ? { ...item, name: value } : item)) }
+      return {
+        ...prev,
+        [listKey]: current.map((item) => (item.id === id ? { ...item, name: value } : item)),
+      }
     })
   }
 
@@ -452,10 +472,13 @@ export function UserSettingsMockup() {
 
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-4">
         <div className="rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-4 py-2 text-sm text-ink-soft">
-          Reference sample — <span className="font-medium text-ink">User Settings, Option 2 (separate cards per
-          section)</span>. Reached from the sidebar's account menu. Switch the identity state above to see the
-          Account card's identity line and Change Password action adapt — everything else stays identical across
-          states.
+          Reference sample —{' '}
+          <span className="font-medium text-ink">
+            User Settings, Option 2 (separate cards per section)
+          </span>
+          . Reached from the sidebar's account menu. Switch the identity state above to see the
+          Account card's identity line and Change Password action adapt — everything else stays
+          identical across states.
         </div>
 
         <h1 className="font-display text-xl font-medium text-ink">User Settings</h1>
@@ -465,7 +488,9 @@ export function UserSettingsMockup() {
             <div className="min-w-0 flex-1">
               <input
                 value={names[identityKey]}
-                onChange={(event) => setNames((prev) => ({ ...prev, [identityKey]: event.target.value }))}
+                onChange={(event) =>
+                  setNames((prev) => ({ ...prev, [identityKey]: event.target.value }))
+                }
                 disabled={identityKey.startsWith('oidc')}
                 className="w-full rounded-md border border-border bg-paper-raised px-2.5 py-1.5 text-sm text-ink disabled:cursor-not-allowed disabled:bg-paper-sunken disabled:text-ink-soft"
               />
@@ -495,7 +520,12 @@ export function UserSettingsMockup() {
             label='Hide "Books" in sidebar'
             help="Books stay editable and browsable from the Source Book link on a piece's own Details page even when hidden here."
             control={
-              <Toggle checked={hideBooksInSidebar} onChange={setHideBooksInSidebar} label="" id="hide-books" />
+              <Toggle
+                checked={hideBooksInSidebar}
+                onChange={setHideBooksInSidebar}
+                label=""
+                id="hide-books"
+              />
             }
           />
           <SettingsRow
@@ -518,7 +548,9 @@ export function UserSettingsMockup() {
         <SettingsCard title="Your Tags & Practice Status">
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
             <div>
-              <p className="mb-1.5 text-xs font-semibold tracking-wide text-ink-soft uppercase">Tags</p>
+              <p className="mb-1.5 text-xs font-semibold tracking-wide text-ink-soft uppercase">
+                Tags
+              </p>
               <p className="mb-3 text-sm text-ink-soft">
                 Private to your account — not shared with anyone else, even other people using this
                 library.
@@ -574,7 +606,7 @@ export function UserSettingsMockup() {
               type="button"
               disabled={listDeleteMode === 'merge' && mergeTargetId === null}
               onClick={confirmListDelete}
-              className="cursor-pointer rounded-md bg-red-700 px-4 py-2 text-sm text-white hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-40"
+              className="cursor-pointer rounded-md bg-danger px-4 py-2 text-sm text-white hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {listDeleteMode === 'merge' ? 'Merge and delete' : 'Delete outright'}
             </button>
@@ -592,7 +624,11 @@ export function UserSettingsMockup() {
                 : 'Choose what happens to pieces already set to this status.'}
             </p>
 
-            <div className="mt-4 flex flex-col gap-3" role="radiogroup" aria-label="Delete or merge">
+            <div
+              className="mt-4 flex flex-col gap-3"
+              role="radiogroup"
+              aria-label="Delete or merge"
+            >
               {listOtherItems.length > 0 && (
                 <label
                   className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3.5 ${

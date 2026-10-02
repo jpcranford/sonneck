@@ -270,7 +270,7 @@ const MOCK_PERSON = {
   birthYear: 1810,
   deathYear: 1849,
   paletteIndex: 2,
-  bio: "Polish composer and virtuoso pianist of the Romantic era, known almost exclusively for solo piano works. Chopin left Poland at 20 and spent most of his career in Paris, where his music drew heavily on Polish folk idioms — the mazurka and polonaise chief among them — reworked into a personal, harmonically adventurous style.\n\nHis output is small (fewer than 250 works) but concentrated almost entirely in short forms: nocturnes, preludes, études, waltzes, and ballades, each pushing the technical and expressive range of the instrument further than most of his contemporaries attempted.",
+  bio: 'Polish composer and virtuoso pianist of the Romantic era, known almost exclusively for solo piano works. Chopin left Poland at 20 and spent most of his career in Paris, where his music drew heavily on Polish folk idioms — the mazurka and polonaise chief among them — reworked into a personal, harmonically adventurous style.\n\nHis output is small (fewer than 250 works) but concentrated almost entirely in short forms: nocturnes, preludes, études, waltzes, and ballades, each pushing the technical and expressive range of the instrument further than most of his contemporaries attempted.',
 }
 
 // Other fixture people, standing in for the app's real Person catalog —
@@ -333,7 +333,9 @@ function workMetaLine(work: MockWork): string {
         : work.arranger
           ? `arr. ${work.arranger}`
           : null
-  return [composerPart, pagesLabel(work), work.bookTitle].filter((part): part is string => !!part).join(' • ')
+  return [composerPart, pagesLabel(work), work.bookTitle]
+    .filter((part): part is string => !!part)
+    .join(' • ')
 }
 
 // Display label for a work's year: bare value when it's the piece's own
@@ -440,10 +442,7 @@ function CameoPortrait() {
       <rect width="100" height="130" fill="#3a3430" />
       <circle cx="50" cy="48" r="22" fill="#cbb89a" />
       <path d="M14 130c0-28 18-46 36-46s36 18 36 46" fill="#cbb89a" />
-      <path
-        d="M28 40c2-14 12-22 22-22s20 8 22 22c-4-6-12-10-22-10s-18 4-22 10z"
-        fill="#1f1b18"
-      />
+      <path d="M28 40c2-14 12-22 22-22s20 8 22 22c-4-6-12-10-22-10s-18 4-22 10z" fill="#1f1b18" />
     </svg>
   )
 }
@@ -466,7 +465,9 @@ function PersonAvatar({
     .map((w) => w[0])
     .filter(Boolean)
   const initialsText =
-    initials.length === 0 ? '?' : (initials[0] + (initials[initials.length - 1] ?? '')).toUpperCase()
+    initials.length === 0
+      ? '?'
+      : (initials[0] + (initials[initials.length - 1] ?? '')).toUpperCase()
   return (
     <div
       className={`relative aspect-[3/4] overflow-hidden rounded-[50%] border border-border [container-type:inline-size] ${className}`}
@@ -530,7 +531,8 @@ function workContextMenuItems(
     },
     {
       label: 'Edit Piece',
-      onSelect: () => onAction(`Mock action: this opens the Edit Piece modal for "${workTitle(work)}".`),
+      onSelect: () =>
+        onAction(`Mock action: this opens the Edit Piece modal for "${workTitle(work)}".`),
     },
     {
       label: 'Delete Piece',
@@ -556,9 +558,16 @@ function WorkGrid({
   return (
     <div className="grid grid-cols-[repeat(auto-fill,minmax(112px,1fr))] gap-3">
       {works.map((work, index) => (
-        <ContextMenu key={work.id} items={workContextMenuItems(work, onToggleFavorite, onAction)} hideTriggerButton>
+        <ContextMenu
+          key={work.id}
+          items={workContextMenuItems(work, onToggleFavorite, onAction)}
+          hideTriggerButton
+        >
           <div className="flex flex-col overflow-hidden rounded-lg border border-border bg-paper-raised text-left">
-            <WorkThumbnail paletteIndex={index} className="aspect-[180/132] rounded-none border-0 border-b" />
+            <WorkThumbnail
+              paletteIndex={index}
+              className="aspect-[180/132] rounded-none border-0 border-b"
+            />
             <div className="flex flex-col gap-0.5 px-2 py-1.5">
               <p className="flex min-w-0 items-center gap-1 font-display text-[0.8rem] font-medium text-ink">
                 <span className="truncate">{workTitle(work)}</span>
@@ -601,7 +610,11 @@ function WorkList({
       </div>
       <div>
         {works.map((work, index) => (
-          <ContextMenu key={work.id} items={workContextMenuItems(work, onToggleFavorite, onAction)} hideTriggerButton>
+          <ContextMenu
+            key={work.id}
+            items={workContextMenuItems(work, onToggleFavorite, onAction)}
+            hideTriggerButton
+          >
             <div
               className={`grid grid-cols-[96px_1fr_56px] items-center gap-3 border-t border-border px-1.5 py-2.5 text-left hover:rounded-md hover:bg-accent-soft ${ROW_COLLAPSE_CLASS}`}
             >
@@ -665,8 +678,18 @@ const WIKI_RESULTS: WikiResult[] = [
     thumbColor: '#5c8a8a',
     relevant: true,
   },
-  { title: 'Chopin (crater)', description: 'Impact crater on Mercury named after the composer', thumbColor: '#6b6560', relevant: false },
-  { title: 'Chopin Airport', description: 'Warsaw Chopin Airport, the main international airport of Warsaw, Poland', thumbColor: '#6b6560', relevant: false },
+  {
+    title: 'Chopin (crater)',
+    description: 'Impact crater on Mercury named after the composer',
+    thumbColor: '#6b6560',
+    relevant: false,
+  },
+  {
+    title: 'Chopin Airport',
+    description: 'Warsaw Chopin Airport, the main international airport of Warsaw, Poland',
+    thumbColor: '#6b6560',
+    relevant: false,
+  },
 ]
 
 function UploadPortraitModal({
@@ -684,7 +707,12 @@ function UploadPortraitModal({
   const [chosenLabel, setChosenLabel] = useState<string | null>(null)
   const [zoom, setZoom] = useState(1)
   const [pan, setPan] = useState({ x: 0, y: 0 })
-  const dragState = useRef<{ startX: number; startY: number; originX: number; originY: number } | null>(null)
+  const dragState = useRef<{
+    startX: number
+    startY: number
+    originX: number
+    originY: number
+  } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   function reset() {
@@ -708,7 +736,12 @@ function UploadPortraitModal({
   }
 
   function onDragStart(event: ReactMouseEvent) {
-    dragState.current = { startX: event.clientX, startY: event.clientY, originX: pan.x, originY: pan.y }
+    dragState.current = {
+      startX: event.clientX,
+      startY: event.clientY,
+      originX: pan.x,
+      originY: pan.y,
+    }
   }
   function onDragMove(event: ReactMouseEvent) {
     if (!dragState.current) return
@@ -841,10 +874,14 @@ function UploadPortraitModal({
                       {/* line-clamp-2, not truncate — mockup-parity with
                           the real Upload Portrait/Edit Person's own fix;
                           a single line often isn't enough. */}
-                      <span className="line-clamp-2 text-xs text-ink-soft">{result.description}</span>
+                      <span className="line-clamp-2 text-xs text-ink-soft">
+                        {result.description}
+                      </span>
                     </span>
                     {!result.relevant && (
-                      <span className="shrink-0 text-[0.65rem] text-ink-soft/70 italic">not this one</span>
+                      <span className="shrink-0 text-[0.65rem] text-ink-soft/70 italic">
+                        not this one
+                      </span>
                     )}
                   </button>
                 ))}
@@ -857,7 +894,8 @@ function UploadPortraitModal({
       {step === 'adjust' && (
         <div className="flex flex-col gap-4">
           <p className="text-sm text-ink-soft">
-            Drag to reposition, use the slider to zoom — the frame below is exactly what will be saved.
+            Drag to reposition, use the slider to zoom — the frame below is exactly what will be
+            saved.
             <span className="ml-1 text-ink-soft/70 italic">({chosenLabel})</span>
           </p>
           <div
@@ -869,7 +907,10 @@ function UploadPortraitModal({
           >
             <div
               className="h-full w-full select-none"
-              style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, transformOrigin: 'center' }}
+              style={{
+                transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+                transformOrigin: 'center',
+              }}
             >
               <CameoPortrait />
             </div>
@@ -957,9 +998,9 @@ function SplitPeopleModal({
             Split "{MOCK_PERSON.name}"
           </h2>
           <p className="mt-1 text-sm text-ink-soft">
-            Reassign every one of this person's current piece and book credits to one or more replacement
-            people, in order. "{MOCK_PERSON.name}" isn't deleted — they're just left with zero credits
-            afterward.
+            Reassign every one of this person's current piece and book credits to one or more
+            replacement people, in order. "{MOCK_PERSON.name}" isn't deleted — they're just left
+            with zero credits afterward.
           </p>
         </div>
 
@@ -1021,7 +1062,9 @@ export function PersonDetailsSample() {
   }
 
   function handleEditPerson() {
-    setLastAction('Mock action: this opens the Edit Person modal — see EditPersonModalMockup.tsx / the real EditPersonModal.tsx.')
+    setLastAction(
+      'Mock action: this opens the Edit Person modal — see EditPersonModalMockup.tsx / the real EditPersonModal.tsx.',
+    )
   }
 
   // Keyboard shortcut: E opens the edit menu — mirrors the real
@@ -1072,7 +1115,7 @@ export function PersonDetailsSample() {
             onClick={handleDelete}
             aria-label="Delete Person"
             title="Delete Person"
-            className="flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-red-700 hover:border-red-700"
+            className="flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-danger hover:border-danger"
           >
             <IconTrash size={16} />
           </button>
@@ -1099,13 +1142,13 @@ export function PersonDetailsSample() {
 
       <div className="p-0">
         <div className="rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-4 py-2 text-sm text-ink-soft">
-          Design mockup — <span className="font-medium text-ink">Person Details</span>. Change/remove
-          portrait (right-click the avatar, or its camera badge), Upload Portrait's device/Wikipedia +
-          drag-to-pan/zoom adjust step, Split People's ordered replacement picker, the works grid/list
-          toggle, and right-click/long-press on a work (favorite toggle is real; Edit/Delete Piece are
-          stubs) are all genuinely interactive against one fixture person. Edit Person is a stub in
-          this mockup, but its "E" keyboard shortcut (matching the real page) still fires the same
-          stub message.
+          Design mockup — <span className="font-medium text-ink">Person Details</span>.
+          Change/remove portrait (right-click the avatar, or its camera badge), Upload Portrait's
+          device/Wikipedia + drag-to-pan/zoom adjust step, Split People's ordered replacement
+          picker, the works grid/list toggle, and right-click/long-press on a work (favorite toggle
+          is real; Edit/Delete Piece are stubs) are all genuinely interactive against one fixture
+          person. Edit Person is a stub in this mockup, but its "E" keyboard shortcut (matching the
+          real page) still fires the same stub message.
         </div>
       </div>
 
@@ -1157,7 +1200,9 @@ export function PersonDetailsSample() {
 
           <div className="min-w-0 flex-1">
             <div className="mb-2">
-              <h1 className="font-display text-[1.35rem] font-medium text-ink">{MOCK_PERSON.name}</h1>
+              <h1 className="font-display text-[1.35rem] font-medium text-ink">
+                {MOCK_PERSON.name}
+              </h1>
               {lifespan && <p className="text-[0.92rem] text-ink-soft">{lifespan}</p>}
             </div>
 
@@ -1232,9 +1277,17 @@ export function PersonDetailsSample() {
         </div>
         <div className="px-6 pb-5">
           {workViewMode === 'grid' ? (
-            <WorkGrid works={works} onToggleFavorite={toggleWorkFavorite} onAction={setLastAction} />
+            <WorkGrid
+              works={works}
+              onToggleFavorite={toggleWorkFavorite}
+              onAction={setLastAction}
+            />
           ) : (
-            <WorkList works={works} onToggleFavorite={toggleWorkFavorite} onAction={setLastAction} />
+            <WorkList
+              works={works}
+              onToggleFavorite={toggleWorkFavorite}
+              onAction={setLastAction}
+            />
           )}
         </div>
       </div>

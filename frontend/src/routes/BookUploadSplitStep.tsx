@@ -440,28 +440,22 @@ export function BookUploadSplitStep({
             // their relative priority here doesn't matter in practice —
             // most specific first, matching UploadBookSplitMockup.tsx.
             const badgeKind:
-              | 'single'
-              | 'double'
-              | 'triple'
-              | 'start'
-              | 'shared'
-              | 'pending'
-              | 'skip'
-              | null = isTripleStart
-              ? 'triple'
-              : isDoubleStart
-                ? 'double'
-                : isSingleStart
-                  ? 'single'
-                  : isSharedStart
-                    ? 'shared'
-                    : isStart
-                      ? 'start'
-                      : isPending
-                        ? 'pending'
-                        : isSkip
-                          ? 'skip'
-                          : null
+              'single' | 'double' | 'triple' | 'start' | 'shared' | 'pending' | 'skip' | null =
+              isTripleStart
+                ? 'triple'
+                : isDoubleStart
+                  ? 'double'
+                  : isSingleStart
+                    ? 'single'
+                    : isSharedStart
+                      ? 'shared'
+                      : isStart
+                        ? 'start'
+                        : isPending
+                          ? 'pending'
+                          : isSkip
+                            ? 'skip'
+                            : null
 
             let borderStyle: React.CSSProperties = {}
             let sharedGradient: string | null = null
@@ -807,7 +801,7 @@ export function BookUploadSplitStep({
           type="button"
           onClick={onCancel}
           disabled={cancelPending}
-          className="flex cursor-pointer items-center gap-1.5 text-base text-red-700 hover:text-red-800 disabled:cursor-default disabled:opacity-45"
+          className="flex cursor-pointer items-center gap-1.5 text-base text-danger hover:text-red-800 disabled:cursor-default disabled:opacity-45"
         >
           <IconX size={24} />
           Cancel upload

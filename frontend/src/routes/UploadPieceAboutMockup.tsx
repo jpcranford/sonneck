@@ -408,7 +408,7 @@ export function UploadPieceAboutMockup() {
                 className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
                 {...register('title', { required: 'Title is required.', maxLength: 255 })}
               />
-              {errors.title && <p className="text-sm text-red-700">{errors.title.message}</p>}
+              {errors.title && <p className="text-sm text-danger">{errors.title.message}</p>}
             </div>
 
             <div className="flex flex-col gap-3 min-[525px]:flex-row">
@@ -435,7 +435,7 @@ export function UploadPieceAboutMockup() {
                   )}
                 />
                 {errors.composer && (
-                  <p className="text-sm text-red-700">{errors.composer.message}</p>
+                  <p className="text-sm text-danger">{errors.composer.message}</p>
                 )}
               </div>
               <div className="min-w-0 flex-1">

@@ -47,27 +47,171 @@ interface MockPerson {
 // no years — standing in for a generic/placeholder arranger entry) are
 // what "Show all composers" reveals.
 const MOCK_PEOPLE: MockPerson[] = [
-  { id: 1, name: 'Johann Sebastian Bach', birthYear: 1685, deathYear: 1750, pieceCount: 47, avatarKind: 'initials', paletteIndex: 0 },
-  { id: 2, name: 'Wolfgang Amadeus Mozart', birthYear: 1756, deathYear: 1791, pieceCount: 31, avatarKind: 'bust', paletteIndex: 1 },
-  { id: 3, name: 'Frédéric Chopin', birthYear: 1810, deathYear: 1849, pieceCount: 28, avatarKind: 'initials', paletteIndex: 2 },
-  { id: 4, name: 'Ludwig van Beethoven', birthYear: 1770, deathYear: 1827, pieceCount: 19, avatarKind: 'bust', paletteIndex: 3 },
-  { id: 5, name: 'Johannes Brahms', birthYear: 1833, deathYear: 1897, pieceCount: 12, avatarKind: 'initials', paletteIndex: 4 },
-  { id: 6, name: 'Clara Schumann', birthYear: 1819, deathYear: 1896, pieceCount: 9, avatarKind: 'initials', paletteIndex: 5 },
-  { id: 7, name: 'Claude Debussy', birthYear: 1862, deathYear: 1918, pieceCount: 8, avatarKind: 'bust', paletteIndex: 6 },
-  { id: 8, name: 'J. Burgmüller', birthYear: 1806, deathYear: 1874, pieceCount: 6, avatarKind: 'initials', paletteIndex: 7 },
-  { id: 9, name: 'Theodor Kirchner', birthYear: 1823, deathYear: 1903, pieceCount: 5, avatarKind: 'initials', paletteIndex: 8 },
-  { id: 10, name: 'Camille Saint-Saëns', birthYear: 1835, deathYear: 1921, pieceCount: 4, avatarKind: 'bust', paletteIndex: 9 },
-  { id: 11, name: 'Edvard Grieg', birthYear: 1843, deathYear: 1907, pieceCount: 3, avatarKind: 'initials', paletteIndex: 0 },
-  { id: 12, name: 'W. S. Gilbert', birthYear: 1836, deathYear: 1911, pieceCount: 7, avatarKind: 'initials', paletteIndex: 1 },
-  { id: 13, name: 'Arthur Sullivan', birthYear: 1842, deathYear: 1900, pieceCount: 7, avatarKind: 'bust', paletteIndex: 2 },
-  { id: 14, name: 'M. Alexandrov', birthYear: null, deathYear: null, pieceCount: 2, avatarKind: 'initials', paletteIndex: 3 },
-  { id: 15, name: 'S. Reyes', birthYear: null, deathYear: null, pieceCount: 1, avatarKind: 'initials', paletteIndex: 4 },
-  { id: 16, name: 'R. Nakamura', birthYear: null, deathYear: null, pieceCount: 2, avatarKind: 'initials', paletteIndex: 5 },
-  { id: 17, name: 'K. Alvarez', birthYear: null, deathYear: null, pieceCount: 1, avatarKind: 'initials', paletteIndex: 6 },
+  {
+    id: 1,
+    name: 'Johann Sebastian Bach',
+    birthYear: 1685,
+    deathYear: 1750,
+    pieceCount: 47,
+    avatarKind: 'initials',
+    paletteIndex: 0,
+  },
+  {
+    id: 2,
+    name: 'Wolfgang Amadeus Mozart',
+    birthYear: 1756,
+    deathYear: 1791,
+    pieceCount: 31,
+    avatarKind: 'bust',
+    paletteIndex: 1,
+  },
+  {
+    id: 3,
+    name: 'Frédéric Chopin',
+    birthYear: 1810,
+    deathYear: 1849,
+    pieceCount: 28,
+    avatarKind: 'initials',
+    paletteIndex: 2,
+  },
+  {
+    id: 4,
+    name: 'Ludwig van Beethoven',
+    birthYear: 1770,
+    deathYear: 1827,
+    pieceCount: 19,
+    avatarKind: 'bust',
+    paletteIndex: 3,
+  },
+  {
+    id: 5,
+    name: 'Johannes Brahms',
+    birthYear: 1833,
+    deathYear: 1897,
+    pieceCount: 12,
+    avatarKind: 'initials',
+    paletteIndex: 4,
+  },
+  {
+    id: 6,
+    name: 'Clara Schumann',
+    birthYear: 1819,
+    deathYear: 1896,
+    pieceCount: 9,
+    avatarKind: 'initials',
+    paletteIndex: 5,
+  },
+  {
+    id: 7,
+    name: 'Claude Debussy',
+    birthYear: 1862,
+    deathYear: 1918,
+    pieceCount: 8,
+    avatarKind: 'bust',
+    paletteIndex: 6,
+  },
+  {
+    id: 8,
+    name: 'J. Burgmüller',
+    birthYear: 1806,
+    deathYear: 1874,
+    pieceCount: 6,
+    avatarKind: 'initials',
+    paletteIndex: 7,
+  },
+  {
+    id: 9,
+    name: 'Theodor Kirchner',
+    birthYear: 1823,
+    deathYear: 1903,
+    pieceCount: 5,
+    avatarKind: 'initials',
+    paletteIndex: 8,
+  },
+  {
+    id: 10,
+    name: 'Camille Saint-Saëns',
+    birthYear: 1835,
+    deathYear: 1921,
+    pieceCount: 4,
+    avatarKind: 'bust',
+    paletteIndex: 9,
+  },
+  {
+    id: 11,
+    name: 'Edvard Grieg',
+    birthYear: 1843,
+    deathYear: 1907,
+    pieceCount: 3,
+    avatarKind: 'initials',
+    paletteIndex: 0,
+  },
+  {
+    id: 12,
+    name: 'W. S. Gilbert',
+    birthYear: 1836,
+    deathYear: 1911,
+    pieceCount: 7,
+    avatarKind: 'initials',
+    paletteIndex: 1,
+  },
+  {
+    id: 13,
+    name: 'Arthur Sullivan',
+    birthYear: 1842,
+    deathYear: 1900,
+    pieceCount: 7,
+    avatarKind: 'bust',
+    paletteIndex: 2,
+  },
+  {
+    id: 14,
+    name: 'M. Alexandrov',
+    birthYear: null,
+    deathYear: null,
+    pieceCount: 2,
+    avatarKind: 'initials',
+    paletteIndex: 3,
+  },
+  {
+    id: 15,
+    name: 'S. Reyes',
+    birthYear: null,
+    deathYear: null,
+    pieceCount: 1,
+    avatarKind: 'initials',
+    paletteIndex: 4,
+  },
+  {
+    id: 16,
+    name: 'R. Nakamura',
+    birthYear: null,
+    deathYear: null,
+    pieceCount: 2,
+    avatarKind: 'initials',
+    paletteIndex: 5,
+  },
+  {
+    id: 17,
+    name: 'K. Alvarez',
+    birthYear: null,
+    deathYear: null,
+    pieceCount: 1,
+    avatarKind: 'initials',
+    paletteIndex: 6,
+  },
   // Demonstrates nameSortKey below (quoted-nickname sort) — sorted by
   // Name, this must land among the "J"s, not before "A" as a naive
   // string comparison against the literal leading quote would put it.
-  { id: 18, name: '"Jelly Roll" Morton', birthYear: 1890, deathYear: 1941, pieceCount: 3, avatarKind: 'bust', paletteIndex: 7 },
+  {
+    id: 18,
+    name: '"Jelly Roll" Morton',
+    birthYear: 1890,
+    deathYear: 1941,
+    pieceCount: 3,
+    avatarKind: 'bust',
+    paletteIndex: 7,
+  },
 ]
 
 // Same partial-case rule worked out on the Person Details artifact: both
@@ -256,7 +400,11 @@ type TriState = 'exclude' | 'neutral' | 'include'
 function dimensionState(map: Record<string, TriState>, value: string): TriState {
   return map[value] ?? 'neutral'
 }
-function setDimensionState(map: Record<string, TriState>, value: string, next: TriState): Record<string, TriState> {
+function setDimensionState(
+  map: Record<string, TriState>,
+  value: string,
+  next: TriState,
+): Record<string, TriState> {
   if (next === 'neutral') {
     return Object.fromEntries(Object.entries(map).filter(([k]) => k !== value))
   }
@@ -280,7 +428,14 @@ const EMPTY_PERSON_FILTERS: PersonFilterState = { showAll: false, era: {}, centu
 // whichever single year is known) — same "small, checked-in, approximate
 // table, not an authoritative external source" posture as the deferred
 // public-domain feature's own copyright-region table (design doc §13).
-const ERA_ORDER = ['Renaissance & Earlier', 'Baroque', 'Classical', 'Romantic', 'Modern', 'Contemporary'] as const
+const ERA_ORDER = [
+  'Renaissance & Earlier',
+  'Baroque',
+  'Classical',
+  'Romantic',
+  'Modern',
+  'Contemporary',
+] as const
 type Era = (typeof ERA_ORDER)[number]
 
 function getEra(person: MockPerson): Era | null {
@@ -387,7 +542,9 @@ function PersonTriStateControl({
         aria-label={`Exclude ${label}`}
         aria-pressed={state === 'exclude'}
         className={`flex size-6 cursor-pointer items-center justify-center rounded ${
-          state === 'exclude' ? 'bg-red-50 text-red-700' : 'text-ink-soft hover:bg-paper-sunken hover:text-ink'
+          state === 'exclude'
+            ? 'bg-danger-soft text-danger'
+            : 'text-ink-soft hover:bg-paper-sunken hover:text-ink'
         }`}
       >
         <IconMinus size={14} />
@@ -398,7 +555,9 @@ function PersonTriStateControl({
         aria-label={`Clear ${label} filter`}
         aria-pressed={state === 'neutral'}
         className={`flex size-6 cursor-pointer items-center justify-center rounded ${
-          state === 'neutral' ? 'bg-paper-sunken text-ink' : 'text-ink-soft hover:bg-paper-sunken hover:text-ink'
+          state === 'neutral'
+            ? 'bg-paper-sunken text-ink'
+            : 'text-ink-soft hover:bg-paper-sunken hover:text-ink'
         }`}
       >
         <IconSlash size={14} />
@@ -409,7 +568,9 @@ function PersonTriStateControl({
         aria-label={`Include ${label}`}
         aria-pressed={state === 'include'}
         className={`flex size-6 cursor-pointer items-center justify-center rounded ${
-          state === 'include' ? 'bg-accent-soft text-accent' : 'text-ink-soft hover:bg-paper-sunken hover:text-ink'
+          state === 'include'
+            ? 'bg-accent-soft text-accent'
+            : 'text-ink-soft hover:bg-paper-sunken hover:text-ink'
         }`}
       >
         <IconPlus size={14} />
@@ -458,9 +619,9 @@ function PersonFilterDrawer({
         </div>
 
         <p className="shrink-0 border-b border-border px-4 py-2.5 text-xs leading-snug text-ink-soft">
-          Included options within a section combine with <span className="font-medium text-ink">or</span> — checking
-          two eras, for example, matches people from either. Different sections, and any excluded option, must all
-          match.
+          Included options within a section combine with{' '}
+          <span className="font-medium text-ink">or</span> — checking two eras, for example, matches
+          people from either. Different sections, and any excluded option, must all match.
         </p>
 
         <div className="flex-1 overflow-y-auto px-4 py-2">
@@ -489,7 +650,9 @@ function PersonFilterDrawer({
                 label={era}
                 count={countEra(era)}
                 state={dimensionState(filters.era, era)}
-                onChange={(next) => onChange({ ...filters, era: setDimensionState(filters.era, era, next) })}
+                onChange={(next) =>
+                  onChange({ ...filters, era: setDimensionState(filters.era, era, next) })
+                }
               />
             ))}
           </FacetSection>
@@ -501,7 +664,12 @@ function PersonFilterDrawer({
                 label={`${ordinal(c)} century`}
                 count={countCentury(c)}
                 state={dimensionState(filters.centuries, String(c))}
-                onChange={(next) => onChange({ ...filters, centuries: setDimensionState(filters.centuries, String(c), next) })}
+                onChange={(next) =>
+                  onChange({
+                    ...filters,
+                    centuries: setDimensionState(filters.centuries, String(c), next),
+                  })
+                }
               />
             ))}
           </FacetSection>
@@ -516,7 +684,13 @@ function PersonFilterDrawer({
 // field+direction button.
 // ---------------------------------------------------------------------
 
-const PERSON_SORT_FIELDS = ['Name', 'Piece Count', 'Birth Year', 'Death Year', 'Date Added'] as const
+const PERSON_SORT_FIELDS = [
+  'Name',
+  'Piece Count',
+  'Birth Year',
+  'Death Year',
+  'Date Added',
+] as const
 type PersonSortField = (typeof PERSON_SORT_FIELDS)[number]
 type SortDirection = 'asc' | 'desc'
 
@@ -560,7 +734,8 @@ function PersonSortControl({
     } else if (event.key === 'ArrowUp') {
       event.preventDefault()
       if (!open) openMenu()
-      else setHighlightedIndex((i) => (i - 1 + PERSON_SORT_FIELDS.length) % PERSON_SORT_FIELDS.length)
+      else
+        setHighlightedIndex((i) => (i - 1 + PERSON_SORT_FIELDS.length) % PERSON_SORT_FIELDS.length)
     } else if ((event.key === 'Enter' && !event.shiftKey) || event.key === ' ') {
       if (open) {
         event.preventDefault()
@@ -641,13 +816,20 @@ function nameSortKey(name: string): string {
   return /^["“]/.test(name) ? name.slice(1) : name
 }
 
-function sortPeople(people: MockPerson[], field: PersonSortField, direction: SortDirection): MockPerson[] {
+function sortPeople(
+  people: MockPerson[],
+  field: PersonSortField,
+  direction: SortDirection,
+): MockPerson[] {
   const sorted = [...people]
   const dir = direction === 'asc' ? 1 : -1
-  if (field === 'Name') sorted.sort((a, b) => nameSortKey(a.name).localeCompare(nameSortKey(b.name)) * dir)
+  if (field === 'Name')
+    sorted.sort((a, b) => nameSortKey(a.name).localeCompare(nameSortKey(b.name)) * dir)
   else if (field === 'Piece Count') sorted.sort((a, b) => (a.pieceCount - b.pieceCount) * dir)
-  else if (field === 'Birth Year') sorted.sort((a, b) => compareNullableYearLast(a.birthYear, b.birthYear, dir))
-  else if (field === 'Death Year') sorted.sort((a, b) => compareNullableYearLast(a.deathYear, b.deathYear, dir))
+  else if (field === 'Birth Year')
+    sorted.sort((a, b) => compareNullableYearLast(a.birthYear, b.birthYear, dir))
+  else if (field === 'Death Year')
+    sorted.sort((a, b) => compareNullableYearLast(a.deathYear, b.deathYear, dir))
   else sorted.sort((a, b) => (a.id - b.id) * dir)
   return sorted
 }
@@ -740,7 +922,7 @@ function NewPersonModal({
             className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
             {...register('name', { required: 'Name is required.', maxLength: 255 })}
           />
-          {errors.name && <p className="text-sm text-red-700">{errors.name.message}</p>}
+          {errors.name && <p className="text-sm text-danger">{errors.name.message}</p>}
         </div>
         <div className="flex flex-col gap-4 sm:flex-row">
           <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -848,8 +1030,18 @@ export function PeopleLibrarySample() {
   function clearFilterPill(field: 'era' | 'centuries', value: string) {
     setFilters((f) => ({ ...f, [field]: setDimensionState(f[field], value, 'neutral') }))
   }
-  const pillEntries: { field: 'era' | 'centuries'; value: string; label: string; state: TriState }[] = [
-    ...Object.entries(filters.era).map(([v, state]) => ({ field: 'era' as const, value: v, label: v, state })),
+  const pillEntries: {
+    field: 'era' | 'centuries'
+    value: string
+    label: string
+    state: TriState
+  }[] = [
+    ...Object.entries(filters.era).map(([v, state]) => ({
+      field: 'era' as const,
+      value: v,
+      label: v,
+      state,
+    })),
     ...Object.entries(filters.centuries).map(([v, state]) => ({
       field: 'centuries' as const,
       value: v,
@@ -962,7 +1154,7 @@ export function PeopleLibrarySample() {
                   <span
                     key={entry.field + entry.value}
                     className={`flex items-center gap-1.5 rounded-full py-1 pr-1.5 pl-3 text-xs font-medium ${
-                      excluded ? 'bg-red-50 text-red-700' : 'bg-accent-soft text-accent'
+                      excluded ? 'bg-danger-soft text-danger' : 'bg-accent-soft text-accent'
                     }`}
                   >
                     {excluded ? `Not ${entry.label}` : entry.label}
@@ -971,7 +1163,7 @@ export function PeopleLibrarySample() {
                       onClick={() => clearFilterPill(entry.field, entry.value)}
                       aria-label={`Remove ${excluded ? 'not ' : ''}${entry.label} filter`}
                       className={`flex size-4 cursor-pointer items-center justify-center rounded-full opacity-75 hover:opacity-100 ${
-                        excluded ? 'text-red-700' : 'text-accent'
+                        excluded ? 'text-danger' : 'text-accent'
                       }`}
                     >
                       <IconX size={11} />
@@ -993,10 +1185,10 @@ export function PeopleLibrarySample() {
 
       <div className="p-4 pb-0">
         <div className="rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-4 py-2 text-sm text-ink-soft">
-          Design mockup — <span className="font-medium text-ink">People Library</span>. Search, Filters,
-          Sort, grid/list, New Person, and right-click Delete are all genuinely interactive against 17
-          fixture people. Cards aren't real links — this mockup keeps its own fixture data separate from the
-          real Person Details page.
+          Design mockup — <span className="font-medium text-ink">People Library</span>. Search,
+          Filters, Sort, grid/list, New Person, and right-click Delete are all genuinely interactive
+          against 17 fixture people. Cards aren't real links — this mockup keeps its own fixture
+          data separate from the real Person Details page.
         </div>
       </div>
 
@@ -1009,12 +1201,18 @@ export function PeopleLibrarySample() {
           {!filters.showAll && hiddenCount > 0 && ` • ${hiddenCount} hidden (see Filters)`}
         </p>
 
-        {sortedPeople.length === 0 && <p className="p-8 text-center text-ink-soft">No people match these filters.</p>}
+        {sortedPeople.length === 0 && (
+          <p className="p-8 text-center text-ink-soft">No people match these filters.</p>
+        )}
 
         {sortedPeople.length > 0 && viewMode === 'grid' && (
           <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-x-4 gap-y-6">
             {sortedPeople.map((person) => (
-              <PersonGridCard key={person.id} person={person} onDelete={() => handleDeletePerson(person.id)} />
+              <PersonGridCard
+                key={person.id}
+                person={person}
+                onDelete={() => handleDeletePerson(person.id)}
+              />
             ))}
           </div>
         )}
@@ -1022,15 +1220,28 @@ export function PeopleLibrarySample() {
         {sortedPeople.length > 0 && viewMode === 'list' && (
           <div className="flex flex-col divide-y divide-border">
             {sortedPeople.map((person) => (
-              <PersonListRow key={person.id} person={person} onDelete={() => handleDeletePerson(person.id)} />
+              <PersonListRow
+                key={person.id}
+                person={person}
+                onDelete={() => handleDeletePerson(person.id)}
+              />
             ))}
           </div>
         )}
       </div>
 
-      <NewPersonModal open={newPersonOpen} onClose={() => setNewPersonOpen(false)} onCreate={handleCreatePerson} />
+      <NewPersonModal
+        open={newPersonOpen}
+        onClose={() => setNewPersonOpen(false)}
+        onCreate={handleCreatePerson}
+      />
 
-      <PersonFilterDrawer open={drawerOpen} filters={filters} onChange={setFilters} onClose={() => setDrawerOpen(false)} />
+      <PersonFilterDrawer
+        open={drawerOpen}
+        filters={filters}
+        onChange={setFilters}
+        onClose={() => setDrawerOpen(false)}
+      />
     </div>
   )
 }

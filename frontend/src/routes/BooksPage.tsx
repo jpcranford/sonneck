@@ -153,7 +153,7 @@ export function BooksPage() {
                 <span
                   key={entry.field + entry.value}
                   className={`flex items-center gap-1.5 rounded-full py-1 pr-1.5 pl-3 text-xs font-medium ${
-                    excluded ? 'bg-red-50 text-red-700' : 'bg-accent-soft text-accent'
+                    excluded ? 'bg-danger-soft text-danger' : 'bg-accent-soft text-accent'
                   }`}
                 >
                   {excluded ? `Not ${entry.label}` : entry.label}
@@ -162,7 +162,7 @@ export function BooksPage() {
                     onClick={() => clearDrawerFilter(entry.field, entry.value)}
                     aria-label={`Remove ${excluded ? 'not ' : ''}${entry.label} filter`}
                     className={`flex size-4 cursor-pointer items-center justify-center rounded-full opacity-75 hover:opacity-100 ${
-                      excluded ? 'text-red-700' : 'text-accent'
+                      excluded ? 'text-danger' : 'text-accent'
                     }`}
                   >
                     <IconX size={11} />

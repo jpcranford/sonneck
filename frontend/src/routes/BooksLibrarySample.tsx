@@ -71,7 +71,9 @@ function effectiveComposer(book: MockBook): string | null {
 }
 
 function metaLine(book: MockBook): string {
-  return [effectiveComposer(book), book.yearWritten].filter((part): part is string => !!part).join(' • ')
+  return [effectiveComposer(book), book.yearWritten]
+    .filter((part): part is string => !!part)
+    .join(' • ')
 }
 
 // Deliberately mixed: #2 has no composer but a publisher (exercises the
@@ -79,14 +81,88 @@ function metaLine(book: MockBook): string {
 // span 4-400, titles span short to long — same "stress the edges, not just
 // the happy path" habit as the rest of this app's mockups/fixtures.
 const MOCK_BOOKS: MockBook[] = [
-  { id: 1, bookTitle: 'Album für die Jugend, Op. 68', composer: 'Robert Schumann', publisher: 'G. Schirmer', yearWritten: '1848', pieceCount: 43, sheetType: 'Solo Piece', instruments: ['Piano'] },
-  { id: 2, bookTitle: 'The Real Book — Sixth Edition', composer: null, publisher: 'Hal Leonard', yearWritten: null, pieceCount: 400, sheetType: 'Lead Sheet', instruments: ['Piano', 'Guitar'] },
-  { id: 3, bookTitle: '24 Préludes, Op. 28', composer: 'Frédéric Chopin', publisher: 'Breitkopf & Härtel', yearWritten: '1839', pieceCount: 24, coverAspect: [11, 8.5], sheetType: 'Solo Piece', instruments: ['Piano'] },
-  { id: 4, bookTitle: 'Sonatas and Partitas for Solo Violin', composer: 'J.S. Bach', publisher: null, yearWritten: '1720', pieceCount: 6, sheetType: 'Solo Piece', instruments: ['Violin'] },
-  { id: 5, bookTitle: 'Piano Sonatas, Volume I', composer: 'Ludwig van Beethoven', publisher: 'Henle', yearWritten: '1802', pieceCount: 8, sheetType: 'Solo Piece', instruments: ['Piano'] },
-  { id: 6, bookTitle: 'Anthology of American Folk Songs', composer: null, publisher: null, yearWritten: null, pieceCount: 52, sheetType: 'PVG Score', instruments: ['Piano', 'Voice', 'Guitar'] },
-  { id: 7, bookTitle: 'Suite bergamasque', composer: 'Claude Debussy', publisher: 'Durand', yearWritten: '1905', pieceCount: 4, coverAspect: [4, 3], sheetType: 'Solo Piece', instruments: ['Piano'] },
-  { id: 8, bookTitle: 'The Nutcracker Suite, Op. 71a (Piano Reduction)', composer: 'Pyotr Ilyich Tchaikovsky', publisher: 'G. Schirmer', yearWritten: '1892', pieceCount: 8, sheetType: 'Solo Piece', instruments: ['Piano'] },
+  {
+    id: 1,
+    bookTitle: 'Album für die Jugend, Op. 68',
+    composer: 'Robert Schumann',
+    publisher: 'G. Schirmer',
+    yearWritten: '1848',
+    pieceCount: 43,
+    sheetType: 'Solo Piece',
+    instruments: ['Piano'],
+  },
+  {
+    id: 2,
+    bookTitle: 'The Real Book — Sixth Edition',
+    composer: null,
+    publisher: 'Hal Leonard',
+    yearWritten: null,
+    pieceCount: 400,
+    sheetType: 'Lead Sheet',
+    instruments: ['Piano', 'Guitar'],
+  },
+  {
+    id: 3,
+    bookTitle: '24 Préludes, Op. 28',
+    composer: 'Frédéric Chopin',
+    publisher: 'Breitkopf & Härtel',
+    yearWritten: '1839',
+    pieceCount: 24,
+    coverAspect: [11, 8.5],
+    sheetType: 'Solo Piece',
+    instruments: ['Piano'],
+  },
+  {
+    id: 4,
+    bookTitle: 'Sonatas and Partitas for Solo Violin',
+    composer: 'J.S. Bach',
+    publisher: null,
+    yearWritten: '1720',
+    pieceCount: 6,
+    sheetType: 'Solo Piece',
+    instruments: ['Violin'],
+  },
+  {
+    id: 5,
+    bookTitle: 'Piano Sonatas, Volume I',
+    composer: 'Ludwig van Beethoven',
+    publisher: 'Henle',
+    yearWritten: '1802',
+    pieceCount: 8,
+    sheetType: 'Solo Piece',
+    instruments: ['Piano'],
+  },
+  {
+    id: 6,
+    bookTitle: 'Anthology of American Folk Songs',
+    composer: null,
+    publisher: null,
+    yearWritten: null,
+    pieceCount: 52,
+    sheetType: 'PVG Score',
+    instruments: ['Piano', 'Voice', 'Guitar'],
+  },
+  {
+    id: 7,
+    bookTitle: 'Suite bergamasque',
+    composer: 'Claude Debussy',
+    publisher: 'Durand',
+    yearWritten: '1905',
+    pieceCount: 4,
+    coverAspect: [4, 3],
+    sheetType: 'Solo Piece',
+    instruments: ['Piano'],
+  },
+  {
+    id: 8,
+    bookTitle: 'The Nutcracker Suite, Op. 71a (Piano Reduction)',
+    composer: 'Pyotr Ilyich Tchaikovsky',
+    publisher: 'G. Schirmer',
+    yearWritten: '1892',
+    pieceCount: 8,
+    sheetType: 'Solo Piece',
+    instruments: ['Piano'],
+  },
 ]
 
 // A believable spread of book-cover colors — published sheet-music
@@ -256,7 +332,9 @@ function BookCatalogRow({ book }: { book: MockBook }) {
       <div className="min-w-0 flex-1">
         <p className="truncate font-display text-base font-medium text-ink">{book.bookTitle}</p>
         <p className="truncate text-sm text-ink-soft">
-          {meta || <span className="text-ink-soft/60 italic">No composer or publisher on file</span>}
+          {meta || (
+            <span className="text-ink-soft/60 italic">No composer or publisher on file</span>
+          )}
         </p>
       </div>
       <div className="flex w-14 shrink-0 flex-col items-center justify-center border-l border-border pl-4">
@@ -305,7 +383,11 @@ type TriState = 'exclude' | 'neutral' | 'include'
 function dimensionState(map: Record<string, TriState>, value: string): TriState {
   return map[value] ?? 'neutral'
 }
-function setDimensionState(map: Record<string, TriState>, value: string, next: TriState): Record<string, TriState> {
+function setDimensionState(
+  map: Record<string, TriState>,
+  value: string,
+  next: TriState,
+): Record<string, TriState> {
   if (next === 'neutral') {
     return Object.fromEntries(Object.entries(map).filter(([k]) => k !== value))
   }
@@ -330,17 +412,26 @@ function matchesTagDimension(map: Record<string, TriState>, bookValues: string[]
 // self-narrowing against its own selection — the mockup's own port of the
 // real backend's combineClauses "exclude" rule, same as
 // PieceLibrarySample.tsx's matchesFiltersExcept.
-function booksMatchExcept(b: MockBook, f: BookFilterState, exclude: keyof BookFilterState | null, query: string): boolean {
+function booksMatchExcept(
+  b: MockBook,
+  f: BookFilterState,
+  exclude: keyof BookFilterState | null,
+  query: string,
+): boolean {
   if (exclude !== 'sheetType' && !matchesDimension(f.sheetType, b.sheetType)) return false
   if (exclude !== 'instruments' && !matchesTagDimension(f.instruments, b.instruments)) return false
   if (query.trim() && !b.bookTitle.toLowerCase().includes(query.trim().toLowerCase())) return false
   return true
 }
 function countSheetType(value: string, f: BookFilterState, query: string): number {
-  return MOCK_BOOKS.filter((b) => b.sheetType === value && booksMatchExcept(b, f, 'sheetType', query)).length
+  return MOCK_BOOKS.filter(
+    (b) => b.sheetType === value && booksMatchExcept(b, f, 'sheetType', query),
+  ).length
 }
 function countInstrument(value: string, f: BookFilterState, query: string): number {
-  return MOCK_BOOKS.filter((b) => b.instruments.includes(value) && booksMatchExcept(b, f, 'instruments', query)).length
+  return MOCK_BOOKS.filter(
+    (b) => b.instruments.includes(value) && booksMatchExcept(b, f, 'instruments', query),
+  ).length
 }
 
 interface BookFilterState {
@@ -379,7 +470,15 @@ function BookFacetRow({
 // Same bordered-pill segmented control as PieceLibrarySample.tsx's own
 // TriStateControl (full reasoning there) — duplicated by hand, not shared,
 // per this codebase's "mockups are self-contained" convention.
-function BookTriStateControl({ state, onChange, label }: { state: TriState; onChange: (next: TriState) => void; label: string }) {
+function BookTriStateControl({
+  state,
+  onChange,
+  label,
+}: {
+  state: TriState
+  onChange: (next: TriState) => void
+  label: string
+}) {
   return (
     <div className="flex shrink-0 items-center gap-0.5 rounded-md border border-border p-0.5">
       <button
@@ -388,7 +487,9 @@ function BookTriStateControl({ state, onChange, label }: { state: TriState; onCh
         aria-label={`Exclude ${label}`}
         aria-pressed={state === 'exclude'}
         className={`flex size-6 cursor-pointer items-center justify-center rounded ${
-          state === 'exclude' ? 'bg-red-50 text-red-700' : 'text-ink-soft hover:bg-paper-sunken hover:text-ink'
+          state === 'exclude'
+            ? 'bg-danger-soft text-danger'
+            : 'text-ink-soft hover:bg-paper-sunken hover:text-ink'
         }`}
       >
         <IconMinus size={14} />
@@ -399,7 +500,9 @@ function BookTriStateControl({ state, onChange, label }: { state: TriState; onCh
         aria-label={`Clear ${label} filter`}
         aria-pressed={state === 'neutral'}
         className={`flex size-6 cursor-pointer items-center justify-center rounded ${
-          state === 'neutral' ? 'bg-paper-sunken text-ink' : 'text-ink-soft hover:bg-paper-sunken hover:text-ink'
+          state === 'neutral'
+            ? 'bg-paper-sunken text-ink'
+            : 'text-ink-soft hover:bg-paper-sunken hover:text-ink'
         }`}
       >
         <IconSlash size={14} />
@@ -410,7 +513,9 @@ function BookTriStateControl({ state, onChange, label }: { state: TriState; onCh
         aria-label={`Include ${label}`}
         aria-pressed={state === 'include'}
         className={`flex size-6 cursor-pointer items-center justify-center rounded ${
-          state === 'include' ? 'bg-accent-soft text-accent' : 'text-ink-soft hover:bg-paper-sunken hover:text-ink'
+          state === 'include'
+            ? 'bg-accent-soft text-accent'
+            : 'text-ink-soft hover:bg-paper-sunken hover:text-ink'
         }`}
       >
         <IconPlus size={14} />
@@ -475,9 +580,9 @@ function BookFilterDrawer({
         </div>
 
         <p className="shrink-0 border-b border-border px-4 py-2.5 text-xs leading-snug text-ink-soft">
-          Included options within a section combine with <span className="font-medium text-ink">or</span> — checking
-          two sheet types, for example, matches books with either. Different sections, and any excluded option, must
-          all match.
+          Included options within a section combine with{' '}
+          <span className="font-medium text-ink">or</span> — checking two sheet types, for example,
+          matches books with either. Different sections, and any excluded option, must all match.
         </p>
 
         <div className="flex-1 overflow-y-auto px-4 py-2">
@@ -488,7 +593,9 @@ function BookFilterDrawer({
                 label={v}
                 count={countSheetType(v, filters, query)}
                 state={dimensionState(filters.sheetType, v)}
-                onChange={(next) => onChange({ ...filters, sheetType: setDimensionState(filters.sheetType, v, next) })}
+                onChange={(next) =>
+                  onChange({ ...filters, sheetType: setDimensionState(filters.sheetType, v, next) })
+                }
               />
             ))}
           </BookFacetSection>
@@ -500,7 +607,12 @@ function BookFilterDrawer({
                 label={v}
                 count={countInstrument(v, filters, query)}
                 state={dimensionState(filters.instruments, v)}
-                onChange={(next) => onChange({ ...filters, instruments: setDimensionState(filters.instruments, v, next) })}
+                onChange={(next) =>
+                  onChange({
+                    ...filters,
+                    instruments: setDimensionState(filters.instruments, v, next),
+                  })
+                }
               />
             ))}
           </BookFacetSection>
@@ -633,7 +745,8 @@ function BookSortControl({
 function sortBooks(books: MockBook[], field: BookSortField, direction: SortDirection): MockBook[] {
   const sorted = [...books]
   if (field === 'Title') sorted.sort((a, b) => a.bookTitle.localeCompare(b.bookTitle))
-  else if (field === 'Composer') sorted.sort((a, b) => (effectiveComposer(a) ?? '').localeCompare(effectiveComposer(b) ?? ''))
+  else if (field === 'Composer')
+    sorted.sort((a, b) => (effectiveComposer(a) ?? '').localeCompare(effectiveComposer(b) ?? ''))
   else if (field === 'Year Published') {
     sorted.sort((a, b) => {
       if (!a.yearWritten && !b.yearWritten) return 0
@@ -740,7 +853,7 @@ function NewBookModal({
             className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
             {...register('bookTitle', { required: 'Title is required.', maxLength: 255 })}
           />
-          {errors.bookTitle && <p className="text-sm text-red-700">{errors.bookTitle.message}</p>}
+          {errors.bookTitle && <p className="text-sm text-danger">{errors.bookTitle.message}</p>}
         </div>
         <div className="flex flex-col gap-1">
           <label htmlFor="nb-composer" className="text-sm text-ink-soft">
@@ -818,7 +931,9 @@ export function BooksLibrarySample() {
   }
 
   const filtered = books.filter(
-    (b) => bookMatches(b, appliedFilters) && (!query.trim() || b.bookTitle.toLowerCase().includes(query.trim().toLowerCase())),
+    (b) =>
+      bookMatches(b, appliedFilters) &&
+      (!query.trim() || b.bookTitle.toLowerCase().includes(query.trim().toLowerCase())),
   )
   const sortedBooks = sortBooks(filtered, sortField, sortDirection)
   const activeCount = activeBookFilterCount(appliedFilters)
@@ -827,8 +942,16 @@ export function BooksLibrarySample() {
     setAppliedFilters((f) => ({ ...f, [field]: setDimensionState(f[field], value, 'neutral') }))
   }
   const pillEntries: { field: keyof BookFilterState; value: string; state: TriState }[] = [
-    ...Object.entries(appliedFilters.sheetType).map(([v, state]) => ({ field: 'sheetType' as const, value: v, state })),
-    ...Object.entries(appliedFilters.instruments).map(([v, state]) => ({ field: 'instruments' as const, value: v, state })),
+    ...Object.entries(appliedFilters.sheetType).map(([v, state]) => ({
+      field: 'sheetType' as const,
+      value: v,
+      state,
+    })),
+    ...Object.entries(appliedFilters.instruments).map(([v, state]) => ({
+      field: 'instruments' as const,
+      value: v,
+      state,
+    })),
   ]
 
   return (
@@ -953,7 +1076,7 @@ export function BooksLibrarySample() {
                   <span
                     key={entry.field + entry.value}
                     className={`flex items-center gap-1.5 rounded-full py-1 pr-1.5 pl-3 text-xs font-medium ${
-                      excluded ? 'bg-red-50 text-red-700' : 'bg-accent-soft text-accent'
+                      excluded ? 'bg-danger-soft text-danger' : 'bg-accent-soft text-accent'
                     }`}
                   >
                     {excluded ? `Not ${entry.value}` : entry.value}
@@ -962,7 +1085,7 @@ export function BooksLibrarySample() {
                       onClick={() => clearAppliedFilter(entry.field, entry.value)}
                       aria-label={`Remove ${excluded ? 'not ' : ''}${entry.value} filter`}
                       className={`flex size-4 cursor-pointer items-center justify-center rounded-full opacity-75 hover:opacity-100 ${
-                        excluded ? 'text-red-700' : 'text-accent'
+                        excluded ? 'text-danger' : 'text-accent'
                       }`}
                     >
                       <IconX size={11} />
@@ -984,10 +1107,10 @@ export function BooksLibrarySample() {
 
       <div className="p-4 pb-0">
         <div className="rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-4 py-2 text-sm text-ink-soft">
-          Design mockup — <span className="font-medium text-ink">Books library sort/filter</span>. Grid
-          and list match the real BookGridCard/BookListCard exactly; Search, Filters, Sort, and the
-          grid/list toggle are all genuinely interactive against the 8 fixture books below. Cards aren't
-          real links.
+          Design mockup — <span className="font-medium text-ink">Books library sort/filter</span>.
+          Grid and list match the real BookGridCard/BookListCard exactly; Search, Filters, Sort, and
+          the grid/list toggle are all genuinely interactive against the 8 fixture books below.
+          Cards aren't real links.
         </div>
       </div>
 
@@ -996,7 +1119,9 @@ export function BooksLibrarySample() {
           {sortedBooks.length} {sortedBooks.length === 1 ? 'book' : 'books'}
         </p>
 
-        {sortedBooks.length === 0 && <p className="p-8 text-center text-ink-soft">No books match these filters.</p>}
+        {sortedBooks.length === 0 && (
+          <p className="p-8 text-center text-ink-soft">No books match these filters.</p>
+        )}
 
         {sortedBooks.length > 0 && viewMode === 'grid' && (
           <div className="grid grid-cols-[repeat(auto-fill,minmax(148px,1fr))] gap-x-4 gap-y-6">
@@ -1015,7 +1140,11 @@ export function BooksLibrarySample() {
         )}
       </div>
 
-      <NewBookModal open={newBookOpen} onClose={() => setNewBookOpen(false)} onCreate={handleCreateBook} />
+      <NewBookModal
+        open={newBookOpen}
+        onClose={() => setNewBookOpen(false)}
+        onCreate={handleCreateBook}
+      />
 
       <BookFilterDrawer
         open={drawerOpen}

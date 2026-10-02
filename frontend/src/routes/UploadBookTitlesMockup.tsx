@@ -551,13 +551,15 @@ export function UploadBookTitlesMockup() {
 
   function handleCancelUpload() {
     const confirmed = window.confirm(
-      "Cancel this upload? The uploaded file and its generated page previews will be permanently removed from the server.",
+      'Cancel this upload? The uploaded file and its generated page previews will be permanently removed from the server.',
     )
     if (!confirmed) return
     // Mockup only — see UploadBookAboutMockup.tsx's own copy of this
     // function for the real-build notes (DELETE /api/books/{id}, thumbnail
     // cache cleanup gap, return-to-Upload-landing).
-    console.log('Mockup: cancel confirmed — would delete book + cached thumbnails, return to Upload landing')
+    console.log(
+      'Mockup: cancel confirmed — would delete book + cached thumbnails, return to Upload landing',
+    )
   }
   const {
     register,
@@ -711,7 +713,10 @@ export function UploadBookTitlesMockup() {
           simulating real step-nav — see UploadBookAboutMockup.tsx's own
           comment on this. */}
       <div className="flex items-center justify-between">
-        <Link to="/mockup" className="flex items-center gap-1.5 text-base text-ink-soft hover:text-ink">
+        <Link
+          to="/mockup"
+          className="flex items-center gap-1.5 text-base text-ink-soft hover:text-ink"
+        >
           <IconArrowLeft size={24} />
           Back
         </Link>
@@ -825,19 +830,19 @@ export function UploadBookTitlesMockup() {
                           step) — so Title, Composer, and Arranger's boxes
                           line up instead of Title sitting visibly shorter. */}
                       <label className="mb-1 block text-sm text-ink-soft">
-                        Title <span className="text-red-700">*</span>
+                        Title <span className="text-danger">*</span>
                       </label>
                       <textarea
                         rows={1}
                         className={`w-full resize-none overflow-hidden rounded-md border bg-paper-raised px-2.5 py-[11px] text-sm text-ink ${
-                          titleError ? 'border-red-700' : 'border-border'
+                          titleError ? 'border-danger' : 'border-border'
                         }`}
                         placeholder="Title"
                         onKeyDown={preventTextareaNewline}
                         {...titleField(index)}
                       />
                       {titleError && (
-                        <span className="mt-0.5 flex items-center gap-1 text-xs text-red-700">
+                        <span className="mt-0.5 flex items-center gap-1 text-xs text-danger">
                           <IconAlertTriangle size={10} />
                           Required
                         </span>
@@ -867,7 +872,7 @@ export function UploadBookTitlesMockup() {
                             )}
                           />
                           {composerError && (
-                            <span className="mt-0.5 flex items-center gap-1 text-xs text-red-700">
+                            <span className="mt-0.5 flex items-center gap-1 text-xs text-danger">
                               <IconAlertTriangle size={10} />
                               {composerError.message}
                             </span>
@@ -896,7 +901,7 @@ export function UploadBookTitlesMockup() {
                               )}
                             />
                             {arrangerError && (
-                              <span className="mt-0.5 flex items-center gap-1 text-xs text-red-700">
+                              <span className="mt-0.5 flex items-center gap-1 text-xs text-danger">
                                 <IconAlertTriangle size={10} />
                                 {arrangerError.message}
                               </span>
@@ -948,19 +953,19 @@ export function UploadBookTitlesMockup() {
                   <div className="flex min-w-0 flex-1 flex-col gap-2.5">
                     <div>
                       <label className="mb-1 block text-sm text-ink-soft">
-                        Title <span className="text-red-700">*</span>
+                        Title <span className="text-danger">*</span>
                       </label>
                       <textarea
                         rows={1}
                         className={`w-full resize-none overflow-hidden rounded-md border bg-paper-raised px-3 py-2 text-base text-ink ${
-                          titleError ? 'border-red-700' : 'border-border'
+                          titleError ? 'border-danger' : 'border-border'
                         }`}
                         placeholder="Title"
                         onKeyDown={preventTextareaNewline}
                         {...titleField(index)}
                       />
                       {titleError && (
-                        <span className="mt-1 flex items-center gap-1 text-xs text-red-700">
+                        <span className="mt-1 flex items-center gap-1 text-xs text-danger">
                           <IconAlertTriangle size={10} />
                           Required
                         </span>
@@ -989,7 +994,7 @@ export function UploadBookTitlesMockup() {
                           )}
                         />
                         {composerError && (
-                          <span className="mt-1 flex items-center gap-1 text-xs text-red-700">
+                          <span className="mt-1 flex items-center gap-1 text-xs text-danger">
                             <IconAlertTriangle size={10} />
                             {composerError.message}
                           </span>
@@ -1019,7 +1024,7 @@ export function UploadBookTitlesMockup() {
                           )}
                         />
                         {arrangerError && (
-                          <span className="mt-1 flex items-center gap-1 text-xs text-red-700">
+                          <span className="mt-1 flex items-center gap-1 text-xs text-danger">
                             <IconAlertTriangle size={10} />
                             {arrangerError.message}
                           </span>
@@ -1040,7 +1045,7 @@ export function UploadBookTitlesMockup() {
           <button
             type="button"
             onClick={handleCancelUpload}
-            className="flex cursor-pointer items-center gap-1.5 text-base text-red-700 hover:text-red-800"
+            className="flex cursor-pointer items-center gap-1.5 text-base text-danger hover:text-red-800"
           >
             <IconX size={24} />
             Cancel upload

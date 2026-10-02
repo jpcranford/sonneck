@@ -129,7 +129,7 @@ const BUTTON =
   'cursor-pointer rounded-md px-4 py-2 font-display disabled:cursor-not-allowed disabled:opacity-50'
 const BUTTON_SECONDARY = `${BUTTON} border border-border bg-paper-raised text-ink hover:border-accent`
 const BUTTON_PRIMARY = `${BUTTON} bg-accent text-white hover:bg-accent/90`
-const BUTTON_DESTRUCTIVE = `${BUTTON} border border-border bg-paper-raised text-red-700 hover:border-red-700`
+const BUTTON_DESTRUCTIVE = `${BUTTON} border border-border bg-paper-raised text-danger hover:border-danger`
 
 export function DropToUpload() {
   const me = useAuth()
@@ -280,11 +280,11 @@ export function DropToUpload() {
           <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-6 backdrop-blur-[2px]">
             <div
               className={`w-full max-w-sm rounded-xl border-2 border-dashed bg-paper-raised px-6 py-7 text-center shadow-xl ${
-                dragging.refusal ? 'border-red-700' : 'border-accent'
+                dragging.refusal ? 'border-danger' : 'border-accent'
               }`}
             >
               <div
-                className={`mb-2 flex justify-center ${dragging.refusal ? 'text-red-700' : 'text-accent'}`}
+                className={`mb-2 flex justify-center ${dragging.refusal ? 'text-danger' : 'text-accent'}`}
               >
                 {dragging.refusal ? <IconBan size={26} /> : <IconCloudUpload size={26} />}
               </div>

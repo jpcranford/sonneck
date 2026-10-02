@@ -131,13 +131,13 @@ export function BookUploadFileStep({ initialFile, onBack, onUploaded }: BookUplo
           }}
         />
         {fileError && (
-          <p className="flex items-center gap-2 text-sm text-red-700">
+          <p className="flex items-center gap-2 text-sm text-danger">
             <IconAlertTriangle size={16} />
             {fileError}
           </p>
         )}
         {uploadMutation.isError && (
-          <p className="flex items-center gap-2 text-sm text-red-700">
+          <p className="flex items-center gap-2 text-sm text-danger">
             <IconAlertTriangle size={16} />
             {uploadMutation.error instanceof ApiError
               ? uploadMutation.error.message

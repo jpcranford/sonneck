@@ -538,28 +538,22 @@ export function UploadBookSplitMockup() {
             // newest/most specific marks first ('triple', then 'double',
             // then 'single').
             const badgeKind:
-              | 'single'
-              | 'double'
-              | 'triple'
-              | 'start'
-              | 'shared'
-              | 'pending'
-              | 'skip'
-              | null = isTripleStart
-              ? 'triple'
-              : isDoubleStart
-                ? 'double'
-                : isSingleStart
-                  ? 'single'
-                  : isSharedStart
-                    ? 'shared'
-                    : isStart
-                      ? 'start'
-                      : isPending
-                        ? 'pending'
-                        : isSkip
-                          ? 'skip'
-                          : null
+              'single' | 'double' | 'triple' | 'start' | 'shared' | 'pending' | 'skip' | null =
+              isTripleStart
+                ? 'triple'
+                : isDoubleStart
+                  ? 'double'
+                  : isSingleStart
+                    ? 'single'
+                    : isSharedStart
+                      ? 'shared'
+                      : isStart
+                        ? 'start'
+                        : isPending
+                          ? 'pending'
+                          : isSkip
+                            ? 'skip'
+                            : null
 
             // `border-image` (the obvious way to paint a two-color diagonal
             // border) ignores `border-radius` entirely — a CSS quirk, not a
@@ -1001,7 +995,7 @@ export function UploadBookSplitMockup() {
         <button
           type="button"
           onClick={handleCancelUpload}
-          className="flex cursor-pointer items-center gap-1.5 text-base text-red-700 hover:text-red-800"
+          className="flex cursor-pointer items-center gap-1.5 text-base text-danger hover:text-red-800"
         >
           <IconX size={24} />
           Cancel upload

@@ -323,7 +323,7 @@ function classify(tag: string, tokens: string[]): ControlKind | null {
   if (tag === 'textarea') return 'Text area'
   if (tag === 'select') return 'Select'
   if (tokens.some((t) => /^bg-accent(\/|$)/.test(t))) return 'Primary'
-  if (tokens.some((t) => /^(text|bg|border)-red-/.test(t))) return 'Destructive'
+  if (tokens.some((t) => /^(text|bg|border)-(red-|danger)/.test(t))) return 'Destructive'
   if (tokens.includes('border') || tokens.some((t) => t.startsWith('bg-'))) return 'Secondary'
   if (tag === 'button') return 'Quiet'
   return null

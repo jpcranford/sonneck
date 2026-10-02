@@ -88,11 +88,12 @@ function WelcomeStep({ onStart }: { onStart: () => void }) {
       <SonneckWordmark className="h-20 w-auto text-ink" />
       <div className="flex flex-col gap-3">
         <p className="text-sm text-ink-soft">
-          Sonneck is your own sheet music library — organize, browse, and practice from every device on your
-          network.
+          Sonneck is your own sheet music library — organize, browse, and practice from every device
+          on your network.
         </p>
         <p className="text-sm text-ink-soft">
-          Two quick things before you start: where your library lives, and who's allowed in. Takes about a minute.
+          Two quick things before you start: where your library lives, and who's allowed in. Takes
+          about a minute.
         </p>
       </div>
       <button
@@ -121,7 +122,15 @@ function RestartingStep() {
   )
 }
 
-function FolderStep({ config, onBack, onNext }: { config: AppConfig; onBack: () => void; onNext: () => void }) {
+function FolderStep({
+  config,
+  onBack,
+  onNext,
+}: {
+  config: AppConfig
+  onBack: () => void
+  onNext: () => void
+}) {
   const isNative = config.buildTarget === 'native'
   const [restarting, setRestarting] = useState(false)
   const [switchError, setSwitchError] = useState<string | null>(null)
@@ -176,7 +185,7 @@ function FolderStep({ config, onBack, onNext }: { config: AppConfig; onBack: () 
             <p className="text-xs text-ink-soft">
               Choose an empty folder, or one that already has a Sonneck library in it.
             </p>
-            {switchError && <p className="text-xs text-red-700">{switchError}</p>}
+            {switchError && <p className="text-xs text-danger">{switchError}</p>}
           </>
         ) : (
           <>
@@ -189,8 +198,8 @@ function FolderStep({ config, onBack, onNext }: { config: AppConfig; onBack: () 
             </div>
             <p className="flex items-start gap-1.5 text-xs text-ink-soft">
               <IconInfoCircle size={14} className="mt-0.5 shrink-0" />
-              Running in Docker, your library location is set by the volume mount, not from here. To use a different
-              folder, point the mount at it and restart the container.
+              Running in Docker, your library location is set by the volume mount, not from here. To
+              use a different folder, point the mount at it and restart the container.
             </p>
           </>
         )}
@@ -218,7 +227,15 @@ interface SecurityCardProps {
   children?: React.ReactNode
 }
 
-function SecurityCard({ selected, disabled, icon, title, description, onSelect, children }: SecurityCardProps) {
+function SecurityCard({
+  selected,
+  disabled,
+  icon,
+  title,
+  description,
+  onSelect,
+  children,
+}: SecurityCardProps) {
   return (
     <div
       className={`rounded-lg border p-4 ${
@@ -263,7 +280,10 @@ function SecurityCard({ selected, disabled, icon, title, description, onSelect, 
 // same "field replaced by a hint, not shown as editable" convention Admin
 // Settings' own env-var-shadowed fields will use.
 function LockedSecurityNotice({ authMethod }: { authMethod: AppConfig['authMethod'] }) {
-  const meta: Record<AppConfig['authMethod'], { icon: React.ReactNode; title: string; description: string }> = {
+  const meta: Record<
+    AppConfig['authMethod'],
+    { icon: React.ReactNode; title: string; description: string }
+  > = {
     none: {
       icon: <IconLockOpen2 size={16} />,
       title: 'No login',
@@ -272,12 +292,14 @@ function LockedSecurityNotice({ authMethod }: { authMethod: AppConfig['authMetho
     singlepass: {
       icon: <IconPassword size={16} />,
       title: 'Password',
-      description: 'A single shared password gates the whole app — still just one shared account behind it.',
+      description:
+        'A single shared password gates the whole app — still just one shared account behind it.',
     },
     oidc: {
       icon: <IconShieldLock size={16} />,
       title: 'Sign in with…',
-      description: 'Configured through your identity provider — each person signs in as their own account.',
+      description:
+        'Configured through your identity provider — each person signs in as their own account.',
     },
   }
   const { icon, title, description } = meta[authMethod]
@@ -351,7 +373,9 @@ function PasswordFields({
         className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-sm text-ink"
       />
       {confirmPassword.length > 0 && !passwordValid && (
-        <p className="text-xs text-red-700">{password.length < 8 ? 'At least 8 characters.' : "Passwords don't match."}</p>
+        <p className="text-xs text-danger">
+          {password.length < 8 ? 'At least 8 characters.' : "Passwords don't match."}
+        </p>
       )}
     </div>
   )
@@ -400,8 +424,8 @@ function SecurityStep({
       <WizardChrome step={2} onBack={onBack} />
       <h1 className="font-display text-2xl font-medium text-ink">Who's allowed in?</h1>
       <p className="mt-1 text-sm text-ink-soft">
-        You can change this later from Admin Settings. Every option can add named accounts and permissions once
-        Sonneck's multi-user support is fully built out.
+        You can change this later from Admin Settings. Every option can add named accounts and
+        permissions once Sonneck's multi-user support is fully built out.
       </p>
 
       <div className="mt-6 flex flex-col gap-3">
@@ -454,8 +478,9 @@ function SecurityStep({
                     'Only available when running Sonneck via Docker.'
                   ) : (
                     <>
-                      Configure via <code className="rounded bg-paper-sunken px-1 py-0.5">OIDC_*</code> environment
-                      variables.{' '}
+                      Configure via{' '}
+                      <code className="rounded bg-paper-sunken px-1 py-0.5">OIDC_*</code>{' '}
+                      environment variables.{' '}
                       <a
                         href="https://github.com/jpcranford/sonneck/blob/main/docs/oidc-setup.md"
                         target="_blank"
@@ -475,7 +500,7 @@ function SecurityStep({
         )}
       </div>
 
-      {errorMessage && <p className="mt-3 text-xs text-red-700">{errorMessage}</p>}
+      {errorMessage && <p className="mt-3 text-xs text-danger">{errorMessage}</p>}
 
       <button
         type="button"
@@ -495,7 +520,13 @@ function SecurityStep({
 // own handleCompleteSetup never issues a session, so that choice
 // genuinely lands on LoginScreen next, not the library), and the
 // identical white-style button treatment/sizing.
-function DoneStep({ authMethod, onContinue }: { authMethod: 'none' | 'singlepass'; onContinue: () => void }) {
+function DoneStep({
+  authMethod,
+  onContinue,
+}: {
+  authMethod: 'none' | 'singlepass'
+  onContinue: () => void
+}) {
   return (
     <div className="flex w-full max-w-md flex-col items-center gap-4 text-center">
       <IconCircleCheckFilled size={40} className="text-ink" />
@@ -545,7 +576,11 @@ export function FirstLaunchFlow({ config }: FirstLaunchFlowProps) {
     <div className="flex min-h-dvh flex-col items-center justify-center bg-paper p-6">
       {step === 'welcome' && <WelcomeStep onStart={() => setStep('folder')} />}
       {step === 'folder' && (
-        <FolderStep config={config} onBack={() => setStep('welcome')} onNext={() => setStep('security')} />
+        <FolderStep
+          config={config}
+          onBack={() => setStep('welcome')}
+          onNext={() => setStep('security')}
+        />
       )}
       {step === 'security' && (
         <SecurityStep

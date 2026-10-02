@@ -1532,7 +1532,7 @@ export function EditPieceModalMockup() {
                   className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
                   {...register('title', { required: 'Title is required.', maxLength: 255 })}
                 />
-                {errors.title && <p className="text-sm text-red-700">{errors.title.message}</p>}
+                {errors.title && <p className="text-sm text-danger">{errors.title.message}</p>}
               </div>
               <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <label htmlFor="f-year" className="text-sm text-ink-soft">
@@ -1573,7 +1573,7 @@ export function EditPieceModalMockup() {
                   {...register('composer', { maxLength: 255 })}
                 />
                 {errors.composer && (
-                  <p className="text-sm text-red-700">{errors.composer.message}</p>
+                  <p className="text-sm text-danger">{errors.composer.message}</p>
                 )}
                 {!composer && (
                   <InheritedNote
@@ -1831,7 +1831,7 @@ export function EditPieceModalMockup() {
                   })}
                 />
                 {errors.duration && (
-                  <p className="text-sm text-red-700">{errors.duration.message}</p>
+                  <p className="text-sm text-danger">{errors.duration.message}</p>
                 )}
               </div>
             </div>

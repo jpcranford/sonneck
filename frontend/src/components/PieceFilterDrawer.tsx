@@ -1,6 +1,11 @@
 import { IconMinus, IconPlus, IconSlash, IconX } from '@tabler/icons-react'
 import type { PieceFacets } from '../api/pieces'
-import { dimensionState, setDimensionState, type PieceFilterState, type TriState } from '../lib/pieceFilterState'
+import {
+  dimensionState,
+  setDimensionState,
+  type PieceFilterState,
+  type TriState,
+} from '../lib/pieceFilterState'
 
 // Real build of PieceLibrarySample.tsx's own FilterDrawer (Option B of a
 // 4-option comparison). Live-updating (every change writes straight into
@@ -42,7 +47,15 @@ function FacetRow({
   )
 }
 
-function TriStateControl({ state, onChange, label }: { state: TriState; onChange: (next: TriState) => void; label: string }) {
+function TriStateControl({
+  state,
+  onChange,
+  label,
+}: {
+  state: TriState
+  onChange: (next: TriState) => void
+  label: string
+}) {
   return (
     <div className="flex shrink-0 items-center gap-0.5 rounded-md border border-border p-0.5">
       <button
@@ -51,7 +64,9 @@ function TriStateControl({ state, onChange, label }: { state: TriState; onChange
         aria-label={`Exclude ${label}`}
         aria-pressed={state === 'exclude'}
         className={`flex size-6 cursor-pointer items-center justify-center rounded ${
-          state === 'exclude' ? 'bg-red-50 text-red-700' : 'text-ink-soft hover:bg-paper-sunken hover:text-ink'
+          state === 'exclude'
+            ? 'bg-danger-soft text-danger'
+            : 'text-ink-soft hover:bg-paper-sunken hover:text-ink'
         }`}
       >
         <IconMinus size={14} />
@@ -62,7 +77,9 @@ function TriStateControl({ state, onChange, label }: { state: TriState; onChange
         aria-label={`Clear ${label} filter`}
         aria-pressed={state === 'neutral'}
         className={`flex size-6 cursor-pointer items-center justify-center rounded ${
-          state === 'neutral' ? 'bg-paper-sunken text-ink' : 'text-ink-soft hover:bg-paper-sunken hover:text-ink'
+          state === 'neutral'
+            ? 'bg-paper-sunken text-ink'
+            : 'text-ink-soft hover:bg-paper-sunken hover:text-ink'
         }`}
       >
         <IconSlash size={14} />
@@ -73,7 +90,9 @@ function TriStateControl({ state, onChange, label }: { state: TriState; onChange
         aria-label={`Include ${label}`}
         aria-pressed={state === 'include'}
         className={`flex size-6 cursor-pointer items-center justify-center rounded ${
-          state === 'include' ? 'bg-accent-soft text-accent' : 'text-ink-soft hover:bg-paper-sunken hover:text-ink'
+          state === 'include'
+            ? 'bg-accent-soft text-accent'
+            : 'text-ink-soft hover:bg-paper-sunken hover:text-ink'
         }`}
       >
         <IconPlus size={14} />
@@ -139,9 +158,9 @@ export function PieceFilterDrawer({
         </div>
 
         <p className="shrink-0 border-b border-border px-4 py-2.5 text-xs leading-snug text-ink-soft">
-          Included options within a section combine with <span className="font-medium text-ink">or</span> — checking
-          two keys, for example, matches pieces in either. Different sections, and any excluded option, must all
-          match.
+          Included options within a section combine with{' '}
+          <span className="font-medium text-ink">or</span> — checking two keys, for example, matches
+          pieces in either. Different sections, and any excluded option, must all match.
         </p>
 
         <div className="flex-1 overflow-y-auto px-4 py-2">
@@ -185,7 +204,10 @@ export function PieceFilterDrawer({
                       count={v.count}
                       state={dimensionState(filters.userTagId, String(v.id))}
                       onChange={(next) =>
-                        onChange({ ...filters, userTagId: setDimensionState(filters.userTagId, String(v.id), next) })
+                        onChange({
+                          ...filters,
+                          userTagId: setDimensionState(filters.userTagId, String(v.id), next),
+                        })
                       }
                     />
                   ))}
@@ -201,7 +223,10 @@ export function PieceFilterDrawer({
                       count={v.count}
                       state={dimensionState(filters.practiceStatus, v.status)}
                       onChange={(next) =>
-                        onChange({ ...filters, practiceStatus: setDimensionState(filters.practiceStatus, v.status, next) })
+                        onChange({
+                          ...filters,
+                          practiceStatus: setDimensionState(filters.practiceStatus, v.status, next),
+                        })
                       }
                     />
                   ))}
@@ -217,7 +242,10 @@ export function PieceFilterDrawer({
                       count={v.count}
                       state={dimensionState(filters.sheetTypeId, String(v.id))}
                       onChange={(next) =>
-                        onChange({ ...filters, sheetTypeId: setDimensionState(filters.sheetTypeId, String(v.id), next) })
+                        onChange({
+                          ...filters,
+                          sheetTypeId: setDimensionState(filters.sheetTypeId, String(v.id), next),
+                        })
                       }
                     />
                   ))}
@@ -233,7 +261,10 @@ export function PieceFilterDrawer({
                       count={v.count}
                       state={dimensionState(filters.instrumentId, String(v.id))}
                       onChange={(next) =>
-                        onChange({ ...filters, instrumentId: setDimensionState(filters.instrumentId, String(v.id), next) })
+                        onChange({
+                          ...filters,
+                          instrumentId: setDimensionState(filters.instrumentId, String(v.id), next),
+                        })
                       }
                     />
                   ))}
@@ -248,7 +279,12 @@ export function PieceFilterDrawer({
                       label={k.name}
                       count={k.count}
                       state={dimensionState(filters.keyId, String(k.id))}
-                      onChange={(next) => onChange({ ...filters, keyId: setDimensionState(filters.keyId, String(k.id), next) })}
+                      onChange={(next) =>
+                        onChange({
+                          ...filters,
+                          keyId: setDimensionState(filters.keyId, String(k.id), next),
+                        })
+                      }
                     />
                   ))}
                 </FacetSection>

@@ -467,7 +467,7 @@ export function BookUploadAboutStep({
               className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
               {...register('bookTitle', { required: 'Book title is required.', maxLength: 255 })}
             />
-            {errors.bookTitle && <p className="text-sm text-red-700">{errors.bookTitle.message}</p>}
+            {errors.bookTitle && <p className="text-sm text-danger">{errors.bookTitle.message}</p>}
           </div>
 
           <div className="flex flex-col gap-3 min-[525px]:flex-row">
@@ -609,7 +609,7 @@ export function BookUploadAboutStep({
                 />
               </div>
               {imslpMutation.isError && (
-                <p className="text-sm text-red-700">
+                <p className="text-sm text-danger">
                   {imslpMutation.error instanceof ApiError
                     ? imslpMutation.error.message
                     : 'Could not reach IMSLP.'}
@@ -673,7 +673,7 @@ export function BookUploadAboutStep({
           </div>
 
           {saveMutation.isError && (
-            <p className="flex items-center gap-2 text-sm text-red-700">
+            <p className="flex items-center gap-2 text-sm text-danger">
               <IconAlertTriangle size={16} />
               {saveMutation.error instanceof ApiError
                 ? saveMutation.error.message
@@ -697,7 +697,7 @@ export function BookUploadAboutStep({
               type="button"
               onClick={onCancel}
               disabled={cancelPending}
-              className="flex cursor-pointer items-center gap-1.5 text-base text-red-700 hover:text-red-800 disabled:cursor-default disabled:opacity-45"
+              className="flex cursor-pointer items-center gap-1.5 text-base text-danger hover:text-red-800 disabled:cursor-default disabled:opacity-45"
             >
               <IconX size={24} />
               Cancel upload

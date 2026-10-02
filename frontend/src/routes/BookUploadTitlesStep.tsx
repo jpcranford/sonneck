@@ -442,19 +442,19 @@ const DesktopPieceRow = memo(function DesktopPieceRow({
       <div className="flex min-w-0 flex-1 flex-col gap-2.5">
         <div className="min-w-0">
           <label className="mb-1 block text-sm text-ink-soft">
-            Title <span className="text-red-700">*</span>
+            Title <span className="text-danger">*</span>
           </label>
           <textarea
             rows={1}
             className={`w-full resize-none overflow-hidden rounded-md border bg-paper-raised px-2.5 py-[11px] text-sm text-ink ${
-              titleError ? 'border-red-700' : 'border-border'
+              titleError ? 'border-danger' : 'border-border'
             }`}
             placeholder="Title"
             onKeyDown={preventTextareaNewline}
             {...titleFieldProps(register, getValues, onFieldFlush, index)}
           />
           {titleError && (
-            <span className="mt-0.5 flex items-center gap-1 text-xs text-red-700">
+            <span className="mt-0.5 flex items-center gap-1 text-xs text-danger">
               <IconAlertTriangle size={10} />
               Required
             </span>
@@ -466,7 +466,12 @@ const DesktopPieceRow = memo(function DesktopPieceRow({
               <Controller
                 name={`pieces.${index}.composer`}
                 control={control}
-                rules={composerOrArrangerRules(getValues, requireComposerOrArranger, 'composer', index)}
+                rules={composerOrArrangerRules(
+                  getValues,
+                  requireComposerOrArranger,
+                  'composer',
+                  index,
+                )}
                 render={({ field }) => (
                   <TagComboBox
                     label="Composer"
@@ -485,7 +490,7 @@ const DesktopPieceRow = memo(function DesktopPieceRow({
                 )}
               />
               {composerError && (
-                <span className="mt-0.5 flex items-center gap-1 text-xs text-red-700">
+                <span className="mt-0.5 flex items-center gap-1 text-xs text-danger">
                   <IconAlertTriangle size={10} />
                   {composerError.message}
                 </span>
@@ -496,7 +501,12 @@ const DesktopPieceRow = memo(function DesktopPieceRow({
                 <Controller
                   name={`pieces.${index}.arranger`}
                   control={control}
-                  rules={composerOrArrangerRules(getValues, requireComposerOrArranger, 'arranger', index)}
+                  rules={composerOrArrangerRules(
+                    getValues,
+                    requireComposerOrArranger,
+                    'arranger',
+                    index,
+                  )}
                   render={({ field }) => (
                     <TagComboBox
                       label="Arranger"
@@ -515,7 +525,7 @@ const DesktopPieceRow = memo(function DesktopPieceRow({
                   )}
                 />
                 {arrangerError && (
-                  <span className="mt-0.5 flex items-center gap-1 text-xs text-red-700">
+                  <span className="mt-0.5 flex items-center gap-1 text-xs text-danger">
                     <IconAlertTriangle size={10} />
                     {arrangerError.message}
                   </span>
@@ -585,19 +595,19 @@ const MobilePieceRow = memo(function MobilePieceRow({
       <div className="flex min-w-0 flex-1 flex-col gap-2.5">
         <div>
           <label className="mb-1 block text-sm text-ink-soft">
-            Title <span className="text-red-700">*</span>
+            Title <span className="text-danger">*</span>
           </label>
           <textarea
             rows={1}
             className={`w-full resize-none overflow-hidden rounded-md border bg-paper-raised px-3 py-2 text-base text-ink ${
-              titleError ? 'border-red-700' : 'border-border'
+              titleError ? 'border-danger' : 'border-border'
             }`}
             placeholder="Title"
             onKeyDown={preventTextareaNewline}
             {...titleFieldProps(register, getValues, onFieldFlush, index)}
           />
           {titleError && (
-            <span className="mt-1 flex items-center gap-1 text-xs text-red-700">
+            <span className="mt-1 flex items-center gap-1 text-xs text-danger">
               <IconAlertTriangle size={10} />
               Required
             </span>
@@ -608,7 +618,12 @@ const MobilePieceRow = memo(function MobilePieceRow({
             <Controller
               name={`pieces.${index}.composer`}
               control={control}
-              rules={composerOrArrangerRules(getValues, requireComposerOrArranger, 'composer', index)}
+              rules={composerOrArrangerRules(
+                getValues,
+                requireComposerOrArranger,
+                'composer',
+                index,
+              )}
               render={({ field }) => (
                 <TagComboBox
                   label="Composer"
@@ -627,7 +642,7 @@ const MobilePieceRow = memo(function MobilePieceRow({
               )}
             />
             {composerError && (
-              <span className="mt-1 flex items-center gap-1 text-xs text-red-700">
+              <span className="mt-1 flex items-center gap-1 text-xs text-danger">
                 <IconAlertTriangle size={10} />
                 {composerError.message}
               </span>
@@ -639,7 +654,12 @@ const MobilePieceRow = memo(function MobilePieceRow({
             <Controller
               name={`pieces.${index}.arranger`}
               control={control}
-              rules={composerOrArrangerRules(getValues, requireComposerOrArranger, 'arranger', index)}
+              rules={composerOrArrangerRules(
+                getValues,
+                requireComposerOrArranger,
+                'arranger',
+                index,
+              )}
               render={({ field }) => (
                 <TagComboBox
                   label="Arranger"
@@ -658,7 +678,7 @@ const MobilePieceRow = memo(function MobilePieceRow({
               )}
             />
             {arrangerError && (
-              <span className="mt-1 flex items-center gap-1 text-xs text-red-700">
+              <span className="mt-1 flex items-center gap-1 text-xs text-danger">
                 <IconAlertTriangle size={10} />
                 {arrangerError.message}
               </span>
@@ -709,15 +729,8 @@ export function BookUploadTitlesStep({
   // header comment for why.
   const [previewPage, setPreviewPage] = useState<number | null>(null)
   const formRef = useRef<HTMLFormElement>(null)
-  const {
-    register,
-    control,
-    handleSubmit,
-    getValues,
-    setValue,
-    trigger,
-    watch,
-  } = useForm<FormValues>({ defaultValues: { pieces: pieceFields } })
+  const { register, control, handleSubmit, getValues, setValue, trigger, watch } =
+    useForm<FormValues>({ defaultValues: { pieces: pieceFields } })
   // Deliberately NOT destructuring `formState: { errors }` here anymore —
   // that subscribed this whole component (which renders every row) to
   // the entire form's error object, forcing a full re-render of all 200+
@@ -731,7 +744,10 @@ export function BookUploadTitlesStep({
   // unpaginated listPeople() call as EditPieceModal.tsx/EditBookModal.tsx/
   // BookUploadAboutStep.tsx's own Composer/Arranger TagComboBox option
   // source.
-  const { data: peopleOptions = [] } = useQuery({ queryKey: ['people'], queryFn: () => listPeople() })
+  const { data: peopleOptions = [] } = useQuery({
+    queryKey: ['people'],
+    queryFn: () => listPeople(),
+  })
 
   // A person created via one row's own "New person" option (TagComboBox's
   // negative-id placeholder tag, resolved by name at import time — this
@@ -781,7 +797,8 @@ export function BookUploadTitlesStep({
     () => [
       ...peopleOptions,
       ...locallyCreatedPeople.filter(
-        (v) => !peopleOptions.some((o) => normalizeForSearch(o.name) === normalizeForSearch(v.name)),
+        (v) =>
+          !peopleOptions.some((o) => normalizeForSearch(o.name) === normalizeForSearch(v.name)),
       ),
     ],
     [peopleOptions, locallyCreatedPeople],
@@ -1044,7 +1061,7 @@ export function BookUploadTitlesStep({
             type="button"
             onClick={onCancel}
             disabled={cancelPending}
-            className="flex cursor-pointer items-center gap-1.5 text-base text-red-700 hover:text-red-800 disabled:cursor-default disabled:opacity-45"
+            className="flex cursor-pointer items-center gap-1.5 text-base text-danger hover:text-red-800 disabled:cursor-default disabled:opacity-45"
           >
             <IconX size={24} />
             Cancel upload

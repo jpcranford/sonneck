@@ -391,7 +391,7 @@ export function EditPersonModal({ person, open, onClose }: EditPersonModalProps)
         footer={
           <div className="flex flex-col gap-2">
             {saveMutation.isError && (
-              <p className="flex items-center gap-2 text-sm text-red-700">
+              <p className="flex items-center gap-2 text-sm text-danger">
                 <IconAlertTriangle size={16} />
                 {saveMutation.error instanceof ApiError
                   ? saveMutation.error.message
@@ -488,7 +488,7 @@ export function EditPersonModal({ person, open, onClose }: EditPersonModalProps)
                   onClick={handleSearchClick}
                 />
               </div>
-              {errors.name && <p className="text-sm text-red-700">{errors.name.message}</p>}
+              {errors.name && <p className="text-sm text-danger">{errors.name.message}</p>}
             </div>
 
             <div className="flex flex-col gap-1">

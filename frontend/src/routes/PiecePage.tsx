@@ -525,7 +525,7 @@ export function PiecePage() {
               disabled={!canDelete || deleteMutation.isPending}
               aria-label="Delete Piece"
               title={canDelete ? 'Delete Piece' : "You don't have permission to delete"}
-              className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-red-700 hover:border-red-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border"
+              className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-danger hover:border-danger disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border"
             >
               <IconTrash size={18} />
             </button>
@@ -923,7 +923,7 @@ export function PiecePage() {
               </div>
             )}
             {replaceMutation.isError && (
-              <p className="text-center text-sm text-red-700">
+              <p className="text-center text-sm text-danger">
                 {replaceMutation.error instanceof ApiError
                   ? replaceMutation.error.message
                   : 'Could not replace this file. Please try again.'}

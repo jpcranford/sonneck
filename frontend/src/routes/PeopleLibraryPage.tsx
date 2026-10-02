@@ -272,7 +272,7 @@ function TriStateControl({
         aria-pressed={state === 'exclude'}
         className={`flex size-6 cursor-pointer items-center justify-center rounded ${
           state === 'exclude'
-            ? 'bg-red-50 text-red-700'
+            ? 'bg-danger-soft text-danger'
             : 'text-ink-soft hover:bg-paper-sunken hover:text-ink'
         }`}
       >
@@ -545,7 +545,7 @@ function NewPersonModal({
             className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
             {...register('name', { required: 'Name is required.', maxLength: 255 })}
           />
-          {errors.name && <p className="text-sm text-red-700">{errors.name.message}</p>}
+          {errors.name && <p className="text-sm text-danger">{errors.name.message}</p>}
         </div>
         <div className="flex flex-col gap-4 sm:flex-row">
           <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -722,7 +722,7 @@ export function PeopleLibraryPage() {
                 <span
                   key={entry.field + entry.value}
                   className={`flex items-center gap-1.5 rounded-full py-1 pr-1.5 pl-3 text-xs font-medium ${
-                    excluded ? 'bg-red-50 text-red-700' : 'bg-accent-soft text-accent'
+                    excluded ? 'bg-danger-soft text-danger' : 'bg-accent-soft text-accent'
                   }`}
                 >
                   {excluded ? `Not ${entry.label}` : entry.label}
@@ -731,7 +731,7 @@ export function PeopleLibraryPage() {
                     onClick={() => clearFilterPill(entry.field, entry.value)}
                     aria-label={`Remove ${excluded ? 'not ' : ''}${entry.label} filter`}
                     className={`flex size-4 cursor-pointer items-center justify-center rounded-full opacity-75 hover:opacity-100 ${
-                      excluded ? 'text-red-700' : 'text-accent'
+                      excluded ? 'text-danger' : 'text-accent'
                     }`}
                   >
                     <IconX size={11} />

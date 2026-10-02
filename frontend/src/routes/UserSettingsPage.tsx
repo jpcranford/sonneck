@@ -271,7 +271,7 @@ function EditableUserList({
                 })
               }
               aria-label={`Delete ${item.name || 'this entry'}`}
-              className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-ink-soft hover:bg-red-50 hover:text-red-700"
+              className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-ink-soft hover:bg-danger-soft hover:text-danger"
             >
               <IconTrash size={14} />
             </button>
@@ -401,12 +401,12 @@ function ChangePasswordModal({ open, onClose }: { open: boolean; onClose: () => 
           placeholder="Confirm new password"
         />
         {confirmPassword.length > 0 && !passwordsMatch && (
-          <p className="text-xs text-red-700">
+          <p className="text-xs text-danger">
             {newPassword.length < 8 ? 'At least 8 characters.' : "Passwords don't match."}
           </p>
         )}
         {mutation.isError && (
-          <p className="text-xs text-red-700">
+          <p className="text-xs text-danger">
             {mutation.error instanceof ApiError ? mutation.error.message : 'Something went wrong.'}
           </p>
         )}
@@ -669,7 +669,7 @@ export function UserSettingsPage() {
                 (deleteMode === 'merge' && mergeTargetId === null) || deleteMutation.isPending
               }
               onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget)}
-              className="cursor-pointer rounded-md bg-red-700 px-4 py-2 text-sm text-white hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-40"
+              className="cursor-pointer rounded-md bg-danger px-4 py-2 text-sm text-white hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {deleteMutation.isPending
                 ? 'Working…'

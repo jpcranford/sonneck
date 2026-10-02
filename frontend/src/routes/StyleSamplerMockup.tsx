@@ -143,8 +143,7 @@ function Loading() {
 }
 
 function UsageLine({ usage, showKinds = true }: { usage: Usage; showKinds?: boolean }) {
-  if (usage.count === 0)
-    return <p className="text-xs text-red-700">Not used anywhere in the app.</p>
+  if (usage.count === 0) return <p className="text-xs text-danger">Not used anywhere in the app.</p>
   const { shown, more } = topFiles(usage)
   const kinds = [...usage.kinds].sort((a, b) => b[1] - a[1])
   return (
@@ -263,13 +262,33 @@ function ColorRow({
   )
 }
 
+// Hard-coded colors that aren't a style at all, shown with the color they
+// belong to for as long as that file still uses it.
+const LITERAL_NOTES: { value: string; file: string; note: string }[] = [
+  {
+    value: '#ffffff',
+    file: 'AdminPage',
+    note: 'Not a style: the Share on Network QR code’s light color. Fixed white in every theme so the code stays scannable.',
+  },
+  {
+    value: '#1a1a1a',
+    file: 'AdminPage',
+    note: 'Not a style: the Share on Network QR code’s dark color. Fixed in every theme so the code stays scannable.',
+  },
+  {
+    value: 'white',
+    file: 'AdminPage',
+    note: 'Not a style in AdminPage’s QR code tile (bg-white), which stays white in every theme so the code stays scannable.',
+  },
+]
+
 function LiteralColorSection({ files }: { files: SourceFile[] | null }) {
   const colors = files ? literalColors(files) : null
   return (
     <Section
       id="literal-colors"
       title="Hard-coded colors"
-      intro="Colors written straight into components instead of through a token: hex values and Tailwind palette classes (red-700, white…). A dark mode can’t reach these through the tokens, so each would need its own treatment."
+      intro="Colors written straight into components instead of through a token: hex values and Tailwind palette classes (red-800, white…). A dark mode can’t reach these through the tokens, so each would need its own treatment."
     >
       {!colors ? (
         <Loading />
@@ -284,6 +303,13 @@ function LiteralColorSection({ files }: { files: SourceFile[] | null }) {
                   usage={color.usage}
                   showKinds={color.usage.kinds.size > 1 || !color.usage.kinds.has('hex')}
                 />
+                {LITERAL_NOTES.filter(
+                  (n) => n.value === color.value && color.usage.files.has(n.file),
+                ).map((n) => (
+                  <p key={n.file} className="mt-0.5 text-xs font-medium text-ink">
+                    {n.note}
+                  </p>
+                ))}
               </div>
             </li>
           ))}
@@ -427,7 +453,7 @@ function ExampleWindowSection() {
               )
             })}
             <div className="my-1 border-t border-border" />
-            <span className="flex items-center gap-2 px-3 py-1.5 text-sm text-red-700">
+            <span className="flex items-center gap-2 px-3 py-1.5 text-sm text-danger">
               <IconTrash size={15} />
               Delete Piece
             </span>

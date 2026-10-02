@@ -531,7 +531,10 @@ function TruncatableFilename({
   )
 }
 
-function bookFields(filenameExpanded: boolean, onToggleFilename: () => void): { label: string; value: ReactNode }[] {
+function bookFields(
+  filenameExpanded: boolean,
+  onToggleFilename: () => void,
+): { label: string; value: ReactNode }[] {
   const fields: { label: string; value: ReactNode }[] = []
   if (sampleBook.publisher || sampleBook.publisherId) {
     fields.push({
@@ -687,10 +690,10 @@ export function BookDetailsSample() {
       <div className="rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-4 py-2 text-sm text-ink-soft">
         Design mockup — <span className="font-medium text-ink">Book Details page</span>. Not wired
         to real data; Open Book PDF, Edit Book, and Delete Book stay inert here on purpose — this
-        fixture's data doesn't correspond to any real record, so wiring these to a real API call could
-        edit or delete whatever real book happens to share its id. Custom cover upload{' '}
-        <em>is</em> genuinely interactive though (same for the right-click/long-press cover menu) — try
-        the photo-upload icon in the top toolbar, or right-click/long-press the cover itself.
+        fixture's data doesn't correspond to any real record, so wiring these to a real API call
+        could edit or delete whatever real book happens to share its id. Custom cover upload{' '}
+        <em>is</em> genuinely interactive though (same for the right-click/long-press cover menu) —
+        try the photo-upload icon in the top toolbar, or right-click/long-press the cover itself.
       </div>
 
       {/* Edit / Change Cover / Open Book PDF live in this top toolbar row,
@@ -734,7 +737,7 @@ export function BookDetailsSample() {
               given a direct entry point from the page itself — this app's
               single largest-blast-radius action (whole book + every piece
               in it), so it earns visual distance from the other three via
-              the divider. Permanently red (text-red-700, matching
+              the divider. Permanently red (text-danger, matching
               ContextMenu's own destructive-item color exactly — that color
               is always-on there too, not a hover-only reveal), not
               red-on-hover. Stays inert here on purpose, same as its
@@ -745,7 +748,7 @@ export function BookDetailsSample() {
             type="button"
             aria-label="Delete Book"
             title="Delete Book — not wired in this mockup"
-            className="flex w-[38px] cursor-not-allowed items-center justify-center rounded-md border border-border bg-paper-raised text-red-700"
+            className="flex w-[38px] cursor-not-allowed items-center justify-center rounded-md border border-border bg-paper-raised text-danger"
           >
             <IconTrash size={16} />
           </button>

@@ -324,8 +324,10 @@
      containing one falls through to Bravura instead of a random system
      font — its unicode-range keeps it to just those codepoints. */
   --font-display: 'Libre Baskerville', 'Bravura Text', Georgia, 'Times New Roman', serif;
-  --font-sans: 'Cabin', 'Bravura Text', -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --font-music: 'Bravura Text', 'Cabin', -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-sans:
+    'Cabin', 'Bravura Text', -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-music:
+    'Bravura Text', 'Cabin', -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   /* Cabin reads a touch tighter than Rethink Sans at body sizes — dialed
      in live against the real Piece Details mockup (comparison Artifact,
      a drag-adjustable letter-spacing slider over the actual rendered
@@ -377,6 +379,13 @@
      the two can't drift apart. */
   --color-focus: var(--color-accent);
 
+  /* Destructive and excluding actions: delete buttons and links, error text, the "Not …" filter state. */
+  --color-danger: #b91c1c;
+  /* The pale fill behind danger: exclude chips, delete-button hovers, accounts about to be deleted. */
+  --color-danger-soft: #fbe9e7;
+  /* The outline of a danger-soft box, like each account in the Auth Change delete list. */
+  --color-danger-border: #f3d4ce;
+
   /* Moving diagonal-stripe fill for a "working on it, no real percentage
      to report" button state — first use: the Book Properties Edit Menu's
      Save button while pieces_fts resyncs. Registered globally rather than
@@ -404,8 +413,12 @@
    reproduces the exact same "infinite scroll" illusion the old
    background-position version had, just off the main thread. */
 @keyframes stripe-move {
-  from { transform: translateX(0); }
-  to { transform: translateX(56px); }
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(56px);
+  }
 }
 
 body {

@@ -869,7 +869,7 @@ export function EditPieceModal({
         // EditPieceModalMockup.tsx's own identical footer.
         <div ref={footerRef} className="flex flex-col gap-2">
           {saveMutation.isError && (
-            <p className="flex items-center gap-2 text-sm text-red-700">
+            <p className="flex items-center gap-2 text-sm text-danger">
               <IconAlertTriangle size={16} />
               {saveMutation.error instanceof ApiError
                 ? saveMutation.error.message
@@ -963,7 +963,7 @@ export function EditPieceModal({
                 className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
                 {...register('title', { required: 'Title is required.', maxLength: 255 })}
               />
-              {errors.title && <p className="text-sm text-red-700">{errors.title.message}</p>}
+              {errors.title && <p className="text-sm text-danger">{errors.title.message}</p>}
             </div>
             <div className="flex min-w-0 flex-1 flex-col gap-1">
               <label htmlFor="f-year" className="text-sm text-ink-soft">
@@ -1103,7 +1103,7 @@ export function EditPieceModal({
                 />
               )}
               {imslpMutation.isError && (
-                <p className="text-sm text-red-700">
+                <p className="text-sm text-danger">
                   {imslpMutation.error instanceof ApiError
                     ? imslpMutation.error.message
                     : 'Could not reach IMSLP.'}
@@ -1310,7 +1310,7 @@ export function EditPieceModal({
                   },
                 })}
               />
-              {errors.duration && <p className="text-sm text-red-700">{errors.duration.message}</p>}
+              {errors.duration && <p className="text-sm text-danger">{errors.duration.message}</p>}
             </div>
           </div>
 

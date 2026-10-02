@@ -481,13 +481,13 @@ export function SetlistDetailsMockup() {
           {/* Delete setlist, icon-only, leftmost in the group, permanently
               red — same treatment as PiecePage.tsx's/BookDetailsPage.tsx's
               own Delete Piece/Delete Book buttons (size-9 bordered square,
-              text-red-700, hover:border-red-700). */}
+              text-danger, hover:border-danger). */}
           <button
             type="button"
             onClick={handleDelete}
             aria-label="Delete setlist"
             title="Delete setlist"
-            className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-red-700 hover:border-red-700"
+            className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-danger hover:border-danger"
           >
             <IconTrash size={18} />
           </button>

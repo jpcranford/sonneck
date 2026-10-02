@@ -71,10 +71,10 @@ function DropOverlay({ refusal }: { refusal: Refusal | null }) {
     <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-6 backdrop-blur-[2px]">
       <div
         className={`w-full max-w-sm rounded-xl border-2 border-dashed bg-paper-raised px-6 py-7 text-center shadow-xl ${
-          refusal ? 'border-red-700' : 'border-accent'
+          refusal ? 'border-danger' : 'border-accent'
         }`}
       >
-        <div className={`mb-2 flex justify-center ${refusal ? 'text-red-700' : 'text-accent'}`}>
+        <div className={`mb-2 flex justify-center ${refusal ? 'text-danger' : 'text-accent'}`}>
           {refusal ? <IconBan size={26} /> : <IconCloudUpload size={26} />}
         </div>
         <p className="font-display text-base font-medium text-ink">
@@ -174,7 +174,7 @@ function FooterButton({
         primary
           ? 'bg-accent text-white hover:bg-accent/90'
           : destructive
-            ? 'border border-border bg-paper-raised text-red-700 hover:border-red-700'
+            ? 'border border-border bg-paper-raised text-danger hover:border-danger'
             : 'border border-border bg-paper-raised text-ink hover:border-accent'
       }`}
     >

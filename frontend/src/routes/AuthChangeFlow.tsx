@@ -80,7 +80,11 @@ type StepKey = 'intro' | 'password' | 'choose-admin' | 'confirm-delete' | 'updat
 // means this step's presence is decided from pending.from alone — no
 // step-index adjustment is ever needed once the async candidate list
 // resolves, only that step's own internal content varies once it does.
-function computeSteps(pending: { from: AuthMethod; needsPassword: boolean; multiAccount: boolean }): StepKey[] {
+function computeSteps(pending: {
+  from: AuthMethod
+  needsPassword: boolean
+  multiAccount: boolean
+}): StepKey[] {
   const steps: StepKey[] = ['intro']
   const isFromOidc = pending.from === 'oidc'
   if (pending.needsPassword) steps.push('password')
@@ -102,9 +106,11 @@ function computeSteps(pending: { from: AuthMethod; needsPassword: boolean; multi
 function ReversibleNote({ fromLabel, isFinalStep }: { fromLabel: string; isFinalStep: boolean }) {
   return (
     <p className="mt-4 text-xs text-ink-soft">
-      {isFinalStep ? 'This is the last step — until you confirm below, ' : 'Nothing is applied yet — '}
-      you can still switch <code className="rounded bg-paper-sunken px-1 py-0.5">AUTH_METHOD</code> back to{' '}
-      <strong className="text-ink">{fromLabel}</strong> and nothing will be lost.
+      {isFinalStep
+        ? 'This is the last step — until you confirm below, '
+        : 'Nothing is applied yet — '}
+      you can still switch <code className="rounded bg-paper-sunken px-1 py-0.5">AUTH_METHOD</code>{' '}
+      back to <strong className="text-ink">{fromLabel}</strong> and nothing will be lost.
     </p>
   )
 }
@@ -137,7 +143,8 @@ export function AuthChangeFlow({
   const toLabel = METHOD_LABELS[pending.to]
   const steps = computeSteps(pending)
   const step = steps[stepIndex]
-  const passwordValid = !pending.needsPassword || (password.length >= 8 && password === confirmPassword)
+  const passwordValid =
+    !pending.needsPassword || (password.length >= 8 && password === confirmPassword)
 
   const candidatesQuery = useQuery({
     queryKey: ['auth-change', 'candidates'],
@@ -170,7 +177,10 @@ export function AuthChangeFlow({
 
   const completeMutation = useMutation({
     mutationFn: () =>
-      completeAuthChange({ password: pending.needsPassword ? password : undefined, keepUserId: keptAdmin?.id ?? undefined }),
+      completeAuthChange({
+        password: pending.needsPassword ? password : undefined,
+        keepUserId: keptAdmin?.id ?? undefined,
+      }),
   })
 
   function goNext() {
@@ -199,7 +209,9 @@ export function AuthChangeFlow({
       <div className="w-full max-w-md">
         {step === 'intro' && (
           <>
-            <h1 className="font-display text-2xl font-medium text-ink">We noticed your sign-in method changed</h1>
+            <h1 className="font-display text-2xl font-medium text-ink">
+              We noticed your sign-in method changed
+            </h1>
             <p className="mt-2 text-sm text-ink-soft">
               Sonneck is now configured for <strong className="text-ink">{toLabel}</strong> — it was{' '}
               <strong className="text-ink">{fromLabel}</strong> last time it ran.
@@ -221,15 +233,19 @@ export function AuthChangeFlow({
               <ReversibleNote fromLabel={fromLabel} isFinalStep={isFinalActionableStep} />
             )}
             {isFinalActionableStep && completeMutation.isError && (
-              <p className="mt-3 text-xs text-red-700">
-                {completeMutation.error instanceof ApiError ? completeMutation.error.message : 'Something went wrong.'}
+              <p className="mt-3 text-xs text-danger">
+                {completeMutation.error instanceof ApiError
+                  ? completeMutation.error.message
+                  : 'Something went wrong.'}
               </p>
             )}
             <button
               type="button"
               disabled={completeMutation.isPending}
               onClick={() =>
-                isFinalActionableStep ? completeMutation.mutate(undefined, { onSuccess: goNext }) : goNext()
+                isFinalActionableStep
+                  ? completeMutation.mutate(undefined, { onSuccess: goNext })
+                  : goNext()
               }
               className="mt-8 flex w-full items-center justify-center gap-2 rounded-md bg-accent px-5 py-2.5 font-display text-white enabled:cursor-pointer enabled:hover:bg-accent/90 disabled:opacity-40"
             >
@@ -242,7 +258,9 @@ export function AuthChangeFlow({
           <>
             <BackLink onClick={goBack} />
             <h1 className="font-display text-2xl font-medium text-ink">Set a password</h1>
-            <p className="mt-1 text-sm text-ink-soft">{toLabel} gates the whole app behind a single shared password — pick one now.</p>
+            <p className="mt-1 text-sm text-ink-soft">
+              {toLabel} gates the whole app behind a single shared password — pick one now.
+            </p>
             {/* text-base + tracking-wide, not text-sm — the browser's own
                 masked "dot" glyph for type="password" scales with
                 font-size, and macOS renders a noticeably larger dot than
@@ -265,20 +283,26 @@ export function AuthChangeFlow({
                 className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-base tracking-wide text-ink"
               />
               {confirmPassword.length > 0 && !passwordValid && (
-                <p className="text-xs text-red-700">{password.length < 8 ? 'At least 8 characters.' : "Passwords don't match."}</p>
+                <p className="text-xs text-danger">
+                  {password.length < 8 ? 'At least 8 characters.' : "Passwords don't match."}
+                </p>
               )}
             </div>
             <ReversibleNote fromLabel={fromLabel} isFinalStep={isFinalActionableStep} />
             {isFinalActionableStep && completeMutation.isError && (
-              <p className="mt-3 text-xs text-red-700">
-                {completeMutation.error instanceof ApiError ? completeMutation.error.message : 'Something went wrong.'}
+              <p className="mt-3 text-xs text-danger">
+                {completeMutation.error instanceof ApiError
+                  ? completeMutation.error.message
+                  : 'Something went wrong.'}
               </p>
             )}
             <button
               type="button"
               disabled={!passwordValid || completeMutation.isPending}
               onClick={() =>
-                isFinalActionableStep ? completeMutation.mutate(undefined, { onSuccess: goNext }) : goNext()
+                isFinalActionableStep
+                  ? completeMutation.mutate(undefined, { onSuccess: goNext })
+                  : goNext()
               }
               className="mt-8 flex w-full items-center justify-center gap-2 rounded-md bg-accent px-5 py-2.5 font-display text-white enabled:cursor-pointer enabled:hover:bg-accent/90 disabled:opacity-40"
             >
@@ -294,29 +318,37 @@ export function AuthChangeFlow({
               <>
                 <h1 className="font-display text-2xl font-medium text-ink">Only one admin found</h1>
                 <p className="mt-1 text-sm text-ink-soft">
-                  {toLabel} supports only one account, and only an existing admin can become it — every other
-                  account will be deleted next.
+                  {toLabel} supports only one account, and only an existing admin can become it —
+                  every other account will be deleted next.
                 </p>
                 <div className="mt-6 flex items-center gap-3 rounded-lg border border-accent bg-accent-soft p-3.5">
                   <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-paper-sunken text-ink-soft">
                     <IconUserCircle size={16} />
                   </span>
                   <span className="min-w-0">
-                    <span className="block text-sm font-medium text-ink">{admins[0].displayName}</span>
+                    <span className="block text-sm font-medium text-ink">
+                      {admins[0].displayName}
+                    </span>
                   </span>
                 </div>
               </>
             ) : (
               <>
-                <h1 className="font-display text-2xl font-medium text-ink">Multiple admins found</h1>
+                <h1 className="font-display text-2xl font-medium text-ink">
+                  Multiple admins found
+                </h1>
                 <p className="mt-1 text-sm text-ink-soft">
-                  {toLabel} supports only one account, and only an existing admin can become it. Choose which
-                  account to keep — every other account will be deleted next.
+                  {toLabel} supports only one account, and only an existing admin can become it.
+                  Choose which account to keep — every other account will be deleted next.
                 </p>
                 {candidatesQuery.isLoading ? (
                   <p className="mt-6 text-sm text-ink-soft">Loading accounts…</p>
                 ) : (
-                  <div className="mt-6 flex flex-col gap-3" role="radiogroup" aria-label="Choose the surviving admin account">
+                  <div
+                    className="mt-6 flex flex-col gap-3"
+                    role="radiogroup"
+                    aria-label="Choose the surviving admin account"
+                  >
                     {admins.map((admin) => (
                       <button
                         key={admin.id}
@@ -325,14 +357,18 @@ export function AuthChangeFlow({
                         role="radio"
                         aria-checked={keptAdminId === admin.id}
                         className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3.5 text-left ${
-                          keptAdminId === admin.id ? 'border-accent bg-accent-soft' : 'border-border bg-paper-raised hover:border-accent/50'
+                          keptAdminId === admin.id
+                            ? 'border-accent bg-accent-soft'
+                            : 'border-border bg-paper-raised hover:border-accent/50'
                         }`}
                       >
                         <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-paper-sunken text-ink-soft">
                           <IconUserCircle size={16} />
                         </span>
                         <span className="min-w-0">
-                          <span className="block text-sm font-medium text-ink">{admin.displayName}</span>
+                          <span className="block text-sm font-medium text-ink">
+                            {admin.displayName}
+                          </span>
                         </span>
                       </button>
                     ))}
@@ -367,25 +403,32 @@ export function AuthChangeFlow({
             <BackLink onClick={goBack} />
             <h1 className="font-display text-2xl font-medium text-ink">Confirm the switch</h1>
             <p className="mt-2 text-sm text-ink-soft">
-              No accounts need to be deleted — <strong className="text-ink">{keptAdmin.displayName}</strong> is the
-              only account here. Continuing switches Sonneck to <strong className="text-ink">{toLabel}</strong>;
+              No accounts need to be deleted —{' '}
+              <strong className="text-ink">{keptAdmin.displayName}</strong> is the only account
+              here. Continuing switches Sonneck to <strong className="text-ink">{toLabel}</strong>;
               everything else about your library stays exactly as it is.
             </p>
             <ReversibleNote fromLabel={fromLabel} isFinalStep={isFinalActionableStep} />
             {isFinalActionableStep && completeMutation.isError && (
-              <p className="mt-3 text-xs text-red-700">
-                {completeMutation.error instanceof ApiError ? completeMutation.error.message : 'Something went wrong.'}
+              <p className="mt-3 text-xs text-danger">
+                {completeMutation.error instanceof ApiError
+                  ? completeMutation.error.message
+                  : 'Something went wrong.'}
               </p>
             )}
             <button
               type="button"
               disabled={completeMutation.isPending}
               onClick={() =>
-                isFinalActionableStep ? completeMutation.mutate(undefined, { onSuccess: goNext }) : goNext()
+                isFinalActionableStep
+                  ? completeMutation.mutate(undefined, { onSuccess: goNext })
+                  : goNext()
               }
               className="mt-8 flex w-full items-center justify-center gap-2 rounded-md bg-accent px-5 py-2.5 font-display text-white enabled:cursor-pointer enabled:hover:bg-accent/90 disabled:opacity-40"
             >
-              {isFinalActionableStep && completeMutation.isPending ? 'Continuing…' : 'Confirm and Continue'}
+              {isFinalActionableStep && completeMutation.isPending
+                ? 'Continuing…'
+                : 'Confirm and Continue'}
             </button>
           </>
         )}
@@ -393,29 +436,37 @@ export function AuthChangeFlow({
         {step === 'confirm-delete' && keptAdmin && usersToDelete.length > 0 && (
           <>
             <BackLink onClick={goBack} />
-            <h1 className="font-display text-2xl font-medium text-ink">Delete the other accounts?</h1>
+            <h1 className="font-display text-2xl font-medium text-ink">
+              Delete the other accounts?
+            </h1>
             <p className="mt-2 text-sm text-ink-soft">
-              {toLabel} supports only one account. <strong className="text-ink">{keptAdmin.displayName}</strong> will
-              become that account, and the following {usersToDelete.length} account
+              {toLabel} supports only one account.{' '}
+              <strong className="text-ink">{keptAdmin.displayName}</strong> will become that
+              account, and the following {usersToDelete.length} account
               {usersToDelete.length === 1 ? '' : 's'} will be permanently deleted:
             </p>
             <ul className="mt-4 flex flex-col gap-2">
               {usersToDelete.map((user) => (
-                <li key={user.id} className="rounded-md border border-[#f3d4ce] bg-[#fbe9e7] px-3 py-2 text-sm text-ink">
+                <li
+                  key={user.id}
+                  className="rounded-md border border-danger-border bg-danger-soft px-3 py-2 text-sm text-ink"
+                >
                   <span className="font-medium">{user.displayName}</span>
                 </li>
               ))}
             </ul>
             <p className="mt-4 text-xs text-ink-soft">
-              This is the last step — until you click "Delete accounts now" below, you can still switch{' '}
-              <code className="rounded bg-paper-sunken px-1 py-0.5">AUTH_METHOD</code> back to{' '}
-              <strong className="text-ink">{fromLabel}</strong> and nothing will be lost. Clicking it deletes them
-              immediately and can't be undone — anything specific to just those accounts (their own favorites,
-              notes, and tags) is deleted along with them.
+              This is the last step — until you click "Delete accounts now" below, you can still
+              switch <code className="rounded bg-paper-sunken px-1 py-0.5">AUTH_METHOD</code> back
+              to <strong className="text-ink">{fromLabel}</strong> and nothing will be lost.
+              Clicking it deletes them immediately and can't be undone — anything specific to just
+              those accounts (their own favorites, notes, and tags) is deleted along with them.
             </p>
             {completeMutation.isError && (
-              <p className="mt-3 text-xs text-red-700">
-                {completeMutation.error instanceof ApiError ? completeMutation.error.message : 'Something went wrong.'}
+              <p className="mt-3 text-xs text-danger">
+                {completeMutation.error instanceof ApiError
+                  ? completeMutation.error.message
+                  : 'Something went wrong.'}
               </p>
             )}
             <button
@@ -432,7 +483,7 @@ export function AuthChangeFlow({
                   },
                 })
               }}
-              className="mt-8 flex w-full cursor-pointer items-center justify-center gap-2.5 rounded-md bg-red-700 px-6 py-3.5 font-display text-base font-medium text-white shadow-sm hover:bg-red-800"
+              className="mt-8 flex w-full cursor-pointer items-center justify-center gap-2.5 rounded-md bg-danger px-6 py-3.5 font-display text-base font-medium text-white shadow-sm hover:bg-red-800"
             >
               <IconAlertTriangle size={20} />
               Delete accounts now
@@ -443,7 +494,9 @@ export function AuthChangeFlow({
         {step === 'updating' && (
           <div className="flex w-full flex-col items-center py-8 text-center">
             <IconLoader2 size={44} className="animate-spin text-ink" />
-            <h1 className="mt-4 font-display text-2xl font-medium text-ink">Updating your library</h1>
+            <h1 className="mt-4 font-display text-2xl font-medium text-ink">
+              Updating your library
+            </h1>
             <p className="mt-2 text-sm text-ink-soft">This will only take a moment.</p>
           </div>
         )}

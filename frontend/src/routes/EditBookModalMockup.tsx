@@ -301,7 +301,7 @@ export function EditBookModalMockup() {
               className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
               {...register('bookTitle', { required: 'Book title is required.', maxLength: 255 })}
             />
-            {errors.bookTitle && <p className="text-sm text-red-700">{errors.bookTitle.message}</p>}
+            {errors.bookTitle && <p className="text-sm text-danger">{errors.bookTitle.message}</p>}
           </div>
 
           <div className="flex flex-col gap-3 min-[525px]:flex-row">
