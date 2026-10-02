@@ -873,7 +873,7 @@ export function BookDetailsPage() {
               card. */}
           <div className="mt-6 bg-paper">
             <div className="flex flex-wrap items-center justify-between gap-4 px-6 pb-4">
-              <h2 className="font-display text-[0.95rem] font-semibold text-ink-soft">
+              <h2 className="font-display text-[0.95rem] font-bold text-ink-soft">
                 {pieces
                   ? `${pieces.length} ${pieces.length === 1 ? 'piece' : 'pieces'} in this book`
                   : '…'}

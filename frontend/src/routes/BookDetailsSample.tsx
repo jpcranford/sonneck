@@ -939,7 +939,7 @@ export function BookDetailsSample() {
             lines above or below the heading row either, just spacing. */}
         <div className="mt-6 bg-paper">
           <div className="flex flex-wrap items-center justify-between gap-4 px-6 pb-4">
-            <h2 className="font-display text-[0.95rem] font-semibold text-ink-soft">
+            <h2 className="font-display text-[0.95rem] font-bold text-ink-soft">
               {pieces.length} {pieces.length === 1 ? 'piece' : 'pieces'} in this book
             </h2>
             <div className="flex shrink-0 items-center gap-1 rounded-md border border-border p-0.5">
