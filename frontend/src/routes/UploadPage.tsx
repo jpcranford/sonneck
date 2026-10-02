@@ -21,6 +21,7 @@ import { listPeople } from '../api/people'
 import { listInstruments, listKeys, listSheetTypes } from '../api/lookups'
 import { ApiError } from '../api/client'
 import type { Piece, Tag } from '../api/types'
+import { clearPendingUpload, peekPendingUpload } from '../lib/pendingUpload'
 import { hasPermission, useAuth } from '../lib/AuthContext'
 import { loadWizardDraft } from '../lib/useWizardDraft'
 import { matchesKeyQuery } from '../lib/keySearch'
@@ -82,7 +83,20 @@ export function UploadPage() {
   // knows how to resume a draft once mounted, but it only ever mounts
   // when stage === 'book', so getting there in the first place is this
   // page's own job, checked once at the lazy-init.
-  const [stage, setStage] = useState<Stage>(() => (loadWizardDraft() ? 'book' : 'landing'))
+  // A file dropped anywhere else in the app (DropToUpload.tsx) arrives here
+  // already sorted into piece or book: a book goes straight to the wizard
+  // (which uploads it at once), a piece starts uploading in the effect
+  // below. Peeked here, cleared once handled.
+  const [droppedUpload] = useState(() => peekPendingUpload())
+  const [stage, setStage] = useState<Stage>(() =>
+    droppedUpload?.kind === 'book'
+      ? 'book'
+      : droppedUpload?.kind === 'piece'
+        ? 'uploading'
+        : loadWizardDraft()
+          ? 'book'
+          : 'landing',
+  )
   // Generic "Upload" on the landing fork (before Piece/Book is even
   // chosen), then specific once it is — every piece-flow stage after that
   // choice (select/uploading/details/success) reads "Upload Piece", the
@@ -237,6 +251,16 @@ export function UploadPage() {
     uploadMutation.mutate(file)
   }
 
+  // Once only — StrictMode runs mount effects twice in development.
+  const handledDropRef = useRef(false)
+  useEffect(() => {
+    if (!droppedUpload || handledDropRef.current) return
+    handledDropRef.current = true
+    clearPendingUpload()
+    if (droppedUpload.kind === 'piece') beginUpload(droppedUpload.file)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deliberate: a mount-time hand-off, never re-run.
+  }, [])
+
   function reset() {
     setStage('landing')
     setFileError(null)
@@ -271,7 +295,10 @@ export function UploadPage() {
   if (stage === 'book') {
     return (
       <div className="flex flex-1 flex-col">
-        <BookUploadWizard onExit={() => setStage('landing')} />
+        <BookUploadWizard
+          initialFile={droppedUpload?.kind === 'book' ? droppedUpload.file : undefined}
+          onExit={() => setStage('landing')}
+        />
       </div>
     )
   }

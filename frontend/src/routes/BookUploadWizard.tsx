@@ -126,10 +126,13 @@ function reconcilePieceFields(
 }
 
 interface BookUploadWizardProps {
+  /** A file dropped elsewhere in the app, uploaded straight away (passed
+   * through to BookUploadFileStep). */
+  initialFile?: File
   onExit: () => void
 }
 
-export function BookUploadWizard({ onExit }: BookUploadWizardProps) {
+export function BookUploadWizard({ initialFile, onExit }: BookUploadWizardProps) {
   const [step, setStep] = useState<WizardStep>('file')
   const [book, setBook] = useState<Book | null>(null)
   const [pageCount, setPageCount] = useState(0)
@@ -294,7 +297,10 @@ export function BookUploadWizard({ onExit }: BookUploadWizardProps) {
   // above every early return below (Rules of Hooks) — it used to be a
   // plain (non-hook) local a few dozen lines further down, back when it
   // didn't need to survive across renders.
-  const pieces = useMemo(() => computeLayout(pageAssignments, pageCount), [pageAssignments, pageCount])
+  const pieces = useMemo(
+    () => computeLayout(pageAssignments, pageCount),
+    [pageAssignments, pageCount],
+  )
 
   useEffect(() => {
     if (!book || step === 'file') return
@@ -378,7 +384,9 @@ export function BookUploadWizard({ onExit }: BookUploadWizardProps) {
   }
 
   if (step === 'file' || !book) {
-    return <BookUploadFileStep onBack={onExit} onUploaded={handleUploaded} />
+    return (
+      <BookUploadFileStep initialFile={initialFile} onBack={onExit} onUploaded={handleUploaded} />
+    )
   }
 
   if (step === 'about') {

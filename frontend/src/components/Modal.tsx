@@ -25,6 +25,13 @@ export const MODAL_TRANSITION_MS = 150
 let nextModalStackId = 0
 const openModalStack: { id: number; onClose: () => void }[] = []
 
+/** Whether any Modal is open right now — read at event time by the
+ * app-wide drop-to-upload listener (DropToUpload.tsx), which stays out of
+ * the way while one is open. */
+export function isAnyModalOpen(): boolean {
+  return openModalStack.length > 0
+}
+
 interface ModalProps {
   open: boolean
   onClose: () => void

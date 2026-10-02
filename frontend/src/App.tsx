@@ -20,6 +20,7 @@ import { PieceDetailsSample } from './routes/PieceDetailsSample'
 import { EditPieceModalMockup } from './routes/EditPieceModalMockup'
 import { PieceLibrarySample } from './routes/PieceLibrarySample'
 import { AddToSetlistMockup } from './routes/AddToSetlistMockup'
+import { DropToUploadMockup } from './routes/DropToUploadMockup'
 import { SetlistDetailsMockup } from './routes/SetlistDetailsMockup'
 import { EditSetlistMockup } from './routes/EditSetlistMockup'
 import { EditEntryMockup } from './routes/EditEntryMockup'
@@ -87,7 +88,12 @@ function App() {
     return <AuthChangeFlow pending={config.authChangePending} />
   }
 
-  return <AuthGate authMethod={config?.authMethod ?? 'none'} oidcProviderName={config?.oidcProviderName} />
+  return (
+    <AuthGate
+      authMethod={config?.authMethod ?? 'none'}
+      oidcProviderName={config?.oidcProviderName}
+    />
+  )
 }
 
 // AuthGate — the real login-wall counterpart to FirstLaunchFlow's own gate
@@ -159,6 +165,7 @@ function AppRoutes() {
         <Route path="mockup/edit-piece-modal" element={<EditPieceModalMockup />} />
         <Route path="mockup/piece-library" element={<PieceLibrarySample />} />
         <Route path="mockup/add-to-setlist" element={<AddToSetlistMockup />} />
+        <Route path="mockup/drop-to-upload" element={<DropToUploadMockup />} />
         <Route path="mockup/setlist-details" element={<SetlistDetailsMockup />} />
         <Route path="mockup/edit-setlist" element={<EditSetlistMockup />} />
         <Route path="mockup/edit-entry" element={<EditEntryMockup />} />

@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { IconLoader2 } from '@tabler/icons-react'
 import { Sidebar } from './Sidebar'
+import { DropToUpload } from './DropToUpload'
 import { MobileNavDrawer, MobileNavTopBar } from './MobileNav'
 import { SonneckMark } from './SonneckMark'
 import { useMediaQuery } from '../hooks/useMediaQuery'
@@ -27,7 +28,10 @@ export function AppShell() {
   // Refetches every currently-mounted query rather than a hard page
   // reload — cheap, keeps scroll position/local UI state, and is exactly
   // what "refresh" means for a TanStack-Query-driven app like this one.
-  const refreshActiveQueries = useCallback(() => queryClient.refetchQueries({ type: 'active' }), [queryClient])
+  const refreshActiveQueries = useCallback(
+    () => queryClient.refetchQueries({ type: 'active' }),
+    [queryClient],
+  )
   const { pullDistance, phase, threshold } = usePullToRefresh({
     containerRef: scrollContainerRef,
     onRefresh: refreshActiveQueries,
@@ -46,6 +50,9 @@ export function AppShell() {
     // currently-visible viewport instead of a fixed one, removing the
     // mismatch this bug depends on.
     <div className="flex h-dvh overflow-hidden bg-paper text-ink">
+      {/* App-wide drag-and-drop upload (design doc §13) — window-level
+          listeners plus its overlay and dialogs, rendered once here. */}
+      <DropToUpload />
       {/* Desktop only — MobileNav (top bar + drawer, its own `md:hidden`
           guards) covers everything below the md breakpoint instead. */}
       <div className="hidden md:block">
@@ -103,7 +110,13 @@ export function AppShell() {
           >
             <IconLoader2
               size={22}
-              className={phase === 'refreshing' ? 'animate-spin text-accent' : phase === 'ready' ? 'text-accent' : 'text-ink-soft'}
+              className={
+                phase === 'refreshing'
+                  ? 'animate-spin text-accent'
+                  : phase === 'ready'
+                    ? 'text-accent'
+                    : 'text-ink-soft'
+              }
               style={
                 phase === 'refreshing'
                   ? undefined

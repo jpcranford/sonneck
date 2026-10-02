@@ -27,6 +27,11 @@ const MOCKUPS = [
     note: 'Setlists feature, Phase 5 — the Library grid/list cards’ new right-click "Add to Setlist" item and the "already in a setlist" indicator next to the favorite heart. The same menu now opens with a practice status strip (design C′). Right-click/long-press a card to try both.',
   },
   {
+    to: '/mockup/drop-to-upload',
+    name: 'Drop to Upload',
+    note: 'Drag-and-drop upload anywhere in the app (§13), design B: a "Drop to upload" overlay, then "Is this a piece or a book?" with the Upload page’s own cards. Refuses multiple files, non-PDFs, a second book while a draft exists, and viewers without upload. Drag a real PDF over the page.',
+  },
+  {
     to: '/mockup/setlist-details',
     name: 'Setlist Details',
     note: 'Setlists feature, Phase 6 — the full Setlist Details page (§13), built against the approved "Stats dashboard" layout and rough-in decisions: relative gig date, role labels, non-piece entries (one with a note callout, one toggled to count as music), a real Archive/Unarchive confirm modal, and each row’s right-click menu. Play/Edit/Add Entries are inert (later phases); Archive and Remove are real.',
@@ -69,7 +74,7 @@ const MOCKUPS = [
   {
     to: '/mockup/edit-person-modal',
     name: 'Edit Person Modal',
-    note: 'Composer/arranger overhaul — Name/Biography/Birth year/Death year, deliberately minimal (no portrait field — that stays on the camera badge). Wikipedia autofill button mimics the real ImslpAutofillButton\'s states/behavior via a mock lookup.',
+    note: "Composer/arranger overhaul — Name/Biography/Birth year/Death year, deliberately minimal (no portrait field — that stays on the camera badge). Wikipedia autofill button mimics the real ImslpAutofillButton's states/behavior via a mock lookup.",
   },
   {
     to: '/mockup/book-details',
@@ -166,7 +171,9 @@ export function MockupIndexPage() {
       <div>
         <h1 className="font-display text-xl font-medium text-ink">Mockups</h1>
         <p className="text-sm text-ink-soft">
-          Design mockups and reference samples, unlinked from the main nav. Not every page has a mockup; they're mostly to avoid breaking the main ones while I experiment with "improvements."
+          Design mockups and reference samples, unlinked from the main nav. Not every page has a
+          mockup; they're mostly to avoid breaking the main ones while I experiment with
+          "improvements."
         </p>
       </div>
       <ul className="flex flex-col divide-y divide-border rounded-lg border border-border bg-paper-raised">

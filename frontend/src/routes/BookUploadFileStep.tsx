@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { IconArrowLeft, IconCloudUpload, IconAlertTriangle } from '@tabler/icons-react'
 import { uploadBook } from '../api/books'
@@ -25,11 +25,14 @@ function validateFile(file: File): string | null {
 }
 
 interface BookUploadFileStepProps {
+  /** A file dropped elsewhere in the app (DropToUpload.tsx) — uploaded as
+   * soon as this step mounts, skipping the file picker. */
+  initialFile?: File
   onBack: () => void
   onUploaded: (book: Book, pageCount: number, fileSizeBytes: number) => void
 }
 
-export function BookUploadFileStep({ onBack, onUploaded }: BookUploadFileStepProps) {
+export function BookUploadFileStep({ initialFile, onBack, onUploaded }: BookUploadFileStepProps) {
   const [fileError, setFileError] = useState<string | null>(null)
   const [progress, setProgress] = useState(0)
   const [dragOver, setDragOver] = useState(false)
@@ -54,6 +57,15 @@ export function BookUploadFileStep({ onBack, onUploaded }: BookUploadFileStepPro
     setFileError(null)
     uploadMutation.mutate(file)
   }
+
+  // Once only — StrictMode runs mount effects twice in development.
+  const startedInitialRef = useRef(false)
+  useEffect(() => {
+    if (!initialFile || startedInitialRef.current) return
+    startedInitialRef.current = true
+    beginUpload(initialFile)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deliberate: a mount-time hand-off, never re-run.
+  }, [])
 
   if (uploadMutation.isPending) {
     return (
