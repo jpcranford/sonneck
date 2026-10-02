@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type DragEvent as ReactDragEvent } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -74,6 +74,12 @@ interface DetailsForm {
 
 type Stage = 'landing' | 'select' | 'uploading' | 'details' | 'success' | 'book'
 
+// A landing tile while a file is dragged over it takes the app's dropzone
+// look (the dashed upload boxes on this page and the book wizard's file
+// step: 2px dashed accent border on the soft accent fill), padding trimmed
+// by the half-pixel of extra border so the content doesn't shift.
+const DROP_TILE_ACTIVE = 'border-2 border-dashed border-accent bg-accent-soft p-[15.5px]'
+
 export function UploadPage() {
   const me = useAuth()
   const navigate = useNavigate()
@@ -103,6 +109,13 @@ export function UploadPage() {
   // book placeholder reads "Upload Book".
   usePageTitle(stage === 'landing' ? 'Upload' : stage === 'book' ? 'Upload Book' : 'Upload Piece')
   const [fileError, setFileError] = useState<string | null>(null)
+  // Landing tiles double as dropzones: a PDF dropped on one chooses that
+  // path and starts its upload in the same step.
+  const [landingDropTarget, setLandingDropTarget] = useState<'piece' | 'book' | null>(null)
+  const [landingError, setLandingError] = useState<string | null>(null)
+  const [bookInitialFile, setBookInitialFile] = useState<File | undefined>(() =>
+    droppedUpload?.kind === 'book' ? droppedUpload.file : undefined,
+  )
   const [progress, setProgress] = useState(0)
   const [piece, setPiece] = useState<Piece | null>(null)
   const [dragOver, setDragOver] = useState(false)
@@ -261,6 +274,45 @@ export function UploadPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- deliberate: a mount-time hand-off, never re-run.
   }, [])
 
+  function landingDropProps(kind: 'piece' | 'book') {
+    const hasFiles = (event: ReactDragEvent) =>
+      Array.from(event.dataTransfer.types).includes('Files')
+    return {
+      onDragOver: (event: ReactDragEvent) => {
+        if (!hasFiles(event)) return
+        event.preventDefault()
+        event.dataTransfer.dropEffect = 'copy'
+        setLandingDropTarget(kind)
+      },
+      onDragLeave: (event: ReactDragEvent) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null))
+          setLandingDropTarget(null)
+      },
+      onDrop: (event: ReactDragEvent) => {
+        if (!hasFiles(event)) return
+        event.preventDefault()
+        setLandingDropTarget(null)
+        const files = Array.from(event.dataTransfer.files)
+        if (files.length > 1) {
+          setLandingError('Drop one PDF at a time.')
+          return
+        }
+        const error = files[0] ? validateFile(files[0]) : null
+        if (!files[0] || error) {
+          setLandingError(error)
+          return
+        }
+        setLandingError(null)
+        if (kind === 'piece') {
+          beginUpload(files[0])
+        } else {
+          setBookInitialFile(files[0])
+          setStage('book')
+        }
+      },
+    }
+  }
+
   function reset() {
     setStage('landing')
     setFileError(null)
@@ -295,10 +347,7 @@ export function UploadPage() {
   if (stage === 'book') {
     return (
       <div className="flex flex-1 flex-col">
-        <BookUploadWizard
-          initialFile={droppedUpload?.kind === 'book' ? droppedUpload.file : undefined}
-          onExit={() => setStage('landing')}
-        />
+        <BookUploadWizard initialFile={bookInitialFile} onExit={() => setStage('landing')} />
       </div>
     )
   }
@@ -349,12 +398,22 @@ export function UploadPage() {
           pill someone might not notice has two settings. */}
       {stage === 'landing' && (
         <div className="flex w-full max-w-md flex-col gap-4">
-          <h1 className="font-display text-2xl font-medium text-ink">What are you uploading?</h1>
+          <div>
+            <h1 className="font-display text-2xl font-medium text-ink">What are you uploading?</h1>
+            <p className="mt-1 text-sm text-ink-soft">
+              Choose one, or drop a PDF straight onto it.
+            </p>
+          </div>
           <div className="flex flex-col gap-3">
             <button
               type="button"
               onClick={() => setStage('select')}
-              className="flex cursor-pointer items-start gap-3.5 rounded-xl border-[1.5px] border-border bg-paper-raised p-4 text-left transition-colors hover:border-accent"
+              {...landingDropProps('piece')}
+              className={`flex cursor-pointer items-start gap-3.5 rounded-xl text-left transition-colors hover:border-accent ${
+                landingDropTarget === 'piece'
+                  ? DROP_TILE_ACTIVE
+                  : 'border-[1.5px] border-border bg-paper-raised p-4'
+              }`}
             >
               <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-paper-sunken text-ink-soft">
                 <IconFileMusic size={19} />
@@ -370,8 +429,16 @@ export function UploadPage() {
             </button>
             <button
               type="button"
-              onClick={() => setStage('book')}
-              className="flex cursor-pointer items-start gap-3.5 rounded-xl border-[1.5px] border-border bg-paper-raised p-4 text-left transition-colors hover:border-accent"
+              onClick={() => {
+                setBookInitialFile(undefined)
+                setStage('book')
+              }}
+              {...landingDropProps('book')}
+              className={`flex cursor-pointer items-start gap-3.5 rounded-xl text-left transition-colors hover:border-accent ${
+                landingDropTarget === 'book'
+                  ? DROP_TILE_ACTIVE
+                  : 'border-[1.5px] border-border bg-paper-raised p-4'
+              }`}
             >
               <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-paper-sunken text-ink-soft">
                 <IconBook2 size={19} />
@@ -386,6 +453,7 @@ export function UploadPage() {
               </span>
             </button>
           </div>
+          {landingError && <p className="text-sm text-red-700">{landingError}</p>}
         </div>
       )}
 
