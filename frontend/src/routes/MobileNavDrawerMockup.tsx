@@ -158,7 +158,7 @@ export function MobileNavDrawerMockup() {
           </span>
           <div className="mt-1 flex flex-col">
             {SETLISTS.length === 0 && (
-              <span className="truncate rounded-md px-3 py-2 font-display text-base font-medium text-sidebar-text">
+              <span className="truncate rounded-md px-3 py-2 font-display text-sm font-medium text-sidebar-text">
                 Coming soon
               </span>
             )}

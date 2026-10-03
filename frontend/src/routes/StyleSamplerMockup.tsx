@@ -358,7 +358,7 @@ function ExampleWindowSection() {
           <p className="px-2 text-xs tracking-wide text-sidebar-text-dim uppercase">
             Upcoming Sets
           </p>
-          <span className="mt-1 flex items-center gap-2 rounded-md px-2 py-1.5 font-display text-base font-medium text-sidebar-text">
+          <span className="mt-1 flex items-center gap-2 rounded-md px-2 py-1.5 font-display text-sm font-medium text-sidebar-text">
             <IconPlaylist size={16} className="text-accent-on-dark" />
             <span className="min-w-0 flex-1 truncate">Lessons and Carols</span>
             <span className="font-sans text-xs font-normal text-sidebar-text-dim">Dec 13</span>
