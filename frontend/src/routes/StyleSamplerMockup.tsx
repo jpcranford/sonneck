@@ -508,7 +508,7 @@ function ExampleWindowSection() {
                   <p className="mt-0.5 text-sm text-ink-soft">{meta}</p>
                   <div className="mt-2 flex flex-wrap gap-1">
                     {i === 0 && (
-                      <span className="rounded-full bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent">
+                      <span className="rounded-full border border-accent/30 bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent">
                         Learning
                       </span>
                     )}

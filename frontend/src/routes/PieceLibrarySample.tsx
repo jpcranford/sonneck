@@ -893,14 +893,14 @@ function sortPieces(pieces: MockPiece[], field: SortField, direction: SortDirect
 function MockTagPills({ piece }: { piece: MockPiece }) {
   return (
     <div className="flex min-w-0 flex-wrap items-center gap-1">
-      <span className="flex items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent">
+      <span className="flex items-center gap-1 rounded-full border border-accent/30 bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent">
         <PracticeStatusIcon status={piece.practiceStatus} size={11} className="shrink-0" />
         {piece.practiceStatus}
       </span>
       {piece.userTags.map((tag) => (
         <span
           key={tag}
-          className="rounded-full bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent"
+          className="rounded-full border border-accent/30 bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent"
         >
           {tag}
         </span>
@@ -1252,8 +1252,10 @@ export function PieceLibrarySample() {
                 return (
                   <span
                     key={entry.field + (entry.value ?? '')}
-                    className={`flex items-center gap-1.5 rounded-full py-1 pr-1.5 pl-3 text-xs font-medium ${
-                      excluded ? 'bg-danger-soft text-danger' : 'bg-accent-soft text-accent'
+                    className={`flex items-center gap-1.5 rounded-full border py-1 pr-1.5 pl-3 text-xs font-medium ${
+                      excluded
+                        ? 'border-danger/30 bg-danger-soft text-danger'
+                        : 'border-accent/30 bg-accent-soft text-accent'
                     }`}
                   >
                     {excluded ? `Not ${entry.label}` : entry.label}
@@ -1300,19 +1302,10 @@ export function PieceLibrarySample() {
               >
                 <div className="relative aspect-[180/132] w-full overflow-hidden border-b border-border bg-border">
                   <PieceThumb seed={piece.id} />
-                  {/* Mockup-parity with the real PieceGridCard.tsx — the
-                      soft white scrim behind the badge, so it stays
-                      legible against real, varied scan/cover artwork
-                      rather than just this mockup's own light placeholder
-                      thumbnails, which happened to not need it. */}
-                  <div
-                    aria-hidden="true"
-                    className="absolute inset-0 bg-[linear-gradient(to_top,rgba(255,255,255,0.55)_0%,rgba(255,255,255,0.1925)_32%,rgba(255,255,255,0)_62%)]"
-                  />
-                  <span className="absolute bottom-2 left-2 z-10 flex max-w-[calc(100%-3rem)] items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent shadow-sm">
+                  <span className="absolute bottom-2 left-2 z-10 flex max-w-[calc(100%-3rem)] items-center gap-1 rounded-full border border-accent/30 bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent">
                     <PracticeStatusIcon
                       status={piece.practiceStatus}
-                      size={13}
+                      size={11}
                       className="shrink-0"
                     />
                     <span className="truncate">{piece.practiceStatus}</span>

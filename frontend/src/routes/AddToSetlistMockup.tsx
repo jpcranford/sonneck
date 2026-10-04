@@ -453,8 +453,8 @@ function FixtureGridCard({
         <div className="flex w-56 flex-col overflow-hidden rounded-lg border border-border bg-paper-raised text-left">
           <div className="relative aspect-[180/132] w-full border-b border-border bg-paper-sunken">
             {practiceStatus && (
-              <span className="absolute bottom-2 left-2 flex max-w-[calc(100%-3rem)] items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent shadow-sm">
-                <PracticeStatusIcon status={practiceStatus} size={13} className="shrink-0" />
+              <span className="absolute bottom-2 left-2 flex max-w-[calc(100%-3rem)] items-center gap-1 rounded-full border border-accent/30 bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent">
+                <PracticeStatusIcon status={practiceStatus} size={11} className="shrink-0" />
                 <span className="truncate">{practiceStatus}</span>
               </span>
             )}
@@ -546,7 +546,7 @@ function FixtureListCard({
             </p>
             <p className="text-sm text-ink-soft">{piece.meta}</p>
             {practiceStatus && (
-              <span className="mt-1 flex w-fit items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent">
+              <span className="mt-1 flex w-fit items-center gap-1 rounded-full border border-accent/30 bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent">
                 <PracticeStatusIcon status={practiceStatus} size={13} className="shrink-0" />
                 {practiceStatus}
               </span>

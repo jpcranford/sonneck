@@ -788,7 +788,7 @@ function VersionSection() {
                 Not applicable
               </span>
             ) : version?.checkStatus === 'behind' ? (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-1 text-sm text-accent">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent-soft px-2.5 py-1 text-sm text-accent">
                 version {version.availableVersion} available
                 {releaseUrl && (
                   <a
@@ -917,7 +917,7 @@ function ShareOnNetworkSection() {
       title="Share on Network"
       headerExtra={
         settings.appliedShareOnNetwork ? (
-          <span className="ml-2.5 inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-0.5 text-xs font-semibold text-accent">
+          <span className="ml-2.5 inline-flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent-soft px-2.5 py-0.5 text-xs font-semibold text-accent">
             <IconWifi size={12} />
             Shared on this network
           </span>

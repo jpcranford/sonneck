@@ -83,31 +83,16 @@ export function PieceGridCard({ piece, backLabel, siblingPieces }: PieceGridCard
             loading="lazy"
             className="h-full w-full object-cover object-top"
           />
-          {/* Very soft white scrim behind the practice-status badge only —
-              real scans vary (a plain white notation page vs. a dark cover
-              photo), and this gives the badge something consistent to sit
-              on without visibly washing out the artwork above it. "Light"
-              strength, not "Subtle" — chosen for badge legibility across
-              real practice-status artwork. */}
-          {piece.practiceStatus && (
-            <div
-              aria-hidden="true"
-              className="absolute inset-0 bg-[linear-gradient(to_top,rgba(255,255,255,0.55)_0%,rgba(255,255,255,0.1925)_32%,rgba(255,255,255,0)_62%)]"
-            />
-          )}
           {/* Practice status as a badge over the thumbnail, not a footer
               pill — keeps every grid card the same height regardless of
               whether a status is set, instead of the text block growing by
               a row when one is present. Bottom-left. */}
           {piece.practiceStatus && (
-            // Opaque background (was bg-accent-soft/90 + backdrop-blur-sm)
-            // — the translucent version still had a hard time standing out
-            // against busy scan artwork; solid + no blur reads clearly
-            // regardless of what's underneath. Icon size unified to 13px
-            // (was 11px) to match the Piece Details pill exactly — the two
-            // are now the same icon/text size everywhere a status shows.
-            <span className="absolute bottom-2 left-2 z-10 flex max-w-[calc(100%-3rem)] items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent shadow-sm">
-              <PracticeStatusIcon status={piece.practiceStatus} size={13} className="shrink-0" />
+            // Same look as the list view's practice-status pill (TagPills),
+            // plus a thin accent border so it holds its edge against a
+            // white page scan without a fade behind it.
+            <span className="absolute bottom-2 left-2 z-10 flex max-w-[calc(100%-3rem)] items-center gap-1 rounded-full border border-accent/30 bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent">
+              <PracticeStatusIcon status={piece.practiceStatus} size={11} className="shrink-0" />
               <span className="truncate">{piece.practiceStatus}</span>
             </span>
           )}

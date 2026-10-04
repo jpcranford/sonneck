@@ -721,8 +721,10 @@ export function PeopleLibraryPage() {
               return (
                 <span
                   key={entry.field + entry.value}
-                  className={`flex items-center gap-1.5 rounded-full py-1 pr-1.5 pl-3 text-xs font-medium ${
-                    excluded ? 'bg-danger-soft text-danger' : 'bg-accent-soft text-accent'
+                  className={`flex items-center gap-1.5 rounded-full border py-1 pr-1.5 pl-3 text-xs font-medium ${
+                    excluded
+                      ? 'border-danger/30 bg-danger-soft text-danger'
+                      : 'border-accent/30 bg-accent-soft text-accent'
                   }`}
                 >
                   {excluded ? `Not ${entry.label}` : entry.label}

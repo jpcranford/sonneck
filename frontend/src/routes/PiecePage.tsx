@@ -1069,7 +1069,7 @@ export function PiecePage() {
                 {piece.practiceStatus && (
                   <Link
                     to={`/?practiceStatus=${encodeURIComponent(piece.practiceStatus)}`}
-                    className="flex items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent transition-colors hover:bg-accent/20"
+                    className="flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent transition-colors hover:bg-accent/20"
                   >
                     <PracticeStatusIcon status={piece.practiceStatus} size={13} />
                     {piece.practiceStatus}
@@ -1079,7 +1079,7 @@ export function PiecePage() {
                   <Link
                     key={tag.id}
                     to={`/?userTagId=${tag.id}`}
-                    className="rounded-full bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent transition-colors hover:bg-accent/20"
+                    className="rounded-full border border-accent/30 bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent transition-colors hover:bg-accent/20"
                   >
                     {tag.name}
                   </Link>

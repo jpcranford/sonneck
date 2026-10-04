@@ -1068,7 +1068,7 @@ export function PieceDetailsSample() {
 
             <div className="mt-1 flex flex-wrap items-center gap-2">
               {piece.practiceStatus && (
-                <span className="flex items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent">
+                <span className="flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent">
                   <PracticeStatusIcon status={piece.practiceStatus} size={13} />
                   {piece.practiceStatus}
                 </span>
@@ -1076,7 +1076,7 @@ export function PieceDetailsSample() {
               {piece.userTags.map((tag) => (
                 <span
                   key={tag.id}
-                  className="rounded-full bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent"
+                  className="rounded-full border border-accent/30 bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent"
                 >
                   {tag.name}
                 </span>

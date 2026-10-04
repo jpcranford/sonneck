@@ -90,7 +90,7 @@ export function TagComboBox({
   hideLabel?: boolean
   // Which independent-pill treatment to use — mirrors TagPills.tsx's own
   // accent-vs-neutral split (CLAUDE.md > Frontend): 'accent' (default,
-  // bg-accent-soft/text-accent, no border) is for genuinely per-user data
+  // bg-accent-soft/text-accent, thin border-accent/30) is for per-user data
   // (Your Tags), where standing out in the app's accent color is the
   // point. 'paper' (border border-border bg-paper text-ink-soft, the exact
   // classes TagPills.tsx's own neutral keys/sheetType/instruments pills
@@ -324,10 +324,10 @@ export function TagComboBox({
               // allowDuplicates.
               <span
                 key={`${tag.id}-${index}`}
-                className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
+                className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium ${
                   pillStyle === 'paper'
-                    ? 'border border-border bg-paper text-ink-soft'
-                    : 'bg-accent-soft text-accent'
+                    ? 'border-border bg-paper text-ink-soft'
+                    : 'border-accent/30 bg-accent-soft text-accent'
                 }`}
               >
                 {tag.name}

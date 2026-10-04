@@ -658,10 +658,10 @@ function TagComboBox({
               // allowDuplicates.
               <span
                 key={`${tag.id}-${index}`}
-                className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
+                className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium ${
                   pillStyle === 'paper'
-                    ? 'border border-border bg-paper text-ink-soft'
-                    : 'bg-accent-soft text-accent'
+                    ? 'border-border bg-paper text-ink-soft'
+                    : 'border-accent/30 bg-accent-soft text-accent'
                 }`}
               >
                 {tag.name}

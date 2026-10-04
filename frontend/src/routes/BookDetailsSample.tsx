@@ -358,7 +358,7 @@ function PiecePills({ piece }: { piece: SamplePiece }) {
       {piece.userTags.map((tag) => (
         <span
           key={tag}
-          className="rounded-full bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent"
+          className="rounded-full border border-accent/30 bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent"
         >
           {tag}
         </span>
