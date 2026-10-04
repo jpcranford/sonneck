@@ -81,7 +81,7 @@ const PIECES: PieceFixture[] = [
     start: 1,
     end: 3,
     isLast: false,
-    color: '#7a9c6b',
+    color: 'var(--color-split-1)',
     title: 'Prelude in C',
     composer: [PEOPLE_OPTIONS[0]],
     arranger: [PEOPLE_OPTIONS[2]],
@@ -90,7 +90,7 @@ const PIECES: PieceFixture[] = [
     start: 5,
     end: 7,
     isLast: false,
-    color: '#b87aaf',
+    color: 'var(--color-split-2)',
     title: 'Nocturne',
     composer: [PEOPLE_OPTIONS[1]],
     // Two names on purpose — the worst case for the Arranger field's own
@@ -102,7 +102,7 @@ const PIECES: PieceFixture[] = [
     start: 7,
     end: 8,
     isLast: true,
-    color: '#5c8a8a',
+    color: 'var(--color-split-3)',
     title: 'Waltz in A♭',
     composer: [PEOPLE_OPTIONS[1]],
     // Left blank on purpose — shows the empty/placeholder state of the

@@ -403,6 +403,18 @@
   /* A solid red fill's hover. */
   --color-danger-fill-strong: #991b1b;
 
+  /* The upload wizard's book-split colors, one per piece in order (lib/pieceSplitLogic.ts's PALETTE): the lanes, page tiles and title-card borders that show which pages belong to which piece. The dark theme brightens them. */
+  --color-split-1: #7a9c6b;
+  --color-split-2: #b87aaf;
+  --color-split-3: #5c8a8a;
+  --color-split-4: #b8935a;
+  --color-split-5: #9c7ab8;
+  --color-split-6: #b8827a;
+  --color-split-7: #6b8a9c;
+  --color-split-8: #87a249;
+  --color-split-9: #ac6939;
+  --color-split-10: #b87a97;
+
   /* Overlays that must stay dark in both themes: the window backdrop, controls laid over page thumbnails, count badges. */
   --color-scrim: #1c1815;
 
@@ -414,6 +426,17 @@
      animate-stripe-move utility it generates is reusable if any future
      multi-record save ever wants the same "in progress" language. */
   --animate-stripe-move: stripe-move 0.85s linear infinite;
+}
+
+/* The upload wizard's split step. --split-tint: how strongly a book-split
+   color tints its lane and piece chip (color-mix with transparent);
+   stronger in the dark theme, where 10% barely shows. --skip-fade: the
+   opacity of a skipped page's tile. A faded white page sinks into a light
+   background but turns mid-grey on a dark one, standing out instead of
+   receding, so the dark theme fades it much further. */
+:root {
+  --split-tint: 10%;
+  --skip-fade: 0.6;
 }
 
 /* The dark theme (Walnut, lifted: A3 in the palette comparison): every color token
@@ -457,6 +480,20 @@
   --color-danger-fill-strong: #93271f;
 
   --color-scrim: #080606;
+
+  --color-split-1: #77a562;
+  --color-split-2: #c87bbd;
+  --color-split-3: #5ca0a0;
+  --color-split-4: #c8974a;
+  --color-split-5: #ac85cc;
+  --color-split-6: #c7847a;
+  --color-split-7: #759aaf;
+  --color-split-8: #8db239;
+  --color-split-9: #da7e3c;
+  --color-split-10: #c97ea1;
+
+  --split-tint: 20%;
+  --skip-fade: 0.15;
 }
 
 /* transform, not background-position (fixed 2026-09-02, direct report:

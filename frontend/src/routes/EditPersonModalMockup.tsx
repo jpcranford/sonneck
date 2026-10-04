@@ -12,7 +12,7 @@ import {
   IconXFilled,
 } from '@tabler/icons-react'
 import { Modal } from '../components/Modal'
-import { PALETTE } from '../lib/pieceSplitLogic'
+import { GARDEN_VARIETY } from '../lib/gardenVariety'
 import { useMockupTitle } from '../lib/useMockupTitle'
 
 // ---------------------------------------------------------------------
@@ -189,7 +189,7 @@ const HIGHLIGHT_MS = 2400
 // Same illustrative fixture image PersonDetailsSample.tsx's own avatar
 // uses in place of a real uploaded photo — duplicated locally, per this
 // codebase's usual "no shared components between a mockup and the real
-// thing" convention (PALETTE above is the one exception, since it's pure
+// thing" convention (GARDEN_VARIETY above is the one exception, since it's pure
 // data/logic, not a component).
 function CameoPortrait() {
   return (
@@ -212,7 +212,7 @@ function PersonAvatar({ className }: { className: string }) {
   return (
     <div
       className={`relative aspect-[3/4] overflow-hidden rounded-[50%] border border-border ${className}`}
-      style={{ backgroundColor: PALETTE[1 % PALETTE.length] }}
+      style={{ backgroundColor: GARDEN_VARIETY[1 % GARDEN_VARIETY.length] }}
     >
       <CameoPortrait />
     </div>

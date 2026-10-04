@@ -24,18 +24,24 @@
 // because at the tier-matched value it read as near-identical to a color
 // it replaced, terracotta because at the tier-matched value it measured
 // the lowest contrast of any palette color against the app's own paper
-// background.
+// background. (Those are the light theme's values; the dark theme's are
+// brightened to an even 5.5:1 against the dark page.)
+// The colors themselves live in index.css as --color-split-1…10 (the dark
+// theme brightens them), so this is the order as CSS variable references,
+// each written out in full so a search for a token's name finds it.
+// They're used in inline styles; a faint version is a color-mix() with
+// transparent, never a hex alpha suffix, which a CSS variable can't take.
 export const PALETTE = [
-  '#7a9c6b',
-  '#b87aaf',
-  '#5c8a8a',
-  '#b8935a',
-  '#9c7ab8',
-  '#b8827a',
-  '#6b8a9c',
-  '#87a249',
-  '#ac6939',
-  '#b87a97',
+  'var(--color-split-1)',
+  'var(--color-split-2)',
+  'var(--color-split-3)',
+  'var(--color-split-4)',
+  'var(--color-split-5)',
+  'var(--color-split-6)',
+  'var(--color-split-7)',
+  'var(--color-split-8)',
+  'var(--color-split-9)',
+  'var(--color-split-10)',
 ]
 
 export interface PageAssignments {

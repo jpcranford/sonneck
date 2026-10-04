@@ -35,7 +35,7 @@ import { TagComboBox } from '../components/TagComboBox'
 import { TagPills } from '../components/TagPills'
 import { joinNames, personCreditPart } from '../lib/joinNames'
 import { CONTENT_MAX_W } from '../lib/layout'
-import { PALETTE } from '../lib/pieceSplitLogic'
+import { GARDEN_VARIETY } from '../lib/gardenVariety'
 import { hasPermission, useAuth } from '../lib/AuthContext'
 import { usePageTitle } from '../lib/usePageTitle'
 import { useViewPreference } from '../lib/useViewPreference'
@@ -665,7 +665,9 @@ export function PersonDetailsPage() {
                         >
                           <span
                             className="flex size-5 shrink-0 items-center justify-center rounded-full text-white"
-                            style={{ backgroundColor: PALETTE[index % PALETTE.length] }}
+                            style={{
+                              backgroundColor: GARDEN_VARIETY[index % GARDEN_VARIETY.length],
+                            }}
                           >
                             <IconMusic size={10} />
                           </span>

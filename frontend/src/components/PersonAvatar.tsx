@@ -1,6 +1,6 @@
 import { getPersonPortraitUrl } from '../api/people'
 import type { Person } from '../api/types'
-import { PALETTE } from '../lib/pieceSplitLogic'
+import { GARDEN_VARIETY } from '../lib/gardenVariety'
 
 // Extracted from PersonDetailsPage.tsx once EditPersonModal.tsx
 // needed the exact same oval-portrait treatment for its own new left
@@ -9,14 +9,16 @@ import { PALETTE } from '../lib/pieceSplitLogic'
 // not an exception to the mockup-vs-real "don't share code" convention,
 // which only applies between a mockup and its real counterpart.
 export function PersonAvatar({ person, className }: { person: Person; className: string }) {
-  const color = PALETTE[person.id % PALETTE.length]
+  const color = GARDEN_VARIETY[person.id % GARDEN_VARIETY.length]
   const initials = person.name
     .split(/\s+/)
     .filter(Boolean)
     .map((w) => w[0])
     .filter(Boolean)
   const initialsText =
-    initials.length === 0 ? '?' : (initials[0] + (initials[initials.length - 1] ?? '')).toUpperCase()
+    initials.length === 0
+      ? '?'
+      : (initials[0] + (initials[initials.length - 1] ?? '')).toUpperCase()
   return (
     <div
       className={`relative aspect-[3/4] overflow-hidden rounded-[50%] border border-border [container-type:inline-size] ${className}`}

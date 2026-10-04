@@ -21,7 +21,7 @@ import { MarkdownText } from '../components/MarkdownText'
 import { Modal } from '../components/Modal'
 import { TagComboBox } from '../components/TagComboBox'
 import { TagPills } from '../components/TagPills'
-import { PALETTE } from '../lib/pieceSplitLogic'
+import { GARDEN_VARIETY } from '../lib/gardenVariety'
 import { useMockupTitle } from '../lib/useMockupTitle'
 import type { Tag } from '../api/types'
 
@@ -458,7 +458,7 @@ function PersonAvatar({
   name: string
   className: string
 }) {
-  const color = PALETTE[paletteIndex % PALETTE.length]
+  const color = GARDEN_VARIETY[paletteIndex % GARDEN_VARIETY.length]
   const initials = name
     .split(/\s+/)
     .filter(Boolean)
@@ -499,7 +499,7 @@ function WorkThumbnail({ paletteIndex, className }: { paletteIndex: number; clas
   return (
     <div
       className={`flex items-center justify-center rounded-md border border-border ${className}`}
-      style={{ backgroundColor: `${PALETTE[paletteIndex % PALETTE.length]}26` }}
+      style={{ backgroundColor: `${GARDEN_VARIETY[paletteIndex % GARDEN_VARIETY.length]}26` }}
     >
       <IconMusic size={16} className="text-ink-soft" />
     </div>
@@ -1222,7 +1222,7 @@ export function PersonDetailsSample() {
                     >
                       <span
                         className="flex size-5 shrink-0 items-center justify-center rounded-full text-white"
-                        style={{ backgroundColor: PALETTE[index % PALETTE.length] }}
+                        style={{ backgroundColor: GARDEN_VARIETY[index % GARDEN_VARIETY.length] }}
                       >
                         <IconMusic size={10} />
                       </span>
