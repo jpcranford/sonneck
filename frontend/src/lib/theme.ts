@@ -17,7 +17,7 @@ export const THEME_STORAGE_KEY = 'sonneck-theme'
 
 // The page color in each theme (--color-paper), for the browser's own bar
 // (<meta name="theme-color">) so it blends into the page.
-const BROWSER_BAR_COLOR = { light: '#fbfaf8', dark: '#231e1a' } as const
+const BROWSER_BAR_COLOR = { light: '#f8f6f3', dark: '#231e1a' } as const
 
 const darkQuery = () => window.matchMedia('(prefers-color-scheme: dark)')
 

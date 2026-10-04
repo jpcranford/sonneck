@@ -337,7 +337,7 @@ function ColorRow({
 // belong to for as long as that file still uses it.
 const LITERAL_NOTES: { value: string; file: string; note: string }[] = [
   {
-    value: '#fbfaf8',
+    value: '#f8f6f3',
     file: 'theme',
     note: 'Not a style: the phone browser’s bar color in the light theme, a copy of --color-paper (a <meta> tag can’t read a CSS variable). Kept in step with index.html’s early theme script.',
   },
