@@ -139,7 +139,7 @@ function IdentityStateToggle({
             type="button"
             onClick={() => onChange(key)}
             className={`cursor-pointer px-2 py-1 ${
-              state === key ? 'bg-accent-fill text-white' : 'bg-paper hover:bg-paper-sunken'
+              state === key ? 'bg-accent-fill text-white' : 'bg-paper hover:bg-paper-hover'
             }`}
           >
             {IDENTITIES[key].label}

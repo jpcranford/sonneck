@@ -478,7 +478,7 @@ export function SetlistDetailsMockup() {
               type="button"
               aria-pressed={archived === value}
               onClick={() => setArchived(value)}
-              className={`cursor-pointer px-2 py-1 ${archived === value ? 'bg-accent-fill text-white' : 'bg-paper hover:bg-paper-sunken'}`}
+              className={`cursor-pointer px-2 py-1 ${archived === value ? 'bg-accent-fill text-white' : 'bg-paper hover:bg-paper-hover'}`}
             >
               {label}
             </button>

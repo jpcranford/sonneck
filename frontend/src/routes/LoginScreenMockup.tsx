@@ -40,7 +40,7 @@ function PreviewToggle({
             key={key}
             type="button"
             onClick={() => onChange(key)}
-            className={`cursor-pointer px-2 py-1 ${state === key ? 'bg-accent-fill text-white' : 'bg-paper hover:bg-paper-sunken'}`}
+            className={`cursor-pointer px-2 py-1 ${state === key ? 'bg-accent-fill text-white' : 'bg-paper hover:bg-paper-hover'}`}
           >
             {PREVIEW_LABELS[key]}
           </button>

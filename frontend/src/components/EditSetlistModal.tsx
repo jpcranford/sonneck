@@ -611,7 +611,7 @@ export function EditSetlistModal({
           type="button"
           onClick={closeCustomForm}
           aria-label="Cancel custom entry"
-          className="absolute top-2 right-2 cursor-pointer rounded p-1 text-ink-soft hover:bg-paper-sunken hover:text-ink"
+          className="absolute top-2 right-2 cursor-pointer rounded p-1 text-ink-soft hover:bg-paper-hover hover:text-ink"
         >
           <IconX size={13} />
         </button>
@@ -699,7 +699,7 @@ export function EditSetlistModal({
           type="button"
           onClick={closeRoleForm}
           aria-label="Cancel role edit"
-          className="absolute top-2 right-2 cursor-pointer rounded p-1 text-ink-soft hover:bg-paper-sunken hover:text-ink"
+          className="absolute top-2 right-2 cursor-pointer rounded p-1 text-ink-soft hover:bg-paper-hover hover:text-ink"
         >
           <IconX size={13} />
         </button>
@@ -993,7 +993,7 @@ export function EditSetlistModal({
                           onClick={() => selectAddMode('search')}
                           className={`relative flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-tl-md border-t border-r border-l border-border px-3 py-2 text-sm font-medium transition-colors ${
                             addRowMode === 'buttons' ? 'rounded-bl-md border-b' : ''
-                          } ${addRowMode === 'search' ? 'bg-paper-sunken text-ink' : 'text-ink-soft hover:z-10 hover:border-accent'}`}
+                          } ${addRowMode === 'search' ? 'bg-paper-hover text-ink' : 'text-ink-soft hover:z-10 hover:border-accent'}`}
                         >
                           <IconPlus size={14} />
                           Piece
@@ -1003,7 +1003,7 @@ export function EditSetlistModal({
                           onClick={() => selectAddMode('custom')}
                           className={`relative -ml-px flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-tr-md border-t border-r border-l border-border px-3 py-2 text-sm font-medium transition-colors ${
                             addRowMode === 'buttons' ? 'rounded-br-md border-b' : ''
-                          } ${addRowMode === 'custom' ? 'bg-paper-sunken text-ink' : 'text-ink-soft hover:z-10 hover:border-accent'}`}
+                          } ${addRowMode === 'custom' ? 'bg-paper-hover text-ink' : 'text-ink-soft hover:z-10 hover:border-accent'}`}
                         >
                           <IconPlus size={14} />
                           Custom Entry
@@ -1038,7 +1038,7 @@ export function EditSetlistModal({
                               type="button"
                               onClick={closeAddRow}
                               aria-label="Cancel adding a piece"
-                              className="absolute top-1/2 right-1.5 -translate-y-1/2 cursor-pointer rounded p-1 text-ink-soft hover:bg-paper-sunken hover:text-ink"
+                              className="absolute top-1/2 right-1.5 -translate-y-1/2 cursor-pointer rounded p-1 text-ink-soft hover:bg-paper-hover hover:text-ink"
                             >
                               <IconX size={13} />
                             </button>
@@ -1070,8 +1070,8 @@ export function EditSetlistModal({
                                     }}
                                     className={`flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-left ${
                                       i === searchHighlight
-                                        ? 'bg-paper-sunken'
-                                        : 'hover:bg-paper-sunken'
+                                        ? 'bg-paper-hover'
+                                        : 'hover:bg-paper-hover'
                                     }`}
                                   >
                                     <div className="min-w-0 flex-1">

@@ -363,6 +363,8 @@
   --color-paper-raised: #ffffff;
   /* Recessed areas: thumbnail wells, segmented-control tracks, inset panels. */
   --color-paper-sunken: #f1eee8;
+  /* Hover and selected fills on a raised surface: menu rows, search results, sort and filter buttons. The same grey as paper-sunken here; the dark theme lifts it lighter instead of sinking it. */
+  --color-paper-hover: #f1eee8;
   /* Hairlines: card, field and button outlines, dividers, the off switch track. */
   --color-border: #e4e0d8;
 
@@ -462,6 +464,7 @@
   --color-paper: #231e1a;
   --color-paper-raised: #302a25;
   --color-paper-sunken: #1b1714;
+  --color-paper-hover: #3b342e;
   --color-border: #423931;
 
   --color-sidebar-bg: #0f0c0b;

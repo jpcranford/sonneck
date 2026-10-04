@@ -162,7 +162,7 @@ function RuntimeModeToggle({
           type="button"
           onClick={() => onChange('docker')}
           className={`flex cursor-pointer items-center gap-1 px-2 py-1 ${
-            mode === 'docker' ? 'bg-accent-fill text-white' : 'bg-paper hover:bg-paper-sunken'
+            mode === 'docker' ? 'bg-accent-fill text-white' : 'bg-paper hover:bg-paper-hover'
           }`}
         >
           <IconBrandDocker size={13} />
@@ -172,7 +172,7 @@ function RuntimeModeToggle({
           type="button"
           onClick={() => onChange('native')}
           className={`flex cursor-pointer items-center gap-1 px-2 py-1 ${
-            mode === 'native' ? 'bg-accent-fill text-white' : 'bg-paper hover:bg-paper-sunken'
+            mode === 'native' ? 'bg-accent-fill text-white' : 'bg-paper hover:bg-paper-hover'
           }`}
         >
           <IconDeviceDesktop size={13} />
@@ -367,7 +367,7 @@ function IdentityStateToggle({
             type="button"
             onClick={() => onChange(key)}
             className={`cursor-pointer px-2 py-1 ${
-              state === key ? 'bg-accent-fill text-white' : 'bg-paper hover:bg-paper-sunken'
+              state === key ? 'bg-accent-fill text-white' : 'bg-paper hover:bg-paper-hover'
             }`}
           >
             {IDENTITY_LABELS[key]}
@@ -1028,7 +1028,7 @@ export function AdminSettingsMockup() {
                     className={`cursor-pointer px-2 py-1 ${
                       buildKind === key
                         ? 'bg-accent-fill text-white'
-                        : 'bg-paper hover:bg-paper-sunken'
+                        : 'bg-paper hover:bg-paper-hover'
                     }`}
                   >
                     {BUILD_FIXTURES[key].label}

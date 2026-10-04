@@ -266,7 +266,7 @@ function ScenarioPicker({
             type="button"
             onClick={() => onChange(key)}
             className={`cursor-pointer px-2 py-1 ${
-              scenarioKey === key ? 'bg-accent-fill text-white' : 'bg-paper hover:bg-paper-sunken'
+              scenarioKey === key ? 'bg-accent-fill text-white' : 'bg-paper hover:bg-paper-hover'
             }`}
           >
             {SCENARIOS[key].label}

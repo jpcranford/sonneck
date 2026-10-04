@@ -68,7 +68,7 @@ function TriStateControl({
         className={`flex size-6 cursor-pointer items-center justify-center rounded ${
           state === 'exclude'
             ? 'bg-danger-soft text-danger'
-            : 'text-ink-soft hover:bg-paper-sunken hover:text-ink'
+            : 'text-ink-soft hover:bg-paper-hover hover:text-ink'
         }`}
       >
         <IconMinus size={14} />
@@ -80,8 +80,8 @@ function TriStateControl({
         aria-pressed={state === 'neutral'}
         className={`flex size-6 cursor-pointer items-center justify-center rounded ${
           state === 'neutral'
-            ? 'bg-paper-sunken text-ink'
-            : 'text-ink-soft hover:bg-paper-sunken hover:text-ink'
+            ? 'bg-paper-hover text-ink'
+            : 'text-ink-soft hover:bg-paper-hover hover:text-ink'
         }`}
       >
         <IconSlash size={14} />
@@ -94,7 +94,7 @@ function TriStateControl({
         className={`flex size-6 cursor-pointer items-center justify-center rounded ${
           state === 'include'
             ? 'bg-accent-soft text-accent'
-            : 'text-ink-soft hover:bg-paper-sunken hover:text-ink'
+            : 'text-ink-soft hover:bg-paper-hover hover:text-ink'
         }`}
       >
         <IconPlus size={14} />
@@ -140,7 +140,7 @@ export function BookFilterDrawer({
             type="button"
             onClick={onClose}
             aria-label="Close filters"
-            className="flex size-8 cursor-pointer items-center justify-center rounded-md text-ink-soft hover:bg-paper-sunken hover:text-ink"
+            className="flex size-8 cursor-pointer items-center justify-center rounded-md text-ink-soft hover:bg-paper-hover hover:text-ink"
           >
             <IconX size={18} />
           </button>
