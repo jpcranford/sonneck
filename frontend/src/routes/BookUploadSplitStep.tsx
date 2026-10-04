@@ -658,11 +658,11 @@ export function BookUploadSplitStep({
                         pick, and the Group Lane fill already carries its
                         own "continues" signal across every such page. */}
                     {(badgeKind === 'shared' || badgeKind === 'double') && (
-                      <span className="flex size-6 items-center justify-center rounded-md bg-ink/75 text-white">
+                      <span className="flex size-6 items-center justify-center rounded-md bg-scrim/75 text-white">
                         <IconChevronRightPipe size={14} />
                       </span>
                     )}
-                    <span className="flex size-6 items-center justify-center rounded-md bg-ink/75 text-white">
+                    <span className="flex size-6 items-center justify-center rounded-md bg-scrim/75 text-white">
                       {badgeKind === 'skip' && <IconX size={14} />}
                       {badgeKind === 'shared' && <IconBoxMultiple1 size={14} />}
                       {badgeKind === 'start' && <IconBoxMultiple1 size={14} />}

@@ -430,7 +430,7 @@ function PageLightbox({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/80 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/80 backdrop-blur-sm"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose()
       }}
@@ -439,12 +439,12 @@ function PageLightbox({
         type="button"
         onClick={onClose}
         aria-label="Close"
-        className="absolute top-6 left-6 flex size-10 items-center justify-center rounded-full bg-ink/80 text-white shadow-md backdrop-blur-sm hover:bg-white/15 focus-visible:outline-accent-on-dark"
+        className="absolute top-6 left-6 flex size-10 items-center justify-center rounded-full bg-scrim/80 text-white shadow-md backdrop-blur-sm hover:bg-white/15 focus-visible:outline-accent-on-dark"
       >
         <IconXFilled size={20} />
       </button>
 
-      <div className="pointer-events-none absolute top-6 right-6 rounded-full bg-ink/80 px-3 py-1.5 text-xs text-white/90 shadow-md backdrop-blur-sm">
+      <div className="pointer-events-none absolute top-6 right-6 rounded-full bg-scrim/80 px-3 py-1.5 text-xs text-white/90 shadow-md backdrop-blur-sm">
         Click image to {zoom === 'fit' ? 'zoom in' : 'fit to screen'}
       </div>
 
@@ -471,7 +471,7 @@ function PageLightbox({
       </button>
 
       {pageCount > 1 && (
-        <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-ink/80 px-2 py-1 shadow-md backdrop-blur-sm">
+        <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-scrim/80 px-2 py-1 shadow-md backdrop-blur-sm">
           <button
             type="button"
             onClick={onPrev}

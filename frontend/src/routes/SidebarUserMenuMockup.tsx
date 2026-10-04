@@ -47,13 +47,7 @@ import { useMockupTitle } from '../lib/useMockupTitle'
 // full-width, text-labeled ThemeControl row — this is a quick-access popup
 // control, not a settings-page field, so the denser form factor fits the
 // context better (the fuller row-based control still exists, and still
-// belongs, on both Settings pages). Dark stays disabled, same "not built
-// yet" reason as everywhere else in this app (no real dark-mode CSS),  but
-// signals it via reduced icon opacity + a title tooltip rather than
-// ThemeControl's visible "Soon" pill badge — a deliberate, scale-driven
-// divergence from that convention, not an oversight: a persistent text
-// badge doesn't fit legibly on a 28px circular icon button the way it does
-// on a full labeled button. `theme` state lives in the parent
+// belongs, on both Settings pages). `theme` state lives in the parent
 // (SidebarUserMenuMockup) and is passed to both UserMenuButton instances
 // (desktop rail + mobile drawer), so switching it in one preview stays in
 // sync with the other — same reasoning `identity`/`collapsed` already get
@@ -193,27 +187,21 @@ function ThemeSwitcher({
           className="absolute top-0.5 left-0.5 size-6 rounded-full bg-sidebar-panel shadow-sm transition-transform duration-150 ease-out"
           style={{ transform: `translateX(${activeIndex * 26}px)` }}
         />
-        {THEME_OPTIONS.map(({ key, icon: Icon, label }) => {
-          const disabled = key === 'dark'
-          return (
-            <button
-              key={key}
-              type="button"
-              disabled={disabled}
-              onClick={() => onChange(key)}
-              title={disabled ? `${label} — coming soon` : label}
-              aria-label={label}
-              aria-pressed={theme === key}
-              className={`relative z-10 flex size-6 items-center justify-center rounded-full transition-colors ${
-                disabled
-                  ? 'cursor-not-allowed text-sidebar-text-dim/35'
-                  : `cursor-pointer ${theme === key ? 'text-sidebar-text' : 'text-sidebar-text-dim hover:text-sidebar-text'}`
-              }`}
-            >
-              <Icon size={13} />
-            </button>
-          )
-        })}
+        {THEME_OPTIONS.map(({ key, icon: Icon, label }) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => onChange(key)}
+            title={label}
+            aria-label={label}
+            aria-pressed={theme === key}
+            className={`relative z-10 flex size-6 cursor-pointer items-center justify-center rounded-full transition-colors ${
+              theme === key ? 'text-sidebar-text' : 'text-sidebar-text-dim hover:text-sidebar-text'
+            }`}
+          >
+            <Icon size={13} />
+          </button>
+        ))}
       </div>
     </div>
   )
@@ -525,7 +513,7 @@ export function SidebarUserMenuMockup() {
 
       <div
         aria-hidden={!drawerOpen}
-        className={`fixed inset-0 z-40 bg-ink/40 transition-opacity duration-200 md:hidden ${
+        className={`fixed inset-0 z-40 bg-scrim/40 transition-opacity duration-200 md:hidden ${
           drawerOpen ? 'opacity-100' : 'pointer-events-none opacity-0'
         }`}
         onClick={() => setDrawerOpen(false)}

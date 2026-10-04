@@ -346,20 +346,20 @@ function PageLightbox({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/80 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/80 backdrop-blur-sm"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose()
       }}
     >
       {/* Upper-left of the popup itself, not the viewport corner — direct
-          instruction. Same chip treatment (bg-ink/80 + blur, white icon)
+          instruction. Same chip treatment (bg-scrim/80 + blur, white icon)
           as the page-cycle capsule below, so the whole feature reads as
           one piece. */}
       <button
         type="button"
         onClick={onClose}
         aria-label="Close"
-        className="absolute top-6 left-6 flex size-10 items-center justify-center rounded-full bg-ink/80 text-white shadow-md backdrop-blur-sm hover:bg-white/15 focus-visible:outline-accent-on-dark"
+        className="absolute top-6 left-6 flex size-10 items-center justify-center rounded-full bg-scrim/80 text-white shadow-md backdrop-blur-sm hover:bg-white/15 focus-visible:outline-accent-on-dark"
       >
         <IconXFilled size={20} />
       </button>
@@ -368,7 +368,7 @@ function PageLightbox({
           page's affordances are tap-triggered, never hover-dependent) —
           without this, "click the image to zoom" has no way to announce
           itself on a touch device that has no hover state at all. */}
-      <div className="pointer-events-none absolute top-6 right-6 rounded-full bg-ink/80 px-3 py-1.5 text-xs text-white/90 shadow-md backdrop-blur-sm">
+      <div className="pointer-events-none absolute top-6 right-6 rounded-full bg-scrim/80 px-3 py-1.5 text-xs text-white/90 shadow-md backdrop-blur-sm">
         Click image to {zoom === 'fit' ? 'zoom in' : 'fit to screen'}
       </div>
 
@@ -397,7 +397,7 @@ function PageLightbox({
           overlay so you don't have to close the lightbox just to look at
           an adjacent page. */}
       {pageCount > 1 && (
-        <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-ink/80 px-2 py-1 shadow-md backdrop-blur-sm">
+        <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-scrim/80 px-2 py-1 shadow-md backdrop-blur-sm">
           <button
             type="button"
             onClick={onPrev}
@@ -769,7 +769,7 @@ export function PieceDetailsSample() {
                 edge. */}
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute top-2.5 right-2.5 flex items-center justify-center rounded-full bg-ink/80 p-1.5 text-white shadow-md backdrop-blur-sm"
+              className="pointer-events-none absolute top-2.5 right-2.5 flex items-center justify-center rounded-full bg-scrim/80 p-1.5 text-white shadow-md backdrop-blur-sm"
             >
               <IconArrowsDiagonal size={14} />
             </div>
@@ -778,7 +778,7 @@ export function PieceDetailsSample() {
                 preview itself rather than as a separate row underneath —
                 kept in sync with PiecePage.tsx's real version. */}
             {piece.pageCount > 1 && (
-              <div className="absolute bottom-2.5 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-ink/80 px-2 py-1 shadow-md backdrop-blur-sm">
+              <div className="absolute bottom-2.5 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-scrim/80 px-2 py-1 shadow-md backdrop-blur-sm">
                 <button
                   type="button"
                   onClick={() => setPage((p) => Math.max(1, p - 1))}

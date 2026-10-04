@@ -115,7 +115,7 @@ const IDENTITIES: Record<IdentityKey, Identity> = {
   },
 }
 
-type Theme = 'light' | 'system'
+type Theme = 'light' | 'dark' | 'system'
 
 type UserListKey = 'Tags' | 'Practice Status'
 
@@ -208,8 +208,7 @@ function SettingsRow({
   // content_view_mode columns are real and live in the actual
   // UserSettingsPage.tsx (GET/PATCH /api/user-settings). The control
   // stays visible and genuinely toggleable in this mockup (so the two
-  // states can still be previewed), but muted + tagged, same "Soon" pill
-  // ThemeControl's own Dark option already uses — pointer-events aren't
+  // states can still be previewed), but muted + tagged with a "Soon" pill — pointer-events aren't
   // actually blocked, unlike a real disabled control, since there's no
   // live-app consequence to prevent here.
   soon?: boolean
@@ -220,7 +219,7 @@ function SettingsRow({
         <p className="flex items-center gap-2 text-sm font-medium text-ink">
           {label}
           {soon && (
-            <span className="shrink-0 rounded-full bg-ink-soft px-1.5 py-px text-[0.6rem] tracking-wide text-white uppercase">
+            <span className="shrink-0 rounded-full bg-ink-soft px-1.5 py-px text-[0.6rem] tracking-wide text-paper uppercase">
               Soon
             </span>
           )}
@@ -232,50 +231,33 @@ function SettingsRow({
   )
 }
 
+const THEME_OPTIONS: { key: Theme; label: string; icon: typeof IconSun }[] = [
+  { key: 'light', label: 'Light', icon: IconSun },
+  { key: 'dark', label: 'Dark', icon: IconMoon },
+  { key: 'system', label: 'System', icon: IconDeviceDesktop },
+]
+
 function ThemeControl({ theme, onChange }: { theme: Theme; onChange: (theme: Theme) => void }) {
-  // Corner radius lives on the first/last buttons themselves, not
-  // `overflow-hidden` on this wrapper — the Dark button's "Soon" badge
-  // pokes up above the row (negative -top offset) and overflow-hidden here
-  // clipped it, the same ancestor-clips-descendant gotcha CLAUDE.md already
-  // documents elsewhere in this codebase.
   return (
     <div className="flex rounded-md border border-border">
-      <button
-        type="button"
-        onClick={() => onChange('light')}
-        className={`flex cursor-pointer items-center gap-1.5 rounded-l-md border-r border-border px-2.5 py-1.5 text-sm ${
-          theme === 'light'
-            ? 'bg-accent-fill text-white'
-            : 'bg-paper-raised text-ink-soft hover:bg-paper-sunken'
-        }`}
-      >
-        <IconSun size={14} />
-        Light
-      </button>
-      <button
-        type="button"
-        disabled
-        title="Coming soon"
-        className="relative flex cursor-not-allowed items-center gap-1.5 border-r border-border bg-paper-raised px-2.5 py-1.5 text-sm text-ink-soft/50"
-      >
-        <IconMoon size={14} />
-        Dark
-        <span className="absolute -top-2 -right-0.5 rounded-full bg-ink-soft px-1 py-px text-[0.55rem] tracking-wide text-white uppercase">
-          Soon
-        </span>
-      </button>
-      <button
-        type="button"
-        onClick={() => onChange('system')}
-        className={`flex cursor-pointer items-center gap-1.5 rounded-r-md px-2.5 py-1.5 text-sm ${
-          theme === 'system'
-            ? 'bg-accent-fill text-white'
-            : 'bg-paper-raised text-ink-soft hover:bg-paper-sunken'
-        }`}
-      >
-        <IconDeviceDesktop size={14} />
-        System
-      </button>
+      {THEME_OPTIONS.map(({ key, label, icon: Icon }, index) => (
+        <button
+          key={key}
+          type="button"
+          aria-pressed={theme === key}
+          onClick={() => onChange(key)}
+          className={`flex cursor-pointer items-center gap-1.5 px-2.5 py-1.5 text-sm ${
+            index === 0 ? 'rounded-l-md' : ''
+          } ${index === THEME_OPTIONS.length - 1 ? 'rounded-r-md' : 'border-r border-border'} ${
+            theme === key
+              ? 'bg-accent-fill text-white'
+              : 'bg-paper-raised text-ink-soft hover:bg-paper-sunken'
+          }`}
+        >
+          <Icon size={14} />
+          {label}
+        </button>
+      ))}
     </div>
   )
 }
@@ -308,7 +290,7 @@ function EditableList({
   // and creating a genuinely new status has no icon-assignment UX decided
   // yet (this file's own header comment) — the add control is muted +
   // tagged "Soon" rather than removed, matching the same pattern
-  // SettingsRow/ThemeControl already use for a not-yet-real control.
+  // SettingsRow already uses for a not-yet-real control.
   canAdd?: boolean
 }) {
   const noun = listKey === 'Tags' ? 'tag' : 'status'
@@ -375,7 +357,7 @@ function EditableList({
           title={`Adding a new ${noun} is coming soon`}
         >
           <IconCircleDashedPlus size={22} className="text-ink-soft/40" />
-          <span className="rounded-full bg-ink-soft px-1.5 py-px text-[0.6rem] tracking-wide text-white uppercase">
+          <span className="rounded-full bg-ink-soft px-1.5 py-px text-[0.6rem] tracking-wide text-paper uppercase">
             Soon
           </span>
         </div>

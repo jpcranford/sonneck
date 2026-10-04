@@ -98,7 +98,7 @@ function SettingsRow({
         <p className="flex items-center gap-2 text-sm font-medium text-ink">
           {label}
           {soon && (
-            <span className="shrink-0 rounded-full bg-ink-soft px-1.5 py-px text-[0.6rem] tracking-wide text-white uppercase">
+            <span className="shrink-0 rounded-full bg-ink-soft px-1.5 py-px text-[0.6rem] tracking-wide text-paper uppercase">
               Soon
             </span>
           )}
@@ -110,55 +110,46 @@ function SettingsRow({
   )
 }
 
+const THEME_OPTIONS: {
+  key: UserSettings['themePreference']
+  label: string
+  icon: typeof IconSun
+}[] = [
+  { key: 'light', label: 'Light', icon: IconSun },
+  { key: 'dark', label: 'Dark', icon: IconMoon },
+  { key: 'system', label: 'System', icon: IconDeviceDesktop },
+]
+
 function ThemeControl({
   theme,
   onChange,
   disabled,
 }: {
   theme: UserSettings['themePreference']
-  onChange: (theme: 'light' | 'system') => void
+  onChange: (theme: UserSettings['themePreference']) => void
   disabled: boolean
 }) {
   return (
     <div className="flex rounded-md border border-border">
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => onChange('light')}
-        className={`flex cursor-pointer items-center gap-1.5 rounded-l-md border-r border-border px-2.5 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50 ${
-          theme === 'light'
-            ? 'bg-accent-fill text-white'
-            : 'bg-paper-raised text-ink-soft hover:bg-paper-sunken'
-        }`}
-      >
-        <IconSun size={14} />
-        Light
-      </button>
-      <button
-        type="button"
-        disabled
-        title="Coming soon"
-        className="relative flex cursor-not-allowed items-center gap-1.5 border-r border-border bg-paper-raised px-2.5 py-1.5 text-sm text-ink-soft/50"
-      >
-        <IconMoon size={14} />
-        Dark
-        <span className="absolute -top-2 -right-0.5 rounded-full bg-ink-soft px-1 py-px text-[0.55rem] tracking-wide text-white uppercase">
-          Soon
-        </span>
-      </button>
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => onChange('system')}
-        className={`flex cursor-pointer items-center gap-1.5 rounded-r-md px-2.5 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50 ${
-          theme === 'system'
-            ? 'bg-accent-fill text-white'
-            : 'bg-paper-raised text-ink-soft hover:bg-paper-sunken'
-        }`}
-      >
-        <IconDeviceDesktop size={14} />
-        System
-      </button>
+      {THEME_OPTIONS.map(({ key, label, icon: Icon }, index) => (
+        <button
+          key={key}
+          type="button"
+          disabled={disabled}
+          aria-pressed={theme === key}
+          onClick={() => onChange(key)}
+          className={`flex cursor-pointer items-center gap-1.5 px-2.5 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50 ${
+            index === 0 ? 'rounded-l-md' : ''
+          } ${index === THEME_OPTIONS.length - 1 ? 'rounded-r-md' : 'border-r border-border'} ${
+            theme === key
+              ? 'bg-accent-fill text-white'
+              : 'bg-paper-raised text-ink-soft hover:bg-paper-sunken'
+          }`}
+        >
+          <Icon size={14} />
+          {label}
+        </button>
+      ))}
     </div>
   )
 }
@@ -311,7 +302,7 @@ function EditableUserList({
           title={`Adding a new ${noun} is coming soon`}
         >
           <IconCircleDashedPlus size={22} className="text-ink-soft/40" />
-          <span className="rounded-full bg-ink-soft px-1.5 py-px text-[0.6rem] tracking-wide text-white uppercase">
+          <span className="rounded-full bg-ink-soft px-1.5 py-px text-[0.6rem] tracking-wide text-paper uppercase">
             Soon
           </span>
         </div>

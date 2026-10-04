@@ -594,7 +594,7 @@ function PersonFilterDrawer({
     <>
       <div
         aria-hidden={!open}
-        className={`fixed inset-0 z-40 bg-ink/40 backdrop-blur-[1px] transition-opacity duration-200 ${
+        className={`fixed inset-0 z-40 bg-scrim/40 backdrop-blur-[1px] transition-opacity duration-200 ${
           open ? 'opacity-100' : 'pointer-events-none opacity-0'
         }`}
         onClick={onClose}

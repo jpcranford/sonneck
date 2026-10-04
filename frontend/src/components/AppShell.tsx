@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
 import { Outlet } from 'react-router-dom'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { IconLoader2 } from '@tabler/icons-react'
 import { Sidebar } from './Sidebar'
 import { DropToUpload } from './DropToUpload'
@@ -8,12 +8,19 @@ import { MobileNavDrawer, MobileNavTopBar } from './MobileNav'
 import { SonneckMark } from './SonneckMark'
 import { useMediaQuery } from '../hooks/useMediaQuery'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
+import { getUserSettings } from '../api/userSettings'
+import { useThemeSync } from '../lib/theme'
 
 export function AppShell() {
   // Owned here, not inside MobileNav itself, because the top bar and the
   // drawer/scrim render in two different places in this tree (see
   // MobileNav.tsx's own comment for why) and need to share one state.
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
+
+  // The user's light/dark/system choice, applied app-wide. Same query the
+  // account menu's theme switcher reads, so a change there applies at once.
+  const { data: settings } = useQuery({ queryKey: ['user-settings'], queryFn: getUserSettings })
+  useThemeSync(settings?.themePreference)
 
   // Pull-to-refresh — mobile/tablet widths only, not desktop (a touch
   // gesture makes no sense gated purely on chrome, which stays desktop/

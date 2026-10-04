@@ -628,12 +628,12 @@ export function UploadPage() {
                 </button>
                 <div
                   aria-hidden="true"
-                  className="pointer-events-none absolute top-2.5 right-2.5 flex items-center justify-center rounded-full bg-ink/80 p-1.5 text-white shadow-md backdrop-blur-sm"
+                  className="pointer-events-none absolute top-2.5 right-2.5 flex items-center justify-center rounded-full bg-scrim/80 p-1.5 text-white shadow-md backdrop-blur-sm"
                 >
                   <IconArrowsDiagonal size={14} />
                 </div>
                 {piece.pageCount > 1 && (
-                  <div className="absolute bottom-2.5 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-ink/80 px-2 py-1 shadow-md backdrop-blur-sm">
+                  <div className="absolute bottom-2.5 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-scrim/80 px-2 py-1 shadow-md backdrop-blur-sm">
                     <button
                       type="button"
                       onClick={() => setPreviewPage((p) => Math.max(1, p - 1))}

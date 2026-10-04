@@ -629,7 +629,7 @@ export function PersonDetailsPage() {
                     onClick={() => setUploadPortraitOpen(true)}
                     aria-label="Change portrait"
                     title="Change portrait"
-                    className="absolute right-1.5 bottom-1.5 flex size-8 cursor-pointer items-center justify-center rounded-full border-2 border-paper-raised bg-ink text-paper shadow-md hover:bg-ink/85"
+                    className="absolute right-1.5 bottom-1.5 flex size-8 cursor-pointer items-center justify-center rounded-full border-2 border-paper-raised bg-scrim text-white shadow-md hover:bg-scrim/85"
                   >
                     <IconCameraFilled size={14} />
                   </button>

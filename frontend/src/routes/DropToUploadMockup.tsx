@@ -68,7 +68,7 @@ const REFUSALS: Record<Refusal, { title: string; detail: string }> = {
 
 function DropOverlay({ refusal }: { refusal: Refusal | null }) {
   return createPortal(
-    <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-6 backdrop-blur-[2px]">
+    <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-scrim/40 p-6 backdrop-blur-[2px]">
       <div
         className={`w-full max-w-sm rounded-xl border-2 border-dashed bg-paper-raised px-6 py-7 text-center shadow-xl ${
           refusal ? 'border-danger' : 'border-accent'

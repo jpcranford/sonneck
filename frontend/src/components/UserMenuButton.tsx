@@ -14,6 +14,7 @@ import {
 import { logout } from '../api/auth'
 import { getUserSettings, updateUserSettings, type UserSettings } from '../api/userSettings'
 import { useAuth } from '../lib/AuthContext'
+import type { ThemePreference } from '../lib/theme'
 
 // Real build of the Sidebar User Menu mockup (Option 2, "identity card,
 // dark popup" — /mockup/sidebar-user-menu), wired to real GET
@@ -34,10 +35,9 @@ const AUTH_METHOD_BLURB: Record<string, string> = {
 // Real persistence — shares the exact same
 // ['user-settings'] query/mutation as User Settings' own Appearance card
 // (UserSettingsPage.tsx), so changing the theme in either place updates
-// the other immediately and survives a reload. Dark stays disabled — no
-// real dark-mode CSS exists anywhere in the app yet, independent of
-// persistence.
-type ThemePreview = 'light' | 'dark' | 'system'
+// the other immediately and survives a reload. AppShell applies the saved
+// choice (lib/theme.ts).
+type ThemePreview = ThemePreference
 
 const THEME_OPTIONS: {
   key: ThemePreview
@@ -72,27 +72,21 @@ function ThemeSwitcher({
           className="absolute top-0.5 left-0.5 size-6 rounded-full bg-sidebar-panel shadow-sm transition-transform duration-150 ease-out"
           style={{ transform: `translateX(${activeIndex * 26}px)` }}
         />
-        {THEME_OPTIONS.map(({ key, icon: Icon, label }) => {
-          const disabled = key === 'dark'
-          return (
-            <button
-              key={key}
-              type="button"
-              disabled={disabled}
-              onClick={() => onChange(key)}
-              title={disabled ? `${label} — coming soon` : label}
-              aria-label={label}
-              aria-pressed={theme === key}
-              className={`relative z-10 flex size-6 items-center justify-center rounded-full transition-colors ${
-                disabled
-                  ? 'cursor-not-allowed text-sidebar-text-dim/35'
-                  : `cursor-pointer ${theme === key ? 'text-sidebar-text' : 'text-sidebar-text-dim hover:text-sidebar-text'}`
-              }`}
-            >
-              <Icon size={13} />
-            </button>
-          )
-        })}
+        {THEME_OPTIONS.map(({ key, icon: Icon, label }) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => onChange(key)}
+            title={label}
+            aria-label={label}
+            aria-pressed={theme === key}
+            className={`relative z-10 flex size-6 cursor-pointer items-center justify-center rounded-full transition-colors ${
+              theme === key ? 'text-sidebar-text' : 'text-sidebar-text-dim hover:text-sidebar-text'
+            }`}
+          >
+            <Icon size={13} />
+          </button>
+        ))}
       </div>
     </div>
   )
@@ -131,10 +125,7 @@ export function UserMenuButton({
     onSuccess: (updated) => queryClient.setQueryData(['user-settings'], updated),
   })
   function setTheme(next: ThemePreview) {
-    // Unreachable in practice — ThemeSwitcher's Dark button is disabled and
-    // never calls onChange('dark') — but guarded rather than assumed, since
-    // UserSettings.themePreference has no 'dark' persistence path yet.
-    if (!settings || next === 'dark') return
+    if (!settings) return
     const full: UserSettings = { ...settings, themePreference: next }
     updateSettingsMutation.mutate(full)
   }

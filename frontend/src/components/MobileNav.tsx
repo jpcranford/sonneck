@@ -131,7 +131,7 @@ export function MobileNavDrawer({ open, onClose }: { open: boolean; onClose: () 
     <>
       <div
         aria-hidden={!open}
-        className={`fixed inset-0 z-40 bg-ink/40 transition-opacity duration-200 md:hidden ${
+        className={`fixed inset-0 z-40 bg-scrim/40 transition-opacity duration-200 md:hidden ${
           open ? 'opacity-100' : 'pointer-events-none opacity-0'
         }`}
         onClick={onClose}

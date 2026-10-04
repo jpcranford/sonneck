@@ -46,7 +46,7 @@ export function Toggle({
         } ${checked ? 'bg-accent-fill' : 'bg-border'}`}
       >
         <span
-          className={`inline-block size-3.5 transform rounded-full bg-paper-raised shadow transition-transform ${
+          className={`inline-block size-3.5 transform rounded-full bg-white shadow transition-transform ${
             checked ? 'translate-x-[18px]' : 'translate-x-1'
           }`}
         />

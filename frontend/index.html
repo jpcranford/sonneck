@@ -23,6 +23,21 @@
          previously set to created a visible seam against the app's
          actual off-white body. -->
     <meta name="theme-color" content="#fbfaf8" />
+    <!-- Sets the light/dark theme before anything paints, from the choice
+         lib/theme.ts saves (light, dark or system; system when there's
+         none yet), so a dark page never flashes light first. Mirrors
+         lib/theme.ts's resolveTheme and its browser-bar colors. -->
+    <script>
+      try {
+        var pref = localStorage.getItem('sonneck-theme') || 'system'
+        var dark =
+          pref === 'dark' ||
+          (pref === 'system' && matchMedia('(prefers-color-scheme: dark)').matches)
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light'
+        if (dark)
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#181412')
+      } catch (e) {}
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Sonneck</title>
   </head>

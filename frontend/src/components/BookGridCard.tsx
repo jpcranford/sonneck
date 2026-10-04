@@ -81,7 +81,7 @@ export function BookGridCard({ book }: BookGridCardProps) {
               <IconFileX size={28} className="text-ink-fainter" />
             </div>
           )}
-          <span className="absolute right-2 bottom-1.5 flex items-center gap-1 rounded-full bg-[rgba(28,24,21,0.82)] px-[7px] py-[2px] text-[0.7rem] font-semibold text-white">
+          <span className="absolute right-2 bottom-1.5 flex items-center gap-1 rounded-full bg-scrim/82 px-[7px] py-[2px] text-[0.7rem] font-semibold text-white">
             {book.pieceCount}
             <IconClefStaff size={12} />
           </span>

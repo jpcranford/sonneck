@@ -127,7 +127,7 @@ export function MobileNavDrawerMockup() {
 
       <div
         aria-hidden={!drawerOpen}
-        className={`fixed inset-0 z-40 bg-ink/40 transition-opacity duration-200 md:hidden ${
+        className={`fixed inset-0 z-40 bg-scrim/40 transition-opacity duration-200 md:hidden ${
           drawerOpen ? 'opacity-100' : 'pointer-events-none opacity-0'
         }`}
         onClick={() => setDrawerOpen(false)}

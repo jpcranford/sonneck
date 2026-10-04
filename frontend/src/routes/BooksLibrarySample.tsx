@@ -297,7 +297,7 @@ function BookCoverCard({ book }: { book: MockBook }) {
         style={{ aspectRatio: `${aspectW} / ${aspectH}` }}
       >
         <CoverPlaceholder book={book} />
-        <span className="absolute right-2 bottom-1.5 flex items-center gap-1 rounded-full bg-[rgba(28,24,21,0.82)] px-[7px] py-[2px] text-[0.7rem] font-semibold text-white">
+        <span className="absolute right-2 bottom-1.5 flex items-center gap-1 rounded-full bg-scrim/82 px-[7px] py-[2px] text-[0.7rem] font-semibold text-white">
           {book.pieceCount}
           <IconClefStaff size={12} />
         </span>
@@ -557,7 +557,7 @@ function BookFilterDrawer({
     <>
       <div
         aria-hidden={!open}
-        className={`fixed inset-0 z-40 bg-ink/40 backdrop-blur-[1px] transition-opacity duration-200 ${
+        className={`fixed inset-0 z-40 bg-scrim/40 backdrop-blur-[1px] transition-opacity duration-200 ${
           open ? 'opacity-100' : 'pointer-events-none opacity-0'
         }`}
         onClick={onClose}
