@@ -212,7 +212,9 @@ export function BookUploadConfirmStep({
         {pieces.map((piece, index) => (
           <div
             key={index}
-            className="overflow-hidden rounded-lg border border-border bg-paper-raised"
+            // 2px, heavier than the usual 1px, so each piece's split color
+            // holds up as its outline.
+            className="overflow-hidden rounded-lg border-2 border-border bg-paper-raised"
             style={{ borderColor: piece.color }}
           >
             {/* border-b hairline between thumbnail and info text — same
