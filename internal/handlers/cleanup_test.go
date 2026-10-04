@@ -283,3 +283,67 @@ func TestCleanupThumbnails_LeavesUnrecognizedFilesAlone(t *testing.T) {
 		t.Errorf("result = %+v, want no action taken on an unrecognized filename", result)
 	}
 }
+
+// TestRegeneratePieceThumbnails_OnlyTouchesGivenPieces covers the
+// regenerate-thumbnails subcommand's form with piece IDs: the named piece's
+// cached pages are re-rendered (a corrupt one comes back valid) and any
+// beyond its page count removed, while another piece's cache — corrupt or
+// not — is left exactly as it was.
+func TestRegeneratePieceThumbnails_OnlyTouchesGivenPieces(t *testing.T) {
+	s, h, dataDir := newCleanupServer(t)
+	target := createTestPiece(t, h, map[string]any{"title": "Target"})
+	other := createTestPiece(t, h, map[string]any{"title": "Other"})
+
+	for _, id := range []int64{target.ID, other.ID} {
+		if rec := doJSON(t, h, http.MethodGet, apiPiecesURL(id)+"/pages/1/thumbnail", nil); rec.Code != http.StatusOK {
+			t.Fatalf("GET piece %d page 1 thumbnail: status %d", id, rec.Code)
+		}
+	}
+	corrupt := []byte("corrupted, not a real png")
+	targetKey := "piece-" + itoa(target.ID) + "-page-1"
+	otherKey := "piece-" + itoa(other.ID) + "-page-1"
+	for _, key := range []string{targetKey, otherKey} {
+		if err := os.WriteFile(thumbnailCachePath(dataDir, key), corrupt, 0o644); err != nil {
+			t.Fatalf("corrupting %s: %v", key, err)
+		}
+	}
+	writeStaleCacheFile(t, dataDir, "piece-"+itoa(target.ID)+"-page-5")
+
+	count, err := s.RegeneratePieceThumbnails(context.Background(), []int64{target.ID})
+	if err != nil {
+		t.Fatalf("RegeneratePieceThumbnails: %v", err)
+	}
+	rendered, _ := filepath.Glob(filepath.Join(dataDir, "cache", "thumbnails", "piece-"+itoa(target.ID)+"-page-*.png"))
+	if count == 0 || count != len(rendered) {
+		t.Errorf("count = %d, want one per page now cached (%d)", count, len(rendered))
+	}
+	if got, _ := os.ReadFile(thumbnailCachePath(dataDir, targetKey)); string(got) == string(corrupt) {
+		t.Error("target piece's page 1 is still the corrupt file; want it re-rendered")
+	}
+	assertCacheFileExists(t, dataDir, "piece-"+itoa(target.ID)+"-page-5", false)
+	if got, _ := os.ReadFile(thumbnailCachePath(dataDir, otherKey)); string(got) != string(corrupt) {
+		t.Error("other piece's cached page changed; want it left alone")
+	}
+}
+
+// TestRegeneratePieceThumbnails_UnknownIDTouchesNothing confirms every ID is
+// checked before any cache file is removed, so a mistyped ID fails cleanly.
+func TestRegeneratePieceThumbnails_UnknownIDTouchesNothing(t *testing.T) {
+	s, h, dataDir := newCleanupServer(t)
+	piece := createTestPiece(t, h, map[string]any{"title": "Real"})
+	if rec := doJSON(t, h, http.MethodGet, apiPiecesURL(piece.ID)+"/pages/1/thumbnail", nil); rec.Code != http.StatusOK {
+		t.Fatalf("GET page 1 thumbnail: status %d", rec.Code)
+	}
+	key := "piece-" + itoa(piece.ID) + "-page-1"
+	marker := []byte("left as it was")
+	if err := os.WriteFile(thumbnailCachePath(dataDir, key), marker, 0o644); err != nil {
+		t.Fatalf("writing marker: %v", err)
+	}
+
+	if _, err := s.RegeneratePieceThumbnails(context.Background(), []int64{piece.ID, 999999}); err == nil {
+		t.Fatal("RegeneratePieceThumbnails with an unknown ID: want an error, got nil")
+	}
+	if got, _ := os.ReadFile(thumbnailCachePath(dataDir, key)); string(got) != string(marker) {
+		t.Error("the real piece's cache changed despite the unknown ID; want nothing touched")
+	}
+}

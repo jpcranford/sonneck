@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/jpcranford/sonneck/internal/applog"
 	"github.com/jpcranford/sonneck/internal/backup"
@@ -209,13 +210,35 @@ func runSubcommand(name string, conn *sql.DB, cfg *config.Config, logger *slog.L
 		// write lands via an atomic rename (helpers.go's regenerateThumbnail)
 		// so a concurrent live request for the same page never observes a
 		// partial file.
+		//
+		// With piece IDs (`regenerate-thumbnails 12 40`), only those pieces'
+		// thumbnails are cleared and re-rendered; with none, the whole cache.
+		var ids []int64
+		for _, arg := range os.Args[2:] {
+			id, err := strconv.ParseInt(arg, 10, 64)
+			if err != nil || id <= 0 {
+				logger.Error("piece IDs must be whole numbers", "got", arg)
+				os.Exit(1)
+			}
+			ids = append(ids, id)
+		}
 		s := &handlers.Server{DB: conn, Cfg: cfg, Logger: logger}
-		count, err := s.RegenerateThumbnails(context.Background())
+		var count int
+		var err error
+		if len(ids) > 0 {
+			count, err = s.RegeneratePieceThumbnails(context.Background(), ids)
+		} else {
+			count, err = s.RegenerateThumbnails(context.Background())
+		}
 		if err != nil {
 			logger.Error("thumbnail regeneration failed", "error", err, "regenerated", count)
 			os.Exit(1)
 		}
-		logger.Info("thumbnail regeneration completed", "count", count)
+		if len(ids) > 0 {
+			logger.Info("thumbnail regeneration completed", "count", count, "pieces", ids)
+		} else {
+			logger.Info("thumbnail regeneration completed", "count", count)
+		}
 	case "cleanup-thumbnails":
 		// Also safe against a live server, same reasoning as
 		// regenerate-thumbnails above — cache-directory writes only, atomic
