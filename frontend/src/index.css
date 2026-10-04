@@ -352,11 +352,11 @@
      an opacity utility: Tabler icons overlap their own strokes, and a
      see-through color darkens where they cross. */
   /* Muted grey text: the Tempo details, Advanced and Calculate from tempo toggles, and the "No pieces yet" empty states. */
-  --color-ink-muted: #847d75;
+  --color-ink-muted: #837c74;
   /* Quiet clickable icons: field chevrons and search, info hints, external links, copy, add rows, tag remove. */
-  --color-ink-faint: #9d9892;
+  --color-ink-faint: #9a948d;
   /* Things you can't click: the no-file cover icon, the unavailable Open PDF button, list-card chevrons, a disabled autofill. Also the footer's S mark, kept quiet near the border color. */
-  --color-ink-fainter: #aea9a4;
+  --color-ink-fainter: #aaa49e;
   /* The page background, and the fill of neutral pills. */
   --color-paper: #f8f6f3;
   /* Anything sitting on the page: cards, modals, menus, fields, secondary buttons. */

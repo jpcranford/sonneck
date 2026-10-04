@@ -90,13 +90,17 @@ const SECTIONS = [
   ['controls', 'Buttons & fields'],
 ] as const
 
-// Trial palettes preview on top of the dark theme as inline overrides on
-// <html>, without touching index.css, so a candidate can be judged here
-// before it replaces the real dark values: add one with a label and its
-// token values (tokens it doesn't list keep their dark values) and it
-// appears in the switch. None open right now; A3 and the dark faded-ink
-// ladder were both trialled this way and adopted.
-const TRIAL_PALETTES: Record<string, { label: string; colors: Record<string, string> }> = {}
+// Trial palettes preview on top of the light or dark theme (`base`) as
+// inline overrides on <html>, without touching index.css, so a candidate
+// can be judged here before it replaces the real values: add one with a
+// label, its base and its token values (tokens it doesn't list keep the
+// base theme's values) and it appears in the switch. None open right now;
+// A3, the dark faded-ink ladder and the light faded inks re-blended for the
+// #f8f6f3 page were all trialled this way and adopted.
+const TRIAL_PALETTES: Record<
+  string,
+  { label: string; base: 'light' | 'dark'; colors: Record<string, string> }
+> = {}
 
 type PreviewTheme = string
 
@@ -113,7 +117,7 @@ function usePreviewTheme(theme: PreviewTheme) {
   useEffect(() => {
     const root = document.documentElement
     const previous = root.dataset.theme
-    root.dataset.theme = theme === 'light' ? 'light' : 'dark'
+    root.dataset.theme = TRIAL_PALETTES[theme]?.base ?? theme
     const trial = TRIAL_PALETTES[theme]?.colors ?? null
     for (const [name, value] of Object.entries(trial ?? {})) {
       root.style.setProperty(`--color-${name}`, value)
