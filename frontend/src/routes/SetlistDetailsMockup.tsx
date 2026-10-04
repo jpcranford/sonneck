@@ -460,16 +460,42 @@ export function SetlistDetailsMockup() {
         identical window.confirm() pattern those two pages' own icon-only Delete buttons already use
         — each row can also be removed via its own right-click menu (no standalone button — too easy
         to hit by accident).
-        {archived && (
-          <span className="ml-2 rounded-full bg-ink px-2 py-0.5 text-xs font-medium text-paper">
-            Archived
-          </span>
-        )}
+      </div>
+
+      {/* Preview switch: flips straight between the regular and archived
+          appearance, the same state the Archive/Unarchive confirm sets. */}
+      <div className="flex flex-wrap items-center gap-2 text-xs text-ink-soft">
+        <span>Preview:</span>
+        <div className="flex overflow-hidden rounded border border-border">
+          {(
+            [
+              ['Regular', false],
+              ['Archived', true],
+            ] as const
+          ).map(([label, value]) => (
+            <button
+              key={label}
+              type="button"
+              aria-pressed={archived === value}
+              onClick={() => setArchived(value)}
+              className={`cursor-pointer px-2 py-1 ${archived === value ? 'bg-accent-fill text-white' : 'bg-paper hover:bg-paper-sunken'}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="font-display text-3xl font-medium text-ink">{setlist.name}</h1>
+          <h1 className="font-display text-3xl font-medium text-ink">
+            {setlist.name}
+            {archived && (
+              <span className="ml-2 align-middle rounded-full bg-ink px-2 py-0.5 text-xs font-medium text-paper">
+                Archived
+              </span>
+            )}
+          </h1>
           <div className="mt-1 flex items-center gap-1.5 text-sm text-ink-soft">
             <IconCalendar size={16} />
             {formatAbsoluteDate(setlist.gigDate)}
