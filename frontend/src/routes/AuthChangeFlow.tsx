@@ -247,7 +247,7 @@ export function AuthChangeFlow({
                   ? completeMutation.mutate(undefined, { onSuccess: goNext })
                   : goNext()
               }
-              className="mt-8 flex w-full items-center justify-center gap-2 rounded-md bg-accent-fill px-5 py-2.5 font-display text-white enabled:cursor-pointer enabled:hover:bg-accent-fill/90 disabled:opacity-40"
+              className="mt-8 flex w-full items-center justify-center gap-2 rounded-md bg-accent-fill px-5 py-2.5 font-display font-medium text-white enabled:cursor-pointer enabled:hover:bg-accent-fill/90 disabled:opacity-40"
             >
               {isFinalActionableStep && completeMutation.isPending ? 'Continuing…' : 'Continue'}
             </button>
@@ -304,7 +304,7 @@ export function AuthChangeFlow({
                   ? completeMutation.mutate(undefined, { onSuccess: goNext })
                   : goNext()
               }
-              className="mt-8 flex w-full items-center justify-center gap-2 rounded-md bg-accent-fill px-5 py-2.5 font-display text-white enabled:cursor-pointer enabled:hover:bg-accent-fill/90 disabled:opacity-40"
+              className="mt-8 flex w-full items-center justify-center gap-2 rounded-md bg-accent-fill px-5 py-2.5 font-display font-medium text-white enabled:cursor-pointer enabled:hover:bg-accent-fill/90 disabled:opacity-40"
             >
               {isFinalActionableStep && completeMutation.isPending ? 'Continuing…' : 'Continue'}
             </button>
@@ -381,7 +381,7 @@ export function AuthChangeFlow({
               type="button"
               disabled={!chooseAdminCanContinue}
               onClick={goNext}
-              className="mt-8 flex w-full items-center justify-center gap-2 rounded-md bg-accent-fill px-5 py-2.5 font-display text-white enabled:cursor-pointer enabled:hover:bg-accent-fill/90 disabled:opacity-40"
+              className="mt-8 flex w-full items-center justify-center gap-2 rounded-md bg-accent-fill px-5 py-2.5 font-display font-medium text-white enabled:cursor-pointer enabled:hover:bg-accent-fill/90 disabled:opacity-40"
             >
               Review Deletion
             </button>
@@ -424,7 +424,7 @@ export function AuthChangeFlow({
                   ? completeMutation.mutate(undefined, { onSuccess: goNext })
                   : goNext()
               }
-              className="mt-8 flex w-full items-center justify-center gap-2 rounded-md bg-accent-fill px-5 py-2.5 font-display text-white enabled:cursor-pointer enabled:hover:bg-accent-fill/90 disabled:opacity-40"
+              className="mt-8 flex w-full items-center justify-center gap-2 rounded-md bg-accent-fill px-5 py-2.5 font-display font-medium text-white enabled:cursor-pointer enabled:hover:bg-accent-fill/90 disabled:opacity-40"
             >
               {isFinalActionableStep && completeMutation.isPending
                 ? 'Continuing…'
@@ -511,7 +511,7 @@ export function AuthChangeFlow({
             <button
               type="button"
               onClick={finish}
-              className="mt-8 flex w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-5 py-2.5 font-display text-ink hover:border-accent"
+              className="mt-8 flex w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-5 py-2.5 font-display font-medium text-ink hover:border-accent"
             >
               {pending.to === 'none' ? 'Continue to Library' : 'Continue to Sign In'}
             </button>

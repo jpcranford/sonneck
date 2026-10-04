@@ -296,7 +296,7 @@ export function SetlistsLibraryPage() {
           <button
             type="button"
             onClick={() => setNewSetlistOpen(true)}
-            className="flex cursor-pointer items-center gap-1.5 rounded-md bg-accent-fill px-3 py-1.5 font-display text-sm text-white hover:bg-accent-fill/90"
+            className="flex cursor-pointer items-center gap-1.5 rounded-md bg-accent-fill px-3 py-1.5 font-display font-medium text-sm text-white hover:bg-accent-fill/90"
           >
             <IconPlus size={14} />
             New Setlist
@@ -362,7 +362,7 @@ export function SetlistsLibraryPage() {
             <button
               type="button"
               onClick={() => setArchiveTarget(null)}
-              className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent"
+              className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-ink hover:border-accent"
             >
               Cancel
             </button>
@@ -370,7 +370,7 @@ export function SetlistsLibraryPage() {
               type="button"
               onClick={() => archiveTarget && archiveMutation.mutate(archiveTarget)}
               disabled={archiveMutation.isPending}
-              className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display text-white hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-50"
+              className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-white hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {archiveDirection === 'unarchive' ? 'Unarchive' : 'Archive'}
             </button>

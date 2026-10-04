@@ -976,7 +976,7 @@ export function UploadPage() {
                 <button
                   type="submit"
                   disabled={saveMutation.isPending}
-                  className="mt-1 rounded-md bg-accent-fill px-4 py-2 font-display text-white disabled:opacity-60"
+                  className="mt-1 rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-white disabled:opacity-60"
                 >
                   {saveMutation.isPending ? 'Saving…' : 'Save'}
                 </button>
@@ -1007,14 +1007,14 @@ export function UploadPage() {
             <button
               type="button"
               onClick={reset}
-              className="rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent"
+              className="rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-ink hover:border-accent"
             >
               Upload another file
             </button>
             <Link
               to={`/pieces/${piece.id}`}
               state={{ backLabel: 'Upload' }}
-              className="flex items-center gap-1.5 rounded-md bg-accent-fill px-4 py-2 font-display text-white hover:bg-accent-fill/90"
+              className="flex items-center gap-1.5 rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-white hover:bg-accent-fill/90"
             >
               <IconMusic size={16} />
               View Piece

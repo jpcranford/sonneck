@@ -661,7 +661,7 @@ export function BookDetailsPage() {
               disabled={!canEdit}
               aria-label="Edit Book"
               title={canEdit ? undefined : "You don't have permission to edit"}
-              className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-sm whitespace-nowrap text-ink hover:border-accent disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border max-[360px]:w-[38px] max-[360px]:px-0"
+              className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink hover:border-accent disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border max-[360px]:w-[38px] max-[360px]:px-0"
             >
               <IconEditFilled size={16} />
               <span className="max-[360px]:hidden">Edit Book</span>

@@ -264,7 +264,7 @@ export function BookUploadConfirmStep({
           type="button"
           onClick={() => importMutation.mutate()}
           disabled={importMutation.isPending}
-          className="relative flex min-w-[190px] shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md bg-accent-fill px-4 py-2.5 font-display whitespace-nowrap text-white disabled:cursor-default"
+          className="relative flex min-w-[190px] shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md bg-accent-fill px-4 py-2.5 font-display font-medium whitespace-nowrap text-white disabled:cursor-default"
         >
           {importMutation.isPending && (
             <span

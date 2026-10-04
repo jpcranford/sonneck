@@ -149,7 +149,7 @@ export function EditEntryModal({
           <button
             type="button"
             onClick={handleCancel}
-            className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent"
+            className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-ink hover:border-accent"
           >
             Cancel
           </button>
@@ -157,7 +157,7 @@ export function EditEntryModal({
             type="button"
             onClick={handleSave}
             disabled={!name.trim()}
-            className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display text-white hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-white hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Save
           </button>
@@ -285,21 +285,21 @@ export function EditEntryMockup() {
         <button
           type="button"
           onClick={() => openDemo('announcement')}
-          className="w-fit cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display text-sm text-white hover:bg-accent-fill/90"
+          className="w-fit cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-sm text-white hover:bg-accent-fill/90"
         >
           Edit "Welcome & Announcements"
         </button>
         <button
           type="button"
           onClick={() => openDemo('response')}
-          className="w-fit cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-sm text-ink hover:border-accent"
+          className="w-fit cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm text-ink hover:border-accent"
         >
           Edit "Congregational Response" (Count as music: on)
         </button>
         <button
           type="button"
           onClick={() => openDemo('bare')}
-          className="w-fit cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-sm text-ink hover:border-accent"
+          className="w-fit cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm text-ink hover:border-accent"
         >
           Edit "Postlude Improvisation" (no description)
         </button>

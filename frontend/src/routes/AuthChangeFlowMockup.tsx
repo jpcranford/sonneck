@@ -430,7 +430,7 @@ export function AuthChangeFlowMockup() {
             <button
               type="button"
               onClick={goNext}
-              className="mt-8 flex w-full cursor-pointer items-center justify-center gap-2 rounded-md bg-accent-fill px-5 py-2.5 font-display text-white hover:bg-accent-fill/90"
+              className="mt-8 flex w-full cursor-pointer items-center justify-center gap-2 rounded-md bg-accent-fill px-5 py-2.5 font-display font-medium text-white hover:bg-accent-fill/90"
             >
               Continue
             </button>
@@ -477,7 +477,7 @@ export function AuthChangeFlowMockup() {
               type="button"
               disabled={!canContinue}
               onClick={goNext}
-              className="mt-8 flex w-full items-center justify-center gap-2 rounded-md bg-accent-fill px-5 py-2.5 font-display text-white enabled:cursor-pointer enabled:hover:bg-accent-fill/90 disabled:opacity-40"
+              className="mt-8 flex w-full items-center justify-center gap-2 rounded-md bg-accent-fill px-5 py-2.5 font-display font-medium text-white enabled:cursor-pointer enabled:hover:bg-accent-fill/90 disabled:opacity-40"
             >
               Continue
             </button>
@@ -527,7 +527,7 @@ export function AuthChangeFlowMockup() {
               type="button"
               disabled={!chooseAdminCanContinue}
               onClick={goNext}
-              className="mt-8 flex w-full items-center justify-center gap-2 rounded-md bg-accent-fill px-5 py-2.5 font-display text-white enabled:cursor-pointer enabled:hover:bg-accent-fill/90 disabled:opacity-40"
+              className="mt-8 flex w-full items-center justify-center gap-2 rounded-md bg-accent-fill px-5 py-2.5 font-display font-medium text-white enabled:cursor-pointer enabled:hover:bg-accent-fill/90 disabled:opacity-40"
             >
               Review Deletion
             </button>
@@ -558,7 +558,7 @@ export function AuthChangeFlowMockup() {
             <button
               type="button"
               onClick={goNext}
-              className="mt-8 flex w-full cursor-pointer items-center justify-center gap-2 rounded-md bg-accent-fill px-5 py-2.5 font-display text-white hover:bg-accent-fill/90"
+              className="mt-8 flex w-full cursor-pointer items-center justify-center gap-2 rounded-md bg-accent-fill px-5 py-2.5 font-display font-medium text-white hover:bg-accent-fill/90"
             >
               Confirm and Continue
             </button>
@@ -626,7 +626,7 @@ export function AuthChangeFlowMockup() {
             <button
               type="button"
               onClick={() => selectScenario(scenarioKey)}
-              className="mt-8 flex w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-5 py-2.5 font-display text-ink hover:border-accent"
+              className="mt-8 flex w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-5 py-2.5 font-display font-medium text-ink hover:border-accent"
             >
               {scenario.to === 'none' ? 'Continue to Library' : 'Continue to Sign In'}
             </button>

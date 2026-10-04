@@ -88,7 +88,7 @@ export function LoginScreenMockup() {
               wrapping or truncating it. */}
           <button
             type="button"
-            className="flex w-auto min-w-[180px] cursor-pointer items-center justify-center gap-2 rounded-md bg-accent-fill px-8 py-2.5 font-display text-white hover:bg-accent-fill/90"
+            className="flex w-auto min-w-[180px] cursor-pointer items-center justify-center gap-2 rounded-md bg-accent-fill px-8 py-2.5 font-display font-medium text-white hover:bg-accent-fill/90"
           >
             Sign in with Test IdP
           </button>
@@ -140,7 +140,7 @@ export function LoginScreenMockup() {
           <button
             type="submit"
             disabled={password.length === 0}
-            className="flex w-auto min-w-[180px] items-center justify-center gap-2 rounded-md bg-accent-fill px-8 py-2.5 font-display text-white enabled:cursor-pointer enabled:hover:bg-accent-fill/90 disabled:opacity-40"
+            className="flex w-auto min-w-[180px] items-center justify-center gap-2 rounded-md bg-accent-fill px-8 py-2.5 font-display font-medium text-white enabled:cursor-pointer enabled:hover:bg-accent-fill/90 disabled:opacity-40"
           >
             Log In
           </button>

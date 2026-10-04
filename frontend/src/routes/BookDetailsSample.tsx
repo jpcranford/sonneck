@@ -797,7 +797,7 @@ export function BookDetailsSample() {
             type="button"
             aria-label="Edit Book"
             title="Edit Book — not wired in this mockup"
-            className="flex cursor-not-allowed items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-sm whitespace-nowrap text-ink max-[360px]:w-[38px] max-[360px]:px-0"
+            className="flex cursor-not-allowed items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink max-[360px]:w-[38px] max-[360px]:px-0"
           >
             <IconEditFilled size={16} />
             <span className="max-[360px]:hidden">Edit Book</span>

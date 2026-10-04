@@ -1323,7 +1323,7 @@ export function EditPieceModalMockup() {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="w-fit cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent"
+          className="w-fit cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-ink hover:border-accent"
         >
           Reopen mockup
         </button>
@@ -1481,21 +1481,21 @@ export function EditPieceModalMockup() {
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent"
+                className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-ink hover:border-accent"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={() => handleSubmit(onSubmitStayOpen)()}
-                className="cursor-pointer rounded-md border border-accent bg-paper-raised px-4 py-2 font-display text-accent hover:bg-accent-soft"
+                className="cursor-pointer rounded-md border border-accent bg-paper-raised px-4 py-2 font-display font-medium text-accent hover:bg-accent-soft"
               >
                 Save
               </button>
               <button
                 type="submit"
                 form="edit-piece-form"
-                className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display text-white hover:bg-accent-fill/90"
+                className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-white hover:bg-accent-fill/90"
               >
                 Save &amp; Close
               </button>
@@ -1905,7 +1905,7 @@ export function EditPieceModalMockup() {
                     type="button"
                     onClick={handleCalculateDuration}
                     disabled={!canCalculateDuration}
-                    className="cursor-pointer rounded-md border border-border bg-paper-raised px-3 py-2 font-display text-sm text-ink hover:border-accent disabled:pointer-events-none disabled:cursor-default disabled:opacity-40"
+                    className="cursor-pointer rounded-md border border-border bg-paper-raised px-3 py-2 font-display font-medium text-sm text-ink hover:border-accent disabled:pointer-events-none disabled:cursor-default disabled:opacity-40"
                   >
                     Calculate
                   </button>

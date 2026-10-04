@@ -552,7 +552,7 @@ export function SetlistDetailsMockup() {
           message="Coming soon — will play through the set's pieces one after another via the future Sheet Viewer, with placeholder pages standing in for custom entries. Built once the Sheet Viewer's own core playback exists."
           ariaLabel="Play Set (coming soon with the Sheet Viewer)"
           showPointerCursor={false}
-          triggerClassName="flex items-center gap-2 rounded-md bg-accent-fill px-4 py-2 font-display text-sm text-white opacity-50"
+          triggerClassName="flex items-center gap-2 rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-sm text-white opacity-50"
         >
           <IconPlayerPlay size={16} />
           Play Set
@@ -574,7 +574,7 @@ export function SetlistDetailsMockup() {
                 matter which side is hovered. */}
             <button
               type="button"
-              className="relative flex cursor-pointer items-center gap-2 rounded-l-md border border-border bg-paper-raised px-4 py-2 font-display text-sm text-ink transition-colors hover:z-10 hover:border-accent"
+              className="relative flex cursor-pointer items-center gap-2 rounded-l-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm text-ink transition-colors hover:z-10 hover:border-accent"
             >
               <IconDownload size={16} />
               Download Set PDF
@@ -685,7 +685,7 @@ export function SetlistDetailsMockup() {
           <button
             type="button"
             onClick={() => openEditSetlist('program')}
-            className="flex cursor-pointer items-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-sm text-ink hover:border-accent"
+            className="flex cursor-pointer items-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm text-ink hover:border-accent"
           >
             <IconListDetails size={16} />
             Edit Program
@@ -834,14 +834,14 @@ export function SetlistDetailsMockup() {
             <button
               type="button"
               onClick={() => setArchiveModalOpen(false)}
-              className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent"
+              className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-ink hover:border-accent"
             >
               Cancel
             </button>
             <button
               type="button"
               onClick={confirmArchiveToggle}
-              className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display text-white hover:bg-accent-fill/90"
+              className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-white hover:bg-accent-fill/90"
             >
               {archived ? 'Unarchive' : 'Archive'}
             </button>
@@ -896,14 +896,14 @@ export function SetlistDetailsMockup() {
             <button
               type="button"
               onClick={() => setDuplicateModalOpen(false)}
-              className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent"
+              className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-ink hover:border-accent"
             >
               Cancel
             </button>
             <button
               type="button"
               onClick={confirmDuplicate}
-              className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display text-white hover:bg-accent-fill/90"
+              className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-white hover:bg-accent-fill/90"
             >
               Duplicate
             </button>

@@ -435,7 +435,7 @@ function ExampleWindowSection() {
             </button>
             <button
               type="button"
-              className="flex h-9 cursor-pointer items-center gap-1.5 rounded-md bg-accent-fill px-3 font-display text-sm text-white"
+              className="flex h-9 cursor-pointer items-center gap-1.5 rounded-md bg-accent-fill px-3 font-display font-medium text-sm text-white"
             >
               <IconUpload size={15} />
               Upload
@@ -584,8 +584,8 @@ function TypeSection({ files }: { files: SourceFile[] | null }) {
 // like TypeStyle.key (family|size|weight|italic|uppercase), so a note
 // disappears with its style.
 const TYPE_NOTES: Record<string, string> = {
-  'display|text-sm|400|false|false':
-    'Smaller labelled buttons (modal footer buttons are the larger 16px default): detail-page toolbars (Edit Piece/Book/Person, Download PDF and Download Set PDF, Play and Play Set, Split People, Edit Program), the Setlists Library’s New Setlist, and Edit Piece’s Calculate.',
+  'display|text-sm|500|false|false':
+    'Smaller labelled buttons (modal footer buttons are the larger 16px default): detail-page toolbars (Edit Piece/Book/Person, Download PDF and Download Set PDF, Play and Play Set, Split People, Edit Program), the Setlists Library’s New Setlist, and Edit Piece’s Calculate. Also list-view piece titles on Book and Person Details, the upload’s Ready-to-import cards, and the sidebar’s Upcoming Sets rows.',
   'display|text-sm|400|true|false': 'The citation line on Piece Details (click to copy).',
 }
 

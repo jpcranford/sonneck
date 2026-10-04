@@ -801,7 +801,7 @@ export function EditSetlistModal({
             <button
               type="button"
               onClick={handleCancel}
-              className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent"
+              className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-ink hover:border-accent"
             >
               {mode === 'create' || activeTab === 'details' ? 'Cancel' : 'Close'}
             </button>
@@ -809,7 +809,7 @@ export function EditSetlistModal({
               type="button"
               onClick={handleSave}
               disabled={!name.trim() || saving}
-              className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display text-white hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-50"
+              className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-white hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {saving ? 'Saving…' : 'Save'}
             </button>

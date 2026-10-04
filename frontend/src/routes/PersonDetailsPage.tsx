@@ -343,7 +343,7 @@ function SplitPeopleModal({
             type="button"
             onClick={handleClose}
             disabled={isSubmitting}
-            className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent disabled:cursor-default disabled:opacity-45"
+            className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-ink hover:border-accent disabled:cursor-default disabled:opacity-45"
           >
             Cancel
           </button>
@@ -351,7 +351,7 @@ function SplitPeopleModal({
             type="button"
             onClick={handleConfirm}
             disabled={replacements.length === 0 || isSubmitting}
-            className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display text-white hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-white hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isSubmitting ? 'Splitting…' : 'Split Person'}
           </button>
@@ -566,7 +566,7 @@ export function PersonDetailsPage() {
               onClick={() => setSplitOpen(true)}
               disabled={!canEdit}
               title={canEdit ? undefined : "You don't have permission to edit"}
-              className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-sm whitespace-nowrap text-ink hover:border-accent disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border"
+              className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink hover:border-accent disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border"
             >
               <IconArrowsSplit2 size={16} />
               <span className="max-[420px]:hidden">Split People</span>
@@ -577,7 +577,7 @@ export function PersonDetailsPage() {
               disabled={!canEdit}
               aria-label="Edit Person"
               title={canEdit ? undefined : "You don't have permission to edit"}
-              className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-sm whitespace-nowrap text-ink hover:border-accent disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border max-[360px]:w-[38px] max-[360px]:px-0"
+              className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink hover:border-accent disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border max-[360px]:w-[38px] max-[360px]:px-0"
             >
               <IconEditFilled size={16} />
               <span className="max-[360px]:hidden">Edit Person</span>

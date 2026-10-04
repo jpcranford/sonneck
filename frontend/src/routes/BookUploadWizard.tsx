@@ -88,13 +88,13 @@ function ImportSuccessScreen({
           <button
             type="button"
             onClick={onDone}
-            className="rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent"
+            className="rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-ink hover:border-accent"
           >
             Upload another file
           </button>
           <Link
             to={`/books/${bookId}`}
-            className="flex items-center gap-1.5 rounded-md bg-accent-fill px-4 py-2 font-display text-white hover:bg-accent-fill/90"
+            className="flex items-center gap-1.5 rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-white hover:bg-accent-fill/90"
           >
             <IconBook2 size={16} />
             Open book

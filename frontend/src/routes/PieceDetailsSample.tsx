@@ -513,7 +513,7 @@ function ActionButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`flex cursor-pointer items-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-sm whitespace-nowrap text-ink hover:border-accent disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border ${className}`}
+      className={`flex cursor-pointer items-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink hover:border-accent disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border ${className}`}
     >
       {icon}
       {label}
@@ -834,7 +834,7 @@ export function PieceDetailsSample() {
               message="Coming soon — will play through the future Sheet Viewer."
               ariaLabel="Play (coming soon with the Sheet Viewer)"
               showPointerCursor={false}
-              triggerClassName="flex items-center gap-2 rounded-md bg-accent-fill px-4 py-2 font-display text-sm text-white opacity-50"
+              triggerClassName="flex items-center gap-2 rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-sm text-white opacity-50"
             >
               <IconPlayerPlay size={16} />
               Play
@@ -864,7 +864,7 @@ export function PieceDetailsSample() {
               <div className="flex">
                 <button
                   type="button"
-                  className="relative flex cursor-pointer items-center gap-2 rounded-l-md border border-border bg-paper-raised px-4 py-2 font-display text-sm text-ink transition-colors hover:z-10 hover:border-accent"
+                  className="relative flex cursor-pointer items-center gap-2 rounded-l-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm text-ink transition-colors hover:z-10 hover:border-accent"
                 >
                   <IconDownload size={16} />
                   Download PDF
