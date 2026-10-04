@@ -6,7 +6,11 @@ import { ContextMenu, type ContextMenuItem } from '../components/ContextMenu'
 import { Modal } from '../components/Modal'
 import { CONTENT_MAX_W } from '../lib/layout'
 import { formatRelativeWeeks } from '../lib/relativeWeeks'
-import { ALL_MOCK_SETLISTS, isEffectivelyArchived, type MockSetlist } from '../lib/setlistsMockupFixture'
+import {
+  ALL_MOCK_SETLISTS,
+  isEffectivelyArchived,
+  type MockSetlist,
+} from '../lib/setlistsMockupFixture'
 import { useMockupTitle } from '../lib/useMockupTitle'
 import { EditSetlistModal } from './EditSetlistMockup'
 import { formatDateOnly, todayDateOnly } from '../lib/dateOnly'
@@ -77,7 +81,11 @@ function formatAbsoluteDate(iso: string): string {
 function sortActiveSetlists(setlists: MockSetlist[]): MockSetlist[] {
   return [...setlists].sort((a, b) => {
     if (a.gigDate && b.gigDate) {
-      return a.gigDate !== b.gigDate ? (a.gigDate < b.gigDate ? -1 : 1) : a.name.localeCompare(b.name)
+      return a.gigDate !== b.gigDate
+        ? a.gigDate < b.gigDate
+          ? -1
+          : 1
+        : a.name.localeCompare(b.name)
     }
     if (a.gigDate) return -1
     if (b.gigDate) return 1
@@ -93,7 +101,11 @@ function sortActiveSetlists(setlists: MockSetlist[]): MockSetlist[] {
 function sortArchivedSetlists(setlists: MockSetlist[]): MockSetlist[] {
   return [...setlists].sort((a, b) => {
     if (a.gigDate && b.gigDate) {
-      return a.gigDate !== b.gigDate ? (a.gigDate > b.gigDate ? -1 : 1) : a.name.localeCompare(b.name)
+      return a.gigDate !== b.gigDate
+        ? a.gigDate > b.gigDate
+          ? -1
+          : 1
+        : a.name.localeCompare(b.name)
     }
     if (a.gigDate) return -1
     if (b.gigDate) return 1
@@ -165,7 +177,8 @@ function SetlistCard({
               {isUpcoming && (
                 <>
                   {' '}
-                  <span aria-hidden="true">•</span> {formatRelativeWeeks(setlist.gigDate, { abbreviated: false })}
+                  <span aria-hidden="true">•</span>{' '}
+                  {formatRelativeWeeks(setlist.gigDate, { abbreviated: false })}
                 </>
               )}
             </>
@@ -174,8 +187,9 @@ function SetlistCard({
           )}
         </span>
         <span className="mt-2 text-xs tracking-wide text-ink-soft uppercase">
-          {setlist.entryCount} {setlist.entryCount === 1 ? 'entry' : 'entries'} <span aria-hidden="true">•</span>{' '}
-          {setlist.totalPages} {setlist.totalPages === 1 ? 'page' : 'pages'}
+          {setlist.entryCount} {setlist.entryCount === 1 ? 'entry' : 'entries'}{' '}
+          <span aria-hidden="true">•</span> {setlist.totalPages}{' '}
+          {setlist.totalPages === 1 ? 'page' : 'pages'}
           {setlist.totalDurationSeconds != null && (
             <>
               {' '}
@@ -250,7 +264,9 @@ export function SetlistsLibraryMockup() {
   function confirmArchiveToggle() {
     if (!archiveTarget) return
     const id = archiveTarget.id
-    setSetlists((current) => current.map((s) => (s.id === id ? { ...s, archived: !s.archived } : s)))
+    setSetlists((current) =>
+      current.map((s) => (s.id === id ? { ...s, archived: !s.archived } : s)),
+    )
     setArchiveTarget(null)
   }
 
@@ -277,21 +293,26 @@ export function SetlistsLibraryMockup() {
 
   return (
     <div className={`flex flex-1 flex-col gap-6 p-6 md:p-8 ${CONTENT_MAX_W}`}>
-      <Link to="/mockup" className="inline-flex w-fit items-center gap-1.5 text-sm text-ink-soft hover:text-ink">
+      <Link
+        to="/mockup"
+        className="inline-flex w-fit items-center gap-1.5 text-sm text-ink-soft hover:text-ink"
+      >
         <IconArrowLeft size={20} />
         Setlists
       </Link>
 
       <div className="rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-4 py-2 text-sm text-ink-soft">
-        Reference sample — <span className="font-medium text-ink">Setlists Library</span> (design doc §13, Phase 12,
-        was "Setlist Archive" — renamed, since Active is most of what's here, not just an archive) — built against
-        Phase 4's approved artifact (Option C: one unified page, sectioned by scroll, no toggle, no separate route),
-        a compact card grid per that artifact's own chosen layout. Every card's own right-click menu is real
-        (decision 19's own "Duplicate" forward note, plus Archive/Unarchive — which genuinely moves a card between
-        sections — and a real Delete). "New Setlist"/"Edit Setlist" open the same real{' '}
-        <span className="font-mono">EditSetlistModal</span> Setlist Details already uses, in its create/edit states
-        — saving is a no-op close there, same posture as everywhere else this modal is demoed. Cards link to the one
-        Setlist Details mockup that actually exists, regardless of which card you click.
+        Reference sample — <span className="font-medium text-ink">Setlists Library</span> (design
+        doc §13, Phase 12, was "Setlist Archive" — renamed, since Active is most of what's here, not
+        just an archive) — built against Phase 4's approved artifact (Option C: one unified page,
+        sectioned by scroll, no toggle, no separate route), a compact card grid per that artifact's
+        own chosen layout. Every card's own right-click menu is real (decision 19's own "Duplicate"
+        forward note, plus Archive/Unarchive — which genuinely moves a card between sections — and a
+        real Delete). "New Setlist"/"Edit Setlist" open the same real{' '}
+        <span className="font-mono">EditSetlistModal</span> Setlist Details already uses, in its
+        create/edit states — saving is a no-op close there, same posture as everywhere else this
+        modal is demoed. Cards link to the one Setlist Details mockup that actually exists,
+        regardless of which card you click.
       </div>
 
       <div className="flex items-center justify-between gap-4">
@@ -299,7 +320,7 @@ export function SetlistsLibraryMockup() {
         <button
           type="button"
           onClick={() => setNewSetlistOpen(true)}
-          className="flex cursor-pointer items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 font-display text-sm text-white hover:bg-accent/90"
+          className="flex cursor-pointer items-center gap-1.5 rounded-md bg-accent-fill px-3 py-1.5 font-display text-sm text-white hover:bg-accent-fill/90"
         >
           <IconPlus size={14} />
           New Setlist
@@ -341,11 +362,17 @@ export function SetlistsLibraryMockup() {
           destructive — this app's native-confirm treatment is reserved for
           hard deletes). Copy and button label both mirror
           SetlistDetailsMockup.tsx's own identical modal verbatim. */}
-      <Modal open={archiveTarget !== null} onClose={() => setArchiveTarget(null)} labelledBy="archive-setlist-title">
+      <Modal
+        open={archiveTarget !== null}
+        onClose={() => setArchiveTarget(null)}
+        labelledBy="archive-setlist-title"
+      >
         <div className="flex flex-col gap-4">
           <div>
             <h2 id="archive-setlist-title" className="font-display text-xl font-medium text-ink">
-              {archiveDirection === 'unarchive' ? 'Unarchive this setlist?' : 'Archive this setlist?'}
+              {archiveDirection === 'unarchive'
+                ? 'Unarchive this setlist?'
+                : 'Archive this setlist?'}
             </h2>
             <p className="mt-1 text-sm text-ink-soft">
               {archiveDirection === 'unarchive'
@@ -364,7 +391,7 @@ export function SetlistsLibraryMockup() {
             <button
               type="button"
               onClick={confirmArchiveToggle}
-              className="cursor-pointer rounded-md bg-accent px-4 py-2 font-display text-white hover:bg-accent/90"
+              className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display text-white hover:bg-accent-fill/90"
             >
               {archiveDirection === 'unarchive' ? 'Unarchive' : 'Archive'}
             </button>
@@ -375,14 +402,19 @@ export function SetlistsLibraryMockup() {
       {/* Duplicate — same shape as SetlistDetailsMockup.tsx's own Duplicate
           modal verbatim, just parameterized by whichever card's own "⋯"
           menu opened it instead of a single fixed setlist. */}
-      <Modal open={duplicateTarget !== null} onClose={() => setDuplicateTarget(null)} labelledBy="duplicate-setlist-title">
+      <Modal
+        open={duplicateTarget !== null}
+        onClose={() => setDuplicateTarget(null)}
+        labelledBy="duplicate-setlist-title"
+      >
         <div className="flex flex-col gap-4">
           <div>
             <h2 id="duplicate-setlist-title" className="font-display text-xl font-medium text-ink">
               Duplicate this setlist
             </h2>
             <p className="mt-1 text-sm text-ink-soft">
-              Copies every entry in "{duplicateTarget?.name}" into a new setlist. Both fields below are optional.
+              Copies every entry in "{duplicateTarget?.name}" into a new setlist. Both fields below
+              are optional.
             </p>
           </div>
           <div className="flex flex-col gap-1.5">
@@ -409,7 +441,9 @@ export function SetlistsLibraryMockup() {
               onChange={(event) => setDuplicateGigDate(event.target.value)}
               className="rounded-md border border-border bg-paper px-3 py-2 text-sm text-ink focus:border-accent focus:outline-none"
             />
-            <span className="text-xs text-ink-soft">Leave blank to duplicate without a gig date.</span>
+            <span className="text-xs text-ink-soft">
+              Leave blank to duplicate without a gig date.
+            </span>
           </div>
           <div className="flex justify-end gap-2">
             <button
@@ -422,7 +456,7 @@ export function SetlistsLibraryMockup() {
             <button
               type="button"
               onClick={confirmDuplicate}
-              className="cursor-pointer rounded-md bg-accent px-4 py-2 font-display text-white hover:bg-accent/90"
+              className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display text-white hover:bg-accent-fill/90"
             >
               Duplicate
             </button>

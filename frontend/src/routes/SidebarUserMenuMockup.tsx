@@ -145,7 +145,7 @@ function IdentityStateToggle({
             type="button"
             onClick={() => onChange(key)}
             className={`cursor-pointer px-2 py-1 ${
-              state === key ? 'bg-accent text-white' : 'bg-paper hover:bg-paper-sunken'
+              state === key ? 'bg-accent-fill text-white' : 'bg-paper hover:bg-paper-sunken'
             }`}
           >
             {IDENTITIES[key].label}
@@ -312,7 +312,7 @@ function UserMenuButton({
             <p className="break-words text-[0.92rem] font-medium text-sidebar-text">
               {identity.name}
               {identity.isAdmin && (
-                <span className="ml-1.5 inline-block translate-y-[-1px] rounded-full bg-accent px-1.5 py-px align-middle text-[0.62rem] font-bold tracking-wide whitespace-nowrap text-white uppercase">
+                <span className="ml-1.5 inline-block translate-y-[-1px] rounded-full bg-accent-fill px-1.5 py-px align-middle text-[0.62rem] font-bold tracking-wide whitespace-nowrap text-white uppercase">
                   Admin
                 </span>
               )}

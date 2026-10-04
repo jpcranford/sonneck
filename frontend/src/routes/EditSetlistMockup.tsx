@@ -92,8 +92,23 @@ export interface ProgramLibraryPiece {
 // Same fixture universe as EditProgramMockup.tsx (12 pieces) — hand-copied,
 // not shared, per this project's standing mockup-fixture convention.
 const LIBRARY_PIECES: ProgramLibraryPiece[] = [
-  { id: 'p1', title: 'Prelude in C Major, BWV 846', composer: 'J.S. Bach', keys: ['C major'], durationSeconds: 150, pages: 2, recentRank: 3 },
-  { id: 'p2', title: 'Ave Maria', composer: 'Franz Schubert', keys: ['B♭ major'], durationSeconds: 255, pages: 4 },
+  {
+    id: 'p1',
+    title: 'Prelude in C Major, BWV 846',
+    composer: 'J.S. Bach',
+    keys: ['C major'],
+    durationSeconds: 150,
+    pages: 2,
+    recentRank: 3,
+  },
+  {
+    id: 'p2',
+    title: 'Ave Maria',
+    composer: 'Franz Schubert',
+    keys: ['B♭ major'],
+    durationSeconds: 255,
+    pages: 4,
+  },
   {
     id: 'p3',
     title: 'Jesu, Joy of Man’s Desiring',
@@ -119,7 +134,15 @@ const LIBRARY_PIECES: ProgramLibraryPiece[] = [
     durationSeconds: 200,
     pages: 2,
   },
-  { id: 'p6', title: 'Nearer, My God, to Thee', composer: 'Lowell Mason', keys: ['A♭ major'], durationSeconds: 170, pages: 1, recentRank: 1 },
+  {
+    id: 'p6',
+    title: 'Nearer, My God, to Thee',
+    composer: 'Lowell Mason',
+    keys: ['A♭ major'],
+    durationSeconds: 170,
+    pages: 1,
+    recentRank: 1,
+  },
   {
     id: 'p7',
     title: 'Be Thou My Vision',
@@ -128,11 +151,48 @@ const LIBRARY_PIECES: ProgramLibraryPiece[] = [
     durationSeconds: 160,
     pages: 2,
   },
-  { id: 'p8', title: 'Air on the G String', composer: 'J.S. Bach', keys: ['D major'], durationSeconds: 250, pages: 3 },
-  { id: 'p9', title: 'Canon in D', composer: 'Johann Pachelbel', keys: ['D major'], durationSeconds: 275, pages: 5, recentRank: 2 },
-  { id: 'p10', title: 'Rondeau', composer: 'Jean-Joseph Mouret', keys: ['D major'], durationSeconds: 115, pages: 1 },
-  { id: 'p11', title: 'Trumpet Voluntary', composer: 'Jeremiah Clarke', keys: ['D major'], durationSeconds: 185, pages: 2, recentRank: 4 },
-  { id: 'p12', title: 'Sheep May Safely Graze', composer: 'J.S. Bach', keys: ['B♭ major'], durationSeconds: 290, pages: 4 },
+  {
+    id: 'p8',
+    title: 'Air on the G String',
+    composer: 'J.S. Bach',
+    keys: ['D major'],
+    durationSeconds: 250,
+    pages: 3,
+  },
+  {
+    id: 'p9',
+    title: 'Canon in D',
+    composer: 'Johann Pachelbel',
+    keys: ['D major'],
+    durationSeconds: 275,
+    pages: 5,
+    recentRank: 2,
+  },
+  {
+    id: 'p10',
+    title: 'Rondeau',
+    composer: 'Jean-Joseph Mouret',
+    keys: ['D major'],
+    durationSeconds: 115,
+    pages: 1,
+  },
+  {
+    id: 'p11',
+    title: 'Trumpet Voluntary',
+    composer: 'Jeremiah Clarke',
+    keys: ['D major'],
+    durationSeconds: 185,
+    pages: 2,
+    recentRank: 4,
+  },
+  {
+    id: 'p12',
+    title: 'Sheep May Safely Graze',
+    composer: 'J.S. Bach',
+    keys: ['B♭ major'],
+    durationSeconds: 290,
+    pages: 4,
+  },
 ]
 
 interface ProgramPieceEntry {
@@ -214,7 +274,13 @@ const INITIAL_PROGRAM_ENTRIES: ProgramEntry[] = [
     durationSeconds: 180,
     pages: 1,
   },
-  { id: 'e6', kind: 'custom', title: 'Congregational Response', durationSeconds: 120, countsAsMusic: true },
+  {
+    id: 'e6',
+    kind: 'custom',
+    title: 'Congregational Response',
+    durationSeconds: 120,
+    countsAsMusic: true,
+  },
   { id: 'e7', kind: 'custom', title: 'Postlude Improvisation', durationSeconds: 300 },
 ]
 
@@ -255,7 +321,10 @@ interface EditSetlistModalProps {
   initialGigDate?: string // ISO date, matches <input type="date">'s own value format
   initialDescription?: string
   libraryPieces?: ProgramLibraryPiece[]
-  onSave?: (setlist: { name: string; gigDate: string; description: string }, entries: ProgramEntry[]) => void
+  onSave?: (
+    setlist: { name: string; gigDate: string; description: string },
+    entries: ProgramEntry[],
+  ) => void
 }
 
 // What the bottom-of-list add row is currently showing — the two buttons,
@@ -368,7 +437,9 @@ export function EditSetlistModal({
         .filter((p): p is ProgramLibraryPiece & { recentRank: number } => p.recentRank != null)
         .sort((a, b) => a.recentRank - b.recentRank)
     }
-    return libraryPieces.filter((p) => p.title.toLowerCase().includes(q) || p.composer.toLowerCase().includes(q))
+    return libraryPieces.filter(
+      (p) => p.title.toLowerCase().includes(q) || p.composer.toLowerCase().includes(q),
+    )
   }, [pieceQuery, libraryPieces])
 
   function removeEntry(id: string) {
@@ -404,7 +475,9 @@ export function EditSetlistModal({
     const role = roleDraft.trim() || undefined
     if (!role && !roleDraftHadRole) return
     const id = editingEntryId
-    setProgramEntries((current) => current.map((e) => (e.id === id && e.kind === 'piece' ? { ...e, role } : e)))
+    setProgramEntries((current) =>
+      current.map((e) => (e.id === id && e.kind === 'piece' ? { ...e, role } : e)),
+    )
     closeRoleForm()
   }
 
@@ -459,7 +532,9 @@ export function EditSetlistModal({
       setSearchHighlight((h) => (pieceResults.length === 0 ? -1 : (h + 1) % pieceResults.length))
     } else if (event.key === 'ArrowUp') {
       event.preventDefault()
-      setSearchHighlight((h) => (pieceResults.length === 0 ? -1 : (h - 1 + pieceResults.length) % pieceResults.length))
+      setSearchHighlight((h) =>
+        pieceResults.length === 0 ? -1 : (h - 1 + pieceResults.length) % pieceResults.length,
+      )
     } else if (event.key === 'Enter' && !event.shiftKey) {
       // !shiftKey — Shift+Enter is reserved for the whole-modal Save
       // shortcut below (`handleFormKeyDown`); same guard `TagComboBox.tsx`
@@ -538,7 +613,13 @@ export function EditSetlistModal({
       setProgramEntries((current) =>
         current.map((entry) =>
           entry.id === editingEntryId && entry.kind === 'custom'
-            ? { ...entry, title: customName.trim(), durationSeconds, description, countsAsMusic: customCountsAsMusic }
+            ? {
+                ...entry,
+                title: customName.trim(),
+                durationSeconds,
+                description,
+                countsAsMusic: customCountsAsMusic,
+              }
             : entry,
         ),
       )
@@ -812,7 +893,11 @@ export function EditSetlistModal({
             />
           </div>
           <div className="flex flex-1 py-1.5">
-            <Toggle checked={customCountsAsMusic} onChange={setCustomCountsAsMusic} label="Count as music" />
+            <Toggle
+              checked={customCountsAsMusic}
+              onChange={setCustomCountsAsMusic}
+              label="Count as music"
+            />
           </div>
         </div>
         <label htmlFor="f-custom-description" className="text-sm text-ink-soft">
@@ -837,7 +922,7 @@ export function EditSetlistModal({
           <button
             type="submit"
             disabled={!customName.trim()}
-            className="cursor-pointer rounded-md bg-accent px-3 py-1.5 text-sm text-white hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="cursor-pointer rounded-md bg-accent-fill px-3 py-1.5 text-sm text-white hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {editingEntryId ? 'Save' : 'Add'}
           </button>
@@ -869,7 +954,9 @@ export function EditSetlistModal({
         >
           <IconX size={13} />
         </button>
-        <div className="mb-2 truncate pr-6 font-display text-sm font-medium text-ink">{entry.title}</div>
+        <div className="mb-2 truncate pr-6 font-display text-sm font-medium text-ink">
+          {entry.title}
+        </div>
         <label htmlFor="f-entry-role-inline" className="text-sm text-ink-soft">
           Role
         </label>
@@ -882,7 +969,11 @@ export function EditSetlistModal({
           placeholder="Prelude"
           className={`mt-1 w-full rounded-md border border-border bg-paper-raised px-3 py-1.5 text-sm text-ink ${roleDraftHadRole ? 'mb-1' : 'mb-3'}`}
         />
-        {roleDraftHadRole && <p className="mb-3 text-xs text-ink-soft italic">Leave blank and save to remove the role.</p>}
+        {roleDraftHadRole && (
+          <p className="mb-3 text-xs text-ink-soft italic">
+            Leave blank and save to remove the role.
+          </p>
+        )}
         <div className="flex justify-end gap-2">
           <button
             type="button"
@@ -894,7 +985,7 @@ export function EditSetlistModal({
           <button
             type="submit"
             disabled={!canSave}
-            className="cursor-pointer rounded-md bg-accent px-3 py-1.5 text-sm text-white hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="cursor-pointer rounded-md bg-accent-fill px-3 py-1.5 text-sm text-white hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Save
           </button>
@@ -905,101 +996,105 @@ export function EditSetlistModal({
 
   return (
     <>
-    <Modal
-      open={open}
-      onClose={handleCancel}
-      labelledBy="edit-setlist-title"
-      size="md"
-      header={
-        // Same header shape as EditProgramModal/EditPieceModal/
-        // EditBookModal/EditPersonModal — title size, subtitle size,
-        // full-bleed border-b, corner close button — extended here with
-        // the tab row sitting *above* that border-b, inside the pinned
-        // header itself rather than the scrolling body: the border is the
-        // header/content separator, and the tabs are header-level
-        // navigation, not page content, so they belong above the line
-        // that ends the header, not below it. The single border-b now
-        // lives on this outer wrapper (after both the title row and the
-        // tab row) instead of directly under the title row alone — each
-        // tab's own `-mb-px border-b-2` still sits flush on top of that
-        // one shared line, the same CSS trick as before, just relocated.
-        // Subtitle only in edit mode (the setlist's own current name, same
-        // "pre-edit stored value as context" convention EditBookModal's
-        // own subtitle uses) — create mode has no existing name yet to
-        // show. Tab labels are plain sans (no `font-display`) — they're UI
-        // chrome/navigation, not a heading or piece title, matching every
-        // other tab-adjacent UI text in this app's own sans-for-chrome
-        // convention.
-        <div className="-mx-6 border-b border-border px-6">
-          <div className="flex items-start justify-between gap-4 pb-4">
-            <div>
-              <h2 id="edit-setlist-title" className="font-display text-2xl font-medium text-ink">
-                {mode === 'create' ? 'New setlist' : 'Edit setlist'}
-              </h2>
-              {mode === 'edit' && <p className="text-sm text-ink-soft">{initialName}</p>}
+      <Modal
+        open={open}
+        onClose={handleCancel}
+        labelledBy="edit-setlist-title"
+        size="md"
+        header={
+          // Same header shape as EditProgramModal/EditPieceModal/
+          // EditBookModal/EditPersonModal — title size, subtitle size,
+          // full-bleed border-b, corner close button — extended here with
+          // the tab row sitting *above* that border-b, inside the pinned
+          // header itself rather than the scrolling body: the border is the
+          // header/content separator, and the tabs are header-level
+          // navigation, not page content, so they belong above the line
+          // that ends the header, not below it. The single border-b now
+          // lives on this outer wrapper (after both the title row and the
+          // tab row) instead of directly under the title row alone — each
+          // tab's own `-mb-px border-b-2` still sits flush on top of that
+          // one shared line, the same CSS trick as before, just relocated.
+          // Subtitle only in edit mode (the setlist's own current name, same
+          // "pre-edit stored value as context" convention EditBookModal's
+          // own subtitle uses) — create mode has no existing name yet to
+          // show. Tab labels are plain sans (no `font-display`) — they're UI
+          // chrome/navigation, not a heading or piece title, matching every
+          // other tab-adjacent UI text in this app's own sans-for-chrome
+          // convention.
+          <div className="-mx-6 border-b border-border px-6">
+            <div className="flex items-start justify-between gap-4 pb-4">
+              <div>
+                <h2 id="edit-setlist-title" className="font-display text-2xl font-medium text-ink">
+                  {mode === 'create' ? 'New setlist' : 'Edit setlist'}
+                </h2>
+                {mode === 'edit' && <p className="text-sm text-ink-soft">{initialName}</p>}
+              </div>
+              <button
+                type="button"
+                onClick={handleCancel}
+                aria-label="Close"
+                className="mt-1 shrink-0 cursor-pointer text-ink-soft hover:text-accent"
+              >
+                <IconXFilled size={22} />
+              </button>
             </div>
+            <div className="flex gap-6">
+              <button
+                type="button"
+                onClick={() => setActiveTab('details')}
+                className={`-mb-px cursor-pointer border-b-2 pb-2 text-sm font-medium ${
+                  activeTab === 'details'
+                    ? 'border-accent text-ink'
+                    : 'border-transparent text-ink-soft hover:text-ink'
+                }`}
+              >
+                Setlist Details
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('program')}
+                className={`-mb-px cursor-pointer border-b-2 pb-2 text-sm font-medium ${
+                  activeTab === 'program'
+                    ? 'border-accent text-ink'
+                    : 'border-transparent text-ink-soft hover:text-ink'
+                }`}
+              >
+                Program Order
+              </button>
+            </div>
+          </div>
+        }
+        footer={
+          // Whole-setlist delete does NOT live here — a direct correction,
+          // matching this app's real convention instead (confirmed by
+          // reading PieceContextMenu.tsx/BookContextMenu.tsx/PiecePage.tsx/
+          // BookDetailsPage.tsx directly): a destructive whole-record delete
+          // lives on the entity's own Details page as an icon-only button
+          // (`SetlistDetailsMockup.tsx`'s own header, leftmost, permanently
+          // red), or its library context menu — never inside its Edit
+          // modal. Footer is back to a plain Cancel/Save pair, same shape as
+          // EditProgramModal's own.
+          <div className="flex items-center justify-end gap-2">
             <button
               type="button"
               onClick={handleCancel}
-              aria-label="Close"
-              className="mt-1 shrink-0 cursor-pointer text-ink-soft hover:text-accent"
+              className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent"
             >
-              <IconXFilled size={22} />
-            </button>
-          </div>
-          <div className="flex gap-6">
-            <button
-              type="button"
-              onClick={() => setActiveTab('details')}
-              className={`-mb-px cursor-pointer border-b-2 pb-2 text-sm font-medium ${
-                activeTab === 'details' ? 'border-accent text-ink' : 'border-transparent text-ink-soft hover:text-ink'
-              }`}
-            >
-              Setlist Details
+              Cancel
             </button>
             <button
               type="button"
-              onClick={() => setActiveTab('program')}
-              className={`-mb-px cursor-pointer border-b-2 pb-2 text-sm font-medium ${
-                activeTab === 'program' ? 'border-accent text-ink' : 'border-transparent text-ink-soft hover:text-ink'
-              }`}
+              onClick={handleSave}
+              disabled={!name.trim()}
+              className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display text-white hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Program Order
+              Save
             </button>
           </div>
-        </div>
-      }
-      footer={
-        // Whole-setlist delete does NOT live here — a direct correction,
-        // matching this app's real convention instead (confirmed by
-        // reading PieceContextMenu.tsx/BookContextMenu.tsx/PiecePage.tsx/
-        // BookDetailsPage.tsx directly): a destructive whole-record delete
-        // lives on the entity's own Details page as an icon-only button
-        // (`SetlistDetailsMockup.tsx`'s own header, leftmost, permanently
-        // red), or its library context menu — never inside its Edit
-        // modal. Footer is back to a plain Cancel/Save pair, same shape as
-        // EditProgramModal's own.
-        <div className="flex items-center justify-end gap-2">
-          <button
-            type="button"
-            onClick={handleCancel}
-            className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={!name.trim()}
-            className="cursor-pointer rounded-md bg-accent px-4 py-2 font-display text-white hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Save
-          </button>
-        </div>
-      }
-    >
-      <div onKeyDown={handleFormKeyDown}>
-      {/* Setlist Details — name/gig date/description (decision 1's
+        }
+      >
+        <div onKeyDown={handleFormKeyDown}>
+          {/* Setlist Details — name/gig date/description (decision 1's
           remaining scope), styled to match EditBookModal/EditPieceModal's
           own real field conventions (`text-sm text-ink-soft` labels,
           `px-3 py-2` inputs on `bg-paper-raised`). Both tab panels stay
@@ -1009,31 +1104,31 @@ export function EditSetlistModal({
           18 collapsed it to one) and, more importantly here, keeps the
           Program tab's own drag/add-row state fully intact across a tab
           switch instead of unmounting and losing it. */}
-      <div className={activeTab === 'details' ? 'flex flex-col gap-4' : 'hidden'}>
-        <div className="flex flex-col gap-1">
-          <label htmlFor="f-setlist-name" className="text-sm text-ink-soft">
-            Name <span className="text-ink-soft/60 italic">(Required)</span>
-          </label>
-          <input
-            id="f-setlist-name"
-            type="text"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-          />
-        </div>
-        <div className="flex flex-col gap-1">
-          <label htmlFor="f-setlist-gig-date" className="text-sm text-ink-soft">
-            Gig date
-          </label>
-          <input
-            id="f-setlist-gig-date"
-            type="date"
-            value={gigDate}
-            onChange={(event) => setGigDate(event.target.value)}
-            className="w-fit rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-          />
-          {/* A native <input type="date"> already displays in whatever
+          <div className={activeTab === 'details' ? 'flex flex-col gap-4' : 'hidden'}>
+            <div className="flex flex-col gap-1">
+              <label htmlFor="f-setlist-name" className="text-sm text-ink-soft">
+                Name <span className="text-ink-soft/60 italic">(Required)</span>
+              </label>
+              <input
+                id="f-setlist-name"
+                type="text"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label htmlFor="f-setlist-gig-date" className="text-sm text-ink-soft">
+                Gig date
+              </label>
+              <input
+                id="f-setlist-gig-date"
+                type="date"
+                value={gigDate}
+                onChange={(event) => setGigDate(event.target.value)}
+                className="w-fit rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+              />
+              {/* A native <input type="date"> already displays in whatever
               format the browser resolves from the OS/browser locale (e.g.
               MM/DD/YYYY in en-US, DD/MM/YYYY in en-GB) — genuinely
               locale-aware for free, not something this component
@@ -1041,126 +1136,141 @@ export function EditSetlistModal({
               stay plain ISO `yyyy-mm-dd` regardless of what's displayed).
               Called out here since a screenshot taken in one locale can
               otherwise look like a hardcoded format choice. */}
-          <span className="text-xs text-ink-soft">Shown in your browser's own date format.</span>
-        </div>
-        <div className="flex flex-col gap-1">
-          <label htmlFor="f-setlist-description" className="text-sm text-ink-soft">
-            Description <span className="text-ink-soft/60 italic">(Markdown supported)</span>
-          </label>
-          <textarea
-            id="f-setlist-description"
-            rows={4}
-            value={description}
-            onChange={(event) => setDescription(event.target.value)}
-            className="min-h-[96px] resize-none rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-          />
-        </div>
-      </div>
-
-      {/* Program Order — EditProgramMockup.tsx's own body, unchanged. */}
-      <div className={activeTab === 'program' ? '' : 'hidden'}>
-        <p className="mb-2 text-xs font-medium tracking-wide text-ink-soft uppercase">Program ({programEntries.length})</p>
-        <div
-          ref={listRef}
-          onPointerMove={onListPointerMove}
-          onPointerUp={endDrag}
-          onPointerCancel={endDrag}
-          onLostPointerCapture={endDrag}
-          className="flex flex-col gap-1.5"
-        >
-          {programEntries.map((entry) => {
-            // Inline edit, in this entry's own position — not the bottom
-            // add-row. Not draggable while its own form is open — the row
-            // swaps to a plain bordered form, no onPointerDown/
-            // data-entry-id, so a drag passing over it just doesn't treat
-            // it as a drop target for the moment it's being edited.
-            if (entry.kind === 'custom' && entry.id === editingEntryId) {
-              return renderCustomEntryForm(entry.id, 'relative rounded-md border border-accent bg-paper-raised p-3')
-            }
-            if (entry.kind === 'piece' && entry.id === editingEntryId) {
-              return renderRoleForm(entry)
-            }
-            return (
-            <div
-              key={entry.id}
-              data-entry-id={entry.id}
-              onPointerDown={(event) => onCardPointerDown(event, entry.id)}
-              className={`flex touch-none items-start gap-1.5 rounded-md border border-border bg-paper-raised px-2 py-1.5 cursor-grab select-none active:cursor-grabbing ${
-                draggingId === entry.id ? 'opacity-40' : ''
-              }`}
-            >
-              <span
-                aria-hidden="true"
-                className="mr-1 shrink-0 self-center text-ink-soft/50"
-              >
-                <IconGripVertical size={14} />
+              <span className="text-xs text-ink-soft">
+                Shown in your browser's own date format.
               </span>
-              {/* A custom row's pencil opens its own inline form; a piece
+            </div>
+            <div className="flex flex-col gap-1">
+              <label htmlFor="f-setlist-description" className="text-sm text-ink-soft">
+                Description <span className="text-ink-soft/60 italic">(Markdown supported)</span>
+              </label>
+              <textarea
+                id="f-setlist-description"
+                rows={4}
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+                className="min-h-[96px] resize-none rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+              />
+            </div>
+          </div>
+
+          {/* Program Order — EditProgramMockup.tsx's own body, unchanged. */}
+          <div className={activeTab === 'program' ? '' : 'hidden'}>
+            <p className="mb-2 text-xs font-medium tracking-wide text-ink-soft uppercase">
+              Program ({programEntries.length})
+            </p>
+            <div
+              ref={listRef}
+              onPointerMove={onListPointerMove}
+              onPointerUp={endDrag}
+              onPointerCancel={endDrag}
+              onLostPointerCapture={endDrag}
+              className="flex flex-col gap-1.5"
+            >
+              {programEntries.map((entry) => {
+                // Inline edit, in this entry's own position — not the bottom
+                // add-row. Not draggable while its own form is open — the row
+                // swaps to a plain bordered form, no onPointerDown/
+                // data-entry-id, so a drag passing over it just doesn't treat
+                // it as a drop target for the moment it's being edited.
+                if (entry.kind === 'custom' && entry.id === editingEntryId) {
+                  return renderCustomEntryForm(
+                    entry.id,
+                    'relative rounded-md border border-accent bg-paper-raised p-3',
+                  )
+                }
+                if (entry.kind === 'piece' && entry.id === editingEntryId) {
+                  return renderRoleForm(entry)
+                }
+                return (
+                  <div
+                    key={entry.id}
+                    data-entry-id={entry.id}
+                    onPointerDown={(event) => onCardPointerDown(event, entry.id)}
+                    className={`flex touch-none items-start gap-1.5 rounded-md border border-border bg-paper-raised px-2 py-1.5 cursor-grab select-none active:cursor-grabbing ${
+                      draggingId === entry.id ? 'opacity-40' : ''
+                    }`}
+                  >
+                    <span aria-hidden="true" className="mr-1 shrink-0 self-center text-ink-soft/50">
+                      <IconGripVertical size={14} />
+                    </span>
+                    {/* A custom row's pencil opens its own inline form; a piece
                   row's pencil opens an inline role card (the only thing
                   about a piece entry that's the setlist's own to edit). */}
-              <button
-                type="button"
-                onClick={() => (entry.kind === 'custom' ? openEditCustomForm(entry) : openEditRoleForm(entry))}
-                aria-label={entry.kind === 'custom' ? `Edit ${entry.title}` : `${entry.role ? 'Edit' : 'Add'} role for ${entry.title}`}
-                title={entry.kind === 'piece' ? (entry.role ? 'Edit role' : 'Add role') : undefined}
-                className="no-drag mt-0.5 shrink-0 cursor-pointer text-ink-soft hover:text-accent"
-              >
-                <IconPencil size={13} />
-              </button>
-              <div className="min-w-0 flex-1">
-                {entry.kind === 'piece' && entry.role && (
-                  <div className="truncate text-[0.65rem] font-medium tracking-wide text-ink-soft uppercase [font-variant:small-caps]">
-                    {entry.role}
-                  </div>
-                )}
-                <div
-                  className={`truncate ${
-                    entry.kind === 'piece'
-                      ? 'font-display text-sm font-medium text-ink'
-                      : 'font-sans text-sm font-normal text-ink-soft italic'
-                  }`}
-                >
-                  {entry.title}
-                </div>
-                {entry.kind === 'piece' ? (
-                  <div className="truncate text-xs text-ink-soft">
-                    {entry.composer} <span aria-hidden="true">•</span> {entry.keys.join(' › ')}
-                  </div>
-                ) : (
-                  entry.description && (
-                    <div className="line-clamp-2 text-xs text-ink-soft italic">
-                      <MarkdownText>{entry.description}</MarkdownText>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        entry.kind === 'custom'
+                          ? openEditCustomForm(entry)
+                          : openEditRoleForm(entry)
+                      }
+                      aria-label={
+                        entry.kind === 'custom'
+                          ? `Edit ${entry.title}`
+                          : `${entry.role ? 'Edit' : 'Add'} role for ${entry.title}`
+                      }
+                      title={
+                        entry.kind === 'piece' ? (entry.role ? 'Edit role' : 'Add role') : undefined
+                      }
+                      className="no-drag mt-0.5 shrink-0 cursor-pointer text-ink-soft hover:text-accent"
+                    >
+                      <IconPencil size={13} />
+                    </button>
+                    <div className="min-w-0 flex-1">
+                      {entry.kind === 'piece' && entry.role && (
+                        <div className="truncate text-[0.65rem] font-medium tracking-wide text-ink-soft uppercase [font-variant:small-caps]">
+                          {entry.role}
+                        </div>
+                      )}
+                      <div
+                        className={`truncate ${
+                          entry.kind === 'piece'
+                            ? 'font-display text-sm font-medium text-ink'
+                            : 'font-sans text-sm font-normal text-ink-soft italic'
+                        }`}
+                      >
+                        {entry.title}
+                      </div>
+                      {entry.kind === 'piece' ? (
+                        <div className="truncate text-xs text-ink-soft">
+                          {entry.composer} <span aria-hidden="true">•</span>{' '}
+                          {entry.keys.join(' › ')}
+                        </div>
+                      ) : (
+                        entry.description && (
+                          <div className="line-clamp-2 text-xs text-ink-soft italic">
+                            <MarkdownText>{entry.description}</MarkdownText>
+                          </div>
+                        )
+                      )}
                     </div>
-                  )
-                )}
-              </div>
-              {entry.durationSeconds != null && (
-                <span className="mt-0.5 shrink-0 font-mono text-xs tabular-nums text-ink-soft">
-                  {formatDuration(entry.durationSeconds)}
-                </span>
-              )}
-              <button
-                type="button"
-                onClick={() => removeEntry(entry.id)}
-                aria-label={`Remove ${entry.title}`}
-                className="no-drag mt-0.5 shrink-0 cursor-pointer text-ink-soft hover:text-ink"
-              >
-                <IconX size={14} />
-              </button>
-            </div>
-            )
-          })}
+                    {entry.durationSeconds != null && (
+                      <span className="mt-0.5 shrink-0 font-mono text-xs tabular-nums text-ink-soft">
+                        {formatDuration(entry.durationSeconds)}
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => removeEntry(entry.id)}
+                      aria-label={`Remove ${entry.title}`}
+                      className="no-drag mt-0.5 shrink-0 cursor-pointer text-ink-soft hover:text-ink"
+                    >
+                      <IconX size={14} />
+                    </button>
+                  </div>
+                )
+              })}
 
-          {/* Add row — ends the list itself. A plain bordered box matching
+              {/* Add row — ends the list itself. A plain bordered box matching
               the entry rows' own card chrome. The two-button row is always
               rendered — it doesn't get replaced by whichever content is
               active; that content expands directly below it, inside this
               same bordered card, with the active button restyled to look
               pressed (`bg-paper-sunken text-ink`, deliberately not accent —
               accent is this row's own hover language too). */}
-          <div className="rounded-md bg-paper-raised overflow-hidden">
-            <div className="flex">
-              {/* Per-segment full-border-on-hover, matching PiecePage.tsx's
+              <div className="rounded-md bg-paper-raised overflow-hidden">
+                <div className="flex">
+                  {/* Per-segment full-border-on-hover, matching PiecePage.tsx's
                   own Download PDF split button (CLAUDE.md's real
                   bordered-button convention) — a direct report ("the other
                   3 sides of the hovered button don't have it") found the
@@ -1196,191 +1306,204 @@ export function EditSetlistModal({
                   version of this fix left the bottom of the card open
                   whenever the row was collapsed, screenshot-reported as
                   "the bottom has disappeared"). */}
-              <button
-                type="button"
-                onClick={() => selectAddMode('search')}
-                className={`relative flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-tl-md border-t border-r border-l border-border px-3 py-2 text-sm font-medium transition-colors ${
-                  addRowMode === 'buttons' ? 'rounded-bl-md border-b' : ''
-                } ${addRowMode === 'search' ? 'bg-paper-sunken text-ink' : 'text-ink-soft hover:z-10 hover:border-accent'}`}
-              >
-                <IconPlus size={14} />
-                Piece
-              </button>
-              <button
-                type="button"
-                onClick={() => selectAddMode('custom')}
-                className={`relative -ml-px flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-tr-md border-t border-r border-l border-border px-3 py-2 text-sm font-medium transition-colors ${
-                  addRowMode === 'buttons' ? 'rounded-br-md border-b' : ''
-                } ${addRowMode === 'custom' ? 'bg-paper-sunken text-ink' : 'text-ink-soft hover:z-10 hover:border-accent'}`}
-              >
-                <IconPlus size={14} />
-                Custom Entry
-              </button>
-            </div>
+                  <button
+                    type="button"
+                    onClick={() => selectAddMode('search')}
+                    className={`relative flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-tl-md border-t border-r border-l border-border px-3 py-2 text-sm font-medium transition-colors ${
+                      addRowMode === 'buttons' ? 'rounded-bl-md border-b' : ''
+                    } ${addRowMode === 'search' ? 'bg-paper-sunken text-ink' : 'text-ink-soft hover:z-10 hover:border-accent'}`}
+                  >
+                    <IconPlus size={14} />
+                    Piece
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => selectAddMode('custom')}
+                    className={`relative -ml-px flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-tr-md border-t border-r border-l border-border px-3 py-2 text-sm font-medium transition-colors ${
+                      addRowMode === 'buttons' ? 'rounded-br-md border-b' : ''
+                    } ${addRowMode === 'custom' ? 'bg-paper-sunken text-ink' : 'text-ink-soft hover:z-10 hover:border-accent'}`}
+                  >
+                    <IconPlus size={14} />
+                    Custom Entry
+                  </button>
+                </div>
 
-          {addRowMode === 'search' && (
-            <div ref={setExpandedRef} className="border border-border rounded-b-md p-2.5">
-              <div className="relative">
-                <IconSearch size={13} className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-ink-soft/60" />
-                <input
-                  ref={pieceSearchInputRef}
-                  type="text"
-                  autoFocus
-                  value={pieceQuery}
-                  onChange={(event) => {
-                    setPieceQuery(event.target.value)
-                    setSearchHighlight(-1)
-                  }}
-                  onKeyDown={onPieceSearchKeyDown}
-                  placeholder="Search pieces…"
-                  aria-label="Search pieces"
-                  className="w-full rounded-md border border-border bg-paper py-1.5 pr-8 pl-7 text-sm text-ink placeholder:text-ink-soft/60 focus:border-accent focus:outline-none"
-                />
-                <button
-                  type="button"
-                  onClick={closeAddRow}
-                  aria-label="Cancel adding a piece"
-                  className="absolute top-1/2 right-1.5 -translate-y-1/2 cursor-pointer rounded p-1 text-ink-soft hover:bg-paper-sunken hover:text-ink"
-                >
-                  <IconX size={13} />
-                </button>
-              </div>
-              <p className="mt-2 mb-1 text-[0.65rem] font-medium tracking-wide text-ink-soft uppercase">
-                {pieceQuery.trim() ? `${pieceResults.length} ${pieceResults.length === 1 ? 'match' : 'matches'}` : 'Recently edited'}
-              </p>
-              <div className="flex max-h-56 flex-col gap-0.5 overflow-y-auto">
-                {pieceResults.length === 0 ? (
-                  <p className="px-2 py-4 text-center text-sm text-ink-soft italic">No matches</p>
-                ) : (
-                  pieceResults.map((piece, i) => {
-                    const inProgram = libraryPieceIdsInProgram.has(piece.id)
-                    return (
-                      // A real <button> can't validly contain the
-                      // InfoTooltip badge's own nested <button> — invalid
-                      // HTML, silently "repaired" by the browser in a way
-                      // that breaks the tooltip's own group-hover CSS.
-                      // `role="button"` + manual Enter/Space handling
-                      // keeps this row keyboard-operable without that
-                      // restriction.
-                      <div
-                        key={piece.id}
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => selectPiece(piece)}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter' || event.key === ' ') {
-                            event.preventDefault()
-                            selectPiece(piece)
-                          }
+                {addRowMode === 'search' && (
+                  <div ref={setExpandedRef} className="border border-border rounded-b-md p-2.5">
+                    <div className="relative">
+                      <IconSearch
+                        size={13}
+                        className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-ink-soft/60"
+                      />
+                      <input
+                        ref={pieceSearchInputRef}
+                        type="text"
+                        autoFocus
+                        value={pieceQuery}
+                        onChange={(event) => {
+                          setPieceQuery(event.target.value)
+                          setSearchHighlight(-1)
                         }}
-                        className={`flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-left ${
-                          i === searchHighlight ? 'bg-paper-sunken' : 'hover:bg-paper-sunken'
-                        }`}
+                        onKeyDown={onPieceSearchKeyDown}
+                        placeholder="Search pieces…"
+                        aria-label="Search pieces"
+                        className="w-full rounded-md border border-border bg-paper py-1.5 pr-8 pl-7 text-sm text-ink placeholder:text-ink-soft/60 focus:border-accent focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={closeAddRow}
+                        aria-label="Cancel adding a piece"
+                        className="absolute top-1/2 right-1.5 -translate-y-1/2 cursor-pointer rounded p-1 text-ink-soft hover:bg-paper-sunken hover:text-ink"
                       >
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5 font-display text-sm font-medium text-ink">
-                            <span className="truncate">{piece.title}</span>
-                            {inProgram && (
-                              <span onClick={(event) => event.stopPropagation()}>
-                                <InfoTooltip
-                                  message="Already in this setlist"
-                                  ariaLabel="Already in this setlist"
-                                  showPointerCursor={false}
-                                  triggerClassName="shrink-0 text-accent"
-                                >
-                                  <IconCalendarFilled size={12} />
-                                </InfoTooltip>
+                        <IconX size={13} />
+                      </button>
+                    </div>
+                    <p className="mt-2 mb-1 text-[0.65rem] font-medium tracking-wide text-ink-soft uppercase">
+                      {pieceQuery.trim()
+                        ? `${pieceResults.length} ${pieceResults.length === 1 ? 'match' : 'matches'}`
+                        : 'Recently edited'}
+                    </p>
+                    <div className="flex max-h-56 flex-col gap-0.5 overflow-y-auto">
+                      {pieceResults.length === 0 ? (
+                        <p className="px-2 py-4 text-center text-sm text-ink-soft italic">
+                          No matches
+                        </p>
+                      ) : (
+                        pieceResults.map((piece, i) => {
+                          const inProgram = libraryPieceIdsInProgram.has(piece.id)
+                          return (
+                            // A real <button> can't validly contain the
+                            // InfoTooltip badge's own nested <button> — invalid
+                            // HTML, silently "repaired" by the browser in a way
+                            // that breaks the tooltip's own group-hover CSS.
+                            // `role="button"` + manual Enter/Space handling
+                            // keeps this row keyboard-operable without that
+                            // restriction.
+                            <div
+                              key={piece.id}
+                              role="button"
+                              tabIndex={0}
+                              onClick={() => selectPiece(piece)}
+                              onKeyDown={(event) => {
+                                if (event.key === 'Enter' || event.key === ' ') {
+                                  event.preventDefault()
+                                  selectPiece(piece)
+                                }
+                              }}
+                              className={`flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-left ${
+                                i === searchHighlight ? 'bg-paper-sunken' : 'hover:bg-paper-sunken'
+                              }`}
+                            >
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-1.5 font-display text-sm font-medium text-ink">
+                                  <span className="truncate">{piece.title}</span>
+                                  {inProgram && (
+                                    <span onClick={(event) => event.stopPropagation()}>
+                                      <InfoTooltip
+                                        message="Already in this setlist"
+                                        ariaLabel="Already in this setlist"
+                                        showPointerCursor={false}
+                                        triggerClassName="shrink-0 text-accent"
+                                      >
+                                        <IconCalendarFilled size={12} />
+                                      </InfoTooltip>
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="truncate text-xs text-ink-soft">
+                                  {piece.composer} <span aria-hidden="true">•</span>{' '}
+                                  {piece.keys.join(' › ')}
+                                </div>
+                              </div>
+                              <span className="shrink-0 font-mono text-xs tabular-nums text-ink-soft">
+                                {formatDuration(piece.durationSeconds)}
                               </span>
-                            )}
-                          </div>
-                          <div className="truncate text-xs text-ink-soft">
-                            {piece.composer} <span aria-hidden="true">•</span> {piece.keys.join(' › ')}
-                          </div>
-                        </div>
-                        <span className="shrink-0 font-mono text-xs tabular-nums text-ink-soft">
-                          {formatDuration(piece.durationSeconds)}
-                        </span>
-                      </div>
-                    )
-                  })
+                            </div>
+                          )
+                        })
+                      )}
+                    </div>
+                  </div>
                 )}
+
+                {addRowMode === 'custom' &&
+                  renderCustomEntryForm(
+                    'add-custom-entry',
+                    'relative border border-border rounded-b-md p-3',
+                  )}
               </div>
             </div>
-          )}
-
-          {addRowMode === 'custom' && renderCustomEntryForm('add-custom-entry', 'relative border border-border rounded-b-md p-3')}
           </div>
         </div>
-      </div>
-      </div>
-    </Modal>
+      </Modal>
 
-    {draggingId &&
-      ghostPos &&
-      draggingEntry &&
-      createPortal(
-        // A pure visual clone, not a real Modal descendant — `position:
-        // fixed` inside Modal's own dialog would be trapped by its
-        // `transition-[transform,opacity]`/`scale-*` classes (a `transform`
-        // on an ancestor makes it the containing block for a fixed
-        // descendant, same class of bug as the app's own documented
-        // overflow-hidden-clips-a-popup gotcha) — portaling straight to
-        // `document.body` sidesteps both that and the dialog's own rounded-
-        // corner clipping. `pointer-events: none` so it never intercepts
-        // `elementFromPoint` during the drag.
-        <div
-          aria-hidden="true"
-          style={{
-            position: 'fixed',
-            left: ghostPos.x - dragOffset.x,
-            top: ghostPos.y - dragOffset.y,
-            width: dragWidth,
-            pointerEvents: 'none',
-            zIndex: 9999,
-          }}
-          className="flex items-start gap-1.5 rounded-md border border-accent bg-paper-raised px-2 py-1.5 shadow-xl"
-        >
-          <span className="mr-1 shrink-0 self-center text-ink-soft/50">
-            <IconGripVertical size={14} />
-          </span>
-          <span className="mt-0.5 shrink-0 text-ink-soft">
-            <IconPencil size={13} />
-          </span>
-          <div className="min-w-0 flex-1">
-            {draggingEntry.kind === 'piece' && draggingEntry.role && (
-              <div className="truncate text-[0.65rem] font-medium tracking-wide text-ink-soft uppercase [font-variant:small-caps]">
-                {draggingEntry.role}
-              </div>
-            )}
-            <div
-              className={`truncate ${
-                draggingEntry.kind === 'piece'
-                  ? 'font-display text-sm font-medium text-ink'
-                  : 'font-sans text-sm font-normal text-ink-soft italic'
-              }`}
-            >
-              {draggingEntry.title}
-            </div>
-            {draggingEntry.kind === 'piece' ? (
-              <div className="truncate text-xs text-ink-soft">
-                {draggingEntry.composer} <span aria-hidden="true">•</span> {draggingEntry.keys.join(' › ')}
-              </div>
-            ) : (
-              draggingEntry.description && (
-                <div className="line-clamp-2 text-xs text-ink-soft italic">
-                  <MarkdownText>{draggingEntry.description}</MarkdownText>
-                </div>
-              )
-            )}
-          </div>
-          {draggingEntry.durationSeconds != null && (
-            <span className="mt-0.5 shrink-0 font-mono text-xs tabular-nums text-ink-soft">
-              {formatDuration(draggingEntry.durationSeconds)}
+      {draggingId &&
+        ghostPos &&
+        draggingEntry &&
+        createPortal(
+          // A pure visual clone, not a real Modal descendant — `position:
+          // fixed` inside Modal's own dialog would be trapped by its
+          // `transition-[transform,opacity]`/`scale-*` classes (a `transform`
+          // on an ancestor makes it the containing block for a fixed
+          // descendant, same class of bug as the app's own documented
+          // overflow-hidden-clips-a-popup gotcha) — portaling straight to
+          // `document.body` sidesteps both that and the dialog's own rounded-
+          // corner clipping. `pointer-events: none` so it never intercepts
+          // `elementFromPoint` during the drag.
+          <div
+            aria-hidden="true"
+            style={{
+              position: 'fixed',
+              left: ghostPos.x - dragOffset.x,
+              top: ghostPos.y - dragOffset.y,
+              width: dragWidth,
+              pointerEvents: 'none',
+              zIndex: 9999,
+            }}
+            className="flex items-start gap-1.5 rounded-md border border-accent bg-paper-raised px-2 py-1.5 shadow-xl"
+          >
+            <span className="mr-1 shrink-0 self-center text-ink-soft/50">
+              <IconGripVertical size={14} />
             </span>
-          )}
-        </div>,
-        document.body,
-      )}
+            <span className="mt-0.5 shrink-0 text-ink-soft">
+              <IconPencil size={13} />
+            </span>
+            <div className="min-w-0 flex-1">
+              {draggingEntry.kind === 'piece' && draggingEntry.role && (
+                <div className="truncate text-[0.65rem] font-medium tracking-wide text-ink-soft uppercase [font-variant:small-caps]">
+                  {draggingEntry.role}
+                </div>
+              )}
+              <div
+                className={`truncate ${
+                  draggingEntry.kind === 'piece'
+                    ? 'font-display text-sm font-medium text-ink'
+                    : 'font-sans text-sm font-normal text-ink-soft italic'
+                }`}
+              >
+                {draggingEntry.title}
+              </div>
+              {draggingEntry.kind === 'piece' ? (
+                <div className="truncate text-xs text-ink-soft">
+                  {draggingEntry.composer} <span aria-hidden="true">•</span>{' '}
+                  {draggingEntry.keys.join(' › ')}
+                </div>
+              ) : (
+                draggingEntry.description && (
+                  <div className="line-clamp-2 text-xs text-ink-soft italic">
+                    <MarkdownText>{draggingEntry.description}</MarkdownText>
+                  </div>
+                )
+              )}
+            </div>
+            {draggingEntry.durationSeconds != null && (
+              <span className="mt-0.5 shrink-0 font-mono text-xs tabular-nums text-ink-soft">
+                {formatDuration(draggingEntry.durationSeconds)}
+              </span>
+            )}
+          </div>,
+          document.body,
+        )}
     </>
   )
 }
@@ -1399,27 +1522,31 @@ export function EditSetlistMockup() {
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-6 py-6 md:px-8 md:py-8">
-      <Link to="/mockup" className="inline-flex w-fit items-center gap-1.5 text-sm text-ink-soft hover:text-ink">
+      <Link
+        to="/mockup"
+        className="inline-flex w-fit items-center gap-1.5 text-sm text-ink-soft hover:text-ink"
+      >
         <IconArrowLeft size={20} />
         Setlists
       </Link>
 
       <div className="rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-4 py-2 text-sm text-ink-soft">
-        Reference sample — <span className="font-medium text-ink">Edit Setlist modal</span> (design doc §13, Phase
-        10, decision 23) — the full fold: the former Edit Program modal no longer exists as its own mockup, and
-        "Program Order" here is that file's own body, copied wholesale and unchanged. "Setlist Details" is the other
-        tab — name/gig date/description. Doubles as the New Setlist create state — "Open New Setlist" opens the same
-        modal blank, with an empty Program. "Open on Program Tab" demonstrates the Setlist Details page's own "Edit
-        Program" button, which opens this same modal pre-landed on the Program Order tab instead of Setlist Details.
-        Whole-setlist delete lives on the Setlist Details page itself (an icon-only button, same treatment as
-        Piece/Book Details), not in this modal.
+        Reference sample — <span className="font-medium text-ink">Edit Setlist modal</span> (design
+        doc §13, Phase 10, decision 23) — the full fold: the former Edit Program modal no longer
+        exists as its own mockup, and "Program Order" here is that file's own body, copied wholesale
+        and unchanged. "Setlist Details" is the other tab — name/gig date/description. Doubles as
+        the New Setlist create state — "Open New Setlist" opens the same modal blank, with an empty
+        Program. "Open on Program Tab" demonstrates the Setlist Details page's own "Edit Program"
+        button, which opens this same modal pre-landed on the Program Order tab instead of Setlist
+        Details. Whole-setlist delete lives on the Setlist Details page itself (an icon-only button,
+        same treatment as Piece/Book Details), not in this modal.
       </div>
 
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
           onClick={() => openModal('edit')}
-          className="w-fit cursor-pointer rounded-md bg-accent px-4 py-2 font-display text-sm text-white hover:bg-accent/90"
+          className="w-fit cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display text-sm text-white hover:bg-accent-fill/90"
         >
           Open Edit Setlist
         </button>

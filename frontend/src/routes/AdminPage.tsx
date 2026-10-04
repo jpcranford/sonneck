@@ -196,7 +196,7 @@ function SecurityCard({
       <div className="flex items-start gap-3">
         <span
           className={`mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full ${
-            selected ? 'bg-accent text-white' : 'bg-paper-sunken text-ink-soft'
+            selected ? 'bg-accent-fill text-white' : 'bg-paper-sunken text-ink-soft'
           }`}
         >
           {icon}
@@ -260,7 +260,7 @@ function SecurityChangeModal({
             type="button"
             disabled={!canSave || mutation.isPending}
             onClick={() => mutation.mutate()}
-            className="cursor-pointer rounded-md bg-accent px-4 py-2 text-sm text-white enabled:hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-40"
+            className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 text-sm text-white enabled:hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-40"
           >
             {mutation.isPending ? 'Saving…' : 'Save changes'}
           </button>
@@ -390,7 +390,7 @@ function UsersSection() {
                   </span>
                   <span
                     className={`ml-auto shrink-0 rounded-full px-2 py-0.5 text-[0.65rem] font-bold tracking-wide uppercase ${
-                      isAdmin ? 'bg-accent text-white' : 'bg-paper-sunken text-ink-soft'
+                      isAdmin ? 'bg-accent-fill text-white' : 'bg-paper-sunken text-ink-soft'
                     }`}
                   >
                     {isAdmin
@@ -647,7 +647,7 @@ function LookupTablesSection() {
                 (deleteMode === 'merge' && mergeTargetId === null) || deleteMutation.isPending
               }
               onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget)}
-              className="cursor-pointer rounded-md bg-danger px-4 py-2 text-sm text-white hover:bg-danger-strong disabled:cursor-not-allowed disabled:opacity-40"
+              className="cursor-pointer rounded-md bg-danger-fill px-4 py-2 text-sm text-white hover:bg-danger-fill-strong disabled:cursor-not-allowed disabled:opacity-40"
             >
               {deleteMutation.isPending
                 ? 'Working…'
@@ -942,7 +942,7 @@ function ShareOnNetworkSection() {
           aria-checked={settings.shareOnNetwork}
           onClick={toggleShareOnNetwork}
           className={`relative h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors ${
-            settings.shareOnNetwork ? 'bg-accent' : 'bg-border'
+            settings.shareOnNetwork ? 'bg-accent-fill' : 'bg-border'
           }`}
         >
           <span
@@ -967,7 +967,7 @@ function ShareOnNetworkSection() {
             type="button"
             onClick={handleRestartNow}
             disabled={restartMutation.isPending}
-            className="shrink-0 cursor-pointer rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-60"
+            className="shrink-0 cursor-pointer rounded-md bg-accent-fill px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {restartMutation.isPending ? 'Restarting…' : 'Restart Now'}
           </button>
@@ -1090,7 +1090,7 @@ function LibraryLocationModal({
             type="button"
             disabled={candidatePath === currentPath || saveMutation.isPending}
             onClick={() => saveMutation.mutate()}
-            className="cursor-pointer rounded-md bg-accent px-4 py-2 text-sm text-white enabled:hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-40"
+            className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 text-sm text-white enabled:hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-40"
           >
             {saveMutation.isPending ? 'Saving…' : 'Save changes'}
           </button>
@@ -1344,7 +1344,7 @@ function LibrarySettingsSection() {
             type="button"
             onClick={() => restartMutation.mutate()}
             disabled={restartMutation.isPending}
-            className="shrink-0 cursor-pointer rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-60"
+            className="shrink-0 cursor-pointer rounded-md bg-accent-fill px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {restartMutation.isPending ? 'Restarting…' : 'Restart Now'}
           </button>

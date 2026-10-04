@@ -294,7 +294,7 @@ export function BookUploadAboutStep({
                   step < CURRENT_STEP
                     ? 'bg-accent-on-dark'
                     : step === CURRENT_STEP
-                      ? 'bg-accent'
+                      ? 'bg-accent-fill'
                       : 'bg-border'
                 }`}
               />
@@ -705,7 +705,7 @@ export function BookUploadAboutStep({
             <button
               type="submit"
               disabled={saveMutation.isPending}
-              className="flex cursor-pointer items-center gap-1.5 rounded-md bg-accent px-5 py-2.5 font-display text-white hover:bg-accent/90 disabled:cursor-default disabled:opacity-60"
+              className="flex cursor-pointer items-center gap-1.5 rounded-md bg-accent-fill px-5 py-2.5 font-display text-white hover:bg-accent-fill/90 disabled:cursor-default disabled:opacity-60"
             >
               {saveMutation.isPending ? 'Saving…' : 'Next'}
               {!saveMutation.isPending && <IconArrowRight size={16} />}

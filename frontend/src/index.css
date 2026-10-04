@@ -383,6 +383,8 @@
   --color-accent-soft: #e3e9e0;
   /* Accent that reads on dark or accent-filled surfaces: the autofill highlight ring, progress stripes. */
   --color-accent-on-dark: #86a67f;
+  /* Solid green fills with white labels: primary buttons, an on switch. The same green as accent in the light theme; stays deep in the dark one, where accent itself turns light. */
+  --color-accent-fill: #3f5c3f;
 
   /* The keyboard focus outline. Same as accent, referenced directly so
      the two can't drift apart. */
@@ -396,6 +398,13 @@
   --color-danger-soft: #fbe9e7;
   /* The outline of a danger-soft box, like each account in the Auth Change delete list. */
   --color-danger-border: #f3d4ce;
+  /* Solid red fills with white labels: Delete buttons. Same as danger in the light theme; stays deep in the dark one. */
+  --color-danger-fill: #b91c1c;
+  /* A solid red fill's hover. */
+  --color-danger-fill-strong: #991b1b;
+
+  /* Overlays that must stay dark in both themes: the window backdrop, controls laid over page thumbnails, count badges. */
+  --color-scrim: #1c1815;
 
   /* Moving diagonal-stripe fill for a "working on it, no real percentage
      to report" button state — first use: the Book Properties Edit Menu's
@@ -405,6 +414,47 @@
      animate-stripe-move utility it generates is reusable if any future
      multi-record save ever wants the same "in progress" language. */
   --animate-stripe-move: stripe-move 0.85s linear infinite;
+}
+
+/* The dark theme (Walnut, A6 in the palette comparison): every color token
+   redefined, applied when <html> carries data-theme="dark". Tailwind's
+   utilities read the tokens as CSS variables, so components need no dark:
+   variants. Light-only by intent: a solid fill (accent-fill, danger-fill)
+   keeps its white label, while accent and danger turn light for text and
+   outlines on the dark page. The faded inks are ink-soft blended 75/60/50%
+   into the page, kept solid like their light counterparts. */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --color-ink: #e8dbc4;
+  --color-ink-soft: #ad9f88;
+  --color-ink-muted: #887c6b;
+  --color-ink-faint: #716759;
+  --color-ink-fainter: #625a4d;
+  --color-paper: #181412;
+  --color-paper-raised: #221d1a;
+  --color-paper-sunken: #120f0d;
+  --color-border: #352e29;
+
+  --color-sidebar-bg: #0f0c0b;
+  --color-sidebar-panel: #2f2723;
+  --color-sidebar-text: #d9d0c3;
+  --color-sidebar-text-dim: #8f857a;
+  --color-sidebar-border: #2a241f;
+
+  --color-accent: #9dbd94;
+  --color-accent-soft: #24301f;
+  --color-accent-on-dark: #86a67f;
+  --color-accent-fill: #4a6b48;
+
+  --color-danger: #f08f83;
+  --color-danger-strong: #f6aaa1;
+  --color-danger-soft: #3b1f1b;
+  --color-danger-border: #5c2e28;
+  --color-danger-fill: #a8302a;
+  --color-danger-fill-strong: #93271f;
+
+  --color-scrim: #080606;
 }
 
 /* transform, not background-position (fixed 2026-09-02, direct report:

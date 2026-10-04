@@ -600,7 +600,7 @@ export function UploadPieceAboutMockup() {
 
             <button
               type="submit"
-              className="mt-1 rounded-md bg-accent px-4 py-2 font-display text-white"
+              className="mt-1 rounded-md bg-accent-fill px-4 py-2 font-display text-white"
             >
               Save
             </button>

@@ -81,6 +81,16 @@ export function parseThemeColors(css: string): ColorGroup[] {
     }))
 }
 
+// The dark theme's overrides (`:root[data-theme='dark']`), name → value.
+export function parseDarkColors(css: string): Map<string, string> {
+  const start = css.search(/:root\[data-theme=['"]?dark['"]?\]\s*\{/)
+  if (start < 0) return new Map()
+  const body = css.slice(css.indexOf('{', start) + 1, css.indexOf('}', start))
+  return new Map(
+    [...body.matchAll(/--color-([\w-]+)\s*:\s*([^;]+);/g)].map((m) => [m[1], m[2].trim()]),
+  )
+}
+
 export function parseFontStacks(css: string): FontStack[] {
   return [...themeBody(css).matchAll(/--font-([\w-]+)\s*:\s*([^;]+);/g)].map((m) => ({
     name: m[1],
@@ -324,7 +334,7 @@ function classify(tag: string, tokens: string[]): ControlKind | null {
   if (tag === 'input') return 'Text field'
   if (tag === 'textarea') return 'Text area'
   if (tag === 'select') return 'Select'
-  if (tokens.some((t) => /^bg-accent(\/|$)/.test(t))) return 'Primary'
+  if (tokens.some((t) => /^bg-accent(-fill)?(\/|$)/.test(t))) return 'Primary'
   if (tokens.some((t) => /^(text|bg|border)-(red-|danger)/.test(t))) return 'Destructive'
   if (tokens.includes('border') || tokens.some((t) => t.startsWith('bg-'))) return 'Secondary'
   if (tag === 'button') return 'Quiet'

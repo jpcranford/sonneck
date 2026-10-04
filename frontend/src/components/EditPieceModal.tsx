@@ -930,7 +930,7 @@ export function EditPieceModal({
                 type="submit"
                 form="edit-piece-form"
                 disabled={isSaving}
-                className="cursor-pointer rounded-md bg-accent px-4 py-2 font-display text-white hover:bg-accent/90 disabled:cursor-default disabled:opacity-60"
+                className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display text-white hover:bg-accent-fill/90 disabled:cursor-default disabled:opacity-60"
               >
                 {isSaving ? 'Saving…' : 'Save & Close'}
               </button>

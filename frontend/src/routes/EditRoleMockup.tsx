@@ -30,7 +30,13 @@ interface EditRoleModalProps {
   onSave: (role: string | undefined) => void
 }
 
-export function EditRoleModal({ open, onClose, pieceTitle, initialRole = '', onSave }: EditRoleModalProps) {
+export function EditRoleModal({
+  open,
+  onClose,
+  pieceTitle,
+  initialRole = '',
+  onSave,
+}: EditRoleModalProps) {
   const [role, setRole] = useState(initialRole)
 
   useEffect(() => {
@@ -94,7 +100,7 @@ export function EditRoleModal({ open, onClose, pieceTitle, initialRole = '', onS
             type="button"
             onClick={handleSave}
             disabled={!canSave}
-            className="cursor-pointer rounded-md bg-accent px-4 py-2 font-display text-white hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display text-white hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Save
           </button>
@@ -121,7 +127,9 @@ export function EditRoleModal({ open, onClose, pieceTitle, initialRole = '', onS
           placeholder="Prelude"
           className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
         />
-        {hadRole && <p className="text-xs text-ink-soft italic">Leave blank and save to remove the role.</p>}
+        {hadRole && (
+          <p className="text-xs text-ink-soft italic">Leave blank and save to remove the role.</p>
+        )}
       </form>
     </Modal>
   )

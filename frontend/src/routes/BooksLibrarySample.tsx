@@ -837,7 +837,7 @@ function NewBookModal({
           <button
             type="submit"
             form="new-book-form"
-            className="rounded-md bg-accent px-4 py-2 font-display text-white hover:bg-accent/90"
+            className="rounded-md bg-accent-fill px-4 py-2 font-display text-white hover:bg-accent-fill/90"
           >
             Create
           </button>
@@ -1055,7 +1055,7 @@ export function BooksLibrarySample() {
                 <IconAdjustmentsHorizontal size={16} />
                 <span className="inline sm:hidden 2xl:inline">Filters</span>
                 {activeCount > 0 && (
-                  <span className="flex size-4 items-center justify-center rounded-full bg-accent text-[0.65rem] font-semibold text-white">
+                  <span className="flex size-4 items-center justify-center rounded-full bg-accent-fill text-[0.65rem] font-semibold text-white">
                     {activeCount}
                   </span>
                 )}

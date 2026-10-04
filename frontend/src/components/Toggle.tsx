@@ -43,7 +43,7 @@ export function Toggle({
         onClick={() => onChange(!checked)}
         className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus-visible:outline focus-visible:outline-accent ${
           disabled ? 'cursor-not-allowed' : 'cursor-pointer'
-        } ${checked ? 'bg-accent' : 'bg-border'}`}
+        } ${checked ? 'bg-accent-fill' : 'bg-border'}`}
       >
         <span
           className={`inline-block size-3.5 transform rounded-full bg-paper-raised shadow transition-transform ${

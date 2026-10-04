@@ -72,7 +72,7 @@ function WizardChrome({ step, onBack }: { step: number; onBack: () => void }) {
             <span
               key={s}
               className={`h-1 w-5 rounded-full ${
-                s < step ? 'bg-accent-on-dark' : s === step ? 'bg-accent' : 'bg-border'
+                s < step ? 'bg-accent-on-dark' : s === step ? 'bg-accent-fill' : 'bg-border'
               }`}
             />
           ))}
@@ -99,7 +99,7 @@ function WelcomeStep({ onStart }: { onStart: () => void }) {
       <button
         type="button"
         onClick={onStart}
-        className="mt-2 flex cursor-pointer items-center gap-2 rounded-md bg-accent px-5 py-2.5 font-display text-white hover:bg-accent/90"
+        className="mt-2 flex cursor-pointer items-center gap-2 rounded-md bg-accent-fill px-5 py-2.5 font-display text-white hover:bg-accent-fill/90"
       >
         Get Started
         <IconArrowRight size={18} />
@@ -208,7 +208,7 @@ function FolderStep({
       <button
         type="button"
         onClick={onNext}
-        className="mt-8 flex w-full cursor-pointer items-center justify-center gap-2 rounded-md bg-accent px-5 py-2.5 font-display text-white hover:bg-accent/90"
+        className="mt-8 flex w-full cursor-pointer items-center justify-center gap-2 rounded-md bg-accent-fill px-5 py-2.5 font-display text-white hover:bg-accent-fill/90"
       >
         Continue
         <IconArrowRight size={18} />
@@ -261,7 +261,7 @@ function SecurityCard({
       <div className="flex items-start gap-3">
         <span
           className={`mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full ${
-            selected ? 'bg-accent text-white' : 'bg-paper-sunken text-ink-soft'
+            selected ? 'bg-accent-fill text-white' : 'bg-paper-sunken text-ink-soft'
           }`}
         >
           {icon}
@@ -506,7 +506,7 @@ function SecurityStep({
         type="button"
         disabled={!canFinish}
         onClick={() => (needsPassword ? onFinish('singlepass', password) : onFinish('none'))}
-        className="mt-8 flex w-full items-center justify-center gap-2 rounded-md bg-accent px-5 py-2.5 font-display text-white enabled:cursor-pointer enabled:hover:bg-accent/90 disabled:opacity-40"
+        className="mt-8 flex w-full items-center justify-center gap-2 rounded-md bg-accent-fill px-5 py-2.5 font-display text-white enabled:cursor-pointer enabled:hover:bg-accent-fill/90 disabled:opacity-40"
       >
         {pending ? 'Saving…' : 'Finish Setup'}
       </button>

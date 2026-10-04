@@ -525,7 +525,7 @@ export function UploadPage() {
           <IconFileTypePdf size={40} className="text-ink-soft" />
           <div className="h-2 w-full overflow-hidden rounded-full bg-border">
             <div
-              className="h-full rounded-full bg-accent transition-[width]"
+              className="h-full rounded-full bg-accent-fill transition-[width]"
               style={{ width: `${Math.round(progress)}%` }}
             />
           </div>
@@ -976,7 +976,7 @@ export function UploadPage() {
                 <button
                   type="submit"
                   disabled={saveMutation.isPending}
-                  className="mt-1 rounded-md bg-accent px-4 py-2 font-display text-white disabled:opacity-60"
+                  className="mt-1 rounded-md bg-accent-fill px-4 py-2 font-display text-white disabled:opacity-60"
                 >
                   {saveMutation.isPending ? 'Saving…' : 'Save'}
                 </button>
@@ -1014,7 +1014,7 @@ export function UploadPage() {
             <Link
               to={`/pieces/${piece.id}`}
               state={{ backLabel: 'Upload' }}
-              className="flex items-center gap-1.5 rounded-md bg-accent px-4 py-2 font-display text-white hover:bg-accent/90"
+              className="flex items-center gap-1.5 rounded-md bg-accent-fill px-4 py-2 font-display text-white hover:bg-accent-fill/90"
             >
               <IconMusic size={16} />
               View Piece

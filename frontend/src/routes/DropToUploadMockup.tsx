@@ -172,7 +172,7 @@ function FooterButton({
       onClick={onClick}
       className={`cursor-pointer rounded-md px-4 py-2 font-display ${
         primary
-          ? 'bg-accent text-white hover:bg-accent/90'
+          ? 'bg-accent-fill text-white hover:bg-accent-fill/90'
           : destructive
             ? 'border border-border bg-paper-raised text-danger hover:border-danger'
             : 'border border-border bg-paper-raised text-ink hover:border-accent'

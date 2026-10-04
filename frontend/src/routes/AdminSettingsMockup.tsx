@@ -162,7 +162,7 @@ function RuntimeModeToggle({
           type="button"
           onClick={() => onChange('docker')}
           className={`flex cursor-pointer items-center gap-1 px-2 py-1 ${
-            mode === 'docker' ? 'bg-accent text-white' : 'bg-paper hover:bg-paper-sunken'
+            mode === 'docker' ? 'bg-accent-fill text-white' : 'bg-paper hover:bg-paper-sunken'
           }`}
         >
           <IconBrandDocker size={13} />
@@ -172,7 +172,7 @@ function RuntimeModeToggle({
           type="button"
           onClick={() => onChange('native')}
           className={`flex cursor-pointer items-center gap-1 px-2 py-1 ${
-            mode === 'native' ? 'bg-accent text-white' : 'bg-paper hover:bg-paper-sunken'
+            mode === 'native' ? 'bg-accent-fill text-white' : 'bg-paper hover:bg-paper-sunken'
           }`}
         >
           <IconDeviceDesktop size={13} />
@@ -367,7 +367,7 @@ function IdentityStateToggle({
             type="button"
             onClick={() => onChange(key)}
             className={`cursor-pointer px-2 py-1 ${
-              state === key ? 'bg-accent text-white' : 'bg-paper hover:bg-paper-sunken'
+              state === key ? 'bg-accent-fill text-white' : 'bg-paper hover:bg-paper-sunken'
             }`}
           >
             {IDENTITY_LABELS[key]}
@@ -507,7 +507,7 @@ function SecurityCard({
       <div className="flex items-start gap-3">
         <span
           className={`mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full ${
-            selected ? 'bg-accent text-white' : 'bg-paper-sunken text-ink-soft'
+            selected ? 'bg-accent-fill text-white' : 'bg-paper-sunken text-ink-soft'
           }`}
         >
           {icon}
@@ -902,7 +902,7 @@ export function AdminSettingsMockup() {
                 aria-checked={shareOnNetwork}
                 onClick={toggleShareOnNetwork}
                 className={`relative h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors ${
-                  shareOnNetwork ? 'bg-accent' : 'bg-border'
+                  shareOnNetwork ? 'bg-accent-fill' : 'bg-border'
                 }`}
               >
                 <span
@@ -937,7 +937,7 @@ export function AdminSettingsMockup() {
                 <button
                   type="button"
                   onClick={restartNow}
-                  className="shrink-0 cursor-pointer rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white hover:bg-accent/90"
+                  className="shrink-0 cursor-pointer rounded-md bg-accent-fill px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-fill/90"
                 >
                   Restart Now
                 </button>
@@ -1026,7 +1026,9 @@ export function AdminSettingsMockup() {
                     type="button"
                     onClick={() => setBuildKind(key)}
                     className={`cursor-pointer px-2 py-1 ${
-                      buildKind === key ? 'bg-accent text-white' : 'bg-paper hover:bg-paper-sunken'
+                      buildKind === key
+                        ? 'bg-accent-fill text-white'
+                        : 'bg-paper hover:bg-paper-sunken'
                     }`}
                   >
                     {BUILD_FIXTURES[key].label}
@@ -1210,7 +1212,7 @@ export function AdminSettingsMockup() {
               <button
                 type="button"
                 onClick={restartLibraryNow}
-                className="shrink-0 cursor-pointer rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white hover:bg-accent/90"
+                className="shrink-0 cursor-pointer rounded-md bg-accent-fill px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-fill/90"
               >
                 {libraryRestarting ? 'Restarting…' : 'Restart Now'}
               </button>
@@ -1248,7 +1250,7 @@ export function AdminSettingsMockup() {
                       </span>
                       <span
                         className={`ml-auto shrink-0 rounded-full px-2 py-0.5 text-[0.65rem] font-bold tracking-wide uppercase ${
-                          isAdmin ? 'bg-accent text-white' : 'bg-paper-sunken text-ink-soft'
+                          isAdmin ? 'bg-accent-fill text-white' : 'bg-paper-sunken text-ink-soft'
                         }`}
                       >
                         {isAdmin
@@ -1397,7 +1399,7 @@ export function AdminSettingsMockup() {
               type="button"
               disabled={!canSaveSecurity}
               onClick={saveSecurity}
-              className="cursor-pointer rounded-md bg-accent px-4 py-2 text-sm text-white enabled:hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-40"
+              className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 text-sm text-white enabled:hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-40"
             >
               Save changes
             </button>
@@ -1478,7 +1480,7 @@ export function AdminSettingsMockup() {
             <button
               type="button"
               onClick={saveLibraryLocation}
-              className="cursor-pointer rounded-md bg-accent px-4 py-2 text-sm text-white hover:bg-accent/90"
+              className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 text-sm text-white hover:bg-accent-fill/90"
             >
               Save changes
             </button>
@@ -1561,7 +1563,7 @@ export function AdminSettingsMockup() {
               type="button"
               disabled={lookupDeleteMode === 'merge' && mergeTargetId === null}
               onClick={confirmLookupDelete}
-              className="cursor-pointer rounded-md bg-danger px-4 py-2 text-sm text-white hover:bg-danger-strong disabled:cursor-not-allowed disabled:opacity-40"
+              className="cursor-pointer rounded-md bg-danger-fill px-4 py-2 text-sm text-white hover:bg-danger-fill-strong disabled:cursor-not-allowed disabled:opacity-40"
             >
               {lookupDeleteMode === 'merge' ? 'Merge and delete' : 'Delete outright'}
             </button>

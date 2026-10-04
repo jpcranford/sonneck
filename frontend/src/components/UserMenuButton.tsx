@@ -217,7 +217,7 @@ export function UserMenuButton({
             <p className="break-words text-[0.92rem] font-medium text-sidebar-text">
               {me.displayName}
               {isAdmin && (
-                <span className="ml-1.5 inline-block translate-y-[-1px] rounded-full bg-accent px-1.5 py-px align-middle text-[0.62rem] font-bold tracking-wide whitespace-nowrap text-white uppercase">
+                <span className="ml-1.5 inline-block translate-y-[-1px] rounded-full bg-accent-fill px-1.5 py-px align-middle text-[0.62rem] font-bold tracking-wide whitespace-nowrap text-white uppercase">
                   Admin
                 </span>
               )}

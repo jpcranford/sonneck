@@ -127,7 +127,7 @@ function ThemeControl({
         onClick={() => onChange('light')}
         className={`flex cursor-pointer items-center gap-1.5 rounded-l-md border-r border-border px-2.5 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50 ${
           theme === 'light'
-            ? 'bg-accent text-white'
+            ? 'bg-accent-fill text-white'
             : 'bg-paper-raised text-ink-soft hover:bg-paper-sunken'
         }`}
       >
@@ -152,7 +152,7 @@ function ThemeControl({
         onClick={() => onChange('system')}
         className={`flex cursor-pointer items-center gap-1.5 rounded-r-md px-2.5 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50 ${
           theme === 'system'
-            ? 'bg-accent text-white'
+            ? 'bg-accent-fill text-white'
             : 'bg-paper-raised text-ink-soft hover:bg-paper-sunken'
         }`}
       >
@@ -423,7 +423,7 @@ function ChangePasswordModal({ open, onClose }: { open: boolean; onClose: () => 
           type="button"
           disabled={!canSubmit}
           onClick={() => mutation.mutate()}
-          className="cursor-pointer rounded-md bg-accent px-4 py-2 text-sm text-white hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-40"
+          className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 text-sm text-white hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-40"
         >
           {mutation.isPending ? 'Saving…' : 'Change Password'}
         </button>
@@ -669,7 +669,7 @@ export function UserSettingsPage() {
                 (deleteMode === 'merge' && mergeTargetId === null) || deleteMutation.isPending
               }
               onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget)}
-              className="cursor-pointer rounded-md bg-danger px-4 py-2 text-sm text-white hover:bg-danger-strong disabled:cursor-not-allowed disabled:opacity-40"
+              className="cursor-pointer rounded-md bg-danger-fill px-4 py-2 text-sm text-white hover:bg-danger-fill-strong disabled:cursor-not-allowed disabled:opacity-40"
             >
               {deleteMutation.isPending
                 ? 'Working…'

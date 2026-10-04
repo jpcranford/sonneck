@@ -78,7 +78,9 @@ export function EditEntryModal({
   onSave,
 }: EditEntryModalProps) {
   const [name, setName] = useState(initialName)
-  const [duration, setDuration] = useState(initialDurationSeconds != null ? formatDuration(initialDurationSeconds) : '')
+  const [duration, setDuration] = useState(
+    initialDurationSeconds != null ? formatDuration(initialDurationSeconds) : '',
+  )
   const [description, setDescription] = useState(initialDescription)
   const [countsAsMusic, setCountsAsMusic] = useState(initialCountsAsMusic)
   const nameInputRef = useRef<HTMLInputElement>(null)
@@ -155,7 +157,7 @@ export function EditEntryModal({
             type="button"
             onClick={handleSave}
             disabled={!name.trim()}
-            className="cursor-pointer rounded-md bg-accent px-4 py-2 font-display text-white hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display text-white hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Save
           </button>
@@ -259,26 +261,31 @@ export function EditEntryMockup() {
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-6 py-6 md:px-8 md:py-8">
-      <Link to="/mockup" className="inline-flex w-fit items-center gap-1.5 text-sm text-ink-soft hover:text-ink">
+      <Link
+        to="/mockup"
+        className="inline-flex w-fit items-center gap-1.5 text-sm text-ink-soft hover:text-ink"
+      >
         <IconArrowLeft size={20} />
         Setlists
       </Link>
 
       <div className="rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-4 py-2 text-sm text-ink-soft">
-        Reference sample — <span className="font-medium text-ink">Edit Entry modal</span> (design doc §13, Phase 11,
-        decision 16) — a single custom entry's own name/duration/"Count as music"/description, reached from a
-        custom entry's right-click "Edit Entry" item on the Setlist Details page. Carries the exact same field set
-        as the Edit Setlist modal's own Program Order tab uses for its inline "edit an existing custom entry" form
-        (EditSetlistMockup.tsx) — deliberately duplicated, not shared, since that form exists for editing while
-        already reordering/adding others, and this one is the fast single-entry path from a right-click. A piece
-        entry's own right-click menu opens Edit Piece instead — this modal is custom-entry only.
+        Reference sample — <span className="font-medium text-ink">Edit Entry modal</span> (design
+        doc §13, Phase 11, decision 16) — a single custom entry's own name/duration/"Count as
+        music"/description, reached from a custom entry's right-click "Edit Entry" item on the
+        Setlist Details page. Carries the exact same field set as the Edit Setlist modal's own
+        Program Order tab uses for its inline "edit an existing custom entry" form
+        (EditSetlistMockup.tsx) — deliberately duplicated, not shared, since that form exists for
+        editing while already reordering/adding others, and this one is the fast single-entry path
+        from a right-click. A piece entry's own right-click menu opens Edit Piece instead — this
+        modal is custom-entry only.
       </div>
 
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
           onClick={() => openDemo('announcement')}
-          className="w-fit cursor-pointer rounded-md bg-accent px-4 py-2 font-display text-sm text-white hover:bg-accent/90"
+          className="w-fit cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display text-sm text-white hover:bg-accent-fill/90"
         >
           Edit "Welcome & Announcements"
         </button>

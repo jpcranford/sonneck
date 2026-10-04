@@ -92,7 +92,7 @@ export function LoginScreen({
               oidcProviderName rather than wrapping or truncating it. */}
           <a
             href="/api/auth/oidc/login"
-            className="flex w-auto min-w-[180px] items-center justify-center gap-2 rounded-md bg-accent px-8 py-2.5 font-display text-white hover:bg-accent/90"
+            className="flex w-auto min-w-[180px] items-center justify-center gap-2 rounded-md bg-accent-fill px-8 py-2.5 font-display text-white hover:bg-accent-fill/90"
           >
             Sign in with {oidcProviderName ?? 'your identity provider'}
           </a>
@@ -153,7 +153,7 @@ export function LoginScreen({
         <button
           type="submit"
           disabled={password.length === 0 || loginMutation.isPending}
-          className="flex w-auto min-w-[180px] items-center justify-center gap-2 rounded-md bg-accent px-8 py-2.5 font-display text-white enabled:cursor-pointer enabled:hover:bg-accent/90 disabled:opacity-40"
+          className="flex w-auto min-w-[180px] items-center justify-center gap-2 rounded-md bg-accent-fill px-8 py-2.5 font-display text-white enabled:cursor-pointer enabled:hover:bg-accent-fill/90 disabled:opacity-40"
         >
           {loginMutation.isPending ? 'Signing in…' : 'Log In'}
         </button>

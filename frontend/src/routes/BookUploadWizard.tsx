@@ -94,7 +94,7 @@ function ImportSuccessScreen({
           </button>
           <Link
             to={`/books/${bookId}`}
-            className="flex items-center gap-1.5 rounded-md bg-accent px-4 py-2 font-display text-white hover:bg-accent/90"
+            className="flex items-center gap-1.5 rounded-md bg-accent-fill px-4 py-2 font-display text-white hover:bg-accent-fill/90"
           >
             <IconBook2 size={16} />
             Open book

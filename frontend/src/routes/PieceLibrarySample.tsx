@@ -1230,7 +1230,7 @@ export function PieceLibrarySample() {
                 <IconAdjustmentsHorizontal size={16} />
                 <span className="inline sm:hidden 2xl:inline">Filters</span>
                 {activeCount > 0 && (
-                  <span className="flex size-4 items-center justify-center rounded-full bg-accent text-[0.65rem] font-semibold text-white">
+                  <span className="flex size-4 items-center justify-center rounded-full bg-accent-fill text-[0.65rem] font-semibold text-white">
                     {activeCount}
                   </span>
                 )}

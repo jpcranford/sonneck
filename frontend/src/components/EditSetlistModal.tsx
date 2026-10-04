@@ -672,7 +672,7 @@ export function EditSetlistModal({
           <button
             type="submit"
             disabled={!customName.trim() || addOrEditCustomMutation.isPending}
-            className="cursor-pointer rounded-md bg-accent px-3 py-1.5 text-sm text-white hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="cursor-pointer rounded-md bg-accent-fill px-3 py-1.5 text-sm text-white hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {editingEntryId ? 'Save' : 'Add'}
           </button>
@@ -734,7 +734,7 @@ export function EditSetlistModal({
           <button
             type="submit"
             disabled={!canSave || editRoleMutation.isPending}
-            className="cursor-pointer rounded-md bg-accent px-3 py-1.5 text-sm text-white hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="cursor-pointer rounded-md bg-accent-fill px-3 py-1.5 text-sm text-white hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Save
           </button>
@@ -809,7 +809,7 @@ export function EditSetlistModal({
               type="button"
               onClick={handleSave}
               disabled={!name.trim() || saving}
-              className="cursor-pointer rounded-md bg-accent px-4 py-2 font-display text-white hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
+              className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display text-white hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {saving ? 'Saving…' : 'Save'}
             </button>

@@ -351,7 +351,7 @@ function SplitPeopleModal({
             type="button"
             onClick={handleConfirm}
             disabled={replacements.length === 0 || isSubmitting}
-            className="cursor-pointer rounded-md bg-accent px-4 py-2 font-display text-white hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display text-white hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isSubmitting ? 'Splitting…' : 'Split Person'}
           </button>

@@ -131,7 +131,9 @@ export function LibraryToolbar<Field extends string>({
   return (
     <div className="sticky top-0 z-20 border-b border-border bg-paper">
       <div className={`${WIDE_CONTENT_MAX_W} flex flex-col gap-3 p-4`}>
-        <div className={`grid grid-cols-[auto_1fr] items-center gap-3 ${rightColumnGridColsClassName}`}>
+        <div
+          className={`grid grid-cols-[auto_1fr] items-center gap-3 ${rightColumnGridColsClassName}`}
+        >
           <div className="col-start-1 row-start-1 flex shrink-0 items-center justify-self-start gap-1 rounded-md border border-border p-0.5 sm:col-start-auto sm:row-start-auto">
             <button
               type="button"
@@ -200,7 +202,7 @@ export function LibraryToolbar<Field extends string>({
               <IconAdjustmentsHorizontal size={16} />
               <span className="inline sm:hidden 2xl:inline">Filters</span>
               {activeFilterCount > 0 && (
-                <span className="flex size-4 items-center justify-center rounded-full bg-accent text-[0.65rem] font-semibold text-white">
+                <span className="flex size-4 items-center justify-center rounded-full bg-accent-fill text-[0.65rem] font-semibold text-white">
                   {activeFilterCount}
                 </span>
               )}

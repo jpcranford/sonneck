@@ -40,7 +40,7 @@ function PreviewToggle({
             key={key}
             type="button"
             onClick={() => onChange(key)}
-            className={`cursor-pointer px-2 py-1 ${state === key ? 'bg-accent text-white' : 'bg-paper hover:bg-paper-sunken'}`}
+            className={`cursor-pointer px-2 py-1 ${state === key ? 'bg-accent-fill text-white' : 'bg-paper hover:bg-paper-sunken'}`}
           >
             {PREVIEW_LABELS[key]}
           </button>
@@ -88,7 +88,7 @@ export function LoginScreenMockup() {
               wrapping or truncating it. */}
           <button
             type="button"
-            className="flex w-auto min-w-[180px] cursor-pointer items-center justify-center gap-2 rounded-md bg-accent px-8 py-2.5 font-display text-white hover:bg-accent/90"
+            className="flex w-auto min-w-[180px] cursor-pointer items-center justify-center gap-2 rounded-md bg-accent-fill px-8 py-2.5 font-display text-white hover:bg-accent-fill/90"
           >
             Sign in with Test IdP
           </button>
@@ -140,7 +140,7 @@ export function LoginScreenMockup() {
           <button
             type="submit"
             disabled={password.length === 0}
-            className="flex w-auto min-w-[180px] items-center justify-center gap-2 rounded-md bg-accent px-8 py-2.5 font-display text-white enabled:cursor-pointer enabled:hover:bg-accent/90 disabled:opacity-40"
+            className="flex w-auto min-w-[180px] items-center justify-center gap-2 rounded-md bg-accent-fill px-8 py-2.5 font-display text-white enabled:cursor-pointer enabled:hover:bg-accent-fill/90 disabled:opacity-40"
           >
             Log In
           </button>

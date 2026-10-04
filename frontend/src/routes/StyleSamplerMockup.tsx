@@ -24,6 +24,7 @@ import {
   colorUsage,
   controlStyles,
   literalColors,
+  parseDarkColors,
   parseFontFaces,
   parseFontStacks,
   parseThemeColors,
@@ -89,9 +90,25 @@ const SECTIONS = [
   ['controls', 'Buttons & fields'],
 ] as const
 
+// Previews a theme by setting <html data-theme> while this page is open,
+// and puts back whatever was there when it closes.
+function usePreviewTheme(theme: 'light' | 'dark') {
+  useEffect(() => {
+    const root = document.documentElement
+    const previous = root.dataset.theme
+    root.dataset.theme = theme
+    return () => {
+      if (previous) root.dataset.theme = previous
+      else delete root.dataset.theme
+    }
+  }, [theme])
+}
+
 export function StyleSamplerMockup() {
   useMockupTitle('Style Sampler')
   const files = useSources()
+  const [theme, setTheme] = useState<'light' | 'dark'>('light')
+  usePreviewTheme(theme)
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-8">
@@ -101,13 +118,36 @@ export function StyleSamplerMockup() {
         <code className="font-mono">index.css</code> and the app’s own source on every load, so
         nothing here is maintained by hand except the example window.
       </p>
-      <nav className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-sm">
-        {SECTIONS.map(([id, label]) => (
-          <a key={id} href={`#${id}`} className="text-accent hover:underline">
-            {label}
-          </a>
-        ))}
-      </nav>
+      <div className="sticky top-0 z-10 -mx-4 mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-border bg-paper px-4 py-2 sm:-mx-8 sm:px-8">
+        <nav className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+          {SECTIONS.map(([id, label]) => (
+            <a key={id} href={`#${id}`} className="text-accent hover:underline">
+              {label}
+            </a>
+          ))}
+        </nav>
+        <div
+          role="group"
+          aria-label="Preview theme"
+          className="ml-auto flex items-center gap-0.5 rounded-md border border-border p-0.5 text-sm"
+        >
+          {(['light', 'dark'] as const).map((option) => (
+            <button
+              key={option}
+              type="button"
+              aria-pressed={theme === option}
+              onClick={() => setTheme(option)}
+              className={`cursor-pointer rounded px-3 py-1 capitalize ${
+                theme === option
+                  ? 'bg-accent-soft font-medium text-accent'
+                  : 'text-ink-soft hover:text-ink'
+              }`}
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+      </div>
 
       <ColorSection files={files} />
       <LiteralColorSection files={files} />
@@ -173,6 +213,7 @@ function Swatch({ color, size = 32 }: { color: string; size?: number }) {
 
 function ColorSection({ files }: { files: SourceFile[] | null }) {
   const groups = parseThemeColors(indexCss)
+  const dark = parseDarkColors(indexCss)
   const all = groups.flatMap((g) => g.tokens)
   const defined = new Set(all.map((t) => t.name))
   const aliasesOf = (name: string) => all.filter((t) => t.refersTo === name)
@@ -187,7 +228,8 @@ function ColorSection({ files }: { files: SourceFile[] | null }) {
           <code className="font-mono">index.css</code>’s <code className="font-mono">@theme</code>,
           in its own groups. The note under a name is the comment above it in the stylesheet; usage
           counts every utility class and <code className="font-mono">var()</code> naming it. A token
-          defined as another token is listed under that one.
+          defined as another token is listed under that one. Where the dark theme redefines a token,
+          its dark value follows the light one, and the swatches follow the Light/Dark switch above.
         </>
       }
     >
@@ -206,6 +248,7 @@ function ColorSection({ files }: { files: SourceFile[] | null }) {
                     key={token.name}
                     token={token}
                     aliases={aliasesOf(token.name)}
+                    dark={dark}
                     files={files}
                   />
                 ))}
@@ -221,10 +264,12 @@ function ColorSection({ files }: { files: SourceFile[] | null }) {
 function ColorRow({
   token,
   aliases,
+  dark,
   files,
 }: {
   token: ColorToken
   aliases: ColorToken[]
+  dark: Map<string, string>
   files: SourceFile[] | null
 }) {
   return (
@@ -233,7 +278,10 @@ function ColorRow({
       <div className="min-w-0 flex-1">
         <p className="flex flex-wrap items-baseline gap-x-3">
           <span className="font-mono text-sm font-semibold text-ink">--color-{token.name}</span>
-          <span className="font-mono text-xs text-ink-soft">{token.value}</span>
+          <span className="font-mono text-xs text-ink-soft">
+            {token.value}
+            {dark.has(token.name) && ` • dark ${dark.get(token.name)}`}
+          </span>
         </p>
         {token.note && <p className="mt-1 text-sm text-ink">{token.note}</p>}
         <div className="mt-1">
@@ -387,7 +435,7 @@ function ExampleWindowSection() {
             </button>
             <button
               type="button"
-              className="flex h-9 cursor-pointer items-center gap-1.5 rounded-md bg-accent px-3 font-display text-sm text-white"
+              className="flex h-9 cursor-pointer items-center gap-1.5 rounded-md bg-accent-fill px-3 font-display text-sm text-white"
             >
               <IconUpload size={15} />
               Upload

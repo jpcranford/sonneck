@@ -174,7 +174,7 @@ function IdentityStateToggle({
             type="button"
             onClick={() => onChange(key)}
             className={`cursor-pointer px-2 py-1 ${
-              state === key ? 'bg-accent text-white' : 'bg-paper hover:bg-paper-sunken'
+              state === key ? 'bg-accent-fill text-white' : 'bg-paper hover:bg-paper-sunken'
             }`}
           >
             {IDENTITIES[key].label}
@@ -245,7 +245,7 @@ function ThemeControl({ theme, onChange }: { theme: Theme; onChange: (theme: The
         onClick={() => onChange('light')}
         className={`flex cursor-pointer items-center gap-1.5 rounded-l-md border-r border-border px-2.5 py-1.5 text-sm ${
           theme === 'light'
-            ? 'bg-accent text-white'
+            ? 'bg-accent-fill text-white'
             : 'bg-paper-raised text-ink-soft hover:bg-paper-sunken'
         }`}
       >
@@ -269,7 +269,7 @@ function ThemeControl({ theme, onChange }: { theme: Theme; onChange: (theme: The
         onClick={() => onChange('system')}
         className={`flex cursor-pointer items-center gap-1.5 rounded-r-md px-2.5 py-1.5 text-sm ${
           theme === 'system'
-            ? 'bg-accent text-white'
+            ? 'bg-accent-fill text-white'
             : 'bg-paper-raised text-ink-soft hover:bg-paper-sunken'
         }`}
       >
@@ -606,7 +606,7 @@ export function UserSettingsMockup() {
               type="button"
               disabled={listDeleteMode === 'merge' && mergeTargetId === null}
               onClick={confirmListDelete}
-              className="cursor-pointer rounded-md bg-danger px-4 py-2 text-sm text-white hover:bg-danger-strong disabled:cursor-not-allowed disabled:opacity-40"
+              className="cursor-pointer rounded-md bg-danger-fill px-4 py-2 text-sm text-white hover:bg-danger-fill-strong disabled:cursor-not-allowed disabled:opacity-40"
             >
               {listDeleteMode === 'merge' ? 'Merge and delete' : 'Delete outright'}
             </button>

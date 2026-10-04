@@ -727,7 +727,7 @@ export function PiecePage() {
                 message="Coming soon — will play through the future Sheet Viewer."
                 ariaLabel="Play (coming soon with the Sheet Viewer)"
                 showPointerCursor={false}
-                triggerClassName="flex items-center gap-2 rounded-md bg-accent px-4 py-2 font-display text-sm text-white opacity-50"
+                triggerClassName="flex items-center gap-2 rounded-md bg-accent-fill px-4 py-2 font-display text-sm text-white opacity-50"
               >
                 <IconPlayerPlay size={16} />
                 Play
@@ -902,7 +902,7 @@ export function PiecePage() {
                   <button
                     type="button"
                     onClick={() => replaceFileInputRef.current?.click()}
-                    className="rounded-md bg-accent px-3 py-1 text-white hover:bg-accent/90"
+                    className="rounded-md bg-accent-fill px-3 py-1 text-white hover:bg-accent-fill/90"
                   >
                     Choose File…
                   </button>
@@ -913,7 +913,7 @@ export function PiecePage() {
               <div className="flex flex-col items-center gap-2 rounded-md border border-border bg-accent-soft/40 px-4 py-2.5">
                 <div className="h-2 w-full max-w-xs overflow-hidden rounded-full bg-border">
                   <div
-                    className="h-full rounded-full bg-accent transition-[width]"
+                    className="h-full rounded-full bg-accent-fill transition-[width]"
                     style={{ width: `${Math.round(replaceProgress)}%` }}
                   />
                 </div>

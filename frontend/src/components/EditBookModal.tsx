@@ -438,7 +438,7 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
               type="submit"
               form="edit-book-form"
               disabled={saving}
-              className="relative flex min-w-[190px] shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md bg-accent px-4 py-2 font-display whitespace-nowrap text-white disabled:cursor-default"
+              className="relative flex min-w-[190px] shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md bg-accent-fill px-4 py-2 font-display whitespace-nowrap text-white disabled:cursor-default"
             >
               {saveState === 'saving' && (
                 <span

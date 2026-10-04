@@ -552,7 +552,7 @@ export function SetlistDetailsMockup() {
           message="Coming soon — will play through the set's pieces one after another via the future Sheet Viewer, with placeholder pages standing in for custom entries. Built once the Sheet Viewer's own core playback exists."
           ariaLabel="Play Set (coming soon with the Sheet Viewer)"
           showPointerCursor={false}
-          triggerClassName="flex items-center gap-2 rounded-md bg-accent px-4 py-2 font-display text-sm text-white opacity-50"
+          triggerClassName="flex items-center gap-2 rounded-md bg-accent-fill px-4 py-2 font-display text-sm text-white opacity-50"
         >
           <IconPlayerPlay size={16} />
           Play Set
@@ -841,7 +841,7 @@ export function SetlistDetailsMockup() {
             <button
               type="button"
               onClick={confirmArchiveToggle}
-              className="cursor-pointer rounded-md bg-accent px-4 py-2 font-display text-white hover:bg-accent/90"
+              className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display text-white hover:bg-accent-fill/90"
             >
               {archived ? 'Unarchive' : 'Archive'}
             </button>
@@ -903,7 +903,7 @@ export function SetlistDetailsMockup() {
             <button
               type="button"
               onClick={confirmDuplicate}
-              className="cursor-pointer rounded-md bg-accent px-4 py-2 font-display text-white hover:bg-accent/90"
+              className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display text-white hover:bg-accent-fill/90"
             >
               Duplicate
             </button>

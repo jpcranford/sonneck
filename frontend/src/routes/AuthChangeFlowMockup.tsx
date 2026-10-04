@@ -108,7 +108,7 @@ import { afterMinDuration } from '../lib/minDuration'
 // button treatment (`border border-border bg-paper-raised text-ink
 // hover:border-accent` — the same recipe used everywhere else in the app
 // for a lower-emphasis action, e.g. FirstLaunchMockup.tsx's own "Preview
-// again") rather than solid `bg-accent` — it's the literal end of the
+// again") rather than solid `bg-accent-fill` — it's the literal end of the
 // flow, not a decision point that needs to compete visually with the
 // buttons that actually drove it forward.
 //
@@ -266,7 +266,7 @@ function ScenarioPicker({
             type="button"
             onClick={() => onChange(key)}
             className={`cursor-pointer px-2 py-1 ${
-              scenarioKey === key ? 'bg-accent text-white' : 'bg-paper hover:bg-paper-sunken'
+              scenarioKey === key ? 'bg-accent-fill text-white' : 'bg-paper hover:bg-paper-sunken'
             }`}
           >
             {SCENARIOS[key].label}
@@ -430,7 +430,7 @@ export function AuthChangeFlowMockup() {
             <button
               type="button"
               onClick={goNext}
-              className="mt-8 flex w-full cursor-pointer items-center justify-center gap-2 rounded-md bg-accent px-5 py-2.5 font-display text-white hover:bg-accent/90"
+              className="mt-8 flex w-full cursor-pointer items-center justify-center gap-2 rounded-md bg-accent-fill px-5 py-2.5 font-display text-white hover:bg-accent-fill/90"
             >
               Continue
             </button>
@@ -477,7 +477,7 @@ export function AuthChangeFlowMockup() {
               type="button"
               disabled={!canContinue}
               onClick={goNext}
-              className="mt-8 flex w-full items-center justify-center gap-2 rounded-md bg-accent px-5 py-2.5 font-display text-white enabled:cursor-pointer enabled:hover:bg-accent/90 disabled:opacity-40"
+              className="mt-8 flex w-full items-center justify-center gap-2 rounded-md bg-accent-fill px-5 py-2.5 font-display text-white enabled:cursor-pointer enabled:hover:bg-accent-fill/90 disabled:opacity-40"
             >
               Continue
             </button>
@@ -527,7 +527,7 @@ export function AuthChangeFlowMockup() {
               type="button"
               disabled={!chooseAdminCanContinue}
               onClick={goNext}
-              className="mt-8 flex w-full items-center justify-center gap-2 rounded-md bg-accent px-5 py-2.5 font-display text-white enabled:cursor-pointer enabled:hover:bg-accent/90 disabled:opacity-40"
+              className="mt-8 flex w-full items-center justify-center gap-2 rounded-md bg-accent-fill px-5 py-2.5 font-display text-white enabled:cursor-pointer enabled:hover:bg-accent-fill/90 disabled:opacity-40"
             >
               Review Deletion
             </button>
@@ -558,7 +558,7 @@ export function AuthChangeFlowMockup() {
             <button
               type="button"
               onClick={goNext}
-              className="mt-8 flex w-full cursor-pointer items-center justify-center gap-2 rounded-md bg-accent px-5 py-2.5 font-display text-white hover:bg-accent/90"
+              className="mt-8 flex w-full cursor-pointer items-center justify-center gap-2 rounded-md bg-accent-fill px-5 py-2.5 font-display text-white hover:bg-accent-fill/90"
             >
               Confirm and Continue
             </button>
@@ -598,7 +598,7 @@ export function AuthChangeFlowMockup() {
             <button
               type="button"
               onClick={goNext}
-              className="mt-8 flex w-full cursor-pointer items-center justify-center gap-2.5 rounded-md bg-danger px-6 py-3.5 font-display text-base font-medium text-white shadow-sm hover:bg-danger-strong"
+              className="mt-8 flex w-full cursor-pointer items-center justify-center gap-2.5 rounded-md bg-danger-fill px-6 py-3.5 font-display text-base font-medium text-white shadow-sm hover:bg-danger-fill-strong"
             >
               <IconAlertTriangle size={20} />
               Delete accounts now

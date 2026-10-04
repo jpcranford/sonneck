@@ -81,7 +81,7 @@ function SetlistToggleRow({
     >
       <span
         className={`flex size-3.5 shrink-0 items-center justify-center rounded border ${
-          checked ? 'border-accent bg-accent text-white' : 'border-border'
+          checked ? 'border-accent bg-accent-fill text-white' : 'border-border'
         }`}
       >
         {checked && <IconCheck size={9} />}
