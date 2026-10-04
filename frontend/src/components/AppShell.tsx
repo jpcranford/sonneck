@@ -141,7 +141,7 @@ export function AppShell() {
             doesn't visually center ragged wrapped text against a
             fixed-position icon. This layout has no such box to fight —
             centering is exact regardless of content width.
-            Color is ink-faint, a solid token rather than a translucent
+            Color is ink-fainter, a solid token rather than a translucent
             opacity utility — the S mark's overlapping strokes would re-blend
             unevenly under real translucency (CLAUDE.md > Frontend's icon
             pre-blend rule). Lives on the <a> itself with the mark/text
@@ -155,7 +155,7 @@ export function AppShell() {
             href="https://github.com/jpcranford/sonneck"
             target="_blank"
             rel="noreferrer"
-            className="flex cursor-pointer flex-col items-center gap-3.5 text-ink-faint hover:text-ink"
+            className="flex cursor-pointer flex-col items-center gap-3.5 text-ink-fainter hover:text-ink"
           >
             {/* No whitespace-nowrap here on purpose, even though the design
                 intent is "one line" — the sentence's natural width (~288px)
