@@ -27,7 +27,9 @@
 // background. (Those are the light theme's values; the dark theme's are
 // brightened to an even 5.5:1 against the dark page.)
 // The colors themselves live in index.css as --color-split-1…10 (the dark
-// theme brightens them), so this is the order as CSS variable references,
+// theme brightens them). Person avatars and Person Details' book-credit
+// circles use the same list (under white initials/icons). This is the order
+// as CSS variable references,
 // each written out in full so a search for a token's name finds it.
 // They're used in inline styles; a faint version is a color-mix() with
 // transparent, never a hex alpha suffix, which a CSS variable can't take.

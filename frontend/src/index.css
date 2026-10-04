@@ -403,7 +403,7 @@
   /* A solid red fill's hover. */
   --color-danger-fill-strong: #991b1b;
 
-  /* The upload wizard's book-split colors, one per piece in order (lib/pieceSplitLogic.ts's PALETTE): the lanes, page tiles and title-card borders that show which pages belong to which piece. The dark theme brightens them. */
+  /* The upload wizard's book-split colors, one per piece in order (lib/pieceSplitLogic.ts's PALETTE): the lanes, page tiles and title-card borders that show which pages belong to which piece. Also person avatars and Person Details' book-credit circles, under white initials and icons. The dark theme brightens them. */
   --color-split-1: #7a9c6b;
   --color-split-2: #b87aaf;
   --color-split-3: #5c8a8a;
@@ -414,6 +414,9 @@
   --color-split-8: #87a249;
   --color-split-9: #ac6939;
   --color-split-10: #b87a97;
+
+  /* The "good" green: the public-domain and copyleft shields (lib/copyrightBadge.ts) and Admin Settings' up-to-date check. */
+  --color-grass: #3fa34d;
 
   /* Overlays that must stay dark in both themes: the window backdrop, controls laid over page thumbnails, count badges. */
   --color-scrim: #1c1815;
@@ -480,6 +483,7 @@
   --color-danger-fill-strong: #93271f;
 
   --color-scrim: #080606;
+  --color-grass: #48b858;
 
   --color-split-1: #77a562;
   --color-split-2: #c87bbd;

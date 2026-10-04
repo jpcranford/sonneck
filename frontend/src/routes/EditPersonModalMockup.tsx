@@ -12,7 +12,7 @@ import {
   IconXFilled,
 } from '@tabler/icons-react'
 import { Modal } from '../components/Modal'
-import { GARDEN_VARIETY } from '../lib/gardenVariety'
+import { PALETTE } from '../lib/pieceSplitLogic'
 import { useMockupTitle } from '../lib/useMockupTitle'
 
 // ---------------------------------------------------------------------
@@ -81,7 +81,6 @@ const defaultValues: FormValues = {
 interface WikiSearchResult {
   title: string
   description: string
-  thumbColor: string
   birthYear: string | null
   deathYear: string | null
 }
@@ -103,21 +102,18 @@ const MOCK_WIKI_SEARCH: Record<string, WikiSearchResult[]> = {
       // treatment wrapping to a real second line.
       description:
         'Polish composer and virtuoso pianist (1810–1849). Widely regarded as one of the greatest composers for the piano, celebrated for his mazurkas, nocturnes, and études.',
-      thumbColor: '#5c8a8a',
       birthYear: '1810',
       deathYear: '1849',
     },
     {
       title: 'Chopin (crater)',
       description: 'Impact crater on Mercury named after the composer',
-      thumbColor: '#6b6560',
       birthYear: null,
       deathYear: null,
     },
     {
       title: 'Chopin Airport',
       description: 'Warsaw Chopin Airport, the main international airport of Warsaw, Poland',
-      thumbColor: '#6b6560',
       birthYear: null,
       deathYear: null,
     },
@@ -189,7 +185,7 @@ const HIGHLIGHT_MS = 2400
 // Same illustrative fixture image PersonDetailsSample.tsx's own avatar
 // uses in place of a real uploaded photo — duplicated locally, per this
 // codebase's usual "no shared components between a mockup and the real
-// thing" convention (GARDEN_VARIETY above is the one exception, since it's pure
+// thing" convention (PALETTE above is the one exception, since it's pure
 // data/logic, not a component).
 function CameoPortrait() {
   return (
@@ -212,7 +208,7 @@ function PersonAvatar({ className }: { className: string }) {
   return (
     <div
       className={`relative aspect-[3/4] overflow-hidden rounded-[50%] border border-border ${className}`}
-      style={{ backgroundColor: GARDEN_VARIETY[1 % GARDEN_VARIETY.length] }}
+      style={{ backgroundColor: PALETTE[1 % PALETTE.length] }}
     >
       <CameoPortrait />
     </div>
@@ -584,10 +580,7 @@ export function EditPersonModalMockup() {
                 onClick={() => pickResult(result)}
                 className="flex w-full cursor-pointer items-center gap-3 px-3 py-2.5 text-left hover:bg-paper-sunken"
               >
-                <span
-                  className="flex size-9 shrink-0 items-center justify-center rounded-full text-white"
-                  style={{ backgroundColor: result.thumbColor }}
-                >
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-ink-soft text-paper">
                   <IconExternalLink size={14} />
                 </span>
                 <span className="min-w-0 flex-1">

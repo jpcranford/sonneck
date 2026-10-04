@@ -23,7 +23,7 @@ import type { CopyrightStatus } from '../api/types'
 // interpolation) — Tailwind's JIT scanner needs the full class string to
 // appear verbatim in the source, so these are declared once here and
 // referenced by key, never assembled at runtime.
-const GRASS_ICON_CLASS = 'text-[#3fa34d]'
+const GRASS_ICON_CLASS = 'text-grass'
 const NEUTRAL_ICON_CLASS = 'text-ink-faint'
 
 export const COPYRIGHT_BADGE_META: Record<

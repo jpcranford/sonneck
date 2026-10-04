@@ -18,7 +18,7 @@ import {
 import { ContextMenu } from '../components/ContextMenu'
 import { InfoIconTooltip } from '../components/InfoIconTooltip'
 import { Modal } from '../components/Modal'
-import { GARDEN_VARIETY } from '../lib/gardenVariety'
+import { PALETTE } from '../lib/pieceSplitLogic'
 import { useMockupTitle } from '../lib/useMockupTitle'
 import { WIDE_CONTENT_MAX_W } from '../lib/layout'
 
@@ -271,7 +271,7 @@ function BustSilhouette() {
 // (50% of width, 50% of height), producing a true ellipse inscribed in
 // the box.
 function PersonAvatar({ person, className }: { person: MockPerson; className: string }) {
-  const color = GARDEN_VARIETY[person.paletteIndex % GARDEN_VARIETY.length]
+  const color = PALETTE[person.paletteIndex % PALETTE.length]
   return (
     <div
       className={`relative aspect-[3/4] overflow-hidden rounded-[50%] border border-border [container-type:inline-size] ${className}`}
@@ -984,7 +984,7 @@ export function PeopleLibrarySample() {
         // just-created entry.
         pieceCount: 0,
         avatarKind: 'initials',
-        paletteIndex: prev.length % GARDEN_VARIETY.length,
+        paletteIndex: prev.length % PALETTE.length,
       },
       ...prev,
     ])

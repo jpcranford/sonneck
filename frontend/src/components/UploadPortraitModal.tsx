@@ -367,7 +367,7 @@ export function UploadPortraitModal({
                     disabled={pickImageMutation.isPending}
                     className="flex cursor-pointer items-center gap-3 px-3 py-2.5 text-left hover:bg-paper-sunken disabled:cursor-default"
                   >
-                    <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#6b6560] text-white">
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-ink-soft text-paper">
                       {pickImageMutation.isPending &&
                       pickImageMutation.variables?.title === result.title ? (
                         <IconLoader2 size={14} className="animate-spin" />

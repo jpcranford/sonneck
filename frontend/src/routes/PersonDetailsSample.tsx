@@ -21,7 +21,7 @@ import { MarkdownText } from '../components/MarkdownText'
 import { Modal } from '../components/Modal'
 import { TagComboBox } from '../components/TagComboBox'
 import { TagPills } from '../components/TagPills'
-import { GARDEN_VARIETY } from '../lib/gardenVariety'
+import { PALETTE } from '../lib/pieceSplitLogic'
 import { useMockupTitle } from '../lib/useMockupTitle'
 import type { Tag } from '../api/types'
 
@@ -458,7 +458,7 @@ function PersonAvatar({
   name: string
   className: string
 }) {
-  const color = GARDEN_VARIETY[paletteIndex % GARDEN_VARIETY.length]
+  const color = PALETTE[paletteIndex % PALETTE.length]
   const initials = name
     .split(/\s+/)
     .filter(Boolean)
@@ -499,7 +499,9 @@ function WorkThumbnail({ paletteIndex, className }: { paletteIndex: number; clas
   return (
     <div
       className={`flex items-center justify-center rounded-md border border-border ${className}`}
-      style={{ backgroundColor: `${GARDEN_VARIETY[paletteIndex % GARDEN_VARIETY.length]}26` }}
+      style={{
+        backgroundColor: `color-mix(in srgb, ${PALETTE[paletteIndex % PALETTE.length]} 15%, transparent)`,
+      }}
     >
       <IconMusic size={16} className="text-ink-soft" />
     </div>
@@ -659,7 +661,6 @@ function WorkList({
 interface WikiResult {
   title: string
   description: string
-  thumbColor: string
   relevant: boolean
 }
 
@@ -675,19 +676,16 @@ const WIKI_RESULTS: WikiResult[] = [
     // nothing here long enough to show it.
     description:
       'Polish composer and virtuoso pianist (1810–1849). Widely regarded as one of the greatest composers for the piano, celebrated for his mazurkas, nocturnes, and études.',
-    thumbColor: '#5c8a8a',
     relevant: true,
   },
   {
     title: 'Chopin (crater)',
     description: 'Impact crater on Mercury named after the composer',
-    thumbColor: '#6b6560',
     relevant: false,
   },
   {
     title: 'Chopin Airport',
     description: 'Warsaw Chopin Airport, the main international airport of Warsaw, Poland',
-    thumbColor: '#6b6560',
     relevant: false,
   },
 ]
@@ -861,10 +859,7 @@ function UploadPortraitModal({
                     onClick={() => pickSource(`Wikipedia: ${result.title}`)}
                     className="flex cursor-pointer items-center gap-3 px-3 py-2.5 text-left hover:bg-paper-sunken"
                   >
-                    <span
-                      className="flex size-9 shrink-0 items-center justify-center rounded-full text-white"
-                      style={{ backgroundColor: result.thumbColor }}
-                    >
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-ink-soft text-paper">
                       <IconExternalLink size={14} />
                     </span>
                     <span className="min-w-0 flex-1">
@@ -1222,7 +1217,7 @@ export function PersonDetailsSample() {
                     >
                       <span
                         className="flex size-5 shrink-0 items-center justify-center rounded-full text-white"
-                        style={{ backgroundColor: GARDEN_VARIETY[index % GARDEN_VARIETY.length] }}
+                        style={{ backgroundColor: PALETTE[index % PALETTE.length] }}
                       >
                         <IconMusic size={10} />
                       </span>

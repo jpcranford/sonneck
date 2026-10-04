@@ -7,7 +7,7 @@ import { ApiError } from '../api/client'
 import type { Person, PersonCreateRequest } from '../api/types'
 import { useDebouncedValue } from '../hooks/useDebouncedValue'
 import { afterMinDuration } from '../lib/minDuration'
-import { GARDEN_VARIETY } from '../lib/gardenVariety'
+import { PALETTE } from '../lib/pieceSplitLogic'
 import { ClickableCard } from '../components/ClickableCard'
 import { InfoIconTooltip } from '../components/InfoIconTooltip'
 import { Modal } from '../components/Modal'
@@ -68,7 +68,7 @@ function initials(name: string): string {
 // radius that clips a non-square box to a stadium shape, not an ellipse).
 // See PeopleLibrarySample.tsx's own comment for the real bug this fixed.
 function PersonAvatar({ person, className }: { person: Person; className: string }) {
-  const color = GARDEN_VARIETY[person.id % GARDEN_VARIETY.length]
+  const color = PALETTE[person.id % PALETTE.length]
   return (
     <div
       className={`relative aspect-[3/4] overflow-hidden rounded-[50%] border border-border [container-type:inline-size] ${className}`}

@@ -802,8 +802,8 @@ function VersionSection() {
                 )}
               </span>
             ) : version?.checkStatus === 'upToDate' || version?.checkStatus === 'ahead' ? (
-              <span className="inline-flex items-center gap-1.5 text-sm text-[#3fa34d]">
-                <IconCircleCheck size={14} className="text-[#3fa34d]" />
+              <span className="inline-flex items-center gap-1.5 text-sm text-grass">
+                <IconCircleCheck size={14} className="text-grass" />
                 {version.checkStatus === 'ahead' ? 'Ahead of the latest release' : 'Up to date'}
               </span>
             ) : (

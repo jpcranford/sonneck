@@ -573,7 +573,7 @@ export function EditPersonModal({ person, open, onClose }: EditPersonModalProps)
                   onClick={() => pickResult(result)}
                   className="flex w-full cursor-pointer items-center gap-3 px-3 py-2.5 text-left hover:bg-paper-sunken"
                 >
-                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#6b6560] text-white">
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-ink-soft text-paper">
                     <IconExternalLink size={14} />
                   </span>
                   <span className="min-w-0 flex-1">
