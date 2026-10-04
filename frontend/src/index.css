@@ -385,6 +385,8 @@
   --color-accent-soft: #e3e9e0;
   /* Accent that reads on dark or accent-filled surfaces: the autofill highlight ring, progress stripes. */
   --color-accent-on-dark: #86a67f;
+  /* Completed steps in a step indicator, quieter than the current step (accent). */
+  --color-accent-muted: #86a67f;
   /* Solid green fills with white labels: primary buttons, an on switch. The same green as accent in the light theme; stays deep in the dark one, where accent itself turns light. */
   --color-accent-fill: #3f5c3f;
 
@@ -476,6 +478,7 @@
   --color-accent: #9dbd94;
   --color-accent-soft: #24301f;
   --color-accent-on-dark: #86a67f;
+  --color-accent-muted: #4a6b48;
   --color-accent-fill: #4a6b48;
 
   --color-danger: #f08f83;

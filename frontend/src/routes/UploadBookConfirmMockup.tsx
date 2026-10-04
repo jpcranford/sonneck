@@ -213,9 +213,9 @@ export function UploadBookConfirmMockup() {
                     key={step}
                     className={`h-1 w-5 rounded-full ${
                       step < CURRENT_STEP
-                        ? 'bg-accent-on-dark'
+                        ? 'bg-accent-muted'
                         : step === CURRENT_STEP
-                          ? 'bg-accent-fill'
+                          ? 'bg-accent'
                           : 'bg-border'
                     }`}
                   />

@@ -72,7 +72,7 @@ function WizardChrome({ step, onBack }: { step: number; onBack: () => void }) {
             <span
               key={s}
               className={`h-1 w-5 rounded-full ${
-                s < step ? 'bg-accent-on-dark' : s === step ? 'bg-accent-fill' : 'bg-border'
+                s < step ? 'bg-accent-muted' : s === step ? 'bg-accent' : 'bg-border'
               }`}
             />
           ))}
