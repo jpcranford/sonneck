@@ -327,9 +327,12 @@ const PRINT_FAINTER = '#b3a99e'
 // .490 vs .530), so its sizes are scaled up by this factor to match.
 const CABIN_OPTICAL = 1.08
 
+// A printed page: white with print ink in either app theme, never theme
+// tokens — anything inside that doesn't set its own color inherits
+// PRINT_INK from here, not the app's (theme-dependent) text color.
 function PageShell({
   ratio,
-  className = 'bg-paper-raised',
+  className = 'bg-white',
   children,
 }: {
   ratio: string
@@ -339,7 +342,12 @@ function PageShell({
   return (
     <div
       className={`relative w-full max-w-[440px] shadow-lg ${className}`}
-      style={{ aspectRatio: ratio, containerType: 'inline-size' }}
+      style={{
+        aspectRatio: ratio,
+        containerType: 'inline-size',
+        color: PRINT_INK,
+        colorScheme: 'light',
+      }}
     >
       {children}
     </div>
