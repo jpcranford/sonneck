@@ -1294,10 +1294,12 @@ export function EditSetlistModal({
                   border into one 1px seam at rest (both border-border);
                   hover:z-10 lifts whichever segment is actually hovered
                   above that shared line so only its own side recolors,
-                  leaving its neighbor's untouched. The bottom edge is
-                  unbordered while a panel is expanded below (it's that
-                  panel's own top divider then, shared by whichever button
-                  is active, not "this button's own edge") — but when
+                  leaving its neighbor's untouched. While a panel is
+                  expanded below, the two act as tabs: the open one takes
+                  the panel's own fill and has no bottom edge, so it runs
+                  straight into the panel (which draws no top border of its
+                  own), and the other sits back on paper-sunken with its
+                  own bottom edge, which is the panel's top line — but when
                   neither panel is open (`addRowMode === 'buttons'`, the
                   collapsed state, e.g. a still-empty Program), nothing else
                   is left to draw the card's own bottom edge at all, so each
@@ -1311,7 +1313,13 @@ export function EditSetlistModal({
                     onClick={() => selectAddMode('search')}
                     className={`relative flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-tl-md border-t border-r border-l border-border px-3 py-2 text-sm font-medium transition-colors ${
                       addRowMode === 'buttons' ? 'rounded-bl-md border-b' : ''
-                    } ${addRowMode === 'search' ? 'bg-paper-hover text-ink' : 'text-ink-soft hover:z-10 hover:border-accent'}`}
+                    } ${
+                      addRowMode === 'search'
+                        ? 'bg-paper-raised text-ink'
+                        : addRowMode === 'buttons'
+                          ? 'text-ink-soft hover:z-10 hover:border-accent'
+                          : 'border-b bg-paper-sunken text-ink-soft hover:z-10 hover:border-accent'
+                    }`}
                   >
                     <IconPlus size={14} />
                     Piece
@@ -1321,7 +1329,13 @@ export function EditSetlistModal({
                     onClick={() => selectAddMode('custom')}
                     className={`relative -ml-px flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-tr-md border-t border-r border-l border-border px-3 py-2 text-sm font-medium transition-colors ${
                       addRowMode === 'buttons' ? 'rounded-br-md border-b' : ''
-                    } ${addRowMode === 'custom' ? 'bg-paper-hover text-ink' : 'text-ink-soft hover:z-10 hover:border-accent'}`}
+                    } ${
+                      addRowMode === 'custom'
+                        ? 'bg-paper-raised text-ink'
+                        : addRowMode === 'buttons'
+                          ? 'text-ink-soft hover:z-10 hover:border-accent'
+                          : 'border-b bg-paper-sunken text-ink-soft hover:z-10 hover:border-accent'
+                    }`}
                   >
                     <IconPlus size={14} />
                     Custom Entry
@@ -1329,7 +1343,10 @@ export function EditSetlistModal({
                 </div>
 
                 {addRowMode === 'search' && (
-                  <div ref={setExpandedRef} className="border border-border rounded-b-md p-2.5">
+                  <div
+                    ref={setExpandedRef}
+                    className="border border-t-0 border-border rounded-b-md p-2.5"
+                  >
                     <div className="relative">
                       <IconSearch
                         size={13}
@@ -1429,7 +1446,7 @@ export function EditSetlistModal({
                 {addRowMode === 'custom' &&
                   renderCustomEntryForm(
                     'add-custom-entry',
-                    'relative border border-border rounded-b-md p-3',
+                    'relative border border-t-0 border-border rounded-b-md p-3',
                   )}
               </div>
             </div>
