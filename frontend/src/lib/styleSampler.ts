@@ -46,7 +46,10 @@ function themeBody(css: string): string {
 // definition (focus's `var(--color-accent)`) as a use.
 export function withoutTheme(css: string): string {
   const body = themeBody(css)
-  return body ? css.replace(body, '') : css
+  const withoutLight = body ? css.replace(body, '') : css
+  // The dark theme redefines the same tokens outside @theme; those values
+  // are definitions too, not hard-coded colors.
+  return withoutLight.replace(/:root\[data-theme=[^\]]*\]\s*\{[^}]*\}/g, '')
 }
 
 // `--color-*` declarations in `@theme`, grouped by the blank lines between
