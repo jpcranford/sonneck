@@ -1213,7 +1213,7 @@ export function PersonDetailsSample() {
                   {MOCK_BOOK_CREDITS.map((credit, index) => (
                     <span
                       key={credit.id}
-                      className="flex items-center gap-2 rounded-full border border-border bg-paper-sunken py-[7px] pr-4 pl-[9px] text-xs text-ink"
+                      className="flex items-start gap-2 rounded-[18px] border border-border bg-paper-sunken py-[7px] pr-4 pl-[9px] text-xs text-ink"
                     >
                       <span
                         className="flex size-5 shrink-0 items-center justify-center rounded-full text-white"
@@ -1221,8 +1221,10 @@ export function PersonDetailsSample() {
                       >
                         <IconMusic size={10} />
                       </span>
-                      <span className="font-medium">{credit.title}</span>
-                      <span className="text-ink-soft">as {credit.role}</span>
+                      <span className="min-w-0 leading-5">
+                        <span className="font-medium">{credit.title}</span>{' '}
+                        <span className="text-ink-soft">as {credit.role}</span>
+                      </span>
                     </span>
                   ))}
                 </dd>

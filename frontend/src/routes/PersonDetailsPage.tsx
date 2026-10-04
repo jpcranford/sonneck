@@ -661,7 +661,7 @@ export function PersonDetailsPage() {
                         <Link
                           key={book.id}
                           to={`/books/${book.id}`}
-                          className="flex items-center gap-2 rounded-full border border-border bg-paper-sunken py-[7px] pr-4 pl-[9px] text-xs text-ink hover:border-accent"
+                          className="flex items-start gap-2 rounded-[18px] border border-border bg-paper-sunken py-[7px] pr-4 pl-[9px] text-xs text-ink hover:border-accent"
                         >
                           <span
                             className="flex size-5 shrink-0 items-center justify-center rounded-full text-white"
@@ -671,10 +671,19 @@ export function PersonDetailsPage() {
                           >
                             <IconMusic size={10} />
                           </span>
-                          <span className="font-medium">{book.bookTitle}</span>
-                          <span className="text-ink-soft">
-                            as{' '}
-                            {book.composer.some((p) => p.id === personId) ? 'Composer' : 'Arranger'}
+                          {/* One text run, so on a narrow screen the role wraps
+                              on after the title like a sentence instead of the
+                              two splitting into side-by-side columns. leading-5
+                              matches the 20px icon, so a one-line chip stays
+                              centred; 18px corners keep it a pill. */}
+                          <span className="min-w-0 leading-5">
+                            <span className="font-medium">{book.bookTitle}</span>{' '}
+                            <span className="text-ink-soft">
+                              as{' '}
+                              {book.composer.some((p) => p.id === personId)
+                                ? 'Composer'
+                                : 'Arranger'}
+                            </span>
                           </span>
                         </Link>
                       ))}
