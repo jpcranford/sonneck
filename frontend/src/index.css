@@ -419,18 +419,20 @@
 /* The dark theme (Walnut, lifted: A3 in the palette comparison): every color token
    redefined, applied when <html> carries data-theme="dark". Tailwind's
    utilities read the tokens as CSS variables, so components need no dark:
-   variants. Light-only by intent: a solid fill (accent-fill, danger-fill)
-   keeps its white label, while accent and danger turn light for text and
-   outlines on the dark page. The faded inks are ink-soft blended 75/60/50%
-   into the page, kept solid like their light counterparts. */
+   variants. By intent, a solid fill (accent-fill, danger-fill) keeps its
+   white label, while accent and danger turn light for text and outlines on
+   the dark page. The faded inks are ink-soft blended 85/70/60% into the
+   page, kept solid like their light counterparts: a step stronger than the
+   light theme's 75/60/50, since a dull grey on a dark ground reads more
+   washed out than the same contrast on paper. */
 :root[data-theme='dark'] {
   color-scheme: dark;
 
   --color-ink: #eee7dc;
   --color-ink-soft: #b6ab9c;
-  --color-ink-muted: #91887c;
-  --color-ink-faint: #7b7368;
-  --color-ink-fainter: #6c645b;
+  --color-ink-muted: #a09688;
+  --color-ink-faint: #8a8175;
+  --color-ink-fainter: #7b7368;
   --color-paper: #231e1a;
   --color-paper-raised: #2d2722;
   --color-paper-sunken: #1b1714;
