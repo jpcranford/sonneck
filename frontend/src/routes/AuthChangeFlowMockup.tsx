@@ -1,5 +1,11 @@
 import { useEffect, useState } from 'react'
-import { IconAlertTriangle, IconArrowLeft, IconCircleCheck, IconLoader2, IconUserCircle } from '@tabler/icons-react'
+import {
+  IconAlertTriangle,
+  IconArrowLeft,
+  IconCircleCheck,
+  IconLoader2,
+  IconUserCircle,
+} from '@tabler/icons-react'
 import { useMockupTitle } from '../lib/useMockupTitle'
 import { afterMinDuration } from '../lib/minDuration'
 
@@ -283,9 +289,11 @@ function ScenarioPicker({
 function ReversibleNote({ fromLabel, isFinalStep }: { fromLabel: string; isFinalStep: boolean }) {
   return (
     <p className="mt-4 text-xs text-ink-soft">
-      {isFinalStep ? 'This is the last step — until you confirm below, ' : 'Nothing is applied yet — '}
-      you can still switch <code className="rounded bg-paper-sunken px-1 py-0.5">AUTH_METHOD</code> back to{' '}
-      <strong className="text-ink">{fromLabel}</strong> and nothing will be lost.
+      {isFinalStep
+        ? 'This is the last step — until you confirm below, '
+        : 'Nothing is applied yet — '}
+      you can still switch <code className="rounded bg-paper-sunken px-1 py-0.5">AUTH_METHOD</code>{' '}
+      back to <strong className="text-ink">{fromLabel}</strong> and nothing will be lost.
     </p>
   )
 }
@@ -319,7 +327,9 @@ export function AuthChangeFlowMockup() {
   useMockupTitle('Auth Change Flow')
   const [scenarioKey, setScenarioKey] = useState<ScenarioKey>(DEFAULT_SCENARIO)
   const [stepIndex, setStepIndex] = useState(0)
-  const [keptAdminId, setKeptAdminId] = useState<number | null>(() => lonelyAdminId(SCENARIOS[DEFAULT_SCENARIO]))
+  const [keptAdminId, setKeptAdminId] = useState<number | null>(() =>
+    lonelyAdminId(SCENARIOS[DEFAULT_SCENARIO]),
+  )
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
 
@@ -355,9 +365,13 @@ export function AuthChangeFlowMockup() {
     if (step !== 'updating') return
     const startedAt = Date.now()
     let cancelled = false
-    afterMinDuration(startedAt, () => {
-      if (!cancelled) goNext()
-    }, 2500)
+    afterMinDuration(
+      startedAt,
+      () => {
+        if (!cancelled) goNext()
+      },
+      2500,
+    )
     return () => {
       cancelled = true
     }
@@ -368,8 +382,7 @@ export function AuthChangeFlowMockup() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step])
 
-  const canContinue =
-    step !== 'password' || passwordValid
+  const canContinue = step !== 'password' || passwordValid
   const chooseAdminCanContinue = step !== 'choose-admin' || keptAdminId !== null
   // The real last *actionable* step — the last one with a button a person
   // actually clicks — isn't always steps[steps.length - 2] anymore now
@@ -384,22 +397,25 @@ export function AuthChangeFlowMockup() {
       <div className="w-full max-w-md">
         <div className="mb-6 rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-4 py-2 text-xs text-ink-soft">
           Reference sample — <span className="font-medium text-ink">Auth Change flow</span>. A
-          boot-time gate, reached only when the app detects its resolved <code>AUTH_METHOD</code> no longer
-          matches what it last ran under. Switch the scenario above to preview every content path.
+          boot-time gate, reached only when the app detects its resolved <code>AUTH_METHOD</code> no
+          longer matches what it last ran under. Switch the scenario above to preview every content
+          path.
         </div>
 
         {step === 'intro' && (
           <>
-            <h1 className="font-display text-2xl font-medium text-ink">We noticed your sign-in method changed</h1>
+            <h1 className="font-display text-2xl font-medium text-ink">
+              We noticed your sign-in method changed
+            </h1>
             <p className="mt-2 text-sm text-ink-soft">
-              Sonneck is now configured for <strong className="text-ink">{scenario.toLabel}</strong> — it was{' '}
-              <strong className="text-ink">{scenario.fromLabel}</strong> last time it ran.
+              Sonneck is now configured for <strong className="text-ink">{scenario.toLabel}</strong>{' '}
+              — it was <strong className="text-ink">{scenario.fromLabel}</strong> last time it ran.
             </p>
             <p className="mt-2 text-sm text-ink-soft">
               {scenario.to === 'oidc'
-                ? "Nothing is lost — the first person who signs in takes control of your existing account, with all its favorites, notes, and tags already there."
+                ? 'Nothing is lost — the first person who signs in takes control of your existing account, with all its favorites, notes, and tags already there.'
                 : scenario.users.length > 1
-                  ? "The next few screens will walk you through what this means for your existing accounts."
+                  ? 'The next few screens will walk you through what this means for your existing accounts.'
                   : 'No other accounts are affected by this change.'}
             </p>
             {scenario.to === 'oidc' ? (
@@ -473,10 +489,14 @@ export function AuthChangeFlowMockup() {
             <BackLink onClick={goBack} />
             <h1 className="font-display text-2xl font-medium text-ink">Multiple admins found</h1>
             <p className="mt-1 text-sm text-ink-soft">
-              {scenario.toLabel} supports only one account, and only an existing admin can become it. Choose
-              which account to keep — every other account will be deleted next.
+              {scenario.toLabel} supports only one account, and only an existing admin can become
+              it. Choose which account to keep — every other account will be deleted next.
             </p>
-            <div className="mt-6 flex flex-col gap-3" role="radiogroup" aria-label="Choose the surviving admin account">
+            <div
+              className="mt-6 flex flex-col gap-3"
+              role="radiogroup"
+              aria-label="Choose the surviving admin account"
+            >
               {admins.map((admin) => (
                 <button
                   key={admin.id}
@@ -495,7 +515,9 @@ export function AuthChangeFlowMockup() {
                   </span>
                   <span className="min-w-0">
                     <span className="block text-sm font-medium text-ink">{admin.name}</span>
-                    {admin.email && <span className="block text-xs text-ink-soft">{admin.email}</span>}
+                    {admin.email && (
+                      <span className="block text-xs text-ink-soft">{admin.email}</span>
+                    )}
                   </span>
                 </button>
               ))}
@@ -526,10 +548,11 @@ export function AuthChangeFlowMockup() {
             <BackLink onClick={goBack} />
             <h1 className="font-display text-2xl font-medium text-ink">Confirm the switch</h1>
             <p className="mt-2 text-sm text-ink-soft">
-              No accounts need to be deleted — <strong className="text-ink">{keptAdmin.name}</strong> is the
-              only account here. Continuing switches Sonneck to{' '}
-              <strong className="text-ink">{scenario.toLabel}</strong>; everything else about your library
-              stays exactly as it is.
+              No accounts need to be deleted —{' '}
+              <strong className="text-ink">{keptAdmin.name}</strong> is the only account here.
+              Continuing switches Sonneck to{' '}
+              <strong className="text-ink">{scenario.toLabel}</strong>; everything else about your
+              library stays exactly as it is.
             </p>
             <ReversibleNote fromLabel={scenario.fromLabel} isFinalStep={isFinalActionableStep} />
             <button
@@ -545,15 +568,21 @@ export function AuthChangeFlowMockup() {
         {step === 'confirm-delete' && keptAdmin && usersToDelete.length > 0 && (
           <>
             <BackLink onClick={goBack} />
-            <h1 className="font-display text-2xl font-medium text-ink">Delete the other accounts?</h1>
+            <h1 className="font-display text-2xl font-medium text-ink">
+              Delete the other accounts?
+            </h1>
             <p className="mt-2 text-sm text-ink-soft">
-              {scenario.toLabel} supports only one account. <strong className="text-ink">{keptAdmin.name}</strong>{' '}
-              will become that account, and the following {usersToDelete.length} account
+              {scenario.toLabel} supports only one account.{' '}
+              <strong className="text-ink">{keptAdmin.name}</strong> will become that account, and
+              the following {usersToDelete.length} account
               {usersToDelete.length === 1 ? '' : 's'} will be permanently deleted:
             </p>
             <ul className="mt-4 flex flex-col gap-2">
               {usersToDelete.map((user) => (
-                <li key={user.id} className="rounded-md border border-[#f3d4ce] bg-[#fbe9e7] px-3 py-2 text-sm text-ink">
+                <li
+                  key={user.id}
+                  className="rounded-md border border-[#f3d4ce] bg-[#fbe9e7] px-3 py-2 text-sm text-ink"
+                >
                   <span className="font-medium">{user.name}</span>
                   {user.email && <span className="text-ink-soft"> — {user.email}</span>}
                 </li>
@@ -561,10 +590,10 @@ export function AuthChangeFlowMockup() {
             </ul>
             <p className="mt-4 text-xs text-ink-soft">
               This is the last step — until you click "Delete accounts now" below, you can still
-              switch <code className="rounded bg-paper-sunken px-1 py-0.5">AUTH_METHOD</code> back to{' '}
-              <strong className="text-ink">{scenario.fromLabel}</strong> and nothing will be lost. Clicking it
-              deletes them immediately and can't be undone — anything specific to just those accounts (their
-              own favorites, notes, and tags) is deleted along with them.
+              switch <code className="rounded bg-paper-sunken px-1 py-0.5">AUTH_METHOD</code> back
+              to <strong className="text-ink">{scenario.fromLabel}</strong> and nothing will be
+              lost. Clicking it deletes them immediately and can't be undone — anything specific to
+              just those accounts (their own favorites, notes, and tags) is deleted along with them.
             </p>
             <button
               type="button"
@@ -580,14 +609,16 @@ export function AuthChangeFlowMockup() {
         {step === 'updating' && (
           <div className="flex w-full flex-col items-center py-8 text-center">
             <IconLoader2 size={44} className="animate-spin text-ink" />
-            <h1 className="mt-4 font-display text-2xl font-medium text-ink">Updating your library</h1>
+            <h1 className="mt-4 font-display text-2xl font-medium text-ink">
+              Updating your library
+            </h1>
             <p className="mt-2 text-sm text-ink-soft">This will only take a moment.</p>
           </div>
         )}
 
         {step === 'done' && (
           <div className="flex w-full flex-col items-center text-center">
-            <IconCircleCheck size={48} className="text-ink" />
+            <IconCircleCheck size={48} className="text-ink-soft" />
             <h1 className="mt-4 font-display text-2xl font-medium text-ink">All set</h1>
             <p className="mt-2 text-sm text-ink-soft">
               Sonneck is now running with <strong className="text-ink">{scenario.toLabel}</strong>.
