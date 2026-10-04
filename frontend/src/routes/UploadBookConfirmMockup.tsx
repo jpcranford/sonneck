@@ -60,12 +60,12 @@ const PIECES: PieceFixture[] = [
   {
     start: 1,
     end: 3,
-    color: 'var(--color-split-7)',
+    color: 'var(--color-split-1)',
     title: 'Prelude in C',
     composer: 'J. Burgmüller',
   },
-  { start: 5, end: 7, color: 'var(--color-split-4)', title: 'Nocturne', composer: 'Fr. Chopin' },
-  { start: 7, end: 8, color: 'var(--color-split-5)', title: 'Waltz in A♭', composer: 'Fr. Chopin' },
+  { start: 5, end: 7, color: 'var(--color-split-2)', title: 'Nocturne', composer: 'Fr. Chopin' },
+  { start: 7, end: 8, color: 'var(--color-split-3)', title: 'Waltz in A♭', composer: 'Fr. Chopin' },
 ]
 
 // Academic p./pp. convention app-wide (singular vs. a range), same as
