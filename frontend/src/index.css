@@ -416,7 +416,7 @@
   --animate-stripe-move: stripe-move 0.85s linear infinite;
 }
 
-/* The dark theme (Walnut, A6 in the palette comparison): every color token
+/* The dark theme (Walnut, lifted: A3 in the palette comparison): every color token
    redefined, applied when <html> carries data-theme="dark". Tailwind's
    utilities read the tokens as CSS variables, so components need no dark:
    variants. Light-only by intent: a solid fill (accent-fill, danger-fill)
@@ -426,21 +426,21 @@
 :root[data-theme='dark'] {
   color-scheme: dark;
 
-  --color-ink: #e8dbc4;
-  --color-ink-soft: #ad9f88;
-  --color-ink-muted: #887c6b;
-  --color-ink-faint: #716759;
-  --color-ink-fainter: #625a4d;
-  --color-paper: #181412;
-  --color-paper-raised: #221d1a;
-  --color-paper-sunken: #120f0d;
-  --color-border: #352e29;
+  --color-ink: #eee7dc;
+  --color-ink-soft: #b6ab9c;
+  --color-ink-muted: #91887c;
+  --color-ink-faint: #7b7368;
+  --color-ink-fainter: #6c645b;
+  --color-paper: #231e1a;
+  --color-paper-raised: #2d2722;
+  --color-paper-sunken: #1b1714;
+  --color-border: #423931;
 
   --color-sidebar-bg: #0f0c0b;
   --color-sidebar-panel: #2f2723;
   --color-sidebar-text: #d9d0c3;
   --color-sidebar-text-dim: #8f857a;
-  --color-sidebar-border: #2a241f;
+  --color-sidebar-border: #2c2622;
 
   --color-accent: #9dbd94;
   --color-accent-soft: #24301f;

@@ -90,14 +90,35 @@ const SECTIONS = [
   ['controls', 'Buttons & fields'],
 ] as const
 
-// Previews a theme by setting <html data-theme> while this page is open,
-// and puts back whatever was there when it closes.
-function usePreviewTheme(theme: 'light' | 'dark') {
+// Trial palettes preview on top of the dark theme as inline overrides on
+// <html>, without touching index.css, so a candidate can be judged here
+// before it replaces the real dark values: add one as name → token values
+// (tokens it doesn't list keep their dark values) and it appears in the
+// switch. None open right now; A3 was trialled this way and adopted.
+const TRIAL_PALETTES: Record<string, Record<string, string>> = {}
+
+type PreviewTheme = string
+
+const PREVIEW_OPTIONS: { key: PreviewTheme; label: string }[] = [
+  { key: 'light', label: 'Light' },
+  { key: 'dark', label: 'Dark' },
+  ...Object.keys(TRIAL_PALETTES).map((key) => ({ key, label: key.toUpperCase() })),
+]
+
+// Previews a theme by setting <html data-theme> (plus any trial palette's
+// overrides) while this page is open, and puts back whatever was there when
+// it closes.
+function usePreviewTheme(theme: PreviewTheme) {
   useEffect(() => {
     const root = document.documentElement
     const previous = root.dataset.theme
-    root.dataset.theme = theme
+    root.dataset.theme = theme === 'light' ? 'light' : 'dark'
+    const trial = TRIAL_PALETTES[theme] ?? null
+    for (const [name, value] of Object.entries(trial ?? {})) {
+      root.style.setProperty(`--color-${name}`, value)
+    }
     return () => {
+      for (const name of Object.keys(trial ?? {})) root.style.removeProperty(`--color-${name}`)
       if (previous) root.dataset.theme = previous
       else delete root.dataset.theme
     }
@@ -107,7 +128,7 @@ function usePreviewTheme(theme: 'light' | 'dark') {
 export function StyleSamplerMockup() {
   useMockupTitle('Style Sampler')
   const files = useSources()
-  const [theme, setTheme] = useState<'light' | 'dark'>('light')
+  const [theme, setTheme] = useState<PreviewTheme>('light')
   usePreviewTheme(theme)
 
   return (
@@ -131,19 +152,20 @@ export function StyleSamplerMockup() {
           aria-label="Preview theme"
           className="ml-auto flex items-center gap-0.5 rounded-md border border-border p-0.5 text-sm"
         >
-          {(['light', 'dark'] as const).map((option) => (
+          {PREVIEW_OPTIONS.map(({ key, label }) => (
             <button
-              key={option}
+              key={key}
               type="button"
-              aria-pressed={theme === option}
-              onClick={() => setTheme(option)}
-              className={`cursor-pointer rounded px-3 py-1 capitalize ${
-                theme === option
+              aria-pressed={theme === key}
+              title={key in TRIAL_PALETTES ? 'Trial palette, previewed here only' : undefined}
+              onClick={() => setTheme(key)}
+              className={`cursor-pointer rounded px-3 py-1 ${
+                theme === key
                   ? 'bg-accent-soft font-medium text-accent'
                   : 'text-ink-soft hover:text-ink'
               }`}
             >
-              {option}
+              {label}
             </button>
           ))}
         </div>
