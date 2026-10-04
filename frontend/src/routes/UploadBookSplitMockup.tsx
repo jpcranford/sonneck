@@ -959,14 +959,14 @@ export function UploadBookSplitMockup() {
       {/* Floating action bar — only appears once a genuine drag (not a
           plain tap) has produced a real range. */}
       {selection && (
-        <div className="flex w-fit items-center gap-2 rounded-full bg-ink py-1.5 pr-1.5 pl-4 text-white shadow-lg">
+        <div className="flex w-fit items-center gap-2 rounded-full bg-scrim py-1.5 pr-1.5 pl-4 text-white shadow-lg">
           <span className="text-sm font-medium">
             {selection[1] - selection[0] + 1} pages selected
           </span>
           <button
             type="button"
             onClick={() => resolveSelection('group')}
-            className="rounded-full bg-accent-on-dark px-3 py-1.5 text-xs font-semibold text-ink hover:brightness-95"
+            className="rounded-full bg-accent-on-dark px-3 py-1.5 text-xs font-semibold text-scrim hover:brightness-95"
           >
             Make this one piece
           </button>

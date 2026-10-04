@@ -1518,7 +1518,7 @@ export function PiecePage() {
 
       {copyToast && (
         <div
-          className="pointer-events-none fixed z-50 -translate-x-1/2 -translate-y-[140%] rounded-md bg-ink px-2 py-1 text-xs text-paper shadow-md"
+          className="pointer-events-none fixed z-50 -translate-x-1/2 -translate-y-[140%] rounded-md bg-scrim px-2 py-1 text-xs text-white shadow-md"
           style={{ left: copyToast.x, top: copyToast.y }}
         >
           Copied!

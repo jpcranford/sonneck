@@ -92,17 +92,18 @@ const SECTIONS = [
 
 // Trial palettes preview on top of the dark theme as inline overrides on
 // <html>, without touching index.css, so a candidate can be judged here
-// before it replaces the real dark values: add one as name → token values
-// (tokens it doesn't list keep their dark values) and it appears in the
-// switch. None open right now; A3 was trialled this way and adopted.
-const TRIAL_PALETTES: Record<string, Record<string, string>> = {}
+// before it replaces the real dark values: add one with a label and its
+// token values (tokens it doesn't list keep their dark values) and it
+// appears in the switch. None open right now; A3 and the dark faded-ink
+// ladder were both trialled this way and adopted.
+const TRIAL_PALETTES: Record<string, { label: string; colors: Record<string, string> }> = {}
 
 type PreviewTheme = string
 
 const PREVIEW_OPTIONS: { key: PreviewTheme; label: string }[] = [
   { key: 'light', label: 'Light' },
   { key: 'dark', label: 'Dark' },
-  ...Object.keys(TRIAL_PALETTES).map((key) => ({ key, label: key.toUpperCase() })),
+  ...Object.entries(TRIAL_PALETTES).map(([key, { label }]) => ({ key, label })),
 ]
 
 // Previews a theme by setting <html data-theme> (plus any trial palette's
@@ -113,7 +114,7 @@ function usePreviewTheme(theme: PreviewTheme) {
     const root = document.documentElement
     const previous = root.dataset.theme
     root.dataset.theme = theme === 'light' ? 'light' : 'dark'
-    const trial = TRIAL_PALETTES[theme] ?? null
+    const trial = TRIAL_PALETTES[theme]?.colors ?? null
     for (const [name, value] of Object.entries(trial ?? {})) {
       root.style.setProperty(`--color-${name}`, value)
     }
@@ -722,7 +723,7 @@ function ControlSection({ files }: { files: SourceFile[] | null }) {
                             className={
                               /(^| )text-white( |$)/.test(style.signature) &&
                               !style.signature.includes('bg-')
-                                ? 'inline-block rounded-md bg-ink p-2'
+                                ? 'inline-block rounded-md bg-scrim p-2'
                                 : ''
                             }
                           >
