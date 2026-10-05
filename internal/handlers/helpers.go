@@ -241,6 +241,49 @@ func (s *Server) RegenerateThumbnails(ctx context.Context) (int, error) {
 	return count, nil
 }
 
+// RegeneratePieceThumbnails is RegenerateThumbnails scoped to the given
+// pieces — the regenerate-thumbnails CLI subcommand's form with piece IDs.
+// Every ID is looked up before anything is touched, so a typo fails without
+// clearing anything. Each piece's cached pages are then removed (including
+// any beyond its current PageCount, left behind by a file replaced with a
+// shorter one) and re-rendered; the rest of the cache is left alone.
+// Returns the count regenerated.
+func (s *Server) RegeneratePieceThumbnails(ctx context.Context, ids []int64) (int, error) {
+	pieces := make([]*models.Piece, 0, len(ids))
+	for _, id := range ids {
+		p, err := repo.GetPieceByID(ctx, s.DB, id)
+		if errors.Is(err, repo.ErrNotFound) {
+			return 0, fmt.Errorf("no piece with ID %d", id)
+		}
+		if err != nil {
+			return 0, fmt.Errorf("piece %d: %w", id, err)
+		}
+		pieces = append(pieces, p)
+	}
+
+	cacheDir := filepath.Join(s.Cfg.DataDir, "cache", "thumbnails")
+	count := 0
+	for _, p := range pieces {
+		matches, err := filepath.Glob(filepath.Join(cacheDir, fmt.Sprintf("piece-%d-page-*.png", p.ID)))
+		if err != nil {
+			return count, err
+		}
+		for _, match := range matches {
+			if err := os.Remove(match); err != nil && !os.IsNotExist(err) {
+				return count, err
+			}
+		}
+		for page := 1; page <= p.PageCount; page++ {
+			cacheKey := fmt.Sprintf("piece-%d-page-%d", p.ID, page)
+			if _, err := s.regenerateThumbnail(ctx, p.FilePath, page, ThumbnailDPI, cacheKey); err != nil {
+				return count, fmt.Errorf("piece %d page %d: %w", p.ID, page, err)
+			}
+			count++
+		}
+	}
+	return count, nil
+}
+
 // purgeBookPageThumbnails removes every cached page-thumbnail PNG for
 // bookID (cacheKey pattern "book-<id>-page-<n>", set by
 // handleBookPageThumbnail) — called from handleDeleteBook so a deleted

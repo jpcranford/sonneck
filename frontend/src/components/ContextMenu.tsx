@@ -146,8 +146,11 @@ export const ContextMenu = forwardRef<ContextMenuHandle, ContextMenuProps>(funct
 
   return (
     <>
+      {/* On touch screens, holding a finger down here opens the menu, so it
+          mustn't also start selecting text or pop iOS's link preview. A
+          mouse can still select text here. */}
       <div
-        className="relative [-webkit-touch-callout:none]"
+        className="relative [-webkit-touch-callout:none] pointer-coarse:select-none"
         onContextMenu={(event) => {
           event.preventDefault()
           setPosition({ x: event.clientX, y: event.clientY })
