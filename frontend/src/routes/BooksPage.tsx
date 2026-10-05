@@ -192,12 +192,18 @@ export function BooksPage() {
           </p>
         )}
 
-        {books && books.length === 0 && (
-          <p className="p-8 text-center text-ink-muted">
-            {query || activeCount > 0
-              ? 'No books match your search.'
-              : 'No books yet — books are created via the import wizard or the New Book button above.'}
-          </p>
+        {books && books.length === 0 && (query || activeCount > 0) && (
+          <p className="p-8 text-center text-ink-muted">No books match your search.</p>
+        )}
+
+        {/* Same two-line treatment as Book/Person Details' "No pieces yet". */}
+        {books && books.length === 0 && !query && activeCount === 0 && (
+          <div className="p-8 text-center">
+            <p className="font-display font-medium text-ink-muted">No books yet</p>
+            <p className="mt-1 text-sm text-ink-muted italic">
+              Books are created via the import wizard or the New Book button above.
+            </p>
+          </div>
         )}
 
         {books && books.length > 0 && viewMode === 'grid' && (

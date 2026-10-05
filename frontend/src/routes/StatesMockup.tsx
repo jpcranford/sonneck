@@ -122,9 +122,12 @@ function EmptyStates() {
         <p className="p-8 text-center text-ink-muted">You haven't favorited any pieces yet.</p>
       </Specimen>
       <Specimen where="Books — no books at all">
-        <p className="p-8 text-center text-ink-muted">
-          No books yet — books are created via the import wizard or the New Book button above.
-        </p>
+        <div className="p-8 text-center">
+          <p className="font-display font-medium text-ink-muted">No books yet</p>
+          <p className="mt-1 text-sm text-ink-muted italic">
+            Books are created via the import wizard or the New Book button above.
+          </p>
+        </div>
       </Specimen>
       <Specimen where="Book Details / Person Details — no pieces">
         <div className="py-6 text-center">
