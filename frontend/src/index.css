@@ -351,7 +351,7 @@
   /* The faded inks are ink-soft blended toward the page and kept solid, never
      an opacity utility: Tabler icons overlap their own strokes, and a
      see-through color darkens where they cross. */
-  /* Muted grey text: the Tempo details, Advanced and Calculate from tempo toggles, and the "No pieces yet" empty states. */
+  /* Muted grey text: the Tempo details, Advanced and Calculate from tempo toggles, and empty-state messages ("No pieces yet", "No books match your search."…) — except the Add to Setlist picker's and the sidebar's. */
   --color-ink-muted: #837c74;
   /* Quiet clickable icons: field chevrons and search, info hints, external links, copy, add rows, tag remove. */
   --color-ink-faint: #9a948d;

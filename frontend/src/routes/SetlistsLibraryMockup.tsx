@@ -330,7 +330,7 @@ export function SetlistsLibraryMockup() {
       <section id="active" className="flex flex-col gap-3">
         <h2 className="font-display text-lg font-medium text-ink">Active</h2>
         {active.length === 0 ? (
-          <p className="text-sm text-ink-soft italic">No active setlists.</p>
+          <p className="text-sm text-ink-muted italic">No active setlists.</p>
         ) : (
           <SetlistGrid
             setlists={active}
@@ -345,7 +345,7 @@ export function SetlistsLibraryMockup() {
       <section id="archived" className="flex flex-col gap-3">
         <h2 className="font-display text-lg font-medium text-ink">Archived</h2>
         {archived.length === 0 ? (
-          <p className="text-sm text-ink-soft italic">No archived setlists.</p>
+          <p className="text-sm text-ink-muted italic">No archived setlists.</p>
         ) : (
           <SetlistGrid
             setlists={archived}

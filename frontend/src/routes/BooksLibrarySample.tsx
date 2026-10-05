@@ -1128,7 +1128,7 @@ export function BooksLibrarySample() {
         </p>
 
         {sortedBooks.length === 0 && (
-          <p className="p-8 text-center text-ink-soft">No books match these filters.</p>
+          <p className="p-8 text-center text-ink-muted">No books match these filters.</p>
         )}
 
         {sortedBooks.length > 0 && viewMode === 'grid' && (

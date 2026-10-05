@@ -762,7 +762,7 @@ export function PeopleLibraryPage() {
         )}
 
         {!isLoading && filtered.length === 0 && (
-          <p className="p-8 text-center text-ink-soft">No people match these filters.</p>
+          <p className="p-8 text-center text-ink-muted">No people match these filters.</p>
         )}
 
         {filtered.length > 0 && viewMode === 'grid' && (

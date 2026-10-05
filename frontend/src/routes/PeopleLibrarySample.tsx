@@ -1207,7 +1207,7 @@ export function PeopleLibrarySample() {
         </p>
 
         {sortedPeople.length === 0 && (
-          <p className="p-8 text-center text-ink-soft">No people match these filters.</p>
+          <p className="p-8 text-center text-ink-muted">No people match these filters.</p>
         )}
 
         {sortedPeople.length > 0 && viewMode === 'grid' && (

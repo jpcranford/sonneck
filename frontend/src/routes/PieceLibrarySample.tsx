@@ -1294,7 +1294,7 @@ export function PieceLibrarySample() {
         </p>
 
         {pieces.length === 0 && (
-          <p className="p-8 text-center text-ink-soft">No pieces match these filters.</p>
+          <p className="p-8 text-center text-ink-muted">No pieces match these filters.</p>
         )}
 
         {pieces.length > 0 && viewMode === 'grid' && (

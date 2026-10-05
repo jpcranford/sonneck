@@ -105,7 +105,7 @@ function EmptyStates() {
   return (
     <>
       <Specimen where="Library — no pieces at all" note="PieceBrowseView, emptyMessage">
-        <p className="p-8 text-center text-ink-soft">
+        <p className="p-8 text-center text-ink-muted">
           Your library is empty — upload a piece to get started.
         </p>
       </Specimen>
@@ -113,16 +113,16 @@ function EmptyStates() {
         where="Library — search with no matches"
         note="Same line on Books and People: “No books match your search.”, “No people match these filters.”"
       >
-        <p className="p-8 text-center text-ink-soft">No pieces match your search.</p>
+        <p className="p-8 text-center text-ink-muted">No pieces match your search.</p>
       </Specimen>
       <Specimen
         where="Favorites / Want to Learn / Currently Practicing / Learned"
         note="Each view's own emptyMessage"
       >
-        <p className="p-8 text-center text-ink-soft">You haven't favorited any pieces yet.</p>
+        <p className="p-8 text-center text-ink-muted">You haven't favorited any pieces yet.</p>
       </Specimen>
       <Specimen where="Books — no books at all">
-        <p className="p-8 text-center text-ink-soft">
+        <p className="p-8 text-center text-ink-muted">
           No books yet — books are created via the import wizard or the New Book button above.
         </p>
       </Specimen>
@@ -137,13 +137,13 @@ function EmptyStates() {
       <Specimen where="Setlists Library — no setlists">
         <div className="flex flex-col gap-3">
           <h2 className="font-display text-lg font-medium text-ink">Active</h2>
-          <p className="text-sm text-ink-soft italic">No active setlists.</p>
+          <p className="text-sm text-ink-muted italic">No active setlists.</p>
           <h2 className="font-display text-lg font-medium text-ink">Archived</h2>
-          <p className="text-sm text-ink-soft italic">No archived setlists.</p>
+          <p className="text-sm text-ink-muted italic">No archived setlists.</p>
         </div>
       </Specimen>
       <Specimen where="Setlist Details — empty program">
-        <p className="py-6 text-center text-sm text-ink-soft italic">
+        <p className="py-6 text-center text-sm text-ink-muted italic">
           No entries yet — use Edit Program to add some.
         </p>
       </Specimen>
@@ -166,7 +166,7 @@ function EmptyStates() {
         </div>
       </Specimen>
       <Specimen where="Edit Setlist — piece search with no matches" surface="card">
-        <p className="px-2 py-4 text-center text-sm text-ink-soft italic">No matches</p>
+        <p className="px-2 py-4 text-center text-sm text-ink-muted italic">No matches</p>
       </Specimen>
     </>
   )

@@ -363,7 +363,7 @@ export function PieceBrowseView({
         )}
 
         {pieces && pieces.length === 0 && (
-          <p className="p-8 text-center text-ink-soft">
+          <p className="p-8 text-center text-ink-muted">
             {query || activeCount > 0 ? noMatchMessage : emptyMessage}
           </p>
         )}

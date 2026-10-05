@@ -1382,7 +1382,7 @@ export function EditSetlistModal({
                     </p>
                     <div className="flex max-h-56 flex-col gap-0.5 overflow-y-auto">
                       {pieceResults.length === 0 ? (
-                        <p className="px-2 py-4 text-center text-sm text-ink-soft italic">
+                        <p className="px-2 py-4 text-center text-sm text-ink-muted italic">
                           No matches
                         </p>
                       ) : (

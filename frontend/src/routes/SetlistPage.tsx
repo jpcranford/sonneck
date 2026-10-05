@@ -481,7 +481,7 @@ export function SetlistPage() {
 
             <div className="flex flex-col">
               {setlist.entries.length === 0 ? (
-                <p className="py-6 text-center text-sm text-ink-soft italic">
+                <p className="py-6 text-center text-sm text-ink-muted italic">
                   No entries yet — use Edit Program to add some.
                 </p>
               ) : (

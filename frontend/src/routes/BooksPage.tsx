@@ -193,7 +193,7 @@ export function BooksPage() {
         )}
 
         {books && books.length === 0 && (
-          <p className="p-8 text-center text-ink-soft">
+          <p className="p-8 text-center text-ink-muted">
             {query || activeCount > 0
               ? 'No books match your search.'
               : 'No books yet — books are created via the import wizard or the New Book button above.'}
