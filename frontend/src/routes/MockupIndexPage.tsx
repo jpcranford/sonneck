@@ -12,6 +12,11 @@ const MOCKUPS = [
     note: 'The app’s visual style at a glance: every color token (with where it’s used), hard-coded colors, an example window drawn from the tokens, a type specimen of every size/weight in use, and every button and field style. Read live from index.css and the app’s own source, so it never needs updating by hand. Reference for prototyping dark mode.',
   },
   {
+    to: '/mockup/states',
+    name: 'Empty, Error & Loading States',
+    note: 'Every empty, error and loading state in the app on one page, with an Empty / Error / Loading switch and a Light / Dark switch — states that only appear in special moments and are easy to miss page by page. Hand-maintained copies of the real markup, each labeled with where the real one lives.',
+  },
+  {
     to: '/mockup/piece-details',
     name: 'Piece Details',
     note: 'Reference sample for the Piece Details page (§14) — kept as a standing design reference.',
