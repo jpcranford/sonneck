@@ -200,7 +200,7 @@ export function BookFilterDrawer({
           <button
             type="button"
             onClick={onClear}
-            className="w-full cursor-pointer rounded-md border border-border bg-paper-raised px-3 py-2 text-sm font-medium text-ink hover:border-accent"
+            className="w-full cursor-pointer rounded-md border border-border bg-paper-raised px-3 py-2 text-sm font-medium text-ink hover:bg-paper-hover"
           >
             Clear all filters
           </button>

@@ -747,7 +747,7 @@ function FilterDrawer({
           <button
             type="button"
             onClick={onClear}
-            className="w-full cursor-pointer rounded-md border border-border bg-paper-raised px-3 py-2 text-sm font-medium text-ink hover:border-accent"
+            className="w-full cursor-pointer rounded-md border border-border bg-paper-raised px-3 py-2 text-sm font-medium text-ink hover:bg-paper-hover"
           >
             Clear all filters
           </button>
@@ -1184,7 +1184,9 @@ export function PieceLibrarySample() {
                 aria-label="Grid view"
                 aria-pressed={viewMode === 'grid'}
                 className={`flex size-8 cursor-pointer items-center justify-center rounded ${
-                  viewMode === 'grid' ? 'bg-accent-soft text-accent' : 'text-ink-soft'
+                  viewMode === 'grid'
+                    ? 'bg-accent-soft text-accent'
+                    : 'text-ink-soft hover:bg-paper-hover'
                 }`}
               >
                 <IconLayoutGridFilled size={16} />
@@ -1195,7 +1197,9 @@ export function PieceLibrarySample() {
                 aria-label="List view"
                 aria-pressed={viewMode === 'list'}
                 className={`flex size-8 cursor-pointer items-center justify-center rounded ${
-                  viewMode === 'list' ? 'bg-accent-soft text-accent' : 'text-ink-soft'
+                  viewMode === 'list'
+                    ? 'bg-accent-soft text-accent'
+                    : 'text-ink-soft hover:bg-paper-hover'
                 }`}
               >
                 <IconLayoutListFilled size={16} />
@@ -1221,10 +1225,10 @@ export function PieceLibrarySample() {
                 type="button"
                 onClick={() => setDrawerOpen(true)}
                 aria-label="Filters"
-                className={`flex h-[38px] cursor-pointer items-center gap-1.5 rounded-md border px-3 text-sm active:border-accent active:text-accent ${
+                className={`flex h-[38px] cursor-pointer items-center gap-1.5 rounded-md border px-3 text-sm ${
                   activeCount > 0
                     ? 'border-accent bg-accent-soft text-accent'
-                    : 'border-border bg-paper-raised text-ink hover:border-accent hover:text-accent'
+                    : 'border-border bg-paper-raised text-ink hover:bg-paper-hover'
                 }`}
               >
                 <IconAdjustmentsHorizontal size={16} />

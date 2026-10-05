@@ -1074,7 +1074,9 @@ export function PeopleLibrarySample() {
                 aria-label="Grid view"
                 aria-pressed={viewMode === 'grid'}
                 className={`flex size-8 cursor-pointer items-center justify-center rounded ${
-                  viewMode === 'grid' ? 'bg-accent-soft text-accent' : 'text-ink-soft'
+                  viewMode === 'grid'
+                    ? 'bg-accent-soft text-accent'
+                    : 'text-ink-soft hover:bg-paper-hover'
                 }`}
               >
                 <IconLayoutGridFilled size={16} />
@@ -1085,7 +1087,9 @@ export function PeopleLibrarySample() {
                 aria-label="List view"
                 aria-pressed={viewMode === 'list'}
                 className={`flex size-8 cursor-pointer items-center justify-center rounded ${
-                  viewMode === 'list' ? 'bg-accent-soft text-accent' : 'text-ink-soft'
+                  viewMode === 'list'
+                    ? 'bg-accent-soft text-accent'
+                    : 'text-ink-soft hover:bg-paper-hover'
                 }`}
               >
                 <IconLayoutListFilled size={16} />
@@ -1110,7 +1114,7 @@ export function PeopleLibrarySample() {
               <button
                 type="button"
                 onClick={() => setNewPersonOpen(true)}
-                className="flex h-[38px] shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-border bg-paper-raised px-3 text-sm text-ink hover:border-accent hover:text-accent active:border-accent active:text-accent"
+                className="flex h-[38px] shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-border bg-paper-raised px-3 text-sm text-ink hover:bg-paper-hover"
               >
                 <IconPlus size={16} />
                 New Person
@@ -1122,10 +1126,10 @@ export function PeopleLibrarySample() {
                 type="button"
                 onClick={() => setDrawerOpen(true)}
                 aria-label="Filters"
-                className={`flex h-[38px] cursor-pointer items-center gap-1.5 rounded-md border px-3 text-sm active:border-accent active:text-accent ${
+                className={`flex h-[38px] cursor-pointer items-center gap-1.5 rounded-md border px-3 text-sm ${
                   activeFilterCount > 0
                     ? 'border-accent bg-accent-soft text-accent'
-                    : 'border-border bg-paper-raised text-ink hover:border-accent hover:text-accent'
+                    : 'border-border bg-paper-raised text-ink hover:bg-paper-hover'
                 }`}
               >
                 <IconAdjustmentsHorizontal size={16} />
