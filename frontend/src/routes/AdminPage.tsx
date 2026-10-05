@@ -21,6 +21,7 @@ import { Checkbox } from '../components/Checkbox'
 import { InfoIconTooltip } from '../components/InfoIconTooltip'
 import { Modal } from '../components/Modal'
 import { Radio } from '../components/Radio'
+import { Toggle } from '../components/Toggle'
 import { usePageTitle } from '../lib/usePageTitle'
 import { useAuth } from '../lib/AuthContext'
 import { copyToClipboard } from '../lib/clipboard'
@@ -934,21 +935,11 @@ function ShareOnNetworkSection() {
             Off by default — turn on to reach Sonneck from another device.
           </p>
         </div>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={settings.shareOnNetwork}
-          onClick={toggleShareOnNetwork}
-          className={`relative h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors ${
-            settings.shareOnNetwork ? 'bg-accent-fill' : 'bg-border'
-          }`}
-        >
-          <span
-            className={`absolute top-0.5 size-5 rounded-full bg-white transition-all ${
-              settings.shareOnNetwork ? 'left-5' : 'left-0.5'
-            }`}
-          />
-        </button>
+        <Toggle
+          checked={settings.shareOnNetwork}
+          onChange={toggleShareOnNetwork}
+          label={<span className="sr-only">Share on network</span>}
+        />
       </div>
 
       {showRestartBanner && (
