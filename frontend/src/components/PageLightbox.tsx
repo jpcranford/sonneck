@@ -6,7 +6,7 @@ import { IconChevronLeft, IconChevronRightFilled, IconXFilled } from '@tabler/ic
 // Upload Wizard's "About this book" step). Its own small component rather
 // than reusing Modal.tsx: Modal is a bounded-width dialog with padded
 // header/body/footer slots, not a full-bleed image viewer. Kept close to
-// Modal's own backdrop treatment (bg-ink/NN + backdrop-blur-sm, click-
+// Modal's own backdrop treatment (bg-scrim/NN + backdrop-blur-sm, click-
 // target-is-currentTarget to close, Escape closes) so it still feels like
 // the same app, just without Modal's mount/unmount fade choreography.
 //
