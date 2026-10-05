@@ -182,7 +182,7 @@ export const ContextMenu = forwardRef<ContextMenuHandle, ContextMenuProps>(funct
         <div
           ref={menuRef}
           role="menu"
-          className="fixed z-50 min-w-40 rounded-lg border border-border bg-paper-raised py-1 shadow-lg"
+          className="fixed z-50 w-max max-w-[calc(100vw-16px)] min-w-40 rounded-lg border border-border bg-paper-raised py-1 shadow-lg"
           style={{ top: position.y, left: position.x }}
           onMouseDown={(event) => event.stopPropagation()}
         >
