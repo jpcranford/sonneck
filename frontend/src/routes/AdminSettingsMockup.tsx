@@ -1390,7 +1390,7 @@ export function AdminSettingsMockup() {
               type="button"
               disabled={!canSaveSecurity}
               onClick={saveSecurity}
-              className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 text-sm text-white enabled:hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-40"
+              className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 text-sm text-white enabled:hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Save changes
             </button>

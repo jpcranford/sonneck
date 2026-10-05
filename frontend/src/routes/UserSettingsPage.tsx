@@ -415,7 +415,7 @@ function ChangePasswordModal({ open, onClose }: { open: boolean; onClose: () => 
           type="button"
           disabled={!canSubmit}
           onClick={() => mutation.mutate()}
-          className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 text-sm text-white hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-40"
+          className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 text-sm text-white hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {mutation.isPending ? 'Saving…' : 'Change Password'}
         </button>

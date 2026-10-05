@@ -506,7 +506,7 @@ function SecurityStep({
         type="button"
         disabled={!canFinish}
         onClick={() => (needsPassword ? onFinish('singlepass', password) : onFinish('none'))}
-        className="mt-8 flex w-full items-center justify-center gap-2 rounded-md bg-accent-fill px-5 py-2.5 font-display font-medium text-white enabled:cursor-pointer enabled:hover:bg-accent-fill/90 disabled:opacity-40"
+        className="mt-8 flex w-full items-center justify-center gap-2 rounded-md bg-accent-fill px-5 py-2.5 font-display font-medium text-white enabled:cursor-pointer enabled:hover:bg-accent-fill/90 disabled:opacity-50"
       >
         {pending ? 'Saving…' : 'Finish Setup'}
       </button>

@@ -263,7 +263,7 @@ function SecurityChangeModal({
             type="button"
             disabled={!canSave || mutation.isPending}
             onClick={() => mutation.mutate()}
-            className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 text-sm text-white enabled:hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-40"
+            className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 text-sm text-white enabled:hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {mutation.isPending ? 'Saving…' : 'Save changes'}
           </button>
@@ -956,7 +956,7 @@ function ShareOnNetworkSection() {
             type="button"
             onClick={handleRestartNow}
             disabled={restartMutation.isPending}
-            className="shrink-0 cursor-pointer rounded-md bg-accent-fill px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-60"
+            className="shrink-0 cursor-pointer rounded-md bg-accent-fill px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {restartMutation.isPending ? 'Restarting…' : 'Restart Now'}
           </button>
@@ -1079,7 +1079,7 @@ function LibraryLocationModal({
             type="button"
             disabled={candidatePath === currentPath || saveMutation.isPending}
             onClick={() => saveMutation.mutate()}
-            className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 text-sm text-white enabled:hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-40"
+            className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 text-sm text-white enabled:hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {saveMutation.isPending ? 'Saving…' : 'Save changes'}
           </button>
@@ -1331,7 +1331,7 @@ function LibrarySettingsSection() {
             type="button"
             onClick={() => restartMutation.mutate()}
             disabled={restartMutation.isPending}
-            className="shrink-0 cursor-pointer rounded-md bg-accent-fill px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-60"
+            className="shrink-0 cursor-pointer rounded-md bg-accent-fill px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {restartMutation.isPending ? 'Restarting…' : 'Restart Now'}
           </button>

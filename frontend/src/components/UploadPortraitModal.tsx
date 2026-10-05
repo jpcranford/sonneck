@@ -271,7 +271,7 @@ export function UploadPortraitModal({
               type="button"
               onClick={() => uploadMutation.mutate()}
               disabled={uploadMutation.isPending}
-              className="flex cursor-pointer items-center gap-1.5 rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-white hover:bg-accent-fill/90 disabled:cursor-default disabled:opacity-60"
+              className="flex cursor-pointer items-center gap-1.5 rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-white hover:bg-accent-fill/90 disabled:cursor-default disabled:opacity-50"
             >
               {uploadMutation.isPending ? (
                 <IconLoader2 size={16} className="animate-spin" />

@@ -705,7 +705,7 @@ export function BookUploadAboutStep({
             <button
               type="submit"
               disabled={saveMutation.isPending}
-              className="flex cursor-pointer items-center gap-1.5 rounded-md bg-accent-fill px-5 py-2.5 font-display font-medium text-white hover:bg-accent-fill/90 disabled:cursor-default disabled:opacity-60"
+              className="flex cursor-pointer items-center gap-1.5 rounded-md bg-accent-fill px-5 py-2.5 font-display font-medium text-white hover:bg-accent-fill/90 disabled:cursor-default disabled:opacity-50"
             >
               {saveMutation.isPending ? 'Saving…' : 'Next'}
               {!saveMutation.isPending && <IconArrowRight size={16} />}
