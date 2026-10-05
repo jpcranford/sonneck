@@ -95,8 +95,9 @@ const SECTIONS = [
 // can be judged here before it replaces the real values: add one with a
 // label, its base and its token values (tokens it doesn't list keep the
 // base theme's values) and it appears in the switch. None open right now;
-// A3, the dark faded-ink ladder and the light faded inks re-blended for the
-// #f8f6f3 page were all trialled this way and adopted.
+// A3, the dark faded-ink ladder, the light faded inks re-blended for the
+// #f8f6f3 page and the redder dark danger were all trialled this way and
+// adopted.
 const TRIAL_PALETTES: Record<
   string,
   { label: string; base: 'light' | 'dark'; colors: Record<string, string> }
