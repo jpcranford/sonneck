@@ -15,6 +15,7 @@ import {
   IconTrash,
 } from '@tabler/icons-react'
 import { Modal } from '../components/Modal'
+import { Radio } from '../components/Radio'
 import { Toggle } from '../components/Toggle'
 import { sortPracticeStatuses } from '../lib/practiceStatusOrder'
 import { usePageTitle } from '../lib/usePageTitle'
@@ -695,11 +696,10 @@ export function UserSettingsPage() {
                       : 'border-border bg-paper-raised hover:border-accent/50'
                   }`}
                 >
-                  <input
-                    type="radio"
+                  <Radio
                     checked={deleteMode === 'merge'}
                     onChange={() => setDeleteMode('merge')}
-                    className="mt-1 accent-accent"
+                    className="mt-1"
                   />
                   <div className="min-w-0 flex-1">
                     <p className="font-display font-medium text-ink">
@@ -733,11 +733,10 @@ export function UserSettingsPage() {
                     : 'border-border bg-paper-raised hover:border-accent/50'
                 }`}
               >
-                <input
-                  type="radio"
+                <Radio
                   checked={deleteMode === 'outright'}
                   onChange={() => setDeleteMode('outright')}
-                  className="mt-1 accent-accent"
+                  className="mt-1"
                 />
                 <div className="min-w-0 flex-1">
                   <p className="font-display font-medium text-ink">Delete outright</p>

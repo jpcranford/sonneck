@@ -19,6 +19,7 @@ import {
 import { Checkbox } from '../components/Checkbox'
 import { InfoIconTooltip } from '../components/InfoIconTooltip'
 import { Modal } from '../components/Modal'
+import { Radio } from '../components/Radio'
 import { useMockupTitle } from '../lib/useMockupTitle'
 
 // Admin Settings — Option B ("single scrolling page, pill-style jump-nav")
@@ -1510,12 +1511,11 @@ export function AdminSettingsMockup() {
           aria-label="What happens to your current library"
         >
           <label className="flex cursor-pointer items-start gap-2.5 rounded-md border border-border p-3 has-checked:border-accent has-checked:bg-accent-soft">
-            <input
-              type="radio"
+            <Radio
               name="move-existing"
               checked={moveExisting}
               onChange={() => setMoveExisting(true)}
-              className="mt-0.5 accent-accent"
+              className="mt-0.5"
             />
             <span>
               <span className="block text-sm font-medium text-ink">Move everything here</span>
@@ -1525,12 +1525,11 @@ export function AdminSettingsMockup() {
             </span>
           </label>
           <label className="flex cursor-pointer items-start gap-2.5 rounded-md border border-border p-3 has-checked:border-accent has-checked:bg-accent-soft">
-            <input
-              type="radio"
+            <Radio
               name="move-existing"
               checked={!moveExisting}
               onChange={() => setMoveExisting(false)}
-              className="mt-0.5 accent-accent"
+              className="mt-0.5"
             />
             <span>
               <span className="block text-sm font-medium text-ink">
@@ -1591,11 +1590,10 @@ export function AdminSettingsMockup() {
                       : 'border-border bg-paper-raised hover:border-accent/50'
                   }`}
                 >
-                  <input
-                    type="radio"
+                  <Radio
                     checked={lookupDeleteMode === 'merge'}
                     onChange={() => setLookupDeleteMode('merge')}
-                    className="mt-1 accent-accent"
+                    className="mt-1"
                   />
                   <div className="min-w-0 flex-1">
                     <p className="font-display font-medium text-ink">
@@ -1629,11 +1627,10 @@ export function AdminSettingsMockup() {
                     : 'border-border bg-paper-raised hover:border-accent/50'
                 }`}
               >
-                <input
-                  type="radio"
+                <Radio
                   checked={lookupDeleteMode === 'outright'}
                   onChange={() => setLookupDeleteMode('outright')}
-                  className="mt-1 accent-accent"
+                  className="mt-1"
                 />
                 <div className="min-w-0 flex-1">
                   <p className="font-display font-medium text-ink">Delete outright</p>

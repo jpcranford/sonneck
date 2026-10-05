@@ -12,6 +12,7 @@ import {
   IconTrash,
 } from '@tabler/icons-react'
 import { Modal } from '../components/Modal'
+import { Radio } from '../components/Radio'
 import { Toggle } from '../components/Toggle'
 import { useMockupTitle } from '../lib/useMockupTitle'
 
@@ -619,11 +620,10 @@ export function UserSettingsMockup() {
                       : 'border-border bg-paper-raised hover:border-accent/50'
                   }`}
                 >
-                  <input
-                    type="radio"
+                  <Radio
                     checked={listDeleteMode === 'merge'}
                     onChange={() => setListDeleteMode('merge')}
-                    className="mt-1 accent-accent"
+                    className="mt-1"
                   />
                   <div className="min-w-0 flex-1">
                     <p className="font-display font-medium text-ink">
@@ -657,11 +657,10 @@ export function UserSettingsMockup() {
                     : 'border-border bg-paper-raised hover:border-accent/50'
                 }`}
               >
-                <input
-                  type="radio"
+                <Radio
                   checked={listDeleteMode === 'outright'}
                   onChange={() => setListDeleteMode('outright')}
-                  className="mt-1 accent-accent"
+                  className="mt-1"
                 />
                 <div className="min-w-0 flex-1">
                   <p className="font-display font-medium text-ink">Delete outright</p>
