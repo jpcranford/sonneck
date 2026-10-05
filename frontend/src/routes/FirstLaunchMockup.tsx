@@ -3,7 +3,7 @@ import {
   IconArrowLeft,
   IconArrowRight,
   IconBrandDocker,
-  IconCircleCheckFilled,
+  IconCheck,
   IconDeviceDesktop,
   IconExternalLink,
   IconEye,
@@ -413,7 +413,7 @@ function SecurityStep({
 function DoneStep({ choice, onRestart }: { choice: AuthChoice; onRestart: () => void }) {
   return (
     <div className="flex w-full max-w-md flex-col items-center gap-4 text-center">
-      <IconCircleCheckFilled size={40} className="text-ink" />
+      <IconCheck size={48} className="text-ink-soft" />
       <h1 className="font-display text-2xl font-medium text-ink">You're all set</h1>
       <p className="text-sm text-ink-soft">
         {choice === 'none'

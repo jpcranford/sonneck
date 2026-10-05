@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import {
   IconAlertTriangle,
   IconArrowLeft,
-  IconCircleCheck,
+  IconCheck,
   IconLoader2,
   IconUserCircle,
 } from '@tabler/icons-react'
@@ -100,9 +100,10 @@ import { afterMinDuration } from '../lib/minDuration'
 // nothing worth narrating a wait for.
 //
 // 'done'/'updating' are pulled back from accent to neutral: the spinner
-// (`IconLoader2`) and the checkmark (`IconCircleCheckFilled`) both read
-// as `text-ink`, not `text-accent` — neutral "something happened"
-// indicators, not accent-colored elements competing with the red confirm
+// (`IconLoader2`, `text-ink`) and the checkmark (`IconCheck`,
+// `text-ink-soft`, shared with every other done screen) are neutral
+// "something happened" indicators, not accent-colored elements competing
+// with the red confirm
 // button that precedes them. 'done's own "Continue to Sign In"/"Continue
 // to Library" button is likewise this app's standard secondary/white
 // button treatment (`border border-border bg-paper-raised text-ink
@@ -618,7 +619,7 @@ export function AuthChangeFlowMockup() {
 
         {step === 'done' && (
           <div className="flex w-full flex-col items-center text-center">
-            <IconCircleCheck size={48} className="text-ink" />
+            <IconCheck size={48} className="text-ink-soft" />
             <h1 className="mt-4 font-display text-2xl font-medium text-ink">All set</h1>
             <p className="mt-2 text-sm text-ink-soft">
               Sonneck is now running with <strong className="text-ink">{scenario.toLabel}</strong>.

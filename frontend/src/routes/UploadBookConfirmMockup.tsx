@@ -5,7 +5,6 @@ import {
   IconBook,
   IconBook2,
   IconCheck,
-  IconCircleCheckFilled,
   IconEyeOff,
   IconX,
 } from '@tabler/icons-react'
@@ -23,7 +22,7 @@ import { useMockupTitle } from '../lib/useMockupTitle'
 // success state machine, reusing EditBookModal.tsx's own real stripe-
 // animation button pattern (`animate-stripe-move`) rather than a static
 // comparison of the two states. The success screen reuses UploadPage.tsx's
-// exact "done" convention (IconCircleCheckFilled, "Upload another file"
+// exact "done" convention (IconCheck, "Upload another file"
 // resets back to the start) and demonstrates the imported-titles
 // sentence's truncation rule — verified for both the ≤3 and >3 cases via
 // a standalone script before wiring it in, since this fixed 3-piece
@@ -327,7 +326,7 @@ export function UploadBookConfirmMockup() {
 
       {stage === 'success' && (
         <div className="flex w-full max-w-md flex-col items-center gap-3 self-center text-center">
-          <IconCircleCheckFilled size={40} className="text-accent" />
+          <IconCheck size={48} className="text-ink-soft" />
           <h1 className="font-display text-2xl font-medium text-ink">
             {PIECES.length} pieces imported
           </h1>

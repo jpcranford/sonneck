@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   IconArrowLeft,
   IconArrowRight,
-  IconCircleCheckFilled,
+  IconCheck,
   IconExternalLink,
   IconEye,
   IconEyeOff,
@@ -529,7 +529,7 @@ function DoneStep({
 }) {
   return (
     <div className="flex w-full max-w-md flex-col items-center gap-4 text-center">
-      <IconCircleCheckFilled size={40} className="text-ink" />
+      <IconCheck size={48} className="text-ink-soft" />
       <h1 className="font-display text-2xl font-medium text-ink">You're all set</h1>
       <p className="text-sm text-ink-soft">
         {authMethod === 'none'

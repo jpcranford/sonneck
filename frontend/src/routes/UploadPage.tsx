@@ -12,7 +12,7 @@ import {
   IconCloudUpload,
   IconFileMusic,
   IconFileTypePdf,
-  IconCircleCheckFilled,
+  IconCheck,
   IconAlertTriangle,
   IconMusic,
 } from '@tabler/icons-react'
@@ -988,7 +988,7 @@ export function UploadPage() {
 
       {stage === 'success' && piece && (
         <div className="flex w-full max-w-md flex-col items-center gap-3 text-center">
-          <IconCircleCheckFilled size={40} className="text-accent" />
+          <IconCheck size={48} className="text-ink-soft" />
           {/* font-medium on the h1 itself now (added under the app-wide
               "every serifed heading is at least 500 weight" rule) — this
               supersedes the earlier deliberate choice to keep the
