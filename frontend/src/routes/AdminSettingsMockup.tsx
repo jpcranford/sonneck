@@ -510,7 +510,7 @@ function SecurityCard({
       <div className="flex items-start gap-3">
         <span
           className={`mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full ${
-            selected ? 'bg-accent-fill text-white' : 'bg-paper-sunken text-ink-soft'
+            selected ? 'bg-accent-fill text-white' : 'bg-paper-hover text-ink-soft'
           }`}
         >
           {icon}
@@ -1230,7 +1230,7 @@ export function AdminSettingsMockup() {
                       onClick={() => setOpenUserId(isOpen ? null : user.id)}
                       className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 text-left"
                     >
-                      <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-paper-sunken text-ink-soft">
+                      <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-paper-hover text-ink-soft">
                         <IconUserCircle size={16} />
                       </span>
                       <span className="min-w-0">

@@ -415,7 +415,7 @@ export function UploadPage() {
                   : 'border-[1.5px] border-border bg-paper-raised p-4'
               }`}
             >
-              <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-paper-sunken text-ink-soft">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-paper-hover text-ink-soft">
                 <IconFileMusic size={19} />
               </span>
               <span>
@@ -440,7 +440,7 @@ export function UploadPage() {
                   : 'border-[1.5px] border-border bg-paper-raised p-4'
               }`}
             >
-              <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-paper-sunken text-ink-soft">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-paper-hover text-ink-soft">
                 <IconBook2 size={19} />
               </span>
               <span>

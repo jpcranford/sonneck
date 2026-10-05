@@ -109,7 +109,7 @@ function ChoiceCard({
       onClick={onClick}
       className="flex cursor-pointer items-start gap-3.5 rounded-xl border-[1.5px] border-border bg-paper-raised p-4 text-left transition-colors hover:border-accent"
     >
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-paper-sunken text-ink-soft">
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-paper-hover text-ink-soft">
         {icon}
       </span>
       <span>

@@ -511,7 +511,7 @@ export function AuthChangeFlowMockup() {
                       : 'border-border bg-paper-raised hover:border-accent/50'
                   }`}
                 >
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-paper-sunken text-ink-soft">
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-paper-hover text-ink-soft">
                     <IconUserCircle size={16} />
                   </span>
                   <span className="min-w-0">

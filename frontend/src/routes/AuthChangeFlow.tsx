@@ -322,7 +322,7 @@ export function AuthChangeFlow({
                   every other account will be deleted next.
                 </p>
                 <div className="mt-6 flex items-center gap-3 rounded-lg border border-accent bg-accent-soft p-3.5">
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-paper-sunken text-ink-soft">
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-paper-hover text-ink-soft">
                     <IconUserCircle size={16} />
                   </span>
                   <span className="min-w-0">
@@ -362,7 +362,7 @@ export function AuthChangeFlow({
                             : 'border-border bg-paper-raised hover:border-accent/50'
                         }`}
                       >
-                        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-paper-sunken text-ink-soft">
+                        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-paper-hover text-ink-soft">
                           <IconUserCircle size={16} />
                         </span>
                         <span className="min-w-0">
