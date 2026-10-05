@@ -17,6 +17,7 @@ import {
   IconWifi,
   IconWifiOff,
 } from '@tabler/icons-react'
+import { Checkbox } from '../components/Checkbox'
 import { InfoIconTooltip } from '../components/InfoIconTooltip'
 import { Modal } from '../components/Modal'
 import { usePageTitle } from '../lib/usePageTitle'
@@ -426,12 +427,10 @@ function UsersSection() {
                         <label
                           className={`flex items-center gap-1.5 text-sm ${locked ? 'cursor-not-allowed text-ink-soft/50' : 'cursor-pointer text-ink'}`}
                         >
-                          <input
-                            type="checkbox"
+                          <Checkbox
                             checked={user.permissions.includes(perm)}
                             disabled={locked}
                             onChange={() => togglePermission(user, perm)}
-                            className="accent-accent"
                           />
                           {perm}
                         </label>

@@ -16,6 +16,7 @@ import {
   IconWifi,
   IconWifiOff,
 } from '@tabler/icons-react'
+import { Checkbox } from '../components/Checkbox'
 import { InfoIconTooltip } from '../components/InfoIconTooltip'
 import { Modal } from '../components/Modal'
 import { useMockupTitle } from '../lib/useMockupTitle'
@@ -1299,12 +1300,10 @@ export function AdminSettingsMockup() {
                                   : 'cursor-pointer text-ink'
                               }`}
                             >
-                              <input
-                                type="checkbox"
+                              <Checkbox
                                 checked={user.perms.includes(perm)}
                                 disabled={locked}
                                 onChange={() => togglePermission(user.id, perm)}
-                                className="accent-accent"
                               />
                               {perm}
                             </label>

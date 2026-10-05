@@ -8,6 +8,7 @@ import type { Person, PersonCreateRequest } from '../api/types'
 import { useDebouncedValue } from '../hooks/useDebouncedValue'
 import { afterMinDuration } from '../lib/minDuration'
 import { PALETTE } from '../lib/pieceSplitLogic'
+import { Checkbox } from '../components/Checkbox'
 import { ClickableCard } from '../components/ClickableCard'
 import { InfoIconTooltip } from '../components/InfoIconTooltip'
 import { Modal } from '../components/Modal'
@@ -363,11 +364,9 @@ function PersonFilterDrawer({
         <div className="flex-1 overflow-y-auto px-4 py-2">
           <FacetSection title="Show only">
             <label className="flex cursor-pointer items-center gap-2.5 rounded-md px-1 py-1.5 text-sm text-ink hover:bg-paper-hover">
-              <input
-                type="checkbox"
+              <Checkbox
                 checked={filters.showAll}
                 onChange={() => onChange({ ...filters, showAll: !filters.showAll })}
-                className="accent-accent"
               />
               <span className="flex flex-1 items-center gap-1.5">
                 Show all composers
