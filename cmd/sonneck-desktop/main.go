@@ -355,6 +355,9 @@ func main() {
 		AssetServer: &assetserver.Options{
 			Handler: handler,
 		},
+		// The saved theme's page color, so a dark install doesn't open on
+		// Wails' default white (theme.go).
+		BackgroundColour: launchWindowColor(context.Background(), conn),
 		// OnStartup is Wails' own hook for the one thing this binary needs
 		// its real window context for — chooseFolder/requestRestart above,
 		// both otherwise-plain HTTP handler functions that have no other
@@ -377,7 +380,13 @@ func main() {
 		// deeper Wails v2 limitation this does NOT fix — see
 		// project_wails_native_app_investigation memory for the full
 		// writeup and upstream reference (wailsapp/wails#2582).
-		Mac: &mac.Options{},
+		//
+		// WebviewIsTransparent: on macOS BackgroundColour only colors the
+		// window, and the web view paints its own white over it until the
+		// page loads. Transparent, the window's color shows through until
+		// the page's own background (index.css's body) takes over. Windows
+		// needs nothing extra: Wails gives WebView2 the same color.
+		Mac: &mac.Options{WebviewIsTransparent: true},
 	})
 	if err != nil {
 		logger.Error("wails run failed", "error", err)
