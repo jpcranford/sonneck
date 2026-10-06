@@ -194,7 +194,7 @@ function WorkThumbnail({ piece, className }: { piece: Piece; className: string }
         src={getPieceThumbnailUrl(piece.id, piece.thumbnailPage)}
         alt=""
         loading="lazy"
-        className="h-full w-full object-cover object-top"
+        className="score-page h-full w-full object-cover object-top"
       />
     </div>
   )

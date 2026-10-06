@@ -341,7 +341,7 @@ function HoverPagePreview({
           src={getBookPageThumbnailUrl(bookId, piece.start)}
           alt=""
           loading="lazy"
-          className="h-full w-full object-cover object-top"
+          className="score-page h-full w-full object-cover object-top"
         />
       </button>
       {/* No fade-in transition (the pre-portal version's opacity-0 ->
@@ -374,7 +374,7 @@ function HoverPagePreview({
           <img
             src={getBookPageThumbnailUrl(bookId, piece.start)}
             alt=""
-            className="block h-auto w-auto max-h-[calc(100vh-16px)] max-w-[420px]"
+            className="score-page block h-auto w-auto max-h-[calc(100vh-16px)] max-w-[420px]"
           />
         </div>
       )}
@@ -585,7 +585,7 @@ const MobilePieceRow = memo(function MobilePieceRow({
             src={getBookPageThumbnailUrl(bookId, piece.start)}
             alt=""
             loading="lazy"
-            className="h-full w-full object-cover object-top"
+            className="score-page h-full w-full object-cover object-top"
           />
         </button>
         <span className="text-sm text-ink-soft">

@@ -380,6 +380,7 @@ export function UserSettingsMockup() {
   // file's own header comment: this used to be "showBooksInSidebar",
   // default true, before the label flipped to "Hide Books in sidebar".
   const [hideBooksInSidebar, setHideBooksInSidebar] = useState(false)
+  const [darkModeScores, setDarkModeScores] = useState(false)
   // Default false (not paginated — infinite scroll shown, the real
   // default) — see this file's own header comment. Migration 00024's
   // user_settings.content_view_mode defaults to 'infinite', matching
@@ -495,6 +496,18 @@ export function UserSettingsMockup() {
             label="Theme"
             help="System follows your device's own light/dark setting."
             control={<ThemeControl theme={theme} onChange={setTheme} />}
+          />
+          <SettingsRow
+            label="Dark Mode Scores"
+            help="While the dark theme is on, show sheet music as light notes on a dark page, easier on the eyes in a dim room."
+            control={
+              <Toggle
+                checked={darkModeScores}
+                onChange={setDarkModeScores}
+                label=""
+                id="dark-mode-scores"
+              />
+            }
           />
         </SettingsCard>
 

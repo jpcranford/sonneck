@@ -226,7 +226,7 @@ export function BookUploadConfirmStep({
                 src={getBookPageThumbnailUrl(bookId, piece.start)}
                 alt=""
                 loading="lazy"
-                className="block h-auto w-full"
+                className="score-page block h-auto w-full"
               />
             </div>
             <div className="flex flex-col gap-px px-2 py-1.5">

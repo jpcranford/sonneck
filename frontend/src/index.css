@@ -506,6 +506,18 @@
   --skip-fade: 0.15;
 }
 
+/* Dark Mode Scores (User Settings › Appearance, lib/theme.ts's
+   useDarkScoresSync): every sheet-music page image carries the score-page
+   class, and while the setting is on and the theme is dark it shows light
+   notes on a dark page. invert(0.9) rather than a full invert keeps the page
+   a near-black close to the dark paper instead of pure black, and the notes
+   a soft white; hue-rotate puts colored marks (pencil, highlighter) back on
+   their own hue after the invert. Book covers and portraits aren't tagged,
+   so they stay as they are. */
+:root[data-theme='dark'][data-dark-scores] .score-page {
+  filter: invert(0.9) hue-rotate(180deg);
+}
+
 /* transform, not background-position (fixed 2026-09-02, direct report:
    "the pinstripe animation never plays, always freezes up" on the Book
    Upload Wizard's Import button). Animating background-position forces a

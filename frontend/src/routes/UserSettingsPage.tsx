@@ -566,6 +566,19 @@ export function UserSettingsPage() {
               />
             }
           />
+          <SettingsRow
+            label="Dark Mode Scores"
+            help="While the dark theme is on, show sheet music as light notes on a dark page, easier on the eyes in a dim room."
+            control={
+              <Toggle
+                checked={settings?.darkModeScores ?? false}
+                onChange={(checked) => patchSettings({ darkModeScores: checked })}
+                label=""
+                id="dark-mode-scores"
+                disabled={settingsLoading}
+              />
+            }
+          />
         </SettingsCard>
 
         <SettingsCard title="Library">

@@ -132,7 +132,7 @@ function PieceGrid({ pieces }: { pieces: Piece[] }) {
                 src={getPieceThumbnailUrl(piece.id, piece.thumbnailPage)}
                 alt=""
                 loading="lazy"
-                className="h-full w-full object-cover object-top"
+                className="score-page h-full w-full object-cover object-top"
               />
             </div>
             <div className="flex flex-col gap-0.5 px-2 py-1.5">
@@ -245,7 +245,7 @@ function PieceList({ pieces }: { pieces: Piece[] }) {
                   src={getPieceThumbnailUrl(piece.id, piece.thumbnailPage)}
                   alt=""
                   loading="lazy"
-                  className="h-full w-full object-cover object-top"
+                  className="score-page h-full w-full object-cover object-top"
                 />
               </div>
             </ClickableCard>

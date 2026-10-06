@@ -623,7 +623,7 @@ export function UploadPage() {
                     src={getPieceThumbnailUrl(piece.id, previewPage)}
                     onLoad={() => setThumbLoaded(true)}
                     alt={`Page ${previewPage} of ${piece.title}`}
-                    className={thumbLoaded ? 'h-auto w-full' : 'invisible h-0 w-full'}
+                    className={`score-page ${thumbLoaded ? 'h-auto w-full' : 'invisible h-0 w-full'}`}
                   />
                 </button>
                 <div

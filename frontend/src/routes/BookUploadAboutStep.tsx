@@ -362,7 +362,7 @@ export function BookUploadAboutStep({
                 src={getBookPageThumbnailUrl(book.id, previewPage)}
                 onLoad={() => setThumbLoaded(true)}
                 alt=""
-                className={thumbLoaded ? 'h-auto w-full' : 'invisible h-full w-full'}
+                className={`score-page ${thumbLoaded ? 'h-auto w-full' : 'invisible h-full w-full'}`}
               />
             </button>
             {/* Always-visible "view larger" hint, not a hover reveal —

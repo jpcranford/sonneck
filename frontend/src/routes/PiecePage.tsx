@@ -642,7 +642,7 @@ export function PiecePage() {
                 <img
                   src={getPieceThumbnailUrl(piece.id, page)}
                   alt={`Page ${page} of ${piece.title}`}
-                  className="h-auto w-full"
+                  className="score-page h-auto w-full"
                 />
               </button>
 

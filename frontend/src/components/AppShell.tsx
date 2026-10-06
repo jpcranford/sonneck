@@ -9,7 +9,7 @@ import { SonneckMark } from './SonneckMark'
 import { useMediaQuery } from '../hooks/useMediaQuery'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { getUserSettings } from '../api/userSettings'
-import { useThemeSync } from '../lib/theme'
+import { useDarkScoresSync, useThemeSync } from '../lib/theme'
 
 export function AppShell() {
   // Owned here, not inside MobileNav itself, because the top bar and the
@@ -21,6 +21,7 @@ export function AppShell() {
   // account menu's theme switcher reads, so a change there applies at once.
   const { data: settings } = useQuery({ queryKey: ['user-settings'], queryFn: getUserSettings })
   useThemeSync(settings?.themePreference)
+  useDarkScoresSync(settings?.darkModeScores)
 
   // Pull-to-refresh — mobile/tablet widths only, not desktop (a touch
   // gesture makes no sense gated purely on chrome, which stays desktop/

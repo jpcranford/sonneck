@@ -53,3 +53,25 @@ export function useThemeSync(preference: ThemePreference | undefined) {
     return () => query.removeEventListener('change', onChange)
   }, [preference])
 }
+
+// Dark Mode Scores (user_settings.dark_mode_scores, User Settings ›
+// Appearance): sets <html data-dark-scores> while on. index.css inverts
+// every sheet-music page image (class score-page) under that flag, and only
+// while the dark theme is on, so the setting does nothing in light. Cached
+// in localStorage like the theme so index.html's inline script can set it
+// before the first paint.
+export const DARK_SCORES_STORAGE_KEY = 'sonneck-dark-scores'
+
+export function useDarkScoresSync(enabled: boolean | undefined) {
+  useEffect(() => {
+    if (enabled === undefined) return
+    const root = document.documentElement
+    if (enabled) root.dataset.darkScores = ''
+    else delete root.dataset.darkScores
+    try {
+      localStorage.setItem(DARK_SCORES_STORAGE_KEY, enabled ? '1' : '0')
+    } catch {
+      // Storage unavailable: still applies for this page.
+    }
+  }, [enabled])
+}

@@ -81,7 +81,7 @@ export function PieceGridCard({ piece, backLabel, siblingPieces }: PieceGridCard
             src={getPieceThumbnailUrl(piece.id, piece.thumbnailPage)}
             alt=""
             loading="lazy"
-            className="h-full w-full object-cover object-top"
+            className="score-page h-full w-full object-cover object-top"
           />
           {/* Practice status as a badge over the thumbnail, not a footer
               pill — keeps every grid card the same height regardless of

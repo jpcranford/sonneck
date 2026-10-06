@@ -617,7 +617,7 @@ export function BookUploadSplitStep({
                         alt=""
                         loading="lazy"
                         onLoad={(e) => handleThumbnailLoad(page, e)}
-                        className={`block h-auto w-full transition-opacity duration-300 ${
+                        className={`score-page block h-auto w-full transition-opacity duration-300 ${
                           loadedPages.has(page) ? 'opacity-100' : 'opacity-0'
                         }`}
                       />
@@ -638,7 +638,7 @@ export function BookUploadSplitStep({
                       alt=""
                       loading="lazy"
                       onLoad={(e) => handleThumbnailLoad(page, e)}
-                      className={`block h-auto w-full transition-opacity duration-300 ${
+                      className={`score-page block h-auto w-full transition-opacity duration-300 ${
                         loadedPages.has(page) ? 'opacity-100' : 'opacity-0'
                       }`}
                     />

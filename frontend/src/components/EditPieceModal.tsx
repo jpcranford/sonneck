@@ -841,7 +841,7 @@ export function EditPieceModal({
                   <img
                     src={getPieceThumbnailUrl(piece.id, previewPage)}
                     alt={`Page ${previewPage} of ${piece.title}`}
-                    className="block h-auto w-full"
+                    className="score-page block h-auto w-full"
                   />
                 </div>
                 <div className="flex justify-center">
