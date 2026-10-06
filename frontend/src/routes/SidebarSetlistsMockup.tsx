@@ -86,7 +86,7 @@ function RailNavList({ items, collapsed }: { items: NavItem[]; collapsed: boolea
           className={({ isActive }) =>
             `flex h-10 items-center gap-3 rounded-md px-2 font-display text-base font-medium ${
               collapsed ? 'justify-center' : ''
-            } ${isActive ? 'bg-sidebar-panel text-sidebar-text' : 'text-sidebar-text hover:bg-white/5'}`
+            } ${isActive ? 'bg-sidebar-panel text-sidebar-text' : 'text-sidebar-text hover:bg-sidebar-hover'}`
           }
         >
           <Icon size={24} className="text-sidebar-text" />
@@ -108,7 +108,9 @@ function DrawerNavList({ items, onNavigate }: { items: NavItem[]; onNavigate: ()
           onClick={onNavigate}
           className={({ isActive }) =>
             `flex h-11 items-center gap-3 rounded-md px-3 font-display text-base font-medium ${
-              isActive ? 'bg-sidebar-panel text-sidebar-text' : 'text-sidebar-text hover:bg-white/5'
+              isActive
+                ? 'bg-sidebar-panel text-sidebar-text'
+                : 'text-sidebar-text hover:bg-sidebar-hover'
             }`
           }
         >
@@ -184,14 +186,14 @@ function SetlistsMenu() {
           <Link
             to="/mockup/setlists-library"
             onClick={() => setOpen(false)}
-            className="block w-full cursor-pointer px-3 py-1.5 text-left text-[0.82rem] text-sidebar-text hover:bg-white/5"
+            className="block w-full cursor-pointer px-3 py-1.5 text-left text-[0.82rem] text-sidebar-text hover:bg-sidebar-menu-hover"
           >
             View All Setlists
           </Link>
           <Link
             to="/mockup/setlists-library#archived"
             onClick={() => setOpen(false)}
-            className="block w-full cursor-pointer px-3 py-1.5 text-left text-[0.82rem] text-sidebar-text hover:bg-white/5"
+            className="block w-full cursor-pointer px-3 py-1.5 text-left text-[0.82rem] text-sidebar-text hover:bg-sidebar-menu-hover"
           >
             Archive
           </Link>
@@ -235,7 +237,7 @@ function SetlistsSection({
               `flex size-10 items-center justify-center rounded-md font-display text-base font-medium ${
                 isActive
                   ? 'bg-sidebar-panel text-sidebar-text'
-                  : 'text-sidebar-text hover:bg-white/5'
+                  : 'text-sidebar-text hover:bg-sidebar-hover'
               }`
             }
           >
@@ -264,7 +266,7 @@ function SetlistsSection({
                 `mt-1 flex items-center justify-between gap-2 truncate rounded-md px-2 py-1.5 font-display text-sm font-medium first:mt-0 ${
                   isActive
                     ? 'bg-sidebar-panel text-sidebar-text'
-                    : 'text-sidebar-text hover:bg-white/5'
+                    : 'text-sidebar-text hover:bg-sidebar-hover'
                 }`
               }
             >
@@ -330,7 +332,7 @@ export function SidebarSetlistsMockup() {
             type="button"
             onClick={() => setDrawerOpen(true)}
             aria-label="Open menu"
-            className="flex size-9 shrink-0 items-center justify-center rounded-md text-sidebar-text hover:bg-white/10"
+            className="flex size-9 shrink-0 items-center justify-center rounded-md text-sidebar-text hover:bg-sidebar-hover"
           >
             <IconMenu2 size={22} />
           </button>

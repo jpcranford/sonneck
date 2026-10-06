@@ -43,7 +43,7 @@ export function MobileNavTopBar({ onOpen }: { onOpen: () => void }) {
         type="button"
         onClick={onOpen}
         aria-label="Open menu"
-        className="flex size-9 shrink-0 items-center justify-center rounded-md text-sidebar-text hover:bg-white/10"
+        className="flex size-9 shrink-0 items-center justify-center rounded-md text-sidebar-text hover:bg-sidebar-hover"
       >
         <IconMenu2 size={22} />
       </button>
@@ -103,7 +103,7 @@ function DrawerNavList({ items, onNavigate }: { items: NavItem[]; onNavigate: ()
               `flex h-11 items-center gap-3 rounded-md px-3 font-display text-base font-medium ${
                 isActive
                   ? 'bg-sidebar-panel text-sidebar-text'
-                  : 'text-sidebar-text hover:bg-white/5'
+                  : 'text-sidebar-text hover:bg-sidebar-hover'
               }`
             }
           >

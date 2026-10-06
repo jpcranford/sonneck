@@ -378,6 +378,10 @@
   --color-sidebar-text-dim: #8f857a;
   /* The sidebar's edge, its dividers and outlined controls. */
   --color-sidebar-border: #37302b;
+  /* Hover on the dark sidebar rail (nav items, Upcoming Sets rows, the mobile top bar's buttons): halfway between the rail and the selected item's brown, on its warm hue. */
+  --color-sidebar-hover: #1f1916;
+  /* Hover on an item inside the sidebar's menus (account menu, Upcoming Sets' ⋯), which sit on sidebar-panel. */
+  --color-sidebar-menu-hover: #3b312d;
 
   /* Primary buttons, links, selected states, per-user pills' text. */
   --color-accent: #3f5c3f;
@@ -474,6 +478,8 @@
   --color-sidebar-text: #d9d0c3;
   --color-sidebar-text-dim: #8f857a;
   --color-sidebar-border: #2c2622;
+  --color-sidebar-hover: #1f1916;
+  --color-sidebar-menu-hover: #3b312d;
 
   --color-accent: #9dbd94;
   --color-accent-soft: #24301f;

@@ -431,7 +431,7 @@ function ExampleWindowSection() {
                 <span
                   key={label as string}
                   className={`flex h-10 items-center gap-3 rounded-md px-2 font-display text-base font-medium text-sidebar-text ${
-                    active ? 'bg-sidebar-panel' : 'hover:bg-white/5'
+                    active ? 'bg-sidebar-panel' : 'hover:bg-sidebar-hover'
                   }`}
                 >
                   <I size={24} />

@@ -86,7 +86,7 @@ function NavItemsList({ items, collapsed }: { items: NavItem[]; collapsed: boole
               } ${
                 isActive
                   ? 'bg-sidebar-panel text-sidebar-text'
-                  : 'text-sidebar-text hover:bg-white/5'
+                  : 'text-sidebar-text hover:bg-sidebar-hover'
               }`
             }
           >

@@ -59,7 +59,9 @@ function DrawerNavList({ items }: { items: NavItem[] }) {
           end={to === '/'}
           className={({ isActive }) =>
             `flex h-11 items-center gap-3 rounded-md px-3 font-display text-base font-medium ${
-              isActive ? 'bg-sidebar-panel text-sidebar-text' : 'text-sidebar-text hover:bg-white/5'
+              isActive
+                ? 'bg-sidebar-panel text-sidebar-text'
+                : 'text-sidebar-text hover:bg-sidebar-hover'
             }`
           }
         >
@@ -103,7 +105,7 @@ export function MobileNavDrawerMockup() {
             type="button"
             onClick={() => setDrawerOpen(true)}
             aria-label="Open menu"
-            className="flex size-9 shrink-0 items-center justify-center rounded-md text-sidebar-text hover:bg-white/10"
+            className="flex size-9 shrink-0 items-center justify-center rounded-md text-sidebar-text hover:bg-sidebar-hover"
           >
             <IconMenu2 size={22} />
           </button>
