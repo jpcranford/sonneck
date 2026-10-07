@@ -474,6 +474,22 @@
 :root {
   --split-tint: 10%;
   --skip-fade: 0.6;
+  --titlebar-inset: 0px;
+  --titlebar-lights: 0px;
+}
+
+/* The macOS desktop app's hidden title bar (lib/nativeTitleBar.ts):
+   the band its traffic lights float in (52px, the lights centered 26px
+   down) and the room they take from the left edge (they end at 78px), both
+   measured in a real build of Wails' TitleBarHiddenInset. 0 everywhere
+   else. The full-width drag strip is only for screens without the app
+   shell; inside it, the sidebar's top row and the narrow top bar drag. */
+:root[data-native-titlebar] {
+  --titlebar-inset: 52px;
+  --titlebar-lights: 88px;
+}
+body:has(#app-scroll-container) .titlebar-drag-strip {
+  display: none;
 }
 
 /* The dark theme (Walnut, lifted: A3 in the palette comparison): every color token

@@ -7,6 +7,7 @@ import { getUserSettings } from '../api/userSettings'
 import { listSetlists, getUpcomingSetlists } from '../api/setlists'
 import { UserMenuButton } from './UserMenuButton'
 import { SetlistsSection } from './SidebarSetlists'
+import { dragRegion, noDragRegion, zoomOnDoubleClick } from '../lib/nativeTitleBar'
 
 // Mobile-only top bar + left drawer — the classic hamburger-drawer
 // pattern, chosen over a top-fold panel, a bottom sheet, and a bottom tab
@@ -38,12 +39,15 @@ import { SetlistsSection } from './SidebarSetlists'
 
 export function MobileNavTopBar({ onOpen }: { onOpen: () => void }) {
   return (
-    <div className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b border-sidebar-border bg-sidebar-bg px-3 md:hidden">
+    <div
+      onDoubleClick={zoomOnDoubleClick}
+      className={`sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b border-sidebar-border bg-sidebar-bg px-3 pl-[max(0.75rem,var(--titlebar-lights))] md:hidden ${dragRegion}`}
+    >
       <button
         type="button"
         onClick={onOpen}
         aria-label="Open menu"
-        className="flex size-9 shrink-0 items-center justify-center rounded-md text-sidebar-text hover:bg-sidebar-hover"
+        className={`flex size-9 shrink-0 items-center justify-center rounded-md text-sidebar-text hover:bg-sidebar-hover ${noDragRegion}`}
       >
         <IconMenu2 size={22} />
       </button>
@@ -137,7 +141,7 @@ export function MobileNavDrawer({ open, onClose }: { open: boolean; onClose: () 
         onClick={onClose}
       />
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col bg-sidebar-bg transition-transform duration-200 md:hidden ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col bg-sidebar-bg pt-[var(--titlebar-inset)] transition-transform duration-200 md:hidden ${
           open ? 'translate-x-0' : '-translate-x-full'
         }`}
       >

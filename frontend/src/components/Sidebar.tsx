@@ -11,6 +11,7 @@ import { getUserSettings } from '../api/userSettings'
 import { listSetlists, getUpcomingSetlists } from '../api/setlists'
 import { UserMenuButton } from './UserMenuButton'
 import { SetlistsSection } from './SidebarSetlists'
+import { dragRegion, noDragRegion, zoomOnDoubleClick } from '../lib/nativeTitleBar'
 
 // Shared between the primary nav group and the secondary (Favorites/
 // Currently Practicing) group below the divider — same link styling
@@ -130,15 +131,30 @@ export function Sidebar() {
     // was meant to cover.
     <aside
       className={`flex h-dvh shrink-0 flex-col border-r border-sidebar-border bg-sidebar-bg transition-[width] duration-150 ${
-        collapsed ? 'w-16' : 'w-64'
+        collapsed ? 'w-[max(4rem,var(--titlebar-lights))]' : 'w-64'
       }`}
     >
-      <div className="flex h-14 shrink-0 items-center justify-end px-3">
+      {/* In the macOS app the collapsed rail widens to hold the traffic
+          lights (--titlebar-lights, 0 elsewhere, so 4rem as usual) and gives
+          them a band above its button, since they can't share a row at
+          that width. Both are dark rail, never page. */}
+      {collapsed && (
+        <div
+          onDoubleClick={zoomOnDoubleClick}
+          className={`h-[var(--titlebar-inset)] shrink-0 ${dragRegion}`}
+        />
+      )}
+      <div
+        onDoubleClick={zoomOnDoubleClick}
+        className={`flex h-14 shrink-0 items-center px-3 ${
+          collapsed ? 'justify-center' : 'justify-end'
+        } ${dragRegion}`}
+      >
         <button
           type="button"
           onClick={() => setCollapsed((value) => !value)}
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          className="flex size-[30px] shrink-0 cursor-pointer items-center justify-center rounded-md border border-sidebar-border text-sidebar-text-dim hover:text-sidebar-text"
+          className={`flex size-[30px] shrink-0 cursor-pointer items-center justify-center rounded-md border border-sidebar-border text-sidebar-text-dim hover:text-sidebar-text ${noDragRegion}`}
         >
           {collapsed ? (
             <IconLayoutSidebarLeftExpandFilled size={16} />

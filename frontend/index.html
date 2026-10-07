@@ -39,6 +39,11 @@
           document.querySelector('meta[name="theme-color"]').setAttribute('content', '#231e1a')
         if (localStorage.getItem('sonneck-dark-scores') === '1')
           document.documentElement.dataset.darkScores = ''
+        // The macOS desktop app hides its title bar; mark it so the page
+        // keeps the traffic lights band clear (lib/nativeTitleBar.ts).
+        // Wails injects window.runtime ahead of this script.
+        if (window.runtime && /Macintosh/.test(navigator.userAgent))
+          document.documentElement.dataset.nativeTitlebar = ''
       } catch (e) {}
     </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />

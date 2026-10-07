@@ -24,17 +24,11 @@ const darkQuery = () => window.matchMedia('(prefers-color-scheme: dark)')
 // The native app's window color, behind the page: the same page color, as
 // RGB. cmd/sonneck-desktop/theme.go opens the window on the saved theme's
 // color; this keeps it in step after a theme change (it shows while the
-// window resizes). Wails injects window.runtime into the page it serves;
-// in a browser it doesn't exist and this does nothing.
+// window resizes), and switches the Windows title bar to match (the Mac's
+// is hidden instead, lib/nativeTitleBar.ts; the call does nothing
+// there). Wails injects window.runtime into the page it serves; in a
+// browser it doesn't exist and none of this runs.
 const WINDOW_COLOR = { light: [0xf8, 0xf6, 0xf3], dark: [0x23, 0x1e, 0x1a] } as const
-
-declare global {
-  interface Window {
-    runtime?: {
-      WindowSetBackgroundColour?: (r: number, g: number, b: number, a: number) => void
-    }
-  }
-}
 
 export function resolveTheme(preference: ThemePreference): 'light' | 'dark' {
   if (preference === 'system') return darkQuery().matches ? 'dark' : 'light'
@@ -49,6 +43,8 @@ export function applyTheme(preference: ThemePreference) {
     ?.setAttribute('content', BROWSER_BAR_COLOR[theme])
   const [r, g, b] = WINDOW_COLOR[theme]
   window.runtime?.WindowSetBackgroundColour?.(r, g, b, 255)
+  if (theme === 'dark') window.runtime?.WindowSetDarkTheme?.()
+  else window.runtime?.WindowSetLightTheme?.()
   try {
     localStorage.setItem(THEME_STORAGE_KEY, preference)
   } catch {
