@@ -19,6 +19,7 @@ import {
 import { ContextMenu } from '../components/ContextMenu'
 import { MarkdownText } from '../components/MarkdownText'
 import { Modal } from '../components/Modal'
+import { Slider } from '../components/Slider'
 import { TagComboBox } from '../components/TagComboBox'
 import { TagPills } from '../components/TagPills'
 import { PALETTE } from '../lib/pieceSplitLogic'
@@ -912,14 +913,14 @@ function UploadPortraitModal({
           </div>
           <div className="flex items-center gap-3">
             <span className="text-xs text-ink-soft">Zoom</span>
-            <input
-              type="range"
+            <Slider
               min={1}
               max={2.5}
               step={0.05}
               value={zoom}
-              onChange={(event) => setZoom(Number(event.target.value))}
-              className="flex-1 accent-accent"
+              onChange={setZoom}
+              aria-label="Zoom"
+              className="min-w-0 flex-1"
             />
           </div>
         </div>

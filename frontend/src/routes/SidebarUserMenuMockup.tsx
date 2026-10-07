@@ -319,7 +319,7 @@ function UserMenuButton({
               onNavigate?.()
             }}
             role="menuitem"
-            className="flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-[0.85rem] text-sidebar-text hover:bg-white/5"
+            className="flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-[0.85rem] text-sidebar-text hover:bg-sidebar-menu-hover"
           >
             <IconSettings size={16} className="opacity-85" />
             User Settings
@@ -332,7 +332,7 @@ function UserMenuButton({
                 onNavigate?.()
               }}
               role="menuitem"
-              className="flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-[0.85rem] text-sidebar-text hover:bg-white/5"
+              className="flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-[0.85rem] text-sidebar-text hover:bg-sidebar-menu-hover"
             >
               <IconShieldLock size={16} className="opacity-85" />
               Admin Settings
@@ -372,7 +372,7 @@ function RailNavList({ items, collapsed }: { items: NavItem[]; collapsed: boolea
           className={({ isActive }) =>
             `flex h-10 items-center gap-3 rounded-md px-2 font-display text-base font-medium ${
               collapsed ? 'justify-center' : ''
-            } ${isActive ? 'bg-sidebar-panel text-sidebar-text' : 'text-sidebar-text hover:bg-white/5'}`
+            } ${isActive ? 'bg-sidebar-panel text-sidebar-text' : 'text-sidebar-text hover:bg-sidebar-hover'}`
           }
         >
           <Icon size={24} className="text-sidebar-text" />
@@ -394,7 +394,9 @@ function DrawerNavList({ items, onNavigate }: { items: NavItem[]; onNavigate: ()
           onClick={onNavigate}
           className={({ isActive }) =>
             `flex h-11 items-center gap-3 rounded-md px-3 font-display text-base font-medium ${
-              isActive ? 'bg-sidebar-panel text-sidebar-text' : 'text-sidebar-text hover:bg-white/5'
+              isActive
+                ? 'bg-sidebar-panel text-sidebar-text'
+                : 'text-sidebar-text hover:bg-sidebar-hover'
             }`
           }
         >
@@ -485,7 +487,7 @@ export function SidebarUserMenuMockup() {
             type="button"
             onClick={() => setDrawerOpen(true)}
             aria-label="Open menu"
-            className="flex size-9 shrink-0 items-center justify-center rounded-md text-sidebar-text hover:bg-white/10"
+            className="flex size-9 shrink-0 items-center justify-center rounded-md text-sidebar-text hover:bg-sidebar-hover"
           >
             <IconMenu2 size={22} />
           </button>

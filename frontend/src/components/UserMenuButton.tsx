@@ -229,7 +229,7 @@ export function UserMenuButton({
               onNavigate?.()
             }}
             role="menuitem"
-            className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-[0.85rem] text-sidebar-text hover:bg-white/5"
+            className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-[0.85rem] text-sidebar-text hover:bg-sidebar-menu-hover"
           >
             <IconSettings size={16} className="opacity-85" />
             User Settings
@@ -242,7 +242,7 @@ export function UserMenuButton({
                 onNavigate?.()
               }}
               role="menuitem"
-              className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-[0.85rem] text-sidebar-text hover:bg-white/5"
+              className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-[0.85rem] text-sidebar-text hover:bg-sidebar-menu-hover"
             >
               <IconShieldLock size={16} className="opacity-85" />
               Admin Settings

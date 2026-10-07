@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 import App from './App.tsx'
+import { TitleBarDragStrip } from './components/NativeTitleBar'
 import { ApiError } from './api/client'
 
 // Retry a failed load up to three times (TanStack's default), except when
@@ -27,6 +28,7 @@ createRoot(document.getElementById('root')!).render(
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <App />
+        <TitleBarDragStrip />
       </BrowserRouter>
     </QueryClientProvider>
   </StrictMode>,

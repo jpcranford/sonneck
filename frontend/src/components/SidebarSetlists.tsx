@@ -72,14 +72,14 @@ function SetlistsMenu() {
           <Link
             to="/setlists"
             onClick={() => setOpen(false)}
-            className="block w-full cursor-pointer px-3 py-1.5 text-left text-[0.82rem] text-sidebar-text hover:bg-white/5"
+            className="block w-full cursor-pointer px-3 py-1.5 text-left text-[0.82rem] text-sidebar-text hover:bg-sidebar-menu-hover"
           >
             View All Setlists
           </Link>
           <Link
             to="/setlists#archived"
             onClick={() => setOpen(false)}
-            className="block w-full cursor-pointer px-3 py-1.5 text-left text-[0.82rem] text-sidebar-text hover:bg-white/5"
+            className="block w-full cursor-pointer px-3 py-1.5 text-left text-[0.82rem] text-sidebar-text hover:bg-sidebar-menu-hover"
           >
             Archive
           </Link>
@@ -114,7 +114,7 @@ export function SetlistsSection({
               `flex size-10 items-center justify-center rounded-md font-display text-base font-medium ${
                 isActive
                   ? 'bg-sidebar-panel text-sidebar-text'
-                  : 'text-sidebar-text hover:bg-white/5'
+                  : 'text-sidebar-text hover:bg-sidebar-hover'
               }`
             }
           >
@@ -143,7 +143,7 @@ export function SetlistsSection({
                 `mt-1 flex items-center justify-between gap-2 truncate rounded-md px-2 py-1.5 font-display text-sm font-medium first:mt-0 ${
                   isActive
                     ? 'bg-sidebar-panel text-sidebar-text'
-                    : 'text-sidebar-text hover:bg-white/5'
+                    : 'text-sidebar-text hover:bg-sidebar-hover'
                 }`
               }
             >

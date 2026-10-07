@@ -378,6 +378,10 @@
   --color-sidebar-text-dim: #8f857a;
   /* The sidebar's edge, its dividers and outlined controls. */
   --color-sidebar-border: #37302b;
+  /* Hover on the dark sidebar rail (nav items, Upcoming Sets rows, the mobile top bar's buttons): halfway between the rail and the selected item's brown, on its warm hue. */
+  --color-sidebar-hover: #1f1916;
+  /* Hover on an item inside the sidebar's menus (account menu, Upcoming Sets' ⋯), which sit on sidebar-panel. */
+  --color-sidebar-menu-hover: #3b312d;
 
   /* Primary buttons, links, selected states, per-user pills' text. */
   --color-accent: #3f5c3f;
@@ -433,6 +437,32 @@
      animate-stripe-move utility it generates is reusable if any future
      multi-record save ever wants the same "in progress" language. */
   --animate-stripe-move: stripe-move 0.85s linear infinite;
+
+  /* Shadows: Tailwind's own shapes, with each size's color read from a
+     --shadow-tint-* variable (below) instead of a fixed black. Tailwind
+     copies a shadow's value into its utility at build time, so overriding
+     --shadow-lg itself in the dark block would change nothing; the tint
+     variables are what each theme redefines. */
+  --shadow: 0 1px 3px 0 var(--shadow-tint-sm), 0 1px 2px -1px var(--shadow-tint-sm);
+  --shadow-sm: 0 1px 3px 0 var(--shadow-tint-sm), 0 1px 2px -1px var(--shadow-tint-sm);
+  --shadow-md: 0 4px 6px -1px var(--shadow-tint-md), 0 2px 4px -2px var(--shadow-tint-md);
+  --shadow-lg: 0 10px 15px -3px var(--shadow-tint-lg), 0 4px 6px -4px var(--shadow-tint-lg);
+  --shadow-xl: 0 20px 25px -5px var(--shadow-tint-xl), 0 8px 10px -6px var(--shadow-tint-xl);
+  --shadow-2xl: 0 25px 50px -12px var(--shadow-tint-2xl);
+}
+
+/* Shadow colors per size. Light: Tailwind's defaults (black at 10%, 25% for
+   2xl). Dark: the scrim's near-black at about five times the strength, since
+   a 10% shadow all but vanishes on the dark page and leaves menus, dropdowns
+   and windows separated only by their slightly lighter fill (option A of a
+   side-by-side; a lit top edge and a dark outline were the alternatives).
+   Kept outside @theme: a --shadow-* name there would become a utility. */
+:root {
+  --shadow-tint-sm: rgb(0 0 0 / 0.1);
+  --shadow-tint-md: rgb(0 0 0 / 0.1);
+  --shadow-tint-lg: rgb(0 0 0 / 0.1);
+  --shadow-tint-xl: rgb(0 0 0 / 0.1);
+  --shadow-tint-2xl: rgb(0 0 0 / 0.25);
 }
 
 /* The upload wizard's split step. --split-tint: how strongly a book-split
@@ -444,6 +474,22 @@
 :root {
   --split-tint: 10%;
   --skip-fade: 0.6;
+  --titlebar-inset: 0px;
+  --titlebar-lights: 0px;
+}
+
+/* The macOS desktop app's hidden title bar (lib/nativeTitleBar.ts):
+   the band its traffic lights float in (52px, the lights centered 26px
+   down) and the room they take from the left edge (they end at 78px), both
+   measured in a real build of Wails' TitleBarHiddenInset. 0 everywhere
+   else. The full-width drag strip is only for screens without the app
+   shell; inside it, the sidebar's top row and the narrow top bar drag. */
+:root[data-native-titlebar] {
+  --titlebar-inset: 52px;
+  --titlebar-lights: 88px;
+}
+body:has(#app-scroll-container) .titlebar-drag-strip {
+  display: none;
 }
 
 /* The dark theme (Walnut, lifted: A3 in the palette comparison): every color token
@@ -474,6 +520,8 @@
   --color-sidebar-text: #d9d0c3;
   --color-sidebar-text-dim: #8f857a;
   --color-sidebar-border: #2c2622;
+  --color-sidebar-hover: #1f1916;
+  --color-sidebar-menu-hover: #3b312d;
 
   --color-accent: #9dbd94;
   --color-accent-soft: #24301f;
@@ -504,6 +552,12 @@
 
   --split-tint: 20%;
   --skip-fade: 0.15;
+
+  --shadow-tint-sm: rgb(8 6 6 / 0.45);
+  --shadow-tint-md: rgb(8 6 6 / 0.45);
+  --shadow-tint-lg: rgb(8 6 6 / 0.5);
+  --shadow-tint-xl: rgb(8 6 6 / 0.55);
+  --shadow-tint-2xl: rgb(8 6 6 / 0.7);
 }
 
 /* Dark Mode Scores (User Settings › Appearance, lib/theme.ts's
@@ -592,5 +646,68 @@ body {
      wiring. */
   .italic em {
     font-style: normal;
+  }
+}
+
+/* components/Slider.tsx's look (option B2 of a side-by-side): a 6px track,
+   accent-fill up to the knob and the switch's off color (border) beyond,
+   and an 18px white knob ringed in accent-fill — the ring keeps the knob
+   visible on a white window, where a plain white knob vanished. Plain CSS
+   because a range input's track and knob are browser pseudo-elements, one
+   set per engine. --slider-fill is the filled share, set by the component. */
+@layer components {
+  .slider {
+    appearance: none;
+    height: 20px;
+    margin: 0;
+    border-radius: 4px;
+    background: transparent;
+    cursor: pointer;
+  }
+  .slider:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+  .slider::-webkit-slider-runnable-track {
+    height: 6px;
+    border-radius: 9999px;
+    background: linear-gradient(
+      to right,
+      var(--color-accent-fill) var(--slider-fill),
+      var(--color-border) var(--slider-fill)
+    );
+  }
+  .slider::-moz-range-track {
+    height: 6px;
+    border-radius: 9999px;
+    background: linear-gradient(
+      to right,
+      var(--color-accent-fill) var(--slider-fill),
+      var(--color-border) var(--slider-fill)
+    );
+  }
+  .slider::-webkit-slider-thumb {
+    appearance: none;
+    box-sizing: border-box;
+    width: 18px;
+    height: 18px;
+    margin-top: -6px;
+    border: 3px solid var(--color-accent-fill);
+    border-radius: 50%;
+    background: #fff;
+    box-shadow:
+      0 1px 3px 0 var(--shadow-tint-sm),
+      0 1px 2px -1px var(--shadow-tint-sm);
+  }
+  .slider::-moz-range-thumb {
+    box-sizing: border-box;
+    width: 18px;
+    height: 18px;
+    border: 3px solid var(--color-accent-fill);
+    border-radius: 50%;
+    background: #fff;
+    box-shadow:
+      0 1px 3px 0 var(--shadow-tint-sm),
+      0 1px 2px -1px var(--shadow-tint-sm);
   }
 }

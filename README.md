@@ -22,7 +22,7 @@ Sonneck is currently built to live “in an office with a printer”, so to spea
 
 - **Organize your sheet music library.** Upload individual pieces or entire books — the built-in book splitter and metadata inheritance make quick work of prepping a whole book's worth of pieces to be found later.
 - **Use it from anywhere.** Any device with a browser can use every feature of Sonneck, with everything you do saved to the library. Edit metadata on your phone, mark up your score on your tablet (feature [coming soon](#planned-features)™), or build a setlist on your computer.
-- **Real cataloging, not a folder of PDFs.** Record key(s), instruments, sheet type, opus number, ISBN, and your own tags, plus a one-click citation generator that collects it all for you, ready to be pasted into a program template or group chat.
+- **Real cataloging, not just a folder of PDFs.** Record key(s), instruments, sheet type, opus number, ISBN, and your own tags, plus a one-click citation generator that collects it all for you, ready to be pasted into a program template or group chat.
 - **Composers and arrangers are real people, not text fields.** Each one gets their own page — portrait, bio, birth/death years, and every piece and book they're credited on — browsable from a dedicated People library. A piece or book can credit more than one composer or arranger, in the right order (think "Rodgers and Hart" or a hymn with a separate composer and arranger).
 - **Metadata that works for you.** Give it an IMSLP catalog number and it'll auto-fill composer, opus number, year, and publisher for you. The citation line adapts to show only the fields you've actually filled in, and descriptions/user notes support Markdown — including shortcode music symbols like `:mf:` for a mezzo-forte marking (see the [emoji doc](docs/music-emoji.md) for the full list).
 - **Book-to-piece inheritance.** Set a book's composer, publisher, and year once. Every piece inside it inherits the information automatically, you only ever need to override the pieces that are actually different.
@@ -31,7 +31,8 @@ Sonneck is currently built to live “in an office with a printer”, so to spea
 - **Track your wishlist.** Ever forget you were learning a piece only to rediscover it weeks later at the bottom of your bag? Or buy pieces to learn, only for them to get lost in the stacks? No more! Use the practice status and filter views to track what you want to play, what you have in progress, and even the stuff you never want to touch again! Take *that*, [Sorabji](https://www.youtube.com/watch?v=_OrAewTxBrc)!
 - **Plan your sets.** Setlists can contain a gig date, title, description, and any number of pieces and custom entries that you require. Check the auto-calculated total duration and page count from its details page, reorder things to flow better, and even export the entire set as one combined PDF for convenient backup to another device.
 - **A truly *responsive* workflow.** None of that "resize-and-rerender-everything" lag. Resize and it's good to go, instantly. Useful keyboard shortcuts throughout, plus right-click (desktop)/long-press (mobile) context menus for quick edits. Drag and drop a file to upload it, no matter what page you're on.
-- **It's completely yours.** Self-hosted, one SQLite file, daily automatic backups. No algorithm, no callbacks to some centralized analytics server. It’s a tool for you: use it, break it, repurpose it, join us (or don’t) in making it better. Or even leave– a full CSV export is available at any time. If it turns out Sonneck isn't the right place for your music, the information you enter (and the time you take doing so) is still yours.
+- **Easy on the eyes.** Light, dark, or follow your device. Dark mode even goes for your sheet music (if you want it to): turn on Dark Mode Scores in User Settings and pages render as light ink on a dark background, so a late-night practice session doesn't feel like staring into the sun.
+- **It's completely yours.** Self-hosted, one SQLite file, daily automatic backups. No algorithm, no callbacks to some centralized analytics server. It’s a tool for you: use it, break it, repurpose it, join us (or don’t) in making it better, or even leave– a full CSV export is available at any time. If it turns out Sonneck isn't the right place for your music, the information you enter (and the time you take doing so) is still yours.
 
 ## Installation
 
@@ -43,7 +44,7 @@ Grab the latest installer from the [releases](https://github.com/jpcranford/sonn
 On first launch you'll pick where your library lives (defaults to a `Sonneck Library` folder inside your Music folder) and how you want to sign in, the same first-launch flow Docker gets. Everything else — Admin Settings, backups, the public domain badge, all of it — works identically to the Docker version; the only native-only extras are in Admin Settings' **Share on Network** section (off by default — a native app only talks to itself over `localhost` until you turn it on, so other devices on your network can reach it too) and a **Library location** control to move your library to a different folder later.
 
 > [!NOTE]
-> These installers aren't code-signed (that costs serious money per year per platform) so your OS will warn you before the first launch:
+> These installers aren't code-signed (that costs money per year per platform) so your OS will warn you before the first launch:
 > - **macOS**: Gatekeeper will say the app "cannot be opened because it is from an unidentified developer." Right-click (or Control-click) the app and choose **Open**, then confirm **Open** again in the dialog that follows — you only need to do this once. (If you already double-clicked it and got a plain "can't be opened" message with no Open option, go to **System Settings → Privacy & Security**, scroll down, and click **Open Anyway** next to the Sonneck mention.)
 > - **Windows**: SmartScreen will say "Windows protected your PC." Click **More info**, then **Run anyway**.
 >
@@ -155,7 +156,6 @@ DATA_DIR=./data go run ./cmd/sonneck <command>
 | `export-csv` | Writes a full export of your library data to `$DATA_DIR/export/<timestamp>/` — one CSV file per database table (books, pieces, tags, keys, and so on). Read-only; doesn't touch the database or any existing files. | Any time you want your data out of Sonneck as plain CSV — a one-off backup in a format other tools can read, or just to take it with you. |
 
 ## Planned features
-- **Dark mode.** Dear God, my eyes.
 - Support for image files, and also support for a folder of image files to be uploaded/assembled into a piece
 - **Sheet Viewer!** The practice view every app like this seems to have, with Bluetooth page turner support, server-saved annotations, and a built-in metronome, possibly with some simple gap support there. Maybe some music theory references too, why not; it's not like the circle of fifths has changed in the last 400 years.
 - **Folders, both smart and otherwise.** Save filters to be automatic folders of music– think "pieces I've Learned and are solo pieces for the piano" or "lead sheets from books x, y, and z" accessible under a name in the sidebar.

@@ -41,6 +41,7 @@ import (
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/mac"
+	"github.com/wailsapp/wails/v2/pkg/options/windows"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -348,6 +349,8 @@ func main() {
 		}
 	}()
 
+	launch := readLaunchTheme(context.Background(), conn)
+
 	err = wails.Run(&options.App{
 		Title:  "Sonneck",
 		Width:  1200,
@@ -355,6 +358,9 @@ func main() {
 		AssetServer: &assetserver.Options{
 			Handler: handler,
 		},
+		// The saved theme's page color, so a dark install doesn't open on
+		// Wails' default white (theme.go).
+		BackgroundColour: launchWindowColor(launch),
 		// OnStartup is Wails' own hook for the one thing this binary needs
 		// its real window context for — chooseFolder/requestRestart above,
 		// both otherwise-plain HTTP handler functions that have no other
@@ -377,7 +383,32 @@ func main() {
 		// deeper Wails v2 limitation this does NOT fix — see
 		// project_wails_native_app_investigation memory for the full
 		// writeup and upstream reference (wailsapp/wails#2582).
-		Mac: &mac.Options{},
+		//
+		// WebviewIsTransparent: on macOS BackgroundColour only colors the
+		// window, and the web view paints its own white over it until the
+		// page loads. Transparent, the window's color shows through until
+		// the page's own background (index.css's body) takes over. Windows
+		// needs nothing extra: Wails gives WebView2 the same color.
+		//
+		// TitleBar: the macOS title bar follows the Mac's light/dark
+		// setting and Wails can't change it while the app runs, so it's
+		// hidden instead (picked from a side-by-side over a fully
+		// frameless window, which loses the traffic lights and the Window
+		// menu). The page runs to the top edge with the traffic lights
+		// floating over it; the frontend keeps that band clear and
+		// draggable (index.html's data-native-titlebar, --titlebar-inset).
+		Mac: &mac.Options{
+			WebviewIsTransparent: true,
+			TitleBar:             mac.TitleBarHiddenInset(),
+		},
+		// Windows keeps its native frame (Snap Layouts and all) but the
+		// title bar follows Sonneck's theme instead of Windows' app mode:
+		// set here at launch, then switched live by lib/theme.ts. On
+		// Windows 11 the bar is tinted with the page colors (theme.go).
+		Windows: &windows.Options{
+			Theme:       launchWindowsTheme(launch),
+			CustomTheme: windowsTitleBarColors,
+		},
 	})
 	if err != nil {
 		logger.Error("wails run failed", "error", err)
