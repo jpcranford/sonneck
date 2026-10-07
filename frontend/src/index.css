@@ -632,3 +632,66 @@ body {
     font-style: normal;
   }
 }
+
+/* components/Slider.tsx's look (option B2 of a side-by-side): a 6px track,
+   accent-fill up to the knob and the switch's off color (border) beyond,
+   and an 18px white knob ringed in accent-fill — the ring keeps the knob
+   visible on a white window, where a plain white knob vanished. Plain CSS
+   because a range input's track and knob are browser pseudo-elements, one
+   set per engine. --slider-fill is the filled share, set by the component. */
+@layer components {
+  .slider {
+    appearance: none;
+    height: 20px;
+    margin: 0;
+    border-radius: 4px;
+    background: transparent;
+    cursor: pointer;
+  }
+  .slider:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+  .slider::-webkit-slider-runnable-track {
+    height: 6px;
+    border-radius: 9999px;
+    background: linear-gradient(
+      to right,
+      var(--color-accent-fill) var(--slider-fill),
+      var(--color-border) var(--slider-fill)
+    );
+  }
+  .slider::-moz-range-track {
+    height: 6px;
+    border-radius: 9999px;
+    background: linear-gradient(
+      to right,
+      var(--color-accent-fill) var(--slider-fill),
+      var(--color-border) var(--slider-fill)
+    );
+  }
+  .slider::-webkit-slider-thumb {
+    appearance: none;
+    box-sizing: border-box;
+    width: 18px;
+    height: 18px;
+    margin-top: -6px;
+    border: 3px solid var(--color-accent-fill);
+    border-radius: 50%;
+    background: #fff;
+    box-shadow:
+      0 1px 3px 0 var(--shadow-tint-sm),
+      0 1px 2px -1px var(--shadow-tint-sm);
+  }
+  .slider::-moz-range-thumb {
+    box-sizing: border-box;
+    width: 18px;
+    height: 18px;
+    border: 3px solid var(--color-accent-fill);
+    border-radius: 50%;
+    background: #fff;
+    box-shadow:
+      0 1px 3px 0 var(--shadow-tint-sm),
+      0 1px 2px -1px var(--shadow-tint-sm);
+  }
+}

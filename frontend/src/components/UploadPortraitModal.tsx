@@ -16,6 +16,7 @@ import {
 } from '../api/wikipedia'
 import { ApiError } from '../api/client'
 import { Modal } from './Modal'
+import { Slider } from './Slider'
 
 // Person Details' own Upload Portrait flow — real build of the
 // PersonDetailsSample.tsx mockup (device upload OR Wikipedia search, then
@@ -431,14 +432,14 @@ export function UploadPortraitModal({
           </div>
           <div className="flex items-center gap-3">
             <span className="text-xs text-ink-soft">Zoom</span>
-            <input
-              type="range"
+            <Slider
               min={ZOOM_MIN}
               max={ZOOM_MAX}
               step={ZOOM_STEP}
               value={zoom}
-              onChange={(event) => setZoom(Number(event.target.value))}
-              className="flex-1 accent-accent"
+              onChange={setZoom}
+              aria-label="Zoom"
+              className="min-w-0 flex-1"
             />
           </div>
         </div>
