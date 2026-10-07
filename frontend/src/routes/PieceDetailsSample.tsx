@@ -917,7 +917,7 @@ export function PieceDetailsSample() {
                       setReplaceConfirming(true)
                       setMoreActionsOpen(false)
                     }}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-accent-soft"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-paper-hover"
                   >
                     <IconRefresh size={16} />
                     Replace File
@@ -929,7 +929,7 @@ export function PieceDetailsSample() {
                       setMoreActionsOpen(false)
                     }}
                     disabled={page === thumbnailPage}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-accent-soft disabled:cursor-not-allowed disabled:text-ink-soft/50 disabled:hover:bg-transparent"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-paper-hover disabled:cursor-not-allowed disabled:text-ink-soft/50 disabled:hover:bg-transparent"
                   >
                     <IconImageInPicture size={16} />
                     Use Page as Thumbnail

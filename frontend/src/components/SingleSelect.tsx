@@ -1,5 +1,5 @@
 import { useState, type KeyboardEvent } from 'react'
-import { IconChevronDown } from '@tabler/icons-react'
+import { IconCheck, IconChevronDown } from '@tabler/icons-react'
 import { InheritedNote } from './InheritedNote'
 
 // A single value from a small fixed option list (Sheet Type, Practice
@@ -19,8 +19,20 @@ import { InheritedNote } from './InheritedNote'
 // book-inherited one), styled the same faded way the bare '—' placeholder
 // already was. onClear renders a small text link beside the label, shown
 // only once a value is actually set, resetting back to that placeholder.
+//
+// The open list follows the app's one dropdown look (picked from a
+// side-by-side): the row under the pointer or arrow keys is paper-hover,
+// and the chosen row keeps ink text with a green check on the right — green
+// means "chosen", never "pointed at". Long lists scroll (max-h-64).
+//
+// Compact use (an Admin/User Settings control, a merge picker inside a
+// dialog): no label (ariaLabel names it instead), size="sm" for the
+// smaller trigger, className sizes the whole field.
 export function SingleSelect({
   label,
+  ariaLabel,
+  size = 'md',
+  className = '',
   options,
   value,
   onChange,
@@ -31,7 +43,10 @@ export function SingleSelect({
   onClear,
   clearLabel = 'Clear',
 }: {
-  label: string
+  label?: string
+  ariaLabel?: string
+  size?: 'md' | 'sm'
+  className?: string
   options: { value: string; label: string; description?: string }[]
   value: string
   onChange: (next: string) => void
@@ -98,26 +113,33 @@ export function SingleSelect({
   const currentDescription = selected?.description ?? (!value ? placeholderDescription : undefined)
 
   return (
-    <div className="flex flex-col gap-1">
-      <div className="flex items-center justify-between gap-2">
-        <label className="text-sm text-ink-soft">{label}</label>
-        {onClear && value && (
-          <button
-            type="button"
-            onClick={() => onChange('')}
-            className="cursor-pointer text-xs text-ink-soft underline decoration-dotted underline-offset-2 hover:text-accent"
-          >
-            {clearLabel}
-          </button>
-        )}
-      </div>
+    <div className={`flex flex-col gap-1 ${className}`}>
+      {(label || onClear) && (
+        <div className="flex items-center justify-between gap-2">
+          {label && <label className="text-sm text-ink-soft">{label}</label>}
+          {onClear && value && (
+            <button
+              type="button"
+              onClick={() => onChange('')}
+              className="cursor-pointer text-xs text-ink-soft underline decoration-dotted underline-offset-2 hover:text-accent"
+            >
+              {clearLabel}
+            </button>
+          )}
+        </div>
+      )}
       <div className="relative">
         <button
           type="button"
           onClick={() => (open ? setOpen(false) : openMenu())}
           onKeyDown={handleKeyDown}
           onBlur={() => setTimeout(() => setOpen(false), 150)}
-          className="flex w-full cursor-pointer items-center justify-between rounded-md border border-border bg-paper-raised px-3 py-2 text-left text-ink focus:outline focus:outline-2 focus:outline-accent focus:outline-offset-2"
+          aria-label={label ? undefined : ariaLabel}
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          className={`flex w-full cursor-pointer items-center justify-between gap-2 rounded-md border border-border bg-paper-raised text-left text-ink focus:outline focus:outline-2 focus:outline-accent focus:outline-offset-2 ${
+            size === 'sm' ? 'px-2.5 py-1.5 text-sm' : 'px-3 py-2'
+          }`}
         >
           <span className={value ? '' : 'text-ink-soft/50'}>
             {selected?.label ?? placeholder ?? '—'}
@@ -126,24 +148,31 @@ export function SingleSelect({
           <IconChevronDown size={16} className="text-ink-faint" />
         </button>
         {open && (
-          <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border border-border bg-paper-raised py-1 shadow-lg">
+          <div className="absolute z-10 mt-1 max-h-64 w-full overflow-y-auto rounded-md border border-border bg-paper-raised py-1 shadow-lg">
             {options.map((opt, index) => (
               <button
                 key={opt.value}
+                // Keeps the arrow-key row in view once the list scrolls.
+                ref={
+                  index === highlightedIndex
+                    ? (el) => el?.scrollIntoView({ block: 'nearest' })
+                    : undefined
+                }
                 type="button"
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => selectOption(opt)}
-                className={`block w-full cursor-pointer px-3 py-2 text-left hover:bg-accent-soft ${
-                  index === highlightedIndex ? 'bg-accent-soft' : ''
+                className={`flex w-full cursor-pointer items-start gap-2 px-3 py-2 text-left text-ink hover:bg-paper-hover ${
+                  index === highlightedIndex ? 'bg-paper-hover' : ''
                 }`}
               >
-                <span
-                  className={`block text-sm ${opt.value === value ? 'text-accent' : 'text-ink'}`}
-                >
-                  {opt.label}
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm">{opt.label}</span>
+                  {opt.description && (
+                    <span className="mt-0.5 block text-xs text-ink-soft">{opt.description}</span>
+                  )}
                 </span>
-                {opt.description && (
-                  <span className="mt-0.5 block text-xs text-ink-soft">{opt.description}</span>
+                {opt.value === value && (
+                  <IconCheck size={14} stroke={2.5} className="mt-[3px] shrink-0 text-accent" />
                 )}
               </button>
             ))}

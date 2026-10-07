@@ -397,8 +397,8 @@ export function TagComboBox({
                   type="button"
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={() => selectOption(opt)}
-                  className={`block w-full cursor-pointer px-3 py-2 text-left text-sm text-ink hover:bg-accent-soft ${
-                    index === highlightedIndex ? 'bg-accent-soft' : ''
+                  className={`block w-full cursor-pointer px-3 py-2 text-left text-sm text-ink hover:bg-paper-hover ${
+                    index === highlightedIndex ? 'bg-paper-hover' : ''
                   }`}
                 >
                   {opt.name}
@@ -409,8 +409,8 @@ export function TagComboBox({
                   type="button"
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={createNew}
-                  className={`block w-full cursor-pointer px-3 py-2 text-left text-sm text-accent hover:bg-accent-soft ${
-                    highlightedIndex === visibleOptions.length ? 'bg-accent-soft' : ''
+                  className={`block w-full cursor-pointer px-3 py-2 text-left text-sm text-accent hover:bg-paper-hover ${
+                    highlightedIndex === visibleOptions.length ? 'bg-paper-hover' : ''
                   }`}
                 >
                   {newOptionLabel ?? 'New tag'}: "{query.trim()}"

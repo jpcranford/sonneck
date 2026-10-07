@@ -1053,7 +1053,7 @@ export function UploadBookSplitMockup() {
                   className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm ${
                     isCurrent
                       ? 'cursor-default text-ink-soft/60'
-                      : 'cursor-pointer text-ink hover:bg-paper'
+                      : 'cursor-pointer text-ink hover:bg-paper-hover'
                   }`}
                 >
                   <span className="flex items-center gap-1 text-ink-soft">

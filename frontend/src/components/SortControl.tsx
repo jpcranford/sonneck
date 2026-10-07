@@ -1,5 +1,5 @@
 import { useState, type KeyboardEvent } from 'react'
-import { IconArrowDown, IconArrowUp, IconChevronDown } from '@tabler/icons-react'
+import { IconArrowDown, IconArrowUp, IconCheck, IconChevronDown } from '@tabler/icons-react'
 
 export type SortDirection = 'asc' | 'desc'
 
@@ -112,11 +112,14 @@ export function SortControl<Field extends string>({
               type="button"
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => select(opt)}
-              className={`block w-full px-3 py-2 text-left text-sm hover:bg-accent-soft ${
-                opt.value === field ? 'text-accent' : 'text-ink'
-              } ${index === highlightedIndex ? 'bg-accent-soft' : ''}`}
+              className={`flex w-full cursor-pointer items-center justify-between gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-paper-hover ${
+                index === highlightedIndex ? 'bg-paper-hover' : ''
+              }`}
             >
               {opt.label}
+              {opt.value === field && (
+                <IconCheck size={14} stroke={2.5} className="shrink-0 text-accent" />
+              )}
             </button>
           ))}
         </div>

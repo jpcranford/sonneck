@@ -21,6 +21,7 @@ import { Checkbox } from '../components/Checkbox'
 import { InfoIconTooltip } from '../components/InfoIconTooltip'
 import { Modal } from '../components/Modal'
 import { Radio } from '../components/Radio'
+import { SingleSelect } from '../components/SingleSelect'
 import { Toggle } from '../components/Toggle'
 import { usePageTitle } from '../lib/usePageTitle'
 import { useAuth } from '../lib/AuthContext'
@@ -694,18 +695,17 @@ function LookupTablesSection() {
                       Every piece/book tagged "{deleteTarget.name}" will be retagged instead.
                     </p>
                     {deleteMode === 'merge' && (
-                      <select
-                        value={mergeTargetId ?? ''}
-                        onChange={(event) => setMergeTargetId(Number(event.target.value))}
-                        onClick={(event) => event.stopPropagation()}
-                        className="mt-2 rounded-md border border-border bg-paper-raised px-2.5 py-1.5 text-sm text-ink"
-                      >
-                        {otherItems.map((item) => (
-                          <option key={item.id} value={item.id}>
-                            {item.name || '(untitled)'}
-                          </option>
-                        ))}
-                      </select>
+                      <SingleSelect
+                        ariaLabel="Merge into"
+                        size="sm"
+                        className="mt-2 max-w-xs"
+                        value={mergeTargetId == null ? '' : String(mergeTargetId)}
+                        onChange={(next) => setMergeTargetId(Number(next))}
+                        options={otherItems.map((item) => ({
+                          value: String(item.id),
+                          label: item.name || '(untitled)',
+                        }))}
+                      />
                     )}
                   </div>
                 </label>
@@ -1254,18 +1254,16 @@ function LibrarySettingsSection() {
           envSet={settings.logLevelSetByEnv}
           envVarName="LOG_LEVEL"
           control={
-            <select
+            <SingleSelect
+              ariaLabel="Log level"
+              size="sm"
+              className="w-32"
               value={settings.logLevel}
-              onChange={(event) =>
-                patch({ logLevel: event.target.value as UpdateLibrarySettingsRequest['logLevel'] })
+              onChange={(next) =>
+                patch({ logLevel: next as UpdateLibrarySettingsRequest['logLevel'] })
               }
-              className="rounded-md border border-border bg-paper-raised px-2.5 py-1.5 text-sm text-ink"
-            >
-              <option value="debug">debug</option>
-              <option value="info">info</option>
-              <option value="warn">warn</option>
-              <option value="error">error</option>
-            </select>
+              options={['debug', 'info', 'warn', 'error'].map((v) => ({ value: v, label: v }))}
+            />
           }
         />
         <LibraryField
@@ -1273,16 +1271,14 @@ function LibrarySettingsSection() {
           envSet={settings.copyrightRegionSetByEnv}
           envVarName="COPYRIGHT_REGION"
           control={
-            <select
+            <SingleSelect
+              ariaLabel="Copyright region"
+              size="sm"
+              className="w-32"
               value={settings.copyrightRegion}
-              onChange={(event) => patch({ copyrightRegion: event.target.value })}
-              className="rounded-md border border-border bg-paper-raised px-2.5 py-1.5 text-sm text-ink"
-            >
-              <option value="en-US">en-US</option>
-              <option value="eu-generic">eu-generic</option>
-              <option value="en-GB">en-GB</option>
-              <option value="ca">ca</option>
-            </select>
+              onChange={(next) => patch({ copyrightRegion: next })}
+              options={['en-US', 'eu-generic', 'en-GB', 'ca'].map((v) => ({ value: v, label: v }))}
+            />
           }
         />
         <LibraryField

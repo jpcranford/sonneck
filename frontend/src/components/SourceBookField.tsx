@@ -1,6 +1,6 @@
 import { useRef, useState, type KeyboardEvent } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { IconSearch } from '@tabler/icons-react'
+import { IconCheck, IconSearch } from '@tabler/icons-react'
 import { listBooks } from '../api/books'
 import { useDebouncedValue } from '../hooks/useDebouncedValue'
 import { InfoIconTooltip } from './InfoIconTooltip'
@@ -130,11 +130,14 @@ export function SourceBookField({
                   type="button"
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={() => selectBook(book)}
-                  className={`block w-full cursor-pointer px-3 py-2 text-left text-sm hover:bg-accent-soft ${
-                    book.id === value ? 'text-accent' : 'text-ink'
-                  } ${index === highlightedIndex ? 'bg-accent-soft' : ''}`}
+                  className={`flex w-full cursor-pointer items-start justify-between gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-paper-hover ${
+                    index === highlightedIndex ? 'bg-paper-hover' : ''
+                  }`}
                 >
                   {book.bookTitle}
+                  {book.id === value && (
+                    <IconCheck size={14} stroke={2.5} className="mt-[3px] shrink-0 text-accent" />
+                  )}
                 </button>
               ))
             ) : (

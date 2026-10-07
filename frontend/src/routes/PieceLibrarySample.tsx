@@ -3,6 +3,7 @@ import {
   IconAdjustmentsHorizontal,
   IconArrowDown,
   IconArrowUp,
+  IconCheck,
   IconChevronDown,
   IconChevronLeft,
   IconChevronRightFilled,
@@ -567,11 +568,14 @@ function SortControl({
               type="button"
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => select(opt)}
-              className={`block w-full px-3 py-2 text-left text-sm hover:bg-accent-soft ${
-                opt === field ? 'text-accent' : 'text-ink'
-              } ${index === highlightedIndex ? 'bg-accent-soft' : ''}`}
+              className={`flex w-full cursor-pointer items-center justify-between gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-paper-hover ${
+                index === highlightedIndex ? 'bg-paper-hover' : ''
+              }`}
             >
               {opt}
+              {opt === field && (
+                <IconCheck size={14} stroke={2.5} className="shrink-0 text-accent" />
+              )}
             </button>
           ))}
         </div>

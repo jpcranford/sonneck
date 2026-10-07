@@ -16,6 +16,7 @@ import {
 } from '@tabler/icons-react'
 import { Modal } from '../components/Modal'
 import { Radio } from '../components/Radio'
+import { SingleSelect } from '../components/SingleSelect'
 import { Toggle } from '../components/Toggle'
 import { sortPracticeStatuses } from '../lib/practiceStatusOrder'
 import { usePageTitle } from '../lib/usePageTitle'
@@ -723,18 +724,17 @@ export function UserSettingsPage() {
                       {deleteTarget.name}" will be moved to this one instead.
                     </p>
                     {deleteMode === 'merge' && (
-                      <select
-                        value={mergeTargetId ?? ''}
-                        onChange={(event) => setMergeTargetId(Number(event.target.value))}
-                        onClick={(event) => event.stopPropagation()}
-                        className="mt-2 rounded-md border border-border bg-paper-raised px-2.5 py-1.5 text-sm text-ink"
-                      >
-                        {otherItems.map((item) => (
-                          <option key={item.id} value={item.id}>
-                            {item.name || '(untitled)'}
-                          </option>
-                        ))}
-                      </select>
+                      <SingleSelect
+                        ariaLabel="Merge into"
+                        size="sm"
+                        className="mt-2 max-w-xs"
+                        value={mergeTargetId == null ? '' : String(mergeTargetId)}
+                        onChange={(next) => setMergeTargetId(Number(next))}
+                        options={otherItems.map((item) => ({
+                          value: String(item.id),
+                          label: item.name || '(untitled)',
+                        }))}
+                      />
                     )}
                   </div>
                 </label>
