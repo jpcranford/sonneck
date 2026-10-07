@@ -171,7 +171,7 @@ export function BookUploadConfirmStep({
                 key={step}
                 className={`h-1 w-5 rounded-full ${
                   step < CURRENT_STEP
-                    ? 'bg-accent-on-dark'
+                    ? 'bg-accent-muted'
                     : step === CURRENT_STEP
                       ? 'bg-accent'
                       : 'bg-border'
@@ -203,7 +203,8 @@ export function BookUploadConfirmStep({
         <div className="flex items-center gap-2 text-xs text-ink-soft">
           <IconEyeOff size={14} className="shrink-0" />
           {skippedPages.length} page{skippedPages.length === 1 ? '' : 's'} skipped (p.{' '}
-          {formatPageList(skippedPages.map((p) => p + pageOffset))}) — won't be included in any piece
+          {formatPageList(skippedPages.map((p) => p + pageOffset))}) — won't be included in any
+          piece
         </div>
       )}
 
@@ -211,7 +212,9 @@ export function BookUploadConfirmStep({
         {pieces.map((piece, index) => (
           <div
             key={index}
-            className="overflow-hidden rounded-lg border border-border bg-paper-raised"
+            // 2px, heavier than the usual 1px, so each piece's split color
+            // holds up as its outline.
+            className="overflow-hidden rounded-lg border-2 border-border bg-paper-raised"
             style={{ borderColor: piece.color }}
           >
             {/* border-b hairline between thumbnail and info text — same
@@ -223,22 +226,20 @@ export function BookUploadConfirmStep({
                 src={getBookPageThumbnailUrl(bookId, piece.start)}
                 alt=""
                 loading="lazy"
-                className="block h-auto w-full"
+                className="score-page block h-auto w-full"
               />
             </div>
             <div className="flex flex-col gap-px px-2 py-1.5">
-              <p className="truncate font-display text-[0.8rem] font-medium text-ink">
-                {piece.title}
-              </p>
-              <p className="truncate text-[0.7rem] text-ink-soft">{composerArrangerLabel(piece)}</p>
-              <p className="truncate text-[0.7rem] text-ink-soft">{formatPageRange(piece, pageOffset)}</p>
+              <p className="truncate font-display text-sm font-medium text-ink">{piece.title}</p>
+              <p className="truncate text-xs text-ink-soft">{composerArrangerLabel(piece)}</p>
+              <p className="truncate text-xs text-ink-soft">{formatPageRange(piece, pageOffset)}</p>
             </div>
           </div>
         ))}
       </div>
 
       {importMutation.isError && (
-        <p className="flex items-center gap-2 text-sm text-red-700">
+        <p className="flex items-center gap-2 text-sm text-danger">
           <IconAlertTriangle size={16} />
           {importMutation.error instanceof ApiError
             ? importMutation.error.message
@@ -256,7 +257,7 @@ export function BookUploadConfirmStep({
           type="button"
           onClick={onCancel}
           disabled={cancelPending || importMutation.isPending}
-          className="flex cursor-pointer items-center gap-1.5 text-base text-red-700 hover:text-red-800 disabled:cursor-default disabled:opacity-45"
+          className="flex cursor-pointer items-center gap-1.5 text-base text-danger hover:text-danger-strong disabled:cursor-default disabled:opacity-45"
         >
           <IconX size={24} />
           Cancel upload
@@ -265,7 +266,7 @@ export function BookUploadConfirmStep({
           type="button"
           onClick={() => importMutation.mutate()}
           disabled={importMutation.isPending}
-          className="relative flex min-w-[190px] shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md bg-accent px-4 py-2.5 font-display whitespace-nowrap text-white disabled:cursor-default"
+          className="relative flex min-w-[190px] shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md bg-accent-fill px-4 py-2.5 font-display font-medium whitespace-nowrap text-white disabled:cursor-default"
         >
           {importMutation.isPending && (
             <span

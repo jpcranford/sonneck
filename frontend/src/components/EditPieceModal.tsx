@@ -841,7 +841,7 @@ export function EditPieceModal({
                   <img
                     src={getPieceThumbnailUrl(piece.id, previewPage)}
                     alt={`Page ${previewPage} of ${piece.title}`}
-                    className="block h-auto w-full"
+                    className="score-page block h-auto w-full"
                   />
                 </div>
                 <div className="flex justify-center">
@@ -869,7 +869,7 @@ export function EditPieceModal({
         // EditPieceModalMockup.tsx's own identical footer.
         <div ref={footerRef} className="flex flex-col gap-2">
           {saveMutation.isError && (
-            <p className="flex items-center gap-2 text-sm text-red-700">
+            <p className="flex items-center gap-2 text-sm text-danger">
               <IconAlertTriangle size={16} />
               {saveMutation.error instanceof ApiError
                 ? saveMutation.error.message
@@ -914,7 +914,7 @@ export function EditPieceModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent"
+                className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-ink hover:border-accent"
               >
                 Cancel
               </button>
@@ -922,7 +922,7 @@ export function EditPieceModal({
                 type="button"
                 onClick={() => handleSubmit(onSubmitStayOpen)()}
                 disabled={isSaving}
-                className="cursor-pointer rounded-md border border-accent bg-paper-raised px-4 py-2 font-display text-accent hover:bg-accent-soft disabled:cursor-default disabled:opacity-60"
+                className="cursor-pointer rounded-md border border-accent bg-paper-raised px-4 py-2 font-display font-medium text-accent hover:bg-accent-soft disabled:cursor-default disabled:opacity-60"
               >
                 {isSaving ? 'Saving…' : 'Save'}
               </button>
@@ -930,7 +930,7 @@ export function EditPieceModal({
                 type="submit"
                 form="edit-piece-form"
                 disabled={isSaving}
-                className="cursor-pointer rounded-md bg-accent px-4 py-2 font-display text-white hover:bg-accent/90 disabled:cursor-default disabled:opacity-60"
+                className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-white hover:bg-accent-fill/90 disabled:cursor-default disabled:opacity-50"
               >
                 {isSaving ? 'Saving…' : 'Save & Close'}
               </button>
@@ -963,7 +963,7 @@ export function EditPieceModal({
                 className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
                 {...register('title', { required: 'Title is required.', maxLength: 255 })}
               />
-              {errors.title && <p className="text-sm text-red-700">{errors.title.message}</p>}
+              {errors.title && <p className="text-sm text-danger">{errors.title.message}</p>}
             </div>
             <div className="flex min-w-0 flex-1 flex-col gap-1">
               <label htmlFor="f-year" className="text-sm text-ink-soft">
@@ -1103,7 +1103,7 @@ export function EditPieceModal({
                 />
               )}
               {imslpMutation.isError && (
-                <p className="text-sm text-red-700">
+                <p className="text-sm text-danger">
                   {imslpMutation.error instanceof ApiError
                     ? imslpMutation.error.message
                     : 'Could not reach IMSLP.'}
@@ -1310,7 +1310,7 @@ export function EditPieceModal({
                   },
                 })}
               />
-              {errors.duration && <p className="text-sm text-red-700">{errors.duration.message}</p>}
+              {errors.duration && <p className="text-sm text-danger">{errors.duration.message}</p>}
             </div>
           </div>
 
@@ -1332,7 +1332,7 @@ export function EditPieceModal({
               // Solid pre-blend (icon + label share one color) — identical
               // against a static background either way for the text half,
               // but the chevron icon needs it.
-              className="flex cursor-pointer items-center gap-1 text-xs text-[#9d9892] hover:text-ink-soft"
+              className="flex cursor-pointer items-center gap-1 text-xs text-ink-muted hover:text-ink-soft"
             >
               <IconChevronRight
                 size={12}
@@ -1386,7 +1386,7 @@ export function EditPieceModal({
                   type="button"
                   onClick={handleCalculateDuration}
                   disabled={!canCalculateDuration}
-                  className="cursor-pointer rounded-md border border-border bg-paper-raised px-3 py-2 font-display text-sm text-ink hover:border-accent disabled:pointer-events-none disabled:cursor-default disabled:opacity-40"
+                  className="cursor-pointer rounded-md border border-border bg-paper-raised px-3 py-2 font-display font-medium text-sm text-ink hover:border-accent disabled:pointer-events-none disabled:cursor-default disabled:opacity-40"
                 >
                   Calculate
                 </button>

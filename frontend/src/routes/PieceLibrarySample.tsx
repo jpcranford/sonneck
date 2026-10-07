@@ -87,16 +87,156 @@ interface MockPiece {
 // pick instead — this fixture reflects what the real key list actually
 // contains, not the spelling every musician would reach for by habit.
 const PIECES: MockPiece[] = [
-  { id: 1, title: 'Album für die Jugend', composer: 'Schumann', key: 'A Minor', instrument: 'Piano', sheetType: 'Solo Piece', userTags: [], favorite: true, bookless: false, hasImslpNumber: true, practiceStatus: 'Learning', pageCount: 3, yearWritten: '1848' },
-  { id: 2, title: 'Prelude in C', composer: 'Bach, J.S.', key: 'C Major', instrument: 'Piano', sheetType: 'Solo Piece', userTags: [], favorite: true, bookless: false, hasImslpNumber: true, practiceStatus: 'Learned', pageCount: 1, yearWritten: '1722' },
-  { id: 3, title: 'Nocturne in E♭', composer: 'Chopin', key: 'D Major', instrument: 'Piano', sheetType: 'Solo Piece', userTags: ['Recital'], favorite: false, bookless: false, hasImslpNumber: true, practiceStatus: 'Learning', pageCount: 4, yearWritten: '1831' },
-  { id: 4, title: 'Clair de lune', composer: 'Debussy', key: 'D Major', instrument: 'Piano', sheetType: 'Solo Piece', userTags: [], favorite: false, bookless: true, hasImslpNumber: false, practiceStatus: 'Want to Learn', pageCount: 5, yearWritten: '1905' },
-  { id: 5, title: 'Waltz for Debby', composer: 'Evans', key: 'C Major', instrument: 'Piano', sheetType: 'Lead Sheet', userTags: ['Jazz'], favorite: false, bookless: false, hasImslpNumber: false, practiceStatus: 'Learned', pageCount: 1, yearWritten: '1956' },
-  { id: 6, title: 'Moonlight, I.', composer: 'Beethoven', key: 'D♭ Minor', instrument: 'Piano', sheetType: 'Solo Piece', userTags: ['Recital'], favorite: false, bookless: false, hasImslpNumber: true, practiceStatus: 'Learning', pageCount: 2, yearWritten: '1801' },
-  { id: 7, title: 'Air on the G String', composer: 'Bach, J.S.', key: 'D Major', instrument: 'Violin', sheetType: 'Duet', userTags: [], favorite: false, bookless: true, hasImslpNumber: false, practiceStatus: 'Want to Learn', pageCount: 1, yearWritten: '1731' },
-  { id: 8, title: 'Gymnopédie No. 1', composer: 'Satie', key: 'A Minor', instrument: 'Piano', sheetType: 'Solo Piece', userTags: [], favorite: true, bookless: true, hasImslpNumber: false, practiceStatus: 'Learned', pageCount: 1, yearWritten: '1888' },
-  { id: 9, title: 'Autumn Leaves', composer: 'Kosma', key: 'G Minor', instrument: 'Piano', sheetType: 'Lead Sheet', userTags: ['Jazz'], favorite: false, bookless: false, hasImslpNumber: false, practiceStatus: 'Want to Learn', pageCount: 1, yearWritten: '' },
-  { id: 10, title: 'Sonata No. 8 "Pathétique," II.', composer: 'Beethoven', key: 'A♭ Major', instrument: 'Piano', sheetType: 'Solo Piece', userTags: ['Recital'], favorite: true, bookless: false, hasImslpNumber: true, practiceStatus: 'Stalled', pageCount: 3, yearWritten: '1798' },
+  {
+    id: 1,
+    title: 'Album für die Jugend',
+    composer: 'Schumann',
+    key: 'A Minor',
+    instrument: 'Piano',
+    sheetType: 'Solo Piece',
+    userTags: [],
+    favorite: true,
+    bookless: false,
+    hasImslpNumber: true,
+    practiceStatus: 'Learning',
+    pageCount: 3,
+    yearWritten: '1848',
+  },
+  {
+    id: 2,
+    title: 'Prelude in C',
+    composer: 'Bach, J.S.',
+    key: 'C Major',
+    instrument: 'Piano',
+    sheetType: 'Solo Piece',
+    userTags: [],
+    favorite: true,
+    bookless: false,
+    hasImslpNumber: true,
+    practiceStatus: 'Learned',
+    pageCount: 1,
+    yearWritten: '1722',
+  },
+  {
+    id: 3,
+    title: 'Nocturne in E♭',
+    composer: 'Chopin',
+    key: 'D Major',
+    instrument: 'Piano',
+    sheetType: 'Solo Piece',
+    userTags: ['Recital'],
+    favorite: false,
+    bookless: false,
+    hasImslpNumber: true,
+    practiceStatus: 'Learning',
+    pageCount: 4,
+    yearWritten: '1831',
+  },
+  {
+    id: 4,
+    title: 'Clair de lune',
+    composer: 'Debussy',
+    key: 'D Major',
+    instrument: 'Piano',
+    sheetType: 'Solo Piece',
+    userTags: [],
+    favorite: false,
+    bookless: true,
+    hasImslpNumber: false,
+    practiceStatus: 'Want to Learn',
+    pageCount: 5,
+    yearWritten: '1905',
+  },
+  {
+    id: 5,
+    title: 'Waltz for Debby',
+    composer: 'Evans',
+    key: 'C Major',
+    instrument: 'Piano',
+    sheetType: 'Lead Sheet',
+    userTags: ['Jazz'],
+    favorite: false,
+    bookless: false,
+    hasImslpNumber: false,
+    practiceStatus: 'Learned',
+    pageCount: 1,
+    yearWritten: '1956',
+  },
+  {
+    id: 6,
+    title: 'Moonlight, I.',
+    composer: 'Beethoven',
+    key: 'D♭ Minor',
+    instrument: 'Piano',
+    sheetType: 'Solo Piece',
+    userTags: ['Recital'],
+    favorite: false,
+    bookless: false,
+    hasImslpNumber: true,
+    practiceStatus: 'Learning',
+    pageCount: 2,
+    yearWritten: '1801',
+  },
+  {
+    id: 7,
+    title: 'Air on the G String',
+    composer: 'Bach, J.S.',
+    key: 'D Major',
+    instrument: 'Violin',
+    sheetType: 'Duet',
+    userTags: [],
+    favorite: false,
+    bookless: true,
+    hasImslpNumber: false,
+    practiceStatus: 'Want to Learn',
+    pageCount: 1,
+    yearWritten: '1731',
+  },
+  {
+    id: 8,
+    title: 'Gymnopédie No. 1',
+    composer: 'Satie',
+    key: 'A Minor',
+    instrument: 'Piano',
+    sheetType: 'Solo Piece',
+    userTags: [],
+    favorite: true,
+    bookless: true,
+    hasImslpNumber: false,
+    practiceStatus: 'Learned',
+    pageCount: 1,
+    yearWritten: '1888',
+  },
+  {
+    id: 9,
+    title: 'Autumn Leaves',
+    composer: 'Kosma',
+    key: 'G Minor',
+    instrument: 'Piano',
+    sheetType: 'Lead Sheet',
+    userTags: ['Jazz'],
+    favorite: false,
+    bookless: false,
+    hasImslpNumber: false,
+    practiceStatus: 'Want to Learn',
+    pageCount: 1,
+    yearWritten: '',
+  },
+  {
+    id: 10,
+    title: 'Sonata No. 8 "Pathétique," II.',
+    composer: 'Beethoven',
+    key: 'A♭ Major',
+    instrument: 'Piano',
+    sheetType: 'Solo Piece',
+    userTags: ['Recital'],
+    favorite: true,
+    bookless: false,
+    hasImslpNumber: true,
+    practiceStatus: 'Stalled',
+    pageCount: 3,
+    yearWritten: '1798',
+  },
 ]
 
 // Distinct option lists, derived from PIECES rather than hand-listed a
@@ -119,7 +259,12 @@ const KEY_OPTIONS = distinct('key')
 const INSTRUMENT_OPTIONS = distinct('instrument')
 const SHEET_TYPE_OPTIONS = distinct('sheetType')
 const USER_TAG_OPTIONS = distinct('userTags')
-const STATUS_OPTIONS: MockPiece['practiceStatus'][] = ['Want to Learn', 'Learning', 'Learned', 'Stalled']
+const STATUS_OPTIONS: MockPiece['practiceStatus'][] = [
+  'Want to Learn',
+  'Learning',
+  'Learned',
+  'Stalled',
+]
 
 // Live/faceted, matching the real backend's own switch —
 // internal/handlers/facets.go: a facet's own displayed count
@@ -153,7 +298,12 @@ function matchesBoolean(state: TriState, pieceValue: boolean): boolean {
   return true
 }
 
-function matchesFiltersExcept(p: MockPiece, f: FilterState, exclude: keyof FilterState | null, query: string): boolean {
+function matchesFiltersExcept(
+  p: MockPiece,
+  f: FilterState,
+  exclude: keyof FilterState | null,
+  query: string,
+): boolean {
   if (exclude !== 'key' && !matchesDimension(f.key, p.key)) return false
   if (exclude !== 'instrument' && !matchesDimension(f.instrument, p.instrument)) return false
   if (exclude !== 'sheetType' && !matchesDimension(f.sheetType, p.sheetType)) return false
@@ -161,19 +311,29 @@ function matchesFiltersExcept(p: MockPiece, f: FilterState, exclude: keyof Filte
   if (exclude !== 'status' && !matchesDimension(f.status, p.practiceStatus)) return false
   if (exclude !== 'favorite' && !matchesBoolean(f.favorite, p.favorite)) return false
   if (exclude !== 'bookless' && !matchesBoolean(f.bookless, p.bookless)) return false
-  if (exclude !== 'hasImslpNumber' && !matchesBoolean(f.hasImslpNumber, p.hasImslpNumber)) return false
+  if (exclude !== 'hasImslpNumber' && !matchesBoolean(f.hasImslpNumber, p.hasImslpNumber))
+    return false
   if (query.trim() && !p.title.toLowerCase().includes(query.trim().toLowerCase())) return false
   return true
 }
 
-function countMatching(field: 'key' | 'instrument' | 'sheetType', value: string, f: FilterState, query: string): number {
+function countMatching(
+  field: 'key' | 'instrument' | 'sheetType',
+  value: string,
+  f: FilterState,
+  query: string,
+): number {
   return PIECES.filter((p) => p[field] === value && matchesFiltersExcept(p, f, field, query)).length
 }
 function countTag(tag: string, f: FilterState, query: string): number {
-  return PIECES.filter((p) => p.userTags.includes(tag) && matchesFiltersExcept(p, f, 'userTags', query)).length
+  return PIECES.filter(
+    (p) => p.userTags.includes(tag) && matchesFiltersExcept(p, f, 'userTags', query),
+  ).length
 }
 function countStatus(status: string, f: FilterState, query: string): number {
-  return PIECES.filter((p) => p.practiceStatus === status && matchesFiltersExcept(p, f, 'status', query)).length
+  return PIECES.filter(
+    (p) => p.practiceStatus === status && matchesFiltersExcept(p, f, 'status', query),
+  ).length
 }
 function countFavorite(f: FilterState, query: string): number {
   return PIECES.filter((p) => p.favorite && matchesFiltersExcept(p, f, 'favorite', query)).length
@@ -182,7 +342,9 @@ function countBookless(f: FilterState, query: string): number {
   return PIECES.filter((p) => p.bookless && matchesFiltersExcept(p, f, 'bookless', query)).length
 }
 function countHasImslp(f: FilterState, query: string): number {
-  return PIECES.filter((p) => p.hasImslpNumber && matchesFiltersExcept(p, f, 'hasImslpNumber', query)).length
+  return PIECES.filter(
+    (p) => p.hasImslpNumber && matchesFiltersExcept(p, f, 'hasImslpNumber', query),
+  ).length
 }
 
 // Stands in for a real page thumbnail (getPieceThumbnailUrl) — same
@@ -193,12 +355,26 @@ function PieceThumb({ seed }: { seed: number }) {
   const staffYs = [22, 40, 58, 76]
   const hue = (seed * 47) % 360
   return (
-    <svg viewBox="0 0 180 132" preserveAspectRatio="none" className="h-full w-full" aria-hidden="true">
+    <svg
+      viewBox="0 0 180 132"
+      preserveAspectRatio="none"
+      className="h-full w-full"
+      aria-hidden="true"
+    >
       <rect width="180" height="132" fill={`hsl(${hue} 22% 94%)`} />
       {staffYs.map((y) => (
         <g key={y}>
           {Array.from({ length: 5 }, (_, i) => (
-            <line key={i} x1="14" y1={y + i * 3.4} x2="166" y2={y + i * 3.4} stroke="#3a342c" strokeWidth="0.8" opacity="0.55" />
+            <line
+              key={i}
+              x1="14"
+              y1={y + i * 3.4}
+              x2="166"
+              y2={y + i * 3.4}
+              stroke="#3a342c"
+              strokeWidth="0.8"
+              opacity="0.55"
+            />
           ))}
         </g>
       ))}
@@ -225,7 +401,11 @@ function dimensionState(map: Record<string, TriState>, value: string): TriState 
 // Returns a new map with `value` set to `next` — or removed entirely when
 // `next` is 'neutral', keeping the map's own invariant (only non-neutral
 // entries stored) intact rather than accumulating dead 'neutral' keys.
-function setDimensionState(map: Record<string, TriState>, value: string, next: TriState): Record<string, TriState> {
+function setDimensionState(
+  map: Record<string, TriState>,
+  value: string,
+  next: TriState,
+): Record<string, TriState> {
   if (next === 'neutral') {
     return Object.fromEntries(Object.entries(map).filter(([k]) => k !== value))
   }
@@ -364,17 +544,17 @@ function SortControl({
           onClick={() => (open ? setOpen(false) : openMenu())}
           onKeyDown={handleKeyDown}
           onBlur={() => setTimeout(() => setOpen(false), 150)}
-          className="flex cursor-pointer items-center gap-1.5 px-3 py-2 text-sm text-ink hover:bg-paper-sunken"
+          className="flex cursor-pointer items-center gap-1.5 px-3 py-2 text-sm text-ink hover:bg-paper-hover"
         >
           {field}
-          <IconChevronDown size={14} className="text-[#9d9892]" />
+          <IconChevronDown size={14} className="text-ink-faint" />
         </button>
         <button
           type="button"
           onClick={onDirectionToggle}
           aria-label={`Sort direction: ${directionLabel}. Click to reverse.`}
           title={directionLabel}
-          className="flex cursor-pointer items-center justify-center border-l border-border px-2.5 py-2 text-ink hover:bg-paper-sunken"
+          className="flex cursor-pointer items-center justify-center border-l border-border px-2.5 py-2 text-ink hover:bg-paper-hover"
         >
           {direction === 'asc' ? <IconArrowUp size={16} /> : <IconArrowDown size={16} />}
         </button>
@@ -424,7 +604,7 @@ function FilterDrawer({
           language the app already has for its mobile nav, not a new one. */}
       <div
         aria-hidden={!open}
-        className={`fixed inset-0 z-40 bg-ink/40 backdrop-blur-[1px] transition-opacity duration-200 ${
+        className={`fixed inset-0 z-40 bg-scrim/40 backdrop-blur-[1px] transition-opacity duration-200 ${
           open ? 'opacity-100' : 'pointer-events-none opacity-0'
         }`}
         onClick={onClose}
@@ -442,16 +622,16 @@ function FilterDrawer({
             type="button"
             onClick={onClose}
             aria-label="Close filters"
-            className="flex size-8 cursor-pointer items-center justify-center rounded-md text-ink-soft hover:bg-paper-sunken hover:text-ink"
+            className="flex size-8 cursor-pointer items-center justify-center rounded-md text-ink-soft hover:bg-paper-hover hover:text-ink"
           >
             <IconX size={18} />
           </button>
         </div>
 
         <p className="shrink-0 border-b border-border px-4 py-2.5 text-xs leading-snug text-ink-soft">
-          Included options within a section combine with <span className="font-medium text-ink">or</span> — checking
-          two keys, for example, matches pieces in either. Different sections, and any excluded option, must all
-          match.
+          Included options within a section combine with{' '}
+          <span className="font-medium text-ink">or</span> — checking two keys, for example, matches
+          pieces in either. Different sections, and any excluded option, must all match.
         </p>
 
         <div className="flex-1 overflow-y-auto px-4 py-2">
@@ -491,7 +671,9 @@ function FilterDrawer({
                 label={v}
                 count={countTag(v, filters, query)}
                 state={dimensionState(filters.userTags, v)}
-                onChange={(next) => onChange({ ...filters, userTags: setDimensionState(filters.userTags, v, next) })}
+                onChange={(next) =>
+                  onChange({ ...filters, userTags: setDimensionState(filters.userTags, v, next) })
+                }
               />
             ))}
           </FacetSection>
@@ -503,7 +685,9 @@ function FilterDrawer({
                 label={v}
                 count={countStatus(v, filters, query)}
                 state={dimensionState(filters.status, v)}
-                onChange={(next) => onChange({ ...filters, status: setDimensionState(filters.status, v, next) })}
+                onChange={(next) =>
+                  onChange({ ...filters, status: setDimensionState(filters.status, v, next) })
+                }
               />
             ))}
           </FacetSection>
@@ -515,7 +699,9 @@ function FilterDrawer({
                 label={v}
                 count={countMatching('sheetType', v, filters, query)}
                 state={dimensionState(filters.sheetType, v)}
-                onChange={(next) => onChange({ ...filters, sheetType: setDimensionState(filters.sheetType, v, next) })}
+                onChange={(next) =>
+                  onChange({ ...filters, sheetType: setDimensionState(filters.sheetType, v, next) })
+                }
               />
             ))}
           </FacetSection>
@@ -527,7 +713,12 @@ function FilterDrawer({
                 label={v}
                 count={countMatching('instrument', v, filters, query)}
                 state={dimensionState(filters.instrument, v)}
-                onChange={(next) => onChange({ ...filters, instrument: setDimensionState(filters.instrument, v, next) })}
+                onChange={(next) =>
+                  onChange({
+                    ...filters,
+                    instrument: setDimensionState(filters.instrument, v, next),
+                  })
+                }
               />
             ))}
           </FacetSection>
@@ -539,7 +730,9 @@ function FilterDrawer({
                 label={k}
                 count={countMatching('key', k, filters, query)}
                 state={dimensionState(filters.key, k)}
-                onChange={(next) => onChange({ ...filters, key: setDimensionState(filters.key, k, next) })}
+                onChange={(next) =>
+                  onChange({ ...filters, key: setDimensionState(filters.key, k, next) })
+                }
               />
             ))}
           </FacetSection>
@@ -554,7 +747,7 @@ function FilterDrawer({
           <button
             type="button"
             onClick={onClear}
-            className="w-full cursor-pointer rounded-md border border-border bg-paper-raised px-3 py-2 text-sm font-medium text-ink hover:border-accent"
+            className="w-full cursor-pointer rounded-md border border-border bg-paper-raised px-3 py-2 text-sm font-medium text-ink hover:bg-paper-hover"
           >
             Clear all filters
           </button>
@@ -567,7 +760,11 @@ function FilterDrawer({
 function FacetSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="border-b border-border py-3 last:border-b-0">
-      {title && <p className="mb-1.5 text-xs font-semibold tracking-wide text-ink-soft uppercase">{title}</p>}
+      {title && (
+        <p className="mb-1.5 text-xs font-semibold tracking-wide text-ink-soft uppercase">
+          {title}
+        </p>
+      )}
       <div className="flex flex-col">{children}</div>
     </div>
   )
@@ -601,12 +798,20 @@ function FacetRow({
 // grid/list view toggle and SortControl.tsx already use (rounded-md border
 // p-0.5, each segment its own rounded button), sized down (size-6/14px
 // icons vs. their size-8/16px) to stay compact repeated down a long facet
-// list. Exclude's red is the same text-red-700 this app already uses for
+// list. Exclude's red is the same text-danger this app already uses for
 // every other destructive/negative affordance (delete buttons, validation
 // errors) — extended here to "removes results" rather than "removes data,"
 // which reads as the same family of action (this option makes something
 // go away) even though nothing is actually deleted.
-function TriStateControl({ state, onChange, label }: { state: TriState; onChange: (next: TriState) => void; label: string }) {
+function TriStateControl({
+  state,
+  onChange,
+  label,
+}: {
+  state: TriState
+  onChange: (next: TriState) => void
+  label: string
+}) {
   return (
     <div className="flex shrink-0 items-center gap-0.5 rounded-md border border-border p-0.5">
       <button
@@ -615,7 +820,9 @@ function TriStateControl({ state, onChange, label }: { state: TriState; onChange
         aria-label={`Exclude ${label}`}
         aria-pressed={state === 'exclude'}
         className={`flex size-6 cursor-pointer items-center justify-center rounded ${
-          state === 'exclude' ? 'bg-red-50 text-red-700' : 'text-ink-soft hover:bg-paper-sunken hover:text-ink'
+          state === 'exclude'
+            ? 'bg-danger-soft text-danger'
+            : 'text-ink-soft hover:bg-paper-hover hover:text-ink'
         }`}
       >
         <IconMinus size={14} />
@@ -626,7 +833,9 @@ function TriStateControl({ state, onChange, label }: { state: TriState; onChange
         aria-label={`Clear ${label} filter`}
         aria-pressed={state === 'neutral'}
         className={`flex size-6 cursor-pointer items-center justify-center rounded ${
-          state === 'neutral' ? 'bg-paper-sunken text-ink' : 'text-ink-soft hover:bg-paper-sunken hover:text-ink'
+          state === 'neutral'
+            ? 'bg-paper-hover text-ink'
+            : 'text-ink-soft hover:bg-paper-hover hover:text-ink'
         }`}
       >
         <IconSlash size={14} />
@@ -637,7 +846,9 @@ function TriStateControl({ state, onChange, label }: { state: TriState; onChange
         aria-label={`Include ${label}`}
         aria-pressed={state === 'include'}
         className={`flex size-6 cursor-pointer items-center justify-center rounded ${
-          state === 'include' ? 'bg-accent-soft text-accent' : 'text-ink-soft hover:bg-paper-sunken hover:text-ink'
+          state === 'include'
+            ? 'bg-accent-soft text-accent'
+            : 'text-ink-soft hover:bg-paper-hover hover:text-ink'
         }`}
       >
         <IconPlus size={14} />
@@ -682,12 +893,15 @@ function sortPieces(pieces: MockPiece[], field: SortField, direction: SortDirect
 function MockTagPills({ piece }: { piece: MockPiece }) {
   return (
     <div className="flex min-w-0 flex-wrap items-center gap-1">
-      <span className="flex items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent">
+      <span className="flex items-center gap-1 rounded-full border border-accent/30 bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent">
         <PracticeStatusIcon status={piece.practiceStatus} size={11} className="shrink-0" />
         {piece.practiceStatus}
       </span>
       {piece.userTags.map((tag) => (
-        <span key={tag} className="rounded-full bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent">
+        <span
+          key={tag}
+          className="rounded-full border border-accent/30 bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent"
+        >
           {tag}
         </span>
       ))}
@@ -807,7 +1021,9 @@ export function PieceLibrarySample() {
   const [appliedFilters, setAppliedFilters] = useState<FilterState>(EMPTY_FILTERS)
 
   const filtered = PIECES.filter(
-    (p) => pieceMatches(p, appliedFilters) && (!query.trim() || p.title.toLowerCase().includes(query.trim().toLowerCase())),
+    (p) =>
+      pieceMatches(p, appliedFilters) &&
+      (!query.trim() || p.title.toLowerCase().includes(query.trim().toLowerCase())),
   )
   const pieces = sortPieces(filtered, sortField, sortDirection)
   const activeCount = activeFilterCount(appliedFilters)
@@ -817,10 +1033,18 @@ export function PieceLibrarySample() {
       setAppliedFilters((f) => ({ ...f, [field]: 'neutral' }))
       return
     }
-    setAppliedFilters((f) => ({ ...f, [field]: setDimensionState(f[field] as Record<string, TriState>, value!, 'neutral') }))
+    setAppliedFilters((f) => ({
+      ...f,
+      [field]: setDimensionState(f[field] as Record<string, TriState>, value!, 'neutral'),
+    }))
   }
 
-  const pillEntries: { field: keyof FilterState; value?: string; label: string; state: TriState }[] = [
+  const pillEntries: {
+    field: keyof FilterState
+    value?: string
+    label: string
+    state: TriState
+  }[] = [
     ...(appliedFilters.favorite !== 'neutral'
       ? [{ field: 'favorite' as const, label: 'Favorites', state: appliedFilters.favorite }]
       : []),
@@ -828,9 +1052,20 @@ export function PieceLibrarySample() {
       ? [{ field: 'bookless' as const, label: 'Bookless pieces', state: appliedFilters.bookless }]
       : []),
     ...(appliedFilters.hasImslpNumber !== 'neutral'
-      ? [{ field: 'hasImslpNumber' as const, label: 'Has IMSLP number', state: appliedFilters.hasImslpNumber }]
+      ? [
+          {
+            field: 'hasImslpNumber' as const,
+            label: 'Has IMSLP number',
+            state: appliedFilters.hasImslpNumber,
+          },
+        ]
       : []),
-    ...Object.entries(appliedFilters.key).map(([v, state]) => ({ field: 'key' as const, value: v, label: v, state })),
+    ...Object.entries(appliedFilters.key).map(([v, state]) => ({
+      field: 'key' as const,
+      value: v,
+      label: v,
+      state,
+    })),
     ...Object.entries(appliedFilters.instrument).map(([v, state]) => ({
       field: 'instrument' as const,
       value: v,
@@ -861,9 +1096,10 @@ export function PieceLibrarySample() {
     <div className="flex flex-1 flex-col">
       <div className="p-4 pb-0">
         <div className="rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-4 py-2 text-sm text-ink-soft">
-          Design mockup — <span className="font-medium text-ink">Piece Library sort/filter</span>. Option B
-          (Filter Drawer) from the sort/filter comparison. Search, Filters, Sort, and the grid/list toggle
-          are all genuinely interactive against the 10 fixture pieces below; cards aren't real links.
+          Design mockup — <span className="font-medium text-ink">Piece Library sort/filter</span>.
+          Option B (Filter Drawer) from the sort/filter comparison. Search, Filters, Sort, and the
+          grid/list toggle are all genuinely interactive against the 10 fixture pieces below; cards
+          aren't real links.
         </div>
       </div>
 
@@ -948,7 +1184,9 @@ export function PieceLibrarySample() {
                 aria-label="Grid view"
                 aria-pressed={viewMode === 'grid'}
                 className={`flex size-8 cursor-pointer items-center justify-center rounded ${
-                  viewMode === 'grid' ? 'bg-accent-soft text-accent' : 'text-ink-soft'
+                  viewMode === 'grid'
+                    ? 'bg-accent-soft text-accent'
+                    : 'text-ink-soft hover:bg-paper-hover'
                 }`}
               >
                 <IconLayoutGridFilled size={16} />
@@ -959,7 +1197,9 @@ export function PieceLibrarySample() {
                 aria-label="List view"
                 aria-pressed={viewMode === 'list'}
                 className={`flex size-8 cursor-pointer items-center justify-center rounded ${
-                  viewMode === 'list' ? 'bg-accent-soft text-accent' : 'text-ink-soft'
+                  viewMode === 'list'
+                    ? 'bg-accent-soft text-accent'
+                    : 'text-ink-soft hover:bg-paper-hover'
                 }`}
               >
                 <IconLayoutListFilled size={16} />
@@ -985,16 +1225,16 @@ export function PieceLibrarySample() {
                 type="button"
                 onClick={() => setDrawerOpen(true)}
                 aria-label="Filters"
-                className={`flex h-[38px] cursor-pointer items-center gap-1.5 rounded-md border px-3 text-sm active:border-accent active:text-accent ${
+                className={`flex h-[38px] cursor-pointer items-center gap-1.5 rounded-md border px-3 text-sm ${
                   activeCount > 0
                     ? 'border-accent bg-accent-soft text-accent'
-                    : 'border-border bg-paper-raised text-ink hover:border-accent hover:text-accent'
+                    : 'border-border bg-paper-raised text-ink hover:bg-paper-hover'
                 }`}
               >
                 <IconAdjustmentsHorizontal size={16} />
                 <span className="inline sm:hidden 2xl:inline">Filters</span>
                 {activeCount > 0 && (
-                  <span className="flex size-4 items-center justify-center rounded-full bg-accent text-[0.65rem] font-semibold text-white">
+                  <span className="flex size-4 items-center justify-center rounded-full bg-accent-fill text-[0.65rem] font-semibold text-white">
                     {activeCount}
                   </span>
                 )}
@@ -1016,8 +1256,10 @@ export function PieceLibrarySample() {
                 return (
                   <span
                     key={entry.field + (entry.value ?? '')}
-                    className={`flex items-center gap-1.5 rounded-full py-1 pr-1.5 pl-3 text-xs font-medium ${
-                      excluded ? 'bg-red-50 text-red-700' : 'bg-accent-soft text-accent'
+                    className={`flex items-center gap-1.5 rounded-full border py-1 pr-1.5 pl-3 text-xs font-medium ${
+                      excluded
+                        ? 'border-danger/30 bg-danger-soft text-danger'
+                        : 'border-accent/30 bg-accent-soft text-accent'
                     }`}
                   >
                     {excluded ? `Not ${entry.label}` : entry.label}
@@ -1026,7 +1268,7 @@ export function PieceLibrarySample() {
                       onClick={() => clearAppliedFilter(entry.field, entry.value)}
                       aria-label={`Remove ${excluded ? 'not ' : ''}${entry.label} filter`}
                       className={`flex size-4 cursor-pointer items-center justify-center rounded-full opacity-75 hover:opacity-100 ${
-                        excluded ? 'text-red-700' : 'text-accent'
+                        excluded ? 'text-danger' : 'text-accent'
                       }`}
                     >
                       <IconX size={11} />
@@ -1052,7 +1294,7 @@ export function PieceLibrarySample() {
         </p>
 
         {pieces.length === 0 && (
-          <p className="p-8 text-center text-ink-soft">No pieces match these filters.</p>
+          <p className="p-8 text-center text-ink-muted">No pieces match these filters.</p>
         )}
 
         {pieces.length > 0 && viewMode === 'grid' && (
@@ -1064,17 +1306,12 @@ export function PieceLibrarySample() {
               >
                 <div className="relative aspect-[180/132] w-full overflow-hidden border-b border-border bg-border">
                   <PieceThumb seed={piece.id} />
-                  {/* Mockup-parity with the real PieceGridCard.tsx — the
-                      soft white scrim behind the badge, so it stays
-                      legible against real, varied scan/cover artwork
-                      rather than just this mockup's own light placeholder
-                      thumbnails, which happened to not need it. */}
-                  <div
-                    aria-hidden="true"
-                    className="absolute inset-0 bg-[linear-gradient(to_top,rgba(255,255,255,0.55)_0%,rgba(255,255,255,0.1925)_32%,rgba(255,255,255,0)_62%)]"
-                  />
-                  <span className="absolute bottom-2 left-2 z-10 flex max-w-[calc(100%-3rem)] items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent shadow-sm">
-                    <PracticeStatusIcon status={piece.practiceStatus} size={13} className="shrink-0" />
+                  <span className="absolute bottom-2 left-2 z-10 flex max-w-[calc(100%-3rem)] items-center gap-1 rounded-full border border-accent/30 bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent">
+                    <PracticeStatusIcon
+                      status={piece.practiceStatus}
+                      size={11}
+                      className="shrink-0"
+                    />
                     <span className="truncate">{piece.practiceStatus}</span>
                   </span>
                 </div>

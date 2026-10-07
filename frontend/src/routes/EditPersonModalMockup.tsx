@@ -81,7 +81,6 @@ const defaultValues: FormValues = {
 interface WikiSearchResult {
   title: string
   description: string
-  thumbColor: string
   birthYear: string | null
   deathYear: string | null
 }
@@ -103,29 +102,26 @@ const MOCK_WIKI_SEARCH: Record<string, WikiSearchResult[]> = {
       // treatment wrapping to a real second line.
       description:
         'Polish composer and virtuoso pianist (1810–1849). Widely regarded as one of the greatest composers for the piano, celebrated for his mazurkas, nocturnes, and études.',
-      thumbColor: '#5c8a8a',
       birthYear: '1810',
       deathYear: '1849',
     },
     {
       title: 'Chopin (crater)',
       description: 'Impact crater on Mercury named after the composer',
-      thumbColor: '#6b6560',
       birthYear: null,
       deathYear: null,
     },
     {
       title: 'Chopin Airport',
       description: 'Warsaw Chopin Airport, the main international airport of Warsaw, Poland',
-      thumbColor: '#6b6560',
       birthYear: null,
       deathYear: null,
     },
   ],
 }
 
-// Same faint pre-blended tones as the real ImslpAutofillButton.tsx
-// (#9d9892/#c9c2b6, never a translucent opacity utility), kept as a local
+// Same faint tones as the real ImslpAutofillButton.tsx (ink-faint /
+// ink-fainter, never a translucent opacity utility), kept as a local
 // mockup-only duplicate rather than a shared component. Sits inside the
 // Name field itself — the thing that actually drives the search, since a
 // person has no separate numeric identifier the way IMSLP does — same
@@ -158,16 +154,22 @@ function WikipediaAutofillButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      aria-label={valid ? 'Search Wikipedia to autofill blank fields' : 'Type a name to search Wikipedia'}
-      title={valid ? 'Search Wikipedia to autofill blank fields' : 'Type a name to search Wikipedia'}
+      aria-label={
+        valid ? 'Search Wikipedia to autofill blank fields' : 'Type a name to search Wikipedia'
+      }
+      title={
+        valid ? 'Search Wikipedia to autofill blank fields' : 'Type a name to search Wikipedia'
+      }
       className={`absolute top-1/2 right-2.5 flex -translate-y-1/2 items-center gap-1 disabled:cursor-default ${
-        valid ? 'cursor-pointer text-[#9d9892] hover:text-accent' : 'text-[#c9c2b6]'
+        valid ? 'cursor-pointer text-ink-faint hover:text-accent' : 'text-ink-fainter'
       }`}
     >
       <IconBrandWikipedia size={15} className="shrink-0" aria-hidden="true" />
       {!valid && <IconCloudOff size={16} />}
       {valid && state !== 'searching' && <IconCloudDownload size={16} />}
-      {valid && state === 'searching' && <IconLoader2 size={16} className="animate-spin text-ink-soft" />}
+      {valid && state === 'searching' && (
+        <IconLoader2 size={16} className="animate-spin text-ink-soft" />
+      )}
     </button>
   )
 }
@@ -191,10 +193,7 @@ function CameoPortrait() {
       <rect width="100" height="130" fill="#3a3430" />
       <circle cx="50" cy="48" r="22" fill="#cbb89a" />
       <path d="M14 130c0-28 18-46 36-46s36 18 36 46" fill="#cbb89a" />
-      <path
-        d="M28 40c2-14 12-22 22-22s20 8 22 22c-4-6-12-10-22-10s-18 4-22 10z"
-        fill="#1f1b18"
-      />
+      <path d="M28 40c2-14 12-22 22-22s20 8 22 22c-4-6-12-10-22-10s-18 4-22 10z" fill="#1f1b18" />
     </svg>
   )
 }
@@ -253,7 +252,9 @@ export function EditPersonModalMockup() {
   // that DOM subtree entirely. z-[60] for the same reason too — higher
   // than Modal's own z-50, so the results panel isn't painted underneath
   // the dialog's footer.
-  const [panelRect, setPanelRect] = useState<{ top: number; left: number; width: number } | null>(null)
+  const [panelRect, setPanelRect] = useState<{ top: number; left: number; width: number } | null>(
+    null,
+  )
   useLayoutEffect(() => {
     if (wikiState !== 'open') return
     function updatePosition() {
@@ -348,18 +349,18 @@ export function EditPersonModalMockup() {
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6 md:p-8">
       <div className="rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-4 py-2 text-sm text-ink-soft">
-        Design mockup — <span className="font-medium text-ink">Edit Person modal</span>. Not wired to real
-        data — Save replays the approved progress animation. Click the cloud icon next to Name (already
-        "Frédéric Chopin", with Death year blank) to see the Wikipedia search-and-pick flow — including the
-        same irrelevant-result noise Upload Portrait's own search already demonstrates. "Change Portrait" in
-        the left column is a stub — see the banner it produces.
+        Design mockup — <span className="font-medium text-ink">Edit Person modal</span>. Not wired
+        to real data — Save replays the approved progress animation. Click the cloud icon next to
+        Name (already "Frédéric Chopin", with Death year blank) to see the Wikipedia search-and-pick
+        flow — including the same irrelevant-result noise Upload Portrait's own search already
+        demonstrates. "Change Portrait" in the left column is a stub — see the banner it produces.
       </div>
 
       {!open && (
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="w-fit cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent"
+          className="w-fit cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-ink hover:border-accent"
         >
           Reopen mockup
         </button>
@@ -390,7 +391,10 @@ export function EditPersonModalMockup() {
         header={
           <div className="-mx-6 flex items-start justify-between gap-4 border-b border-border px-6 pb-4">
             <div>
-              <h2 id="edit-person-mockup-title" className="font-display text-2xl font-medium text-ink">
+              <h2
+                id="edit-person-mockup-title"
+                className="font-display text-2xl font-medium text-ink"
+              >
                 Edit person
               </h2>
               <p className="text-sm text-ink-soft">{MOCK_PERSON_NAME}</p>
@@ -417,7 +421,7 @@ export function EditPersonModalMockup() {
                 type="button"
                 onClick={() => setOpen(false)}
                 disabled={saving}
-                className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent disabled:cursor-default disabled:opacity-45"
+                className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-ink hover:border-accent disabled:cursor-default disabled:opacity-45"
               >
                 Cancel
               </button>
@@ -425,7 +429,7 @@ export function EditPersonModalMockup() {
                 type="submit"
                 form="edit-person-form"
                 disabled={saving}
-                className="relative flex min-w-[130px] shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md bg-accent px-4 py-2 font-display whitespace-nowrap text-white disabled:cursor-default"
+                className="relative flex min-w-[130px] shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md bg-accent-fill px-4 py-2 font-display font-medium whitespace-nowrap text-white disabled:cursor-default"
               >
                 {saveState === 'saving' && (
                   <span
@@ -491,9 +495,13 @@ export function EditPersonModalMockup() {
                   className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 pr-12 text-ink"
                   {...register('name', { required: 'Name is required.', maxLength: 255 })}
                 />
-                <WikipediaAutofillButton state={wikiState} valid={isValidName} onClick={handleSearchClick} />
+                <WikipediaAutofillButton
+                  state={wikiState}
+                  valid={isValidName}
+                  onClick={handleSearchClick}
+                />
               </div>
-              {errors.name && <p className="text-sm text-red-700">{errors.name.message}</p>}
+              {errors.name && <p className="text-sm text-danger">{errors.name.message}</p>}
             </div>
 
             <div className="flex flex-col gap-1">
@@ -545,11 +553,18 @@ export function EditPersonModalMockup() {
         createPortal(
           <div
             ref={panelRef}
-            style={{ position: 'fixed', top: panelRect.top, left: panelRect.left, width: panelRect.width }}
+            style={{
+              position: 'fixed',
+              top: panelRect.top,
+              left: panelRect.left,
+              width: panelRect.width,
+            }}
             className="z-[60] max-h-72 overflow-y-auto rounded-md border border-border bg-paper-raised py-1 shadow-lg"
           >
             {wikiResults.length === 0 && (
-              <p className="px-3 py-2.5 text-sm text-ink-soft italic">No Wikipedia results found.</p>
+              <p className="px-3 py-2.5 text-sm text-ink-soft italic">
+                No Wikipedia results found.
+              </p>
             )}
             {/* No "not this one" hint — real Wikipedia data proved the
                 birthYear/deathYear-missing heuristic unreliable (a real,
@@ -563,12 +578,9 @@ export function EditPersonModalMockup() {
                 key={result.title}
                 type="button"
                 onClick={() => pickResult(result)}
-                className="flex w-full cursor-pointer items-center gap-3 px-3 py-2.5 text-left hover:bg-paper-sunken"
+                className="flex w-full cursor-pointer items-center gap-3 px-3 py-2.5 text-left hover:bg-paper-hover"
               >
-                <span
-                  className="flex size-9 shrink-0 items-center justify-center rounded-full text-white"
-                  style={{ backgroundColor: result.thumbColor }}
-                >
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-ink-soft text-paper">
                   <IconExternalLink size={14} />
                 </span>
                 <span className="min-w-0 flex-1">

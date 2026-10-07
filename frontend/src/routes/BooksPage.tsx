@@ -152,8 +152,10 @@ export function BooksPage() {
               return (
                 <span
                   key={entry.field + entry.value}
-                  className={`flex items-center gap-1.5 rounded-full py-1 pr-1.5 pl-3 text-xs font-medium ${
-                    excluded ? 'bg-red-50 text-red-700' : 'bg-accent-soft text-accent'
+                  className={`flex items-center gap-1.5 rounded-full border py-1 pr-1.5 pl-3 text-xs font-medium ${
+                    excluded
+                      ? 'border-danger/30 bg-danger-soft text-danger'
+                      : 'border-accent/30 bg-accent-soft text-accent'
                   }`}
                 >
                   {excluded ? `Not ${entry.label}` : entry.label}
@@ -162,7 +164,7 @@ export function BooksPage() {
                     onClick={() => clearDrawerFilter(entry.field, entry.value)}
                     aria-label={`Remove ${excluded ? 'not ' : ''}${entry.label} filter`}
                     className={`flex size-4 cursor-pointer items-center justify-center rounded-full opacity-75 hover:opacity-100 ${
-                      excluded ? 'text-red-700' : 'text-accent'
+                      excluded ? 'text-danger' : 'text-accent'
                     }`}
                   >
                     <IconX size={11} />
@@ -190,12 +192,18 @@ export function BooksPage() {
           </p>
         )}
 
-        {books && books.length === 0 && (
-          <p className="p-8 text-center text-ink-soft">
-            {query || activeCount > 0
-              ? 'No books match your search.'
-              : 'No books yet — books are created via the import wizard or the New Book button above.'}
-          </p>
+        {books && books.length === 0 && (query || activeCount > 0) && (
+          <p className="p-8 text-center text-ink-muted">No books match your search.</p>
+        )}
+
+        {/* Same two-line treatment as Book/Person Details' "No pieces yet". */}
+        {books && books.length === 0 && !query && activeCount === 0 && (
+          <div className="p-8 text-center">
+            <p className="font-display font-medium text-ink-muted">No books yet</p>
+            <p className="mt-1 text-sm text-ink-muted italic">
+              Books are created via the import wizard or the New Book button above.
+            </p>
+          </div>
         )}
 
         {books && books.length > 0 && viewMode === 'grid' && (

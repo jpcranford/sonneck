@@ -5,7 +5,6 @@ import {
   IconBook,
   IconBook2,
   IconCheck,
-  IconCircleCheckFilled,
   IconEyeOff,
   IconX,
 } from '@tabler/icons-react'
@@ -23,7 +22,7 @@ import { useMockupTitle } from '../lib/useMockupTitle'
 // success state machine, reusing EditBookModal.tsx's own real stripe-
 // animation button pattern (`animate-stripe-move`) rather than a static
 // comparison of the two states. The success screen reuses UploadPage.tsx's
-// exact "done" convention (IconCircleCheckFilled, "Upload another file"
+// exact "done" convention (IconCheck, "Upload another file"
 // resets back to the start) and demonstrates the imported-titles
 // sentence's truncation rule — verified for both the ≤3 and >3 cases via
 // a standalone script before wiring it in, since this fixed 3-piece
@@ -57,9 +56,15 @@ const SKIPPED_PAGES = [4]
 // confirm step every piece is a final, closed range, so page ranges
 // render as plain "pp. X–Y" with no trailing "+".
 const PIECES: PieceFixture[] = [
-  { start: 1, end: 3, color: '#6b8a9c', title: 'Prelude in C', composer: 'J. Burgmüller' },
-  { start: 5, end: 7, color: '#b8935a', title: 'Nocturne', composer: 'Fr. Chopin' },
-  { start: 7, end: 8, color: '#9c7ab8', title: 'Waltz in A♭', composer: 'Fr. Chopin' },
+  {
+    start: 1,
+    end: 3,
+    color: 'var(--color-split-1)',
+    title: 'Prelude in C',
+    composer: 'J. Burgmüller',
+  },
+  { start: 5, end: 7, color: 'var(--color-split-2)', title: 'Nocturne', composer: 'Fr. Chopin' },
+  { start: 7, end: 8, color: 'var(--color-split-3)', title: 'Waltz in A♭', composer: 'Fr. Chopin' },
 ]
 
 // Academic p./pp. convention app-wide (singular vs. a range), same as
@@ -119,7 +124,14 @@ function PieceThumb({ title }: { title: string }) {
   return (
     <svg viewBox="0 0 200 260" className="block h-auto w-full">
       <rect x="0.5" y="0.5" width="199" height="259" fill="#fffdf9" stroke="#e4e0d8" />
-      <text x="100" y="26" textAnchor="middle" fontFamily="var(--font-display)" fontSize="9" fill="#5c5349">
+      <text
+        x="100"
+        y="26"
+        textAnchor="middle"
+        fontFamily="var(--font-display)"
+        fontSize="9"
+        fill="#5c5349"
+      >
         {title}
       </text>
       {staffGroupYs.map((y) => (
@@ -151,7 +163,7 @@ export function UploadBookConfirmMockup() {
 
   function handleCancelUpload() {
     const confirmed = window.confirm(
-      "Cancel this upload? The uploaded file and its generated page previews will be permanently removed from the server.",
+      'Cancel this upload? The uploaded file and its generated page previews will be permanently removed from the server.',
     )
     if (!confirmed) return
     // Mockup only — see UploadBookAboutMockup.tsx's own copy of this
@@ -160,16 +172,20 @@ export function UploadBookConfirmMockup() {
     // stage === 'confirm' here (see the chrome's own conditional below) —
     // once a real import has actually run, pieces exist and there's
     // nothing left to "cancel."
-    console.log('Mockup: cancel confirmed — would delete book + cached thumbnails, return to Upload landing')
+    console.log(
+      'Mockup: cancel confirmed — would delete book + cached thumbnails, return to Upload landing',
+    )
   }
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-6 md:p-8">
       <div className="rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-4 py-2 text-sm text-ink-soft">
         Design mockup —{' '}
-        <span className="font-medium text-ink">Book Upload Wizard, Screen 6 of 6: "Ready to import"</span> (design
-        doc §5). Not wired to real data — click Import to see the real stripe-animation loading state and the
-        success screen.
+        <span className="font-medium text-ink">
+          Book Upload Wizard, Screen 6 of 6: "Ready to import"
+        </span>{' '}
+        (design doc §5). Not wired to real data — click Import to see the real stripe-animation
+        loading state and the success screen.
       </div>
 
       {stage !== 'success' && (
@@ -179,7 +195,10 @@ export function UploadBookConfirmMockup() {
               simulating real step-nav — see UploadBookAboutMockup.tsx's
               own comment on this. */}
           <div className="flex items-center justify-between">
-            <Link to="/mockup" className="flex items-center gap-1.5 text-base text-ink-soft hover:text-ink">
+            <Link
+              to="/mockup"
+              className="flex items-center gap-1.5 text-base text-ink-soft hover:text-ink"
+            >
               <IconArrowLeft size={24} />
               Back
             </Link>
@@ -192,7 +211,11 @@ export function UploadBookConfirmMockup() {
                   <span
                     key={step}
                     className={`h-1 w-5 rounded-full ${
-                      step < CURRENT_STEP ? 'bg-accent-on-dark' : step === CURRENT_STEP ? 'bg-accent' : 'bg-border'
+                      step < CURRENT_STEP
+                        ? 'bg-accent-muted'
+                        : step === CURRENT_STEP
+                          ? 'bg-accent'
+                          : 'bg-border'
                     }`}
                   />
                 ))}
@@ -202,7 +225,9 @@ export function UploadBookConfirmMockup() {
 
           <div>
             <h1 className="font-display text-2xl font-medium text-ink">Ready to import</h1>
-            <p className="text-sm text-ink-soft">Review before this creates {PIECES.length} new pieces.</p>
+            <p className="text-sm text-ink-soft">
+              Review before this creates {PIECES.length} new pieces.
+            </p>
           </div>
 
           <div className="flex items-center gap-2.5 rounded-md bg-accent-soft px-3.5 py-3">
@@ -219,7 +244,8 @@ export function UploadBookConfirmMockup() {
             <div className="flex items-center gap-2 text-xs text-ink-soft">
               <IconEyeOff size={14} className="shrink-0" />
               {SKIPPED_PAGES.length} page{SKIPPED_PAGES.length === 1 ? '' : 's'} skipped (p.{' '}
-              {formatPageList(SKIPPED_PAGES.map((p) => p + PAGE_OFFSET))}) — won't be included in any piece
+              {formatPageList(SKIPPED_PAGES.map((p) => p + PAGE_OFFSET))}) — won't be included in
+              any piece
             </div>
           )}
 
@@ -227,7 +253,9 @@ export function UploadBookConfirmMockup() {
             {PIECES.map((piece) => (
               <div
                 key={piece.start}
-                className="overflow-hidden rounded-lg border border-border bg-paper-raised"
+                // 2px, heavier than the usual 1px, so each piece's split color
+                // holds up as its outline.
+                className="overflow-hidden rounded-lg border-2 border-border bg-paper-raised"
                 style={{ borderColor: piece.color }}
               >
                 {/* border-b hairline between thumbnail and info text — same
@@ -238,9 +266,11 @@ export function UploadBookConfirmMockup() {
                   <PieceThumb title={piece.title} />
                 </div>
                 <div className="flex flex-col gap-px px-2 py-1.5">
-                  <p className="truncate font-display text-[0.8rem] font-medium text-ink">{piece.title}</p>
-                  <p className="truncate text-[0.7rem] text-ink-soft">{piece.composer}</p>
-                  <p className="truncate text-[0.7rem] text-ink-soft">{formatPageRange(piece)}</p>
+                  <p className="truncate font-display text-sm font-medium text-ink">
+                    {piece.title}
+                  </p>
+                  <p className="truncate text-xs text-ink-soft">{piece.composer}</p>
+                  <p className="truncate text-xs text-ink-soft">{formatPageRange(piece)}</p>
                 </div>
               </div>
             ))}
@@ -257,7 +287,7 @@ export function UploadBookConfirmMockup() {
               type="button"
               onClick={handleCancelUpload}
               disabled={stage === 'importing'}
-              className="flex cursor-pointer items-center gap-1.5 text-base text-red-700 hover:text-red-800 disabled:pointer-events-none disabled:opacity-40"
+              className="flex cursor-pointer items-center gap-1.5 text-base text-danger hover:text-danger-strong disabled:pointer-events-none disabled:opacity-40"
             >
               <IconX size={24} />
               Cancel upload
@@ -272,7 +302,7 @@ export function UploadBookConfirmMockup() {
               type="button"
               onClick={handleImport}
               disabled={stage === 'importing'}
-              className="relative flex min-w-[190px] shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md bg-accent px-4 py-2.5 font-display whitespace-nowrap text-white disabled:cursor-default"
+              className="relative flex min-w-[190px] shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md bg-accent-fill px-4 py-2.5 font-display font-medium whitespace-nowrap text-white disabled:cursor-default"
             >
               {stage === 'importing' && (
                 <span
@@ -296,14 +326,18 @@ export function UploadBookConfirmMockup() {
 
       {stage === 'success' && (
         <div className="flex w-full max-w-md flex-col items-center gap-3 self-center text-center">
-          <IconCircleCheckFilled size={40} className="text-accent" />
-          <h1 className="font-display text-2xl font-medium text-ink">{PIECES.length} pieces imported</h1>
-          <p className="text-sm text-ink-soft">{formatImportedTitlesSentence(PIECES.map((p) => p.title))}</p>
+          <IconCheck size={48} className="text-ink-soft" />
+          <h1 className="font-display text-2xl font-medium text-ink">
+            {PIECES.length} pieces imported
+          </h1>
+          <p className="text-sm text-ink-soft">
+            {formatImportedTitlesSentence(PIECES.map((p) => p.title))}
+          </p>
           <div className="mt-1 flex items-center gap-3">
             <button
               type="button"
               onClick={() => setStage('confirm')}
-              className="rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent"
+              className="rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-ink hover:border-accent"
             >
               Upload another file
             </button>
@@ -311,7 +345,7 @@ export function UploadBookConfirmMockup() {
                 build (BookUploadWizard.tsx) links to /books/:id instead. */}
             <button
               type="button"
-              className="flex items-center gap-1.5 rounded-md bg-accent px-4 py-2 font-display text-white hover:bg-accent/90"
+              className="flex items-center gap-1.5 rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-white hover:bg-accent-fill/90"
             >
               <IconBook2 size={16} />
               Open book

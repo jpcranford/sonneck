@@ -611,7 +611,7 @@ export function EditSetlistModal({
           type="button"
           onClick={closeCustomForm}
           aria-label="Cancel custom entry"
-          className="absolute top-2 right-2 cursor-pointer rounded p-1 text-ink-soft hover:bg-paper-sunken hover:text-ink"
+          className="absolute top-2 right-2 cursor-pointer rounded p-1 text-ink-soft hover:bg-paper-hover hover:text-ink"
         >
           <IconX size={13} />
         </button>
@@ -672,7 +672,7 @@ export function EditSetlistModal({
           <button
             type="submit"
             disabled={!customName.trim() || addOrEditCustomMutation.isPending}
-            className="cursor-pointer rounded-md bg-accent px-3 py-1.5 text-sm text-white hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="cursor-pointer rounded-md bg-accent-fill px-3 py-1.5 text-sm text-white hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {editingEntryId ? 'Save' : 'Add'}
           </button>
@@ -699,7 +699,7 @@ export function EditSetlistModal({
           type="button"
           onClick={closeRoleForm}
           aria-label="Cancel role edit"
-          className="absolute top-2 right-2 cursor-pointer rounded p-1 text-ink-soft hover:bg-paper-sunken hover:text-ink"
+          className="absolute top-2 right-2 cursor-pointer rounded p-1 text-ink-soft hover:bg-paper-hover hover:text-ink"
         >
           <IconX size={13} />
         </button>
@@ -734,7 +734,7 @@ export function EditSetlistModal({
           <button
             type="submit"
             disabled={!canSave || editRoleMutation.isPending}
-            className="cursor-pointer rounded-md bg-accent px-3 py-1.5 text-sm text-white hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="cursor-pointer rounded-md bg-accent-fill px-3 py-1.5 text-sm text-white hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Save
           </button>
@@ -801,7 +801,7 @@ export function EditSetlistModal({
             <button
               type="button"
               onClick={handleCancel}
-              className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent"
+              className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-ink hover:border-accent"
             >
               {mode === 'create' || activeTab === 'details' ? 'Cancel' : 'Close'}
             </button>
@@ -809,7 +809,7 @@ export function EditSetlistModal({
               type="button"
               onClick={handleSave}
               disabled={!name.trim() || saving}
-              className="cursor-pointer rounded-md bg-accent px-4 py-2 font-display text-white hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
+              className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-white hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {saving ? 'Saving…' : 'Save'}
             </button>
@@ -987,13 +987,23 @@ export function EditSetlistModal({
                       without it this list can still be reordered and trimmed. */}
                   {canCreate && (
                     <div className="rounded-md bg-paper-raised overflow-hidden">
+                      {/* With a panel open the two act as tabs: the open one has
+                          the panel's fill and no bottom edge, so it runs into the
+                          panel (which has no top border), and the other sits back
+                          on paper-sunken with the bottom edge. */}
                       <div className="flex">
                         <button
                           type="button"
                           onClick={() => selectAddMode('search')}
                           className={`relative flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-tl-md border-t border-r border-l border-border px-3 py-2 text-sm font-medium transition-colors ${
                             addRowMode === 'buttons' ? 'rounded-bl-md border-b' : ''
-                          } ${addRowMode === 'search' ? 'bg-paper-sunken text-ink' : 'text-ink-soft hover:z-10 hover:border-accent'}`}
+                          } ${
+                            addRowMode === 'search'
+                              ? 'bg-paper-raised text-ink'
+                              : addRowMode === 'buttons'
+                                ? 'text-ink-soft hover:z-10 hover:border-accent'
+                                : 'border-b bg-paper-sunken text-ink-soft hover:z-10 hover:border-accent'
+                          }`}
                         >
                           <IconPlus size={14} />
                           Piece
@@ -1003,7 +1013,13 @@ export function EditSetlistModal({
                           onClick={() => selectAddMode('custom')}
                           className={`relative -ml-px flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-tr-md border-t border-r border-l border-border px-3 py-2 text-sm font-medium transition-colors ${
                             addRowMode === 'buttons' ? 'rounded-br-md border-b' : ''
-                          } ${addRowMode === 'custom' ? 'bg-paper-sunken text-ink' : 'text-ink-soft hover:z-10 hover:border-accent'}`}
+                          } ${
+                            addRowMode === 'custom'
+                              ? 'bg-paper-raised text-ink'
+                              : addRowMode === 'buttons'
+                                ? 'text-ink-soft hover:z-10 hover:border-accent'
+                                : 'border-b bg-paper-sunken text-ink-soft hover:z-10 hover:border-accent'
+                          }`}
                         >
                           <IconPlus size={14} />
                           Custom Entry
@@ -1013,7 +1029,7 @@ export function EditSetlistModal({
                       {addRowMode === 'search' && (
                         <div
                           ref={setExpandedRef}
-                          className="border border-border rounded-b-md p-2.5"
+                          className="border border-t-0 border-border rounded-b-md p-2.5"
                         >
                           <div className="relative">
                             <IconSearch
@@ -1038,7 +1054,7 @@ export function EditSetlistModal({
                               type="button"
                               onClick={closeAddRow}
                               aria-label="Cancel adding a piece"
-                              className="absolute top-1/2 right-1.5 -translate-y-1/2 cursor-pointer rounded p-1 text-ink-soft hover:bg-paper-sunken hover:text-ink"
+                              className="absolute top-1/2 right-1.5 -translate-y-1/2 cursor-pointer rounded p-1 text-ink-soft hover:bg-paper-hover hover:text-ink"
                             >
                               <IconX size={13} />
                             </button>
@@ -1050,7 +1066,7 @@ export function EditSetlistModal({
                           </p>
                           <div className="flex max-h-56 flex-col gap-0.5 overflow-y-auto">
                             {pieceResults.length === 0 ? (
-                              <p className="px-2 py-4 text-center text-sm text-ink-soft italic">
+                              <p className="px-2 py-4 text-center text-sm text-ink-muted italic">
                                 No matches
                               </p>
                             ) : (
@@ -1070,8 +1086,8 @@ export function EditSetlistModal({
                                     }}
                                     className={`flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-left ${
                                       i === searchHighlight
-                                        ? 'bg-paper-sunken'
-                                        : 'hover:bg-paper-sunken'
+                                        ? 'bg-paper-hover'
+                                        : 'hover:bg-paper-hover'
                                     }`}
                                   >
                                     <div className="min-w-0 flex-1">
@@ -1118,7 +1134,7 @@ export function EditSetlistModal({
                       {addRowMode === 'custom' &&
                         renderCustomEntryForm(
                           'add-custom-entry',
-                          'relative border border-border rounded-b-md p-3',
+                          'relative border border-t-0 border-border rounded-b-md p-3',
                         )}
                     </div>
                   )}

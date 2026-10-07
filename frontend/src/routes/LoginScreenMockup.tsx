@@ -24,7 +24,13 @@ const PREVIEW_LABELS: Record<PreviewState, string> = {
   'oidc-error': 'OIDC / SSO — sign-in failed',
 }
 
-function PreviewToggle({ state, onChange }: { state: PreviewState; onChange: (state: PreviewState) => void }) {
+function PreviewToggle({
+  state,
+  onChange,
+}: {
+  state: PreviewState
+  onChange: (state: PreviewState) => void
+}) {
   return (
     <div className="fixed top-3 right-3 z-30 flex max-w-[min(92vw,560px)] flex-wrap items-center gap-2 rounded-md border border-dashed border-border bg-paper-raised px-2.5 py-1.5 text-xs text-ink-soft shadow-sm">
       <span>Preview state:</span>
@@ -34,7 +40,7 @@ function PreviewToggle({ state, onChange }: { state: PreviewState; onChange: (st
             key={key}
             type="button"
             onClick={() => onChange(key)}
-            className={`cursor-pointer px-2 py-1 ${state === key ? 'bg-accent text-white' : 'bg-paper hover:bg-paper-sunken'}`}
+            className={`cursor-pointer px-2 py-1 ${state === key ? 'bg-accent-fill text-white' : 'bg-paper hover:bg-paper-hover'}`}
           >
             {PREVIEW_LABELS[key]}
           </button>
@@ -51,7 +57,8 @@ export function LoginScreenMockup() {
   const [showPassword, setShowPassword] = useState(false)
 
   const isOIDC = state === 'oidc' || state === 'oidc-error'
-  const oidcError = state === 'oidc-error' ? 'Your identity provider could not complete sign-in — try again.' : null
+  const oidcError =
+    state === 'oidc-error' ? 'Your identity provider could not complete sign-in — try again.' : null
   const passwordError = state === 'singlepass-error' ? 'Incorrect password.' : null
 
   return (
@@ -59,9 +66,10 @@ export function LoginScreenMockup() {
       <PreviewToggle state={state} onChange={setState} />
 
       <div className="mb-8 w-full max-w-sm rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-4 py-2 text-xs text-ink-soft">
-        Reference sample — <span className="font-medium text-ink">Login Screen</span>. Shown whenever a{' '}
-        <code>singlepass</code>/<code>oidc</code> install has no valid session — first launch after setup, after
-        logging out, or after the Auth Change flow hands off to a method that needs signing in.
+        Reference sample — <span className="font-medium text-ink">Login Screen</span>. Shown
+        whenever a <code>singlepass</code>/<code>oidc</code> install has no valid session — first
+        launch after setup, after logging out, or after the Auth Change flow hands off to a method
+        that needs signing in.
       </div>
 
       {isOIDC ? (
@@ -71,7 +79,7 @@ export function LoginScreenMockup() {
             <h1 className="font-display text-2xl font-medium text-ink">Welcome back</h1>
             <p className="text-sm text-ink-soft">Sign in to continue.</p>
           </div>
-          {oidcError && <p className="text-xs text-red-700">{oidcError}</p>}
+          {oidcError && <p className="text-xs text-danger">{oidcError}</p>}
           {/* w-auto + min-w, not w-full — this and the Log In button
               below read too wide stretched to the full form width. min-w
               keeps a short label (or "Log In") from looking cramped;
@@ -80,7 +88,7 @@ export function LoginScreenMockup() {
               wrapping or truncating it. */}
           <button
             type="button"
-            className="flex w-auto min-w-[180px] cursor-pointer items-center justify-center gap-2 rounded-md bg-accent px-8 py-2.5 font-display text-white hover:bg-accent/90"
+            className="flex w-auto min-w-[180px] cursor-pointer items-center justify-center gap-2 rounded-md bg-accent-fill px-8 py-2.5 font-display font-medium text-white hover:bg-accent-fill/90"
           >
             Sign in with Test IdP
           </button>
@@ -111,7 +119,7 @@ export function LoginScreenMockup() {
               // cross-platform fix, giving every OS a legible minimum dot
               // size rather than leaving it to each one's own default.
               className={`w-full rounded-md border bg-paper-raised px-3 py-2 pr-9 text-base tracking-wide text-ink ${
-                passwordError ? 'border-red-700' : 'border-border'
+                passwordError ? 'border-danger' : 'border-border'
               }`}
             />
             <button
@@ -124,7 +132,7 @@ export function LoginScreenMockup() {
             </button>
           </div>
           {passwordError && (
-            <p className="-mt-3 flex items-center justify-center gap-1.5 text-xs font-medium text-red-700">
+            <p className="-mt-3 flex items-center justify-center gap-1.5 text-xs font-medium text-danger">
               <IconAlertTriangle size={14} />
               {passwordError}
             </p>
@@ -132,7 +140,7 @@ export function LoginScreenMockup() {
           <button
             type="submit"
             disabled={password.length === 0}
-            className="flex w-auto min-w-[180px] items-center justify-center gap-2 rounded-md bg-accent px-8 py-2.5 font-display text-white enabled:cursor-pointer enabled:hover:bg-accent/90 disabled:opacity-40"
+            className="flex w-auto min-w-[180px] items-center justify-center gap-2 rounded-md bg-accent-fill px-8 py-2.5 font-display font-medium text-white enabled:cursor-pointer enabled:hover:bg-accent-fill/90 disabled:opacity-50"
           >
             Log In
           </button>

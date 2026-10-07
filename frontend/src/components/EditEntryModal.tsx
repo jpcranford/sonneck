@@ -52,7 +52,9 @@ export function EditEntryModal({ open, onClose, setlistId, entry }: EditEntryMod
     if (!open || !entry) return
     // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate: this modal's own instance persists across open/close, so the fields have to re-sync to whichever entry is being edited on every open, not just once at mount — same posture EditSetlistModal's own initialTab sync effect takes for the identical reason.
     setName(entry.customName ?? '')
-    setDuration(entry.customDurationSeconds != null ? formatDuration(entry.customDurationSeconds) : '')
+    setDuration(
+      entry.customDurationSeconds != null ? formatDuration(entry.customDurationSeconds) : '',
+    )
     setDescription(entry.customNotes ?? '')
     setCountsAsMusic(entry.customCountsAsMusic)
   }, [open, entry])
@@ -120,7 +122,7 @@ export function EditEntryModal({ open, onClose, setlistId, entry }: EditEntryMod
           <button
             type="button"
             onClick={onClose}
-            className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent"
+            className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-ink hover:border-accent"
           >
             Cancel
           </button>
@@ -128,7 +130,7 @@ export function EditEntryModal({ open, onClose, setlistId, entry }: EditEntryMod
             type="button"
             onClick={handleSave}
             disabled={!name.trim() || saveMutation.isPending}
-            className="cursor-pointer rounded-md bg-accent px-4 py-2 font-display text-white hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-white hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {saveMutation.isPending ? 'Saving…' : 'Save'}
           </button>

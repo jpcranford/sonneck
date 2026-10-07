@@ -111,8 +111,10 @@ export function SetlistsSection({
             to={`/setlists/${setlist.id}`}
             title={setlist.name}
             className={({ isActive }) =>
-              `flex size-10 items-center justify-center rounded-md font-display text-[0.95rem] font-medium ${
-                isActive ? 'bg-sidebar-panel text-sidebar-text' : 'text-sidebar-text hover:bg-white/5'
+              `flex size-10 items-center justify-center rounded-md font-display text-base font-medium ${
+                isActive
+                  ? 'bg-sidebar-panel text-sidebar-text'
+                  : 'text-sidebar-text hover:bg-white/5'
               }`
             }
           >
@@ -138,8 +140,10 @@ export function SetlistsSection({
               key={setlist.id}
               to={`/setlists/${setlist.id}`}
               className={({ isActive }) =>
-                `mt-1 flex items-center justify-between gap-2 truncate rounded-md px-2 py-1.5 font-display text-[0.95rem] font-medium first:mt-0 ${
-                  isActive ? 'bg-sidebar-panel text-sidebar-text' : 'text-sidebar-text hover:bg-white/5'
+                `mt-1 flex items-center justify-between gap-2 truncate rounded-md px-2 py-1.5 font-display text-sm font-medium first:mt-0 ${
+                  isActive
+                    ? 'bg-sidebar-panel text-sidebar-text'
+                    : 'text-sidebar-text hover:bg-white/5'
                 }`
               }
             >

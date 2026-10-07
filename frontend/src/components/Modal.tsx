@@ -211,7 +211,7 @@ export function Modal({
 
   return (
     <div
-      className={`fixed inset-0 z-50 flex items-end justify-center bg-ink/40 backdrop-blur-sm transition-opacity duration-150 sm:items-center ${
+      className={`fixed inset-0 z-50 flex items-end justify-center bg-scrim/40 backdrop-blur-sm transition-opacity duration-150 sm:items-center ${
         visible ? 'opacity-100' : 'opacity-0'
       }`}
       onMouseDown={(event) => {

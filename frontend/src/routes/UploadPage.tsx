@@ -12,7 +12,7 @@ import {
   IconCloudUpload,
   IconFileMusic,
   IconFileTypePdf,
-  IconCircleCheckFilled,
+  IconCheck,
   IconAlertTriangle,
   IconMusic,
 } from '@tabler/icons-react'
@@ -415,14 +415,14 @@ export function UploadPage() {
                   : 'border-[1.5px] border-border bg-paper-raised p-4'
               }`}
             >
-              <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-paper-sunken text-ink-soft">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-paper-hover text-ink-soft">
                 <IconFileMusic size={19} />
               </span>
               <span>
-                <span className="block font-display text-[0.98rem] font-medium text-ink">
+                <span className="block font-display text-base font-medium text-ink">
                   Upload a piece
                 </span>
-                <span className="block text-[0.8rem] text-ink-soft">
+                <span className="block text-xs text-ink-soft">
                   One PDF, one piece of music. The common case.
                 </span>
               </span>
@@ -440,20 +440,20 @@ export function UploadPage() {
                   : 'border-[1.5px] border-border bg-paper-raised p-4'
               }`}
             >
-              <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-paper-sunken text-ink-soft">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-paper-hover text-ink-soft">
                 <IconBook2 size={19} />
               </span>
               <span>
-                <span className="block font-display text-[0.98rem] font-medium text-ink">
+                <span className="block font-display text-base font-medium text-ink">
                   Upload a book
                 </span>
-                <span className="block text-[0.8rem] text-ink-soft">
+                <span className="block text-xs text-ink-soft">
                   One PDF containing several pieces — we'll walk you through splitting it up.
                 </span>
               </span>
             </button>
           </div>
-          {landingError && <p className="text-sm text-red-700">{landingError}</p>}
+          {landingError && <p className="text-sm text-danger">{landingError}</p>}
         </div>
       )}
 
@@ -504,13 +504,13 @@ export function UploadPage() {
             }}
           />
           {fileError && (
-            <p className="flex items-center gap-2 text-sm text-red-700">
+            <p className="flex items-center gap-2 text-sm text-danger">
               <IconAlertTriangle size={16} />
               {fileError}
             </p>
           )}
           {uploadMutation.isError && (
-            <p className="flex items-center gap-2 text-sm text-red-700">
+            <p className="flex items-center gap-2 text-sm text-danger">
               <IconAlertTriangle size={16} />
               {uploadMutation.error instanceof ApiError
                 ? uploadMutation.error.message
@@ -525,7 +525,7 @@ export function UploadPage() {
           <IconFileTypePdf size={40} className="text-ink-soft" />
           <div className="h-2 w-full overflow-hidden rounded-full bg-border">
             <div
-              className="h-full rounded-full bg-accent transition-[width]"
+              className="h-full rounded-full bg-accent-fill transition-[width]"
               style={{ width: `${Math.round(progress)}%` }}
             />
           </div>
@@ -623,17 +623,17 @@ export function UploadPage() {
                     src={getPieceThumbnailUrl(piece.id, previewPage)}
                     onLoad={() => setThumbLoaded(true)}
                     alt={`Page ${previewPage} of ${piece.title}`}
-                    className={thumbLoaded ? 'h-auto w-full' : 'invisible h-0 w-full'}
+                    className={`score-page ${thumbLoaded ? 'h-auto w-full' : 'invisible h-0 w-full'}`}
                   />
                 </button>
                 <div
                   aria-hidden="true"
-                  className="pointer-events-none absolute top-2.5 right-2.5 flex items-center justify-center rounded-full bg-ink/80 p-1.5 text-white shadow-md backdrop-blur-sm"
+                  className="pointer-events-none absolute top-2.5 right-2.5 flex items-center justify-center rounded-full bg-scrim/80 p-1.5 text-white shadow-md backdrop-blur-sm"
                 >
                   <IconArrowsDiagonal size={14} />
                 </div>
                 {piece.pageCount > 1 && (
-                  <div className="absolute bottom-2.5 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-ink/80 px-2 py-1 shadow-md backdrop-blur-sm">
+                  <div className="absolute bottom-2.5 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-scrim/80 px-2 py-1 shadow-md backdrop-blur-sm">
                     <button
                       type="button"
                       onClick={() => setPreviewPage((p) => Math.max(1, p - 1))}
@@ -680,7 +680,7 @@ export function UploadPage() {
                     className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
                     {...register('title', { required: 'Title is required.', maxLength: 255 })}
                   />
-                  {errors.title && <p className="text-sm text-red-700">{errors.title.message}</p>}
+                  {errors.title && <p className="text-sm text-danger">{errors.title.message}</p>}
                 </div>
 
                 <div className="flex flex-col gap-3 min-[525px]:flex-row">
@@ -707,7 +707,7 @@ export function UploadPage() {
                       )}
                     />
                     {errors.composer && (
-                      <p className="text-sm text-red-700">{errors.composer.message}</p>
+                      <p className="text-sm text-danger">{errors.composer.message}</p>
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
@@ -966,7 +966,7 @@ export function UploadPage() {
                 </div>
 
                 {saveMutation.isError && (
-                  <p className="flex items-center gap-2 text-sm text-red-700">
+                  <p className="flex items-center gap-2 text-sm text-danger">
                     <IconAlertTriangle size={16} />
                     {saveMutation.error instanceof ApiError
                       ? saveMutation.error.message
@@ -976,7 +976,7 @@ export function UploadPage() {
                 <button
                   type="submit"
                   disabled={saveMutation.isPending}
-                  className="mt-1 rounded-md bg-accent px-4 py-2 font-display text-white disabled:opacity-60"
+                  className="mt-1 rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-white disabled:opacity-50"
                 >
                   {saveMutation.isPending ? 'Saving…' : 'Save'}
                 </button>
@@ -988,7 +988,7 @@ export function UploadPage() {
 
       {stage === 'success' && piece && (
         <div className="flex w-full max-w-md flex-col items-center gap-3 text-center">
-          <IconCircleCheckFilled size={40} className="text-accent" />
+          <IconCheck size={48} className="text-ink-soft" />
           {/* font-medium on the h1 itself now (added under the app-wide
               "every serifed heading is at least 500 weight" rule) — this
               supersedes the earlier deliberate choice to keep the
@@ -1007,14 +1007,14 @@ export function UploadPage() {
             <button
               type="button"
               onClick={reset}
-              className="rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent"
+              className="rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-ink hover:border-accent"
             >
               Upload another file
             </button>
             <Link
               to={`/pieces/${piece.id}`}
               state={{ backLabel: 'Upload' }}
-              className="flex items-center gap-1.5 rounded-md bg-accent px-4 py-2 font-display text-white hover:bg-accent/90"
+              className="flex items-center gap-1.5 rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-white hover:bg-accent-fill/90"
             >
               <IconMusic size={16} />
               View Piece

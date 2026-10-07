@@ -73,7 +73,7 @@ export function BookUploadFileStep({ initialFile, onBack, onUploaded }: BookUplo
         <div className="flex w-full max-w-md flex-col items-center gap-3">
           <div className="h-2 w-full overflow-hidden rounded-full bg-border">
             <div
-              className="h-full rounded-full bg-accent transition-[width]"
+              className="h-full rounded-full bg-accent-fill transition-[width]"
               style={{ width: `${Math.round(progress)}%` }}
             />
           </div>
@@ -131,13 +131,13 @@ export function BookUploadFileStep({ initialFile, onBack, onUploaded }: BookUplo
           }}
         />
         {fileError && (
-          <p className="flex items-center gap-2 text-sm text-red-700">
+          <p className="flex items-center gap-2 text-sm text-danger">
             <IconAlertTriangle size={16} />
             {fileError}
           </p>
         )}
         {uploadMutation.isError && (
-          <p className="flex items-center gap-2 text-sm text-red-700">
+          <p className="flex items-center gap-2 text-sm text-danger">
             <IconAlertTriangle size={16} />
             {uploadMutation.error instanceof ApiError
               ? uploadMutation.error.message

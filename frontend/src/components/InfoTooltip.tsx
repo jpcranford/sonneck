@@ -75,7 +75,12 @@ interface InfoTooltipProps {
  * right fix, same as how a dropdown menu flips above its trigger when
  * there's no room below.
  */
-function getClipBoundary(el: HTMLElement): { left: number; right: number; top: number; bottom: number } {
+function getClipBoundary(el: HTMLElement): {
+  left: number
+  right: number
+  top: number
+  bottom: number
+} {
   for (let node = el.parentElement; node; node = node.parentElement) {
     const style = getComputedStyle(node)
     if (style.overflowX !== 'visible' || style.overflowY !== 'visible') {
@@ -231,7 +236,9 @@ export function InfoTooltip({
             // instance's own listener (registered above) reacts to this
             // and closes itself, so only one tooltip is ever open at a
             // time page-wide.
-            document.dispatchEvent(new CustomEvent(TOOLTIP_OPENED_EVENT, { detail: instanceRef.current }))
+            document.dispatchEvent(
+              new CustomEvent(TOOLTIP_OPENED_EVENT, { detail: instanceRef.current }),
+            )
           }
           setOpen((o) => !o)
         }}
@@ -266,7 +273,7 @@ export function InfoTooltip({
         // inheritance. Pinning it here, once, means every caller (present
         // and future) is immune regardless of where they nest it, instead
         // of each one needing to remember its own reset.
-        className={`pointer-events-none absolute left-1/2 z-10 w-max max-w-[220px] rounded-md bg-ink px-2 py-1 text-center font-sans text-xs text-paper shadow-md transition-opacity ${
+        className={`pointer-events-none absolute left-1/2 z-10 w-max max-w-[220px] rounded-md bg-scrim px-2 py-1 text-center font-sans text-xs text-white shadow-md transition-opacity ${
           placeBelow ? 'top-full mt-1.5' : 'bottom-full mb-1.5'
         } ${open ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
       >

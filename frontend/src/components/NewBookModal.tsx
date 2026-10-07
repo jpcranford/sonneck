@@ -60,7 +60,10 @@ export function NewBookModal({ open, onClose }: NewBookModalProps) {
   // People catalog (composer/arranger overhaul, Stage C pattern) — same
   // unpaginated listPeople() call as EditPieceModal.tsx/EditBookModal.tsx/
   // BookUploadAboutStep.tsx's own Composer TagComboBox option source.
-  const { data: peopleOptions = [] } = useQuery({ queryKey: ['people'], queryFn: () => listPeople() })
+  const { data: peopleOptions = [] } = useQuery({
+    queryKey: ['people'],
+    queryFn: () => listPeople(),
+  })
 
   const createMutation = useMutation({
     // The Date.now() capture lives here, not in onSubmit below — onSubmit
@@ -126,7 +129,7 @@ export function NewBookModal({ open, onClose }: NewBookModalProps) {
       footer={
         <div className="flex flex-col gap-2">
           {createMutation.isError && (
-            <p className="flex items-center gap-2 text-sm text-red-700">
+            <p className="flex items-center gap-2 text-sm text-danger">
               <IconAlertTriangle size={16} />
               {createMutation.error instanceof ApiError
                 ? createMutation.error.message
@@ -137,7 +140,7 @@ export function NewBookModal({ open, onClose }: NewBookModalProps) {
             <button
               type="button"
               onClick={handleClose}
-              className="rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent"
+              className="rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-ink hover:border-accent"
             >
               Cancel
             </button>
@@ -145,7 +148,7 @@ export function NewBookModal({ open, onClose }: NewBookModalProps) {
               type="submit"
               form="new-book-form"
               disabled={isCreating}
-              className="rounded-md bg-accent px-4 py-2 font-display text-white hover:bg-accent/90 disabled:opacity-60"
+              className="rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-white hover:bg-accent-fill/90 disabled:opacity-50"
             >
               {isCreating ? 'Creating…' : 'Create'}
             </button>
@@ -164,7 +167,7 @@ export function NewBookModal({ open, onClose }: NewBookModalProps) {
             className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
             {...register('bookTitle', { required: 'Title is required.', maxLength: 255 })}
           />
-          {errors.bookTitle && <p className="text-sm text-red-700">{errors.bookTitle.message}</p>}
+          {errors.bookTitle && <p className="text-sm text-danger">{errors.bookTitle.message}</p>}
         </div>
         <div className="flex flex-col gap-1">
           <Controller

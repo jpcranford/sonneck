@@ -358,7 +358,7 @@ function PiecePills({ piece }: { piece: SamplePiece }) {
       {piece.userTags.map((tag) => (
         <span
           key={tag}
-          className="rounded-full bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent"
+          className="rounded-full border border-accent/30 bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent"
         >
           {tag}
         </span>
@@ -425,7 +425,7 @@ function PieceGrid({ pieces }: { pieces: SamplePiece[] }) {
                 every other favorite heart app-wide regardless of the
                 title's own font size) needs to never get clipped by the
                 truncation itself. */}
-            <p className="flex min-w-0 items-center gap-1 font-display text-[0.8rem] font-medium text-ink">
+            <p className="flex min-w-0 items-center gap-1 font-display text-xs font-medium text-ink">
               <span className="truncate">{piece.title}</span>
               {piece.favorite && (
                 <span className="shrink-0 text-accent" title="Favorite">
@@ -458,7 +458,7 @@ const ROW_COLLAPSE_CLASS = 'max-[501px]:grid-cols-[96px_1fr]'
 function PieceList({ pieces }: { pieces: SamplePiece[] }) {
   return (
     <div className="flex flex-col">
-      <div className="grid grid-cols-[96px_1fr_56px] gap-3 px-1.5 pb-2.5 text-[0.7rem] font-medium tracking-wide text-ink-soft uppercase">
+      <div className="grid grid-cols-[96px_1fr_56px] gap-3 px-1.5 pb-2.5 text-xs font-medium tracking-wide text-ink-soft uppercase">
         <div>Page</div>
         <div>Title</div>
         <div className={THUMB_HIDE_CLASS} />
@@ -470,7 +470,7 @@ function PieceList({ pieces }: { pieces: SamplePiece[] }) {
         >
           <div className="text-sm font-medium tabular-nums text-ink">{pageRangeLabel(piece)}</div>
           <div className="min-w-0">
-            <p className="flex flex-wrap items-center gap-1.5 font-display text-[0.92rem] font-medium text-ink">
+            <p className="flex flex-wrap items-center gap-1.5 font-display text-sm font-medium text-ink">
               {piece.title}
               {piece.workOpusNumber ? ` (${piece.workOpusNumber})` : ''}
               {piece.favorite && (
@@ -531,7 +531,10 @@ function TruncatableFilename({
   )
 }
 
-function bookFields(filenameExpanded: boolean, onToggleFilename: () => void): { label: string; value: ReactNode }[] {
+function bookFields(
+  filenameExpanded: boolean,
+  onToggleFilename: () => void,
+): { label: string; value: ReactNode }[] {
   const fields: { label: string; value: ReactNode }[] = []
   if (sampleBook.publisher || sampleBook.publisherId) {
     fields.push({
@@ -557,7 +560,7 @@ function bookFields(filenameExpanded: boolean, onToggleFilename: () => void): { 
             rel="noreferrer"
             aria-label="View on IMSLP"
             // Solid pre-blend, not opacity — overlapping icon strokes would re-blend unevenly under real translucency.
-            className="text-[#9c968f] hover:text-ink-soft"
+            className="text-ink-faint hover:text-ink-soft"
           >
             <IconExternalLink size={12} />
           </a>
@@ -590,7 +593,7 @@ function bookFields(filenameExpanded: boolean, onToggleFilename: () => void): { 
             target="_blank"
             rel="noreferrer"
             aria-label="View on isbnsearch.org"
-            className="text-[#9c968f] hover:text-ink-soft"
+            className="text-ink-faint hover:text-ink-soft"
           >
             <IconExternalLink size={12} />
           </a>
@@ -687,10 +690,10 @@ export function BookDetailsSample() {
       <div className="rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-4 py-2 text-sm text-ink-soft">
         Design mockup — <span className="font-medium text-ink">Book Details page</span>. Not wired
         to real data; Open Book PDF, Edit Book, and Delete Book stay inert here on purpose — this
-        fixture's data doesn't correspond to any real record, so wiring these to a real API call could
-        edit or delete whatever real book happens to share its id. Custom cover upload{' '}
-        <em>is</em> genuinely interactive though (same for the right-click/long-press cover menu) — try
-        the photo-upload icon in the top toolbar, or right-click/long-press the cover itself.
+        fixture's data doesn't correspond to any real record, so wiring these to a real API call
+        could edit or delete whatever real book happens to share its id. Custom cover upload{' '}
+        <em>is</em> genuinely interactive though (same for the right-click/long-press cover menu) —
+        try the photo-upload icon in the top toolbar, or right-click/long-press the cover itself.
       </div>
 
       {/* Edit / Change Cover / Open Book PDF live in this top toolbar row,
@@ -734,7 +737,7 @@ export function BookDetailsSample() {
               given a direct entry point from the page itself — this app's
               single largest-blast-radius action (whole book + every piece
               in it), so it earns visual distance from the other three via
-              the divider. Permanently red (text-red-700, matching
+              the divider. Permanently red (text-danger, matching
               ContextMenu's own destructive-item color exactly — that color
               is always-on there too, not a hover-only reveal), not
               red-on-hover. Stays inert here on purpose, same as its
@@ -745,7 +748,7 @@ export function BookDetailsSample() {
             type="button"
             aria-label="Delete Book"
             title="Delete Book — not wired in this mockup"
-            className="flex w-[38px] cursor-not-allowed items-center justify-center rounded-md border border-border bg-paper-raised text-red-700"
+            className="flex w-[38px] cursor-not-allowed items-center justify-center rounded-md border border-border bg-paper-raised text-danger"
           >
             <IconTrash size={16} />
           </button>
@@ -794,7 +797,7 @@ export function BookDetailsSample() {
             type="button"
             aria-label="Edit Book"
             title="Edit Book — not wired in this mockup"
-            className="flex cursor-not-allowed items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-sm whitespace-nowrap text-ink max-[360px]:w-[38px] max-[360px]:px-0"
+            className="flex cursor-not-allowed items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink max-[360px]:w-[38px] max-[360px]:px-0"
           >
             <IconEditFilled size={16} />
             <span className="max-[360px]:hidden">Edit Book</span>
@@ -885,8 +888,8 @@ export function BookDetailsSample() {
                   its own justify-between wrapper since there's nothing
                   left to push to the opposite side. */}
               <div className="mb-2">
-                <h1 className="font-display text-[1.35rem] font-medium text-ink">{title}</h1>
-                <p className="text-[0.92rem] text-ink-soft">{metaLine}</p>
+                <h1 className="font-display text-2xl font-medium text-ink">{title}</h1>
+                <p className="text-base text-ink-soft">{metaLine}</p>
               </div>
 
               {(sampleBook.sheetType || sampleBook.instruments.length > 0) && (
@@ -908,7 +911,7 @@ export function BookDetailsSample() {
               )}
 
               {sampleBook.description && (
-                <div className="mt-3.5 max-w-[60ch] text-[0.88rem] text-ink-soft">
+                <div className="mt-3.5 max-w-[60ch] text-sm text-ink-soft">
                   <MarkdownText>{sampleBook.description}</MarkdownText>
                 </div>
               )}
@@ -920,10 +923,10 @@ export function BookDetailsSample() {
                     // BookDetailsPage.tsx's own fix — see that file's own
                     // comment for the full reasoning.
                     <div key={field.label} className="min-w-0 break-words">
-                      <dt className="mb-0.5 text-[0.7rem] tracking-wide text-ink-soft uppercase">
+                      <dt className="mb-0.5 text-xs tracking-wide text-ink-soft uppercase">
                         {field.label}
                       </dt>
-                      <dd className="text-[0.88rem] text-ink">{field.value}</dd>
+                      <dd className="text-sm text-ink">{field.value}</dd>
                     </div>
                   ))}
                 </div>
@@ -936,7 +939,7 @@ export function BookDetailsSample() {
             lines above or below the heading row either, just spacing. */}
         <div className="mt-6 bg-paper">
           <div className="flex flex-wrap items-center justify-between gap-4 px-6 pb-4">
-            <h2 className="font-display text-[0.95rem] font-semibold text-ink-soft">
+            <h2 className="font-display text-base font-bold text-ink-soft">
               {pieces.length} {pieces.length === 1 ? 'piece' : 'pieces'} in this book
             </h2>
             <div className="flex shrink-0 items-center gap-1 rounded-md border border-border p-0.5">

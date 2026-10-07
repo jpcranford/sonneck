@@ -95,7 +95,7 @@ export function EditRoleModal({ open, onClose, setlistId, entry }: EditRoleModal
           <button
             type="button"
             onClick={onClose}
-            className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent"
+            className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-ink hover:border-accent"
           >
             Cancel
           </button>
@@ -103,7 +103,7 @@ export function EditRoleModal({ open, onClose, setlistId, entry }: EditRoleModal
             type="button"
             onClick={handleSave}
             disabled={!canSave || saveMutation.isPending}
-            className="cursor-pointer rounded-md bg-accent px-4 py-2 font-display text-white hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-white hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {saveMutation.isPending ? 'Saving…' : 'Save'}
           </button>
@@ -130,7 +130,9 @@ export function EditRoleModal({ open, onClose, setlistId, entry }: EditRoleModal
           placeholder="Prelude"
           className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
         />
-        {hadRole && <p className="text-xs text-ink-soft italic">Leave blank and save to remove the role.</p>}
+        {hadRole && (
+          <p className="text-xs text-ink-soft italic">Leave blank and save to remove the role.</p>
+        )}
       </form>
     </Modal>
   )

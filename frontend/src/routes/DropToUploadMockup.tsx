@@ -68,13 +68,13 @@ const REFUSALS: Record<Refusal, { title: string; detail: string }> = {
 
 function DropOverlay({ refusal }: { refusal: Refusal | null }) {
   return createPortal(
-    <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-6 backdrop-blur-[2px]">
+    <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-scrim/40 p-6 backdrop-blur-[2px]">
       <div
         className={`w-full max-w-sm rounded-xl border-2 border-dashed bg-paper-raised px-6 py-7 text-center shadow-xl ${
-          refusal ? 'border-red-700' : 'border-accent'
+          refusal ? 'border-danger' : 'border-accent'
         }`}
       >
-        <div className={`mb-2 flex justify-center ${refusal ? 'text-red-700' : 'text-accent'}`}>
+        <div className={`mb-2 flex justify-center ${refusal ? 'text-danger' : 'text-accent'}`}>
           {refusal ? <IconBan size={26} /> : <IconCloudUpload size={26} />}
         </div>
         <p className="font-display text-base font-medium text-ink">
@@ -109,12 +109,12 @@ function ChoiceCard({
       onClick={onClick}
       className="flex cursor-pointer items-start gap-3.5 rounded-xl border-[1.5px] border-border bg-paper-raised p-4 text-left transition-colors hover:border-accent"
     >
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-paper-sunken text-ink-soft">
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-paper-hover text-ink-soft">
         {icon}
       </span>
       <span>
-        <span className="block font-display text-[0.98rem] font-medium text-ink">{title}</span>
-        <span className="block text-[0.8rem] text-ink-soft">{detail}</span>
+        <span className="block font-display text-base font-medium text-ink">{title}</span>
+        <span className="block text-xs text-ink-soft">{detail}</span>
       </span>
     </button>
   )
@@ -170,11 +170,11 @@ function FooterButton({
     <button
       type="button"
       onClick={onClick}
-      className={`cursor-pointer rounded-md px-4 py-2 font-display ${
+      className={`cursor-pointer rounded-md px-4 py-2 font-display font-medium ${
         primary
-          ? 'bg-accent text-white hover:bg-accent/90'
+          ? 'bg-accent-fill text-white hover:bg-accent-fill/90'
           : destructive
-            ? 'border border-border bg-paper-raised text-red-700 hover:border-red-700'
+            ? 'border border-border bg-paper-raised text-danger hover:border-danger'
             : 'border border-border bg-paper-raised text-ink hover:border-accent'
       }`}
     >

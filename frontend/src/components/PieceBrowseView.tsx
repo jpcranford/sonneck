@@ -88,8 +88,10 @@ interface PieceBrowseViewProps {
 // columns without the cards feeling cramped; left alone at sm: and up,
 // where the plain default already works well.
 const GRID_COLS_CLASS: Record<'default' | 'compact', string> = {
-  default: 'grid-cols-[repeat(auto-fill,minmax(150px,1fr))] sm:grid-cols-[repeat(auto-fill,minmax(200px,1fr))]',
-  compact: 'grid-cols-[repeat(auto-fill,minmax(150px,1fr))] sm:grid-cols-[repeat(auto-fill,minmax(176px,1fr))]',
+  default:
+    'grid-cols-[repeat(auto-fill,minmax(150px,1fr))] sm:grid-cols-[repeat(auto-fill,minmax(200px,1fr))]',
+  compact:
+    'grid-cols-[repeat(auto-fill,minmax(150px,1fr))] sm:grid-cols-[repeat(auto-fill,minmax(176px,1fr))]',
 }
 
 // Shared by LibraryPage (no filters — the whole collection), FavoritesPage
@@ -184,35 +186,31 @@ export function PieceBrowseView({
       }),
   })
 
-  const {
-    data,
-    isLoading,
-    isError,
-    error,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = useInfiniteQuery({
-    queryKey: ['pieces', { query: debouncedQuery, ...filters, ...debouncedDrawerFilters, sortField, sortDirection }],
-    queryFn: ({ pageParam }) =>
-      searchPieces({
-        query: debouncedQuery || undefined,
-        ...pieceFilterApiParams(debouncedDrawerFilters),
-        sort: sortField,
-        dir: sortDirection,
-        // Spread last: a page's own fixed filter (e.g. Favorites'
-        // favorite:true, Practicing's practiceStatusSlot) always wins over
-        // whatever the drawer independently has set for that same field.
-        ...filters,
-        limit: PAGE_SIZE,
-        offset: pageParam,
-      }),
-    initialPageParam: 0,
-    // The backend returns a bare array, no total count — a page shorter
-    // than PAGE_SIZE is the only signal that it was the last one.
-    getNextPageParam: (lastPage, allPages) =>
-      lastPage.length === PAGE_SIZE ? allPages.length * PAGE_SIZE : undefined,
-  })
+  const { data, isLoading, isError, error, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useInfiniteQuery({
+      queryKey: [
+        'pieces',
+        { query: debouncedQuery, ...filters, ...debouncedDrawerFilters, sortField, sortDirection },
+      ],
+      queryFn: ({ pageParam }) =>
+        searchPieces({
+          query: debouncedQuery || undefined,
+          ...pieceFilterApiParams(debouncedDrawerFilters),
+          sort: sortField,
+          dir: sortDirection,
+          // Spread last: a page's own fixed filter (e.g. Favorites'
+          // favorite:true, Practicing's practiceStatusSlot) always wins over
+          // whatever the drawer independently has set for that same field.
+          ...filters,
+          limit: PAGE_SIZE,
+          offset: pageParam,
+        }),
+      initialPageParam: 0,
+      // The backend returns a bare array, no total count — a page shorter
+      // than PAGE_SIZE is the only signal that it was the last one.
+      getNextPageParam: (lastPage, allPages) =>
+        lastPage.length === PAGE_SIZE ? allPages.length * PAGE_SIZE : undefined,
+    })
   const pieces = data?.pages.flat()
 
   // Fires fetchNextPage once the sentinel below the results scrolls near
@@ -246,7 +244,12 @@ export function PieceBrowseView({
     setDrawerFilters((f) => ({ ...f, [field]: setDimensionState(f[field], value!, 'neutral') }))
   }
 
-  const pillEntries: { field: keyof PieceFilterState; value?: string; label: string; state: TriState }[] = [
+  const pillEntries: {
+    field: keyof PieceFilterState
+    value?: string
+    label: string
+    state: TriState
+  }[] = [
     ...(drawerFilters.favorite !== 'neutral'
       ? [{ field: 'favorite' as const, label: 'Favorites', state: drawerFilters.favorite }]
       : []),
@@ -254,7 +257,13 @@ export function PieceBrowseView({
       ? [{ field: 'bookless' as const, label: 'Bookless pieces', state: drawerFilters.bookless }]
       : []),
     ...(drawerFilters.hasImslpNumber !== 'neutral'
-      ? [{ field: 'hasImslpNumber' as const, label: 'Has IMSLP number', state: drawerFilters.hasImslpNumber }]
+      ? [
+          {
+            field: 'hasImslpNumber' as const,
+            label: 'Has IMSLP number',
+            state: drawerFilters.hasImslpNumber,
+          },
+        ]
       : []),
     ...Object.entries(drawerFilters.keyId).map(([id, state]) => ({
       field: 'keyId' as const,
@@ -313,8 +322,10 @@ export function PieceBrowseView({
               return (
                 <span
                   key={entry.field + String(entry.value ?? '')}
-                  className={`flex items-center gap-1.5 rounded-full py-1 pr-1.5 pl-3 text-xs font-medium ${
-                    excluded ? 'bg-red-50 text-red-700' : 'bg-accent-soft text-accent'
+                  className={`flex items-center gap-1.5 rounded-full border py-1 pr-1.5 pl-3 text-xs font-medium ${
+                    excluded
+                      ? 'border-danger/30 bg-danger-soft text-danger'
+                      : 'border-accent/30 bg-accent-soft text-accent'
                   }`}
                 >
                   {excluded ? `Not ${entry.label}` : entry.label}
@@ -323,7 +334,7 @@ export function PieceBrowseView({
                     onClick={() => clearDrawerFilter(entry.field, entry.value)}
                     aria-label={`Remove ${excluded ? 'not ' : ''}${entry.label} filter`}
                     className={`flex size-4 cursor-pointer items-center justify-center rounded-full opacity-75 hover:opacity-100 ${
-                      excluded ? 'text-red-700' : 'text-accent'
+                      excluded ? 'text-danger' : 'text-accent'
                     }`}
                   >
                     <IconX size={11} />
@@ -352,7 +363,7 @@ export function PieceBrowseView({
         )}
 
         {pieces && pieces.length === 0 && (
-          <p className="p-8 text-center text-ink-soft">
+          <p className="p-8 text-center text-ink-muted">
             {query || activeCount > 0 ? noMatchMessage : emptyMessage}
           </p>
         )}
@@ -421,7 +432,9 @@ export function PieceBrowseView({
         hideFavorite={filters?.favorite !== undefined}
         hideBookless={filters?.bookless !== undefined}
         hideHasImslpNumber={filters?.hasImslpNumber !== undefined}
-        hidePracticeStatus={filters?.practiceStatus !== undefined || filters?.practiceStatusSlot !== undefined}
+        hidePracticeStatus={
+          filters?.practiceStatus !== undefined || filters?.practiceStatusSlot !== undefined
+        }
       />
     </div>
   )

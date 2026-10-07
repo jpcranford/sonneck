@@ -431,7 +431,7 @@ export function UploadBookSplitMockup() {
                 key={step}
                 className={`h-1 w-5 rounded-full ${
                   step < CURRENT_STEP
-                    ? 'bg-accent-on-dark'
+                    ? 'bg-accent-muted'
                     : step === CURRENT_STEP
                       ? 'bg-accent'
                       : 'bg-border'
@@ -492,8 +492,8 @@ export function UploadBookSplitMockup() {
                 // laneDiagonalMaskStyle below: it grows the box around its
                 // own center without moving that center at all.
                 margin: -LANE_OUTSET_PX,
-                background: `${seg.color}1a`, // ~10% alpha
-                border: `1.5px solid ${seg.color}73`, // ~45% alpha
+                background: `color-mix(in srgb, ${seg.color} var(--split-tint), transparent)`,
+                border: `1.5px solid color-mix(in srgb, ${seg.color} 45%, transparent)`, // ~45% alpha
                 ...laneDiagonalMaskStyle(seg),
               }}
             />
@@ -538,28 +538,22 @@ export function UploadBookSplitMockup() {
             // newest/most specific marks first ('triple', then 'double',
             // then 'single').
             const badgeKind:
-              | 'single'
-              | 'double'
-              | 'triple'
-              | 'start'
-              | 'shared'
-              | 'pending'
-              | 'skip'
-              | null = isTripleStart
-              ? 'triple'
-              : isDoubleStart
-                ? 'double'
-                : isSingleStart
-                  ? 'single'
-                  : isSharedStart
-                    ? 'shared'
-                    : isStart
-                      ? 'start'
-                      : isPending
-                        ? 'pending'
-                        : isSkip
-                          ? 'skip'
-                          : null
+              'single' | 'double' | 'triple' | 'start' | 'shared' | 'pending' | 'skip' | null =
+              isTripleStart
+                ? 'triple'
+                : isDoubleStart
+                  ? 'double'
+                  : isSingleStart
+                    ? 'single'
+                    : isSharedStart
+                      ? 'shared'
+                      : isStart
+                        ? 'start'
+                        : isPending
+                          ? 'pending'
+                          : isSkip
+                            ? 'skip'
+                            : null
 
             // `border-image` (the obvious way to paint a two-color diagonal
             // border) ignores `border-radius` entirely — a CSS quirk, not a
@@ -607,7 +601,7 @@ export function UploadBookSplitMockup() {
               const prevColor = prevPiece
                 ? prevIsBridgeCounterpart
                   ? prevPiece.color
-                  : `${prevPiece.color}61`
+                  : `color-mix(in srgb, ${prevPiece.color} 38%, transparent)`
                 : piece.color
               sharedGradient = `linear-gradient(135deg, ${prevColor} 50%, ${piece.color} 50%)`
             } else if (badgeKind === 'single') {
@@ -649,7 +643,7 @@ export function UploadBookSplitMockup() {
               const prevColor = prevPiece
                 ? prevIsBridgeCounterpart
                   ? prevPiece.color
-                  : `${prevPiece.color}61`
+                  : `color-mix(in srgb, ${prevPiece.color} 38%, transparent)`
                 : piece.color
               sharedGradient = `linear-gradient(135deg, ${prevColor} 33%, ${middleColor} 33% 67%, ${piece.color} 67%)`
             } else if (badgeKind === 'triple') {
@@ -677,7 +671,10 @@ export function UploadBookSplitMockup() {
               // no longer needs a border at all for the same purpose, since
               // the Group Lane background already shows which piece a page
               // belongs to.
-              borderStyle = { borderStyle: 'dashed', borderColor: `${piece.color}61` } // ~38% alpha
+              borderStyle = {
+                borderStyle: 'dashed',
+                borderColor: `color-mix(in srgb, ${piece.color} 38%, transparent)`,
+              } // ~38% alpha
             } else {
               // Plain member page (badgeKind null) — no badge, no border.
               // Kept as an invisible,
@@ -758,7 +755,7 @@ export function UploadBookSplitMockup() {
                 ) : (
                   <div
                     className={`overflow-hidden rounded-md border-2 transition-shadow ${
-                      badgeKind === 'skip' ? 'opacity-40' : ''
+                      badgeKind === 'skip' ? 'opacity-(--skip-fade)' : ''
                     }`}
                     style={borderStyle}
                   >
@@ -782,11 +779,11 @@ export function UploadBookSplitMockup() {
                         pick, and the Group Lane fill already carries its
                         own "continues" signal across every such page. */}
                     {(badgeKind === 'shared' || badgeKind === 'double') && (
-                      <span className="flex size-6 items-center justify-center rounded-md bg-ink/75 text-white">
+                      <span className="flex size-6 items-center justify-center rounded-md bg-scrim/75 text-white">
                         <IconChevronRightPipe size={14} />
                       </span>
                     )}
-                    <span className="flex size-6 items-center justify-center rounded-md bg-ink/75 text-white">
+                    <span className="flex size-6 items-center justify-center rounded-md bg-scrim/75 text-white">
                       {badgeKind === 'skip' && <IconX size={14} />}
                       {badgeKind === 'shared' && <IconBoxMultiple1 size={14} />}
                       {badgeKind === 'start' && <IconBoxMultiple1 size={14} />}
@@ -947,7 +944,10 @@ export function UploadBookSplitMockup() {
           <span
             key={index}
             className="flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs"
-            style={{ borderColor: piece.color, backgroundColor: `${piece.color}1a` }}
+            style={{
+              borderColor: piece.color,
+              backgroundColor: `color-mix(in srgb, ${piece.color} var(--split-tint), transparent)`,
+            }}
           >
             <span className="size-1.5 rounded-full" style={{ backgroundColor: piece.color }} />
             Piece {index + 1} • {piece.end !== piece.start ? 'pp.' : 'p.'}{' '}
@@ -965,14 +965,14 @@ export function UploadBookSplitMockup() {
       {/* Floating action bar — only appears once a genuine drag (not a
           plain tap) has produced a real range. */}
       {selection && (
-        <div className="flex w-fit items-center gap-2 rounded-full bg-ink py-1.5 pr-1.5 pl-4 text-white shadow-lg">
+        <div className="flex w-fit items-center gap-2 rounded-full bg-scrim py-1.5 pr-1.5 pl-4 text-white shadow-lg">
           <span className="text-sm font-medium">
             {selection[1] - selection[0] + 1} pages selected
           </span>
           <button
             type="button"
             onClick={() => resolveSelection('group')}
-            className="rounded-full bg-accent-on-dark px-3 py-1.5 text-xs font-semibold text-ink hover:brightness-95"
+            className="rounded-full bg-accent-on-dark px-3 py-1.5 text-xs font-semibold text-scrim hover:brightness-95"
           >
             Make this one piece
           </button>
@@ -1001,7 +1001,7 @@ export function UploadBookSplitMockup() {
         <button
           type="button"
           onClick={handleCancelUpload}
-          className="flex cursor-pointer items-center gap-1.5 text-base text-red-700 hover:text-red-800"
+          className="flex cursor-pointer items-center gap-1.5 text-base text-danger hover:text-danger-strong"
         >
           <IconX size={24} />
           Cancel upload
@@ -1009,7 +1009,7 @@ export function UploadBookSplitMockup() {
         <button
           type="button"
           onClick={() => console.log('Mockup: advance to Piece Titles', { state, pieces })}
-          className="flex cursor-pointer items-center gap-1.5 rounded-md bg-accent px-5 py-2.5 font-display font-medium text-white hover:bg-accent/90"
+          className="flex cursor-pointer items-center gap-1.5 rounded-md bg-accent-fill px-5 py-2.5 font-display font-medium text-white hover:bg-accent-fill/90"
         >
           Next
           <IconArrowRight size={16} />

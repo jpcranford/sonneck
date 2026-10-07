@@ -349,7 +349,7 @@ export function SetlistPage() {
                 disabled={deleteMutation.isPending}
                 aria-label="Delete setlist"
                 title="Delete setlist"
-                className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-red-700 hover:border-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-danger hover:border-danger disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <IconTrash size={18} />
               </button>
@@ -379,7 +379,7 @@ export function SetlistPage() {
               message="Coming soon — will play through the set's pieces one after another via the future Sheet Viewer, with placeholder pages standing in for custom entries. Built once the Sheet Viewer's own core playback exists."
               ariaLabel="Play Set (coming soon with the Sheet Viewer)"
               showPointerCursor={false}
-              triggerClassName="flex items-center gap-2 rounded-md bg-accent px-4 py-2 font-display text-sm text-white opacity-50"
+              triggerClassName="flex items-center gap-2 rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-sm text-white opacity-50"
             >
               <IconPlayerPlay size={16} />
               Play Set
@@ -390,7 +390,7 @@ export function SetlistPage() {
                 {canDownload ? (
                   <DownloadLink
                     href={getSetlistPdfUrl(setlistId)}
-                    className="relative flex cursor-pointer items-center gap-2 rounded-l-md border border-border bg-paper-raised px-4 py-2 font-display text-sm text-ink transition-colors hover:z-10 hover:border-accent"
+                    className="relative flex cursor-pointer items-center gap-2 rounded-l-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm text-ink transition-colors hover:z-10 hover:border-accent"
                   >
                     <IconDownload size={16} />
                     Download Set PDF
@@ -400,7 +400,7 @@ export function SetlistPage() {
                     type="button"
                     disabled
                     title="You don't have permission to download files"
-                    className="flex cursor-not-allowed items-center gap-2 rounded-l-md border border-border bg-paper-raised px-4 py-2 font-display text-sm text-ink opacity-50"
+                    className="flex cursor-not-allowed items-center gap-2 rounded-l-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm text-ink opacity-50"
                   >
                     <IconDownload size={16} />
                     Download Set PDF
@@ -472,7 +472,7 @@ export function SetlistPage() {
               <button
                 type="button"
                 onClick={() => openEditSetlist('program')}
-                className="flex cursor-pointer items-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-sm text-ink hover:border-accent"
+                className="flex cursor-pointer items-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm text-ink hover:border-accent"
               >
                 <IconListDetails size={16} />
                 Edit Program
@@ -481,7 +481,7 @@ export function SetlistPage() {
 
             <div className="flex flex-col">
               {setlist.entries.length === 0 ? (
-                <p className="py-6 text-center text-sm text-ink-soft italic">
+                <p className="py-6 text-center text-sm text-ink-muted italic">
                   No entries yet — use Edit Program to add some.
                 </p>
               ) : (
@@ -617,7 +617,7 @@ export function SetlistPage() {
                 <button
                   type="button"
                   onClick={() => setArchiveModalOpen(false)}
-                  className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent"
+                  className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-ink hover:border-accent"
                 >
                   Cancel
                 </button>
@@ -625,7 +625,7 @@ export function SetlistPage() {
                   type="button"
                   onClick={() => archiveMutation.mutate()}
                   disabled={archiveMutation.isPending}
-                  className="cursor-pointer rounded-md bg-accent px-4 py-2 font-display text-white hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-white hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {setlist.archived ? 'Unarchive' : 'Archive'}
                 </button>
@@ -683,7 +683,7 @@ export function SetlistPage() {
                 <button
                   type="button"
                   onClick={() => setDuplicateModalOpen(false)}
-                  className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent"
+                  className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-ink hover:border-accent"
                 >
                   Cancel
                 </button>
@@ -691,7 +691,7 @@ export function SetlistPage() {
                   type="button"
                   onClick={() => duplicateMutation.mutate()}
                   disabled={duplicateMutation.isPending}
-                  className="cursor-pointer rounded-md bg-accent px-4 py-2 font-display text-white hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-white hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {duplicateMutation.isPending ? 'Duplicating…' : 'Duplicate'}
                 </button>

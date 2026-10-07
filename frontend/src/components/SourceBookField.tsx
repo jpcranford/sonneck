@@ -93,7 +93,7 @@ export function SourceBookField({
       <div className="relative">
         <IconSearch
           size={15}
-          className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[#9d9892]"
+          className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-faint"
         />
         <input
           ref={inputRef}

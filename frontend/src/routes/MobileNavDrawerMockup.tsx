@@ -58,12 +58,12 @@ function DrawerNavList({ items }: { items: NavItem[] }) {
           to={to}
           end={to === '/'}
           className={({ isActive }) =>
-            `flex h-11 items-center gap-3 rounded-md px-3 font-display text-[0.95rem] font-medium ${
+            `flex h-11 items-center gap-3 rounded-md px-3 font-display text-base font-medium ${
               isActive ? 'bg-sidebar-panel text-sidebar-text' : 'text-sidebar-text hover:bg-white/5'
             }`
           }
         >
-          <Icon size={22} className="text-sidebar-text" />
+          <Icon size={24} className="text-sidebar-text" />
           <span className="relative top-[0.6px] truncate">{label}</span>
         </NavLink>
       ))}
@@ -110,9 +110,10 @@ export function MobileNavDrawerMockup() {
         </div>
 
         <div className="m-4 rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-4 py-2 text-sm text-ink-soft">
-          Reference sample — <span className="font-medium text-ink">Mobile Nav, Option B (left drawer)</span>.
-          Resize this window below 768px, or open it on a phone, to see the mobile top bar +
-          drawer. Desktop is the real Sidebar component, unchanged.
+          Reference sample —{' '}
+          <span className="font-medium text-ink">Mobile Nav, Option B (left drawer)</span>. Resize
+          this window below 768px, or open it on a phone, to see the mobile top bar + drawer.
+          Desktop is the real Sidebar component, unchanged.
         </div>
 
         <main className="flex flex-1 flex-col gap-3 px-4 pb-8">
@@ -126,7 +127,7 @@ export function MobileNavDrawerMockup() {
 
       <div
         aria-hidden={!drawerOpen}
-        className={`fixed inset-0 z-40 bg-ink/40 transition-opacity duration-200 md:hidden ${
+        className={`fixed inset-0 z-40 bg-scrim/40 transition-opacity duration-200 md:hidden ${
           drawerOpen ? 'opacity-100' : 'pointer-events-none opacity-0'
         }`}
         onClick={() => setDrawerOpen(false)}
@@ -152,10 +153,12 @@ export function MobileNavDrawerMockup() {
         <DrawerNavList items={SECONDARY_NAV_ITEMS} />
 
         <div className="mt-6 flex flex-1 flex-col overflow-y-auto px-2">
-          <span className="px-3 text-xs tracking-wide text-sidebar-text-dim uppercase">Setlists</span>
+          <span className="px-3 text-xs tracking-wide text-sidebar-text-dim uppercase">
+            Setlists
+          </span>
           <div className="mt-1 flex flex-col">
             {SETLISTS.length === 0 && (
-              <span className="truncate rounded-md px-3 py-2 font-display text-[0.95rem] font-medium text-sidebar-text">
+              <span className="truncate rounded-md px-3 py-2 font-display text-sm font-medium text-sidebar-text">
                 Coming soon
               </span>
             )}
@@ -166,7 +169,7 @@ export function MobileNavDrawerMockup() {
           <span className="flex size-8 shrink-0 items-center justify-center rounded-full border border-sidebar-border bg-sidebar-bg text-sidebar-text">
             <IconUserFilled size={16} />
           </span>
-          <span className="truncate text-[0.95rem] text-sidebar-text">Local Library</span>
+          <span className="truncate text-base text-sidebar-text">Local Library</span>
         </div>
       </aside>
     </div>

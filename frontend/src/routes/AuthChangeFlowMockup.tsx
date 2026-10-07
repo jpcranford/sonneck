@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import {
   IconAlertTriangle,
   IconArrowLeft,
-  IconCircleCheck,
+  IconCheck,
   IconLoader2,
   IconUserCircle,
 } from '@tabler/icons-react'
@@ -100,15 +100,16 @@ import { afterMinDuration } from '../lib/minDuration'
 // nothing worth narrating a wait for.
 //
 // 'done'/'updating' are pulled back from accent to neutral: the spinner
-// (`IconLoader2`) and the checkmark (`IconCircleCheckFilled`) both read
-// as `text-ink`, not `text-accent` — neutral "something happened"
-// indicators, not accent-colored elements competing with the red confirm
+// (`IconLoader2`, `text-ink`) and the checkmark (`IconCheck`,
+// `text-ink-soft`, shared with every other done screen) are neutral
+// "something happened" indicators, not accent-colored elements competing
+// with the red confirm
 // button that precedes them. 'done's own "Continue to Sign In"/"Continue
 // to Library" button is likewise this app's standard secondary/white
 // button treatment (`border border-border bg-paper-raised text-ink
 // hover:border-accent` — the same recipe used everywhere else in the app
 // for a lower-emphasis action, e.g. FirstLaunchMockup.tsx's own "Preview
-// again") rather than solid `bg-accent` — it's the literal end of the
+// again") rather than solid `bg-accent-fill` — it's the literal end of the
 // flow, not a decision point that needs to compete visually with the
 // buttons that actually drove it forward.
 //
@@ -266,7 +267,7 @@ function ScenarioPicker({
             type="button"
             onClick={() => onChange(key)}
             className={`cursor-pointer px-2 py-1 ${
-              scenarioKey === key ? 'bg-accent text-white' : 'bg-paper hover:bg-paper-sunken'
+              scenarioKey === key ? 'bg-accent-fill text-white' : 'bg-paper hover:bg-paper-hover'
             }`}
           >
             {SCENARIOS[key].label}
@@ -430,7 +431,7 @@ export function AuthChangeFlowMockup() {
             <button
               type="button"
               onClick={goNext}
-              className="mt-8 flex w-full cursor-pointer items-center justify-center gap-2 rounded-md bg-accent px-5 py-2.5 font-display text-white hover:bg-accent/90"
+              className="mt-8 flex w-full cursor-pointer items-center justify-center gap-2 rounded-md bg-accent-fill px-5 py-2.5 font-display font-medium text-white hover:bg-accent-fill/90"
             >
               Continue
             </button>
@@ -467,7 +468,7 @@ export function AuthChangeFlowMockup() {
                 className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-base tracking-wide text-ink"
               />
               {confirmPassword.length > 0 && !passwordValid && (
-                <p className="text-xs text-red-700">
+                <p className="text-xs text-danger">
                   {password.length < 8 ? 'At least 8 characters.' : "Passwords don't match."}
                 </p>
               )}
@@ -477,7 +478,7 @@ export function AuthChangeFlowMockup() {
               type="button"
               disabled={!canContinue}
               onClick={goNext}
-              className="mt-8 flex w-full items-center justify-center gap-2 rounded-md bg-accent px-5 py-2.5 font-display text-white enabled:cursor-pointer enabled:hover:bg-accent/90 disabled:opacity-40"
+              className="mt-8 flex w-full items-center justify-center gap-2 rounded-md bg-accent-fill px-5 py-2.5 font-display font-medium text-white enabled:cursor-pointer enabled:hover:bg-accent-fill/90 disabled:opacity-50"
             >
               Continue
             </button>
@@ -510,7 +511,7 @@ export function AuthChangeFlowMockup() {
                       : 'border-border bg-paper-raised hover:border-accent/50'
                   }`}
                 >
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-paper-sunken text-ink-soft">
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-paper-hover text-ink-soft">
                     <IconUserCircle size={16} />
                   </span>
                   <span className="min-w-0">
@@ -527,7 +528,7 @@ export function AuthChangeFlowMockup() {
               type="button"
               disabled={!chooseAdminCanContinue}
               onClick={goNext}
-              className="mt-8 flex w-full items-center justify-center gap-2 rounded-md bg-accent px-5 py-2.5 font-display text-white enabled:cursor-pointer enabled:hover:bg-accent/90 disabled:opacity-40"
+              className="mt-8 flex w-full items-center justify-center gap-2 rounded-md bg-accent-fill px-5 py-2.5 font-display font-medium text-white enabled:cursor-pointer enabled:hover:bg-accent-fill/90 disabled:opacity-50"
             >
               Review Deletion
             </button>
@@ -558,7 +559,7 @@ export function AuthChangeFlowMockup() {
             <button
               type="button"
               onClick={goNext}
-              className="mt-8 flex w-full cursor-pointer items-center justify-center gap-2 rounded-md bg-accent px-5 py-2.5 font-display text-white hover:bg-accent/90"
+              className="mt-8 flex w-full cursor-pointer items-center justify-center gap-2 rounded-md bg-accent-fill px-5 py-2.5 font-display font-medium text-white hover:bg-accent-fill/90"
             >
               Confirm and Continue
             </button>
@@ -581,7 +582,7 @@ export function AuthChangeFlowMockup() {
               {usersToDelete.map((user) => (
                 <li
                   key={user.id}
-                  className="rounded-md border border-[#f3d4ce] bg-[#fbe9e7] px-3 py-2 text-sm text-ink"
+                  className="rounded-md border border-danger-border bg-danger-soft px-3 py-2 text-sm text-ink"
                 >
                   <span className="font-medium">{user.name}</span>
                   {user.email && <span className="text-ink-soft"> — {user.email}</span>}
@@ -598,7 +599,7 @@ export function AuthChangeFlowMockup() {
             <button
               type="button"
               onClick={goNext}
-              className="mt-8 flex w-full cursor-pointer items-center justify-center gap-2.5 rounded-md bg-red-700 px-6 py-3.5 font-display text-base font-medium text-white shadow-sm hover:bg-red-800"
+              className="mt-8 flex w-full cursor-pointer items-center justify-center gap-2.5 rounded-md bg-danger-fill px-6 py-3.5 font-display text-base font-medium text-white shadow-sm hover:bg-danger-fill-strong"
             >
               <IconAlertTriangle size={20} />
               Delete accounts now
@@ -618,7 +619,7 @@ export function AuthChangeFlowMockup() {
 
         {step === 'done' && (
           <div className="flex w-full flex-col items-center text-center">
-            <IconCircleCheck size={48} className="text-ink-soft" />
+            <IconCheck size={48} className="text-ink-soft" />
             <h1 className="mt-4 font-display text-2xl font-medium text-ink">All set</h1>
             <p className="mt-2 text-sm text-ink-soft">
               Sonneck is now running with <strong className="text-ink">{scenario.toLabel}</strong>.
@@ -626,7 +627,7 @@ export function AuthChangeFlowMockup() {
             <button
               type="button"
               onClick={() => selectScenario(scenarioKey)}
-              className="mt-8 flex w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-5 py-2.5 font-display text-ink hover:border-accent"
+              className="mt-8 flex w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-5 py-2.5 font-display font-medium text-ink hover:border-accent"
             >
               {scenario.to === 'none' ? 'Continue to Library' : 'Continue to Sign In'}
             </button>

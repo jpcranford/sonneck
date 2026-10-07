@@ -324,8 +324,10 @@
      containing one falls through to Bravura instead of a random system
      font — its unicode-range keeps it to just those codepoints. */
   --font-display: 'Libre Baskerville', 'Bravura Text', Georgia, 'Times New Roman', serif;
-  --font-sans: 'Cabin', 'Bravura Text', -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --font-music: 'Bravura Text', 'Cabin', -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-sans:
+    'Cabin', 'Bravura Text', -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-music:
+    'Bravura Text', 'Cabin', -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   /* Cabin reads a touch tighter than Rethink Sans at body sizes — dialed
      in live against the real Piece Details mockup (comparison Artifact,
      a drag-adjustable letter-spacing slider over the actual rendered
@@ -340,27 +342,88 @@
      leak into text that was never using Cabin in the first place. */
   --tracking-sans: 0.02em;
 
+  /* Colors. The comment directly above each one is its description on
+     /mockup/style-sampler, which reads this block live. */
+  /* Body text and headings on light surfaces. */
   --color-ink: #1c1815;
+  /* Secondary text: meta lines, labels, hints, quiet icons. */
   --color-ink-soft: #5c5349;
-  --color-paper: #fbfaf8;
+  /* The faded inks are ink-soft blended toward the page and kept solid, never
+     an opacity utility: Tabler icons overlap their own strokes, and a
+     see-through color darkens where they cross. */
+  /* Muted grey text: the Tempo details, Advanced and Calculate from tempo toggles, and empty-state messages ("No pieces yet", "No books match your search."…) — except the Add to Setlist picker's and the sidebar's. */
+  --color-ink-muted: #837c74;
+  /* Quiet clickable icons: field chevrons and search, info hints, external links, copy, add rows, tag remove. */
+  --color-ink-faint: #9a948d;
+  /* Things you can't click: the no-file cover icon, the unavailable Open PDF button, list-card chevrons, a disabled autofill. Also the footer's S mark, kept quiet near the border color. */
+  --color-ink-fainter: #aaa49e;
+  /* The page background, and the fill of neutral pills. */
+  --color-paper: #f8f6f3;
+  /* Anything sitting on the page: cards, modals, menus, fields, secondary buttons. */
   --color-paper-raised: #ffffff;
+  /* Recessed areas: thumbnail wells, segmented-control tracks, inset panels. */
   --color-paper-sunken: #f1eee8;
+  /* A soft step off a raised surface: hover and selected fills (menu rows, search results, sort and filter buttons) and the small icon circles on cards. The same grey as paper-sunken here; the dark theme lifts it lighter instead of sinking it. */
+  --color-paper-hover: #f1eee8;
+  /* Hairlines: card, field and button outlines, dividers, the off switch track. */
   --color-border: #e4e0d8;
 
+  /* The sidebar and mobile nav drawer background. */
   --color-sidebar-bg: #0f0c0b;
+  /* Raised things in the sidebar: the active nav item, the account card and its menu. */
   --color-sidebar-panel: #2f2723;
+  /* Sidebar text and icons. */
   --color-sidebar-text: #d9d0c3;
+  /* Sidebar section headings, dates and quiet controls. */
   --color-sidebar-text-dim: #8f857a;
+  /* The sidebar's edge, its dividers and outlined controls. */
   --color-sidebar-border: #37302b;
 
+  /* Primary buttons, links, selected states, per-user pills' text. */
   --color-accent: #3f5c3f;
+  /* Hover and selected row tints, per-user pills, callouts, active dropzones. */
   --color-accent-soft: #e3e9e0;
+  /* Accent that reads on dark or accent-filled surfaces: the autofill highlight ring, progress stripes. */
   --color-accent-on-dark: #86a67f;
+  /* Completed steps in a step indicator, quieter than the current step (accent). */
+  --color-accent-muted: #86a67f;
+  /* Solid green fills with white labels: primary buttons, an on switch. The same green as accent in the light theme; stays deep in the dark one, where accent itself turns light. */
+  --color-accent-fill: #3f5c3f;
 
-  /* Trying focus == accent (was a distinct teal, #2f6f77) — references
-     accent directly so the two can't drift out of sync if accent ever
-     changes. */
+  /* The keyboard focus outline. Same as accent, referenced directly so
+     the two can't drift apart. */
   --color-focus: var(--color-accent);
+
+  /* Destructive and excluding actions: delete buttons and links, error text, the "Not …" filter state. */
+  --color-danger: #b91c1c;
+  /* Danger's hover: solid red buttons and red text links darken to this. */
+  --color-danger-strong: #991b1b;
+  /* The pale fill behind danger: exclude chips, delete-button hovers, accounts about to be deleted. */
+  --color-danger-soft: #fbe9e7;
+  /* The outline of a danger-soft box, like each account in the Auth Change delete list. */
+  --color-danger-border: #f3d4ce;
+  /* Solid red fills with white labels: Delete buttons. Same as danger in the light theme; stays deep in the dark one. */
+  --color-danger-fill: #b91c1c;
+  /* A solid red fill's hover. */
+  --color-danger-fill-strong: #991b1b;
+
+  /* The upload wizard's book-split colors, one per piece in order (lib/pieceSplitLogic.ts's PALETTE): the lanes, page tiles and title-card borders that show which pages belong to which piece. Also person avatars and Person Details' book-credit circles, under white initials and icons. The dark theme brightens them. */
+  --color-split-1: #7a9c6b;
+  --color-split-2: #b87aaf;
+  --color-split-3: #5c8a8a;
+  --color-split-4: #b8935a;
+  --color-split-5: #9c7ab8;
+  --color-split-6: #b8827a;
+  --color-split-7: #6b8a9c;
+  --color-split-8: #87a249;
+  --color-split-9: #ac6939;
+  --color-split-10: #b87a97;
+
+  /* The "good" green: the public-domain and copyleft shields (lib/copyrightBadge.ts) and Admin Settings' up-to-date check. */
+  --color-grass: #3fa34d;
+
+  /* Overlays that must stay dark in both themes: the window backdrop, controls laid over page thumbnails, count badges. */
+  --color-scrim: #1c1815;
 
   /* Moving diagonal-stripe fill for a "working on it, no real percentage
      to report" button state — first use: the Book Properties Edit Menu's
@@ -370,6 +433,89 @@
      animate-stripe-move utility it generates is reusable if any future
      multi-record save ever wants the same "in progress" language. */
   --animate-stripe-move: stripe-move 0.85s linear infinite;
+}
+
+/* The upload wizard's split step. --split-tint: how strongly a book-split
+   color tints its lane and piece chip (color-mix with transparent);
+   stronger in the dark theme, where 10% barely shows. --skip-fade: the
+   opacity of a skipped page's tile. A faded white page sinks into a light
+   background but turns mid-grey on a dark one, standing out instead of
+   receding, so the dark theme fades it much further. */
+:root {
+  --split-tint: 10%;
+  --skip-fade: 0.6;
+}
+
+/* The dark theme (Walnut, lifted: A3 in the palette comparison): every color token
+   redefined, applied when <html> carries data-theme="dark". Tailwind's
+   utilities read the tokens as CSS variables, so components need no dark:
+   variants. By intent, a solid fill (accent-fill, danger-fill) keeps its
+   white label, while accent and danger turn light for text and outlines on
+   the dark page. The faded inks are ink-soft blended 85/70/60% into the
+   page, kept solid like their light counterparts: a step stronger than the
+   light theme's 75/60/50, since a dull grey on a dark ground reads more
+   washed out than the same contrast on paper. */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --color-ink: #eee7dc;
+  --color-ink-soft: #b6ab9c;
+  --color-ink-muted: #a09688;
+  --color-ink-faint: #8a8175;
+  --color-ink-fainter: #7b7368;
+  --color-paper: #231e1a;
+  --color-paper-raised: #302a25;
+  --color-paper-sunken: #1b1714;
+  --color-paper-hover: #3b342e;
+  --color-border: #423931;
+
+  --color-sidebar-bg: #0f0c0b;
+  --color-sidebar-panel: #2f2723;
+  --color-sidebar-text: #d9d0c3;
+  --color-sidebar-text-dim: #8f857a;
+  --color-sidebar-border: #2c2622;
+
+  --color-accent: #9dbd94;
+  --color-accent-soft: #24301f;
+  --color-accent-on-dark: #86a67f;
+  --color-accent-muted: #4a6b48;
+  --color-accent-fill: #4a6b48;
+
+  --color-danger: #f66e5f;
+  --color-danger-strong: #ff8f81;
+  --color-danger-soft: #3b1f1b;
+  --color-danger-border: #5c2e28;
+  --color-danger-fill: #a8302a;
+  --color-danger-fill-strong: #93271f;
+
+  --color-scrim: #080606;
+  --color-grass: #48b858;
+
+  --color-split-1: #77a562;
+  --color-split-2: #c87bbd;
+  --color-split-3: #5ca0a0;
+  --color-split-4: #c8974a;
+  --color-split-5: #ac85cc;
+  --color-split-6: #c7847a;
+  --color-split-7: #759aaf;
+  --color-split-8: #8db239;
+  --color-split-9: #da7e3c;
+  --color-split-10: #c97ea1;
+
+  --split-tint: 20%;
+  --skip-fade: 0.15;
+}
+
+/* Dark Mode Scores (User Settings › Appearance, lib/theme.ts's
+   useDarkScoresSync): every sheet-music page image carries the score-page
+   class, and while the setting is on and the theme is dark it shows light
+   notes on a dark page. invert(0.9) rather than a full invert keeps the page
+   a near-black close to the dark paper instead of pure black, and the notes
+   a soft white; hue-rotate puts colored marks (pencil, highlighter) back on
+   their own hue after the invert. Book covers and portraits aren't tagged,
+   so they stay as they are. */
+:root[data-theme='dark'][data-dark-scores] .score-page {
+  filter: invert(0.9) hue-rotate(180deg);
 }
 
 /* transform, not background-position (fixed 2026-09-02, direct report:
@@ -389,8 +535,12 @@
    reproduces the exact same "infinite scroll" illusion the old
    background-position version had, just off the main thread. */
 @keyframes stripe-move {
-  from { transform: translateX(0); }
-  to { transform: translateX(56px); }
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(56px);
+  }
 }
 
 body {

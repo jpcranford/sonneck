@@ -17,7 +17,11 @@ import {
 } from '@tabler/icons-react'
 import { useMockupTitle } from '../lib/useMockupTitle'
 import { formatRelativeWeeks } from '../lib/relativeWeeks'
-import { ALL_MOCK_SETLISTS, getUpcomingSetlists, type MockSetlist } from '../lib/setlistsMockupFixture'
+import {
+  ALL_MOCK_SETLISTS,
+  getUpcomingSetlists,
+  type MockSetlist,
+} from '../lib/setlistsMockupFixture'
 
 // Setlists design pass — replaces the inert "Coming soon" placeholder
 // (Sidebar.tsx/MobileNav.tsx's own SETLISTS.length === 0 branch) with the
@@ -80,12 +84,12 @@ function RailNavList({ items, collapsed }: { items: NavItem[]; collapsed: boolea
           end={to === '/'}
           title={collapsed ? label : undefined}
           className={({ isActive }) =>
-            `flex h-10 items-center gap-3 rounded-md px-2 font-display text-[0.95rem] font-medium ${
+            `flex h-10 items-center gap-3 rounded-md px-2 font-display text-base font-medium ${
               collapsed ? 'justify-center' : ''
             } ${isActive ? 'bg-sidebar-panel text-sidebar-text' : 'text-sidebar-text hover:bg-white/5'}`
           }
         >
-          <Icon size={22} className="text-sidebar-text" />
+          <Icon size={24} className="text-sidebar-text" />
           {!collapsed && <span className="relative top-[0.6px] truncate">{label}</span>}
         </NavLink>
       ))}
@@ -103,12 +107,12 @@ function DrawerNavList({ items, onNavigate }: { items: NavItem[]; onNavigate: ()
           end={to === '/'}
           onClick={onNavigate}
           className={({ isActive }) =>
-            `flex h-11 items-center gap-3 rounded-md px-3 font-display text-[0.95rem] font-medium ${
+            `flex h-11 items-center gap-3 rounded-md px-3 font-display text-base font-medium ${
               isActive ? 'bg-sidebar-panel text-sidebar-text' : 'text-sidebar-text hover:bg-white/5'
             }`
           }
         >
-          <Icon size={22} className="text-sidebar-text" />
+          <Icon size={24} className="text-sidebar-text" />
           <span className="relative top-[0.6px] truncate">{label}</span>
         </NavLink>
       ))}
@@ -228,8 +232,10 @@ function SetlistsSection({
             to={`/setlists/${setlist.id}`}
             title={setlist.name}
             className={({ isActive }) =>
-              `flex size-10 items-center justify-center rounded-md font-display text-[0.95rem] font-medium ${
-                isActive ? 'bg-sidebar-panel text-sidebar-text' : 'text-sidebar-text hover:bg-white/5'
+              `flex size-10 items-center justify-center rounded-md font-display text-base font-medium ${
+                isActive
+                  ? 'bg-sidebar-panel text-sidebar-text'
+                  : 'text-sidebar-text hover:bg-white/5'
               }`
             }
           >
@@ -255,8 +261,10 @@ function SetlistsSection({
               key={setlist.id}
               to={`/setlists/${setlist.id}`}
               className={({ isActive }) =>
-                `mt-1 flex items-center justify-between gap-2 truncate rounded-md px-2 py-1.5 font-display text-[0.95rem] font-medium first:mt-0 ${
-                  isActive ? 'bg-sidebar-panel text-sidebar-text' : 'text-sidebar-text hover:bg-white/5'
+                `mt-1 flex items-center justify-between gap-2 truncate rounded-md px-2 py-1.5 font-display text-sm font-medium first:mt-0 ${
+                  isActive
+                    ? 'bg-sidebar-panel text-sidebar-text'
+                    : 'text-sidebar-text hover:bg-white/5'
                 }`
               }
             >
@@ -330,11 +338,12 @@ export function SidebarSetlistsMockup() {
 
         <div className="m-4 flex flex-col gap-2 rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-4 py-2 text-sm text-ink-soft">
           <p>
-            Reference sample — <span className="font-medium text-ink">Sidebar Setlists section</span>. Replaces the
-            inert "Coming soon" placeholder with an "Upcoming Sets" heading, the 5 soonest upcoming fixture setlists
-            (real gig dates computed relative to today), and a "⋯" menu linking to the real Setlists Library mockup
-            (View All Setlists/Archive, Phase 12). Try collapsing the rail, or resizing below 768px (or use a phone)
-            for the mobile drawer.
+            Reference sample —{' '}
+            <span className="font-medium text-ink">Sidebar Setlists section</span>. Replaces the
+            inert "Coming soon" placeholder with an "Upcoming Sets" heading, the 5 soonest upcoming
+            fixture setlists (real gig dates computed relative to today), and a "⋯" menu linking to
+            the real Setlists Library mockup (View All Setlists/Archive, Phase 12). Try collapsing
+            the rail, or resizing below 768px (or use a phone) for the mobile drawer.
           </p>
           <div className="flex items-center gap-2 text-xs">
             <span className="font-medium text-ink-soft">Preview:</span>
@@ -342,7 +351,9 @@ export function SidebarSetlistsMockup() {
               type="button"
               onClick={() => setPreviewEmpty(false)}
               className={`cursor-pointer rounded-full border px-2.5 py-1 ${
-                !previewEmpty ? 'border-accent bg-accent-soft text-accent' : 'border-border text-ink-soft hover:text-ink'
+                !previewEmpty
+                  ? 'border-accent bg-accent-soft text-accent'
+                  : 'border-border text-ink-soft hover:text-ink'
               }`}
             >
               Has upcoming sets
@@ -351,7 +362,9 @@ export function SidebarSetlistsMockup() {
               type="button"
               onClick={() => setPreviewEmpty(true)}
               className={`cursor-pointer rounded-full border px-2.5 py-1 ${
-                previewEmpty ? 'border-accent bg-accent-soft text-accent' : 'border-border text-ink-soft hover:text-ink'
+                previewEmpty
+                  ? 'border-accent bg-accent-soft text-accent'
+                  : 'border-border text-ink-soft hover:text-ink'
               }`}
             >
               No upcoming sets
@@ -370,7 +383,7 @@ export function SidebarSetlistsMockup() {
 
       <div
         aria-hidden={!drawerOpen}
-        className={`fixed inset-0 z-40 bg-ink/40 transition-opacity duration-200 md:hidden ${
+        className={`fixed inset-0 z-40 bg-scrim/40 transition-opacity duration-200 md:hidden ${
           drawerOpen ? 'opacity-100' : 'pointer-events-none opacity-0'
         }`}
         onClick={() => setDrawerOpen(false)}

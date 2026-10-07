@@ -17,15 +17,23 @@ import {
   IconWifi,
   IconWifiOff,
 } from '@tabler/icons-react'
+import { Checkbox } from '../components/Checkbox'
 import { InfoIconTooltip } from '../components/InfoIconTooltip'
 import { Modal } from '../components/Modal'
+import { Radio } from '../components/Radio'
+import { Toggle } from '../components/Toggle'
 import { usePageTitle } from '../lib/usePageTitle'
 import { useAuth } from '../lib/AuthContext'
 import { copyToClipboard } from '../lib/clipboard'
 import { ApiError } from '../api/client'
 import { getConfig } from '../api/config'
 import { listInstruments, listSheetTypes } from '../api/lookups'
-import { chooseNativeFolder, getNativeSettings, restartNativeApp, updateNativeSettings } from '../api/native'
+import {
+  chooseNativeFolder,
+  getNativeSettings,
+  restartNativeApp,
+  updateNativeSettings,
+} from '../api/native'
 import type { Tag } from '../api/types'
 import {
   checkForUpdates,
@@ -59,7 +67,14 @@ import {
 // state to show, read from GET /api/config and GET /api/admin/version.
 
 const ALL_PERMS: Permission[] = [
-  'read', 'download', 'practice', 'edit', 'upload', 'create', 'delete', 'admin',
+  'read',
+  'download',
+  'practice',
+  'edit',
+  'upload',
+  'create',
+  'delete',
+  'admin',
 ]
 
 // Matches CLAUDE.md's permission mapping — kept in sync with that doc,
@@ -166,7 +181,9 @@ function SecurityCard({
   return (
     <div
       className={`rounded-lg border p-3.5 ${
-        selected ? 'cursor-pointer border-accent bg-accent-soft' : 'cursor-pointer border-border bg-paper-raised hover:border-accent/50'
+        selected
+          ? 'cursor-pointer border-accent bg-accent-soft'
+          : 'cursor-pointer border-border bg-paper-raised hover:border-accent/50'
       }`}
       onClick={onSelect}
       role="radio"
@@ -182,7 +199,7 @@ function SecurityCard({
       <div className="flex items-start gap-3">
         <span
           className={`mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full ${
-            selected ? 'bg-accent text-white' : 'bg-paper-sunken text-ink-soft'
+            selected ? 'bg-accent-fill text-white' : 'bg-paper-hover text-ink-soft'
           }`}
         >
           {icon}
@@ -197,14 +214,26 @@ function SecurityCard({
   )
 }
 
-function SecurityChangeModal({ open, onClose, currentMethod }: { open: boolean; onClose: () => void; currentMethod: 'none' | 'singlepass' | 'oidc' }) {
+function SecurityChangeModal({
+  open,
+  onClose,
+  currentMethod,
+}: {
+  open: boolean
+  onClose: () => void
+  currentMethod: 'none' | 'singlepass' | 'oidc'
+}) {
   const queryClient = useQueryClient()
-  const [choice, setChoice] = useState<'none' | 'singlepass'>(currentMethod === 'singlepass' ? 'singlepass' : 'none')
+  const [choice, setChoice] = useState<'none' | 'singlepass'>(
+    currentMethod === 'singlepass' ? 'singlepass' : 'none',
+  )
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
 
-  const passwordValid = password.length === 0 || (password.length >= 8 && password === confirmPassword)
-  const canSave = choice === 'none' || (passwordValid && (currentMethod === 'singlepass' || password.length > 0))
+  const passwordValid =
+    password.length === 0 || (password.length >= 8 && password === confirmPassword)
+  const canSave =
+    choice === 'none' || (passwordValid && (currentMethod === 'singlepass' || password.length > 0))
 
   const mutation = useMutation({
     mutationFn: () => setSecurity(choice, password || undefined),
@@ -223,21 +252,27 @@ function SecurityChangeModal({ open, onClose, currentMethod }: { open: boolean; 
       labelledBy="security-modal-title"
       footer={
         <div className="flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 text-sm text-ink hover:bg-paper">
+          <button
+            type="button"
+            onClick={onClose}
+            className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 text-sm text-ink hover:bg-paper"
+          >
             Cancel
           </button>
           <button
             type="button"
             disabled={!canSave || mutation.isPending}
             onClick={() => mutation.mutate()}
-            className="cursor-pointer rounded-md bg-accent px-4 py-2 text-sm text-white enabled:hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-40"
+            className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 text-sm text-white enabled:hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {mutation.isPending ? 'Saving…' : 'Save changes'}
           </button>
         </div>
       }
     >
-      <h2 id="security-modal-title" className="font-display text-lg font-medium text-ink">Change security</h2>
+      <h2 id="security-modal-title" className="font-display text-lg font-medium text-ink">
+        Change security
+      </h2>
       <p className="mt-1 text-sm text-ink-soft">Choose how people sign in to this library.</p>
       <div className="mt-4 flex flex-col gap-3" role="radiogroup" aria-label="Security">
         <SecurityCard
@@ -260,7 +295,11 @@ function SecurityChangeModal({ open, onClose, currentMethod }: { open: boolean; 
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               onClick={(event) => event.stopPropagation()}
-              placeholder={currentMethod === 'singlepass' ? 'New password (leave blank to keep current)' : 'Password (min. 8 characters)'}
+              placeholder={
+                currentMethod === 'singlepass'
+                  ? 'New password (leave blank to keep current)'
+                  : 'Password (min. 8 characters)'
+              }
               className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-sm text-ink"
             />
             <input
@@ -272,19 +311,21 @@ function SecurityChangeModal({ open, onClose, currentMethod }: { open: boolean; 
               className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-sm text-ink"
             />
             {password.length > 0 && !passwordValid && (
-              <p className="text-xs text-red-700">{password.length < 8 ? 'At least 8 characters.' : "Passwords don't match."}</p>
+              <p className="text-xs text-danger">
+                {password.length < 8 ? 'At least 8 characters.' : "Passwords don't match."}
+              </p>
             )}
           </div>
         </SecurityCard>
       </div>
       {mutation.isError && (
-        <p className="mt-3 text-xs text-red-700">
+        <p className="mt-3 text-xs text-danger">
           {mutation.error instanceof ApiError ? mutation.error.message : 'Something went wrong.'}
         </p>
       )}
       <p className="mt-4 text-xs text-ink-soft">
-        Switching to "No login" clears the current password entirely — the next person to switch back to "Password" has
-        to set a new one.
+        Switching to "No login" clears the current password entirely — the next person to switch
+        back to "Password" has to set a new one.
       </p>
     </Modal>
   )
@@ -300,7 +341,8 @@ function UsersSection() {
   const [openUserId, setOpenUserId] = useState<number | null>(null)
 
   const permsMutation = useMutation({
-    mutationFn: (vars: { id: number; permissions: Permission[] }) => setUserPermissions(vars.id, vars.permissions),
+    mutationFn: (vars: { id: number; permissions: Permission[] }) =>
+      setUserPermissions(vars.id, vars.permissions),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['admin', 'users'] }),
   })
   const deleteMutation = useMutation({
@@ -341,28 +383,39 @@ function UsersSection() {
                   onClick={() => setOpenUserId(isOpen ? null : user.id)}
                   className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 text-left"
                 >
-                  <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-paper-sunken text-ink-soft">
+                  <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-paper-hover text-ink-soft">
                     <IconUserCircle size={16} />
                   </span>
                   <span className="min-w-0">
-                    <span className="block truncate text-sm font-medium text-ink">{user.displayName}</span>
+                    <span className="block truncate text-sm font-medium text-ink">
+                      {user.displayName}
+                    </span>
                   </span>
                   <span
                     className={`ml-auto shrink-0 rounded-full px-2 py-0.5 text-[0.65rem] font-bold tracking-wide uppercase ${
-                      isAdmin ? 'bg-accent text-white' : 'bg-paper-sunken text-ink-soft'
+                      isAdmin ? 'bg-accent-fill text-white' : 'bg-paper-sunken text-ink-soft'
                     }`}
                   >
-                    {isAdmin ? 'Admin' : `${user.permissions.length} permission${user.permissions.length === 1 ? '' : 's'}`}
+                    {isAdmin
+                      ? 'Admin'
+                      : `${user.permissions.length} permission${user.permissions.length === 1 ? '' : 's'}`}
                   </span>
-                  <IconChevronDown size={16} className={`shrink-0 text-ink-soft transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                  <IconChevronDown
+                    size={16}
+                    className={`shrink-0 text-ink-soft transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                  />
                 </button>
                 <button
                   type="button"
                   disabled={lastAdmin}
                   onClick={() => handleDelete(user)}
-                  title={lastAdmin ? "The only admin account can't be deleted." : `Delete ${user.displayName}`}
+                  title={
+                    lastAdmin
+                      ? "The only admin account can't be deleted."
+                      : `Delete ${user.displayName}`
+                  }
                   aria-label={`Delete ${user.displayName}`}
-                  className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-ink-soft hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-ink-soft"
+                  className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-ink-soft hover:bg-danger-soft hover:text-danger disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-ink-soft"
                 >
                   <IconTrash size={15} />
                 </button>
@@ -373,17 +426,20 @@ function UsersSection() {
                     const locked = perm === 'admin' && lastAdmin
                     return (
                       <div key={perm} className="flex items-center gap-1">
-                        <label className={`flex items-center gap-1.5 text-sm ${locked ? 'cursor-not-allowed text-ink-soft/50' : 'cursor-pointer text-ink'}`}>
-                          <input
-                            type="checkbox"
+                        <label
+                          className={`flex items-center gap-1.5 text-sm ${locked ? 'cursor-not-allowed text-ink-soft/50' : 'cursor-pointer text-ink'}`}
+                        >
+                          <Checkbox
                             checked={user.permissions.includes(perm)}
                             disabled={locked}
                             onChange={() => togglePermission(user, perm)}
-                            className="accent-accent"
                           />
                           {perm}
                         </label>
-                        <InfoIconTooltip message={PERM_DESCRIPTIONS[perm]} ariaLabel={`What "${perm}" allows`} />
+                        <InfoIconTooltip
+                          message={PERM_DESCRIPTIONS[perm]}
+                          ariaLabel={`What "${perm}" allows`}
+                        />
                       </div>
                     )
                   })}
@@ -408,7 +464,12 @@ interface LookupDeleteTarget {
   name: string
 }
 
-function LookupColumn({ resource, label, items, onOpenDelete }: {
+function LookupColumn({
+  resource,
+  label,
+  items,
+  onOpenDelete,
+}: {
   resource: LookupResource
   label: string
   items: Tag[]
@@ -426,7 +487,8 @@ function LookupColumn({ resource, label, items, onOpenDelete }: {
     onSuccess: () => void queryClient.invalidateQueries({ queryKey }),
   })
   const renameMutation = useMutation({
-    mutationFn: (vars: { id: number; name: string }) => renameLookupItem(resource, vars.id, vars.name),
+    mutationFn: (vars: { id: number; name: string }) =>
+      renameLookupItem(resource, vars.id, vars.name),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey }),
   })
 
@@ -471,9 +533,11 @@ function LookupColumn({ resource, label, items, onOpenDelete }: {
             />
             <button
               type="button"
-              onClick={() => onOpenDelete({ resource, id: item.id, name: item.name || '(untitled)' })}
+              onClick={() =>
+                onOpenDelete({ resource, id: item.id, name: item.name || '(untitled)' })
+              }
               aria-label={`Delete ${item.name || 'this entry'}`}
-              className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-ink-soft hover:bg-red-50 hover:text-red-700"
+              className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-ink-soft hover:bg-danger-soft hover:text-danger"
             >
               <IconTrash size={14} />
             </button>
@@ -500,7 +564,7 @@ function LookupColumn({ resource, label, items, onOpenDelete }: {
         onClick={addPending}
         aria-label={`Add ${noun}`}
         title={`Add ${noun}`}
-        className="mt-3 flex w-full cursor-pointer items-center justify-center text-[#9d9892] hover:text-accent"
+        className="mt-3 flex w-full cursor-pointer items-center justify-center text-ink-faint hover:text-accent"
       >
         <IconCircleDashedPlus size={22} />
       </button>
@@ -510,7 +574,10 @@ function LookupColumn({ resource, label, items, onOpenDelete }: {
 
 function LookupTablesSection() {
   const { data: sheetTypes = [] } = useQuery({ queryKey: ['sheet-types'], queryFn: listSheetTypes })
-  const { data: instruments = [] } = useQuery({ queryKey: ['instruments'], queryFn: listInstruments })
+  const { data: instruments = [] } = useQuery({
+    queryKey: ['instruments'],
+    queryFn: listInstruments,
+  })
   const queryClient = useQueryClient()
 
   const [deleteTarget, setDeleteTarget] = useState<LookupDeleteTarget | null>(null)
@@ -518,10 +585,13 @@ function LookupTablesSection() {
   const [mergeTargetId, setMergeTargetId] = useState<number | null>(null)
 
   const listsByResource: Record<LookupResource, Tag[]> = { 'sheet-types': sheetTypes, instruments }
-  const otherItems = deleteTarget ? listsByResource[deleteTarget.resource].filter((item) => item.id !== deleteTarget.id) : []
+  const otherItems = deleteTarget
+    ? listsByResource[deleteTarget.resource].filter((item) => item.id !== deleteTarget.id)
+    : []
 
   const deleteMutation = useMutation({
-    mutationFn: (target: LookupDeleteTarget) => deleteLookupItem(target.resource, target.id, mergeTargetId ?? undefined),
+    mutationFn: (target: LookupDeleteTarget) =>
+      deleteLookupItem(target.resource, target.id, mergeTargetId ?? undefined),
     onSuccess: (_result, target) => {
       const queryKey = target.resource === 'sheet-types' ? ['sheet-types'] : ['instruments']
       void queryClient.invalidateQueries({ queryKey })
@@ -539,14 +609,24 @@ function LookupTablesSection() {
   return (
     <SectionBlock id="lookup" title="Lookup Tables">
       <p className="mb-4 text-sm text-ink-soft">
-        These names are shared across the whole library — every piece and book already tagged with one updates
-        automatically when you rename it here, rather than creating a new, separate value. Renaming "Piano" to
-        "Keyboard," for example, changes it everywhere "Piano" was used, instead of leaving old pieces on "Piano"
-        and new ones on "Keyboard."
+        These names are shared across the whole library — every piece and book already tagged with
+        one updates automatically when you rename it here, rather than creating a new, separate
+        value. Renaming "Piano" to "Keyboard," for example, changes it everywhere "Piano" was used,
+        instead of leaving old pieces on "Piano" and new ones on "Keyboard."
       </p>
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-        <LookupColumn resource="sheet-types" label="Sheet Types" items={sheetTypes} onOpenDelete={openDelete} />
-        <LookupColumn resource="instruments" label="Instruments" items={instruments} onOpenDelete={openDelete} />
+        <LookupColumn
+          resource="sheet-types"
+          label="Sheet Types"
+          items={sheetTypes}
+          onOpenDelete={openDelete}
+        />
+        <LookupColumn
+          resource="instruments"
+          label="Instruments"
+          items={instruments}
+          onOpenDelete={openDelete}
+        />
       </div>
 
       <Modal
@@ -555,16 +635,26 @@ function LookupTablesSection() {
         labelledBy="lookup-delete-title"
         footer={
           <div className="flex justify-end gap-2">
-            <button type="button" onClick={() => setDeleteTarget(null)} className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 text-sm text-ink hover:bg-paper">
+            <button
+              type="button"
+              onClick={() => setDeleteTarget(null)}
+              className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 text-sm text-ink hover:bg-paper"
+            >
               Cancel
             </button>
             <button
               type="button"
-              disabled={(deleteMode === 'merge' && mergeTargetId === null) || deleteMutation.isPending}
+              disabled={
+                (deleteMode === 'merge' && mergeTargetId === null) || deleteMutation.isPending
+              }
               onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget)}
-              className="cursor-pointer rounded-md bg-red-700 px-4 py-2 text-sm text-white hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-40"
+              className="cursor-pointer rounded-md bg-danger-fill px-4 py-2 text-sm text-white hover:bg-danger-fill-strong disabled:cursor-not-allowed disabled:opacity-40"
             >
-              {deleteMutation.isPending ? 'Working…' : deleteMode === 'merge' ? 'Merge and delete' : 'Delete outright'}
+              {deleteMutation.isPending
+                ? 'Working…'
+                : deleteMode === 'merge'
+                  ? 'Merge and delete'
+                  : 'Delete outright'}
             </button>
           </div>
         }
@@ -574,20 +664,35 @@ function LookupTablesSection() {
             <h2 id="lookup-delete-title" className="font-display text-lg font-medium text-ink">
               Delete "{deleteTarget.name}"?
             </h2>
-            <p className="mt-1 text-sm text-ink-soft">Choose what happens to pieces and books already tagged with it.</p>
-            <div className="mt-4 flex flex-col gap-3" role="radiogroup" aria-label="Delete or merge">
+            <p className="mt-1 text-sm text-ink-soft">
+              Choose what happens to pieces and books already tagged with it.
+            </p>
+            <div
+              className="mt-4 flex flex-col gap-3"
+              role="radiogroup"
+              aria-label="Delete or merge"
+            >
               {otherItems.length > 0 && (
                 <label
                   className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3.5 ${
-                    deleteMode === 'merge' ? 'border-accent bg-accent-soft' : 'border-border bg-paper-raised hover:border-accent/50'
+                    deleteMode === 'merge'
+                      ? 'border-accent bg-accent-soft'
+                      : 'border-border bg-paper-raised hover:border-accent/50'
                   }`}
                 >
-                  <input type="radio" checked={deleteMode === 'merge'} onChange={() => setDeleteMode('merge')} className="mt-1 accent-accent" />
+                  <Radio
+                    checked={deleteMode === 'merge'}
+                    onChange={() => setDeleteMode('merge')}
+                    className="mt-1"
+                  />
                   <div className="min-w-0 flex-1">
                     <p className="font-display font-medium text-ink">
-                      Merge into another {deleteTarget.resource === 'sheet-types' ? 'sheet type' : 'instrument'}
+                      Merge into another{' '}
+                      {deleteTarget.resource === 'sheet-types' ? 'sheet type' : 'instrument'}
                     </p>
-                    <p className="text-sm text-ink-soft">Every piece/book tagged "{deleteTarget.name}" will be retagged instead.</p>
+                    <p className="text-sm text-ink-soft">
+                      Every piece/book tagged "{deleteTarget.name}" will be retagged instead.
+                    </p>
                     {deleteMode === 'merge' && (
                       <select
                         value={mergeTargetId ?? ''}
@@ -596,7 +701,9 @@ function LookupTablesSection() {
                         className="mt-2 rounded-md border border-border bg-paper-raised px-2.5 py-1.5 text-sm text-ink"
                       >
                         {otherItems.map((item) => (
-                          <option key={item.id} value={item.id}>{item.name || '(untitled)'}</option>
+                          <option key={item.id} value={item.id}>
+                            {item.name || '(untitled)'}
+                          </option>
                         ))}
                       </select>
                     )}
@@ -605,13 +712,22 @@ function LookupTablesSection() {
               )}
               <label
                 className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3.5 ${
-                  deleteMode === 'outright' ? 'border-accent bg-accent-soft' : 'border-border bg-paper-raised hover:border-accent/50'
+                  deleteMode === 'outright'
+                    ? 'border-accent bg-accent-soft'
+                    : 'border-border bg-paper-raised hover:border-accent/50'
                 }`}
               >
-                <input type="radio" checked={deleteMode === 'outright'} onChange={() => setDeleteMode('outright')} className="mt-1 accent-accent" />
+                <Radio
+                  checked={deleteMode === 'outright'}
+                  onChange={() => setDeleteMode('outright')}
+                  className="mt-1"
+                />
                 <div className="min-w-0 flex-1">
                   <p className="font-display font-medium text-ink">Delete outright</p>
-                  <p className="text-sm text-ink-soft">Pieces/books tagged "{deleteTarget.name}" will just lose that tag — nothing else is affected.</p>
+                  <p className="text-sm text-ink-soft">
+                    Pieces/books tagged "{deleteTarget.name}" will just lose that tag — nothing else
+                    is affected.
+                  </p>
                 </div>
               </label>
             </div>
@@ -664,21 +780,29 @@ function VersionSection() {
               cleanly stacking. */}
           <div className="shrink-0 self-end sm:self-auto">
             {version?.runningFromSource ? (
-              <span className="text-sm text-ink-soft" title="No GitHub check runs against a build with no injected commit identity">
+              <span
+                className="text-sm text-ink-soft"
+                title="No GitHub check runs against a build with no injected commit identity"
+              >
                 Not applicable
               </span>
             ) : version?.checkStatus === 'behind' ? (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#fbe9e7] px-2.5 py-1 text-sm text-[#b45309]">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent-soft px-2.5 py-1 text-sm text-accent">
                 version {version.availableVersion} available
                 {releaseUrl && (
-                  <a href={releaseUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-0.5 text-inherit underline">
+                  <a
+                    href={releaseUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-0.5 text-inherit underline"
+                  >
                     View release <IconExternalLink size={12} />
                   </a>
                 )}
               </span>
             ) : version?.checkStatus === 'upToDate' || version?.checkStatus === 'ahead' ? (
-              <span className="inline-flex items-center gap-1.5 text-sm text-[#3fa34d]">
-                <IconCircleCheck size={14} className="text-[#3fa34d]" />
+              <span className="inline-flex items-center gap-1.5 text-sm text-grass">
+                <IconCircleCheck size={14} className="text-grass" />
                 {version.checkStatus === 'ahead' ? 'Ahead of the latest release' : 'Up to date'}
               </span>
             ) : (
@@ -715,7 +839,11 @@ function QRCodeCanvas({ value, size }: { value: string; size: number }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   useEffect(() => {
     if (!canvasRef.current) return
-    void QRCode.toCanvas(canvasRef.current, value, { width: size, margin: 0, color: { dark: '#1a1a1a', light: '#ffffff' } })
+    void QRCode.toCanvas(canvasRef.current, value, {
+      width: size,
+      margin: 0,
+      color: { dark: '#1a1a1a', light: '#ffffff' },
+    })
   }, [value, size])
   return <canvas ref={canvasRef} width={size} height={size} className="block" />
 }
@@ -765,7 +893,10 @@ function ShareOnNetworkSection() {
     if (next === settings!.appliedShareOnNetwork) {
       setShowRestartBanner(false)
     } else {
-      restartBannerTimerRef.current = setTimeout(() => setShowRestartBanner(true), RESTART_BANNER_DELAY_MS)
+      restartBannerTimerRef.current = setTimeout(
+        () => setShowRestartBanner(true),
+        RESTART_BANNER_DELAY_MS,
+      )
     }
   }
 
@@ -775,7 +906,9 @@ function ShareOnNetworkSection() {
     restartMutation.mutate()
   }
 
-  const primaryAddress = settings.localIPs[0] ? `http://${settings.localIPs[0]}:${settings.port}` : null
+  const primaryAddress = settings.localIPs[0]
+    ? `http://${settings.localIPs[0]}:${settings.port}`
+    : null
 
   return (
     <SectionBlock
@@ -783,7 +916,7 @@ function ShareOnNetworkSection() {
       title="Share on Network"
       headerExtra={
         settings.appliedShareOnNetwork ? (
-          <span className="ml-2.5 inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-0.5 text-xs font-semibold text-accent">
+          <span className="ml-2.5 inline-flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent-soft px-2.5 py-0.5 text-xs font-semibold text-accent">
             <IconWifi size={12} />
             Shared on this network
           </span>
@@ -798,36 +931,32 @@ function ShareOnNetworkSection() {
       <div className="flex items-center justify-between gap-4 py-1">
         <div className="min-w-0">
           <p className="text-sm font-medium text-ink">Share on network</p>
-          <p className="mt-0.5 text-xs text-ink-soft">Off by default — turn on to reach Sonneck from another device.</p>
+          <p className="mt-0.5 text-xs text-ink-soft">
+            Off by default — turn on to reach Sonneck from another device.
+          </p>
         </div>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={settings.shareOnNetwork}
-          onClick={toggleShareOnNetwork}
-          className={`relative h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors ${
-            settings.shareOnNetwork ? 'bg-accent' : 'bg-border'
-          }`}
-        >
-          <span
-            className={`absolute top-0.5 size-5 rounded-full bg-white transition-all ${
-              settings.shareOnNetwork ? 'left-5' : 'left-0.5'
-            }`}
-          />
-        </button>
+        <Toggle
+          checked={settings.shareOnNetwork}
+          onChange={toggleShareOnNetwork}
+          label={<span className="sr-only">Share on network</span>}
+        />
       </div>
 
       {showRestartBanner && (
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-3.5 py-2.5">
           <p className="flex items-center gap-1.5 text-xs font-medium text-ink">
             <IconInfoCircle size={14} className="shrink-0 text-accent" />
-            Restart Sonneck to {settings.shareOnNetwork ? 'start sharing on this network' : 'stop sharing on this network'}.
+            Restart Sonneck to{' '}
+            {settings.shareOnNetwork
+              ? 'start sharing on this network'
+              : 'stop sharing on this network'}
+            .
           </p>
           <button
             type="button"
             onClick={handleRestartNow}
             disabled={restartMutation.isPending}
-            className="shrink-0 cursor-pointer rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-60"
+            className="shrink-0 cursor-pointer rounded-md bg-accent-fill px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {restartMutation.isPending ? 'Restarting…' : 'Restart Now'}
           </button>
@@ -841,7 +970,9 @@ function ShareOnNetworkSection() {
         >
           <div className="mt-3 flex flex-wrap items-center gap-3 rounded-lg bg-paper-sunken p-3">
             <div className="flex min-w-0 flex-1 items-center justify-between gap-3 rounded-md bg-paper-raised px-3.5 py-2.5">
-              <span className="truncate font-mono text-base font-semibold text-ink">{primaryAddress}</span>
+              <span className="truncate font-mono text-base font-semibold text-ink">
+                {primaryAddress}
+              </span>
               <button
                 type="button"
                 onClick={() => void copyToClipboard(primaryAddress)}
@@ -948,7 +1079,7 @@ function LibraryLocationModal({
             type="button"
             disabled={candidatePath === currentPath || saveMutation.isPending}
             onClick={() => saveMutation.mutate()}
-            className="cursor-pointer rounded-md bg-accent px-4 py-2 text-sm text-white enabled:hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-40"
+            className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 text-sm text-white enabled:hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {saveMutation.isPending ? 'Saving…' : 'Save changes'}
           </button>
@@ -973,14 +1104,17 @@ function LibraryLocationModal({
         </button>
       </div>
 
-      <div className="mt-4 flex flex-col gap-2" role="radiogroup" aria-label="What happens to your current library">
+      <div
+        className="mt-4 flex flex-col gap-2"
+        role="radiogroup"
+        aria-label="What happens to your current library"
+      >
         <label className="flex cursor-pointer items-start gap-2.5 rounded-md border border-border p-3 has-checked:border-accent has-checked:bg-accent-soft">
-          <input
-            type="radio"
+          <Radio
             name="move-existing"
             checked={moveExisting}
             onChange={() => setMoveExisting(true)}
-            className="mt-0.5 accent-accent"
+            className="mt-0.5"
           />
           <span>
             <span className="block text-sm font-medium text-ink">Move everything here</span>
@@ -990,25 +1124,29 @@ function LibraryLocationModal({
           </span>
         </label>
         <label className="flex cursor-pointer items-start gap-2.5 rounded-md border border-border p-3 has-checked:border-accent has-checked:bg-accent-soft">
-          <input
-            type="radio"
+          <Radio
             name="move-existing"
             checked={!moveExisting}
             onChange={() => setMoveExisting(false)}
-            className="mt-0.5 accent-accent"
+            className="mt-0.5"
           />
           <span>
-            <span className="block text-sm font-medium text-ink">Just use this folder going forward</span>
+            <span className="block text-sm font-medium text-ink">
+              Just use this folder going forward
+            </span>
             <span className="block text-xs text-ink-soft">
-              Nothing moves — point Sonneck at the new folder as-is (useful for an already-populated or empty folder).
+              Nothing moves — point Sonneck at the new folder as-is (useful for an already-populated
+              or empty folder).
             </span>
           </span>
         </label>
       </div>
 
       {saveMutation.isError && (
-        <p className="mt-3 text-xs text-red-700">
-          {saveMutation.error instanceof ApiError ? saveMutation.error.message : 'Something went wrong.'}
+        <p className="mt-3 text-xs text-danger">
+          {saveMutation.error instanceof ApiError
+            ? saveMutation.error.message
+            : 'Something went wrong.'}
         </p>
       )}
       <p className="mt-3 flex items-start gap-1.5 text-xs text-ink-soft">
@@ -1020,7 +1158,10 @@ function LibraryLocationModal({
 }
 
 function LibrarySettingsSection() {
-  const { data: settings } = useQuery({ queryKey: ['admin', 'library-settings'], queryFn: getLibrarySettings })
+  const { data: settings } = useQuery({
+    queryKey: ['admin', 'library-settings'],
+    queryFn: getLibrarySettings,
+  })
   const queryClient = useQueryClient()
   const mutation = useMutation({
     mutationFn: updateLibrarySettings,
@@ -1039,7 +1180,10 @@ function LibrarySettingsSection() {
   })
   const [libraryLocationModalOpen, setLibraryLocationModalOpen] = useState(false)
   const restartMutation = useMutation({ mutationFn: restartNativeApp })
-  const { data: counts } = useQuery({ queryKey: ['admin', 'library-counts'], queryFn: getLibraryCounts })
+  const { data: counts } = useQuery({
+    queryKey: ['admin', 'library-counts'],
+    queryFn: getLibraryCounts,
+  })
 
   function patch(partial: Partial<UpdateLibrarySettingsRequest>) {
     if (!settings) return
@@ -1063,7 +1207,10 @@ function LibrarySettingsSection() {
             { label: 'Books', value: counts?.books ?? 0 },
             { label: 'People', value: counts?.people ?? 0 },
           ].map((stat) => (
-            <div key={stat.label} className="flex-1 rounded-md border border-border py-3 text-center">
+            <div
+              key={stat.label}
+              className="flex-1 rounded-md border border-border py-3 text-center"
+            >
               <p className="font-display text-2xl font-bold text-ink">{stat.value}</p>
               <p className="mt-0.5 text-xs tracking-wide text-ink-soft uppercase">{stat.label}</p>
             </div>
@@ -1077,7 +1224,9 @@ function LibrarySettingsSection() {
           control={
             <input
               defaultValue={settings.backupCron}
-              onBlur={(event) => event.target.value.trim() && patch({ backupCron: event.target.value.trim() })}
+              onBlur={(event) =>
+                event.target.value.trim() && patch({ backupCron: event.target.value.trim() })
+              }
               className="w-40 rounded-md border border-border bg-paper-raised px-2.5 py-1.5 text-sm text-ink"
             />
           }
@@ -1107,7 +1256,9 @@ function LibrarySettingsSection() {
           control={
             <select
               value={settings.logLevel}
-              onChange={(event) => patch({ logLevel: event.target.value as UpdateLibrarySettingsRequest['logLevel'] })}
+              onChange={(event) =>
+                patch({ logLevel: event.target.value as UpdateLibrarySettingsRequest['logLevel'] })
+              }
               className="rounded-md border border-border bg-paper-raised px-2.5 py-1.5 text-sm text-ink"
             >
               <option value="debug">debug</option>
@@ -1153,7 +1304,9 @@ function LibrarySettingsSection() {
           <div className="flex items-center justify-between gap-4 py-2.5">
             <div className="min-w-0">
               <p className="text-sm font-medium text-ink">Library location</p>
-              <p className="mt-0.5 truncate font-mono text-xs text-ink-soft">{nativeSettings.libraryPath}</p>
+              <p className="mt-0.5 truncate font-mono text-xs text-ink-soft">
+                {nativeSettings.libraryPath}
+              </p>
             </div>
             <div className="shrink-0">
               <button
@@ -1178,14 +1331,18 @@ function LibrarySettingsSection() {
             type="button"
             onClick={() => restartMutation.mutate()}
             disabled={restartMutation.isPending}
-            className="shrink-0 cursor-pointer rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-60"
+            className="shrink-0 cursor-pointer rounded-md bg-accent-fill px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {restartMutation.isPending ? 'Restarting…' : 'Restart Now'}
           </button>
         </div>
       )}
 
-      <SecurityChangeModal open={securityModalOpen} onClose={() => setSecurityModalOpen(false)} currentMethod={me.authMethod} />
+      <SecurityChangeModal
+        open={securityModalOpen}
+        onClose={() => setSecurityModalOpen(false)}
+        currentMethod={me.authMethod}
+      />
       {isNative && nativeSettings && (
         <LibraryLocationModal
           open={libraryLocationModalOpen}
@@ -1223,7 +1380,8 @@ export function AdminPage() {
       if (event.key.toLowerCase() !== 'm') return
       const target = event.target as HTMLElement | null
       const tag = target?.tagName
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target?.isContentEditable) return
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target?.isContentEditable)
+        return
       event.preventDefault()
       navigate('/mockup')
     }
@@ -1242,7 +1400,11 @@ export function AdminPage() {
 
         <div className="flex flex-wrap gap-1.5 rounded-lg border border-border bg-paper-raised p-4">
           {JUMP_LINKS.filter((link) => !link.nativeOnly || isNative).map((link) => (
-            <a key={link.id} href={`#${link.id}`} className="rounded-full bg-paper-sunken px-2.5 py-1 text-xs text-ink-soft hover:bg-accent-soft hover:text-accent">
+            <a
+              key={link.id}
+              href={`#${link.id}`}
+              className="rounded-full bg-paper-sunken px-2.5 py-1 text-xs text-ink-soft hover:bg-accent-soft hover:text-accent"
+            >
               {link.label}
             </a>
           ))}

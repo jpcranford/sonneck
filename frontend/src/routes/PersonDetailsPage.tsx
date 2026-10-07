@@ -194,7 +194,7 @@ function WorkThumbnail({ piece, className }: { piece: Piece; className: string }
         src={getPieceThumbnailUrl(piece.id, piece.thumbnailPage)}
         alt=""
         loading="lazy"
-        className="h-full w-full object-cover object-top"
+        className="score-page h-full w-full object-cover object-top"
       />
     </div>
   )
@@ -221,7 +221,7 @@ function WorkGrid({ pieces, personId }: { pieces: Piece[]; personId: number }) {
               className="aspect-[180/132] rounded-none border-0 border-b"
             />
             <div className="flex flex-col gap-0.5 px-2 py-1.5">
-              <p className="flex min-w-0 items-center gap-1 font-display text-[0.8rem] font-medium text-ink">
+              <p className="flex min-w-0 items-center gap-1 font-display text-xs font-medium text-ink">
                 <span className="truncate">{workTitle(piece)}</span>
                 {piece.favorite && (
                   <span className="shrink-0 text-accent" title="Favorite">
@@ -244,7 +244,7 @@ function WorkGrid({ pieces, personId }: { pieces: Piece[]; personId: number }) {
 function WorkList({ pieces, personId }: { pieces: Piece[]; personId: number }) {
   return (
     <div className="flex flex-col">
-      <div className="grid grid-cols-[96px_1fr_56px] gap-3 px-1.5 pb-2.5 text-[0.7rem] font-medium tracking-wide text-ink-soft uppercase">
+      <div className="grid grid-cols-[96px_1fr_56px] gap-3 px-1.5 pb-2.5 text-xs font-medium tracking-wide text-ink-soft uppercase">
         <div className="text-center">Year</div>
         <div>Title</div>
         <div className={THUMB_HIDE_CLASS} />
@@ -261,7 +261,7 @@ function WorkList({ pieces, personId }: { pieces: Piece[]; personId: number }) {
                 {yearWrittenLabel(piece)}
               </div>
               <div className="min-w-0">
-                <p className="flex flex-wrap items-center gap-1.5 font-display text-[0.92rem] font-medium text-ink">
+                <p className="flex flex-wrap items-center gap-1.5 font-display text-sm font-medium text-ink">
                   {workTitle(piece)}
                   {piece.favorite && (
                     <span className="text-accent" title="Favorite">
@@ -343,7 +343,7 @@ function SplitPeopleModal({
             type="button"
             onClick={handleClose}
             disabled={isSubmitting}
-            className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent disabled:cursor-default disabled:opacity-45"
+            className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-ink hover:border-accent disabled:cursor-default disabled:opacity-45"
           >
             Cancel
           </button>
@@ -351,7 +351,7 @@ function SplitPeopleModal({
             type="button"
             onClick={handleConfirm}
             disabled={replacements.length === 0 || isSubmitting}
-            className="cursor-pointer rounded-md bg-accent px-4 py-2 font-display text-white hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-white hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isSubmitting ? 'Splitting…' : 'Split Person'}
           </button>
@@ -556,7 +556,7 @@ export function PersonDetailsPage() {
               disabled={!canDelete || deleteMutation.isPending}
               aria-label="Delete Person"
               title={canDelete ? 'Delete Person' : "You don't have permission to delete"}
-              className="flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-red-700 hover:border-red-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border"
+              className="flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-danger hover:border-danger disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border"
             >
               <IconTrash size={16} />
             </button>
@@ -566,7 +566,7 @@ export function PersonDetailsPage() {
               onClick={() => setSplitOpen(true)}
               disabled={!canEdit}
               title={canEdit ? undefined : "You don't have permission to edit"}
-              className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-sm whitespace-nowrap text-ink hover:border-accent disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border"
+              className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink hover:border-accent disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border"
             >
               <IconArrowsSplit2 size={16} />
               <span className="max-[420px]:hidden">Split People</span>
@@ -577,7 +577,7 @@ export function PersonDetailsPage() {
               disabled={!canEdit}
               aria-label="Edit Person"
               title={canEdit ? undefined : "You don't have permission to edit"}
-              className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-sm whitespace-nowrap text-ink hover:border-accent disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border max-[360px]:w-[38px] max-[360px]:px-0"
+              className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink hover:border-accent disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border max-[360px]:w-[38px] max-[360px]:px-0"
             >
               <IconEditFilled size={16} />
               <span className="max-[360px]:hidden">Edit Person</span>
@@ -629,7 +629,7 @@ export function PersonDetailsPage() {
                     onClick={() => setUploadPortraitOpen(true)}
                     aria-label="Change portrait"
                     title="Change portrait"
-                    className="absolute right-1.5 bottom-1.5 flex size-8 cursor-pointer items-center justify-center rounded-full border-2 border-paper-raised bg-ink text-paper shadow-md hover:bg-ink/85"
+                    className="absolute right-1.5 bottom-1.5 flex size-8 cursor-pointer items-center justify-center rounded-full border-2 border-paper-raised bg-scrim text-white shadow-md hover:bg-scrim/85"
                   >
                     <IconCameraFilled size={14} />
                   </button>
@@ -638,23 +638,21 @@ export function PersonDetailsPage() {
 
               <div className="min-w-0 flex-1">
                 <div className="mb-2">
-                  <h1 className="font-display text-[1.35rem] font-medium text-ink">
-                    {person.name}
-                  </h1>
+                  <h1 className="font-display text-2xl font-medium text-ink">{person.name}</h1>
                   {formatLifespan(person) && (
-                    <p className="text-[0.92rem] text-ink-soft">{formatLifespan(person)}</p>
+                    <p className="text-base text-ink-soft">{formatLifespan(person)}</p>
                   )}
                 </div>
 
                 {person.bio && (
-                  <div className="max-w-[60ch] text-[0.88rem] text-ink-soft">
+                  <div className="max-w-[60ch] text-sm text-ink-soft">
                     <MarkdownText>{person.bio}</MarkdownText>
                   </div>
                 )}
 
                 {bookCredits && bookCredits.length > 0 && (
                   <div className="mt-3.5">
-                    <dt className="mb-1.5 text-[0.7rem] tracking-wide text-ink-soft uppercase">
+                    <dt className="mb-1.5 text-xs tracking-wide text-ink-soft uppercase">
                       Also credited directly on {bookCredits.length}{' '}
                       {bookCredits.length === 1 ? 'book' : 'books'}
                     </dt>
@@ -663,18 +661,29 @@ export function PersonDetailsPage() {
                         <Link
                           key={book.id}
                           to={`/books/${book.id}`}
-                          className="flex items-center gap-2 rounded-full border border-border bg-paper-sunken py-[7px] pr-4 pl-[9px] text-xs text-ink hover:border-accent"
+                          className="flex items-start gap-2 rounded-[18px] border border-border bg-paper-sunken py-[7px] pr-4 pl-[9px] text-xs text-ink hover:border-accent"
                         >
                           <span
                             className="flex size-5 shrink-0 items-center justify-center rounded-full text-white"
-                            style={{ backgroundColor: PALETTE[index % PALETTE.length] }}
+                            style={{
+                              backgroundColor: PALETTE[index % PALETTE.length],
+                            }}
                           >
                             <IconMusic size={10} />
                           </span>
-                          <span className="font-medium">{book.bookTitle}</span>
-                          <span className="text-ink-soft">
-                            as{' '}
-                            {book.composer.some((p) => p.id === personId) ? 'Composer' : 'Arranger'}
+                          {/* One text run, so on a narrow screen the role wraps
+                              on after the title like a sentence instead of the
+                              two splitting into side-by-side columns. leading-5
+                              matches the 20px icon, so a one-line chip stays
+                              centred; 18px corners keep it a pill. */}
+                          <span className="min-w-0 leading-5">
+                            <span className="font-medium">{book.bookTitle}</span>{' '}
+                            <span className="text-ink-soft">
+                              as{' '}
+                              {book.composer.some((p) => p.id === personId)
+                                ? 'Composer'
+                                : 'Arranger'}
+                            </span>
                           </span>
                         </Link>
                       ))}
@@ -687,7 +696,7 @@ export function PersonDetailsPage() {
 
           <div className="bg-paper">
             <div className="flex flex-wrap items-center justify-between gap-4 px-6 pb-4">
-              <h2 className="font-display text-[0.95rem] font-semibold text-ink-soft">
+              <h2 className="font-display text-base font-bold text-ink-soft">
                 {works ? `${works.length} ${works.length === 1 ? 'piece' : 'pieces'}` : '…'}
               </h2>
               <div className="flex shrink-0 items-center gap-1 rounded-md border border-border p-0.5">
@@ -719,8 +728,8 @@ export function PersonDetailsPage() {
               {worksLoading && <p className="text-ink-soft">Loading…</p>}
               {works && works.length === 0 && (
                 <div className="py-6 text-center">
-                  <p className="font-display text-ink">No pieces yet</p>
-                  <p className="mt-1 text-sm text-ink-soft">
+                  <p className="font-display font-medium text-ink-muted">No pieces yet</p>
+                  <p className="mt-1 text-sm italic text-ink-muted">
                     Pieces and books crediting this person will appear here.
                   </p>
                 </div>

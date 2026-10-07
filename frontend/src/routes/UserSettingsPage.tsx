@@ -15,6 +15,7 @@ import {
   IconTrash,
 } from '@tabler/icons-react'
 import { Modal } from '../components/Modal'
+import { Radio } from '../components/Radio'
 import { Toggle } from '../components/Toggle'
 import { sortPracticeStatuses } from '../lib/practiceStatusOrder'
 import { usePageTitle } from '../lib/usePageTitle'
@@ -98,7 +99,7 @@ function SettingsRow({
         <p className="flex items-center gap-2 text-sm font-medium text-ink">
           {label}
           {soon && (
-            <span className="shrink-0 rounded-full bg-ink-soft px-1.5 py-px text-[0.6rem] tracking-wide text-white uppercase">
+            <span className="shrink-0 rounded-full bg-ink-soft px-1.5 py-px text-[0.6rem] tracking-wide text-paper uppercase">
               Soon
             </span>
           )}
@@ -110,55 +111,46 @@ function SettingsRow({
   )
 }
 
+const THEME_OPTIONS: {
+  key: UserSettings['themePreference']
+  label: string
+  icon: typeof IconSun
+}[] = [
+  { key: 'light', label: 'Light', icon: IconSun },
+  { key: 'dark', label: 'Dark', icon: IconMoon },
+  { key: 'system', label: 'System', icon: IconDeviceDesktop },
+]
+
 function ThemeControl({
   theme,
   onChange,
   disabled,
 }: {
   theme: UserSettings['themePreference']
-  onChange: (theme: 'light' | 'system') => void
+  onChange: (theme: UserSettings['themePreference']) => void
   disabled: boolean
 }) {
   return (
     <div className="flex rounded-md border border-border">
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => onChange('light')}
-        className={`flex cursor-pointer items-center gap-1.5 rounded-l-md border-r border-border px-2.5 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50 ${
-          theme === 'light'
-            ? 'bg-accent text-white'
-            : 'bg-paper-raised text-ink-soft hover:bg-paper-sunken'
-        }`}
-      >
-        <IconSun size={14} />
-        Light
-      </button>
-      <button
-        type="button"
-        disabled
-        title="Coming soon"
-        className="relative flex cursor-not-allowed items-center gap-1.5 border-r border-border bg-paper-raised px-2.5 py-1.5 text-sm text-ink-soft/50"
-      >
-        <IconMoon size={14} />
-        Dark
-        <span className="absolute -top-2 -right-0.5 rounded-full bg-ink-soft px-1 py-px text-[0.55rem] tracking-wide text-white uppercase">
-          Soon
-        </span>
-      </button>
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => onChange('system')}
-        className={`flex cursor-pointer items-center gap-1.5 rounded-r-md px-2.5 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50 ${
-          theme === 'system'
-            ? 'bg-accent text-white'
-            : 'bg-paper-raised text-ink-soft hover:bg-paper-sunken'
-        }`}
-      >
-        <IconDeviceDesktop size={14} />
-        System
-      </button>
+      {THEME_OPTIONS.map(({ key, label, icon: Icon }, index) => (
+        <button
+          key={key}
+          type="button"
+          disabled={disabled}
+          aria-pressed={theme === key}
+          onClick={() => onChange(key)}
+          className={`flex cursor-pointer items-center gap-1.5 px-2.5 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50 ${
+            index === 0 ? 'rounded-l-md' : ''
+          } ${index === THEME_OPTIONS.length - 1 ? 'rounded-r-md' : 'border-r border-border'} ${
+            theme === key
+              ? 'bg-accent-fill text-white'
+              : 'bg-paper-raised text-ink-soft hover:bg-paper-hover'
+          }`}
+        >
+          <Icon size={14} />
+          {label}
+        </button>
+      ))}
     </div>
   )
 }
@@ -271,7 +263,7 @@ function EditableUserList({
                 })
               }
               aria-label={`Delete ${item.name || 'this entry'}`}
-              className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-ink-soft hover:bg-red-50 hover:text-red-700"
+              className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-ink-soft hover:bg-danger-soft hover:text-danger"
             >
               <IconTrash size={14} />
             </button>
@@ -301,7 +293,7 @@ function EditableUserList({
           onClick={addPending}
           aria-label={`Add ${noun}`}
           title={`Add ${noun}`}
-          className="mt-3 flex w-full cursor-pointer items-center justify-center text-[#9d9892] hover:text-accent"
+          className="mt-3 flex w-full cursor-pointer items-center justify-center text-ink-faint hover:text-accent"
         >
           <IconCircleDashedPlus size={22} />
         </button>
@@ -311,7 +303,7 @@ function EditableUserList({
           title={`Adding a new ${noun} is coming soon`}
         >
           <IconCircleDashedPlus size={22} className="text-ink-soft/40" />
-          <span className="rounded-full bg-ink-soft px-1.5 py-px text-[0.6rem] tracking-wide text-white uppercase">
+          <span className="rounded-full bg-ink-soft px-1.5 py-px text-[0.6rem] tracking-wide text-paper uppercase">
             Soon
           </span>
         </div>
@@ -401,12 +393,12 @@ function ChangePasswordModal({ open, onClose }: { open: boolean; onClose: () => 
           placeholder="Confirm new password"
         />
         {confirmPassword.length > 0 && !passwordsMatch && (
-          <p className="text-xs text-red-700">
+          <p className="text-xs text-danger">
             {newPassword.length < 8 ? 'At least 8 characters.' : "Passwords don't match."}
           </p>
         )}
         {mutation.isError && (
-          <p className="text-xs text-red-700">
+          <p className="text-xs text-danger">
             {mutation.error instanceof ApiError ? mutation.error.message : 'Something went wrong.'}
           </p>
         )}
@@ -423,7 +415,7 @@ function ChangePasswordModal({ open, onClose }: { open: boolean; onClose: () => 
           type="button"
           disabled={!canSubmit}
           onClick={() => mutation.mutate()}
-          className="cursor-pointer rounded-md bg-accent px-4 py-2 text-sm text-white hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-40"
+          className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 text-sm text-white hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {mutation.isPending ? 'Saving…' : 'Change Password'}
         </button>
@@ -574,6 +566,19 @@ export function UserSettingsPage() {
               />
             }
           />
+          <SettingsRow
+            label="Dark Mode Scores"
+            help="While the dark theme is on, show sheet music as light notes on a dark page, easier on the eyes in a dim room."
+            control={
+              <Toggle
+                checked={settings?.darkModeScores ?? false}
+                onChange={(checked) => patchSettings({ darkModeScores: checked })}
+                label=""
+                id="dark-mode-scores"
+                disabled={settingsLoading}
+              />
+            }
+          />
         </SettingsCard>
 
         <SettingsCard title="Library">
@@ -669,7 +674,7 @@ export function UserSettingsPage() {
                 (deleteMode === 'merge' && mergeTargetId === null) || deleteMutation.isPending
               }
               onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget)}
-              className="cursor-pointer rounded-md bg-red-700 px-4 py-2 text-sm text-white hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-40"
+              className="cursor-pointer rounded-md bg-danger-fill px-4 py-2 text-sm text-white hover:bg-danger-fill-strong disabled:cursor-not-allowed disabled:opacity-40"
             >
               {deleteMutation.isPending
                 ? 'Working…'
@@ -704,11 +709,10 @@ export function UserSettingsPage() {
                       : 'border-border bg-paper-raised hover:border-accent/50'
                   }`}
                 >
-                  <input
-                    type="radio"
+                  <Radio
                     checked={deleteMode === 'merge'}
                     onChange={() => setDeleteMode('merge')}
-                    className="mt-1 accent-accent"
+                    className="mt-1"
                   />
                   <div className="min-w-0 flex-1">
                     <p className="font-display font-medium text-ink">
@@ -742,11 +746,10 @@ export function UserSettingsPage() {
                     : 'border-border bg-paper-raised hover:border-accent/50'
                 }`}
               >
-                <input
-                  type="radio"
+                <Radio
                   checked={deleteMode === 'outright'}
                   onChange={() => setDeleteMode('outright')}
-                  className="mt-1 accent-accent"
+                  className="mt-1"
                 />
                 <div className="min-w-0 flex-1">
                   <p className="font-display font-medium text-ink">Delete outright</p>

@@ -346,20 +346,20 @@ function PageLightbox({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/80 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/80 backdrop-blur-sm"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose()
       }}
     >
       {/* Upper-left of the popup itself, not the viewport corner — direct
-          instruction. Same chip treatment (bg-ink/80 + blur, white icon)
+          instruction. Same chip treatment (bg-scrim/80 + blur, white icon)
           as the page-cycle capsule below, so the whole feature reads as
           one piece. */}
       <button
         type="button"
         onClick={onClose}
         aria-label="Close"
-        className="absolute top-6 left-6 flex size-10 items-center justify-center rounded-full bg-ink/80 text-white shadow-md backdrop-blur-sm hover:bg-white/15 focus-visible:outline-accent-on-dark"
+        className="absolute top-6 left-6 flex size-10 items-center justify-center rounded-full bg-scrim/80 text-white shadow-md backdrop-blur-sm hover:bg-white/15 focus-visible:outline-accent-on-dark"
       >
         <IconXFilled size={20} />
       </button>
@@ -368,7 +368,7 @@ function PageLightbox({
           page's affordances are tap-triggered, never hover-dependent) —
           without this, "click the image to zoom" has no way to announce
           itself on a touch device that has no hover state at all. */}
-      <div className="pointer-events-none absolute top-6 right-6 rounded-full bg-ink/80 px-3 py-1.5 text-xs text-white/90 shadow-md backdrop-blur-sm">
+      <div className="pointer-events-none absolute top-6 right-6 rounded-full bg-scrim/80 px-3 py-1.5 text-xs text-white/90 shadow-md backdrop-blur-sm">
         Click image to {zoom === 'fit' ? 'zoom in' : 'fit to screen'}
       </div>
 
@@ -397,7 +397,7 @@ function PageLightbox({
           overlay so you don't have to close the lightbox just to look at
           an adjacent page. */}
       {pageCount > 1 && (
-        <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-ink/80 px-2 py-1 shadow-md backdrop-blur-sm">
+        <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-scrim/80 px-2 py-1 shadow-md backdrop-blur-sm">
           <button
             type="button"
             onClick={onPrev}
@@ -513,7 +513,7 @@ function ActionButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`flex cursor-pointer items-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-sm whitespace-nowrap text-ink hover:border-accent disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border ${className}`}
+      className={`flex cursor-pointer items-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink hover:border-accent disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border ${className}`}
     >
       {icon}
       {label}
@@ -632,7 +632,7 @@ export function PieceDetailsSample() {
               destructive action already reachable via right-click on a
               library card (PieceContextMenu's "Delete Piece"), also given a
               direct entry point from the page itself. Permanently red
-              (text-red-700, matching ContextMenu's own destructive-item
+              (text-danger, matching ContextMenu's own destructive-item
               color exactly — that color is always-on there too, not a
               hover-only reveal), not red-on-hover. Disabled here like
               Random Piece/Edit Piece below: this fixture has nothing real
@@ -642,7 +642,7 @@ export function PieceDetailsSample() {
             disabled
             aria-label="Delete Piece"
             title="Delete Piece"
-            className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-red-700 hover:border-red-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border"
+            className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-danger hover:border-danger disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border"
           >
             <IconTrash size={18} />
           </button>
@@ -769,7 +769,7 @@ export function PieceDetailsSample() {
                 edge. */}
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute top-2.5 right-2.5 flex items-center justify-center rounded-full bg-ink/80 p-1.5 text-white shadow-md backdrop-blur-sm"
+              className="pointer-events-none absolute top-2.5 right-2.5 flex items-center justify-center rounded-full bg-scrim/80 p-1.5 text-white shadow-md backdrop-blur-sm"
             >
               <IconArrowsDiagonal size={14} />
             </div>
@@ -778,7 +778,7 @@ export function PieceDetailsSample() {
                 preview itself rather than as a separate row underneath —
                 kept in sync with PiecePage.tsx's real version. */}
             {piece.pageCount > 1 && (
-              <div className="absolute bottom-2.5 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-ink/80 px-2 py-1 shadow-md backdrop-blur-sm">
+              <div className="absolute bottom-2.5 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-scrim/80 px-2 py-1 shadow-md backdrop-blur-sm">
                 <button
                   type="button"
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
@@ -834,7 +834,7 @@ export function PieceDetailsSample() {
               message="Coming soon — will play through the future Sheet Viewer."
               ariaLabel="Play (coming soon with the Sheet Viewer)"
               showPointerCursor={false}
-              triggerClassName="flex items-center gap-2 rounded-md bg-accent px-4 py-2 font-display text-sm text-white opacity-50"
+              triggerClassName="flex items-center gap-2 rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-sm text-white opacity-50"
             >
               <IconPlayerPlay size={16} />
               Play
@@ -864,7 +864,7 @@ export function PieceDetailsSample() {
               <div className="flex">
                 <button
                   type="button"
-                  className="relative flex cursor-pointer items-center gap-2 rounded-l-md border border-border bg-paper-raised px-4 py-2 font-display text-sm text-ink transition-colors hover:z-10 hover:border-accent"
+                  className="relative flex cursor-pointer items-center gap-2 rounded-l-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm text-ink transition-colors hover:z-10 hover:border-accent"
                 >
                   <IconDownload size={16} />
                   Download PDF
@@ -961,7 +961,7 @@ export function PieceDetailsSample() {
                 <button
                   type="button"
                   onClick={simulateReplace}
-                  className="rounded-md bg-accent px-3 py-1 text-white hover:bg-accent/90"
+                  className="rounded-md bg-accent-fill px-3 py-1 text-white hover:bg-accent-fill/90"
                 >
                   Choose File…
                 </button>
@@ -972,7 +972,7 @@ export function PieceDetailsSample() {
             <div className="flex flex-col items-center gap-2 rounded-md border border-border bg-accent-soft/40 px-4 py-2.5">
               <div className="h-2 w-full max-w-xs overflow-hidden rounded-full bg-border">
                 <div
-                  className="h-full rounded-full bg-accent transition-[width]"
+                  className="h-full rounded-full bg-accent-fill transition-[width]"
                   style={{ width: `${Math.round(replaceProgress)}%` }}
                 />
               </div>
@@ -1068,7 +1068,7 @@ export function PieceDetailsSample() {
 
             <div className="mt-1 flex flex-wrap items-center gap-2">
               {piece.practiceStatus && (
-                <span className="flex items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent">
+                <span className="flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent">
                   <PracticeStatusIcon status={piece.practiceStatus} size={13} />
                   {piece.practiceStatus}
                 </span>
@@ -1076,7 +1076,7 @@ export function PieceDetailsSample() {
               {piece.userTags.map((tag) => (
                 <span
                   key={tag.id}
-                  className="rounded-full bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent"
+                  className="rounded-full border border-accent/30 bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent"
                 >
                   {tag.name}
                 </span>
@@ -1189,7 +1189,7 @@ export function PieceDetailsSample() {
                     rel="noreferrer"
                     aria-label="View on IMSLP"
                     // Solid pre-blend, not opacity — overlapping icon strokes would re-blend unevenly under real translucency.
-                    className="text-[#9c968f] hover:text-ink-soft"
+                    className="text-ink-faint hover:text-ink-soft"
                   >
                     <IconExternalLink size={13} />
                   </a>
@@ -1242,7 +1242,7 @@ export function PieceDetailsSample() {
                   type="button"
                   onClick={() => setTempoOpen((o) => !o)}
                   // Solid pre-blend (icon + label share one color).
-                  className="flex cursor-pointer items-center gap-1 text-xs text-[#847d75] hover:text-ink-soft"
+                  className="flex cursor-pointer items-center gap-1 text-xs text-ink-muted hover:text-ink-soft"
                 >
                   <IconChevronRight
                     size={12}
@@ -1357,7 +1357,7 @@ export function PieceDetailsSample() {
               type="button"
               onClick={() => setAdvancedOpen((o) => !o)}
               // Solid pre-blend (icon + label share one color).
-              className="flex w-fit cursor-pointer items-center gap-1 text-[#847d75] hover:text-ink-soft"
+              className="flex w-fit cursor-pointer items-center gap-1 text-ink-muted hover:text-ink-soft"
             >
               <IconChevronRight
                 size={13}
@@ -1375,7 +1375,7 @@ export function PieceDetailsSample() {
                       onClick={(event) => handleCopy(piece.fileHash, event)}
                       aria-label="Copy full file hash"
                       // Solid pre-blend, not opacity — overlapping icon strokes would re-blend unevenly under real translucency.
-                      className="cursor-pointer text-[#aca7a1] hover:text-ink-soft"
+                      className="cursor-pointer text-ink-faint hover:text-ink-soft"
                     >
                       <IconCopy size={12} />
                     </button>
@@ -1429,7 +1429,7 @@ export function PieceDetailsSample() {
 
       {copyToast && (
         <div
-          className="pointer-events-none fixed z-50 -translate-x-1/2 -translate-y-[140%] rounded-md bg-ink px-2 py-1 text-xs text-paper shadow-md"
+          className="pointer-events-none fixed z-50 -translate-x-1/2 -translate-y-[140%] rounded-md bg-scrim px-2 py-1 text-xs text-white shadow-md"
           style={{ left: copyToast.x, top: copyToast.y }}
         >
           Copied!

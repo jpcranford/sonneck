@@ -17,27 +17,39 @@ import type { CopyrightStatus } from '../api/types'
 // Option A (bare icon, no circle chip) + Grass green — both locked in the
 // design artifact §5. Likely Public Domain/In Copyright use a neutral tone
 // matching this page's other bare icons (e.g. the IMSLP external-link
-// icon's own #9d9892).
+// icon's own ink-faint).
 
-// Literal, static Tailwind arbitrary-value classes (not built via string
+// Literal, static Tailwind classes (not built via string
 // interpolation) — Tailwind's JIT scanner needs the full class string to
 // appear verbatim in the source, so these are declared once here and
-// referenced by key, never assembled at runtime from just the hex.
-const GRASS_ICON_CLASS = 'text-[#3fa34d]'
-const NEUTRAL_ICON_CLASS = 'text-[#9d9892]'
+// referenced by key, never assembled at runtime.
+const GRASS_ICON_CLASS = 'text-grass'
+const NEUTRAL_ICON_CLASS = 'text-ink-faint'
 
 export const COPYRIGHT_BADGE_META: Record<
   CopyrightStatus,
   { label: string; icon: typeof IconShieldCheck; colorClass: string }
 > = {
-  publicDomain: { label: 'In Public Domain', icon: IconShieldCheckFilled, colorClass: GRASS_ICON_CLASS },
-  likelyPublicDomain: { label: 'Likely Public Domain', icon: IconShieldCheck, colorClass: NEUTRAL_ICON_CLASS },
+  publicDomain: {
+    label: 'In Public Domain',
+    icon: IconShieldCheckFilled,
+    colorClass: GRASS_ICON_CLASS,
+  },
+  likelyPublicDomain: {
+    label: 'Likely Public Domain',
+    icon: IconShieldCheck,
+    colorClass: NEUTRAL_ICON_CLASS,
+  },
   // US renewal follow-up — a step below likelyPublicDomain's
   // own confidence: the PD conclusion here rests on an assumed (not
   // confirmed) non-renewal default for a 1923-1963 en-US copyright year, so
   // it gets its own weaker-worded label/icon rather than borrowing
   // likelyPublicDomain's — see CopyrightStatus's own doc comment (api/types.ts).
-  possiblyPublicDomain: { label: 'Possibly Public Domain', icon: IconShieldQuestion, colorClass: NEUTRAL_ICON_CLASS },
+  possiblyPublicDomain: {
+    label: 'Possibly Public Domain',
+    icon: IconShieldQuestion,
+    colorClass: NEUTRAL_ICON_CLASS,
+  },
   inCopyright: { label: 'In Copyright', icon: IconCopyright, colorClass: NEUTRAL_ICON_CLASS },
   copyleft: { label: 'Copyleft', icon: IconCopyleftFilled, colorClass: GRASS_ICON_CLASS },
 }
@@ -55,9 +67,13 @@ export function copyrightTooltipText(status: CopyrightStatus, expiryYear: number
     case 'publicDomain':
       return expiryYear != null ? `Public domain as of ${expiryYear}` : 'Public domain'
     case 'likelyPublicDomain':
-      return expiryYear != null ? `Likely public domain as of ${expiryYear}` : 'Likely public domain'
+      return expiryYear != null
+        ? `Likely public domain as of ${expiryYear}`
+        : 'Likely public domain'
     case 'possiblyPublicDomain':
-      return expiryYear != null ? `Possibly public domain as of ${expiryYear}` : 'Possibly public domain'
+      return expiryYear != null
+        ? `Possibly public domain as of ${expiryYear}`
+        : 'Possibly public domain'
     case 'inCopyright':
       return 'In copyright'
     case 'copyleft':

@@ -3,7 +3,7 @@ import {
   IconArrowLeft,
   IconArrowRight,
   IconBrandDocker,
-  IconCircleCheckFilled,
+  IconCheck,
   IconDeviceDesktop,
   IconExternalLink,
   IconEye,
@@ -38,7 +38,13 @@ const NATIVE_FIXTURE_PATHS = [
   '/Volumes/Archive/Sonneck',
 ]
 
-function RuntimeModeToggle({ mode, onChange }: { mode: RuntimeMode; onChange: (m: RuntimeMode) => void }) {
+function RuntimeModeToggle({
+  mode,
+  onChange,
+}: {
+  mode: RuntimeMode
+  onChange: (m: RuntimeMode) => void
+}) {
   return (
     <div className="fixed top-3 right-3 z-10 flex items-center gap-2 rounded-md border border-dashed border-border bg-paper-raised px-2.5 py-1.5 text-xs text-ink-soft shadow-sm">
       <span>Preview as</span>
@@ -47,7 +53,7 @@ function RuntimeModeToggle({ mode, onChange }: { mode: RuntimeMode; onChange: (m
           type="button"
           onClick={() => onChange('docker')}
           className={`flex cursor-pointer items-center gap-1 px-2 py-1 ${
-            mode === 'docker' ? 'bg-accent text-white' : 'bg-paper hover:bg-paper-sunken'
+            mode === 'docker' ? 'bg-accent-fill text-white' : 'bg-paper hover:bg-paper-hover'
           }`}
         >
           <IconBrandDocker size={13} />
@@ -57,7 +63,7 @@ function RuntimeModeToggle({ mode, onChange }: { mode: RuntimeMode; onChange: (m
           type="button"
           onClick={() => onChange('native')}
           className={`flex cursor-pointer items-center gap-1 px-2 py-1 ${
-            mode === 'native' ? 'bg-accent text-white' : 'bg-paper hover:bg-paper-sunken'
+            mode === 'native' ? 'bg-accent-fill text-white' : 'bg-paper hover:bg-paper-hover'
           }`}
         >
           <IconDeviceDesktop size={13} />
@@ -92,7 +98,7 @@ function WizardChrome({ step, onBack }: { step: number; onBack: () => void }) {
             <span
               key={s}
               className={`h-1 w-5 rounded-full ${
-                s < step ? 'bg-accent-on-dark' : s === step ? 'bg-accent' : 'bg-border'
+                s < step ? 'bg-accent-muted' : s === step ? 'bg-accent' : 'bg-border'
               }`}
             />
           ))}
@@ -108,17 +114,18 @@ function WelcomeStep({ onStart }: { onStart: () => void }) {
       <SonneckWordmark className="h-20 w-auto text-ink" />
       <div className="flex flex-col gap-3">
         <p className="text-sm text-ink-soft">
-          Sonneck is your own sheet music library — organize, browse, and practice from every device on your
-          network.
+          Sonneck is your own sheet music library — organize, browse, and practice from every device
+          on your network.
         </p>
         <p className="text-sm text-ink-soft">
-          Two quick things before you start: where your library lives, and who's allowed in. Takes about a minute.
+          Two quick things before you start: where your library lives, and who's allowed in. Takes
+          about a minute.
         </p>
       </div>
       <button
         type="button"
         onClick={onStart}
-        className="mt-2 flex cursor-pointer items-center gap-2 rounded-md bg-accent px-5 py-2.5 font-display text-white hover:bg-accent/90"
+        className="mt-2 flex cursor-pointer items-center gap-2 rounded-md bg-accent-fill px-5 py-2.5 font-display font-medium text-white hover:bg-accent-fill/90"
       >
         Get Started
         <IconArrowRight size={18} />
@@ -159,8 +166,8 @@ function FolderStep({
             </div>
             <p className="flex items-start gap-1.5 text-xs text-ink-soft">
               <IconInfoCircle size={14} className="mt-0.5 shrink-0" />
-              Running in Docker, your library location is set by the volume mount, not from here. To use a
-              different folder, point the mount at it and restart the container.
+              Running in Docker, your library location is set by the volume mount, not from here. To
+              use a different folder, point the mount at it and restart the container.
             </p>
           </>
         ) : (
@@ -190,7 +197,7 @@ function FolderStep({
       <button
         type="button"
         onClick={onNext}
-        className="mt-8 flex w-full cursor-pointer items-center justify-center gap-2 rounded-md bg-accent px-5 py-2.5 font-display text-white hover:bg-accent/90"
+        className="mt-8 flex w-full cursor-pointer items-center justify-center gap-2 rounded-md bg-accent-fill px-5 py-2.5 font-display font-medium text-white hover:bg-accent-fill/90"
       >
         Continue
         <IconArrowRight size={18} />
@@ -209,7 +216,15 @@ interface SecurityCardProps {
   children?: React.ReactNode
 }
 
-function SecurityCard({ selected, disabled, icon, title, description, onSelect, children }: SecurityCardProps) {
+function SecurityCard({
+  selected,
+  disabled,
+  icon,
+  title,
+  description,
+  onSelect,
+  children,
+}: SecurityCardProps) {
   return (
     <div
       className={`rounded-lg border p-4 ${
@@ -235,7 +250,7 @@ function SecurityCard({ selected, disabled, icon, title, description, onSelect, 
       <div className="flex items-start gap-3">
         <span
           className={`mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full ${
-            selected ? 'bg-accent text-white' : 'bg-paper-sunken text-ink-soft'
+            selected ? 'bg-accent-fill text-white' : 'bg-paper-hover text-ink-soft'
           }`}
         >
           {icon}
@@ -272,8 +287,8 @@ function SecurityStep({
       <WizardChrome step={2} onBack={onBack} />
       <h1 className="font-display text-2xl font-medium text-ink">Who's allowed in?</h1>
       <p className="mt-1 text-sm text-ink-soft">
-        You can change this later from Admin Settings. Every option can add named accounts and permissions once
-        Sonneck's multi-user support is fully built out.
+        You can change this later from Admin Settings. Every option can add named accounts and
+        permissions once Sonneck's multi-user support is fully built out.
       </p>
 
       <div className="mt-6 flex flex-col gap-3" role="radiogroup" aria-label="Security">
@@ -322,7 +337,7 @@ function SecurityStep({
               className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-sm text-ink"
             />
             {confirmPassword.length > 0 && !passwordValid && (
-              <p className="text-xs text-red-700">
+              <p className="text-xs text-danger">
                 {password.length < 8 ? 'At least 8 characters.' : "Passwords don't match."}
               </p>
             )}
@@ -354,8 +369,8 @@ function SecurityStep({
             <span>
               {mode === 'docker' ? (
                 <>
-                  Configure via <code className="rounded bg-paper-sunken px-1 py-0.5">OIDC_*</code> environment
-                  variables.{' '}
+                  Configure via <code className="rounded bg-paper-sunken px-1 py-0.5">OIDC_*</code>{' '}
+                  environment variables.{' '}
                   <a
                     href="https://github.com/jpcranford/sonneck/blob/main/docs/oidc-setup.md"
                     target="_blank"
@@ -379,7 +394,7 @@ function SecurityStep({
         type="button"
         disabled={!canFinish}
         onClick={() => onFinish(choice)}
-        className="mt-8 flex w-full items-center justify-center gap-2 rounded-md bg-accent px-5 py-2.5 font-display text-white enabled:cursor-pointer enabled:hover:bg-accent/90 disabled:opacity-40"
+        className="mt-8 flex w-full items-center justify-center gap-2 rounded-md bg-accent-fill px-5 py-2.5 font-display font-medium text-white enabled:cursor-pointer enabled:hover:bg-accent-fill/90 disabled:opacity-50"
       >
         Finish Setup
       </button>
@@ -398,17 +413,17 @@ function SecurityStep({
 function DoneStep({ choice, onRestart }: { choice: AuthChoice; onRestart: () => void }) {
   return (
     <div className="flex w-full max-w-md flex-col items-center gap-4 text-center">
-      <IconCircleCheckFilled size={40} className="text-ink" />
+      <IconCheck size={48} className="text-ink-soft" />
       <h1 className="font-display text-2xl font-medium text-ink">You're all set</h1>
       <p className="text-sm text-ink-soft">
         {choice === 'none'
-          ? "No login is required — Sonneck is ready to use. You can add a password or full sign-in later from Admin Settings."
+          ? 'No login is required — Sonneck is ready to use. You can add a password or full sign-in later from Admin Settings.'
           : 'Your password is set. Sign in on your next visit to get started.'}
       </p>
       <button
         type="button"
         onClick={onRestart}
-        className="mt-8 flex w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-5 py-2.5 font-display text-ink hover:border-accent"
+        className="mt-8 flex w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-5 py-2.5 font-display font-medium text-ink hover:border-accent"
       >
         {choice === 'none' ? 'Continue to Library' : 'Continue to Sign In'}
       </button>
@@ -428,7 +443,11 @@ export function FirstLaunchMockup() {
 
       {step === 'welcome' && <WelcomeStep onStart={() => setStep('folder')} />}
       {step === 'folder' && (
-        <FolderStep mode={mode} onBack={() => setStep('welcome')} onNext={() => setStep('security')} />
+        <FolderStep
+          mode={mode}
+          onBack={() => setStep('welcome')}
+          onNext={() => setStep('security')}
+        />
       )}
       {step === 'security' && (
         <SecurityStep

@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
 import { Outlet } from 'react-router-dom'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { IconLoader2 } from '@tabler/icons-react'
 import { Sidebar } from './Sidebar'
 import { DropToUpload } from './DropToUpload'
@@ -8,12 +8,20 @@ import { MobileNavDrawer, MobileNavTopBar } from './MobileNav'
 import { SonneckMark } from './SonneckMark'
 import { useMediaQuery } from '../hooks/useMediaQuery'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
+import { getUserSettings } from '../api/userSettings'
+import { useDarkScoresSync, useThemeSync } from '../lib/theme'
 
 export function AppShell() {
   // Owned here, not inside MobileNav itself, because the top bar and the
   // drawer/scrim render in two different places in this tree (see
   // MobileNav.tsx's own comment for why) and need to share one state.
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
+
+  // The user's light/dark/system choice, applied app-wide. Same query the
+  // account menu's theme switcher reads, so a change there applies at once.
+  const { data: settings } = useQuery({ queryKey: ['user-settings'], queryFn: getUserSettings })
+  useThemeSync(settings?.themePreference)
+  useDarkScoresSync(settings?.darkModeScores)
 
   // Pull-to-refresh — mobile/tablet widths only, not desktop (a touch
   // gesture makes no sense gated purely on chrome, which stays desktop/
@@ -134,9 +142,8 @@ export function AppShell() {
             doesn't visually center ragged wrapped text against a
             fixed-position icon. This layout has no such box to fight —
             centering is exact regardless of content width.
-            Color #847d75 is a solid pre-blend of ink-soft at 75% over this
-            footer's own paper background, not a translucent opacity
-            utility — the S mark's overlapping strokes would re-blend
+            Color is ink-fainter, a solid token rather than a translucent
+            opacity utility — the S mark's overlapping strokes would re-blend
             unevenly under real translucency (CLAUDE.md > Frontend's icon
             pre-blend rule). Lives on the <a> itself with the mark/text
             inheriting it, so hover:text-ink below applies to both at once.
@@ -149,7 +156,7 @@ export function AppShell() {
             href="https://github.com/jpcranford/sonneck"
             target="_blank"
             rel="noreferrer"
-            className="flex cursor-pointer flex-col items-center gap-3.5 text-[#847d75] hover:text-ink"
+            className="flex cursor-pointer flex-col items-center gap-3.5 text-ink-fainter hover:text-ink"
           >
             {/* No whitespace-nowrap here on purpose, even though the design
                 intent is "one line" — the sentence's natural width (~288px)

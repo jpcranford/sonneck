@@ -414,9 +414,8 @@ function InheritedNote({
 // just digits) shows cloud-off instead, fainter still than the fetchable
 // state — always visible either way, so the feature is discoverable even
 // when there's nothing to fetch yet, rather than disappearing entirely.
-// Both are solid pre-blend colors (#9d9892 / #c9c2b6, the same two faint
-// tones this codebase already uses elsewhere for "faint icon" and
-// "fainter still, disabled-reading" content respectively), never a
+// Both are solid colors (ink-faint / ink-fainter, the app's tokens for "faint
+// icon" and "fainter still, disabled-reading" content respectively), never a
 // translucent opacity utility — this app's icon-color rule (CLAUDE.md)
 // applies here too.
 function ImslpAutofillButton({
@@ -437,7 +436,7 @@ function ImslpAutofillButton({
       aria-label={valid ? 'Autofill blank fields from IMSLP' : 'No IMSLP number to autofill from'}
       title={valid ? 'Autofill blank fields from IMSLP' : 'No IMSLP number to autofill from'}
       className={`absolute top-1/2 right-2.5 flex size-5 -translate-y-1/2 items-center justify-center disabled:cursor-default ${
-        valid ? 'cursor-pointer text-[#9d9892] hover:text-accent' : 'text-[#c9c2b6]'
+        valid ? 'cursor-pointer text-ink-faint hover:text-accent' : 'text-ink-fainter'
       }`}
     >
       {!valid && <IconCloudOff size={16} />}
@@ -644,7 +643,7 @@ function TagComboBox({
                       }}
                       aria-label={`Remove ${tag.name}`}
                       // Solid pre-blend, not opacity — overlapping icon strokes would re-blend unevenly under real translucency.
-                      className="cursor-pointer text-[#8d8780] hover:text-ink"
+                      className="cursor-pointer text-ink-faint hover:text-ink"
                     >
                       <IconXFilled size={12} />
                     </button>
@@ -659,10 +658,10 @@ function TagComboBox({
               // allowDuplicates.
               <span
                 key={`${tag.id}-${index}`}
-                className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
+                className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium ${
                   pillStyle === 'paper'
-                    ? 'border border-border bg-paper text-ink-soft'
-                    : 'bg-accent-soft text-accent'
+                    ? 'border-border bg-paper text-ink-soft'
+                    : 'border-accent/30 bg-accent-soft text-accent'
                 }`}
               >
                 {tag.name}
@@ -852,7 +851,7 @@ function SingleSelect({
             {selected?.label ?? placeholder ?? '—'}
           </span>
           {/* Solid pre-blend, not opacity — overlapping icon strokes would re-blend unevenly under real translucency. */}
-          <IconChevronDown size={16} className="text-[#9d9892]" />
+          <IconChevronDown size={16} className="text-ink-faint" />
         </button>
         {open && (
           <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border border-border bg-paper-raised py-1 shadow-lg">
@@ -956,7 +955,7 @@ function SourceBookField({
       <div className="relative">
         <IconSearch
           size={15}
-          className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[#9d9892]"
+          className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-faint"
         />
         <input
           ref={inputRef}
@@ -1324,7 +1323,7 @@ export function EditPieceModalMockup() {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="w-fit cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent"
+          className="w-fit cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-ink hover:border-accent"
         >
           Reopen mockup
         </button>
@@ -1482,21 +1481,21 @@ export function EditPieceModalMockup() {
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent"
+                className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-ink hover:border-accent"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={() => handleSubmit(onSubmitStayOpen)()}
-                className="cursor-pointer rounded-md border border-accent bg-paper-raised px-4 py-2 font-display text-accent hover:bg-accent-soft"
+                className="cursor-pointer rounded-md border border-accent bg-paper-raised px-4 py-2 font-display font-medium text-accent hover:bg-accent-soft"
               >
                 Save
               </button>
               <button
                 type="submit"
                 form="edit-piece-form"
-                className="cursor-pointer rounded-md bg-accent px-4 py-2 font-display text-white hover:bg-accent/90"
+                className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-white hover:bg-accent-fill/90"
               >
                 Save &amp; Close
               </button>
@@ -1532,7 +1531,7 @@ export function EditPieceModalMockup() {
                   className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
                   {...register('title', { required: 'Title is required.', maxLength: 255 })}
                 />
-                {errors.title && <p className="text-sm text-red-700">{errors.title.message}</p>}
+                {errors.title && <p className="text-sm text-danger">{errors.title.message}</p>}
               </div>
               <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <label htmlFor="f-year" className="text-sm text-ink-soft">
@@ -1573,7 +1572,7 @@ export function EditPieceModalMockup() {
                   {...register('composer', { maxLength: 255 })}
                 />
                 {errors.composer && (
-                  <p className="text-sm text-red-700">{errors.composer.message}</p>
+                  <p className="text-sm text-danger">{errors.composer.message}</p>
                 )}
                 {!composer && (
                   <InheritedNote
@@ -1831,7 +1830,7 @@ export function EditPieceModalMockup() {
                   })}
                 />
                 {errors.duration && (
-                  <p className="text-sm text-red-700">{errors.duration.message}</p>
+                  <p className="text-sm text-danger">{errors.duration.message}</p>
                 )}
               </div>
             </div>
@@ -1852,7 +1851,7 @@ export function EditPieceModalMockup() {
                 type="button"
                 onClick={() => setTempoOpen((o) => !o)}
                 // Solid pre-blend (icon + label share one color).
-                className="flex cursor-pointer items-center gap-1 text-xs text-[#9d9892] hover:text-ink-soft"
+                className="flex cursor-pointer items-center gap-1 text-xs text-ink-muted hover:text-ink-soft"
               >
                 <IconChevronRight
                   size={12}
@@ -1906,7 +1905,7 @@ export function EditPieceModalMockup() {
                     type="button"
                     onClick={handleCalculateDuration}
                     disabled={!canCalculateDuration}
-                    className="cursor-pointer rounded-md border border-border bg-paper-raised px-3 py-2 font-display text-sm text-ink hover:border-accent disabled:pointer-events-none disabled:cursor-default disabled:opacity-40"
+                    className="cursor-pointer rounded-md border border-border bg-paper-raised px-3 py-2 font-display font-medium text-sm text-ink hover:border-accent disabled:pointer-events-none disabled:cursor-default disabled:opacity-40"
                   >
                     Calculate
                   </button>

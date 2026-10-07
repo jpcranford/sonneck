@@ -66,7 +66,7 @@ export function TagPills({
   return (
     <div className={`flex min-w-0 flex-wrap items-center gap-1 ${className}`}>
       {practiceStatus && (
-        <span className="flex items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent">
+        <span className="flex items-center gap-1 rounded-full border border-accent/30 bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent">
           <PracticeStatusIcon status={practiceStatus} size={11} className="shrink-0" />
           {practiceStatus}
         </span>
@@ -74,7 +74,7 @@ export function TagPills({
       {userTags.map((tag) => (
         <span
           key={tag.id}
-          className="rounded-full bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent"
+          className="rounded-full border border-accent/30 bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent"
         >
           {tag.name}
         </span>

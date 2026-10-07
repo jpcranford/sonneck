@@ -9,7 +9,11 @@ import {
   IconXFilled,
 } from '@tabler/icons-react'
 import { uploadPersonPortrait } from '../api/people'
-import { getWikipediaPageImage, searchWikipedia, type WikipediaSearchResult } from '../api/wikipedia'
+import {
+  getWikipediaPageImage,
+  searchWikipedia,
+  type WikipediaSearchResult,
+} from '../api/wikipedia'
 import { ApiError } from '../api/client'
 import { Modal } from './Modal'
 
@@ -101,7 +105,12 @@ function renderCropToBlob(
   })
 }
 
-export function UploadPortraitModal({ open, onClose, personId, personName }: UploadPortraitModalProps) {
+export function UploadPortraitModal({
+  open,
+  onClose,
+  personId,
+  personName,
+}: UploadPortraitModalProps) {
   const queryClient = useQueryClient()
   const [step, setStep] = useState<Step>('source')
   const [wikiQuery, setWikiQuery] = useState(personName)
@@ -111,9 +120,12 @@ export function UploadPortraitModal({ open, onClose, personId, personName }: Upl
   const [image, setImage] = useState<HTMLImageElement | null>(null)
   const [zoom, setZoom] = useState(1)
   const [pan, setPan] = useState({ x: 0, y: 0 })
-  const dragState = useRef<{ startX: number; startY: number; originX: number; originY: number } | null>(
-    null,
-  )
+  const dragState = useRef<{
+    startX: number
+    startY: number
+    originX: number
+    originY: number
+  } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const frameRef = useRef<HTMLDivElement>(null)
   const objectUrlRef = useRef<string | null>(null)
@@ -148,10 +160,13 @@ export function UploadPortraitModal({ open, onClose, personId, personName }: Upl
   }
 
   const pickImageMutation = useMutation({
-    mutationFn: (result: WikipediaSearchResult) => getWikipediaPageImage(result.title).then((r) => ({ result, r })),
+    mutationFn: (result: WikipediaSearchResult) =>
+      getWikipediaPageImage(result.title).then((r) => ({ result, r })),
     onSuccess: async ({ result, r }) => {
       if (!r.imageUrl) {
-        setWikiImageError(`"${result.title}" has no photo on Wikipedia — try another result or upload from device.`)
+        setWikiImageError(
+          `"${result.title}" has no photo on Wikipedia — try another result or upload from device.`,
+        )
         return
       }
       try {
@@ -165,7 +180,8 @@ export function UploadPortraitModal({ open, onClose, personId, personName }: Upl
         setWikiImageError('Could not load that image — try another result or upload from device.')
       }
     },
-    onError: () => setWikiImageError('Could not reach Wikipedia — try again, or upload from device.'),
+    onError: () =>
+      setWikiImageError('Could not reach Wikipedia — try again, or upload from device.'),
   })
 
   async function handleFileChosen(file: File) {
@@ -186,7 +202,12 @@ export function UploadPortraitModal({ open, onClose, personId, personName }: Upl
 
   function onDragStart(event: ReactPointerEvent) {
     event.currentTarget.setPointerCapture(event.pointerId)
-    dragState.current = { startX: event.clientX, startY: event.clientY, originX: pan.x, originY: pan.y }
+    dragState.current = {
+      startX: event.clientX,
+      startY: event.clientY,
+      originX: pan.x,
+      originY: pan.y,
+    }
   }
   function onDragMove(event: ReactPointerEvent) {
     if (!dragState.current) return
@@ -242,7 +263,7 @@ export function UploadPortraitModal({ open, onClose, personId, personName }: Upl
               type="button"
               onClick={() => setStep('source')}
               disabled={uploadMutation.isPending}
-              className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent disabled:cursor-default disabled:opacity-45"
+              className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-ink hover:border-accent disabled:cursor-default disabled:opacity-45"
             >
               Back
             </button>
@@ -250,7 +271,7 @@ export function UploadPortraitModal({ open, onClose, personId, personName }: Upl
               type="button"
               onClick={() => uploadMutation.mutate()}
               disabled={uploadMutation.isPending}
-              className="flex cursor-pointer items-center gap-1.5 rounded-md bg-accent px-4 py-2 font-display text-white hover:bg-accent/90 disabled:cursor-default disabled:opacity-60"
+              className="flex cursor-pointer items-center gap-1.5 rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-white hover:bg-accent-fill/90 disabled:cursor-default disabled:opacity-50"
             >
               {uploadMutation.isPending ? (
                 <IconLoader2 size={16} className="animate-spin" />
@@ -323,15 +344,17 @@ export function UploadPortraitModal({ open, onClose, personId, personName }: Upl
               {searchMutation.isPending ? 'Searching…' : 'Search'}
             </button>
 
-            {wikiImageError && <p className="text-sm text-red-700">{wikiImageError}</p>}
+            {wikiImageError && <p className="text-sm text-danger">{wikiImageError}</p>}
             {searchMutation.isError && (
-              <p className="text-sm text-red-700">Could not reach Wikipedia. Please try again.</p>
+              <p className="text-sm text-danger">Could not reach Wikipedia. Please try again.</p>
             )}
 
             {wikiResults && (
               <div className="flex flex-col divide-y divide-border rounded-md border border-border">
                 {wikiResults.length === 0 && (
-                  <p className="px-3 py-2.5 text-sm text-ink-soft italic">No Wikipedia results found.</p>
+                  <p className="px-3 py-2.5 text-sm text-ink-soft italic">
+                    No Wikipedia results found.
+                  </p>
                 )}
                 {wikiResults.map((result) => (
                   <button
@@ -342,10 +365,11 @@ export function UploadPortraitModal({ open, onClose, personId, personName }: Upl
                       pickImageMutation.mutate(result)
                     }}
                     disabled={pickImageMutation.isPending}
-                    className="flex cursor-pointer items-center gap-3 px-3 py-2.5 text-left hover:bg-paper-sunken disabled:cursor-default"
+                    className="flex cursor-pointer items-center gap-3 px-3 py-2.5 text-left hover:bg-paper-hover disabled:cursor-default"
                   >
-                    <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#6b6560] text-white">
-                      {pickImageMutation.isPending && pickImageMutation.variables?.title === result.title ? (
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-ink-soft text-paper">
+                      {pickImageMutation.isPending &&
+                      pickImageMutation.variables?.title === result.title ? (
                         <IconLoader2 size={14} className="animate-spin" />
                       ) : (
                         <IconExternalLink size={14} />
@@ -363,7 +387,9 @@ export function UploadPortraitModal({ open, onClose, personId, personName }: Upl
                           second sentence's worth of real disambiguating
                           text here too — showing only one line of it would
                           just be an inconsistent, needless regression. */}
-                      <span className="line-clamp-2 text-xs text-ink-soft">{result.description}</span>
+                      <span className="line-clamp-2 text-xs text-ink-soft">
+                        {result.description}
+                      </span>
                     </span>
                   </button>
                 ))}
@@ -376,7 +402,8 @@ export function UploadPortraitModal({ open, onClose, personId, personName }: Upl
       {step === 'adjust' && image && (
         <div className="flex flex-col gap-4">
           <p className="text-sm text-ink-soft">
-            Drag to reposition, use the slider to zoom — the frame below is exactly what will be saved.
+            Drag to reposition, use the slider to zoom — the frame below is exactly what will be
+            saved.
             {chosenLabel && <span className="ml-1 text-ink-soft/70 italic">({chosenLabel})</span>}
           </p>
           <div

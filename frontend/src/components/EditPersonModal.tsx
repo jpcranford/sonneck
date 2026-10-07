@@ -99,8 +99,8 @@ const SAVED_DISPLAY_MS = 900
 // real ImslpAutofillButton callers' own ~2.4s clear.
 const HIGHLIGHT_MS = 2400
 
-// Same faint pre-blended tones as the real ImslpAutofillButton.tsx
-// (#9d9892/#c9c2b6, never a translucent opacity utility). Sits inside the
+// Same faint tones as the real ImslpAutofillButton.tsx (ink-faint /
+// ink-fainter, never a translucent opacity utility). Sits inside the
 // Name field itself — the thing that actually drives the search, since a
 // person has no separate numeric identifier the way IMSLP does — same
 // right-aligned/vertically-centered placement convention as a password
@@ -129,7 +129,7 @@ function WikipediaAutofillButton({
         valid ? 'Search Wikipedia to autofill blank fields' : 'Type a name to search Wikipedia'
       }
       className={`absolute top-1/2 right-2.5 flex -translate-y-1/2 items-center gap-1 disabled:cursor-default ${
-        valid ? 'cursor-pointer text-[#9d9892] hover:text-accent' : 'text-[#c9c2b6]'
+        valid ? 'cursor-pointer text-ink-faint hover:text-accent' : 'text-ink-fainter'
       }`}
     >
       <IconBrandWikipedia size={15} className="shrink-0" aria-hidden="true" />
@@ -391,7 +391,7 @@ export function EditPersonModal({ person, open, onClose }: EditPersonModalProps)
         footer={
           <div className="flex flex-col gap-2">
             {saveMutation.isError && (
-              <p className="flex items-center gap-2 text-sm text-red-700">
+              <p className="flex items-center gap-2 text-sm text-danger">
                 <IconAlertTriangle size={16} />
                 {saveMutation.error instanceof ApiError
                   ? saveMutation.error.message
@@ -411,7 +411,7 @@ export function EditPersonModal({ person, open, onClose }: EditPersonModalProps)
                 type="button"
                 onClick={onClose}
                 disabled={saving}
-                className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent disabled:cursor-default disabled:opacity-45"
+                className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-ink hover:border-accent disabled:cursor-default disabled:opacity-45"
               >
                 Cancel
               </button>
@@ -419,7 +419,7 @@ export function EditPersonModal({ person, open, onClose }: EditPersonModalProps)
                 type="submit"
                 form="edit-person-form"
                 disabled={saving}
-                className="relative flex min-w-[130px] shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md bg-accent px-4 py-2 font-display whitespace-nowrap text-white disabled:cursor-default"
+                className="relative flex min-w-[130px] shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md bg-accent-fill px-4 py-2 font-display font-medium whitespace-nowrap text-white disabled:cursor-default"
               >
                 {saveState === 'saving' && (
                   <span
@@ -488,7 +488,7 @@ export function EditPersonModal({ person, open, onClose }: EditPersonModalProps)
                   onClick={handleSearchClick}
                 />
               </div>
-              {errors.name && <p className="text-sm text-red-700">{errors.name.message}</p>}
+              {errors.name && <p className="text-sm text-danger">{errors.name.message}</p>}
             </div>
 
             <div className="flex flex-col gap-1">
@@ -571,9 +571,9 @@ export function EditPersonModal({ person, open, onClose }: EditPersonModalProps)
                   key={result.title}
                   type="button"
                   onClick={() => pickResult(result)}
-                  className="flex w-full cursor-pointer items-center gap-3 px-3 py-2.5 text-left hover:bg-paper-sunken"
+                  className="flex w-full cursor-pointer items-center gap-3 px-3 py-2.5 text-left hover:bg-paper-hover"
                 >
-                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#6b6560] text-white">
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-ink-soft text-paper">
                     <IconExternalLink size={14} />
                   </span>
                   <span className="min-w-0 flex-1">

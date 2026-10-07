@@ -12,6 +12,7 @@ import {
   IconTrash,
 } from '@tabler/icons-react'
 import { Modal } from '../components/Modal'
+import { Radio } from '../components/Radio'
 import { Toggle } from '../components/Toggle'
 import { useMockupTitle } from '../lib/useMockupTitle'
 
@@ -89,8 +90,18 @@ interface Identity {
 }
 
 const IDENTITIES: Record<IdentityKey, Identity> = {
-  none: { label: 'No login', name: 'Admin', idLine: 'No login required for this server.', showChangePassword: false },
-  singlepass: { label: 'Password', name: 'Admin', idLine: 'Shared password', showChangePassword: true },
+  none: {
+    label: 'No login',
+    name: 'Admin',
+    idLine: 'No login required for this server.',
+    showChangePassword: false,
+  },
+  singlepass: {
+    label: 'Password',
+    name: 'Admin',
+    idLine: 'Shared password',
+    showChangePassword: true,
+  },
   'oidc-admin': {
     label: 'OIDC — Admin',
     name: 'Jamie Chen',
@@ -105,7 +116,7 @@ const IDENTITIES: Record<IdentityKey, Identity> = {
   },
 }
 
-type Theme = 'light' | 'system'
+type Theme = 'light' | 'dark' | 'system'
 
 type UserListKey = 'Tags' | 'Practice Status'
 
@@ -164,7 +175,7 @@ function IdentityStateToggle({
             type="button"
             onClick={() => onChange(key)}
             className={`cursor-pointer px-2 py-1 ${
-              state === key ? 'bg-accent text-white' : 'bg-paper hover:bg-paper-sunken'
+              state === key ? 'bg-accent-fill text-white' : 'bg-paper hover:bg-paper-hover'
             }`}
           >
             {IDENTITIES[key].label}
@@ -198,8 +209,7 @@ function SettingsRow({
   // content_view_mode columns are real and live in the actual
   // UserSettingsPage.tsx (GET/PATCH /api/user-settings). The control
   // stays visible and genuinely toggleable in this mockup (so the two
-  // states can still be previewed), but muted + tagged, same "Soon" pill
-  // ThemeControl's own Dark option already uses — pointer-events aren't
+  // states can still be previewed), but muted + tagged with a "Soon" pill — pointer-events aren't
   // actually blocked, unlike a real disabled control, since there's no
   // live-app consequence to prevent here.
   soon?: boolean
@@ -210,7 +220,7 @@ function SettingsRow({
         <p className="flex items-center gap-2 text-sm font-medium text-ink">
           {label}
           {soon && (
-            <span className="shrink-0 rounded-full bg-ink-soft px-1.5 py-px text-[0.6rem] tracking-wide text-white uppercase">
+            <span className="shrink-0 rounded-full bg-ink-soft px-1.5 py-px text-[0.6rem] tracking-wide text-paper uppercase">
               Soon
             </span>
           )}
@@ -222,46 +232,33 @@ function SettingsRow({
   )
 }
 
+const THEME_OPTIONS: { key: Theme; label: string; icon: typeof IconSun }[] = [
+  { key: 'light', label: 'Light', icon: IconSun },
+  { key: 'dark', label: 'Dark', icon: IconMoon },
+  { key: 'system', label: 'System', icon: IconDeviceDesktop },
+]
+
 function ThemeControl({ theme, onChange }: { theme: Theme; onChange: (theme: Theme) => void }) {
-  // Corner radius lives on the first/last buttons themselves, not
-  // `overflow-hidden` on this wrapper — the Dark button's "Soon" badge
-  // pokes up above the row (negative -top offset) and overflow-hidden here
-  // clipped it, the same ancestor-clips-descendant gotcha CLAUDE.md already
-  // documents elsewhere in this codebase.
   return (
     <div className="flex rounded-md border border-border">
-      <button
-        type="button"
-        onClick={() => onChange('light')}
-        className={`flex cursor-pointer items-center gap-1.5 rounded-l-md border-r border-border px-2.5 py-1.5 text-sm ${
-          theme === 'light' ? 'bg-accent text-white' : 'bg-paper-raised text-ink-soft hover:bg-paper-sunken'
-        }`}
-      >
-        <IconSun size={14} />
-        Light
-      </button>
-      <button
-        type="button"
-        disabled
-        title="Coming soon"
-        className="relative flex cursor-not-allowed items-center gap-1.5 border-r border-border bg-paper-raised px-2.5 py-1.5 text-sm text-ink-soft/50"
-      >
-        <IconMoon size={14} />
-        Dark
-        <span className="absolute -top-2 -right-0.5 rounded-full bg-ink-soft px-1 py-px text-[0.55rem] tracking-wide text-white uppercase">
-          Soon
-        </span>
-      </button>
-      <button
-        type="button"
-        onClick={() => onChange('system')}
-        className={`flex cursor-pointer items-center gap-1.5 rounded-r-md px-2.5 py-1.5 text-sm ${
-          theme === 'system' ? 'bg-accent text-white' : 'bg-paper-raised text-ink-soft hover:bg-paper-sunken'
-        }`}
-      >
-        <IconDeviceDesktop size={14} />
-        System
-      </button>
+      {THEME_OPTIONS.map(({ key, label, icon: Icon }, index) => (
+        <button
+          key={key}
+          type="button"
+          aria-pressed={theme === key}
+          onClick={() => onChange(key)}
+          className={`flex cursor-pointer items-center gap-1.5 px-2.5 py-1.5 text-sm ${
+            index === 0 ? 'rounded-l-md' : ''
+          } ${index === THEME_OPTIONS.length - 1 ? 'rounded-r-md' : 'border-r border-border'} ${
+            theme === key
+              ? 'bg-accent-fill text-white'
+              : 'bg-paper-raised text-ink-soft hover:bg-paper-hover'
+          }`}
+        >
+          <Icon size={14} />
+          {label}
+        </button>
+      ))}
     </div>
   )
 }
@@ -294,7 +291,7 @@ function EditableList({
   // and creating a genuinely new status has no icon-assignment UX decided
   // yet (this file's own header comment) — the add control is muted +
   // tagged "Soon" rather than removed, matching the same pattern
-  // SettingsRow/ThemeControl already use for a not-yet-real control.
+  // SettingsRow already uses for a not-yet-real control.
   canAdd?: boolean
 }) {
   const noun = listKey === 'Tags' ? 'tag' : 'status'
@@ -338,7 +335,7 @@ function EditableList({
               type="button"
               onClick={() => onDelete(item)}
               aria-label={`Delete ${item.name || 'this entry'}`}
-              className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-ink-soft hover:bg-red-50 hover:text-red-700"
+              className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-ink-soft hover:bg-danger-soft hover:text-danger"
             >
               <IconTrash size={14} />
             </button>
@@ -351,14 +348,17 @@ function EditableList({
           onClick={onAdd}
           aria-label={`Add ${noun}`}
           title={`Add ${noun}`}
-          className="mt-3 flex w-full cursor-pointer items-center justify-center text-[#9d9892] hover:text-accent"
+          className="mt-3 flex w-full cursor-pointer items-center justify-center text-ink-faint hover:text-accent"
         >
           <IconCircleDashedPlus size={22} />
         </button>
       ) : (
-        <div className="mt-3 flex w-full items-center justify-center gap-2" title={`Adding a new ${noun} is coming soon`}>
+        <div
+          className="mt-3 flex w-full items-center justify-center gap-2"
+          title={`Adding a new ${noun} is coming soon`}
+        >
           <IconCircleDashedPlus size={22} className="text-ink-soft/40" />
-          <span className="rounded-full bg-ink-soft px-1.5 py-px text-[0.6rem] tracking-wide text-white uppercase">
+          <span className="rounded-full bg-ink-soft px-1.5 py-px text-[0.6rem] tracking-wide text-paper uppercase">
             Soon
           </span>
         </div>
@@ -380,6 +380,7 @@ export function UserSettingsMockup() {
   // file's own header comment: this used to be "showBooksInSidebar",
   // default true, before the label flipped to "Hide Books in sidebar".
   const [hideBooksInSidebar, setHideBooksInSidebar] = useState(false)
+  const [darkModeScores, setDarkModeScores] = useState(false)
   // Default false (not paginated — infinite scroll shown, the real
   // default) — see this file's own header comment. Migration 00024's
   // user_settings.content_view_mode defaults to 'infinite', matching
@@ -422,7 +423,10 @@ export function UserSettingsMockup() {
       if (!value && existing.name === '') {
         return { ...prev, [listKey]: current.filter((item) => item.id !== id) }
       }
-      return { ...prev, [listKey]: current.map((item) => (item.id === id ? { ...item, name: value } : item)) }
+      return {
+        ...prev,
+        [listKey]: current.map((item) => (item.id === id ? { ...item, name: value } : item)),
+      }
     })
   }
 
@@ -452,10 +456,13 @@ export function UserSettingsMockup() {
 
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-4">
         <div className="rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-4 py-2 text-sm text-ink-soft">
-          Reference sample — <span className="font-medium text-ink">User Settings, Option 2 (separate cards per
-          section)</span>. Reached from the sidebar's account menu. Switch the identity state above to see the
-          Account card's identity line and Change Password action adapt — everything else stays identical across
-          states.
+          Reference sample —{' '}
+          <span className="font-medium text-ink">
+            User Settings, Option 2 (separate cards per section)
+          </span>
+          . Reached from the sidebar's account menu. Switch the identity state above to see the
+          Account card's identity line and Change Password action adapt — everything else stays
+          identical across states.
         </div>
 
         <h1 className="font-display text-xl font-medium text-ink">User Settings</h1>
@@ -465,7 +472,9 @@ export function UserSettingsMockup() {
             <div className="min-w-0 flex-1">
               <input
                 value={names[identityKey]}
-                onChange={(event) => setNames((prev) => ({ ...prev, [identityKey]: event.target.value }))}
+                onChange={(event) =>
+                  setNames((prev) => ({ ...prev, [identityKey]: event.target.value }))
+                }
                 disabled={identityKey.startsWith('oidc')}
                 className="w-full rounded-md border border-border bg-paper-raised px-2.5 py-1.5 text-sm text-ink disabled:cursor-not-allowed disabled:bg-paper-sunken disabled:text-ink-soft"
               />
@@ -488,6 +497,18 @@ export function UserSettingsMockup() {
             help="System follows your device's own light/dark setting."
             control={<ThemeControl theme={theme} onChange={setTheme} />}
           />
+          <SettingsRow
+            label="Dark Mode Scores"
+            help="While the dark theme is on, show sheet music as light notes on a dark page, easier on the eyes in a dim room."
+            control={
+              <Toggle
+                checked={darkModeScores}
+                onChange={setDarkModeScores}
+                label=""
+                id="dark-mode-scores"
+              />
+            }
+          />
         </SettingsCard>
 
         <SettingsCard title="Library">
@@ -495,7 +516,12 @@ export function UserSettingsMockup() {
             label='Hide "Books" in sidebar'
             help="Books stay editable and browsable from the Source Book link on a piece's own Details page even when hidden here."
             control={
-              <Toggle checked={hideBooksInSidebar} onChange={setHideBooksInSidebar} label="" id="hide-books" />
+              <Toggle
+                checked={hideBooksInSidebar}
+                onChange={setHideBooksInSidebar}
+                label=""
+                id="hide-books"
+              />
             }
           />
           <SettingsRow
@@ -518,7 +544,9 @@ export function UserSettingsMockup() {
         <SettingsCard title="Your Tags & Practice Status">
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
             <div>
-              <p className="mb-1.5 text-xs font-semibold tracking-wide text-ink-soft uppercase">Tags</p>
+              <p className="mb-1.5 text-xs font-semibold tracking-wide text-ink-soft uppercase">
+                Tags
+              </p>
               <p className="mb-3 text-sm text-ink-soft">
                 Private to your account — not shared with anyone else, even other people using this
                 library.
@@ -574,7 +602,7 @@ export function UserSettingsMockup() {
               type="button"
               disabled={listDeleteMode === 'merge' && mergeTargetId === null}
               onClick={confirmListDelete}
-              className="cursor-pointer rounded-md bg-red-700 px-4 py-2 text-sm text-white hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-40"
+              className="cursor-pointer rounded-md bg-danger-fill px-4 py-2 text-sm text-white hover:bg-danger-fill-strong disabled:cursor-not-allowed disabled:opacity-40"
             >
               {listDeleteMode === 'merge' ? 'Merge and delete' : 'Delete outright'}
             </button>
@@ -592,7 +620,11 @@ export function UserSettingsMockup() {
                 : 'Choose what happens to pieces already set to this status.'}
             </p>
 
-            <div className="mt-4 flex flex-col gap-3" role="radiogroup" aria-label="Delete or merge">
+            <div
+              className="mt-4 flex flex-col gap-3"
+              role="radiogroup"
+              aria-label="Delete or merge"
+            >
               {listOtherItems.length > 0 && (
                 <label
                   className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3.5 ${
@@ -601,11 +633,10 @@ export function UserSettingsMockup() {
                       : 'border-border bg-paper-raised hover:border-accent/50'
                   }`}
                 >
-                  <input
-                    type="radio"
+                  <Radio
                     checked={listDeleteMode === 'merge'}
                     onChange={() => setListDeleteMode('merge')}
-                    className="mt-1 accent-accent"
+                    className="mt-1"
                   />
                   <div className="min-w-0 flex-1">
                     <p className="font-display font-medium text-ink">
@@ -639,11 +670,10 @@ export function UserSettingsMockup() {
                     : 'border-border bg-paper-raised hover:border-accent/50'
                 }`}
               >
-                <input
-                  type="radio"
+                <Radio
                   checked={listDeleteMode === 'outright'}
                   onChange={() => setListDeleteMode('outright')}
-                  className="mt-1 accent-accent"
+                  className="mt-1"
                 />
                 <div className="min-w-0 flex-1">
                   <p className="font-display font-medium text-ink">Delete outright</p>

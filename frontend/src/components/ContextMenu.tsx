@@ -185,7 +185,7 @@ export const ContextMenu = forwardRef<ContextMenuHandle, ContextMenuProps>(funct
         <div
           ref={menuRef}
           role="menu"
-          className="fixed z-50 min-w-40 rounded-lg border border-border bg-paper-raised py-1 shadow-lg"
+          className="fixed z-50 w-max max-w-[calc(100vw-16px)] min-w-40 rounded-lg border border-border bg-paper-raised py-1 shadow-lg"
           style={{ top: position.y, left: position.x }}
           onMouseDown={(event) => event.stopPropagation()}
         >
@@ -208,7 +208,7 @@ export const ContextMenu = forwardRef<ContextMenuHandle, ContextMenuProps>(funct
               className={`block w-full px-3 py-1.5 text-left text-sm ${
                 item.disabled
                   ? 'cursor-not-allowed text-ink-soft/50'
-                  : `hover:bg-paper ${item.destructive ? 'text-red-700' : 'text-ink'}`
+                  : `hover:bg-paper ${item.destructive ? 'text-danger' : 'text-ink'}`
               }`}
             >
               {item.label}

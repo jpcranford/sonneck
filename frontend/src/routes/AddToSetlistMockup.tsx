@@ -9,11 +9,11 @@ import {
 import {
   IconCalendarFilled,
   IconCalendarPlus,
-  IconCheck,
   IconHeartFilled,
   IconSearch,
   IconXFilled,
 } from '@tabler/icons-react'
+import { CheckboxMark } from '../components/Checkbox'
 import { ContextMenu } from '../components/ContextMenu'
 import { PracticeStatusIcon } from '../components/PracticeStatusIcon'
 import { MODAL_TRANSITION_MS } from '../components/Modal'
@@ -171,16 +171,10 @@ function SetlistToggleRow({
       onClick={onToggle}
       onMouseDown={onMouseDown}
       className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-ink ${
-        highlighted ? 'bg-accent-soft' : 'hover:bg-accent-soft'
+        highlighted ? 'bg-paper-hover' : 'hover:bg-paper-hover'
       }`}
     >
-      <span
-        className={`flex size-3.5 shrink-0 items-center justify-center rounded border ${
-          checked ? 'border-accent bg-accent text-white' : 'border-border'
-        }`}
-      >
-        {checked && <IconCheck size={9} />}
-      </span>
+      <CheckboxMark checked={checked} />
       <span className="min-w-0 flex-1 truncate">{name}</span>
       {date && <span className="shrink-0 text-xs text-ink-soft/60">{date}</span>}
     </button>
@@ -380,8 +374,8 @@ export function AddToSetlistPicker({
               type="button"
               onMouseDown={keepInputFocused}
               onClick={startCreating}
-              className={`flex w-full cursor-pointer items-center gap-2 border-t border-border px-3 py-1.5 text-left text-sm text-ink-soft hover:bg-accent-soft hover:text-ink ${
-                highlighted === searchResults.length ? 'bg-accent-soft text-ink' : ''
+              className={`flex w-full cursor-pointer items-center gap-2 border-t border-border px-3 py-1.5 text-left text-sm text-ink-soft hover:bg-paper-hover hover:text-ink ${
+                highlighted === searchResults.length ? 'bg-paper-hover text-ink' : ''
               }`}
             >
               <IconCalendarPlus size={14} />
@@ -453,8 +447,8 @@ function FixtureGridCard({
         <div className="flex w-56 flex-col overflow-hidden rounded-lg border border-border bg-paper-raised text-left">
           <div className="relative aspect-[180/132] w-full border-b border-border bg-paper-sunken">
             {practiceStatus && (
-              <span className="absolute bottom-2 left-2 flex max-w-[calc(100%-3rem)] items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent shadow-sm">
-                <PracticeStatusIcon status={practiceStatus} size={13} className="shrink-0" />
+              <span className="absolute bottom-2 left-2 flex max-w-[calc(100%-3rem)] items-center gap-1 rounded-full border border-accent/30 bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent">
+                <PracticeStatusIcon status={practiceStatus} size={11} className="shrink-0" />
                 <span className="truncate">{practiceStatus}</span>
               </span>
             )}
@@ -546,7 +540,7 @@ function FixtureListCard({
             </p>
             <p className="text-sm text-ink-soft">{piece.meta}</p>
             {practiceStatus && (
-              <span className="mt-1 flex w-fit items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent">
+              <span className="mt-1 flex w-fit items-center gap-1 rounded-full border border-accent/30 bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent">
                 <PracticeStatusIcon status={practiceStatus} size={13} className="shrink-0" />
                 {practiceStatus}
               </span>

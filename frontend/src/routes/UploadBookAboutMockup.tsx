@@ -148,7 +148,7 @@ function ImslpAutofillButton({
       aria-label={valid ? 'Autofill blank fields from IMSLP' : 'No IMSLP number to autofill from'}
       title={valid ? 'Autofill blank fields from IMSLP' : 'No IMSLP number to autofill from'}
       className={`absolute top-1/2 right-2.5 flex size-5 -translate-y-1/2 items-center justify-center disabled:cursor-default ${
-        valid ? 'cursor-pointer text-[#9d9892] hover:text-accent' : 'text-[#c9c2b6]'
+        valid ? 'cursor-pointer text-ink-faint hover:text-accent' : 'text-ink-fainter'
       }`}
     >
       {!valid && <IconCloudOff size={16} />}
@@ -247,7 +247,7 @@ function PageLightbox({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/80 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/80 backdrop-blur-sm"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose()
       }}
@@ -256,12 +256,12 @@ function PageLightbox({
         type="button"
         onClick={onClose}
         aria-label="Close"
-        className="absolute top-6 left-6 flex size-10 items-center justify-center rounded-full bg-ink/80 text-white shadow-md backdrop-blur-sm hover:bg-white/15 focus-visible:outline-accent-on-dark"
+        className="absolute top-6 left-6 flex size-10 items-center justify-center rounded-full bg-scrim/80 text-white shadow-md backdrop-blur-sm hover:bg-white/15 focus-visible:outline-accent-on-dark"
       >
         <IconXFilled size={20} />
       </button>
 
-      <div className="pointer-events-none absolute top-6 right-6 rounded-full bg-ink/80 px-3 py-1.5 text-xs text-white/90 shadow-md backdrop-blur-sm">
+      <div className="pointer-events-none absolute top-6 right-6 rounded-full bg-scrim/80 px-3 py-1.5 text-xs text-white/90 shadow-md backdrop-blur-sm">
         Click image to {zoom === 'fit' ? 'zoom in' : 'fit to screen'}
       </div>
 
@@ -287,7 +287,7 @@ function PageLightbox({
       </button>
 
       {pageCount > 1 && (
-        <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-ink/80 px-2 py-1 shadow-md backdrop-blur-sm">
+        <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-scrim/80 px-2 py-1 shadow-md backdrop-blur-sm">
           <button
             type="button"
             onClick={onPrev}
@@ -476,7 +476,7 @@ export function UploadBookAboutMockup() {
                 key={step}
                 className={`h-1 w-5 rounded-full ${
                   step < CURRENT_STEP
-                    ? 'bg-accent-on-dark'
+                    ? 'bg-accent-muted'
                     : step === CURRENT_STEP
                       ? 'bg-accent'
                       : 'bg-border'
@@ -525,7 +525,7 @@ export function UploadBookAboutMockup() {
             </button>
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute top-2 right-2 flex items-center justify-center rounded-full bg-ink/80 p-1.5 text-white shadow-md backdrop-blur-sm"
+              className="pointer-events-none absolute top-2 right-2 flex items-center justify-center rounded-full bg-scrim/80 p-1.5 text-white shadow-md backdrop-blur-sm"
             >
               <IconArrowsDiagonal size={14} />
             </div>
@@ -543,7 +543,7 @@ export function UploadBookAboutMockup() {
                 less than "N / NN" needs, wrapping the count onto two
                 lines. w-max forces sizing to content instead, sidestepping
                 that calculation entirely. */}
-            <div className="absolute bottom-2.5 left-1/2 flex w-max -translate-x-1/2 items-center gap-1 rounded-full bg-ink/80 px-2 py-1 shadow-md backdrop-blur-sm">
+            <div className="absolute bottom-2.5 left-1/2 flex w-max -translate-x-1/2 items-center gap-1 rounded-full bg-scrim/80 px-2 py-1 shadow-md backdrop-blur-sm">
               <button
                 type="button"
                 onClick={() => setPreviewPage((p) => Math.max(1, p - 1))}
@@ -642,7 +642,7 @@ export function UploadBookAboutMockup() {
               className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
               {...register('bookTitle', { required: 'Book title is required.', maxLength: 255 })}
             />
-            {errors.bookTitle && <p className="text-sm text-red-700">{errors.bookTitle.message}</p>}
+            {errors.bookTitle && <p className="text-sm text-danger">{errors.bookTitle.message}</p>}
           </div>
 
           <div className="flex flex-col gap-3 min-[525px]:flex-row">
@@ -871,14 +871,14 @@ export function UploadBookAboutMockup() {
             <button
               type="button"
               onClick={handleCancelUpload}
-              className="flex cursor-pointer items-center gap-1.5 text-base text-red-700 hover:text-red-800"
+              className="flex cursor-pointer items-center gap-1.5 text-base text-danger hover:text-danger-strong"
             >
               <IconX size={24} />
               Cancel upload
             </button>
             <button
               type="submit"
-              className="flex cursor-pointer items-center gap-1.5 rounded-md bg-accent px-5 py-2.5 font-display text-white hover:bg-accent/90"
+              className="flex cursor-pointer items-center gap-1.5 rounded-md bg-accent-fill px-5 py-2.5 font-display font-medium text-white hover:bg-accent-fill/90"
             >
               Next
               <IconArrowRight size={16} />

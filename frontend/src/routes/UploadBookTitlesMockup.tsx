@@ -81,7 +81,7 @@ const PIECES: PieceFixture[] = [
     start: 1,
     end: 3,
     isLast: false,
-    color: '#7a9c6b',
+    color: 'var(--color-split-1)',
     title: 'Prelude in C',
     composer: [PEOPLE_OPTIONS[0]],
     arranger: [PEOPLE_OPTIONS[2]],
@@ -90,7 +90,7 @@ const PIECES: PieceFixture[] = [
     start: 5,
     end: 7,
     isLast: false,
-    color: '#b87aaf',
+    color: 'var(--color-split-2)',
     title: 'Nocturne',
     composer: [PEOPLE_OPTIONS[1]],
     // Two names on purpose — the worst case for the Arranger field's own
@@ -102,7 +102,7 @@ const PIECES: PieceFixture[] = [
     start: 7,
     end: 8,
     isLast: true,
-    color: '#5c8a8a',
+    color: 'var(--color-split-3)',
     title: 'Waltz in A♭',
     composer: [PEOPLE_OPTIONS[1]],
     // Left blank on purpose — shows the empty/placeholder state of the
@@ -430,7 +430,7 @@ function PageLightbox({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/80 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/80 backdrop-blur-sm"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose()
       }}
@@ -439,12 +439,12 @@ function PageLightbox({
         type="button"
         onClick={onClose}
         aria-label="Close"
-        className="absolute top-6 left-6 flex size-10 items-center justify-center rounded-full bg-ink/80 text-white shadow-md backdrop-blur-sm hover:bg-white/15 focus-visible:outline-accent-on-dark"
+        className="absolute top-6 left-6 flex size-10 items-center justify-center rounded-full bg-scrim/80 text-white shadow-md backdrop-blur-sm hover:bg-white/15 focus-visible:outline-accent-on-dark"
       >
         <IconXFilled size={20} />
       </button>
 
-      <div className="pointer-events-none absolute top-6 right-6 rounded-full bg-ink/80 px-3 py-1.5 text-xs text-white/90 shadow-md backdrop-blur-sm">
+      <div className="pointer-events-none absolute top-6 right-6 rounded-full bg-scrim/80 px-3 py-1.5 text-xs text-white/90 shadow-md backdrop-blur-sm">
         Click image to {zoom === 'fit' ? 'zoom in' : 'fit to screen'}
       </div>
 
@@ -471,7 +471,7 @@ function PageLightbox({
       </button>
 
       {pageCount > 1 && (
-        <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-ink/80 px-2 py-1 shadow-md backdrop-blur-sm">
+        <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-scrim/80 px-2 py-1 shadow-md backdrop-blur-sm">
           <button
             type="button"
             onClick={onPrev}
@@ -551,13 +551,15 @@ export function UploadBookTitlesMockup() {
 
   function handleCancelUpload() {
     const confirmed = window.confirm(
-      "Cancel this upload? The uploaded file and its generated page previews will be permanently removed from the server.",
+      'Cancel this upload? The uploaded file and its generated page previews will be permanently removed from the server.',
     )
     if (!confirmed) return
     // Mockup only — see UploadBookAboutMockup.tsx's own copy of this
     // function for the real-build notes (DELETE /api/books/{id}, thumbnail
     // cache cleanup gap, return-to-Upload-landing).
-    console.log('Mockup: cancel confirmed — would delete book + cached thumbnails, return to Upload landing')
+    console.log(
+      'Mockup: cancel confirmed — would delete book + cached thumbnails, return to Upload landing',
+    )
   }
   const {
     register,
@@ -711,7 +713,10 @@ export function UploadBookTitlesMockup() {
           simulating real step-nav — see UploadBookAboutMockup.tsx's own
           comment on this. */}
       <div className="flex items-center justify-between">
-        <Link to="/mockup" className="flex items-center gap-1.5 text-base text-ink-soft hover:text-ink">
+        <Link
+          to="/mockup"
+          className="flex items-center gap-1.5 text-base text-ink-soft hover:text-ink"
+        >
           <IconArrowLeft size={24} />
           Back
         </Link>
@@ -725,7 +730,7 @@ export function UploadBookTitlesMockup() {
                 key={step}
                 className={`h-1 w-5 rounded-full ${
                   step < CURRENT_STEP
-                    ? 'bg-accent-on-dark'
+                    ? 'bg-accent-muted'
                     : step === CURRENT_STEP
                       ? 'bg-accent'
                       : 'bg-border'
@@ -825,19 +830,19 @@ export function UploadBookTitlesMockup() {
                           step) — so Title, Composer, and Arranger's boxes
                           line up instead of Title sitting visibly shorter. */}
                       <label className="mb-1 block text-sm text-ink-soft">
-                        Title <span className="text-red-700">*</span>
+                        Title <span className="text-danger">*</span>
                       </label>
                       <textarea
                         rows={1}
                         className={`w-full resize-none overflow-hidden rounded-md border bg-paper-raised px-2.5 py-[11px] text-sm text-ink ${
-                          titleError ? 'border-red-700' : 'border-border'
+                          titleError ? 'border-danger' : 'border-border'
                         }`}
                         placeholder="Title"
                         onKeyDown={preventTextareaNewline}
                         {...titleField(index)}
                       />
                       {titleError && (
-                        <span className="mt-0.5 flex items-center gap-1 text-xs text-red-700">
+                        <span className="mt-0.5 flex items-center gap-1 text-xs text-danger">
                           <IconAlertTriangle size={10} />
                           Required
                         </span>
@@ -867,7 +872,7 @@ export function UploadBookTitlesMockup() {
                             )}
                           />
                           {composerError && (
-                            <span className="mt-0.5 flex items-center gap-1 text-xs text-red-700">
+                            <span className="mt-0.5 flex items-center gap-1 text-xs text-danger">
                               <IconAlertTriangle size={10} />
                               {composerError.message}
                             </span>
@@ -896,7 +901,7 @@ export function UploadBookTitlesMockup() {
                               )}
                             />
                             {arrangerError && (
-                              <span className="mt-0.5 flex items-center gap-1 text-xs text-red-700">
+                              <span className="mt-0.5 flex items-center gap-1 text-xs text-danger">
                                 <IconAlertTriangle size={10} />
                                 {arrangerError.message}
                               </span>
@@ -948,19 +953,19 @@ export function UploadBookTitlesMockup() {
                   <div className="flex min-w-0 flex-1 flex-col gap-2.5">
                     <div>
                       <label className="mb-1 block text-sm text-ink-soft">
-                        Title <span className="text-red-700">*</span>
+                        Title <span className="text-danger">*</span>
                       </label>
                       <textarea
                         rows={1}
                         className={`w-full resize-none overflow-hidden rounded-md border bg-paper-raised px-3 py-2 text-base text-ink ${
-                          titleError ? 'border-red-700' : 'border-border'
+                          titleError ? 'border-danger' : 'border-border'
                         }`}
                         placeholder="Title"
                         onKeyDown={preventTextareaNewline}
                         {...titleField(index)}
                       />
                       {titleError && (
-                        <span className="mt-1 flex items-center gap-1 text-xs text-red-700">
+                        <span className="mt-1 flex items-center gap-1 text-xs text-danger">
                           <IconAlertTriangle size={10} />
                           Required
                         </span>
@@ -989,7 +994,7 @@ export function UploadBookTitlesMockup() {
                           )}
                         />
                         {composerError && (
-                          <span className="mt-1 flex items-center gap-1 text-xs text-red-700">
+                          <span className="mt-1 flex items-center gap-1 text-xs text-danger">
                             <IconAlertTriangle size={10} />
                             {composerError.message}
                           </span>
@@ -1019,7 +1024,7 @@ export function UploadBookTitlesMockup() {
                           )}
                         />
                         {arrangerError && (
-                          <span className="mt-1 flex items-center gap-1 text-xs text-red-700">
+                          <span className="mt-1 flex items-center gap-1 text-xs text-danger">
                             <IconAlertTriangle size={10} />
                             {arrangerError.message}
                           </span>
@@ -1040,14 +1045,14 @@ export function UploadBookTitlesMockup() {
           <button
             type="button"
             onClick={handleCancelUpload}
-            className="flex cursor-pointer items-center gap-1.5 text-base text-red-700 hover:text-red-800"
+            className="flex cursor-pointer items-center gap-1.5 text-base text-danger hover:text-danger-strong"
           >
             <IconX size={24} />
             Cancel upload
           </button>
           <button
             type="submit"
-            className="flex cursor-pointer items-center gap-1.5 rounded-md bg-accent px-5 py-2.5 font-display font-medium text-white hover:bg-accent/90"
+            className="flex cursor-pointer items-center gap-1.5 rounded-md bg-accent-fill px-5 py-2.5 font-display font-medium text-white hover:bg-accent-fill/90"
           >
             Next
             <IconArrowRight size={16} />

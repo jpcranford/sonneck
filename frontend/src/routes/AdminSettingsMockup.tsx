@@ -16,8 +16,11 @@ import {
   IconWifi,
   IconWifiOff,
 } from '@tabler/icons-react'
+import { Checkbox } from '../components/Checkbox'
 import { InfoIconTooltip } from '../components/InfoIconTooltip'
 import { Modal } from '../components/Modal'
+import { Radio } from '../components/Radio'
+import { Toggle } from '../components/Toggle'
 import { useMockupTitle } from '../lib/useMockupTitle'
 
 // Admin Settings — Option B ("single scrolling page, pill-style jump-nav")
@@ -147,7 +150,13 @@ const NATIVE_LAN_ADDRESSES = ['192.168.1.42:26163', '10.0.0.14:26163']
 // mid-transition or leaving an awkward gap after it.
 const RESTART_BANNER_DELAY_MS = 300
 
-function RuntimeModeToggle({ mode, onChange }: { mode: RuntimeMode; onChange: (m: RuntimeMode) => void }) {
+function RuntimeModeToggle({
+  mode,
+  onChange,
+}: {
+  mode: RuntimeMode
+  onChange: (m: RuntimeMode) => void
+}) {
   return (
     <div className="fixed top-28 right-3 z-20 flex items-center gap-2 rounded-md border border-dashed border-border bg-paper-raised px-2.5 py-1.5 text-xs text-ink-soft shadow-sm md:top-14">
       <span>Preview as</span>
@@ -156,7 +165,7 @@ function RuntimeModeToggle({ mode, onChange }: { mode: RuntimeMode; onChange: (m
           type="button"
           onClick={() => onChange('docker')}
           className={`flex cursor-pointer items-center gap-1 px-2 py-1 ${
-            mode === 'docker' ? 'bg-accent text-white' : 'bg-paper hover:bg-paper-sunken'
+            mode === 'docker' ? 'bg-accent-fill text-white' : 'bg-paper hover:bg-paper-hover'
           }`}
         >
           <IconBrandDocker size={13} />
@@ -166,7 +175,7 @@ function RuntimeModeToggle({ mode, onChange }: { mode: RuntimeMode; onChange: (m
           type="button"
           onClick={() => onChange('native')}
           className={`flex cursor-pointer items-center gap-1 px-2 py-1 ${
-            mode === 'native' ? 'bg-accent text-white' : 'bg-paper hover:bg-paper-sunken'
+            mode === 'native' ? 'bg-accent-fill text-white' : 'bg-paper hover:bg-paper-hover'
           }`}
         >
           <IconDeviceDesktop size={13} />
@@ -361,7 +370,7 @@ function IdentityStateToggle({
             type="button"
             onClick={() => onChange(key)}
             className={`cursor-pointer px-2 py-1 ${
-              state === key ? 'bg-accent text-white' : 'bg-paper hover:bg-paper-sunken'
+              state === key ? 'bg-accent-fill text-white' : 'bg-paper hover:bg-paper-hover'
             }`}
           >
             {IDENTITY_LABELS[key]}
@@ -501,7 +510,7 @@ function SecurityCard({
       <div className="flex items-start gap-3">
         <span
           className={`mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full ${
-            selected ? 'bg-accent text-white' : 'bg-paper-sunken text-ink-soft'
+            selected ? 'bg-accent-fill text-white' : 'bg-paper-hover text-ink-soft'
           }`}
         >
           {icon}
@@ -600,7 +609,10 @@ export function AdminSettingsMockup() {
       // anymore, hide immediately.
       setShowRestartBanner(false)
     } else {
-      restartBannerTimerRef.current = setTimeout(() => setShowRestartBanner(true), RESTART_BANNER_DELAY_MS)
+      restartBannerTimerRef.current = setTimeout(
+        () => setShowRestartBanner(true),
+        RESTART_BANNER_DELAY_MS,
+      )
     }
   }
 
@@ -663,7 +675,9 @@ export function AdminSettingsMockup() {
 
   function cycleCandidateLibraryPath() {
     const currentIndex = LIBRARY_LOCATION_CANDIDATES.indexOf(candidateLibraryPath)
-    setCandidateLibraryPath(LIBRARY_LOCATION_CANDIDATES[(currentIndex + 1) % LIBRARY_LOCATION_CANDIDATES.length])
+    setCandidateLibraryPath(
+      LIBRARY_LOCATION_CANDIDATES[(currentIndex + 1) % LIBRARY_LOCATION_CANDIDATES.length],
+    )
   }
 
   function saveLibraryLocation() {
@@ -866,7 +880,7 @@ export function AdminSettingsMockup() {
               // Reflects appliedShareOnNetwork (the live truth), never the
               // pending toggle value — see that state's own comment above.
               appliedShareOnNetwork ? (
-                <span className="ml-2.5 inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-0.5 text-xs font-semibold text-accent">
+                <span className="ml-2.5 inline-flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent-soft px-2.5 py-0.5 text-xs font-semibold text-accent">
                   <IconWifi size={12} />
                   Shared on this network
                 </span>
@@ -885,21 +899,11 @@ export function AdminSettingsMockup() {
                   Off by default — turn on to reach Sonneck from another device.
                 </p>
               </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={shareOnNetwork}
-                onClick={toggleShareOnNetwork}
-                className={`relative h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors ${
-                  shareOnNetwork ? 'bg-accent' : 'bg-border'
-                }`}
-              >
-                <span
-                  className={`absolute top-0.5 size-5 rounded-full bg-white transition-all ${
-                    shareOnNetwork ? 'left-5' : 'left-0.5'
-                  }`}
-                />
-              </button>
+              <Toggle
+                checked={shareOnNetwork}
+                onChange={toggleShareOnNetwork}
+                label={<span className="sr-only">Share on network</span>}
+              />
             </div>
 
             {/* Restart-pending banner — the toggle's chosen value has
@@ -917,12 +921,16 @@ export function AdminSettingsMockup() {
               <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-3.5 py-2.5">
                 <p className="flex items-center gap-1.5 text-xs font-medium text-ink">
                   <IconInfoCircle size={14} className="shrink-0 text-accent" />
-                  Restart Sonneck to {shareOnNetwork ? 'start sharing on this network' : 'stop sharing on this network'}.
+                  Restart Sonneck to{' '}
+                  {shareOnNetwork
+                    ? 'start sharing on this network'
+                    : 'stop sharing on this network'}
+                  .
                 </p>
                 <button
                   type="button"
                   onClick={restartNow}
-                  className="shrink-0 cursor-pointer rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white hover:bg-accent/90"
+                  className="shrink-0 cursor-pointer rounded-md bg-accent-fill px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-fill/90"
                 >
                   Restart Now
                 </button>
@@ -941,7 +949,9 @@ export function AdminSettingsMockup() {
                     </span>
                     <button
                       type="button"
-                      onClick={() => void navigator.clipboard?.writeText(`http://${NATIVE_LAN_ADDRESSES[0]}`)}
+                      onClick={() =>
+                        void navigator.clipboard?.writeText(`http://${NATIVE_LAN_ADDRESSES[0]}`)
+                      }
                       className="flex shrink-0 cursor-pointer items-center gap-1 text-xs text-ink-soft hover:text-ink"
                     >
                       <IconCopy size={14} />
@@ -985,7 +995,8 @@ export function AdminSettingsMockup() {
                   </div>
                 )}
                 <p className="mt-2 text-xs text-ink-soft">
-                  Scan with a phone camera, or open the address above from another device on this network.
+                  Scan with a phone camera, or open the address above from another device on this
+                  network.
                 </p>
               </div>
             )}
@@ -1008,7 +1019,9 @@ export function AdminSettingsMockup() {
                     type="button"
                     onClick={() => setBuildKind(key)}
                     className={`cursor-pointer px-2 py-1 ${
-                      buildKind === key ? 'bg-accent text-white' : 'bg-paper hover:bg-paper-sunken'
+                      buildKind === key
+                        ? 'bg-accent-fill text-white'
+                        : 'bg-paper hover:bg-paper-hover'
                     }`}
                   >
                     {BUILD_FIXTURES[key].label}
@@ -1028,15 +1041,18 @@ export function AdminSettingsMockup() {
               <div className="shrink-0 self-end sm:self-auto">
                 {updateChecked ? (
                   build.checkResult === 'behind' ? (
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#fbe9e7] px-2.5 py-1 text-sm text-[#b45309]">
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent-soft px-2.5 py-1 text-sm text-accent">
                       version {build.availableVersion} available
-                      <a href="#" className="inline-flex items-center gap-0.5 text-inherit underline">
+                      <a
+                        href="#"
+                        className="inline-flex items-center gap-0.5 text-inherit underline"
+                      >
                         View release <IconExternalLink size={12} />
                       </a>
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1.5 text-sm text-[#3fa34d]">
-                      <IconCircleCheck size={14} className="text-[#3fa34d]" />
+                    <span className="inline-flex items-center gap-1.5 text-sm text-grass">
+                      <IconCircleCheck size={14} className="text-grass" />
                       {build.checkResult === 'ahead' ? 'Ahead of the latest release' : 'Up to date'}
                     </span>
                   )
@@ -1052,7 +1068,9 @@ export function AdminSettingsMockup() {
               </div>
             </div>
             {updateChecked && (
-              <p className="text-xs text-ink-soft">Checked just now. Reload the page to check again.</p>
+              <p className="text-xs text-ink-soft">
+                Checked just now. Reload the page to check again.
+              </p>
             )}
           </div>
         </SectionBlock>
@@ -1065,9 +1083,14 @@ export function AdminSettingsMockup() {
                 { label: 'Books', value: 58 },
                 { label: 'People', value: 27 },
               ].map((stat) => (
-                <div key={stat.label} className="flex-1 rounded-md border border-border py-3 text-center">
+                <div
+                  key={stat.label}
+                  className="flex-1 rounded-md border border-border py-3 text-center"
+                >
                   <p className="font-display text-2xl font-bold text-ink">{stat.value}</p>
-                  <p className="mt-0.5 text-xs tracking-wide text-ink-soft uppercase">{stat.label}</p>
+                  <p className="mt-0.5 text-xs tracking-wide text-ink-soft uppercase">
+                    {stat.label}
+                  </p>
                 </div>
               ))}
             </div>
@@ -1182,7 +1205,7 @@ export function AdminSettingsMockup() {
               <button
                 type="button"
                 onClick={restartLibraryNow}
-                className="shrink-0 cursor-pointer rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white hover:bg-accent/90"
+                className="shrink-0 cursor-pointer rounded-md bg-accent-fill px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-fill/90"
               >
                 {libraryRestarting ? 'Restarting…' : 'Restart Now'}
               </button>
@@ -1207,7 +1230,7 @@ export function AdminSettingsMockup() {
                       onClick={() => setOpenUserId(isOpen ? null : user.id)}
                       className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 text-left"
                     >
-                      <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-paper-sunken text-ink-soft">
+                      <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-paper-hover text-ink-soft">
                         <IconUserCircle size={16} />
                       </span>
                       <span className="min-w-0">
@@ -1220,7 +1243,7 @@ export function AdminSettingsMockup() {
                       </span>
                       <span
                         className={`ml-auto shrink-0 rounded-full px-2 py-0.5 text-[0.65rem] font-bold tracking-wide uppercase ${
-                          isAdmin ? 'bg-accent text-white' : 'bg-paper-sunken text-ink-soft'
+                          isAdmin ? 'bg-accent-fill text-white' : 'bg-paper-sunken text-ink-soft'
                         }`}
                       >
                         {isAdmin
@@ -1242,7 +1265,7 @@ export function AdminSettingsMockup() {
                           : `Delete ${user.name}`
                       }
                       aria-label={`Delete ${user.name}`}
-                      className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-ink-soft hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-ink-soft"
+                      className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-ink-soft hover:bg-danger-soft hover:text-danger disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-ink-soft"
                     >
                       <IconTrash size={15} />
                     </button>
@@ -1269,16 +1292,17 @@ export function AdminSettingsMockup() {
                                   : 'cursor-pointer text-ink'
                               }`}
                             >
-                              <input
-                                type="checkbox"
+                              <Checkbox
                                 checked={user.perms.includes(perm)}
                                 disabled={locked}
                                 onChange={() => togglePermission(user.id, perm)}
-                                className="accent-accent"
                               />
                               {perm}
                             </label>
-                            <InfoIconTooltip message={PERM_DESCRIPTIONS[perm]} ariaLabel={`What "${perm}" allows`} />
+                            <InfoIconTooltip
+                              message={PERM_DESCRIPTIONS[perm]}
+                              ariaLabel={`What "${perm}" allows`}
+                            />
                           </div>
                         )
                       })}
@@ -1327,7 +1351,7 @@ export function AdminSettingsMockup() {
                         type="button"
                         onClick={() => openLookupDelete(column, item)}
                         aria-label={`Delete ${item.name || 'this entry'}`}
-                        className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-ink-soft hover:bg-red-50 hover:text-red-700"
+                        className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-ink-soft hover:bg-danger-soft hover:text-danger"
                       >
                         <IconTrash size={14} />
                       </button>
@@ -1339,7 +1363,7 @@ export function AdminSettingsMockup() {
                   onClick={() => addLookupItem(column)}
                   aria-label={`Add ${column === 'Sheet Types' ? 'sheet type' : 'instrument'}`}
                   title={`Add ${column === 'Sheet Types' ? 'sheet type' : 'instrument'}`}
-                  className="mt-3 flex w-full cursor-pointer items-center justify-center text-[#9d9892] hover:text-accent"
+                  className="mt-3 flex w-full cursor-pointer items-center justify-center text-ink-faint hover:text-accent"
                 >
                   <IconCircleDashedPlus size={22} />
                 </button>
@@ -1366,7 +1390,7 @@ export function AdminSettingsMockup() {
               type="button"
               disabled={!canSaveSecurity}
               onClick={saveSecurity}
-              className="cursor-pointer rounded-md bg-accent px-4 py-2 text-sm text-white enabled:hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-40"
+              className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 text-sm text-white enabled:hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Save changes
             </button>
@@ -1415,8 +1439,10 @@ export function AdminSettingsMockup() {
                 className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-sm text-ink"
               />
               {securityPassword.length > 0 && !securityPasswordValid && (
-                <p className="text-xs text-red-700">
-                  {securityPassword.length < 8 ? 'At least 8 characters.' : "Passwords don't match."}
+                <p className="text-xs text-danger">
+                  {securityPassword.length < 8
+                    ? 'At least 8 characters.'
+                    : "Passwords don't match."}
                 </p>
               )}
             </div>
@@ -1424,8 +1450,8 @@ export function AdminSettingsMockup() {
         </div>
 
         <p className="mt-4 text-xs text-ink-soft">
-          Switching to "No login" clears the current password entirely — the next person to switch back to
-          "Password" has to set a new one.
+          Switching to "No login" clears the current password entirely — the next person to switch
+          back to "Password" has to set a new one.
         </p>
       </Modal>
 
@@ -1445,7 +1471,7 @@ export function AdminSettingsMockup() {
             <button
               type="button"
               onClick={saveLibraryLocation}
-              className="cursor-pointer rounded-md bg-accent px-4 py-2 text-sm text-white hover:bg-accent/90"
+              className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 text-sm text-white hover:bg-accent-fill/90"
             >
               Save changes
             </button>
@@ -1458,7 +1484,9 @@ export function AdminSettingsMockup() {
         <p className="mt-1 text-sm text-ink-soft">Choose a new folder for Sonneck's library.</p>
 
         <div className="mt-4 flex items-center gap-3 rounded-md border border-border bg-paper-sunken px-3.5 py-2.5">
-          <span className="min-w-0 flex-1 truncate font-mono text-sm text-ink">{candidateLibraryPath}</span>
+          <span className="min-w-0 flex-1 truncate font-mono text-sm text-ink">
+            {candidateLibraryPath}
+          </span>
           <button
             type="button"
             onClick={cycleCandidateLibraryPath}
@@ -1468,14 +1496,17 @@ export function AdminSettingsMockup() {
           </button>
         </div>
 
-        <div className="mt-4 flex flex-col gap-2" role="radiogroup" aria-label="What happens to your current library">
+        <div
+          className="mt-4 flex flex-col gap-2"
+          role="radiogroup"
+          aria-label="What happens to your current library"
+        >
           <label className="flex cursor-pointer items-start gap-2.5 rounded-md border border-border p-3 has-checked:border-accent has-checked:bg-accent-soft">
-            <input
-              type="radio"
+            <Radio
               name="move-existing"
               checked={moveExisting}
               onChange={() => setMoveExisting(true)}
-              className="mt-0.5 accent-accent"
+              className="mt-0.5"
             />
             <span>
               <span className="block text-sm font-medium text-ink">Move everything here</span>
@@ -1485,18 +1516,19 @@ export function AdminSettingsMockup() {
             </span>
           </label>
           <label className="flex cursor-pointer items-start gap-2.5 rounded-md border border-border p-3 has-checked:border-accent has-checked:bg-accent-soft">
-            <input
-              type="radio"
+            <Radio
               name="move-existing"
               checked={!moveExisting}
               onChange={() => setMoveExisting(false)}
-              className="mt-0.5 accent-accent"
+              className="mt-0.5"
             />
             <span>
-              <span className="block text-sm font-medium text-ink">Just use this folder going forward</span>
+              <span className="block text-sm font-medium text-ink">
+                Just use this folder going forward
+              </span>
               <span className="block text-xs text-ink-soft">
-                Nothing moves — point Sonneck at the new folder as-is (useful for an already-populated or empty
-                folder).
+                Nothing moves — point Sonneck at the new folder as-is (useful for an
+                already-populated or empty folder).
               </span>
             </span>
           </label>
@@ -1520,7 +1552,7 @@ export function AdminSettingsMockup() {
               type="button"
               disabled={lookupDeleteMode === 'merge' && mergeTargetId === null}
               onClick={confirmLookupDelete}
-              className="cursor-pointer rounded-md bg-red-700 px-4 py-2 text-sm text-white hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-40"
+              className="cursor-pointer rounded-md bg-danger-fill px-4 py-2 text-sm text-white hover:bg-danger-fill-strong disabled:cursor-not-allowed disabled:opacity-40"
             >
               {lookupDeleteMode === 'merge' ? 'Merge and delete' : 'Delete outright'}
             </button>
@@ -1549,11 +1581,10 @@ export function AdminSettingsMockup() {
                       : 'border-border bg-paper-raised hover:border-accent/50'
                   }`}
                 >
-                  <input
-                    type="radio"
+                  <Radio
                     checked={lookupDeleteMode === 'merge'}
                     onChange={() => setLookupDeleteMode('merge')}
-                    className="mt-1 accent-accent"
+                    className="mt-1"
                   />
                   <div className="min-w-0 flex-1">
                     <p className="font-display font-medium text-ink">
@@ -1587,11 +1618,10 @@ export function AdminSettingsMockup() {
                     : 'border-border bg-paper-raised hover:border-accent/50'
                 }`}
               >
-                <input
-                  type="radio"
+                <Radio
                   checked={lookupDeleteMode === 'outright'}
                   onChange={() => setLookupDeleteMode('outright')}
-                  className="mt-1 accent-accent"
+                  className="mt-1"
                 />
                 <div className="min-w-0 flex-1">
                   <p className="font-display font-medium text-ink">Delete outright</p>

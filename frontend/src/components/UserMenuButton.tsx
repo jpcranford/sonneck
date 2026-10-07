@@ -14,6 +14,7 @@ import {
 import { logout } from '../api/auth'
 import { getUserSettings, updateUserSettings, type UserSettings } from '../api/userSettings'
 import { useAuth } from '../lib/AuthContext'
+import type { ThemePreference } from '../lib/theme'
 
 // Real build of the Sidebar User Menu mockup (Option 2, "identity card,
 // dark popup" — /mockup/sidebar-user-menu), wired to real GET
@@ -34,12 +35,15 @@ const AUTH_METHOD_BLURB: Record<string, string> = {
 // Real persistence — shares the exact same
 // ['user-settings'] query/mutation as User Settings' own Appearance card
 // (UserSettingsPage.tsx), so changing the theme in either place updates
-// the other immediately and survives a reload. Dark stays disabled — no
-// real dark-mode CSS exists anywhere in the app yet, independent of
-// persistence.
-type ThemePreview = 'light' | 'dark' | 'system'
+// the other immediately and survives a reload. AppShell applies the saved
+// choice (lib/theme.ts).
+type ThemePreview = ThemePreference
 
-const THEME_OPTIONS: { key: ThemePreview; icon: ComponentType<{ size?: number; className?: string }>; label: string }[] = [
+const THEME_OPTIONS: {
+  key: ThemePreview
+  icon: ComponentType<{ size?: number; className?: string }>
+  label: string
+}[] = [
   { key: 'light', icon: IconSun, label: 'Light' },
   { key: 'dark', icon: IconMoon, label: 'Dark' },
   { key: 'system', icon: IconDeviceDesktop, label: 'System' },
@@ -51,7 +55,13 @@ const THEME_OPTIONS: { key: ThemePreview; icon: ComponentType<{ size?: number; c
 // active option's highlight is a real absolute-positioned pill that slides
 // between icons (translateX by index × button width) rather than each
 // button flipping its own background independently.
-function ThemeSwitcher({ theme, onChange }: { theme: ThemePreview; onChange: (theme: ThemePreview) => void }) {
+function ThemeSwitcher({
+  theme,
+  onChange,
+}: {
+  theme: ThemePreview
+  onChange: (theme: ThemePreview) => void
+}) {
   const activeIndex = THEME_OPTIONS.findIndex((option) => option.key === theme)
   return (
     <div className="flex items-center justify-between gap-3 px-3.5 py-2.5">
@@ -62,33 +72,33 @@ function ThemeSwitcher({ theme, onChange }: { theme: ThemePreview; onChange: (th
           className="absolute top-0.5 left-0.5 size-6 rounded-full bg-sidebar-panel shadow-sm transition-transform duration-150 ease-out"
           style={{ transform: `translateX(${activeIndex * 26}px)` }}
         />
-        {THEME_OPTIONS.map(({ key, icon: Icon, label }) => {
-          const disabled = key === 'dark'
-          return (
-            <button
-              key={key}
-              type="button"
-              disabled={disabled}
-              onClick={() => onChange(key)}
-              title={disabled ? `${label} — coming soon` : label}
-              aria-label={label}
-              aria-pressed={theme === key}
-              className={`relative z-10 flex size-6 items-center justify-center rounded-full transition-colors ${
-                disabled
-                  ? 'cursor-not-allowed text-sidebar-text-dim/35'
-                  : `cursor-pointer ${theme === key ? 'text-sidebar-text' : 'text-sidebar-text-dim hover:text-sidebar-text'}`
-              }`}
-            >
-              <Icon size={13} />
-            </button>
-          )
-        })}
+        {THEME_OPTIONS.map(({ key, icon: Icon, label }) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => onChange(key)}
+            title={label}
+            aria-label={label}
+            aria-pressed={theme === key}
+            className={`relative z-10 flex size-6 cursor-pointer items-center justify-center rounded-full transition-colors ${
+              theme === key ? 'text-sidebar-text' : 'text-sidebar-text-dim hover:text-sidebar-text'
+            }`}
+          >
+            <Icon size={13} />
+          </button>
+        ))}
       </div>
     </div>
   )
 }
 
-export function UserMenuButton({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: () => void }) {
+export function UserMenuButton({
+  collapsed,
+  onNavigate,
+}: {
+  collapsed: boolean
+  onNavigate?: () => void
+}) {
   const me = useAuth()
   const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -115,10 +125,7 @@ export function UserMenuButton({ collapsed, onNavigate }: { collapsed: boolean; 
     onSuccess: (updated) => queryClient.setQueryData(['user-settings'], updated),
   })
   function setTheme(next: ThemePreview) {
-    // Unreachable in practice — ThemeSwitcher's Dark button is disabled and
-    // never calls onChange('dark') — but guarded rather than assumed, since
-    // UserSettings.themePreference has no 'dark' persistence path yet.
-    if (!settings || next === 'dark') return
+    if (!settings) return
     const full: UserSettings = { ...settings, themePreference: next }
     updateSettingsMutation.mutate(full)
   }
@@ -168,7 +175,7 @@ export function UserMenuButton({ collapsed, onNavigate }: { collapsed: boolean; 
         </span>
         {!collapsed && (
           <>
-            <span className="min-w-0 flex-1 truncate text-left text-[0.95rem] text-sidebar-text">
+            <span className="min-w-0 flex-1 truncate text-left text-base text-sidebar-text">
               {me.displayName}
             </span>
             <IconSelector size={15} className="shrink-0 text-sidebar-text-dim" />
@@ -184,7 +191,9 @@ export function UserMenuButton({ collapsed, onNavigate }: { collapsed: boolean; 
       <div
         role="menu"
         className={`absolute bottom-full left-0 z-20 mb-2 w-60 origin-bottom-left overflow-hidden rounded-lg border border-sidebar-border bg-sidebar-panel shadow-xl transition-[opacity,transform] duration-100 ${
-          open ? 'pointer-events-auto translate-y-0 opacity-100' : 'pointer-events-none translate-y-1 opacity-0'
+          open
+            ? 'pointer-events-auto translate-y-0 opacity-100'
+            : 'pointer-events-none translate-y-1 opacity-0'
         }`}
       >
         <div className="flex items-center gap-2.5 px-3.5 py-3">
@@ -199,12 +208,14 @@ export function UserMenuButton({ collapsed, onNavigate }: { collapsed: boolean; 
             <p className="break-words text-[0.92rem] font-medium text-sidebar-text">
               {me.displayName}
               {isAdmin && (
-                <span className="ml-1.5 inline-block translate-y-[-1px] rounded-full bg-accent px-1.5 py-px align-middle text-[0.62rem] font-bold tracking-wide whitespace-nowrap text-white uppercase">
+                <span className="ml-1.5 inline-block translate-y-[-1px] rounded-full bg-accent-fill px-1.5 py-px align-middle text-[0.62rem] font-bold tracking-wide whitespace-nowrap text-white uppercase">
                   Admin
                 </span>
               )}
             </p>
-            <p className="truncate text-[0.76rem] text-sidebar-text-dim">{AUTH_METHOD_BLURB[me.authMethod]}</p>
+            <p className="truncate text-[0.76rem] text-sidebar-text-dim">
+              {AUTH_METHOD_BLURB[me.authMethod]}
+            </p>
           </div>
         </div>
         <div className="h-px bg-sidebar-border" />

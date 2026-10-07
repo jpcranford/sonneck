@@ -132,7 +132,7 @@ function PieceGrid({ pieces }: { pieces: Piece[] }) {
                 src={getPieceThumbnailUrl(piece.id, piece.thumbnailPage)}
                 alt=""
                 loading="lazy"
-                className="h-full w-full object-cover object-top"
+                className="score-page h-full w-full object-cover object-top"
               />
             </div>
             <div className="flex flex-col gap-0.5 px-2 py-1.5">
@@ -143,7 +143,7 @@ function PieceGrid({ pieces }: { pieces: Piece[] }) {
                   matching every other favorite heart app-wide regardless of
                   the title's own font size) needs to never get clipped by
                   the truncation itself. */}
-              <p className="flex min-w-0 items-center gap-1 font-display text-[0.8rem] font-medium text-ink">
+              <p className="flex min-w-0 items-center gap-1 font-display text-xs font-medium text-ink">
                 <span className="truncate">{piece.title}</span>
                 {piece.favorite && (
                   <span className="shrink-0 text-accent" title="Favorite">
@@ -192,7 +192,7 @@ const ROW_COLLAPSE_CLASS = 'max-[501px]:grid-cols-[96px_1fr]'
 function PieceList({ pieces }: { pieces: Piece[] }) {
   return (
     <div className="flex flex-col">
-      <div className="grid grid-cols-[96px_1fr_56px] gap-3 px-1.5 pb-2.5 text-[0.7rem] font-medium tracking-wide text-ink-soft uppercase">
+      <div className="grid grid-cols-[96px_1fr_56px] gap-3 px-1.5 pb-2.5 text-xs font-medium tracking-wide text-ink-soft uppercase">
         <div>Page</div>
         <div>Title</div>
         <div className={THUMB_HIDE_CLASS} />
@@ -209,7 +209,7 @@ function PieceList({ pieces }: { pieces: Piece[] }) {
                 {pageRangeLabel(piece)}
               </div>
               <div className="min-w-0">
-                <p className="flex flex-wrap items-center gap-1.5 font-display text-[0.92rem] font-medium text-ink">
+                <p className="flex flex-wrap items-center gap-1.5 font-display text-sm font-medium text-ink">
                   {piece.title}
                   {piece.workOpusNumber.value ? ` (${piece.workOpusNumber.value})` : ''}
                   {piece.favorite && (
@@ -245,7 +245,7 @@ function PieceList({ pieces }: { pieces: Piece[] }) {
                   src={getPieceThumbnailUrl(piece.id, piece.thumbnailPage)}
                   alt=""
                   loading="lazy"
-                  className="h-full w-full object-cover object-top"
+                  className="score-page h-full w-full object-cover object-top"
                 />
               </div>
             </ClickableCard>
@@ -501,7 +501,7 @@ export function BookDetailsPage() {
               rel="noreferrer"
               aria-label="View on IMSLP"
               // Solid pre-blend, not opacity — overlapping icon strokes would re-blend unevenly under real translucency.
-              className="text-[#9c968f] hover:text-ink-soft"
+              className="text-ink-faint hover:text-ink-soft"
             >
               <IconExternalLink size={12} />
             </a>
@@ -535,7 +535,7 @@ export function BookDetailsPage() {
               target="_blank"
               rel="noreferrer"
               aria-label="View on isbnsearch.org"
-              className="text-[#9c968f] hover:text-ink-soft"
+              className="text-ink-faint hover:text-ink-soft"
             >
               <IconExternalLink size={12} />
             </a>
@@ -596,7 +596,7 @@ export function BookDetailsPage() {
               disabled={!canDelete || deleteMutation.isPending}
               aria-label="Delete Book"
               title={canDelete ? 'Delete Book' : "You don't have permission to delete"}
-              className="flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-red-700 hover:border-red-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border"
+              className="flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-danger hover:border-danger disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border"
             >
               <IconTrash size={16} />
             </button>
@@ -619,15 +619,14 @@ export function BookDetailsPage() {
                     ? "You don't have permission to download files"
                     : 'No original file on record'
                 }
-                // text-[#aea9a4] is a solid pre-blend of ink-soft at 50%
-                // over this span's own bg-paper-raised (white) background —
-                // not a translucent text-ink-soft/50 utility. IconFileTypePdf
+                // text-ink-fainter, a solid token — not a translucent
+                // text-ink-soft/50 utility. IconFileTypePdf
                 // is a multi-path icon, so a translucent color would
                 // re-blend (and visibly darken) at every path overlap. Same
                 // faint/inert treatment for both reasons a file isn't
                 // openable here — no file at all, or a real one this user
                 // lacks the download permission for.
-                className="flex w-[38px] cursor-not-allowed items-center justify-center rounded-md border border-border bg-paper-raised text-[#aea9a4]"
+                className="flex w-[38px] cursor-not-allowed items-center justify-center rounded-md border border-border bg-paper-raised text-ink-fainter"
               >
                 <IconFileTypePdf size={16} />
               </span>
@@ -662,7 +661,7 @@ export function BookDetailsPage() {
               disabled={!canEdit}
               aria-label="Edit Book"
               title={canEdit ? undefined : "You don't have permission to edit"}
-              className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-sm whitespace-nowrap text-ink hover:border-accent disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border max-[360px]:w-[38px] max-[360px]:px-0"
+              className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink hover:border-accent disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border max-[360px]:w-[38px] max-[360px]:px-0"
             >
               <IconEditFilled size={16} />
               <span className="max-[360px]:hidden">Edit Book</span>
@@ -756,7 +755,7 @@ export function BookDetailsPage() {
                     // review. Solid pre-blended hex, not a translucent opacity
                     // utility — see the matching comment in BookGridCard.tsx.
                     <div className="flex h-full w-full items-center justify-center">
-                      <IconFileX size={28} className="text-[#aea8a0]" />
+                      <IconFileX size={28} className="text-ink-fainter" />
                     </div>
                   )}
                 </div>
@@ -767,11 +766,11 @@ export function BookDetailsPage() {
                     longer needs its own justify-between wrapper since
                     there's nothing left to push to the opposite side. */}
                 <div className="mb-2">
-                  <h1 className="font-display text-[1.35rem] font-medium text-ink">
+                  <h1 className="font-display text-2xl font-medium text-ink">
                     {book.bookTitle}
                     {book.workOpusNumber ? ` (${book.workOpusNumber})` : ''}
                   </h1>
-                  <p className="text-[0.92rem] text-ink-soft">
+                  <p className="text-base text-ink-soft">
                     {/* Composer/Arranger names link to their own Person
                         Details page, mirroring Piece Details' own header
                         row (PiecePage.tsx) — same bullet-fused "Composer •
@@ -838,7 +837,7 @@ export function BookDetailsPage() {
                 )}
 
                 {book.description && (
-                  <div className="mt-3.5 max-w-[60ch] text-[0.88rem] text-ink-soft">
+                  <div className="mt-3.5 max-w-[60ch] text-sm text-ink-soft">
                     <MarkdownText>{book.description}</MarkdownText>
                   </div>
                 )}
@@ -858,10 +857,10 @@ export function BookDetailsPage() {
                       // (overflow-wrap: break-word) is what actually gives
                       // long unbroken runs a place to wrap once it does.
                       <div key={field.label} className="min-w-0 break-words">
-                        <dt className="mb-0.5 text-[0.7rem] tracking-wide text-ink-soft uppercase">
+                        <dt className="mb-0.5 text-xs tracking-wide text-ink-soft uppercase">
                           {field.label}
                         </dt>
-                        <dd className="text-[0.88rem] text-ink">{field.value}</dd>
+                        <dd className="text-sm text-ink">{field.value}</dd>
                       </div>
                     ))}
                   </div>
@@ -874,7 +873,7 @@ export function BookDetailsPage() {
               card. */}
           <div className="mt-6 bg-paper">
             <div className="flex flex-wrap items-center justify-between gap-4 px-6 pb-4">
-              <h2 className="font-display text-[0.95rem] font-semibold text-ink-soft">
+              <h2 className="font-display text-base font-bold text-ink-soft">
                 {pieces
                   ? `${pieces.length} ${pieces.length === 1 ? 'piece' : 'pieces'} in this book`
                   : '…'}
@@ -908,8 +907,8 @@ export function BookDetailsPage() {
               {piecesLoading && <p className="text-ink-soft">Loading…</p>}
               {pieces && pieces.length === 0 && (
                 <div className="py-6 text-center">
-                  <p className="font-display text-ink">No pieces yet</p>
-                  <p className="mt-1 text-sm text-ink-soft">
+                  <p className="font-display font-medium text-ink-muted">No pieces yet</p>
+                  <p className="mt-1 text-sm italic text-ink-muted">
                     Pieces added to this book will appear here, sorted by their start page.
                   </p>
                 </div>

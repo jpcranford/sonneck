@@ -72,7 +72,7 @@ export function PieceListCard({ piece, backLabel, siblingPieces }: PieceListCard
               src={getPieceThumbnailUrl(piece.id, page)}
               alt=""
               loading="lazy"
-              className="h-[84px] w-auto rounded-md border border-border object-contain"
+              className="score-page h-[84px] w-auto rounded-md border border-border object-contain"
             />
           </div>
         </div>

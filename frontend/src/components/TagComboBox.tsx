@@ -90,7 +90,7 @@ export function TagComboBox({
   hideLabel?: boolean
   // Which independent-pill treatment to use — mirrors TagPills.tsx's own
   // accent-vs-neutral split (CLAUDE.md > Frontend): 'accent' (default,
-  // bg-accent-soft/text-accent, no border) is for genuinely per-user data
+  // bg-accent-soft/text-accent, thin border-accent/30) is for per-user data
   // (Your Tags), where standing out in the app's accent color is the
   // point. 'paper' (border border-border bg-paper text-ink-soft, the exact
   // classes TagPills.tsx's own neutral keys/sheetType/instruments pills
@@ -124,9 +124,13 @@ export function TagComboBox({
   const filtered = options
     .filter((o) => allowDuplicates || !selected.some((s) => s.id === o.id))
     .filter((o) =>
-      filterOption ? filterOption(o, query) : normalizeForSearch(o.name).includes(normalizeForSearch(query)),
+      filterOption
+        ? filterOption(o, query)
+        : normalizeForSearch(o.name).includes(normalizeForSearch(query)),
     )
-  const exactMatch = options.some((o) => normalizeForSearch(o.name) === normalizeForSearch(query.trim()))
+  const exactMatch = options.some(
+    (o) => normalizeForSearch(o.name) === normalizeForSearch(query.trim()),
+  )
   // Same slice(0, 6) the dropdown itself renders — keyboard nav has to walk
   // exactly the rows actually on screen, not the full unfiltered match set.
   const visibleOptions = filtered.slice(0, 6)
@@ -218,7 +222,9 @@ export function TagComboBox({
   // technique ContextMenu.tsx already uses to detect a scroll on an
   // element that wouldn't otherwise bubble to `document`), matching
   // Modal.tsx's own scrollable body being the exact case that needs this.
-  const [menuRect, setMenuRect] = useState<{ top: number; left: number; width: number } | null>(null)
+  const [menuRect, setMenuRect] = useState<{ top: number; left: number; width: number } | null>(
+    null,
+  )
   useLayoutEffect(() => {
     if (!menuOpen) return
     function updatePosition() {
@@ -303,7 +309,7 @@ export function TagComboBox({
                       }}
                       aria-label={`Remove ${tag.name}`}
                       // Solid pre-blend, not opacity — overlapping icon strokes would re-blend unevenly under real translucency.
-                      className="cursor-pointer text-[#8d8780] hover:text-ink"
+                      className="cursor-pointer text-ink-faint hover:text-ink"
                     >
                       <IconXFilled size={12} />
                     </button>
@@ -318,10 +324,10 @@ export function TagComboBox({
               // allowDuplicates.
               <span
                 key={`${tag.id}-${index}`}
-                className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
+                className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium ${
                   pillStyle === 'paper'
-                    ? 'border border-border bg-paper text-ink-soft'
-                    : 'bg-accent-soft text-accent'
+                    ? 'border-border bg-paper text-ink-soft'
+                    : 'border-accent/30 bg-accent-soft text-accent'
                 }`}
               >
                 {tag.name}
@@ -367,7 +373,12 @@ export function TagComboBox({
           menuRect &&
           createPortal(
             <div
-              style={{ position: 'fixed', top: menuRect.top, left: menuRect.left, width: menuRect.width }}
+              style={{
+                position: 'fixed',
+                top: menuRect.top,
+                left: menuRect.left,
+                width: menuRect.width,
+              }}
               // z-[60] — deliberately higher than any other z-index in the
               // app (max is z-50, Modal's own backdrop/dialog and
               // ContextMenu's popup) so this field's live suggestions

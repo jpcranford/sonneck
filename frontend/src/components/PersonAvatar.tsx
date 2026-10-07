@@ -16,7 +16,9 @@ export function PersonAvatar({ person, className }: { person: Person; className:
     .map((w) => w[0])
     .filter(Boolean)
   const initialsText =
-    initials.length === 0 ? '?' : (initials[0] + (initials[initials.length - 1] ?? '')).toUpperCase()
+    initials.length === 0
+      ? '?'
+      : (initials[0] + (initials[initials.length - 1] ?? '')).toUpperCase()
   return (
     <div
       className={`relative aspect-[3/4] overflow-hidden rounded-[50%] border border-border [container-type:inline-size] ${className}`}

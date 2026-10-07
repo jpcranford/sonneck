@@ -7,6 +7,8 @@ export interface UserSettings {
   showBooksInSidebar: boolean
   themePreference: 'light' | 'dark' | 'system'
   contentViewMode: 'paginated' | 'infinite'
+  // Dark Mode Scores: invert sheet-music pages while the dark theme is on.
+  darkModeScores: boolean
 }
 
 export function getUserSettings(): Promise<UserSettings> {

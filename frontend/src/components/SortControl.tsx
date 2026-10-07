@@ -89,17 +89,17 @@ export function SortControl<Field extends string>({
           onClick={() => (open ? setOpen(false) : openMenu())}
           onKeyDown={handleKeyDown}
           onBlur={() => setTimeout(() => setOpen(false), 150)}
-          className="flex cursor-pointer items-center gap-1.5 px-3 py-2 text-sm text-ink hover:bg-paper-sunken"
+          className="flex cursor-pointer items-center gap-1.5 px-3 py-2 text-sm text-ink hover:bg-paper-hover"
         >
           {current?.label ?? field}
-          <IconChevronDown size={14} className="text-[#9d9892]" />
+          <IconChevronDown size={14} className="text-ink-faint" />
         </button>
         <button
           type="button"
           onClick={onDirectionToggle}
           aria-label={`Sort direction: ${directionLabel}. Click to reverse.`}
           title={directionLabel}
-          className="flex cursor-pointer items-center justify-center border-l border-border px-2.5 py-2 text-ink hover:bg-paper-sunken"
+          className="flex cursor-pointer items-center justify-center border-l border-border px-2.5 py-2 text-ink hover:bg-paper-hover"
         >
           {direction === 'asc' ? <IconArrowUp size={16} /> : <IconArrowDown size={16} />}
         </button>

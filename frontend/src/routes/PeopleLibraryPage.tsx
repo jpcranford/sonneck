@@ -8,6 +8,7 @@ import type { Person, PersonCreateRequest } from '../api/types'
 import { useDebouncedValue } from '../hooks/useDebouncedValue'
 import { afterMinDuration } from '../lib/minDuration'
 import { PALETTE } from '../lib/pieceSplitLogic'
+import { Checkbox } from '../components/Checkbox'
 import { ClickableCard } from '../components/ClickableCard'
 import { InfoIconTooltip } from '../components/InfoIconTooltip'
 import { Modal } from '../components/Modal'
@@ -272,8 +273,8 @@ function TriStateControl({
         aria-pressed={state === 'exclude'}
         className={`flex size-6 cursor-pointer items-center justify-center rounded ${
           state === 'exclude'
-            ? 'bg-red-50 text-red-700'
-            : 'text-ink-soft hover:bg-paper-sunken hover:text-ink'
+            ? 'bg-danger-soft text-danger'
+            : 'text-ink-soft hover:bg-paper-hover hover:text-ink'
         }`}
       >
         <IconMinus size={14} />
@@ -285,8 +286,8 @@ function TriStateControl({
         aria-pressed={state === 'neutral'}
         className={`flex size-6 cursor-pointer items-center justify-center rounded ${
           state === 'neutral'
-            ? 'bg-paper-sunken text-ink'
-            : 'text-ink-soft hover:bg-paper-sunken hover:text-ink'
+            ? 'bg-paper-hover text-ink'
+            : 'text-ink-soft hover:bg-paper-hover hover:text-ink'
         }`}
       >
         <IconSlash size={14} />
@@ -299,7 +300,7 @@ function TriStateControl({
         className={`flex size-6 cursor-pointer items-center justify-center rounded ${
           state === 'include'
             ? 'bg-accent-soft text-accent'
-            : 'text-ink-soft hover:bg-paper-sunken hover:text-ink'
+            : 'text-ink-soft hover:bg-paper-hover hover:text-ink'
         }`}
       >
         <IconPlus size={14} />
@@ -330,7 +331,7 @@ function PersonFilterDrawer({
     <>
       <div
         aria-hidden={!open}
-        className={`fixed inset-0 z-40 bg-ink/40 backdrop-blur-[1px] transition-opacity duration-200 ${
+        className={`fixed inset-0 z-40 bg-scrim/40 backdrop-blur-[1px] transition-opacity duration-200 ${
           open ? 'opacity-100' : 'pointer-events-none opacity-0'
         }`}
         onClick={onClose}
@@ -348,7 +349,7 @@ function PersonFilterDrawer({
             type="button"
             onClick={onClose}
             aria-label="Close filters"
-            className="flex size-8 cursor-pointer items-center justify-center rounded-md text-ink-soft hover:bg-paper-sunken hover:text-ink"
+            className="flex size-8 cursor-pointer items-center justify-center rounded-md text-ink-soft hover:bg-paper-hover hover:text-ink"
           >
             <IconX size={18} />
           </button>
@@ -362,12 +363,10 @@ function PersonFilterDrawer({
 
         <div className="flex-1 overflow-y-auto px-4 py-2">
           <FacetSection title="Show only">
-            <label className="flex cursor-pointer items-center gap-2.5 rounded-md px-1 py-1.5 text-sm text-ink hover:bg-paper-sunken">
-              <input
-                type="checkbox"
+            <label className="flex cursor-pointer items-center gap-2.5 rounded-md px-1 py-1.5 text-sm text-ink hover:bg-paper-hover">
+              <Checkbox
                 checked={filters.showAll}
                 onChange={() => onChange({ ...filters, showAll: !filters.showAll })}
-                className="accent-accent"
               />
               <span className="flex flex-1 items-center gap-1.5">
                 Show all composers
@@ -519,7 +518,7 @@ function NewPersonModal({
             type="button"
             onClick={onClose}
             disabled={isCreating}
-            className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent disabled:cursor-default disabled:opacity-45"
+            className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-ink hover:border-accent disabled:cursor-default disabled:opacity-45"
           >
             Cancel
           </button>
@@ -527,7 +526,7 @@ function NewPersonModal({
             type="submit"
             form="new-person-form"
             disabled={isCreating}
-            className="cursor-pointer rounded-md bg-accent px-4 py-2 font-display text-white hover:bg-accent/90 disabled:cursor-default disabled:opacity-60"
+            className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-white hover:bg-accent-fill/90 disabled:cursor-default disabled:opacity-50"
           >
             {isCreating ? 'Creating…' : 'Create'}
           </button>
@@ -545,7 +544,7 @@ function NewPersonModal({
             className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
             {...register('name', { required: 'Name is required.', maxLength: 255 })}
           />
-          {errors.name && <p className="text-sm text-red-700">{errors.name.message}</p>}
+          {errors.name && <p className="text-sm text-danger">{errors.name.message}</p>}
         </div>
         <div className="flex flex-col gap-4 sm:flex-row">
           <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -721,8 +720,10 @@ export function PeopleLibraryPage() {
               return (
                 <span
                   key={entry.field + entry.value}
-                  className={`flex items-center gap-1.5 rounded-full py-1 pr-1.5 pl-3 text-xs font-medium ${
-                    excluded ? 'bg-red-50 text-red-700' : 'bg-accent-soft text-accent'
+                  className={`flex items-center gap-1.5 rounded-full border py-1 pr-1.5 pl-3 text-xs font-medium ${
+                    excluded
+                      ? 'border-danger/30 bg-danger-soft text-danger'
+                      : 'border-accent/30 bg-accent-soft text-accent'
                   }`}
                 >
                   {excluded ? `Not ${entry.label}` : entry.label}
@@ -731,7 +732,7 @@ export function PeopleLibraryPage() {
                     onClick={() => clearFilterPill(entry.field, entry.value)}
                     aria-label={`Remove ${excluded ? 'not ' : ''}${entry.label} filter`}
                     className={`flex size-4 cursor-pointer items-center justify-center rounded-full opacity-75 hover:opacity-100 ${
-                      excluded ? 'text-red-700' : 'text-accent'
+                      excluded ? 'text-danger' : 'text-accent'
                     }`}
                   >
                     <IconX size={11} />
@@ -761,7 +762,7 @@ export function PeopleLibraryPage() {
         )}
 
         {!isLoading && filtered.length === 0 && (
-          <p className="p-8 text-center text-ink-soft">No people match these filters.</p>
+          <p className="p-8 text-center text-ink-muted">No people match these filters.</p>
         )}
 
         {filtered.length > 0 && viewMode === 'grid' && (

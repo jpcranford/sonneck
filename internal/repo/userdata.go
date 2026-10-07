@@ -234,6 +234,9 @@ type UserSettings struct {
 	ShowBooksInSidebar bool   `json:"showBooksInSidebar"`
 	ThemePreference    string `json:"themePreference"`
 	ContentViewMode    string `json:"contentViewMode"`
+	// DarkModeScores inverts sheet-music page images while the dark theme
+	// is on (migration 00030). Applied entirely in the frontend.
+	DarkModeScores bool `json:"darkModeScores"`
 }
 
 // GetUserSettings loads userID's settings row — always exists once the
@@ -241,9 +244,9 @@ type UserSettings struct {
 func GetUserSettings(ctx context.Context, q Queryer, userID int64) (*UserSettings, error) {
 	s := &UserSettings{}
 	err := q.QueryRowContext(ctx, `
-		SELECT show_books_in_sidebar, theme_preference, content_view_mode
+		SELECT show_books_in_sidebar, theme_preference, content_view_mode, dark_mode_scores
 		FROM user_settings WHERE user_id = ?`, userID,
-	).Scan(&s.ShowBooksInSidebar, &s.ThemePreference, &s.ContentViewMode)
+	).Scan(&s.ShowBooksInSidebar, &s.ThemePreference, &s.ContentViewMode, &s.DarkModeScores)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -257,9 +260,10 @@ func GetUserSettings(ctx context.Context, q Queryer, userID int64) (*UserSetting
 // convention as every other settings-style write in this app).
 func UpdateUserSettings(ctx context.Context, q Queryer, userID int64, s UserSettings) error {
 	_, err := q.ExecContext(ctx, `
-		UPDATE user_settings SET show_books_in_sidebar = ?, theme_preference = ?, content_view_mode = ?
+		UPDATE user_settings SET show_books_in_sidebar = ?, theme_preference = ?, content_view_mode = ?,
+			dark_mode_scores = ?
 		WHERE user_id = ?`,
-		s.ShowBooksInSidebar, s.ThemePreference, s.ContentViewMode, userID,
+		s.ShowBooksInSidebar, s.ThemePreference, s.ContentViewMode, s.DarkModeScores, userID,
 	)
 	return err
 }

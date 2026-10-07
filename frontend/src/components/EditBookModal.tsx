@@ -400,7 +400,7 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
       footer={
         <div className="flex flex-col gap-2">
           {saveMutation.isError && (
-            <p className="flex items-center gap-2 text-sm text-red-700">
+            <p className="flex items-center gap-2 text-sm text-danger">
               <IconAlertTriangle size={16} />
               {saveMutation.error instanceof ApiError
                 ? saveMutation.error.message
@@ -419,7 +419,7 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
               type="button"
               onClick={onClose}
               disabled={saving}
-              className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display text-ink hover:border-accent disabled:cursor-default disabled:opacity-45"
+              className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-ink hover:border-accent disabled:cursor-default disabled:opacity-45"
             >
               Cancel
             </button>
@@ -438,7 +438,7 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
               type="submit"
               form="edit-book-form"
               disabled={saving}
-              className="relative flex min-w-[190px] shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md bg-accent px-4 py-2 font-display whitespace-nowrap text-white disabled:cursor-default"
+              className="relative flex min-w-[190px] shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md bg-accent-fill px-4 py-2 font-display font-medium whitespace-nowrap text-white disabled:cursor-default"
             >
               {saveState === 'saving' && (
                 <span
@@ -482,7 +482,7 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
             className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
             {...register('bookTitle', { required: 'Book title is required.', maxLength: 255 })}
           />
-          {errors.bookTitle && <p className="text-sm text-red-700">{errors.bookTitle.message}</p>}
+          {errors.bookTitle && <p className="text-sm text-danger">{errors.bookTitle.message}</p>}
         </div>
 
         <div className="flex flex-col gap-3 min-[525px]:flex-row">
@@ -617,7 +617,7 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
               />
             </div>
             {imslpMutation.isError && (
-              <p className="text-sm text-red-700">
+              <p className="text-sm text-danger">
                 {imslpMutation.error instanceof ApiError
                   ? imslpMutation.error.message
                   : 'Could not reach IMSLP.'}

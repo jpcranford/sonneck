@@ -27,7 +27,7 @@ const OIDC_ERROR_MESSAGES: Record<string, string> = {
 //
 // Same full-page-takeover visual language as FirstLaunchFlow.tsx (bg-paper,
 // centered column, SonneckWordmark, PasswordFields-style show/hide input,
-// text-red-700 error line). LoginScreenMockup.tsx (/mockup/login-screen)
+// text-danger error line). LoginScreenMockup.tsx (/mockup/login-screen)
 // is a visual port of this real component, built after the fact rather
 // than mockup-first — keep the two in sync.
 export function LoginScreen({
@@ -84,7 +84,7 @@ export function LoginScreen({
             <h1 className="font-display text-2xl font-medium text-ink">Welcome back</h1>
             <p className="text-sm text-ink-soft">Sign in to continue.</p>
           </div>
-          {oidcError && <p className="text-xs text-red-700">{oidcError}</p>}
+          {oidcError && <p className="text-xs text-danger">{oidcError}</p>}
           {/* w-auto + min-w, not w-full — this and the Log In button below
               read too wide stretched to the full form width. min-w keeps a
               short label from looking cramped; w-auto (no max-w) lets this
@@ -92,7 +92,7 @@ export function LoginScreen({
               oidcProviderName rather than wrapping or truncating it. */}
           <a
             href="/api/auth/oidc/login"
-            className="flex w-auto min-w-[180px] items-center justify-center gap-2 rounded-md bg-accent px-8 py-2.5 font-display text-white hover:bg-accent/90"
+            className="flex w-auto min-w-[180px] items-center justify-center gap-2 rounded-md bg-accent-fill px-8 py-2.5 font-display font-medium text-white hover:bg-accent-fill/90"
           >
             Sign in with {oidcProviderName ?? 'your identity provider'}
           </a>
@@ -130,7 +130,7 @@ export function LoginScreen({
             // legible minimum dot size instead of leaving it to each
             // platform's own default.
             className={`w-full rounded-md border bg-paper-raised px-3 py-2 pr-9 text-base tracking-wide text-ink ${
-              loginMutation.isError ? 'border-red-700' : 'border-border'
+              loginMutation.isError ? 'border-danger' : 'border-border'
             }`}
           />
           <button
@@ -143,15 +143,17 @@ export function LoginScreen({
           </button>
         </div>
         {loginMutation.isError && (
-          <p className="-mt-3 flex items-center justify-center gap-1.5 text-xs font-medium text-red-700">
+          <p className="-mt-3 flex items-center justify-center gap-1.5 text-xs font-medium text-danger">
             <IconAlertTriangle size={14} />
-            {loginMutation.error instanceof ApiError ? loginMutation.error.message : 'Something went wrong.'}
+            {loginMutation.error instanceof ApiError
+              ? loginMutation.error.message
+              : 'Something went wrong.'}
           </p>
         )}
         <button
           type="submit"
           disabled={password.length === 0 || loginMutation.isPending}
-          className="flex w-auto min-w-[180px] items-center justify-center gap-2 rounded-md bg-accent px-8 py-2.5 font-display text-white enabled:cursor-pointer enabled:hover:bg-accent/90 disabled:opacity-40"
+          className="flex w-auto min-w-[180px] items-center justify-center gap-2 rounded-md bg-accent-fill px-8 py-2.5 font-display font-medium text-white enabled:cursor-pointer enabled:hover:bg-accent-fill/90 disabled:opacity-50"
         >
           {loginMutation.isPending ? 'Signing in…' : 'Log In'}
         </button>
