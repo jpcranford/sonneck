@@ -19,6 +19,7 @@ declare global {
       WindowSetDarkTheme?: () => void
       WindowSetLightTheme?: () => void
       WindowToggleMaximise?: () => void
+      BrowserOpenURL?: (url: string) => void
     }
   }
 }
