@@ -23,6 +23,7 @@ import { Modal } from '../components/Modal'
 import { PALETTE } from '../lib/pieceSplitLogic'
 import { useMockupTitle } from '../lib/useMockupTitle'
 import { WIDE_CONTENT_MAX_W } from '../lib/layout'
+import { confirmAction } from '../lib/dialogs'
 
 // ---------------------------------------------------------------------
 // DESIGN MOCKUP for the People Library page — same toolbar/grid/list/
@@ -318,8 +319,13 @@ function PersonContextMenu({
         {
           label: 'Delete Person',
           destructive: true,
-          onSelect: () => {
-            if (window.confirm(`Delete "${person.name}"? This can't be undone.`)) onDelete()
+          onSelect: async () => {
+            const confirmed = await confirmAction({
+              title: `Delete "${person.name}"?`,
+              message: "This can't be undone.",
+              confirmLabel: 'Delete person',
+            })
+            if (confirmed) onDelete()
           },
         },
       ]}

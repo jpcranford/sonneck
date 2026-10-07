@@ -48,3 +48,15 @@ export function chooseNativeFolder(): Promise<{ path: string }> {
 export function restartNativeApp(): Promise<{ ok: boolean }> {
   return apiPost<{ ok: boolean }>('/api/native/restart')
 }
+
+// The desktop app's web view can't download or show a file itself, so its
+// Download and Open PDF links go through these (lib/nativeLinks.ts): the
+// server fetches the same /api/ URL as the signed-in user, then shows a
+// native Save dialog, or opens the file in the system's default app.
+export function saveNativeFile(url: string): Promise<{ saved: boolean; path?: string }> {
+  return apiPost('/api/native/save-file', { url })
+}
+
+export function openNativeFile(url: string): Promise<{ ok: boolean }> {
+  return apiPost('/api/native/open-file', { url })
+}

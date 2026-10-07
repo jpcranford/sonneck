@@ -16,6 +16,7 @@ import { hasPermission, useAuth } from '../lib/AuthContext'
 import { setPendingUpload } from '../lib/pendingUpload'
 import { clearWizardDraft, loadWizardDraft, type WizardDraftStep } from '../lib/useWizardDraft'
 import { isAnyModalOpen, Modal } from './Modal'
+import { showAlert } from '../lib/dialogs'
 
 // Drag-and-drop upload anywhere in the app (design doc §13; design B,
 // /mockup/drop-to-upload). While a file is dragged over the app, a "Drop
@@ -262,7 +263,7 @@ export function DropToUpload() {
       handOff('book')
     },
     onError: (error) => {
-      window.alert(error instanceof ApiError ? error.message : 'Could not delete the draft.')
+      showAlert(error instanceof ApiError ? error.message : 'Could not delete the draft.')
     },
   })
 

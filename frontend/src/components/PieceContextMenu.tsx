@@ -10,6 +10,7 @@ import { ContextMenu, type ContextMenuHandle } from './ContextMenu'
 import { EditPieceModal } from './EditPieceModal'
 import { AddToSetlistPicker } from './AddToSetlistPicker'
 import { PracticeStatusStrip } from './PracticeStatusStrip'
+import { confirmAction, showAlert } from '../lib/dialogs'
 
 interface PieceContextMenuProps {
   piece: Piece
@@ -63,7 +64,7 @@ export const PieceContextMenu = forwardRef<ContextMenuHandle, PieceContextMenuPr
         queryClient.invalidateQueries({ queryKey: ['pieces'] })
       },
       onError: (error) => {
-        window.alert(error instanceof ApiError ? error.message : 'Could not update this piece.')
+        showAlert(error instanceof ApiError ? error.message : 'Could not update this piece.')
       },
     })
 
@@ -75,22 +76,19 @@ export const PieceContextMenu = forwardRef<ContextMenuHandle, PieceContextMenuPr
         queryClient.invalidateQueries({ queryKey: ['pieceFacets'] })
       },
       onError: (error) => {
-        window.alert(
-          error instanceof ApiError ? error.message : 'Could not set the practice status.',
-        )
+        showAlert(error instanceof ApiError ? error.message : 'Could not set the practice status.')
       },
     })
 
     // Hard delete, no undo (CLAUDE.md > File handling) — confirm before
-    // sending it. A native confirm() rather than a custom modal: cheap,
-    // blocking (can't misclick past it), fine for a single yes/no gate.
+    // sending it, through the app's shared confirm dialog (lib/dialogs.ts).
     const deleteMutation = useMutation({
       mutationFn: () => deletePiece(piece.id),
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['pieces'] })
       },
       onError: (error) => {
-        window.alert(error instanceof ApiError ? error.message : 'Could not delete this piece.')
+        showAlert(error instanceof ApiError ? error.message : 'Could not delete this piece.')
       },
     })
 
@@ -135,10 +133,13 @@ export const PieceContextMenu = forwardRef<ContextMenuHandle, PieceContextMenuPr
               destructive: true,
               disabled: !canDelete,
               disabledReason: "You don't have permission to delete",
-              onSelect: () => {
-                if (window.confirm(`Delete "${piece.title}"? This can't be undone.`)) {
-                  deleteMutation.mutate()
-                }
+              onSelect: async () => {
+                const confirmed = await confirmAction({
+                  title: `Delete "${piece.title}"?`,
+                  message: "This can't be undone.",
+                  confirmLabel: 'Delete piece',
+                })
+                if (confirmed) deleteMutation.mutate()
               },
             },
           ]}

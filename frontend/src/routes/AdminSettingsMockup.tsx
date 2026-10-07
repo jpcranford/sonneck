@@ -23,6 +23,7 @@ import { Radio } from '../components/Radio'
 import { SingleSelect } from '../components/SingleSelect'
 import { Toggle } from '../components/Toggle'
 import { useMockupTitle } from '../lib/useMockupTitle'
+import { confirmAction } from '../lib/dialogs'
 
 // Admin Settings — Option B ("single scrolling page, pill-style jump-nav")
 // for the overall structure (one continuous page, no tab state), with each
@@ -98,8 +99,8 @@ import { useMockupTitle } from '../lib/useMockupTitle'
 //
 // Each user row has a delete (trash icon), guarded by the same
 // `isLastAdmin` check the permission grid already uses, confirmed via a
-// plain `window.confirm()` matching `BookContextMenu.tsx`'s existing
-// hard-delete convention rather than a custom dialog.
+// the shared confirm dialog (`lib/dialogs.ts`), the app's one hard-delete
+// confirmation.
 //
 // Lookup Tables support create/delete: a circular "+" at the end of each
 // column appends a new blank row (auto-focused via
@@ -748,16 +749,19 @@ export function AdminSettingsMockup() {
   // IdP either way (there's no admin API call this app could make to touch
   // that), so signing in again via OIDC just auto-provisions a brand-new
   // row per the locked plan's own OIDC auth-methods table, with none of
-  // this one's data. window.confirm(), not a custom dialog — same cheap
-  // native-confirm() convention BookContextMenu.tsx/BookDetailsPage.tsx
-  // already use for this app's other hard-delete, no-undo actions.
-  function handleDeleteUser(user: AdminUser) {
+  // this one's data. Confirmed through the shared dialog, like every other
+  // hard-delete, no-undo action in the app.
+  async function handleDeleteUser(user: AdminUser) {
     if (isLastAdmin(currentUsers, user)) return
-    const message =
-      `Delete ${user.name}'s account? This removes it from Sonneck only — the account still exists ` +
-      `with its identity provider, so signing in again will create a brand-new Sonneck account with ` +
-      `none of this one's data (permissions, favorites, notes). This can't be undone.`
-    if (!window.confirm(message)) return
+    const confirmed = await confirmAction({
+      title: `Delete ${user.name}'s account?`,
+      message:
+        'This removes it from Sonneck only — the account still exists with its identity provider, so ' +
+        "signing in again will create a brand-new Sonneck account with none of this one's data " +
+        "(permissions, favorites, notes). This can't be undone.",
+      confirmLabel: 'Delete account',
+    })
+    if (!confirmed) return
     setUsers((prev) => ({
       ...prev,
       [identityKey]: prev[identityKey].filter((u) => u.id !== user.id),

@@ -42,6 +42,7 @@ import { personCreditPart } from '../lib/joinNames'
 import { formatRelativeWeeks } from '../lib/relativeWeeks'
 import { usePageTitle } from '../lib/usePageTitle'
 import { formatDateOnly } from '../lib/dateOnly'
+import { confirmAction, showAlert } from '../lib/dialogs'
 
 // The real Setlist Details page (§13) — built against SetlistDetailsMockup.tsx
 // (the approved Phase 6 mockup, incl. its own Round 1-10 polish and the
@@ -196,7 +197,7 @@ export function SetlistPage() {
     mutationFn: (entryId: number) => removeSetlistEntry(setlistId, entryId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['setlist', setlistId] }),
     onError: (err) =>
-      window.alert(err instanceof ApiError ? err.message : 'Could not remove that entry.'),
+      showAlert(err instanceof ApiError ? err.message : 'Could not remove that entry.'),
   })
 
   const archiveMutation = useMutation({
@@ -213,7 +214,7 @@ export function SetlistPage() {
       setArchiveModalOpen(false)
     },
     onError: (err) =>
-      window.alert(err instanceof ApiError ? err.message : 'Could not archive this setlist.'),
+      showAlert(err instanceof ApiError ? err.message : 'Could not archive this setlist.'),
   })
 
   const deleteMutation = useMutation({
@@ -223,7 +224,7 @@ export function SetlistPage() {
       navigate('/setlists')
     },
     onError: (err) =>
-      window.alert(err instanceof ApiError ? err.message : 'Could not delete this setlist.'),
+      showAlert(err instanceof ApiError ? err.message : 'Could not delete this setlist.'),
   })
 
   // Duplicate: creates the new setlist first, then copies every entry into
@@ -262,7 +263,7 @@ export function SetlistPage() {
       navigate(`/setlists/${created.id}`)
     },
     onError: (err) =>
-      window.alert(err instanceof ApiError ? err.message : 'Could not duplicate this setlist.'),
+      showAlert(err instanceof ApiError ? err.message : 'Could not duplicate this setlist.'),
   })
 
   function openDuplicateModal() {
@@ -271,10 +272,14 @@ export function SetlistPage() {
     setDuplicateModalOpen(true)
   }
 
-  function handleDelete() {
-    if (setlist && window.confirm(`Delete "${setlist.name}"? This can't be undone.`)) {
-      deleteMutation.mutate()
-    }
+  async function handleDelete() {
+    if (!setlist) return
+    const confirmed = await confirmAction({
+      title: `Delete "${setlist.name}"?`,
+      message: "This can't be undone.",
+      confirmLabel: 'Delete setlist',
+    })
+    if (confirmed) deleteMutation.mutate()
   }
 
   // "E" opens Edit Setlist — same page-level shortcut pattern PiecePage.tsx/

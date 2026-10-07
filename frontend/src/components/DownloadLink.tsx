@@ -1,5 +1,6 @@
 import type { MouseEvent, ReactNode } from 'react'
 import { isHomeScreenApp } from '../lib/homeScreenApp'
+import { showAlert } from '../lib/dialogs'
 
 interface DownloadLinkProps {
   // A same-origin file endpoint, e.g. getPieceFileUrl(id).
@@ -53,7 +54,7 @@ export function DownloadLink({ href, className, children }: DownloadLinkProps) {
 
   function handleClick(event: MouseEvent<HTMLAnchorElement>) {
     event.preventDefault()
-    downloadViaBlob(href).catch(() => window.alert('Could not download the file.'))
+    downloadViaBlob(href).catch(() => showAlert('Could not download the file.'))
   }
 
   return (

@@ -39,6 +39,12 @@ type NativeOptions struct {
 	// do this gracefully (a real Wails runtime.Quit so deferred cleanup,
 	// especially db.Close(), actually runs) rather than a raw os.Exit.
 	RequestRestart func() error
+	// SaveFile opens a native Save dialog suggesting defaultName and
+	// returns the chosen absolute path, or "" if the user canceled.
+	SaveFile func(defaultName string) (string, error)
+	// OpenPath opens a file in the operating system's default app for it
+	// (Preview for a PDF on macOS).
+	OpenPath func(path string) error
 }
 
 // requireNativeAccess is the shared gate for every /api/native/* handler.

@@ -6,6 +6,7 @@ import type { Book } from '../api/types'
 import { hasPermission, useAuth } from '../lib/AuthContext'
 import { ContextMenu, type ContextMenuHandle } from './ContextMenu'
 import { EditBookModal } from './EditBookModal'
+import { confirmAction, showAlert } from '../lib/dialogs'
 
 interface BookContextMenuProps {
   book: Book
@@ -29,11 +30,10 @@ export const BookContextMenu = forwardRef<ContextMenuHandle, BookContextMenuProp
     // Cascade delete, not the lighter unlink-pieces or empty-books-only
     // alternatives: removes the Book *and* every Piece referencing it in
     // one action — the single
-    // largest-blast-radius action in the app, so the confirm() message
-    // names the piece count explicitly rather than reusing Piece's plain
+    // largest-blast-radius action in the app, so the confirmation names
+    // the piece count explicitly rather than reusing Piece's plain
     // "this can't be undone." Hard delete, no undo either way (CLAUDE.md >
-    // File handling), same native-confirm() reasoning as PieceContextMenu:
-    // cheap, blocking, fine for a single yes/no gate.
+    // File handling), confirmed through the shared dialog like Piece's.
     const deleteMutation = useMutation({
       mutationFn: () => deleteBook(book.id),
       onSuccess: () => {
@@ -42,16 +42,14 @@ export const BookContextMenu = forwardRef<ContextMenuHandle, BookContextMenuProp
         queryClient.invalidateQueries({ queryKey: ['piece'] })
       },
       onError: (error) => {
-        window.alert(error instanceof ApiError ? error.message : 'Could not delete this book.')
+        showAlert(error instanceof ApiError ? error.message : 'Could not delete this book.')
       },
     })
 
     function confirmMessage(): string {
-      if (book.pieceCount === 0) {
-        return `Delete "${book.bookTitle}"? This can't be undone.`
-      }
+      if (book.pieceCount === 0) return "This can't be undone."
       const pieces = book.pieceCount === 1 ? 'the 1 piece' : `all ${book.pieceCount} pieces`
-      return `Delete "${book.bookTitle}"? This will also permanently delete ${pieces} in this book. This can't be undone.`
+      return `This also permanently deletes ${pieces} in this book. This can't be undone.`
     }
 
     return (
@@ -71,10 +69,13 @@ export const BookContextMenu = forwardRef<ContextMenuHandle, BookContextMenuProp
               destructive: true,
               disabled: !canDelete,
               disabledReason: "You don't have permission to delete",
-              onSelect: () => {
-                if (window.confirm(confirmMessage())) {
-                  deleteMutation.mutate()
-                }
+              onSelect: async () => {
+                const confirmed = await confirmAction({
+                  title: `Delete "${book.bookTitle}"?`,
+                  message: confirmMessage(),
+                  confirmLabel: 'Delete book',
+                })
+                if (confirmed) deleteMutation.mutate()
               },
             },
           ]}

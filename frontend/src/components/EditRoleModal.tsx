@@ -5,6 +5,7 @@ import { ApiError } from '../api/client'
 import { updateSetlistEntry } from '../api/setlists'
 import type { SetlistEntry } from '../api/types'
 import { Modal } from './Modal'
+import { showAlert } from '../lib/dialogs'
 
 // The Add/Edit Role modal — one text box for a piece entry's own `role`
 // (the small-caps label above it in the Program list, e.g. "Prelude").
@@ -50,7 +51,7 @@ export function EditRoleModal({ open, onClose, setlistId, entry }: EditRoleModal
       onClose()
     },
     onError: (error) => {
-      window.alert(error instanceof ApiError ? error.message : 'Could not save this role.')
+      showAlert(error instanceof ApiError ? error.message : 'Could not save this role.')
     },
   })
 

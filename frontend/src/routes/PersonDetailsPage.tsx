@@ -40,6 +40,7 @@ import { hasPermission, useAuth } from '../lib/AuthContext'
 import { usePageTitle } from '../lib/usePageTitle'
 import { useViewPreference } from '../lib/useViewPreference'
 import { yearWrittenSource } from '../lib/yearWrittenSource'
+import { confirmAction, showAlert } from '../lib/dialogs'
 
 // The real Person Details page (/people/:id) — composer/arranger overhaul,
 // Stage B. Real build of PersonDetailsSample.tsx (/mockup/person-details,
@@ -481,7 +482,7 @@ export function PersonDetailsPage() {
       queryClient.invalidateQueries({ queryKey: ['people'] })
     },
     onError: (error) => {
-      window.alert(error instanceof ApiError ? error.message : 'Could not remove this portrait.')
+      showAlert(error instanceof ApiError ? error.message : 'Could not remove this portrait.')
     },
   })
 
@@ -495,7 +496,7 @@ export function PersonDetailsPage() {
       navigate('/people')
     },
     onError: (error) => {
-      window.alert(error instanceof ApiError ? error.message : 'Could not delete this person.')
+      showAlert(error instanceof ApiError ? error.message : 'Could not delete this person.')
     },
   })
 
@@ -510,14 +511,18 @@ export function PersonDetailsPage() {
       setSplitOpen(false)
     },
     onError: (error) => {
-      window.alert(error instanceof ApiError ? error.message : 'Could not split this person.')
+      showAlert(error instanceof ApiError ? error.message : 'Could not split this person.')
     },
   })
 
-  function handleDelete() {
-    if (person && window.confirm(`Delete "${person.name}"? This can't be undone.`)) {
-      deleteMutation.mutate()
-    }
+  async function handleDelete() {
+    if (!person) return
+    const confirmed = await confirmAction({
+      title: `Delete "${person.name}"?`,
+      message: "This can't be undone.",
+      confirmLabel: 'Delete person',
+    })
+    if (confirmed) deleteMutation.mutate()
   }
 
   const notFound = personError instanceof ApiError && personError.code === 'NOT_FOUND'

@@ -20,6 +20,7 @@ import { TagComboBox } from '../components/TagComboBox'
 import { SingleSelect } from '../components/SingleSelect'
 import { InfoIconTooltip } from '../components/InfoIconTooltip'
 import { useMockupTitle } from '../lib/useMockupTitle'
+import { confirmAction } from '../lib/dialogs'
 
 // ---------------------------------------------------------------------
 // DESIGN MOCKUP — Book Upload Wizard, Screen 3 of 6: "About this book"
@@ -427,10 +428,13 @@ export function UploadBookAboutMockup() {
     console.log('Mockup submit (no real save):', data)
   }
 
-  function handleCancelUpload() {
-    const confirmed = window.confirm(
-      'Cancel this upload? The uploaded file and its generated page previews will be permanently removed from the server.',
-    )
+  async function handleCancelUpload() {
+    const confirmed = await confirmAction({
+      title: 'Cancel this upload?',
+      message:
+        'The uploaded file and its generated page previews will be permanently removed from the server.',
+      confirmLabel: 'Cancel upload',
+    })
     if (!confirmed) return
     // Mockup only. Real build: DELETE /api/books/{id} — already
     // cascade-deletes the book's uploaded PDF (handleDeleteBook,

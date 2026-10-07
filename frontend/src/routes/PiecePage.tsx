@@ -58,6 +58,7 @@ import { InfoTooltip } from '../components/InfoTooltip'
 import { MarkdownText } from '../components/MarkdownText'
 import { PageLightbox } from '../components/PageLightbox'
 import { PracticeStatusIcon } from '../components/PracticeStatusIcon'
+import { confirmAction, showAlert } from '../lib/dialogs'
 
 // Mirrors UploadPage's own cap (backend's MaxUploadBytes) — same reasoning
 // as there: reject an oversized file instantly rather than after a slow
@@ -431,14 +432,14 @@ export function PiecePage() {
     // still true), which matches what the button actually does.
     onSuccess: (randomPiece) => navigate(`/pieces/${randomPiece.id}`),
     onError: (error) => {
-      window.alert(error instanceof ApiError ? error.message : 'Could not find a random piece.')
+      showAlert(error instanceof ApiError ? error.message : 'Could not find a random piece.')
     },
   })
 
   // Same hard-delete-with-confirm mutation as PieceContextMenu's own
   // "Delete Piece" (library right-click menu) — this toolbar button is a
   // second entry point to the identical action, not a different one, so it
-  // reuses the exact confirm() wording. Unlike the context menu (which
+  // reuses the exact confirmation wording. Unlike the context menu (which
   // deletes a card out of a list the user stays on), deleting from this
   // page removes the very piece being viewed, so success navigates back to
   // the library instead of just invalidating queries in place.
@@ -449,20 +450,24 @@ export function PiecePage() {
       navigate('/')
     },
     onError: (error) => {
-      window.alert(error instanceof ApiError ? error.message : 'Could not delete this piece.')
+      showAlert(error instanceof ApiError ? error.message : 'Could not delete this piece.')
     },
   })
 
-  function handleDelete() {
-    if (piece && window.confirm(`Delete "${piece.title}"? This can't be undone.`)) {
-      deleteMutation.mutate()
-    }
+  async function handleDelete() {
+    if (!piece) return
+    const confirmed = await confirmAction({
+      title: `Delete "${piece.title}"?`,
+      message: "This can't be undone.",
+      confirmLabel: 'Delete piece',
+    })
+    if (confirmed) deleteMutation.mutate()
   }
 
   function handleReplaceFileChosen(file: File) {
     const validationError = validateReplacementFile(file)
     if (validationError) {
-      window.alert(validationError)
+      showAlert(validationError)
       return
     }
     replaceMutation.mutate(file)
@@ -517,7 +522,7 @@ export function PiecePage() {
             {/* Delete Piece, icon-only, leftmost in the group, permanently
                 red. Same destructive action as PieceContextMenu's "Delete
                 Piece" (library right-click menu) — handleDelete above
-                reuses its exact confirm() wording — now also reachable
+                reuses its exact confirmation wording — now also reachable
                 directly from the page. */}
             <button
               type="button"

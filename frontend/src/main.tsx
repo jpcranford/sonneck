@@ -5,6 +5,7 @@ import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 import App from './App.tsx'
 import { TitleBarDragStrip } from './components/NativeTitleBar'
+import { DialogHost } from './components/DialogHost'
 import { installNativeExternalLinks } from './lib/nativeLinks'
 import { ApiError } from './api/client'
 
@@ -32,6 +33,7 @@ createRoot(document.getElementById('root')!).render(
       <BrowserRouter>
         <App />
         <TitleBarDragStrip />
+        <DialogHost />
       </BrowserRouter>
     </QueryClientProvider>
   </StrictMode>,

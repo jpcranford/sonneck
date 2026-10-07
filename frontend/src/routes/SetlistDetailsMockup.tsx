@@ -24,6 +24,7 @@ import { EditSetlistModal } from './EditSetlistMockup'
 import { EditEntryModal, type EditEntryValues } from './EditEntryMockup'
 import { EditRoleModal } from './EditRoleMockup'
 import { formatDateOnly } from '../lib/dateOnly'
+import { confirmAction } from '../lib/dialogs'
 
 // Setlists design pass, Phase 6 — the real Setlist Details page (§13),
 // built against the approved Phase 2 layout (Option B, "Stats dashboard")
@@ -419,8 +420,8 @@ export function SetlistDetailsMockup() {
   }
 
   // Same real, hard-delete-with-confirm pattern as PiecePage.tsx/
-  // BookDetailsPage.tsx's own icon-only Delete button — a native
-  // window.confirm(), not a custom Modal, matching this app's standing
+  // BookDetailsPage.tsx's own icon-only Delete button — the shared
+  // confirm dialog (lib/dialogs.ts), matching this app's standing
   // convention that a genuinely destructive whole-record delete lives on
   // the entity's own Details page (or its library right-click menu), never
   // inside its Edit modal (confirmed by reading PieceContextMenu.tsx/
@@ -432,7 +433,11 @@ export function SetlistDetailsMockup() {
   // setlist, so there's nowhere else to navigate to yet (same posture
   // confirmDuplicate above already takes).
   function handleDelete() {
-    window.confirm(`Delete "${setlist.name}"? This can't be undone.`)
+    void confirmAction({
+      title: `Delete "${setlist.name}"?`,
+      message: "This can't be undone.",
+      confirmLabel: 'Delete setlist',
+    })
   }
 
   return (
@@ -457,9 +462,9 @@ export function SetlistDetailsMockup() {
         Details"/"Program Order" tab respectively (the full-fold decision — there's no separate Edit
         Program modal anymore), Edit setlist also reachable via the "E" key (same shortcut
         PiecePage.tsx/BookDetailsPage.tsx/PersonDetailsPage.tsx already use), and Delete reuses the
-        identical window.confirm() pattern those two pages' own icon-only Delete buttons already use
-        — each row can also be removed via its own right-click menu (no standalone button — too easy
-        to hit by accident).
+        identical confirm dialog those two pages' own icon-only Delete buttons already use — each
+        row can also be removed via its own right-click menu (no standalone button — too easy to hit
+        by accident).
       </div>
 
       {/* Preview switch: flips straight between the regular and archived

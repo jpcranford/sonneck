@@ -6,6 +6,7 @@ import { updateSetlistEntry } from '../api/setlists'
 import type { SetlistEntry } from '../api/types'
 import { Modal } from './Modal'
 import { Toggle } from './Toggle'
+import { showAlert } from '../lib/dialogs'
 
 // Real port of EditEntryMockup.tsx's own exported EditEntryModal (Setlists
 // design pass, Phase 11 mockup approved; this is Phase 15's real build) — a
@@ -73,7 +74,7 @@ export function EditEntryModal({ open, onClose, setlistId, entry }: EditEntryMod
       onClose()
     },
     onError: (error) => {
-      window.alert(error instanceof ApiError ? error.message : 'Could not save this entry.')
+      showAlert(error instanceof ApiError ? error.message : 'Could not save this entry.')
     },
   })
 

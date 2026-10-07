@@ -37,6 +37,7 @@ import { MarkdownText } from '../components/MarkdownText'
 import { PersonNameLinks } from '../components/PersonNameLinks'
 import { PieceContextMenu } from '../components/PieceContextMenu'
 import { TagPills } from '../components/TagPills'
+import { confirmAction, showAlert } from '../lib/dialogs'
 
 // Book Details page — no design-doc spec (new ground, same as the Books
 // library view before it). Built from the "Book Details — Consolidated
@@ -370,7 +371,7 @@ export function BookDetailsPage() {
       queryClient.invalidateQueries({ queryKey: ['books'] })
     },
     onError: (error) => {
-      window.alert(error instanceof ApiError ? error.message : 'Could not upload this cover image.')
+      showAlert(error instanceof ApiError ? error.message : 'Could not upload this cover image.')
     },
   })
 
@@ -381,14 +382,14 @@ export function BookDetailsPage() {
       queryClient.invalidateQueries({ queryKey: ['books'] })
     },
     onError: (error) => {
-      window.alert(error instanceof ApiError ? error.message : 'Could not remove this cover image.')
+      showAlert(error instanceof ApiError ? error.message : 'Could not remove this cover image.')
     },
   })
 
   // Same cascade-delete mutation as BookContextMenu's own "Delete Book"
   // (library right-click menu) — this toolbar button is a second entry
   // point to the identical action, not a different one, so it reuses the
-  // exact confirm() wording (confirmMessage below, copied from
+  // exact confirmation wording (confirmMessage below, copied from
   // BookContextMenu.tsx). Unlike the context menu (which deletes a card out
   // of a list the user stays on), deleting from this page removes the very
   // book being viewed (and every piece in it), so success navigates back to
@@ -401,23 +402,24 @@ export function BookDetailsPage() {
       navigate('/books')
     },
     onError: (error) => {
-      window.alert(error instanceof ApiError ? error.message : 'Could not delete this book.')
+      showAlert(error instanceof ApiError ? error.message : 'Could not delete this book.')
     },
   })
 
   function confirmDeleteMessage(): string {
-    if (!book) return ''
-    if (book.pieceCount === 0) {
-      return `Delete "${book.bookTitle}"? This can't be undone.`
-    }
+    if (!book || book.pieceCount === 0) return "This can't be undone."
     const pieceWord = book.pieceCount === 1 ? 'the 1 piece' : `all ${book.pieceCount} pieces`
-    return `Delete "${book.bookTitle}"? This will also permanently delete ${pieceWord} in this book. This can't be undone.`
+    return `This also permanently deletes ${pieceWord} in this book. This can't be undone.`
   }
 
-  function handleDelete() {
-    if (book && window.confirm(confirmDeleteMessage())) {
-      deleteMutation.mutate()
-    }
+  async function handleDelete() {
+    if (!book) return
+    const confirmed = await confirmAction({
+      title: `Delete "${book.bookTitle}"?`,
+      message: confirmDeleteMessage(),
+      confirmLabel: 'Delete book',
+    })
+    if (confirmed) deleteMutation.mutate()
   }
 
   function openCoverFilePicker() {
@@ -582,7 +584,7 @@ export function BookDetailsPage() {
             {/* Delete Book, icon-only, leftmost in the group, permanently
                 red. Same cascade-delete action as
                 BookContextMenu's "Delete Book" (library right-click menu) —
-                handleDelete above reuses its exact confirm() wording — now
+                handleDelete above reuses its exact confirmation wording — now
                 also reachable directly from the page. self-center on the
                 divider overrides this row's items-stretch (needed so the
                 icon-only buttons, which set no height of their own,

@@ -38,11 +38,12 @@ import (
 	"github.com/jpcranford/sonneck/internal/peoplemigrate"
 	"github.com/jpcranford/sonneck/internal/repo"
 	"github.com/jpcranford/sonneck/internal/webui"
+	"github.com/pkg/browser"
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
+	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	"github.com/wailsapp/wails/v2/pkg/options/mac"
 	"github.com/wailsapp/wails/v2/pkg/options/windows"
-	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -131,6 +132,31 @@ func chooseFolder(currentPath string) (string, error) {
 	return wailsruntime.OpenDirectoryDialog(ctx, wailsruntime.OpenDialogOptions{
 		Title:            "Choose your Sonneck library folder",
 		DefaultDirectory: currentPath,
+	})
+}
+
+// saveFile opens a native Save dialog for a file the web view can't
+// download itself (internal/handlers/nativefiles.go), its usual download
+// name filled in. "" means the user canceled. Same desktopCtx requirement
+// as chooseFolder.
+func saveFile(defaultName string) (string, error) {
+	ctx := getDesktopContext()
+	if ctx == nil {
+		return "", fmt.Errorf("native save dialog not available yet (still starting up)")
+	}
+	// Starts in Downloads, where a browser would have saved it.
+	dir := ""
+	if home, err := os.UserHomeDir(); err == nil {
+		dir = filepath.Join(home, "Downloads")
+		if _, err := os.Stat(dir); err != nil {
+			dir = home
+		}
+	}
+	return wailsruntime.SaveFileDialog(ctx, wailsruntime.SaveDialogOptions{
+		Title:            "Save PDF",
+		DefaultFilename:  defaultName,
+		DefaultDirectory: dir,
+		Filters:          []wailsruntime.FileFilter{{DisplayName: "PDF", Pattern: "*.pdf"}},
 	})
 }
 
@@ -325,6 +351,8 @@ func main() {
 		AppliedShareOnNetwork: settings.ShareOnNetwork,
 		ChooseFolder:          chooseFolder,
 		RequestRestart:        requestRestart,
+		SaveFile:              saveFile,
+		OpenPath:              browser.OpenFile,
 	})
 
 	ln, err := netinfo.ListenWithFallback(buildTarget, cfg.Port, settings.ShareOnNetwork)

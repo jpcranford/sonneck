@@ -17,6 +17,12 @@ import (
 )
 
 type Server struct {
+	// root is the complete handler New returns (auth middleware included),
+	// kept so the desktop app's file endpoints (nativefiles.go) can
+	// re-request a file as the calling user, with every permission check
+	// that request would normally get.
+	root http.Handler
+
 	DB     *sql.DB
 	Cfg    *config.Config
 	Logger *slog.Logger
@@ -161,6 +167,12 @@ func New(db *sql.DB, cfg *config.Config, logger *slog.Logger, frontend fs.FS, sc
 	mux.HandleFunc("PATCH /api/native/settings", s.handleUpdateNativeSettings)
 	mux.HandleFunc("POST /api/native/choose-folder", s.handleChooseNativeFolder)
 	mux.HandleFunc("POST /api/native/restart", s.handleNativeRestart)
+	// The desktop app's web view can't download or show a PDF itself, so
+	// its Download and Open PDF links come here instead (nativefiles.go):
+	// any signed-in user, not admin-gated like the rest of /api/native/*,
+	// since the file request itself carries the usual permission checks.
+	mux.HandleFunc("POST /api/native/save-file", s.handleNativeSaveFile)
+	mux.HandleFunc("POST /api/native/open-file", s.handleNativeOpenFile)
 	// Wikipedia autofill (composer/arranger overhaul) — shared by the Edit
 	// Person modal's own autofill button and Upload Portrait's "search
 	// Wikipedia" source step, same "one endpoint, two callers" reasoning
@@ -253,7 +265,8 @@ func New(db *sql.DB, cfg *config.Config, logger *slog.Logger, frontend fs.FS, sc
 	// authMiddleware runs inside recoverMiddleware (recover stays outermost,
 	// so a panic anywhere — including inside auth resolution itself — still
 	// gets the standard 500 envelope, not a bare connection reset).
-	return recoverMiddleware(authMiddleware(mux, db, cfg), logger)
+	s.root = recoverMiddleware(authMiddleware(mux, db, cfg), logger)
+	return s.root
 }
 
 // spaHandler serves the embedded frontend build. A request path that

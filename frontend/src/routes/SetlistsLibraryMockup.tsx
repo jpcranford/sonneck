@@ -14,6 +14,7 @@ import {
 import { useMockupTitle } from '../lib/useMockupTitle'
 import { EditSetlistModal } from './EditSetlistMockup'
 import { formatDateOnly, todayDateOnly } from '../lib/dateOnly'
+import { confirmAction } from '../lib/dialogs'
 
 // Setlists design pass, Phase 12 — the setlists browse page (§13), built
 // against Phase 4's approved artifact: Option C, one unified `/setlists`
@@ -284,8 +285,13 @@ export function SetlistsLibraryMockup() {
     setDuplicateTarget(null)
   }
 
-  function confirmDelete(setlist: MockSetlist) {
-    if (!window.confirm(`Delete "${setlist.name}"? This can't be undone.`)) return
+  async function confirmDelete(setlist: MockSetlist) {
+    const confirmed = await confirmAction({
+      title: `Delete "${setlist.name}"?`,
+      message: "This can't be undone.",
+      confirmLabel: 'Delete setlist',
+    })
+    if (!confirmed) return
     setSetlists((current) => current.filter((s) => s.id !== setlist.id))
   }
 
@@ -357,10 +363,10 @@ export function SetlistsLibraryMockup() {
         )}
       </section>
 
-      {/* Archive/Unarchive confirm — a real Modal, not a native confirm(),
-          matching decision 14's own reasoning exactly (reversible, not
-          destructive — this app's native-confirm treatment is reserved for
-          hard deletes). Copy and button label both mirror
+      {/* Archive/Unarchive confirm — its own Modal rather than the shared
+          confirm dialog, matching decision 14's own reasoning exactly
+          (reversible, not destructive — the shared red-button dialog is
+          reserved for hard deletes). Copy and button label both mirror
           SetlistDetailsMockup.tsx's own identical modal verbatim. */}
       <Modal
         open={archiveTarget !== null}

@@ -24,6 +24,7 @@ import { formatDateOnly } from '../lib/dateOnly'
 import { CheckboxMark } from './Checkbox'
 import { EditSetlistModal } from './EditSetlistModal'
 import { MODAL_TRANSITION_MS } from './Modal'
+import { showAlert } from '../lib/dialogs'
 
 // Real port of AddToSetlistMockup.tsx's own exported AddToSetlistPicker
 // (Setlists design pass, Phase 5 mockup approved; this is Phase 14's real
@@ -146,7 +147,7 @@ export function AddToSetlistPicker({
     mutationFn: (setlistId: number) => addSetlistEntry(setlistId, { pieceId }),
     onSuccess: invalidate,
     onError: (error) => {
-      window.alert(
+      showAlert(
         error instanceof ApiError ? error.message : 'Could not add this piece to the setlist.',
       )
     },
@@ -156,7 +157,7 @@ export function AddToSetlistPicker({
       removeSetlistEntry(setlistId, entryId),
     onSuccess: invalidate,
     onError: (error) => {
-      window.alert(
+      showAlert(
         error instanceof ApiError ? error.message : 'Could not remove this piece from the setlist.',
       )
     },

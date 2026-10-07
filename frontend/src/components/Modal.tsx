@@ -37,7 +37,8 @@ interface ModalProps {
   onClose: () => void
   labelledBy?: string
   children: ReactNode
-  /** 'md' (default, max-w-lg) fits the simple modals (rename, placeholder
+  /** 'sm' (max-w-sm) is the shared confirm/alert dialog (DialogHost.tsx).
+   * 'md' (default, max-w-lg) fits the simple modals (rename, placeholder
    * confirmations). 'lg' (max-w-2xl) is for genuinely field-dense forms —
    * added for the Piece Properties Edit Menu (§15), which has far more
    * fields than max-w-lg can lay out without feeling cramped; also what
@@ -49,7 +50,7 @@ interface ModalProps {
    * the full raw viewport) — kept available
    * for a genuinely wider future need, not removed on spec. Collapses to
    * a single column below `sm` regardless of this prop. */
-  size?: 'md' | 'lg' | 'xl'
+  size?: 'sm' | 'md' | 'lg' | 'xl'
   /** Rendered outside the scrolling body, pinned to the top of the dialog
    * — mirrors `footer` below but for content that must stay visible while
    * the rest scrolls underneath it (the Piece Properties Edit Menu's
@@ -224,7 +225,13 @@ export function Modal({
         aria-modal="true"
         aria-labelledby={labelledBy}
         className={`flex max-h-[90vh] w-full flex-col overflow-hidden rounded-t-2xl bg-paper-raised shadow-xl transition-[transform,opacity] duration-150 sm:rounded-2xl ${
-          size === 'xl' ? 'max-w-3xl' : size === 'lg' ? 'max-w-2xl' : 'max-w-lg'
+          size === 'xl'
+            ? 'max-w-3xl'
+            : size === 'lg'
+              ? 'max-w-2xl'
+              : size === 'sm'
+                ? 'max-w-sm'
+                : 'max-w-lg'
         } ${visible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}
       >
         {header && <div className="shrink-0 px-6 pt-6">{header}</div>}

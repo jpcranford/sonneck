@@ -9,6 +9,7 @@ import {
   IconX,
 } from '@tabler/icons-react'
 import { useMockupTitle } from '../lib/useMockupTitle'
+import { confirmAction } from '../lib/dialogs'
 
 // ---------------------------------------------------------------------
 // DESIGN MOCKUP — Book Upload Wizard, Screen 6 of 6: "Ready to import"
@@ -161,10 +162,13 @@ export function UploadBookConfirmMockup() {
     setTimeout(() => setStage('success'), 1400)
   }
 
-  function handleCancelUpload() {
-    const confirmed = window.confirm(
-      'Cancel this upload? The uploaded file and its generated page previews will be permanently removed from the server.',
-    )
+  async function handleCancelUpload() {
+    const confirmed = await confirmAction({
+      title: 'Cancel this upload?',
+      message:
+        'The uploaded file and its generated page previews will be permanently removed from the server.',
+      confirmLabel: 'Cancel upload',
+    })
     if (!confirmed) return
     // Mockup only — see UploadBookAboutMockup.tsx's own copy of this
     // function for the real-build notes (DELETE /api/books/{id}, thumbnail

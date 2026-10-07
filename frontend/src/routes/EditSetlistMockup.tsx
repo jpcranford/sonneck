@@ -64,7 +64,7 @@ import { useMockupTitle } from '../lib/useMockupTitle'
 // treatment `PiecePage.tsx`/`BookDetailsPage.tsx` already give Delete
 // Piece/Delete Book (confirmed by reading those two files, plus
 // `PieceContextMenu.tsx`/`BookContextMenu.tsx`, directly before making the
-// change) — a native `window.confirm()`, never a custom Modal, and never
+// change) — the shared confirm dialog (`lib/dialogs.ts`), and never
 // inside the entity's own Edit modal.
 //
 // No "underlined text tabs" pattern existed anywhere else in this codebase

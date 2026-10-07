@@ -54,6 +54,7 @@ import {
   type Permission,
   type UpdateLibrarySettingsRequest,
 } from '../api/admin'
+import { confirmAction } from '../lib/dialogs'
 
 // Admin Settings — matches /mockup/admin-settings' Option B jump-nav +
 // bordered section cards, wired to the real endpoints: Users/Security/
@@ -358,13 +359,17 @@ function UsersSection() {
     permsMutation.mutate({ id: user.id, permissions: next })
   }
 
-  function handleDelete(user: AdminUser) {
+  async function handleDelete(user: AdminUser) {
     if (isLastAdmin(user)) return
-    const message =
-      `Delete ${user.displayName}'s account? This removes it from Sonneck only — the account still exists ` +
-      `with its identity provider, so signing in again will create a brand-new Sonneck account with none of ` +
-      `this one's data (permissions, favorites, notes). This can't be undone.`
-    if (!window.confirm(message)) return
+    const confirmed = await confirmAction({
+      title: `Delete ${user.displayName}'s account?`,
+      message:
+        'This removes it from Sonneck only — the account still exists with its identity provider, so ' +
+        "signing in again will create a brand-new Sonneck account with none of this one's data " +
+        "(permissions, favorites, notes). This can't be undone.",
+      confirmLabel: 'Delete account',
+    })
+    if (!confirmed) return
     deleteMutation.mutate(user.id)
     if (openUserId === user.id) setOpenUserId(null)
   }

@@ -20,6 +20,7 @@ import { BookUploadAboutStep } from './BookUploadAboutStep'
 import { BookUploadSplitStep } from './BookUploadSplitStep'
 import { BookUploadTitlesStep } from './BookUploadTitlesStep'
 import { BookUploadConfirmStep, type NamedPiece } from './BookUploadConfirmStep'
+import { confirmAction, showAlert } from '../lib/dialogs'
 
 // Book Upload Wizard (design doc §5) — the real, wired-up container that
 // replaces UploadPage.tsx's old "coming soon" placeholder for
@@ -359,14 +360,17 @@ export function BookUploadWizard({ initialFile, onExit }: BookUploadWizardProps)
       onExit()
     },
     onError: (error) => {
-      window.alert(error instanceof ApiError ? error.message : 'Could not cancel this upload.')
+      showAlert(error instanceof ApiError ? error.message : 'Could not cancel this upload.')
     },
   })
 
-  function handleCancelUpload() {
-    const confirmed = window.confirm(
-      'Cancel this upload? The uploaded file and its generated page previews will be permanently removed from the server.',
-    )
+  async function handleCancelUpload() {
+    const confirmed = await confirmAction({
+      title: 'Cancel this upload?',
+      message:
+        'The uploaded file and its generated page previews will be permanently removed from the server.',
+      confirmLabel: 'Cancel upload',
+    })
     if (!confirmed) return
     cancelUploadMutation.mutate()
   }

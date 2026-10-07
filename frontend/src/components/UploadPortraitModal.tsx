@@ -17,6 +17,7 @@ import {
 import { ApiError } from '../api/client'
 import { Modal } from './Modal'
 import { Slider } from './Slider'
+import { showAlert } from '../lib/dialogs'
 
 // Person Details' own Upload Portrait flow — real build of the
 // PersonDetailsSample.tsx mockup (device upload OR Wikipedia search, then
@@ -233,7 +234,7 @@ export function UploadPortraitModal({
       handleClose()
     },
     onError: (error) => {
-      window.alert(error instanceof ApiError ? error.message : 'Could not save this portrait.')
+      showAlert(error instanceof ApiError ? error.message : 'Could not save this portrait.')
     },
   })
 

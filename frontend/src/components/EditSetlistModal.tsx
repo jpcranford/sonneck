@@ -38,6 +38,7 @@ import { MetaLine } from './MetaLine'
 import { MarkdownText } from './MarkdownText'
 import { Modal } from './Modal'
 import { Toggle } from './Toggle'
+import { showAlert } from '../lib/dialogs'
 
 // Real port of EditSetlistMockup.tsx's own exported EditSetlistModal
 // (Setlists design pass, Phase 10 mockup approved, decision 23's full
@@ -52,7 +53,7 @@ import { Toggle } from './Toggle'
 // Whole-setlist delete does NOT live here (decision 1's own final call,
 // confirmed against PieceContextMenu.tsx/BookContextMenu.tsx/PiecePage.tsx/
 // BookDetailsPage.tsx) — it's an icon-only button on SetlistPage.tsx's own
-// header, a native window.confirm(), never inside this modal.
+// header, behind the shared confirm dialog, never inside this modal.
 //
 // One deliberate real-build simplification beyond what the mockup showed:
 // in create mode, the Program Order tab still exists (so the tab strip
@@ -244,7 +245,7 @@ export function EditSetlistModal({
     mutationFn: (pieceId: number) => addSetlistEntry(setlistId!, { pieceId }),
     onSuccess: applyUpdatedSetlist,
     onError: (error) =>
-      window.alert(error instanceof ApiError ? error.message : 'Could not add that piece.'),
+      showAlert(error instanceof ApiError ? error.message : 'Could not add that piece.'),
   })
 
   const addOrEditCustomMutation = useMutation({
@@ -266,7 +267,7 @@ export function EditSetlistModal({
     },
     onSuccess: applyUpdatedSetlist,
     onError: (error) =>
-      window.alert(error instanceof ApiError ? error.message : 'Could not save that entry.'),
+      showAlert(error instanceof ApiError ? error.message : 'Could not save that entry.'),
   })
 
   // Piece entries only carry `role` on PATCH's full-replace body (their
@@ -276,21 +277,21 @@ export function EditSetlistModal({
       updateSetlistEntry(setlistId!, entryId, { role, customCountsAsMusic: false }),
     onSuccess: applyUpdatedSetlist,
     onError: (error) =>
-      window.alert(error instanceof ApiError ? error.message : 'Could not save that role.'),
+      showAlert(error instanceof ApiError ? error.message : 'Could not save that role.'),
   })
 
   const removeMutation = useMutation({
     mutationFn: (entryId: number) => removeSetlistEntry(setlistId!, entryId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['setlist', setlistId] }),
     onError: (error) =>
-      window.alert(error instanceof ApiError ? error.message : 'Could not remove that entry.'),
+      showAlert(error instanceof ApiError ? error.message : 'Could not remove that entry.'),
   })
 
   const reorderMutation = useMutation({
     mutationFn: (entryIds: number[]) => reorderSetlistEntries(setlistId!, entryIds),
     onSuccess: applyUpdatedSetlist,
     onError: (error) =>
-      window.alert(error instanceof ApiError ? error.message : 'Could not save the new order.'),
+      showAlert(error instanceof ApiError ? error.message : 'Could not save the new order.'),
   })
 
   function removeEntry(id: number) {
@@ -532,7 +533,7 @@ export function EditSetlistModal({
       onClose()
     },
     onError: (error) =>
-      window.alert(error instanceof ApiError ? error.message : 'Could not create this setlist.'),
+      showAlert(error instanceof ApiError ? error.message : 'Could not create this setlist.'),
   })
 
   const updateDetailsMutation = useMutation({
@@ -549,7 +550,7 @@ export function EditSetlistModal({
       onClose()
     },
     onError: (error) =>
-      window.alert(error instanceof ApiError ? error.message : 'Could not save this setlist.'),
+      showAlert(error instanceof ApiError ? error.message : 'Could not save this setlist.'),
   })
 
   function handleCancel() {

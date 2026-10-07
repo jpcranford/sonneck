@@ -19,6 +19,7 @@ import { hasPermission, useAuth } from '../lib/AuthContext'
 import { WIDE_CONTENT_MAX_W } from '../lib/layout'
 import { usePageTitle } from '../lib/usePageTitle'
 import { useViewPreference } from '../lib/useViewPreference'
+import { showAlert } from '../lib/dialogs'
 
 // The real People Library (/people) — composer/arranger overhaul, Stage B.
 // Real build of PeopleLibrarySample.tsx (/mockup/people-library, kept as a
@@ -476,7 +477,7 @@ function NewPersonModal({
   // reset unconditionally inside `onSubmit` either
   // (unlike PeopleLibrarySample.tsx's own fixture version, which has no
   // real async request to fail) — a real failed create leaves this modal
-  // open with an alert() and the typed values intentionally preserved for
+  // open with an error dialog (showAlert) and the typed values intentionally preserved for
   // an immediate retry, so resetting there would wipe a name mid-retry
   // before the user even knows whether it succeeded. Watching `open`
   // itself is the one signal both paths actually share: the parent only
@@ -640,7 +641,7 @@ export function PeopleLibraryPage() {
     },
     onError: (error) => {
       setIsCreating(false)
-      window.alert(error instanceof ApiError ? error.message : 'Could not create this person.')
+      showAlert(error instanceof ApiError ? error.message : 'Could not create this person.')
     },
   })
 

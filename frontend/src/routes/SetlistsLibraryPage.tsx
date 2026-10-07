@@ -21,6 +21,7 @@ import { CONTENT_MAX_W } from '../lib/layout'
 import { formatRelativeWeeks } from '../lib/relativeWeeks'
 import { usePageTitle } from '../lib/usePageTitle'
 import { formatDateOnly, todayDateOnly } from '../lib/dateOnly'
+import { confirmAction, showAlert } from '../lib/dialogs'
 
 // The real Setlists Library page (§13, decision 12) — built against
 // SetlistsLibraryMockup.tsx (the approved Phase 12 mockup: one unified
@@ -237,14 +238,14 @@ export function SetlistsLibraryPage() {
       setArchiveTarget(null)
     },
     onError: (err) =>
-      window.alert(err instanceof ApiError ? err.message : 'Could not archive this setlist.'),
+      showAlert(err instanceof ApiError ? err.message : 'Could not archive this setlist.'),
   })
 
   const deleteMutation = useMutation({
     mutationFn: (target: Setlist) => deleteSetlist(target.id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['setlists'] }),
     onError: (err) =>
-      window.alert(err instanceof ApiError ? err.message : 'Could not delete this setlist.'),
+      showAlert(err instanceof ApiError ? err.message : 'Could not delete this setlist.'),
   })
 
   // Same duplicate-by-copying-every-entry flow as SetlistPage.tsx's own —
@@ -278,12 +279,16 @@ export function SetlistsLibraryPage() {
       navigate(`/setlists/${created.id}`)
     },
     onError: (err) =>
-      window.alert(err instanceof ApiError ? err.message : 'Could not duplicate this setlist.'),
+      showAlert(err instanceof ApiError ? err.message : 'Could not duplicate this setlist.'),
   })
 
-  function confirmDelete(target: Setlist) {
-    if (window.confirm(`Delete "${target.name}"? This can't be undone.`))
-      deleteMutation.mutate(target)
+  async function confirmDelete(target: Setlist) {
+    const confirmed = await confirmAction({
+      title: `Delete "${target.name}"?`,
+      message: "This can't be undone.",
+      confirmLabel: 'Delete setlist',
+    })
+    if (confirmed) deleteMutation.mutate(target)
   }
 
   const archiveDirection = archiveTarget ? archiveDirectionFor(archiveTarget) : null

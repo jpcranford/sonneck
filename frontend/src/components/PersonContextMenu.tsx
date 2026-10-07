@@ -6,6 +6,7 @@ import type { Person } from '../api/types'
 import { hasPermission, useAuth } from '../lib/AuthContext'
 import { ContextMenu, type ContextMenuHandle } from './ContextMenu'
 import { EditPersonModal } from './EditPersonModal'
+import { confirmAction, showAlert } from '../lib/dialogs'
 
 interface PersonContextMenuProps {
   person: Person
@@ -20,7 +21,7 @@ interface PersonContextMenuProps {
 // "Delete Person" — hard delete (their credit rows cascade), not the
 // separate, non-destructive Split People action (that lives on Person
 // Details itself, not this menu, since it needs a real ordered-replacement
-// picker, not a one-line confirm()).
+// picker, not a yes/no confirmation).
 export const PersonContextMenu = forwardRef<ContextMenuHandle, PersonContextMenuProps>(
   function PersonContextMenu({ person, children, hideTriggerButton }, ref) {
     const [editOpen, setEditOpen] = useState(false)
@@ -37,7 +38,7 @@ export const PersonContextMenu = forwardRef<ContextMenuHandle, PersonContextMenu
         queryClient.invalidateQueries({ queryKey: ['books'] })
       },
       onError: (error) => {
-        window.alert(error instanceof ApiError ? error.message : 'Could not delete this person.')
+        showAlert(error instanceof ApiError ? error.message : 'Could not delete this person.')
       },
     })
 
@@ -58,10 +59,13 @@ export const PersonContextMenu = forwardRef<ContextMenuHandle, PersonContextMenu
               destructive: true,
               disabled: !canDelete,
               disabledReason: "You don't have permission to delete",
-              onSelect: () => {
-                if (window.confirm(`Delete "${person.name}"? This can't be undone.`)) {
-                  deleteMutation.mutate()
-                }
+              onSelect: async () => {
+                const confirmed = await confirmAction({
+                  title: `Delete "${person.name}"?`,
+                  message: "This can't be undone.",
+                  confirmLabel: 'Delete person',
+                })
+                if (confirmed) deleteMutation.mutate()
               },
             },
           ]}

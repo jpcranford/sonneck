@@ -25,6 +25,7 @@ import { TagPills } from '../components/TagPills'
 import { PALETTE } from '../lib/pieceSplitLogic'
 import { useMockupTitle } from '../lib/useMockupTitle'
 import type { Tag } from '../api/types'
+import { confirmAction } from '../lib/dialogs'
 
 // ---------------------------------------------------------------------
 // DESIGN MOCKUP for the Person Details page — one real page with two
@@ -540,10 +541,13 @@ function workContextMenuItems(
     {
       label: 'Delete Piece',
       destructive: true,
-      onSelect: () => {
-        if (window.confirm(`Delete "${workTitle(work)}"? This can't be undone.`)) {
-          onAction(`Mock action: "${workTitle(work)}" would be deleted.`)
-        }
+      onSelect: async () => {
+        const confirmed = await confirmAction({
+          title: `Delete "${workTitle(work)}"?`,
+          message: "This can't be undone.",
+          confirmLabel: 'Delete piece',
+        })
+        if (confirmed) onAction(`Mock action: "${workTitle(work)}" would be deleted.`)
       },
     },
   ]
@@ -1049,8 +1053,13 @@ export function PersonDetailsSample() {
       : []),
   ]
 
-  function handleDelete() {
-    if (window.confirm(`Delete "${MOCK_PERSON.name}"? This can't be undone.`)) {
+  async function handleDelete() {
+    const confirmed = await confirmAction({
+      title: `Delete "${MOCK_PERSON.name}"?`,
+      message: "This can't be undone.",
+      confirmLabel: 'Delete person',
+    })
+    if (confirmed) {
       setLastAction(
         `Mock action: "${MOCK_PERSON.name}" would be deleted, and you'd be sent back to the People Library.`,
       )
