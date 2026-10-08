@@ -28,20 +28,19 @@ import { dragRegion, noDragRegion, zoomOnDoubleClick } from '../lib/nativeTitleB
 // design call, not something this comment update decides on its own.
 //
 // Split into two components, not one, because the mockup's own layout
-// puts them in two different places in the tree: the top bar is a child
-// of the scrollable content column (not a sibling anchored to the
-// viewport, like the drawer below) but stays pinned via `sticky top-0`
-// while that column scrolls underneath it, while the scrim + drawer are
-// fixed-position overlays anchored to the whole viewport. AppShell.tsx
-// owns the shared `open` state and renders MobileNavTopBar inside its
-// scroll container and MobileNavDrawer as a top-level sibling, next to
-// the (desktop-only, `hidden md:block`) Sidebar.
+// puts them in two different places in the tree: the top bar heads the
+// content column, directly above its scroll container (never sticky
+// inside it — iOS's top-of-page bounce would drag it down), while the
+// scrim + drawer are fixed-position overlays anchored to the whole
+// viewport. AppShell.tsx owns the shared `open` state and renders
+// MobileNavTopBar above its scroll container and MobileNavDrawer as a
+// top-level sibling, next to the (desktop-only, `hidden md:block`) Sidebar.
 
 export function MobileNavTopBar({ onOpen }: { onOpen: () => void }) {
   return (
     <div
       onDoubleClick={zoomOnDoubleClick}
-      className={`sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b border-sidebar-border bg-sidebar-bg px-3 pl-[max(0.75rem,var(--titlebar-lights))] md:hidden ${dragRegion}`}
+      className={`relative z-30 flex h-14 shrink-0 items-center gap-3 border-b border-sidebar-border bg-sidebar-bg px-3 pl-[max(0.75rem,var(--titlebar-lights))] md:hidden ${dragRegion}`}
     >
       <button
         type="button"

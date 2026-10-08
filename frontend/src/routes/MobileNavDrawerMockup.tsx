@@ -99,8 +99,8 @@ export function MobileNavDrawerMockup() {
         <Sidebar />
       </div>
 
-      <div className="flex min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto">
-        <div className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b border-sidebar-border bg-sidebar-bg px-3 md:hidden">
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div className="relative z-30 flex h-14 shrink-0 items-center gap-3 border-b border-sidebar-border bg-sidebar-bg px-3 md:hidden">
           <button
             type="button"
             onClick={() => setDrawerOpen(true)}
@@ -110,21 +110,22 @@ export function MobileNavDrawerMockup() {
             <IconMenu2 size={22} />
           </button>
         </div>
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto">
+          <div className="m-4 rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-4 py-2 text-sm text-ink-soft">
+            Reference sample —{' '}
+            <span className="font-medium text-ink">Mobile Nav, Option B (left drawer)</span>. Resize
+            this window below 768px, or open it on a phone, to see the mobile top bar + drawer.
+            Desktop is the real Sidebar component, unchanged.
+          </div>
 
-        <div className="m-4 rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-4 py-2 text-sm text-ink-soft">
-          Reference sample —{' '}
-          <span className="font-medium text-ink">Mobile Nav, Option B (left drawer)</span>. Resize
-          this window below 768px, or open it on a phone, to see the mobile top bar + drawer.
-          Desktop is the real Sidebar component, unchanged.
+          <main className="flex flex-1 flex-col gap-3 px-4 pb-8">
+            <h1 className="font-display text-xl font-medium text-ink">Library</h1>
+            <p className="text-sm text-ink-soft">128 pieces</p>
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="h-16 rounded-lg border border-border bg-paper-sunken" />
+            ))}
+          </main>
         </div>
-
-        <main className="flex flex-1 flex-col gap-3 px-4 pb-8">
-          <h1 className="font-display text-xl font-medium text-ink">Library</h1>
-          <p className="text-sm text-ink-soft">128 pieces</p>
-          {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="h-16 rounded-lg border border-border bg-paper-sunken" />
-          ))}
-        </main>
       </div>
 
       <div

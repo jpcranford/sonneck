@@ -9,6 +9,7 @@ import { SonneckMark } from './SonneckMark'
 import { useMediaQuery } from '../hooks/useMediaQuery'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { getUserSettings } from '../api/userSettings'
+import { PageToolbarSlotContext } from '../lib/pageToolbarSlot'
 import { useDarkScoresSync, useThemeSync } from '../lib/theme'
 
 export function AppShell() {
@@ -16,6 +17,9 @@ export function AppShell() {
   // drawer/scrim render in two different places in this tree (see
   // MobileNav.tsx's own comment for why) and need to share one state.
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  // The page toolbar slot below the top bar (lib/pageToolbarSlot.ts);
+  // state, not a ref, so the toolbar re-renders into it once it mounts.
+  const [toolbarSlot, setToolbarSlot] = useState<HTMLDivElement | null>(null)
 
   // The user's light/dark/system choice, applied app-wide. Same query the
   // account menu's theme switcher reads, so a change there applies at once.
@@ -57,22 +61,23 @@ export function AppShell() {
     // page back to the top mid-scroll. 100dvh tracks the real,
     // currently-visible viewport instead of a fixed one, removing the
     // mismatch this bug depends on.
-    <div className="flex h-dvh overflow-hidden bg-paper text-ink">
-      {/* App-wide drag-and-drop upload (design doc §13) — window-level
+    <PageToolbarSlotContext.Provider value={toolbarSlot}>
+      <div className="flex h-dvh overflow-hidden bg-paper text-ink">
+        {/* App-wide drag-and-drop upload (design doc §13) — window-level
           listeners plus its overlay and dialogs, rendered once here. */}
-      <DropToUpload />
-      {/* Desktop only — MobileNav (top bar + drawer, its own `md:hidden`
+        <DropToUpload />
+        {/* Desktop only — MobileNav (top bar + drawer, its own `md:hidden`
           guards) covers everything below the md breakpoint instead. */}
-      <div className="hidden md:block">
-        <Sidebar />
-      </div>
-      {/* This div, not <main>, is the scroll container — footer scrolls
+        <div className="hidden md:block">
+          <Sidebar />
+        </div>
+        {/* This div, not <main>, is the scroll container — footer scrolls
           along with the routed content as one unit (reaches it at the end
           of a long list), while the sidebar (a flex sibling, not inside
           this scrolling div) stays pinned to the full viewport height
           instead of ending after one screen's worth of scroll like it did
           when the whole page (not this div) used to scroll as a block. */}
-      {/* overflow-x-hidden explicitly, not left implicit: per the CSS spec,
+        {/* overflow-x-hidden explicitly, not left implicit: per the CSS spec,
           setting overflow-y to a non-visible value (auto, here) silently
           computes a bare/unset overflow-x to auto too, not visible — this
           container was quietly horizontally scrollable as a result, with
@@ -86,17 +91,26 @@ export function AppShell() {
           to" with nothing visibly there. This app has no design that
           calls for horizontal scrolling anywhere in the main content
           column, so hidden is correct here, not auto. */}
-      <div
-        id="app-scroll-container"
-        ref={scrollContainerRef}
-        className="flex min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-y-contain"
-      >
-        <MobileNavTopBar onOpen={() => setMobileNavOpen(true)} />
-        {/* Pull-to-refresh indicator — placed AFTER MobileNavTopBar, not
-            before it: that bar is `sticky top-0`, standard mobile-app
-            practice is for it to stay pinned in place while the indicator
-            reveals in the content area below it, not get pushed down by
-            the indicator's own growing height. A real sibling of main/
+        {/* The narrow-screen top bar sits above the scroll container, not
+          sticky inside it: iOS's rubber-band bounce at the top drags a
+          sticky element down with the content, so a fast fling to the top
+          pulled the bar away from the screen's edge. Outside it, only the
+          page bounces, under a bar that never moves. The library pages'
+          toolbar joins it in the slot below. */}
+        <div className="flex min-w-0 flex-1 flex-col">
+          <MobileNavTopBar onOpen={() => setMobileNavOpen(true)} />
+          {/* A page's own toolbar renders here (components/PageToolbarSlot.tsx),
+            above the scroll container for the same reason as the top bar.
+            z-20 so its dropdowns open over the page below. */}
+          <div ref={setToolbarSlot} className="relative z-20 shrink-0" />
+          <div
+            id="app-scroll-container"
+            ref={scrollContainerRef}
+            className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-y-contain"
+          >
+            {/* Pull-to-refresh indicator — at the top of the scroll container,
+            so it reveals below the top bar rather than pushing the bar
+            down. A real sibling of main/
             footer inside this same scrolling div, not a fixed overlay —
             its height (0 normally) IS the pull distance, so growing it
             pushes `main` down via ordinary layout instead of needing a
@@ -108,35 +122,37 @@ export function AppShell() {
             actively dragging ('pulling'/'ready' only ever happen mid-
             gesture) — only on release, snapping back to 0 or settling at
             the fixed refreshing height. */}
-        {isMobileOrTablet && (
-          <div
-            aria-hidden="true"
-            className={`flex shrink-0 items-center justify-center overflow-hidden ${
-              phase === 'pulling' || phase === 'ready' ? '' : 'transition-[height] duration-200'
-            }`}
-            style={{ height: pullDistance }}
-          >
-            <IconLoader2
-              size={22}
-              className={
-                phase === 'refreshing'
-                  ? 'animate-spin text-accent'
-                  : phase === 'ready'
-                    ? 'text-accent'
-                    : 'text-ink-soft'
-              }
-              style={
-                phase === 'refreshing'
-                  ? undefined
-                  : { transform: `rotate(${Math.min((pullDistance / threshold) * 180, 180)}deg)` }
-              }
-            />
-          </div>
-        )}
-        <main className="flex flex-1 flex-col">
-          <Outlet />
-        </main>
-        {/* flex-col + items-center, not justify-center on a wrapped text
+            {isMobileOrTablet && (
+              <div
+                aria-hidden="true"
+                className={`flex shrink-0 items-center justify-center overflow-hidden ${
+                  phase === 'pulling' || phase === 'ready' ? '' : 'transition-[height] duration-200'
+                }`}
+                style={{ height: pullDistance }}
+              >
+                <IconLoader2
+                  size={22}
+                  className={
+                    phase === 'refreshing'
+                      ? 'animate-spin text-accent'
+                      : phase === 'ready'
+                        ? 'text-accent'
+                        : 'text-ink-soft'
+                  }
+                  style={
+                    phase === 'refreshing'
+                      ? undefined
+                      : {
+                          transform: `rotate(${Math.min((pullDistance / threshold) * 180, 180)}deg)`,
+                        }
+                  }
+                />
+              </div>
+            )}
+            <main className="flex flex-1 flex-col">
+              <Outlet />
+            </main>
+            {/* flex-col + items-center, not justify-center on a wrapped text
             box: a wrapped text child sizes to its own available width, not
             its rendered line width, so bounding-box centering alone
             doesn't visually center ragged wrapped text against a
@@ -149,16 +165,16 @@ export function AppShell() {
             inheriting it, so hover:text-ink below applies to both at once.
             SonneckMark is Gwendolyn 700 (bold) — see that component's own
             comment for the full reasoning. */}
-        <footer className="flex shrink-0 flex-col items-center px-6 pt-0 pb-9">
-          {/* NOTE: the above's pb-8 is the space between s mark and bottom of page. The below's mb-6 is the space between s mark and line. Kept at 2:3 ratio for now 'cause it looks nice. */}
-          <span aria-hidden="true" className="mb-6 h-px w-10 bg-border" />
-          <a
-            href="https://github.com/jpcranford/sonneck"
-            target="_blank"
-            rel="noreferrer"
-            className="flex cursor-pointer flex-col items-center gap-3.5 text-ink-fainter hover:text-ink"
-          >
-            {/* No whitespace-nowrap here on purpose, even though the design
+            <footer className="flex shrink-0 flex-col items-center px-6 pt-0 pb-9">
+              {/* NOTE: the above's pb-8 is the space between s mark and bottom of page. The below's mb-6 is the space between s mark and line. Kept at 2:3 ratio for now 'cause it looks nice. */}
+              <span aria-hidden="true" className="mb-6 h-px w-10 bg-border" />
+              <a
+                href="https://github.com/jpcranford/sonneck"
+                target="_blank"
+                rel="noreferrer"
+                className="flex cursor-pointer flex-col items-center gap-3.5 text-ink-fainter hover:text-ink"
+              >
+                {/* No whitespace-nowrap here on purpose, even though the design
                 intent is "one line" — the sentence's natural width (~288px)
                 comfortably fits one line on any normal desktop/tablet width,
                 but is wider than the available content area on a narrow
@@ -179,14 +195,16 @@ export function AppShell() {
                 width — text-align:center on the span itself is the direct
                 fix, since there's no icon position here that needs to
                 stay synced with a ragged box. */}
-            {/* <span className="text-center font-display text-[0.78rem] italic">
+                {/* <span className="text-center font-display text-[0.78rem] italic">
               Powered by Sonneck, an open-source music library
             </span> */}
-            <SonneckMark className="size-8 shrink-0" />
-          </a>
-        </footer>
+                <SonneckMark className="size-8 shrink-0" />
+              </a>
+            </footer>
+          </div>
+        </div>
+        <MobileNavDrawer open={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
       </div>
-      <MobileNavDrawer open={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
-    </div>
+    </PageToolbarSlotContext.Provider>
   )
 }

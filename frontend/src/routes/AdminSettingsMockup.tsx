@@ -542,7 +542,10 @@ function SectionBlock({
   children: React.ReactNode
 }) {
   return (
-    <div id={id} className="scroll-mt-20 rounded-lg border border-border bg-paper-raised p-5">
+    <div
+      id={id}
+      className="scroll-mt-6 md:scroll-mt-20 rounded-lg border border-border bg-paper-raised p-5"
+    >
       <h2 className="mb-3 flex items-center font-display text-base font-medium text-ink">
         {title}
         {headerExtra}

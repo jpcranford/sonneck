@@ -8,6 +8,7 @@ import {
 } from '@tabler/icons-react'
 import { SortControl, type SortDirection, type SortFieldOption } from './SortControl'
 import { WIDE_CONTENT_MAX_W } from '../lib/layout'
+import { PageToolbarPortal } from './PageToolbarSlot'
 
 /**
  * Shared toolbar for the Piece/Book/Person Library pages — search
@@ -129,102 +130,104 @@ export function LibraryToolbar<Field extends string>({
   children?: ReactNode
 }) {
   return (
-    <div className="sticky top-0 z-20 border-b border-border bg-paper">
-      <div className={`${WIDE_CONTENT_MAX_W} flex flex-col gap-3 p-4`}>
-        <div
-          className={`grid grid-cols-[auto_1fr] items-center gap-3 ${rightColumnGridColsClassName}`}
-        >
-          <div className="col-start-1 row-start-1 flex shrink-0 items-center justify-self-start gap-1 rounded-md border border-border p-0.5 sm:col-start-auto sm:row-start-auto">
-            <button
-              type="button"
-              onClick={() => onViewModeChange('grid')}
-              aria-label="Grid view"
-              aria-pressed={viewMode === 'grid'}
-              className={`flex size-8 cursor-pointer items-center justify-center rounded ${
-                viewMode === 'grid'
-                  ? 'bg-accent-soft text-accent'
-                  : 'text-ink-soft hover:bg-paper-hover'
-              }`}
-            >
-              <IconLayoutGridFilled size={16} />
-            </button>
-            <button
-              type="button"
-              onClick={() => onViewModeChange('list')}
-              aria-label="List view"
-              aria-pressed={viewMode === 'list'}
-              className={`flex size-8 cursor-pointer items-center justify-center rounded ${
-                viewMode === 'list'
-                  ? 'bg-accent-soft text-accent'
-                  : 'text-ink-soft hover:bg-paper-hover'
-              }`}
-            >
-              <IconLayoutListFilled size={16} />
-            </button>
-          </div>
-
-          <div className="col-span-2 row-start-2 flex w-full min-w-0 items-center justify-center gap-3 sm:col-span-1 sm:row-start-auto">
-            <div className="relative min-w-0 max-w-xl flex-1">
-              <IconSearch
-                size={16}
-                className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-soft"
-              />
-              <input
-                type="text"
-                value={query}
-                onChange={(event) => onQueryChange(event.target.value)}
-                placeholder={searchPlaceholder}
-                className="w-full rounded-md border border-border bg-paper-raised py-2 pr-3 pl-9 text-sm text-ink"
-              />
-            </div>
-
-            {newButton && (
+    <PageToolbarPortal>
+      <div className="border-b border-border bg-paper">
+        <div className={`${WIDE_CONTENT_MAX_W} flex flex-col gap-3 p-4`}>
+          <div
+            className={`grid grid-cols-[auto_1fr] items-center gap-3 ${rightColumnGridColsClassName}`}
+          >
+            <div className="col-start-1 row-start-1 flex shrink-0 items-center justify-self-start gap-1 rounded-md border border-border p-0.5 sm:col-start-auto sm:row-start-auto">
               <button
                 type="button"
-                onClick={newButton.onClick}
-                disabled={newButton.disabled}
-                title={newButton.title}
-                className="flex h-[38px] shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-border bg-paper-raised px-3 text-sm text-ink hover:bg-paper-hover disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-paper-raised"
+                onClick={() => onViewModeChange('grid')}
+                aria-label="Grid view"
+                aria-pressed={viewMode === 'grid'}
+                className={`flex size-8 cursor-pointer items-center justify-center rounded ${
+                  viewMode === 'grid'
+                    ? 'bg-accent-soft text-accent'
+                    : 'text-ink-soft hover:bg-paper-hover'
+                }`}
               >
-                <IconPlus size={16} />
-                {newButton.label}
+                <IconLayoutGridFilled size={16} />
               </button>
-            )}
-          </div>
+              <button
+                type="button"
+                onClick={() => onViewModeChange('list')}
+                aria-label="List view"
+                aria-pressed={viewMode === 'list'}
+                className={`flex size-8 cursor-pointer items-center justify-center rounded ${
+                  viewMode === 'list'
+                    ? 'bg-accent-soft text-accent'
+                    : 'text-ink-soft hover:bg-paper-hover'
+                }`}
+              >
+                <IconLayoutListFilled size={16} />
+              </button>
+            </div>
 
-          <div className="col-start-2 row-start-1 flex items-center justify-self-end gap-3 sm:col-start-auto sm:row-start-auto">
-            <button
-              type="button"
-              onClick={onOpenFilters}
-              aria-label="Filters"
-              className={`flex h-[38px] cursor-pointer items-center gap-1.5 rounded-md border px-3 text-sm ${
-                activeFilterCount > 0
-                  ? 'border-accent bg-accent-soft text-accent'
-                  : 'border-border bg-paper-raised text-ink hover:bg-paper-hover'
-              }`}
-            >
-              <IconAdjustmentsHorizontal size={16} />
-              <span className="inline sm:hidden 2xl:inline">Filters</span>
-              {activeFilterCount > 0 && (
-                <span className="flex size-4 items-center justify-center rounded-full bg-accent-fill text-[0.65rem] font-semibold text-white">
-                  {activeFilterCount}
-                </span>
+            <div className="col-span-2 row-start-2 flex w-full min-w-0 items-center justify-center gap-3 sm:col-span-1 sm:row-start-auto">
+              <div className="relative min-w-0 max-w-xl flex-1">
+                <IconSearch
+                  size={16}
+                  className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-soft"
+                />
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(event) => onQueryChange(event.target.value)}
+                  placeholder={searchPlaceholder}
+                  className="w-full rounded-md border border-border bg-paper-raised py-2 pr-3 pl-9 text-sm text-ink"
+                />
+              </div>
+
+              {newButton && (
+                <button
+                  type="button"
+                  onClick={newButton.onClick}
+                  disabled={newButton.disabled}
+                  title={newButton.title}
+                  className="flex h-[38px] shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-border bg-paper-raised px-3 text-sm text-ink hover:bg-paper-hover disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-paper-raised"
+                >
+                  <IconPlus size={16} />
+                  {newButton.label}
+                </button>
               )}
-            </button>
+            </div>
 
-            <SortControl
-              fields={sortFields}
-              field={sortField}
-              direction={sortDirection}
-              onFieldChange={onSortFieldChange}
-              onDirectionToggle={onSortDirectionToggle}
-              directionLabel={sortDirectionLabel}
-            />
+            <div className="col-start-2 row-start-1 flex items-center justify-self-end gap-3 sm:col-start-auto sm:row-start-auto">
+              <button
+                type="button"
+                onClick={onOpenFilters}
+                aria-label="Filters"
+                className={`flex h-[38px] cursor-pointer items-center gap-1.5 rounded-md border px-3 text-sm ${
+                  activeFilterCount > 0
+                    ? 'border-accent bg-accent-soft text-accent'
+                    : 'border-border bg-paper-raised text-ink hover:bg-paper-hover'
+                }`}
+              >
+                <IconAdjustmentsHorizontal size={16} />
+                <span className="inline sm:hidden 2xl:inline">Filters</span>
+                {activeFilterCount > 0 && (
+                  <span className="flex size-4 items-center justify-center rounded-full bg-accent-fill text-[0.65rem] font-semibold text-white">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </button>
+
+              <SortControl
+                fields={sortFields}
+                field={sortField}
+                direction={sortDirection}
+                onFieldChange={onSortFieldChange}
+                onDirectionToggle={onSortDirectionToggle}
+                directionLabel={sortDirectionLabel}
+              />
+            </div>
           </div>
-        </div>
 
-        {children}
+          {children}
+        </div>
       </div>
-    </div>
+    </PageToolbarPortal>
   )
 }
