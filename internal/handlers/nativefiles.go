@@ -166,16 +166,32 @@ func (s *Server) fetchToTemp(w http.ResponseWriter, r *http.Request, target stri
 
 // downloadName is the file's usual download name, from the response's
 // Content-Disposition (downloadFilename, filename.go), else the URL's last
-// segment.
+// segment. Open PDF writes it into a folder of its own, so it is cut down
+// to a plain file name: no folders, never "..".
 func downloadName(h http.Header, target string) string {
+	name := ""
 	if _, params, err := mime.ParseMediaType(h.Get("Content-Disposition")); err == nil {
-		if name := filepath.Base(params["filename"]); name != "" && name != "." && name != "/" {
-			return name
+		name = plainFileName(params["filename"])
+	}
+	if name == "" {
+		name = plainFileName(strings.SplitN(target, "?", 2)[0])
+		if name != "" && !strings.HasSuffix(strings.ToLower(name), ".pdf") {
+			name += ".pdf"
 		}
 	}
-	base := filepath.Base(strings.SplitN(target, "?", 2)[0])
-	if !strings.HasSuffix(strings.ToLower(base), ".pdf") {
-		base += ".pdf"
+	if name == "" {
+		return "download.pdf"
+	}
+	return name
+}
+
+// plainFileName is the last segment of name, or "" when there is none.
+// Cleaning it as an absolute path first resolves every ".." against the
+// root, so the segment can't climb out of whatever folder it is joined to.
+func plainFileName(name string) string {
+	base := filepath.Base(filepath.Clean("/" + name))
+	if base == "/" || base == "." || base == string(filepath.Separator) {
+		return ""
 	}
 	return base
 }
