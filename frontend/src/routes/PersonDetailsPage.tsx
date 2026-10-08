@@ -106,7 +106,7 @@ function roleFor(piece: Piece, personId: number): 'Composer' | 'Arranger' {
 // anything — it's the piece's own explicit data on a different field,
 // just borrowed here. Labeling it "(pub.)" the same as a genuinely
 // book-inherited year misrepresented one fact as another, and could
-// visually break this page's own year-then-opus-then-title sort ordering
+// visually break this page's own year, opus, Publisher ID, title sort ordering
 // for a set of
 // same-opus pieces sharing one book — a piece with a stray own Copyright
 // Year jumps to a completely different year tier than its siblings, who
@@ -149,6 +149,18 @@ function compareOpus(a: Piece, b: Piece): number {
   if (!bv) return -1
   return av.localeCompare(bv, undefined, { numeric: true })
 }
+// The piece's own Publisher ID, only when set on the piece itself — one
+// inherited from its book is the same for every sibling, so it can't order
+// them. Same numeric comparison as opus ("No. 2" before "No. 10"); a piece
+// without its own sorts last.
+function compareOwnPublisherId(a: Piece, b: Piece): number {
+  const av = a.publisherId.inherited ? '' : a.publisherId.value
+  const bv = b.publisherId.inherited ? '' : b.publisherId.value
+  if (!av && !bv) return 0
+  if (!av) return 1
+  if (!bv) return -1
+  return av.localeCompare(bv, undefined, { numeric: true })
+}
 // Same "ignore a leading A/An/The" library-catalog convention the
 // backend's own title sort already applies everywhere else (CLAUDE.md >
 // Frontend, articleStrippedSQL) — ported client-side here since this page
@@ -158,17 +170,17 @@ function compareOpus(a: Piece, b: Piece): number {
 function titleSortKey(title: string): string {
   return title.replace(/^(a|an|the)\s+/i, '').toLowerCase()
 }
-// Year written first, then opus number, then title A→Z as the final
-// tiebreaker (opus inserted as a middle key between the year-then-title
-// chain). A
-// year-less/opus-less work still sorts last within its tier (both sort
-// keys' own +Infinity), then alphabetically among itself.
+// Year written first, then opus number, then the piece's own Publisher ID,
+// then title A→Z as the final tiebreaker. A work missing any of the first
+// three sorts last within its tier, then alphabetically among itself.
 function sortWorks(pieces: Piece[]): Piece[] {
   return [...pieces].sort((a, b) => {
     const yearDiff = workYearSortKey(a) - workYearSortKey(b)
     if (yearDiff !== 0) return yearDiff
     const opusDiff = compareOpus(a, b)
     if (opusDiff !== 0) return opusDiff
+    const publisherIdDiff = compareOwnPublisherId(a, b)
+    if (publisherIdDiff !== 0) return publisherIdDiff
     return titleSortKey(a.title).localeCompare(titleSortKey(b.title))
   })
 }

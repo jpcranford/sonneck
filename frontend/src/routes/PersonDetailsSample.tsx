@@ -53,6 +53,9 @@ interface MockWork {
   id: number
   title: string
   opus: string | null
+  // The piece's own Publisher ID, only when set on the piece itself (not
+  // inherited from its book) — PersonDetailsPage.tsx's sort tiebreak.
+  ownPublisherId?: string | null
   // Mirrors the real piece.yearWritten's own EffectiveField shape
   // (repo/effective.go's resolveYearWritten, three-level fallback: piece's
   // own Year Written, else piece's own Copyright Year, else book's Year
@@ -395,15 +398,16 @@ function compareOpus(a: string | null, b: string | null): number {
 function titleSortKey(title: string): string {
   return title.replace(/^(a|an|the)\s+/i, '').toLowerCase()
 }
-// Year written first, then opus number, then title A→Z as the final
-// tiebreaker (opus inserted as a middle key between the year-then-title
-// chain).
+// Year written first, then opus number, then the piece's own Publisher ID
+// (compared like opus), then title A→Z as the final tiebreaker.
 function sortWorks(works: MockWork[]): MockWork[] {
   return [...works].sort((a, b) => {
     const yearDiff = workYearSortKey(a) - workYearSortKey(b)
     if (yearDiff !== 0) return yearDiff
     const opusDiff = compareOpus(a.opus, b.opus)
     if (opusDiff !== 0) return opusDiff
+    const publisherIdDiff = compareOpus(a.ownPublisherId ?? null, b.ownPublisherId ?? null)
+    if (publisherIdDiff !== 0) return publisherIdDiff
     return titleSortKey(a.title).localeCompare(titleSortKey(b.title))
   })
 }
