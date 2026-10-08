@@ -1,5 +1,6 @@
+import { useCallback } from 'react'
 import { Routes, Route } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { getConfig, type AppConfig } from './api/config'
 import { getMe } from './api/auth'
 import { ApiError } from './api/client'
@@ -10,6 +11,7 @@ import { LoginScreen } from './routes/LoginScreen'
 import { UserSettingsPage } from './routes/UserSettingsPage'
 import { AdminPage } from './routes/AdminPage'
 import { AppShell } from './components/AppShell'
+import { ServerUnreachable } from './components/ServerUnreachable'
 import { LibraryPage } from './routes/LibraryPage'
 import { BooksPage } from './routes/BooksPage'
 import { UploadPage } from './routes/UploadPage'
@@ -116,6 +118,17 @@ function AuthGate({
   oidcProviderName?: string
 }) {
   const meQuery = useQuery({ queryKey: ['auth', 'me'], queryFn: getMe, retry: false })
+  const queryClient = useQueryClient()
+  const { refetch: refetchMe } = meQuery
+  // Tries the server once directly, and only when it answers asks again for
+  // both start-up answers: the app's settings (whose own failure falls
+  // through to here) and the sign-in. Refetching first would put both
+  // never-loaded queries back to "loading", swapping ServerUnreachable for
+  // the blank start-up screen (and resetting its countdown) on every try.
+  const retryStartup = useCallback(async () => {
+    await getConfig()
+    await Promise.all([queryClient.refetchQueries({ queryKey: ['config'] }), refetchMe()])
+  }, [queryClient, refetchMe])
 
   if (meQuery.isLoading) {
     return <div className="min-h-dvh bg-paper" />
@@ -127,12 +140,8 @@ function AuthGate({
     }
     // A non-401 failure (network error, 500) isn't a "please log in" case —
     // the rest of the app depends on this same backend anyway, so there's
-    // nothing useful to render behind it.
-    return (
-      <div className="flex min-h-dvh flex-col items-center justify-center gap-2 bg-paper p-6 text-center">
-        <p className="text-ink-soft">Couldn't reach the server. Try refreshing.</p>
-      </div>
-    )
+    // nothing useful to render behind it but a way to try again.
+    return <ServerUnreachable onRetry={retryStartup} />
   }
 
   return (

@@ -2,8 +2,10 @@ import { useEffect, useState, type ReactNode } from 'react'
 import {
   IconAlertTriangle,
   IconArrowLeft,
+  IconCloudOff,
   IconEye,
   IconLoader2,
+  IconRefresh,
   IconSearch,
 } from '@tabler/icons-react'
 import { useMockupTitle } from '../lib/useMockupTitle'
@@ -175,6 +177,29 @@ function EmptyStates() {
   )
 }
 
+// Copy of components/ServerUnreachable.tsx's two resting states.
+function ServerUnreachableSample({ gaveUp }: { gaveUp: boolean }) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-3 py-8 text-center">
+      <IconCloudOff size={48} stroke={1.5} className="text-ink-soft" />
+      <h1 className="font-display text-xl font-medium text-ink">Can't reach Sonneck</h1>
+      <p className="max-w-xs text-ink-soft">
+        {gaveUp
+          ? "The server didn't answer. Check that it's running, then try again."
+          : 'Trying again in 8 seconds…'}
+      </p>
+      <span
+        className={`mt-2 flex cursor-pointer items-center gap-2 rounded-md px-4 py-2 font-display font-medium ${
+          gaveUp ? 'bg-accent-fill text-white' : 'border border-border bg-paper-raised text-ink'
+        }`}
+      >
+        <IconRefresh size={16} />
+        {gaveUp ? 'Try again' : 'Try now'}
+      </span>
+    </div>
+  )
+}
+
 function ErrorStates() {
   return (
     <>
@@ -193,6 +218,18 @@ function ErrorStates() {
           <p className="text-ink-soft">There's nothing at this address.</p>
           <span className="mt-4 cursor-pointer text-accent underline">Back to Library</span>
         </div>
+      </Specimen>
+      <Specimen
+        where="Server unreachable at start-up — retrying"
+        note="components/ServerUnreachable.tsx. Retries by itself after 5, 10, 20, 30 and 30 seconds; Try now or pulling down skips the wait."
+      >
+        <ServerUnreachableSample gaveUp={false} />
+      </Specimen>
+      <Specimen
+        where="Server unreachable at start-up — gave up"
+        note="After the fifth automatic try fails it stops and waits for Try again (or a pull)."
+      >
+        <ServerUnreachableSample gaveUp />
       </Specimen>
       <Specimen
         where="A page that couldn't load"
