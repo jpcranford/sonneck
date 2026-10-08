@@ -885,7 +885,7 @@ export function EditPieceModal({
                   disabled={siblingIndex <= 0}
                   aria-label="Previous piece"
                   title={siblingIndex > 0 ? siblingPieces[siblingIndex - 1].title : undefined}
-                  className="flex size-7 cursor-pointer items-center justify-center rounded hover:bg-accent-soft hover:text-accent disabled:pointer-events-none disabled:opacity-30"
+                  className="flex size-7 cursor-pointer items-center justify-center rounded hover:bg-accent-soft hover:text-accent disabled:opacity-30"
                 >
                   <IconChevronLeft size={18} />
                 </button>
@@ -902,7 +902,7 @@ export function EditPieceModal({
                       ? siblingPieces[siblingIndex + 1].title
                       : undefined
                   }
-                  className="flex size-7 cursor-pointer items-center justify-center rounded hover:bg-accent-soft hover:text-accent disabled:pointer-events-none disabled:opacity-30"
+                  className="flex size-7 cursor-pointer items-center justify-center rounded hover:bg-accent-soft hover:text-accent disabled:opacity-30"
                 >
                   <IconChevronRightFilled size={18} />
                 </button>
@@ -922,7 +922,7 @@ export function EditPieceModal({
                 type="button"
                 onClick={() => handleSubmit(onSubmitStayOpen)()}
                 disabled={isSaving}
-                className="cursor-pointer rounded-md border border-accent bg-paper-raised px-4 py-2 font-display font-medium text-accent hover:bg-accent-soft disabled:cursor-default disabled:opacity-60"
+                className="cursor-pointer rounded-md border border-accent bg-paper-raised px-4 py-2 font-display font-medium text-accent hover:bg-accent-soft disabled:opacity-60"
               >
                 {isSaving ? 'Saving…' : 'Save'}
               </button>
@@ -930,7 +930,7 @@ export function EditPieceModal({
                 type="submit"
                 form="edit-piece-form"
                 disabled={isSaving}
-                className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-white hover:bg-accent-fill/90 disabled:cursor-default disabled:opacity-50"
+                className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-white hover:bg-accent-fill/90 disabled:opacity-50"
               >
                 {isSaving ? 'Saving…' : 'Save & Close'}
               </button>
@@ -1386,7 +1386,7 @@ export function EditPieceModal({
                   type="button"
                   onClick={handleCalculateDuration}
                   disabled={!canCalculateDuration}
-                  className="cursor-pointer rounded-md border border-border bg-paper-raised px-3 py-2 font-display font-medium text-sm text-ink hover:border-accent disabled:pointer-events-none disabled:cursor-default disabled:opacity-40"
+                  className="cursor-pointer rounded-md border border-border bg-paper-raised px-3 py-2 font-display font-medium text-sm text-ink hover:border-accent disabled:opacity-40"
                 >
                   Calculate
                 </button>

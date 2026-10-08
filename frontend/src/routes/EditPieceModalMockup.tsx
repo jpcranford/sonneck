@@ -435,7 +435,7 @@ function ImslpAutofillButton({
       disabled={disabled}
       aria-label={valid ? 'Autofill blank fields from IMSLP' : 'No IMSLP number to autofill from'}
       title={valid ? 'Autofill blank fields from IMSLP' : 'No IMSLP number to autofill from'}
-      className={`absolute top-1/2 right-2.5 flex size-5 -translate-y-1/2 items-center justify-center disabled:cursor-default ${
+      className={`absolute top-1/2 right-2.5 flex size-5 -translate-y-1/2 items-center justify-center ${
         valid ? 'cursor-pointer text-ink-faint hover:text-accent' : 'text-ink-fainter'
       }`}
     >
@@ -1459,7 +1459,7 @@ export function EditPieceModalMockup() {
                 disabled={siblingIndex <= 0}
                 aria-label="Previous piece"
                 title={siblingIndex > 0 ? SIBLING_PIECES[siblingIndex - 1].title : undefined}
-                className="flex size-7 cursor-pointer items-center justify-center rounded hover:bg-accent-soft hover:text-accent disabled:pointer-events-none disabled:opacity-30"
+                className="flex size-7 cursor-pointer items-center justify-center rounded hover:bg-accent-soft hover:text-accent disabled:opacity-30"
               >
                 <IconChevronLeft size={18} />
               </button>
@@ -1476,7 +1476,7 @@ export function EditPieceModalMockup() {
                     ? SIBLING_PIECES[siblingIndex + 1].title
                     : undefined
                 }
-                className="flex size-7 cursor-pointer items-center justify-center rounded hover:bg-accent-soft hover:text-accent disabled:pointer-events-none disabled:opacity-30"
+                className="flex size-7 cursor-pointer items-center justify-center rounded hover:bg-accent-soft hover:text-accent disabled:opacity-30"
               >
                 <IconChevronRightFilled size={18} />
               </button>
@@ -1909,7 +1909,7 @@ export function EditPieceModalMockup() {
                     type="button"
                     onClick={handleCalculateDuration}
                     disabled={!canCalculateDuration}
-                    className="cursor-pointer rounded-md border border-border bg-paper-raised px-3 py-2 font-display font-medium text-sm text-ink hover:border-accent disabled:pointer-events-none disabled:cursor-default disabled:opacity-40"
+                    className="cursor-pointer rounded-md border border-border bg-paper-raised px-3 py-2 font-display font-medium text-sm text-ink hover:border-accent disabled:opacity-40"
                   >
                     Calculate
                   </button>

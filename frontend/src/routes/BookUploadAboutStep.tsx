@@ -380,7 +380,7 @@ export function BookUploadAboutStep({
                 onClick={() => setPreviewPage((p) => Math.max(1, p - 1))}
                 disabled={previewPage === 1}
                 aria-label="Previous page"
-                className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline-accent-on-dark disabled:pointer-events-none disabled:opacity-35"
+                className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline-accent-on-dark disabled:opacity-35"
               >
                 <IconChevronLeft size={14} />
               </button>
@@ -392,7 +392,7 @@ export function BookUploadAboutStep({
                 onClick={() => setPreviewPage((p) => Math.min(pageCount, p + 1))}
                 disabled={previewPage === pageCount}
                 aria-label="Next page"
-                className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline-accent-on-dark disabled:pointer-events-none disabled:opacity-35"
+                className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline-accent-on-dark disabled:opacity-35"
               >
                 <IconChevronRightFilled size={14} />
               </button>
@@ -697,7 +697,7 @@ export function BookUploadAboutStep({
               type="button"
               onClick={onCancel}
               disabled={cancelPending}
-              className="flex cursor-pointer items-center gap-1.5 text-base text-danger hover:text-danger-strong disabled:cursor-default disabled:opacity-45"
+              className="flex cursor-pointer items-center gap-1.5 text-base text-danger hover:text-danger-strong disabled:opacity-45"
             >
               <IconX size={24} />
               Cancel upload
@@ -705,7 +705,7 @@ export function BookUploadAboutStep({
             <button
               type="submit"
               disabled={saveMutation.isPending}
-              className="flex cursor-pointer items-center gap-1.5 rounded-md bg-accent-fill px-5 py-2.5 font-display font-medium text-white hover:bg-accent-fill/90 disabled:cursor-default disabled:opacity-50"
+              className="flex cursor-pointer items-center gap-1.5 rounded-md bg-accent-fill px-5 py-2.5 font-display font-medium text-white hover:bg-accent-fill/90 disabled:opacity-50"
             >
               {saveMutation.isPending ? 'Saving…' : 'Next'}
               {!saveMutation.isPending && <IconArrowRight size={16} />}

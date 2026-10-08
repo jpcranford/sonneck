@@ -265,7 +265,7 @@ export function UploadPortraitModal({
               type="button"
               onClick={() => setStep('source')}
               disabled={uploadMutation.isPending}
-              className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-ink hover:border-accent disabled:cursor-default disabled:opacity-45"
+              className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-ink hover:border-accent disabled:opacity-45"
             >
               Back
             </button>
@@ -273,7 +273,7 @@ export function UploadPortraitModal({
               type="button"
               onClick={() => uploadMutation.mutate()}
               disabled={uploadMutation.isPending}
-              className="flex cursor-pointer items-center gap-1.5 rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-white hover:bg-accent-fill/90 disabled:cursor-default disabled:opacity-50"
+              className="flex cursor-pointer items-center gap-1.5 rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-white hover:bg-accent-fill/90 disabled:opacity-50"
             >
               {uploadMutation.isPending ? (
                 <IconLoader2 size={16} className="animate-spin" />
@@ -341,7 +341,7 @@ export function UploadPortraitModal({
               type="button"
               onClick={handleWikiSearch}
               disabled={!wikiQuery.trim() || searchMutation.isPending}
-              className="cursor-pointer self-end text-xs text-accent hover:underline disabled:cursor-default disabled:text-ink-soft disabled:no-underline"
+              className="cursor-pointer self-end text-xs text-accent hover:underline disabled:text-ink-soft disabled:no-underline"
             >
               {searchMutation.isPending ? 'Searching…' : 'Search'}
             </button>
@@ -367,7 +367,7 @@ export function UploadPortraitModal({
                       pickImageMutation.mutate(result)
                     }}
                     disabled={pickImageMutation.isPending}
-                    className="flex cursor-pointer items-center gap-3 px-3 py-2.5 text-left hover:bg-paper-hover disabled:cursor-default"
+                    className="flex cursor-pointer items-center gap-3 px-3 py-2.5 text-left hover:bg-paper-hover"
                   >
                     <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-ink-soft text-paper">
                       {pickImageMutation.isPending &&

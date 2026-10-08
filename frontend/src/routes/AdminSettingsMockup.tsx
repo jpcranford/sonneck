@@ -1272,7 +1272,7 @@ export function AdminSettingsMockup() {
                           : `Delete ${user.name}`
                       }
                       aria-label={`Delete ${user.name}`}
-                      className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-ink-soft hover:bg-danger-soft hover:text-danger disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-ink-soft"
+                      className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-ink-soft hover:bg-danger-soft hover:text-danger disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-ink-soft"
                     >
                       <IconTrash size={15} />
                     </button>
@@ -1397,7 +1397,7 @@ export function AdminSettingsMockup() {
               type="button"
               disabled={!canSaveSecurity}
               onClick={saveSecurity}
-              className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 text-sm text-white enabled:hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-50"
+              className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 text-sm text-white enabled:hover:bg-accent-fill/90 disabled:opacity-50"
             >
               Save changes
             </button>
@@ -1559,7 +1559,7 @@ export function AdminSettingsMockup() {
               type="button"
               disabled={lookupDeleteMode === 'merge' && mergeTargetId === null}
               onClick={confirmLookupDelete}
-              className="cursor-pointer rounded-md bg-danger-fill px-4 py-2 text-sm text-white hover:bg-danger-fill-strong disabled:cursor-not-allowed disabled:opacity-40"
+              className="cursor-pointer rounded-md bg-danger-fill px-4 py-2 text-sm text-white hover:bg-danger-fill-strong disabled:opacity-40"
             >
               {lookupDeleteMode === 'merge' ? 'Merge and delete' : 'Delete outright'}
             </button>

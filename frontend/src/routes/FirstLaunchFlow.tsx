@@ -176,7 +176,7 @@ function FolderStep({
                 type="button"
                 onClick={handleBrowse}
                 disabled={switchFolderMutation.isPending}
-                className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-border bg-paper-raised px-3 py-2 text-sm text-ink hover:border-accent disabled:cursor-not-allowed disabled:opacity-60"
+                className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-border bg-paper-raised px-3 py-2 text-sm text-ink hover:border-accent disabled:opacity-60"
               >
                 <IconFolderOpen size={16} />
                 Browse…

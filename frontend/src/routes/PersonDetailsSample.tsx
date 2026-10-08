@@ -985,7 +985,7 @@ function SplitPeopleModal({
             type="button"
             onClick={handleConfirm}
             disabled={replacements.length === 0}
-            className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-white hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-white hover:bg-accent-fill/90 disabled:opacity-50"
           >
             Split Person
           </button>

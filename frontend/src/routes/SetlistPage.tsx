@@ -354,7 +354,7 @@ export function SetlistPage() {
                 disabled={deleteMutation.isPending}
                 aria-label="Delete setlist"
                 title="Delete setlist"
-                className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-danger hover:border-danger disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-danger hover:border-danger disabled:opacity-50"
               >
                 <IconTrash size={18} />
               </button>
@@ -416,7 +416,7 @@ export function SetlistPage() {
                   onClick={() => setDownloadOpen((o) => !o)}
                   disabled={!canDownload}
                   aria-label="More download options"
-                  className="relative -ml-px flex items-center justify-center rounded-r-md border border-border bg-paper-raised px-2 text-ink transition-colors disabled:cursor-not-allowed disabled:opacity-50 enabled:cursor-pointer enabled:hover:z-10 enabled:hover:border-accent"
+                  className="relative -ml-px flex items-center justify-center rounded-r-md border border-border bg-paper-raised px-2 text-ink transition-colors disabled:opacity-50 enabled:cursor-pointer enabled:hover:z-10 enabled:hover:border-accent"
                 >
                   <IconChevronDownFilled size={16} />
                 </button>
@@ -630,7 +630,7 @@ export function SetlistPage() {
                   type="button"
                   onClick={() => archiveMutation.mutate()}
                   disabled={archiveMutation.isPending}
-                  className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-white hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-white hover:bg-accent-fill/90 disabled:opacity-50"
                 >
                   {setlist.archived ? 'Unarchive' : 'Archive'}
                 </button>
@@ -696,7 +696,7 @@ export function SetlistPage() {
                   type="button"
                   onClick={() => duplicateMutation.mutate()}
                   disabled={duplicateMutation.isPending}
-                  className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-white hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-white hover:bg-accent-fill/90 disabled:opacity-50"
                 >
                   {duplicateMutation.isPending ? 'Duplicating…' : 'Duplicate'}
                 </button>

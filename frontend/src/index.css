@@ -1,5 +1,16 @@
 @import 'tailwindcss';
 
+/* hover: never applies to a disabled control — a disabled button keeps its
+   resting look under the pointer. Tailwind's own hover, plus :not(:disabled)
+   (never true of a link or a div, so nothing else changes). */
+@custom-variant hover {
+  @media (hover: hover) {
+    &:hover:not(:disabled) {
+      @slot;
+    }
+  }
+}
+
 /* Libre Baskerville, self-hosted (SIL OFL 1.1, Google Fonts) rather than
    loaded from Google's CDN at runtime — see README > Acknowledgements. Used
    only for display text (headings, piece/card titles, sidebar nav); general
@@ -710,4 +721,14 @@ body {
       0 1px 3px 0 var(--shadow-tint-sm),
       0 1px 2px -1px var(--shadow-tint-sm);
   }
+}
+
+/* Every disabled button shows the not-allowed cursor, whatever cursor-*
+   utility it carries. Deliberately outside any @layer: unlayered CSS beats
+   Tailwind's layered utilities, so no per-button disabled:cursor-* class is
+   needed. Never hide a disabled button from the pointer
+   (disabled:pointer-events-none) — that hides this cursor and its title. */
+button:disabled,
+[role='button'][aria-disabled='true'] {
+  cursor: not-allowed;
 }

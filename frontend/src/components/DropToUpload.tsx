@@ -126,8 +126,7 @@ function ModalHeader({
   )
 }
 
-const BUTTON =
-  'cursor-pointer rounded-md px-4 py-2 font-display font-medium disabled:cursor-not-allowed disabled:opacity-50'
+const BUTTON = 'cursor-pointer rounded-md px-4 py-2 font-display font-medium disabled:opacity-50'
 const BUTTON_SECONDARY = `${BUTTON} border border-border bg-paper-raised text-ink hover:border-accent`
 const BUTTON_PRIMARY = `${BUTTON} bg-accent-fill text-white hover:bg-accent-fill/90`
 const BUTTON_DESTRUCTIVE = `${BUTTON} border border-border bg-paper-raised text-danger hover:border-danger`

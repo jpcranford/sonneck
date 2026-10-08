@@ -603,7 +603,7 @@ export function UserSettingsMockup() {
               type="button"
               disabled={listDeleteMode === 'merge' && mergeTargetId === null}
               onClick={confirmListDelete}
-              className="cursor-pointer rounded-md bg-danger-fill px-4 py-2 text-sm text-white hover:bg-danger-fill-strong disabled:cursor-not-allowed disabled:opacity-40"
+              className="cursor-pointer rounded-md bg-danger-fill px-4 py-2 text-sm text-white hover:bg-danger-fill-strong disabled:opacity-40"
             >
               {listDeleteMode === 'merge' ? 'Merge and delete' : 'Delete outright'}
             </button>

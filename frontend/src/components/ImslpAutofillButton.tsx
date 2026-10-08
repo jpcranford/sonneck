@@ -40,7 +40,7 @@ export function ImslpAutofillButton({
       disabled={disabled}
       aria-label={valid ? 'Autofill blank fields from IMSLP' : 'No IMSLP number to autofill from'}
       title={valid ? 'Autofill blank fields from IMSLP' : 'No IMSLP number to autofill from'}
-      className={`absolute top-1/2 right-2.5 flex size-5 -translate-y-1/2 items-center justify-center disabled:cursor-default ${
+      className={`absolute top-1/2 right-2.5 flex size-5 -translate-y-1/2 items-center justify-center ${
         valid ? 'cursor-pointer text-ink-faint hover:text-accent' : 'text-ink-fainter'
       }`}
     >

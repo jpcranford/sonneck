@@ -944,7 +944,7 @@ function MockPageCycleControl({
         onClick={() => page > 1 && onChange(page - 1)}
         disabled={page <= 1}
         aria-label="Previous page"
-        className="flex size-6 cursor-pointer items-center justify-center rounded hover:bg-accent-soft hover:text-accent disabled:pointer-events-none disabled:opacity-30"
+        className="flex size-6 cursor-pointer items-center justify-center rounded hover:bg-accent-soft hover:text-accent disabled:opacity-30"
       >
         <IconChevronLeft size={16} />
       </button>
@@ -956,7 +956,7 @@ function MockPageCycleControl({
         onClick={() => page < pageCount && onChange(page + 1)}
         disabled={page >= pageCount}
         aria-label="Next page"
-        className="flex size-6 cursor-pointer items-center justify-center rounded hover:bg-accent-soft hover:text-accent disabled:pointer-events-none disabled:opacity-30"
+        className="flex size-6 cursor-pointer items-center justify-center rounded hover:bg-accent-soft hover:text-accent disabled:opacity-30"
       >
         <IconChevronRightFilled size={16} />
       </button>

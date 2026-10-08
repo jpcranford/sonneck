@@ -156,7 +156,7 @@ export function BookUploadConfirmStep({
           type="button"
           onClick={onBack}
           disabled={importMutation.isPending}
-          className="flex cursor-pointer items-center gap-1.5 text-base text-ink-soft hover:text-ink disabled:cursor-default disabled:opacity-45"
+          className="flex cursor-pointer items-center gap-1.5 text-base text-ink-soft hover:text-ink disabled:opacity-45"
         >
           <IconArrowLeft size={24} />
           Back
@@ -257,7 +257,7 @@ export function BookUploadConfirmStep({
           type="button"
           onClick={onCancel}
           disabled={cancelPending || importMutation.isPending}
-          className="flex cursor-pointer items-center gap-1.5 text-base text-danger hover:text-danger-strong disabled:cursor-default disabled:opacity-45"
+          className="flex cursor-pointer items-center gap-1.5 text-base text-danger hover:text-danger-strong disabled:opacity-45"
         >
           <IconX size={24} />
           Cancel upload
@@ -266,7 +266,7 @@ export function BookUploadConfirmStep({
           type="button"
           onClick={() => importMutation.mutate()}
           disabled={importMutation.isPending}
-          className="relative flex min-w-[190px] shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md bg-accent-fill px-4 py-2.5 font-display font-medium whitespace-nowrap text-white disabled:cursor-default"
+          className="relative flex min-w-[190px] shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md bg-accent-fill px-4 py-2.5 font-display font-medium whitespace-nowrap text-white"
         >
           {importMutation.isPending && (
             <span

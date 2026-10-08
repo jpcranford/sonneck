@@ -140,7 +140,7 @@ function ThemeControl({
           disabled={disabled}
           aria-pressed={theme === key}
           onClick={() => onChange(key)}
-          className={`flex cursor-pointer items-center gap-1.5 px-2.5 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50 ${
+          className={`flex cursor-pointer items-center gap-1.5 px-2.5 py-1.5 text-sm disabled:opacity-50 ${
             index === 0 ? 'rounded-l-md' : ''
           } ${index === THEME_OPTIONS.length - 1 ? 'rounded-r-md' : 'border-r border-border'} ${
             theme === key
@@ -416,7 +416,7 @@ function ChangePasswordModal({ open, onClose }: { open: boolean; onClose: () => 
           type="button"
           disabled={!canSubmit}
           onClick={() => mutation.mutate()}
-          className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 text-sm text-white hover:bg-accent-fill/90 disabled:cursor-not-allowed disabled:opacity-50"
+          className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 text-sm text-white hover:bg-accent-fill/90 disabled:opacity-50"
         >
           {mutation.isPending ? 'Saving…' : 'Change Password'}
         </button>
@@ -675,7 +675,7 @@ export function UserSettingsPage() {
                 (deleteMode === 'merge' && mergeTargetId === null) || deleteMutation.isPending
               }
               onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget)}
-              className="cursor-pointer rounded-md bg-danger-fill px-4 py-2 text-sm text-white hover:bg-danger-fill-strong disabled:cursor-not-allowed disabled:opacity-40"
+              className="cursor-pointer rounded-md bg-danger-fill px-4 py-2 text-sm text-white hover:bg-danger-fill-strong disabled:opacity-40"
             >
               {deleteMutation.isPending
                 ? 'Working…'

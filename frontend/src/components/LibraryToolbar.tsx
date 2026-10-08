@@ -186,7 +186,7 @@ export function LibraryToolbar<Field extends string>({
                   onClick={newButton.onClick}
                   disabled={newButton.disabled}
                   title={newButton.title}
-                  className="flex h-[38px] shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-border bg-paper-raised px-3 text-sm text-ink hover:bg-paper-hover disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-paper-raised"
+                  className="flex h-[38px] shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-border bg-paper-raised px-3 text-sm text-ink hover:bg-paper-hover disabled:opacity-50 disabled:hover:bg-paper-raised"
                 >
                   <IconPlus size={16} />
                   {newButton.label}

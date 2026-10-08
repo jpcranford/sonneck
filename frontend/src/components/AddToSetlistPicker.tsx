@@ -77,7 +77,7 @@ function SetlistToggleRow({
       onClick={onToggle}
       onMouseDown={onMouseDown}
       disabled={pending}
-      className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-ink disabled:cursor-not-allowed disabled:opacity-60 ${
+      className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-ink disabled:opacity-60 ${
         highlighted ? 'bg-paper-hover' : 'hover:bg-paper-hover'
       }`}
     >

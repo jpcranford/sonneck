@@ -220,7 +220,7 @@ function ActionButton({
       onClick={onClick}
       disabled={disabled}
       title={title}
-      className={`flex cursor-pointer items-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink hover:border-accent disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border ${className}`}
+      className={`flex cursor-pointer items-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink hover:border-accent disabled:opacity-50 disabled:hover:border-border ${className}`}
     >
       {icon}
       {label}
@@ -530,7 +530,7 @@ export function PiecePage() {
               disabled={!canDelete || deleteMutation.isPending}
               aria-label="Delete Piece"
               title={canDelete ? 'Delete Piece' : "You don't have permission to delete"}
-              className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-danger hover:border-danger disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border"
+              className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-danger hover:border-danger disabled:opacity-50 disabled:hover:border-border"
             >
               <IconTrash size={18} />
             </button>
@@ -546,7 +546,7 @@ export function PiecePage() {
               disabled={randomPieceMutation.isPending}
               aria-label="Random Piece"
               title="Random Piece"
-              className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent disabled:opacity-50"
             >
               <IconDice5 size={18} />
             </button>
@@ -677,7 +677,7 @@ export function PiecePage() {
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                     disabled={page === 1}
                     aria-label="Previous page"
-                    className="flex size-6 cursor-pointer items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline-accent-on-dark disabled:pointer-events-none disabled:opacity-35"
+                    className="flex size-6 cursor-pointer items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline-accent-on-dark disabled:opacity-35"
                   >
                     <IconChevronLeft size={14} />
                   </button>
@@ -689,7 +689,7 @@ export function PiecePage() {
                     onClick={() => setPage((p) => Math.min(piece.pageCount, p + 1))}
                     disabled={page === piece.pageCount}
                     aria-label="Next page"
-                    className="flex size-6 cursor-pointer items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline-accent-on-dark disabled:pointer-events-none disabled:opacity-35"
+                    className="flex size-6 cursor-pointer items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline-accent-on-dark disabled:opacity-35"
                   >
                     <IconChevronRightFilled size={14} />
                   </button>
@@ -801,7 +801,7 @@ export function PiecePage() {
                     onClick={() => setDownloadOpen((o) => !o)}
                     disabled={!canDownload}
                     aria-label="More download options"
-                    className="relative -ml-px flex items-center justify-center rounded-r-md border border-border bg-paper-raised px-2 text-ink transition-colors disabled:cursor-not-allowed disabled:opacity-50 enabled:cursor-pointer enabled:hover:z-10 enabled:hover:border-accent"
+                    className="relative -ml-px flex items-center justify-center rounded-r-md border border-border bg-paper-raised px-2 text-ink transition-colors disabled:opacity-50 enabled:cursor-pointer enabled:hover:z-10 enabled:hover:border-accent"
                   >
                     <IconChevronDownFilled size={16} />
                   </button>
@@ -866,7 +866,7 @@ export function PiecePage() {
                         setMoreActionsOpen(false)
                       }}
                       disabled={page === piece.thumbnailPage || setThumbnailMutation.isPending}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-paper-hover disabled:cursor-not-allowed disabled:text-ink-soft/50 disabled:hover:bg-transparent"
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-paper-hover disabled:text-ink-soft/50 disabled:hover:bg-transparent"
                     >
                       <IconImageInPicture size={16} />
                       Use Page as Thumbnail

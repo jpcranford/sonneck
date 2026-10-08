@@ -291,7 +291,7 @@ export function UploadBookConfirmMockup() {
               type="button"
               onClick={handleCancelUpload}
               disabled={stage === 'importing'}
-              className="flex cursor-pointer items-center gap-1.5 text-base text-danger hover:text-danger-strong disabled:pointer-events-none disabled:opacity-40"
+              className="flex cursor-pointer items-center gap-1.5 text-base text-danger hover:text-danger-strong disabled:opacity-40"
             >
               <IconX size={24} />
               Cancel upload
@@ -306,7 +306,7 @@ export function UploadBookConfirmMockup() {
               type="button"
               onClick={handleImport}
               disabled={stage === 'importing'}
-              className="relative flex min-w-[190px] shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md bg-accent-fill px-4 py-2.5 font-display font-medium whitespace-nowrap text-white disabled:cursor-default"
+              className="relative flex min-w-[190px] shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md bg-accent-fill px-4 py-2.5 font-display font-medium whitespace-nowrap text-white"
             >
               {stage === 'importing' && (
                 <span

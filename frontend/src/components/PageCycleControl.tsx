@@ -36,7 +36,7 @@ export function PageCycleControl({ page, pageCount, onChange }: PageCycleControl
         }}
         disabled={page <= 1}
         aria-label="Previous page"
-        className="flex size-6 cursor-pointer items-center justify-center rounded hover:bg-accent-soft hover:text-accent disabled:pointer-events-none disabled:opacity-30"
+        className="flex size-6 cursor-pointer items-center justify-center rounded hover:bg-accent-soft hover:text-accent disabled:opacity-30"
       >
         <IconChevronLeft size={16} />
       </button>
@@ -54,7 +54,7 @@ export function PageCycleControl({ page, pageCount, onChange }: PageCycleControl
         }}
         disabled={page >= pageCount}
         aria-label="Next page"
-        className="flex size-6 cursor-pointer items-center justify-center rounded hover:bg-accent-soft hover:text-accent disabled:pointer-events-none disabled:opacity-30"
+        className="flex size-6 cursor-pointer items-center justify-center rounded hover:bg-accent-soft hover:text-accent disabled:opacity-30"
       >
         <IconChevronRightFilled size={16} />
       </button>
