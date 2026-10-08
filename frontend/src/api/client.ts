@@ -27,15 +27,67 @@ function isErrorEnvelope(body: unknown): body is ErrorEnvelope {
   return typeof body === 'object' && body !== null && 'error' in body
 }
 
+// An authenticating reverse proxy in front of the app (Cloudflare Access,
+// Authelia…) answers a request whose sign-in has expired with a redirect to
+// its own login page on another site — which a background fetch can't
+// follow (it fails as a CORS error, indistinguishable from the server being
+// down) — or, for a request carrying X-Requested-With: XMLHttpRequest (sent
+// on every call below; Access is reported to honor it), with a bare 401.
+// Either way the fix is a full page load, which the proxy answers with its
+// sign-in page. This app's own API never redirects, and its own 401/403
+// always carry the {error} envelope, so neither can be mistaken for it.
+const SIGN_IN_RELOAD_KEY = 'sonneck-sign-in-reload'
+const SIGN_IN_RELOAD_GUARD_MS = 30_000
+
+function isProxySignInAnswer(status: number, type: ResponseType, body: unknown): boolean {
+  if (type === 'opaqueredirect') return true
+  return (status === 401 || status === 403) && !isErrorEnvelope(body)
+}
+
+// Reloads the page so the proxy can ask the user to sign in again, and
+// returns a promise that never settles (the page is going away). If it
+// already reloaded for this within the last 30 seconds, it throws instead
+// of looping, for when the proxy keeps refusing even after a fresh load.
+async function reloadToSignIn(): Promise<never> {
+  let last = 0
+  try {
+    last = Number(sessionStorage.getItem(SIGN_IN_RELOAD_KEY)) || 0
+  } catch {
+    // Storage unavailable: fall through and reload once.
+  }
+  if (Date.now() - last < SIGN_IN_RELOAD_GUARD_MS) {
+    throw new ApiError(
+      'SIGN_IN_EXPIRED',
+      'Your sign-in has expired. Reload the page to sign in again.',
+      // Not 401: that reads as "use Sonneck's own login" (AuthGate).
+      0,
+    )
+  }
+  try {
+    sessionStorage.setItem(SIGN_IN_RELOAD_KEY, String(Date.now()))
+  } catch {
+    // Storage unavailable: reload anyway.
+  }
+  window.location.reload()
+  return new Promise<never>(() => {})
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(path, init)
+  const res = await fetch(path, {
+    ...init,
+    redirect: 'manual',
+    headers: { 'X-Requested-With': 'XMLHttpRequest', ...init?.headers },
+  })
+  if (res.type === 'opaqueredirect') return reloadToSignIn()
 
   let body: unknown
   try {
     body = await res.json()
   } catch {
+    if (isProxySignInAnswer(res.status, res.type, undefined)) return reloadToSignIn()
     throw new ApiError('INTERNAL_ERROR', 'The server returned an unreadable response.', res.status)
   }
+  if (isProxySignInAnswer(res.status, res.type, body)) return reloadToSignIn()
 
   if (!res.ok || isErrorEnvelope(body)) {
     if (isErrorEnvelope(body)) {
@@ -124,12 +176,20 @@ function uploadRequest<T>(
       try {
         body = JSON.parse(xhr.responseText)
       } catch {
+        if (isProxySignInAnswer(xhr.status, 'basic', undefined)) {
+          reloadToSignIn().catch(reject)
+          return
+        }
         reject(
           new ApiError('INTERNAL_ERROR', 'The server returned an unreadable response.', xhr.status),
         )
         return
       }
 
+      if (isProxySignInAnswer(xhr.status, 'basic', body)) {
+        reloadToSignIn().catch(reject)
+        return
+      }
       if (xhr.status >= 200 && xhr.status < 300 && !isErrorEnvelope(body)) {
         resolve({ data: (body as SuccessEnvelope<T>).data, status: xhr.status })
       } else if (isErrorEnvelope(body)) {
