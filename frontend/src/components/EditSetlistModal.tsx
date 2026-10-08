@@ -421,6 +421,10 @@ export function EditSetlistModal({
   // otherwise strand `draggingId` set (CLAUDE.md's own standing gotcha).
   const listRef = useRef<HTMLDivElement>(null)
 
+  function isDragHandle(target: EventTarget | null): boolean {
+    return target instanceof Element && target.closest('.drag-handle') != null
+  }
+
   function isDragBlocker(target: EventTarget | null): boolean {
     return target instanceof Element && target.closest('.no-drag') != null
   }
@@ -443,6 +447,9 @@ export function EditSetlistModal({
 
   function onCardPointerDown(event: ReactPointerEvent<HTMLDivElement>, id: number) {
     if (isDragBlocker(event.target)) return
+    // By touch, only the grip starts a drag — the rest of the row scrolls
+    // the list like any other content. A mouse can grab the whole row.
+    if (event.pointerType !== 'mouse' && !isDragHandle(event.target)) return
     const rect = event.currentTarget.getBoundingClientRect()
     setDragOffset({ x: event.clientX - rect.left, y: event.clientY - rect.top })
     setDragWidth(rect.width)
@@ -897,13 +904,13 @@ export function EditSetlistModal({
                         key={entry.id}
                         data-entry-id={entry.id}
                         onPointerDown={(event) => onCardPointerDown(event, entry.id)}
-                        className={`flex touch-none items-start gap-1.5 rounded-md border border-border bg-paper-raised px-2 py-1.5 cursor-grab select-none active:cursor-grabbing ${
+                        className={`flex items-start gap-1.5 rounded-md border border-border bg-paper-raised px-2 py-1.5 cursor-grab select-none active:cursor-grabbing ${
                           draggingId === entry.id ? 'opacity-40' : ''
                         }`}
                       >
                         <span
                           aria-hidden="true"
-                          className="mr-1 shrink-0 self-center text-ink-soft/50"
+                          className="drag-handle -my-1.5 -ml-2 flex shrink-0 touch-none items-center self-stretch py-1.5 pr-1 pl-2 text-ink-soft/50"
                         >
                           <IconGripVertical size={14} />
                         </span>
