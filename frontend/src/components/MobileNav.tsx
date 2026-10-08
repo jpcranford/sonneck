@@ -155,12 +155,16 @@ export function MobileNavDrawer({ open, onClose }: { open: boolean; onClose: () 
           </button>
         </div>
 
-        <DrawerNavList items={NAV_ITEMS} onNavigate={onClose} />
-        <div className="mx-3 my-3 border-t border-sidebar-border" />
-        <DrawerNavList items={SECONDARY_NAV_ITEMS} onNavigate={onClose} />
+        {/* Everything between the top row and the account card scrolls as
+            one, so a long Upcoming Sets list never squeezes the nav. The top
+            row and the account card stay pinned. */}
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain">
+          <DrawerNavList items={NAV_ITEMS} onNavigate={onClose} />
+          <div className="mx-3 my-3 border-t border-sidebar-border" />
+          <DrawerNavList items={SECONDARY_NAV_ITEMS} onNavigate={onClose} />
 
-        {canCreate && <SetlistsSection collapsed={false} setlists={upcomingSetlists} />}
-
+          {canCreate && <SetlistsSection collapsed={false} setlists={upcomingSetlists} />}
+        </div>
         <UserMenuButton collapsed={false} onNavigate={onClose} />
       </aside>
     </>

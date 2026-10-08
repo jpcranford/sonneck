@@ -151,23 +151,27 @@ export function MobileNavDrawerMockup() {
           </button>
         </div>
 
-        <DrawerNavList items={NAV_ITEMS} />
-        <div className="mx-3 my-3 border-t border-sidebar-border" />
-        <DrawerNavList items={SECONDARY_NAV_ITEMS} />
+        {/* Everything between the top row and the account card scrolls as
+            one, so a long Upcoming Sets list never squeezes the nav. The top
+            row and the account card stay pinned. */}
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain">
+          <DrawerNavList items={NAV_ITEMS} />
+          <div className="mx-3 my-3 border-t border-sidebar-border" />
+          <DrawerNavList items={SECONDARY_NAV_ITEMS} />
 
-        <div className="mt-6 flex flex-1 flex-col overflow-y-auto px-2">
-          <span className="px-3 text-xs tracking-wide text-sidebar-text-dim uppercase">
-            Setlists
-          </span>
-          <div className="mt-1 flex flex-col">
-            {SETLISTS.length === 0 && (
-              <span className="truncate rounded-md px-3 py-2 font-display text-sm font-medium text-sidebar-text">
-                Coming soon
-              </span>
-            )}
+          <div className="mt-6 flex flex-1 flex-col px-2">
+            <span className="px-3 text-xs tracking-wide text-sidebar-text-dim uppercase">
+              Setlists
+            </span>
+            <div className="mt-1 flex flex-col">
+              {SETLISTS.length === 0 && (
+                <span className="truncate rounded-md px-3 py-2 font-display text-sm font-medium text-sidebar-text">
+                  Coming soon
+                </span>
+              )}
+            </div>
           </div>
         </div>
-
         <div className="m-2 flex items-center gap-2 rounded-lg border border-sidebar-border bg-sidebar-panel p-2">
           <span className="flex size-8 shrink-0 items-center justify-center rounded-full border border-sidebar-border bg-sidebar-bg text-sidebar-text">
             <IconUserFilled size={16} />

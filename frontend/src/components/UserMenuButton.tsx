@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ComponentType } from 'react'
+import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -102,6 +103,14 @@ export function UserMenuButton({
   const me = useAuth()
   const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+  // Where the menu opens: just above the card, flush with its left edge,
+  // in viewport coordinates (the menu is portaled to <body>, see below).
+  const [anchor, setAnchor] = useState({ left: 0, bottom: 0 })
+  function measureAnchor() {
+    const rect = wrapRef.current?.getBoundingClientRect()
+    if (rect) setAnchor({ left: rect.left, bottom: window.innerHeight - rect.top })
+  }
   const queryClient = useQueryClient()
 
   const logoutMutation = useMutation({
@@ -135,16 +144,22 @@ export function UserMenuButton({
   useEffect(() => {
     if (!open) return
     function onPointerDown(event: MouseEvent) {
-      if (wrapRef.current && !wrapRef.current.contains(event.target as Node)) setOpen(false)
+      const target = event.target as Node
+      if (!wrapRef.current?.contains(target) && !menuRef.current?.contains(target)) setOpen(false)
     }
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') setOpen(false)
     }
+    // Follows the card if the sidebar scrolls or the window resizes.
     document.addEventListener('mousedown', onPointerDown)
     document.addEventListener('keydown', onKeyDown)
+    window.addEventListener('resize', measureAnchor)
+    document.addEventListener('scroll', measureAnchor, true)
     return () => {
       document.removeEventListener('mousedown', onPointerDown)
       document.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('resize', measureAnchor)
+      document.removeEventListener('scroll', measureAnchor, true)
     }
   }, [open])
 
@@ -158,7 +173,10 @@ export function UserMenuButton({
     <div ref={wrapRef} className={`relative m-2 ${collapsed ? 'flex justify-center' : ''}`}>
       <button
         type="button"
-        onClick={() => setOpen((value) => !value)}
+        onClick={() => {
+          if (!open) measureAnchor()
+          setOpen((value) => !value)
+        }}
         aria-haspopup="menu"
         aria-expanded={open}
         title={collapsed ? me.displayName : undefined}
@@ -183,60 +201,52 @@ export function UserMenuButton({
         )}
       </button>
 
-      {/* Opens upward (bottom-full) since the trigger sits at the bottom of
-          both the rail and the drawer; left-0 keeps it flush with the
-          trigger's own left edge in both the collapsed (narrow rail) and
-          expanded states. No overflow:hidden on any ancestor between here
-          and the viewport-sized shell, so nothing clips it. */}
-      <div
-        role="menu"
-        className={`absolute bottom-full left-0 z-20 mb-2 w-60 origin-bottom-left overflow-hidden rounded-lg border border-sidebar-border bg-sidebar-panel shadow-xl transition-[opacity,transform] duration-100 ${
-          open
-            ? 'pointer-events-auto translate-y-0 opacity-100'
-            : 'pointer-events-none translate-y-1 opacity-0'
-        }`}
-      >
-        <div className="flex items-center gap-2.5 px-3.5 py-3">
-          <span className="flex size-[34px] shrink-0 items-center justify-center overflow-hidden rounded-full border border-sidebar-border bg-sidebar-bg text-sidebar-text">
-            {me.avatarUrl ? (
-              <img src={me.avatarUrl} alt="" className="size-full object-cover" />
-            ) : (
-              <IconUserFilled size={17} />
-            )}
-          </span>
-          <div className="min-w-0">
-            <p className="break-words text-[0.92rem] font-medium text-sidebar-text">
-              {me.displayName}
-              {isAdmin && (
-                <span className="ml-1.5 inline-block translate-y-[-1px] rounded-full bg-accent-fill px-1.5 py-px align-middle text-[0.62rem] font-bold tracking-wide whitespace-nowrap text-white uppercase">
-                  Admin
-                </span>
+      {/* Opens upward since the trigger sits at the bottom of both the rail
+          and the drawer, flush with the trigger's left edge. Portaled to
+          <body> and fixed-positioned, so nothing in the sidebar can clip or
+          shift it: the collapsed rail is far narrower than the menu, the
+          column above the card scrolls (overflow clips), and the drawer
+          slides in with a transform (a fixed child would position against
+          it). z-[60] clears the drawer (z-50). */}
+      {createPortal(
+        <div
+          ref={menuRef}
+          role="menu"
+          style={{ left: anchor.left, bottom: anchor.bottom }}
+          className={`fixed z-[60] mb-2 w-60 origin-bottom-left overflow-hidden rounded-lg border border-sidebar-border bg-sidebar-panel shadow-xl transition-[opacity,transform] duration-100 ${
+            open
+              ? 'pointer-events-auto translate-y-0 opacity-100'
+              : 'pointer-events-none translate-y-1 opacity-0'
+          }`}
+        >
+          <div className="flex items-center gap-2.5 px-3.5 py-3">
+            <span className="flex size-[34px] shrink-0 items-center justify-center overflow-hidden rounded-full border border-sidebar-border bg-sidebar-bg text-sidebar-text">
+              {me.avatarUrl ? (
+                <img src={me.avatarUrl} alt="" className="size-full object-cover" />
+              ) : (
+                <IconUserFilled size={17} />
               )}
-            </p>
-            <p className="truncate text-[0.76rem] text-sidebar-text-dim">
-              {AUTH_METHOD_BLURB[me.authMethod]}
-            </p>
+            </span>
+            <div className="min-w-0">
+              <p className="break-words text-[0.92rem] font-medium text-sidebar-text">
+                {me.displayName}
+                {isAdmin && (
+                  <span className="ml-1.5 inline-block translate-y-[-1px] rounded-full bg-accent-fill px-1.5 py-px align-middle text-[0.62rem] font-bold tracking-wide whitespace-nowrap text-white uppercase">
+                    Admin
+                  </span>
+                )}
+              </p>
+              <p className="truncate text-[0.76rem] text-sidebar-text-dim">
+                {AUTH_METHOD_BLURB[me.authMethod]}
+              </p>
+            </div>
           </div>
-        </div>
-        <div className="h-px bg-sidebar-border" />
-        <ThemeSwitcher theme={theme} onChange={setTheme} />
-        <div className="h-px bg-sidebar-border" />
-        <div className="p-1.5">
-          <Link
-            to="/settings"
-            onClick={() => {
-              setOpen(false)
-              onNavigate?.()
-            }}
-            role="menuitem"
-            className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-[0.85rem] text-sidebar-text hover:bg-sidebar-menu-hover"
-          >
-            <IconSettings size={16} className="opacity-85" />
-            User Settings
-          </Link>
-          {isAdmin && (
+          <div className="h-px bg-sidebar-border" />
+          <ThemeSwitcher theme={theme} onChange={setTheme} />
+          <div className="h-px bg-sidebar-border" />
+          <div className="p-1.5">
             <Link
-              to="/admin"
+              to="/settings"
               onClick={() => {
                 setOpen(false)
                 onNavigate?.()
@@ -244,29 +254,44 @@ export function UserMenuButton({
               role="menuitem"
               className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-[0.85rem] text-sidebar-text hover:bg-sidebar-menu-hover"
             >
-              <IconShieldLock size={16} className="opacity-85" />
-              Admin Settings
+              <IconSettings size={16} className="opacity-85" />
+              User Settings
             </Link>
-          )}
-        </div>
-        {showLogout && (
-          <>
-            <div className="h-px bg-sidebar-border" />
-            <div className="p-1.5">
-              <button
-                type="button"
-                onClick={() => logoutMutation.mutate()}
-                disabled={logoutMutation.isPending}
+            {isAdmin && (
+              <Link
+                to="/admin"
+                onClick={() => {
+                  setOpen(false)
+                  onNavigate?.()
+                }}
                 role="menuitem"
-                className="flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-[0.85rem] text-[#e2a29a] hover:bg-[rgba(226,162,154,0.12)] disabled:opacity-60"
+                className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-[0.85rem] text-sidebar-text hover:bg-sidebar-menu-hover"
               >
-                <IconLogout size={16} className="opacity-85" />
-                {logoutMutation.isPending ? 'Logging out…' : 'Log Out'}
-              </button>
-            </div>
-          </>
-        )}
-      </div>
+                <IconShieldLock size={16} className="opacity-85" />
+                Admin Settings
+              </Link>
+            )}
+          </div>
+          {showLogout && (
+            <>
+              <div className="h-px bg-sidebar-border" />
+              <div className="p-1.5">
+                <button
+                  type="button"
+                  onClick={() => logoutMutation.mutate()}
+                  disabled={logoutMutation.isPending}
+                  role="menuitem"
+                  className="flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-[0.85rem] text-[#e2a29a] hover:bg-[rgba(226,162,154,0.12)] disabled:opacity-60"
+                >
+                  <IconLogout size={16} className="opacity-85" />
+                  {logoutMutation.isPending ? 'Logging out…' : 'Log Out'}
+                </button>
+              </div>
+            </>
+          )}
+        </div>,
+        document.body,
+      )}
     </div>
   )
 }

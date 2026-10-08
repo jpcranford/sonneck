@@ -164,14 +164,18 @@ export function Sidebar() {
         </button>
       </div>
 
-      <NavItemsList items={NAV_ITEMS} collapsed={collapsed} />
+      {/* Everything between the top row and the account card scrolls as
+          one, so a long Upcoming Sets list never squeezes the nav. The top
+          row and the account card stay pinned. */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain">
+        <NavItemsList items={NAV_ITEMS} collapsed={collapsed} />
 
-      <div className="mx-3 my-3 border-t border-sidebar-border" />
+        <div className="mx-3 my-3 border-t border-sidebar-border" />
 
-      <NavItemsList items={SECONDARY_NAV_ITEMS} collapsed={collapsed} />
+        <NavItemsList items={SECONDARY_NAV_ITEMS} collapsed={collapsed} />
 
-      {canCreate && <SetlistsSection collapsed={collapsed} setlists={upcomingSetlists} />}
-
+        {canCreate && <SetlistsSection collapsed={collapsed} setlists={upcomingSetlists} />}
+      </div>
       <UserMenuButton collapsed={collapsed} />
     </aside>
   )

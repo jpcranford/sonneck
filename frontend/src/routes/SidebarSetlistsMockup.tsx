@@ -227,7 +227,7 @@ function SetlistsSection({
     // width either), same as any other icon-only rail section with
     // nothing to show.
     return (
-      <div className="mt-6 flex flex-1 flex-col items-center gap-1 overflow-y-auto px-2">
+      <div className="mt-6 flex flex-1 flex-col items-center gap-1 px-2">
         {setlists.map((setlist) => (
           <NavLink
             key={setlist.id}
@@ -249,7 +249,7 @@ function SetlistsSection({
   }
 
   return (
-    <div className="mt-6 flex flex-1 flex-col overflow-y-auto px-2">
+    <div className="mt-6 flex flex-1 flex-col px-2">
       <div className="flex items-center justify-between px-2 py-0.5 text-xs tracking-wide text-sidebar-text-dim uppercase">
         <span>Upcoming Sets</span>
         <SetlistsMenu />
@@ -318,11 +318,15 @@ export function SidebarSetlistsMockup() {
           </button>
         </div>
 
-        <RailNavList items={NAV_ITEMS} collapsed={collapsed} />
-        <div className="mx-3 my-3 border-t border-sidebar-border" />
-        <RailNavList items={SECONDARY_NAV_ITEMS} collapsed={collapsed} />
-        <SetlistsSection collapsed={collapsed} setlists={previewSetlists} />
-
+        {/* Everything between the top row and the account card scrolls as
+            one, so a long Upcoming Sets list never squeezes the nav. The top
+            row and the account card stay pinned. */}
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain">
+          <RailNavList items={NAV_ITEMS} collapsed={collapsed} />
+          <div className="mx-3 my-3 border-t border-sidebar-border" />
+          <RailNavList items={SECONDARY_NAV_ITEMS} collapsed={collapsed} />
+          <SetlistsSection collapsed={collapsed} setlists={previewSetlists} />
+        </div>
         <div className="m-2 h-11 shrink-0 rounded-lg border border-sidebar-border bg-sidebar-panel" />
       </aside>
 
@@ -406,11 +410,15 @@ export function SidebarSetlistsMockup() {
           </button>
         </div>
 
-        <DrawerNavList items={NAV_ITEMS} onNavigate={() => setDrawerOpen(false)} />
-        <div className="mx-3 my-3 border-t border-sidebar-border" />
-        <DrawerNavList items={SECONDARY_NAV_ITEMS} onNavigate={() => setDrawerOpen(false)} />
-        <SetlistsSection collapsed={false} setlists={previewSetlists} />
-
+        {/* Everything between the top row and the account card scrolls as
+            one, so a long Upcoming Sets list never squeezes the nav. The top
+            row and the account card stay pinned. */}
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain">
+          <DrawerNavList items={NAV_ITEMS} onNavigate={() => setDrawerOpen(false)} />
+          <div className="mx-3 my-3 border-t border-sidebar-border" />
+          <DrawerNavList items={SECONDARY_NAV_ITEMS} onNavigate={() => setDrawerOpen(false)} />
+          <SetlistsSection collapsed={false} setlists={previewSetlists} />
+        </div>
         <div className="m-2 h-11 shrink-0 rounded-lg border border-sidebar-border bg-sidebar-panel" />
       </aside>
     </div>

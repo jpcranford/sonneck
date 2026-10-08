@@ -104,7 +104,7 @@ export function SetlistsSection({
     // Nothing renders in the empty state either, same as any other
     // icon-only rail section with nothing to show.
     return (
-      <div className="mt-6 flex flex-1 flex-col items-center gap-1 overflow-y-auto px-2">
+      <div className="mt-6 flex flex-1 flex-col items-center gap-1 px-2">
         {setlists.map((setlist) => (
           <NavLink
             key={setlist.id}
@@ -126,7 +126,7 @@ export function SetlistsSection({
   }
 
   return (
-    <div className="mt-6 flex flex-1 flex-col overflow-y-auto px-2">
+    <div className="mt-6 flex flex-1 flex-col px-2">
       <div className="flex items-center justify-between px-2 py-0.5 text-xs tracking-wide text-sidebar-text-dim uppercase">
         <span>Upcoming Sets</span>
         <SetlistsMenu />
