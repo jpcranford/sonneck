@@ -126,8 +126,8 @@ function InheritedNote({ compact, source = 'book' }: { compact?: boolean; source
       showPointerCursor={false}
       triggerClassName={
         compact
-          ? 'text-[0.65rem] text-ink-soft/75 hover:text-ink'
-          : 'rounded-full border border-border px-1.5 py-px text-[0.65rem] font-medium text-ink-soft/75 hover:text-ink'
+          ? 'text-[0.65rem] text-ink-soft/75'
+          : 'rounded-full border border-border px-1.5 py-px text-[0.65rem] font-medium text-ink-soft/75'
       }
     >
       {compact ? '• inherited' : 'inherited'}
