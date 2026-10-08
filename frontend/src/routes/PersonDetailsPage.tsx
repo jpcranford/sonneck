@@ -284,10 +284,14 @@ function WorkList({ pieces, personId }: { pieces: Piece[]; personId: number }) {
                   <RoleBadge role={roleFor(piece, personId)} />
                 </p>
                 <p className="mt-0.5 text-xs text-ink-soft">{workMetaLine(piece)}</p>
+                {/* Effective values, inherited from the book included — unlike
+                    Book Details, where every row shares that book and its
+                    inherited pills would just repeat it. Here the pieces come
+                    from many books (or none). */}
                 <TagPills
                   keys={piece.keys}
-                  sheetType={piece.sheetType.inherited ? null : piece.sheetType.value}
-                  instruments={piece.instruments.inherited ? [] : piece.instruments.values}
+                  sheetType={piece.sheetType.value}
+                  instruments={piece.instruments.values}
                   userTags={piece.userTags}
                   className="mt-1.5"
                 />

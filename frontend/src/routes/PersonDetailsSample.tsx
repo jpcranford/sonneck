@@ -81,7 +81,15 @@ interface MockWork {
   pageCount: number
   bookTitle: string | null
   favorite: boolean
+  // Key(s), sheet type and instruments are the piece's effective values,
+  // inherited from its book included — PersonDetailsPage.tsx shows them,
+  // unlike Book Details (every row there shares the book, so inherited pills
+  // would only repeat it). `inheritedFromBook` marks which ones came from
+  // the book, for this fixture's own notes; nothing renders it.
+  keys?: Tag[]
   sheetType: Tag | null
+  instruments?: Tag[]
+  inheritedFromBook?: ('sheetType' | 'instruments')[]
   userTags: Tag[]
 }
 
@@ -97,7 +105,11 @@ const MOCK_WORKS: MockWork[] = [
     pageCount: 2,
     bookTitle: '24 Préludes, Op. 28',
     favorite: true,
+    keys: [{ id: 1, name: 'C Minor' }],
+    // Sheet type and instrument both inherited from the book — still shown.
     sheetType: { id: 1, name: 'Solo Piano' },
+    instruments: [{ id: 1, name: 'Piano' }],
+    inheritedFromBook: ['sheetType', 'instruments'],
     userTags: [{ id: 1, name: 'Recital piece' }],
   },
   {
@@ -125,7 +137,10 @@ const MOCK_WORKS: MockWork[] = [
     pageCount: 3,
     bookTitle: 'Chopin: Waltzes',
     favorite: false,
+    keys: [{ id: 2, name: 'D♭ Major' }],
     sheetType: { id: 1, name: 'Solo Piano' },
+    instruments: [{ id: 1, name: 'Piano' }],
+    inheritedFromBook: ['instruments'],
     userTags: [],
   },
   {
@@ -153,10 +168,10 @@ const MOCK_WORKS: MockWork[] = [
     pageCount: 12,
     bookTitle: null,
     favorite: false,
-    // Deliberately no sheetType/userTags (keys/instruments are always
-    // empty in this fixture) — TagPills returns null when every field is
-    // blank, so this exercises the no-pills-row case rather than every
-    // work looking identical with a "Solo Piano" pill.
+    // Deliberately no keys/sheetType/instruments/userTags — TagPills
+    // returns null when every field is blank, so this exercises the
+    // no-pills-row case rather than every work looking identical with a
+    // "Solo Piano" pill.
     sheetType: null,
     userTags: [],
   },
@@ -644,9 +659,9 @@ function WorkList({
                 </p>
                 <p className="mt-0.5 text-xs text-ink-soft">{workMetaLine(work)}</p>
                 <TagPills
-                  keys={[]}
+                  keys={work.keys ?? []}
                   sheetType={work.sheetType}
-                  instruments={[]}
+                  instruments={work.instruments ?? []}
                   userTags={work.userTags}
                   className="mt-1.5"
                 />
