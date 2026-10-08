@@ -47,6 +47,19 @@
       } catch (e) {}
     </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      // iOS zooms the page in when a text field under 16px takes focus.
+      // maximum-scale=1 stops that, and iOS still allows pinch-zoom; only on
+      // iPhone/iPad, since Android would block pinch-zoom with it and never
+      // zooms on focus anyway. iPadOS reports itself as a Mac with touch.
+      try {
+        var ua = navigator.userAgent
+        if (/iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1))
+          document
+            .querySelector('meta[name="viewport"]')
+            .setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1')
+      } catch (e) {}
+    </script>
     <title>Sonneck</title>
   </head>
   <body>
