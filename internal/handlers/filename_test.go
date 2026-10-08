@@ -23,7 +23,7 @@ func TestDetectImslpNumber_NoMatch(t *testing.T) {
 	}
 }
 
-// TestDownloadFilename covers the composer/arranger/publisher priority
+// TestDownloadFilename covers the arranger/composer/publisher priority
 // fallback and the two optional segments (name, year) each being omitted
 // cleanly — including their separator — rather than leaving a stray "- "
 // or "()" when unset.
@@ -35,19 +35,19 @@ func TestDownloadFilename(t *testing.T) {
 		want                          string
 	}{
 		{
-			name:     "composer wins over arranger and publisher",
-			composer: "Robert Schumann", arranger: "Someone Else", publisher: "G. Schirmer",
-			title: "Album für die Jugend", yearWritten: "1848",
-			want: "Robert Schumann - Album für die Jugend (1848)",
-		},
-		{
-			name:     "arranger used when composer is blank",
-			arranger: "Louis Köhler", publisher: "G. Schirmer",
+			name:     "arranger wins over composer and publisher",
+			composer: "Robert Schumann", arranger: "Louis Köhler", publisher: "G. Schirmer",
 			title: "No. 9, Volksliedchen", yearWritten: "1848",
 			want: "Louis Köhler - No. 9, Volksliedchen (1848)",
 		},
 		{
-			name:      "publisher used when composer and arranger are blank",
+			name:     "composer used when arranger is blank",
+			composer: "Robert Schumann", publisher: "G. Schirmer",
+			title: "Album für die Jugend", yearWritten: "1848",
+			want: "Robert Schumann - Album für die Jugend (1848)",
+		},
+		{
+			name:      "publisher used when arranger and composer are blank",
 			publisher: "Hal Leonard",
 			title:     "The Real Book", yearWritten: "2004",
 			want: "Hal Leonard - The Real Book (2004)",

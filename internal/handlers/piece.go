@@ -403,7 +403,7 @@ func (s *Server) handleDeletePiece(w http.ResponseWriter, r *http.Request) {
 
 // handleDownloadPieceFile is design doc §7's stable route, shared by
 // preview and download. Content-Disposition is set to "inline" (not
-// "attachment") with a filename hint of "<composer/arranger/publisher> -
+// "attachment") with a filename hint of "<arranger/composer/publisher> -
 // <title> (<yearWritten>).pdf" — this suggests a sensible name for "Save
 // As" without forcing a download, so the same route still works for the
 // piece preview embed. Composer/arranger/publisher/yearWritten are all

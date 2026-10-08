@@ -96,16 +96,17 @@ func sanitizeFilename(title string) string {
 
 // downloadFilename builds the "<name> - <title> (<year>).pdf"-minus-
 // extension hint shared by the piece and book download/open routes.
-// name is composer, falling back to arranger, falling back to publisher
-// (first non-empty wins) — callers pass already-resolved values: effective
+// name is arranger, falling back to composer, falling back to publisher
+// (first non-empty wins) — an arrangement is the arranger's edition, so
+// their name leads, as it does on the arrangement's own cover — callers pass already-resolved values: effective
 // (book-inheritable-aware) values for a piece, plain Book columns for a
 // book, since a Book has nothing to inherit from. Either optional segment
 // (name, year) is omitted cleanly, including its separator, rather than
 // leaving a stray "- " or "()" when unset.
 func downloadFilename(composer, arranger, publisher, title, yearWritten string) string {
-	name := composer
+	name := arranger
 	if name == "" {
-		name = arranger
+		name = composer
 	}
 	if name == "" {
 		name = publisher
