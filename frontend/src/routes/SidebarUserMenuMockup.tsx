@@ -515,14 +515,14 @@ export function SidebarUserMenuMockup() {
 
       <div
         aria-hidden={!drawerOpen}
-        className={`fixed inset-0 z-40 bg-scrim/40 transition-opacity duration-200 md:hidden ${
-          drawerOpen ? 'opacity-100' : 'pointer-events-none opacity-0'
+        className={`fixed inset-0 z-40 bg-scrim/40 transition-[opacity,visibility] duration-200 md:hidden ${
+          drawerOpen ? 'opacity-100' : 'pointer-events-none invisible opacity-0'
         }`}
         onClick={() => setDrawerOpen(false)}
       />
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col bg-sidebar-bg transition-transform duration-200 md:hidden ${
-          drawerOpen ? 'translate-x-0' : '-translate-x-full'
+        className={`fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col bg-sidebar-bg transition-[translate,visibility] duration-200 md:hidden ${
+          drawerOpen ? 'translate-x-0' : 'invisible -translate-x-full'
         }`}
       >
         <div className="flex h-14 shrink-0 items-center justify-end px-3">

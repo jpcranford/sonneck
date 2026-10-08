@@ -332,16 +332,16 @@ function PersonFilterDrawer({
     <>
       <div
         aria-hidden={!open}
-        className={`fixed inset-0 z-40 bg-scrim/40 backdrop-blur-[1px] transition-opacity duration-200 ${
-          open ? 'opacity-100' : 'pointer-events-none opacity-0'
+        className={`fixed inset-0 z-40 bg-scrim/40 backdrop-blur-[1px] transition-[opacity,visibility] duration-200 ${
+          open ? 'opacity-100' : 'pointer-events-none invisible opacity-0'
         }`}
         onClick={onClose}
       />
       <aside
         role="dialog"
         aria-label="Filters"
-        className={`fixed inset-y-0 right-0 z-50 flex w-80 max-w-[88vw] flex-col border-l border-border bg-paper-raised shadow-xl transition-transform duration-200 ${
-          open ? 'translate-x-0' : 'translate-x-full'
+        className={`fixed inset-y-0 right-0 z-50 flex w-80 max-w-[88vw] flex-col border-l border-border bg-paper-raised shadow-xl transition-[translate,visibility] duration-200 ${
+          open ? 'translate-x-0' : 'invisible translate-x-full'
         }`}
       >
         <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3.5">
