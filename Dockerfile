@@ -52,9 +52,19 @@ RUN CGO_ENABLED=0 go build -trimpath \
 FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
         poppler-utils \
+        fonts-liberation2 \
+        fonts-urw-base35 \
         wget \
         ca-certificates \
     && rm -rf /var/lib/apt/lists/*
+# The two font packages are for thumbnails: a PDF that names a font without
+# embedding it (common — Arial, Helvetica, Times New Roman, Symbol in
+# engraved scores) is drawn by pdftoppm with whatever this image has, and
+# slim Debian has only DejaVu Sans/Serif, no italics — so titles came out
+# wider and "cresc." upright. Liberation matches Arial/Helvetica, Times New
+# Roman and Courier New letter for letter (fontconfig's own metric aliases
+# map those names to it); URW base35 covers the rest of PDF's standard 14
+# (Symbol and ZapfDingbats included).
 # wget exists solely so HEALTHCHECK below can hit /healthz without adding a
 # dedicated Go subcommand for it — debian-slim ships neither wget nor curl
 # by default. ca-certificates is new as of the IMSLP live-autofill feature
