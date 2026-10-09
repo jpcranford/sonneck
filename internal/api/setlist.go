@@ -18,15 +18,18 @@ import (
 // Title/Duration/PageCount/Keys are all plain, non-book-inheritable
 // fields (CLAUDE.md's own Computed fields deviation for Duration; Key is
 // explicitly never book-inheritable either), so those are read straight
-// off the piece/entry row with no resolver needed.
+// off the piece/entry row with no resolver needed. WorkOpusNumber is
+// book-inheritable, so it's the resolved value too ("" when none), shown
+// after the title on Setlist Details the way Book and Person Details do.
 type SetlistPieceSummary struct {
-	ID        int64      `json:"id"`
-	Title     string     `json:"title"`
-	Composer  []repo.Tag `json:"composer"`
-	Arranger  []repo.Tag `json:"arranger"`
-	Keys      []repo.Tag `json:"keys"`
-	Duration  *int       `json:"duration"`
-	PageCount int        `json:"pageCount"`
+	ID             int64      `json:"id"`
+	Title          string     `json:"title"`
+	WorkOpusNumber string     `json:"workOpusNumber"`
+	Composer       []repo.Tag `json:"composer"`
+	Arranger       []repo.Tag `json:"arranger"`
+	Keys           []repo.Tag `json:"keys"`
+	Duration       *int       `json:"duration"`
+	PageCount      int        `json:"pageCount"`
 }
 
 // SetlistEntryResponse is one row of GetSetlist's own ordered "entries"
@@ -203,13 +206,14 @@ func buildSetlistPieceSummary(ctx context.Context, q repo.Queryer, pieceID int64
 	}
 
 	summary := &SetlistPieceSummary{
-		ID:        p.ID,
-		Title:     p.Title,
-		Composer:  []repo.Tag{},
-		Arranger:  []repo.Tag{},
-		Keys:      []repo.Tag{},
-		Duration:  p.Duration,
-		PageCount: p.PageCount,
+		ID:             p.ID,
+		Title:          p.Title,
+		WorkOpusNumber: eff.WorkOpusNumber.Value,
+		Composer:       []repo.Tag{},
+		Arranger:       []repo.Tag{},
+		Keys:           []repo.Tag{},
+		Duration:       p.Duration,
+		PageCount:      p.PageCount,
 	}
 	if len(eff.Composer.IDs) > 0 {
 		people, err := repo.PeopleByIDs(ctx, q, eff.Composer.IDs)

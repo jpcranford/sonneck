@@ -166,13 +166,15 @@ func TestBuildSetlistResponse_TotalDurationOmittedWhenNoEntryHasOne(t *testing.T
 // is CLAUDE.md > Book-level soft inheritance's own rule, applied to a
 // setlist entry specifically: a piece with no composer of its own but a
 // composer on its source Book must still show that composer here — going
-// through repo.ResolveEffective, never a raw Piece column.
+// through repo.ResolveEffective, never a raw Piece column. Same for the
+// opus number shown after the title.
 func TestBuildSetlistResponse_PieceEntryResolvesComposerThroughBookInheritance(t *testing.T) {
 	ctx := context.Background()
 	dbConn := newTestDB(t)
 
 	bookID, err := repo.CreateBook(ctx, dbConn, &models.Book{
 		BookTitle: "Collected Works", FilePath: strPtr("/book.pdf"), FileHash: strPtr("book-hash"),
+		WorkOpusNumber: strPtr("BWV 846"),
 	})
 	if err != nil {
 		t.Fatalf("CreateBook: %v", err)
@@ -213,6 +215,9 @@ func TestBuildSetlistResponse_PieceEntryResolvesComposerThroughBookInheritance(t
 	composer := resp.Entries[0].Piece.Composer
 	if len(composer) != 1 || composer[0].Name != "J.S. Bach" {
 		t.Errorf("piece entry composer = %+v, want the book's own inherited J.S. Bach", composer)
+	}
+	if opus := resp.Entries[0].Piece.WorkOpusNumber; opus != "BWV 846" {
+		t.Errorf("piece entry workOpusNumber = %q, want the book's own inherited BWV 846", opus)
 	}
 }
 

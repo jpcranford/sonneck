@@ -96,6 +96,9 @@ interface SetlistPieceEntry {
   kind: 'piece'
   role?: string
   title: string
+  // Effective opus, shown after the title in parentheses (as on Book and
+  // Person Details).
+  opus?: string
   composer: string
   keys: string[]
   durationSeconds?: number
@@ -124,7 +127,8 @@ const INITIAL_ENTRIES: SetlistEntry[] = [
     id: 'e1',
     kind: 'piece',
     role: 'Prelude',
-    title: 'Prelude in C Major, BWV 846',
+    title: 'Prelude in C Major',
+    opus: 'BWV 846',
     composer: 'J.S. Bach',
     keys: ['C major'],
     durationSeconds: 150,
@@ -142,6 +146,7 @@ const INITIAL_ENTRIES: SetlistEntry[] = [
     kind: 'piece',
     role: 'Processional',
     title: 'Jesu, Joy of Man’s Desiring',
+    opus: 'BWV 147',
     composer: 'J.S. Bach',
     keys: ['G major', 'D major'],
     durationSeconds: 225,
@@ -152,6 +157,7 @@ const INITIAL_ENTRIES: SetlistEntry[] = [
     kind: 'piece',
     role: 'Offertory',
     title: 'Ave Maria',
+    opus: 'D. 839',
     composer: 'Franz Schubert',
     keys: ['B♭ major'],
     durationSeconds: 255,
@@ -760,7 +766,9 @@ export function SetlistDetailsMockup() {
                           : 'font-sans text-sm font-normal text-ink-soft italic'
                       }`}
                     >
-                      {entry.title}
+                      {entry.kind === 'piece' && entry.opus
+                        ? `${entry.title} (${entry.opus})`
+                        : entry.title}
                     </span>
                   </div>
                   {entry.durationSeconds != null && (

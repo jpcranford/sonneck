@@ -491,8 +491,14 @@ export function SetlistPage() {
                 </p>
               ) : (
                 setlist.entries.map((entry) => {
+                  // A piece's opus follows its title in parentheses, as on
+                  // Book and Person Details.
                   const title =
-                    entry.kind === 'piece' ? (entry.piece?.title ?? '') : (entry.customName ?? '')
+                    entry.kind === 'piece'
+                      ? entry.piece?.workOpusNumber
+                        ? `${entry.piece.title} (${entry.piece.workOpusNumber})`
+                        : (entry.piece?.title ?? '')
+                      : (entry.customName ?? '')
                   const durationSeconds =
                     entry.kind === 'piece' ? entry.piece?.duration : entry.customDurationSeconds
                   const rowContent = (

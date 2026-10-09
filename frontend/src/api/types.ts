@@ -60,11 +60,7 @@ export interface EffectiveBoolField {
  * filing), and no confirmed renewal — meaning the PD conclusion rests on an
  * *assumed* non-renewal default rather than a confirmed fact. */
 export type CopyrightStatus =
-  | 'publicDomain'
-  | 'copyleft'
-  | 'likelyPublicDomain'
-  | 'possiblyPublicDomain'
-  | 'inCopyright'
+  'publicDomain' | 'copyleft' | 'likelyPublicDomain' | 'possiblyPublicDomain' | 'inCopyright'
 
 /**
  * Piece.copyrightStatus's wire shape — can't reuse plain EffectiveField
@@ -399,6 +395,8 @@ export interface Setlist {
 export interface SetlistPieceSummary {
   id: number
   title: string
+  /** Effective (book-inheritable) opus; '' when none. */
+  workOpusNumber: string
   composer: Tag[]
   arranger: Tag[]
   keys: Tag[]
