@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type MouseEvent, type ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -21,6 +21,7 @@ import {
   deleteSetlist,
   getSetlist,
   getSetlistPdfUrl,
+  getSetlistProgram,
   removeSetlistEntry,
   updateSetlist,
 } from '../api/setlists'
@@ -43,6 +44,7 @@ import { formatRelativeWeeks } from '../lib/relativeWeeks'
 import { usePageTitle } from '../lib/usePageTitle'
 import { formatDateOnly } from '../lib/dateOnly'
 import { confirmAction, showAlert } from '../lib/dialogs'
+import { copyToClipboard } from '../lib/clipboard'
 
 // The real Setlist Details page (§13) — built against SetlistDetailsMockup.tsx
 // (the approved Phase 6 mockup, incl. its own Round 1-10 polish and the
@@ -170,6 +172,24 @@ export function SetlistPage() {
   const [editSetlistOpen, setEditSetlistOpen] = useState(false)
   const [editSetlistTab, setEditSetlistTab] = useState<'details' | 'program'>('details')
   const [downloadOpen, setDownloadOpen] = useState(false)
+  // The program copy items: both texts load when the menu opens, so the
+  // click can copy at once — Safari, and the plain-HTTP fallback in
+  // lib/clipboard.ts, only allow a copy inside the click itself.
+  const { data: program } = useQuery({
+    queryKey: ['setlist', setlistId, 'program'],
+    queryFn: () => getSetlistProgram(setlistId),
+    enabled: downloadOpen,
+  })
+  const [copyToast, setCopyToast] = useState<{ x: number; y: number } | null>(null)
+  function handleCopyProgram(text: string, event: MouseEvent) {
+    const { clientX: x, clientY: y } = event
+    setDownloadOpen(false)
+    void copyToClipboard(text).then((copied) => {
+      if (!copied) return
+      setCopyToast({ x, y })
+      window.setTimeout(() => setCopyToast(null), 1200)
+    })
+  }
   const [editingEntry, setEditingEntry] = useState<SetlistEntry | null>(null)
   const [editingRoleEntry, setEditingRoleEntry] = useState<SetlistEntry | null>(null)
   const [editingPieceId, setEditingPieceId] = useState<number | null>(null)
@@ -414,15 +434,34 @@ export function SetlistPage() {
                 <button
                   type="button"
                   onClick={() => setDownloadOpen((o) => !o)}
-                  disabled={!canDownload}
-                  aria-label="More download options"
+                  aria-label="More download and copy options"
                   className="relative -ml-px flex items-center justify-center rounded-r-md border border-border bg-paper-raised px-2 text-ink transition-colors disabled:opacity-50 enabled:cursor-pointer enabled:hover:z-10 enabled:hover:border-accent"
                 >
                   <IconChevronDownFilled size={16} />
                 </button>
               </div>
-              {downloadOpen && canDownload && (
+              {downloadOpen && (
                 <div className="absolute top-full left-0 z-10 mt-1 w-64 rounded-md border border-border bg-paper-raised py-1 text-left shadow-lg">
+                  {/* Copying needs only view access, so these stay usable
+                      without the download permission. */}
+                  {(
+                    [
+                      ['markdown', 'Copy program as Markdown'],
+                      ['text', 'Copy program as plain text'],
+                    ] as const
+                  ).map(([format, label]) => (
+                    <button
+                      key={format}
+                      type="button"
+                      disabled={!program}
+                      onClick={(event) => program && handleCopyProgram(program[format], event)}
+                      className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-paper-hover disabled:opacity-50"
+                    >
+                      <IconCopy size={16} className="shrink-0 text-ink-soft" />
+                      {label}
+                    </button>
+                  ))}
+                  <div className="my-1 h-px bg-border" />
                   {/* InfoTooltip, not a disabled button: a disabled element takes no taps,
                       so on touch there would be no way to learn why it's inert. */}
                   <InfoTooltip
@@ -740,6 +779,15 @@ export function SetlistPage() {
             />
           )}
         </>
+      )}
+
+      {copyToast && (
+        <div
+          className="pointer-events-none fixed z-50 -translate-x-1/2 -translate-y-[140%] rounded-md bg-scrim px-2 py-1 text-xs text-white shadow-md"
+          style={{ left: copyToast.x, top: copyToast.y }}
+        >
+          Copied!
+        </div>
       )}
     </div>
   )

@@ -29,25 +29,35 @@ func (s *Server) handleGetCitation(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, err)
 		return
 	}
-	eff, err := repo.ResolveEffective(r.Context(), s.DB, p)
+	citation, err := s.pieceCitation(r.Context(), s.DB, p)
 	if err != nil {
 		s.writeError(w, err)
 		return
+	}
+
+	api.WriteData(w, http.StatusOK, map[string]string{"citation": citation})
+}
+
+// pieceCitation builds a piece's citation (buildCitation's full input,
+// resolved from the piece and its book) — shared by GET
+// /api/pieces/{id}/citation and the setlist program copy.
+func (s *Server) pieceCitation(ctx context.Context, q repo.Queryer, p *models.Piece) (string, error) {
+	eff, err := repo.ResolveEffective(ctx, q, p)
+	if err != nil {
+		return "", err
 	}
 
 	// Composer/Arranger are ordered lists now (migration 00020) — resolved
 	// to display names here, at the one place that needs to actually
 	// render them, rather than carrying names inside EffectivePiece itself
 	// (which stays DB-decoupled, ids only, same as InstrumentIDs).
-	composerNames, err := personNames(r.Context(), s.DB, eff.Composer.IDs)
+	composerNames, err := personNames(ctx, q, eff.Composer.IDs)
 	if err != nil {
-		s.writeError(w, err)
-		return
+		return "", err
 	}
-	arrangerNames, err := personNames(r.Context(), s.DB, eff.Arranger.IDs)
+	arrangerNames, err := personNames(ctx, q, eff.Arranger.IDs)
 	if err != nil {
-		s.writeError(w, err)
-		return
+		return "", err
 	}
 
 	// Public Domain Badge feature — the effective (computed/overridden)
@@ -56,19 +66,17 @@ func (s *Server) handleGetCitation(w http.ResponseWriter, r *http.Request) {
 	// separately to decide whether an explicit 'publicDomain' pick
 	// contradicts what the calculation would otherwise show (see
 	// buildCitation's own comment on the note it guards).
-	copyrightStatus, _, calculatedLikelyPD, err := repo.ResolveCopyrightStatus(r.Context(), s.DB, eff, s.Cfg.CopyrightRegion())
+	copyrightStatus, _, calculatedLikelyPD, err := repo.ResolveCopyrightStatus(ctx, q, eff, s.Cfg.CopyrightRegion())
 	if err != nil {
-		s.writeError(w, err)
-		return
+		return "", err
 	}
 
 	var bookTitle, bookWorkOpusNumber, bookISBN, bookYearPublished string
 	hasBook := p.SourceBookID != nil
 	if hasBook {
-		book, err := repo.GetBookByID(r.Context(), s.DB, *p.SourceBookID)
+		book, err := repo.GetBookByID(ctx, q, *p.SourceBookID)
 		if err != nil {
-			s.writeError(w, err)
-			return
+			return "", err
 		}
 		bookTitle = book.BookTitle
 		if book.WorkOpusNumber != nil {
@@ -97,7 +105,7 @@ func (s *Server) handleGetCitation(w http.ResponseWriter, r *http.Request) {
 		arrangementYearWritten: resolveArrangementYearWritten(p.YearWritten, bookYearPublished, p.CopyrightYear),
 	})
 
-	api.WriteData(w, http.StatusOK, map[string]string{"citation": citation})
+	return citation, nil
 }
 
 // personNames resolves an ordered list of person ids to their display

@@ -40,6 +40,16 @@ var (
 // locale whose dates the PDF's fonts can't draw (a non-Latin script) falls
 // back to US English.
 func longDateFormatter(r *http.Request) func(time.Time) string {
+	return longDate(r, true)
+}
+
+// longDateFormatterText is longDateFormatter for text that isn't drawn by
+// the PDF (the setlist program copy): any script is fine there.
+func longDateFormatterText(r *http.Request) func(time.Time) string {
+	return longDate(r, false)
+}
+
+func longDate(r *http.Request, pdfFonts bool) func(time.Time) string {
 	var locale monday.Locale = monday.LocaleEnUS
 	if prefs, _, err := language.ParseAcceptLanguage(r.Header.Get("Accept-Language")); err == nil && len(prefs) > 0 {
 		if _, i, conf := mondayMatcher.Match(prefs...); conf != language.No {
@@ -57,7 +67,7 @@ func longDateFormatter(r *http.Request) func(time.Time) string {
 	}
 	return func(t time.Time) string {
 		out := monday.Format(t, layout, locale)
-		if !setlistpdf.CanDraw(out) {
+		if pdfFonts && !setlistpdf.CanDraw(out) {
 			return t.Format("January 2, 2006")
 		}
 		return out

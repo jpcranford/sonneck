@@ -304,3 +304,55 @@ func TestAddSetlistEntry_RequiresCreatePermission(t *testing.T) {
 		t.Errorf("add entry without create: status %d, want 403 (body %s)", rec.Code, rec.Body.String())
 	}
 }
+
+// The program copy end to end: numbered piece rows, the custom entry
+// between them, the gig date written out, and a Sources line that is the
+// piece's own citation, exactly as GET /api/pieces/{id}/citation gives it.
+func TestGetSetlistProgram_ListsEntriesAndSources(t *testing.T) {
+	h := newTestServer(t)
+	pieceID := uploadTestPiece(t, h)
+
+	rec := doJSON(t, h, http.MethodPost, "/api/setlists", map[string]any{"name": "Evensong", "gigDate": "2026-10-31"})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("create setlist: status %d, body %s", rec.Code, rec.Body.String())
+	}
+	var setlist struct {
+		ID int64 `json:"id"`
+	}
+	decodeData(t, rec, &setlist)
+	for _, body := range []map[string]any{{"customName": "Welcome"}, {"pieceId": pieceID}} {
+		if rec = doJSON(t, h, http.MethodPost, setlistURL(setlist.ID, "/entries"), body); rec.Code != http.StatusCreated {
+			t.Fatalf("add entry %v: status %d, body %s", body, rec.Code, rec.Body.String())
+		}
+	}
+
+	rec = doJSON(t, h, http.MethodGet, "/api/pieces/"+strconv.FormatInt(pieceID, 10)+"/citation", nil)
+	var cit struct {
+		Citation string `json:"citation"`
+	}
+	decodeData(t, rec, &cit)
+
+	rec = doJSON(t, h, http.MethodGet, setlistURL(setlist.ID, "/program"), nil)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("program: status %d, body %s", rec.Code, rec.Body.String())
+	}
+	var program struct {
+		Markdown string `json:"markdown"`
+		Text     string `json:"text"`
+	}
+	decodeData(t, rec, &program)
+	for _, want := range []string{"# Evensong\n\nOctober 31, 2026\n", "*Welcome*", "\n1. **", "## Sources\n\n1. "} {
+		if !strings.Contains(program.Markdown, want) {
+			t.Errorf("markdown missing %q:\n%s", want, program.Markdown)
+		}
+	}
+	for _, want := range []string{"EVENSONG\nOctober 31, 2026\n", "   Welcome\n", "SOURCES\n1. " + cit.Citation + "\n"} {
+		if !strings.Contains(program.Text, want) {
+			t.Errorf("text missing %q:\n%s", want, program.Text)
+		}
+	}
+
+	if rec = doJSON(t, h, http.MethodGet, setlistURL(999999, "/program"), nil); rec.Code != http.StatusNotFound {
+		t.Errorf("program of a missing setlist: status %d, want 404", rec.Code)
+	}
+}

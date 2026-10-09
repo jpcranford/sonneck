@@ -1,4 +1,10 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+  type ReactNode,
+} from 'react'
 import { Link } from 'react-router-dom'
 import {
   IconArchive,
@@ -25,6 +31,7 @@ import { EditEntryModal, type EditEntryValues } from './EditEntryMockup'
 import { EditRoleModal } from './EditRoleMockup'
 import { formatDateOnly } from '../lib/dateOnly'
 import { confirmAction } from '../lib/dialogs'
+import { copyToClipboard } from '../lib/clipboard'
 
 // Setlists design pass, Phase 6 — the real Setlist Details page (§13),
 // built against the approved Phase 2 layout (Option B, "Stats dashboard")
@@ -221,6 +228,65 @@ function computeDisplayNumbers(entries: SetlistEntry[]): (number | null)[] {
   })
 }
 
+// "Copy program as Markdown / plain text" (design D) — the same text
+// internal/handlers/setlistprogram.go's buildSetlistProgram builds, from
+// this page's fixture. A fixture piece has no stored citation, so its
+// Sources line is a stand-in (credit, quoted title, opus); the real one is
+// the piece's full citation from Piece Details.
+function escapeMarkdown(text: string): string {
+  return text.replace(/[\\`*_[\]<>]/g, '\\$&')
+}
+function buildProgramCopy(
+  name: string,
+  date: string,
+  entries: SetlistEntry[],
+  numbers: (number | null)[],
+): { markdown: string; text: string } {
+  const md = [`# ${escapeMarkdown(name)}`, '', escapeMarkdown(date), '']
+  const pt = [name.toUpperCase(), date, '']
+  const sourcesMd: string[] = []
+  const sourcesPt: string[] = []
+  let prevCustom = false
+  entries.forEach((entry, i) => {
+    const n = numbers[i]
+    if (entry.kind === 'custom' && n == null) {
+      if (i > 0 && !prevCustom) md.push('')
+      md.push(`*${escapeMarkdown(entry.title)}*`, '')
+      pt.push(`   ${entry.title}`)
+      prevCustom = true
+      return
+    }
+    prevCustom = false
+    const num = n != null ? `${n}. ` : ''
+    let rowMd = num
+    let rowPt = num
+    if (entry.kind === 'piece' && entry.role) {
+      rowMd += `*${escapeMarkdown(entry.role)}:* `
+      rowPt += `${entry.role}: `
+    }
+    if (entry.kind === 'custom') {
+      rowMd += `*${escapeMarkdown(entry.title)}*`
+      rowPt += entry.title
+    } else {
+      const opus = entry.opus ? ` (${entry.opus})` : ''
+      rowMd += `**${escapeMarkdown(entry.title)}**${escapeMarkdown(opus)} — ${escapeMarkdown(entry.composer)}`
+      rowPt += `${entry.title}${opus} — ${entry.composer}`
+      const citation = `${entry.composer}, "${entry.title}"${opus}.`
+      sourcesMd.push(num + escapeMarkdown(citation))
+      sourcesPt.push(num + citation)
+    }
+    md.push(rowMd)
+    pt.push(rowPt)
+  })
+  while (md[md.length - 1] === '') md.pop()
+  while (pt[pt.length - 1] === '') pt.pop()
+  if (sourcesMd.length > 0) {
+    md.push('', '## Sources', '', ...sourcesMd)
+    pt.push('', 'SOURCES', ...sourcesPt)
+  }
+  return { markdown: md.join('\n') + '\n', text: pt.join('\n') + '\n' }
+}
+
 // Each entry's own right-click menu (decision 11: "Edit Piece"/"Remove from
 // Setlist" for a piece entry, "Edit Entry"/"Remove from Setlist" for a
 // custom one — no divider either way, matching PieceContextMenu.tsx's own
@@ -329,6 +395,22 @@ export function SetlistDetailsMockup() {
   const [downloadOpen, setDownloadOpen] = useState(false)
 
   const displayNumbers = useMemo(() => computeDisplayNumbers(entries), [entries])
+  const [copyToast, setCopyToast] = useState<{ x: number; y: number } | null>(null)
+  function handleCopyProgram(format: 'markdown' | 'text', event: ReactMouseEvent) {
+    const { clientX: x, clientY: y } = event
+    const program = buildProgramCopy(
+      setlist.name,
+      formatAbsoluteDate(setlist.gigDate),
+      entries,
+      displayNumbers,
+    )
+    setDownloadOpen(false)
+    void copyToClipboard(program[format]).then((copied) => {
+      if (!copied) return
+      setCopyToast({ x, y })
+      window.setTimeout(() => setCopyToast(null), 1200)
+    })
+  }
   // Only entries with a known duration contribute — omit the duration
   // segment of the Program list's own sum row below when that leaves
   // nothing to sum, rather than showing a misleadingly confident "0:00".
@@ -619,7 +701,7 @@ export function SetlistDetailsMockup() {
             <button
               type="button"
               onClick={() => setDownloadOpen((o) => !o)}
-              aria-label="More download options"
+              aria-label="More download and copy options"
               className="relative -ml-px flex cursor-pointer items-center justify-center rounded-r-md border border-border bg-paper-raised px-2 text-ink transition-colors hover:z-10 hover:border-accent"
             >
               <IconChevronDownFilled size={16} />
@@ -627,6 +709,23 @@ export function SetlistDetailsMockup() {
           </div>
           {downloadOpen && (
             <div className="absolute top-full left-0 z-10 mt-1 w-64 rounded-md border border-border bg-paper-raised py-1 text-left shadow-lg">
+              {(
+                [
+                  ['markdown', 'Copy program as Markdown'],
+                  ['text', 'Copy program as plain text'],
+                ] as const
+              ).map(([format, label]) => (
+                <button
+                  key={format}
+                  type="button"
+                  onClick={(event) => handleCopyProgram(format, event)}
+                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-paper-hover"
+                >
+                  <IconCopy size={16} className="shrink-0 text-ink-soft" />
+                  {label}
+                </button>
+              ))}
+              <div className="my-1 h-px bg-border" />
               {/* InfoTooltip, not a disabled button: a disabled element takes no taps,
                   so on touch there would be no way to learn why it's inert. */}
               <InfoTooltip
@@ -990,6 +1089,15 @@ export function SetlistDetailsMockup() {
         initialRole={editingRoleEntry?.role}
         onSave={saveRole}
       />
+
+      {copyToast && (
+        <div
+          className="pointer-events-none fixed z-50 -translate-x-1/2 -translate-y-[140%] rounded-md bg-scrim px-2 py-1 text-xs text-white shadow-md"
+          style={{ left: copyToast.x, top: copyToast.y }}
+        >
+          Copied!
+        </div>
+      )}
     </div>
   )
 }

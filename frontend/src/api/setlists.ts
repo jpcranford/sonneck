@@ -38,7 +38,10 @@ export function addSetlistEntry(setlistId: number, req: SetlistEntryInput): Prom
   return apiPost<SetlistDetail>(`/api/setlists/${setlistId}/entries`, req)
 }
 
-export function removeSetlistEntry(setlistId: number, entryId: number): Promise<{ deleted: boolean }> {
+export function removeSetlistEntry(
+  setlistId: number,
+  entryId: number,
+): Promise<{ deleted: boolean }> {
   return apiDelete(`/api/setlists/${setlistId}/entries/${entryId}`)
 }
 
@@ -66,7 +69,10 @@ export function updateSetlistEntry(
 // PUT .../entries/order — the complete new ordering, sent whole on every
 // drop (decision 22's real drag-to-any-position reorder), not an
 // incremental up/down swap.
-export function reorderSetlistEntries(setlistId: number, entryIds: number[]): Promise<SetlistDetail> {
+export function reorderSetlistEntries(
+  setlistId: number,
+  entryIds: number[],
+): Promise<SetlistDetail> {
   return apiPut<SetlistDetail>(`/api/setlists/${setlistId}/entries/order`, { entryIds })
 }
 
@@ -78,7 +84,10 @@ export function reorderSetlistEntries(setlistId: number, entryIds: number[]): Pr
 // (decision 3's other archive path) can never surface in "Upcoming Sets" —
 // consistent with the Setlists Library page's own Active/Archived split,
 // which already treats effectiveArchived as the one true membership test.
-export function getUpcomingSetlists(setlists: Setlist[], limit = 5): (Setlist & { gigDate: string })[] {
+export function getUpcomingSetlists(
+  setlists: Setlist[],
+  limit = 5,
+): (Setlist & { gigDate: string })[] {
   return [...setlists]
     .filter((s): s is Setlist & { gigDate: string } => !s.effectiveArchived && s.gigDate != null)
     .sort((a, b) => (a.gigDate < b.gigDate ? -1 : a.gigDate > b.gigDate ? 1 : 0))
@@ -92,4 +101,10 @@ export function getUpcomingSetlists(setlists: Setlist[], limit = 5): (Setlist & 
 // components/DownloadLink, same as PiecePage.tsx's own Download PDF button.
 export function getSetlistPdfUrl(id: number): string {
   return `/api/setlists/${id}/pdf`
+}
+
+/** The program as Markdown and as plain text, for Setlist Details' copy
+ * items (internal/handlers/setlistprogram.go builds both). */
+export function getSetlistProgram(id: number): Promise<{ markdown: string; text: string }> {
+  return apiGet(`/api/setlists/${id}/program`)
 }
