@@ -108,6 +108,23 @@ func (s *Server) pieceCitation(ctx context.Context, q repo.Queryer, p *models.Pi
 	return citation, nil
 }
 
+// pieceCitationYear is the year a piece's citation ends with (citationYear,
+// with the book's YearPublished looked up as pieceCitation does) — shared
+// with the piece's download filename, so the two always name the same year.
+func pieceCitationYear(ctx context.Context, q repo.Queryer, p *models.Piece, eff *repo.EffectivePiece, arranger string) (string, error) {
+	var bookYearPublished string
+	if p.SourceBookID != nil {
+		book, err := repo.GetBookByID(ctx, q, *p.SourceBookID)
+		if err != nil {
+			return "", err
+		}
+		if book.YearPublished != nil {
+			bookYearPublished = *book.YearPublished
+		}
+	}
+	return citationYear(eff, arranger, resolveArrangementYearWritten(p.YearWritten, bookYearPublished, p.CopyrightYear)), nil
+}
+
 // personNames resolves an ordered list of person ids to their display
 // names, in the same order — the citation/download-filename layer's own
 // thin wrapper over repo.PeopleByIDs (which already preserves order).
@@ -252,8 +269,8 @@ func pieceOwnsImslp(eff *repo.EffectivePiece) bool {
 // arrangement made" than the piece's own copyright year, which may
 // describe the ORIGINAL work's copyright rather than this arrangement's —
 // so it's checked first, ahead of the piece's own copyright year.
-// Citation-only — doesn't change YearWritten's own resolution or anything
-// else exposed on PieceResponse.
+// Citation and download filename only (pieceCitationYear) — doesn't change
+// YearWritten's own resolution or anything else exposed on PieceResponse.
 func resolveArrangementYearWritten(pieceYearWritten *string, bookYearPublished string, pieceCopyrightYear *int) string {
 	if pieceYearWritten != nil && strings.TrimSpace(*pieceYearWritten) != "" {
 		return *pieceYearWritten

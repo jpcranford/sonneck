@@ -689,6 +689,42 @@ func TestDownloadPieceFile_FilenameUsesInheritedComposerAndYear(t *testing.T) {
 	}
 }
 
+// TestDownloadPieceFile_ArrangedPieceUsesCitationYear: an arranged piece's
+// filename names the same year as its citation (citationYear) — here the
+// book's year published, not the piece's own copyright year, which the
+// plain yearWritten fallback would pick.
+func TestDownloadPieceFile_ArrangedPieceUsesCitationYear(t *testing.T) {
+	h := newTestServer(t)
+	dir := t.TempDir()
+	path := dir + "/piece.pdf"
+	writeFixturePDF(t, path, 1)
+	var uploaded pieceResponse
+	decodeData(t, recordRequest(h, multipartUpload(t, "/api/pieces", "piece.pdf", readAll(t, path))), &uploaded)
+
+	var book bookResponse
+	decodeData(t, doJSON(t, h, http.MethodPost, "/api/books/manual", map[string]any{
+		"bookTitle":     "Fake Book",
+		"composers":     []string{"Bill Evans"},
+		"yearPublished": "1996",
+	}), &book)
+
+	decodeData(t, doJSON(t, h, http.MethodPatch, apiPiecesURL(uploaded.ID), map[string]any{
+		"title":         "Waltz",
+		"arrangers":     []string{"Someone"},
+		"copyrightYear": 1962,
+		"sourceBookId":  book.ID,
+	}), nil)
+
+	rec := recordRequest(h, httptestGet(t, apiPiecesURL(uploaded.ID)+"/file"))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("download: status %d", rec.Code)
+	}
+	disposition := rec.Header().Get("Content-Disposition")
+	if !strings.Contains(disposition, "Someone - Waltz (1996)") {
+		t.Errorf("Content-Disposition = %q, want the citation's year (1996)", disposition)
+	}
+}
+
 // TestGetRandomPiece_ReturnsAPiece covers the Piece Details page dice button's
 // backend: GET /api/pieces/random must resolve as the literal route, not
 // fall through to handleGetPiece and get parsed as an id of "random".

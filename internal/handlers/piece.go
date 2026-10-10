@@ -446,7 +446,13 @@ func (s *Server) handleDownloadPieceFile(w http.ResponseWriter, r *http.Request)
 		s.writeError(w, err)
 		return
 	}
-	filename := downloadFilename(joinPersonNames(composerNames), joinPersonNames(arrangerNames), eff.Publisher.Value, p.Title, eff.YearWritten.Value)
+	arranger := joinPersonNames(arrangerNames)
+	year, err := pieceCitationYear(r.Context(), s.DB, p, eff, arranger)
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+	filename := downloadFilename(joinPersonNames(composerNames), arranger, eff.Publisher.Value, p.Title, year)
 	w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=%q", filename+".pdf"))
 	http.ServeFile(w, r, p.FilePath)
 }
