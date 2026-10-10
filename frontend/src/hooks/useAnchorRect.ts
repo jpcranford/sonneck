@@ -99,8 +99,12 @@ const supportsAnchorPositioning =
   typeof CSS !== 'undefined' && CSS.supports?.('anchor-name: --a') === true
 
 /** Where the panel sits against its anchor: under it at the same width,
- * under it with right edges aligned, or above it with left edges aligned. */
-export type AnchorPlacement = 'below' | 'below-right' | 'above'
+ * under it and centered on it, under it with right edges aligned, or above
+ * it with left edges aligned. */
+export type AnchorPlacement = 'below' | 'below-center' | 'below-right' | 'above'
+
+/** Space kept between an edge-aware panel and the screen's sides, in px. */
+const EDGE_MARGIN = 8
 
 /**
  * Style for a floating panel portaled to <body> that must stay attached to
@@ -108,12 +112,18 @@ export type AnchorPlacement = 'below' | 'below-right' | 'above'
  * supported (the hook names the anchor element itself), else coordinates
  * from useAnchorRect. Null until the fallback has measured, or while
  * inactive. `gap` is the space between anchor and panel, in px.
+ *
+ * Give `panelWidth` (a fixed-width panel) to make it edge-aware: it keeps
+ * its placement's alignment when that fits, and otherwise slides back
+ * inside the screen, EDGE_MARGIN from either side — narrowing to fit only
+ * when the screen itself is narrower than the panel. (A 'below' panel
+ * takes the anchor's own width and never needs it.)
  */
 export function useAnchoredPanel(
   ref: RefObject<HTMLElement | null>,
   active: boolean,
   placement: AnchorPlacement,
-  gap = 4,
+  { gap = 4, panelWidth }: { gap?: number; panelWidth?: number } = {},
 ): CSSProperties | null {
   const id = useId()
   const name = `--anchor-${id.replace(/[^a-zA-Z0-9_-]/g, '')}`
@@ -129,6 +139,7 @@ export function useAnchoredPanel(
   const rect = useAnchorRect(ref, active && !supportsAnchorPositioning)
   if (!active) return null
 
+  const m = EDGE_MARGIN
   if (supportsAnchorPositioning) {
     const base = { position: 'fixed', positionAnchor: name } as CSSProperties
     if (placement === 'below') {
@@ -139,18 +150,54 @@ export function useAnchoredPanel(
         width: 'anchor-size(width)',
       }
     }
-    if (placement === 'below-right') {
-      return { ...base, top: `calc(anchor(bottom) + ${gap}px)`, right: 'anchor(right)' }
+    // The horizontal inset, clamped so the panel's far edge stays on screen.
+    const width = panelWidth ? `min(${panelWidth}px, 100vw - ${2 * m}px)` : undefined
+    const clamp = (edge: string) =>
+      width ? `clamp(${m}px, ${edge}, calc(100vw - ${width} - ${m}px))` : edge
+    if (placement === 'below-center') {
+      const w = width ?? `${panelWidth ?? 0}px`
+      return {
+        ...base,
+        top: `calc(anchor(bottom) + ${gap}px)`,
+        left: clamp(`calc(anchor(center) - ${w} / 2)`),
+        width,
+      }
     }
-    return { ...base, bottom: `calc(anchor(top) + ${gap}px)`, left: 'anchor(left)' }
+    if (placement === 'below-right') {
+      return {
+        ...base,
+        top: `calc(anchor(bottom) + ${gap}px)`,
+        right: clamp('anchor(right)'),
+        width,
+      }
+    }
+    return { ...base, bottom: `calc(anchor(top) + ${gap}px)`, left: clamp('anchor(left)'), width }
   }
 
   if (!rect) return null
   if (placement === 'below') {
     return { position: 'fixed', top: rect.bottom + gap, left: rect.left, width: rect.width }
   }
-  if (placement === 'below-right') {
-    return { position: 'fixed', top: rect.bottom + gap, right: window.innerWidth - rect.right }
+  const vw = window.innerWidth
+  const width = panelWidth ? Math.min(panelWidth, vw - 2 * m) : undefined
+  const clamp = (inset: number) =>
+    width === undefined ? inset : Math.min(Math.max(inset, m), vw - width - m)
+  if (placement === 'below-center') {
+    const w = width ?? 0
+    return {
+      position: 'fixed',
+      top: rect.bottom + gap,
+      left: clamp(rect.left + rect.width / 2 - w / 2),
+      width,
+    }
   }
-  return { position: 'fixed', bottom: window.innerHeight - rect.top + gap, left: rect.left }
+  if (placement === 'below-right') {
+    return { position: 'fixed', top: rect.bottom + gap, right: clamp(vw - rect.right), width }
+  }
+  return {
+    position: 'fixed',
+    bottom: window.innerHeight - rect.top + gap,
+    left: clamp(rect.left),
+    width,
+  }
 }

@@ -315,7 +315,7 @@ export function AddToSetlistPicker({
   return (
     <div
       ref={ref}
-      className="absolute top-full right-0 z-20 mt-1 w-64 overflow-hidden rounded-md border border-border bg-paper-raised py-2 text-left shadow-lg"
+      className="absolute top-full left-1/2 z-20 mt-1 w-64 -translate-x-1/2 overflow-hidden rounded-md border border-border bg-paper-raised py-2 text-left shadow-lg"
     >
       <div className="mb-2 flex items-center justify-between px-3">
         <span className="text-xs font-medium text-ink-soft">Add to Setlist</span>

@@ -109,7 +109,7 @@ export function UserMenuButton({
   // in viewport coordinates (the menu is portaled to <body>, see below).
   // 8px above the card. Kept mounted while closed (for its fade), so it
   // sits hidden at the corner until first opened.
-  const menuStyle = useAnchoredPanel(wrapRef, open, 'above', 8) ?? {
+  const menuStyle = useAnchoredPanel(wrapRef, open, 'above', { gap: 8, panelWidth: 240 }) ?? {
     position: 'fixed',
     left: 0,
     bottom: 0,

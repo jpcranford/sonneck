@@ -43,9 +43,11 @@ import { useAnchoredPanel } from '../hooks/useAnchorRect'
 // standing CLAUDE.md gotcha), and a first-column grid card sits close
 // enough to that container's own left edge for this popup's fixed 256px
 // width to trigger it in practice, not just in a contrived narrow-grid
-// test. Same fix TagComboBox.tsx's own dropdown already uses: track the
-// anchor's live screen position via getBoundingClientRect (kept in sync on
-// resize/scroll) and render through a portal with `position: fixed`.
+// test. Same fix TagComboBox.tsx's own dropdown already uses: a portal,
+// placed by hooks/useAnchorRect's useAnchoredPanel — centered under its
+// button and edge-aware (it slides back inside the screen, 8px from either
+// side, when centering would run it off one; on a phone the button sits
+// near the left edge).
 
 // "Nov 1" — short month + day, no year, same as the mockup's own
 // formatShortDate: this popover only ever shows a setlist's own upcoming
@@ -111,7 +113,7 @@ export function AddToSetlistPicker({
   const [creating, setCreating] = useState<'no' | 'open' | 'closing'>('no')
   const queryClient = useQueryClient()
 
-  const position = useAnchoredPanel(anchorRef, true, 'below-right')
+  const position = useAnchoredPanel(anchorRef, true, 'below-center', { panelWidth: 256 })
 
   const { data: allSetlists = [] } = useQuery({ queryKey: ['setlists'], queryFn: listSetlists })
   const { data: memberships = [] } = useQuery({
