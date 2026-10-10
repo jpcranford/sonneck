@@ -20,6 +20,7 @@ import { Modal } from '../components/Modal'
 import { useMockupTitle } from '../lib/useMockupTitle'
 import { WIDE_CONTENT_MAX_W } from '../lib/layout'
 import { PageToolbarPortal } from '../components/PageToolbarSlot'
+import { useEscapeToClose } from '../hooks/useEscapeToClose'
 
 // ---------------------------------------------------------------------
 // DESIGN MOCKUP for the Books Library page. Originally a side-by-side
@@ -554,6 +555,7 @@ function BookFilterDrawer({
   onClose: () => void
   onClear: () => void
 }) {
+  useEscapeToClose(open, onClose)
   return (
     <>
       <div

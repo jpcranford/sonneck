@@ -21,6 +21,7 @@ import { useMockupTitle } from '../lib/useMockupTitle'
 import { PracticeStatusIcon } from '../components/PracticeStatusIcon'
 import { WIDE_CONTENT_MAX_W } from '../lib/layout'
 import { PageToolbarPortal } from '../components/PageToolbarSlot'
+import { useEscapeToClose } from '../hooks/useEscapeToClose'
 
 // ---------------------------------------------------------------------
 // DESIGN MOCKUP — Piece Library sort/filter (Option B, "Filter Drawer",
@@ -600,6 +601,7 @@ function FilterDrawer({
   onClose: () => void
   onClear: () => void
 }) {
+  useEscapeToClose(open, onClose)
   return (
     <>
       {/* Same backdrop/slide mechanics as MobileNavDrawer (components/

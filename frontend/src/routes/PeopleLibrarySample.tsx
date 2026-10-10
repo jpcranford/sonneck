@@ -24,6 +24,7 @@ import { useMockupTitle } from '../lib/useMockupTitle'
 import { WIDE_CONTENT_MAX_W } from '../lib/layout'
 import { confirmAction } from '../lib/dialogs'
 import { PageToolbarPortal } from '../components/PageToolbarSlot'
+import { useEscapeToClose } from '../hooks/useEscapeToClose'
 
 // ---------------------------------------------------------------------
 // DESIGN MOCKUP for the People Library page — same toolbar/grid/list/
@@ -598,6 +599,7 @@ function PersonFilterDrawer({
   onChange: (next: PersonFilterState) => void
   onClose: () => void
 }) {
+  useEscapeToClose(open, onClose)
   return (
     <>
       <div

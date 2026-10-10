@@ -20,6 +20,7 @@ import { WIDE_CONTENT_MAX_W } from '../lib/layout'
 import { usePageTitle } from '../lib/usePageTitle'
 import { useViewPreference } from '../lib/useViewPreference'
 import { showAlert } from '../lib/dialogs'
+import { useEscapeToClose } from '../hooks/useEscapeToClose'
 
 // The real People Library (/people) — composer/arranger overhaul, Stage B.
 // Real build of PeopleLibrarySample.tsx (/mockup/people-library, kept as a
@@ -323,6 +324,7 @@ function PersonFilterDrawer({
   onChange: (next: PersonFilterState) => void
   onClose: () => void
 }) {
+  useEscapeToClose(open, onClose)
   const eras = ERA_ORDER.filter((era) => people.some((p) => getEra(p) === era))
   const countEra = (era: Era) => people.filter((p) => getEra(p) === era).length
   const centuries = [...new Set(people.flatMap(getCenturies))].sort((a, b) => a - b)

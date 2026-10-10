@@ -6,6 +6,7 @@ import {
   type PieceFilterState,
   type TriState,
 } from '../lib/pieceFilterState'
+import { useEscapeToClose } from '../hooks/useEscapeToClose'
 
 // Real build of PieceLibrarySample.tsx's own FilterDrawer (Option B of a
 // 4-option comparison). Live-updating (every change writes straight into
@@ -129,6 +130,7 @@ export function PieceFilterDrawer({
   hideHasImslpNumber?: boolean
   hidePracticeStatus?: boolean
 }) {
+  useEscapeToClose(open, onClose)
   return (
     <>
       <div
