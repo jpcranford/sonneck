@@ -6,6 +6,7 @@ import {
   IconArrowRight,
   IconArrowsDiagonal,
   IconChevronLeft,
+  IconChevronRight,
   IconChevronRightFilled,
   IconCheck,
   IconAlertTriangle,
@@ -17,12 +18,19 @@ import { lookupImslp } from '../api/imslp'
 import { listInstruments, listSheetTypes } from '../api/lookups'
 import { listPeople } from '../api/people'
 import { ApiError } from '../api/client'
+import { getConfig } from '../api/config'
 import type { Book, BookWriteRequest, Tag } from '../api/types'
 import { TagComboBox } from '../components/TagComboBox'
 import { SingleSelect } from '../components/SingleSelect'
 import { InfoIconTooltip } from '../components/InfoIconTooltip'
 import { PageLightbox } from '../components/PageLightbox'
 import { ImslpAutofillButton } from '../components/ImslpAutofillButton'
+import { Toggle } from '../components/Toggle'
+import {
+  US_RENEWAL_WINDOW_START,
+  US_RENEWAL_WINDOW_END,
+  inUSRenewalWindow,
+} from '../lib/usRenewalWindow'
 import { TOTAL_WIZARD_STEPS } from './BookUploadWizard'
 
 // Book Upload Wizard, Screen 3 of 6: "About this book" (design doc §5 step
@@ -46,6 +54,46 @@ interface FormValues {
   sheetType: string
   instruments: Tag[]
   description: string
+  // Copyright section — same fields and shapes as EditBookModal.tsx's.
+  copyrightStatus: string
+  copyrightYear: string
+  copyrightHolder: string
+  copyrightSlug: string
+  copyrightRenewed: '' | 'true' | 'false'
+}
+
+// Same list as EditBookModal.tsx's (option lists are duplicated per caller
+// in this app; only the shared SingleSelect component isn't).
+const COPYRIGHT_STATUS_OPTIONS = [
+  {
+    value: 'publicDomain',
+    label: 'In Public Domain',
+    description: 'No copyright applies. Sticky once picked — the calculation never overrides this.',
+  },
+  {
+    value: 'likelyPublicDomain',
+    label: 'Likely Public Domain',
+    description:
+      'Calculated automatically from copyright year and composer death year. Sticky if picked by hand too.',
+  },
+  {
+    value: 'inCopyright',
+    label: 'In Copyright',
+    description:
+      'Your own call — but if the calculation later determines the term has expired, this moves to Likely Public Domain on its own.',
+  },
+  {
+    value: 'copyleft',
+    label: 'Copyleft',
+    description:
+      'A license like Creative Commons has been attached to this piece. Same auto-upgrade as In Copyright if the calculation later says the term expired anyway.',
+  },
+]
+
+function toIntOrNull(value: string): number | null {
+  if (value.trim() === '') return null
+  const n = Number(value)
+  return Number.isFinite(n) ? n : null
 }
 
 // Composer/Arranger are ordered Person lists (composer/arranger overhaul,
@@ -66,6 +114,11 @@ function bookToFormValues(book: Book): FormValues {
     sheetType: book.sheetType?.name ?? '',
     instruments: book.instruments,
     description: book.description ?? '',
+    copyrightStatus: book.copyrightStatus ?? '',
+    copyrightYear: book.copyrightYear != null ? String(book.copyrightYear) : '',
+    copyrightHolder: book.copyrightHolder ?? '',
+    copyrightSlug: book.copyrightSlug ?? '',
+    copyrightRenewed: book.copyrightRenewed == null ? '' : book.copyrightRenewed ? 'true' : 'false',
   }
 }
 
@@ -99,6 +152,11 @@ function formValuesToWriteRequest(data: FormValues): BookWriteRequest {
     imslpNumber: stripImslpPrefix(data.imslpNumber) || null,
     isbn: data.isbn || null,
     instruments: data.instruments.map((i) => i.name),
+    copyrightStatus: (data.copyrightStatus || null) as BookWriteRequest['copyrightStatus'],
+    copyrightYear: toIntOrNull(data.copyrightYear),
+    copyrightHolder: data.copyrightHolder || null,
+    copyrightSlug: data.copyrightSlug || null,
+    copyrightRenewed: data.copyrightRenewed === '' ? null : data.copyrightRenewed === 'true',
   }
 }
 
@@ -173,6 +231,15 @@ export function BookUploadAboutStep({
     setValue,
     formState: { errors },
   } = useForm<FormValues>({ defaultValues: bookToFormValues(book) })
+
+  // Copyright section: collapsed by default, as in Edit Book. The US
+  // renewal toggle needs the server's copyright region.
+  const [copyrightOpen, setCopyrightOpen] = useState(false)
+  const { data: appConfig } = useQuery({
+    queryKey: ['config'],
+    queryFn: getConfig,
+    staleTime: Infinity,
+  })
 
   const [imslpFetchState, setImslpFetchState] = useState<'idle' | 'fetching' | 'done'>('idle')
   // Which fields the *most recent* autofill actually touched — drives a
@@ -670,6 +737,105 @@ export function BookUploadAboutStep({
                 {...register('description')}
               />
             </div>
+          </div>
+
+          {/* Copyright — a copy of EditBookModal.tsx's section (same
+              fields, collapsed by default, US renewal toggle for en-US
+              copyright years in the renewal window). */}
+          <div className="border-t border-border pt-4">
+            <button
+              type="button"
+              onClick={() => setCopyrightOpen((o) => !o)}
+              className="flex cursor-pointer items-center gap-1 text-xs font-medium tracking-wide text-ink-soft/70 uppercase hover:text-ink"
+            >
+              <IconChevronRight
+                size={12}
+                className={`transition-transform ${copyrightOpen ? 'rotate-90' : ''}`}
+              />
+              Copyright
+            </button>
+            {copyrightOpen && (
+              <div className="mt-3 flex flex-col gap-4 rounded-md border border-dashed border-border p-4">
+                <Controller
+                  name="copyrightStatus"
+                  control={control}
+                  render={({ field }) => (
+                    <SingleSelect
+                      label="Copyright status"
+                      options={COPYRIGHT_STATUS_OPTIONS}
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder="Not set"
+                      placeholderDescription="No status set for this book yet."
+                      onClear={() => field.onChange('')}
+                    />
+                  )}
+                />
+                <div className="flex flex-col gap-3 min-[525px]:flex-row">
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <label
+                      htmlFor="f-copyright-year"
+                      className="flex items-center gap-1 text-sm text-ink-soft"
+                    >
+                      Copyright year
+                      <InfoIconTooltip
+                        message="Enter the year copyright was first established for this book — usually the year of first publication."
+                        ariaLabel="What Copyright year means"
+                      />
+                    </label>
+                    <input
+                      id="f-copyright-year"
+                      type="number"
+                      className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+                      {...register('copyrightYear')}
+                    />
+                  </div>
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <label htmlFor="f-copyright-holder" className="text-sm text-ink-soft">
+                      Copyright holder
+                    </label>
+                    <input
+                      id="f-copyright-holder"
+                      className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+                      {...register('copyrightHolder', { maxLength: 255 })}
+                    />
+                  </div>
+                </div>
+
+                {appConfig?.copyrightRegion === 'en-US' &&
+                  inUSRenewalWindow(watch('copyrightYear')) && (
+                    <div className="flex items-center gap-1.5 rounded-md border border-dashed border-border p-3">
+                      <Controller
+                        name="copyrightRenewed"
+                        control={control}
+                        render={({ field }) => (
+                          <Toggle
+                            checked={field.value === 'true'}
+                            onChange={(next) => field.onChange(next ? 'true' : 'false')}
+                            label="This work was renewed"
+                          />
+                        )}
+                      />
+                      <InfoIconTooltip
+                        message={`US works published ${US_RENEWAL_WINDOW_START}–${US_RENEWAL_WINDOW_END} needed a separate renewal filing to keep protection past the first 28 years. Enable this if your source shows a "(renewed …)" note next to the copyright year above.`}
+                        ariaLabel="What 'This work was renewed' means"
+                      />
+                    </div>
+                  )}
+
+                <div className="flex min-w-0 flex-col gap-1">
+                  <label htmlFor="f-copyright-slug" className="text-sm text-ink-soft">
+                    Copyright details
+                  </label>
+                  <input
+                    id="f-copyright-slug"
+                    placeholder="Optional — e.g. license terms, renewal notes"
+                    className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                    {...register('copyrightSlug')}
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           {saveMutation.isError && (
