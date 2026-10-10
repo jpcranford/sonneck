@@ -16,7 +16,6 @@ import {
   IconPlus,
   IconSearch,
   IconX,
-  IconXFilled,
 } from '@tabler/icons-react'
 import { ApiError } from '../api/client'
 import { searchPieces } from '../api/pieces'
@@ -775,7 +774,7 @@ export function EditSetlistModal({
                 aria-label="Close"
                 className="mt-1 shrink-0 cursor-pointer text-ink-soft hover:text-accent"
               >
-                <IconXFilled size={22} />
+                <IconX size={22} />
               </button>
             </div>
             <div className="flex gap-6">

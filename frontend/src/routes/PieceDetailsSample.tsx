@@ -6,10 +6,9 @@ import {
   IconBook2,
   IconCalendarEventFilled,
   IconCalendarFilled,
-  IconChevronDownFilled,
+  IconChevronDown,
   IconChevronLeft,
   IconChevronRight,
-  IconChevronRightFilled,
   IconCopy,
   IconDice5,
   IconDotsVertical,
@@ -23,7 +22,7 @@ import {
   IconPlayerPlay,
   IconRefresh,
   IconTrash,
-  IconXFilled,
+  IconX,
 } from '@tabler/icons-react'
 import type { CopyrightStatus, PracticeStatus } from '../api/types'
 import { copyToClipboard } from '../lib/clipboard'
@@ -361,7 +360,7 @@ function PageLightbox({
         aria-label="Close"
         className="absolute top-6 left-6 flex size-10 items-center justify-center rounded-full bg-scrim/80 text-white shadow-md backdrop-blur-sm hover:bg-white/15 focus-visible:outline-accent-on-dark"
       >
-        <IconXFilled size={20} />
+        <IconX size={20} />
       </button>
 
       {/* Persistent, not hover-revealed (device-aware convention: this
@@ -417,7 +416,7 @@ function PageLightbox({
             aria-label="Next page"
             className="flex size-7 cursor-pointer items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline-accent-on-dark disabled:opacity-35"
           >
-            <IconChevronRightFilled size={16} />
+            <IconChevronRight size={16} />
           </button>
         </div>
       )}
@@ -798,7 +797,7 @@ export function PieceDetailsSample() {
                   aria-label="Next page"
                   className="flex size-6 cursor-pointer items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline-accent-on-dark disabled:opacity-35"
                 >
-                  <IconChevronRightFilled size={14} />
+                  <IconChevronRight size={14} />
                 </button>
               </div>
             )}
@@ -875,7 +874,7 @@ export function PieceDetailsSample() {
                   aria-label="More download options"
                   className="relative -ml-px flex cursor-pointer items-center justify-center rounded-r-md border border-border bg-paper-raised px-2 text-ink transition-colors hover:z-10 hover:border-accent"
                 >
-                  <IconChevronDownFilled size={16} />
+                  <IconChevronDown size={16} />
                 </button>
               </div>
               {downloadOpen && (

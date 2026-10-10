@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { IconAlertTriangle, IconChevronRight, IconCheck, IconXFilled } from '@tabler/icons-react'
+import { IconAlertTriangle, IconChevronRight, IconCheck, IconX } from '@tabler/icons-react'
 import { updateBook } from '../api/books'
 import { lookupImslp } from '../api/imslp'
 import { listInstruments, listSheetTypes } from '../api/lookups'
@@ -393,7 +393,7 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
             aria-label="Close"
             className="mt-1 shrink-0 cursor-pointer text-ink-soft hover:text-accent"
           >
-            <IconXFilled size={22} />
+            <IconX size={22} />
           </button>
         </div>
       }

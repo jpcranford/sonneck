@@ -8,7 +8,6 @@ import {
   IconBook2,
   IconChevronLeft,
   IconChevronRight,
-  IconChevronRightFilled,
   IconCloudUpload,
   IconFileMusic,
   IconFileTypePdf,
@@ -653,7 +652,7 @@ export function UploadPage() {
                       aria-label="Next page"
                       className="flex size-6 cursor-pointer items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline-accent-on-dark disabled:opacity-35"
                     >
-                      <IconChevronRightFilled size={14} />
+                      <IconChevronRight size={14} />
                     </button>
                   </div>
                 )}

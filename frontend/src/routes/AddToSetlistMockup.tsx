@@ -11,7 +11,7 @@ import {
   IconCalendarPlus,
   IconHeartFilled,
   IconSearch,
-  IconXFilled,
+  IconX,
 } from '@tabler/icons-react'
 import { CheckboxMark } from '../components/Checkbox'
 import { ContextMenu } from '../components/ContextMenu'
@@ -325,7 +325,7 @@ export function AddToSetlistPicker({
           aria-label="Close"
           className="cursor-pointer text-ink-soft hover:text-ink"
         >
-          <IconXFilled size={13} />
+          <IconX size={13} />
         </button>
       </div>
 

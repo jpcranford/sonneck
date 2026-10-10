@@ -7,10 +7,9 @@ import {
   IconBook2,
   IconCalendarEventFilled,
   IconCalendarFilled,
-  IconChevronDownFilled,
+  IconChevronDown,
   IconChevronLeft,
   IconChevronRight,
-  IconChevronRightFilled,
   IconCopy,
   IconDice5,
   IconDotsVertical,
@@ -691,7 +690,7 @@ export function PiecePage() {
                     aria-label="Next page"
                     className="flex size-6 cursor-pointer items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline-accent-on-dark disabled:opacity-35"
                   >
-                    <IconChevronRightFilled size={14} />
+                    <IconChevronRight size={14} />
                   </button>
                 </div>
               )}
@@ -803,7 +802,7 @@ export function PiecePage() {
                     aria-label="More download options"
                     className="relative -ml-px flex items-center justify-center rounded-r-md border border-border bg-paper-raised px-2 text-ink transition-colors disabled:opacity-50 enabled:cursor-pointer enabled:hover:z-10 enabled:hover:border-accent"
                   >
-                    <IconChevronDownFilled size={16} />
+                    <IconChevronDown size={16} />
                   </button>
                 </div>
                 {downloadOpen && canDownload && (

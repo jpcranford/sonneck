@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { IconArrowLeft, IconXFilled } from '@tabler/icons-react'
+import { IconArrowLeft, IconX } from '@tabler/icons-react'
 import { Modal } from '../components/Modal'
 import { Toggle } from '../components/Toggle'
 import { useMockupTitle } from '../lib/useMockupTitle'
@@ -140,7 +140,7 @@ export function EditEntryModal({
             aria-label="Close"
             className="mt-1 shrink-0 cursor-pointer text-ink-soft hover:text-accent"
           >
-            <IconXFilled size={22} />
+            <IconX size={22} />
           </button>
         </div>
       }

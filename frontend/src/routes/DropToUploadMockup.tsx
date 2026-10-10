@@ -6,7 +6,7 @@ import {
   IconCloudUpload,
   IconFileMusic,
   IconFileTypePdf,
-  IconXFilled,
+  IconX,
 } from '@tabler/icons-react'
 import { Modal } from '../components/Modal'
 import { useMockupTitle } from '../lib/useMockupTitle'
@@ -149,7 +149,7 @@ function ModalHeader({
         aria-label="Close"
         className="mt-1 shrink-0 cursor-pointer text-ink-soft hover:text-accent"
       >
-        <IconXFilled size={22} />
+        <IconX size={22} />
       </button>
     </div>
   )
@@ -377,7 +377,7 @@ export function DropToUploadMockup() {
               aria-label="Dismiss"
               className="cursor-pointer"
             >
-              <IconXFilled size={13} />
+              <IconX size={13} />
             </button>
           </p>
         )}

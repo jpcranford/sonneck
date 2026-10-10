@@ -15,7 +15,6 @@ import {
   IconSearch,
   IconSlash,
   IconX,
-  IconXFilled,
 } from '@tabler/icons-react'
 import { Modal } from '../components/Modal'
 import { useMockupTitle } from '../lib/useMockupTitle'
@@ -826,7 +825,7 @@ function NewBookModal({
             aria-label="Close"
             className="mt-1 shrink-0 text-ink-soft hover:text-accent"
           >
-            <IconXFilled size={22} />
+            <IconX size={22} />
           </button>
         </div>
       }

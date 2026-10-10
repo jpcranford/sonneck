@@ -9,7 +9,7 @@ import {
   IconCheck,
   IconExternalLink,
   IconLoader2,
-  IconXFilled,
+  IconX,
 } from '@tabler/icons-react'
 import { Modal } from '../components/Modal'
 import { PALETTE } from '../lib/pieceSplitLogic'
@@ -375,7 +375,7 @@ export function EditPersonModalMockup() {
             aria-label="Dismiss"
             className="shrink-0 cursor-pointer text-ink-soft hover:text-ink"
           >
-            <IconXFilled size={16} />
+            <IconX size={16} />
           </button>
         </div>
       )}
@@ -405,7 +405,7 @@ export function EditPersonModalMockup() {
               aria-label="Close"
               className="mt-1 shrink-0 cursor-pointer text-ink-soft hover:text-accent"
             >
-              <IconXFilled size={22} />
+              <IconX size={22} />
             </button>
           </div>
         }

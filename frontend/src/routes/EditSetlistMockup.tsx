@@ -17,7 +17,6 @@ import {
   IconPlus,
   IconSearch,
   IconX,
-  IconXFilled,
 } from '@tabler/icons-react'
 import { InfoTooltip } from '../components/InfoTooltip'
 import { MarkdownText } from '../components/MarkdownText'
@@ -1042,7 +1041,7 @@ export function EditSetlistModal({
                 aria-label="Close"
                 className="mt-1 shrink-0 cursor-pointer text-ink-soft hover:text-accent"
               >
-                <IconXFilled size={22} />
+                <IconX size={22} />
               </button>
             </div>
             <div className="flex gap-6">

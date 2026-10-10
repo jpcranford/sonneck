@@ -1,4 +1,4 @@
-import { IconChevronLeft, IconChevronRightFilled } from '@tabler/icons-react'
+import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react'
 
 interface PageCycleControlProps {
   page: number
@@ -56,7 +56,7 @@ export function PageCycleControl({ page, pageCount, onChange }: PageCycleControl
         aria-label="Next page"
         className="flex size-6 cursor-pointer items-center justify-center rounded hover:bg-accent-soft hover:text-accent disabled:opacity-30"
       >
-        <IconChevronRightFilled size={16} />
+        <IconChevronRight size={16} />
       </button>
     </div>
   )

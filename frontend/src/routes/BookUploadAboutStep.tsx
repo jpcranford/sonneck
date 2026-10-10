@@ -7,7 +7,6 @@ import {
   IconArrowsDiagonal,
   IconChevronLeft,
   IconChevronRight,
-  IconChevronRightFilled,
   IconCheck,
   IconAlertTriangle,
   IconRotate,
@@ -461,7 +460,7 @@ export function BookUploadAboutStep({
                 aria-label="Next page"
                 className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline-accent-on-dark disabled:opacity-35"
               >
-                <IconChevronRightFilled size={14} />
+                <IconChevronRight size={14} />
               </button>
             </div>
           </div>

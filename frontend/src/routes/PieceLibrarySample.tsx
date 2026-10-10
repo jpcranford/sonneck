@@ -6,7 +6,7 @@ import {
   IconCheck,
   IconChevronDown,
   IconChevronLeft,
-  IconChevronRightFilled,
+  IconChevronRight,
   IconHeartFilled,
   IconLayoutGridFilled,
   IconLayoutListFilled,
@@ -958,7 +958,7 @@ function MockPageCycleControl({
         aria-label="Next page"
         className="flex size-6 cursor-pointer items-center justify-center rounded hover:bg-accent-soft hover:text-accent disabled:opacity-30"
       >
-        <IconChevronRightFilled size={16} />
+        <IconChevronRight size={16} />
       </button>
     </div>
   )

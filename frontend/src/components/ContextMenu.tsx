@@ -8,7 +8,7 @@ import {
   type ReactNode,
   type TouchEvent,
 } from 'react'
-import { IconDotsVerticalFilled } from '@tabler/icons-react'
+import { IconDotsVertical } from '@tabler/icons-react'
 
 export interface ContextMenuItem {
   label: string
@@ -177,7 +177,7 @@ export const ContextMenu = forwardRef<ContextMenuHandle, ContextMenuProps>(funct
             }}
             className="absolute top-2 right-2 z-10 flex size-7 items-center justify-center rounded-md bg-paper-raised/90 text-ink-soft shadow-sm hover:text-ink"
           >
-            <IconDotsVerticalFilled size={16} />
+            <IconDotsVertical size={16} />
           </button>
         )}
       </div>

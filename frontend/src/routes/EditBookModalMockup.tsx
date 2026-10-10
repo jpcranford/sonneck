@@ -1,6 +1,6 @@
 import { useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { Controller, useForm } from 'react-hook-form'
-import { IconCheck, IconChevronRight, IconXFilled } from '@tabler/icons-react'
+import { IconCheck, IconChevronRight, IconX } from '@tabler/icons-react'
 import type { Tag } from '../api/types'
 import { Modal } from '../components/Modal'
 import { TagComboBox } from '../components/TagComboBox'
@@ -226,7 +226,7 @@ export function EditBookModalMockup() {
               aria-label="Close"
               className="mt-1 shrink-0 cursor-pointer text-ink-soft hover:text-accent"
             >
-              <IconXFilled size={22} />
+              <IconX size={22} />
             </button>
           </div>
         }

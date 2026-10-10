@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { IconAlertTriangle, IconXFilled } from '@tabler/icons-react'
+import { IconAlertTriangle, IconX } from '@tabler/icons-react'
 import { createBookManual } from '../api/books'
 import { listPeople } from '../api/people'
 import { ApiError } from '../api/client'
@@ -122,7 +122,7 @@ export function NewBookModal({ open, onClose }: NewBookModalProps) {
             aria-label="Close"
             className="mt-1 shrink-0 text-ink-soft hover:text-accent"
           >
-            <IconXFilled size={22} />
+            <IconX size={22} />
           </button>
         </div>
       }

@@ -1,5 +1,5 @@
 import { useEffect, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
-import { IconXFilled } from '@tabler/icons-react'
+import { IconX } from '@tabler/icons-react'
 import { Modal } from '../components/Modal'
 
 // Setlists — the Add/Edit role modal: one text box, the piece entry's own
@@ -83,7 +83,7 @@ export function EditRoleModal({
             aria-label="Close"
             className="mt-1 shrink-0 cursor-pointer text-ink-soft hover:text-accent"
           >
-            <IconXFilled size={22} />
+            <IconX size={22} />
           </button>
         </div>
       }

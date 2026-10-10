@@ -14,12 +14,11 @@ import {
   IconChevronDown,
   IconChevronLeft,
   IconChevronRight,
-  IconChevronRightFilled,
   IconCloudDownload,
   IconCloudOff,
   IconLoader2,
   IconSearch,
-  IconXFilled,
+  IconX,
 } from '@tabler/icons-react'
 import { Modal } from '../components/Modal'
 import { InfoIconTooltip } from '../components/InfoIconTooltip'
@@ -645,7 +644,7 @@ function TagComboBox({
                       // Solid pre-blend, not opacity — overlapping icon strokes would re-blend unevenly under real translucency.
                       className="cursor-pointer text-ink-faint hover:text-ink"
                     >
-                      <IconXFilled size={12} />
+                      <IconX size={12} />
                     </button>
                   </span>
                 </span>
@@ -674,7 +673,7 @@ function TagComboBox({
                   aria-label={`Remove ${tag.name}`}
                   className="cursor-pointer hover:text-ink"
                 >
-                  <IconXFilled size={11} />
+                  <IconX size={11} />
                 </button>
               </span>
             ))
@@ -1367,7 +1366,7 @@ export function EditPieceModalMockup() {
                 aria-label="Close"
                 className="mt-1 shrink-0 cursor-pointer text-ink-soft hover:text-accent"
               >
-                <IconXFilled size={22} />
+                <IconX size={22} />
               </button>
             </div>
 
@@ -1481,7 +1480,7 @@ export function EditPieceModalMockup() {
                 }
                 className="flex size-7 cursor-pointer items-center justify-center rounded hover:bg-accent-soft hover:text-accent disabled:opacity-30"
               >
-                <IconChevronRightFilled size={18} />
+                <IconChevronRight size={18} />
               </button>
             </div>
             <div className="ml-auto flex gap-2">

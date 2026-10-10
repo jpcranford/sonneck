@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { IconChevronLeft, IconChevronRightFilled, IconXFilled } from '@tabler/icons-react'
+import { IconChevronLeft, IconChevronRight, IconX } from '@tabler/icons-react'
 
 // Full-screen page preview overlay, shared by every page-thumbnail preview
 // in the app that wants a click-to-enlarge view (Piece Details, the Book
@@ -90,7 +90,7 @@ export function PageLightbox({
         aria-label="Close"
         className="absolute top-[calc(1.5rem+var(--titlebar-inset))] left-6 flex size-10 items-center justify-center rounded-full bg-scrim/80 text-white shadow-md backdrop-blur-sm hover:bg-white/15 focus-visible:outline-accent-on-dark"
       >
-        <IconXFilled size={20} />
+        <IconX size={20} />
       </button>
 
       {/* Persistent, not hover-revealed (device-aware convention: this
@@ -158,7 +158,7 @@ export function PageLightbox({
             aria-label="Next page"
             className="flex size-7 cursor-pointer items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline-accent-on-dark disabled:opacity-35"
           >
-            <IconChevronRightFilled size={16} />
+            <IconChevronRight size={16} />
           </button>
         </div>
       )}

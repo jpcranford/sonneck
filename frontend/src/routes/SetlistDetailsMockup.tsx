@@ -10,7 +10,7 @@ import {
   IconArchive,
   IconArrowLeft,
   IconCalendar,
-  IconChevronDownFilled,
+  IconChevronDown,
   IconCopy,
   IconDownload,
   IconEditFilled,
@@ -704,7 +704,7 @@ export function SetlistDetailsMockup() {
               aria-label="More download and copy options"
               className="relative -ml-px flex cursor-pointer items-center justify-center rounded-r-md border border-border bg-paper-raised px-2 text-ink transition-colors hover:z-10 hover:border-accent"
             >
-              <IconChevronDownFilled size={16} />
+              <IconChevronDown size={16} />
             </button>
           </div>
           {downloadOpen && (

@@ -8,7 +8,7 @@ import {
   IconCloudUpload,
   IconFileMusic,
   IconFileTypePdf,
-  IconXFilled,
+  IconX,
 } from '@tabler/icons-react'
 import { deleteBook, getBook } from '../api/books'
 import { ApiError } from '../api/client'
@@ -120,7 +120,7 @@ function ModalHeader({
         aria-label="Close"
         className="mt-1 shrink-0 cursor-pointer text-ink-soft hover:text-accent"
       >
-        <IconXFilled size={22} />
+        <IconX size={22} />
       </button>
     </div>
   )

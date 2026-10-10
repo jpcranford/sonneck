@@ -13,8 +13,7 @@ import {
   IconChevronDown,
   IconChevronLeft,
   IconChevronRight,
-  IconChevronRightFilled,
-  IconXFilled,
+  IconX,
 } from '@tabler/icons-react'
 import { listPeople } from '../api/people'
 import { getPieceThumbnailUrl, updatePiece } from '../api/pieces'
@@ -762,7 +761,7 @@ export function EditPieceModal({
               aria-label="Close"
               className="mt-1 shrink-0 cursor-pointer text-ink-soft hover:text-accent"
             >
-              <IconXFilled size={22} />
+              <IconX size={22} />
             </button>
           </div>
 
@@ -904,7 +903,7 @@ export function EditPieceModal({
                   }
                   className="flex size-7 cursor-pointer items-center justify-center rounded hover:bg-accent-soft hover:text-accent disabled:opacity-30"
                 >
-                  <IconChevronRightFilled size={18} />
+                  <IconChevronRight size={18} />
                 </button>
               </div>
             ) : (

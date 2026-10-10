@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { IconMinus, IconPlus, IconSlash, IconX, IconXFilled } from '@tabler/icons-react'
+import { IconMinus, IconPlus, IconSlash, IconX } from '@tabler/icons-react'
 import { createPerson, getPersonPortraitUrl, listPeople } from '../api/people'
 import { ApiError } from '../api/client'
 import type { Person, PersonCreateRequest } from '../api/types'
@@ -509,7 +509,7 @@ function NewPersonModal({
             aria-label="Close"
             className="mt-1 shrink-0 cursor-pointer text-ink-soft hover:text-accent"
           >
-            <IconXFilled size={22} />
+            <IconX size={22} />
           </button>
         </div>
       }

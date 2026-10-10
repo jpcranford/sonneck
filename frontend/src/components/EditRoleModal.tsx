@@ -1,6 +1,6 @@
 import { useEffect, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { IconXFilled } from '@tabler/icons-react'
+import { IconX } from '@tabler/icons-react'
 import { ApiError } from '../api/client'
 import { updateSetlistEntry } from '../api/setlists'
 import type { SetlistEntry } from '../api/types'
@@ -87,7 +87,7 @@ export function EditRoleModal({ open, onClose, setlistId, entry }: EditRoleModal
             aria-label="Close"
             className="mt-1 shrink-0 cursor-pointer text-ink-soft hover:text-accent"
           >
-            <IconXFilled size={22} />
+            <IconX size={22} />
           </button>
         </div>
       }

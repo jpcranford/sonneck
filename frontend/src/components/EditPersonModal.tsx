@@ -18,7 +18,7 @@ import {
   IconCloudOff,
   IconExternalLink,
   IconLoader2,
-  IconXFilled,
+  IconX,
 } from '@tabler/icons-react'
 import { updatePerson } from '../api/people'
 import { searchWikipedia, type WikipediaSearchResult } from '../api/wikipedia'
@@ -367,7 +367,7 @@ export function EditPersonModal({ person, open, onClose }: EditPersonModalProps)
               aria-label="Close"
               className="mt-1 shrink-0 cursor-pointer text-ink-soft hover:text-accent"
             >
-              <IconXFilled size={22} />
+              <IconX size={22} />
             </button>
           </div>
         }

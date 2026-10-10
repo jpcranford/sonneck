@@ -1,6 +1,6 @@
 import { useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { IconArrowRight, IconXFilled } from '@tabler/icons-react'
+import { IconArrowRight, IconX } from '@tabler/icons-react'
 import type { Tag } from '../api/types'
 import { normalizeForSearch } from '../lib/normalizeForSearch'
 import { InheritedNote } from './InheritedNote'
@@ -292,7 +292,7 @@ export function TagComboBox({
                       // Solid pre-blend, not opacity — overlapping icon strokes would re-blend unevenly under real translucency.
                       className="cursor-pointer text-ink-faint hover:text-ink"
                     >
-                      <IconXFilled size={12} />
+                      <IconX size={12} />
                     </button>
                   </span>
                 </span>
@@ -321,7 +321,7 @@ export function TagComboBox({
                   aria-label={`Remove ${tag.name}`}
                   className="cursor-pointer hover:text-ink"
                 >
-                  <IconXFilled size={11} />
+                  <IconX size={11} />
                 </button>
               </span>
             ))

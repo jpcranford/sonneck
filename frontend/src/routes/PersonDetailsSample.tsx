@@ -14,7 +14,7 @@ import {
   IconPhotoUp,
   IconSearch,
   IconTrash,
-  IconXFilled,
+  IconX,
 } from '@tabler/icons-react'
 import { ContextMenu } from '../components/ContextMenu'
 import { MarkdownText } from '../components/MarkdownText'
@@ -791,7 +791,7 @@ function UploadPortraitModal({
             aria-label="Close"
             className="mt-1 shrink-0 cursor-pointer text-ink-soft hover:text-accent"
           >
-            <IconXFilled size={22} />
+            <IconX size={22} />
           </button>
         </div>
       }
@@ -1185,7 +1185,7 @@ export function PersonDetailsSample() {
             aria-label="Dismiss"
             className="shrink-0 cursor-pointer text-ink-soft hover:text-ink"
           >
-            <IconXFilled size={14} />
+            <IconX size={14} />
           </button>
         </div>
       )}

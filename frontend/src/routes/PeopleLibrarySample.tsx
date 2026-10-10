@@ -14,7 +14,6 @@ import {
   IconSearch,
   IconSlash,
   IconX,
-  IconXFilled,
 } from '@tabler/icons-react'
 import { Checkbox } from '../components/Checkbox'
 import { ContextMenu } from '../components/ContextMenu'
@@ -898,7 +897,7 @@ function NewPersonModal({
             aria-label="Close"
             className="mt-1 shrink-0 text-ink-soft hover:text-accent"
           >
-            <IconXFilled size={22} />
+            <IconX size={22} />
           </button>
         </div>
       }

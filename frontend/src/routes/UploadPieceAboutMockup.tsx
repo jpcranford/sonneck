@@ -6,9 +6,8 @@ import {
   IconArrowsDiagonal,
   IconChevronLeft,
   IconChevronRight,
-  IconChevronRightFilled,
   IconSearch,
-  IconXFilled,
+  IconX,
 } from '@tabler/icons-react'
 import type { Tag } from '../api/types'
 import { TagComboBox } from '../components/TagComboBox'
@@ -197,7 +196,7 @@ function PageLightbox({
         aria-label="Close"
         className="absolute top-6 left-6 flex size-10 items-center justify-center rounded-full bg-scrim/80 text-white shadow-md backdrop-blur-sm hover:bg-white/15 focus-visible:outline-accent-on-dark"
       >
-        <IconXFilled size={20} />
+        <IconX size={20} />
       </button>
       <div className="pointer-events-none absolute top-6 right-6 rounded-full bg-scrim/80 px-3 py-1.5 text-xs text-white/90 shadow-md backdrop-blur-sm">
         Click image to {zoom === 'fit' ? 'zoom in' : 'fit to screen'}
@@ -243,7 +242,7 @@ function PageLightbox({
             aria-label="Next page"
             className="flex size-7 cursor-pointer items-center justify-center rounded-full text-white hover:bg-white/15 focus-visible:outline-accent-on-dark disabled:opacity-35"
           >
-            <IconChevronRightFilled size={16} />
+            <IconChevronRight size={16} />
           </button>
         </div>
       )}
@@ -382,7 +381,7 @@ export function UploadPieceAboutMockup() {
                   aria-label="Next page"
                   className="flex size-6 cursor-pointer items-center justify-center rounded-full text-white hover:bg-white/15 disabled:opacity-35"
                 >
-                  <IconChevronRightFilled size={14} />
+                  <IconChevronRight size={14} />
                 </button>
               </div>
             )}

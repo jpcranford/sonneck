@@ -9,7 +9,7 @@ import {
 } from 'react'
 import { createPortal } from 'react-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { IconCalendarPlus, IconSearch, IconXFilled } from '@tabler/icons-react'
+import { IconCalendarPlus, IconSearch, IconX } from '@tabler/icons-react'
 import {
   addSetlistEntry,
   getUpcomingSetlists,
@@ -260,7 +260,7 @@ export function AddToSetlistPicker({
           aria-label="Close"
           className="cursor-pointer text-ink-soft hover:text-ink"
         >
-          <IconXFilled size={13} />
+          <IconX size={13} />
         </button>
       </div>
 
