@@ -99,7 +99,7 @@ const MOCKUPS = [
   {
     to: '/mockup/upload-piece-about',
     name: 'Upload Piece — About This Piece',
-    note: 'Single-piece Upload flow\'s "details" step redesign — Option B ("Essentials + More Details") of a 3-way comparison: Title/Composer/Arranger/Key(s)/Sheet Type always visible, everything else (opus, year, publisher, IMSLP, instruments, description) and the source-book link behind two collapsible sections using the same trigger pattern as EditPieceModal.tsx\'s own Copyright/Book Details.',
+    note: 'Single-piece Upload flow\'s "details" step — Title/Composer/Arranger/Year Written/IMSLP No. always visible, the rest behind "More details" and "From a book?". The IMSLP number from the filename autofills blank fields shortly after the screen appears, as the book upload does.',
   },
   {
     to: '/mockup/upload-book-about',

@@ -1,9 +1,9 @@
 import { IconCheck, IconCloudDownload, IconCloudOff, IconLoader2 } from '@tabler/icons-react'
 
-// IMSLP live autofill (design doc §13, deferred there). Shared between
-// EditPieceModal.tsx and
-// BookUploadAboutStep.tsx — same button, same states, used identically
-// in both real places, unlike this app's mockup-vs-real components
+// IMSLP live autofill (design doc §13, deferred there). Shared by
+// EditPieceModal.tsx, EditBookModal.tsx, BookUploadAboutStep.tsx and
+// UploadPage.tsx — same button, same states, used identically in every
+// real place, unlike this app's mockup-vs-real components
 // (which duplicate deliberately for the mockup's own independence; this
 // has no such reason to duplicate, since both callers are real). Sits
 // inside the IMSLP field itself, right-aligned and vertically centered —

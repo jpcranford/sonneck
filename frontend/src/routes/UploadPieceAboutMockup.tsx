@@ -5,7 +5,11 @@ import {
   IconArrowLeft,
   IconArrowsDiagonal,
   IconChevronLeft,
+  IconCheck,
   IconChevronRight,
+  IconCloudDownload,
+  IconCloudOff,
+  IconLoader2,
   IconSearch,
   IconX,
 } from '@tabler/icons-react'
@@ -79,6 +83,7 @@ interface FormValues {
   workOpusNumber: string
   yearWritten: string
   publisher: string
+  publisherId: string
   imslpNumber: string
   instruments: Tag[]
   description: string
@@ -93,7 +98,9 @@ const defaultValues: FormValues = {
   workOpusNumber: '',
   yearWritten: '',
   publisher: '',
-  imslpNumber: '',
+  publisherId: '',
+  // As if detected from the uploaded filename ("Clair de Lune IMSLP02334.pdf").
+  imslpNumber: '02334',
   instruments: [],
   description: '',
 }
@@ -288,6 +295,41 @@ function CollapsibleSection({
   )
 }
 
+const RING = 'ring-2 ring-accent-on-dark'
+
+// Copy of components/ImslpAutofillButton.tsx (mockups don't import real
+// components) — same as UploadBookAboutMockup.tsx's own copy.
+function ImslpAutofillButton({
+  state,
+  valid,
+  onClick,
+}: {
+  state: 'idle' | 'fetching' | 'done'
+  valid: boolean
+  onClick: () => void
+}) {
+  const disabled = !valid || state !== 'idle'
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={valid ? 'Autofill blank fields from IMSLP' : 'No IMSLP number to autofill from'}
+      title={valid ? 'Autofill blank fields from IMSLP' : 'No IMSLP number to autofill from'}
+      className={`absolute top-1/2 right-2.5 flex size-5 -translate-y-1/2 items-center justify-center ${
+        valid ? 'cursor-pointer text-ink-faint hover:text-accent' : 'text-ink-fainter'
+      }`}
+    >
+      {!valid && <IconCloudOff size={16} />}
+      {valid && state === 'idle' && <IconCloudDownload size={16} />}
+      {valid && state === 'fetching' && (
+        <IconLoader2 size={16} className="animate-spin text-ink-soft" />
+      )}
+      {valid && state === 'done' && <IconCheck size={16} className="text-accent" />}
+    </button>
+  )
+}
+
 export function UploadPieceAboutMockup() {
   useMockupTitle('Upload — About This Piece')
 
@@ -300,8 +342,64 @@ export function UploadPieceAboutMockup() {
     register,
     handleSubmit,
     control,
+    watch,
+    getValues,
+    setValue,
     formState: { errors },
   } = useForm<FormValues>({ defaultValues })
+
+  // IMSLP autofill, as the book upload's "About this book" step does it:
+  // the filename-detected number is looked up once, 700ms after the screen
+  // appears (so the blank screen shows first), and the cloud button looks
+  // up whatever number is in the field. Only blank fields are filled, each
+  // briefly ringed; a filled field inside "More details" opens it. Mockup
+  // only — a timeout stands in for the request.
+  const [imslpFetchState, setImslpFetchState] = useState<'idle' | 'fetching' | 'done'>('idle')
+  const [imslpFilledFields, setImslpFilledFields] = useState<Set<string>>(new Set())
+  const imslpNumber = watch('imslpNumber')
+  const isValidImslpNumber = /^\d+$/.test(imslpNumber.replace(/^\s*imslp[\s:#-]*/i, '').trim())
+
+  function runImslpAutofill() {
+    if (imslpFetchState !== 'idle' || !isValidImslpNumber) return
+    setImslpFetchState('fetching')
+    window.setTimeout(() => {
+      const filled = new Set<string>()
+      const current = getValues()
+      if (current.composer.length === 0) {
+        setValue('composer', [{ id: 1, name: 'Claude Debussy' }])
+        filled.add('composer')
+      }
+      if (!current.yearWritten) {
+        setValue('yearWritten', '1905')
+        filled.add('yearWritten')
+      }
+      if (!current.workOpusNumber) {
+        setValue('workOpusNumber', 'L. 75')
+        filled.add('workOpusNumber')
+      }
+      if (!current.publisher) {
+        setValue('publisher', 'E. Fromont')
+        filled.add('publisher')
+      }
+      if (!current.publisherId) {
+        setValue('publisherId', 'E. 1508 F.')
+        filled.add('publisherId')
+      }
+      if (filled.has('workOpusNumber') || filled.has('publisher') || filled.has('publisherId')) {
+        setMoreDetailsOpen(true)
+      }
+      setImslpFilledFields(filled)
+      setImslpFetchState('done')
+      window.setTimeout(() => setImslpFetchState('idle'), 1400)
+      window.setTimeout(() => setImslpFilledFields(new Set()), 2400)
+    }, 900)
+  }
+
+  useEffect(() => {
+    const timer = window.setTimeout(runImslpAutofill, 700)
+    return () => window.clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deliberate one-shot on mount, as in UploadBookAboutMockup.tsx.
+  }, [])
 
   return (
     // min-h-dvh + justify-center (ported from the real build) —
@@ -430,6 +528,7 @@ export function UploadPieceAboutMockup() {
                       onChange={field.onChange}
                       pillStyle="paper"
                       newOptionLabel="New person"
+                      highlighted={imslpFilledFields.has('composer')}
                     />
                   )}
                 />
@@ -460,7 +559,7 @@ export function UploadPieceAboutMockup() {
                 both read as quick identifying facts
                 worth a glance without opening "More details," where
                 Key(s)/Sheet Type now live instead. */}
-            <div className="flex flex-col gap-3 min-[525px]:flex-row">
+            <div className="flex flex-col gap-3 min-[525px]:flex-row min-[525px]:items-end">
               <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <label htmlFor="f-year" className="text-sm text-ink-soft">
                   Year Written
@@ -468,19 +567,34 @@ export function UploadPieceAboutMockup() {
                 <input
                   id="f-year"
                   placeholder="e.g. 1905"
-                  className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                  className={`w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 placeholder:text-ink-soft/40 placeholder:italic ${imslpFilledFields.has('yearWritten') ? RING : ''}`}
                   {...register('yearWritten', { maxLength: 255 })}
                 />
               </div>
               <div className="flex min-w-0 flex-1 flex-col gap-1">
-                <label htmlFor="f-imslp" className="text-sm text-ink-soft">
-                  IMSLP No.
-                </label>
-                <input
-                  id="f-imslp"
-                  className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 font-mono text-ink"
-                  {...register('imslpNumber', { maxLength: 255 })}
-                />
+                <div className="flex flex-wrap items-center justify-between gap-x-2">
+                  <label htmlFor="f-imslp" className="text-sm whitespace-nowrap text-ink-soft">
+                    IMSLP No.
+                  </label>
+                  {imslpNumber && (
+                    <span className="flex items-center gap-1 text-xs text-accent">
+                      <IconCheck size={12} />
+                      Detected from filename
+                    </span>
+                  )}
+                </div>
+                <div className="relative">
+                  <input
+                    id="f-imslp"
+                    className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 pr-9 font-mono text-ink"
+                    {...register('imslpNumber', { maxLength: 255 })}
+                  />
+                  <ImslpAutofillButton
+                    state={imslpFetchState}
+                    valid={isValidImslpNumber}
+                    onClick={runImslpAutofill}
+                  />
+                </div>
               </div>
             </div>
 
@@ -497,7 +611,7 @@ export function UploadPieceAboutMockup() {
                   <input
                     id="f-opus"
                     placeholder="e.g. Op. 68"
-                    className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                    className={`w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 placeholder:text-ink-soft/40 placeholder:italic ${imslpFilledFields.has('workOpusNumber') ? RING : ''}`}
                     {...register('workOpusNumber', { maxLength: 255 })}
                   />
                 </div>
@@ -527,10 +641,23 @@ export function UploadPieceAboutMockup() {
                   <input
                     id="f-publisher"
                     placeholder="e.g. G. Schirmer"
-                    className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                    className={`w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 placeholder:text-ink-soft/40 placeholder:italic ${imslpFilledFields.has('publisher') ? RING : ''}`}
                     {...register('publisher', { maxLength: 255 })}
                   />
                 </div>
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  <label htmlFor="f-publisher-id" className="text-sm text-ink-soft">
+                    Publisher ID
+                  </label>
+                  <input
+                    id="f-publisher-id"
+                    placeholder="e.g. HL50252950"
+                    className={`w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 placeholder:text-ink-soft/40 placeholder:italic ${imslpFilledFields.has('publisherId') ? RING : ''}`}
+                    {...register('publisherId', { maxLength: 255 })}
+                  />
+                </div>
+              </div>
+              <div className="flex flex-col gap-3 min-[525px]:flex-row">
                 <div className="min-w-0 flex-1">
                   <Controller
                     name="sheetType"
@@ -545,21 +672,23 @@ export function UploadPieceAboutMockup() {
                     )}
                   />
                 </div>
-              </div>
-              <Controller
-                name="instruments"
-                control={control}
-                render={({ field }) => (
-                  <TagComboBox
-                    label="Instruments"
-                    pillStyle="paper"
-                    options={INSTRUMENT_OPTIONS}
-                    selected={field.value}
-                    multiple
-                    onChange={field.onChange}
+                <div className="min-w-0 flex-1">
+                  <Controller
+                    name="instruments"
+                    control={control}
+                    render={({ field }) => (
+                      <TagComboBox
+                        label="Instruments"
+                        pillStyle="paper"
+                        options={INSTRUMENT_OPTIONS}
+                        selected={field.value}
+                        multiple
+                        onChange={field.onChange}
+                      />
+                    )}
                   />
-                )}
-              />
+                </div>
+              </div>
               <div className="flex flex-col gap-1">
                 <label htmlFor="f-description" className="text-sm text-ink-soft">
                   Description <span className="text-ink-soft/60 italic">(Markdown supported)</span>

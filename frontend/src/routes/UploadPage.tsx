@@ -19,12 +19,14 @@ import { getPieceThumbnailUrl, uploadPiece, updatePiece } from '../api/pieces'
 import { listPeople } from '../api/people'
 import { listInstruments, listKeys, listSheetTypes } from '../api/lookups'
 import { ApiError } from '../api/client'
+import { lookupImslp } from '../api/imslp'
 import type { Piece, Tag } from '../api/types'
 import { clearPendingUpload, peekPendingUpload } from '../lib/pendingUpload'
 import { hasPermission, useAuth } from '../lib/AuthContext'
 import { loadWizardDraft } from '../lib/useWizardDraft'
 import { matchesKeyQuery } from '../lib/keySearch'
 import { usePageTitle } from '../lib/usePageTitle'
+import { ImslpAutofillButton } from '../components/ImslpAutofillButton'
 import { PageLightbox } from '../components/PageLightbox'
 import { SourceBookField } from '../components/SourceBookField'
 import { TagComboBox } from '../components/TagComboBox'
@@ -54,6 +56,14 @@ function toIntOrNull(value: string): number | null {
   return Number.isFinite(n) ? n : null
 }
 
+// Strips a leading "IMSLP" label, as every other IMSLP field does before a
+// lookup or save (the citation adds its own "IMSLP #").
+function stripImslpPrefix(value: string): string {
+  return value.replace(/^\s*imslp[\s:#-]*/i, '')
+}
+
+const RING = 'ring-2 ring-accent-on-dark'
+
 interface DetailsForm {
   title: string
   composer: Tag[]
@@ -63,6 +73,7 @@ interface DetailsForm {
   workOpusNumber: string
   keys: Tag[]
   publisher: string
+  publisherId: string
   sheetType: string
   instruments: Tag[]
   description: string
@@ -153,10 +164,76 @@ export function UploadPage() {
     reset: resetDetailsForm,
     control,
     watch,
+    getValues,
     setValue,
     formState: { errors },
   } = useForm<DetailsForm>()
   const watchedSourceBookId = watch('sourceBookId')
+
+  // IMSLP autofill — the same behavior as the book upload's "About this
+  // book" step (BookUploadAboutStep.tsx): the number detected from the
+  // filename is kept, looked up once on its own shortly after this screen
+  // appears, and the cloud button in the field looks up whatever number is
+  // there. Only blank fields are filled, each briefly ringed; a filled
+  // field inside the collapsed "More details" opens it so the change shows.
+  const [imslpFetchState, setImslpFetchState] = useState<'idle' | 'fetching' | 'done'>('idle')
+  const [imslpFilledFields, setImslpFilledFields] = useState<Set<string>>(new Set())
+  const imslpNumber = watch('imslpNumber') ?? ''
+  const isValidImslpNumber = /^\d+$/.test(stripImslpPrefix(imslpNumber).trim())
+
+  const imslpMutation = useMutation({
+    mutationFn: () => lookupImslp(stripImslpPrefix(getValues('imslpNumber')).trim()),
+    onSuccess: (info) => {
+      const filled = new Set<string>()
+      const current = getValues()
+      // id -1: a name-only person, resolved server-side by name on save
+      // (find-or-create), same as the book step.
+      if (current.composer.length === 0 && info.composer) {
+        setValue('composer', [{ id: -1, name: info.composer }])
+        filled.add('composer')
+      }
+      if (!current.yearWritten && info.yearWritten) {
+        setValue('yearWritten', info.yearWritten)
+        filled.add('yearWritten')
+      }
+      if (!current.workOpusNumber && info.workOpusNumber) {
+        setValue('workOpusNumber', info.workOpusNumber)
+        filled.add('workOpusNumber')
+      }
+      if (!current.publisher && info.publisher) {
+        setValue('publisher', info.publisher)
+        filled.add('publisher')
+      }
+      if (!current.publisherId && info.publisherId) {
+        setValue('publisherId', info.publisherId)
+        filled.add('publisherId')
+      }
+      if (filled.has('workOpusNumber') || filled.has('publisher') || filled.has('publisherId')) {
+        setMoreDetailsOpen(true)
+      }
+      setImslpFilledFields(filled)
+      setImslpFetchState('done')
+      window.setTimeout(() => setImslpFetchState('idle'), 1400)
+      window.setTimeout(() => setImslpFilledFields(new Set()), 2400)
+    },
+    onError: () => setImslpFetchState('idle'),
+  })
+
+  function runImslpAutofill() {
+    if (imslpFetchState !== 'idle' || !isValidImslpNumber) return
+    setImslpFetchState('fetching')
+    imslpMutation.mutate()
+  }
+
+  // Once per uploaded piece, when its details screen appears with a number
+  // detected from the filename: after a short delay, so the blank screen
+  // shows first and the fill plays out on it (the book step's reasoning).
+  useEffect(() => {
+    if (stage !== 'details' || !piece?.imslpNumber.value) return
+    const timer = window.setTimeout(runImslpAutofill, 700)
+    return () => window.clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deliberate one-shot per uploaded piece; runImslpAutofill is recreated every render, and depending on it would refire the lookup on every unrelated re-render.
+  }, [stage, piece?.id])
 
   // People catalog (composer/arranger overhaul, Stage C pattern) — same
   // unpaginated listPeople() call as EditPieceModal.tsx/EditBookModal.tsx/
@@ -213,7 +290,9 @@ export function UploadPage() {
         workOpusNumber: '',
         yearWritten: '',
         publisher: '',
-        imslpNumber: '',
+        publisherId: '',
+        // The number the server detected in the filename (detectImslpNumber).
+        imslpNumber: uploaded.imslpNumber.value,
         instruments: [],
         description: '',
         sourceBookId: null,
@@ -236,7 +315,8 @@ export function UploadPage() {
         workOpusNumber: data.workOpusNumber,
         yearWritten: data.yearWritten,
         publisher: data.publisher,
-        imslpNumber: data.imslpNumber,
+        publisherId: data.publisherId,
+        imslpNumber: stripImslpPrefix(data.imslpNumber),
         instruments: data.instruments.map((i) => i.name),
         description: data.description,
         sourceBookId: data.sourceBookId,
@@ -702,6 +782,7 @@ export function UploadPage() {
                           onChange={field.onChange}
                           pillStyle="paper"
                           newOptionLabel="New person"
+                          highlighted={imslpFilledFields.has('composer')}
                         />
                       )}
                     />
@@ -731,7 +812,7 @@ export function UploadPage() {
                 {/* Year Written/IMSLP No. — both read as quick identifying
                   facts worth a glance without opening "More details" below,
                   where Key(s)/Sheet Type live instead. */}
-                <div className="flex flex-col gap-3 min-[525px]:flex-row">
+                <div className="flex flex-col gap-3 min-[525px]:flex-row min-[525px]:items-end">
                   <div className="flex min-w-0 flex-1 flex-col gap-1">
                     <label htmlFor="yearWritten" className="text-sm text-ink-soft">
                       Year Written
@@ -739,19 +820,44 @@ export function UploadPage() {
                     <input
                       id="yearWritten"
                       placeholder="e.g. 1905"
-                      className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                      className={`w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 placeholder:text-ink-soft/40 placeholder:italic ${imslpFilledFields.has('yearWritten') ? RING : ''}`}
                       {...register('yearWritten', { maxLength: 255 })}
                     />
                   </div>
                   <div className="flex min-w-0 flex-1 flex-col gap-1">
-                    <label htmlFor="imslpNumber" className="text-sm text-ink-soft">
-                      IMSLP No.
-                    </label>
-                    <input
-                      id="imslpNumber"
-                      className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 font-mono text-ink"
-                      {...register('imslpNumber', { maxLength: 255 })}
-                    />
+                    <div className="flex flex-wrap items-center justify-between gap-x-2">
+                      <label
+                        htmlFor="imslpNumber"
+                        className="text-sm whitespace-nowrap text-ink-soft"
+                      >
+                        IMSLP No.
+                      </label>
+                      {imslpNumber && (
+                        <span className="flex items-center gap-1 text-xs text-accent">
+                          <IconCheck size={12} />
+                          Detected from filename
+                        </span>
+                      )}
+                    </div>
+                    <div className="relative">
+                      <input
+                        id="imslpNumber"
+                        className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 pr-9 font-mono text-ink"
+                        {...register('imslpNumber', { maxLength: 255 })}
+                      />
+                      <ImslpAutofillButton
+                        state={imslpFetchState}
+                        valid={isValidImslpNumber}
+                        onClick={runImslpAutofill}
+                      />
+                    </div>
+                    {imslpMutation.isError && (
+                      <p className="text-sm text-danger">
+                        {imslpMutation.error instanceof ApiError
+                          ? imslpMutation.error.message
+                          : 'Could not reach IMSLP.'}
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -786,7 +892,7 @@ export function UploadPage() {
                           <input
                             id="workOpusNumber"
                             placeholder="e.g. Op. 68"
-                            className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                            className={`w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 placeholder:text-ink-soft/40 placeholder:italic ${imslpFilledFields.has('workOpusNumber') ? RING : ''}`}
                             {...register('workOpusNumber', { maxLength: 255 })}
                           />
                         </div>
@@ -817,10 +923,23 @@ export function UploadPage() {
                           <input
                             id="publisher"
                             placeholder="e.g. G. Schirmer"
-                            className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                            className={`w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 placeholder:text-ink-soft/40 placeholder:italic ${imslpFilledFields.has('publisher') ? RING : ''}`}
                             {...register('publisher', { maxLength: 255 })}
                           />
                         </div>
+                        <div className="flex min-w-0 flex-1 flex-col gap-1">
+                          <label htmlFor="publisherId" className="text-sm text-ink-soft">
+                            Publisher ID
+                          </label>
+                          <input
+                            id="publisherId"
+                            placeholder="e.g. HL50252950"
+                            className={`w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 placeholder:text-ink-soft/40 placeholder:italic ${imslpFilledFields.has('publisherId') ? RING : ''}`}
+                            {...register('publisherId', { maxLength: 255 })}
+                          />
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-3 min-[525px]:flex-row">
                         <div className="min-w-0 flex-1">
                           <Controller
                             name="sheetType"
@@ -835,21 +954,23 @@ export function UploadPage() {
                             )}
                           />
                         </div>
-                      </div>
-                      <Controller
-                        name="instruments"
-                        control={control}
-                        render={({ field }) => (
-                          <TagComboBox
-                            label="Instruments"
-                            pillStyle="paper"
-                            options={instrumentOptions}
-                            selected={field.value}
-                            multiple
-                            onChange={field.onChange}
+                        <div className="min-w-0 flex-1">
+                          <Controller
+                            name="instruments"
+                            control={control}
+                            render={({ field }) => (
+                              <TagComboBox
+                                label="Instruments"
+                                pillStyle="paper"
+                                options={instrumentOptions}
+                                selected={field.value}
+                                multiple
+                                onChange={field.onChange}
+                              />
+                            )}
                           />
-                        )}
-                      />
+                        </div>
+                      </div>
                       <div className="flex flex-col gap-1">
                         <label htmlFor="description" className="text-sm text-ink-soft">
                           Description{' '}
