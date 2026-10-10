@@ -31,6 +31,7 @@ import {
   inUSRenewalWindow,
 } from '../lib/usRenewalWindow'
 import { TOTAL_WIZARD_STEPS } from './BookUploadWizard'
+import { imslpNumberFromFilename, isDetectedImslpNumber } from '../lib/imslpFromFilename'
 
 // Book Upload Wizard, Screen 3 of 6: "About this book" (design doc §5 step
 // 1). Real build of UploadBookAboutMockup.tsx (/mockup/upload-book-about,
@@ -240,6 +241,9 @@ export function BookUploadAboutStep({
     staleTime: Infinity,
   })
 
+  // The number in the uploaded filename, if any — "Detected from filename"
+  // shows only while the field still holds it.
+  const detectedImslp = imslpNumberFromFilename(book.originalFilename)
   const [imslpFetchState, setImslpFetchState] = useState<'idle' | 'fetching' | 'done'>('idle')
   // Which fields the *most recent* autofill actually touched — drives a
   // brief highlight ring so it's obvious which values just changed.
@@ -652,7 +656,7 @@ export function BookUploadAboutStep({
                 <label htmlFor="f-imslp" className="text-sm text-ink-soft">
                   IMSLP No.
                 </label>
-                {watch('imslpNumber') && (
+                {isDetectedImslpNumber(watch('imslpNumber'), detectedImslp) && (
                   <span className="flex items-center gap-1 text-xs text-accent">
                     <IconCheck size={12} />
                     Detected from filename

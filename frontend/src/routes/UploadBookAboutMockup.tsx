@@ -26,6 +26,7 @@ import {
 } from '../lib/usRenewalWindow'
 import { useMockupTitle } from '../lib/useMockupTitle'
 import { confirmAction } from '../lib/dialogs'
+import { imslpNumberFromFilename, isDetectedImslpNumber } from '../lib/imslpFromFilename'
 
 // ---------------------------------------------------------------------
 // DESIGN MOCKUP — Book Upload Wizard, Screen 3 of 6: "About this book"
@@ -66,7 +67,7 @@ const PEOPLE_OPTIONS: Tag[] = [
   { id: 3, name: 'Frédéric Chopin' },
 ]
 
-const MOCK_FILENAME = 'Album_für_die_Jugend_Op_68.pdf'
+const MOCK_FILENAME = 'Album_für_die_Jugend_Op_68_IMSLP04154.pdf'
 const MOCK_PAGE_COUNT = 42
 const TOTAL_STEPS = 6
 const CURRENT_STEP = 3
@@ -809,7 +810,10 @@ export function UploadBookAboutMockup() {
                 <label htmlFor="f-imslp" className="text-sm text-ink-soft">
                   IMSLP No.
                 </label>
-                {watch('imslpNumber') && (
+                {isDetectedImslpNumber(
+                  watch('imslpNumber'),
+                  imslpNumberFromFilename(MOCK_FILENAME),
+                ) && (
                   <span className="flex items-center gap-1 text-xs text-accent">
                     <IconCheck size={12} />
                     Detected from filename

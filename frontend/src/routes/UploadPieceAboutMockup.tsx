@@ -17,6 +17,7 @@ import type { Tag } from '../api/types'
 import { TagComboBox } from '../components/TagComboBox'
 import { SingleSelect } from '../components/SingleSelect'
 import { useMockupTitle } from '../lib/useMockupTitle'
+import { imslpNumberFromFilename, isDetectedImslpNumber } from '../lib/imslpFromFilename'
 
 // ---------------------------------------------------------------------
 // DESIGN MOCKUP — single-piece Upload's own "details" step (the real
@@ -99,7 +100,7 @@ const defaultValues: FormValues = {
   yearWritten: '',
   publisher: '',
   publisherId: '',
-  // As if detected from the uploaded filename ("Clair de Lune IMSLP02334.pdf").
+  // Detected from the uploaded filename (MOCK_FILENAME).
   imslpNumber: '02334',
   instruments: [],
   description: '',
@@ -296,6 +297,8 @@ function CollapsibleSection({
 }
 
 const RING = 'ring-2 ring-accent-on-dark'
+
+const MOCK_FILENAME = 'Clair_de_Lune_IMSLP02334.pdf'
 
 // Copy of components/ImslpAutofillButton.tsx (mockups don't import real
 // components) — same as UploadBookAboutMockup.tsx's own copy.
@@ -576,7 +579,7 @@ export function UploadPieceAboutMockup() {
                   <label htmlFor="f-imslp" className="text-sm whitespace-nowrap text-ink-soft">
                     IMSLP No.
                   </label>
-                  {imslpNumber && (
+                  {isDetectedImslpNumber(imslpNumber, imslpNumberFromFilename(MOCK_FILENAME)) && (
                     <span className="flex items-center gap-1 text-xs text-accent">
                       <IconCheck size={12} />
                       Detected from filename

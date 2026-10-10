@@ -32,6 +32,7 @@ import { SourceBookField } from '../components/SourceBookField'
 import { TagComboBox } from '../components/TagComboBox'
 import { SingleSelect } from '../components/SingleSelect'
 import { BookUploadWizard } from './BookUploadWizard'
+import { isDetectedImslpNumber } from '../lib/imslpFromFilename'
 
 // Mirrors the backend's own cap (internal/handlers/helpers.go MaxUploadBytes)
 // so an oversized file is rejected instantly instead of after a slow upload.
@@ -128,6 +129,9 @@ export function UploadPage() {
   )
   const [progress, setProgress] = useState(0)
   const [piece, setPiece] = useState<Piece | null>(null)
+  // The IMSLP number the server found in the uploaded filename, if any —
+  // "Detected from filename" shows only while the field still holds it.
+  const [detectedImslp, setDetectedImslp] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   // Page cycler + lightbox state for the "About this piece" preview —
@@ -268,6 +272,7 @@ export function UploadPage() {
       }
       queryClient.invalidateQueries({ queryKey: ['pieces'] })
       setPiece(uploaded)
+      setDetectedImslp(uploaded.imslpNumber.value || null)
       setPreviewPage(uploaded.thumbnailPage)
       setLightboxOpen(false)
       setMoreDetailsOpen(false)
@@ -832,7 +837,7 @@ export function UploadPage() {
                       >
                         IMSLP No.
                       </label>
-                      {imslpNumber && (
+                      {isDetectedImslpNumber(imslpNumber, detectedImslp) && (
                         <span className="flex items-center gap-1 text-xs text-accent">
                           <IconCheck size={12} />
                           Detected from filename
