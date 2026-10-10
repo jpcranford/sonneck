@@ -757,24 +757,26 @@ function PersonSortControl({
   }
 
   return (
-    <div className="relative shrink-0">
+    // min-w-0 down the chain, as SortControl.tsx: the name shortens with an
+    // ellipsis on the narrowest phones instead of overflowing.
+    <div className="relative min-w-0">
       <div className="flex overflow-hidden rounded-md border border-border bg-paper-raised">
         <button
           type="button"
           onClick={() => (open ? setOpen(false) : openMenu())}
           onKeyDown={handleKeyDown}
           onBlur={() => setTimeout(() => setOpen(false), 150)}
-          className="flex cursor-pointer items-center gap-1.5 px-3 py-2 text-sm text-ink hover:bg-paper-hover"
+          className="flex min-w-0 cursor-pointer items-center gap-1.5 px-3 py-2 text-sm text-ink hover:bg-paper-hover"
         >
-          {field}
-          <IconChevronDown size={14} className="text-ink-faint" />
+          <span className="truncate">{field}</span>
+          <IconChevronDown size={14} className="shrink-0 text-ink-faint" />
         </button>
         <button
           type="button"
           onClick={onDirectionToggle}
           aria-label={`Sort direction: ${directionLabel}. Click to reverse.`}
           title={directionLabel}
-          className="flex cursor-pointer items-center justify-center border-l border-border px-2.5 py-2 text-ink hover:bg-paper-hover"
+          className="flex shrink-0 cursor-pointer items-center justify-center border-l border-border px-2.5 py-2 text-ink hover:bg-paper-hover"
         >
           {direction === 'asc' ? <IconArrowUp size={16} /> : <IconArrowDown size={16} />}
         </button>
@@ -1080,7 +1082,7 @@ export function PeopleLibrarySample() {
       <PageToolbarPortal>
         <div className="border-b border-border bg-paper">
           <div className={`${WIDE_CONTENT_MAX_W} flex flex-col gap-3 p-4`}>
-            <div className="grid grid-cols-[auto_1fr] items-center gap-3 sm:grid-cols-[auto_1fr_212px] 2xl:grid-cols-[auto_1fr_256px]">
+            <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 sm:grid-cols-[auto_1fr_212px] 2xl:grid-cols-[auto_1fr_256px]">
               {/* Grid/list switch, design D — copy of components/ViewModeToggle.tsx. */}
               <div className="flex h-[38px] shrink-0 items-center gap-0.5 rounded-md border border-border bg-paper-raised p-[3px] col-start-1 row-start-1 justify-self-start sm:col-start-auto sm:row-start-auto">
                 <button
@@ -1144,7 +1146,7 @@ export function PeopleLibrarySample() {
                 </button>
               </div>
 
-              <div className="col-start-2 row-start-1 flex items-center justify-self-end gap-3 sm:col-start-auto sm:row-start-auto">
+              <div className="col-start-2 row-start-1 flex max-w-full min-w-0 items-center justify-self-end gap-3 sm:col-start-auto sm:row-start-auto">
                 <button
                   type="button"
                   onClick={() => setDrawerOpen(true)}
@@ -1156,7 +1158,7 @@ export function PeopleLibrarySample() {
                   }`}
                 >
                   <IconAdjustmentsHorizontal size={16} />
-                  <span className="inline sm:hidden 2xl:inline">Filters</span>
+                  <span className="inline max-[389px]:hidden sm:hidden 2xl:inline">Filters</span>
                   {activeFilterCount > 0 && (
                     <span className="flex size-4 items-center justify-center rounded-full bg-accent-fill text-[0.65rem] font-semibold text-white">
                       {activeFilterCount}

@@ -49,6 +49,13 @@ import { ViewModeToggle } from './ViewModeToggle'
  *   track) — this is what makes the pair float centered as a unit once
  *   Search hits its cap, instead of packing flex-start with all the
  *   leftover space trailing after the New button.
+ * - Below `sm:` the toggle and Filters+Sort share the first row, which a
+ *   long sort field ("Year Published") overflows on the narrowest phones.
+ *   So the 1fr track is `minmax(0,1fr)`, the Filters+Sort side is capped
+ *   at `max-w-full` with `min-w-0` down through SortControl, Filters drops
+ *   its label under 390px, and only then (320–340px) does the sort name
+ *   shorten with an ellipsis. Checked against every sort field of all
+ *   three libraries at widths from 320px to 2400px.
  * - `newButton` is never icon-only, unlike Filters — don't add a
  *   responsive icon-only variant for it later without checking that's
  *   still wanted.
@@ -129,7 +136,7 @@ export function LibraryToolbar<Field extends string>({
       <div className="border-b border-border bg-paper">
         <div className={`${WIDE_CONTENT_MAX_W} flex flex-col gap-3 p-4`}>
           <div
-            className={`grid grid-cols-[auto_1fr] items-center gap-3 ${rightColumnGridColsClassName}`}
+            className={`grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 ${rightColumnGridColsClassName}`}
           >
             <ViewModeToggle
               value={viewMode}
@@ -166,7 +173,7 @@ export function LibraryToolbar<Field extends string>({
               )}
             </div>
 
-            <div className="col-start-2 row-start-1 flex items-center justify-self-end gap-3 sm:col-start-auto sm:row-start-auto">
+            <div className="col-start-2 row-start-1 flex max-w-full min-w-0 items-center justify-self-end gap-3 sm:col-start-auto sm:row-start-auto">
               <button
                 type="button"
                 onClick={onOpenFilters}
@@ -178,7 +185,7 @@ export function LibraryToolbar<Field extends string>({
                 }`}
               >
                 <IconAdjustmentsHorizontal size={16} />
-                <span className="inline sm:hidden 2xl:inline">Filters</span>
+                <span className="inline max-[389px]:hidden sm:hidden 2xl:inline">Filters</span>
                 {activeFilterCount > 0 && (
                   <span className="flex size-4 items-center justify-center rounded-full bg-accent-fill text-[0.65rem] font-semibold text-white">
                     {activeFilterCount}
