@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent } from 'react'
+import { useRef, useState, type KeyboardEvent } from 'react'
 import { IconCheck, IconChevronDown } from '@tabler/icons-react'
 import { InheritedNote } from './InheritedNote'
 
@@ -58,6 +58,7 @@ export function SingleSelect({
   clearLabel?: string
 }) {
   const [open, setOpen] = useState(false)
+  const triggerRef = useRef<HTMLButtonElement>(null)
   // Which option row ArrowUp/Down move between and Enter would pick — set
   // to the currently selected option (or 0) whenever the menu opens, same
   // "start somewhere sensible" convention as TagComboBox's own
@@ -116,7 +117,14 @@ export function SingleSelect({
     <div className={`flex flex-col gap-1 ${className}`}>
       {(label || onClear) && (
         <div className="flex items-center justify-between gap-2">
-          {label && <label className="text-sm text-ink-soft">{label}</label>}
+          {/* Clicking the label focuses the trigger, as a native select's
+              label does — not linked with htmlFor, which would click the
+              button and open the menu. */}
+          {label && (
+            <label onClick={() => triggerRef.current?.focus()} className="text-sm text-ink-soft">
+              {label}
+            </label>
+          )}
           {onClear && value && (
             <button
               type="button"
@@ -130,6 +138,7 @@ export function SingleSelect({
       )}
       <div className="relative">
         <button
+          ref={triggerRef}
           type="button"
           onClick={() => (open ? setOpen(false) : openMenu())}
           onKeyDown={handleKeyDown}

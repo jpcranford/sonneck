@@ -1,4 +1,4 @@
-import { useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
+import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { IconArrowRight, IconX } from '@tabler/icons-react'
 import type { Tag } from '../api/types'
@@ -222,11 +222,13 @@ export function TagComboBox({
   // else re-measured every frame (the field grows as pills wrap, and a
   // phone's keyboard shifts the page, without any scroll or resize event).
   const menuStyle = useAnchoredPanel(wrapperRef, menuOpen, 'below')
+  // Links the label to the text box, so clicking the label focuses it.
+  const inputId = useId()
 
   return (
     <div className="flex flex-col gap-1">
       {!hideLabel && (
-        <label className="flex items-center gap-1 text-sm text-ink-soft">
+        <label htmlFor={inputId} className="flex items-center gap-1 text-sm text-ink-soft">
           {label}
           {labelExtra}
         </label>
@@ -329,6 +331,7 @@ export function TagComboBox({
           {showInput && (
             <input
               ref={inputRef}
+              id={inputId}
               value={query}
               onChange={(event) => {
                 setQuery(event.target.value)
@@ -339,12 +342,8 @@ export function TagComboBox({
               onBlur={() => setTimeout(() => setOpen(false), 150)}
               onKeyDown={handleKeyDown}
               placeholder={selected.length === 0 ? 'Type to search or add…' : ''}
-              // The visible <label> above isn't programmatically associated
-              // with this input (no htmlFor/id pairing) even when shown, so
-              // hideLabel — which removes even the visual fallback a sighted
-              // user would otherwise read off the column header — gets an
-              // explicit aria-label instead, rather than leaving the field
-              // with no accessible name at all.
+              // hideLabel renders no <label> at all, so the field gets its
+              // name from an aria-label instead.
               aria-label={hideLabel ? label : undefined}
               // Narrow while empty, so the pills and a resting input share a
               // line whenever the pills fit; 100px once something's typed,

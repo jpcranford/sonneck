@@ -832,10 +832,14 @@ export function UploadBookTitlesMockup() {
                           not just the Tailwind spacing scale's nearest
                           step) — so Title, Composer, and Arranger's boxes
                           line up instead of Title sitting visibly shorter. */}
-                      <label className="mb-1 block text-sm text-ink-soft">
+                      <label
+                        htmlFor={`title-desktop-${index}`}
+                        className="mb-1 block text-sm text-ink-soft"
+                      >
                         Title <span className="text-danger">*</span>
                       </label>
                       <textarea
+                        id={`title-desktop-${index}`}
                         rows={1}
                         className={`w-full resize-none overflow-hidden rounded-md border bg-paper-raised px-2.5 py-[11px] text-sm text-ink ${
                           titleError ? 'border-danger' : 'border-border'
@@ -955,10 +959,14 @@ export function UploadBookTitlesMockup() {
                   </div>
                   <div className="flex min-w-0 flex-1 flex-col gap-2.5">
                     <div>
-                      <label className="mb-1 block text-sm text-ink-soft">
+                      <label
+                        htmlFor={`title-mobile-${index}`}
+                        className="mb-1 block text-sm text-ink-soft"
+                      >
                         Title <span className="text-danger">*</span>
                       </label>
                       <textarea
+                        id={`title-mobile-${index}`}
                         rows={1}
                         className={`w-full resize-none overflow-hidden rounded-md border bg-paper-raised px-3 py-2 text-base text-ink ${
                           titleError ? 'border-danger' : 'border-border'

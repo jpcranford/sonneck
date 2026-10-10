@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useId,
   useLayoutEffect,
   useRef,
   useState,
@@ -498,6 +499,7 @@ function TagComboBox({
   // ArrowDown first.
   const [highlightedIndex, setHighlightedIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
+  const inputId = useId()
   // Stable, decrementing negative IDs for on-the-fly "new tag" entries in
   // this mockup — avoids calling an impure function like Date.now() from
   // a component (real code will get real IDs back from the create-tag API
@@ -571,7 +573,9 @@ function TagComboBox({
 
   return (
     <div className="flex flex-col gap-1">
-      <label className="text-sm text-ink-soft">{label}</label>
+      <label htmlFor={inputId} className="text-sm text-ink-soft">
+        {label}
+      </label>
       <div className="relative">
         <div
           onClick={() => inputRef.current?.focus()}
@@ -681,6 +685,7 @@ function TagComboBox({
           {showInput && (
             <input
               ref={inputRef}
+              id={inputId}
               value={query}
               onChange={(event) => {
                 setQuery(event.target.value)
@@ -774,6 +779,7 @@ function SingleSelect({
   clearLabel?: string
 }) {
   const [open, setOpen] = useState(false)
+  const triggerRef = useRef<HTMLButtonElement>(null)
   // Which option row ArrowUp/Down move between and Enter would pick — set
   // to the currently selected option (or 0) whenever the menu opens, same
   // "start somewhere sensible" convention as TagComboBox's own
@@ -828,7 +834,10 @@ function SingleSelect({
   return (
     <div className="flex flex-col gap-1">
       <div className="flex items-center justify-between gap-2">
-        <label className="text-sm text-ink-soft">{label}</label>
+        {/* Focuses the trigger, as SingleSelect.tsx's label does. */}
+        <label onClick={() => triggerRef.current?.focus()} className="text-sm text-ink-soft">
+          {label}
+        </label>
         {onClear && value && (
           <button
             type="button"
@@ -841,6 +850,7 @@ function SingleSelect({
       </div>
       <div className="relative">
         <button
+          ref={triggerRef}
           type="button"
           onClick={() => (open ? setOpen(false) : openMenu())}
           onKeyDown={handleKeyDown}

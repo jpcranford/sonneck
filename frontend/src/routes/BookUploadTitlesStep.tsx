@@ -2,6 +2,7 @@ import {
   memo,
   useCallback,
   useEffect,
+  useId,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -419,6 +420,7 @@ const DesktopPieceRow = memo(function DesktopPieceRow({
   registerNewPeople,
   setPreviewPage,
 }: PieceRowProps) {
+  const titleId = useId()
   const { errors } = useFormState({
     control,
     name: [`pieces.${index}.title`, `pieces.${index}.composer`, `pieces.${index}.arranger`],
@@ -441,10 +443,11 @@ const DesktopPieceRow = memo(function DesktopPieceRow({
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-2.5">
         <div className="min-w-0">
-          <label className="mb-1 block text-sm text-ink-soft">
+          <label htmlFor={titleId} className="mb-1 block text-sm text-ink-soft">
             Title <span className="text-danger">*</span>
           </label>
           <textarea
+            id={titleId}
             rows={1}
             className={`w-full resize-none overflow-hidden rounded-md border bg-paper-raised px-2.5 py-[11px] text-sm text-ink ${
               titleError ? 'border-danger' : 'border-border'
@@ -559,6 +562,7 @@ const MobilePieceRow = memo(function MobilePieceRow({
   registerNewPeople,
   setPreviewPage,
 }: PieceRowProps) {
+  const titleId = useId()
   const { errors } = useFormState({
     control,
     name: [`pieces.${index}.title`, `pieces.${index}.composer`, `pieces.${index}.arranger`],
@@ -594,10 +598,11 @@ const MobilePieceRow = memo(function MobilePieceRow({
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-2.5">
         <div>
-          <label className="mb-1 block text-sm text-ink-soft">
+          <label htmlFor={titleId} className="mb-1 block text-sm text-ink-soft">
             Title <span className="text-danger">*</span>
           </label>
           <textarea
+            id={titleId}
             rows={1}
             className={`w-full resize-none overflow-hidden rounded-md border bg-paper-raised px-3 py-2 text-base text-ink ${
               titleError ? 'border-danger' : 'border-border'
