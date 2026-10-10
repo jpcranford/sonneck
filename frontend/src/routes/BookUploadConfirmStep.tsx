@@ -189,8 +189,8 @@ export function BookUploadConfirmStep({
         </p>
       </div>
 
-      <div className="flex items-center gap-2.5 rounded-md bg-accent-soft px-3.5 py-3">
-        <IconBook size={18} className="shrink-0 text-accent" />
+      <div className="flex items-center gap-2.5 rounded-lg border border-border bg-paper-raised px-3.5 py-3">
+        <IconBook size={18} className="shrink-0 text-ink-soft" />
         <div>
           <p className="font-display text-sm font-medium text-ink">{bookTitle}</p>
           <p className="text-xs text-ink-soft">
