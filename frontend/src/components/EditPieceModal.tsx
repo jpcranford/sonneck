@@ -596,6 +596,9 @@ export function EditPieceModal({
     if (!canCalculateDuration) return
     const totalSeconds = Math.trunc(((measureCount * beatsPerMeasure) / bpm) * 60)
     setValue('duration', secondsToMMSS(totalSeconds))
+
+    // The tempo fields have done their job — fold them away.
+    setTempoOpen(false)
   }
 
   // `variables` (TanStack Query's own name for whatever was passed to

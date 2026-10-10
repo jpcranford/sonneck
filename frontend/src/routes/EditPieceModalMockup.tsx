@@ -1218,6 +1218,9 @@ export function EditPieceModalMockup() {
     const ss = totalSeconds % 60
     setValue('duration', `${mm}:${String(ss).padStart(2, '0')}`)
     clearErrors('duration')
+
+    // The tempo fields have done their job — fold them away.
+    setTempoOpen(false)
   }
 
   // Split into two submit paths now that Save and Save & Close are
