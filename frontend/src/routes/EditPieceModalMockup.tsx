@@ -691,7 +691,8 @@ function TagComboBox({
               onBlur={() => setTimeout(() => setOpen(false), 150)}
               onKeyDown={handleKeyDown}
               placeholder={selected.length === 0 ? 'Type to search or add…' : ''}
-              className="min-w-[100px] flex-1 border-none bg-transparent text-sm text-ink outline-none focus-visible:outline-none"
+              // Narrow while empty, 100px once something's typed — as TagComboBox.tsx.
+              className={`${query ? 'min-w-[100px]' : 'min-w-12'} flex-1 border-none bg-transparent text-sm text-ink outline-none focus-visible:outline-none`}
             />
           )}
         </div>

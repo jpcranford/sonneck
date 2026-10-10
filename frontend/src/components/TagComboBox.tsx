@@ -346,7 +346,10 @@ export function TagComboBox({
               // explicit aria-label instead, rather than leaving the field
               // with no accessible name at all.
               aria-label={hideLabel ? label : undefined}
-              className="min-w-[100px] flex-1 border-none bg-transparent text-sm text-ink outline-none focus-visible:outline-none"
+              // Narrow while empty, so the pills and a resting input share a
+              // line whenever the pills fit; 100px once something's typed,
+              // moving to its own line only when it needs the room.
+              className={`${query ? 'min-w-[100px]' : 'min-w-12'} flex-1 border-none bg-transparent text-sm text-ink outline-none focus-visible:outline-none`}
             />
           )}
         </div>
