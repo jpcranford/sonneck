@@ -1130,7 +1130,7 @@ export function PiecePage() {
                 the pills above. Every row is conditional on having
                 something to show — missing/unset metadata just omits the
                 line entirely rather than rendering a "—" placeholder. The
-                Advanced/Get Info box below is the one exception: its
+                More info box below is the one exception: its
                 fields always render, dash or not. */}
             <div className="divide-y divide-border border-t border-border">
               {/* Reordered 2026-09-12 per direct instruction, ported from
@@ -1418,7 +1418,7 @@ export function PiecePage() {
               </div>
             )}
 
-            {/* Advanced/Get Info panel (deferred, §14) */}
+            {/* More info panel (deferred, §14) */}
             <div className="flex flex-col gap-2 text-xs text-ink-soft">
               <button
                 type="button"
@@ -1430,7 +1430,7 @@ export function PiecePage() {
                   size={13}
                   className={`transition-transform ${advancedOpen ? 'rotate-90' : ''}`}
                 />
-                Advanced / Get Info (coming soon)
+                More info
               </button>
               {advancedOpen && (
                 <div className="flex flex-col rounded-md border border-dashed border-border px-3 py-2">

@@ -2048,7 +2048,7 @@ export function EditPieceModalMockup() {
           {/* Copyright — Public Domain Badge feature. Own collapsible
               section at the very bottom, same "collapsed by default,
               nothing new for someone who's never touched this feature"
-              posture as Piece Details' own Advanced/Get Info panel. */}
+              posture as Piece Details' own More info panel. */}
           <div className="border-t border-border pt-4">
             {/* Text styling matches SectionHeading (Frontmatter/Musical
                 Details/Personal above) exactly — same pattern Book

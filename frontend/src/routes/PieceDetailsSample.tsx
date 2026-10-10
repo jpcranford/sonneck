@@ -1363,7 +1363,7 @@ export function PieceDetailsSample() {
                 size={13}
                 className={`transition-transform ${advancedOpen ? 'rotate-90' : ''}`}
               />
-              Advanced / Get Info (coming soon)
+              More info
             </button>
             {advancedOpen && (
               <div className="flex flex-col rounded-md border border-dashed border-border px-3 py-2">
