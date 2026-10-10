@@ -107,8 +107,8 @@ export function PageLightbox({
         aria-label={zoom === 'fit' ? 'Zoom in to actual size' : 'Zoom out to fit screen'}
         className={
           zoom === 'fit'
-            ? 'flex max-h-[85vh] max-w-[90vw] cursor-zoom-in items-center justify-center'
-            : 'max-h-[85vh] max-w-[90vw] cursor-zoom-out overflow-auto rounded-md'
+            ? 'flex max-h-[85dvh] max-w-[90vw] cursor-zoom-in items-center justify-center'
+            : 'max-h-[85dvh] max-w-[90vw] cursor-zoom-out overflow-auto rounded-md'
         }
       >
         <img
@@ -116,7 +116,7 @@ export function PageLightbox({
           alt={alt}
           className={
             zoom === 'fit'
-              ? 'score-page max-h-[85vh] max-w-[90vw] rounded-md object-contain shadow-2xl'
+              ? 'score-page max-h-[85dvh] max-w-[90vw] rounded-md object-contain shadow-2xl'
               : 'score-page block rounded-md shadow-2xl'
           }
         />

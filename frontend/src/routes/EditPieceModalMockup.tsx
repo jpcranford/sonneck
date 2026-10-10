@@ -1071,7 +1071,7 @@ export function EditPieceModalMockup() {
   //
   // (2) The closed dialog's rendered height is frequently already less
   // than the true content it's showing: on a dialog whose fields alone
-  // already exceed Modal's max-h-[90vh] cap, the body is already
+  // already exceed Modal's max-h-[90dvh] cap, the body is already
   // internally scrolling even with the preview collapsed, so "closed
   // dialog height" reads as the 90vh cap itself, not the fields' real
   // (larger) height. Sizing the panel off that number silently treats an
@@ -1099,7 +1099,7 @@ export function EditPieceModalMockup() {
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
   }, [])
-  const dialogCapHeight = viewportHeight * 0.9 // matches Modal.tsx's max-h-[90vh]
+  const dialogCapHeight = viewportHeight * 0.9 // matches Modal.tsx's max-h-[90dvh]
   const preambleHeight = titleBlockHeight + toggleRowHeight
   const restHeight = preambleHeight + fieldsHeight + footerHeight
   // Uncapped case: panel = restHeight (see (1) above) gives an exact 50%
@@ -1451,7 +1451,10 @@ export function EditPieceModalMockup() {
           // plain Save is a secondary, outlined action instead. Plain Enter
           // always reaches Save, keep editing (handleFormKeyDown intercepts
           // it), regardless of which button is visually primary.
-          <div ref={footerRef} className="flex items-center justify-between gap-3">
+          <div
+            ref={footerRef}
+            className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2"
+          >
             <div className="flex items-center gap-1 text-ink-soft">
               <button
                 type="button"
@@ -1481,25 +1484,25 @@ export function EditPieceModalMockup() {
                 <IconChevronRightFilled size={18} />
               </button>
             </div>
-            <div className="flex gap-2">
+            <div className="ml-auto flex gap-2">
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-ink hover:border-accent"
+                className="cursor-pointer rounded-md border border-border bg-paper-raised px-3 py-2 font-display whitespace-nowrap sm:px-4 font-medium text-ink hover:border-accent"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={() => handleSubmit(onSubmitStayOpen)()}
-                className="cursor-pointer rounded-md border border-accent bg-paper-raised px-4 py-2 font-display font-medium text-accent hover:bg-accent-soft"
+                className="cursor-pointer rounded-md border border-accent bg-paper-raised px-3 py-2 font-display whitespace-nowrap sm:px-4 font-medium text-accent hover:bg-accent-soft"
               >
                 Save
               </button>
               <button
                 type="submit"
                 form="edit-piece-form"
-                className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-white hover:bg-accent-fill/90"
+                className="cursor-pointer rounded-md bg-accent-fill px-3 py-2 font-display whitespace-nowrap sm:px-4 font-medium text-white hover:bg-accent-fill/90"
               >
                 Save &amp; Close
               </button>

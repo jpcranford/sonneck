@@ -368,7 +368,7 @@ function HoverPagePreview({ piece, onPreview }: { piece: PieceFixture; onPreview
           <PieceThumb
             title={piece.title}
             page={piece.start + PAGE_OFFSET}
-            className="block h-auto w-auto max-h-[calc(100vh-16px)] max-w-[420px]"
+            className="block h-auto w-auto max-h-[calc(100dvh-16px)] max-w-[420px]"
           />
         </div>
       )}
@@ -455,8 +455,8 @@ function PageLightbox({
         aria-label={zoom === 'fit' ? 'Zoom in to actual size' : 'Zoom out to fit screen'}
         className={
           zoom === 'fit'
-            ? 'flex max-h-[85vh] max-w-[90vw] cursor-zoom-in items-center justify-center'
-            : 'max-h-[85vh] max-w-[90vw] cursor-zoom-out overflow-auto rounded-md'
+            ? 'flex max-h-[85dvh] max-w-[90vw] cursor-zoom-in items-center justify-center'
+            : 'max-h-[85dvh] max-w-[90vw] cursor-zoom-out overflow-auto rounded-md'
         }
       >
         <div

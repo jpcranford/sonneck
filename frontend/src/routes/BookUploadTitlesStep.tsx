@@ -374,7 +374,7 @@ function HoverPagePreview({
           <img
             src={getBookPageThumbnailUrl(bookId, piece.start)}
             alt=""
-            className="score-page block h-auto w-auto max-h-[calc(100vh-16px)] max-w-[420px]"
+            className="score-page block h-auto w-auto max-h-[calc(100dvh-16px)] max-w-[420px]"
           />
         </div>
       )}

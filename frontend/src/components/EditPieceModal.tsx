@@ -341,7 +341,7 @@ export function EditPieceModal({
   // "At most 50% of the modal" has to mean 50% of the dialog's actual
   // rendered height, not an approximation — a first vh-based version
   // drifted badly whenever the dialog wasn't sitting at its own
-  // max-h-[90vh] cap (the common case: most content auto-sizes down
+  // max-h-[90dvh] cap (the common case: most content auto-sizes down
   // below 90vh), confirmed wrong in practice on a real 1118px-tall
   // dialog. CSS percentage-height can't solve this either — Modal's
   // dialog is auto-height, not a definite height, so a plain `%` has
@@ -362,7 +362,7 @@ export function EditPieceModal({
   //
   // (2) The closed dialog's rendered height is frequently already less
   // than the true content it's showing — on a dialog whose fields alone
-  // already exceed Modal's max-h-[90vh] cap, the body
+  // already exceed Modal's max-h-[90dvh] cap, the body
   // is already internally scrolling even with the preview collapsed, so
   // "closed dialog height" reads as the 90vh cap itself, not the fields'
   // real (larger) height. Sizing the panel off that number silently
@@ -390,7 +390,7 @@ export function EditPieceModal({
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
   }, [])
-  const dialogCapHeight = viewportHeight * 0.9 // matches Modal.tsx's max-h-[90vh]
+  const dialogCapHeight = viewportHeight * 0.9 // matches Modal.tsx's max-h-[90dvh]
   const preambleHeight = titleBlockHeight + toggleRowHeight
   const restHeight = preambleHeight + fieldsHeight + footerHeight
   // Uncapped case: panel = restHeight (see (1) above) gives an exact 50%
@@ -876,7 +876,7 @@ export function EditPieceModal({
                 : 'Could not save. Please try again.'}
             </p>
           )}
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
             {showSiblingNav && siblingPieces ? (
               <div className="flex items-center gap-1 text-ink-soft">
                 <button
@@ -910,11 +910,11 @@ export function EditPieceModal({
             ) : (
               <div />
             )}
-            <div className="flex gap-2">
+            <div className="ml-auto flex gap-2">
               <button
                 type="button"
                 onClick={onClose}
-                className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-ink hover:border-accent"
+                className="cursor-pointer rounded-md border border-border bg-paper-raised px-3 py-2 font-display whitespace-nowrap sm:px-4 font-medium text-ink hover:border-accent"
               >
                 Cancel
               </button>
@@ -922,7 +922,7 @@ export function EditPieceModal({
                 type="button"
                 onClick={() => handleSubmit(onSubmitStayOpen)()}
                 disabled={isSaving}
-                className="cursor-pointer rounded-md border border-accent bg-paper-raised px-4 py-2 font-display font-medium text-accent hover:bg-accent-soft disabled:opacity-60"
+                className="cursor-pointer rounded-md border border-accent bg-paper-raised px-3 py-2 font-display whitespace-nowrap sm:px-4 font-medium text-accent hover:bg-accent-soft disabled:opacity-60"
               >
                 {isSaving ? 'Saving…' : 'Save'}
               </button>
@@ -930,7 +930,7 @@ export function EditPieceModal({
                 type="submit"
                 form="edit-piece-form"
                 disabled={isSaving}
-                className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-white hover:bg-accent-fill/90 disabled:opacity-50"
+                className="cursor-pointer rounded-md bg-accent-fill px-3 py-2 font-display whitespace-nowrap sm:px-4 font-medium text-white hover:bg-accent-fill/90 disabled:opacity-50"
               >
                 {isSaving ? 'Saving…' : 'Save & Close'}
               </button>
