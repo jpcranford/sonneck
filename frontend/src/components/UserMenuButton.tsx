@@ -16,6 +16,7 @@ import { logout } from '../api/auth'
 import { getUserSettings, updateUserSettings, type UserSettings } from '../api/userSettings'
 import { useAuth } from '../lib/AuthContext'
 import type { ThemePreference } from '../lib/theme'
+import { useAnchoredPanel } from '../hooks/useAnchorRect'
 
 // Real build of the Sidebar User Menu mockup (Option 2, "identity card,
 // dark popup" — /mockup/sidebar-user-menu), wired to real GET
@@ -106,10 +107,12 @@ export function UserMenuButton({
   const menuRef = useRef<HTMLDivElement>(null)
   // Where the menu opens: just above the card, flush with its left edge,
   // in viewport coordinates (the menu is portaled to <body>, see below).
-  const [anchor, setAnchor] = useState({ left: 0, bottom: 0 })
-  function measureAnchor() {
-    const rect = wrapRef.current?.getBoundingClientRect()
-    if (rect) setAnchor({ left: rect.left, bottom: window.innerHeight - rect.top })
+  // 8px above the card. Kept mounted while closed (for its fade), so it
+  // sits hidden at the corner until first opened.
+  const menuStyle = useAnchoredPanel(wrapRef, open, 'above', 8) ?? {
+    position: 'fixed',
+    left: 0,
+    bottom: 0,
   }
   const queryClient = useQueryClient()
 
@@ -150,16 +153,11 @@ export function UserMenuButton({
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') setOpen(false)
     }
-    // Follows the card if the sidebar scrolls or the window resizes.
     document.addEventListener('mousedown', onPointerDown)
     document.addEventListener('keydown', onKeyDown)
-    window.addEventListener('resize', measureAnchor)
-    document.addEventListener('scroll', measureAnchor, true)
     return () => {
       document.removeEventListener('mousedown', onPointerDown)
       document.removeEventListener('keydown', onKeyDown)
-      window.removeEventListener('resize', measureAnchor)
-      document.removeEventListener('scroll', measureAnchor, true)
     }
   }, [open])
 
@@ -173,10 +171,7 @@ export function UserMenuButton({
     <div ref={wrapRef} className={`relative m-2 ${collapsed ? 'flex justify-center' : ''}`}>
       <button
         type="button"
-        onClick={() => {
-          if (!open) measureAnchor()
-          setOpen((value) => !value)
-        }}
+        onClick={() => setOpen((value) => !value)}
         aria-haspopup="menu"
         aria-expanded={open}
         title={collapsed ? me.displayName : undefined}
@@ -212,8 +207,8 @@ export function UserMenuButton({
         <div
           ref={menuRef}
           role="menu"
-          style={{ left: anchor.left, bottom: anchor.bottom }}
-          className={`fixed z-[60] mb-2 w-60 origin-bottom-left overflow-hidden rounded-lg border border-sidebar-border bg-sidebar-panel shadow-xl transition-[opacity,transform] duration-100 ${
+          style={menuStyle}
+          className={`fixed z-[60] w-60 origin-bottom-left overflow-hidden rounded-lg border border-sidebar-border bg-sidebar-panel shadow-xl transition-[opacity,transform] duration-100 ${
             open
               ? 'pointer-events-auto translate-y-0 opacity-100'
               : 'pointer-events-none translate-y-1 opacity-0'

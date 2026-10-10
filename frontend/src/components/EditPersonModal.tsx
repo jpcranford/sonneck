@@ -28,6 +28,7 @@ import type { Person, PersonWriteRequest } from '../api/types'
 import { Modal } from './Modal'
 import { PersonAvatar } from './PersonAvatar'
 import { UploadPortraitModal } from './UploadPortraitModal'
+import { useAnchoredPanel } from '../hooks/useAnchorRect'
 
 // The real Edit Person modal (approved mockup: EditPersonModalMockup.tsx,
 // /mockup/edit-person-modal, left intact as a standing reference).
@@ -246,25 +247,7 @@ export function EditPersonModal({ person, open, onClose }: EditPersonModalProps)
   // entirely. z-[60] for the same reason too — higher than Modal's own
   // z-50, so the results panel isn't painted underneath the dialog's
   // footer.
-  const [panelRect, setPanelRect] = useState<{ top: number; left: number; width: number } | null>(
-    null,
-  )
-  useLayoutEffect(() => {
-    if (wikiState !== 'open') return
-    function updatePosition() {
-      const el = anchorRef.current
-      if (!el) return
-      const rect = el.getBoundingClientRect()
-      setPanelRect({ top: rect.bottom + 4, left: rect.left, width: rect.width })
-    }
-    updatePosition()
-    window.addEventListener('resize', updatePosition)
-    window.addEventListener('scroll', updatePosition, true)
-    return () => {
-      window.removeEventListener('resize', updatePosition)
-      window.removeEventListener('scroll', updatePosition, true)
-    }
-  }, [wikiState])
+  const panelStyle = useAnchoredPanel(anchorRef, wikiState === 'open', 'below')
 
   // Close on outside click / Escape — same dismiss conventions
   // ContextMenu.tsx and TagComboBox.tsx's own dropdown already use
@@ -535,16 +518,11 @@ export function EditPersonModal({ person, open, onClose }: EditPersonModalProps)
         </form>
 
         {wikiState === 'open' &&
-          panelRect &&
+          panelStyle &&
           createPortal(
             <div
               ref={panelRef}
-              style={{
-                position: 'fixed',
-                top: panelRect.top,
-                left: panelRect.left,
-                width: panelRect.width,
-              }}
+              style={panelStyle}
               className="z-[60] max-h-72 overflow-y-auto rounded-md border border-border bg-paper-raised py-1 shadow-lg"
             >
               {wikiResults.length === 0 && (

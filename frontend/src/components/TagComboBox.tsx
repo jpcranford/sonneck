@@ -1,9 +1,10 @@
-import { useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
+import { useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { IconArrowRight, IconXFilled } from '@tabler/icons-react'
 import type { Tag } from '../api/types'
 import { normalizeForSearch } from '../lib/normalizeForSearch'
 import { InheritedNote } from './InheritedNote'
+import { useAnchoredPanel } from '../hooks/useAnchorRect'
 
 // normalizeForSearch (lib/normalizeForSearch.ts, its own doc comment has
 // the full diacritics/whitespace reasoning) is applied to the default
@@ -215,32 +216,12 @@ export function TagComboBox({
   // regardless of their own `position` value as long as they remain real
   // DOM descendants of the clipping box — switching to `position: fixed`
   // alone doesn't escape it, only actually moving the element out of that
-  // subtree (a portal) does. `[menuRect, setMenuRect]` tracks the
-  // wrapper's live screen position so the portaled panel still visually
-  // anchors under the field; recomputed on open and kept in sync via
-  // resize/scroll listeners — scroll uses the capture phase (same
-  // technique ContextMenu.tsx already uses to detect a scroll on an
-  // element that wouldn't otherwise bubble to `document`), matching
-  // Modal.tsx's own scrollable body being the exact case that needs this.
-  const [menuRect, setMenuRect] = useState<{ top: number; left: number; width: number } | null>(
-    null,
-  )
-  useLayoutEffect(() => {
-    if (!menuOpen) return
-    function updatePosition() {
-      const el = wrapperRef.current
-      if (!el) return
-      const rect = el.getBoundingClientRect()
-      setMenuRect({ top: rect.bottom + 4, left: rect.left, width: rect.width })
-    }
-    updatePosition()
-    window.addEventListener('resize', updatePosition)
-    window.addEventListener('scroll', updatePosition, true)
-    return () => {
-      window.removeEventListener('resize', updatePosition)
-      window.removeEventListener('scroll', updatePosition, true)
-    }
-  }, [menuOpen])
+  // subtree (a portal) does. `menuStyle` keeps the panel on the
+  // field — hooks/useAnchorRect's useAnchoredPanel: CSS anchor
+  // positioning where supported, so it stays locked on while scrolling,
+  // else re-measured every frame (the field grows as pills wrap, and a
+  // phone's keyboard shifts the page, without any scroll or resize event).
+  const menuStyle = useAnchoredPanel(wrapperRef, menuOpen, 'below')
 
   return (
     <div className="flex flex-col gap-1">
@@ -370,15 +351,10 @@ export function TagComboBox({
           )}
         </div>
         {menuOpen &&
-          menuRect &&
+          menuStyle &&
           createPortal(
             <div
-              style={{
-                position: 'fixed',
-                top: menuRect.top,
-                left: menuRect.left,
-                width: menuRect.width,
-              }}
+              style={menuStyle}
               // z-[60] — deliberately higher than any other z-index in the
               // app (max is z-50, Modal's own backdrop/dialog and
               // ContextMenu's popup) so this field's live suggestions

@@ -1,6 +1,5 @@
 import {
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -25,6 +24,7 @@ import { CheckboxMark } from './Checkbox'
 import { EditSetlistModal } from './EditSetlistModal'
 import { MODAL_TRANSITION_MS } from './Modal'
 import { showAlert } from '../lib/dialogs'
+import { useAnchoredPanel } from '../hooks/useAnchorRect'
 
 // Real port of AddToSetlistMockup.tsx's own exported AddToSetlistPicker
 // (Setlists design pass, Phase 5 mockup approved; this is Phase 14's real
@@ -111,22 +111,7 @@ export function AddToSetlistPicker({
   const [creating, setCreating] = useState<'no' | 'open' | 'closing'>('no')
   const queryClient = useQueryClient()
 
-  const [position, setPosition] = useState<{ top: number; right: number } | null>(null)
-  useLayoutEffect(() => {
-    function updatePosition() {
-      const el = anchorRef.current
-      if (!el) return
-      const rect = el.getBoundingClientRect()
-      setPosition({ top: rect.bottom + 4, right: window.innerWidth - rect.right })
-    }
-    updatePosition()
-    window.addEventListener('resize', updatePosition)
-    window.addEventListener('scroll', updatePosition, true)
-    return () => {
-      window.removeEventListener('resize', updatePosition)
-      window.removeEventListener('scroll', updatePosition, true)
-    }
-  }, [anchorRef])
+  const position = useAnchoredPanel(anchorRef, true, 'below-right')
 
   const { data: allSetlists = [] } = useQuery({ queryKey: ['setlists'], queryFn: listSetlists })
   const { data: memberships = [] } = useQuery({
@@ -262,7 +247,7 @@ export function AddToSetlistPicker({
   return createPortal(
     <div
       ref={ref}
-      style={{ position: 'fixed', top: position.top, right: position.right }}
+      style={position}
       className="z-20 w-64 overflow-hidden rounded-md border border-border bg-paper-raised py-2 text-left shadow-lg"
     >
       <div className="mb-2 flex items-center justify-between px-3">
