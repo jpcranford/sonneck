@@ -1,14 +1,9 @@
 import { type ReactNode } from 'react'
-import {
-  IconAdjustmentsHorizontal,
-  IconLayoutGridFilled,
-  IconLayoutListFilled,
-  IconPlus,
-  IconSearch,
-} from '@tabler/icons-react'
+import { IconAdjustmentsHorizontal, IconPlus, IconSearch } from '@tabler/icons-react'
 import { SortControl, type SortDirection, type SortFieldOption } from './SortControl'
 import { WIDE_CONTENT_MAX_W } from '../lib/layout'
 import { PageToolbarPortal } from './PageToolbarSlot'
+import { ViewModeToggle } from './ViewModeToggle'
 
 /**
  * Shared toolbar for the Piece/Book/Person Library pages — search
@@ -136,34 +131,11 @@ export function LibraryToolbar<Field extends string>({
           <div
             className={`grid grid-cols-[auto_1fr] items-center gap-3 ${rightColumnGridColsClassName}`}
           >
-            <div className="col-start-1 row-start-1 flex shrink-0 items-center justify-self-start gap-1 rounded-md border border-border p-0.5 sm:col-start-auto sm:row-start-auto">
-              <button
-                type="button"
-                onClick={() => onViewModeChange('grid')}
-                aria-label="Grid view"
-                aria-pressed={viewMode === 'grid'}
-                className={`flex size-8 cursor-pointer items-center justify-center rounded ${
-                  viewMode === 'grid'
-                    ? 'bg-accent-soft text-accent'
-                    : 'text-ink-soft hover:bg-paper-hover'
-                }`}
-              >
-                <IconLayoutGridFilled size={16} />
-              </button>
-              <button
-                type="button"
-                onClick={() => onViewModeChange('list')}
-                aria-label="List view"
-                aria-pressed={viewMode === 'list'}
-                className={`flex size-8 cursor-pointer items-center justify-center rounded ${
-                  viewMode === 'list'
-                    ? 'bg-accent-soft text-accent'
-                    : 'text-ink-soft hover:bg-paper-hover'
-                }`}
-              >
-                <IconLayoutListFilled size={16} />
-              </button>
-            </div>
+            <ViewModeToggle
+              value={viewMode}
+              onChange={onViewModeChange}
+              className="col-start-1 row-start-1 justify-self-start sm:col-start-auto sm:row-start-auto"
+            />
 
             <div className="col-span-2 row-start-2 flex w-full min-w-0 items-center justify-center gap-3 sm:col-span-1 sm:row-start-auto">
               <div className="relative min-w-0 max-w-xl flex-1">

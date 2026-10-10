@@ -8,8 +8,6 @@ import {
   IconFileTypePdf,
   IconFileX,
   IconHeartFilled,
-  IconLayoutGridFilled,
-  IconLayoutListFilled,
   IconPhotoUp,
   IconTrash,
 } from '@tabler/icons-react'
@@ -38,6 +36,7 @@ import { PersonNameLinks } from '../components/PersonNameLinks'
 import { PieceContextMenu } from '../components/PieceContextMenu'
 import { TagPills } from '../components/TagPills'
 import { confirmAction, showAlert } from '../lib/dialogs'
+import { ViewModeToggle } from '../components/ViewModeToggle'
 
 // Book Details page — no design-doc spec (new ground, same as the Books
 // library view before it). Built from the "Book Details — Consolidated
@@ -880,30 +879,7 @@ export function BookDetailsPage() {
                   ? `${pieces.length} ${pieces.length === 1 ? 'piece' : 'pieces'} in this book`
                   : '…'}
               </h2>
-              <div className="flex shrink-0 items-center gap-1 rounded-md border border-border p-0.5">
-                <button
-                  type="button"
-                  onClick={() => setViewMode('grid')}
-                  aria-label="Grid view"
-                  aria-pressed={viewMode === 'grid'}
-                  className={`flex size-8 cursor-pointer items-center justify-center rounded ${
-                    viewMode === 'grid' ? 'bg-accent-soft text-accent' : 'text-ink-soft'
-                  }`}
-                >
-                  <IconLayoutGridFilled size={16} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode('list')}
-                  aria-label="List view"
-                  aria-pressed={viewMode === 'list'}
-                  className={`flex size-8 cursor-pointer items-center justify-center rounded ${
-                    viewMode === 'list' ? 'bg-accent-soft text-accent' : 'text-ink-soft'
-                  }`}
-                >
-                  <IconLayoutListFilled size={16} />
-                </button>
-              </div>
+              <ViewModeToggle value={viewMode} onChange={setViewMode} />
             </div>
             <div className="px-6 pb-5">
               {piecesLoading && <p className="text-ink-soft">Loading…</p>}

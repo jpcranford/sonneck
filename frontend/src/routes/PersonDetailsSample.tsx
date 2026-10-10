@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  IconArrowsSplit2,
   IconArrowLeft,
+  IconArrowsSplit2,
   IconCameraFilled,
   IconCheck,
   IconEditFilled,
   IconExternalLink,
   IconHeartFilled,
+  IconLayoutGrid,
   IconLayoutGridFilled,
+  IconLayoutList,
   IconLayoutListFilled,
   IconMusic,
   IconPhotoUp,
@@ -1274,28 +1276,41 @@ export function PersonDetailsSample() {
           <h2 className="font-display text-base font-bold text-ink-soft">
             {MOCK_WORKS.length} {MOCK_WORKS.length === 1 ? 'piece' : 'pieces'} in your library
           </h2>
-          <div className="flex shrink-0 items-center gap-1 rounded-md border border-border p-0.5">
+          {/* Grid/list switch, design D — copy of components/ViewModeToggle.tsx. */}
+          <div className="flex h-[38px] shrink-0 items-center gap-0.5 rounded-md border border-border bg-paper-raised p-[3px]">
             <button
               type="button"
               onClick={() => setWorkViewMode('grid')}
               aria-label="Grid view"
               aria-pressed={workViewMode === 'grid'}
-              className={`flex size-8 cursor-pointer items-center justify-center rounded ${
-                workViewMode === 'grid' ? 'bg-accent-soft text-accent' : 'text-ink-soft'
+              className={`flex h-full w-8 cursor-pointer items-center justify-center rounded ${
+                workViewMode === 'grid'
+                  ? 'bg-paper-hover text-ink'
+                  : 'text-ink-faint hover:text-ink'
               }`}
             >
-              <IconLayoutGridFilled size={16} />
+              {workViewMode === 'grid' ? (
+                <IconLayoutGridFilled size={16} />
+              ) : (
+                <IconLayoutGrid size={16} />
+              )}
             </button>
             <button
               type="button"
               onClick={() => setWorkViewMode('list')}
               aria-label="List view"
               aria-pressed={workViewMode === 'list'}
-              className={`flex size-8 cursor-pointer items-center justify-center rounded ${
-                workViewMode === 'list' ? 'bg-accent-soft text-accent' : 'text-ink-soft'
+              className={`flex h-full w-8 cursor-pointer items-center justify-center rounded ${
+                workViewMode === 'list'
+                  ? 'bg-paper-hover text-ink'
+                  : 'text-ink-faint hover:text-ink'
               }`}
             >
-              <IconLayoutListFilled size={16} />
+              {workViewMode === 'list' ? (
+                <IconLayoutListFilled size={16} />
+              ) : (
+                <IconLayoutList size={16} />
+              )}
             </button>
           </div>
         </div>

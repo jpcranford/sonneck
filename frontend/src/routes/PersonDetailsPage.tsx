@@ -7,8 +7,6 @@ import {
   IconCameraFilled,
   IconEditFilled,
   IconHeartFilled,
-  IconLayoutGridFilled,
-  IconLayoutListFilled,
   IconMusic,
   IconTrash,
 } from '@tabler/icons-react'
@@ -41,6 +39,7 @@ import { usePageTitle } from '../lib/usePageTitle'
 import { useViewPreference } from '../lib/useViewPreference'
 import { yearWrittenSource } from '../lib/yearWrittenSource'
 import { confirmAction, showAlert } from '../lib/dialogs'
+import { ViewModeToggle } from '../components/ViewModeToggle'
 
 // The real Person Details page (/people/:id) — composer/arranger overhaul,
 // Stage B. Real build of PersonDetailsSample.tsx (/mockup/person-details,
@@ -722,30 +721,7 @@ export function PersonDetailsPage() {
                   ? `${works.length} ${works.length === 1 ? 'piece' : 'pieces'} in your library`
                   : '…'}
               </h2>
-              <div className="flex shrink-0 items-center gap-1 rounded-md border border-border p-0.5">
-                <button
-                  type="button"
-                  onClick={() => setWorkViewMode('grid')}
-                  aria-label="Grid view"
-                  aria-pressed={workViewMode === 'grid'}
-                  className={`flex size-8 cursor-pointer items-center justify-center rounded ${
-                    workViewMode === 'grid' ? 'bg-accent-soft text-accent' : 'text-ink-soft'
-                  }`}
-                >
-                  <IconLayoutGridFilled size={16} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setWorkViewMode('list')}
-                  aria-label="List view"
-                  aria-pressed={workViewMode === 'list'}
-                  className={`flex size-8 cursor-pointer items-center justify-center rounded ${
-                    workViewMode === 'list' ? 'bg-accent-soft text-accent' : 'text-ink-soft'
-                  }`}
-                >
-                  <IconLayoutListFilled size={16} />
-                </button>
-              </div>
+              <ViewModeToggle value={workViewMode} onChange={setWorkViewMode} />
             </div>
             <div className="px-6 pb-5">
               {worksLoading && <p className="text-ink-soft">Loading…</p>}

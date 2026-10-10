@@ -6,7 +6,9 @@ import {
   IconExternalLink,
   IconFileTypePdf,
   IconHeartFilled,
+  IconLayoutGrid,
   IconLayoutGridFilled,
+  IconLayoutList,
   IconLayoutListFilled,
   IconMusic,
   IconPhotoUp,
@@ -942,28 +944,37 @@ export function BookDetailsSample() {
             <h2 className="font-display text-base font-bold text-ink-soft">
               {pieces.length} {pieces.length === 1 ? 'piece' : 'pieces'} in this book
             </h2>
-            <div className="flex shrink-0 items-center gap-1 rounded-md border border-border p-0.5">
+            {/* Grid/list switch, design D — copy of components/ViewModeToggle.tsx. */}
+            <div className="flex h-[38px] shrink-0 items-center gap-0.5 rounded-md border border-border bg-paper-raised p-[3px]">
               <button
                 type="button"
                 onClick={() => setViewMode('grid')}
                 aria-label="Grid view"
                 aria-pressed={viewMode === 'grid'}
-                className={`flex size-8 cursor-pointer items-center justify-center rounded ${
-                  viewMode === 'grid' ? 'bg-accent-soft text-accent' : 'text-ink-soft'
+                className={`flex h-full w-8 cursor-pointer items-center justify-center rounded ${
+                  viewMode === 'grid' ? 'bg-paper-hover text-ink' : 'text-ink-faint hover:text-ink'
                 }`}
               >
-                <IconLayoutGridFilled size={16} />
+                {viewMode === 'grid' ? (
+                  <IconLayoutGridFilled size={16} />
+                ) : (
+                  <IconLayoutGrid size={16} />
+                )}
               </button>
               <button
                 type="button"
                 onClick={() => setViewMode('list')}
                 aria-label="List view"
                 aria-pressed={viewMode === 'list'}
-                className={`flex size-8 cursor-pointer items-center justify-center rounded ${
-                  viewMode === 'list' ? 'bg-accent-soft text-accent' : 'text-ink-soft'
+                className={`flex h-full w-8 cursor-pointer items-center justify-center rounded ${
+                  viewMode === 'list' ? 'bg-paper-hover text-ink' : 'text-ink-faint hover:text-ink'
                 }`}
               >
-                <IconLayoutListFilled size={16} />
+                {viewMode === 'list' ? (
+                  <IconLayoutListFilled size={16} />
+                ) : (
+                  <IconLayoutList size={16} />
+                )}
               </button>
             </div>
           </div>

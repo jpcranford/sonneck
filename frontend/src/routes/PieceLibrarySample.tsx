@@ -8,7 +8,9 @@ import {
   IconChevronLeft,
   IconChevronRight,
   IconHeartFilled,
+  IconLayoutGrid,
   IconLayoutGridFilled,
+  IconLayoutList,
   IconLayoutListFilled,
   IconMinus,
   IconMusic,
@@ -1185,32 +1187,41 @@ export function PieceLibrarySample() {
             Two real named breakpoints don't have that problem. */}
           <div className={`${WIDE_CONTENT_MAX_W} flex flex-col gap-3 p-4`}>
             <div className="grid grid-cols-[auto_1fr] items-center gap-3 sm:grid-cols-[auto_1fr_215px] 2xl:grid-cols-[auto_1fr_259px]">
-              <div className="col-start-1 row-start-1 flex shrink-0 items-center justify-self-start gap-1 rounded-md border border-border p-0.5 sm:col-start-auto sm:row-start-auto">
+              {/* Grid/list switch, design D — copy of components/ViewModeToggle.tsx. */}
+              <div className="flex h-[38px] shrink-0 items-center gap-0.5 rounded-md border border-border bg-paper-raised p-[3px] col-start-1 row-start-1 justify-self-start sm:col-start-auto sm:row-start-auto">
                 <button
                   type="button"
                   onClick={() => setViewMode('grid')}
                   aria-label="Grid view"
                   aria-pressed={viewMode === 'grid'}
-                  className={`flex size-8 cursor-pointer items-center justify-center rounded ${
+                  className={`flex h-full w-8 cursor-pointer items-center justify-center rounded ${
                     viewMode === 'grid'
-                      ? 'bg-accent-soft text-accent'
-                      : 'text-ink-soft hover:bg-paper-hover'
+                      ? 'bg-paper-hover text-ink'
+                      : 'text-ink-faint hover:text-ink'
                   }`}
                 >
-                  <IconLayoutGridFilled size={16} />
+                  {viewMode === 'grid' ? (
+                    <IconLayoutGridFilled size={16} />
+                  ) : (
+                    <IconLayoutGrid size={16} />
+                  )}
                 </button>
                 <button
                   type="button"
                   onClick={() => setViewMode('list')}
                   aria-label="List view"
                   aria-pressed={viewMode === 'list'}
-                  className={`flex size-8 cursor-pointer items-center justify-center rounded ${
+                  className={`flex h-full w-8 cursor-pointer items-center justify-center rounded ${
                     viewMode === 'list'
-                      ? 'bg-accent-soft text-accent'
-                      : 'text-ink-soft hover:bg-paper-hover'
+                      ? 'bg-paper-hover text-ink'
+                      : 'text-ink-faint hover:text-ink'
                   }`}
                 >
-                  <IconLayoutListFilled size={16} />
+                  {viewMode === 'list' ? (
+                    <IconLayoutListFilled size={16} />
+                  ) : (
+                    <IconLayoutList size={16} />
+                  )}
                 </button>
               </div>
 
