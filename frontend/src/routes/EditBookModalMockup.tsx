@@ -13,6 +13,7 @@ import {
   US_RENEWAL_WINDOW_END,
   inUSRenewalWindow,
 } from '../lib/usRenewalWindow'
+import { isMultilineField } from '../lib/multilineField'
 
 // ---------------------------------------------------------------------
 // DESIGN MOCKUP — Book Properties Edit Menu (design doc §16). Not wired
@@ -167,6 +168,8 @@ export function EditBookModalMockup() {
   // Shift+Enter saves from anywhere in the form — kept in sync with the
   // real EditBookModal.tsx; see that file's own comment.
   function handleFormKeyDown(event: ReactKeyboardEvent<HTMLFormElement>) {
+    // A line break in a description/notes field, never a save.
+    if (isMultilineField(event.target)) return
     if (event.key === 'Enter' && event.shiftKey) {
       event.preventDefault()
       handleSubmit(onSubmit)()

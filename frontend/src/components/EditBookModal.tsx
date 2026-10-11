@@ -21,6 +21,7 @@ import { ImslpAutofillButton } from './ImslpAutofillButton'
 import { TagComboBox } from './TagComboBox'
 import { SingleSelect } from './SingleSelect'
 import { Toggle } from './Toggle'
+import { isMultilineField } from '../lib/multilineField'
 
 // The real Book Properties Edit Menu (design doc §16). Every layout/
 // behavior decision here mirrors the locked mockup (EditBookModalMockup.tsx,
@@ -352,6 +353,8 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
   // rather than acting on it, so this handler is the only thing that
   // fires — no double effect of both picking an option and saving.
   function handleFormKeyDown(event: ReactKeyboardEvent<HTMLFormElement>) {
+    // A line break in a description/notes field, never a save.
+    if (isMultilineField(event.target)) return
     if (event.key === 'Enter' && event.shiftKey) {
       event.preventDefault()
       handleSubmit(onSubmit)()

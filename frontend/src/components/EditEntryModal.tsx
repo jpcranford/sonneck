@@ -7,6 +7,7 @@ import type { SetlistEntry } from '../api/types'
 import { Modal } from './Modal'
 import { Toggle } from './Toggle'
 import { showAlert } from '../lib/dialogs'
+import { isMultilineField } from '../lib/multilineField'
 
 // Real port of EditEntryMockup.tsx's own exported EditEntryModal (Setlists
 // design pass, Phase 11 mockup approved; this is Phase 15's real build) — a
@@ -88,6 +89,8 @@ export function EditEntryModal({ open, onClose, setlistId, entry }: EditEntryMod
   // own identical pattern) — guarded by the same `!name.trim()` check the
   // Save button's own `disabled` already uses.
   function handleFormKeyDown(event: ReactKeyboardEvent<HTMLFormElement>) {
+    // A line break in a description/notes field, never a save.
+    if (isMultilineField(event.target)) return
     if (event.key === 'Enter' && event.shiftKey) {
       event.preventDefault()
       handleSave()

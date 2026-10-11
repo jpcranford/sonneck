@@ -34,6 +34,7 @@ import {
   US_RENEWAL_WINDOW_END,
   inUSRenewalWindow,
 } from '../lib/usRenewalWindow'
+import { isMultilineField } from '../lib/multilineField'
 
 // ---------------------------------------------------------------------
 // DESIGN MOCKUP — not wired to the API, no real mutations, still not
@@ -1267,6 +1268,8 @@ export function EditPieceModalMockup() {
   // dropdown field's own Enter-to-pick handling, BUTTON/A/SELECT/TEXTAREA
   // skipped).
   function handleFormKeyDown(event: KeyboardEvent<HTMLFormElement>) {
+    // A line break in a description/notes field, never a save.
+    if (isMultilineField(event.target)) return
     if (event.key !== 'Enter') return
     if (event.shiftKey) {
       event.preventDefault()

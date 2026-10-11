@@ -24,6 +24,7 @@ import { Modal } from '../components/Modal'
 import { Toggle } from '../components/Toggle'
 import { daysFromNow } from '../lib/setlistsMockupFixture'
 import { useMockupTitle } from '../lib/useMockupTitle'
+import { isMultilineField } from '../lib/multilineField'
 
 // Setlists design pass, Phase 10 — decision 23 skipped Phase 9's own
 // comparison Artifact outright (scope had narrowed too far to warrant one —
@@ -814,6 +815,8 @@ export function EditSetlistModal({
   // button's own `disabled` already uses, so Shift+Enter can't save a
   // blank-named setlist the button itself wouldn't allow either.
   function handleFormKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    // A line break in a description/notes field, never a save.
+    if (isMultilineField(event.target)) return
     if (event.key === 'Enter' && event.shiftKey) {
       event.preventDefault()
       if (name.trim()) handleSave()

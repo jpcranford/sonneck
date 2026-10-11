@@ -6,6 +6,7 @@ import { updateSetlistEntry } from '../api/setlists'
 import type { SetlistEntry } from '../api/types'
 import { Modal } from './Modal'
 import { showAlert } from '../lib/dialogs'
+import { isMultilineField } from '../lib/multilineField'
 
 // The Add/Edit Role modal — one text box for a piece entry's own `role`
 // (the small-caps label above it in the Program list, e.g. "Prelude").
@@ -61,6 +62,9 @@ export function EditRoleModal({ open, onClose, setlistId, entry }: EditRoleModal
   }
 
   function handleFormKeyDown(event: ReactKeyboardEvent<HTMLFormElement>) {
+    // A line break in a description/notes field, never a save.
+
+    if (isMultilineField(event.target)) return
     if (event.key === 'Enter' && event.shiftKey) {
       event.preventDefault()
       handleSave()

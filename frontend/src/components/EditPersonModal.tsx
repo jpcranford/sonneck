@@ -29,6 +29,7 @@ import { Modal } from './Modal'
 import { PersonAvatar } from './PersonAvatar'
 import { UploadPortraitModal } from './UploadPortraitModal'
 import { useAnchoredPanel } from '../hooks/useAnchorRect'
+import { isMultilineField } from '../lib/multilineField'
 
 // The real Edit Person modal (approved mockup: EditPersonModalMockup.tsx,
 // /mockup/edit-person-modal, left intact as a standing reference).
@@ -334,6 +335,8 @@ export function EditPersonModal({ person, open, onClose }: EditPersonModalProps)
   // Shift+Enter saves from anywhere in the form — same convention as every
   // other edit modal in this app.
   function handleFormKeyDown(event: ReactKeyboardEvent<HTMLFormElement>) {
+    // A line break in a description/notes field, never a save.
+    if (isMultilineField(event.target)) return
     if (event.key === 'Enter' && event.shiftKey) {
       event.preventDefault()
       handleSubmit(onSubmit)()

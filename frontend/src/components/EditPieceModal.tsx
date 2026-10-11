@@ -48,6 +48,7 @@ import { SingleSelect } from './SingleSelect'
 import { Toggle } from './Toggle'
 import { SourceBookField } from './SourceBookField'
 import { PageCycleControl } from './PageCycleControl'
+import { isMultilineField } from '../lib/multilineField'
 
 // The real Piece Properties Edit Menu (design doc §15) — built from the
 // locked mockup design (EditPieceModalMockup.tsx, /mockup/edit-piece-modal,
@@ -674,6 +675,8 @@ export function EditPieceModal({
   // own native Enter/Space behavior isn't hijacked, and TEXTAREA is skipped
   // so Enter still inserts a newline in Notes/Description.
   function handleFormKeyDown(event: ReactKeyboardEvent<HTMLFormElement>) {
+    // A line break in a description/notes field, never a save.
+    if (isMultilineField(event.target)) return
     if (event.key !== 'Enter') return
     if (event.shiftKey) {
       event.preventDefault()

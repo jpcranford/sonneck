@@ -4,6 +4,7 @@ import { IconArrowLeft, IconX } from '@tabler/icons-react'
 import { Modal } from '../components/Modal'
 import { Toggle } from '../components/Toggle'
 import { useMockupTitle } from '../lib/useMockupTitle'
+import { isMultilineField } from '../lib/multilineField'
 
 // Setlists design pass, Phase 11 — the Edit Entry modal (decision 16),
 // reached from a custom entry's own right-click "Edit Entry" item on the
@@ -114,6 +115,8 @@ export function EditEntryModal({
   // own identical pattern) — guarded by the same `!name.trim()` check the
   // Save button's own `disabled` already uses.
   function handleFormKeyDown(event: ReactKeyboardEvent<HTMLFormElement>) {
+    // A line break in a description/notes field, never a save.
+    if (isMultilineField(event.target)) return
     if (event.key === 'Enter' && event.shiftKey) {
       event.preventDefault()
       handleSave()

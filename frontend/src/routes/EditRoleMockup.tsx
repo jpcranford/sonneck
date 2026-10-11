@@ -1,6 +1,7 @@
 import { useEffect, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { IconX } from '@tabler/icons-react'
 import { Modal } from '../components/Modal'
+import { isMultilineField } from '../lib/multilineField'
 
 // Setlists — the Add/Edit role modal: one text box, the piece entry's own
 // `role` (the small-caps label shown above a piece in the Program list,
@@ -57,6 +58,9 @@ export function EditRoleModal({
   }
 
   function handleFormKeyDown(event: ReactKeyboardEvent<HTMLFormElement>) {
+    // A line break in a description/notes field, never a save.
+
+    if (isMultilineField(event.target)) return
     if (event.key === 'Enter' && event.shiftKey) {
       event.preventDefault()
       handleSave()

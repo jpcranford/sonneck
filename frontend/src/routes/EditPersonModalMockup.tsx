@@ -14,6 +14,7 @@ import {
 import { Modal } from '../components/Modal'
 import { PALETTE } from '../lib/pieceSplitLogic'
 import { useMockupTitle } from '../lib/useMockupTitle'
+import { isMultilineField } from '../lib/multilineField'
 
 // ---------------------------------------------------------------------
 // DESIGN MOCKUP — Edit Person modal. Not wired to real data — Save
@@ -338,6 +339,8 @@ export function EditPersonModalMockup() {
   // Shift+Enter saves from anywhere in the form — kept consistent with
   // every other real/mockup edit modal in this app.
   function handleFormKeyDown(event: ReactKeyboardEvent<HTMLFormElement>) {
+    // A line break in a description/notes field, never a save.
+    if (isMultilineField(event.target)) return
     if (event.key === 'Enter' && event.shiftKey) {
       event.preventDefault()
       handleSubmit(onSubmit)()

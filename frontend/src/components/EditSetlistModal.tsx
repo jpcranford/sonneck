@@ -38,6 +38,7 @@ import { MarkdownText } from './MarkdownText'
 import { Modal } from './Modal'
 import { Toggle } from './Toggle'
 import { showAlert } from '../lib/dialogs'
+import { isMultilineField } from '../lib/multilineField'
 
 // Real port of EditSetlistMockup.tsx's own exported EditSetlistModal
 // (Setlists design pass, Phase 10 mockup approved, decision 23's full
@@ -577,6 +578,9 @@ export function EditSetlistModal({
   const saving = createMutation.isPending || updateDetailsMutation.isPending
 
   function handleFormKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    // A line break in a description/notes field, never a save.
+
+    if (isMultilineField(event.target)) return
     if (event.key === 'Enter' && event.shiftKey) {
       event.preventDefault()
       if (name.trim()) handleSave()
