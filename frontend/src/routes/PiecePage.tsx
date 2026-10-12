@@ -382,6 +382,8 @@ export function PiecePage() {
         event.preventDefault()
         setEditOpen(true)
       } else if (key === 'f') {
+        // Favoriting saves the whole piece, which needs edit permission.
+        if (!canEdit) return
         event.preventDefault()
         favoriteMutation.mutate()
       }
@@ -979,10 +981,13 @@ export function PiecePage() {
                   <button
                     type="button"
                     onClick={() => favoriteMutation.mutate()}
-                    disabled={favoriteMutation.isPending}
+                    // Favoriting saves the whole piece, which needs edit
+                    // permission — faint and inert without it.
+                    disabled={favoriteMutation.isPending || !canEdit}
+                    title={canEdit ? undefined : "You don't have permission to edit"}
                     aria-label={piece.favorite ? 'Remove from favorites' : 'Add to favorites'}
                     aria-pressed={piece.favorite}
-                    className="cursor-pointer text-ink-soft hover:text-accent disabled:opacity-60"
+                    className="cursor-pointer text-ink-soft hover:text-accent disabled:opacity-50"
                   >
                     {piece.favorite ? (
                       <IconHeartFilled size={24} className="text-accent" />

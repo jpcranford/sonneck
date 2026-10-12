@@ -118,6 +118,9 @@ export const PieceContextMenu = forwardRef<ContextMenuHandle, PieceContextMenuPr
             {
               label: piece.favorite ? 'Remove from Favorites' : 'Add to Favorites',
               onSelect: () => favoriteMutation.mutate(),
+              // Saves the whole piece, which needs edit permission.
+              disabled: !canEdit,
+              disabledReason: "You don't have permission to edit",
             },
             ...(canCreate
               ? [{ label: 'Add to Setlist', onSelect: () => setPickerOpen(true) }]
