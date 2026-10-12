@@ -3,6 +3,7 @@ import { Link, NavLink } from 'react-router-dom'
 import { IconDots } from '@tabler/icons-react'
 import { formatRelativeWeeks } from '../lib/relativeWeeks'
 import type { Setlist } from '../api/types'
+import { useShortcutBlocker } from '../lib/shortcuts'
 
 // Real port of SidebarSetlistsMockup.tsx's own SetlistsSection/SetlistsMenu
 // (Setlists design pass, Phase 5 mockup approved; this is Phase 14's real
@@ -18,6 +19,8 @@ import type { Setlist } from '../api/types'
 // shipped nav item never links into a /mockup/* URL.
 function SetlistsMenu({ onNavigate }: { onNavigate?: () => void }) {
   const [open, setOpen] = useState(false)
+  // Page shortcuts pause while the menu is open (lib/shortcuts.ts).
+  useShortcutBlocker(open)
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {

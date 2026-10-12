@@ -1,4 +1,4 @@
-import type { MouseEvent, ReactNode } from 'react'
+import type { MouseEvent, ReactNode, Ref } from 'react'
 import { isHomeScreenApp } from '../lib/homeScreenApp'
 import { showAlert } from '../lib/dialogs'
 
@@ -7,6 +7,9 @@ interface DownloadLinkProps {
   href: string
   className: string
   children: ReactNode
+  /** The link itself — a keyboard shortcut clicks it, so a shortcut
+   * download goes exactly the way a click does. */
+  ref?: Ref<HTMLAnchorElement>
 }
 
 // The file's own suggested name (Content-Disposition), else a fallback.
@@ -43,10 +46,10 @@ async function downloadViaBlob(href: string) {
 // itself and hands it over as a blob download instead: iOS opens its own
 // PDF viewer (close/back, plus share and open-in-browser), other platforms
 // save it normally.
-export function DownloadLink({ href, className, children }: DownloadLinkProps) {
+export function DownloadLink({ href, className, children, ref }: DownloadLinkProps) {
   if (!isHomeScreenApp()) {
     return (
-      <a href={href} download className={className}>
+      <a ref={ref} href={href} download className={className}>
         {children}
       </a>
     )
@@ -58,7 +61,7 @@ export function DownloadLink({ href, className, children }: DownloadLinkProps) {
   }
 
   return (
-    <a href={href} onClick={handleClick} className={className}>
+    <a ref={ref} href={href} onClick={handleClick} className={className}>
       {children}
     </a>
   )

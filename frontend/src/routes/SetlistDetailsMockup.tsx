@@ -1,6 +1,6 @@
 import {
-  useEffect,
   useMemo,
+  useRef,
   useState,
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
@@ -32,6 +32,7 @@ import { EditRoleModal } from './EditRoleMockup'
 import { formatDateOnly } from '../lib/dateOnly'
 import { confirmAction } from '../lib/dialogs'
 import { copyToClipboard } from '../lib/clipboard'
+import { useShortcuts } from '../lib/shortcuts'
 
 // Setlists design pass, Phase 6 — the real Setlist Details page (§13),
 // built against the approved Phase 2 layout (Option B, "Stats dashboard")
@@ -462,32 +463,29 @@ export function SetlistDetailsMockup() {
     setEditingEntry(null)
   }
 
-  // "E" opens Edit Setlist — the same page-level shortcut pattern
-  // PiecePage.tsx/BookDetailsPage.tsx/PersonDetailsPage.tsx already use
-  // (each a hand-copied `useEffect`+`document.addEventListener`, not a
-  // shared hook — matched here rather than introducing one), minus their
-  // own `canEdit` permission check, since this fixture has no real
-  // permission state to gate against (nothing else on this page is
-  // permission-gated either). Same guards otherwise: skip on a held
-  // repeat/Ctrl/Meta/Alt, skip while a text-entry element has focus, skip
-  // while the modal is already open.
-  useEffect(() => {
-    if (editSetlistOpen) return
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return
-      const target = event.target as HTMLElement | null
-      const tag = target?.tagName
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target?.isContentEditable) {
-        return
-      }
-      if (event.key.toLowerCase() === 'e') {
-        event.preventDefault()
-        openEditSetlist('details')
-      }
-    }
-    document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
-  }, [editSetlistOpen])
+  // Same keyboard shortcuts as the real SetlistPage.tsx (lib/shortcuts.ts).
+  // Download Set PDF does nothing in this mockup, so neither does D.
+  const downloadMenuButtonRef = useRef<HTMLButtonElement>(null)
+  function copyProgramFromKey(format: 'markdown' | 'text') {
+    const rect = downloadMenuButtonRef.current?.getBoundingClientRect()
+    const program = buildProgramCopy(
+      setlist.name,
+      formatAbsoluteDate(setlist.gigDate),
+      entries,
+      displayNumbers,
+    )
+    void copyToClipboard(program[format]).then((copied) => {
+      if (!copied || !rect) return
+      setCopyToast({ x: rect.left + rect.width / 2, y: rect.bottom })
+      window.setTimeout(() => setCopyToast(null), 1200)
+    })
+  }
+  useShortcuts([
+    { key: 'e', label: 'Edit setlist', run: () => openEditSetlist('details') },
+    { key: 'd', label: 'Download Set PDF', run: () => {} },
+    { key: 'c', label: 'Copy program as plain text', run: () => copyProgramFromKey('text') },
+    { key: 'm', label: 'Copy program as Markdown', run: () => copyProgramFromKey('markdown') },
+  ])
 
   function confirmArchiveToggle() {
     setArchived((a) => !a)
@@ -699,6 +697,7 @@ export function SetlistDetailsMockup() {
               Download Set PDF
             </button>
             <button
+              ref={downloadMenuButtonRef}
               type="button"
               onClick={() => setDownloadOpen((o) => !o)}
               aria-label="More download and copy options"

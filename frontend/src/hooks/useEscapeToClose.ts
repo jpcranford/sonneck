@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { isAnyModalOpen } from '../components/Modal'
+import { useShortcutBlocker } from '../lib/shortcuts'
 
 /**
  * Escape calls `onClose` while `open` — for a slide-in panel (the filter
@@ -7,6 +8,8 @@ import { isAnyModalOpen } from '../components/Modal'
  * Escape for itself (Modal.tsx), so the panel stays put then.
  */
 export function useEscapeToClose(open: boolean, onClose: () => void) {
+  // Page shortcuts pause while the panel is open (lib/shortcuts.ts).
+  useShortcutBlocker(open)
   const onCloseRef = useRef(onClose)
   useEffect(() => {
     onCloseRef.current = onClose

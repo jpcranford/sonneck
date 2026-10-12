@@ -22,6 +22,7 @@ import { formatRelativeWeeks } from '../lib/relativeWeeks'
 import { usePageTitle } from '../lib/usePageTitle'
 import { formatDateOnly, todayDateOnly } from '../lib/dateOnly'
 import { confirmAction, showAlert } from '../lib/dialogs'
+import { useShortcuts } from '../lib/shortcuts'
 
 // The real Setlists Library page (§13, decision 12) — built against
 // SetlistsLibraryMockup.tsx (the approved Phase 12 mockup: one unified
@@ -215,6 +216,10 @@ export function SetlistsLibraryPage() {
   const [archiveTarget, setArchiveTarget] = useState<Setlist | null>(null)
   const [editTarget, setEditTarget] = useState<Setlist | null>(null)
   const [newSetlistOpen, setNewSetlistOpen] = useState(false)
+  // N: New Setlist (lib/shortcuts.ts), only for those who see the button.
+  useShortcuts(
+    canCreate ? [{ key: 'n', label: 'New setlist', run: () => setNewSetlistOpen(true) }] : [],
+  )
 
   const active = sortActiveSetlists(setlists.filter((s) => !s.effectiveArchived))
   const archived = sortArchivedSetlists(setlists.filter((s) => s.effectiveArchived))

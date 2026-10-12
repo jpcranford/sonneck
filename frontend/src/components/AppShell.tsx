@@ -11,8 +11,10 @@ import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { getUserSettings } from '../api/userSettings'
 import { PageToolbarSlotContext } from '../lib/pageToolbarSlot'
 import { useDarkScoresSync, useThemeSync } from '../lib/theme'
+import { useSidebarShortcuts } from '../hooks/useSidebarShortcuts'
 
 export function AppShell() {
+  useSidebarShortcuts()
   // Owned here, not inside MobileNav itself, because the top bar and the
   // drawer/scrim render in two different places in this tree (see
   // MobileNav.tsx's own comment for why) and need to share one state.

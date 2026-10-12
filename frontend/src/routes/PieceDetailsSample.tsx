@@ -34,6 +34,7 @@ import { MarkdownText } from '../components/MarkdownText'
 import { PracticeStatusIcon } from '../components/PracticeStatusIcon'
 import { hyphenateISBN } from '../lib/isbn'
 import { useMockupTitle } from '../lib/useMockupTitle'
+import { useShortcutBlocker, useShortcuts } from '../lib/shortcuts'
 
 // ---------------------------------------------------------------------
 // REFERENCE SAMPLE — unlinked from nav, not wired to the API. Ported
@@ -321,6 +322,8 @@ function PageLightbox({
   onPrev: () => void
   onNext: () => void
 }) {
+  // Page shortcuts pause while the viewer is open, as in the real one.
+  useShortcutBlocker(true)
   // 'fit' shows the whole page within the screen; 'actual' shows it
   // larger, in a scrollable box — this mockup's placeholder is a vector
   // SVG with no real pixel size to be "1:1" against, so 'actual' stands
@@ -571,6 +574,35 @@ export function PieceDetailsSample() {
   function handleCopyCitation(event: MouseEvent) {
     handleCopy(sampleCitationFor(copyrightPreview), event)
   }
+
+  // Same keyboard shortcuts as the real PiecePage.tsx (lib/shortcuts.ts).
+  // Edit Piece is disabled in this mockup and Download PDF does nothing,
+  // so E and D match them.
+  const citationButtonRef = useRef<HTMLButtonElement>(null)
+  useShortcuts([
+    { key: 'e', label: 'Edit piece', enabled: false, run: () => {} },
+    {
+      key: 'f',
+      label: favorite ? 'Remove from favorites' : 'Add to favorites',
+      run: () => setFavorite((f) => !f),
+    },
+    { key: 'p', label: 'Open the page viewer', run: () => setLightboxOpen(true) },
+    { key: 'd', label: 'Download PDF', run: () => {} },
+    { key: 's', label: 'Add to setlist', run: () => setAddToSetlistOpen(true) },
+    {
+      key: 'c',
+      label: 'Copy citation',
+      run: () => {
+        const rect = citationButtonRef.current?.getBoundingClientRect()
+        if (!rect) return
+        void copyToClipboard(sampleCitationFor(copyrightPreview)).then((copied) => {
+          if (!copied) return
+          setCopyToast({ x: rect.left + rect.width / 2, y: rect.top })
+          window.setTimeout(() => setCopyToast(null), 1200)
+        })
+      },
+    },
+  ])
 
   function simulateReplace() {
     setReplaceConfirming(false)
@@ -1416,6 +1448,7 @@ export function PieceDetailsSample() {
               Citation
             </span>
             <button
+              ref={citationButtonRef}
               type="button"
               onClick={handleCopyCitation}
               className="w-fit cursor-pointer text-left font-display text-sm text-ink-soft/75 italic hover:text-ink-soft"

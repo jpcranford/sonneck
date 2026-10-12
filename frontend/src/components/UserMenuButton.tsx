@@ -17,6 +17,7 @@ import { getUserSettings, updateUserSettings, type UserSettings } from '../api/u
 import { useAuth } from '../lib/AuthContext'
 import type { ThemePreference } from '../lib/theme'
 import { useAnchoredPanel } from '../hooks/useAnchorRect'
+import { useShortcutBlocker } from '../lib/shortcuts'
 
 // Real build of the Sidebar User Menu mockup (Option 2, "identity card,
 // dark popup" — /mockup/sidebar-user-menu), wired to real GET
@@ -103,6 +104,8 @@ export function UserMenuButton({
 }) {
   const me = useAuth()
   const [open, setOpen] = useState(false)
+  // Page shortcuts pause while the menu is open (lib/shortcuts.ts).
+  useShortcutBlocker(open)
   const wrapRef = useRef<HTMLDivElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   // Where the menu opens: just above the card, flush with its left edge,

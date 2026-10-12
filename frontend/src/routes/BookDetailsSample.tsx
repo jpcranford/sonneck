@@ -18,6 +18,7 @@ import { hyphenateISBN, isbnSearchUrl } from '../lib/isbn'
 import { useMockupTitle } from '../lib/useMockupTitle'
 import { ContextMenu } from '../components/ContextMenu'
 import { MarkdownText } from '../components/MarkdownText'
+import { useShortcuts } from '../lib/shortcuts'
 
 // ---------------------------------------------------------------------
 // DESIGN MOCKUP — Book Details page, kept as a standing design reference
@@ -623,6 +624,13 @@ export function BookDetailsSample() {
 
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [filenameExpanded, setFilenameExpanded] = useState(false)
+  // Same keyboard shortcuts as the real BookDetailsPage.tsx
+  // (lib/shortcuts.ts); Edit Book and Open Book PDF do nothing in this
+  // mockup, so neither do E and O.
+  useShortcuts([
+    { key: 'e', label: 'Edit book', run: () => {} },
+    { key: 'o', label: 'Open the book’s PDF', run: () => {} },
+  ])
 
   // Custom cover upload, combining trigger "D" (header toolbar button)
   // and trigger "E" (right-click/long-press context menu) for the same

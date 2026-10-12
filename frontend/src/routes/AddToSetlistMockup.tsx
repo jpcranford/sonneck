@@ -25,6 +25,7 @@ import {
 } from '../lib/setlistsMockupFixture'
 import { useMockupTitle } from '../lib/useMockupTitle'
 import { formatDateOnly } from '../lib/dateOnly'
+import { useShortcutBlocker } from '../lib/shortcuts'
 
 // Setlists design pass, Phase 5 — the Library grid/list cards' own "Add to
 // Setlist" entry point (one of the feature's three, alongside Piece
@@ -218,6 +219,8 @@ export function AddToSetlistPicker({
   onToggle: (id: string) => void
   onClose: () => void
 }) {
+  // Page shortcuts pause while the picker is open, as in the real one.
+  useShortcutBlocker(true)
   const ref = useRef<HTMLDivElement>(null)
   const [query, setQuery] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type MouseEvent, type ReactNode } from 'react'
+import { useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -46,6 +46,7 @@ import { formatDateOnly } from '../lib/dateOnly'
 import { confirmAction, showAlert } from '../lib/dialogs'
 import { copyToClipboard } from '../lib/clipboard'
 import { EmptyState } from '../components/EmptyState'
+import { useShortcuts } from '../lib/shortcuts'
 
 // The real Setlist Details page (§13) — built against SetlistDetailsMockup.tsx
 // (the approved Phase 6 mockup, incl. its own Round 1-10 polish and the
@@ -173,13 +174,13 @@ export function SetlistPage() {
   const [editSetlistOpen, setEditSetlistOpen] = useState(false)
   const [editSetlistTab, setEditSetlistTab] = useState<'details' | 'program'>('details')
   const [downloadOpen, setDownloadOpen] = useState(false)
-  // The program copy items: both texts load when the menu opens, so the
-  // click can copy at once — Safari, and the plain-HTTP fallback in
-  // lib/clipboard.ts, only allow a copy inside the click itself.
+  // The program copy items (and the C / M shortcuts): both texts load with
+  // the page, so a click or key press can copy at once — Safari, and the
+  // plain-HTTP fallback in lib/clipboard.ts, only allow a copy inside the
+  // click or key press itself.
   const { data: program } = useQuery({
     queryKey: ['setlist', setlistId, 'program'],
     queryFn: () => getSetlistProgram(setlistId),
-    enabled: downloadOpen,
   })
   const [copyToast, setCopyToast] = useState<{ x: number; y: number } | null>(null)
   function handleCopyProgram(text: string, event: MouseEvent) {
@@ -303,24 +304,43 @@ export function SetlistPage() {
     if (confirmed) deleteMutation.mutate()
   }
 
-  // "E" opens Edit Setlist — same page-level shortcut pattern PiecePage.tsx/
-  // BookDetailsPage.tsx/PersonDetailsPage.tsx already use.
-  useEffect(() => {
-    if (!setlist || editSetlistOpen) return
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return
-      const target = event.target as HTMLElement | null
-      const tag = target?.tagName
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target?.isContentEditable)
-        return
-      if (event.key.toLowerCase() === 'e') {
-        event.preventDefault()
-        openEditSetlist('details')
-      }
-    }
-    document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
-  }, [setlist, editSetlistOpen])
+  // Keyboard shortcuts (lib/shortcuts.ts — ignored while typing or with a
+  // window open), each mirroring a button or menu item here.
+  const downloadLinkRef = useRef<HTMLAnchorElement>(null)
+  const downloadMenuButtonRef = useRef<HTMLButtonElement>(null)
+  function copyProgramFromKey(text: string) {
+    const rect = downloadMenuButtonRef.current?.getBoundingClientRect()
+    void copyToClipboard(text).then((copied) => {
+      if (!copied || !rect) return
+      setCopyToast({ x: rect.left + rect.width / 2, y: rect.bottom })
+      window.setTimeout(() => setCopyToast(null), 1200)
+    })
+  }
+  useShortcuts(
+    setlist
+      ? [
+          { key: 'e', label: 'Edit setlist', run: () => openEditSetlist('details') },
+          {
+            key: 'd',
+            label: 'Download Set PDF',
+            enabled: canDownload,
+            run: () => downloadLinkRef.current?.click(),
+          },
+          {
+            key: 'c',
+            label: 'Copy program as plain text',
+            enabled: !!program,
+            run: () => program && copyProgramFromKey(program.text),
+          },
+          {
+            key: 'm',
+            label: 'Copy program as Markdown',
+            enabled: !!program,
+            run: () => program && copyProgramFromKey(program.markdown),
+          },
+        ]
+      : [],
+  )
 
   return (
     <div className={`${CONTENT_MAX_W} flex flex-1 flex-col gap-6 px-6 py-6 md:px-8 md:py-8`}>
@@ -415,6 +435,7 @@ export function SetlistPage() {
               <div className="flex">
                 {canDownload ? (
                   <DownloadLink
+                    ref={downloadLinkRef}
                     href={getSetlistPdfUrl(setlistId)}
                     className="relative flex cursor-pointer items-center gap-2 rounded-l-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm text-ink transition-colors hover:z-10 hover:border-accent"
                   >
@@ -433,6 +454,7 @@ export function SetlistPage() {
                   </button>
                 )}
                 <button
+                  ref={downloadMenuButtonRef}
                   type="button"
                   onClick={() => setDownloadOpen((o) => !o)}
                   aria-label="More download and copy options"

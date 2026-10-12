@@ -8,6 +8,7 @@ import { listSetlists, getUpcomingSetlists } from '../api/setlists'
 import { UserMenuButton } from './UserMenuButton'
 import { SetlistsSection } from './SidebarSetlists'
 import { dragRegion, noDragRegion, zoomOnDoubleClick } from '../lib/nativeTitleBar'
+import { useShortcutBlocker } from '../lib/shortcuts'
 
 // Mobile-only top bar + left drawer — the classic hamburger-drawer
 // pattern, chosen over a top-fold panel, a bottom sheet, and a bottom tab
@@ -119,6 +120,8 @@ function DrawerNavList({ items, onNavigate }: { items: NavItem[]; onNavigate: ()
 }
 
 export function MobileNavDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
+  // Page shortcuts pause while the drawer is open (lib/shortcuts.ts).
+  useShortcutBlocker(open)
   // Real as of the Setlists backend build — same query Sidebar.tsx's own
   // desktop rail uses, sharing its cache entry.
   // Hidden without `create`, as in Sidebar.tsx.

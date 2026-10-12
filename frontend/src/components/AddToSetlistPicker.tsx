@@ -25,6 +25,7 @@ import { EditSetlistModal } from './EditSetlistModal'
 import { MODAL_TRANSITION_MS } from './Modal'
 import { showAlert } from '../lib/dialogs'
 import { useAnchoredPanel } from '../hooks/useAnchorRect'
+import { useShortcutBlocker } from '../lib/shortcuts'
 
 // Real port of AddToSetlistMockup.tsx's own exported AddToSetlistPicker
 // (Setlists design pass, Phase 5 mockup approved; this is Phase 14's real
@@ -102,6 +103,8 @@ export function AddToSetlistPicker({
   anchorRef: RefObject<HTMLElement | null>
   onClose: () => void
 }) {
+  // Page shortcuts pause while this is open (lib/shortcuts.ts).
+  useShortcutBlocker(true)
   const ref = useRef<HTMLDivElement>(null)
   const [query, setQuery] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)

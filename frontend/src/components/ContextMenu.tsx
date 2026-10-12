@@ -9,6 +9,7 @@ import {
   type TouchEvent,
 } from 'react'
 import { IconDotsVertical } from '@tabler/icons-react'
+import { useShortcutBlocker } from '../lib/shortcuts'
 
 export interface ContextMenuItem {
   label: string
@@ -73,6 +74,8 @@ export const ContextMenu = forwardRef<ContextMenuHandle, ContextMenuProps>(funct
   ref,
 ) {
   const [position, setPosition] = useState<{ x: number; y: number } | null>(null)
+  // Page shortcuts pause while the menu is open (lib/shortcuts.ts).
+  useShortcutBlocker(position !== null)
   const menuRef = useRef<HTMLDivElement>(null)
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const touchStartRef = useRef<{ x: number; y: number } | null>(null)

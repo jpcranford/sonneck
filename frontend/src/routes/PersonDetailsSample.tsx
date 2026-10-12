@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
+import { useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
 import { Link } from 'react-router-dom'
 import {
   IconArrowLeft,
@@ -28,6 +28,7 @@ import { PALETTE } from '../lib/pieceSplitLogic'
 import { useMockupTitle } from '../lib/useMockupTitle'
 import type { Tag } from '../api/types'
 import { confirmAction } from '../lib/dialogs'
+import { useShortcuts } from '../lib/shortcuts'
 
 // ---------------------------------------------------------------------
 // DESIGN MOCKUP for the Person Details page — one real page with two
@@ -1093,33 +1094,9 @@ export function PersonDetailsSample() {
     )
   }
 
-  // Keyboard shortcut: E opens the edit menu — mirrors the real
-  // PersonDetailsPage.tsx, which itself matches PiecePage.tsx's/
-  // BookDetailsPage.tsx's own E shortcut. Calls the exact same handler
-  // the "Edit Person" button does above (the same stub message, not a
-  // real modal — this mockup doesn't have one). Skipped while Upload
-  // Portrait or Split People is open (both are
-  // real, interactive modals here with their own text fields) or while
-  // focus is in any text-entry element, so typing "e" elsewhere is never
-  // intercepted. `repeat` guards against a held-down key re-firing the
-  // stub message on every repeat tick.
-  useEffect(() => {
-    if (uploadPortraitOpen || splitPeopleOpen) return
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return
-      const target = event.target as HTMLElement | null
-      const tag = target?.tagName
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target?.isContentEditable) {
-        return
-      }
-      if (event.key.toLowerCase() === 'e') {
-        event.preventDefault()
-        handleEditPerson()
-      }
-    }
-    document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
-  }, [uploadPortraitOpen, splitPeopleOpen])
+  // E: Edit Person, as in the real PersonDetailsPage.tsx (lib/shortcuts.ts —
+  // paused while Upload Portrait or Split People is open).
+  useShortcuts([{ key: 'e', label: 'Edit person', run: handleEditPerson }])
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-6 md:p-8">

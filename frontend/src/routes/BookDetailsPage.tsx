@@ -38,6 +38,7 @@ import { TagPills } from '../components/TagPills'
 import { confirmAction, showAlert } from '../lib/dialogs'
 import { ViewModeToggle } from '../components/ViewModeToggle'
 import { EmptyState } from '../components/EmptyState'
+import { useShortcuts } from '../lib/shortcuts'
 
 // Book Details page — no design-doc spec (new ground, same as the Books
 // library view before it). Built from the "Book Details — Consolidated
@@ -445,34 +446,22 @@ export function BookDetailsPage() {
       : []),
   ]
 
-  // Keyboard shortcut: E opens the edit menu — same convention as
-  // PiecePage.tsx's own E/F shortcuts (matches the header pencil button,
-  // just a faster path to it). No favorite-toggle equivalent here since
-  // Book has no favorite field. Skipped while the modal is already open
-  // (its own fields should own keystrokes then) or while focus is in any
-  // text-entry element, so typing "e" elsewhere on the page is never
-  // intercepted. `repeat` guards against a held-down key re-opening the
-  // (already-open, so harmless, but pointless) modal on every repeat tick.
-  useEffect(() => {
-    if (!book || bookEditOpen) return
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return
-      const target = event.target as HTMLElement | null
-      const tag = target?.tagName
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target?.isContentEditable) {
-        return
-      }
-      // No permission, no shortcut — mirrors the toolbar button's own
-      // disabled state instead of opening a modal the user couldn't have
-      // reached by clicking anyway.
-      if (event.key.toLowerCase() === 'e' && canEdit) {
-        event.preventDefault()
-        setBookEditOpen(true)
-      }
-    }
-    document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
-  }, [book, bookEditOpen, canEdit])
+  // Keyboard shortcuts (lib/shortcuts.ts — ignored while typing or with a
+  // window open), each mirroring a toolbar button.
+  const openPdfLinkRef = useRef<HTMLAnchorElement>(null)
+  useShortcuts(
+    book
+      ? [
+          { key: 'e', label: 'Edit book', enabled: canEdit, run: () => setBookEditOpen(true) },
+          {
+            key: 'o',
+            label: 'Open the book’s PDF',
+            enabled: !!book.fileHash && canDownload,
+            run: () => openPdfLinkRef.current?.click(),
+          },
+        ]
+      : [],
+  )
 
   const notFound = bookError instanceof ApiError && bookError.code === 'NOT_FOUND'
 
@@ -605,6 +594,7 @@ export function BookDetailsPage() {
             <span aria-hidden="true" className="h-6 w-px self-center bg-border" />
             {book.fileHash && canDownload ? (
               <a
+                ref={openPdfLinkRef}
                 href={getBookFileUrl(book.id)}
                 target="_blank"
                 rel="noreferrer"

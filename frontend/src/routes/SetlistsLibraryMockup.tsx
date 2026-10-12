@@ -15,6 +15,7 @@ import { useMockupTitle } from '../lib/useMockupTitle'
 import { EditSetlistModal } from './EditSetlistMockup'
 import { formatDateOnly, todayDateOnly } from '../lib/dateOnly'
 import { confirmAction } from '../lib/dialogs'
+import { useShortcuts } from '../lib/shortcuts'
 
 // Setlists design pass, Phase 12 — the setlists browse page (§13), built
 // against Phase 4's approved artifact: Option C, one unified `/setlists`
@@ -254,6 +255,8 @@ export function SetlistsLibraryMockup() {
   const [duplicateGigDate, setDuplicateGigDate] = useState('')
   const [editTarget, setEditTarget] = useState<MockSetlist | null>(null)
   const [newSetlistOpen, setNewSetlistOpen] = useState(false)
+  // N: New Setlist, as in the real SetlistsLibraryPage.tsx (lib/shortcuts.ts).
+  useShortcuts([{ key: 'n', label: 'New setlist', run: () => setNewSetlistOpen(true) }])
 
   const active = sortActiveSetlists(setlists.filter((s) => !isEffectivelyArchived(s)))
   const archived = sortArchivedSetlists(setlists.filter((s) => isEffectivelyArchived(s)))

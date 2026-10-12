@@ -1,4 +1,4 @@
-import { useRef, useState, type KeyboardEvent } from 'react'
+import { useRef, useState, type KeyboardEvent, type Ref } from 'react'
 import { useForm } from 'react-hook-form'
 import {
   IconAdjustmentsHorizontal,
@@ -25,6 +25,7 @@ import { PageToolbarPortal } from '../components/PageToolbarSlot'
 import { useEscapeToClose } from '../hooks/useEscapeToClose'
 import { EmptyState } from '../components/EmptyState'
 import { noMatchMessage } from '../lib/emptyMessages'
+import { useShortcutBlocker, useShortcuts } from '../lib/shortcuts'
 
 // ---------------------------------------------------------------------
 // DESIGN MOCKUP for the Books Library page. Originally a side-by-side
@@ -664,13 +665,16 @@ function BookSortControl({
   direction,
   onFieldChange,
   onDirectionToggle,
+  triggerRef,
 }: {
   field: BookSortField
   direction: SortDirection
   onFieldChange: (v: BookSortField) => void
   onDirectionToggle: () => void
+  triggerRef?: Ref<HTMLButtonElement>
 }) {
   const [open, setOpen] = useState(false)
+  useShortcutBlocker(open)
   const [highlightedIndex, setHighlightedIndex] = useState(0)
   const directionLabel = BOOK_DIRECTION_LABEL[field][direction]
 
@@ -708,6 +712,7 @@ function BookSortControl({
     <div className="relative min-w-0">
       <div className="flex overflow-hidden rounded-md border border-border bg-paper-raised">
         <button
+          ref={triggerRef}
           type="button"
           onClick={() => (open ? setOpen(false) : openMenu())}
           onKeyDown={handleKeyDown}
@@ -916,6 +921,32 @@ export function BooksLibrarySample() {
   const [books, setBooks] = useState<MockBook[]>(MOCK_BOOKS)
   const [newBookOpen, setNewBookOpen] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  // Same keyboard shortcuts as the real LibraryToolbar.tsx (lib/shortcuts.ts).
+  const searchRef = useRef<HTMLInputElement>(null)
+  const sortTriggerRef = useRef<HTMLButtonElement>(null)
+  useShortcuts([
+    { key: '/', label: 'Search', run: () => searchRef.current?.focus() },
+    {
+      key: 'v',
+      label: viewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view',
+      run: () => setViewMode((m) => (m === 'grid' ? 'list' : 'grid')),
+    },
+    { key: 'f', label: 'Filters', run: () => setDrawerOpen(true) },
+    {
+      key: 'o',
+      label: 'Sort by…',
+      run: () => {
+        sortTriggerRef.current?.focus()
+        sortTriggerRef.current?.click()
+      },
+    },
+    {
+      key: 'r',
+      label: 'Reverse the sort',
+      run: () => setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc')),
+    },
+    { key: 'n', label: 'New Book', run: () => setNewBookOpen(true) },
+  ])
   const [appliedFilters, setAppliedFilters] = useState<BookFilterState>(EMPTY_BOOK_FILTERS)
   const [sortField, setSortField] = useState<BookSortField>('Date Added')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
@@ -1049,6 +1080,7 @@ export function BooksLibrarySample() {
                     className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-soft"
                   />
                   <input
+                    ref={searchRef}
                     type="text"
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
@@ -1088,6 +1120,7 @@ export function BooksLibrarySample() {
                 </button>
 
                 <BookSortControl
+                  triggerRef={sortTriggerRef}
                   field={sortField}
                   direction={sortDirection}
                   onFieldChange={setSortField}

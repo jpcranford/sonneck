@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -41,6 +41,7 @@ import { yearWrittenSource } from '../lib/yearWrittenSource'
 import { confirmAction, showAlert } from '../lib/dialogs'
 import { ViewModeToggle } from '../components/ViewModeToggle'
 import { EmptyState } from '../components/EmptyState'
+import { useShortcuts } from '../lib/shortcuts'
 
 // The real Person Details page (/people/:id) — composer/arranger overhaul,
 // Stage B. Real build of PersonDetailsSample.tsx (/mockup/person-details,
@@ -460,36 +461,13 @@ export function PersonDetailsPage() {
     .filter((p) => p.id !== personId)
     .map((p) => ({ id: p.id, name: p.name }))
 
-  // Keyboard shortcut: E opens the edit menu — same convention as
-  // PiecePage.tsx's own E/F shortcuts and BookDetailsPage.tsx's own E
-  // shortcut (matches the header's "Edit Person" button, just a faster
-  // path to it). No favorite-toggle equivalent here since Person has no
-  // favorite field, same reasoning Book's own version has none either.
-  // Skipped while the modal is already open (its own fields should own
-  // keystrokes then) or while focus is in any text-entry element, so
-  // typing "e" elsewhere on the page is never intercepted. `repeat` guards
-  // against a held-down key re-opening the (already-open, so harmless, but
-  // pointless) modal on every repeat tick.
-  useEffect(() => {
-    if (!person || editOpen) return
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return
-      const target = event.target as HTMLElement | null
-      const tag = target?.tagName
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target?.isContentEditable) {
-        return
-      }
-      // No permission, no shortcut — mirrors the header button's own
-      // disabled state instead of opening a modal the user couldn't have
-      // reached by clicking anyway.
-      if (event.key.toLowerCase() === 'e' && canEdit) {
-        event.preventDefault()
-        setEditOpen(true)
-      }
-    }
-    document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
-  }, [person, editOpen, canEdit])
+  // Keyboard shortcut (lib/shortcuts.ts — ignored while typing or with a
+  // window open): E edits, like the header button.
+  useShortcuts(
+    person
+      ? [{ key: 'e', label: 'Edit person', enabled: canEdit, run: () => setEditOpen(true) }]
+      : [],
+  )
 
   const removePortraitMutation = useMutation({
     mutationFn: () => removePersonPortrait(personId),

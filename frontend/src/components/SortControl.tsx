@@ -1,5 +1,6 @@
-import { useState, type KeyboardEvent } from 'react'
+import { useState, type KeyboardEvent, type Ref } from 'react'
 import { IconArrowDown, IconArrowUp, IconCheck, IconChevronDown } from '@tabler/icons-react'
+import { useShortcutBlocker } from '../lib/shortcuts'
 
 export type SortDirection = 'asc' | 'desc'
 
@@ -30,12 +31,16 @@ export function SortControl<Field extends string>({
   onFieldChange,
   onDirectionToggle,
   directionLabel,
+  triggerRef,
 }: {
   fields: SortFieldOption<Field>[]
   field: Field
   direction: SortDirection
   onFieldChange: (next: Field) => void
   onDirectionToggle: () => void
+  /** The field button — the O shortcut focuses and clicks it to open the
+   * menu with the keyboard already on it. */
+  triggerRef?: Ref<HTMLButtonElement>
   /** What "ascending"/"descending" actually means for the current field
    * (e.g. "A to Z" for Title, "Oldest first" for Date Added) — shown as
    * the icon segment's tooltip/aria-label, not a fixed up/down-only
@@ -43,6 +48,8 @@ export function SortControl<Field extends string>({
   directionLabel: string
 }) {
   const [open, setOpen] = useState(false)
+  // Page shortcuts pause while the menu is open (lib/shortcuts.ts).
+  useShortcutBlocker(open)
   const [highlightedIndex, setHighlightedIndex] = useState(0)
   const current = fields.find((f) => f.value === field)
 
@@ -88,6 +95,7 @@ export function SortControl<Field extends string>({
     <div className="relative min-w-0">
       <div className="flex overflow-hidden rounded-md border border-border bg-paper-raised">
         <button
+          ref={triggerRef}
           type="button"
           onClick={() => (open ? setOpen(false) : openMenu())}
           onKeyDown={handleKeyDown}

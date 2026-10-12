@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react'
+import { useRef, useState, type MouseEvent, type ReactNode } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -58,6 +58,7 @@ import { MarkdownText } from '../components/MarkdownText'
 import { PageLightbox } from '../components/PageLightbox'
 import { PracticeStatusIcon } from '../components/PracticeStatusIcon'
 import { confirmAction, showAlert } from '../lib/dialogs'
+import { useShortcuts } from '../lib/shortcuts'
 
 // Mirrors UploadPage's own cap (backend's MaxUploadBytes) — same reasoning
 // as there: reject an oversized file instantly rather than after a slow
@@ -355,43 +356,49 @@ export function PiecePage() {
     },
   })
 
-  // Keyboard shortcuts: E opens the edit menu, F toggles favorite — matches
-  // the Edit Piece toolbar button and the header's favorite toggle, just a
-  // faster path to the same two actions. Skipped entirely while the edit
-  // modal is already open (its own fields are the ones that should own
-  // keystrokes then) or while focus is in any text-entry element, so typing
-  // a title/description containing "e"/"f" is never intercepted. `repeat`
-  // is checked separately from that, since holding the key down fires
-  // repeated keydown events — harmless for opening the modal a second time,
-  // but would otherwise flip favorite back and forth on every repeat tick.
-  useEffect(() => {
-    if (!piece || editOpen) return
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return
-      const target = event.target as HTMLElement | null
-      const tag = target?.tagName
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target?.isContentEditable) {
-        return
-      }
-      const key = event.key.toLowerCase()
-      if (key === 'e') {
-        // No permission, no shortcut — mirrors the toolbar button's own
-        // disabled state instead of opening a modal the user couldn't have
-        // reached by clicking anyway.
-        if (!canEdit) return
-        event.preventDefault()
-        setEditOpen(true)
-      } else if (key === 'f') {
-        // Favoriting saves the whole piece, which needs edit permission.
-        if (!canEdit) return
-        event.preventDefault()
-        favoriteMutation.mutate()
-      }
-    }
-    document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- favoriteMutation is a fresh object every render (useMutation, not memoized); depending on it would tear down/re-add this listener on every render for no behavioral difference. piece/editOpen/canEdit are the only real dependencies.
-  }, [piece, editOpen, canEdit])
+  // Keyboard shortcuts (lib/shortcuts.ts — ignored while typing or with a
+  // window open). Each mirrors a button here and does nothing when that
+  // button is faded for this viewer.
+  const downloadLinkRef = useRef<HTMLAnchorElement>(null)
+  const citationButtonRef = useRef<HTMLButtonElement>(null)
+  useShortcuts(
+    piece
+      ? [
+          { key: 'e', label: 'Edit piece', enabled: canEdit, run: () => setEditOpen(true) },
+          {
+            key: 'f',
+            label: piece.favorite ? 'Remove from favorites' : 'Add to favorites',
+            // Favoriting saves the whole piece, which needs edit permission.
+            enabled: canEdit,
+            run: () => favoriteMutation.mutate(),
+          },
+          { key: 'p', label: 'Open the page viewer', run: () => setLightboxOpen(true) },
+          {
+            key: 'd',
+            label: 'Download PDF',
+            enabled: canDownload,
+            run: () => downloadLinkRef.current?.click(),
+          },
+          {
+            key: 's',
+            label: 'Add to setlist',
+            enabled: canCreate,
+            run: () => setAddToSetlistOpen(true),
+          },
+          {
+            key: 'c',
+            label: 'Copy citation',
+            enabled: !!citationData,
+            run: () => {
+              const rect = citationButtonRef.current?.getBoundingClientRect()
+              if (citationData && rect) {
+                copyWithToast(citationData.citation, rect.left + rect.width / 2, rect.top)
+              }
+            },
+          },
+        ]
+      : [],
+  )
 
   const replaceMutation = useMutation({
     mutationFn: (file: File) => {
@@ -480,13 +487,16 @@ export function PiecePage() {
   // actually confirms the write succeeded (see that helper's own comment
   // for why the old bare navigator.clipboard call silently did nothing —
   // while still showing "Copied!" — on Firefox/Safari over plain HTTP).
-  function handleCopy(text: string, event: MouseEvent) {
-    const { clientX: x, clientY: y } = event
+  function copyWithToast(text: string, x: number, y: number) {
     void copyToClipboard(text).then((copied) => {
       if (!copied) return
       setCopyToast({ x, y })
       window.setTimeout(() => setCopyToast(null), 1200)
     })
+  }
+
+  function handleCopy(text: string, event: MouseEvent) {
+    copyWithToast(text, event.clientX, event.clientY)
   }
 
   function handleCopyCitation(event: MouseEvent) {
@@ -780,6 +790,7 @@ export function PiecePage() {
                 <div className="flex">
                   {canDownload ? (
                     <DownloadLink
+                      ref={downloadLinkRef}
                       href={getPieceFileUrl(piece.id)}
                       className="relative flex items-center gap-2 rounded-l-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm text-ink transition-colors hover:z-10 hover:border-accent"
                     >
@@ -1503,6 +1514,7 @@ export function PiecePage() {
                   Citation
                 </span>
                 <button
+                  ref={citationButtonRef}
                   type="button"
                   onClick={handleCopyCitation}
                   className="w-fit cursor-pointer text-left font-display text-sm text-ink-soft/75 italic hover:text-ink-soft"

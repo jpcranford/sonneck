@@ -8,6 +8,7 @@ import { TitleBarDragStrip } from './components/NativeTitleBar'
 import { DialogHost } from './components/DialogHost'
 import { installNativeExternalLinks } from './lib/nativeLinks'
 import { installTruncationTitles } from './lib/truncationTitles'
+import { installShortcuts } from './lib/shortcuts'
 import { ApiError } from './api/client'
 
 // Retry a failed load up to three times (TanStack's default), except when
@@ -28,6 +29,7 @@ const queryClient = new QueryClient({
 
 installNativeExternalLinks()
 installTruncationTitles()
+installShortcuts()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

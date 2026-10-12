@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { IconChevronLeft, IconChevronRight, IconX } from '@tabler/icons-react'
+import { useShortcutBlocker } from '../lib/shortcuts'
 
 // Full-screen page preview overlay, shared by every page-thumbnail preview
 // in the app that wants a click-to-enlarge view (Piece Details, the Book
@@ -50,6 +51,8 @@ export function PageLightbox({
   onPrev: () => void
   onNext: () => void
 }) {
+  // Page shortcuts pause while this is open (lib/shortcuts.ts).
+  useShortcutBlocker(true)
   // 'fit' scales the image down to fit the screen (object-contain, no
   // scroll needed). 'actual' renders the image at its real native pixel
   // size — no width/height constraint on the <img> itself, just a

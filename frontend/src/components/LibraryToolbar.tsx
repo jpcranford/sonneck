@@ -1,9 +1,10 @@
-import { type ReactNode } from 'react'
+import { useRef, type ReactNode } from 'react'
 import { IconAdjustmentsHorizontal, IconPlus, IconSearch } from '@tabler/icons-react'
 import { SortControl, type SortDirection, type SortFieldOption } from './SortControl'
 import { WIDE_CONTENT_MAX_W } from '../lib/layout'
 import { PageToolbarPortal } from './PageToolbarSlot'
 import { ViewModeToggle } from './ViewModeToggle'
+import { useShortcuts } from '../lib/shortcuts'
 
 /**
  * Shared toolbar for the Piece/Book/Person Library pages — search
@@ -131,6 +132,33 @@ export function LibraryToolbar<Field extends string>({
    * children since each domain's own filter-pill shape differs. */
   children?: ReactNode
 }) {
+  // Keyboard shortcuts (lib/shortcuts.ts — ignored while typing or with a
+  // window open). A quick tap of / jumps to search; holding it shows the
+  // shortcut list.
+  const searchRef = useRef<HTMLInputElement>(null)
+  const sortTriggerRef = useRef<HTMLButtonElement>(null)
+  useShortcuts([
+    { key: '/', label: 'Search', run: () => searchRef.current?.focus() },
+    {
+      key: 'v',
+      label: viewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view',
+      run: () => onViewModeChange(viewMode === 'grid' ? 'list' : 'grid'),
+    },
+    { key: 'f', label: 'Filters', run: onOpenFilters },
+    {
+      key: 'o',
+      label: 'Sort by…',
+      run: () => {
+        sortTriggerRef.current?.focus()
+        sortTriggerRef.current?.click()
+      },
+    },
+    { key: 'r', label: 'Reverse the sort', run: onSortDirectionToggle },
+    ...(newButton
+      ? [{ key: 'n', label: newButton.label, enabled: !newButton.disabled, run: newButton.onClick }]
+      : []),
+  ])
+
   return (
     <PageToolbarPortal>
       <div className="border-b border-border bg-paper">
@@ -151,6 +179,7 @@ export function LibraryToolbar<Field extends string>({
                   className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-soft"
                 />
                 <input
+                  ref={searchRef}
                   type="text"
                   value={query}
                   onChange={(event) => onQueryChange(event.target.value)}
@@ -200,6 +229,7 @@ export function LibraryToolbar<Field extends string>({
                 onFieldChange={onSortFieldChange}
                 onDirectionToggle={onSortDirectionToggle}
                 directionLabel={sortDirectionLabel}
+                triggerRef={sortTriggerRef}
               />
             </div>
           </div>
