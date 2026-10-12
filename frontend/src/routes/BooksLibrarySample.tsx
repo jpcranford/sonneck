@@ -1161,9 +1161,13 @@ export function BooksLibrarySample() {
         )}
 
         {sortedBooks.length > 0 && viewMode === 'list' && (
-          <div className="flex flex-col divide-y divide-border">
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(min(576px,100%),768px))] justify-center gap-x-6">
+            {/* Capped like the Piece library's list (PieceBrowseView.tsx):
+                columns 576–768px, a second once there's room, centered. */}
             {sortedBooks.map((book) => (
-              <BookCatalogRow key={book.id} book={book} />
+              <div key={book.id} className="border-b border-border last:border-b-0">
+                <BookCatalogRow book={book} />
+              </div>
             ))}
           </div>
         )}

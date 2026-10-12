@@ -1299,13 +1299,13 @@ export function PeopleLibrarySample() {
         )}
 
         {sortedPeople.length > 0 && viewMode === 'list' && (
-          <div className="flex flex-col divide-y divide-border">
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(min(576px,100%),768px))] justify-center gap-x-6">
+            {/* Capped like the Piece library's list (PieceBrowseView.tsx):
+                columns 576–768px, a second once there's room, centered. */}
             {sortedPeople.map((person) => (
-              <PersonListRow
-                key={person.id}
-                person={person}
-                onDelete={() => handleDeletePerson(person.id)}
-              />
+              <div key={person.id} className="border-b border-border last:border-b-0">
+                <PersonListRow person={person} onDelete={() => handleDeletePerson(person.id)} />
+              </div>
             ))}
           </div>
         )}
