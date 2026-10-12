@@ -28,7 +28,7 @@ import { PALETTE } from '../lib/pieceSplitLogic'
 import { useMockupTitle } from '../lib/useMockupTitle'
 import type { Tag } from '../api/types'
 import { confirmAction } from '../lib/dialogs'
-import { useShortcuts } from '../lib/shortcuts'
+import { EDIT_WINDOW_KEYS, useShortcuts } from '../lib/shortcuts'
 
 // ---------------------------------------------------------------------
 // DESIGN MOCKUP for the Person Details page — one real page with two
@@ -1096,7 +1096,10 @@ export function PersonDetailsSample() {
 
   // E: Edit Person, as in the real PersonDetailsPage.tsx (lib/shortcuts.ts —
   // paused while Upload Portrait or Split People is open).
-  useShortcuts([{ key: 'e', label: 'Edit person', run: handleEditPerson }])
+  useShortcuts([{ key: 'e', label: 'Edit person', run: handleEditPerson }], {
+    title: 'Person Details',
+    reference: { title: 'In Edit Person', rows: EDIT_WINDOW_KEYS },
+  })
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-6 md:p-8">

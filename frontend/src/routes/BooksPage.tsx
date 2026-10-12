@@ -126,6 +126,7 @@ export function BooksPage() {
   return (
     <div className="flex flex-1 flex-col">
       <LibraryToolbar
+        shortcutTitle="Books"
         query={query}
         onQueryChange={setQuery}
         searchPlaceholder="Search your books…"

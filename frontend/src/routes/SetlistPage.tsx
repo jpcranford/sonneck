@@ -46,7 +46,7 @@ import { formatDateOnly } from '../lib/dateOnly'
 import { confirmAction, showAlert } from '../lib/dialogs'
 import { copyToClipboard } from '../lib/clipboard'
 import { EmptyState } from '../components/EmptyState'
-import { useShortcuts } from '../lib/shortcuts'
+import { EDIT_WINDOW_KEYS, useShortcuts } from '../lib/shortcuts'
 
 // The real Setlist Details page (§13) — built against SetlistDetailsMockup.tsx
 // (the approved Phase 6 mockup, incl. its own Round 1-10 polish and the
@@ -340,6 +340,7 @@ export function SetlistPage() {
           },
         ]
       : [],
+    { title: 'Setlist Details', reference: { title: 'In Edit Setlist', rows: EDIT_WINDOW_KEYS } },
   )
 
   return (

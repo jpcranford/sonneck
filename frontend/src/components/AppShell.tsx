@@ -12,6 +12,7 @@ import { getUserSettings } from '../api/userSettings'
 import { PageToolbarSlotContext } from '../lib/pageToolbarSlot'
 import { useDarkScoresSync, useThemeSync } from '../lib/theme'
 import { useSidebarShortcuts } from '../hooks/useSidebarShortcuts'
+import { ShortcutHelp } from './ShortcutHelp'
 
 export function AppShell() {
   useSidebarShortcuts()
@@ -206,6 +207,8 @@ export function AppShell() {
           </div>
         </div>
         <MobileNavDrawer open={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
+        {/* Hold / or ? for this page's keyboard shortcuts. */}
+        <ShortcutHelp />
       </div>
     </PageToolbarSlotContext.Provider>
   )

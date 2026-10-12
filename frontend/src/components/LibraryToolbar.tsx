@@ -89,6 +89,7 @@ export function LibraryToolbar<Field extends string>({
   onViewModeChange,
   newButton,
   rightColumnGridColsClassName,
+  shortcutTitle,
   children,
 }: {
   query: string
@@ -128,6 +129,8 @@ export function LibraryToolbar<Field extends string>({
    * was itself the source of a small constant, non-growing gap in front
    * of Filters). */
   rightColumnGridColsClassName: string
+  /** The page's name in the shortcut help ("Library", "Books"). */
+  shortcutTitle: string
   /** Filter-pills row, rendered below the main toolbar row — left as
    * children since each domain's own filter-pill shape differs. */
   children?: ReactNode
@@ -137,27 +140,37 @@ export function LibraryToolbar<Field extends string>({
   // shortcut list.
   const searchRef = useRef<HTMLInputElement>(null)
   const sortTriggerRef = useRef<HTMLButtonElement>(null)
-  useShortcuts([
-    { key: '/', label: 'Search', run: () => searchRef.current?.focus() },
-    {
-      key: 'v',
-      label: viewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view',
-      run: () => onViewModeChange(viewMode === 'grid' ? 'list' : 'grid'),
-    },
-    { key: 'f', label: 'Filters', run: onOpenFilters },
-    {
-      key: 'o',
-      label: 'Sort by…',
-      run: () => {
-        sortTriggerRef.current?.focus()
-        sortTriggerRef.current?.click()
+  useShortcuts(
+    [
+      { key: '/', label: 'Search (tap)', run: () => searchRef.current?.focus() },
+      {
+        key: 'v',
+        label: viewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view',
+        run: () => onViewModeChange(viewMode === 'grid' ? 'list' : 'grid'),
       },
-    },
-    { key: 'r', label: 'Reverse the sort', run: onSortDirectionToggle },
-    ...(newButton
-      ? [{ key: 'n', label: newButton.label, enabled: !newButton.disabled, run: newButton.onClick }]
-      : []),
-  ])
+      { key: 'f', label: 'Filters', run: onOpenFilters },
+      {
+        key: 'o',
+        label: 'Sort by…',
+        run: () => {
+          sortTriggerRef.current?.focus()
+          sortTriggerRef.current?.click()
+        },
+      },
+      { key: 'r', label: 'Reverse the sort', run: onSortDirectionToggle },
+      ...(newButton
+        ? [
+            {
+              key: 'n',
+              label: newButton.label,
+              enabled: !newButton.disabled,
+              run: newButton.onClick,
+            },
+          ]
+        : []),
+    ],
+    { title: shortcutTitle },
+  )
 
   return (
     <PageToolbarPortal>

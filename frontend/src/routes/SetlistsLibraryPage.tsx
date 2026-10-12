@@ -219,6 +219,7 @@ export function SetlistsLibraryPage() {
   // N: New Setlist (lib/shortcuts.ts), only for those who see the button.
   useShortcuts(
     canCreate ? [{ key: 'n', label: 'New setlist', run: () => setNewSetlistOpen(true) }] : [],
+    { title: 'Setlists' },
   )
 
   const active = sortActiveSetlists(setlists.filter((s) => !s.effectiveArchived))

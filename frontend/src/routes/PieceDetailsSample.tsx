@@ -34,7 +34,7 @@ import { MarkdownText } from '../components/MarkdownText'
 import { PracticeStatusIcon } from '../components/PracticeStatusIcon'
 import { hyphenateISBN } from '../lib/isbn'
 import { useMockupTitle } from '../lib/useMockupTitle'
-import { useShortcutBlocker, useShortcuts } from '../lib/shortcuts'
+import { EDIT_PIECE_KEYS, useShortcutBlocker, useShortcuts } from '../lib/shortcuts'
 
 // ---------------------------------------------------------------------
 // REFERENCE SAMPLE — unlinked from nav, not wired to the API. Ported
@@ -579,30 +579,33 @@ export function PieceDetailsSample() {
   // Edit Piece is disabled in this mockup and Download PDF does nothing,
   // so E and D match them.
   const citationButtonRef = useRef<HTMLButtonElement>(null)
-  useShortcuts([
-    { key: 'e', label: 'Edit piece', enabled: false, run: () => {} },
-    {
-      key: 'f',
-      label: favorite ? 'Remove from favorites' : 'Add to favorites',
-      run: () => setFavorite((f) => !f),
-    },
-    { key: 'p', label: 'Open the page viewer', run: () => setLightboxOpen(true) },
-    { key: 'd', label: 'Download PDF', run: () => {} },
-    { key: 's', label: 'Add to setlist', run: () => setAddToSetlistOpen(true) },
-    {
-      key: 'c',
-      label: 'Copy citation',
-      run: () => {
-        const rect = citationButtonRef.current?.getBoundingClientRect()
-        if (!rect) return
-        void copyToClipboard(sampleCitationFor(copyrightPreview)).then((copied) => {
-          if (!copied) return
-          setCopyToast({ x: rect.left + rect.width / 2, y: rect.top })
-          window.setTimeout(() => setCopyToast(null), 1200)
-        })
+  useShortcuts(
+    [
+      { key: 'e', label: 'Edit piece', enabled: false, run: () => {} },
+      {
+        key: 'f',
+        label: favorite ? 'Remove from favorites' : 'Add to favorites',
+        run: () => setFavorite((f) => !f),
       },
-    },
-  ])
+      { key: 'p', label: 'Open the page viewer', run: () => setLightboxOpen(true) },
+      { key: 'd', label: 'Download PDF', run: () => {} },
+      { key: 's', label: 'Add to setlist', run: () => setAddToSetlistOpen(true) },
+      {
+        key: 'c',
+        label: 'Copy citation',
+        run: () => {
+          const rect = citationButtonRef.current?.getBoundingClientRect()
+          if (!rect) return
+          void copyToClipboard(sampleCitationFor(copyrightPreview)).then((copied) => {
+            if (!copied) return
+            setCopyToast({ x: rect.left + rect.width / 2, y: rect.top })
+            window.setTimeout(() => setCopyToast(null), 1200)
+          })
+        },
+      },
+    ],
+    { title: 'Piece Details', reference: { title: 'In Edit Piece', rows: EDIT_PIECE_KEYS } },
+  )
 
   function simulateReplace() {
     setReplaceConfirming(false)

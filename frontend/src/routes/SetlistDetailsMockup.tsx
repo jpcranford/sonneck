@@ -32,7 +32,7 @@ import { EditRoleModal } from './EditRoleMockup'
 import { formatDateOnly } from '../lib/dateOnly'
 import { confirmAction } from '../lib/dialogs'
 import { copyToClipboard } from '../lib/clipboard'
-import { useShortcuts } from '../lib/shortcuts'
+import { EDIT_WINDOW_KEYS, useShortcuts } from '../lib/shortcuts'
 
 // Setlists design pass, Phase 6 — the real Setlist Details page (§13),
 // built against the approved Phase 2 layout (Option B, "Stats dashboard")
@@ -480,12 +480,15 @@ export function SetlistDetailsMockup() {
       window.setTimeout(() => setCopyToast(null), 1200)
     })
   }
-  useShortcuts([
-    { key: 'e', label: 'Edit setlist', run: () => openEditSetlist('details') },
-    { key: 'd', label: 'Download Set PDF', run: () => {} },
-    { key: 'c', label: 'Copy program as plain text', run: () => copyProgramFromKey('text') },
-    { key: 'm', label: 'Copy program as Markdown', run: () => copyProgramFromKey('markdown') },
-  ])
+  useShortcuts(
+    [
+      { key: 'e', label: 'Edit setlist', run: () => openEditSetlist('details') },
+      { key: 'd', label: 'Download Set PDF', run: () => {} },
+      { key: 'c', label: 'Copy program as plain text', run: () => copyProgramFromKey('text') },
+      { key: 'm', label: 'Copy program as Markdown', run: () => copyProgramFromKey('markdown') },
+    ],
+    { title: 'Setlist Details', reference: { title: 'In Edit Setlist', rows: EDIT_WINDOW_KEYS } },
+  )
 
   function confirmArchiveToggle() {
     setArchived((a) => !a)

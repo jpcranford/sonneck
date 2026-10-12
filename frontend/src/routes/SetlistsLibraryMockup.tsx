@@ -256,7 +256,9 @@ export function SetlistsLibraryMockup() {
   const [editTarget, setEditTarget] = useState<MockSetlist | null>(null)
   const [newSetlistOpen, setNewSetlistOpen] = useState(false)
   // N: New Setlist, as in the real SetlistsLibraryPage.tsx (lib/shortcuts.ts).
-  useShortcuts([{ key: 'n', label: 'New setlist', run: () => setNewSetlistOpen(true) }])
+  useShortcuts([{ key: 'n', label: 'New setlist', run: () => setNewSetlistOpen(true) }], {
+    title: 'Setlists',
+  })
 
   const active = sortActiveSetlists(setlists.filter((s) => !isEffectivelyArchived(s)))
   const archived = sortArchivedSetlists(setlists.filter((s) => isEffectivelyArchived(s)))

@@ -737,6 +737,7 @@ export function PeopleLibraryPage() {
   return (
     <div className="flex flex-1 flex-col">
       <LibraryToolbar
+        shortcutTitle="People"
         query={query}
         onQueryChange={setQuery}
         searchPlaceholder="Search your people…"

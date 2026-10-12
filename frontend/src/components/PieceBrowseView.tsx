@@ -300,6 +300,7 @@ export function PieceBrowseView({
   return (
     <div className="flex flex-1 flex-col">
       <LibraryToolbar
+        shortcutTitle={backLabel}
         query={query}
         onQueryChange={setQuery}
         searchPlaceholder={searchPlaceholder}

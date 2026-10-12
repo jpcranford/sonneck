@@ -38,7 +38,7 @@ import { TagPills } from '../components/TagPills'
 import { confirmAction, showAlert } from '../lib/dialogs'
 import { ViewModeToggle } from '../components/ViewModeToggle'
 import { EmptyState } from '../components/EmptyState'
-import { useShortcuts } from '../lib/shortcuts'
+import { EDIT_WINDOW_KEYS, useShortcuts } from '../lib/shortcuts'
 
 // Book Details page — no design-doc spec (new ground, same as the Books
 // library view before it). Built from the "Book Details — Consolidated
@@ -461,6 +461,10 @@ export function BookDetailsPage() {
           },
         ]
       : [],
+    {
+      title: 'Book Details',
+      reference: canEdit ? { title: 'In Edit Book', rows: EDIT_WINDOW_KEYS } : undefined,
+    },
   )
 
   const notFound = bookError instanceof ApiError && bookError.code === 'NOT_FOUND'

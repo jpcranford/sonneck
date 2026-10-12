@@ -1037,29 +1037,32 @@ export function PeopleLibrarySample() {
   // Same keyboard shortcuts as the real LibraryToolbar.tsx (lib/shortcuts.ts).
   const searchRef = useRef<HTMLInputElement>(null)
   const sortTriggerRef = useRef<HTMLButtonElement>(null)
-  useShortcuts([
-    { key: '/', label: 'Search', run: () => searchRef.current?.focus() },
-    {
-      key: 'v',
-      label: viewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view',
-      run: () => setViewMode((m) => (m === 'grid' ? 'list' : 'grid')),
-    },
-    { key: 'f', label: 'Filters', run: () => setDrawerOpen(true) },
-    {
-      key: 'o',
-      label: 'Sort by…',
-      run: () => {
-        sortTriggerRef.current?.focus()
-        sortTriggerRef.current?.click()
+  useShortcuts(
+    [
+      { key: '/', label: 'Search (tap)', run: () => searchRef.current?.focus() },
+      {
+        key: 'v',
+        label: viewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view',
+        run: () => setViewMode((m) => (m === 'grid' ? 'list' : 'grid')),
       },
-    },
-    {
-      key: 'r',
-      label: 'Reverse the sort',
-      run: () => setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc')),
-    },
-    { key: 'n', label: 'New Person', run: () => setNewPersonOpen(true) },
-  ])
+      { key: 'f', label: 'Filters', run: () => setDrawerOpen(true) },
+      {
+        key: 'o',
+        label: 'Sort by…',
+        run: () => {
+          sortTriggerRef.current?.focus()
+          sortTriggerRef.current?.click()
+        },
+      },
+      {
+        key: 'r',
+        label: 'Reverse the sort',
+        run: () => setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc')),
+      },
+      { key: 'n', label: 'New Person', run: () => setNewPersonOpen(true) },
+    ],
+    { title: 'People' },
+  )
   const [filters, setFilters] = useState<PersonFilterState>(EMPTY_PERSON_FILTERS)
   const [sortField, setSortField] = useState<PersonSortField>('Name')
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')

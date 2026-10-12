@@ -50,6 +50,7 @@ import { CitationLogicMockup } from './routes/CitationLogicMockup'
 import { DeviceInfoMockup } from './routes/DeviceInfoMockup'
 import { FirstLaunchMockup } from './routes/FirstLaunchMockup'
 import { StatesMockup } from './routes/StatesMockup'
+import { ShortcutHelpMockup } from './routes/ShortcutHelpMockup'
 import { StyleSamplerMockup } from './routes/StyleSamplerMockup'
 import { PeopleLibraryPage } from './routes/PeopleLibraryPage'
 import { PersonDetailsPage } from './routes/PersonDetailsPage'
@@ -199,6 +200,7 @@ function AppRoutes() {
         <Route path="mockup/admin-settings" element={<AdminSettingsMockup />} />
         <Route path="mockup/style-sampler" element={<StyleSamplerMockup />} />
         <Route path="mockup/states" element={<StatesMockup />} />
+        <Route path="mockup/shortcut-help" element={<ShortcutHelpMockup />} />
         <Route path="favorites" element={<FavoritesPage />} />
         <Route path="want-to-learn" element={<WantToLearnPage />} />
         <Route path="practicing" element={<PracticingPage />} />

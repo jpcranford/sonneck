@@ -58,7 +58,7 @@ import { MarkdownText } from '../components/MarkdownText'
 import { PageLightbox } from '../components/PageLightbox'
 import { PracticeStatusIcon } from '../components/PracticeStatusIcon'
 import { confirmAction, showAlert } from '../lib/dialogs'
-import { useShortcuts } from '../lib/shortcuts'
+import { EDIT_PIECE_KEYS, useShortcuts } from '../lib/shortcuts'
 
 // Mirrors UploadPage's own cap (backend's MaxUploadBytes) — same reasoning
 // as there: reject an oversized file instantly rather than after a slow
@@ -398,6 +398,10 @@ export function PiecePage() {
           },
         ]
       : [],
+    {
+      title: 'Piece Details',
+      reference: canEdit ? { title: 'In Edit Piece', rows: EDIT_PIECE_KEYS } : undefined,
+    },
   )
 
   const replaceMutation = useMutation({

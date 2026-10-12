@@ -1031,28 +1031,31 @@ export function PieceLibrarySample() {
   // Same keyboard shortcuts as the real LibraryToolbar.tsx (lib/shortcuts.ts).
   const searchRef = useRef<HTMLInputElement>(null)
   const sortTriggerRef = useRef<HTMLButtonElement>(null)
-  useShortcuts([
-    { key: '/', label: 'Search', run: () => searchRef.current?.focus() },
-    {
-      key: 'v',
-      label: viewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view',
-      run: () => setViewMode((m) => (m === 'grid' ? 'list' : 'grid')),
-    },
-    { key: 'f', label: 'Filters', run: () => setDrawerOpen(true) },
-    {
-      key: 'o',
-      label: 'Sort by…',
-      run: () => {
-        sortTriggerRef.current?.focus()
-        sortTriggerRef.current?.click()
+  useShortcuts(
+    [
+      { key: '/', label: 'Search (tap)', run: () => searchRef.current?.focus() },
+      {
+        key: 'v',
+        label: viewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view',
+        run: () => setViewMode((m) => (m === 'grid' ? 'list' : 'grid')),
       },
-    },
-    {
-      key: 'r',
-      label: 'Reverse the sort',
-      run: () => setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc')),
-    },
-  ])
+      { key: 'f', label: 'Filters', run: () => setDrawerOpen(true) },
+      {
+        key: 'o',
+        label: 'Sort by…',
+        run: () => {
+          sortTriggerRef.current?.focus()
+          sortTriggerRef.current?.click()
+        },
+      },
+      {
+        key: 'r',
+        label: 'Reverse the sort',
+        run: () => setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc')),
+      },
+    ],
+    { title: 'Library' },
+  )
   // Live update, not draft-then-"Show results". Every checkbox writes straight to
   // appliedFilters, no separate draft state — results, the pill row, and
   // the Filters badge count all update the instant a box is checked,

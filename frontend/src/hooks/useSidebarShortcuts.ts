@@ -32,5 +32,6 @@ export function useSidebarShortcuts() {
       enabled: target.enabled,
       run: () => navigate(target.to),
     })),
+    { sidebar: true },
   )
 }

@@ -17,6 +17,11 @@ const MOCKUPS = [
     note: 'Every empty, error and loading state in the app on one page, with an Empty / Error / Loading switch and a Light / Dark switch — states that only appear in special moments and are easy to miss page by page. Hand-maintained copies of the real markup, each labeled with where the real one lives.',
   },
   {
+    to: '/mockup/shortcut-help',
+    name: 'Shortcut Help',
+    note: 'Hold / or ? (about a second, not while typing) for a corner card listing the page’s keyboard shortcuts; letting go hides it. Pick a page and what the viewer may do — keys they can’t use are left off, edit-window keys are listed for reference, and a “Keep holding” pill fills first.',
+  },
+  {
     to: '/mockup/piece-details',
     name: 'Piece Details',
     note: 'Reference sample for the Piece Details page (§14) — kept as a standing design reference.',

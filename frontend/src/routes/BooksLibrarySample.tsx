@@ -924,29 +924,32 @@ export function BooksLibrarySample() {
   // Same keyboard shortcuts as the real LibraryToolbar.tsx (lib/shortcuts.ts).
   const searchRef = useRef<HTMLInputElement>(null)
   const sortTriggerRef = useRef<HTMLButtonElement>(null)
-  useShortcuts([
-    { key: '/', label: 'Search', run: () => searchRef.current?.focus() },
-    {
-      key: 'v',
-      label: viewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view',
-      run: () => setViewMode((m) => (m === 'grid' ? 'list' : 'grid')),
-    },
-    { key: 'f', label: 'Filters', run: () => setDrawerOpen(true) },
-    {
-      key: 'o',
-      label: 'Sort by…',
-      run: () => {
-        sortTriggerRef.current?.focus()
-        sortTriggerRef.current?.click()
+  useShortcuts(
+    [
+      { key: '/', label: 'Search (tap)', run: () => searchRef.current?.focus() },
+      {
+        key: 'v',
+        label: viewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view',
+        run: () => setViewMode((m) => (m === 'grid' ? 'list' : 'grid')),
       },
-    },
-    {
-      key: 'r',
-      label: 'Reverse the sort',
-      run: () => setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc')),
-    },
-    { key: 'n', label: 'New Book', run: () => setNewBookOpen(true) },
-  ])
+      { key: 'f', label: 'Filters', run: () => setDrawerOpen(true) },
+      {
+        key: 'o',
+        label: 'Sort by…',
+        run: () => {
+          sortTriggerRef.current?.focus()
+          sortTriggerRef.current?.click()
+        },
+      },
+      {
+        key: 'r',
+        label: 'Reverse the sort',
+        run: () => setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc')),
+      },
+      { key: 'n', label: 'New Book', run: () => setNewBookOpen(true) },
+    ],
+    { title: 'Books' },
+  )
   const [appliedFilters, setAppliedFilters] = useState<BookFilterState>(EMPTY_BOOK_FILTERS)
   const [sortField, setSortField] = useState<BookSortField>('Date Added')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')

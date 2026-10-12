@@ -41,7 +41,7 @@ import { yearWrittenSource } from '../lib/yearWrittenSource'
 import { confirmAction, showAlert } from '../lib/dialogs'
 import { ViewModeToggle } from '../components/ViewModeToggle'
 import { EmptyState } from '../components/EmptyState'
-import { useShortcuts } from '../lib/shortcuts'
+import { EDIT_WINDOW_KEYS, useShortcuts } from '../lib/shortcuts'
 
 // The real Person Details page (/people/:id) — composer/arranger overhaul,
 // Stage B. Real build of PersonDetailsSample.tsx (/mockup/person-details,
@@ -467,6 +467,10 @@ export function PersonDetailsPage() {
     person
       ? [{ key: 'e', label: 'Edit person', enabled: canEdit, run: () => setEditOpen(true) }]
       : [],
+    {
+      title: 'Person Details',
+      reference: canEdit ? { title: 'In Edit Person', rows: EDIT_WINDOW_KEYS } : undefined,
+    },
   )
 
   const removePortraitMutation = useMutation({
