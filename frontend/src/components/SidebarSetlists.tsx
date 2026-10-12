@@ -16,7 +16,7 @@ import type { Setlist } from '../api/types'
 // route — SetlistsLibraryPage.tsx isn't built for real until Phase 15, but
 // the route itself is real and reachable now (scaffold-and-hide), so a
 // shipped nav item never links into a /mockup/* URL.
-function SetlistsMenu() {
+function SetlistsMenu({ onNavigate }: { onNavigate?: () => void }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -71,14 +71,20 @@ function SetlistsMenu() {
         <div className="absolute top-6 right-0 z-10 w-max max-w-[13rem] overflow-hidden rounded-md border border-sidebar-border bg-sidebar-panel py-1 shadow-lg normal-case">
           <Link
             to="/setlists"
-            onClick={() => setOpen(false)}
+            onClick={() => {
+              setOpen(false)
+              onNavigate?.()
+            }}
             className="block w-full cursor-pointer px-3 py-1.5 text-left text-[0.82rem] text-sidebar-text hover:bg-sidebar-menu-hover"
           >
             View All Setlists
           </Link>
           <Link
             to="/setlists#archived"
-            onClick={() => setOpen(false)}
+            onClick={() => {
+              setOpen(false)
+              onNavigate?.()
+            }}
             className="block w-full cursor-pointer px-3 py-1.5 text-left text-[0.82rem] text-sidebar-text hover:bg-sidebar-menu-hover"
           >
             Archive
@@ -91,12 +97,16 @@ function SetlistsMenu() {
 
 // `setlists` is always getUpcomingSetlists' own result (or []), never the
 // raw list — gigDate is guaranteed present here.
+// `onNavigate` runs on every link click — the phone drawer passes its own
+// close, as it does for its nav items, so picking a setlist closes it.
 export function SetlistsSection({
   collapsed,
   setlists,
+  onNavigate,
 }: {
   collapsed: boolean
   setlists: (Setlist & { gigDate: string })[]
+  onNavigate?: () => void
 }) {
   if (collapsed) {
     // Collapsed rail: no room for a label/menu row — just the same
@@ -109,6 +119,7 @@ export function SetlistsSection({
           <NavLink
             key={setlist.id}
             to={`/setlists/${setlist.id}`}
+            onClick={onNavigate}
             title={setlist.name}
             className={({ isActive }) =>
               `flex size-10 items-center justify-center rounded-md font-display text-base font-medium ${
@@ -129,7 +140,7 @@ export function SetlistsSection({
     <div className="mt-6 flex flex-1 flex-col px-2">
       <div className="flex items-center justify-between px-2 py-0.5 text-xs tracking-wide text-sidebar-text-dim uppercase">
         <span>Upcoming Sets</span>
-        <SetlistsMenu />
+        <SetlistsMenu onNavigate={onNavigate} />
       </div>
       {setlists.length === 0 ? (
         <p className="mt-1 px-2 py-1.5 text-sm text-sidebar-text-dim/60 italic">No upcoming sets</p>
@@ -139,6 +150,7 @@ export function SetlistsSection({
             <NavLink
               key={setlist.id}
               to={`/setlists/${setlist.id}`}
+              onClick={onNavigate}
               className={({ isActive }) =>
                 `mt-1 flex items-center justify-between gap-2 truncate rounded-md px-2 py-1.5 font-display text-sm font-medium first:mt-0 ${
                   isActive

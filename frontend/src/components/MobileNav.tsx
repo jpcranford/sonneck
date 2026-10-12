@@ -163,7 +163,9 @@ export function MobileNavDrawer({ open, onClose }: { open: boolean; onClose: () 
           <div className="mx-3 my-3 border-t border-sidebar-border" />
           <DrawerNavList items={SECONDARY_NAV_ITEMS} onNavigate={onClose} />
 
-          {canCreate && <SetlistsSection collapsed={false} setlists={upcomingSetlists} />}
+          {canCreate && (
+            <SetlistsSection collapsed={false} setlists={upcomingSetlists} onNavigate={onClose} />
+          )}
         </div>
         <UserMenuButton collapsed={false} onNavigate={onClose} />
       </aside>
