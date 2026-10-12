@@ -21,6 +21,8 @@ import { usePageTitle } from '../lib/usePageTitle'
 import { useViewPreference } from '../lib/useViewPreference'
 import { showAlert } from '../lib/dialogs'
 import { useEscapeToClose } from '../hooks/useEscapeToClose'
+import { bioExcerpt, personRoleLabel, pluralCount } from '../lib/personCredits'
+import { MarkdownText } from '../components/MarkdownText'
 
 // The real People Library (/people) — composer/arranger overhaul, Stage B.
 // Real build of PeopleLibrarySample.tsx (/mockup/people-library, kept as a
@@ -47,11 +49,6 @@ function formatLifespan(person: Person): string | null {
 
 function piecesLabel(person: Person): string {
   return `${person.pieceCount} ${person.pieceCount === 1 ? 'piece' : 'pieces'}`
-}
-
-function metaLine(person: Person): string {
-  const lifespan = formatLifespan(person)
-  return lifespan ? `${lifespan} • ${piecesLabel(person)}` : piecesLabel(person)
 }
 
 function initials(name: string): string {
@@ -119,18 +116,47 @@ function PersonGridCard({ person }: { person: Person }) {
   )
 }
 
+// Design B ("Bio excerpt", picked from a side-by-side): a larger portrait,
+// the bio's first two lines, and chips for era, role, pieces and books.
+// Without a bio the chips sit right under the name and the row is shorter.
 function PersonListRow({ person }: { person: Person }) {
+  const lifespan = formatLifespan(person)
+  const chips = [
+    getEra(person),
+    personRoleLabel(person.composerCount, person.arrangerCount),
+    piecesLabel(person),
+    person.bookCount > 0 ? pluralCount(person.bookCount, 'book') : null,
+  ].filter((c): c is string => !!c)
   return (
     <PersonContextMenu person={person} hideTriggerButton>
       <ClickableCard
         to={`/people/${person.id}`}
         state={{ backLabel: 'People' }}
-        className="flex items-center gap-4 rounded-md px-2 py-2.5 text-left hover:bg-accent-soft"
+        className="flex items-start gap-4 rounded-md px-2 py-2.5 text-left hover:bg-accent-soft"
       >
-        <PersonAvatar person={person} className="w-11 shrink-0" />
-        <div className="min-w-0 flex-1">
-          <p className="truncate font-display text-base font-medium text-ink">{person.name}</p>
-          <p className="truncate text-sm text-ink-soft">{metaLine(person)}</p>
+        <PersonAvatar person={person} className="w-20 shrink-0" />
+        <div className="min-w-0 flex-1 pt-1">
+          <p className="truncate font-display text-base font-medium text-ink">
+            {person.name}
+            {lifespan && (
+              <span className="ml-2 font-sans text-sm font-normal text-ink-muted">{lifespan}</span>
+            )}
+          </p>
+          {person.bio && (
+            <MarkdownText className="mt-0.5 line-clamp-2 text-sm text-ink-soft">
+              {bioExcerpt(person.bio)}
+            </MarkdownText>
+          )}
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            {chips.map((chip) => (
+              <span
+                key={chip}
+                className="rounded-full border border-border bg-paper px-2 py-px text-xs text-ink-soft"
+              >
+                {chip}
+              </span>
+            ))}
+          </div>
         </div>
       </ClickableCard>
     </PersonContextMenu>

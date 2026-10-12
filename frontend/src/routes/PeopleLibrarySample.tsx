@@ -27,6 +27,8 @@ import { WIDE_CONTENT_MAX_W } from '../lib/layout'
 import { confirmAction } from '../lib/dialogs'
 import { PageToolbarPortal } from '../components/PageToolbarSlot'
 import { useEscapeToClose } from '../hooks/useEscapeToClose'
+import { MarkdownText } from '../components/MarkdownText'
+import { bioExcerpt, personRoleLabel, pluralCount } from '../lib/personCredits'
 
 // ---------------------------------------------------------------------
 // DESIGN MOCKUP for the People Library page — same toolbar/grid/list/
@@ -45,6 +47,12 @@ interface MockPerson {
   pieceCount: number
   avatarKind: 'initials' | 'bust'
   paletteIndex: number
+  // List-view details (design B). Role defaults to composer of every piece;
+  // arrangerCount/composerCount override it, bookCount defaults to 0.
+  bio?: string
+  composerCount?: number
+  arrangerCount?: number
+  bookCount?: number
 }
 
 // Same 17-person fixture set (names, piece counts, death years) across
@@ -61,6 +69,8 @@ const MOCK_PEOPLE: MockPerson[] = [
     pieceCount: 47,
     avatarKind: 'initials',
     paletteIndex: 0,
+    bio: 'German composer and organist of the late Baroque, known for the *Brandenburg Concertos*, the *Mass in B minor* and two books of *The Well-Tempered Clavier*.',
+    bookCount: 2,
   },
   {
     id: 2,
@@ -79,6 +89,8 @@ const MOCK_PEOPLE: MockPerson[] = [
     pieceCount: 28,
     avatarKind: 'initials',
     paletteIndex: 2,
+    bio: 'Polish composer and virtuoso pianist of the Romantic era, who wrote almost entirely for solo piano: nocturnes, mazurkas, polonaises, études and ballades.',
+    bookCount: 1,
   },
   {
     id: 4,
@@ -106,6 +118,7 @@ const MOCK_PEOPLE: MockPerson[] = [
     pieceCount: 9,
     avatarKind: 'initials',
     paletteIndex: 5,
+    bio: "German pianist and composer, one of the most distinguished performers of the Romantic era.\n\nShe premiered many of Brahms's and Robert Schumann's works.",
   },
   {
     id: 7,
@@ -115,6 +128,8 @@ const MOCK_PEOPLE: MockPerson[] = [
     pieceCount: 8,
     avatarKind: 'bust',
     paletteIndex: 6,
+    bio: 'French composer associated with Impressionism in music, though he disliked the label.',
+    bookCount: 1,
   },
   {
     id: 8,
@@ -124,6 +139,7 @@ const MOCK_PEOPLE: MockPerson[] = [
     pieceCount: 6,
     avatarKind: 'initials',
     paletteIndex: 7,
+    bookCount: 1,
   },
   {
     id: 9,
@@ -151,6 +167,8 @@ const MOCK_PEOPLE: MockPerson[] = [
     pieceCount: 3,
     avatarKind: 'initials',
     paletteIndex: 0,
+    composerCount: 3,
+    arrangerCount: 1,
   },
   {
     id: 12,
@@ -178,6 +196,8 @@ const MOCK_PEOPLE: MockPerson[] = [
     pieceCount: 2,
     avatarKind: 'initials',
     paletteIndex: 3,
+    composerCount: 0,
+    arrangerCount: 2,
   },
   {
     id: 15,
@@ -187,6 +207,8 @@ const MOCK_PEOPLE: MockPerson[] = [
     pieceCount: 1,
     avatarKind: 'initials',
     paletteIndex: 4,
+    composerCount: 0,
+    arrangerCount: 1,
   },
   {
     id: 16,
@@ -196,6 +218,8 @@ const MOCK_PEOPLE: MockPerson[] = [
     pieceCount: 2,
     avatarKind: 'initials',
     paletteIndex: 5,
+    composerCount: 0,
+    arrangerCount: 2,
   },
   {
     id: 17,
@@ -205,6 +229,8 @@ const MOCK_PEOPLE: MockPerson[] = [
     pieceCount: 1,
     avatarKind: 'initials',
     paletteIndex: 6,
+    composerCount: 0,
+    arrangerCount: 1,
   },
   // Demonstrates nameSortKey below (quoted-nickname sort) — sorted by
   // Name, this must land among the "J"s, not before "A" as a naive
@@ -234,11 +260,6 @@ function formatLifespan(person: MockPerson): string | null {
 
 function piecesLabel(person: MockPerson): string {
   return `${person.pieceCount} ${person.pieceCount === 1 ? 'piece' : 'pieces'}`
-}
-
-function metaLine(person: MockPerson): string {
-  const lifespan = formatLifespan(person)
-  return lifespan ? `${lifespan} • ${piecesLabel(person)}` : piecesLabel(person)
 }
 
 function initials(name: string): string {
@@ -368,16 +389,44 @@ function PersonGridCard({ person, onDelete }: { person: MockPerson; onDelete: ()
 }
 
 // ---- List row ----
+// Design B ("Bio excerpt", picked from a side-by-side) — same as the real
+// PeopleLibraryPage.tsx row.
 function PersonListRow({ person, onDelete }: { person: MockPerson; onDelete: () => void }) {
+  const lifespan = formatLifespan(person)
+  const chips = [
+    getEra(person),
+    personRoleLabel(person.composerCount ?? person.pieceCount, person.arrangerCount ?? 0),
+    piecesLabel(person),
+    person.bookCount ? pluralCount(person.bookCount, 'book') : null,
+  ].filter((c): c is string => !!c)
   return (
     <PersonContextMenu person={person} onDelete={onDelete}>
-      <div className="flex cursor-pointer items-center gap-4 rounded-md px-2 py-2.5 text-left hover:bg-accent-soft">
-        <PersonAvatar person={person} className="w-11 shrink-0" />
-        <div className="min-w-0 flex-1">
-          <p className="truncate font-display text-base font-medium text-ink">{person.name}</p>
-          <p className="truncate text-sm text-ink-soft">{metaLine(person)}</p>
+      <div className="flex cursor-pointer items-start gap-4 rounded-md px-2 py-2.5 text-left hover:bg-accent-soft">
+        <PersonAvatar person={person} className="w-20 shrink-0" />
+        <div className="min-w-0 flex-1 pt-1">
+          <p className="truncate font-display text-base font-medium text-ink">
+            {person.name}
+            {lifespan && (
+              <span className="ml-2 font-sans text-sm font-normal text-ink-muted">{lifespan}</span>
+            )}
+          </p>
+          {person.bio && (
+            <MarkdownText className="mt-0.5 line-clamp-2 text-sm text-ink-soft">
+              {bioExcerpt(person.bio)}
+            </MarkdownText>
+          )}
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            {chips.map((chip) => (
+              <span
+                key={chip}
+                className="rounded-full border border-border bg-paper px-2 py-px text-xs text-ink-soft"
+              >
+                {chip}
+              </span>
+            ))}
+          </div>
         </div>
-        <IconChevronRight size={18} className="shrink-0 text-ink-fainter" />
+        <IconChevronRight size={18} className="shrink-0 self-center text-ink-fainter" />
       </div>
     </PersonContextMenu>
   )

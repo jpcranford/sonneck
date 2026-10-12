@@ -110,6 +110,11 @@ export interface Person {
   hasCustomPortrait: boolean
   portraitImageHash: string | null
   pieceCount: number
+  // Of those pieces, how many credit them as composer / as arranger
+  // (a piece crediting both counts in each), and books crediting them.
+  composerCount: number
+  arrangerCount: number
+  bookCount: number
   createdAt: string
 }
 

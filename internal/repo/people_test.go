@@ -259,3 +259,58 @@ func TestCountPiecesForPerson_IsEffectiveIncludingBookInheritance(t *testing.T) 
 		t.Errorf("CountPiecesForPerson = %d, want 2 (the two inheriting pieces, not the one that overrides its own composer)", count)
 	}
 }
+
+// TestCountPersonCredits splits a person's pieces by role, effective (own
+// credit, else the book's), and counts books crediting them directly.
+func TestCountPersonCredits(t *testing.T) {
+	ctx := context.Background()
+	dbConn := newTestDB(t)
+
+	person, err := repo.FindOrCreatePerson(ctx, dbConn, "Both Roles")
+	if err != nil {
+		t.Fatalf("FindOrCreatePerson: %v", err)
+	}
+	bookID, err := repo.CreateBook(ctx, dbConn, &models.Book{
+		BookTitle:        "Arranged Album",
+		OriginalFilename: strPtr("album.pdf"),
+		FilePath:         strPtr("/data/library/books/album.pdf"),
+		FileHash:         strPtr("credits-album-hash"),
+	})
+	if err != nil {
+		t.Fatalf("CreateBook: %v", err)
+	}
+	if err := repo.SetBookArrangers(ctx, dbConn, bookID, []int64{person}); err != nil {
+		t.Fatalf("SetBookArrangers: %v", err)
+	}
+	newPiece := func(title string, book *int64) int64 {
+		id, err := repo.CreatePiece(ctx, dbConn, &models.Piece{
+			Title: title, SourceBookID: book,
+			FilePath: "/data/library/pieces/" + title + ".pdf", FileHash: title + "-hash",
+		})
+		if err != nil {
+			t.Fatalf("CreatePiece: %v", err)
+		}
+		return id
+	}
+	// Composed directly, no book.
+	composed := newPiece("composed", nil)
+	if err := repo.SetPieceComposers(ctx, dbConn, composed, []int64{person}); err != nil {
+		t.Fatalf("SetPieceComposers: %v", err)
+	}
+	// Arranged through the book, and composed directly too: counts in both.
+	both := newPiece("both", &bookID)
+	if err := repo.SetPieceComposers(ctx, dbConn, both, []int64{person}); err != nil {
+		t.Fatalf("SetPieceComposers: %v", err)
+	}
+	// Arranged through the book only.
+	newPiece("arranged", &bookID)
+
+	got, err := repo.CountPersonCredits(ctx, dbConn, person)
+	if err != nil {
+		t.Fatalf("CountPersonCredits: %v", err)
+	}
+	want := repo.PersonCredits{Pieces: 3, Composed: 2, Arranged: 2, Books: 1}
+	if got != want {
+		t.Errorf("CountPersonCredits = %+v, want %+v", got, want)
+	}
+}

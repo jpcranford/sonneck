@@ -101,18 +101,50 @@ func CountPeopleWithPortraitImageHash(ctx context.Context, q Queryer, hash strin
 // combinations separately, mirroring handleSearchPieces' personId filter
 // exactly rather than inventing a different shape for the same rule.
 func CountPiecesForPerson(ctx context.Context, q Queryer, personID int64) (int, error) {
-	var count int
+	c, err := CountPersonCredits(ctx, q, personID)
+	return c.Pieces, err
+}
+
+// The effective composer / arranger credit for piece row `p`: its own
+// direct credit, else (with no credit of that role at all) its book's.
+// Each takes the person id once.
+const (
+	pieceComposedBy = `(p.id IN (SELECT piece_id FROM piece_composers WHERE person_id = ?)
+		OR (p.id NOT IN (SELECT piece_id FROM piece_composers)
+			AND p.source_book_id IN (SELECT book_id FROM book_composers WHERE person_id = ?)))`
+	pieceArrangedBy = `(p.id IN (SELECT piece_id FROM piece_arrangers WHERE person_id = ?)
+		OR (p.id NOT IN (SELECT piece_id FROM piece_arrangers)
+			AND p.source_book_id IN (SELECT book_id FROM book_arrangers WHERE person_id = ?)))`
+)
+
+// PersonCredits is what the People Library shows about a person's place in
+// the library: pieces crediting them (either role, CountPiecesForPerson's
+// number), how many of those they composed and arranged (a piece crediting
+// them as both counts in each), and books crediting them directly in either
+// role — the same books Person Details lists.
+type PersonCredits struct {
+	Pieces   int
+	Composed int
+	Arranged int
+	Books    int
+}
+
+// CountPersonCredits computes PersonCredits in one query, with the same
+// effective, book-inheriting credit rule as CountPiecesForPerson.
+func CountPersonCredits(ctx context.Context, q Queryer, personID int64) (PersonCredits, error) {
+	var c PersonCredits
+	id := personID
 	err := q.QueryRowContext(ctx, `
-		SELECT COUNT(*) FROM pieces p WHERE (
-			p.id IN (SELECT piece_id FROM piece_composers WHERE person_id = ?)
-			OR (p.id NOT IN (SELECT piece_id FROM piece_composers)
-				AND p.source_book_id IN (SELECT book_id FROM book_composers WHERE person_id = ?))
-			OR p.id IN (SELECT piece_id FROM piece_arrangers WHERE person_id = ?)
-			OR (p.id NOT IN (SELECT piece_id FROM piece_arrangers)
-				AND p.source_book_id IN (SELECT book_id FROM book_arrangers WHERE person_id = ?))
-		)`, personID, personID, personID, personID,
-	).Scan(&count)
-	return count, err
+		SELECT
+			(SELECT COUNT(*) FROM pieces p WHERE `+pieceComposedBy+` OR `+pieceArrangedBy+`),
+			(SELECT COUNT(*) FROM pieces p WHERE `+pieceComposedBy+`),
+			(SELECT COUNT(*) FROM pieces p WHERE `+pieceArrangedBy+`),
+			(SELECT COUNT(*) FROM books b WHERE
+				b.id IN (SELECT book_id FROM book_composers WHERE person_id = ?)
+				OR b.id IN (SELECT book_id FROM book_arrangers WHERE person_id = ?))`,
+		id, id, id, id, id, id, id, id, id, id,
+	).Scan(&c.Pieces, &c.Composed, &c.Arranged, &c.Books)
+	return c, err
 }
 
 // FindOrCreatePerson is the same Calibre-style "pick existing or type a

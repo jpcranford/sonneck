@@ -477,7 +477,8 @@ type BookWriteRequest struct {
 // brief: Name, Bio, BirthYear, DeathYear, plus an optional custom portrait
 // (mirrors Book's own HasCustomCover/CoverImageHash pair exactly) and a
 // PieceCount for the People Library's own listing and its default
-// >2-piece filter.
+// >2-piece filter. ComposerCount/ArrangerCount/BookCount fill in the list
+// view's role and book details (repo.CountPersonCredits).
 type PersonResponse struct {
 	ID                int64     `json:"id"`
 	Name              string    `json:"name"`
@@ -487,11 +488,14 @@ type PersonResponse struct {
 	HasCustomPortrait bool      `json:"hasCustomPortrait"`
 	PortraitImageHash *string   `json:"portraitImageHash"`
 	PieceCount        int       `json:"pieceCount"`
+	ComposerCount     int       `json:"composerCount"`
+	ArrangerCount     int       `json:"arrangerCount"`
+	BookCount         int       `json:"bookCount"`
 	CreatedAt         time.Time `json:"createdAt"`
 }
 
 func BuildPersonResponse(ctx context.Context, q repo.Queryer, p *models.Person) (*PersonResponse, error) {
-	count, err := repo.CountPiecesForPerson(ctx, q, p.ID)
+	credits, err := repo.CountPersonCredits(ctx, q, p.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -503,7 +507,10 @@ func BuildPersonResponse(ctx context.Context, q repo.Queryer, p *models.Person) 
 		DeathYear:         p.DeathYear,
 		HasCustomPortrait: p.PortraitImageHash != nil,
 		PortraitImageHash: p.PortraitImageHash,
-		PieceCount:        count,
+		PieceCount:        credits.Pieces,
+		ComposerCount:     credits.Composed,
+		ArrangerCount:     credits.Arranged,
+		BookCount:         credits.Books,
 		CreatedAt:         p.CreatedAt,
 	}, nil
 }
