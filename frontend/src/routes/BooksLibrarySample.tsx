@@ -23,6 +23,8 @@ import { useMockupTitle } from '../lib/useMockupTitle'
 import { WIDE_CONTENT_MAX_W } from '../lib/layout'
 import { PageToolbarPortal } from '../components/PageToolbarSlot'
 import { useEscapeToClose } from '../hooks/useEscapeToClose'
+import { EmptyState } from '../components/EmptyState'
+import { noMatchMessage } from '../lib/emptyMessages'
 
 // ---------------------------------------------------------------------
 // DESIGN MOCKUP for the Books Library page. Originally a side-by-side
@@ -1149,7 +1151,7 @@ export function BooksLibrarySample() {
         </p>
 
         {sortedBooks.length === 0 && (
-          <p className="p-8 text-center text-ink-muted">No books match these filters.</p>
+          <EmptyState {...noMatchMessage('books', query, activeCount > 0)} />
         )}
 
         {sortedBooks.length > 0 && viewMode === 'grid' && (

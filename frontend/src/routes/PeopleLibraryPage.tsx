@@ -23,6 +23,8 @@ import { showAlert } from '../lib/dialogs'
 import { useEscapeToClose } from '../hooks/useEscapeToClose'
 import { bioExcerpt, personRoleLabel, pluralCount } from '../lib/personCredits'
 import { MarkdownText } from '../components/MarkdownText'
+import { EmptyState } from '../components/EmptyState'
+import { noMatchMessage } from '../lib/emptyMessages'
 
 // The real People Library (/people) — composer/arranger overhaul, Stage B.
 // Real build of PeopleLibrarySample.tsx (/mockup/people-library, kept as a
@@ -693,6 +695,20 @@ export function PeopleLibraryPage() {
 
   const filtered = people.filter((p) => passesShowOnly(p) && passesEra(p) && passesCentury(p))
   const hiddenCount = people.length - people.filter(passesShowOnly).length
+  // Era/Century narrow the list; Show all only widens it.
+  const narrowing = Object.keys(filters.era).length + Object.keys(filters.centuries).length > 0
+  const peopleEmpty =
+    !debouncedQuery && !narrowing && people.length === 0
+      ? {
+          title: 'No people yet',
+          detail: 'Add someone with New Person, or credit them on a piece.',
+        }
+      : !debouncedQuery && !narrowing && hiddenCount > 0
+        ? {
+            title: 'Everyone is hidden',
+            detail: 'Only people with 3 or more pieces show at first. See Filters.',
+          }
+        : noMatchMessage('people', debouncedQuery, narrowing)
 
   const activeFilterCount = activePersonFilterCount(filters)
   function clearFilterPill(field: 'era' | 'centuries', value: string) {
@@ -790,9 +806,7 @@ export function PeopleLibraryPage() {
           </p>
         )}
 
-        {!isLoading && filtered.length === 0 && (
-          <p className="p-8 text-center text-ink-muted">No people match these filters.</p>
-        )}
+        {!isLoading && filtered.length === 0 && <EmptyState {...peopleEmpty} />}
 
         {filtered.length > 0 && viewMode === 'grid' && (
           <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-x-4 gap-y-6">

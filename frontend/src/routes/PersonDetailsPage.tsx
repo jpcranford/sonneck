@@ -40,6 +40,7 @@ import { useViewPreference } from '../lib/useViewPreference'
 import { yearWrittenSource } from '../lib/yearWrittenSource'
 import { confirmAction, showAlert } from '../lib/dialogs'
 import { ViewModeToggle } from '../components/ViewModeToggle'
+import { EmptyState } from '../components/EmptyState'
 
 // The real Person Details page (/people/:id) — composer/arranger overhaul,
 // Stage B. Real build of PersonDetailsSample.tsx (/mockup/person-details,
@@ -726,12 +727,11 @@ export function PersonDetailsPage() {
             <div className="px-6 pb-5">
               {worksLoading && <p className="text-ink-soft">Loading…</p>}
               {works && works.length === 0 && (
-                <div className="py-6 text-center">
-                  <p className="font-display font-medium text-ink-muted">No pieces yet</p>
-                  <p className="mt-1 text-sm italic text-ink-muted">
-                    Pieces and books crediting this person will appear here.
-                  </p>
-                </div>
+                <EmptyState
+                  title="No pieces yet"
+                  detail="Pieces and books crediting this person will appear here."
+                  className="py-6"
+                />
               )}
               {works &&
                 works.length > 0 &&

@@ -29,6 +29,8 @@ import { PageToolbarPortal } from '../components/PageToolbarSlot'
 import { useEscapeToClose } from '../hooks/useEscapeToClose'
 import { MarkdownText } from '../components/MarkdownText'
 import { bioExcerpt, personRoleLabel, pluralCount } from '../lib/personCredits'
+import { EmptyState } from '../components/EmptyState'
+import { noMatchMessage } from '../lib/emptyMessages'
 
 // ---------------------------------------------------------------------
 // DESIGN MOCKUP for the People Library page — same toolbar/grid/list/
@@ -1089,6 +1091,20 @@ export function PeopleLibrarySample() {
   // hint exists to explain *that* default, not to summarize every active
   // filter's effect.
   const hiddenCount = people.length - people.filter(passesShowOnly).length
+  // Same three cases as the real PeopleLibraryPage.tsx.
+  const narrowing = Object.keys(filters.era).length + Object.keys(filters.centuries).length > 0
+  const peopleEmpty =
+    !query.trim() && !narrowing && people.length === 0
+      ? {
+          title: 'No people yet',
+          detail: 'Add someone with New Person, or credit them on a piece.',
+        }
+      : !query.trim() && !narrowing && hiddenCount > 0
+        ? {
+            title: 'Everyone is hidden',
+            detail: 'Only people with 3 or more pieces show at first. See Filters.',
+          }
+        : noMatchMessage('people', query, narrowing)
 
   const activeFilterCount = activePersonFilterCount(filters)
   function clearFilterPill(field: 'era' | 'centuries', value: string) {
@@ -1282,9 +1298,7 @@ export function PeopleLibrarySample() {
           {!filters.showAll && hiddenCount > 0 && ` • ${hiddenCount} hidden (see Filters)`}
         </p>
 
-        {sortedPeople.length === 0 && (
-          <p className="p-8 text-center text-ink-muted">No people match these filters.</p>
-        )}
+        {sortedPeople.length === 0 && <EmptyState {...peopleEmpty} />}
 
         {sortedPeople.length > 0 && viewMode === 'grid' && (
           <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-x-4 gap-y-6">

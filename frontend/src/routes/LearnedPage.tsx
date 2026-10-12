@@ -5,8 +5,7 @@ export function LearnedPage() {
     <PieceBrowseView
       filters={{ practiceStatusSlot: 'learned' }}
       searchPlaceholder="Search pieces you've learned…"
-      emptyMessage="No pieces marked Learned yet."
-      noMatchMessage="No matching pieces in Learned."
+      empty={{ title: 'Your repertoire is empty', detail: 'Pieces you mark Learned collect here.' }}
       backLabel="Learned"
     />
   )

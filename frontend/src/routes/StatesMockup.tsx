@@ -9,6 +9,8 @@ import {
   IconSearch,
 } from '@tabler/icons-react'
 import { useMockupTitle } from '../lib/useMockupTitle'
+import { EmptyState } from '../components/EmptyState'
+import { noMatchMessage } from '../lib/emptyMessages'
 
 // Every empty, error and loading state in the app on one page, for
 // reviewing them side by side (they only appear in special moments, so
@@ -106,38 +108,76 @@ function Specimen({
 function EmptyStates() {
   return (
     <>
-      <Specimen where="Library — no pieces at all" note="PieceBrowseView, emptyMessage">
-        <p className="p-8 text-center text-ink-muted">
-          Your library is empty — upload a piece to get started.
-        </p>
+      <Specimen where="Library — no pieces at all" note="PieceBrowseView's `empty`">
+        <EmptyState
+          title="Your library is empty"
+          detail="Drop a PDF anywhere on this page, or choose Upload in the sidebar."
+        />
       </Specimen>
       <Specimen
-        where="Library — search with no matches"
-        note="Same line on Books and People: “No books match your search.”, “No people match these filters.”"
+        where="Library, Books, People — search with no matches"
+        note="lib/emptyMessages.ts: with filters on too it adds “or try fewer filters”; with only filters, “No pieces match these filters” / “Try fewer filters.” Books and People say books and people; Favorites says favorites."
       >
-        <p className="p-8 text-center text-ink-muted">No pieces match your search.</p>
+        <EmptyState {...noMatchMessage('pieces', 'mozart', false)} />
       </Specimen>
-      <Specimen
-        where="Favorites / Want to Learn / Currently Practicing / Learned"
-        note="Each view's own emptyMessage"
-      >
-        <p className="p-8 text-center text-ink-muted">You haven't favorited any pieces yet.</p>
+      <Specimen where="Favorites — none yet">
+        <EmptyState
+          title="Nothing favorited"
+          detail="Use the heart on a piece, or Add to Favorites in its menu."
+        />
+      </Specimen>
+      <Specimen where="Want to Learn — none yet">
+        <EmptyState
+          title="Nothing to learn yet"
+          detail="Pieces you mark Want to Learn will appear here."
+        />
+      </Specimen>
+      <Specimen where="Currently Practicing — none yet">
+        <EmptyState
+          title="Nothing in progress"
+          detail="Pieces you mark Learning or Stalled will appear here."
+        />
+      </Specimen>
+      <Specimen where="Learned — none yet">
+        <EmptyState
+          title="Your repertoire is empty"
+          detail="Pieces you mark Learned collect here."
+        />
       </Specimen>
       <Specimen where="Books — no books at all">
-        <div className="p-8 text-center">
-          <p className="font-display font-medium text-ink-muted">No books yet</p>
-          <p className="mt-1 text-sm text-ink-muted italic">
-            Books are created via the import wizard or the New Book button above.
-          </p>
-        </div>
+        <EmptyState
+          title="Your shelf is empty"
+          detail="Upload a book, or use New Book to add one without a file."
+        />
       </Specimen>
-      <Specimen where="Book Details / Person Details — no pieces">
-        <div className="py-6 text-center">
-          <p className="font-display font-medium text-ink-muted">No pieces yet</p>
-          <p className="mt-1 text-sm text-ink-muted italic">
-            Pieces added to this book will appear here, sorted by their start page.
-          </p>
-        </div>
+      <Specimen where="People — no people at all">
+        <EmptyState
+          title="No people yet"
+          detail="Add someone with New Person, or credit them on a piece."
+        />
+      </Specimen>
+      <Specimen
+        where="People — everyone hidden by the default filter"
+        note="Only people with 3 or more pieces show until “Show all composers” is on."
+      >
+        <EmptyState
+          title="Everyone is hidden"
+          detail="Only people with 3 or more pieces show at first. See Filters."
+        />
+      </Specimen>
+      <Specimen where="Book Details — no pieces">
+        <EmptyState
+          title="No pieces yet"
+          detail="Pieces from this book will appear here, in page order."
+          className="py-6"
+        />
+      </Specimen>
+      <Specimen where="Person Details — no pieces">
+        <EmptyState
+          title="No pieces yet"
+          detail="Pieces and books crediting this person will appear here."
+          className="py-6"
+        />
       </Specimen>
       <Specimen where="Setlists Library — no setlists">
         <div className="flex flex-col gap-3">
@@ -148,9 +188,11 @@ function EmptyStates() {
         </div>
       </Specimen>
       <Specimen where="Setlist Details — empty program">
-        <p className="py-6 text-center text-sm text-ink-muted italic">
-          No entries yet — use Edit Program to add some.
-        </p>
+        <EmptyState
+          title="No pieces yet"
+          detail="Use Edit Program to add pieces and other entries."
+          className="py-6"
+        />
       </Specimen>
       <Specimen where="Sidebar — Upcoming Sets with none" surface="sidebar">
         <p className="px-2 text-xs tracking-wide text-sidebar-text-dim uppercase">Upcoming sets</p>

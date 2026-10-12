@@ -5,8 +5,10 @@ export function WantToLearnPage() {
     <PieceBrowseView
       filters={{ practiceStatusSlot: 'want_to_learn' }}
       searchPlaceholder="Search pieces you want to learn…"
-      emptyMessage="No pieces marked Want to Learn yet."
-      noMatchMessage="No matching pieces in Want to Learn."
+      empty={{
+        title: 'Nothing to learn yet',
+        detail: 'Pieces you mark Want to Learn will appear here.',
+      }}
       backLabel="Want to Learn"
     />
   )

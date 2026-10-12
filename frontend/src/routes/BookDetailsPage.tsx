@@ -37,6 +37,7 @@ import { PieceContextMenu } from '../components/PieceContextMenu'
 import { TagPills } from '../components/TagPills'
 import { confirmAction, showAlert } from '../lib/dialogs'
 import { ViewModeToggle } from '../components/ViewModeToggle'
+import { EmptyState } from '../components/EmptyState'
 
 // Book Details page — no design-doc spec (new ground, same as the Books
 // library view before it). Built from the "Book Details — Consolidated
@@ -884,12 +885,11 @@ export function BookDetailsPage() {
             <div className="px-6 pb-5">
               {piecesLoading && <p className="text-ink-soft">Loading…</p>}
               {pieces && pieces.length === 0 && (
-                <div className="py-6 text-center">
-                  <p className="font-display font-medium text-ink-muted">No pieces yet</p>
-                  <p className="mt-1 text-sm italic text-ink-muted">
-                    Pieces added to this book will appear here, sorted by their start page.
-                  </p>
-                </div>
+                <EmptyState
+                  title="No pieces yet"
+                  detail="Pieces from this book will appear here, in page order."
+                  className="py-6"
+                />
               )}
               {pieces &&
                 pieces.length > 0 &&

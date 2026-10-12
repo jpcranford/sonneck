@@ -22,6 +22,8 @@ import { hasPermission, useAuth } from '../lib/AuthContext'
 import { WIDE_CONTENT_MAX_W } from '../lib/layout'
 import { usePageTitle } from '../lib/usePageTitle'
 import { useViewPreference } from '../lib/useViewPreference'
+import { EmptyState } from '../components/EmptyState'
+import { noMatchMessage } from '../lib/emptyMessages'
 
 type BookSortField = 'dateAdded' | 'title' | 'composer' | 'yearPublished'
 
@@ -192,18 +194,15 @@ export function BooksPage() {
           </p>
         )}
 
-        {books && books.length === 0 && (query || activeCount > 0) && (
-          <p className="p-8 text-center text-ink-muted">No books match your search.</p>
+        {books && books.length === 0 && (debouncedQuery || activeCount > 0) && (
+          <EmptyState {...noMatchMessage('books', debouncedQuery, activeCount > 0)} />
         )}
 
-        {/* Same two-line treatment as Book/Person Details' "No pieces yet". */}
-        {books && books.length === 0 && !query && activeCount === 0 && (
-          <div className="p-8 text-center">
-            <p className="font-display font-medium text-ink-muted">No books yet</p>
-            <p className="mt-1 text-sm text-ink-muted italic">
-              Books are created via the import wizard or the New Book button above.
-            </p>
-          </div>
+        {books && books.length === 0 && !debouncedQuery && activeCount === 0 && (
+          <EmptyState
+            title="Your shelf is empty"
+            detail="Upload a book, or use New Book to add one without a file."
+          />
         )}
 
         {books && books.length > 0 && viewMode === 'grid' && (

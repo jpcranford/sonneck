@@ -21,6 +21,8 @@ import {
 import { WIDE_CONTENT_MAX_W } from '../lib/layout'
 import { usePageTitle } from '../lib/usePageTitle'
 import { useViewPreference } from '../lib/useViewPreference'
+import { EmptyState } from './EmptyState'
+import { noMatchMessage, type EmptyMessage } from '../lib/emptyMessages'
 
 // Matches the backend's own default (internal/handlers/search.go) — passed
 // explicitly here rather than relying on that default, since this is also
@@ -58,12 +60,10 @@ interface PieceBrowseViewProps {
    * checkbox to add. */
   filters?: Omit<SearchPiecesParams, 'query'>
   searchPlaceholder?: string
-  /** Shown when the view has no results and the search box is empty. */
-  emptyMessage: string
-  /** Shown when the view has no results but the search box has a query —
-   * defaults to the same wording every filtered/unfiltered view already
-   * used before this component existed. */
-  noMatchMessage?: string
+  /** Shown when the view has nothing at all (no search, no filters). */
+  empty: EmptyMessage
+  /** What the view lists, for its no-match message ("No pieces match …"). */
+  noMatchNoun?: string
   /** Grid-view card size — 'compact' for the main Library (slightly
    * smaller, filtered views unchanged) vs. the original size everywhere
    * else. A literal class per size rather
@@ -106,8 +106,8 @@ const GRID_COLS_CLASS: Record<'default' | 'compact', string> = {
 export function PieceBrowseView({
   filters,
   searchPlaceholder = 'Search your library…',
-  emptyMessage,
-  noMatchMessage = 'No pieces match your search.',
+  empty,
+  noMatchNoun = 'pieces',
   gridCardSize = 'default',
   backLabel,
 }: PieceBrowseViewProps) {
@@ -363,9 +363,11 @@ export function PieceBrowseView({
         )}
 
         {pieces && pieces.length === 0 && (
-          <p className="p-8 text-center text-ink-muted">
-            {query || activeCount > 0 ? noMatchMessage : emptyMessage}
-          </p>
+          <EmptyState
+            {...(debouncedQuery || activeCount > 0
+              ? noMatchMessage(noMatchNoun, debouncedQuery, activeCount > 0)
+              : empty)}
+          />
         )}
 
         {pieces && pieces.length > 0 && viewMode === 'grid' && (

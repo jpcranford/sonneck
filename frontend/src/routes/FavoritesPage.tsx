@@ -5,8 +5,11 @@ export function FavoritesPage() {
     <PieceBrowseView
       filters={{ favorite: true }}
       searchPlaceholder="Search your favorites…"
-      emptyMessage="You haven't favorited any pieces yet."
-      noMatchMessage="No favorites match your search."
+      empty={{
+        title: 'Nothing favorited',
+        detail: 'Use the heart on a piece, or Add to Favorites in its menu.',
+      }}
+      noMatchNoun="favorites"
       backLabel="Favorites"
     />
   )

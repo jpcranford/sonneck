@@ -45,6 +45,7 @@ import { usePageTitle } from '../lib/usePageTitle'
 import { formatDateOnly } from '../lib/dateOnly'
 import { confirmAction, showAlert } from '../lib/dialogs'
 import { copyToClipboard } from '../lib/clipboard'
+import { EmptyState } from '../components/EmptyState'
 
 // The real Setlist Details page (§13) — built against SetlistDetailsMockup.tsx
 // (the approved Phase 6 mockup, incl. its own Round 1-10 polish and the
@@ -525,9 +526,11 @@ export function SetlistPage() {
 
             <div className="flex flex-col">
               {setlist.entries.length === 0 ? (
-                <p className="py-6 text-center text-sm text-ink-muted italic">
-                  No entries yet — use Edit Program to add some.
-                </p>
+                <EmptyState
+                  title="No pieces yet"
+                  detail="Use Edit Program to add pieces and other entries."
+                  className="py-6"
+                />
               ) : (
                 setlist.entries.map((entry) => {
                   // A piece's opus follows its title in parentheses, as on

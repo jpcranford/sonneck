@@ -24,6 +24,8 @@ import { PracticeStatusIcon } from '../components/PracticeStatusIcon'
 import { WIDE_CONTENT_MAX_W } from '../lib/layout'
 import { PageToolbarPortal } from '../components/PageToolbarSlot'
 import { useEscapeToClose } from '../hooks/useEscapeToClose'
+import { EmptyState } from '../components/EmptyState'
+import { noMatchMessage } from '../lib/emptyMessages'
 
 // ---------------------------------------------------------------------
 // DESIGN MOCKUP — Piece Library sort/filter (Option B, "Filter Drawer",
@@ -1316,7 +1318,7 @@ export function PieceLibrarySample() {
         </p>
 
         {pieces.length === 0 && (
-          <p className="p-8 text-center text-ink-muted">No pieces match these filters.</p>
+          <EmptyState {...noMatchMessage('pieces', query, activeCount > 0)} />
         )}
 
         {pieces.length > 0 && viewMode === 'grid' && (

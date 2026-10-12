@@ -16,8 +16,10 @@ export function PracticingPage() {
     <PieceBrowseView
       filters={{ practiceStatusSlot: 'practicing' }}
       searchPlaceholder="Search pieces you're practicing…"
-      emptyMessage="No pieces marked Learning or Stalled yet."
-      noMatchMessage="No matching pieces in Currently Practicing."
+      empty={{
+        title: 'Nothing in progress',
+        detail: 'Pieces you mark Learning or Stalled will appear here.',
+      }}
       backLabel="Currently Practicing"
     />
   )
