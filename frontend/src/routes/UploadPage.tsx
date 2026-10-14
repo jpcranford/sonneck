@@ -186,6 +186,7 @@ export function UploadPage() {
   const isValidImslpNumber = /^\d+$/.test(stripImslpPrefix(imslpNumber).trim())
 
   const imslpMutation = useMutation({
+    meta: { readOnly: true },
     mutationFn: () => lookupImslp(stripImslpPrefix(getValues('imslpNumber')).trim()),
     onSuccess: (info) => {
       const filled = new Set<string>()

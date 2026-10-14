@@ -21,6 +21,9 @@ const isWebKit =
   /AppleWebKit/.test(navigator.userAgent) &&
   !/Chrome\/|Chromium|Android/.test(navigator.userAgent)
 
+// How long the anchor must sit still before the frame loop stops.
+const SETTLE_MS = 500
+
 function sameRect(a: AnchorRect | null, b: AnchorRect): boolean {
   return (
     a !== null &&
@@ -36,13 +39,18 @@ function sameRect(a: AnchorRect | null, b: AnchorRect): boolean {
  * The live on-screen rect of `ref`'s element while `active`, for a floating
  * panel portaled to <body> (a dropdown that must escape a Modal's
  * overflow-hidden) to stay attached to its anchor. Re-measured every
- * animation frame while active, updating only when it actually moved —
- * scroll and resize events alone missed an anchor that grows in place
- * (TagComboBox's pills wrapping onto a new line as names are picked, which
- * left the list covering the field on phones) and the on-screen keyboard
- * shifting the page, neither of which fires them. On WebKit the rect is
- * corrected for the visual viewport's pan (see isWebKit). Null while
- * inactive.
+ * animation frame, updating only when it actually moved — scroll and
+ * resize events alone missed an anchor that grows in place (TagComboBox's
+ * pills wrapping onto a new line as names are picked, which left the list
+ * covering the field on phones) and the on-screen keyboard shifting the
+ * page, neither of which fires them. The frame loop stops once the anchor
+ * has sat still for SETTLE_MS — an open menu otherwise kept the processor
+ * busy indefinitely, a real battery cost on slow devices (e-ink tablets
+ * among them, which tend to lack anchor positioning) — and restarts on
+ * anything that could move it: scroll, resize, the visual viewport
+ * panning, the anchor resizing, or a touch, click or key press. On WebKit
+ * the rect is corrected for the visual viewport's pan (see isWebKit). Null
+ * while inactive.
  */
 export function useAnchorRect(
   ref: RefObject<HTMLElement | null>,
@@ -53,9 +61,6 @@ export function useAnchorRect(
     if (!active) return
     let last: AnchorRect | null = null
     let frame = 0
-    // Also on every scroll (capture phase, so a scrolling modal body
-    // counts): scroll events fire before the frame paints, so most
-    // browsers move the panel in that same frame instead of one later.
     function check() {
       const el = ref.current
       if (el) {
@@ -76,15 +81,34 @@ export function useAnchorRect(
         }
       }
     }
-    function measure() {
+    let stillSince = 0
+    function measure(now: number) {
+      const before = last
       check()
-      frame = requestAnimationFrame(measure)
+      if (last !== before) stillSince = now
+      frame = now - stillSince < SETTLE_MS ? requestAnimationFrame(measure) : 0
     }
-    measure()
-    window.addEventListener('scroll', check, true)
+    function wake() {
+      check()
+      stillSince = performance.now()
+      if (!frame) frame = requestAnimationFrame(measure)
+    }
+    wake()
+    // Scroll events fire before the frame paints, so most browsers move
+    // the panel in that same frame instead of one later.
+    const wakeEvents = ['scroll', 'resize', 'pointerdown', 'keydown', 'input'] as const
+    wakeEvents.forEach((type) => window.addEventListener(type, wake, true))
+    const vv = window.visualViewport
+    vv?.addEventListener('resize', wake)
+    vv?.addEventListener('scroll', wake)
+    const resizeObserver = new ResizeObserver(wake)
+    if (ref.current) resizeObserver.observe(ref.current)
     return () => {
       cancelAnimationFrame(frame)
-      window.removeEventListener('scroll', check, true)
+      wakeEvents.forEach((type) => window.removeEventListener(type, wake, true))
+      vv?.removeEventListener('resize', wake)
+      vv?.removeEventListener('scroll', wake)
+      resizeObserver.disconnect()
     }
   }, [ref, active])
   return active ? rect : null

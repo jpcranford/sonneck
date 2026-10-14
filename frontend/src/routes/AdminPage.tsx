@@ -750,6 +750,7 @@ function VersionSection() {
   const { data: version } = useQuery({ queryKey: ['admin', 'version'], queryFn: getVersion })
   const queryClient = useQueryClient()
   const checkMutation = useMutation({
+    meta: { readOnly: true },
     mutationFn: checkForUpdates,
     onSuccess: (result) => queryClient.setQueryData(['admin', 'version'], result),
   })
@@ -1055,6 +1056,7 @@ function LibraryLocationModal({
   const [moveExisting, setMoveExisting] = useState(true)
 
   const chooseMutation = useMutation({
+    meta: { readOnly: true },
     mutationFn: chooseNativeFolder,
     onSuccess: ({ path }) => {
       if (path) setCandidatePath(path)

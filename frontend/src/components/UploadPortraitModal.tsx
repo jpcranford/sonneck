@@ -152,6 +152,7 @@ export function UploadPortraitModal({
   }
 
   const searchMutation = useMutation({
+    meta: { readOnly: true },
     mutationFn: (query: string) => searchWikipedia(query),
     onSuccess: (results) => setWikiResults(results),
   })
@@ -162,6 +163,7 @@ export function UploadPortraitModal({
   }
 
   const pickImageMutation = useMutation({
+    meta: { readOnly: true },
     mutationFn: (result: WikipediaSearchResult) =>
       getWikipediaPageImage(result.title).then((r) => ({ result, r })),
     onSuccess: async ({ result, r }) => {

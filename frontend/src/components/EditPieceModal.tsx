@@ -540,6 +540,7 @@ export function EditPieceModal({
   const [imslpFilledFields, setImslpFilledFields] = useState<Set<string>>(new Set())
 
   const imslpMutation = useMutation({
+    meta: { readOnly: true },
     mutationFn: () => lookupImslp(stripImslpPrefix(effectiveImslpNumber).trim()),
     onSuccess: (info) => {
       const filled = new Set<string>()

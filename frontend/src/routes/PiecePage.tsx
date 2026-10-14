@@ -432,6 +432,7 @@ export function PiecePage() {
   // navigating seeds ['piece', <new id>] fresh the normal way (Piece Details page's
   // own useQuery above), so there's no need to also populate the cache here.
   const randomPieceMutation = useMutation({
+    meta: { readOnly: true },
     mutationFn: getRandomPiece,
     // Deliberately does NOT forward this page's own location.state: each
     // roll pushes a real new history entry (no `replace`), so a real

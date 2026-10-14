@@ -251,6 +251,7 @@ export function BookUploadAboutStep({
   const isValidImslpNumber = /^\d+$/.test(stripImslpPrefix(watch('imslpNumber')).trim())
 
   const imslpMutation = useMutation({
+    meta: { readOnly: true },
     mutationFn: () => lookupImslp(stripImslpPrefix(watch('imslpNumber')).trim()),
     onSuccess: (info) => {
       const filled = new Set<string>()

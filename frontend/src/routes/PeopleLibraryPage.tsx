@@ -80,6 +80,8 @@ function PersonAvatar({ person, className }: { person: Person; className: string
         <img
           src={getPersonPortraitUrl(person.id, person.portraitImageHash)}
           alt=""
+          loading="lazy"
+          decoding="async"
           className="h-full w-full object-cover"
         />
       ) : (

@@ -264,6 +264,7 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
   const [imslpFilledFields, setImslpFilledFields] = useState<Set<string>>(new Set())
 
   const imslpMutation = useMutation({
+    meta: { readOnly: true },
     mutationFn: () => lookupImslp(stripImslpPrefix(imslpNumber).trim()),
     onSuccess: (info) => {
       const filled = new Set<string>()

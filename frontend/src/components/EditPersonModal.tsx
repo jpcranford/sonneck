@@ -230,6 +230,7 @@ export function EditPersonModal({ person, open, onClose }: EditPersonModalProps)
   const [wikiFilledFields, setWikiFilledFields] = useState<Set<string>>(new Set())
 
   const wikiSearchMutation = useMutation({
+    meta: { readOnly: true },
     mutationFn: (query: string) => searchWikipedia(query),
     onSuccess: (results) => {
       setWikiResults(results)

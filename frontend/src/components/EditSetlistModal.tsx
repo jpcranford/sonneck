@@ -192,6 +192,9 @@ export function EditSetlistModal({
   const [dragWidth, setDragWidth] = useState(0)
   const scrollContainerRef = useRef<HTMLElement | null>(null)
   const lastPointerRef = useRef<{ x: number; y: number } | null>(null)
+  // Restarts the auto-scroll loop (below) after it stopped outside the
+  // edge zones.
+  const autoScrollWakeRef = useRef<(() => void) | null>(null)
 
   const [addRowMode, setAddRowMode] = useState<AddRowMode>('buttons')
   const [pieceQuery, setPieceQuery] = useState('')
@@ -473,20 +476,25 @@ export function EditSetlistModal({
     setGhostPos({ x: event.clientX, y: event.clientY })
     lastPointerRef.current = { x: event.clientX, y: event.clientY }
     reorderAtPoint(draggingId, event.clientX, event.clientY)
+    autoScrollWakeRef.current?.()
   }
 
   // Auto-scroll while the ghost sits near the list's own scrolled top/
   // bottom edge — a rAF loop re-checks the last-known pointer position on
   // every frame, not just on pointermove, so the list keeps reordering
   // correctly under a stationary pointer as new rows scroll into reach.
+  // The loop runs only while the pointer is in an edge zone (a pointer
+  // move restarts it), so a drag through the middle of the list doesn't
+  // keep the processor busy every frame.
   useEffect(() => {
     if (!draggingId) return
     const activeDraggingId = draggingId
     const EDGE_ZONE = 56
     const MAX_SPEED = 14
-    let rafId: number
+    let rafId = 0
 
     function tick() {
+      rafId = 0
       const container = scrollContainerRef.current
       const pointer = lastPointerRef.current
       if (container && pointer) {
@@ -500,12 +508,18 @@ export function EditSetlistModal({
         if (speed !== 0) {
           container.scrollTop += speed
           reorderAtPoint(activeDraggingId, pointer.x, pointer.y)
+          rafId = requestAnimationFrame(tick)
         }
       }
-      rafId = requestAnimationFrame(tick)
     }
-    rafId = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(rafId)
+    autoScrollWakeRef.current = () => {
+      if (!rafId) rafId = requestAnimationFrame(tick)
+    }
+    autoScrollWakeRef.current()
+    return () => {
+      cancelAnimationFrame(rafId)
+      autoScrollWakeRef.current = null
+    }
   }, [draggingId, reorderAtPoint])
 
   // Drop — commits the local order to the backend in one call, only if it
