@@ -1240,13 +1240,15 @@ export function PiecePage() {
               )}
               {(piece.publisher.value || piece.publisherId.value) && (
                 <DetailRow label="Publisher">
-                  <span className="inline-flex items-center gap-1.5">
+                  <span>
                     <EffectiveValue
                       value={piece.publisher.value}
                       inherited={piece.publisher.inherited}
                     />
                     {piece.publisherId.value && (
-                      <span className="text-xs text-ink-soft">• {piece.publisherId.value}</span>
+                      <span className="ml-1.5 text-xs whitespace-nowrap text-ink-soft">
+                        • {piece.publisherId.value}
+                      </span>
                     )}
                   </span>
                 </DetailRow>
