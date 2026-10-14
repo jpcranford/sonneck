@@ -116,11 +116,10 @@ const PAGE_OPTIONS: { id: PageId; label: string }[] = [
 ]
 
 // Library, People, Books, Upload, Favorites, Want to Learn, Currently
-// Practicing, Learned, then Setlists — minus Books when hidden. Upload
-// keeps its number without permission, as it keeps its (faded) place in
-// the sidebar.
-function sidebarCount(booksHidden: boolean): number {
-  return booksHidden ? 8 : 9
+// Practicing, Learned, then Setlists — minus Books when hidden, and minus
+// Upload without permission (the sidebar leaves it out too).
+function sidebarCount(booksHidden: boolean, canUpload: boolean): number {
+  return 9 - (booksHidden ? 1 : 0) - (canUpload ? 0 : 1)
 }
 
 function Key({ children }: { children: ReactNode }) {
@@ -273,6 +272,7 @@ export function ShortcutHelpMockup() {
   const [canEdit, setCanEdit] = useState(true)
   const [canDownload, setCanDownload] = useState(true)
   const [canCreate, setCanCreate] = useState(true)
+  const [canUpload, setCanUpload] = useState(true)
   const [booksHidden, setBooksHidden] = useState(false)
   // null, or the key being held and whether the card is showing yet.
   // The app's own shortcut help (AppShell) stands aside on this page, which
@@ -325,6 +325,7 @@ export function ShortcutHelpMockup() {
     ['Can edit', canEdit, setCanEdit],
     ['Can download', canDownload, setCanDownload],
     ['Can create setlists', canCreate, setCanCreate],
+    ['Can upload', canUpload, setCanUpload],
     ['Books hidden in the sidebar', booksHidden, setBooksHidden],
   ]
 
@@ -404,7 +405,7 @@ export function ShortcutHelpMockup() {
         <ShortcutCard
           list={PAGES[page]}
           can={can}
-          sidebarKeys={sidebarCount(booksHidden)}
+          sidebarKeys={sidebarCount(booksHidden, canUpload)}
           heldKey={hold.key}
         />
       )}

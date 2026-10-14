@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { IconMenu2, IconX } from '@tabler/icons-react'
-import { NAV_ITEMS, SECONDARY_NAV_ITEMS, type NavItem } from '../lib/navItems'
+import { NAV_ITEMS, SECONDARY_NAV_ITEMS, visibleNavItems, type NavItem } from '../lib/navItems'
 import { hasPermission, useAuth } from '../lib/AuthContext'
 import { getUserSettings } from '../api/userSettings'
 import { listSetlists, getUpcomingSetlists } from '../api/setlists'
@@ -65,15 +65,12 @@ export function MobileNavTopBar({ onOpen }: { onOpen: () => void }) {
 // addresses).
 function DrawerNavList({ items, onNavigate }: { items: NavItem[]; onNavigate: () => void }) {
   const me = useAuth()
-  // "Hide Books in sidebar" — same personal display preference as
-  // Sidebar.tsx's own NavItemsList; see that file's comment.
+  // Same items as Sidebar.tsx's own NavItemsList — see that file's comment.
   const { data: settings } = useQuery({ queryKey: ['user-settings'], queryFn: getUserSettings })
-  const showBooks = settings?.showBooksInSidebar ?? true
-  const visibleItems = showBooks ? items : items.filter((item) => item.to !== '/books')
+  const visibleItems = visibleNavItems(items, me, settings?.showBooksInSidebar ?? true)
   return (
     <nav className="flex flex-col gap-1 px-2">
-      {visibleItems.map(({ to, label, icon: Icon, permission }) => {
-        const blocked = permission && !hasPermission(me, permission)
+      {visibleItems.map(({ to, label, icon: Icon }) => {
         const content = (
           <>
             <Icon size={24} className="text-sidebar-text" />
@@ -82,21 +79,6 @@ function DrawerNavList({ items, onNavigate }: { items: NavItem[]; onNavigate: ()
             <span className="relative top-[0.6px] truncate">{label}</span>
           </>
         )
-        if (blocked) {
-          // Same real-opacity-on-the-whole-row treatment as Sidebar.tsx's
-          // own NavItemsList, and for the same reason — see that file's
-          // comment on why a translucent color can't sit directly on
-          // IconCloudUpload's three overlapping paths.
-          return (
-            <span
-              key={to}
-              title="You don't have permission to upload"
-              className="flex h-11 cursor-not-allowed items-center gap-3 rounded-md px-3 font-display text-base font-medium text-sidebar-text opacity-40"
-            >
-              {content}
-            </span>
-          )
-        }
         return (
           <NavLink
             key={to}

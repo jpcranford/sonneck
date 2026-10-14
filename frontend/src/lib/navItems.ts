@@ -1,5 +1,7 @@
 import type { ComponentType } from 'react'
 import type { Permission } from '../api/admin'
+import type { AuthMe } from '../api/auth'
+import { hasPermission } from './AuthContext'
 import {
   IconLibrary,
   IconBooks,
@@ -20,14 +22,21 @@ export interface NavItem {
   to: string
   label: string
   icon: ComponentType<{ size?: number; className?: string }>
-  /** When set, this item renders as a faint, non-navigating row instead of
-   * a real link for a viewer who lacks this permission — same "can't act
-   * on it, so don't let it look actionable" treatment as every other
-   * permission-gated control in this app (PiecePage.tsx's Download/Edit
-   * buttons, ContextMenu.tsx's own disabled items). Checked by
-   * Sidebar.tsx's NavItemsList and MobileNav.tsx's DrawerNavList, both of
-   * which render this same NAV_ITEMS list. */
+  /** When set, the item is left out of the sidebar for a viewer who lacks
+   * this permission (see visibleNavItems). */
   permission?: Permission
+}
+
+/** The items the sidebar shows, in order: without one the viewer lacks the
+ * permission for, and without Books when "Hide Books in sidebar" is on.
+ * Sidebar.tsx, MobileNav.tsx and the 1–9 shortcuts (useSidebarShortcuts)
+ * all go through this, so the numbers always match what's on screen. */
+export function visibleNavItems(items: NavItem[], me: AuthMe, showBooks: boolean): NavItem[] {
+  return items.filter(
+    (item) =>
+      (showBooks || item.to !== '/books') &&
+      (!item.permission || hasPermission(me, item.permission)),
+  )
 }
 
 export const NAV_ITEMS: NavItem[] = [

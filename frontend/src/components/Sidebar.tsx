@@ -5,7 +5,7 @@ import {
   IconLayoutSidebarLeftCollapseFilled,
   IconLayoutSidebarLeftExpandFilled,
 } from '@tabler/icons-react'
-import { NAV_ITEMS, SECONDARY_NAV_ITEMS, type NavItem } from '../lib/navItems'
+import { NAV_ITEMS, SECONDARY_NAV_ITEMS, visibleNavItems, type NavItem } from '../lib/navItems'
 import { hasPermission, useAuth } from '../lib/AuthContext'
 import { getUserSettings } from '../api/userSettings'
 import { listSetlists, getUpcomingSetlists } from '../api/setlists'
@@ -18,18 +18,16 @@ import { dragRegion, noDragRegion, zoomOnDoubleClick } from '../lib/nativeTitleB
 // either side, just a different item list.
 function NavItemsList({ items, collapsed }: { items: NavItem[]; collapsed: boolean }) {
   const me = useAuth()
-  // "Hide Books in sidebar" (User Settings' Library card) — a personal
-  // display preference, not a permission gate, so this hides the item
-  // outright rather than fading it like a `permission`-blocked one below.
-  // Defaults to shown while the query is still loading, matching the
-  // real column's own DEFAULT 1 (shown) — never flashes hidden then shown.
+  // "Hide Books in sidebar" (User Settings' Library card) and items the
+  // viewer lacks the permission for (Upload) are left out entirely.
+  // Defaults to shown while the settings query is still loading, matching
+  // the real column's own DEFAULT 1 (shown) — never flashes hidden then
+  // shown.
   const { data: settings } = useQuery({ queryKey: ['user-settings'], queryFn: getUserSettings })
-  const showBooks = settings?.showBooksInSidebar ?? true
-  const visibleItems = showBooks ? items : items.filter((item) => item.to !== '/books')
+  const visibleItems = visibleNavItems(items, me, settings?.showBooksInSidebar ?? true)
   return (
     <nav className="flex flex-col gap-1 px-2">
-      {visibleItems.map(({ to, label, icon: Icon, permission }) => {
-        const blocked = permission && !hasPermission(me, permission)
+      {visibleItems.map(({ to, label, icon: Icon }) => {
         const content = (
           <>
             {/* Icon always matches the adjacent label's own color
@@ -51,30 +49,6 @@ function NavItemsList({ items, collapsed }: { items: NavItem[]; collapsed: boole
             {!collapsed && <span className="relative top-[0.6px] truncate">{label}</span>}
           </>
         )
-        if (blocked) {
-          // A real <span>, not a disabled NavLink — react-router's Link
-          // has no disabled concept, and there's no navigation worth
-          // preserving for cmd/ctrl-click when the destination just
-          // redirects straight back out (UploadPage.tsx's own route
-          // guard) anyway. Faded via a real `opacity` on this one
-          // container, not a translucent text color — the icon inside
-          // (IconCloudUpload) is three separate overlapping <path>s
-          // sharing one stroke color, and CLAUDE.md's own icon-color rule
-          // is specific about why that combination needs a group-opacity
-          // composite instead: a translucent color applied directly would
-          // re-blend unevenly wherever those paths meet.
-          return (
-            <span
-              key={to}
-              title={collapsed ? label : "You don't have permission to upload"}
-              className={`flex h-10 cursor-not-allowed items-center gap-3 rounded-md px-2 font-display text-base font-medium text-sidebar-text opacity-40 ${
-                collapsed ? 'justify-center' : ''
-              }`}
-            >
-              {content}
-            </span>
-          )
-        }
         return (
           <NavLink
             key={to}
