@@ -5,7 +5,7 @@ import {
   IconArrowLeft,
   IconArrowsDiagonal,
   IconBook2,
-  IconCalendarEventFilled,
+  IconCalendarPlus,
   IconCalendarFilled,
   IconChevronDown,
   IconChevronLeft,
@@ -589,7 +589,7 @@ export function PiecePage() {
                   title="Add to Setlist"
                   className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent"
                 >
-                  <IconCalendarEventFilled size={18} />
+                  <IconCalendarPlus size={18} />
                 </button>
                 {addToSetlistOpen && (
                   <AddToSetlistPicker
