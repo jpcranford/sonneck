@@ -1129,18 +1129,18 @@ export function UploadPage() {
               accent-filled/bordered pairing as the Book Upload Wizard's
               own success screen ("Open book" next to "Upload another
               file", BookUploadWizard.tsx). */}
-          <div className="mt-1 flex items-center gap-3">
+          <div className="mt-1 flex flex-wrap items-center justify-center gap-3">
             <button
               type="button"
               onClick={reset}
-              className="rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-ink hover:border-accent"
+              className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium whitespace-nowrap text-ink hover:border-accent"
             >
               Upload another file
             </button>
             <Link
               to={`/pieces/${piece.id}`}
               state={{ backLabel: 'Upload' }}
-              className="flex items-center gap-1.5 rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-white hover:bg-accent-fill/90"
+              className="flex cursor-pointer items-center gap-1.5 rounded-md border border-transparent bg-accent-fill px-4 py-2 font-display font-medium whitespace-nowrap text-white hover:bg-accent-fill/90"
             >
               <IconMusic size={16} />
               View Piece
