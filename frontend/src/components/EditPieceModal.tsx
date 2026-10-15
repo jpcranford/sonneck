@@ -866,7 +866,7 @@ export function EditPieceModal({
         // One row, two zones — sibling-piece nav on the left (hidden
         // entirely when showSiblingNav is false), Cancel/Save/Save & Close
         // on the right. Save & Close is the accent-filled primary action —
-        // plain Save is a secondary, outlined action instead. Its
+        // plain Save is styled exactly like Cancel (one green button per footer). Its
         // `type="submit"` is only the form's programmatic submit target
         // (footer buttons live outside the `<form>`, wired via `form=`),
         // not what plain Enter reaches: handleFormKeyDown intercepts plain
@@ -928,7 +928,7 @@ export function EditPieceModal({
                 type="button"
                 onClick={() => handleSubmit(onSubmitStayOpen)()}
                 disabled={isSaving}
-                className="cursor-pointer rounded-md border border-accent bg-paper-raised px-3 py-2 font-display whitespace-nowrap sm:px-4 font-medium text-accent hover:bg-accent-soft disabled:opacity-60"
+                className="cursor-pointer rounded-md border border-border bg-paper-raised px-3 py-2 font-display whitespace-nowrap sm:px-4 font-medium text-ink hover:border-accent disabled:opacity-60"
               >
                 {isSaving ? 'Saving…' : 'Save'}
               </button>

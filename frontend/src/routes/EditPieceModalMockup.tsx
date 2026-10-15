@@ -1464,7 +1464,7 @@ export function EditPieceModalMockup() {
           // reusing that component directly, since its aria-labels/count
           // are hardcoded to "page", not "piece"), Cancel/Save/Save & Close
           // on the right. Save & Close is the accent-filled primary action —
-          // plain Save is a secondary, outlined action instead. Plain Enter
+          // plain Save is styled exactly like Cancel (one green button per footer). Plain Enter
           // always reaches Save, keep editing (handleFormKeyDown intercepts
           // it), regardless of which button is visually primary.
           <div
@@ -1511,7 +1511,7 @@ export function EditPieceModalMockup() {
               <button
                 type="button"
                 onClick={() => handleSubmit(onSubmitStayOpen)()}
-                className="cursor-pointer rounded-md border border-accent bg-paper-raised px-3 py-2 font-display whitespace-nowrap sm:px-4 font-medium text-accent hover:bg-accent-soft"
+                className="cursor-pointer rounded-md border border-border bg-paper-raised px-3 py-2 font-display whitespace-nowrap sm:px-4 font-medium text-ink hover:border-accent"
               >
                 Save
               </button>
