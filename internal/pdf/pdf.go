@@ -1,12 +1,13 @@
-// Package pdf shells out to poppler-utils (pdfinfo/pdftocairo/pdftoppm —
-// design doc §2) for the three PDF operations the app needs: counting
-// pages, extracting a page range into a standalone PDF, and rendering a
-// single page as a thumbnail image.
+// Package pdf shells out to poppler-utils (pdfinfo, pdfseparate, pdfunite,
+// pdftocairo, pdftoppm — design doc §2) for the PDF operations the app
+// needs: counting pages, extracting a page range into a standalone PDF,
+// merging PDFs, and rendering a single page as a thumbnail image.
 package pdf
 
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
@@ -55,7 +56,18 @@ func PageCount(ctx context.Context, binDir, path string) (int, error) {
 }
 
 // ExtractPages extracts the inclusive, 1-indexed page range [first, last]
-// from src into a new standalone PDF at dst, via pdftocairo.
+// from src into a new standalone PDF at dst.
+//
+// The pages' own PDF objects are copied (pdfseparate, then pdfunite), so
+// everything on them comes through untouched — annotations (ink,
+// highlights, typed notes) stay real, editable annotations, and images
+// stay exactly as the source encoded them. Redrawing the pages through
+// pdftocairo, as this used to, flattened print-flagged annotations into
+// the page, silently dropped every other annotation, and re-encoded
+// images (a scanned cover came out visibly washed out). pdftocairo is now
+// only the fallback for a source the copy can't handle — chiefly an
+// encrypted PDF, which pdfunite refuses — where it's the one poppler tool
+// that can still produce a readable file, at that old cost.
 //
 // Extraction happens once, at import time, not on-demand at download time
 // (design doc §5) — the result is a permanent file, not a cache. binDir is
@@ -65,12 +77,40 @@ func ExtractPages(ctx context.Context, binDir, src string, first, last int, dst 
 		return fmt.Errorf("invalid page range [%d, %d]", first, last)
 	}
 
+	copyErr := copyPages(ctx, binDir, src, first, last, dst)
+	if copyErr == nil {
+		return nil
+	}
+	_ = os.Remove(dst) // whatever a failed merge may have left behind
 	cmd := exec.CommandContext(ctx, toolPath(binDir, "pdftocairo"), "-pdf",
 		"-f", strconv.Itoa(first), "-l", strconv.Itoa(last), src, dst)
 	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("pdftocairo -f %d -l %d %s: %w: %s", first, last, src, err, out)
+		return fmt.Errorf("copying pages (%v), then pdftocairo -f %d -l %d %s: %w: %s",
+			copyErr, first, last, src, err, out)
 	}
 	return nil
+}
+
+// copyPages writes pages [first, last] of src to dst by copying their PDF
+// objects: pdfseparate splits each into its own file in a temp directory,
+// pdfunite joins them in order.
+func copyPages(ctx context.Context, binDir, src string, first, last int, dst string) error {
+	dir, err := os.MkdirTemp("", "sonneck-pages-*")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(dir)
+
+	cmd := exec.CommandContext(ctx, toolPath(binDir, "pdfseparate"),
+		"-f", strconv.Itoa(first), "-l", strconv.Itoa(last), src, filepath.Join(dir, "%d.pdf"))
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("pdfseparate -f %d -l %d %s: %w: %s", first, last, src, err, out)
+	}
+	pages := make([]string, 0, last-first+1)
+	for page := first; page <= last; page++ {
+		pages = append(pages, filepath.Join(dir, fmt.Sprintf("%d.pdf", page)))
+	}
+	return Merge(ctx, binDir, pages, dst)
 }
 
 // Merge concatenates srcPaths, in order, into a single output PDF at dst,

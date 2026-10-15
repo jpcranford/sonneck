@@ -36,7 +36,7 @@ Sonneck is a single Go binary that serves a React frontend and talks to a single
 | Database | SQLite (`modernc.org/sqlite`, pure Go, no CGO) | File-based, trivial to back up, fits a single-instance deployment |
 | Schema migrations | [`goose`](https://github.com/pressly/goose) | Every schema change is a checked-in migration file — see [Database migrations](#database-migrations) |
 | Search | SQLite FTS5 | Built into SQLite itself — no separate search engine or index-file lifecycle to manage |
-| PDF rendering | `poppler-utils` (`pdftoppm`/`pdftocairo`, shelled out from Go) | Small, well-documented, ubiquitous CLI tools |
+| PDF rendering | `poppler-utils` (`pdftoppm`/`pdftocairo`/`pdfseparate`/`pdfunite`, shelled out from Go) | Small, well-documented, ubiquitous CLI tools |
 | Frontend language | TypeScript | Self-documents the API surface; types mirror the backend's response contract |
 | Frontend framework | React + Vite | Modern build tooling |
 | Frontend data fetching | TanStack Query | One consistent caching/loading/error pattern instead of ad-hoc `useEffect`/`useState` per component |
@@ -120,7 +120,7 @@ A few things worth knowing about that aren't obvious from the tree alone:
 **Prerequisites:**
 - Go 1.26+ (see `go.mod` for the exact floor)
 - Node 20.19+ (or 22.12+) and npm
-- `poppler-utils` installed and on your `PATH` (provides `pdftoppm`/`pdftocairo`) — `brew install poppler` on macOS, `apt-get install poppler-utils` on Debian/Ubuntu
+- `poppler-utils` installed and on your `PATH` (provides `pdfinfo`/`pdfseparate`/`pdfunite`/`pdftocairo`/`pdftoppm`) — `brew install poppler` on macOS, `apt-get install poppler-utils` on Debian/Ubuntu
 
 **Backend** (from the repo root):
 ```sh
