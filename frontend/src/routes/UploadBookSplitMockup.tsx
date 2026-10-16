@@ -504,7 +504,13 @@ export function UploadBookSplitMockup() {
           ))}
         </div>
 
-        <div className="relative grid grid-cols-3 gap-3 touch-none select-none sm:grid-cols-6">
+        {/* Swipes scroll the page here like anywhere else (touch-manipulation:
+            pans and pinch-zoom, no double-tap zoom) — a tap or long-press
+            still works, and a press the browser turns into a scroll is
+            cancelled (onPointerCancel below), never read as one. iOS's own
+            long-press behaviors stay off the tiles: the link-style preview,
+            text selection, and lifting a page image to drag it. */}
+        <div className="relative grid grid-cols-3 gap-3 touch-manipulation select-none [-webkit-touch-callout:none] sm:grid-cols-6 [&_img]:[-webkit-user-drag:none]">
           {Array.from({ length: PAGE_COUNT }, (_, i) => i + 1).map((page) => {
             const isSkip = state.skips.has(page)
             const pieceIdx = pieceIndexForPage(pieces, page)
@@ -741,6 +747,13 @@ export function UploadBookSplitMockup() {
                   const dx = e.clientX - longPressOriginRef.current.x
                   const dy = e.clientY - longPressOriginRef.current.y
                   if (Math.hypot(dx, dy) > LONG_PRESS_MOVE_CANCEL_PX) clearLongPressTimer()
+                }}
+                onPointerCancel={() => {
+                  // The browser took this touch over as a scroll: drop the
+                  // press entirely, so neither a pending long-press nor the
+                  // next pointerup acts on it.
+                  isPointerDownRef.current = false
+                  clearLongPressTimer()
                 }}
                 onContextMenu={(e) => {
                   e.preventDefault()
