@@ -12,6 +12,7 @@ import { getUserSettings } from '../api/userSettings'
 import { PageToolbarSlotContext } from '../lib/pageToolbarSlot'
 import { useDarkScoresSync, useThemeSync } from '../lib/theme'
 import { useSidebarShortcuts } from '../hooks/useSidebarShortcuts'
+import { useScrollRestoration } from '../hooks/useScrollRestoration'
 import { ShortcutHelp } from './ShortcutHelp'
 
 export function AppShell() {
@@ -39,6 +40,8 @@ export function AppShell() {
   // the way Tailwind's own `lg:` (min-width: 1024px) media query would.
   const isMobileOrTablet = useMediaQuery('(max-width: 1024px)')
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+  // New pages start at the top; Back/Forward returns to where you were.
+  useScrollRestoration(scrollContainerRef)
   const queryClient = useQueryClient()
   // Refetches every currently-mounted query rather than a hard page
   // reload — cheap, keeps scroll position/local UI state, and is exactly
