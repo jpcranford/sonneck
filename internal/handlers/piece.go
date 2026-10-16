@@ -500,6 +500,7 @@ func (s *Server) handlePieceThumbnail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	imageCacheHeaders(w, r)
 	http.ServeFile(w, r, thumbPath)
 }
 

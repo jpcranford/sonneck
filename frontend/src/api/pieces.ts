@@ -43,8 +43,11 @@ export function getPieceFileUrl(id: number): string {
   return `/api/pieces/${id}/file`
 }
 
-export function getPieceThumbnailUrl(id: number, page: number = 1): string {
-  return `/api/pieces/${id}/pages/${page}/thumbnail`
+/** `version` (hooks/useThumbnailVersion) lets the browser keep the image
+ * indefinitely; without one it checks with the server each time. */
+export function getPieceThumbnailUrl(id: number, page: number = 1, version?: string): string {
+  const url = `/api/pieces/${id}/pages/${page}/thumbnail`
+  return version ? `${url}?v=${version}` : url
 }
 
 export function replacePieceFile(

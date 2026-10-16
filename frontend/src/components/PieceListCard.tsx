@@ -9,6 +9,7 @@ import { ClickableCard } from './ClickableCard'
 import { PageCycleControl } from './PageCycleControl'
 import { PieceContextMenu } from './PieceContextMenu'
 import { TagPills } from './TagPills'
+import { useThumbnailVersion } from '../hooks/useThumbnailVersion'
 
 interface PieceListCardProps {
   piece: Piece
@@ -22,6 +23,7 @@ interface PieceListCardProps {
 }
 
 export function PieceListCard({ piece, backLabel, siblingPieces }: PieceListCardProps) {
+  const thumbVersion = useThumbnailVersion()
   const [page, setPage] = useState(piece.thumbnailPage)
   const meta = formatPieceMeta(piece)
 
@@ -69,7 +71,7 @@ export function PieceListCard({ piece, backLabel, siblingPieces }: PieceListCard
           </div>
           <div className="flex w-[134px] shrink-0 justify-center">
             <img
-              src={getPieceThumbnailUrl(piece.id, page)}
+              src={getPieceThumbnailUrl(piece.id, page, thumbVersion(piece.fileHash))}
               alt=""
               loading="lazy"
               className="score-page h-[84px] w-auto rounded-md border border-border object-contain"

@@ -668,6 +668,7 @@ func (s *Server) handleBookPageThumbnail(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	imageCacheHeaders(w, r)
 	http.ServeFile(w, r, thumbPath)
 }
 
@@ -731,6 +732,7 @@ func (s *Server) handleGetBookCover(w http.ResponseWriter, r *http.Request) {
 		// isn't already present, and CoverImagePath has no extension to
 		// sniff from (see that function's own comment).
 		w.Header().Set("Content-Type", *b.CoverImageContentType)
+		imageCacheHeaders(w, r)
 		http.ServeFile(w, r, storage.CoverImagePath(s.Cfg.DataDir, *b.CoverImageHash))
 		return
 	}
@@ -740,6 +742,7 @@ func (s *Server) handleGetBookCover(w http.ResponseWriter, r *http.Request) {
 			s.writeError(w, err)
 			return
 		}
+		imageCacheHeaders(w, r)
 		http.ServeFile(w, r, thumbPath)
 		return
 	}

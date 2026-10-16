@@ -410,6 +410,7 @@ func (s *Server) handleGetPersonPortrait(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	w.Header().Set("Content-Type", *p.PortraitImageContentType)
+	imageCacheHeaders(w, r)
 	http.ServeFile(w, r, storage.PortraitImagePath(s.Cfg.DataDir, *p.PortraitImageHash))
 }
 

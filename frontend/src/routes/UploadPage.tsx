@@ -33,6 +33,7 @@ import { TagComboBox } from '../components/TagComboBox'
 import { SingleSelect } from '../components/SingleSelect'
 import { BookUploadWizard } from './BookUploadWizard'
 import { isDetectedImslpNumber } from '../lib/imslpFromFilename'
+import { useThumbnailVersion } from '../hooks/useThumbnailVersion'
 
 // Mirrors the backend's own cap (internal/handlers/helpers.go MaxUploadBytes)
 // so an oversized file is rejected instantly instead of after a slow upload.
@@ -92,6 +93,7 @@ type Stage = 'landing' | 'select' | 'uploading' | 'details' | 'success' | 'book'
 const DROP_TILE_ACTIVE = 'border-2 border-dashed border-accent bg-accent-soft p-[15.5px]'
 
 export function UploadPage() {
+  const thumbVersion = useThumbnailVersion()
   const me = useAuth()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -705,7 +707,7 @@ export function UploadPage() {
                 >
                   <img
                     key={previewPage}
-                    src={getPieceThumbnailUrl(piece.id, previewPage)}
+                    src={getPieceThumbnailUrl(piece.id, previewPage, thumbVersion(piece.fileHash))}
                     onLoad={() => setThumbLoaded(true)}
                     alt={`Page ${previewPage} of ${piece.title}`}
                     className={`score-page ${thumbLoaded ? 'h-auto w-full' : 'invisible h-0 w-full'}`}
@@ -746,7 +748,11 @@ export function UploadPage() {
               {lightboxOpen && (
                 <PageLightbox
                   key={previewPage}
-                  imageUrl={getPieceThumbnailUrl(piece.id, previewPage)}
+                  imageUrl={getPieceThumbnailUrl(
+                    piece.id,
+                    previewPage,
+                    thumbVersion(piece.fileHash),
+                  )}
                   alt={`Page ${previewPage} of ${piece.title}`}
                   page={previewPage}
                   pageCount={piece.pageCount}

@@ -39,6 +39,7 @@ import { confirmAction, showAlert } from '../lib/dialogs'
 import { ViewModeToggle } from '../components/ViewModeToggle'
 import { EmptyState } from '../components/EmptyState'
 import { EDIT_WINDOW_KEYS, useShortcuts } from '../lib/shortcuts'
+import { useThumbnailVersion } from '../hooks/useThumbnailVersion'
 
 // Book Details page — no design-doc spec (new ground, same as the Books
 // library view before it). Built from the "Book Details — Consolidated
@@ -111,6 +112,7 @@ function pieceMetaLine(piece: Piece): string {
 // users get ContextMenu's built-in long-press instead, same as the
 // library's own cards).
 function PieceGrid({ pieces }: { pieces: Piece[] }) {
+  const thumbVersion = useThumbnailVersion()
   return (
     <div className="grid grid-cols-[repeat(auto-fill,minmax(112px,1fr))] gap-3">
       {pieces.map((piece) => (
@@ -131,7 +133,11 @@ function PieceGrid({ pieces }: { pieces: Piece[] }) {
                 (PieceGridCard.tsx). */}
             <div className="relative aspect-[180/132] border-b border-border bg-border">
               <img
-                src={getPieceThumbnailUrl(piece.id, piece.thumbnailPage)}
+                src={getPieceThumbnailUrl(
+                  piece.id,
+                  piece.thumbnailPage,
+                  thumbVersion(piece.fileHash),
+                )}
                 alt=""
                 loading="lazy"
                 className="score-page h-full w-full object-cover object-top"
@@ -192,6 +198,7 @@ const ROW_COLLAPSE_CLASS = 'max-[501px]:grid-cols-[96px_1fr]'
 // (list view only) — no room for it in that card's much narrower 112px
 // width.
 function PieceList({ pieces }: { pieces: Piece[] }) {
+  const thumbVersion = useThumbnailVersion()
   return (
     <div className="flex flex-col">
       <div className="grid grid-cols-[96px_1fr_56px] gap-3 px-1.5 pb-2.5 text-xs font-medium tracking-wide text-ink-soft uppercase">
@@ -245,7 +252,11 @@ function PieceList({ pieces }: { pieces: Piece[] }) {
                 className={`relative h-[42px] w-14 overflow-hidden rounded-md border border-border ${THUMB_HIDE_CLASS}`}
               >
                 <img
-                  src={getPieceThumbnailUrl(piece.id, piece.thumbnailPage)}
+                  src={getPieceThumbnailUrl(
+                    piece.id,
+                    piece.thumbnailPage,
+                    thumbVersion(piece.fileHash),
+                  )}
                   alt=""
                   loading="lazy"
                   className="score-page h-full w-full object-cover object-top"
@@ -308,6 +319,7 @@ function TruncatableFilename({
 }
 
 export function BookDetailsPage() {
+  const thumbVersion = useThumbnailVersion()
   const { id } = useParams<{ id: string }>()
   const bookId = Number(id)
   const queryClient = useQueryClient()
@@ -743,7 +755,10 @@ export function BookDetailsPage() {
                   {book.hasCustomCover || book.fileHash ? (
                     <img
                       key={coverSource}
-                      src={getBookCoverUrl(book.id, book.coverImageHash ?? book.fileHash)}
+                      src={getBookCoverUrl(
+                        book.id,
+                        book.coverImageHash ?? thumbVersion(book.fileHash),
+                      )}
                       onLoad={() => setCoverLoaded(true)}
                       alt=""
                       className={

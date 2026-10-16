@@ -577,6 +577,12 @@ type ConfigResponse struct {
 	// exactly parallel to FirstLaunchCompleted, rendering AuthChangeFlow
 	// instead of the normal routes until it's resolved.
 	AuthChangePending *AuthChangePendingResponse `json:"authChangePending"`
+	// ThumbnailsRedrawn changes whenever the regenerate-thumbnails command
+	// redraws thumbnails (Unix seconds, "" if it never has). The frontend
+	// puts it, with the file's own hash, in every thumbnail URL — so a
+	// redraw, like a replaced file, gives each thumbnail a new address, and
+	// browsers can keep the old one indefinitely (see imageCacheHeaders).
+	ThumbnailsRedrawn string `json:"thumbnailsRedrawn"`
 }
 
 // AuthChangePendingResponse carries enough for the frontend to render the

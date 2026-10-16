@@ -59,6 +59,7 @@ import { PageLightbox } from '../components/PageLightbox'
 import { PracticeStatusIcon } from '../components/PracticeStatusIcon'
 import { confirmAction, showAlert } from '../lib/dialogs'
 import { EDIT_PIECE_KEYS, useShortcuts } from '../lib/shortcuts'
+import { useThumbnailVersion } from '../hooks/useThumbnailVersion'
 
 // Mirrors UploadPage's own cap (backend's MaxUploadBytes) — same reasoning
 // as there: reject an oversized file instantly rather than after a slow
@@ -229,6 +230,7 @@ function ActionButton({
 }
 
 export function PiecePage() {
+  const thumbVersion = useThumbnailVersion()
   const { id } = useParams<{ id: string }>()
   const pieceId = Number(id)
   const queryClient = useQueryClient()
@@ -668,7 +670,7 @@ export function PiecePage() {
                 className="block w-full cursor-zoom-in"
               >
                 <img
-                  src={getPieceThumbnailUrl(piece.id, page)}
+                  src={getPieceThumbnailUrl(piece.id, page, thumbVersion(piece.fileHash))}
                   alt={`Page ${page} of ${piece.title}`}
                   className="score-page h-auto w-full"
                 />
@@ -723,7 +725,7 @@ export function PiecePage() {
             {lightboxOpen && (
               <PageLightbox
                 key={page}
-                imageUrl={getPieceThumbnailUrl(piece.id, page)}
+                imageUrl={getPieceThumbnailUrl(piece.id, page, thumbVersion(piece.fileHash))}
                 alt={`Page ${page} of ${piece.title}`}
                 page={page}
                 pageCount={piece.pageCount}

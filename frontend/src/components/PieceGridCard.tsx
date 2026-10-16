@@ -7,6 +7,7 @@ import { personCreditPart } from '../lib/joinNames'
 import { ClickableCard } from './ClickableCard'
 import { PieceContextMenu } from './PieceContextMenu'
 import { PracticeStatusIcon } from './PracticeStatusIcon'
+import { useThumbnailVersion } from '../hooks/useThumbnailVersion'
 
 interface PieceGridCardProps {
   piece: Piece
@@ -22,6 +23,7 @@ interface PieceGridCardProps {
 // No page-cycle control here — the locked mockup only shows it on list
 // cards (see PieceListCard). Grid always shows the piece's first page.
 export function PieceGridCard({ piece, backLabel, siblingPieces }: PieceGridCardProps) {
+  const thumbVersion = useThumbnailVersion()
   // Composer (+ arranger) • year written only — narrower than
   // PieceListCard's formatPieceMeta (which also folds in opus number/
   // source book), since the grid card's tighter layout only has room for
@@ -78,7 +80,7 @@ export function PieceGridCard({ piece, backLabel, siblingPieces }: PieceGridCard
             the outer card border to read as "one card." */}
         <div className="relative aspect-[180/132] w-full overflow-hidden border-b border-border bg-border">
           <img
-            src={getPieceThumbnailUrl(piece.id, piece.thumbnailPage)}
+            src={getPieceThumbnailUrl(piece.id, piece.thumbnailPage, thumbVersion(piece.fileHash))}
             alt=""
             loading="lazy"
             className="score-page h-full w-full object-cover object-top"

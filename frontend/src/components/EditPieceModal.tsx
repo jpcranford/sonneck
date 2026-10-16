@@ -49,6 +49,7 @@ import { Toggle } from './Toggle'
 import { SourceBookField } from './SourceBookField'
 import { PageCycleControl } from './PageCycleControl'
 import { isMultilineField } from '../lib/multilineField'
+import { useThumbnailVersion } from '../hooks/useThumbnailVersion'
 
 // The real Piece Properties Edit Menu (design doc §15) — built from the
 // locked mockup design (EditPieceModalMockup.tsx, /mockup/edit-piece-modal,
@@ -307,6 +308,7 @@ export function EditPieceModal({
   onClose,
   siblingPieces,
 }: EditPieceModalProps) {
+  const thumbVersion = useThumbnailVersion()
   const queryClient = useQueryClient()
   const [tempoOpen, setTempoOpen] = useState(false)
   const [bookDetailsOpen, setBookDetailsOpen] = useState(false)
@@ -886,7 +888,7 @@ export function EditPieceModal({
                   style={{ maxHeight: `${previewImageMaxHeight}px` }}
                 >
                   <img
-                    src={getPieceThumbnailUrl(piece.id, previewPage)}
+                    src={getPieceThumbnailUrl(piece.id, previewPage, thumbVersion(piece.fileHash))}
                     alt={`Page ${previewPage} of ${piece.title}`}
                     className="score-page block h-auto w-full"
                   />

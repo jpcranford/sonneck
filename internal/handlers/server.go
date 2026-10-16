@@ -325,6 +325,7 @@ func (s *Server) handleGetConfig(w http.ResponseWriter, r *http.Request) {
 		AuthMethodSetByEnv:   s.Cfg.AuthMethod != "",
 		FirstLaunchCompleted: settings.FirstLaunchCompletedAt != nil,
 		BuildTarget:          s.BuildTarget,
+		ThumbnailsRedrawn:    s.thumbnailsRedrawn(),
 	}
 	if !resp.FirstLaunchCompleted {
 		resp.DataDir = &s.Cfg.DataDir

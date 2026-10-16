@@ -5,6 +5,7 @@ import type { Book } from '../api/types'
 import { formatBookMeta } from '../lib/formatBookMeta'
 import { BookContextMenu } from './BookContextMenu'
 import { ClickableCard } from './ClickableCard'
+import { useThumbnailVersion } from '../hooks/useThumbnailVersion'
 
 interface BookGridCardProps {
   book: Book
@@ -21,6 +22,7 @@ interface BookGridCardProps {
 // full-width gradient scrim across the cover — the pill's own background
 // does the contrast work, so the cover underneath stays untouched.
 export function BookGridCard({ book }: BookGridCardProps) {
+  const thumbVersion = useThumbnailVersion()
   const meta = formatBookMeta(book)
   // hasCustomCover and fileHash are two independent sources a cover can
   // come from — getBookCoverUrl resolves which one server-side, so this
@@ -63,7 +65,7 @@ export function BookGridCard({ book }: BookGridCardProps) {
           {book.hasCustomCover || book.fileHash ? (
             <img
               key={coverSource}
-              src={getBookCoverUrl(book.id, book.coverImageHash ?? book.fileHash)}
+              src={getBookCoverUrl(book.id, book.coverImageHash ?? thumbVersion(book.fileHash))}
               onLoad={() => setCoverLoaded(true)}
               alt=""
               loading="lazy"

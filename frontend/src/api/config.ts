@@ -40,7 +40,15 @@ export interface AppConfig {
   // that flow compute its whole step sequence upfront (computeSteps) —
   // see AuthChangePendingResponse's own Go doc comment for exactly what
   // each means.
-  authChangePending: { from: AuthMethod; to: AuthMethod; needsPassword: boolean; multiAccount: boolean } | null
+  authChangePending: {
+    from: AuthMethod
+    to: AuthMethod
+    needsPassword: boolean
+    multiAccount: boolean
+  } | null
+  /** When thumbnails were last redrawn (Unix seconds, "" if never) — part of
+   * every thumbnail URL's version (hooks/useThumbnailVersion). */
+  thumbnailsRedrawn: string
 }
 
 export function getConfig(): Promise<AppConfig> {

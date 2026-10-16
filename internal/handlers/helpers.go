@@ -14,6 +14,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/jpcranford/sonneck/internal/api"
 	"github.com/jpcranford/sonneck/internal/models"
@@ -198,6 +199,56 @@ func (s *Server) regenerateThumbnail(ctx context.Context, srcPath string, page, 
 	return thumbPath, nil
 }
 
+// thumbnailsRedrawnMarker is touched whenever the regenerate-thumbnails
+// command redraws thumbnails without their source file changing (a new
+// renderer or fonts, say). It sits in cache/, not cache/thumbnails/, which
+// RegenerateThumbnails empties.
+func (s *Server) thumbnailsRedrawnMarker() string {
+	return filepath.Join(s.Cfg.DataDir, "cache", "thumbnails-redrawn")
+}
+
+// thumbnailsRedrawn is when thumbnails were last redrawn, as Unix seconds —
+// "" if they never have. Part of every thumbnail URL's version (GET
+// /api/config's thumbnailsRedrawn). Read from the marker's modification
+// time on each call, since the regenerate command runs as a separate
+// process from the server.
+func (s *Server) thumbnailsRedrawn() string {
+	info, err := os.Stat(s.thumbnailsRedrawnMarker())
+	if err != nil {
+		return ""
+	}
+	return strconv.FormatInt(info.ModTime().Unix(), 10)
+}
+
+// markThumbnailsRedrawn records a redraw (see thumbnailsRedrawnMarker).
+func (s *Server) markThumbnailsRedrawn() error {
+	path := s.thumbnailsRedrawnMarker()
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	now := time.Now()
+	if err := os.Chtimes(path, now, now); err == nil {
+		return nil
+	}
+	return os.WriteFile(path, nil, 0o644)
+}
+
+// imageCacheHeaders tells the browser how long it may keep a thumbnail,
+// cover or portrait. A URL carrying a version (?v=…) is a fixed address
+// for fixed content — any change to the image (a replaced file, a new
+// cover, a redraw) comes with a new version — so it's kept for a year
+// without asking again. One without a version could change behind the same
+// URL, so the browser checks first every time (a cheap 304 when it hasn't).
+// Without either, browsers guessed a lifetime from the file's age and kept
+// showing a replaced piece's old first page.
+func imageCacheHeaders(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Query().Get("v") != "" {
+		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+	} else {
+		w.Header().Set("Cache-Control", "no-cache")
+	}
+}
+
 // RegenerateThumbnails force-regenerates every piece's page thumbnails from
 // scratch — the manual recovery path behind the regenerate-thumbnails CLI
 // subcommand. Clears data/cache/thumbnails entirely first (it's derived
@@ -238,7 +289,7 @@ func (s *Server) RegenerateThumbnails(ctx context.Context) (int, error) {
 			count++
 		}
 	}
-	return count, nil
+	return count, s.markThumbnailsRedrawn()
 }
 
 // RegeneratePieceThumbnails is RegenerateThumbnails scoped to the given
@@ -281,7 +332,10 @@ func (s *Server) RegeneratePieceThumbnails(ctx context.Context, ids []int64) (in
 			count++
 		}
 	}
-	return count, nil
+	// One stamp for any redraw, so every thumbnail URL changes, not just
+	// these pieces' — simpler than per-piece versions, and the command is
+	// rare.
+	return count, s.markThumbnailsRedrawn()
 }
 
 // purgeBookPageThumbnails removes every cached page-thumbnail PNG for

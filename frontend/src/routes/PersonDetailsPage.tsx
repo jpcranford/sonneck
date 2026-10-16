@@ -42,6 +42,7 @@ import { confirmAction, showAlert } from '../lib/dialogs'
 import { ViewModeToggle } from '../components/ViewModeToggle'
 import { EmptyState } from '../components/EmptyState'
 import { EDIT_WINDOW_KEYS, useShortcuts } from '../lib/shortcuts'
+import { useThumbnailVersion } from '../hooks/useThumbnailVersion'
 
 // The real Person Details page (/people/:id) — composer/arranger overhaul,
 // Stage B. Real build of PersonDetailsSample.tsx (/mockup/person-details,
@@ -202,10 +203,11 @@ const THUMB_HIDE_CLASS = 'max-[501px]:hidden'
 const ROW_COLLAPSE_CLASS = 'max-[501px]:grid-cols-[72px_1fr]'
 
 function WorkThumbnail({ piece, className }: { piece: Piece; className: string }) {
+  const thumbVersion = useThumbnailVersion()
   return (
     <div className={`relative overflow-hidden border border-border ${className}`}>
       <img
-        src={getPieceThumbnailUrl(piece.id, piece.thumbnailPage)}
+        src={getPieceThumbnailUrl(piece.id, piece.thumbnailPage, thumbVersion(piece.fileHash))}
         alt=""
         loading="lazy"
         className="score-page h-full w-full object-cover object-top"
