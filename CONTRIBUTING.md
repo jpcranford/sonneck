@@ -99,7 +99,7 @@ sonneck/
 │       ├── lib/                 # Pure helper logic (formatting, split-page math, etc.)
 │       └── routes/              # One file per page (including /mockup/* design references), wired up in App.tsx
 ├── data/                       # Local dev library (DB, files, cache) — gitignored
-├── design-review/              # Local screenshot/comparison scratch space — gitignored
+├── design-review/              # Local screenshot/comparison scratch space — gitignored; the only one (never a frontend/design-review/)
 ├── .github/workflows/          # docker-publish.yml — see the Docker section below
 ├── Dockerfile                  # 3-stage: build frontend → embed it into the Go binary → slim runtime
 ├── docker-compose.yml          # What the README's Docker install path actually downloads and runs

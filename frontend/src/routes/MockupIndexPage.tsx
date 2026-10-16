@@ -1,180 +1,212 @@
 import { Link } from 'react-router-dom'
+import { WIDE_CONTENT_MAX_W } from '../lib/layout'
 import { useMockupTitle } from '../lib/useMockupTitle'
 
 // Quick and dirty — just a way to find the mockups without memorizing URLs.
-// Add a row here whenever a new one gets built. These pages are kept around
+// Add a row to the fitting section whenever a new one gets built. These pages are kept around
 // on purpose (design references, future experimentation), not deleted once
 // whatever they were mocking gets built for real.
-const MOCKUPS = [
+interface Mockup {
+  to: string
+  name: string
+  note: string
+}
+
+const SECTIONS: { title: string; mockups: Mockup[] }[] = [
   {
-    to: '/mockup/style-sampler',
-    name: 'Style Sampler',
-    note: 'The app’s visual style at a glance: every color token (with where it’s used), hard-coded colors, an example window drawn from the tokens, a type specimen of every size/weight in use, and every button and field style. Read live from index.css and the app’s own source, so it never needs updating by hand. Reference for prototyping dark mode.',
+    title: 'App Styling',
+    mockups: [
+      {
+        to: '/mockup/style-sampler',
+        name: 'Style Sampler',
+        note: 'The app’s visual style at a glance: every color token (with where it’s used), hard-coded colors, an example window drawn from the tokens, a type specimen of every size/weight in use, and every button and field style. Read live from index.css and the app’s own source, so it never needs updating by hand. Reference for prototyping dark mode.',
+      },
+      {
+        to: '/mockup/states',
+        name: 'Empty, Error & Loading States',
+        note: 'Every empty, error and loading state in the app on one page, with an Empty / Error / Loading switch and a Light / Dark switch — states that only appear in special moments and are easy to miss page by page. Hand-maintained copies of the real markup, each labeled with where the real one lives.',
+      },
+      {
+        to: '/mockup/shortcut-help',
+        name: 'Shortcut Help',
+        note: 'Hold / or ? (about a second, not while typing) for a corner card listing the page’s keyboard shortcuts; letting go hides it. Pick a page and what the viewer may do — keys they can’t use are left off, edit-window keys are listed for reference, and a “Keep holding” pill fills first.',
+      },
+      {
+        to: '/mockup/mobile-nav-drawer',
+        name: 'Mobile Nav — Left Drawer',
+        note: 'Replaces the sidebar’s permanent mobile icon rail with a top bar + slide-in drawer below 768px. Not nested in AppShell — renders the real Sidebar for desktop, a new top bar + drawer for mobile.',
+      },
+      {
+        to: '/mockup/sidebar-user-menu',
+        name: 'Sidebar User Menu',
+        note: 'Multi-user support — replaces the static "Local Library" footer pill (desktop rail + mobile drawer) with a real account menu ("Identity card, dark popup" style). Switch identity state (None/Password/OIDC Admin/OIDC Member), collapse the rail, or open the mobile drawer to see the menu adapt.',
+      },
+      {
+        to: '/mockup/sidebar-setlists',
+        name: 'Sidebar Setlists',
+        note: 'Setlists feature, Phase 5 — replaces the inert "Coming soon" Setlists placeholder with a divider, an "Upcoming Sets" heading, 5 fixture setlists (real gig dates relative to today, soonest first), and a "⋯" menu for View All/Archive (both still-unbuilt, Phase 10). Try collapsing the rail or the mobile drawer.',
+      },
+      {
+        to: '/mockup/device-info',
+        name: 'Device Info',
+        note: 'Not a screen mockup — a live diagnostic reference (window/screen size, orientation, devicePixelRatio, current Tailwind breakpoint tier, active nav mode) for the responsive-layout pass across phone/tablet/ultrawide/e-ink widths.',
+      },
+    ],
   },
   {
-    to: '/mockup/states',
-    name: 'Empty, Error & Loading States',
-    note: 'Every empty, error and loading state in the app on one page, with an Empty / Error / Loading switch and a Light / Dark switch — states that only appear in special moments and are easy to miss page by page. Hand-maintained copies of the real markup, each labeled with where the real one lives.',
+    title: 'Libraries',
+    mockups: [
+      {
+        to: '/mockup/piece-library',
+        name: 'Piece Library — Sort/Filter',
+        note: 'Filter Drawer (Option B of a 4-option comparison) added to the Piece Library toolbar — Filters button + slide-in drawer (Key/Instrument/Sheet Type/Tags/Status/Favorite), plus a new Sort control. Genuinely interactive against 10 fixture pieces.',
+      },
+      {
+        to: '/mockup/books-library',
+        name: 'Books Library — Sort/Filter',
+        note: 'Grid/list match the real BookGridCard/BookListCard exactly, plus the same Filter Drawer + Sort control added to the Piece Library, adjusted for Books’ lighter facets (Sheet Type/Instrument only). Genuinely interactive against 8 fixture books.',
+      },
+      {
+        to: '/mockup/people-library',
+        name: 'People Library',
+        note: 'Composer/arranger overhaul — real toolbar/grid/list/Filter Drawer shell (same system as Piece/Books Library) with the oval Person card and the "Show all composers" default (>2-piece) filter. Genuinely interactive against 17 fixture people.',
+      },
+      {
+        to: '/mockup/setlists-library',
+        name: 'Setlists Library',
+        note: 'Setlists feature, Phase 12 — the unified /setlists page (was "Setlist Archive" — renamed, since Active is most of what\'s here). Built against Phase 4\'s approved Option C artifact: Active/Archived as two scrolled sections, no toggle, cards in a compact grid (not a list). Every card\'s right-click menu is real: Archive/Unarchive (a genuine Modal confirm, moves the card between sections — offered only when there\'s something meaningful to toggle, not for a setlist already archived purely by a passed gig date), Duplicate (decision 19\'s own forward note), Edit Setlist, and Delete (genuinely removes the card). "New Setlist"/"Edit Setlist" open the real EditSetlistModal in its create/edit states.',
+      },
+      {
+        to: '/mockup/add-to-setlist',
+        name: 'Add to Setlist',
+        note: 'Setlists feature, Phase 5 — the Library grid/list cards’ new right-click "Add to Setlist" item and the "already in a setlist" indicator next to the favorite heart. The same menu now opens with a practice status strip (design C′). Right-click/long-press a card to try both.',
+      },
+    ],
   },
   {
-    to: '/mockup/shortcut-help',
-    name: 'Shortcut Help',
-    note: 'Hold / or ? (about a second, not while typing) for a corner card listing the page’s keyboard shortcuts; letting go hides it. Pick a page and what the viewer may do — keys they can’t use are left off, edit-window keys are listed for reference, and a “Keep holding” pill fills first.',
+    title: 'Details Pages',
+    mockups: [
+      {
+        to: '/mockup/piece-details',
+        name: 'Piece Details',
+        note: 'Reference sample for the Piece Details page (§14) — kept as a standing design reference.',
+      },
+      {
+        to: '/mockup/edit-piece-modal',
+        name: 'Edit Piece Modal',
+        note: 'Piece Properties Edit Menu (§15) design mockup.',
+      },
+      {
+        to: '/mockup/citation-logic',
+        name: 'Citation Logic',
+        note: 'Not a screen mockup — a decision-flow reference for buildCitation (internal/handlers/citation.go), kept in sync under the same mockup-parity rule whenever the real branching logic changes. Every example citation is copied verbatim from a passing citation_test.go case.',
+      },
+      {
+        to: '/mockup/book-details',
+        name: 'Book Details',
+        note: 'Book Details page (header card + pieces grid/list) design mockup.',
+      },
+      {
+        to: '/mockup/edit-book-modal',
+        name: 'Edit Book Modal',
+        note: 'Book Properties Edit Menu (§16) design mockup, incl. the animated Save-progress button.',
+      },
+      {
+        to: '/mockup/person-details',
+        name: 'Person Details',
+        note: 'Composer/arranger overhaul — header card (oval portrait + camera-badge Upload Portrait flow with device/Wikipedia search + drag/zoom adjust, bio, book-credit chips) and a works grid/list mirroring Book Details’ own PieceList, plus a Split People modal reusing the real TagComboBox as its ordered replacement picker. Genuinely interactive against one fixture person (Chopin).',
+      },
+      {
+        to: '/mockup/edit-person-modal',
+        name: 'Edit Person Modal',
+        note: "Composer/arranger overhaul — Name/Biography/Birth year/Death year, deliberately minimal (no portrait field — that stays on the camera badge). Wikipedia autofill button mimics the real ImslpAutofillButton's states/behavior via a mock lookup.",
+      },
+      {
+        to: '/mockup/setlist-details',
+        name: 'Setlist Details',
+        note: 'Setlists feature, Phase 6 — the full Setlist Details page (§13), built against the approved "Stats dashboard" layout and rough-in decisions: relative gig date, role labels, non-piece entries (one with a note callout, one toggled to count as music), a real Archive/Unarchive confirm modal, and each row’s right-click menu. Play/Edit/Add Entries are inert (later phases); Archive and Remove are real.',
+      },
+      {
+        to: '/mockup/edit-setlist',
+        name: 'Edit Setlist',
+        note: 'Setlists feature, Phase 10 — decision 23\'s full fold: the former standalone Edit Program modal no longer exists — its own restyled, bordered-card Program list ("+ Piece"/"+ Custom Entry", drag-handle reordering, inline custom-entry edit) now lives as this modal\'s own "Program Order" tab, alongside a "Setlist Details" tab (name/gig date/description). Doubles as the New Setlist create state via the "Open New Setlist" button; "Open on Program Tab" demonstrates the Setlist Details page\'s own "Edit Program" button landing here pre-set to that tab. Whole-setlist delete lives on the Setlist Details page itself, not here. Nothing is final until "Save."',
+      },
+      {
+        to: '/mockup/edit-entry',
+        name: 'Edit Entry',
+        note: 'Setlists feature, Phase 11 — a single custom entry\'s own name/duration/"Count as music"/description, reached from that entry\'s right-click "Edit Entry" item on the Setlist Details page. Same field set as the Edit Setlist modal\'s own Program Order tab uses for its inline "edit an existing custom entry" form — deliberately duplicated (a fast single-entry path), not shared.',
+      },
+      {
+        to: '/mockup/setlist-program-page',
+        name: 'Download Set PDF',
+        note: 'Setlists "Download Set PDF" export (§13) — all four locked page directions, in packet order: Cover, Table of Contents, a Generated Program Page (the stand-in page a custom, non-piece entry contributes, since it has no sheet music of its own), and Colophon. Only the cover and colophon reference the app itself. Preview-entry and page-shape (Letter/A4) toggles exist only in this mockup — a real generated page shows one entry at one fixed shape.',
+      },
+    ],
   },
   {
-    to: '/mockup/piece-details',
-    name: 'Piece Details',
-    note: 'Reference sample for the Piece Details page (§14) — kept as a standing design reference.',
+    title: 'Upload Flows',
+    mockups: [
+      {
+        to: '/mockup/drop-to-upload',
+        name: 'Drop to Upload',
+        note: 'Drag-and-drop upload anywhere in the app (§13), design B: a "Drop to upload" overlay, then "Is this a piece or a book?" with the Upload page’s own cards. Refuses multiple files, non-PDFs, a second book while a draft exists, and viewers without upload. Drag a real PDF over the page.',
+      },
+      {
+        to: '/mockup/upload-piece-about',
+        name: 'Upload Piece — About This Piece',
+        note: 'Single-piece Upload flow\'s "details" step — Title/Composer/Arranger/Year Written/IMSLP No. always visible, the rest behind "More details" and "From a book?". The IMSLP number from the filename autofills blank fields shortly after the screen appears, as the book upload does.',
+      },
+      {
+        to: '/mockup/upload-book-about',
+        name: 'Upload — About This Book',
+        note: 'Book Upload Wizard (§5), screen 3 of 6 — book-metadata entry with the sticky cover column, plus a printed-vs-PDF page number offset field under the cover cycler.',
+      },
+      {
+        to: '/mockup/upload-book-split',
+        name: 'Upload — Split the Book',
+        note: 'Book Upload Wizard (§5), screen 4 of 6 — interactive page grid, tap to mark/skip/share, drag to range-select.',
+      },
+      {
+        to: '/mockup/upload-book-titles',
+        name: 'Upload — Name Each Piece',
+        note: 'Book Upload Wizard (§5), screen 5 of 6 — Title/Composer table with live validation and a page preview overlay.',
+      },
+      {
+        to: '/mockup/upload-book-confirm',
+        name: 'Upload — Ready to Import',
+        note: 'Book Upload Wizard (§5), screen 6 of 6 — read-only review, real stripe-animation import, and the success screen.',
+      },
+    ],
   },
   {
-    to: '/mockup/edit-piece-modal',
-    name: 'Edit Piece Modal',
-    note: 'Piece Properties Edit Menu (§15) design mockup.',
-  },
-  {
-    to: '/mockup/piece-library',
-    name: 'Piece Library — Sort/Filter',
-    note: 'Filter Drawer (Option B of a 4-option comparison) added to the Piece Library toolbar — Filters button + slide-in drawer (Key/Instrument/Sheet Type/Tags/Status/Favorite), plus a new Sort control. Genuinely interactive against 10 fixture pieces.',
-  },
-  {
-    to: '/mockup/add-to-setlist',
-    name: 'Add to Setlist',
-    note: 'Setlists feature, Phase 5 — the Library grid/list cards’ new right-click "Add to Setlist" item and the "already in a setlist" indicator next to the favorite heart. The same menu now opens with a practice status strip (design C′). Right-click/long-press a card to try both.',
-  },
-  {
-    to: '/mockup/drop-to-upload',
-    name: 'Drop to Upload',
-    note: 'Drag-and-drop upload anywhere in the app (§13), design B: a "Drop to upload" overlay, then "Is this a piece or a book?" with the Upload page’s own cards. Refuses multiple files, non-PDFs, a second book while a draft exists, and viewers without upload. Drag a real PDF over the page.',
-  },
-  {
-    to: '/mockup/setlist-details',
-    name: 'Setlist Details',
-    note: 'Setlists feature, Phase 6 — the full Setlist Details page (§13), built against the approved "Stats dashboard" layout and rough-in decisions: relative gig date, role labels, non-piece entries (one with a note callout, one toggled to count as music), a real Archive/Unarchive confirm modal, and each row’s right-click menu. Play/Edit/Add Entries are inert (later phases); Archive and Remove are real.',
-  },
-  {
-    to: '/mockup/edit-setlist',
-    name: 'Edit Setlist',
-    note: 'Setlists feature, Phase 10 — decision 23\'s full fold: the former standalone Edit Program modal no longer exists — its own restyled, bordered-card Program list ("+ Piece"/"+ Custom Entry", drag-handle reordering, inline custom-entry edit) now lives as this modal\'s own "Program Order" tab, alongside a "Setlist Details" tab (name/gig date/description). Doubles as the New Setlist create state via the "Open New Setlist" button; "Open on Program Tab" demonstrates the Setlist Details page\'s own "Edit Program" button landing here pre-set to that tab. Whole-setlist delete lives on the Setlist Details page itself, not here. Nothing is final until "Save."',
-  },
-  {
-    to: '/mockup/edit-entry',
-    name: 'Edit Entry',
-    note: 'Setlists feature, Phase 11 — a single custom entry\'s own name/duration/"Count as music"/description, reached from that entry\'s right-click "Edit Entry" item on the Setlist Details page. Same field set as the Edit Setlist modal\'s own Program Order tab uses for its inline "edit an existing custom entry" form — deliberately duplicated (a fast single-entry path), not shared.',
-  },
-  {
-    to: '/mockup/setlists-library',
-    name: 'Setlists Library',
-    note: 'Setlists feature, Phase 12 — the unified /setlists page (was "Setlist Archive" — renamed, since Active is most of what\'s here). Built against Phase 4\'s approved Option C artifact: Active/Archived as two scrolled sections, no toggle, cards in a compact grid (not a list). Every card\'s right-click menu is real: Archive/Unarchive (a genuine Modal confirm, moves the card between sections — offered only when there\'s something meaningful to toggle, not for a setlist already archived purely by a passed gig date), Duplicate (decision 19\'s own forward note), Edit Setlist, and Delete (genuinely removes the card). "New Setlist"/"Edit Setlist" open the real EditSetlistModal in its create/edit states.',
-  },
-  {
-    to: '/mockup/setlist-program-page',
-    name: 'Download Set PDF',
-    note: 'Setlists "Download Set PDF" export (§13) — all four locked page directions, in packet order: Cover, Table of Contents, a Generated Program Page (the stand-in page a custom, non-piece entry contributes, since it has no sheet music of its own), and Colophon. Only the cover and colophon reference the app itself. Preview-entry and page-shape (Letter/A4) toggles exist only in this mockup — a real generated page shows one entry at one fixed shape.',
-  },
-  {
-    to: '/mockup/books-library',
-    name: 'Books Library — Sort/Filter',
-    note: 'Grid/list match the real BookGridCard/BookListCard exactly, plus the same Filter Drawer + Sort control added to the Piece Library, adjusted for Books’ lighter facets (Sheet Type/Instrument only). Genuinely interactive against 8 fixture books.',
-  },
-  {
-    to: '/mockup/people-library',
-    name: 'People Library',
-    note: 'Composer/arranger overhaul — real toolbar/grid/list/Filter Drawer shell (same system as Piece/Books Library) with the oval Person card and the "Show all composers" default (>2-piece) filter. Genuinely interactive against 17 fixture people.',
-  },
-  {
-    to: '/mockup/person-details',
-    name: 'Person Details',
-    note: 'Composer/arranger overhaul — header card (oval portrait + camera-badge Upload Portrait flow with device/Wikipedia search + drag/zoom adjust, bio, book-credit chips) and a works grid/list mirroring Book Details’ own PieceList, plus a Split People modal reusing the real TagComboBox as its ordered replacement picker. Genuinely interactive against one fixture person (Chopin).',
-  },
-  {
-    to: '/mockup/edit-person-modal',
-    name: 'Edit Person Modal',
-    note: "Composer/arranger overhaul — Name/Biography/Birth year/Death year, deliberately minimal (no portrait field — that stays on the camera badge). Wikipedia autofill button mimics the real ImslpAutofillButton's states/behavior via a mock lookup.",
-  },
-  {
-    to: '/mockup/book-details',
-    name: 'Book Details',
-    note: 'Book Details page (header card + pieces grid/list) design mockup.',
-  },
-  {
-    to: '/mockup/edit-book-modal',
-    name: 'Edit Book Modal',
-    note: 'Book Properties Edit Menu (§16) design mockup, incl. the animated Save-progress button.',
-  },
-  {
-    to: '/mockup/upload-piece-about',
-    name: 'Upload Piece — About This Piece',
-    note: 'Single-piece Upload flow\'s "details" step — Title/Composer/Arranger/Year Written/IMSLP No. always visible, the rest behind "More details" and "From a book?". The IMSLP number from the filename autofills blank fields shortly after the screen appears, as the book upload does.',
-  },
-  {
-    to: '/mockup/upload-book-about',
-    name: 'Upload — About This Book',
-    note: 'Book Upload Wizard (§5), screen 3 of 6 — book-metadata entry with the sticky cover column, plus a printed-vs-PDF page number offset field under the cover cycler.',
-  },
-  {
-    to: '/mockup/upload-book-split',
-    name: 'Upload — Split the Book',
-    note: 'Book Upload Wizard (§5), screen 4 of 6 — interactive page grid, tap to mark/skip/share, drag to range-select.',
-  },
-  {
-    to: '/mockup/upload-book-titles',
-    name: 'Upload — Name Each Piece',
-    note: 'Book Upload Wizard (§5), screen 5 of 6 — Title/Composer table with live validation and a page preview overlay.',
-  },
-  {
-    to: '/mockup/upload-book-confirm',
-    name: 'Upload — Ready to Import',
-    note: 'Book Upload Wizard (§5), screen 6 of 6 — read-only review, real stripe-animation import, and the success screen.',
-  },
-  {
-    to: '/mockup/mobile-nav-drawer',
-    name: 'Mobile Nav — Left Drawer',
-    note: 'Replaces the sidebar’s permanent mobile icon rail with a top bar + slide-in drawer below 768px. Not nested in AppShell — renders the real Sidebar for desktop, a new top bar + drawer for mobile.',
-  },
-  {
-    to: '/mockup/citation-logic',
-    name: 'Citation Logic',
-    note: 'Not a screen mockup — a decision-flow reference for buildCitation (internal/handlers/citation.go), kept in sync under the same mockup-parity rule whenever the real branching logic changes. Every example citation is copied verbatim from a passing citation_test.go case.',
-  },
-  {
-    to: '/mockup/device-info',
-    name: 'Device Info',
-    note: 'Not a screen mockup — a live diagnostic reference (window/screen size, orientation, devicePixelRatio, current Tailwind breakpoint tier, active nav mode) for the responsive-layout pass across phone/tablet/ultrawide/e-ink widths.',
-  },
-  {
-    to: '/mockup/first-launch',
-    name: 'First-Time Launch Flow',
-    note: 'Multi-user support — Welcome → Library Folder → Security, with a "Preview as Docker/Native" toggle since OIDC and the folder picker both branch on runtime mode. Fixture/preview state only, no real API calls (the real flow is FirstLaunchFlow.tsx).',
-  },
-  {
-    to: '/mockup/sidebar-user-menu',
-    name: 'Sidebar User Menu',
-    note: 'Multi-user support — replaces the static "Local Library" footer pill (desktop rail + mobile drawer) with a real account menu ("Identity card, dark popup" style). Switch identity state (None/Password/OIDC Admin/OIDC Member), collapse the rail, or open the mobile drawer to see the menu adapt.',
-  },
-  {
-    to: '/mockup/sidebar-setlists',
-    name: 'Sidebar Setlists',
-    note: 'Setlists feature, Phase 5 — replaces the inert "Coming soon" Setlists placeholder with a divider, an "Upcoming Sets" heading, 5 fixture setlists (real gig dates relative to today, soonest first), and a "⋯" menu for View All/Archive (both still-unbuilt, Phase 10). Try collapsing the rail or the mobile drawer.',
-  },
-  {
-    to: '/mockup/user-settings',
-    name: 'User Settings',
-    note: 'Multi-user support — separate cards per section: Account (display name, identity line, Change Password), Appearance (Theme, Dark disabled/"Soon"), Library (Hide Books in sidebar, Paginated views), Your Tags and Practice Status (per-user create/delete/merge, same pattern as Admin Settings\' Lookup Tables). Switch identity state to see the Account card adapt.',
-  },
-  {
-    to: '/mockup/admin-settings',
-    name: 'Admin Settings',
-    note: 'Multi-user support — a single scrolling page with jump-nav, each section in its own bordered card matching User Settings\' card look (same max-width too): Library Settings (every field independently env-var-shadowed; Security is now read-only, env-var-only, no in-app change control — see the Auth Change Flow mockup for how a change gets handled instead), Library counts, Version (identifies the build by commit SHA against GitHub release/pre-release tags, falling back to "Dev build, from commit <SHA> on <date>"), Users (expandable permission grid with a hover/tap description per permission, last-admin lock, per-row delete behind the shared confirm dialog), Lookup Tables (inline-editable Sheet Types/Instruments with usage instructions, a "+" to create a new entry, and a per-row delete that opens a real modal to merge into another entry or delete outright). Switch identity state to see the user list change.',
-  },
-  {
-    to: '/mockup/auth-change-flow',
-    name: 'Auth Change Flow',
-    note: 'Multi-user support — a boot-time gate that replaces Admin Settings\' removed in-app Security-change capability: the app detects its AUTH_METHOD no longer matches what it last ran under and walks the admin through the adjustment, mirroring the first-launch flow\'s own full-page-takeover weight. Reuses the choose-surviving-admin/confirm-delete content Admin Settings briefly held before it was pulled out. Switch the "Simulate detected change" scenario to preview every content path: an OIDC upgrade (informational only), a new-password requirement, a light single-account downgrade, and the full destructive multi-account downgrade.',
-  },
-  {
-    to: '/mockup/login-screen',
-    name: 'Login Screen',
-    note: 'Multi-user support — the boot-time login wall for singlepass/OIDC installs, built after the fact (no mockup existed when the real page was first built). Added so the Auth Change Flow mockup has something real to preview as the hand-off screen a completed transition lands on. Switch preview state to see the password and OIDC branches, each with and without an error.',
+    title: 'Admin & Settings',
+    mockups: [
+      {
+        to: '/mockup/user-settings',
+        name: 'User Settings',
+        note: 'Multi-user support — separate cards per section: Account (display name, identity line, Change Password), Appearance (Theme, Dark disabled/"Soon"), Library (Hide Books in sidebar, Paginated views), Your Tags and Practice Status (per-user create/delete/merge, same pattern as Admin Settings\' Lookup Tables). Switch identity state to see the Account card adapt.',
+      },
+      {
+        to: '/mockup/admin-settings',
+        name: 'Admin Settings',
+        note: 'Multi-user support — a single scrolling page with jump-nav, each section in its own bordered card matching User Settings\' card look (same max-width too): Library Settings (every field independently env-var-shadowed; Security is now read-only, env-var-only, no in-app change control — see the Auth Change Flow mockup for how a change gets handled instead), Library counts, Version (identifies the build by commit SHA against GitHub release/pre-release tags, falling back to "Dev build, from commit <SHA> on <date>"), Users (expandable permission grid with a hover/tap description per permission, last-admin lock, per-row delete behind the shared confirm dialog), Lookup Tables (inline-editable Sheet Types/Instruments with usage instructions, a "+" to create a new entry, and a per-row delete that opens a real modal to merge into another entry or delete outright). Switch identity state to see the user list change.',
+      },
+      {
+        to: '/mockup/first-launch',
+        name: 'First-Time Launch Flow',
+        note: 'Multi-user support — Welcome → Library Folder → Security, with a "Preview as Docker/Native" toggle since OIDC and the folder picker both branch on runtime mode. Fixture/preview state only, no real API calls (the real flow is FirstLaunchFlow.tsx).',
+      },
+      {
+        to: '/mockup/auth-change-flow',
+        name: 'Auth Change Flow',
+        note: 'Multi-user support — a boot-time gate that replaces Admin Settings\' removed in-app Security-change capability: the app detects its AUTH_METHOD no longer matches what it last ran under and walks the admin through the adjustment, mirroring the first-launch flow\'s own full-page-takeover weight. Reuses the choose-surviving-admin/confirm-delete content Admin Settings briefly held before it was pulled out. Switch the "Simulate detected change" scenario to preview every content path: an OIDC upgrade (informational only), a new-password requirement, a light single-account downgrade, and the full destructive multi-account downgrade.',
+      },
+      {
+        to: '/mockup/login-screen',
+        name: 'Login Screen',
+        note: 'Multi-user support — the boot-time login wall for singlepass/OIDC installs, built after the fact (no mockup existed when the real page was first built). Added so the Auth Change Flow mockup has something real to preview as the hand-off screen a completed transition lands on. Switch preview state to see the password and OIDC branches, each with and without an error.',
+      },
+    ],
   },
 ]
 
@@ -182,7 +214,7 @@ export function MockupIndexPage() {
   useMockupTitle('Mockup Index')
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-6 md:p-8">
+    <div className={`flex flex-1 flex-col gap-6 p-6 md:p-8 ${WIDE_CONTENT_MAX_W}`}>
       <div>
         <h1 className="font-display text-xl font-medium text-ink">Mockups</h1>
         <p className="text-sm text-ink-soft">
@@ -191,17 +223,24 @@ export function MockupIndexPage() {
           "improvements."
         </p>
       </div>
-      <ul className="flex flex-col divide-y divide-border rounded-lg border border-border bg-paper-raised">
-        {MOCKUPS.map((m) => (
-          <li key={m.to}>
-            <Link to={m.to} className="block px-4 py-3 hover:bg-paper">
-              <p className="font-display font-medium text-ink">{m.name}</p>
-              <p className="text-sm text-ink-soft">{m.note}</p>
-              <p className="text-xs text-ink-soft/60">{m.to}</p>
-            </Link>
-          </li>
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
+        {SECTIONS.map((section) => (
+          <section key={section.title} className="flex flex-col gap-2">
+            <h2 className="font-display text-lg font-medium text-ink">{section.title}</h2>
+            <ul className="flex flex-col divide-y divide-border rounded-lg border border-border bg-paper-raised">
+              {section.mockups.map((m) => (
+                <li key={m.to}>
+                  <Link to={m.to} className="block px-4 py-3 hover:bg-paper">
+                    <p className="font-display font-medium text-ink">{m.name}</p>
+                    <p className="text-sm text-ink-soft">{m.note}</p>
+                    <p className="text-xs text-ink-soft/60">{m.to}</p>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
         ))}
-      </ul>
+      </div>
     </div>
   )
 }
