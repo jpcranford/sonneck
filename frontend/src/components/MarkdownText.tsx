@@ -31,7 +31,9 @@ import { remarkMusicEmoji } from '../lib/musicEmoji'
 const components: Components = {
   p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
   ul: ({ children }) => <ul className="mb-2 list-disc space-y-0.5 pl-5 last:mb-0">{children}</ul>,
-  ol: ({ children }) => <ol className="mb-2 list-decimal space-y-0.5 pl-5 last:mb-0">{children}</ol>,
+  ol: ({ children }) => (
+    <ol className="mb-2 list-decimal space-y-0.5 pl-5 last:mb-0">{children}</ol>
+  ),
   li: ({ children }) => <li>{children}</li>,
   a: ({ children, href }) => (
     <a
@@ -43,7 +45,9 @@ const components: Components = {
       {children}
     </a>
   ),
-  strong: ({ children }) => <strong className="font-semibold text-ink">{children}</strong>,
+  // Weight only — bold keeps the color around it (a soft description, a
+  // blockquote), never jumps to full ink.
+  strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
   em: ({ children }) => <em>{children}</em>,
   code: ({ children }) => (
     <code className="rounded bg-paper-sunken px-1 py-0.5 font-mono text-[0.85em]">{children}</code>
