@@ -177,7 +177,11 @@ export function PieceBrowseView({
   // button's own active-count badge and the drawer's first paint both
   // correct without a loading flash — this part is unchanged from before.
   const { data: facets } = useQuery({
-    queryKey: ['pieceFacets', { query: debouncedQuery, ...filters, ...debouncedDrawerFilters }],
+    // `filters` last in the key too, as in the queryFn — the drawer's own
+    // state carries a `favorite` field ('neutral' by default) that would
+    // otherwise overwrite Favorites' favorite: true here, giving Favorites
+    // and Library the same key and so the same cached results.
+    queryKey: ['pieceFacets', { query: debouncedQuery, ...debouncedDrawerFilters, ...filters }],
     queryFn: () =>
       getPieceFacets({
         query: debouncedQuery || undefined,
@@ -190,7 +194,8 @@ export function PieceBrowseView({
     useInfiniteQuery({
       queryKey: [
         'pieces',
-        { query: debouncedQuery, ...filters, ...debouncedDrawerFilters, sortField, sortDirection },
+        // `filters` last, as in queryFn (see the facets key above).
+        { query: debouncedQuery, ...debouncedDrawerFilters, ...filters, sortField, sortDirection },
       ],
       queryFn: ({ pageParam }) =>
         searchPieces({
