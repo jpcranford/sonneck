@@ -13,6 +13,7 @@ import {
   IconUserFilled,
 } from '@tabler/icons-react'
 import { logout } from '../api/auth'
+import { clearAccountData } from '../lib/clearAccountData'
 import { getUserSettings, updateUserSettings, type UserSettings } from '../api/userSettings'
 import { useAuth } from '../lib/AuthContext'
 import type { ThemePreference } from '../lib/theme'
@@ -121,12 +122,15 @@ export function UserMenuButton({
 
   const logoutMutation = useMutation({
     mutationFn: logout,
-    onSuccess: () => {
+    onSuccess: async () => {
       setOpen(false)
       // AuthGate (App.tsx) holds the same ['auth', 'me'] query and swaps to
       // LoginScreen on its own once this refetch lands 401 — same pattern
       // FirstLaunchFlow/LoginScreen use against their own gating query.
-      void queryClient.invalidateQueries({ queryKey: ['auth', 'me'] })
+      // Only then is this account's cached data dropped, so the app isn't
+      // still on screen re-requesting it.
+      await queryClient.invalidateQueries({ queryKey: ['auth', 'me'] })
+      clearAccountData(queryClient)
     },
   })
 

@@ -5,6 +5,7 @@ import type { AppConfig } from '../api/config'
 import { ApiError } from '../api/client'
 import { login } from '../api/auth'
 import { SonneckWordmark } from '../components/SonneckWordmark'
+import { clearAccountData } from '../lib/clearAccountData'
 
 // The small fixed set of ?oidcError= codes handleOIDCCallback
 // (internal/handlers/oidc.go) can redirect back with — mapped to a short,
@@ -64,6 +65,9 @@ export function LoginScreen({
   const loginMutation = useMutation({
     mutationFn: () => login(password),
     onSuccess: () => {
+      // Whatever an earlier session left cached (one that expired rather
+      // than signing out) goes before the app mounts for this one.
+      clearAccountData(queryClient)
       // AuthGate holds the same ['auth', 'me'] query and swaps to the real
       // app on its own once this refetch lands — same pattern
       // FirstLaunchFlow's own completeMutation uses against ['config'].
