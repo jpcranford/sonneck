@@ -626,11 +626,16 @@ export function BookDetailsSample() {
   const [filenameExpanded, setFilenameExpanded] = useState(false)
   // Same keyboard shortcuts as the real BookDetailsPage.tsx
   // (lib/shortcuts.ts); Edit Book and Open Book PDF do nothing in this
-  // mockup, so neither do E and O.
+  // mockup, so neither do E and O; V switches grid/list as it does there.
   useShortcuts(
     [
       { key: 'e', label: 'Edit book', run: () => {} },
       { key: 'o', label: 'Open the book’s PDF', run: () => {} },
+      {
+        key: 'v',
+        label: viewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view',
+        run: () => setViewMode(viewMode === 'grid' ? 'list' : 'grid'),
+      },
     ],
     { title: 'Book Details', reference: { title: 'In Edit Book', rows: EDIT_WINDOW_KEYS } },
   )

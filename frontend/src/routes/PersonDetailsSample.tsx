@@ -1094,12 +1094,19 @@ export function PersonDetailsSample() {
     )
   }
 
-  // E: Edit Person, as in the real PersonDetailsPage.tsx (lib/shortcuts.ts —
+  // E: Edit Person and V: grid/list, as in the real PersonDetailsPage.tsx (lib/shortcuts.ts —
   // paused while Upload Portrait or Split People is open).
-  useShortcuts([{ key: 'e', label: 'Edit person', run: handleEditPerson }], {
-    title: 'Person Details',
-    reference: { title: 'In Edit Person', rows: EDIT_WINDOW_KEYS },
-  })
+  useShortcuts(
+    [
+      { key: 'e', label: 'Edit person', run: handleEditPerson },
+      {
+        key: 'v',
+        label: workViewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view',
+        run: () => setWorkViewMode(workViewMode === 'grid' ? 'list' : 'grid'),
+      },
+    ],
+    { title: 'Person Details', reference: { title: 'In Edit Person', rows: EDIT_WINDOW_KEYS } },
+  )
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-6 md:p-8">

@@ -465,7 +465,14 @@ export function PersonDetailsPage() {
   // window open): E edits, like the header button.
   useShortcuts(
     person
-      ? [{ key: 'e', label: 'Edit person', enabled: canEdit, run: () => setEditOpen(true) }]
+      ? [
+          { key: 'e', label: 'Edit person', enabled: canEdit, run: () => setEditOpen(true) },
+          {
+            key: 'v',
+            label: workViewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view',
+            run: () => setWorkViewMode(workViewMode === 'grid' ? 'list' : 'grid'),
+          },
+        ]
       : [],
     {
       title: 'Person Details',

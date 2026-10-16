@@ -71,12 +71,17 @@ const PAGES = {
     keys: [
       { keys: ['E'], label: 'Edit book', needs: 'edit' },
       { keys: ['O'], label: 'Open the book’s PDF', needs: 'download' },
+      { keys: ['V'], label: 'Switch to list view' },
     ],
     window: { title: 'In Edit Book', needs: 'edit', keys: SAVE_CLOSE },
   },
   person: {
     title: 'Person Details',
-    keys: [{ keys: ['E'], label: 'Edit person', needs: 'edit' }],
+    keys: [
+      { keys: ['E'], label: 'Edit person', needs: 'edit' },
+      // Person Details opens its works list in list view.
+      { keys: ['V'], label: 'Switch to grid view' },
+    ],
     window: { title: 'In Edit Person', needs: 'edit', keys: SAVE_CLOSE },
   },
   setlist: {

@@ -459,6 +459,11 @@ export function BookDetailsPage() {
             enabled: !!book.fileHash && canDownload,
             run: () => openPdfLinkRef.current?.click(),
           },
+          {
+            key: 'v',
+            label: viewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view',
+            run: () => setViewMode(viewMode === 'grid' ? 'list' : 'grid'),
+          },
         ]
       : [],
     {
