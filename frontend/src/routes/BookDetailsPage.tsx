@@ -233,6 +233,7 @@ function PieceList({ pieces }: { pieces: Piece[] }) {
                     with (design doc §3), so passing them through unfiltered
                     is unchanged. */}
                 <TagPills
+                  practiceStatus={piece.practiceStatus}
                   keys={piece.keys}
                   sheetType={piece.sheetType.inherited ? null : piece.sheetType.value}
                   instruments={piece.instruments.inherited ? [] : piece.instruments.values}

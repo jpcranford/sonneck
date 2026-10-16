@@ -18,6 +18,7 @@ import { hyphenateISBN, isbnSearchUrl } from '../lib/isbn'
 import { useMockupTitle } from '../lib/useMockupTitle'
 import { ContextMenu } from '../components/ContextMenu'
 import { MarkdownText } from '../components/MarkdownText'
+import { PracticeStatusIcon } from '../components/PracticeStatusIcon'
 import { EDIT_WINDOW_KEYS, useShortcuts } from '../lib/shortcuts'
 
 // ---------------------------------------------------------------------
@@ -58,6 +59,7 @@ interface SamplePiece {
   sheetType: string | null
   instruments: string[]
   userTags: string[]
+  practiceStatus?: string
 }
 
 const sampleBook = {
@@ -109,6 +111,7 @@ const samplePieces: SamplePiece[] = [
     keys: [],
     sheetType: null,
     instruments: [],
+    practiceStatus: 'Learned',
     userTags: [],
   },
   {
@@ -140,6 +143,7 @@ const samplePieces: SamplePiece[] = [
     ],
     sheetType: 'Solo Part',
     instruments: ['Piano'],
+    practiceStatus: 'Learning',
     userTags: ['Recital 2026'],
   },
   {
@@ -154,6 +158,7 @@ const samplePieces: SamplePiece[] = [
     keys: [],
     sheetType: null,
     instruments: [],
+    practiceStatus: 'Want to Learn',
     userTags: [],
   },
   {
@@ -352,12 +357,20 @@ function PiecePills({ piece }: { piece: SamplePiece }) {
     !piece.keys.length &&
     !piece.sheetType &&
     !piece.instruments.length &&
-    !piece.userTags.length
+    !piece.userTags.length &&
+    !piece.practiceStatus
   ) {
     return null
   }
   return (
     <div className="mt-1.5 flex flex-wrap items-center gap-1">
+      {/* Practice status first, as TagPills orders it. */}
+      {piece.practiceStatus && (
+        <span className="flex items-center gap-1 rounded-full border border-accent/30 bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent">
+          <PracticeStatusIcon status={piece.practiceStatus} size={11} className="shrink-0" />
+          {piece.practiceStatus}
+        </span>
+      )}
       {piece.userTags.map((tag) => (
         <span
           key={tag}

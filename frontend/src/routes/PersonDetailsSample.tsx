@@ -94,6 +94,7 @@ interface MockWork {
   instruments?: Tag[]
   inheritedFromBook?: ('sheetType' | 'instruments')[]
   userTags: Tag[]
+  practiceStatus?: string
 }
 
 const MOCK_WORKS: MockWork[] = [
@@ -113,6 +114,7 @@ const MOCK_WORKS: MockWork[] = [
     sheetType: { id: 1, name: 'Solo Piano' },
     instruments: [{ id: 1, name: 'Piano' }],
     inheritedFromBook: ['sheetType', 'instruments'],
+    practiceStatus: 'Learning',
     userTags: [{ id: 1, name: 'Recital piece' }],
   },
   {
@@ -144,6 +146,7 @@ const MOCK_WORKS: MockWork[] = [
     sheetType: { id: 1, name: 'Solo Piano' },
     instruments: [{ id: 1, name: 'Piano' }],
     inheritedFromBook: ['instruments'],
+    practiceStatus: 'Want to Learn',
     userTags: [],
   },
   {
@@ -662,6 +665,7 @@ function WorkList({
                 </p>
                 <p className="mt-0.5 text-xs text-ink-soft">{workMetaLine(work)}</p>
                 <TagPills
+                  practiceStatus={work.practiceStatus}
                   keys={work.keys ?? []}
                   sheetType={work.sheetType}
                   instruments={work.instruments ?? []}

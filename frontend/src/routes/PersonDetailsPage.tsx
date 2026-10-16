@@ -290,6 +290,7 @@ function WorkList({ pieces, personId }: { pieces: Piece[]; personId: number }) {
                     inherited pills would just repeat it. Here the pieces come
                     from many books (or none). */}
                 <TagPills
+                  practiceStatus={piece.practiceStatus}
                   keys={piece.keys}
                   sheetType={piece.sheetType.value}
                   instruments={piece.instruments.values}
