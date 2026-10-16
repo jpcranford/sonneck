@@ -62,6 +62,7 @@ export const PieceContextMenu = forwardRef<ContextMenuHandle, PieceContextMenuPr
       onSuccess: (updated) => {
         queryClient.setQueryData(['piece', piece.id], updated)
         queryClient.invalidateQueries({ queryKey: ['pieces'] })
+        queryClient.invalidateQueries({ queryKey: ['pieceFacets'] })
       },
       onError: (error) => {
         showAlert(error instanceof ApiError ? error.message : 'Could not update this piece.')
@@ -86,6 +87,10 @@ export const PieceContextMenu = forwardRef<ContextMenuHandle, PieceContextMenuPr
       mutationFn: () => deletePiece(piece.id),
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['pieces'] })
+        queryClient.invalidateQueries({ queryKey: ['pieceFacets'] })
+        queryClient.invalidateQueries({ queryKey: ['setlist-memberships'] })
+        queryClient.invalidateQueries({ queryKey: ['setlist'] })
+        queryClient.invalidateQueries({ queryKey: ['setlists'] })
       },
       onError: (error) => {
         showAlert(error instanceof ApiError ? error.message : 'Could not delete this piece.')

@@ -38,6 +38,7 @@ export const BookContextMenu = forwardRef<ContextMenuHandle, BookContextMenuProp
       mutationFn: () => deleteBook(book.id),
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['books'] })
+        queryClient.invalidateQueries({ queryKey: ['bookFacets'] })
         queryClient.invalidateQueries({ queryKey: ['pieces'] })
         queryClient.invalidateQueries({ queryKey: ['piece'] })
       },

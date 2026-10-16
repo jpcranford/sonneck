@@ -327,6 +327,7 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
       // ['piece', id] query needs to pick that up too, not just piece
       // list/search views.
       queryClient.invalidateQueries({ queryKey: ['books'] })
+      queryClient.invalidateQueries({ queryKey: ['bookFacets'] })
       queryClient.invalidateQueries({ queryKey: ['book'] })
       queryClient.invalidateQueries({ queryKey: ['pieces'] })
       queryClient.invalidateQueries({ queryKey: ['piece'] })

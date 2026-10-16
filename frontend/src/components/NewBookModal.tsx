@@ -89,6 +89,7 @@ export function NewBookModal({ open, onClose }: NewBookModalProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['books'] })
+      queryClient.invalidateQueries({ queryKey: ['bookFacets'] })
       afterMinDuration(createStartedAtRef.current, handleClose)
     },
     onError: () => setIsCreating(false),

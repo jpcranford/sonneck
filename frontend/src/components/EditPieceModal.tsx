@@ -660,6 +660,7 @@ export function EditPieceModal({
       queryClient.setQueryData(['piece', updated.id], updated)
       setPiece(updated)
       queryClient.invalidateQueries({ queryKey: ['pieces'] })
+      queryClient.invalidateQueries({ queryKey: ['pieceFacets'] })
       queryClient.invalidateQueries({ queryKey: ['piece'] })
       // Setlist responses embed their own copy of each piece's title/
       // credits/keys/duration/pages (SetlistPieceSummary), and the Setlists

@@ -353,6 +353,7 @@ export function PiecePage() {
     onSuccess: (updated) => {
       queryClient.setQueryData(['piece', pieceId], updated)
       queryClient.invalidateQueries({ queryKey: ['pieces'] })
+      queryClient.invalidateQueries({ queryKey: ['pieceFacets'] })
     },
   })
 
@@ -412,6 +413,8 @@ export function PiecePage() {
     onSuccess: (updated) => {
       queryClient.setQueryData(['piece', pieceId], updated)
       queryClient.invalidateQueries({ queryKey: ['pieces'] })
+      queryClient.invalidateQueries({ queryKey: ['setlist'] })
+      queryClient.invalidateQueries({ queryKey: ['setlists'] })
       setReplaceConfirming(false)
       setPage(1)
     },
@@ -460,6 +463,10 @@ export function PiecePage() {
     mutationFn: () => deletePiece(piece!.id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pieces'] })
+      queryClient.invalidateQueries({ queryKey: ['pieceFacets'] })
+      queryClient.invalidateQueries({ queryKey: ['setlist-memberships'] })
+      queryClient.invalidateQueries({ queryKey: ['setlist'] })
+      queryClient.invalidateQueries({ queryKey: ['setlists'] })
       navigate('/')
     },
     onError: (error) => {

@@ -21,15 +21,17 @@ import { ApiError } from './api/client'
 // those was a burst of requests and a redraw, a real battery cost on slow
 // devices like e-ink tablets; pull to refresh and navigating still fetch.
 // So that a minute's caching never shows something out of date after a
-// change, every successful save marks all loaded data stale (only what's
-// on screen refetches at once; the rest when next shown) — a save no
-// longer has to know every list it affects. Mutations that only look
-// something up (IMSLP, Wikipedia, update checks) carry
-// `meta: { readOnly: true }` and skip this.
+// change, every successful save marks all loaded data stale — without
+// fetching any of it: whatever isn't on screen refetches when it's next
+// shown, and each save refreshes what it changed on screen itself (its
+// own invalidateQueries). Refetching everything on screen instead cost a
+// favorite tap ~19 requests, most for lists it can't change. Mutations
+// that only look something up (IMSLP, Wikipedia, update checks) carry
+// `meta: { readOnly: true }` and skip even the marking.
 const queryClient: QueryClient = new QueryClient({
   mutationCache: new MutationCache({
     onSuccess: (_data, _variables, _context, mutation) => {
-      if (!mutation.meta?.readOnly) void queryClient.invalidateQueries()
+      if (!mutation.meta?.readOnly) void queryClient.invalidateQueries({ refetchType: 'none' })
     },
   }),
   defaultOptions: {
