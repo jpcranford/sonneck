@@ -205,7 +205,7 @@ function PieceList({ pieces }: { pieces: Piece[] }) {
             <ClickableCard
               to={`/pieces/${piece.id}`}
               state={{ backLabel: 'Book' }}
-              className={`grid grid-cols-[96px_1fr_56px] items-center gap-3 border-t border-border px-1.5 py-2.5 text-left hover:rounded-md hover:bg-accent-soft ${ROW_COLLAPSE_CLASS}`}
+              className={`grid grid-cols-[96px_1fr_56px] items-center gap-3 relative before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-border px-1.5 py-2.5 text-left hover:rounded-md hover:bg-accent-soft ${ROW_COLLAPSE_CLASS}`}
             >
               <div className="text-sm font-medium tabular-nums text-ink">
                 {pageRangeLabel(piece)}
