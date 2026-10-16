@@ -33,6 +33,7 @@ import { formatDateOnly } from '../lib/dateOnly'
 import { confirmAction } from '../lib/dialogs'
 import { copyToClipboard } from '../lib/clipboard'
 import { EDIT_WINDOW_KEYS, useShortcuts } from '../lib/shortcuts'
+import { estimateTotal } from '../lib/setlistEstimate'
 
 // Setlists design pass, Phase 6 — the real Setlist Details page (§13),
 // built against the approved Phase 2 layout (Option B, "Stats dashboard")
@@ -412,11 +413,15 @@ export function SetlistDetailsMockup() {
       window.setTimeout(() => setCopyToast(null), 1200)
     })
   }
-  // Only entries with a known duration contribute — omit the duration
-  // segment of the Program list's own sum row below when that leaves
-  // nothing to sum, rather than showing a misleadingly confident "0:00".
-  const hasAnyDuration = entries.some((e) => e.durationSeconds != null)
-  const totalDurationSeconds = entries.reduce((sum, e) => sum + (e.durationSeconds ?? 0), 0)
+  // Assumes a typical length for entries without one (lib/setlistEstimate),
+  // so it's shown for any non-empty program — labeled an estimate ("Est.",
+  // "~") when any length was assumed.
+  const duration = estimateTotal(
+    entries.map((e) => ({
+      isMusic: e.kind === 'piece' || !!e.countsAsMusic,
+      durationSeconds: e.durationSeconds,
+    })),
+  )
   const totalPages = entries.reduce((sum, e) => sum + (e.kind === 'piece' ? e.pages : 0), 0)
 
   function removeEntry(id: string) {
@@ -763,12 +768,12 @@ export function SetlistDetailsMockup() {
             <dt className="mb-0.5 text-[0.7rem] tracking-wide text-ink-soft uppercase">Entries</dt>
             <dd className="text-[0.88rem] text-ink">{entries.length}</dd>
           </div>
-          {hasAnyDuration && (
+          {entries.length > 0 && (
             <div className="min-w-0 break-words">
               <dt className="mb-0.5 text-[0.7rem] tracking-wide text-ink-soft uppercase">
-                Approx. Duration
+                {duration.estimated ? 'Est. Duration' : 'Approx. Duration'}
               </dt>
-              <dd className="text-[0.88rem] text-ink">{formatDuration(totalDurationSeconds)}</dd>
+              <dd className="text-[0.88rem] text-ink">{formatDuration(duration.seconds)}</dd>
             </div>
           )}
           <div className="min-w-0 break-words">
@@ -935,18 +940,19 @@ export function SetlistDetailsMockup() {
             stat card or another row; the previous last entry's own
             `last:border-none` no longer applies since this is now the
             container's real last child, so that row keeps its border and
-            doubles as the separator above this caption. Duration is
-            omitted entirely (not shown as a misleading "0:00") when no
-            entry in the whole list has one set — see hasAnyDuration. */}
+            doubles as the separator above this caption. Entries
+            without a duration count as a typical length (see duration);
+            the total is marked "~" when any was assumed. */}
           <div className="pt-3 text-center text-xs tracking-wide text-ink-soft uppercase">
             {entries.length} {entries.length === 1 ? 'entry' : 'entries'}{' '}
             <span aria-hidden="true">•</span> {totalPages} {totalPages === 1 ? 'page' : 'pages'}
-            {hasAnyDuration && (
+            {entries.length > 0 && (
               <>
                 {' '}
                 <span aria-hidden="true">•</span>{' '}
                 <span className="font-mono text-xs tracking-normal normal-case tabular-nums">
-                  {formatDuration(totalDurationSeconds)}
+                  {duration.estimated && '~'}
+                  {formatDuration(duration.seconds)}
                 </span>
               </>
             )}

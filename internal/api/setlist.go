@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/jpcranford/sonneck/internal/repo"
+	"github.com/jpcranford/sonneck/internal/setlistduration"
 )
 
 // SetlistPieceSummary is the lean per-entry piece shape design doc §13's
@@ -61,6 +62,7 @@ type SetlistSummaryResponse struct {
 	EffectiveArchived    bool      `json:"effectiveArchived"`
 	EntryCount           int       `json:"entryCount"`
 	TotalDurationSeconds *int      `json:"totalDurationSeconds"`
+	DurationEstimated    bool      `json:"durationEstimated"`
 	TotalPages           int       `json:"totalPages"`
 	CreatedAt            time.Time `json:"createdAt"`
 	UpdatedAt            time.Time `json:"updatedAt"`
@@ -77,33 +79,28 @@ type SetlistResponse struct {
 // setlistTotals computes entryCount/totalDurationSeconds/totalPages from
 // an already-loaded entry list — shared by BuildSetlistSummaryResponse and
 // BuildSetlistResponse so the two can never disagree about a setlist's own
-// totals. totalDurationSeconds is nil (omitted, decision 20) specifically
-// when NOT ONE entry anywhere has a set duration — otherwise it's the sum
-// of whichever entries do, the entries missing one simply not contributing
-// (an approximate total, per the "Approx. Duration" label, not a blocked
-// one).
-func setlistTotals(entries []repo.SetlistEntry) (entryCount int, totalDurationSeconds *int, totalPages int) {
+// totals. totalDurationSeconds is the running time from
+// internal/setlistduration — a typical length assumed for any entry
+// without a duration, durationEstimated reporting whether one was — and nil
+// only for an empty program.
+func setlistTotals(entries []repo.SetlistEntry) (entryCount int, totalDurationSeconds *int, durationEstimated bool, totalPages int) {
 	entryCount = len(entries)
-	haveDuration := false
-	sumDuration := 0
-	for _, e := range entries {
+	items := make([]setlistduration.Entry, len(entries))
+	for i, e := range entries {
 		if e.PieceID != nil {
 			if e.PiecePageCount != nil {
 				totalPages += *e.PiecePageCount
 			}
-			if e.PieceDuration != nil {
-				haveDuration = true
-				sumDuration += *e.PieceDuration
-			}
-		} else if e.CustomDurationSeconds != nil {
-			haveDuration = true
-			sumDuration += *e.CustomDurationSeconds
+			items[i] = setlistduration.Entry{Seconds: e.PieceDuration, IsMusic: true}
+		} else {
+			items[i] = setlistduration.Entry{Seconds: e.CustomDurationSeconds, IsMusic: e.CountsAsMusic()}
 		}
 	}
-	if haveDuration {
-		totalDurationSeconds = &sumDuration
+	if entryCount > 0 {
+		seconds, estimated := setlistduration.Total(items)
+		totalDurationSeconds, durationEstimated = &seconds, estimated
 	}
-	return entryCount, totalDurationSeconds, totalPages
+	return entryCount, totalDurationSeconds, durationEstimated, totalPages
 }
 
 // BuildSetlistSummaryResponse builds one GET /api/setlists row — loads
@@ -115,7 +112,7 @@ func BuildSetlistSummaryResponse(ctx context.Context, q repo.Queryer, s *repo.Se
 	if err != nil {
 		return nil, err
 	}
-	entryCount, totalDurationSeconds, totalPages := setlistTotals(entries)
+	entryCount, totalDurationSeconds, durationEstimated, totalPages := setlistTotals(entries)
 	today := time.Now().Format("2006-01-02")
 	return &SetlistSummaryResponse{
 		ID:                   s.ID,
@@ -125,6 +122,7 @@ func BuildSetlistSummaryResponse(ctx context.Context, q repo.Queryer, s *repo.Se
 		EffectiveArchived:    s.EffectiveArchived(today),
 		EntryCount:           entryCount,
 		TotalDurationSeconds: totalDurationSeconds,
+		DurationEstimated:    durationEstimated,
 		TotalPages:           totalPages,
 		CreatedAt:            s.CreatedAt,
 		UpdatedAt:            s.UpdatedAt,
@@ -140,7 +138,7 @@ func BuildSetlistResponse(ctx context.Context, q repo.Queryer, s *repo.Setlist) 
 	if err != nil {
 		return nil, err
 	}
-	entryCount, totalDurationSeconds, totalPages := setlistTotals(entries)
+	entryCount, totalDurationSeconds, durationEstimated, totalPages := setlistTotals(entries)
 	today := time.Now().Format("2006-01-02")
 
 	respEntries := make([]SetlistEntryResponse, 0, len(entries))
@@ -181,6 +179,7 @@ func BuildSetlistResponse(ctx context.Context, q repo.Queryer, s *repo.Setlist) 
 			EffectiveArchived:    s.EffectiveArchived(today),
 			EntryCount:           entryCount,
 			TotalDurationSeconds: totalDurationSeconds,
+			DurationEstimated:    durationEstimated,
 			TotalPages:           totalPages,
 			CreatedAt:            s.CreatedAt,
 			UpdatedAt:            s.UpdatedAt,

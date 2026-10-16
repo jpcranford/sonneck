@@ -157,6 +157,7 @@ function SetlistCard({
               {' '}
               <span aria-hidden="true">•</span>{' '}
               <span className="font-mono text-xs tracking-normal normal-case tabular-nums">
+                {setlist.durationEstimated && '~'}
                 {formatDuration(setlist.totalDurationSeconds)}
               </span>
             </>

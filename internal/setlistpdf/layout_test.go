@@ -77,22 +77,37 @@ func TestComputeLayout_MultiPageTOCShiftsEveryEntry(t *testing.T) {
 	}
 }
 
-func TestTotalDurationSeconds_OmittedWhenNoneSet(t *testing.T) {
-	entries := []setlistpdf.Entry{{IsPiece: false}, {IsPiece: true}}
-	if got := setlistpdf.TotalDurationSeconds(entries); got != nil {
-		t.Errorf("TotalDurationSeconds = %v, want nil", got)
+func TestTotalDuration_NoneForAnEmptyProgram(t *testing.T) {
+	if _, _, ok := setlistpdf.TotalDuration(nil); ok {
+		t.Error("TotalDuration(nil) ok = true, want false")
 	}
 }
 
-func TestTotalDurationSeconds_SumsWhicheverAreSet(t *testing.T) {
+func TestTotalDuration_RealDurationsAreNotAnEstimate(t *testing.T) {
 	entries := []setlistpdf.Entry{
 		{IsPiece: true, PieceDuration: intp(120)},
-		{IsPiece: false, CustomDurationSeconds: nil},
 		{IsPiece: false, CustomDurationSeconds: intp(90)},
 	}
-	got := setlistpdf.TotalDurationSeconds(entries)
-	if got == nil || *got != 210 {
-		t.Errorf("TotalDurationSeconds = %v, want 210", got)
+	seconds, estimated, ok := setlistpdf.TotalDuration(entries)
+	if !ok || seconds != 210 || estimated {
+		t.Errorf("TotalDuration = (%d, %v, %v), want (210, false, true)", seconds, estimated, ok)
+	}
+}
+
+// Same worked example as the frontend's lib/setlistEstimate.test.ts: a
+// 4:00 piece, two pieces, a plain custom entry, and a custom entry counted
+// as music (it has a program number), the last four without a duration.
+func TestTotalDuration_AssumesTypicalLengths(t *testing.T) {
+	entries := []setlistpdf.Entry{
+		{IsPiece: true, PieceDuration: intp(240)},
+		{IsPiece: true},
+		{IsPiece: true},
+		{IsPiece: false},
+		{IsPiece: false, DisplayNumber: intp(4)},
+	}
+	seconds, estimated, ok := setlistpdf.TotalDuration(entries)
+	if want := 240 + 150 + 150 + 90 + 150; !ok || seconds != want || !estimated {
+		t.Errorf("TotalDuration = (%d, %v, %v), want (%d, true, true)", seconds, estimated, ok, want)
 	}
 }
 

@@ -98,9 +98,10 @@ func shortKey(name string) string {
 	return name
 }
 
-// formatApproximately is the header's total, to the nearest minute:
-// "approximately 1 hour 28 minutes".
-func formatApproximately(seconds int) string {
+// formatTotal is the header's total, to the nearest minute: "approximately
+// 1 hour 28 minutes", or "estimated …" when an entry's length was assumed
+// (TotalDuration).
+func formatTotal(seconds int, estimated bool) string {
 	minutes := max(1, (seconds+30)/60)
 	unit := func(n int, word string) string {
 		if n == 1 {
@@ -115,7 +116,11 @@ func formatApproximately(seconds int) string {
 	if m := minutes % 60; m > 0 {
 		parts = append(parts, unit(m, "minute"))
 	}
-	return "approximately " + strings.Join(parts, " ")
+	lead := "approximately "
+	if estimated {
+		lead = "estimated "
+	}
+	return lead + strings.Join(parts, " ")
 }
 
 func (r *tocRun) measure(pdf *fpdf.Fpdf) {

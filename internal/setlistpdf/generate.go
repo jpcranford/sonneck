@@ -238,8 +238,8 @@ func (in Input) tocMeta() string {
 	if in.Setlist.GigDate != "" {
 		parts = append(parts, in.Setlist.GigDate)
 	}
-	if total := TotalDurationSeconds(in.Entries); total != nil {
-		parts = append(parts, formatApproximately(*total))
+	if seconds, estimated, ok := TotalDuration(in.Entries); ok {
+		parts = append(parts, formatTotal(seconds, estimated))
 	}
 	return strings.Join(parts, " • ")
 }

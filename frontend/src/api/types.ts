@@ -388,7 +388,11 @@ export interface Setlist {
   archived: boolean
   effectiveArchived: boolean
   entryCount: number
+  /** The running time, a typical length assumed for any untimed entry
+   * (internal/setlistduration); null only for an empty program. */
   totalDurationSeconds: number | null
+  /** True when that total assumed any entry's length — shown as "~23:30". */
+  durationEstimated: boolean
   totalPages: number
   createdAt: string
   updatedAt: string

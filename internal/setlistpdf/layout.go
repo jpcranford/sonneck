@@ -15,6 +15,8 @@
 // bundles everywhere, cost nothing new to add.
 package setlistpdf
 
+import "github.com/jpcranford/sonneck/internal/setlistduration"
+
 // Shape is the physical page size used for the four generated page
 // types — a real piece's own imported PDF pages keep their own original
 // size untouched regardless of this setting.
@@ -101,30 +103,22 @@ func ComputeLayout(entries []Entry, tocPages int) Layout {
 	}
 }
 
-// TotalDurationSeconds sums every entry's own duration (piece or custom)
-// that's actually set. Returns nil — never a misleading 0 — when no entry
-// anywhere in the program has one, matching this app's own established
-// "omit, don't fake a zero" convention for this exact stat elsewhere in
-// the Setlists feature (see CLAUDE.md > Setlists).
-func TotalDurationSeconds(entries []Entry) *int {
-	total := 0
-	any := false
-	for _, e := range entries {
-		var d *int
+// TotalDuration is the program's running time (internal/setlistduration):
+// each entry's own duration, or a typical length for one without — a
+// custom entry counts as music when it has a program number. estimated
+// reports whether any length was assumed; ok is false for an empty
+// program.
+func TotalDuration(entries []Entry) (seconds int, estimated bool, ok bool) {
+	items := make([]setlistduration.Entry, len(entries))
+	for i, e := range entries {
 		if e.IsPiece {
-			d = e.PieceDuration
+			items[i] = setlistduration.Entry{Seconds: e.PieceDuration, IsMusic: true}
 		} else {
-			d = e.CustomDurationSeconds
-		}
-		if d != nil {
-			total += *d
-			any = true
+			items[i] = setlistduration.Entry{Seconds: e.CustomDurationSeconds, IsMusic: e.DisplayNumber != nil}
 		}
 	}
-	if !any {
-		return nil
-	}
-	return &total
+	seconds, estimated = setlistduration.Total(items)
+	return seconds, estimated, len(entries) > 0
 }
 
 // TotalPageCount sums only piece entries' own real page counts — matches

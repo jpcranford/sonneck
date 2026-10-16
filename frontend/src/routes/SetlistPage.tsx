@@ -47,6 +47,7 @@ import { confirmAction, showAlert } from '../lib/dialogs'
 import { copyToClipboard } from '../lib/clipboard'
 import { EmptyState } from '../components/EmptyState'
 import { EDIT_WINDOW_KEYS, useShortcuts } from '../lib/shortcuts'
+import { estimateTotal } from '../lib/setlistEstimate'
 
 // The real Setlist Details page (§13) — built against SetlistDetailsMockup.tsx
 // (the approved Phase 6 mockup, incl. its own Round 1-10 polish and the
@@ -207,10 +208,17 @@ export function SetlistPage() {
     enabled: editingPieceId != null,
   })
 
-  const hasAnyDuration = useMemo(
+  // Assumes a typical length for entries without one (lib/setlistEstimate),
+  // so it's shown for any non-empty program — labeled an estimate ("Est.",
+  // "~") when any length was assumed.
+  const duration = useMemo(
     () =>
-      (setlist?.entries ?? []).some(
-        (e) => (e.kind === 'piece' ? e.piece?.duration : e.customDurationSeconds) != null,
+      estimateTotal(
+        (setlist?.entries ?? []).map((e) =>
+          e.kind === 'piece'
+            ? { isMusic: true, durationSeconds: e.piece?.duration }
+            : { isMusic: e.customCountsAsMusic, durationSeconds: e.customDurationSeconds },
+        ),
       ),
     [setlist],
   )
@@ -515,14 +523,12 @@ export function SetlistPage() {
                 </dt>
                 <dd className="text-[0.88rem] text-ink">{setlist.entryCount}</dd>
               </div>
-              {hasAnyDuration && setlist.totalDurationSeconds != null && (
+              {setlist.entries.length > 0 && (
                 <div className="min-w-0 break-words">
                   <dt className="mb-0.5 text-[0.7rem] tracking-wide text-ink-soft uppercase">
-                    Approx. Duration
+                    {duration.estimated ? 'Est. Duration' : 'Approx. Duration'}
                   </dt>
-                  <dd className="text-[0.88rem] text-ink">
-                    {formatDuration(setlist.totalDurationSeconds)}
-                  </dd>
+                  <dd className="text-[0.88rem] text-ink">{formatDuration(duration.seconds)}</dd>
                 </div>
               )}
               <div className="min-w-0 break-words">
@@ -656,12 +662,13 @@ export function SetlistPage() {
                   {setlist.entryCount} {setlist.entryCount === 1 ? 'entry' : 'entries'}{' '}
                   <span aria-hidden="true">•</span> {setlist.totalPages}{' '}
                   {setlist.totalPages === 1 ? 'page' : 'pages'}
-                  {hasAnyDuration && setlist.totalDurationSeconds != null && (
+                  {setlist.entries.length > 0 && (
                     <>
                       {' '}
                       <span aria-hidden="true">•</span>{' '}
                       <span className="font-mono text-xs tracking-normal normal-case tabular-nums">
-                        {formatDuration(setlist.totalDurationSeconds)}
+                        {duration.estimated && '~'}
+                        {formatDuration(duration.seconds)}
                       </span>
                     </>
                   )}

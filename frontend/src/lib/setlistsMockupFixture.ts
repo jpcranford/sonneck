@@ -25,6 +25,9 @@ export interface MockSetlist {
   // setlists" universe rather than forking a second, Archive-only list.
   entryCount: number
   totalDurationSeconds?: number
+  // True when the total assumed a typical length for an untimed entry
+  // (lib/setlistEstimate) — the card shows it as "~23:30".
+  durationEstimated?: boolean
   totalPages: number
   // The *explicit* archived pick only — decision 3's other half (a passed
   // gigDate) is computed, not stored; see isEffectivelyArchived below.
@@ -60,16 +63,75 @@ export function daysFromNow(days: number): string {
 // seconds = 23:30) — kept in sync deliberately, not coincidental, so a
 // setlist's own card and its detail page never disagree about its totals.
 // Every other entry's numbers are just plausible, not derived from a real
-// program anywhere.
+// program anywhere; two of them are marked as estimates.
 export const ALL_MOCK_SETLISTS: MockSetlist[] = [
-  { id: '1', name: 'Sunday Morning Service', gigDate: daysFromNow(22), entryCount: 7, totalDurationSeconds: 1410, totalPages: 10 },
-  { id: '2', name: 'Wednesday Vespers', gigDate: daysFromNow(25), entryCount: 4, totalDurationSeconds: 780, totalPages: 6 },
-  { id: '3', name: "All Saints' Day", gigDate: daysFromNow(50), entryCount: 9, totalDurationSeconds: 1920, totalPages: 14 },
-  { id: '4', name: 'Lessons & Carols', gigDate: daysFromNow(78), entryCount: 12, totalDurationSeconds: 2640, totalPages: 22 },
-  { id: '5', name: 'Christmas Eve', gigDate: daysFromNow(103), entryCount: 10, totalDurationSeconds: 2100, totalPages: 17 },
-  { id: '6', name: "New Year's Eve Concert", gigDate: daysFromNow(130), entryCount: 6, totalDurationSeconds: 1560, totalPages: 11 },
-  { id: '7', name: 'Winter Recital', gigDate: daysFromNow(160), entryCount: 8, totalDurationSeconds: 1740, totalPages: 13, archived: true },
-  { id: '8', name: 'Fall Kickoff Rehearsal', gigDate: daysFromNow(-10), entryCount: 5, totalDurationSeconds: 960, totalPages: 8 },
+  {
+    id: '1',
+    name: 'Sunday Morning Service',
+    gigDate: daysFromNow(22),
+    entryCount: 7,
+    totalDurationSeconds: 1410,
+    totalPages: 10,
+  },
+  {
+    id: '2',
+    name: 'Wednesday Vespers',
+    gigDate: daysFromNow(25),
+    entryCount: 4,
+    totalDurationSeconds: 780,
+    durationEstimated: true,
+    totalPages: 6,
+  },
+  {
+    id: '3',
+    name: "All Saints' Day",
+    gigDate: daysFromNow(50),
+    entryCount: 9,
+    totalDurationSeconds: 1920,
+    totalPages: 14,
+  },
+  {
+    id: '4',
+    name: 'Lessons & Carols',
+    gigDate: daysFromNow(78),
+    entryCount: 12,
+    totalDurationSeconds: 2640,
+    durationEstimated: true,
+    totalPages: 22,
+  },
+  {
+    id: '5',
+    name: 'Christmas Eve',
+    gigDate: daysFromNow(103),
+    entryCount: 10,
+    totalDurationSeconds: 2100,
+    totalPages: 17,
+  },
+  {
+    id: '6',
+    name: "New Year's Eve Concert",
+    gigDate: daysFromNow(130),
+    entryCount: 6,
+    totalDurationSeconds: 1560,
+    totalPages: 11,
+  },
+  {
+    id: '7',
+    name: 'Winter Recital',
+    gigDate: daysFromNow(160),
+    entryCount: 8,
+    totalDurationSeconds: 1740,
+    totalPages: 13,
+    archived: true,
+  },
+  {
+    id: '8',
+    name: 'Fall Kickoff Rehearsal',
+    gigDate: daysFromNow(-10),
+    entryCount: 5,
+    totalDurationSeconds: 960,
+    totalPages: 8,
+  },
   { id: '9', name: 'Spring Showcase (planning)', entryCount: 2, totalPages: 3 },
 ]
 
@@ -86,7 +148,10 @@ export function getUpcomingSetlists(
   limit = 5,
 ): (MockSetlist & { gigDate: string })[] {
   return [...setlists]
-    .filter((s): s is MockSetlist & { gigDate: string } => s.gigDate != null && s.gigDate >= todayDateOnly())
+    .filter(
+      (s): s is MockSetlist & { gigDate: string } =>
+        s.gigDate != null && s.gigDate >= todayDateOnly(),
+    )
     .sort((a, b) => (a.gigDate < b.gigDate ? -1 : a.gigDate > b.gigDate ? 1 : 0))
     .slice(0, limit)
 }

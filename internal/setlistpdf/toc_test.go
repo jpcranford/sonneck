@@ -23,17 +23,20 @@ func TestShortKey(t *testing.T) {
 	}
 }
 
-func TestFormatApproximately(t *testing.T) {
+func TestFormatTotal(t *testing.T) {
 	cases := map[int]string{
-		10:   "approximately 1 minute",
-		850:  "approximately 14 minutes",
-		3600: "approximately 1 hour",
-		5265: "approximately 1 hour 28 minutes",
-		7230: "approximately 2 hours 1 minute",
+		10:   "1 minute",
+		850:  "14 minutes",
+		3600: "1 hour",
+		5265: "1 hour 28 minutes",
+		7230: "2 hours 1 minute",
 	}
 	for secs, want := range cases {
-		if got := formatApproximately(secs); got != want {
-			t.Errorf("formatApproximately(%d) = %q, want %q", secs, got, want)
+		if got := formatTotal(secs, false); got != "approximately "+want {
+			t.Errorf("formatTotal(%d, false) = %q, want %q", secs, got, "approximately "+want)
+		}
+		if got := formatTotal(secs, true); got != "estimated "+want {
+			t.Errorf("formatTotal(%d, true) = %q, want %q", secs, got, "estimated "+want)
 		}
 	}
 }

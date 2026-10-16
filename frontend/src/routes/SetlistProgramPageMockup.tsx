@@ -10,6 +10,7 @@ import {
 import { formatDateOnly } from '../lib/dateOnly'
 import { CONTENT_MAX_W } from '../lib/layout'
 import { useMockupTitle } from '../lib/useMockupTitle'
+import { estimateTotal, type DurationEstimate } from '../lib/setlistEstimate'
 
 // Reference sample for every generated page in the Setlists "Download Set
 // PDF" export (design doc §13) — the four locked directions, chosen from a
@@ -205,13 +206,15 @@ function tocParenthetical(row: TocRow) {
   ))
 }
 
-// The header's total, to the nearest minute: "approximately 1 hour 28 minutes".
-function formatApproximateTotal(seconds: number): string {
+// The header's total, to the nearest minute: "approximately 1 hour 28
+// minutes", or "estimated …" when an entry's length was assumed
+// (lib/setlistEstimate).
+function formatTotal({ seconds, estimated }: DurationEstimate): string {
   const minutes = Math.max(1, Math.round(seconds / 60))
   const h = Math.floor(minutes / 60)
   const m = minutes % 60
   const unit = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
-  return `approximately ${[h ? unit(h, 'hour') : '', m ? unit(m, 'minute') : ''].filter(Boolean).join(' ')}`
+  return `${estimated ? 'estimated' : 'approximately'} ${[h ? unit(h, 'hour') : '', m ? unit(m, 'minute') : ''].filter(Boolean).join(' ')}`
 }
 
 interface TocRow {
@@ -408,7 +411,12 @@ export function SetlistProgramPageMockup() {
   const tocPageRows = [0, ...tocBreaks].map((start, i) =>
     allTocRows.slice(start, tocBreaks[i] ?? allTocRows.length),
   )
-  const tocTotalSeconds = toc.entries.reduce((sum, e) => sum + (e.seconds ?? 0), 0)
+  const tocTotal = estimateTotal(
+    toc.entries.map((e) => ({
+      isMusic: e.piece || Boolean(e.countsAsMusic),
+      durationSeconds: e.seconds,
+    })),
+  )
 
   const renderTocPage = (rows: TocRow[], pageIndex: number) => (
     <PageShell key={pageIndex} ratio={shape.ratio} className="bg-white">
@@ -433,8 +441,7 @@ export function SetlistProgramPageMockup() {
                 color: PRINT_FAINT,
               }}
             >
-              {formatDateOnly(toc.gigDate, LONG_DATE)} &bull;{' '}
-              {formatApproximateTotal(tocTotalSeconds)}
+              {formatDateOnly(toc.gigDate, LONG_DATE)} &bull; {formatTotal(tocTotal)}
             </span>
           </div>
         )}

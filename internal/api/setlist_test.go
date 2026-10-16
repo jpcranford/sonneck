@@ -121,16 +121,16 @@ func TestBuildSetlistResponse_TotalsSumDurationAndPages(t *testing.T) {
 	if resp.TotalPages != 5 {
 		t.Errorf("TotalPages = %d, want 5 (3 + 2, the custom entry contributing nothing)", resp.TotalPages)
 	}
-	if resp.TotalDurationSeconds == nil || *resp.TotalDurationSeconds != 240 {
-		t.Errorf("TotalDurationSeconds = %v, want 240 (180 + 60, the untimed piece contributing nothing)", resp.TotalDurationSeconds)
+	if resp.TotalDurationSeconds == nil || *resp.TotalDurationSeconds != 390 || !resp.DurationEstimated {
+		t.Errorf("TotalDurationSeconds = %v, DurationEstimated = %v, want 390 (180 + 60, plus 150 assumed for the untimed piece), true",
+			resp.TotalDurationSeconds, resp.DurationEstimated)
 	}
 }
 
-// TestBuildSetlistResponse_TotalDurationOmittedWhenNoEntryHasOne is the
-// other half of decision 20: when literally nothing in the program has a
-// set duration, TotalDurationSeconds must be nil (omitted), never a
-// misleading 0.
-func TestBuildSetlistResponse_TotalDurationOmittedWhenNoEntryHasOne(t *testing.T) {
+// TestBuildSetlistResponse_TotalDurationEstimatedWhenNoEntryHasOne: with
+// nothing in the program timed, the total is still shown — every length
+// assumed (internal/setlistduration) — and marked an estimate.
+func TestBuildSetlistResponse_TotalDurationEstimatedWhenNoEntryHasOne(t *testing.T) {
 	ctx := context.Background()
 	dbConn := newTestDB(t)
 
@@ -157,8 +157,9 @@ func TestBuildSetlistResponse_TotalDurationOmittedWhenNoEntryHasOne(t *testing.T
 	if err != nil {
 		t.Fatalf("BuildSetlistResponse: %v", err)
 	}
-	if resp.TotalDurationSeconds != nil {
-		t.Errorf("TotalDurationSeconds = %d, want nil (no entry has one set)", *resp.TotalDurationSeconds)
+	if resp.TotalDurationSeconds == nil || *resp.TotalDurationSeconds != 240 || !resp.DurationEstimated {
+		t.Errorf("TotalDurationSeconds = %v, DurationEstimated = %v, want 240 (150 for the piece + 90 for Announcements), true",
+			resp.TotalDurationSeconds, resp.DurationEstimated)
 	}
 }
 
