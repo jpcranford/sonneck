@@ -34,6 +34,11 @@ interface PieceContextMenuProps {
 export const PieceContextMenu = forwardRef<ContextMenuHandle, PieceContextMenuProps>(
   function PieceContextMenu({ piece, children, hideTriggerButton, siblingPieces }, ref) {
     const [editOpen, setEditOpen] = useState(false)
+    // Edit Piece is created the first time this card opens it, then kept
+    // (so its close animation can play). Mounting one per card up front
+    // put ~150 hidden windows on a full Library, each holding its lookup
+    // lists (keys, people, tags…) as live queries the page never shows.
+    const [editMounted, setEditMounted] = useState(false)
     const [pickerOpen, setPickerOpen] = useState(false)
     const cardRef = useRef<HTMLDivElement>(null)
     const queryClient = useQueryClient()
@@ -132,7 +137,10 @@ export const PieceContextMenu = forwardRef<ContextMenuHandle, PieceContextMenuPr
               : []),
             {
               label: 'Edit Piece',
-              onSelect: () => setEditOpen(true),
+              onSelect: () => {
+                setEditMounted(true)
+                setEditOpen(true)
+              },
               disabled: !canEdit,
               disabledReason: "You don't have permission to edit",
             },
@@ -154,12 +162,14 @@ export const PieceContextMenu = forwardRef<ContextMenuHandle, PieceContextMenuPr
         >
           {children}
         </ContextMenu>
-        <EditPieceModal
-          piece={piece}
-          open={editOpen}
-          onClose={() => setEditOpen(false)}
-          siblingPieces={siblingPieces}
-        />
+        {editMounted && (
+          <EditPieceModal
+            piece={piece}
+            open={editOpen}
+            onClose={() => setEditOpen(false)}
+            siblingPieces={siblingPieces}
+          />
+        )}
         {canCreate && pickerOpen && (
           <AddToSetlistPicker
             pieceId={piece.id}
