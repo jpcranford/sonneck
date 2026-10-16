@@ -16,7 +16,7 @@ import {
   IconX,
 } from '@tabler/icons-react'
 import { listPeople } from '../api/people'
-import { getPieceThumbnailUrl, updatePiece } from '../api/pieces'
+import { getPiece, getPieceThumbnailUrl, updatePiece } from '../api/pieces'
 import { lookupImslp } from '../api/imslp'
 import {
   listInstruments,
@@ -417,6 +417,36 @@ export function EditPieceModal({
     formState: { errors },
   } = useForm<FormValues>({ defaultValues: pieceToFormValues(piece) })
 
+  // The form always starts from the piece as the server has it now, never
+  // from the copy the opening page happened to hold — that copy can be up
+  // to a minute old (main.tsx's staleTime), or a search result from before
+  // someone else's edit. Every open and every sibling switch shows the
+  // copy at hand at once, then refetches the piece and resets the form to
+  // it; the fields are disabled until it lands (a few milliseconds on a
+  // local server) so nothing typed is overwritten. fetchQuery also
+  // refreshes the shared ['piece', id] cache, so a page showing the piece
+  // picks up the same data. If the fetch fails, the copy at hand stays
+  // editable. loadSeqRef drops a response that a later open or sibling
+  // switch has superseded.
+  const [loadingFresh, setLoadingFresh] = useState(false)
+  const loadSeqRef = useRef(0)
+  function loadFresh(id: number) {
+    const seq = ++loadSeqRef.current
+    setLoadingFresh(true)
+    queryClient
+      .fetchQuery({ queryKey: ['piece', id], queryFn: () => getPiece(id), staleTime: 0 })
+      .then((fresh) => {
+        if (seq !== loadSeqRef.current) return
+        setPiece(fresh)
+        reset(pieceToFormValues(fresh))
+        setPreviewPage(fresh.thumbnailPage)
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (seq === loadSeqRef.current) setLoadingFresh(false)
+      })
+  }
+
   // Keyed on `initialPiece` (the prop), not the shadowed `piece` state —
   // this is deliberately the *only* place that ever reacts to the prop
   // directly, so a fresh open (or the caller swapping which card's piece
@@ -441,6 +471,7 @@ export function EditPieceModal({
       // the modal is already open.
       setPreviewOpen(viewportHeight > 800)
       setPreviewPage(initialPiece.thumbnailPage)
+      loadFresh(initialPiece.id)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initialPiece, reset])
@@ -468,6 +499,7 @@ export function EditPieceModal({
     setPiece(next)
     reset(pieceToFormValues(next))
     setPreviewPage(next.thumbnailPage)
+    loadFresh(next.id)
   }
 
   // Small fixed lookup lists (design doc §5) — generous staleTime since
@@ -620,7 +652,13 @@ export function EditPieceModal({
       saveStartedAtRef.current = Date.now()
       return updatePiece(piece.id, formValuesToWriteRequest(data, piece))
     },
-    onSuccess: (_updated, variables) => {
+    onSuccess: (updated, variables) => {
+      // The saved piece, straight from the server: the page showing it
+      // updates at once (no wait for the refetches below), and a plain
+      // Save that keeps the window open carries on from it rather than
+      // from the copy it opened with — inherited values and all.
+      queryClient.setQueryData(['piece', updated.id], updated)
+      setPiece(updated)
       queryClient.invalidateQueries({ queryKey: ['pieces'] })
       queryClient.invalidateQueries({ queryKey: ['piece'] })
       // Setlist responses embed their own copy of each piece's title/
@@ -647,10 +685,12 @@ export function EditPieceModal({
   // EditPieceModalMockup.tsx already established — see that file's own
   // comment for why "if the two ever look different" applies here too.
   function onSubmitAndClose(data: FormValues) {
+    if (loadingFresh) return
     setIsSaving(true)
     saveMutation.mutate({ data, closeAfter: true })
   }
   function onSubmitStayOpen(data: FormValues) {
+    if (loadingFresh) return
     setIsSaving(true)
     saveMutation.mutate({ data, closeAfter: false })
   }
@@ -927,7 +967,7 @@ export function EditPieceModal({
               <button
                 type="button"
                 onClick={() => handleSubmit(onSubmitStayOpen)()}
-                disabled={isSaving}
+                disabled={isSaving || loadingFresh}
                 className="cursor-pointer rounded-md border border-border bg-paper-raised px-3 py-2 font-display whitespace-nowrap sm:px-4 font-medium text-ink hover:border-accent disabled:opacity-60"
               >
                 {isSaving ? 'Saving…' : 'Save'}
@@ -935,7 +975,7 @@ export function EditPieceModal({
               <button
                 type="submit"
                 form="edit-piece-form"
-                disabled={isSaving}
+                disabled={isSaving || loadingFresh}
                 className="cursor-pointer rounded-md bg-accent-fill px-3 py-2 font-display whitespace-nowrap sm:px-4 font-medium text-white hover:bg-accent-fill/90 disabled:opacity-50"
               >
                 {isSaving ? 'Saving…' : 'Save & Close'}
@@ -952,49 +992,52 @@ export function EditPieceModal({
         onKeyDown={handleFormKeyDown}
         className="flex flex-col gap-6"
       >
-        <div className="flex flex-col gap-3">
-          {/* Title/Year written share a row, 50/50 split — Year written's
+        {/* Disabled while the latest copy of the piece loads (loadFresh);
+            `contents` keeps the form's own flex layout. */}
+        <fieldset disabled={loadingFresh} className="contents">
+          <div className="flex flex-col gap-3">
+            {/* Title/Year written share a row, 50/50 split — Year written's
               own InheritedNote can now name two different sources ("book"
               vs. "copyright year"), which reads noticeably longer than the
               old fixed "Inherited from book" text ever did, so the field's
               own column needs the extra room the old 2/3-1/3 split
               (flex-[2]/flex-1) didn't leave it. */}
-          <div className="flex flex-col gap-3 min-[525px]:flex-row">
-            <div className="flex min-w-0 flex-1 flex-col gap-1">
-              <label htmlFor="f-title" className="text-sm text-ink-soft">
-                Title <span className="text-ink-soft/60 italic">(Required)</span>
-              </label>
-              <input
-                id="f-title"
-                className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-                {...register('title', { required: 'Title is required.', maxLength: 255 })}
-              />
-              {errors.title && <p className="text-sm text-danger">{errors.title.message}</p>}
-            </div>
-            <div className="flex min-w-0 flex-1 flex-col gap-1">
-              <label htmlFor="f-year" className="text-sm text-ink-soft">
-                Year written
-              </label>
-              <input
-                id="f-year"
-                placeholder={
-                  !watch('yearWritten') && piece.yearWritten.inherited
-                    ? piece.yearWritten.value
-                    : undefined
-                }
-                className={`rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 placeholder:text-ink-soft/40 placeholder:italic ${imslpFilledFields.has('yearWritten') ? 'ring-2 ring-accent-on-dark' : ''}`}
-                {...register('yearWritten', { maxLength: 255 })}
-              />
-              {!watch('yearWritten') && piece.yearWritten.inherited && (
-                <InheritedNote
-                  bookValue={piece.yearWritten.value}
-                  onCopy={() => setValue('yearWritten', piece.yearWritten.value)}
-                  source={yearWrittenSource(piece)}
+            <div className="flex flex-col gap-3 min-[525px]:flex-row">
+              <div className="flex min-w-0 flex-1 flex-col gap-1">
+                <label htmlFor="f-title" className="text-sm text-ink-soft">
+                  Title <span className="text-ink-soft/60 italic">(Required)</span>
+                </label>
+                <input
+                  id="f-title"
+                  className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+                  {...register('title', { required: 'Title is required.', maxLength: 255 })}
                 />
-              )}
+                {errors.title && <p className="text-sm text-danger">{errors.title.message}</p>}
+              </div>
+              <div className="flex min-w-0 flex-1 flex-col gap-1">
+                <label htmlFor="f-year" className="text-sm text-ink-soft">
+                  Year written
+                </label>
+                <input
+                  id="f-year"
+                  placeholder={
+                    !watch('yearWritten') && piece.yearWritten.inherited
+                      ? piece.yearWritten.value
+                      : undefined
+                  }
+                  className={`rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 placeholder:text-ink-soft/40 placeholder:italic ${imslpFilledFields.has('yearWritten') ? 'ring-2 ring-accent-on-dark' : ''}`}
+                  {...register('yearWritten', { maxLength: 255 })}
+                />
+                {!watch('yearWritten') && piece.yearWritten.inherited && (
+                  <InheritedNote
+                    bookValue={piece.yearWritten.value}
+                    onCopy={() => setValue('yearWritten', piece.yearWritten.value)}
+                    source={yearWrittenSource(piece)}
+                  />
+                )}
+              </div>
             </div>
-          </div>
-          {/* min-[525px]:flex-row — the same fixed breakpoint every paired
+            {/* min-[525px]:flex-row — the same fixed breakpoint every paired
               row in this form uses (see the Musical Details/Personal
               sections' own comments below for why fixed beats
               content-driven flex-wrap): every row must split to stacked
@@ -1002,167 +1045,167 @@ export function EditPieceModal({
               the modal narrows. min-w-0 (not the old min-w-[250px] floor)
               so Composer can shrink freely once stacked and paired
               side-by-side above 525px alike. */}
-          <div className="flex flex-col gap-3 min-[525px]:flex-row">
-            <div className="min-w-0 flex-1">
-              <Controller
-                name="composer"
-                control={control}
-                render={({ field }) => (
-                  <TagComboBox
-                    label="Composer"
-                    options={peopleOptions}
-                    selected={field.value}
-                    multiple
-                    onChange={field.onChange}
-                    pillStyle="paper"
-                    newOptionLabel="New person"
-                    highlighted={imslpFilledFields.has('composer')}
-                    bookValue={
-                      piece.composer.inherited
-                        ? piece.composer.values.map((p) => p.name).join(', ')
-                        : undefined
-                    }
-                    onCopy={() => field.onChange(piece.composer.values)}
-                  />
-                )}
-              />
-            </div>
-            <div className="min-w-0 flex-1">
-              <Controller
-                name="arranger"
-                control={control}
-                render={({ field }) => (
-                  <TagComboBox
-                    label="Arranger"
-                    options={peopleOptions}
-                    selected={field.value}
-                    multiple
-                    onChange={field.onChange}
-                    pillStyle="paper"
-                    newOptionLabel="New person"
-                    bookValue={
-                      piece.arranger.inherited
-                        ? piece.arranger.values.map((p) => p.name).join(', ')
-                        : undefined
-                    }
-                    onCopy={() => field.onChange(piece.arranger.values)}
-                  />
-                )}
-              />
+            <div className="flex flex-col gap-3 min-[525px]:flex-row">
+              <div className="min-w-0 flex-1">
+                <Controller
+                  name="composer"
+                  control={control}
+                  render={({ field }) => (
+                    <TagComboBox
+                      label="Composer"
+                      options={peopleOptions}
+                      selected={field.value}
+                      multiple
+                      onChange={field.onChange}
+                      pillStyle="paper"
+                      newOptionLabel="New person"
+                      highlighted={imslpFilledFields.has('composer')}
+                      bookValue={
+                        piece.composer.inherited
+                          ? piece.composer.values.map((p) => p.name).join(', ')
+                          : undefined
+                      }
+                      onCopy={() => field.onChange(piece.composer.values)}
+                    />
+                  )}
+                />
+              </div>
+              <div className="min-w-0 flex-1">
+                <Controller
+                  name="arranger"
+                  control={control}
+                  render={({ field }) => (
+                    <TagComboBox
+                      label="Arranger"
+                      options={peopleOptions}
+                      selected={field.value}
+                      multiple
+                      onChange={field.onChange}
+                      pillStyle="paper"
+                      newOptionLabel="New person"
+                      bookValue={
+                        piece.arranger.inherited
+                          ? piece.arranger.values.map((p) => p.name).join(', ')
+                          : undefined
+                      }
+                      onCopy={() => field.onChange(piece.arranger.values)}
+                    />
+                  )}
+                />
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="flex flex-col gap-3 border-t border-border pt-4">
-          <SectionHeading>Frontmatter</SectionHeading>
-          {/* Opus / IMSLP no. share a row, 50/50 — min-[525px]:flex-row,
+          <div className="flex flex-col gap-3 border-t border-border pt-4">
+            <SectionHeading>Frontmatter</SectionHeading>
+            {/* Opus / IMSLP no. share a row, 50/50 — min-[525px]:flex-row,
               same unified breakpoint as every other paired row in this
               form (see Composer/Arranger above). Year written moved up to
               pair with Title instead (2/3-1/3 split, see that row's own
               comment above). */}
-          <div className="flex flex-col gap-3 min-[525px]:flex-row">
-            <div className="flex min-w-0 flex-1 flex-col gap-1">
-              <label htmlFor="f-opus" className="flex items-center gap-1 text-sm text-ink-soft">
-                Opus / catalog no.
-                <InfoIconTooltip
-                  message="If this piece is part of a larger work which has a number assigned, enter that number."
-                  ariaLabel="What Opus / catalog no. means"
+            <div className="flex flex-col gap-3 min-[525px]:flex-row">
+              <div className="flex min-w-0 flex-1 flex-col gap-1">
+                <label htmlFor="f-opus" className="flex items-center gap-1 text-sm text-ink-soft">
+                  Opus / catalog no.
+                  <InfoIconTooltip
+                    message="If this piece is part of a larger work which has a number assigned, enter that number."
+                    ariaLabel="What Opus / catalog no. means"
+                  />
+                </label>
+                <input
+                  id="f-opus"
+                  className={`rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 ${imslpFilledFields.has('workOpusNumber') ? 'ring-2 ring-accent-on-dark' : ''}`}
+                  {...register('workOpusNumber', { maxLength: 255 })}
                 />
-              </label>
-              <input
-                id="f-opus"
-                className={`rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 ${imslpFilledFields.has('workOpusNumber') ? 'ring-2 ring-accent-on-dark' : ''}`}
-                {...register('workOpusNumber', { maxLength: 255 })}
-              />
-            </div>
-            <div className="flex min-w-0 flex-1 flex-col gap-1">
-              <label htmlFor="f-imslp" className="text-sm text-ink-soft">
-                IMSLP no.
-              </label>
-              {/* relative + pr-9 reserve room for ImslpAutofillButton
+              </div>
+              <div className="flex min-w-0 flex-1 flex-col gap-1">
+                <label htmlFor="f-imslp" className="text-sm text-ink-soft">
+                  IMSLP no.
+                </label>
+                {/* relative + pr-9 reserve room for ImslpAutofillButton
                   inside the input itself — same placement as a password
                   field's show/hide toggle. Always rendered, not shown-
                   only-when-present — see ImslpAutofillButton's own
                   comment for why the cloud-off state matters just as much
                   as the fetchable one. */}
-              <div className="relative">
-                <input
-                  id="f-imslp"
-                  placeholder={
-                    !watch('imslpNumber') && piece.imslpNumber.inherited
-                      ? piece.imslpNumber.value
-                      : undefined
-                  }
-                  className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 pr-9 font-mono text-ink placeholder:text-ink-soft/40 placeholder:italic"
-                  {...register('imslpNumber', { maxLength: 255 })}
-                />
-                <ImslpAutofillButton
-                  state={imslpFetchState}
-                  valid={isValidImslpNumber}
-                  onClick={handleImslpAutofill}
-                />
+                <div className="relative">
+                  <input
+                    id="f-imslp"
+                    placeholder={
+                      !watch('imslpNumber') && piece.imslpNumber.inherited
+                        ? piece.imslpNumber.value
+                        : undefined
+                    }
+                    className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 pr-9 font-mono text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                    {...register('imslpNumber', { maxLength: 255 })}
+                  />
+                  <ImslpAutofillButton
+                    state={imslpFetchState}
+                    valid={isValidImslpNumber}
+                    onClick={handleImslpAutofill}
+                  />
+                </div>
+                {!watch('imslpNumber') && piece.imslpNumber.inherited && (
+                  <InheritedNote
+                    bookValue={piece.imslpNumber.value}
+                    onCopy={() => setValue('imslpNumber', piece.imslpNumber.value)}
+                  />
+                )}
+                {imslpMutation.isError && (
+                  <p className="text-sm text-danger">
+                    {imslpMutation.error instanceof ApiError
+                      ? imslpMutation.error.message
+                      : 'Could not reach IMSLP.'}
+                  </p>
+                )}
               </div>
-              {!watch('imslpNumber') && piece.imslpNumber.inherited && (
-                <InheritedNote
-                  bookValue={piece.imslpNumber.value}
-                  onCopy={() => setValue('imslpNumber', piece.imslpNumber.value)}
-                />
-              )}
-              {imslpMutation.isError && (
-                <p className="text-sm text-danger">
-                  {imslpMutation.error instanceof ApiError
-                    ? imslpMutation.error.message
-                    : 'Could not reach IMSLP.'}
-                </p>
-              )}
             </div>
-          </div>
-          {/* Publisher/Publisher ID deliberately never wraps to separate
+            {/* Publisher/Publisher ID deliberately never wraps to separate
               rows, unlike the min-width-floor pairs above — both shrink
               freely (min-w-0 overrides the flex default of refusing to
               shrink below content width), so the pair always fits on one
               line even on a narrow phone viewport. Plain 50/50 split
               (flex-1/flex-1, not the old fixed-width Publisher ID). */}
-          <div className="flex gap-3">
-            <div className="flex min-w-0 flex-1 flex-col gap-1">
-              <label htmlFor="f-publisher" className="text-sm text-ink-soft">
-                Publisher
-              </label>
-              <input
-                id="f-publisher"
-                placeholder={
-                  !watch('publisher') && piece.publisher.inherited
-                    ? piece.publisher.value
-                    : undefined
-                }
-                className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 placeholder:text-ink-soft/40 placeholder:italic ${imslpFilledFields.has('publisher') ? 'ring-2 ring-accent-on-dark' : ''}`}
-                {...register('publisher', { maxLength: 255 })}
-              />
-            </div>
-            <div className="flex min-w-0 flex-1 flex-col gap-1">
-              <label
-                htmlFor="f-publisher-id"
-                className="flex items-center gap-1 text-sm text-ink-soft"
-              >
-                Publisher ID
-                <InfoIconTooltip
-                  message="Publisher serial or engraving plate number. Typically found in bottom margin notes."
-                  ariaLabel="What Publisher ID means"
+            <div className="flex gap-3">
+              <div className="flex min-w-0 flex-1 flex-col gap-1">
+                <label htmlFor="f-publisher" className="text-sm text-ink-soft">
+                  Publisher
+                </label>
+                <input
+                  id="f-publisher"
+                  placeholder={
+                    !watch('publisher') && piece.publisher.inherited
+                      ? piece.publisher.value
+                      : undefined
+                  }
+                  className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 placeholder:text-ink-soft/40 placeholder:italic ${imslpFilledFields.has('publisher') ? 'ring-2 ring-accent-on-dark' : ''}`}
+                  {...register('publisher', { maxLength: 255 })}
                 />
-              </label>
-              <input
-                id="f-publisher-id"
-                placeholder={
-                  !watch('publisherId') && piece.publisherId.inherited
-                    ? piece.publisherId.value
-                    : undefined
-                }
-                className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 placeholder:text-ink-soft/40 placeholder:italic ${imslpFilledFields.has('publisherId') ? 'ring-2 ring-accent-on-dark' : ''}`}
-                {...register('publisherId', { maxLength: 255 })}
-              />
+              </div>
+              <div className="flex min-w-0 flex-1 flex-col gap-1">
+                <label
+                  htmlFor="f-publisher-id"
+                  className="flex items-center gap-1 text-sm text-ink-soft"
+                >
+                  Publisher ID
+                  <InfoIconTooltip
+                    message="Publisher serial or engraving plate number. Typically found in bottom margin notes."
+                    ariaLabel="What Publisher ID means"
+                  />
+                </label>
+                <input
+                  id="f-publisher-id"
+                  placeholder={
+                    !watch('publisherId') && piece.publisherId.inherited
+                      ? piece.publisherId.value
+                      : undefined
+                  }
+                  className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 placeholder:text-ink-soft/40 placeholder:italic ${imslpFilledFields.has('publisherId') ? 'ring-2 ring-accent-on-dark' : ''}`}
+                  {...register('publisherId', { maxLength: 255 })}
+                />
+              </div>
             </div>
-          </div>
-          {/* `||`, not `&&` — a book missing a publisher ID (a plausible,
+            {/* `||`, not `&&` — a book missing a publisher ID (a plausible,
               common case: not every publisher stamps one) still has an
               inherited publisher *name* to show, and resolveStringField
               (repo/effective.go) marks a field with nothing to inherit as
@@ -1172,87 +1215,87 @@ export function EditPieceModal({
               the two is actually present, same "•"-joined, no-dangling-
               separator convention buildCitation's own fusePublisherAndID
               uses. */}
-          {!watch('publisher') &&
-            !watch('publisherId') &&
-            (piece.publisher.inherited || piece.publisherId.inherited) && (
-              <InheritedNote
-                bookValue={[piece.publisher.value, piece.publisherId.value]
-                  .filter(Boolean)
-                  .join(' • ')}
-                onCopy={() => {
-                  setValue('publisher', piece.publisher.value)
-                  setValue('publisherId', piece.publisherId.value)
-                }}
+            {!watch('publisher') &&
+              !watch('publisherId') &&
+              (piece.publisher.inherited || piece.publisherId.inherited) && (
+                <InheritedNote
+                  bookValue={[piece.publisher.value, piece.publisherId.value]
+                    .filter(Boolean)
+                    .join(' • ')}
+                  onCopy={() => {
+                    setValue('publisher', piece.publisher.value)
+                    setValue('publisherId', piece.publisherId.value)
+                  }}
+                />
+              )}
+            <div className="flex flex-col gap-1">
+              <label htmlFor="f-description" className="text-sm text-ink-soft">
+                Description <span className="text-ink-soft/60 italic">(Markdown supported)</span>
+              </label>
+              <textarea
+                id="f-description"
+                rows={3}
+                className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+                {...register('description')}
               />
-            )}
-          <div className="flex flex-col gap-1">
-            <label htmlFor="f-description" className="text-sm text-ink-soft">
-              Description <span className="text-ink-soft/60 italic">(Markdown supported)</span>
-            </label>
-            <textarea
-              id="f-description"
-              rows={3}
-              className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-              {...register('description')}
-            />
+            </div>
           </div>
-        </div>
 
-        {/* Musical Details: Sheet type/Instruments, then Key(s)/Duration
+          {/* Musical Details: Sheet type/Instruments, then Key(s)/Duration
             plus the tempo-calc disclosure tied to Duration. Your Tags
             lives in Personal instead — it's the user's own organizational
             label, not a musical-classification fact about the piece. */}
-        <div className="flex flex-col gap-3 border-t border-border pt-4">
-          <SectionHeading>Musical Details</SectionHeading>
-          {/* Sheet Type/Instruments share a row, first in this section.
+          <div className="flex flex-col gap-3 border-t border-border pt-4">
+            <SectionHeading>Musical Details</SectionHeading>
+            {/* Sheet Type/Instruments share a row, first in this section.
               min-[525px]:flex-row — same unified breakpoint as every other
               paired row in this form (see Composer/Arranger above). */}
-          <div className="flex flex-col gap-3 min-[525px]:flex-row">
-            <div className="min-w-0 flex-1">
-              <Controller
-                name="sheetType"
-                control={control}
-                render={({ field }) => (
-                  <SingleSelect
-                    label="Sheet type"
-                    options={sheetTypeSelectOptions}
-                    value={field.value}
-                    onChange={field.onChange}
-                    bookValue={
-                      piece.sheetType.inherited
-                        ? (piece.sheetType.value?.name ?? undefined)
-                        : undefined
-                    }
-                    onCopy={() => field.onChange(piece.sheetType.value?.name ?? '')}
-                  />
-                )}
-              />
+            <div className="flex flex-col gap-3 min-[525px]:flex-row">
+              <div className="min-w-0 flex-1">
+                <Controller
+                  name="sheetType"
+                  control={control}
+                  render={({ field }) => (
+                    <SingleSelect
+                      label="Sheet type"
+                      options={sheetTypeSelectOptions}
+                      value={field.value}
+                      onChange={field.onChange}
+                      bookValue={
+                        piece.sheetType.inherited
+                          ? (piece.sheetType.value?.name ?? undefined)
+                          : undefined
+                      }
+                      onCopy={() => field.onChange(piece.sheetType.value?.name ?? '')}
+                    />
+                  )}
+                />
+              </div>
+              <div className="min-w-0 flex-1">
+                <Controller
+                  name="instruments"
+                  control={control}
+                  render={({ field }) => (
+                    <TagComboBox
+                      label="Instruments"
+                      pillStyle="paper"
+                      options={instrumentOptions}
+                      selected={field.value}
+                      multiple
+                      onChange={field.onChange}
+                      bookValue={
+                        piece.instruments.inherited
+                          ? piece.instruments.values.map((i) => i.name).join(', ')
+                          : undefined
+                      }
+                      onCopy={() => field.onChange(piece.instruments.values)}
+                    />
+                  )}
+                />
+              </div>
             </div>
-            <div className="min-w-0 flex-1">
-              <Controller
-                name="instruments"
-                control={control}
-                render={({ field }) => (
-                  <TagComboBox
-                    label="Instruments"
-                    pillStyle="paper"
-                    options={instrumentOptions}
-                    selected={field.value}
-                    multiple
-                    onChange={field.onChange}
-                    bookValue={
-                      piece.instruments.inherited
-                        ? piece.instruments.values.map((i) => i.name).join(', ')
-                        : undefined
-                    }
-                    onCopy={() => field.onChange(piece.instruments.values)}
-                  />
-                )}
-              />
-            </div>
-          </div>
 
-          {/* Key(s)/Duration share a row — Key(s) grows (it can hold an
+            {/* Key(s)/Duration share a row — Key(s) grows (it can hold an
               arbitrary-length modulation sequence), Duration keeps its
               fixed width (w-48, matching Publisher ID's split point above)
               on the right. Stacks to its own row at narrow widths (unlike
@@ -1274,26 +1317,26 @@ export function EditPieceModal({
               (w-1/2 there, see its own div below), so it sits at the
               column's natural start (left), matching every other stacked
               field in this form. */}
-          <div className="flex flex-col gap-3 min-[525px]:flex-row">
-            <div className="min-w-0 flex-1">
-              <Controller
-                name="keys"
-                control={control}
-                render={({ field }) => (
-                  <TagComboBox
-                    label="Key(s)"
-                    options={keyOptions}
-                    selected={field.value}
-                    multiple
-                    onChange={field.onChange}
-                    filterOption={(o, query) => matchesKeyQuery(o.name, query)}
-                    allowDuplicates
-                    sequenceStyle
-                  />
-                )}
-              />
-            </div>
-            {/* Duration — manually entered as mm:ss (this input's whole
+            <div className="flex flex-col gap-3 min-[525px]:flex-row">
+              <div className="min-w-0 flex-1">
+                <Controller
+                  name="keys"
+                  control={control}
+                  render={({ field }) => (
+                    <TagComboBox
+                      label="Key(s)"
+                      options={keyOptions}
+                      selected={field.value}
+                      multiple
+                      onChange={field.onChange}
+                      filterOption={(o, query) => matchesKeyQuery(o.name, query)}
+                      allowDuplicates
+                      sequenceStyle
+                    />
+                  )}
+                />
+              </div>
+              {/* Duration — manually entered as mm:ss (this input's whole
                 reason to exist), stored server-side as an integer of
                 seconds; the frontend only ever shows/accepts mm:ss.
                 w-1/2 while stacked on its own row below 525px (a bare
@@ -1301,26 +1344,28 @@ export function EditPieceModal({
                 narrow form read as oddly small) — min-[525px]:w-48
                 restores the fixed width once it's paired with Key(s)
                 again, matching Publisher ID's split point. */}
-            <div className="flex w-1/2 flex-col gap-1 min-[525px]:w-48 min-[525px]:shrink-0">
-              <label htmlFor="f-duration" className="text-sm text-ink-soft">
-                Duration (mm:ss)
-              </label>
-              <input
-                id="f-duration"
-                placeholder="e.g. 3:45"
-                className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-                {...register('duration', {
-                  pattern: {
-                    value: /^\d+:[0-5]\d$/,
-                    message: 'Enter duration as mm:ss (e.g. 3:45).',
-                  },
-                })}
-              />
-              {errors.duration && <p className="text-sm text-danger">{errors.duration.message}</p>}
+              <div className="flex w-1/2 flex-col gap-1 min-[525px]:w-48 min-[525px]:shrink-0">
+                <label htmlFor="f-duration" className="text-sm text-ink-soft">
+                  Duration (mm:ss)
+                </label>
+                <input
+                  id="f-duration"
+                  placeholder="e.g. 3:45"
+                  className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+                  {...register('duration', {
+                    pattern: {
+                      value: /^\d+:[0-5]\d$/,
+                      message: 'Enter duration as mm:ss (e.g. 3:45).',
+                    },
+                  })}
+                />
+                {errors.duration && (
+                  <p className="text-sm text-danger">{errors.duration.message}</p>
+                )}
+              </div>
             </div>
-          </div>
 
-          {/* Tempo-calc disclosure — matches Duration's own alignment at
+            {/* Tempo-calc disclosure — matches Duration's own alignment at
               the same min-[525px] breakpoint the row above uses: left (the
               default, no class needed) while Duration is stacked below
               Key(s), right-aligned once Duration sits paired on the right
@@ -1331,77 +1376,77 @@ export function EditPieceModal({
               edit menu; duration is what matters day-to-day, the calc
               fields are a supporting, occasionally-needed alternate path
               to it. */}
-          <div className="flex flex-col items-start gap-2 min-[525px]:items-end">
-            <button
-              type="button"
-              onClick={() => setTempoOpen((o) => !o)}
-              // Solid pre-blend (icon + label share one color) — identical
-              // against a static background either way for the text half,
-              // but the chevron icon needs it.
-              className="flex cursor-pointer items-center gap-1 text-xs text-ink-muted hover:text-ink-soft"
-            >
-              <IconChevronRight
-                size={12}
-                className={`transition-transform ${tempoOpen ? 'rotate-90' : ''}`}
-              />
-              Calculate from tempo
-            </button>
-            {tempoOpen && (
-              <div className="flex flex-wrap items-end gap-3 min-[525px]:justify-end">
-                <div className="flex flex-col gap-1">
-                  <label htmlFor="f-bpm" className="text-sm text-ink-soft">
-                    BPM
-                  </label>
-                  <input
-                    id="f-bpm"
-                    type="number"
-                    min={1}
-                    className="w-24 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-                    {...register('bpm', { min: { value: 1, message: 'Must be positive.' } })}
-                  />
+            <div className="flex flex-col items-start gap-2 min-[525px]:items-end">
+              <button
+                type="button"
+                onClick={() => setTempoOpen((o) => !o)}
+                // Solid pre-blend (icon + label share one color) — identical
+                // against a static background either way for the text half,
+                // but the chevron icon needs it.
+                className="flex cursor-pointer items-center gap-1 text-xs text-ink-muted hover:text-ink-soft"
+              >
+                <IconChevronRight
+                  size={12}
+                  className={`transition-transform ${tempoOpen ? 'rotate-90' : ''}`}
+                />
+                Calculate from tempo
+              </button>
+              {tempoOpen && (
+                <div className="flex flex-wrap items-end gap-3 min-[525px]:justify-end">
+                  <div className="flex flex-col gap-1">
+                    <label htmlFor="f-bpm" className="text-sm text-ink-soft">
+                      BPM
+                    </label>
+                    <input
+                      id="f-bpm"
+                      type="number"
+                      min={1}
+                      className="w-24 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+                      {...register('bpm', { min: { value: 1, message: 'Must be positive.' } })}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label htmlFor="f-measures" className="text-sm text-ink-soft">
+                      Measures
+                    </label>
+                    <input
+                      id="f-measures"
+                      type="number"
+                      min={1}
+                      className="w-24 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+                      {...register('measureCount', {
+                        min: { value: 1, message: 'Must be positive.' },
+                      })}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label htmlFor="f-beats" className="text-sm text-ink-soft">
+                      Beats / measure
+                    </label>
+                    <input
+                      id="f-beats"
+                      type="number"
+                      min={1}
+                      className="w-24 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+                      {...register('beatsPerMeasure', {
+                        min: { value: 1, message: 'Must be positive.' },
+                      })}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCalculateDuration}
+                    disabled={!canCalculateDuration}
+                    className="cursor-pointer rounded-md border border-border bg-paper-raised px-3 py-2 font-display font-medium text-sm text-ink hover:border-accent disabled:opacity-40"
+                  >
+                    Calculate
+                  </button>
                 </div>
-                <div className="flex flex-col gap-1">
-                  <label htmlFor="f-measures" className="text-sm text-ink-soft">
-                    Measures
-                  </label>
-                  <input
-                    id="f-measures"
-                    type="number"
-                    min={1}
-                    className="w-24 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-                    {...register('measureCount', {
-                      min: { value: 1, message: 'Must be positive.' },
-                    })}
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label htmlFor="f-beats" className="text-sm text-ink-soft">
-                    Beats / measure
-                  </label>
-                  <input
-                    id="f-beats"
-                    type="number"
-                    min={1}
-                    className="w-24 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-                    {...register('beatsPerMeasure', {
-                      min: { value: 1, message: 'Must be positive.' },
-                    })}
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={handleCalculateDuration}
-                  disabled={!canCalculateDuration}
-                  className="cursor-pointer rounded-md border border-border bg-paper-raised px-3 py-2 font-display font-medium text-sm text-ink hover:border-accent disabled:opacity-40"
-                >
-                  Calculate
-                </button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
-        </div>
 
-        {/* Personal — Your Tags lives here, not Musical Details (it's the
+          {/* Personal — Your Tags lives here, not Musical Details (it's the
             user's own organizational label, not a musical fact about the
             piece). Two-column split inspired by the Edit Book modal's own
             closing IMSLP/Sheet Type/Instruments-vs-Description row:
@@ -1412,51 +1457,51 @@ export function EditPieceModal({
             modal splits to stacked layout at one unified breakpoint
             instead of each row wrapping at its own content-driven
             threshold. */}
-        <div className="flex flex-col gap-3 border-t border-border pt-4">
-          <SectionHeading>Personal</SectionHeading>
-          <div className="flex flex-col gap-3 min-[525px]:flex-row">
-            <div className="flex min-w-0 flex-1 flex-col gap-4">
-              <Controller
-                name="practiceStatus"
-                control={control}
-                render={({ field }) => (
-                  <SingleSelect
-                    label="Practice status"
-                    options={practiceStatusSelectOptions}
-                    value={field.value}
-                    onChange={field.onChange}
-                  />
-                )}
-              />
-              <Controller
-                name="userTags"
-                control={control}
-                render={({ field }) => (
-                  <TagComboBox
-                    label="Your tags"
-                    options={userTagOptions}
-                    selected={field.value}
-                    multiple
-                    onChange={field.onChange}
-                  />
-                )}
-              />
-            </div>
-            <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1">
-              <label htmlFor="f-notes" className="text-sm text-ink-soft">
-                Your notes <span className="text-ink-soft/60 italic">(Markdown supported)</span>
-              </label>
-              <textarea
-                id="f-notes"
-                rows={2}
-                className="min-h-[96px] flex-1 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-                {...register('userNotes')}
-              />
+          <div className="flex flex-col gap-3 border-t border-border pt-4">
+            <SectionHeading>Personal</SectionHeading>
+            <div className="flex flex-col gap-3 min-[525px]:flex-row">
+              <div className="flex min-w-0 flex-1 flex-col gap-4">
+                <Controller
+                  name="practiceStatus"
+                  control={control}
+                  render={({ field }) => (
+                    <SingleSelect
+                      label="Practice status"
+                      options={practiceStatusSelectOptions}
+                      value={field.value}
+                      onChange={field.onChange}
+                    />
+                  )}
+                />
+                <Controller
+                  name="userTags"
+                  control={control}
+                  render={({ field }) => (
+                    <TagComboBox
+                      label="Your tags"
+                      options={userTagOptions}
+                      selected={field.value}
+                      multiple
+                      onChange={field.onChange}
+                    />
+                  )}
+                />
+              </div>
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1">
+                <label htmlFor="f-notes" className="text-sm text-ink-soft">
+                  Your notes <span className="text-ink-soft/60 italic">(Markdown supported)</span>
+                </label>
+                <textarea
+                  id="f-notes"
+                  rows={2}
+                  className="min-h-[96px] flex-1 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+                  {...register('userNotes')}
+                />
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Book Details — the Source Book search field, plus the page
+          {/* Book Details — the Source Book search field, plus the page
             range. Own collapsible section at the very end of the form,
             same "collapsed by default" posture as Copyright below it —
             it's about where this piece lives inside its source book, not
@@ -1470,164 +1515,166 @@ export function EditPieceModal({
             SourceBookField forces a full remount (resetting the field's
             internal search-query text) whenever this modal is reused for a
             different piece, rather than only when it unmounts. */}
-        <div className="border-t border-border pt-4">
-          {/* Text styling matches SectionHeading (Frontmatter/Musical
+          <div className="border-t border-border pt-4">
+            {/* Text styling matches SectionHeading (Frontmatter/Musical
               Details/Personal above) exactly — same pattern Copyright's
               own trigger below uses, for the same reason: this is a
               section title that's also a clickable disclosure trigger, so
               it needs the chevron + hover affordance SectionHeading itself
               (a plain h3) doesn't. */}
-          <button
-            type="button"
-            onClick={() => setBookDetailsOpen((o) => !o)}
-            className="flex cursor-pointer items-center gap-1 text-xs font-medium tracking-wide text-ink-soft/70 uppercase hover:text-ink"
-          >
-            <IconChevronRight
-              size={12}
-              className={`transition-transform ${bookDetailsOpen ? 'rotate-90' : ''}`}
-            />
-            Book Details
-          </button>
-          {bookDetailsOpen && (
-            <div className="mt-3 flex flex-col gap-4 rounded-md border border-dashed border-border p-4">
-              <Controller
-                name="sourceBookId"
-                control={control}
-                render={({ field }) => (
-                  <SourceBookField
-                    key={piece.id}
-                    value={field.value}
-                    onChange={field.onChange}
-                    initialTitle={piece.sourceBookTitle ?? null}
-                  />
-                )}
+            <button
+              type="button"
+              onClick={() => setBookDetailsOpen((o) => !o)}
+              className="flex cursor-pointer items-center gap-1 text-xs font-medium tracking-wide text-ink-soft/70 uppercase hover:text-ink"
+            >
+              <IconChevronRight
+                size={12}
+                className={`transition-transform ${bookDetailsOpen ? 'rotate-90' : ''}`}
               />
-              <div className="flex gap-3">
-                <div className="flex flex-1 flex-col gap-1">
-                  <label htmlFor="f-page-start" className="text-sm text-ink-soft">
-                    Start page
-                  </label>
-                  <input
-                    id="f-page-start"
-                    type="number"
-                    className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-                    {...register('sourcePageStart')}
-                  />
-                </div>
-                <div className="flex flex-1 flex-col gap-1">
-                  <label htmlFor="f-page-end" className="text-sm text-ink-soft">
-                    End page
-                  </label>
-                  <input
-                    id="f-page-end"
-                    type="number"
-                    className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-                    {...register('sourcePageEnd')}
-                  />
+              Book Details
+            </button>
+            {bookDetailsOpen && (
+              <div className="mt-3 flex flex-col gap-4 rounded-md border border-dashed border-border p-4">
+                <Controller
+                  name="sourceBookId"
+                  control={control}
+                  render={({ field }) => (
+                    <SourceBookField
+                      key={piece.id}
+                      value={field.value}
+                      onChange={field.onChange}
+                      initialTitle={piece.sourceBookTitle ?? null}
+                    />
+                  )}
+                />
+                <div className="flex gap-3">
+                  <div className="flex flex-1 flex-col gap-1">
+                    <label htmlFor="f-page-start" className="text-sm text-ink-soft">
+                      Start page
+                    </label>
+                    <input
+                      id="f-page-start"
+                      type="number"
+                      className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+                      {...register('sourcePageStart')}
+                    />
+                  </div>
+                  <div className="flex flex-1 flex-col gap-1">
+                    <label htmlFor="f-page-end" className="text-sm text-ink-soft">
+                      End page
+                    </label>
+                    <input
+                      id="f-page-end"
+                      type="number"
+                      className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+                      {...register('sourcePageEnd')}
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
 
-        {/* Copyright — Public Domain Badge feature. Own collapsible
+          {/* Copyright — Public Domain Badge feature. Own collapsible
             section at the very bottom, same "collapsed by default, nothing
             new for someone who's never touched this feature" posture as
             Piece Details' own More info panel. */}
-        <div className="border-t border-border pt-4">
-          {/* Text styling matches SectionHeading (Frontmatter/Musical
+          <div className="border-t border-border pt-4">
+            {/* Text styling matches SectionHeading (Frontmatter/Musical
               Details/Personal above) exactly — same pattern Book Details'
               own trigger above uses, for the same reason: this is a
               section title that's also a clickable disclosure trigger, so
               it needs the chevron + hover affordance SectionHeading itself
               (a plain h3) doesn't. */}
-          <button
-            type="button"
-            onClick={() => setCopyrightOpen((o) => !o)}
-            className="flex cursor-pointer items-center gap-1 text-xs font-medium tracking-wide text-ink-soft/70 uppercase hover:text-ink"
-          >
-            <IconChevronRight
-              size={12}
-              className={`transition-transform ${copyrightOpen ? 'rotate-90' : ''}`}
-            />
-            Copyright
-          </button>
-          {copyrightOpen && (
-            <div className="mt-3 flex flex-col gap-4 rounded-md border border-dashed border-border p-4">
-              <Controller
-                name="copyrightStatus"
-                control={control}
-                render={({ field }) => (
-                  <SingleSelect
-                    label="Copyright status"
-                    options={COPYRIGHT_STATUS_OPTIONS}
-                    value={field.value}
-                    onChange={field.onChange}
-                    placeholder={COPYRIGHT_BADGE_META[piece.copyrightStatus.effective].label}
-                    placeholderDescription="Calculated automatically — not explicitly set on this piece."
-                    onClear={() => field.onChange('')}
-                  />
-                )}
+            <button
+              type="button"
+              onClick={() => setCopyrightOpen((o) => !o)}
+              className="flex cursor-pointer items-center gap-1 text-xs font-medium tracking-wide text-ink-soft/70 uppercase hover:text-ink"
+            >
+              <IconChevronRight
+                size={12}
+                className={`transition-transform ${copyrightOpen ? 'rotate-90' : ''}`}
               />
-              <div className="flex flex-col gap-3 min-[525px]:flex-row">
-                <div className="flex min-w-0 flex-1 flex-col gap-1">
-                  <label
-                    htmlFor="f-copyright-year"
-                    className="flex items-center gap-1 text-sm text-ink-soft"
-                  >
-                    Copyright year
-                    <InfoIconTooltip
-                      message="Enter the year copyright was first established for this piece — usually the year of first publication."
-                      ariaLabel="What Copyright year means"
-                    />
-                  </label>
-                  <input
-                    id="f-copyright-year"
-                    type="number"
-                    placeholder={
-                      !watch('copyrightYear') &&
-                      piece.copyrightYear.inherited &&
-                      piece.copyrightYear.value != null
-                        ? String(piece.copyrightYear.value)
-                        : undefined
-                    }
-                    className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
-                    {...register('copyrightYear')}
-                  />
-                  {!watch('copyrightYear') &&
-                    piece.copyrightYear.inherited &&
-                    piece.copyrightYear.value != null && (
-                      <InheritedNote
-                        bookValue={String(piece.copyrightYear.value)}
-                        onCopy={() => setValue('copyrightYear', String(piece.copyrightYear.value))}
-                      />
-                    )}
-                </div>
-                <div className="flex min-w-0 flex-1 flex-col gap-1">
-                  <label htmlFor="f-copyright-holder" className="text-sm text-ink-soft">
-                    Copyright holder
-                  </label>
-                  <input
-                    id="f-copyright-holder"
-                    type="text"
-                    placeholder={
-                      !watch('copyrightHolder') && piece.copyrightHolder.inherited
-                        ? piece.copyrightHolder.value
-                        : undefined
-                    }
-                    className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
-                    {...register('copyrightHolder', { maxLength: 255 })}
-                  />
-                  {!watch('copyrightHolder') && piece.copyrightHolder.inherited && (
-                    <InheritedNote
-                      bookValue={piece.copyrightHolder.value}
-                      onCopy={() => setValue('copyrightHolder', piece.copyrightHolder.value)}
+              Copyright
+            </button>
+            {copyrightOpen && (
+              <div className="mt-3 flex flex-col gap-4 rounded-md border border-dashed border-border p-4">
+                <Controller
+                  name="copyrightStatus"
+                  control={control}
+                  render={({ field }) => (
+                    <SingleSelect
+                      label="Copyright status"
+                      options={COPYRIGHT_STATUS_OPTIONS}
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder={COPYRIGHT_BADGE_META[piece.copyrightStatus.effective].label}
+                      placeholderDescription="Calculated automatically — not explicitly set on this piece."
+                      onClear={() => field.onChange('')}
                     />
                   )}
+                />
+                <div className="flex flex-col gap-3 min-[525px]:flex-row">
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <label
+                      htmlFor="f-copyright-year"
+                      className="flex items-center gap-1 text-sm text-ink-soft"
+                    >
+                      Copyright year
+                      <InfoIconTooltip
+                        message="Enter the year copyright was first established for this piece — usually the year of first publication."
+                        ariaLabel="What Copyright year means"
+                      />
+                    </label>
+                    <input
+                      id="f-copyright-year"
+                      type="number"
+                      placeholder={
+                        !watch('copyrightYear') &&
+                        piece.copyrightYear.inherited &&
+                        piece.copyrightYear.value != null
+                          ? String(piece.copyrightYear.value)
+                          : undefined
+                      }
+                      className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                      {...register('copyrightYear')}
+                    />
+                    {!watch('copyrightYear') &&
+                      piece.copyrightYear.inherited &&
+                      piece.copyrightYear.value != null && (
+                        <InheritedNote
+                          bookValue={String(piece.copyrightYear.value)}
+                          onCopy={() =>
+                            setValue('copyrightYear', String(piece.copyrightYear.value))
+                          }
+                        />
+                      )}
+                  </div>
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <label htmlFor="f-copyright-holder" className="text-sm text-ink-soft">
+                      Copyright holder
+                    </label>
+                    <input
+                      id="f-copyright-holder"
+                      type="text"
+                      placeholder={
+                        !watch('copyrightHolder') && piece.copyrightHolder.inherited
+                          ? piece.copyrightHolder.value
+                          : undefined
+                      }
+                      className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                      {...register('copyrightHolder', { maxLength: 255 })}
+                    />
+                    {!watch('copyrightHolder') && piece.copyrightHolder.inherited && (
+                      <InheritedNote
+                        bookValue={piece.copyrightHolder.value}
+                        onCopy={() => setValue('copyrightHolder', piece.copyrightHolder.value)}
+                      />
+                    )}
+                  </div>
                 </div>
-              </div>
 
-              {/* US renewal follow-up — only for en-US, only when the
+                {/* US renewal follow-up — only for en-US, only when the
                   typed year is in the 1923-1963 window where renewal
                   status actually decides the term length (28 vs. 95
                   years — see internal/copyright.ComputeLikelyPublicDomain's
@@ -1636,69 +1683,70 @@ export function EditPieceModal({
                   see FormValues' own comment for why a plain boolean would
                   silently freeze an inherited value into a permanent
                   override on every save. */}
-              {appConfig?.copyrightRegion === 'en-US' &&
-                inUSRenewalWindow(watch('copyrightYear')) && (
-                  <div className="flex flex-col gap-2 rounded-md border border-dashed border-border p-3">
-                    <div className="flex items-center gap-1.5">
-                      <Controller
-                        name="copyrightRenewed"
-                        control={control}
-                        render={({ field }) => (
-                          <Toggle
-                            checked={
-                              field.value === ''
-                                ? piece.copyrightRenewed.value
-                                : field.value === 'true'
-                            }
-                            onChange={(next) => field.onChange(next ? 'true' : 'false')}
-                            label="This work was renewed"
-                          />
-                        )}
-                      />
-                      <InfoIconTooltip
-                        message={`US works published ${US_RENEWAL_WINDOW_START}–${US_RENEWAL_WINDOW_END} needed a separate renewal filing to keep protection past the first 28 years. Enable this if your source shows a "(renewed …)" note next to the copyright year above.`}
-                        ariaLabel="What 'This work was renewed' means"
-                      />
+                {appConfig?.copyrightRegion === 'en-US' &&
+                  inUSRenewalWindow(watch('copyrightYear')) && (
+                    <div className="flex flex-col gap-2 rounded-md border border-dashed border-border p-3">
+                      <div className="flex items-center gap-1.5">
+                        <Controller
+                          name="copyrightRenewed"
+                          control={control}
+                          render={({ field }) => (
+                            <Toggle
+                              checked={
+                                field.value === ''
+                                  ? piece.copyrightRenewed.value
+                                  : field.value === 'true'
+                              }
+                              onChange={(next) => field.onChange(next ? 'true' : 'false')}
+                              label="This work was renewed"
+                            />
+                          )}
+                        />
+                        <InfoIconTooltip
+                          message={`US works published ${US_RENEWAL_WINDOW_START}–${US_RENEWAL_WINDOW_END} needed a separate renewal filing to keep protection past the first 28 years. Enable this if your source shows a "(renewed …)" note next to the copyright year above.`}
+                          ariaLabel="What 'This work was renewed' means"
+                        />
+                      </div>
+                      {watch('copyrightRenewed') === '' && piece.copyrightRenewed.inherited && (
+                        <InheritedNote
+                          bookValue={piece.copyrightRenewed.value ? 'Renewed' : 'Not renewed'}
+                          onCopy={() =>
+                            setValue(
+                              'copyrightRenewed',
+                              piece.copyrightRenewed.value ? 'true' : 'false',
+                            )
+                          }
+                        />
+                      )}
                     </div>
-                    {watch('copyrightRenewed') === '' && piece.copyrightRenewed.inherited && (
-                      <InheritedNote
-                        bookValue={piece.copyrightRenewed.value ? 'Renewed' : 'Not renewed'}
-                        onCopy={() =>
-                          setValue(
-                            'copyrightRenewed',
-                            piece.copyrightRenewed.value ? 'true' : 'false',
-                          )
-                        }
-                      />
-                    )}
-                  </div>
-                )}
+                  )}
 
-              <div className="flex min-w-0 flex-col gap-1">
-                <label htmlFor="f-copyright-slug" className="text-sm text-ink-soft">
-                  Copyright details
-                </label>
-                <input
-                  id="f-copyright-slug"
-                  type="text"
-                  placeholder={
-                    !watch('copyrightSlug') && piece.copyrightSlug.inherited
-                      ? piece.copyrightSlug.value
-                      : 'Optional — e.g. license terms, renewal notes'
-                  }
-                  className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
-                  {...register('copyrightSlug')}
-                />
-                {!watch('copyrightSlug') && piece.copyrightSlug.inherited && (
-                  <InheritedNote
-                    bookValue={piece.copyrightSlug.value}
-                    onCopy={() => setValue('copyrightSlug', piece.copyrightSlug.value)}
+                <div className="flex min-w-0 flex-col gap-1">
+                  <label htmlFor="f-copyright-slug" className="text-sm text-ink-soft">
+                    Copyright details
+                  </label>
+                  <input
+                    id="f-copyright-slug"
+                    type="text"
+                    placeholder={
+                      !watch('copyrightSlug') && piece.copyrightSlug.inherited
+                        ? piece.copyrightSlug.value
+                        : 'Optional — e.g. license terms, renewal notes'
+                    }
+                    className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                    {...register('copyrightSlug')}
                   />
-                )}
+                  {!watch('copyrightSlug') && piece.copyrightSlug.inherited && (
+                    <InheritedNote
+                      bookValue={piece.copyrightSlug.value}
+                      onCopy={() => setValue('copyrightSlug', piece.copyrightSlug.value)}
+                    />
+                  )}
+                </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        </fieldset>
       </form>
     </Modal>
   )
