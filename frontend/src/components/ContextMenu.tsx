@@ -52,6 +52,12 @@ const LONG_PRESS_MS = 500
 // opening the menu out from under a finger that's clearly scrolling.
 const LONG_PRESS_MOVE_CANCEL_PX = 10
 
+// Only one menu is ever open: opening one closes the last. An open menu
+// otherwise closes on a mousedown elsewhere, which a long press on a phone
+// never produces (only a tap does), so long-pressing a second row used to
+// leave both menus up.
+let closeOpenMenu: (() => void) | null = null
+
 /**
  * Wraps children with a context menu — built once here so every place the
  * app needs one (piece cards, book rows, ...) shares the same popup
@@ -123,6 +129,8 @@ export const ContextMenu = forwardRef<ContextMenuHandle, ContextMenuProps>(funct
     if (!position) return
 
     const close = () => setPosition(null)
+    closeOpenMenu?.()
+    closeOpenMenu = close
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') close()
     }
@@ -130,6 +138,7 @@ export const ContextMenu = forwardRef<ContextMenuHandle, ContextMenuProps>(funct
     document.addEventListener('keydown', onKeyDown)
     document.addEventListener('scroll', close, true)
     return () => {
+      if (closeOpenMenu === close) closeOpenMenu = null
       document.removeEventListener('mousedown', close)
       document.removeEventListener('keydown', onKeyDown)
       document.removeEventListener('scroll', close, true)
