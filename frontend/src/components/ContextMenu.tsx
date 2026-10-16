@@ -84,6 +84,10 @@ export const ContextMenu = forwardRef<ContextMenuHandle, ContextMenuProps>(funct
   // would fall through to whatever's under the finger (e.g. a card's own
   // navigate-on-click) right after the menu opens.
   const suppressNextClickRef = useRef(false)
+  // Whether the pointer that last went down here was a finger — a drag
+  // that starts from a touch is iOS lifting the link/image to drag it (see
+  // the wrapper below), which a mouse drag isn't.
+  const touchPointerRef = useRef(false)
 
   useImperativeHandle(ref, () => ({
     open: (x, y) => setPosition({ x, y }),
@@ -150,10 +154,22 @@ export const ContextMenu = forwardRef<ContextMenuHandle, ContextMenuProps>(funct
   return (
     <>
       {/* On touch screens, holding a finger down here opens the menu, so it
-          mustn't also start selecting text or pop iOS's link preview. A
-          mouse can still select text here. */}
+          mustn't also start selecting text, pop iOS's link preview, or let
+          iOS lift the card's link or image to drag it (Safari's drag and
+          drop, since iOS 15) — the lift takes over the touch and closes
+          the menu. Each is off for touch only: a mouse can still select
+          text and drag a card's link out (to a new tab, say). The lift is
+          stopped twice over: `-webkit-user-drag: none` on links and images
+          (it doesn't inherit, so each gets it), and a cancelled dragstart
+          for any drag a touch begins. */}
       <div
-        className="relative [-webkit-touch-callout:none] pointer-coarse:select-none"
+        className="relative [-webkit-touch-callout:none] pointer-coarse:select-none pointer-coarse:[&_a]:[-webkit-user-drag:none] pointer-coarse:[&_img]:[-webkit-user-drag:none]"
+        onPointerDown={(event) => {
+          touchPointerRef.current = event.pointerType === 'touch'
+        }}
+        onDragStart={(event) => {
+          if (touchPointerRef.current) event.preventDefault()
+        }}
         onContextMenu={(event) => {
           event.preventDefault()
           setPosition({ x: event.clientX, y: event.clientY })
