@@ -453,7 +453,7 @@ export function PersonDetailsPage() {
   // EditBookModal.tsx's own composer/arranger TagComboBox fields use
   // (Stage C), reused unpaginated.
   const { data: allPeople = [] } = useQuery({
-    queryKey: ['people', {}],
+    queryKey: ['people'],
     queryFn: () => listPeople(),
     enabled: splitOpen,
   })

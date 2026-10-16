@@ -517,14 +517,14 @@ export function EditPieceModal({
   })
   const { data: keyOptions = [] } = useQuery({ queryKey: ['keys'], queryFn: listKeys })
   const { data: sheetTypeOptions = [] } = useQuery({
-    queryKey: ['sheetTypes'],
+    queryKey: ['sheet-types'],
     queryFn: listSheetTypes,
   })
   const { data: instrumentOptions = [] } = useQuery({
     queryKey: ['instruments'],
     queryFn: listInstruments,
   })
-  const { data: userTagOptions = [] } = useQuery({ queryKey: ['userTags'], queryFn: listUserTags })
+  const { data: userTagOptions = [] } = useQuery({ queryKey: ['user-tags'], queryFn: listUserTags })
   // Live-fetched, not the old hardcoded five-name list — a status renamed
   // (or created) in User Settings now shows up here correctly instead of
   // silently falling back to a bare '—' (SingleSelect's own fallback for a
@@ -532,7 +532,7 @@ export function EditPieceModal({
   // calling user's own per-user data (GetUserPieceData), so it can never
   // name a status outside this same live list.
   const { data: practiceStatusOptions = [] } = useQuery({
-    queryKey: ['practiceStatuses'],
+    queryKey: ['practice-statuses'],
     queryFn: listPracticeStatuses,
   })
   // People catalog — reused unpaginated as the Composer/Arranger

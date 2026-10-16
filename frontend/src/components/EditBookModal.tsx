@@ -233,7 +233,7 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
     staleTime: Infinity,
   })
   const { data: sheetTypeOptions = [] } = useQuery({
-    queryKey: ['sheetTypes'],
+    queryKey: ['sheet-types'],
     queryFn: listSheetTypes,
   })
   const { data: instrumentOptions = [] } = useQuery({

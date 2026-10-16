@@ -249,7 +249,7 @@ export function UploadPage() {
   })
   const { data: keyOptions = [] } = useQuery({ queryKey: ['keys'], queryFn: listKeys })
   const { data: sheetTypeOptions = [] } = useQuery({
-    queryKey: ['sheetTypes'],
+    queryKey: ['sheet-types'],
     queryFn: listSheetTypes,
   })
   const { data: instrumentOptions = [] } = useQuery({

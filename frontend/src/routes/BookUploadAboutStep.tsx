@@ -320,7 +320,7 @@ export function BookUploadAboutStep({
     queryFn: () => listPeople(),
   })
   const { data: sheetTypeOptions = [] } = useQuery({
-    queryKey: ['sheetTypes'],
+    queryKey: ['sheet-types'],
     queryFn: listSheetTypes,
   })
   const { data: instrumentOptions = [] } = useQuery({
