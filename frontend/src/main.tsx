@@ -16,10 +16,11 @@ import { ApiError } from './api/client'
 // allowed — which a retry can't change. Without this, a link to a deleted
 // piece sat on "Loading…" for about 7 seconds of backed-off retries before
 // showing "Piece not found".
-// Loaded data counts as fresh for a minute, and returning to the app
-// (switching tabs, waking the device) doesn't refetch on its own — each of
-// those was a burst of requests and a redraw, a real battery cost on slow
-// devices like e-ink tablets; pull to refresh and navigating still fetch.
+// Loaded data counts as fresh for a minute: navigating back to a page, or
+// returning to the app (switching tabs, waking the device), within that
+// minute costs no requests at all. Returning after longer refetches what's
+// on screen once, so a page left open never goes on showing old data —
+// TanStack's refetch-on-focus only ever touches data past its staleTime.
 // So that a minute's caching never shows something out of date after a
 // change, every successful save marks all loaded data stale — without
 // fetching any of it: whatever isn't on screen refetches when it's next
@@ -37,7 +38,6 @@ const queryClient: QueryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 60_000,
-      refetchOnWindowFocus: false,
       retry: (failureCount, error) => {
         if (error instanceof ApiError && error.status >= 400 && error.status < 500) return false
         return failureCount < 3
