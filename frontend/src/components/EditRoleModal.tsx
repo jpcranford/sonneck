@@ -2,7 +2,8 @@ import { useEffect, useState, type KeyboardEvent as ReactKeyboardEvent } from 'r
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { IconX } from '@tabler/icons-react'
 import { ApiError } from '../api/client'
-import { updateSetlistEntry } from '../api/setlists'
+import { getSetlist, updateSetlistEntry } from '../api/setlists'
+import { useFreshOnOpen } from '../hooks/useFreshOnOpen'
 import type { SetlistEntry } from '../api/types'
 import { Modal } from './Modal'
 import { showAlert } from '../lib/dialogs'
@@ -28,14 +29,37 @@ interface EditRoleModalProps {
 export function EditRoleModal({ open, onClose, setlistId, entry }: EditRoleModalProps) {
   const queryClient = useQueryClient()
   const [role, setRole] = useState('')
+  // Whether the entry has a role now — from the fresh copy once it lands.
+  const [savedRole, setSavedRole] = useState<string | null>(null)
 
   useEffect(() => {
     if (!open || !entry) return
     // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate: persistent instance re-synced to whichever entry is opened, same as EditEntryModal.tsx.
     setRole(entry.role ?? '')
+    setSavedRole(entry.role)
   }, [open, entry])
 
-  const hadRole = Boolean(entry?.role)
+  // The fields fill from the entry as the server has it now, not the copy
+  // the page held when it was opened (hooks/useFreshOnOpen) — locked until
+  // then. An entry removed meanwhile (another device, another tab) closes
+  // the window with a note instead of saving over nothing.
+  const loadingFresh = useFreshOnOpen(
+    open && entry !== null,
+    ['setlist', setlistId],
+    () => getSetlist(setlistId),
+    (fresh) => {
+      const current = fresh.entries.find((e) => e.id === entry?.id)
+      if (!current) {
+        showAlert('This entry has been removed from the setlist.')
+        onClose()
+        return
+      }
+      setRole(current.role ?? '')
+      setSavedRole(current.role)
+    },
+  )
+
+  const hadRole = Boolean(savedRole)
   const canSave = role.trim() !== '' || hadRole
 
   // PATCH .../entries/{id} is a full replace; a piece entry only carries
@@ -57,7 +81,7 @@ export function EditRoleModal({ open, onClose, setlistId, entry }: EditRoleModal
   })
 
   function handleSave() {
-    if (!canSave || !entry) return
+    if (!canSave || !entry || loadingFresh) return
     saveMutation.mutate()
   }
 
@@ -107,7 +131,7 @@ export function EditRoleModal({ open, onClose, setlistId, entry }: EditRoleModal
           <button
             type="button"
             onClick={handleSave}
-            disabled={!canSave || saveMutation.isPending}
+            disabled={!canSave || saveMutation.isPending || loadingFresh}
             className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-white hover:bg-accent-fill/90 disabled:opacity-50"
           >
             {saveMutation.isPending ? 'Saving…' : 'Save'}
@@ -123,21 +147,23 @@ export function EditRoleModal({ open, onClose, setlistId, entry }: EditRoleModal
         onKeyDown={handleFormKeyDown}
         className="flex flex-col gap-1"
       >
-        <label htmlFor="f-entry-role" className="text-sm text-ink-soft">
-          Role
-        </label>
-        <input
-          id="f-entry-role"
-          type="text"
-          autoFocus
-          value={role}
-          onChange={(event) => setRole(event.target.value)}
-          placeholder="Prelude"
-          className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-        />
-        {hadRole && (
-          <p className="text-xs text-ink-soft italic">Leave blank and save to remove the role.</p>
-        )}
+        <fieldset disabled={loadingFresh} className="contents">
+          <label htmlFor="f-entry-role" className="text-sm text-ink-soft">
+            Role
+          </label>
+          <input
+            id="f-entry-role"
+            type="text"
+            autoFocus
+            value={role}
+            onChange={(event) => setRole(event.target.value)}
+            placeholder="Prelude"
+            className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+          />
+          {hadRole && (
+            <p className="text-xs text-ink-soft italic">Leave blank and save to remove the role.</p>
+          )}
+        </fieldset>
       </form>
     </Modal>
   )

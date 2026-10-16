@@ -2,7 +2,8 @@ import { useEffect, useState, type KeyboardEvent as ReactKeyboardEvent } from 'r
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { IconX } from '@tabler/icons-react'
 import { ApiError } from '../api/client'
-import { updateSetlistEntry } from '../api/setlists'
+import { getSetlist, updateSetlistEntry } from '../api/setlists'
+import { useFreshOnOpen } from '../hooks/useFreshOnOpen'
 import type { SetlistEntry } from '../api/types'
 import { Modal } from './Modal'
 import { Toggle } from './Toggle'
@@ -49,6 +50,9 @@ export function EditEntryModal({ open, onClose, setlistId, entry }: EditEntryMod
   const [duration, setDuration] = useState('')
   const [description, setDescription] = useState('')
   const [countsAsMusic, setCountsAsMusic] = useState(false)
+  // Sent back unchanged on save (a full replace) — kept current with the
+  // fresh copy, so a role changed elsewhere isn't overwritten.
+  const [role, setRole] = useState<string | null>(null)
 
   useEffect(() => {
     if (!open || !entry) return
@@ -59,12 +63,38 @@ export function EditEntryModal({ open, onClose, setlistId, entry }: EditEntryMod
     )
     setDescription(entry.customNotes ?? '')
     setCountsAsMusic(entry.customCountsAsMusic)
+    setRole(entry.role)
   }, [open, entry])
+
+  // The fields fill from the entry as the server has it now, not the copy
+  // the page held when it was opened (hooks/useFreshOnOpen) — locked until
+  // then. An entry removed meanwhile (another device, another tab) closes
+  // the window with a note instead of saving over nothing.
+  const loadingFresh = useFreshOnOpen(
+    open && entry !== null,
+    ['setlist', setlistId],
+    () => getSetlist(setlistId),
+    (fresh) => {
+      const current = fresh.entries.find((e) => e.id === entry?.id)
+      if (!current) {
+        showAlert('This entry has been removed from the setlist.')
+        onClose()
+        return
+      }
+      setName(current.customName ?? '')
+      setDuration(
+        current.customDurationSeconds != null ? formatDuration(current.customDurationSeconds) : '',
+      )
+      setDescription(current.customNotes ?? '')
+      setCountsAsMusic(current.customCountsAsMusic)
+      setRole(current.role)
+    },
+  )
 
   const saveMutation = useMutation({
     mutationFn: () =>
       updateSetlistEntry(setlistId, entry!.id, {
-        role: entry!.role,
+        role,
         customName: name.trim(),
         customDurationSeconds: parseDurationInput(duration) ?? null,
         customNotes: description.trim() || null,
@@ -80,7 +110,7 @@ export function EditEntryModal({ open, onClose, setlistId, entry }: EditEntryMod
   })
 
   function handleSave() {
-    if (!name.trim() || !entry) return
+    if (!name.trim() || !entry || loadingFresh) return
     saveMutation.mutate()
   }
 
@@ -133,7 +163,7 @@ export function EditEntryModal({ open, onClose, setlistId, entry }: EditEntryMod
           <button
             type="button"
             onClick={handleSave}
-            disabled={!name.trim() || saveMutation.isPending}
+            disabled={!name.trim() || saveMutation.isPending || loadingFresh}
             className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-white hover:bg-accent-fill/90 disabled:opacity-50"
           >
             {saveMutation.isPending ? 'Saving…' : 'Save'}
@@ -149,51 +179,53 @@ export function EditEntryModal({ open, onClose, setlistId, entry }: EditEntryMod
         onKeyDown={handleFormKeyDown}
         className="flex flex-col gap-4"
       >
-        <div className="flex flex-col gap-1">
-          <label htmlFor="f-entry-name" className="text-sm text-ink-soft">
-            Name <span className="text-ink-soft/60 italic">(Required)</span>
-          </label>
-          <input
-            id="f-entry-name"
-            type="text"
-            autoFocus
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            placeholder="Welcome &amp; Announcements"
-            className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-          />
-        </div>
-        <div className="flex items-end gap-3">
-          <div className="flex-1">
-            <label htmlFor="f-entry-duration" className="text-sm text-ink-soft">
-              Duration
+        <fieldset disabled={loadingFresh} className="contents">
+          <div className="flex flex-col gap-1">
+            <label htmlFor="f-entry-name" className="text-sm text-ink-soft">
+              Name <span className="text-ink-soft/60 italic">(Required)</span>
             </label>
             <input
-              id="f-entry-duration"
+              id="f-entry-name"
               type="text"
-              value={duration}
-              onChange={(event) => setDuration(event.target.value)}
-              placeholder="3:00"
-              className="mt-1 w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+              autoFocus
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="Welcome &amp; Announcements"
+              className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
             />
           </div>
-          <div className="flex flex-1 py-2">
-            <Toggle checked={countsAsMusic} onChange={setCountsAsMusic} label="Count as music" />
+          <div className="flex items-end gap-3">
+            <div className="flex-1">
+              <label htmlFor="f-entry-duration" className="text-sm text-ink-soft">
+                Duration
+              </label>
+              <input
+                id="f-entry-duration"
+                type="text"
+                value={duration}
+                onChange={(event) => setDuration(event.target.value)}
+                placeholder="3:00"
+                className="mt-1 w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+              />
+            </div>
+            <div className="flex flex-1 py-2">
+              <Toggle checked={countsAsMusic} onChange={setCountsAsMusic} label="Count as music" />
+            </div>
           </div>
-        </div>
-        <div className="flex flex-col gap-1">
-          <label htmlFor="f-entry-description" className="text-sm text-ink-soft">
-            Description <span className="text-ink-soft/60 italic">(Markdown supported)</span>
-          </label>
-          <textarea
-            id="f-entry-description"
-            value={description}
-            onChange={(event) => setDescription(event.target.value)}
-            placeholder="Reminder: mention the bake sale sign-up sheet before the offering."
-            rows={3}
-            className="w-full resize-none rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-          />
-        </div>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="f-entry-description" className="text-sm text-ink-soft">
+              Description <span className="text-ink-soft/60 italic">(Markdown supported)</span>
+            </label>
+            <textarea
+              id="f-entry-description"
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              placeholder="Reminder: mention the bake sale sign-up sheet before the offering."
+              rows={3}
+              className="w-full resize-none rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+            />
+          </div>
+        </fieldset>
       </form>
     </Modal>
   )

@@ -2,7 +2,8 @@ import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent }
 import { Controller, useForm } from 'react-hook-form'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { IconAlertTriangle, IconChevronRight, IconCheck, IconX } from '@tabler/icons-react'
-import { updateBook } from '../api/books'
+import { getBook, updateBook } from '../api/books'
+import { useFreshOnOpen } from '../hooks/useFreshOnOpen'
 import { lookupImslp } from '../api/imslp'
 import { listInstruments, listSheetTypes } from '../api/lookups'
 import { listPeople } from '../api/people'
@@ -225,6 +226,15 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
     }
   }, [open, book, reset])
 
+  // The form starts from the book as the server has it now, not the
+  // opening page's copy (hooks/useFreshOnOpen); fields locked until then.
+  const loadingFresh = useFreshOnOpen(
+    open,
+    ['book', book.id],
+    () => getBook(book.id),
+    (fresh) => reset(bookToFormValues(fresh)),
+  )
+
   // US renewal follow-up — server config, effectively static for the life
   // of the process, same long staleTime EditPieceModal.tsx's own copy uses.
   const { data: appConfig } = useQuery({
@@ -343,6 +353,7 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
   })
 
   function onSubmit(data: FormValues) {
+    if (loadingFresh) return
     setSaveState('saving')
     saveMutation.mutate(data)
   }
@@ -442,7 +453,7 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
             <button
               type="submit"
               form="edit-book-form"
-              disabled={saving}
+              disabled={saving || loadingFresh}
               className="relative flex min-w-[190px] shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md bg-accent-fill px-4 py-2 font-display font-medium whitespace-nowrap text-white"
             >
               {saveState === 'saving' && (
@@ -473,25 +484,28 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
         onKeyDown={handleFormKeyDown}
         className="flex flex-col gap-4"
       >
-        {/* Book title stands alone, full width — not paired with Composer.
+        {/* Locked while the latest copy loads (useFreshOnOpen); `contents`
+            keeps the form's own flex layout. */}
+        <fieldset disabled={loadingFresh} className="contents">
+          {/* Book title stands alone, full width — not paired with Composer.
             Row order: Title / Composer-Arranger / Year-Opus /
             Publisher-PublisherID / ISBN-IMSLP / Sheet+Instruments-
             Description. Every paired row below collapses to stacked
             single fields below ~525px. */}
-        <div className="flex min-w-0 flex-col gap-1">
-          <label htmlFor="f-book-title" className="text-sm text-ink-soft">
-            Book title <span className="text-ink-soft/60 italic">(Required)</span>
-          </label>
-          <input
-            id="f-book-title"
-            className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-            {...register('bookTitle', { required: 'Book title is required.', maxLength: 255 })}
-          />
-          {errors.bookTitle && <p className="text-sm text-danger">{errors.bookTitle.message}</p>}
-        </div>
+          <div className="flex min-w-0 flex-col gap-1">
+            <label htmlFor="f-book-title" className="text-sm text-ink-soft">
+              Book title <span className="text-ink-soft/60 italic">(Required)</span>
+            </label>
+            <input
+              id="f-book-title"
+              className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+              {...register('bookTitle', { required: 'Book title is required.', maxLength: 255 })}
+            />
+            {errors.bookTitle && <p className="text-sm text-danger">{errors.bookTitle.message}</p>}
+          </div>
 
-        <div className="flex flex-col gap-3 min-[525px]:flex-row">
-          {/* No persistent "one of these three required" hint here:
+          <div className="flex flex-col gap-3 min-[525px]:flex-row">
+            {/* No persistent "one of these three required" hint here:
               composer-or-arranger-or-publisher is a cross-field rule the
               backend already enforces and reports (ValidateBook), and the
               footer below already surfaces whatever error a failed save
@@ -500,192 +514,192 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
               (CLAUDE.md > Frontend: light client-side validation, "surface
               whatever error the backend returns" for anything beyond the
               cheap checks). */}
-          <div className="min-w-0 flex-1">
-            <Controller
-              name="composer"
-              control={control}
-              render={({ field }) => (
-                <TagComboBox
-                  label="Composer"
-                  options={peopleOptions}
-                  selected={field.value}
-                  multiple
-                  onChange={field.onChange}
-                  pillStyle="paper"
-                  newOptionLabel="New person"
-                  highlighted={imslpFilledFields.has('composer')}
-                />
-              )}
-            />
+            <div className="min-w-0 flex-1">
+              <Controller
+                name="composer"
+                control={control}
+                render={({ field }) => (
+                  <TagComboBox
+                    label="Composer"
+                    options={peopleOptions}
+                    selected={field.value}
+                    multiple
+                    onChange={field.onChange}
+                    pillStyle="paper"
+                    newOptionLabel="New person"
+                    highlighted={imslpFilledFields.has('composer')}
+                  />
+                )}
+              />
+            </div>
+            <div className="min-w-0 flex-1">
+              <Controller
+                name="arranger"
+                control={control}
+                render={({ field }) => (
+                  <TagComboBox
+                    label="Arranger"
+                    options={peopleOptions}
+                    selected={field.value}
+                    multiple
+                    onChange={field.onChange}
+                    pillStyle="paper"
+                    newOptionLabel="New person"
+                  />
+                )}
+              />
+            </div>
           </div>
-          <div className="min-w-0 flex-1">
-            <Controller
-              name="arranger"
-              control={control}
-              render={({ field }) => (
-                <TagComboBox
-                  label="Arranger"
-                  options={peopleOptions}
-                  selected={field.value}
-                  multiple
-                  onChange={field.onChange}
-                  pillStyle="paper"
-                  newOptionLabel="New person"
-                />
-              )}
-            />
-          </div>
-        </div>
 
-        <div className="flex flex-col gap-3 min-[525px]:flex-row">
-          <div className="flex min-w-0 flex-1 flex-col gap-1">
-            <label htmlFor="f-year" className="text-sm text-ink-soft">
-              Year published
-            </label>
-            <input
-              id="f-year"
-              className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 ${imslpFilledFields.has('yearPublished') ? 'ring-2 ring-accent-on-dark' : ''}`}
-              {...register('yearPublished', { maxLength: 255 })}
-            />
+          <div className="flex flex-col gap-3 min-[525px]:flex-row">
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              <label htmlFor="f-year" className="text-sm text-ink-soft">
+                Year published
+              </label>
+              <input
+                id="f-year"
+                className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 ${imslpFilledFields.has('yearPublished') ? 'ring-2 ring-accent-on-dark' : ''}`}
+                {...register('yearPublished', { maxLength: 255 })}
+              />
+            </div>
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              <label htmlFor="f-opus" className="text-sm text-ink-soft">
+                Work/opus number
+              </label>
+              <input
+                id="f-opus"
+                className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 ${imslpFilledFields.has('workOpusNumber') ? 'ring-2 ring-accent-on-dark' : ''}`}
+                {...register('workOpusNumber', { maxLength: 255 })}
+              />
+            </div>
           </div>
-          <div className="flex min-w-0 flex-1 flex-col gap-1">
-            <label htmlFor="f-opus" className="text-sm text-ink-soft">
-              Work/opus number
-            </label>
-            <input
-              id="f-opus"
-              className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 ${imslpFilledFields.has('workOpusNumber') ? 'ring-2 ring-accent-on-dark' : ''}`}
-              {...register('workOpusNumber', { maxLength: 255 })}
-            />
-          </div>
-        </div>
 
-        <div className="flex flex-col gap-3 min-[525px]:flex-row">
-          <div className="flex min-w-0 flex-1 flex-col gap-1">
-            <label htmlFor="f-publisher" className="text-sm text-ink-soft">
-              Publisher
-            </label>
-            <input
-              id="f-publisher"
-              className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 ${imslpFilledFields.has('publisher') ? 'ring-2 ring-accent-on-dark' : ''}`}
-              {...register('publisher', { maxLength: 255 })}
-            />
-          </div>
-          {/* flex-1, same as every other paired-row's second field — not
+          <div className="flex flex-col gap-3 min-[525px]:flex-row">
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              <label htmlFor="f-publisher" className="text-sm text-ink-soft">
+                Publisher
+              </label>
+              <input
+                id="f-publisher"
+                className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 ${imslpFilledFields.has('publisher') ? 'ring-2 ring-accent-on-dark' : ''}`}
+                {...register('publisher', { maxLength: 255 })}
+              />
+            </div>
+            {/* flex-1, same as every other paired-row's second field — not
               the Piece edit menu's narrower fixed-width treatment. With
               four double-field rows stacked in a column, their split
               points need to line up with each other; a one-off-narrower
               Publisher ID would put its divider in a different place than
               every other row's. */}
-          <div className="flex min-w-0 flex-1 flex-col gap-1">
-            <label htmlFor="f-publisher-id" className="text-sm text-ink-soft">
-              Publisher ID
-            </label>
-            <input
-              id="f-publisher-id"
-              className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 ${imslpFilledFields.has('publisherId') ? 'ring-2 ring-accent-on-dark' : ''}`}
-              {...register('publisherId', { maxLength: 255 })}
-            />
-          </div>
-        </div>
-
-        {/* ISBN/IMSLP number, paired together — same split-row treatment
-            as every row above it. */}
-        <div className="flex flex-col gap-3 min-[525px]:flex-row">
-          <div className="flex min-w-0 flex-1 flex-col gap-1">
-            <label htmlFor="f-isbn" className="text-sm text-ink-soft">
-              ISBN number
-            </label>
-            <input
-              id="f-isbn"
-              className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 font-mono text-ink"
-              {...register('isbn', { maxLength: 255 })}
-            />
-          </div>
-          <div className="flex min-w-0 flex-1 flex-col gap-1">
-            <label htmlFor="f-imslp" className="text-sm text-ink-soft">
-              IMSLP number
-            </label>
-            {/* relative + pr-9 reserve room for ImslpAutofillButton inside
-                the input itself — same placement as EditPieceModal's own
-                IMSLP field (password show/hide-toggle convention). */}
-            <div className="relative">
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              <label htmlFor="f-publisher-id" className="text-sm text-ink-soft">
+                Publisher ID
+              </label>
               <input
-                id="f-imslp"
-                className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 pr-9 font-mono text-ink"
-                {...register('imslpNumber', { maxLength: 255 })}
-              />
-              <ImslpAutofillButton
-                state={imslpFetchState}
-                valid={isValidImslpNumber}
-                onClick={handleImslpAutofill}
+                id="f-publisher-id"
+                className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 ${imslpFilledFields.has('publisherId') ? 'ring-2 ring-accent-on-dark' : ''}`}
+                {...register('publisherId', { maxLength: 255 })}
               />
             </div>
-            {imslpMutation.isError && (
-              <p className="text-sm text-danger">
-                {imslpMutation.error instanceof ApiError
-                  ? imslpMutation.error.message
-                  : 'Could not reach IMSLP.'}
-              </p>
-            )}
           </div>
-        </div>
 
-        {/* Closing two-column row: Sheet Type/Instruments stacked on the
+          {/* ISBN/IMSLP number, paired together — same split-row treatment
+            as every row above it. */}
+          <div className="flex flex-col gap-3 min-[525px]:flex-row">
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              <label htmlFor="f-isbn" className="text-sm text-ink-soft">
+                ISBN number
+              </label>
+              <input
+                id="f-isbn"
+                className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 font-mono text-ink"
+                {...register('isbn', { maxLength: 255 })}
+              />
+            </div>
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              <label htmlFor="f-imslp" className="text-sm text-ink-soft">
+                IMSLP number
+              </label>
+              {/* relative + pr-9 reserve room for ImslpAutofillButton inside
+                the input itself — same placement as EditPieceModal's own
+                IMSLP field (password show/hide-toggle convention). */}
+              <div className="relative">
+                <input
+                  id="f-imslp"
+                  className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 pr-9 font-mono text-ink"
+                  {...register('imslpNumber', { maxLength: 255 })}
+                />
+                <ImslpAutofillButton
+                  state={imslpFetchState}
+                  valid={isValidImslpNumber}
+                  onClick={handleImslpAutofill}
+                />
+              </div>
+              {imslpMutation.isError && (
+                <p className="text-sm text-danger">
+                  {imslpMutation.error instanceof ApiError
+                    ? imslpMutation.error.message
+                    : 'Could not reach IMSLP.'}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Closing two-column row: Sheet Type/Instruments stacked on the
             left, Description spanning the same height on the right — the
             one genuinely tall field gets the one genuinely tall column.
             gap-3 here too (not gap-5) — every multi-column row in this
             form uses the same gutter width (a 20px gutter here against
             12px everywhere else visibly narrowed this column against its
             neighbors). */}
-        <div className="flex flex-col gap-3 min-[525px]:flex-row">
-          <div className="flex min-w-0 flex-1 flex-col gap-4">
-            <Controller
-              name="sheetType"
-              control={control}
-              render={({ field }) => (
-                <SingleSelect
-                  label="Sheet type"
-                  options={sheetTypeSelectOptions}
-                  value={field.value}
-                  onChange={field.onChange}
-                />
-              )}
-            />
-            <Controller
-              name="instruments"
-              control={control}
-              render={({ field }) => (
-                <TagComboBox
-                  label="Instruments"
-                  pillStyle="paper"
-                  options={instrumentOptions}
-                  selected={field.value}
-                  multiple
-                  onChange={field.onChange}
-                />
-              )}
-            />
+          <div className="flex flex-col gap-3 min-[525px]:flex-row">
+            <div className="flex min-w-0 flex-1 flex-col gap-4">
+              <Controller
+                name="sheetType"
+                control={control}
+                render={({ field }) => (
+                  <SingleSelect
+                    label="Sheet type"
+                    options={sheetTypeSelectOptions}
+                    value={field.value}
+                    onChange={field.onChange}
+                  />
+                )}
+              />
+              <Controller
+                name="instruments"
+                control={control}
+                render={({ field }) => (
+                  <TagComboBox
+                    label="Instruments"
+                    pillStyle="paper"
+                    options={instrumentOptions}
+                    selected={field.value}
+                    multiple
+                    onChange={field.onChange}
+                  />
+                )}
+              />
+            </div>
+
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1">
+              <label htmlFor="f-description" className="text-sm text-ink-soft">
+                Description <span className="text-ink-soft/60 italic">(Markdown supported)</span>
+              </label>
+              <textarea
+                id="f-description"
+                rows={4}
+                // resize-none — the drag handle had no real effect anyway:
+                // flex-1/min-h-0 on this column drive the textarea's actual
+                // height, so a manual resize either got fought back to the
+                // flex-derived height or fought the layout around it.
+                className="min-h-[96px] flex-1 resize-none rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+                {...register('description')}
+              />
+            </div>
           </div>
 
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1">
-            <label htmlFor="f-description" className="text-sm text-ink-soft">
-              Description <span className="text-ink-soft/60 italic">(Markdown supported)</span>
-            </label>
-            <textarea
-              id="f-description"
-              rows={4}
-              // resize-none — the drag handle had no real effect anyway:
-              // flex-1/min-h-0 on this column drive the textarea's actual
-              // height, so a manual resize either got fought back to the
-              // flex-derived height or fought the layout around it.
-              className="min-h-[96px] flex-1 resize-none rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-              {...register('description')}
-            />
-          </div>
-        </div>
-
-        {/* Copyright — Public Domain Badge feature. Same collapsed-by-
+          {/* Copyright — Public Domain Badge feature. Same collapsed-by-
             default posture as the Piece Edit menu's own Copyright section.
             No InheritedNote wiring here (unlike Piece's version) — Book is
             the top of the inheritance chain, nothing for it to inherit
@@ -694,110 +708,111 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
             composer death years, both pulled *through* Piece → Book
             inheritance), so it just shows a plain "Not set" placeholder
             instead. */}
-        <div className="border-t border-border pt-4">
-          {/* Text styling matches EditPieceModal.tsx's own Copyright
+          <div className="border-t border-border pt-4">
+            {/* Text styling matches EditPieceModal.tsx's own Copyright
               trigger — the SectionHeading typography (text-xs font-medium
               tracking-wide uppercase text-ink-soft/70) this form has no
               other section title to compare against directly, but the
               Piece Edit menu's Copyright section is the same feature and
               should read identically. */}
-          <button
-            type="button"
-            onClick={() => setCopyrightOpen((o) => !o)}
-            className="flex cursor-pointer items-center gap-1 text-xs font-medium tracking-wide text-ink-soft/70 uppercase hover:text-ink"
-          >
-            <IconChevronRight
-              size={12}
-              className={`transition-transform ${copyrightOpen ? 'rotate-90' : ''}`}
-            />
-            Copyright
-          </button>
-          {copyrightOpen && (
-            <div className="mt-3 flex flex-col gap-4 rounded-md border border-dashed border-border p-4">
-              <Controller
-                name="copyrightStatus"
-                control={control}
-                render={({ field }) => (
-                  <SingleSelect
-                    label="Copyright status"
-                    options={COPYRIGHT_STATUS_OPTIONS}
-                    value={field.value}
-                    onChange={field.onChange}
-                    placeholder="Not set"
-                    placeholderDescription="No status set for this book yet."
-                    onClear={() => field.onChange('')}
-                  />
-                )}
+            <button
+              type="button"
+              onClick={() => setCopyrightOpen((o) => !o)}
+              className="flex cursor-pointer items-center gap-1 text-xs font-medium tracking-wide text-ink-soft/70 uppercase hover:text-ink"
+            >
+              <IconChevronRight
+                size={12}
+                className={`transition-transform ${copyrightOpen ? 'rotate-90' : ''}`}
               />
-              <div className="flex flex-col gap-3 min-[525px]:flex-row">
-                <div className="flex min-w-0 flex-1 flex-col gap-1">
-                  <label
-                    htmlFor="f-copyright-year"
-                    className="flex items-center gap-1 text-sm text-ink-soft"
-                  >
-                    Copyright year
-                    <InfoIconTooltip
-                      message="Enter the year copyright was first established for this book — usually the year of first publication."
-                      ariaLabel="What Copyright year means"
+              Copyright
+            </button>
+            {copyrightOpen && (
+              <div className="mt-3 flex flex-col gap-4 rounded-md border border-dashed border-border p-4">
+                <Controller
+                  name="copyrightStatus"
+                  control={control}
+                  render={({ field }) => (
+                    <SingleSelect
+                      label="Copyright status"
+                      options={COPYRIGHT_STATUS_OPTIONS}
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder="Not set"
+                      placeholderDescription="No status set for this book yet."
+                      onClear={() => field.onChange('')}
                     />
-                  </label>
-                  <input
-                    id="f-copyright-year"
-                    type="number"
-                    className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-                    {...register('copyrightYear')}
-                  />
-                </div>
-                <div className="flex min-w-0 flex-1 flex-col gap-1">
-                  <label htmlFor="f-copyright-holder" className="text-sm text-ink-soft">
-                    Copyright holder
-                  </label>
-                  <input
-                    id="f-copyright-holder"
-                    className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-                    {...register('copyrightHolder', { maxLength: 255 })}
-                  />
-                </div>
-              </div>
-
-              {/* US renewal follow-up — same gate/shape as
-                  EditPieceModal.tsx's copy, but plain-boolean tri-state (no
-                  InheritedNote — Book has nothing to inherit from). */}
-              {appConfig?.copyrightRegion === 'en-US' &&
-                inUSRenewalWindow(watch('copyrightYear')) && (
-                  <div className="flex items-center gap-1.5 rounded-md border border-dashed border-border p-3">
-                    <Controller
-                      name="copyrightRenewed"
-                      control={control}
-                      render={({ field }) => (
-                        <Toggle
-                          checked={field.value === 'true'}
-                          onChange={(next) => field.onChange(next ? 'true' : 'false')}
-                          label="This work was renewed"
-                        />
-                      )}
-                    />
-                    <InfoIconTooltip
-                      message={`US works published ${US_RENEWAL_WINDOW_START}–${US_RENEWAL_WINDOW_END} needed a separate renewal filing to keep protection past the first 28 years. Enable this if your source shows a "(renewed …)" note next to the copyright year above.`}
-                      ariaLabel="What 'This work was renewed' means"
+                  )}
+                />
+                <div className="flex flex-col gap-3 min-[525px]:flex-row">
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <label
+                      htmlFor="f-copyright-year"
+                      className="flex items-center gap-1 text-sm text-ink-soft"
+                    >
+                      Copyright year
+                      <InfoIconTooltip
+                        message="Enter the year copyright was first established for this book — usually the year of first publication."
+                        ariaLabel="What Copyright year means"
+                      />
+                    </label>
+                    <input
+                      id="f-copyright-year"
+                      type="number"
+                      className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+                      {...register('copyrightYear')}
                     />
                   </div>
-                )}
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <label htmlFor="f-copyright-holder" className="text-sm text-ink-soft">
+                      Copyright holder
+                    </label>
+                    <input
+                      id="f-copyright-holder"
+                      className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+                      {...register('copyrightHolder', { maxLength: 255 })}
+                    />
+                  </div>
+                </div>
 
-              <div className="flex min-w-0 flex-col gap-1">
-                <label htmlFor="f-copyright-slug" className="text-sm text-ink-soft">
-                  Copyright details
-                </label>
-                <input
-                  id="f-copyright-slug"
-                  placeholder="Optional — e.g. license terms, renewal notes"
-                  className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
-                  {...register('copyrightSlug')}
-                />
+                {/* US renewal follow-up — same gate/shape as
+                  EditPieceModal.tsx's copy, but plain-boolean tri-state (no
+                  InheritedNote — Book has nothing to inherit from). */}
+                {appConfig?.copyrightRegion === 'en-US' &&
+                  inUSRenewalWindow(watch('copyrightYear')) && (
+                    <div className="flex items-center gap-1.5 rounded-md border border-dashed border-border p-3">
+                      <Controller
+                        name="copyrightRenewed"
+                        control={control}
+                        render={({ field }) => (
+                          <Toggle
+                            checked={field.value === 'true'}
+                            onChange={(next) => field.onChange(next ? 'true' : 'false')}
+                            label="This work was renewed"
+                          />
+                        )}
+                      />
+                      <InfoIconTooltip
+                        message={`US works published ${US_RENEWAL_WINDOW_START}–${US_RENEWAL_WINDOW_END} needed a separate renewal filing to keep protection past the first 28 years. Enable this if your source shows a "(renewed …)" note next to the copyright year above.`}
+                        ariaLabel="What 'This work was renewed' means"
+                      />
+                    </div>
+                  )}
+
+                <div className="flex min-w-0 flex-col gap-1">
+                  <label htmlFor="f-copyright-slug" className="text-sm text-ink-soft">
+                    Copyright details
+                  </label>
+                  <input
+                    id="f-copyright-slug"
+                    placeholder="Optional — e.g. license terms, renewal notes"
+                    className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                    {...register('copyrightSlug')}
+                  />
+                </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        </fieldset>
       </form>
     </Modal>
   )

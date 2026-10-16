@@ -20,7 +20,8 @@ import {
   IconLoader2,
   IconX,
 } from '@tabler/icons-react'
-import { updatePerson } from '../api/people'
+import { getPerson, updatePerson } from '../api/people'
+import { useFreshOnOpen } from '../hooks/useFreshOnOpen'
 import { searchWikipedia, type WikipediaSearchResult } from '../api/wikipedia'
 import { ApiError } from '../api/client'
 import { afterMinDuration } from '../lib/minDuration'
@@ -217,6 +218,17 @@ export function EditPersonModal({ person, open, onClose }: EditPersonModalProps)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, person.id, reset])
 
+  // The form starts from the person as the server has it now, not the
+  // opening page's copy (hooks/useFreshOnOpen); fields locked until then.
+  // Only on open — a portrait upload's cache write while open still never
+  // resets the form (see above).
+  const loadingFresh = useFreshOnOpen(
+    open,
+    ['person', person.id],
+    () => getPerson(person.id),
+    (fresh) => reset(personToFormValues(fresh)),
+  )
+
   const name = watch('name')
   const isValidName = name.trim() !== ''
 
@@ -329,6 +341,7 @@ export function EditPersonModal({ person, open, onClose }: EditPersonModalProps)
   })
 
   function onSubmit(data: FormValues) {
+    if (loadingFresh) return
     setSaveState('saving')
     saveMutation.mutate(data)
   }
@@ -405,7 +418,7 @@ export function EditPersonModal({ person, open, onClose }: EditPersonModalProps)
               <button
                 type="submit"
                 form="edit-person-form"
-                disabled={saving}
+                disabled={saving || loadingFresh}
                 className="relative flex min-w-[130px] shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md bg-accent-fill px-4 py-2 font-display font-medium whitespace-nowrap text-white"
               >
                 {saveState === 'saving' && (
@@ -435,7 +448,10 @@ export function EditPersonModal({ person, open, onClose }: EditPersonModalProps)
           onKeyDown={handleFormKeyDown}
           className="flex flex-col gap-7 sm:flex-row sm:items-start"
         >
-          {/* Portrait column — same "small thumb pinned to the side, plain
+          {/* Locked while the latest copy loads (useFreshOnOpen); `contents`
+              keeps the form's own flex layout. */}
+          <fieldset disabled={loadingFresh} className="contents">
+            {/* Portrait column — same "small thumb pinned to the side, plain
             trigger button underneath" shape as BookUploadAboutStep.tsx's
             own cover-preview column. Fixed w-[150px] at every breakpoint,
             not just sm: — an oval avatar stretched to a mobile viewport's
@@ -443,82 +459,83 @@ export function EditPersonModal({ person, open, onClose }: EditPersonModalProps)
             page thumb at the same size; centered via mx-auto/sm:mx-0 when
             stacked. Not sticky — this modal's own field list is short
             enough it rarely scrolls. */}
-          <div className="mx-auto flex w-[150px] shrink-0 flex-col gap-2.5 sm:mx-0">
-            <PersonAvatar person={person} className="w-full shadow-sm" />
-            <button
-              type="button"
-              onClick={() => setUploadPortraitOpen(true)}
-              className="flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-md border border-border bg-paper-raised px-3 py-2 text-sm text-ink hover:border-accent"
-            >
-              <IconCameraFilled size={14} />
-              Change Portrait
-            </button>
-          </div>
+            <div className="mx-auto flex w-[150px] shrink-0 flex-col gap-2.5 sm:mx-0">
+              <PersonAvatar person={person} className="w-full shadow-sm" />
+              <button
+                type="button"
+                onClick={() => setUploadPortraitOpen(true)}
+                className="flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-md border border-border bg-paper-raised px-3 py-2 text-sm text-ink hover:border-accent"
+              >
+                <IconCameraFilled size={14} />
+                Change Portrait
+              </button>
+            </div>
 
-          <div className="flex min-w-0 flex-1 flex-col gap-4">
-            <div className="flex min-w-0 flex-col gap-1">
-              <label htmlFor="f-name" className="text-sm text-ink-soft">
-                Name <span className="text-ink-soft/60 italic">(Required)</span>
-              </label>
-              {/* relative + pr-12 reserves room for the button — wider than a
+            <div className="flex min-w-0 flex-1 flex-col gap-4">
+              <div className="flex min-w-0 flex-col gap-1">
+                <label htmlFor="f-name" className="text-sm text-ink-soft">
+                  Name <span className="text-ink-soft/60 italic">(Required)</span>
+                </label>
+                {/* relative + pr-12 reserves room for the button — wider than a
                 single-icon autofill button, since this one renders two
                 icons (Wikipedia brand mark + cloud/status) side by side. */}
-              <div ref={anchorRef} className="relative">
-                <input
-                  id="f-name"
-                  className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 pr-12 text-ink"
-                  {...register('name', { required: 'Name is required.', maxLength: 255 })}
-                />
-                <WikipediaAutofillButton
-                  state={wikiState}
-                  valid={isValidName}
-                  onClick={handleSearchClick}
-                />
+                <div ref={anchorRef} className="relative">
+                  <input
+                    id="f-name"
+                    className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 pr-12 text-ink"
+                    {...register('name', { required: 'Name is required.', maxLength: 255 })}
+                  />
+                  <WikipediaAutofillButton
+                    state={wikiState}
+                    valid={isValidName}
+                    onClick={handleSearchClick}
+                  />
+                </div>
+                {errors.name && <p className="text-sm text-danger">{errors.name.message}</p>}
               </div>
-              {errors.name && <p className="text-sm text-danger">{errors.name.message}</p>}
-            </div>
 
-            <div className="flex flex-col gap-1">
-              <label htmlFor="f-bio" className="text-sm text-ink-soft">
-                Biography <span className="text-ink-soft/60 italic">(Markdown supported)</span>
-              </label>
-              <textarea
-                id="f-bio"
-                rows={5}
-                className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-                {...register('bio')}
-              />
-            </div>
+              <div className="flex flex-col gap-1">
+                <label htmlFor="f-bio" className="text-sm text-ink-soft">
+                  Biography <span className="text-ink-soft/60 italic">(Markdown supported)</span>
+                </label>
+                <textarea
+                  id="f-bio"
+                  rows={5}
+                  className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+                  {...register('bio')}
+                />
+              </div>
 
-            <div className="flex flex-col gap-3 min-[400px]:flex-row">
-              <div className="flex min-w-0 flex-1 flex-col gap-1">
-                <label htmlFor="f-birth-year" className="text-sm text-ink-soft">
-                  Birth year
-                </label>
-                <input
-                  id="f-birth-year"
-                  inputMode="numeric"
-                  className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 ${
-                    wikiFilledFields.has('birthYear') ? 'ring-2 ring-accent-on-dark' : ''
-                  }`}
-                  {...register('birthYear')}
-                />
-              </div>
-              <div className="flex min-w-0 flex-1 flex-col gap-1">
-                <label htmlFor="f-death-year" className="text-sm text-ink-soft">
-                  Death year
-                </label>
-                <input
-                  id="f-death-year"
-                  inputMode="numeric"
-                  className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 ${
-                    wikiFilledFields.has('deathYear') ? 'ring-2 ring-accent-on-dark' : ''
-                  }`}
-                  {...register('deathYear')}
-                />
+              <div className="flex flex-col gap-3 min-[400px]:flex-row">
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  <label htmlFor="f-birth-year" className="text-sm text-ink-soft">
+                    Birth year
+                  </label>
+                  <input
+                    id="f-birth-year"
+                    inputMode="numeric"
+                    className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 ${
+                      wikiFilledFields.has('birthYear') ? 'ring-2 ring-accent-on-dark' : ''
+                    }`}
+                    {...register('birthYear')}
+                  />
+                </div>
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  <label htmlFor="f-death-year" className="text-sm text-ink-soft">
+                    Death year
+                  </label>
+                  <input
+                    id="f-death-year"
+                    inputMode="numeric"
+                    className={`w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink transition-shadow duration-700 ${
+                      wikiFilledFields.has('deathYear') ? 'ring-2 ring-accent-on-dark' : ''
+                    }`}
+                    {...register('deathYear')}
+                  />
+                </div>
               </div>
             </div>
-          </div>
+          </fieldset>
         </form>
 
         {wikiState === 'open' &&

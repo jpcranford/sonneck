@@ -28,6 +28,7 @@ import {
   updateSetlist,
   updateSetlistEntry,
 } from '../api/setlists'
+import { useFreshOnOpen } from '../hooks/useFreshOnOpen'
 import type { Piece, SetlistDetail, SetlistEntry } from '../api/types'
 import { personCreditPart } from '../lib/joinNames'
 import { useDebouncedValue } from '../hooks/useDebouncedValue'
@@ -153,6 +154,20 @@ export function EditSetlistModal({
   // Program-tab action (add/remove/reorder) writes fresh data into the
   // same ['setlist', id] cache entry this query shares.
   const detailsSyncedRef = useRef(false)
+  // In edit mode the Details fields fill from the setlist as the server has
+  // it now (hooks/useFreshOnOpen), not the cached copy — locked until then.
+  // If that fetch fails, the effect below falls back to the cached copy.
+  const loadingFresh = useFreshOnOpen(
+    open && mode === 'edit' && setlistId != null,
+    ['setlist', setlistId],
+    () => getSetlist(setlistId!),
+    (fresh) => {
+      setName(fresh.name)
+      setGigDate(fresh.gigDate ?? '')
+      setDescription(fresh.description ?? '')
+      detailsSyncedRef.current = true
+    },
+  )
   useEffect(() => {
     if (!open) {
       detailsSyncedRef.current = false
@@ -167,13 +182,13 @@ export function EditSetlistModal({
       detailsSyncedRef.current = true
       return
     }
-    if (setlistDetail) {
+    if (setlistDetail && !loadingFresh) {
       setName(setlistDetail.name)
       setGigDate(setlistDetail.gigDate ?? '')
       setDescription(setlistDetail.description ?? '')
       detailsSyncedRef.current = true
     }
-  }, [open, mode, setlistDetail, initialName])
+  }, [open, mode, setlistDetail, initialName, loadingFresh])
 
   // Local, draggable copy of the Program's entries — mirrors the query's
   // own entries whenever a drag isn't in progress; a drag mutates this
@@ -581,7 +596,7 @@ export function EditSetlistModal({
   }
 
   function handleSave() {
-    if (!name.trim()) return
+    if (!name.trim() || loadingFresh) return
     if (mode === 'create') {
       createMutation.mutate()
     } else {
@@ -833,7 +848,7 @@ export function EditSetlistModal({
             <button
               type="button"
               onClick={handleSave}
-              disabled={!name.trim() || saving}
+              disabled={!name.trim() || saving || loadingFresh}
               className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-white hover:bg-accent-fill/90 disabled:opacity-50"
             >
               {saving ? 'Saving…' : 'Save'}
@@ -842,7 +857,11 @@ export function EditSetlistModal({
         }
       >
         <div onKeyDown={handleFormKeyDown}>
-          <div className={activeTab === 'details' ? 'flex flex-col gap-4' : 'hidden'}>
+          {/* Locked while the latest copy loads (useFreshOnOpen). */}
+          <fieldset
+            disabled={loadingFresh}
+            className={activeTab === 'details' ? 'flex min-w-0 flex-col gap-4' : 'hidden'}
+          >
             <div className="flex flex-col gap-1">
               <label htmlFor="f-setlist-name" className="text-sm text-ink-soft">
                 Name <span className="text-ink-soft/60 italic">(Required)</span>
@@ -882,7 +901,7 @@ export function EditSetlistModal({
                 className="min-h-[96px] resize-none rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
               />
             </div>
-          </div>
+          </fieldset>
 
           <div className={activeTab === 'program' ? '' : 'hidden'}>
             {mode === 'create' ? (
