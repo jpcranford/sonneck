@@ -1241,7 +1241,7 @@ export function EditPieceModal({
               </label>
               <textarea
                 id="f-description"
-                rows={3}
+                rows={5}
                 className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
                 {...register('description')}
               />
