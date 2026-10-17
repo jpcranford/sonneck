@@ -47,7 +47,7 @@ const components: Components = {
   ),
   // Weight only — bold keeps the color around it (a soft description, a
   // blockquote), never jumps to full ink.
-  strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+  strong: ({ children }) => <strong className="font-bold">{children}</strong>,
   em: ({ children }) => <em>{children}</em>,
   code: ({ children }) => (
     <code className="rounded bg-paper-sunken px-1 py-0.5 font-mono text-[0.85em]">{children}</code>
