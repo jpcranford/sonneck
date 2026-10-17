@@ -16,7 +16,7 @@ import { remarkMusicEmoji } from '../lib/musicEmoji'
 // got silently eaten" to someone who just typed a note and pressed Enter
 // once — this matches what a plain-textarea author actually expects.
 //
-// Headings render as bold, same-size text rather than real h1-h3 — these
+// Headings render as bold (700, like `**bold**`), same-size text rather than real h1-h3 — these
 // fields sit inside a page section that already owns its own heading
 // hierarchy, so letting user text render a page-title-sized heading would
 // be visually out of proportion to where it's embedded.
@@ -56,12 +56,12 @@ const components: Components = {
     <blockquote className="border-l-2 border-border pl-3 text-ink-soft">{children}</blockquote>
   ),
   hr: () => <hr className="my-2 border-border" />,
-  h1: ({ children }) => <p className="mb-2 font-semibold last:mb-0">{children}</p>,
-  h2: ({ children }) => <p className="mb-2 font-semibold last:mb-0">{children}</p>,
-  h3: ({ children }) => <p className="mb-2 font-semibold last:mb-0">{children}</p>,
-  h4: ({ children }) => <p className="mb-2 font-semibold last:mb-0">{children}</p>,
-  h5: ({ children }) => <p className="mb-2 font-semibold last:mb-0">{children}</p>,
-  h6: ({ children }) => <p className="mb-2 font-semibold last:mb-0">{children}</p>,
+  h1: ({ children }) => <p className="mb-2 font-bold last:mb-0">{children}</p>,
+  h2: ({ children }) => <p className="mb-2 font-bold last:mb-0">{children}</p>,
+  h3: ({ children }) => <p className="mb-2 font-bold last:mb-0">{children}</p>,
+  h4: ({ children }) => <p className="mb-2 font-bold last:mb-0">{children}</p>,
+  h5: ({ children }) => <p className="mb-2 font-bold last:mb-0">{children}</p>,
+  h6: ({ children }) => <p className="mb-2 font-bold last:mb-0">{children}</p>,
 }
 
 export function MarkdownText({ children, className }: { children: string; className?: string }) {
