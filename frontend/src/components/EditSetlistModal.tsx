@@ -737,7 +737,7 @@ export function EditSetlistModal({
           event.preventDefault()
           submitRoleForm()
         }}
-        className="relative rounded-md border border-accent bg-paper-raised p-3"
+        className="relative rounded-md border border-accent bg-paper p-3"
       >
         <button
           type="button"
@@ -929,7 +929,7 @@ export function EditSetlistModal({
                     if (entry.kind === 'custom' && entry.id === editingEntryId) {
                       return renderCustomEntryForm(
                         String(entry.id),
-                        'relative rounded-md border border-accent bg-paper-raised p-3',
+                        'relative rounded-md border border-accent bg-paper p-3',
                       )
                     }
                     if (entry.kind === 'piece' && entry.id === editingEntryId) {

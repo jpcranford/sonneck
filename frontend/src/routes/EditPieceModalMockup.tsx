@@ -1420,7 +1420,7 @@ export function EditPieceModalMockup() {
               <button
                 type="button"
                 onClick={() => setPreviewOpen((o) => !o)}
-                className="flex w-fit cursor-pointer items-center gap-1.5 rounded-full border border-border bg-paper px-3 py-1.5 text-xs text-ink-soft hover:text-ink"
+                className="flex w-fit cursor-pointer items-center gap-1.5 rounded-full border border-border bg-paper-raised px-3 py-1.5 text-xs text-ink-soft hover:text-ink"
               >
                 {/* Points right (toward the label) while folded, rotates
                     to point down once open, matching the panel expanding

@@ -392,9 +392,9 @@
   --color-ink-faint: #9a948d;
   /* Things you can't click: the no-file cover icon, the unavailable Open PDF button, list-card chevrons, a disabled autofill. Also the footer's S mark, kept quiet near the border color. */
   --color-ink-fainter: #aaa49e;
-  /* The page background, and the fill of neutral pills. */
+  /* The page background, every window's background (so its fields stand out), and the fill of neutral pills. */
   --color-paper: #f8f6f3;
-  /* Anything sitting on the page: cards, modals, menus, fields, secondary buttons. */
+  /* Anything sitting on the page or in a window: cards, menus, fields, secondary buttons. */
   --color-paper-raised: #ffffff;
   /* Recessed areas: thumbnail wells, segmented-control tracks, inset panels. */
   --color-paper-sunken: #f1eee8;

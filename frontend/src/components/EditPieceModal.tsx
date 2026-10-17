@@ -860,7 +860,7 @@ export function EditPieceModal({
             <button
               type="button"
               onClick={() => setPreviewOpen((o) => !o)}
-              className="flex w-fit cursor-pointer items-center gap-1.5 rounded-full border border-border bg-paper px-3 py-1.5 text-xs text-ink-soft hover:text-ink"
+              className="flex w-fit cursor-pointer items-center gap-1.5 rounded-full border border-border bg-paper-raised px-3 py-1.5 text-xs text-ink-soft hover:text-ink"
             >
               {/* Points right (toward the label) while folded — the usual
                   "expands this way" affordance — and rotates to point down

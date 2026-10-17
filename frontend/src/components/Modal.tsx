@@ -224,7 +224,7 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={labelledBy}
-        className={`flex max-h-[90dvh] w-full flex-col overflow-hidden rounded-t-2xl bg-paper-raised shadow-xl transition-[transform,opacity] duration-150 sm:rounded-2xl ${
+        className={`flex max-h-[90dvh] w-full flex-col overflow-hidden rounded-t-2xl bg-paper shadow-xl transition-[transform,opacity] duration-150 sm:rounded-2xl ${
           size === 'xl'
             ? 'max-w-3xl'
             : size === 'lg'
@@ -237,7 +237,7 @@ export function Modal({
         {header && <div className="shrink-0 px-6 pt-6">{header}</div>}
         <div className="overflow-y-auto p-6">{children}</div>
         {footer && (
-          <div className="shrink-0 border-t border-border bg-paper-raised px-6 py-4">{footer}</div>
+          <div className={`shrink-0 border-t border-border bg-paper px-6 py-4`}>{footer}</div>
         )}
       </div>
     </div>

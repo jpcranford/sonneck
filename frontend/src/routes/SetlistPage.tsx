@@ -746,7 +746,7 @@ export function SetlistPage() {
                   value={duplicateTitle}
                   onChange={(event) => setDuplicateTitle(event.target.value)}
                   placeholder={`${setlist.name} (Copy)`}
-                  className="rounded-md border border-border bg-paper px-3 py-2 text-sm text-ink placeholder:text-ink-soft/60 focus:border-accent focus:outline-none"
+                  className="rounded-md border border-border bg-paper-raised px-3 py-2 text-sm text-ink placeholder:text-ink-soft/60 focus:border-accent focus:outline-none"
                 />
               </div>
               <div className="flex flex-col gap-1.5">
@@ -758,7 +758,7 @@ export function SetlistPage() {
                   type="date"
                   value={duplicateGigDate}
                   onChange={(event) => setDuplicateGigDate(event.target.value)}
-                  className="rounded-md border border-border bg-paper px-3 py-2 text-sm text-ink focus:border-accent focus:outline-none"
+                  className="rounded-md border border-border bg-paper-raised px-3 py-2 text-sm text-ink focus:border-accent focus:outline-none"
                 />
                 <span className="text-xs text-ink-soft">
                   Leave blank to duplicate without a gig date.

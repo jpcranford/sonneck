@@ -595,7 +595,7 @@ export function UserSettingsMockup() {
             <button
               type="button"
               onClick={() => setListDeleteTarget(null)}
-              className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 text-sm text-ink hover:bg-paper"
+              className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 text-sm text-ink hover:border-accent"
             >
               Cancel
             </button>
