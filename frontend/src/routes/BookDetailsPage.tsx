@@ -182,6 +182,9 @@ function PieceGrid({ pieces }: { pieces: Piece[] }) {
 // (verified against the served CSS) is what actually makes the drop
 // happen *at* 500px and below.
 const THUMB_HIDE_CLASS = 'max-[501px]:hidden'
+// A little room past the widest page range, so it doesn't sit hard
+// against the title column.
+const PAGE_COL_EXTRA_PX = 4
 const ROW_COLLAPSE_CLASS = 'max-[501px]:grid-cols-[var(--page-col)_1fr]'
 
 // A real CSS gotcha worth remembering here: a `first:border-t-0` on these
@@ -216,7 +219,11 @@ function PieceList({ pieces }: { pieces: Piece[] }) {
     // isn't stranded across the page from its thumbnail.
     <div
       className="relative mx-auto flex w-full max-w-3xl flex-col"
-      style={{ '--page-col': pageColWidth ? `${pageColWidth}px` : 'max-content' } as CSSProperties}
+      style={
+        {
+          '--page-col': pageColWidth ? `${pageColWidth + PAGE_COL_EXTRA_PX}px` : 'max-content',
+        } as CSSProperties
+      }
     >
       <div
         ref={measureRef}
