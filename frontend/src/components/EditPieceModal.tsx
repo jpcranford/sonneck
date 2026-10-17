@@ -50,6 +50,7 @@ import { SourceBookField } from './SourceBookField'
 import { PageCycleControl } from './PageCycleControl'
 import { isMultilineField } from '../lib/multilineField'
 import { useThumbnailVersion } from '../hooks/useThumbnailVersion'
+import { refreshAfterSave } from '../lib/refreshAfterSave'
 
 // The real Piece Properties Edit Menu (design doc §15) — built from the
 // locked mockup design (EditPieceModalMockup.tsx, /mockup/edit-piece-modal,
@@ -475,8 +476,12 @@ export function EditPieceModal({
       setPreviewPage(initialPiece.thumbnailPage)
       loadFresh(initialPiece.id)
     }
+    // Keyed on the piece's id, not the object: a save puts the server's
+    // copy of this same piece into the page's cache, handing this window a
+    // new object while it's still open — re-running here then re-fetched
+    // the piece it had just saved and reset the form for nothing.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, initialPiece, reset])
+  }, [open, initialPiece.id, reset])
 
   // Sibling-piece navigation (footer nav control + the no-field-focused
   // Left/Right shortcut below) — mirrors EditPieceModalMockup.tsx's own
@@ -659,11 +664,10 @@ export function EditPieceModal({
       // updates at once (no wait for the refetches below), and a plain
       // Save that keeps the window open carries on from it rather than
       // from the copy it opened with — inherited values and all.
-      queryClient.setQueryData(['piece', updated.id], updated)
+      refreshAfterSave(queryClient, 'piece', updated)
       setPiece(updated)
       queryClient.invalidateQueries({ queryKey: ['pieces'] })
       queryClient.invalidateQueries({ queryKey: ['pieceFacets'] })
-      queryClient.invalidateQueries({ queryKey: ['piece'] })
       // Setlist responses embed their own copy of each piece's title/
       // credits/keys/duration/pages (SetlistPieceSummary), and the Setlists
       // Library's cards show per-setlist totals derived from them — both go

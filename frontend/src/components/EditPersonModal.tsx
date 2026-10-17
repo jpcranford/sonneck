@@ -31,6 +31,7 @@ import { PersonAvatar } from './PersonAvatar'
 import { UploadPortraitModal } from './UploadPortraitModal'
 import { useAnchoredPanel } from '../hooks/useAnchorRect'
 import { isMultilineField } from '../lib/multilineField'
+import { refreshAfterSave } from '../lib/refreshAfterSave'
 
 // The real Edit Person modal (approved mockup: EditPersonModalMockup.tsx,
 // /mockup/edit-person-modal, left intact as a standing reference).
@@ -319,13 +320,13 @@ export function EditPersonModal({ person, open, onClose }: EditPersonModalProps)
       saveStartedAtRef.current = Date.now()
       return updatePerson(person.id, formValuesToWriteRequest(data))
     },
-    onSuccess: () => {
+    onSuccess: (updated) => {
       // Broad invalidation — a name change ripples into every piece/book
       // crediting this person (their credit resolves live, no
       // denormalization, same reasoning as a Book field edit fanning out
       // to its pieces).
       queryClient.invalidateQueries({ queryKey: ['people'] })
-      queryClient.invalidateQueries({ queryKey: ['person'] })
+      refreshAfterSave(queryClient, 'person', updated)
       queryClient.invalidateQueries({ queryKey: ['pieces'] })
       queryClient.invalidateQueries({ queryKey: ['piece'] })
       queryClient.invalidateQueries({ queryKey: ['books'] })

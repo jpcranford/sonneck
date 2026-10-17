@@ -23,6 +23,7 @@ import { TagComboBox } from './TagComboBox'
 import { SingleSelect } from './SingleSelect'
 import { Toggle } from './Toggle'
 import { isMultilineField } from '../lib/multilineField'
+import { refreshAfterSave } from '../lib/refreshAfterSave'
 
 // The real Book Properties Edit Menu (design doc §16). Every layout/
 // behavior decision here mirrors the locked mockup (EditBookModalMockup.tsx,
@@ -329,7 +330,7 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
       saveStartedAtRef.current = Date.now()
       return updateBook(book.id, formValuesToWriteRequest(data))
     },
-    onSuccess: () => {
+    onSuccess: (updated) => {
       // Broad invalidation, not just this book's own query — every piece
       // with this sourceBookId (an unknown set from here) may have just
       // had its *effective* composer/publisher/etc. change (CLAUDE.md >
@@ -338,7 +339,7 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
       // list/search views.
       queryClient.invalidateQueries({ queryKey: ['books'] })
       queryClient.invalidateQueries({ queryKey: ['bookFacets'] })
-      queryClient.invalidateQueries({ queryKey: ['book'] })
+      refreshAfterSave(queryClient, 'book', updated)
       queryClient.invalidateQueries({ queryKey: ['pieces'] })
       queryClient.invalidateQueries({ queryKey: ['piece'] })
       afterMinDuration(saveStartedAtRef.current, () => {
