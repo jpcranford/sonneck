@@ -102,6 +102,8 @@ export function EditEntryModal({ open, onClose, setlistId, entry }: EditEntryMod
       }),
     onSuccess: (updated) => {
       queryClient.setQueryData(['setlist', setlistId], updated)
+      // The copy-as-text program is cached separately (see EditSetlistModal).
+      queryClient.invalidateQueries({ queryKey: ['setlist', setlistId, 'program'] })
       onClose()
     },
     onError: (error) => {

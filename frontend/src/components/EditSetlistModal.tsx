@@ -257,6 +257,10 @@ export function EditSetlistModal({
   // separate invalidate/refetch round trip.
   function applyUpdatedSetlist(updated: SetlistDetail) {
     queryClient.setQueryData(['setlist', setlistId], updated)
+    // Setlist Details' copy-as-text program (['setlist', id, 'program']) is
+    // cached separately from the setlist itself, so it needs its own refresh
+    // or the C/M copy shortcuts keep the old program.
+    queryClient.invalidateQueries({ queryKey: ['setlist', setlistId, 'program'] })
   }
 
   const addPieceMutation = useMutation({

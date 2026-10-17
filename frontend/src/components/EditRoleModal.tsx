@@ -73,6 +73,8 @@ export function EditRoleModal({ open, onClose, setlistId, entry }: EditRoleModal
       }),
     onSuccess: (updated) => {
       queryClient.setQueryData(['setlist', setlistId], updated)
+      // The copy-as-text program is cached separately (see EditSetlistModal).
+      queryClient.invalidateQueries({ queryKey: ['setlist', setlistId, 'program'] })
       onClose()
     },
     onError: (error) => {
