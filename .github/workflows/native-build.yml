@@ -38,7 +38,7 @@ name: Native Release
 #     uploading that whole directory produced an artifact that was
 #     confusing to open and, worse, wasn't the single all-inclusive
 #     installer a release actually needs. Fixed: macOS packages into a
-#     real .dmg (hdiutil, preinstalled), Windows uploads only the NSIS
+#     real .dmg (dmgbuild, a drag-to-Applications window), Windows uploads only the NSIS
 #     installer .exe (which now genuinely bundles poppler inside it too —
 #     see build/windows/installer/project.nsi's own hand-customization),
 #     and both use upload-artifact v7's `archive: false` so the actual
@@ -209,12 +209,20 @@ jobs:
       # unavoidable platform behavior, not something this workflow
       # controls), but what's *inside* that zip should be the one file a
       # real user expects: a standard macOS .dmg, not a loose .app folder
-      # they have to know to drag out themselves. hdiutil is preinstalled
-      # on every macos-latest runner — no extra tool needed.
+      # they have to know to drag out themselves. The .dmg opens to the usual
+      # drag-to-install window: Sonneck, an arrow, an Applications shortcut
+      # (build/darwin/dmg-settings.py, background dmg-background.png).
+      # dmgbuild writes that layout straight into the image, without
+      # scripting Finder the way create-dmg does (unreliable on a runner
+      # with no screen). Pinned, in its own venv (Homebrew's Python refuses
+      # a global pip install).
       - name: Package into a .dmg
+        working-directory: cmd/sonneck-desktop
         run: |
-          hdiutil create -volname "Sonneck" -srcfolder "cmd/sonneck-desktop/build/bin/Sonneck.app" \
-            -ov -format UDZO "cmd/sonneck-desktop/build/bin/Sonneck.dmg"
+          python3 -m venv "$RUNNER_TEMP/dmgbuild"
+          "$RUNNER_TEMP/dmgbuild/bin/pip" install --quiet dmgbuild==1.6.7
+          "$RUNNER_TEMP/dmgbuild/bin/dmgbuild" -s build/darwin/dmg-settings.py \
+            -D app=build/bin/Sonneck.app "Sonneck" build/bin/Sonneck.dmg
 
       # Real proof, not a bare launch check: upload a real generated PDF
       # through the actual production HTTP endpoint and confirm a real

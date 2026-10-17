@@ -36,7 +36,7 @@ Sonneck is a bookshelf for your sheet music, whether you have public domain clas
 There are two ways of installing Sonneck: there are native Mac and Windows apps for an easier install or you can use Docker, which is recommended if you intend on using SSO or hosting over the web.
 
 ### Native apps (macOS/Windows)
-Grab the latest installer from the [releases](https://github.com/jpcranford/sonneck/releases) page and open it up.
+Grab the latest installer from the [releases](https://github.com/jpcranford/sonneck/releases) page and open it up. On a Mac, that's a `.dmg`: drag Sonneck onto the Applications folder beside it. On Windows, run the installer.
 
 On first launch you'll pick where your library lives (defaults to a `Sonneck Library` folder inside your Music folder) and how you want to sign in. Once in, you'll have the option of going into Admin Settings at any time and using two controls: **Share on Network** (off by default) so you can reach your library on other devices, and a **Library location** control to move or repoint your library to a different folder later.
 
