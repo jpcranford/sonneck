@@ -20,9 +20,10 @@ import { Modal } from '../components/Modal'
 import { CONTENT_MAX_W } from '../lib/layout'
 import { formatRelativeWeeks } from '../lib/relativeWeeks'
 import { usePageTitle } from '../lib/usePageTitle'
-import { formatDateOnly, todayDateOnly } from '../lib/dateOnly'
+import { formatDateOnly } from '../lib/dateOnly'
 import { confirmAction, showAlert } from '../lib/dialogs'
 import { useShortcuts } from '../lib/shortcuts'
+import { useToday } from '../hooks/useToday'
 
 // The real Setlists Library page (§13, decision 12) — built against
 // SetlistsLibraryMockup.tsx (the approved Phase 12 mockup: one unified
@@ -89,8 +90,8 @@ type ArchiveDirection = 'archive' | 'unarchive' | null
 // manually archived ahead of its own date) gets the action offered at all
 // — mirrors SetlistPage.tsx's own Archive/Unarchive confirm-gated
 // mechanism (decision 14) for consistency.
-function archiveDirectionFor(setlist: Setlist): ArchiveDirection {
-  const upcoming = !setlist.gigDate || setlist.gigDate >= todayDateOnly()
+function archiveDirectionFor(setlist: Setlist, today: string): ArchiveDirection {
+  const upcoming = !setlist.gigDate || setlist.gigDate >= today
   if (!upcoming) return null
   return setlist.archived ? 'unarchive' : 'archive'
 }
@@ -109,7 +110,8 @@ function SetlistCard({
   onEdit: (setlist: Setlist) => void
   onDelete: (setlist: Setlist) => void
 }) {
-  const direction = archiveDirectionFor(setlist)
+  const today = useToday()
+  const direction = archiveDirectionFor(setlist, today)
   const isUpcoming = direction !== null
 
   const items: ContextMenuItem[] = []
@@ -140,7 +142,7 @@ function SetlistCard({
                 <>
                   {' '}
                   <span aria-hidden="true">•</span>{' '}
-                  {formatRelativeWeeks(setlist.gigDate, { abbreviated: false })}
+                  {formatRelativeWeeks(setlist.gigDate, { abbreviated: false, today })}
                 </>
               )}
             </>
@@ -203,6 +205,7 @@ function SetlistGrid({
 }
 
 export function SetlistsLibraryPage() {
+  const today = useToday()
   usePageTitle('Setlists')
   const queryClient = useQueryClient()
   // Without `create`, every way to make a setlist is hidden, not faded.
@@ -298,7 +301,7 @@ export function SetlistsLibraryPage() {
     if (confirmed) deleteMutation.mutate(target)
   }
 
-  const archiveDirection = archiveTarget ? archiveDirectionFor(archiveTarget) : null
+  const archiveDirection = archiveTarget ? archiveDirectionFor(archiveTarget, today) : null
 
   return (
     <div className={`flex flex-1 flex-col gap-6 p-6 md:p-8 ${CONTENT_MAX_W}`}>

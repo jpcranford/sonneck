@@ -5,11 +5,13 @@ import { daysUntil } from './dateOnly'
 // abbreviated "wks" form (space is tight there), the fuller Setlists
 // Library page spells "weeks" out in full since it has the room. Both
 // reuse this same week math rather than duplicating it.
+// `today` (hooks/useToday) keeps the label current on a page left open
+// across midnight.
 export function formatRelativeWeeks(
   dateISO: string,
-  { abbreviated = true }: { abbreviated?: boolean } = {},
+  { abbreviated = true, today }: { abbreviated?: boolean; today?: string } = {},
 ): string {
-  const dayDiff = daysUntil(dateISO)
+  const dayDiff = daysUntil(dateISO, today)
 
   if (dayDiff >= 0 && dayDiff < 7) return dayDiff === 0 ? 'today' : 'this week'
   if (dayDiff < 0 && dayDiff > -7) return 'this week'

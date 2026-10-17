@@ -21,10 +21,12 @@ export function todayDateOnly(): string {
 
 // daysUntil is the number of whole calendar days from the viewer's today to
 // a date-only value — 0 on the day itself, negative once it has passed.
-export function daysUntil(iso: string): number {
+// Pass `today` (hooks/useToday) from a component, so its label redraws when
+// the date changes.
+export function daysUntil(iso: string, today: string = todayDateOnly()): number {
   const toUTCDay = (value: string) => {
     const [y, m, d] = value.split('-').map(Number)
     return Date.UTC(y, m - 1, d)
   }
-  return Math.round((toUTCDay(iso) - toUTCDay(todayDateOnly())) / 86_400_000)
+  return Math.round((toUTCDay(iso) - toUTCDay(today)) / 86_400_000)
 }

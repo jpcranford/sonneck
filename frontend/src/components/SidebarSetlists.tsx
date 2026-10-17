@@ -4,6 +4,7 @@ import { IconDots } from '@tabler/icons-react'
 import { formatRelativeWeeks } from '../lib/relativeWeeks'
 import type { Setlist } from '../api/types'
 import { useShortcutBlocker } from '../lib/shortcuts'
+import { useToday } from '../hooks/useToday'
 
 // Real port of SidebarSetlistsMockup.tsx's own SetlistsSection/SetlistsMenu
 // (Setlists design pass, Phase 5 mockup approved; this is Phase 14's real
@@ -111,6 +112,7 @@ export function SetlistsSection({
   setlists: (Setlist & { gigDate: string })[]
   onNavigate?: () => void
 }) {
+  const today = useToday()
   if (collapsed) {
     // Collapsed rail: no room for a label/menu row — just the same
     // single-letter-circle treatment every other collapsed nav item gets.
@@ -164,7 +166,7 @@ export function SetlistsSection({
             >
               <span className="truncate">{setlist.name}</span>
               <span className="shrink-0 font-sans text-xs font-normal text-sidebar-text-dim">
-                {formatRelativeWeeks(setlist.gigDate)}
+                {formatRelativeWeeks(setlist.gigDate, { today })}
               </span>
             </NavLink>
           ))}

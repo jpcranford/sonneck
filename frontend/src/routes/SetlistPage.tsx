@@ -48,6 +48,7 @@ import { copyToClipboard } from '../lib/clipboard'
 import { EmptyState } from '../components/EmptyState'
 import { EDIT_WINDOW_KEYS, useShortcuts } from '../lib/shortcuts'
 import { estimateTotal } from '../lib/setlistEstimate'
+import { useToday } from '../hooks/useToday'
 
 // The real Setlist Details page (§13) — built against SetlistDetailsMockup.tsx
 // (the approved Phase 6 mockup, incl. its own Round 1-10 polish and the
@@ -147,6 +148,7 @@ function HeaderIconButton({
 }
 
 export function SetlistPage() {
+  const today = useToday()
   const { id } = useParams<{ id: string }>()
   const setlistId = Number(id)
   const queryClient = useQueryClient()
@@ -393,7 +395,7 @@ export function SetlistPage() {
                   <IconCalendar size={16} />
                   {formatAbsoluteDate(setlist.gigDate)}
                   <span aria-hidden="true">•</span>
-                  {formatRelativeWeeks(setlist.gigDate, { abbreviated: false })}
+                  {formatRelativeWeeks(setlist.gigDate, { abbreviated: false, today })}
                 </div>
               )}
             </div>
