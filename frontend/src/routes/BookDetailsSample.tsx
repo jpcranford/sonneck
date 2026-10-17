@@ -1,4 +1,11 @@
-import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type CSSProperties,
+  type ReactNode,
+} from 'react'
 import { Link } from 'react-router-dom'
 import {
   IconArrowLeft,
@@ -20,6 +27,7 @@ import { ContextMenu } from '../components/ContextMenu'
 import { MarkdownText } from '../components/MarkdownText'
 import { PracticeStatusIcon } from '../components/PracticeStatusIcon'
 import { EDIT_WINDOW_KEYS, useShortcuts } from '../lib/shortcuts'
+import { useMeasuredWidth } from '../hooks/useMeasuredWidth'
 
 // ---------------------------------------------------------------------
 // DESIGN MOCKUP — Book Details page, kept as a standing design reference
@@ -464,7 +472,7 @@ function PieceGrid({ pieces }: { pieces: SamplePiece[] }) {
 // is what actually makes the drop happen *at* 500px and below, matching
 // "narrow widths ≤500px" rather than silently requiring 499px first.
 const THUMB_HIDE_CLASS = 'max-[501px]:hidden'
-const ROW_COLLAPSE_CLASS = 'max-[501px]:grid-cols-[96px_1fr]'
+const ROW_COLLAPSE_CLASS = 'max-[501px]:grid-cols-[var(--page-col)_1fr]'
 
 // Title includes each piece's own opus number in parentheses, matching
 // the header's own bookTitle+workOpusNumber convention above — same
@@ -472,9 +480,31 @@ const ROW_COLLAPSE_CLASS = 'max-[501px]:grid-cols-[96px_1fr]'
 // grid-view companion) keeps its own title-only treatment ("list view"
 // only).
 function PieceList({ pieces }: { pieces: SamplePiece[] }) {
+  const [measureRef, pageColWidth] = useMeasuredWidth<HTMLDivElement>()
   return (
-    <div className="flex flex-col">
-      <div className="grid grid-cols-[96px_1fr_56px] gap-3 px-1.5 pb-2.5 text-xs font-medium tracking-wide text-ink-soft uppercase">
+    // The page column fits its widest entry: each row is its own grid (its
+    // own right-click/long-press wrapper sits around it), so the widest
+    // range — and the PAGE heading — is measured once from an invisible,
+    // out-of-flow list of them all, and every row's first column takes
+    // that width (--page-col). Cabin's digits aren't tabular, so the
+    // longest label by characters isn't always the widest.
+    <div
+      className="relative flex flex-col"
+      style={{ '--page-col': pageColWidth ? `${pageColWidth}px` : 'max-content' } as CSSProperties}
+    >
+      <div
+        ref={measureRef}
+        aria-hidden="true"
+        className="pointer-events-none invisible absolute top-0 left-0 flex flex-col items-start"
+      >
+        <span className="text-xs font-medium tracking-wide uppercase">Page</span>
+        {pieces.map((piece) => (
+          <span key={piece.id} className="text-sm font-medium tabular-nums">
+            {pageRangeLabel(piece)}
+          </span>
+        ))}
+      </div>
+      <div className="grid grid-cols-[var(--page-col)_1fr_56px] gap-3 px-1.5 pb-2.5 text-xs font-medium tracking-wide text-ink-soft uppercase">
         <div>Page</div>
         <div>Title</div>
         <div className={THUMB_HIDE_CLASS} />
@@ -482,7 +512,7 @@ function PieceList({ pieces }: { pieces: SamplePiece[] }) {
       {pieces.map((piece) => (
         <div
           key={piece.id}
-          className={`grid grid-cols-[96px_1fr_56px] items-center gap-3 relative before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-border px-1.5 py-2.5 first:before:hidden hover:rounded-md hover:bg-accent-soft ${ROW_COLLAPSE_CLASS}`}
+          className={`grid grid-cols-[var(--page-col)_1fr_56px] items-center gap-3 relative before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-border px-1.5 py-2.5 first:before:hidden hover:rounded-md hover:bg-accent-soft ${ROW_COLLAPSE_CLASS}`}
         >
           <div className="text-sm font-medium tabular-nums text-ink">{pageRangeLabel(piece)}</div>
           <div className="min-w-0">

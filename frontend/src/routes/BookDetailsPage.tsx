@@ -1,4 +1,11 @@
-import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type CSSProperties,
+  type ReactNode,
+} from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -40,6 +47,7 @@ import { ViewModeToggle } from '../components/ViewModeToggle'
 import { EmptyState } from '../components/EmptyState'
 import { EDIT_WINDOW_KEYS, useShortcuts } from '../lib/shortcuts'
 import { useThumbnailVersion } from '../hooks/useThumbnailVersion'
+import { useMeasuredWidth } from '../hooks/useMeasuredWidth'
 
 // Book Details page — no design-doc spec (new ground, same as the Books
 // library view before it). Built from the "Book Details — Consolidated
@@ -174,21 +182,18 @@ function PieceGrid({ pieces }: { pieces: Piece[] }) {
 // (verified against the served CSS) is what actually makes the drop
 // happen *at* 500px and below.
 const THUMB_HIDE_CLASS = 'max-[501px]:hidden'
-const ROW_COLLAPSE_CLASS = 'max-[501px]:grid-cols-[96px_1fr]'
+const ROW_COLLAPSE_CLASS = 'max-[501px]:grid-cols-[var(--page-col)_1fr]'
 
-// 96px gives a two-piece range like "pp. 123–145" enough room once source
-// pages run past double digits, with breathing room around three-digit
-// ranges like "pp. 159–161" too.
 // A real CSS gotcha worth remembering here: a `first:border-t-0` on these
 // rows does NOT do what it looks like — the "PAGE / TITLE" header row
 // above the mapped pieces is also a child of the same flex-col container,
 // so it, not the first piece, holds the `:first-child` slot. Each row is
 // also separately wrapped in PieceContextMenu's own div for right-click/
 // long-press, so `:first-child` there matches every row's own sole-child
-// wrapper — deleting every divider, not just the first. Every row gets a
-// plain, unconditional `border-t border-border` instead, no `first:`
-// exception, which is what actually produces a line under the header too,
-// not just between pieces.
+// wrapper — deleting every divider, not just the first. Every row gets its
+// divider (a `::before` line, so it stays straight under the hover fill's
+// rounded corners) with no `first:` exception, which is what actually
+// produces a line under the header too, not just between pieces.
 //
 // Title includes each piece's own effective opus number in parentheses,
 // matching the header card's own `{book.bookTitle} ({book.workOpusNumber})`
@@ -199,9 +204,31 @@ const ROW_COLLAPSE_CLASS = 'max-[501px]:grid-cols-[96px_1fr]'
 // width.
 function PieceList({ pieces }: { pieces: Piece[] }) {
   const thumbVersion = useThumbnailVersion()
+  const [measureRef, pageColWidth] = useMeasuredWidth<HTMLDivElement>()
   return (
-    <div className="flex flex-col">
-      <div className="grid grid-cols-[96px_1fr_56px] gap-3 px-1.5 pb-2.5 text-xs font-medium tracking-wide text-ink-soft uppercase">
+    // The page column fits its widest entry: each row is its own grid (its
+    // own right-click/long-press wrapper sits around it), so the widest
+    // range — and the PAGE heading — is measured once from an invisible,
+    // out-of-flow list of them all, and every row's first column takes
+    // that width (--page-col). Cabin's digits aren't tabular, so the
+    // longest label by characters isn't always the widest.
+    <div
+      className="relative flex flex-col"
+      style={{ '--page-col': pageColWidth ? `${pageColWidth}px` : 'max-content' } as CSSProperties}
+    >
+      <div
+        ref={measureRef}
+        aria-hidden="true"
+        className="pointer-events-none invisible absolute top-0 left-0 flex flex-col items-start"
+      >
+        <span className="text-xs font-medium tracking-wide uppercase">Page</span>
+        {pieces.map((piece) => (
+          <span key={piece.id} className="text-sm font-medium tabular-nums">
+            {pageRangeLabel(piece)}
+          </span>
+        ))}
+      </div>
+      <div className="grid grid-cols-[var(--page-col)_1fr_56px] gap-3 px-1.5 pb-2.5 text-xs font-medium tracking-wide text-ink-soft uppercase">
         <div>Page</div>
         <div>Title</div>
         <div className={THUMB_HIDE_CLASS} />
@@ -212,7 +239,7 @@ function PieceList({ pieces }: { pieces: Piece[] }) {
             <ClickableCard
               to={`/pieces/${piece.id}`}
               state={{ backLabel: 'Book' }}
-              className={`grid grid-cols-[96px_1fr_56px] items-center gap-3 relative before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-border px-1.5 py-2.5 text-left hover:rounded-md hover:bg-accent-soft ${ROW_COLLAPSE_CLASS}`}
+              className={`grid grid-cols-[var(--page-col)_1fr_56px] items-center gap-3 relative before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-border px-1.5 py-2.5 text-left hover:rounded-md hover:bg-accent-soft ${ROW_COLLAPSE_CLASS}`}
             >
               <div className="text-sm font-medium tabular-nums text-ink">
                 {pageRangeLabel(piece)}
