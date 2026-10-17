@@ -487,9 +487,11 @@ function PieceList({ pieces }: { pieces: SamplePiece[] }) {
     // range — and the PAGE heading — is measured once from an invisible,
     // out-of-flow list of them all, and every row's first column takes
     // that width (--page-col). Cabin's digits aren't tabular, so the
-    // longest label by characters isn't always the widest.
+    // longest label by characters isn't always the widest. Capped and
+    // centered like the libraries' list columns (768px), so a short title
+    // isn't stranded across the page from its thumbnail.
     <div
-      className="relative flex flex-col"
+      className="relative mx-auto flex w-full max-w-3xl flex-col"
       style={{ '--page-col': pageColWidth ? `${pageColWidth}px` : 'max-content' } as CSSProperties}
     >
       <div

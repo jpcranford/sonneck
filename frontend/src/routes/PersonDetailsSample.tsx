@@ -634,7 +634,9 @@ function WorkList({
   onAction: (message: string) => void
 }) {
   return (
-    <div className="flex flex-col">
+    // Capped and centered like the libraries' list columns (768px), so a
+    // short title isn't stranded across the page from its thumbnail.
+    <div className="mx-auto flex w-full max-w-3xl flex-col">
       <div className="grid grid-cols-[96px_1fr_56px] gap-3 px-1.5 pb-2.5 text-xs font-medium tracking-wide text-ink-soft uppercase">
         <div className="text-center">Year</div>
         <div>Title</div>
