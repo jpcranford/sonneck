@@ -550,17 +550,22 @@ export function PiecePage() {
                 Piece" (library right-click menu) — handleDelete above
                 reuses its exact confirmation wording — now also reachable
                 directly from the page. */}
-            <button
-              type="button"
-              onClick={handleDelete}
-              disabled={!canDelete || deleteMutation.isPending}
-              aria-label="Delete Piece"
-              title={canDelete ? 'Delete Piece' : "You don't have permission to delete"}
-              className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-danger hover:border-danger disabled:opacity-50 disabled:hover:border-border"
-            >
-              <IconTrash size={18} />
-            </button>
-            <span aria-hidden="true" className="h-6 w-px bg-border" />
+            {/* Hidden, divider and all, without `delete`. */}
+            {canDelete && (
+              <>
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={deleteMutation.isPending}
+                  aria-label="Delete Piece"
+                  title="Delete Piece"
+                  className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-danger hover:border-danger disabled:opacity-50"
+                >
+                  <IconTrash size={18} />
+                </button>
+                <span aria-hidden="true" className="h-6 w-px bg-border" />
+              </>
+            )}
             {/* Icon-only, no label — this is a "roll again" action, not a
                 page-editing one, so it doesn't belong grouped visually with
                 Edit Piece as if it were another labeled action of the same
@@ -610,13 +615,13 @@ export function PiecePage() {
                 )}
               </div>
             )}
-            <ActionButton
-              icon={<IconEditFilled size={16} />}
-              label="Edit Piece"
-              onClick={() => setEditOpen(true)}
-              disabled={!canEdit}
-              title={canEdit ? undefined : "You don't have permission to edit"}
-            />
+            {canEdit && (
+              <ActionButton
+                icon={<IconEditFilled size={16} />}
+                label="Edit Piece"
+                onClick={() => setEditOpen(true)}
+              />
+            )}
           </div>
         )}
       </div>
@@ -775,18 +780,16 @@ export function PiecePage() {
                   nearest position:relative ancestor. Found via computed
                   styles/bounding-box during live verification, not visible
                   from reading the JSX alone. */}
-              <div className="relative">
-                {/* Download PDF — still a split button (main action + a
+              {canDownload && (
+                <div className="relative">
+                  {/* Download PDF — still a split button (main action + a
                     caret opening "Download Piece PDF"/"Download PDF +
                     Annotations"), but recolored to the same bordered/
                     paper-raised palette every other action button here
                     uses, now that Play owns the accent-solid treatment —
                     ported from the mockup once approved there. The real
-                    `canDownload` permission gate is unchanged: a genuine
-                    disabled &lt;button&gt; (not an &lt;a&gt; stripped of its href)
-                    when the caller lacks `download`, same reasoning as
-                    before. */}
-                {/* Hover feedback: a direct correction — an outer-wrapper
+                    whole split button is hidden without `download`. */}
+                  {/* Hover feedback: a direct correction — an outer-wrapper
                     `hover:border-accent` highlighted the whole pill
                     regardless of which segment was hovered, silently
                     skipping the divider between them (it stayed neutral
@@ -802,8 +805,7 @@ export function PiecePage() {
                     hovered, not always from the same one. The disabled
                     variant of the main action gets no hover classes at
                     all, matching this page's other disabled buttons. */}
-                <div className="flex">
-                  {canDownload ? (
+                  <div className="flex">
                     <DownloadLink
                       ref={downloadLinkRef}
                       href={getPieceFileUrl(piece.id)}
@@ -812,51 +814,40 @@ export function PiecePage() {
                       <IconDownload size={16} />
                       Download PDF
                     </DownloadLink>
-                  ) : (
                     <button
                       type="button"
-                      disabled
-                      title="You don't have permission to download files"
-                      className="flex cursor-not-allowed items-center gap-2 rounded-l-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm text-ink opacity-50"
+                      onClick={() => setDownloadOpen((o) => !o)}
+                      aria-label="More download options"
+                      className="relative -ml-px flex cursor-pointer items-center justify-center rounded-r-md border border-border bg-paper-raised px-2 text-ink transition-colors hover:z-10 hover:border-accent"
                     >
-                      <IconDownload size={16} />
-                      Download PDF
+                      <IconChevronDown size={16} />
                     </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setDownloadOpen((o) => !o)}
-                    disabled={!canDownload}
-                    aria-label="More download options"
-                    className="relative -ml-px flex items-center justify-center rounded-r-md border border-border bg-paper-raised px-2 text-ink transition-colors disabled:opacity-50 enabled:cursor-pointer enabled:hover:z-10 enabled:hover:border-accent"
-                  >
-                    <IconChevronDown size={16} />
-                  </button>
-                </div>
-                {downloadOpen && canDownload && (
-                  <div className="absolute top-full left-0 z-10 mt-1 w-64 rounded-md border border-border bg-paper-raised py-1 text-left shadow-lg">
-                    {/* hover:bg-paper-hover, the app's one menu-row hover
-                        (ContextMenu.tsx, every dropdown list). */}
-                    <DownloadLink
-                      href={getPieceFileUrl(piece.id)}
-                      className="block w-full px-3 py-2 text-left text-sm text-ink hover:bg-paper-hover"
-                    >
-                      Download Piece PDF
-                    </DownloadLink>
-                    {/* InfoTooltip, not a disabled button: a disabled element takes no taps,
-                        so on touch there would be no way to learn why it's inert. */}
-                    <InfoTooltip
-                      message="Coming soon — downloads a copy of this piece's PDF with your annotations drawn on it, once annotations exist."
-                      ariaLabel="Download PDF + Annotations (coming soon with annotations)"
-                      showPointerCursor={false}
-                      triggerClassName="block w-full px-3 py-2 text-left text-sm text-ink-soft opacity-50"
-                    >
-                      Download PDF + Annotations
-                      <span className="block text-xs italic">Coming with annotations (§13)</span>
-                    </InfoTooltip>
                   </div>
-                )}
-              </div>
+                  {downloadOpen && (
+                    <div className="absolute top-full left-0 z-10 mt-1 w-64 rounded-md border border-border bg-paper-raised py-1 text-left shadow-lg">
+                      {/* hover:bg-paper-hover, the app's one menu-row hover
+                        (ContextMenu.tsx, every dropdown list). */}
+                      <DownloadLink
+                        href={getPieceFileUrl(piece.id)}
+                        className="block w-full px-3 py-2 text-left text-sm text-ink hover:bg-paper-hover"
+                      >
+                        Download Piece PDF
+                      </DownloadLink>
+                      {/* InfoTooltip, not a disabled button: a disabled element takes no taps,
+                        so on touch there would be no way to learn why it's inert. */}
+                      <InfoTooltip
+                        message="Coming soon — downloads a copy of this piece's PDF with your annotations drawn on it, once annotations exist."
+                        ariaLabel="Download PDF + Annotations (coming soon with annotations)"
+                        showPointerCursor={false}
+                        triggerClassName="block w-full px-3 py-2 text-left text-sm text-ink-soft opacity-50"
+                      >
+                        Download PDF + Annotations
+                        <span className="block text-xs italic">Coming with annotations (§13)</span>
+                      </InfoTooltip>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Consolidates the two remaining, less-frequent file actions
                   behind one icon-only overflow button — same "kebab menu"
@@ -864,48 +855,52 @@ export function PiecePage() {
                   trigger elsewhere in this app, rather than a fourth/fifth
                   labeled button competing for space in this row. Ported
                   from the mockup once approved there. */}
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setMoreActionsOpen((o) => !o)}
-                  aria-label="More actions"
-                  className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent"
-                >
-                  <IconDotsVertical size={18} />
-                </button>
-                {moreActionsOpen && (
-                  <div className="absolute top-full right-0 z-10 mt-1 w-64 overflow-hidden rounded-md border border-border bg-paper-raised py-1 text-left shadow-lg">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setReplaceConfirming(true)
-                        setMoreActionsOpen(false)
-                      }}
-                      disabled={!canUpload}
-                      title={canUpload ? undefined : "You don't have permission to upload"}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-paper-hover disabled:opacity-50"
-                    >
-                      <IconRefresh size={16} />
-                      Replace File
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setThumbnailMutation.mutate(page)
-                        setMoreActionsOpen(false)
-                      }}
-                      disabled={
-                        !canEdit || page === piece.thumbnailPage || setThumbnailMutation.isPending
-                      }
-                      title={canEdit ? undefined : "You don't have permission to edit"}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-paper-hover disabled:opacity-50"
-                    >
-                      <IconImageInPicture size={16} />
-                      Use Page as Thumbnail
-                    </button>
-                  </div>
-                )}
-              </div>
+              {/* Each item is hidden without its permission (Replace File:
+                  `upload`; Use Page as Thumbnail: `edit`), and the button
+                  with them when neither is left. */}
+              {(canUpload || canEdit) && (
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setMoreActionsOpen((o) => !o)}
+                    aria-label="More actions"
+                    className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent"
+                  >
+                    <IconDotsVertical size={18} />
+                  </button>
+                  {moreActionsOpen && (
+                    <div className="absolute top-full right-0 z-10 mt-1 w-64 overflow-hidden rounded-md border border-border bg-paper-raised py-1 text-left shadow-lg">
+                      {canUpload && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setReplaceConfirming(true)
+                            setMoreActionsOpen(false)
+                          }}
+                          className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-paper-hover"
+                        >
+                          <IconRefresh size={16} />
+                          Replace File
+                        </button>
+                      )}
+                      {canEdit && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setThumbnailMutation.mutate(page)
+                            setMoreActionsOpen(false)
+                          }}
+                          disabled={page === piece.thumbnailPage || setThumbnailMutation.isPending}
+                          className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-paper-hover disabled:opacity-50"
+                        >
+                          <IconImageInPicture size={16} />
+                          Use Page as Thumbnail
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
               <input
                 ref={replaceFileInputRef}
                 type="file"
@@ -1009,23 +1004,24 @@ export function PiecePage() {
                       top-of-page comment. Favorite stays here; it's a
                       one-tap toggle, not an editing action, so it doesn't
                       belong in that toolbar. */}
-                  <button
-                    type="button"
-                    onClick={() => favoriteMutation.mutate()}
-                    // Favoriting saves the whole piece, which needs edit
-                    // permission — faint and inert without it.
-                    disabled={favoriteMutation.isPending || !canEdit}
-                    title={canEdit ? undefined : "You don't have permission to edit"}
-                    aria-label={piece.favorite ? 'Remove from favorites' : 'Add to favorites'}
-                    aria-pressed={piece.favorite}
-                    className="cursor-pointer text-ink-soft hover:text-accent disabled:opacity-50"
-                  >
-                    {piece.favorite ? (
-                      <IconHeartFilled size={24} className="text-accent" />
-                    ) : (
-                      <IconHeart size={24} />
-                    )}
-                  </button>
+                  {/* Favoriting saves the whole piece, which needs edit
+                      permission — hidden without it. */}
+                  {canEdit && (
+                    <button
+                      type="button"
+                      onClick={() => favoriteMutation.mutate()}
+                      disabled={favoriteMutation.isPending}
+                      aria-label={piece.favorite ? 'Remove from favorites' : 'Add to favorites'}
+                      aria-pressed={piece.favorite}
+                      className="cursor-pointer text-ink-soft hover:text-accent disabled:opacity-50"
+                    >
+                      {piece.favorite ? (
+                        <IconHeartFilled size={24} className="text-accent" />
+                      ) : (
+                        <IconHeart size={24} />
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
 
