@@ -140,12 +140,7 @@ export function BooksPage() {
         sortDirectionLabel={DIRECTION_LABEL[sortField][sortDirection]}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
-        newButton={{
-          label: 'New Book',
-          onClick: () => setNewBookOpen(true),
-          disabled: !canEdit,
-          title: canEdit ? undefined : "You don't have permission to edit",
-        }}
+        newButton={canEdit ? { label: 'New Book', onClick: () => setNewBookOpen(true) } : undefined}
         rightColumnGridColsClassName="sm:grid-cols-[auto_1fr_228px] 2xl:grid-cols-[auto_1fr_272px]"
       >
         {pillEntries.length > 0 && (

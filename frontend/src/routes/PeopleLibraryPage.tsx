@@ -753,12 +753,9 @@ export function PeopleLibraryPage() {
         sortDirectionLabel={DIRECTION_LABEL[sortField][sortDirection]}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
-        newButton={{
-          label: 'New Person',
-          onClick: () => setNewPersonOpen(true),
-          disabled: !canEdit,
-          title: canEdit ? undefined : "You don't have permission to edit",
-        }}
+        newButton={
+          canEdit ? { label: 'New Person', onClick: () => setNewPersonOpen(true) } : undefined
+        }
         rightColumnGridColsClassName="sm:grid-cols-[auto_1fr_212px] 2xl:grid-cols-[auto_1fr_256px]"
       >
         {pillEntries.length > 0 && (

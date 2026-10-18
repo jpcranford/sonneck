@@ -107,12 +107,10 @@ export function LibraryToolbar<Field extends string>({
   onViewModeChange: (mode: 'grid' | 'list') => void
   /** Pairs with Search — same row as Search at narrow widths, immediately
    * to its right at wide ones. Never icon-only. Omit entirely for a
-   * library (Piece) with no "create new" toolbar action. `disabled`/
-   * `title` communicate a permission the viewer lacks — same faint,
-   * non-clickable treatment every other permission-gated control in this
-   * app uses (real `disabled` attribute + container `opacity`, not a
-   * translucent icon color). */
-  newButton?: { label: string; onClick: () => void; disabled?: boolean; title?: string }
+   * library (Piece) with no "create new" toolbar action, and when the
+   * viewer lacks the permission it needs — hidden, not faded, like every
+   * permission-gated control. */
+  newButton?: { label: string; onClick: () => void }
   /** The literal `sm:grid-cols-[auto_1fr_Npx] 2xl:grid-cols-[auto_1fr_Mpx]`
    * class string, passed as a complete literal from the caller — not
    * assembled from separate numeric props. Tailwind's JIT only picks up
@@ -163,7 +161,6 @@ export function LibraryToolbar<Field extends string>({
             {
               key: 'n',
               label: newButton.label,
-              enabled: !newButton.disabled,
               run: newButton.onClick,
             },
           ]
@@ -205,9 +202,7 @@ export function LibraryToolbar<Field extends string>({
                 <button
                   type="button"
                   onClick={newButton.onClick}
-                  disabled={newButton.disabled}
-                  title={newButton.title}
-                  className="flex h-[38px] shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-border bg-paper-raised px-3 text-sm text-ink hover:bg-paper-hover disabled:opacity-50 disabled:hover:bg-paper-raised"
+                  className="flex h-[38px] shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-border bg-paper-raised px-3 text-sm text-ink hover:bg-paper-hover"
                 >
                   <IconPlus size={16} />
                   {newButton.label}
