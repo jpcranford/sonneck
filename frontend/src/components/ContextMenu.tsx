@@ -226,7 +226,7 @@ export const ContextMenu = forwardRef<ContextMenuHandle, ContextMenuProps>(funct
           {header && (
             <>
               {header(() => setPosition(null))}
-              <div className="my-1 h-px bg-border" />
+              {items.length > 0 && <div className="my-1 h-px bg-border" />}
             </>
           )}
           {items.map((item) => (

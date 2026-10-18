@@ -48,26 +48,25 @@ export const PersonContextMenu = forwardRef<ContextMenuHandle, PersonContextMenu
           ref={ref}
           hideTriggerButton={hideTriggerButton}
           items={[
-            {
-              label: 'Edit Person',
-              onSelect: () => setEditOpen(true),
-              disabled: !canEdit,
-              disabledReason: "You don't have permission to edit",
-            },
-            {
-              label: 'Delete Person',
-              destructive: true,
-              disabled: !canDelete,
-              disabledReason: "You don't have permission to delete",
-              onSelect: async () => {
-                const confirmed = await confirmAction({
-                  title: `Delete "${person.name}"?`,
-                  message: "This can't be undone.",
-                  confirmLabel: 'Delete person',
-                })
-                if (confirmed) deleteMutation.mutate()
-              },
-            },
+            // Each item is left out without its permission; with neither,
+            // ContextMenu doesn't open at all.
+            ...(canEdit ? [{ label: 'Edit Person', onSelect: () => setEditOpen(true) }] : []),
+            ...(canDelete
+              ? [
+                  {
+                    label: 'Delete Person',
+                    destructive: true,
+                    onSelect: async () => {
+                      const confirmed = await confirmAction({
+                        title: `Delete "${person.name}"?`,
+                        message: "This can't be undone.",
+                        confirmLabel: 'Delete person',
+                      })
+                      if (confirmed) deleteMutation.mutate()
+                    },
+                  },
+                ]
+              : []),
           ]}
         >
           {children}

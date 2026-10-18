@@ -125,39 +125,47 @@ export const PieceContextMenu = forwardRef<ContextMenuHandle, PieceContextMenuPr
               : undefined
           }
           items={[
-            {
-              label: piece.favorite ? 'Remove from Favorites' : 'Add to Favorites',
-              onSelect: () => favoriteMutation.mutate(),
-              // Saves the whole piece, which needs edit permission.
-              disabled: !canEdit,
-              disabledReason: "You don't have permission to edit",
-            },
+            // Each item is left out without its permission; with none
+            // left, ContextMenu doesn't open at all. Favoriting saves the
+            // whole piece, so it needs `edit`.
+            ...(canEdit
+              ? [
+                  {
+                    label: piece.favorite ? 'Remove from Favorites' : 'Add to Favorites',
+                    onSelect: () => favoriteMutation.mutate(),
+                  },
+                ]
+              : []),
             ...(canCreate
               ? [{ label: 'Add to Setlist', onSelect: () => setPickerOpen(true) }]
               : []),
-            {
-              label: 'Edit Piece',
-              onSelect: () => {
-                setEditMounted(true)
-                setEditOpen(true)
-              },
-              disabled: !canEdit,
-              disabledReason: "You don't have permission to edit",
-            },
-            {
-              label: 'Delete Piece',
-              destructive: true,
-              disabled: !canDelete,
-              disabledReason: "You don't have permission to delete",
-              onSelect: async () => {
-                const confirmed = await confirmAction({
-                  title: `Delete "${piece.title}"?`,
-                  message: "This can't be undone.",
-                  confirmLabel: 'Delete piece',
-                })
-                if (confirmed) deleteMutation.mutate()
-              },
-            },
+            ...(canEdit
+              ? [
+                  {
+                    label: 'Edit Piece',
+                    onSelect: () => {
+                      setEditMounted(true)
+                      setEditOpen(true)
+                    },
+                  },
+                ]
+              : []),
+            ...(canDelete
+              ? [
+                  {
+                    label: 'Delete Piece',
+                    destructive: true,
+                    onSelect: async () => {
+                      const confirmed = await confirmAction({
+                        title: `Delete "${piece.title}"?`,
+                        message: "This can't be undone.",
+                        confirmLabel: 'Delete piece',
+                      })
+                      if (confirmed) deleteMutation.mutate()
+                    },
+                  },
+                ]
+              : []),
           ]}
         >
           {children}
