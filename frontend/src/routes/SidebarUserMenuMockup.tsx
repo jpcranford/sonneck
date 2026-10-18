@@ -247,6 +247,7 @@ function UserMenuButton({
     }
   }, [open])
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate: closes when props change from outside (identity, collapse), the same legitimate sync Modal.tsx's open effect documents.
     setOpen(false)
   }, [identity, collapsed])
 

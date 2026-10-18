@@ -714,6 +714,7 @@ export function BookDetailsSample() {
   // (uncropped, real shape), no loading state needed for a static SVG.
   const [coverLoaded, setCoverLoaded] = useState(false)
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate: resets when a prop changes from outside (a new cover), the same legitimate sync Modal.tsx's open effect documents.
     setCoverLoaded(false)
   }, [customCoverUrl])
 

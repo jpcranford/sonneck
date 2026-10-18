@@ -31,6 +31,7 @@ export function BookGridCard({ book }: BookGridCardProps) {
     book.hasCustomCover || book.fileHash ? (book.coverImageHash ?? book.fileHash) : null
   const [coverLoaded, setCoverLoaded] = useState(false)
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate: resets when a prop changes from outside (a new cover), the same legitimate sync Modal.tsx's open effect documents.
     setCoverLoaded(false)
   }, [coverSource])
 
