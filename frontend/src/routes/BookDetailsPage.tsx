@@ -483,18 +483,22 @@ export function BookDetailsPage() {
     event.target.value = ''
   }
 
-  const coverContextMenuItems = [
-    { label: 'Change Cover Image', onSelect: openCoverFilePicker },
-    ...(book?.hasCustomCover
-      ? [
-          {
-            label: 'Remove Cover Image',
-            onSelect: () => removeCoverMutation.mutate(),
-            destructive: true,
-          },
-        ]
-      : []),
-  ]
+  // Both need `edit` — without it the menu is empty, and ContextMenu stays
+  // out of the way.
+  const coverContextMenuItems = !canEdit
+    ? []
+    : [
+        { label: 'Change Cover Image', onSelect: openCoverFilePicker },
+        ...(book?.hasCustomCover
+          ? [
+              {
+                label: 'Remove Cover Image',
+                onSelect: () => removeCoverMutation.mutate(),
+                destructive: true,
+              },
+            ]
+          : []),
+      ]
 
   // Keyboard shortcuts (lib/shortcuts.ts — ignored while typing or with a
   // window open), each mirroring a toolbar button.
@@ -640,18 +644,25 @@ export function BookDetailsPage() {
                 it the divider's explicit h-6 would opt it out of stretch
                 and fall back to flex-start, pinning it to the top instead
                 of centering it. */}
-            <button
-              type="button"
-              onClick={handleDelete}
-              disabled={!canDelete || deleteMutation.isPending}
-              aria-label="Delete Book"
-              title={canDelete ? 'Delete Book' : "You don't have permission to delete"}
-              className="flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-danger hover:border-danger disabled:opacity-50 disabled:hover:border-border"
-            >
-              <IconTrash size={16} />
-            </button>
-            <span aria-hidden="true" className="h-6 w-px self-center bg-border" />
-            {book.fileHash && canDownload ? (
+            {/* Hidden, divider and all, without `delete`. */}
+            {canDelete && (
+              <>
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={deleteMutation.isPending}
+                  aria-label="Delete Book"
+                  title="Delete Book"
+                  className="flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-danger hover:border-danger disabled:opacity-50"
+                >
+                  <IconTrash size={16} />
+                </button>
+                <span aria-hidden="true" className="h-6 w-px self-center bg-border" />
+              </>
+            )}
+            {/* Hidden without `download`; faint when the book has no file
+                on record, which isn't about permissions. */}
+            {!canDownload ? null : book.fileHash ? (
               <a
                 ref={openPdfLinkRef}
                 href={getBookFileUrl(book.id)}
@@ -665,32 +676,27 @@ export function BookDetailsPage() {
               </a>
             ) : (
               <span
-                title={
-                  book.fileHash
-                    ? "You don't have permission to download files"
-                    : 'No original file on record'
-                }
+                title="No original file on record"
                 // text-ink-fainter, a solid token — not a translucent
                 // text-ink-soft/50 utility. IconFileTypePdf
                 // is a multi-path icon, so a translucent color would
-                // re-blend (and visibly darken) at every path overlap. Same
-                // faint/inert treatment for both reasons a file isn't
-                // openable here — no file at all, or a real one this user
-                // lacks the download permission for.
+                // re-blend (and visibly darken) at every path overlap.
                 className="flex w-[38px] cursor-not-allowed items-center justify-center rounded-md border border-border bg-paper-raised text-ink-fainter"
               >
                 <IconFileTypePdf size={16} />
               </span>
             )}
-            <button
-              type="button"
-              onClick={openCoverFilePicker}
-              aria-label="Change cover image"
-              title="Change cover image"
-              className="flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink-soft hover:border-accent hover:text-ink"
-            >
-              <IconPhotoUp size={16} />
-            </button>
+            {canEdit && (
+              <button
+                type="button"
+                onClick={openCoverFilePicker}
+                aria-label="Change cover image"
+                title="Change cover image"
+                className="flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink-soft hover:border-accent hover:text-ink"
+              >
+                <IconPhotoUp size={16} />
+              </button>
+            )}
             <input
               ref={coverFileInputRef}
               type="file"
@@ -706,17 +712,17 @@ export function BookDetailsPage() {
                 without the divider ending up orphaned. Dropping the label
                 instead — same icon-only treatment its siblings already
                 use — shrinks it enough to fit down to 320px. */}
-            <button
-              type="button"
-              onClick={() => setBookEditOpen(true)}
-              disabled={!canEdit}
-              aria-label="Edit Book"
-              title={canEdit ? undefined : "You don't have permission to edit"}
-              className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink hover:border-accent disabled:opacity-50 disabled:hover:border-border max-[360px]:w-[38px] max-[360px]:px-0"
-            >
-              <IconEditFilled size={16} />
-              <span className="max-[360px]:hidden">Edit Book</span>
-            </button>
+            {canEdit && (
+              <button
+                type="button"
+                onClick={() => setBookEditOpen(true)}
+                aria-label="Edit Book"
+                className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink hover:border-accent max-[360px]:w-[38px] max-[360px]:px-0"
+              >
+                <IconEditFilled size={16} />
+                <span className="max-[360px]:hidden">Edit Book</span>
+              </button>
+            )}
           </div>
         )}
       </div>

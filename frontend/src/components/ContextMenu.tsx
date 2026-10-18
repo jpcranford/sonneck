@@ -80,6 +80,10 @@ export const ContextMenu = forwardRef<ContextMenuHandle, ContextMenuProps>(funct
   ref,
 ) {
   const [position, setPosition] = useState<{ x: number; y: number } | null>(null)
+  // Nothing to show (every item hidden for lack of permission, say): no
+  // menu on right-click or long press, and no ⋯ button — the browser's own
+  // right-click menu shows instead.
+  const empty = items.length === 0 && !header
   // Page shortcuts pause while the menu is open (lib/shortcuts.ts).
   useShortcutBlocker(position !== null)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -107,6 +111,7 @@ export const ContextMenu = forwardRef<ContextMenuHandle, ContextMenuProps>(funct
   }
 
   function onTouchStart(event: TouchEvent) {
+    if (empty) return
     const touch = event.touches[0]
     touchStartRef.current = { x: touch.clientX, y: touch.clientY }
     clearLongPressTimer()
@@ -180,6 +185,7 @@ export const ContextMenu = forwardRef<ContextMenuHandle, ContextMenuProps>(funct
           if (touchPointerRef.current) event.preventDefault()
         }}
         onContextMenu={(event) => {
+          if (empty) return
           event.preventDefault()
           setPosition({ x: event.clientX, y: event.clientY })
         }}
@@ -195,7 +201,7 @@ export const ContextMenu = forwardRef<ContextMenuHandle, ContextMenuProps>(funct
         }}
       >
         {children}
-        {!hideTriggerButton && (
+        {!hideTriggerButton && !empty && (
           <button
             type="button"
             aria-label="More actions"
