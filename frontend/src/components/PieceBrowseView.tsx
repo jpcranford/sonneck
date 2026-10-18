@@ -79,17 +79,22 @@ interface PieceBrowseViewProps {
 }
 
 // Mobile-first: the bare (unprefixed) value applies below sm:, the sm:
-// value overrides it at 640px and up — the plain 200px/176px minimums
-// only ever fit 1 column at iPhone-13-mini width (375px, minus this
-// component's own p-4 padding and the gap between cards), so phone-width
-// screens got a single, oversized-looking card where a real Library
-// naturally has more than one thing to browse. 150px was tuned
-// empirically (live Playwright screenshot at 375px) to comfortably fit 2
-// columns without the cards feeling cramped; left alone at sm: and up,
-// where the plain default already works well.
+// values take over at 640px and up. 150px was tuned empirically (live
+// Playwright screenshot at 375px) to fit 2 columns on a phone without the
+// cards feeling cramped, so both sizes share it there.
+//
+// From sm: up, 'compact' (the main Library) fills rows with 176px-minimum
+// cards, and 'default' (Favorites and the practice views) runs one column
+// fewer at the same width, so its cards are a step larger — except where
+// compact has only 2 columns: there both show 2 (one card per row would be
+// ~500px wide, a portrait page ~700px tall). Two plain auto-fill minimums (176px vs. 200px) landed on the
+// same column count across about half of all widths. The thresholds are
+// where compact gains a column: 192k − 16 (176px card + the 16px gap-4,
+// less one gap), read from the grid's own width via the @container wrapper
+// around it, since the sidebar changes how wide that is at a given window.
 const GRID_COLS_CLASS: Record<'default' | 'compact', string> = {
   default:
-    'grid-cols-[repeat(auto-fill,minmax(150px,1fr))] sm:grid-cols-[repeat(auto-fill,minmax(200px,1fr))]',
+    'grid-cols-[repeat(auto-fill,minmax(150px,1fr))] sm:grid-cols-1 sm:@min-[368px]:grid-cols-2 sm:@min-[752px]:grid-cols-3 sm:@min-[944px]:grid-cols-4 sm:@min-[1136px]:grid-cols-5 sm:@min-[1328px]:grid-cols-6 sm:@min-[1520px]:grid-cols-7 sm:@min-[1712px]:grid-cols-8',
   compact:
     'grid-cols-[repeat(auto-fill,minmax(150px,1fr))] sm:grid-cols-[repeat(auto-fill,minmax(176px,1fr))]',
 }
@@ -377,15 +382,17 @@ export function PieceBrowseView({
         )}
 
         {pieces && pieces.length > 0 && viewMode === 'grid' && (
-          <div className={`grid gap-4 ${GRID_COLS_CLASS[gridCardSize]}`}>
-            {pieces.map((piece) => (
-              <PieceGridCard
-                key={piece.id}
-                piece={piece}
-                backLabel={backLabel}
-                siblingPieces={pieces}
-              />
-            ))}
+          <div className="@container">
+            <div className={`grid gap-4 ${GRID_COLS_CLASS[gridCardSize]}`}>
+              {pieces.map((piece) => (
+                <PieceGridCard
+                  key={piece.id}
+                  piece={piece}
+                  backLabel={backLabel}
+                  siblingPieces={pieces}
+                />
+              ))}
+            </div>
           </div>
         )}
 
