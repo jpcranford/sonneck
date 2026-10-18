@@ -644,7 +644,8 @@ export function BookDetailsPage() {
                 it the divider's explicit h-6 would opt it out of stretch
                 and fall back to flex-start, pinning it to the top instead
                 of centering it. */}
-            {/* Hidden, divider and all, without `delete`. */}
+            {/* Hidden, divider and all, without `delete`; the divider also
+                goes when there's nothing after it. */}
             {canDelete && (
               <>
                 <button
@@ -657,7 +658,9 @@ export function BookDetailsPage() {
                 >
                   <IconTrash size={16} />
                 </button>
-                <span aria-hidden="true" className="h-6 w-px self-center bg-border" />
+                {(canDownload || canEdit) && (
+                  <span aria-hidden="true" className="h-6 w-px self-center bg-border" />
+                )}
               </>
             )}
             {/* Hidden without `download`; faint when the book has no file

@@ -538,20 +538,23 @@ export function PersonDetailsPage() {
   const notFound = personError instanceof ApiError && personError.code === 'NOT_FOUND'
   const sortedWorks = works ? sortWorks(works) : []
 
-  const avatarContextMenuItems = person
-    ? [
-        { label: 'Change Portrait', onSelect: () => setUploadPortraitOpen(true) },
-        ...(person.hasCustomPortrait
-          ? [
-              {
-                label: 'Remove Portrait',
-                onSelect: () => removePortraitMutation.mutate(),
-                destructive: true,
-              },
-            ]
-          : []),
-      ]
-    : []
+  // Both need `edit` — without it the menu is empty, and ContextMenu stays
+  // out of the way.
+  const avatarContextMenuItems =
+    person && canEdit
+      ? [
+          { label: 'Change Portrait', onSelect: () => setUploadPortraitOpen(true) },
+          ...(person.hasCustomPortrait
+            ? [
+                {
+                  label: 'Remove Portrait',
+                  onSelect: () => removePortraitMutation.mutate(),
+                  destructive: true,
+                },
+              ]
+            : []),
+        ]
+      : []
 
   return (
     <div className={`${CONTENT_MAX_W} flex flex-1 flex-col gap-6 p-6 md:p-8`}>
@@ -565,38 +568,44 @@ export function PersonDetailsPage() {
         </Link>
         {person && (
           <div className="flex shrink-0 items-stretch gap-2.5">
-            <button
-              type="button"
-              onClick={handleDelete}
-              disabled={!canDelete || deleteMutation.isPending}
-              aria-label="Delete Person"
-              title={canDelete ? 'Delete Person' : "You don't have permission to delete"}
-              className="flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-danger hover:border-danger disabled:opacity-50 disabled:hover:border-border"
-            >
-              <IconTrash size={16} />
-            </button>
-            <span aria-hidden="true" className="h-6 w-px self-center bg-border" />
-            <button
-              type="button"
-              onClick={() => setSplitOpen(true)}
-              disabled={!canEdit}
-              title={canEdit ? undefined : "You don't have permission to edit"}
-              className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink hover:border-accent disabled:opacity-50 disabled:hover:border-border"
-            >
-              <IconArrowsSplit2 size={16} />
-              <span className="max-[420px]:hidden">Split People</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setEditOpen(true)}
-              disabled={!canEdit}
-              aria-label="Edit Person"
-              title={canEdit ? undefined : "You don't have permission to edit"}
-              className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink hover:border-accent disabled:opacity-50 disabled:hover:border-border max-[360px]:w-[38px] max-[360px]:px-0"
-            >
-              <IconEditFilled size={16} />
-              <span className="max-[360px]:hidden">Edit Person</span>
-            </button>
+            {/* Hidden, divider and all, without `delete`; the divider
+                also goes when there's nothing after it. */}
+            {canDelete && (
+              <>
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={deleteMutation.isPending}
+                  aria-label="Delete Person"
+                  title="Delete Person"
+                  className="flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-danger hover:border-danger disabled:opacity-50"
+                >
+                  <IconTrash size={16} />
+                </button>
+                {canEdit && <span aria-hidden="true" className="h-6 w-px self-center bg-border" />}
+              </>
+            )}
+            {canEdit && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setSplitOpen(true)}
+                  className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink hover:border-accent"
+                >
+                  <IconArrowsSplit2 size={16} />
+                  <span className="max-[420px]:hidden">Split People</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditOpen(true)}
+                  aria-label="Edit Person"
+                  className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink hover:border-accent max-[360px]:w-[38px] max-[360px]:px-0"
+                >
+                  <IconEditFilled size={16} />
+                  <span className="max-[360px]:hidden">Edit Person</span>
+                </button>
+              </>
+            )}
           </div>
         )}
       </div>
@@ -639,15 +648,17 @@ export function PersonDetailsPage() {
               <ContextMenu items={avatarContextMenuItems} hideTriggerButton>
                 <div className="relative w-[150px] shrink-0">
                   <PersonAvatar person={person} className="w-full shadow-sm" />
-                  <button
-                    type="button"
-                    onClick={() => setUploadPortraitOpen(true)}
-                    aria-label="Change portrait"
-                    title="Change portrait"
-                    className="absolute right-1.5 bottom-1.5 flex size-8 cursor-pointer items-center justify-center rounded-full border-2 border-paper-raised bg-scrim text-white shadow-md hover:bg-scrim/85"
-                  >
-                    <IconCameraFilled size={14} />
-                  </button>
+                  {canEdit && (
+                    <button
+                      type="button"
+                      onClick={() => setUploadPortraitOpen(true)}
+                      aria-label="Change portrait"
+                      title="Change portrait"
+                      className="absolute right-1.5 bottom-1.5 flex size-8 cursor-pointer items-center justify-center rounded-full border-2 border-paper-raised bg-scrim text-white shadow-md hover:bg-scrim/85"
+                    >
+                      <IconCameraFilled size={14} />
+                    </button>
+                  )}
                 </div>
               </ContextMenu>
 
