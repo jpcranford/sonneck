@@ -607,6 +607,14 @@ body:has(#app-scroll-container) .titlebar-drag-strip {
   filter: invert(0.9) hue-rotate(180deg);
 }
 
+/* With Dark Mode Scores off, the dark theme still dims every score page a
+   little, so a grid of white pages isn't glaring against the dark paper:
+   85% brightness turns white into #d9d9d9. Picked from a side-by-side of
+   six strengths (https://claude.ai/artifact/1Q6Wea9PM4k9PPgKUPMTSg). */
+:root[data-theme='dark']:not([data-dark-scores]) .score-page {
+  filter: brightness(0.85);
+}
+
 /* transform, not background-position (fixed 2026-09-02, direct report:
    "the pinstripe animation never plays, always freezes up" on the Book
    Upload Wizard's Import button). Animating background-position forces a
