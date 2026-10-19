@@ -354,7 +354,7 @@ function HeaderIconButton({
       onClick={onClick}
       aria-label={label}
       title={label}
-      className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink-soft hover:border-accent hover:text-ink"
+      className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent"
     >
       {icon}
     </button>

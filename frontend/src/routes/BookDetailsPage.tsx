@@ -673,7 +673,7 @@ export function BookDetailsPage() {
                 rel="noreferrer"
                 aria-label="Open Book PDF"
                 title="Open Book PDF"
-                className="flex w-[38px] items-center justify-center rounded-md border border-border bg-paper-raised text-ink-soft hover:border-accent hover:text-ink"
+                className="flex w-[38px] items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent"
               >
                 <IconFileTypePdf size={16} />
               </a>
@@ -695,7 +695,7 @@ export function BookDetailsPage() {
                 onClick={openCoverFilePicker}
                 aria-label="Change cover image"
                 title="Change cover image"
-                className="flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink-soft hover:border-accent hover:text-ink"
+                className="flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent"
               >
                 <IconPhotoUp size={16} />
               </button>
