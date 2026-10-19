@@ -114,15 +114,21 @@ export function PageLightbox({
             : 'max-h-[85dvh] max-w-[90vw] cursor-zoom-out overflow-auto rounded-md'
         }
       >
-        <img
-          src={imageUrl}
-          alt={alt}
-          className={
-            zoom === 'fit'
-              ? 'score-page max-h-[85dvh] max-w-[90vw] rounded-md object-contain shadow-2xl'
-              : 'score-page block rounded-md shadow-2xl'
-          }
-        />
+        {/* The shadow sits on a wrapper, not the image: score-page's dark
+            theme filters (the dimming, Dark Mode Scores' invert) also
+            apply to an element's own box-shadow, which the invert turned
+            light. */}
+        <span className="block rounded-md shadow-2xl">
+          <img
+            src={imageUrl}
+            alt={alt}
+            className={
+              zoom === 'fit'
+                ? 'score-page block max-h-[85dvh] max-w-[90vw] rounded-md object-contain'
+                : 'score-page block rounded-md'
+            }
+          />
+        </span>
       </button>
 
       {/* Same page-cycle capsule as the inline preview, carried into the
