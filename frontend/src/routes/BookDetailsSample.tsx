@@ -888,12 +888,10 @@ export function BookDetailsSample() {
           aspect-[2/3] the moment a sibling column grows taller than the
           cover, distorting its shape. */}
       <div>
-        <div className="overflow-hidden rounded-2xl border border-border bg-paper-raised shadow-sm">
-          {/* Stacked below lg:, side-by-side above it — mockup-parity port
-              of the real BookDetailsPage.tsx's own fix: this row never
-              collapsed at any width, overflowing the filename past the
-              card at phone/iPad-portrait widths. */}
-          <div className="flex flex-col gap-6 p-7 lg:flex-row lg:items-start">
+        <div className="@container overflow-hidden rounded-2xl border border-border bg-paper-raised shadow-sm">
+          {/* Stacked until the card itself is 520px wide, then side by
+              side — same container query as the real BookDetailsPage.tsx. */}
+          <div className="flex flex-col gap-6 p-7 @min-[520px]:flex-row @min-[520px]:items-start">
             {/* Custom cover upload, combining trigger "D" (header toolbar
                 button, below) with trigger "E" (this context menu).
                 The cover itself renders exactly as it already does either

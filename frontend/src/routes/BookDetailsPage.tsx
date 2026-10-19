@@ -747,22 +747,17 @@ export function BookDetailsPage() {
 
       {book && (
         <div>
-          {/* Header is its own card. Stacked (flex-col) below lg:, side-by-
-              side above it — the side-by-side row never collapsed at
-              any width, so the info column's available width shrank along
-              with the viewport (worse still, further eaten by the sidebar
-              at md:+), overflowing the original filename past the card's
-              own edge well before the header ever got phone-narrow —
-              breakage confirmed at both 375px and iPad-portrait's ~512px
-              actual content width (post-sidebar), first genuinely clean
-              row layout confirmed at iPad-landscape's ~768px. lg:items-start
-              on the row itself, not the base flex-col: without it, the
-              cover's flex cross-axis defaults to stretch, which fights its
-              own aspect-[2/3] the moment a sibling column grows taller than
-              the cover, distorting its shape — only relevant once they're
-              actually side by side. */}
-          <div className="overflow-hidden rounded-2xl border border-border bg-paper-raised shadow-sm">
-            <div className="flex flex-col gap-6 p-7 lg:flex-row lg:items-start">
+          {/* Header is its own card: the cover stacks above the details
+              until the card itself is 520px wide, then sits beside them
+              (a container query, so it doesn't matter whether the sidebar
+              is open; picked from a side-by-side,
+              https://claude.ai/artifact/Qfe8jXE8J8gDDPyW7FvgAg). Narrower
+              than that the details column runs out of room beside the
+              150px cover. items-start applies to the side-by-side row
+              only: without it the cover's cross-axis stretch fights its
+              own aspect ratio once the details column is taller. */}
+          <div className="@container overflow-hidden rounded-2xl border border-border bg-paper-raised shadow-sm">
+            <div className="flex flex-col gap-6 p-7 @min-[520px]:flex-row @min-[520px]:items-start">
               {/* Custom cover upload — right-click (desktop) or
                   long-press (touch) the cover to change/remove it, same
                   ContextMenu component pieces already use. hideTriggerButton

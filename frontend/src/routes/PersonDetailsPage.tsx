@@ -627,18 +627,14 @@ export function PersonDetailsPage() {
 
       {person && (
         <>
-          <div className="overflow-hidden rounded-2xl border border-border bg-paper-raised shadow-sm">
-            {/* Stacked (flex-col) below lg:, side-by-side above it —
-                mockup-parity fix with Book Details' own identical header
-                bug: at phone width the name/credit-chip column had nowhere near enough
-                room beside a fixed 150px avatar, wrapping the name
-                awkwardly mid-word and clipping the credit chip's own text.
-                lg:items-start only, not on the base flex-col: default
-                column-mode stretch is what's wanted there (full-width
-                text), items-start is specifically for row mode (keeps the
-                avatar's own aspect ratio from being stretched by a taller
-                info column). */}
-            <div className="flex flex-col gap-6 p-7 lg:flex-row lg:items-start">
+          <div className="@container overflow-hidden rounded-2xl border border-border bg-paper-raised shadow-sm">
+            {/* Stacked until the card itself is 520px wide, then side by
+                side — the same container query as Book Details' header
+                (see its comment); narrower, the name and credit chips have
+                no room beside the 150px avatar. items-start applies to the
+                side-by-side row only, so a taller info column can't stretch
+                the avatar. */}
+            <div className="flex flex-col gap-6 p-7 @min-[520px]:flex-row @min-[520px]:items-start">
               {/* Camera badge is the only visible edit trigger on the
                   portrait itself — no separate always-visible toolbar
                   button, mirroring Book Details' own "no redundant

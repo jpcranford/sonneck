@@ -1185,12 +1185,10 @@ export function PersonDetailsSample() {
         </div>
       )}
 
-      <div className="overflow-hidden rounded-2xl border border-border bg-paper-raised shadow-sm">
-        {/* Stacked below lg:, side-by-side above it — mockup-parity port of
-            the real PersonDetailsPage.tsx's own fix: at phone width the
-            name/credit-chip column had nowhere near enough room beside
-            the fixed 150px avatar. */}
-        <div className="flex flex-col gap-6 p-7 lg:flex-row lg:items-start">
+      <div className="@container overflow-hidden rounded-2xl border border-border bg-paper-raised shadow-sm">
+        {/* Stacked until the card itself is 520px wide, then side by side
+            — same container query as the real PersonDetailsPage.tsx. */}
+        <div className="flex flex-col gap-6 p-7 @min-[520px]:flex-row @min-[520px]:items-start">
           {/* Camera badge is the only visible edit trigger on the portrait
               itself — no separate always-visible toolbar button for it,
               mirroring Book Details'
