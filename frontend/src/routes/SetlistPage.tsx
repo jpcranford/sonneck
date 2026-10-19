@@ -443,8 +443,11 @@ export function SetlistPage() {
             </InfoTooltip>
 
             <div className="relative">
-              <div className="flex">
-                {canDownload ? (
+              {/* Without `download` the download half is hidden, and the menu's
+                  copy items (view access is enough) open from a plain
+                  "Copy Program" button in its place. */}
+              {canDownload ? (
+                <div className="flex">
                   <DownloadLink
                     ref={downloadLinkRef}
                     href={getSetlistPdfUrl(setlistId)}
@@ -453,27 +456,28 @@ export function SetlistPage() {
                     <IconDownload size={16} />
                     Download Set PDF
                   </DownloadLink>
-                ) : (
                   <button
+                    ref={downloadMenuButtonRef}
                     type="button"
-                    disabled
-                    title="You don't have permission to download files"
-                    className="flex cursor-not-allowed items-center gap-2 rounded-l-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm text-ink opacity-50"
+                    onClick={() => setDownloadOpen((o) => !o)}
+                    aria-label="More download and copy options"
+                    className="relative -ml-px flex cursor-pointer items-center justify-center rounded-r-md border border-border bg-paper-raised px-2 text-ink transition-colors hover:z-10 hover:border-accent"
                   >
-                    <IconDownload size={16} />
-                    Download Set PDF
+                    <IconChevronDown size={16} />
                   </button>
-                )}
+                </div>
+              ) : (
                 <button
                   ref={downloadMenuButtonRef}
                   type="button"
                   onClick={() => setDownloadOpen((o) => !o)}
-                  aria-label="More download and copy options"
-                  className="relative -ml-px flex items-center justify-center rounded-r-md border border-border bg-paper-raised px-2 text-ink transition-colors disabled:opacity-50 enabled:cursor-pointer enabled:hover:z-10 enabled:hover:border-accent"
+                  className="flex cursor-pointer items-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm text-ink transition-colors hover:border-accent"
                 >
+                  <IconCopy size={16} />
+                  Copy Program
                   <IconChevronDown size={16} />
                 </button>
-              </div>
+              )}
               {downloadOpen && (
                 <div className="absolute top-full left-0 z-10 mt-1 w-64 rounded-md border border-border bg-paper-raised py-1 text-left shadow-lg">
                   {/* Copying needs only view access, so these stay usable
@@ -495,18 +499,22 @@ export function SetlistPage() {
                       {label}
                     </button>
                   ))}
-                  <div className="my-1 h-px bg-border" />
-                  {/* InfoTooltip, not a disabled button: a disabled element takes no taps,
-                      so on touch there would be no way to learn why it's inert. */}
-                  <InfoTooltip
-                    message="Coming soon — downloads the whole set's PDF with your annotations drawn on each piece, once annotations exist."
-                    ariaLabel="Download Set PDF + Annotations (coming soon with annotations)"
-                    showPointerCursor={false}
-                    triggerClassName="block w-full px-3 py-2 text-left text-sm text-ink-soft opacity-50"
-                  >
-                    Download Set PDF + Annotations
-                    <span className="block text-xs italic">Coming with annotations (§13)</span>
-                  </InfoTooltip>
+                  {canDownload && (
+                    <>
+                      <div className="my-1 h-px bg-border" />
+                      {/* InfoTooltip, not a disabled button: a disabled element takes no taps,
+                          so on touch there would be no way to learn why it's inert. */}
+                      <InfoTooltip
+                        message="Coming soon — downloads the whole set's PDF with your annotations drawn on each piece, once annotations exist."
+                        ariaLabel="Download Set PDF + Annotations (coming soon with annotations)"
+                        showPointerCursor={false}
+                        triggerClassName="block w-full px-3 py-2 text-left text-sm text-ink-soft opacity-50"
+                      >
+                        Download Set PDF + Annotations
+                        <span className="block text-xs italic">Coming with annotations (§13)</span>
+                      </InfoTooltip>
+                    </>
+                  )}
                 </div>
               )}
             </div>
