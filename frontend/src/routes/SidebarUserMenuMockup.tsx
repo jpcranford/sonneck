@@ -443,14 +443,14 @@ export function SidebarUserMenuMockup() {
   const identity = IDENTITIES[identityKey]
 
   return (
-    <div className="flex h-dvh overflow-hidden bg-paper text-ink">
+    <div className="flex h-dvh overflow-hidden bg-paper text-ink md:bg-sidebar-bg">
       <IdentityStateToggle state={identityKey} onChange={setIdentityKey} />
 
       {/* Desktop rail — hidden md:flex reproduces AppShell's own `hidden
           md:block` wrapper + Sidebar.tsx's internal flex-col in one class
           list, since this mockup isn't nested inside the real AppShell. */}
       <aside
-        className={`hidden h-dvh shrink-0 flex-col border-r border-sidebar-border bg-sidebar-bg transition-[width] duration-150 md:flex ${
+        className={`hidden h-dvh shrink-0 flex-col bg-sidebar-bg transition-[width] duration-150 md:flex ${
           collapsed ? 'w-16' : 'w-64'
         }`}
       >
@@ -482,7 +482,7 @@ export function SidebarUserMenuMockup() {
         />
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto">
+      <div className="flex min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto bg-paper md:rounded-l-2xl md:pl-1">
         <div className="flex h-14 shrink-0 items-center gap-3 border-b border-sidebar-border bg-sidebar-bg px-3 md:hidden">
           <button
             type="button"

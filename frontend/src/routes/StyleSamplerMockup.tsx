@@ -416,8 +416,8 @@ function ExampleWindowSection() {
       title="Example window"
       intro="A Library-like screen drawn with the color tokens: sidebar, toolbar, cards, pills, a callout, a focused field and an open context menu."
     >
-      <div className="flex h-[520px] overflow-hidden rounded-xl border border-border shadow-sm">
-        <aside className="hidden w-56 shrink-0 flex-col border-r border-sidebar-border bg-sidebar-bg p-3 sm:flex">
+      <div className="flex h-[520px] overflow-hidden rounded-xl border border-border bg-sidebar-bg shadow-sm">
+        <aside className="hidden w-56 shrink-0 flex-col bg-sidebar-bg p-3 sm:flex">
           <p className="px-2 py-2 font-display text-lg font-medium text-sidebar-text">Sonneck</p>
           <nav className="mt-2 flex flex-col gap-0.5">
             {[
@@ -457,7 +457,7 @@ function ExampleWindowSection() {
           </div>
         </aside>
 
-        <div className="relative min-w-0 flex-1 overflow-hidden bg-paper p-5">
+        <div className="relative min-w-0 flex-1 overflow-hidden bg-paper p-5 sm:rounded-l-2xl sm:pl-6">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="mr-auto font-display text-xl font-medium text-ink">Library</h3>
             <span className="flex h-9 w-48 items-center gap-2 rounded-md border border-border bg-paper-raised px-3 text-sm text-ink-soft outline-2 outline-offset-2 outline-focus">

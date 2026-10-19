@@ -68,7 +68,12 @@ export function AppShell() {
     // currently-visible viewport instead of a fixed one, removing the
     // mismatch this bug depends on.
     <PageToolbarSlotContext.Provider value={toolbarSlot}>
-      <div className="flex h-dvh overflow-hidden bg-paper text-ink">
+      {/* Beside the sidebar (md: and up) the frame behind the content is
+          the sidebar's color, and the content column rounds its two
+          corners against it (16px, picked on /mockup/sidebar-setlists) —
+          a sheet set into the frame, which draws the eye to the page. The
+          rounding replaces the sidebar's old border-r hairline. */}
+      <div className="flex h-dvh overflow-hidden bg-paper text-ink md:bg-sidebar-bg">
         {/* App-wide drag-and-drop upload (design doc §13) — window-level
           listeners plus its overlay and dialogs, rendered once here. */}
         <DropToUpload />
@@ -103,7 +108,7 @@ export function AppShell() {
           pulled the bar away from the screen's edge. Outside it, only the
           page bounces, under a bar that never moves. The library pages'
           toolbar joins it in the slot below. */}
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-paper md:rounded-l-2xl md:pl-1">
           <MobileNavTopBar onOpen={() => setMobileNavOpen(true)} />
           {/* A page's own toolbar renders here (components/PageToolbarSlot.tsx),
             above the scroll container for the same reason as the top bar.

@@ -104,7 +104,7 @@ export function Sidebar() {
     // this is exactly the "any future shell-like component" case that fix
     // was meant to cover.
     <aside
-      className={`flex h-dvh shrink-0 flex-col border-r border-sidebar-border bg-sidebar-bg transition-[width] duration-150 ${
+      className={`flex h-dvh shrink-0 flex-col bg-sidebar-bg transition-[width] duration-150 ${
         collapsed ? 'w-[max(4rem,var(--titlebar-lights))]' : 'w-64'
       }`}
     >

@@ -292,16 +292,28 @@ export function SidebarSetlistsMockup() {
   // seen live without editing the fixture by hand.
   const [previewEmpty, setPreviewEmpty] = useState(false)
   const previewSetlists = previewEmpty ? [] : VISIBLE_SETLISTS
+  // Proposal under review: with the sidebar showing (md: and up), the
+  // content column gets rounded corners where it meets the sidebar, the
+  // sidebar's color filling in behind them. 0 is today's square edge.
+  const [corner, setCorner] = useState<0 | 12 | 16 | 24>(16)
+  const cornerClass = {
+    0: '',
+    12: 'md:rounded-l-xl md:pl-1',
+    16: 'md:rounded-l-2xl md:pl-1',
+    24: 'md:rounded-l-3xl md:pl-1',
+  }[corner]
 
   return (
-    <div className="flex h-dvh overflow-hidden bg-paper text-ink">
+    <div
+      className={`flex h-dvh overflow-hidden bg-paper text-ink ${corner ? 'md:bg-sidebar-bg' : ''}`}
+    >
       {/* Desktop rail — hidden md:flex reproduces AppShell's own `hidden
           md:block` wrapper + Sidebar.tsx's internal flex-col in one class
           list, since this mockup isn't nested inside the real AppShell. */}
       <aside
-        className={`hidden h-dvh shrink-0 flex-col border-r border-sidebar-border bg-sidebar-bg transition-[width] duration-150 md:flex ${
-          collapsed ? 'w-16' : 'w-64'
-        }`}
+        className={`hidden h-dvh shrink-0 flex-col bg-sidebar-bg transition-[width] duration-150 md:flex ${
+          corner ? '' : 'border-r border-sidebar-border'
+        } ${collapsed ? 'w-16' : 'w-64'}`}
       >
         <div className="flex h-14 shrink-0 items-center justify-end px-3">
           <button
@@ -330,7 +342,9 @@ export function SidebarSetlistsMockup() {
         <div className="m-2 h-11 shrink-0 rounded-lg border border-sidebar-border bg-sidebar-panel" />
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto">
+      <div
+        className={`flex min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto bg-paper ${cornerClass}`}
+      >
         <div className="flex h-14 shrink-0 items-center gap-3 border-b border-sidebar-border bg-sidebar-bg px-3 md:hidden">
           <button
             type="button"
@@ -375,6 +389,23 @@ export function SidebarSetlistsMockup() {
             >
               No upcoming sets
             </button>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="font-medium text-ink-soft">Content corners:</span>
+            {([0, 12, 16, 24] as const).map((value) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setCorner(value)}
+                className={`cursor-pointer rounded-full border px-2.5 py-1 ${
+                  corner === value
+                    ? 'border-accent bg-accent-soft text-accent'
+                    : 'border-border text-ink-soft hover:text-ink'
+                }`}
+              >
+                {value === 0 ? 'Square (today)' : `${value}px`}
+              </button>
+            ))}
           </div>
         </div>
 
