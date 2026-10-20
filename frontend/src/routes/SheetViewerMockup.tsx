@@ -16,12 +16,14 @@ import {
   IconClef,
   IconClock,
   IconClockOff,
+  IconContrast,
   IconDots,
   IconEraser,
   IconHighlight,
   IconHourglassEmpty,
   IconInfoCircle,
   IconMetronome,
+  IconMinus,
   IconNotebook,
   IconPencil,
   IconPhotoCog,
@@ -30,6 +32,7 @@ import {
   IconPlus,
   IconRefresh,
   IconStopwatch,
+  IconSun,
   IconTypography,
   IconX,
 } from '@tabler/icons-react'
@@ -98,6 +101,26 @@ const EXAMPLE_NOTES =
 const EMPTY_NOTES =
   'Nothing yet. Big picture notes go here: what to remember about this piece, or a log of how practice is going. Markings on the music can be made in Annotate mode.'
 const INFO_WIDTH = 380
+const PHOTO_WIDTH = 320
+
+// Photo controls (Phase 5): discrete steps, never live-dragged values.
+interface Photo {
+  brightness: number
+  contrast: number
+  grayscale: boolean
+  invert: boolean
+  margin: boolean
+}
+const PHOTO_DEFAULT: Photo = {
+  brightness: 100,
+  contrast: 100,
+  grayscale: false,
+  invert: false,
+  margin: false,
+}
+const PHOTO_STEP = 10
+const PHOTO_MIN = 50
+const PHOTO_MAX = 150
 
 function formatDuration(seconds: number) {
   const m = Math.floor(seconds / 60)
@@ -242,7 +265,24 @@ export function SheetViewerMockup() {
   const [mode, setMode] = useState<'play' | 'annotate'>('play')
   const [tool, setTool] = useState<Tool | null>(null)
   const [color, setColor] = useState(0)
-  const [menu, setMenu] = useState<'clock' | 'more' | 'info' | null>(null)
+  const [menu, setMenu] = useState<'clock' | 'more' | 'info' | 'photo' | null>(null)
+  // Photo controls and the margin, per piece (a practice setting).
+  const [photoByPiece, setPhotoByPiece] = useState<Record<number, Photo>>({})
+  // The theme and Dark Mode Scores as the page opened with them; the Mockup
+  // panel can try the other theme (restored on leaving).
+  const [initialTheme] = useState<'light' | 'dark'>(() =>
+    document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light',
+  )
+  const [theme, setTheme] = useState<'light' | 'dark'>(initialTheme)
+  const [darkScores, setDarkScores] = useState(() =>
+    document.documentElement.hasAttribute('data-dark-scores'),
+  )
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme
+    return () => {
+      document.documentElement.dataset.theme = initialTheme
+    }
+  }, [theme, initialTheme])
   // Info (Phases 3–4). Everything here is local to the mockup: edits,
   // statuses and the bar's on/off are kept per piece but never written.
   const [notesOverride, setNotesOverride] = useState<Record<number, string>>({})
@@ -285,7 +325,40 @@ export function SheetViewerMockup() {
   // Hidden while any menu or Info is open, so nothing stacks over it.
   const showBar = notes !== '' && activeId !== null && !barHidden[activeId] && menu === null
 
+  const photo = (activeId !== null && photoByPiece[activeId]) || PHOTO_DEFAULT
+  function setPhoto(change: Partial<Photo>) {
+    if (activeId === null) return
+    setPhotoByPiece({ ...photoByPiece, [activeId]: { ...photo, ...change } })
+  }
+  // Phase 5: with Dark Mode Scores on, the page is already inverted, so
+  // Invert shows as on and locked, and the user's own invert is set aside
+  // (not cleared) until Dark Mode Scores is off again.
+  const invertHidden = theme === 'dark' && darkScores
+  // The theme's own treatment sits underneath, never shown as a setting
+  // (plan): the dark theme's 85% dim, or Dark Mode Scores' invert — then
+  // the user's filters on top, so their values stay relative to the theme.
+  // On the page and its mat together (so an invert doesn't leave a white
+  // frame), never on the annotation layer, a sibling.
+  const scoreFilter =
+    [
+      theme === 'dark' ? (darkScores ? 'invert(0.9) hue-rotate(180deg)' : 'brightness(0.85)') : '',
+      photo.brightness !== 100 ? `brightness(${photo.brightness / 100})` : '',
+      photo.contrast !== 100 ? `contrast(${photo.contrast / 100})` : '',
+      photo.grayscale ? 'grayscale(1)' : '',
+      // A full invert, deliberately unlike Dark Mode Scores' invert(0.9):
+      // a light-theme Invert reaches true black, where Dark Mode Scores
+      // stops at near-black (#1a1a1a). Kept as is for now (user, Phase 5);
+      // matching the two is an open question for later.
+      photo.invert && !invertHidden ? 'invert(1) hue-rotate(180deg)' : '',
+    ]
+      .filter(Boolean)
+      .join(' ') || 'none'
+  const photoChanged =
+    photo.brightness !== 100 || photo.contrast !== 100 || photo.grayscale || photo.invert
+
   const last = useRef({ dir: 0, at: 0 })
+  const photoAnchorRef = useRef<HTMLDivElement>(null)
+  const phoneRow2Ref = useRef<HTMLDivElement>(null)
   const infoAnchorRef = useRef<HTMLDivElement>(null)
   const clockAnchorRef = useRef<HTMLDivElement>(null)
   const moreAnchorRef = useRef<HTMLDivElement>(null)
@@ -551,6 +624,8 @@ export function SheetViewerMockup() {
       document.body,
     )
 
+  // Wide screens show the photo button inline; elsewhere it's in ⋯.
+  const photoInline = tier === 'wide'
   const inlineExtras = tier === 'wide'
   const extras = (
     <>
@@ -560,15 +635,127 @@ export function SheetViewerMockup() {
       <SoonButton label="Theory reference" message="Theory reference: coming soon">
         <IconClef size={22} />
       </SoonButton>
+    </>
+  )
+  const photoButton = (
+    <div ref={photoAnchorRef} className="relative">
       <HitButton
         label="Photo filters"
-        title="Photo filters (Phase 5)"
-        onClick={() => flash('Photo filters are designed in Phase 5')}
+        onClick={() => setMenu(menu === 'photo' ? null : 'photo')}
+        faceClassName={menu === 'photo' || photoChanged ? 'bg-accent-soft text-accent' : ''}
       >
         <IconPhotoCog size={22} />
       </HitButton>
-    </>
+    </div>
   )
+
+  // The Sheet Viewer's switch row (design D) for a panel whose other rows
+  // have icons: the label lined up with their text.
+  function switchRow(
+    label: string,
+    checked: boolean,
+    onChange: (v: boolean) => void,
+    disabled?: boolean,
+  ) {
+    return (
+      <div
+        data-hit
+        className={`${HIT} w-full`}
+        onClick={(event) => {
+          if (!disabled && event.target === event.currentTarget) onChange(!checked)
+        }}
+      >
+        <Toggle
+          row
+          checked={checked}
+          onChange={onChange}
+          label={label}
+          disabled={disabled}
+          className="h-10 w-full rounded-[10px] pr-3 pl-[42px] hover:bg-(--sv-hover)"
+        />
+      </div>
+    )
+  }
+  function stepperRow(
+    label: string,
+    Icon: typeof IconSun,
+    value: number,
+    onChange: (v: number) => void,
+  ) {
+    return (
+      <div className="flex h-12 items-center">
+        <span className="flex min-w-0 flex-1 items-center gap-2.5 pl-3">
+          <Icon size={20} className="shrink-0" />
+          <span className="truncate">{label}</span>
+        </span>
+        <HitButton
+          label={`Less ${label.toLowerCase()}`}
+          onClick={() => onChange(value - PHOTO_STEP)}
+          disabled={value <= PHOTO_MIN}
+        >
+          <IconMinus size={20} />
+        </HitButton>
+        <span className="w-12 text-center font-clock tabular-nums">{value}%</span>
+        <HitButton
+          label={`More ${label.toLowerCase()}`}
+          onClick={() => onChange(value + PHOTO_STEP)}
+          disabled={value >= PHOTO_MAX}
+        >
+          <IconPlus size={20} />
+        </HitButton>
+      </div>
+    )
+  }
+  // Under the photo button; under ⋯ on a tablet; on a phone, centered under
+  // the whole two-row toolbar so it never covers the page cyclers.
+  const photoStyle = useAnchoredPanel(
+    tier === 'wide' ? photoAnchorRef : tier === 'phone' ? phoneRow2Ref : moreAnchorRef,
+    menu === 'photo',
+    'below-center',
+    { gap: 6, panelWidth: PHOTO_WIDTH },
+  )
+  const photoPanel =
+    menu === 'photo' &&
+    photoStyle &&
+    createPortal(
+      <div
+        style={{ ...photoStyle, width: PHOTO_WIDTH }}
+        className="z-50 rounded-xl border border-border bg-paper-raised px-3 pt-3 pb-2 shadow-xl [--sv-hover:var(--color-paper-hover)]"
+      >
+        {stepperRow('Brightness', IconSun, photo.brightness, (v) => setPhoto({ brightness: v }))}
+        {stepperRow('Contrast', IconContrast, photo.contrast, (v) => setPhoto({ contrast: v }))}
+        {switchRow('Grayscale', photo.grayscale, (v) => setPhoto({ grayscale: v }))}
+        {switchRow(
+          'Invert',
+          invertHidden ? true : photo.invert,
+          (v) => setPhoto({ invert: v }),
+          invertHidden,
+        )}
+        {invertHidden && (
+          <p className="-mt-1 pr-3 pb-1 pl-[42px] text-xs text-ink-muted">
+            Dark Mode Scores already inverts the pages.
+          </p>
+        )}
+        {/* Phase 5 (option A): the edge margin lives here, not on its own
+            toolbar button. */}
+        {switchRow('Edge margin', photo.margin, (v) => setPhoto({ margin: v }))}
+        <button
+          type="button"
+          data-hit
+          disabled={!photoChanged}
+          onClick={() =>
+            setPhoto({ brightness: 100, contrast: 100, grayscale: false, invert: false })
+          }
+          className={`${HIT} w-full group/b disabled:opacity-50`}
+        >
+          <span className={`${FACE} ${FACE_HOVER} w-full justify-start gap-2.5 px-3`}>
+            <IconRefresh size={20} />
+            Reset filters
+          </span>
+        </button>
+      </div>,
+      document.body,
+    )
 
   const sc = piece
   const credit = sc
@@ -969,6 +1156,7 @@ export function SheetViewerMockup() {
                 {annotating ? doneButton : annotateButton}
               </div>
               <div
+                ref={phoneRow2Ref}
                 className={`flex h-14 items-center border-t px-1 ${
                   annotating ? 'border-accent/30' : 'border-border'
                 }`}
@@ -1010,6 +1198,7 @@ export function SheetViewerMockup() {
                   <>
                     {clockButton}
                     {inlineExtras && extras}
+                    {photoInline && photoButton}
                     {infoButton}
                     {!inlineExtras && moreButton}
                     <span className="mx-1 h-7 w-px shrink-0 bg-border" />
@@ -1033,6 +1222,7 @@ export function SheetViewerMockup() {
             <div className="fixed inset-0 z-30" onPointerDown={() => setMenu(null)} />
             {clockMenu}
             {infoPanel}
+            {photoPanel}
             {menu === 'more' && (
               <div className="absolute top-full right-2 z-50 mt-1.5 w-72 rounded-xl border border-border bg-paper-raised p-3 shadow-xl [--sv-hover:var(--color-paper-hover)]">
                 <MenuRow
@@ -1047,14 +1237,14 @@ export function SheetViewerMockup() {
                   trailing="Coming soon"
                   soon
                 />
-                <MenuRow
-                  icon={<IconPhotoCog size={20} />}
-                  label="Photo filters"
-                  onClick={() => {
-                    setMenu(null)
-                    flash('Photo filters are designed in Phase 5')
-                  }}
-                />
+                {!photoInline && (
+                  <MenuRow
+                    icon={<IconPhotoCog size={20} />}
+                    label="Photo filters"
+                    trailing={photoChanged ? 'On' : undefined}
+                    onClick={() => setMenu('photo')}
+                  />
+                )}
               </div>
             )}
           </>
@@ -1071,9 +1261,18 @@ export function SheetViewerMockup() {
           down.current = null
         }}
       >
-        {/* Plain white mat (plan: launch default), dimmed with the page in
-            the dark theme by score-page. */}
-        <div className="score-page absolute inset-0 flex items-center justify-center bg-white pb-[env(safe-area-inset-bottom)]">
+        {/* Plain white mat (plan: launch default). Its filter is set here,
+            not by index.css's score-page rules, so the theme's treatment and
+            the user's photo filters compose in one list (see scoreFilter).
+            The margin keeps the page clear of the screen's edges. */}
+        <div
+          style={{ filter: scoreFilter }}
+          className={`absolute inset-0 flex items-center justify-center bg-white ${
+            photo.margin
+              ? 'p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]'
+              : 'pb-[env(safe-area-inset-bottom)]'
+          }`}
+        >
           {activeId !== null && (
             <img
               key={`${activeId}-${page}`}
@@ -1146,6 +1345,20 @@ export function SheetViewerMockup() {
               <label className="flex items-center gap-2">
                 <Checkbox checked={hasNotes} onChange={(e) => setHasNotes(e.target.checked)} />
                 Piece has notes
+              </label>
+              <SingleSelect
+                size="sm"
+                label="Theme"
+                options={[
+                  { value: 'light', label: 'Light' },
+                  { value: 'dark', label: 'Dark' },
+                ]}
+                value={theme}
+                onChange={(v) => setTheme(v as 'light' | 'dark')}
+              />
+              <label className="flex items-center gap-2">
+                <Checkbox checked={darkScores} onChange={(e) => setDarkScores(e.target.checked)} />
+                Dark Mode Scores
               </label>
               <label className="flex items-center gap-2">
                 <Checkbox checked={showZones} onChange={(e) => setShowZones(e.target.checked)} />
