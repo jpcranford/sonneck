@@ -444,13 +444,16 @@ export function SheetViewerMockup() {
     gap: 6,
     panelWidth: 288,
   })
+  // pb-2, not 3: the last row's 48pt hit area has 4px of invisible space
+  // under its 40px face, so 8px of padding puts the face 12px from the
+  // bottom — the same as the switcher track's 12px from the top.
   const clockMenu =
     menu === 'clock' &&
     clockMenuStyle &&
     createPortal(
       <div
         style={clockMenuStyle}
-        className="z-50 w-72 rounded-xl border border-border bg-paper-raised p-2 shadow-xl [--sv-hover:var(--color-paper-hover)]"
+        className="z-50 w-72 rounded-xl border border-border bg-paper-raised px-3 pt-3 pb-2 shadow-xl [--sv-hover:var(--color-paper-hover)]"
       >
         <div className="flex rounded-[13px] bg-paper-sunken px-1">
           {(['clock', 'stopwatch'] as const).map((m) => (
@@ -633,17 +636,22 @@ export function SheetViewerMockup() {
     : []
 
   const infoBody = (
-    <div className="flex flex-col gap-5 px-4 pt-1 pb-5">
+    <div className="flex flex-col gap-5 px-5 pt-3 pb-5">
       <section className="flex flex-col gap-2">
-        <div className="flex min-h-12 items-center">
+        {/* Only as tall as the pencil's face (32px): its 48pt tap area
+            hangs 8px over above and below, and 4px past the right edge, so
+            the label sits as close to the notes as the other sections'
+            labels do and the pencil's face lines up with the content edge.
+            The icon stays centered in its tap area. */}
+        <div className="flex min-h-8 items-center">
           <h3 className={sectionLabel}>Your notes</h3>
           <span className="flex-1" />
           {notes && !editing && activeId !== null && (
-            <>
+            <div className="-my-2 -mr-1">
               <HitButton label="Edit your notes" onClick={startEdit}>
                 <IconPencil size={20} />
               </HitButton>
-            </>
+            </div>
           )}
         </div>
         {editing ? (
@@ -693,7 +701,7 @@ export function SheetViewerMockup() {
             {activeId !== null && (
               <div
                 data-hit
-                className={`${HIT} -mx-2 -mt-1`}
+                className={`${HIT} -mx-2 -mt-1 -mb-2`}
                 onClick={(event) => {
                   if (event.target === event.currentTarget) setBar(!!barHidden[activeId])
                 }}
@@ -732,7 +740,7 @@ export function SheetViewerMockup() {
           <span className="text-sm font-medium">{status ?? 'None'}</span>
         </div>
         {/* Tap a status to set it, the current one again to clear it. */}
-        <div className="-ml-1 flex" role="group" aria-label="Practice status">
+        <div className="-mb-1 -ml-1 flex" role="group" aria-label="Practice status">
           {STATUSES.map(({ name, Icon }) => (
             <HitButton
               key={name}
@@ -780,7 +788,7 @@ export function SheetViewerMockup() {
     panelWidth: INFO_WIDTH,
   })
   const infoHeader = (title: ReactNode) => (
-    <div className="flex shrink-0 items-center border-b border-border pr-1">
+    <div className="flex shrink-0 items-center border-b border-border pr-4">
       {title}
       <HitButton label="Close Info" onClick={() => openInfo(false)}>
         <IconX size={20} />
@@ -804,7 +812,7 @@ export function SheetViewerMockup() {
                 data-hit
                 onClick={() => setSheetFull(!sheetFull)}
                 aria-label={sheetFull ? 'Shrink Info' : 'Expand Info'}
-                className={`${HIT} mt-2 flex-1 justify-start pl-4`}
+                className={`${HIT} mt-2 flex-1 justify-start pl-5`}
               >
                 <span className="font-display text-base font-medium">Info</span>
               </button>,
@@ -819,7 +827,7 @@ export function SheetViewerMockup() {
             style={{ ...infoStyle, width: INFO_WIDTH }}
             className="z-50 flex max-h-[calc(100dvh-5.5rem)] flex-col overflow-hidden rounded-xl border border-border bg-paper-raised shadow-xl [--sv-hover:var(--color-paper-hover)]"
           >
-            {infoHeader(<h2 className="flex-1 pl-4 font-display text-base font-medium">Info</h2>)}
+            {infoHeader(<h2 className="flex-1 pl-5 font-display text-base font-medium">Info</h2>)}
             <div className="min-h-0 overflow-y-auto overscroll-contain">{infoBody}</div>
           </div>,
           document.body,
@@ -1026,7 +1034,7 @@ export function SheetViewerMockup() {
             {clockMenu}
             {infoPanel}
             {menu === 'more' && (
-              <div className="absolute top-full right-2 z-50 mt-1.5 w-72 rounded-xl border border-border bg-paper-raised p-2 shadow-xl [--sv-hover:var(--color-paper-hover)]">
+              <div className="absolute top-full right-2 z-50 mt-1.5 w-72 rounded-xl border border-border bg-paper-raised p-3 shadow-xl [--sv-hover:var(--color-paper-hover)]">
                 <MenuRow
                   icon={<IconMetronome size={20} />}
                   label="Metronome"
