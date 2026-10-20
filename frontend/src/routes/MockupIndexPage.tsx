@@ -149,7 +149,7 @@ const SECTIONS: { title: string; mockups: Mockup[] }[] = [
       {
         to: '/mockup/sheet-viewer',
         name: 'Sheet Viewer',
-        note: 'The full-screen practice and performance mode, Phase 2: real pages from a piece you pick, a top toolbar, side-thirds tap zones (pedal keys too), two-tap close, the clock and stopwatch, faint coming-soon Metronome and Theory buttons, and Annotate’s tinted toolbar with placeholder tools. The page cyclers stay put in both modes. Toggles for tap zones and 48pt hit areas.',
+        note: 'The full-screen practice and performance mode: real pages from a piece you pick, a top toolbar, side-thirds tap zones (pedal keys too), two-tap close, the clock and stopwatch, faint coming-soon Metronome and Theory buttons, Annotate’s tinted toolbar with placeholder tools, and Info (Phase 4): a card under the Info button (a bottom sheet on phones) with your notes, editable in place, the practice-status buttons and the piece’s details, plus the notes bar over the page and a dot on Info when the piece has notes. Nothing is written to the library. The page cyclers stay put in both modes. Toggles for notes, tap zones and 48pt hit areas.',
       },
     ],
   },

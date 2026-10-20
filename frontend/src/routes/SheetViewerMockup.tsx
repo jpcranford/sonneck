@@ -6,21 +6,28 @@ import {
   IconAdjustmentsHorizontal,
   IconArrowBackUp,
   IconBallpen,
+  IconBan,
   IconCheck,
   IconChevronLeft,
   IconChevronRight,
+  IconCircleCheckFilled,
+  IconCircleDashed,
+  IconCircleHalf2,
   IconClef,
   IconClock,
   IconClockOff,
   IconDots,
   IconEraser,
   IconHighlight,
+  IconHourglassEmpty,
   IconInfoCircle,
   IconMetronome,
+  IconNotebook,
   IconPencil,
   IconPhotoCog,
   IconPlayerPause,
   IconPlayerPlay,
+  IconPlus,
   IconRefresh,
   IconStopwatch,
   IconTypography,
@@ -29,6 +36,7 @@ import {
 import { getPiece, getPieceThumbnailUrl, searchPieces } from '../api/pieces'
 import { Checkbox } from '../components/Checkbox'
 import { InfoTooltip } from '../components/InfoTooltip'
+import { MarkdownText } from '../components/MarkdownText'
 import { SingleSelect } from '../components/SingleSelect'
 import { Toggle } from '../components/Toggle'
 import { useAnchoredPanel } from '../hooks/useAnchorRect'
@@ -72,6 +80,33 @@ const TOOLS = [
 type Tool = (typeof TOOLS)[number]['key']
 // Placeholder palette — the real one is designed in Phase 11.
 const COLORS = ['#2b2622', '#c0392b', '#2f6fb5', '#e0a526']
+
+// Practice statuses in practice order, by their durable icon (the real
+// strip reads the viewer's own list; this mockup writes nothing).
+const STATUSES = [
+  { name: 'Want to Learn', Icon: IconCircleDashed },
+  { name: 'Learning', Icon: IconCircleHalf2 },
+  { name: 'Learned', Icon: IconCircleCheckFilled },
+  { name: 'Stalled', Icon: IconHourglassEmpty },
+  { name: 'Dropped', Icon: IconBan },
+]
+// Shown when the picked piece has no notes of its own yet.
+const EXAMPLE_NOTES =
+  '**Big picture:** keep it moving; the middle section is a waltz, not a ballad.\nOct 12 — first time through at tempo. Left hand still heavy in the bridge.'
+// Phase 3: notes are broad strokes and practice-log entries; markings on the
+// music itself belong in Annotate.
+const EMPTY_NOTES =
+  'Nothing yet. Big picture notes go here: what to remember about this piece, or a log of how practice is going. Markings on the music can be made in Annotate mode.'
+const INFO_WIDTH = 380
+
+function formatDuration(seconds: number) {
+  const m = Math.floor(seconds / 60)
+  return `${m}:${String(seconds % 60).padStart(2, '0')}`
+}
+// The notes bar shows the first line as plain text.
+function firstLine(markdown: string) {
+  return (markdown.split('\n').find((l) => l.trim()) ?? '').replace(/[*_`#>]/g, '').trim()
+}
 
 // Debounced turns (locked plan rule): a turn in the same direction within
 // this long of the last one is ignored; the opposite direction always fires.
@@ -185,6 +220,10 @@ export function SheetViewerMockup() {
   const navigate = useNavigate()
   const width = useWindowWidth()
   const tier = width >= 1100 ? 'wide' : width >= 640 ? 'mid' : 'phone'
+  // Below 900px the labeled Annotate button doesn't fit (beside the clock
+  // and Info with the cyclers centered; on a phone, beside the title, Info
+  // and ⋯), so it's an icon there.
+  const annotateLabel = width >= 900
 
   const [pieceId, setPieceId] = useState<number | null>(null)
   const { data: recent = [] } = useQuery({
@@ -203,7 +242,16 @@ export function SheetViewerMockup() {
   const [mode, setMode] = useState<'play' | 'annotate'>('play')
   const [tool, setTool] = useState<Tool | null>(null)
   const [color, setColor] = useState(0)
-  const [menu, setMenu] = useState<'clock' | 'more' | null>(null)
+  const [menu, setMenu] = useState<'clock' | 'more' | 'info' | null>(null)
+  // Info (Phases 3–4). Everything here is local to the mockup: edits,
+  // statuses and the bar's on/off are kept per piece but never written.
+  const [notesOverride, setNotesOverride] = useState<Record<number, string>>({})
+  const [statusOverride, setStatusOverride] = useState<Record<number, string | null>>({})
+  const [barHidden, setBarHidden] = useState<Record<number, boolean>>({})
+  const [hasNotes, setHasNotes] = useState(true)
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState('')
+  const [sheetFull, setSheetFull] = useState(false)
   const [closeArmed, setCloseArmed] = useState(false)
   const [hint, setHint] = useState<{ text: string; id: number } | null>(null)
   const [showZones, setShowZones] = useState(false)
@@ -225,7 +273,20 @@ export function SheetViewerMockup() {
       ? stopwatchText(swAcc + (swStart !== null ? now - swStart : 0))
       : (showSeconds ? clockFormatSeconds : clockFormat).format(now)
 
+  const edited =
+    activeId !== null && activeId in notesOverride ? notesOverride[activeId] : undefined
+  const notes = edited !== undefined ? edited : hasNotes ? piece?.userNotes || EXAMPLE_NOTES : ''
+  const notesAreExample = edited === undefined && hasNotes && !piece?.userNotes
+  const status =
+    activeId !== null && activeId in statusOverride
+      ? statusOverride[activeId]
+      : (piece?.practiceStatus ?? null)
+  const infoOpen = menu === 'info'
+  // Hidden while any menu or Info is open, so nothing stacks over it.
+  const showBar = notes !== '' && activeId !== null && !barHidden[activeId] && menu === null
+
   const last = useRef({ dir: 0, at: 0 })
+  const infoAnchorRef = useRef<HTMLDivElement>(null)
   const clockAnchorRef = useRef<HTMLDivElement>(null)
   const moreAnchorRef = useRef<HTMLDivElement>(null)
   const closeTimer = useRef<number | undefined>(undefined)
@@ -259,6 +320,7 @@ export function SheetViewerMockup() {
     setPage(next)
   }
   const turnRef = useRef(turn)
+  const setMenuRef = useRef(setMenu)
   useEffect(() => {
     turnRef.current = turn
   })
@@ -266,12 +328,18 @@ export function SheetViewerMockup() {
   // Page-turner pedals pair as keyboards sending this fixed set (plan:
   // hardcoded, no remapping). Space/Enter would also press whichever
   // toolbar button last took focus, so the viewer claims them.
-  const menuOpen = menu !== null
+  // Pedals keep turning while Info is open (only taps close it first).
+  const menuOpen = menu === 'clock' || menu === 'more'
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
-      if (event.metaKey || event.ctrlKey || event.altKey || menuOpen) return
+      if (event.metaKey || event.ctrlKey || event.altKey) return
       const target = event.target as Element | null
       if (target?.closest('input, textarea, select, [role="listbox"]')) return
+      if (event.key === 'Escape') {
+        setMenuRef.current(null)
+        return
+      }
+      if (menuOpen) return
       const back = ['ArrowLeft', 'ArrowUp', 'PageUp']
       const forward = ['ArrowRight', 'ArrowDown', 'PageDown', ' ', 'Enter']
       if (back.includes(event.key)) {
@@ -370,15 +438,12 @@ export function SheetViewerMockup() {
     </div>
   )
 
-  // Centered under the clock — or under ⋯ on a phone, where the clock lives
-  // in that menu — and kept on screen at the edges. Portaled to <body>, so
-  // it sits over the backdrop that closes it.
-  const clockMenuStyle = useAnchoredPanel(
-    tier === 'phone' ? moreAnchorRef : clockAnchorRef,
-    menu === 'clock',
-    'below-center',
-    { gap: 6, panelWidth: 288 },
-  )
+  // Centered under the clock and kept on screen at the edges. Portaled to
+  // <body>, so it sits over the backdrop that closes it.
+  const clockMenuStyle = useAnchoredPanel(clockAnchorRef, menu === 'clock', 'below-center', {
+    gap: 6,
+    panelWidth: 288,
+  })
   const clockMenu =
     menu === 'clock' &&
     clockMenuStyle &&
@@ -492,15 +557,260 @@ export function SheetViewerMockup() {
       >
         <IconPhotoCog size={22} />
       </HitButton>
+    </>
+  )
+
+  const sc = piece
+  const credit = sc
+    ? [
+        ...sc.composer.values.map((p) => p.name),
+        ...sc.arranger.values.map((p) => `arr. ${p.name}`),
+      ].join(', ')
+    : ''
+
+  // A dot on Info whenever the piece has notes and Info is closed (Phase 3).
+  const notesDot = (
+    <span
+      className={`pointer-events-none absolute top-[11px] right-[11px] size-[9px] rounded-full bg-accent-fill ring-2 ${mode === 'annotate' ? 'ring-accent-soft' : 'ring-paper-raised'}`}
+    />
+  )
+  const infoButton = (
+    <div ref={infoAnchorRef} className="relative">
       <HitButton
         label="Info"
-        title="Info: your notes, practice status, piece details (Phases 3–4)"
-        onClick={() => flash('The Info drawer is designed in Phases 3–4')}
+        title="Info: your notes, practice status and the piece’s details"
+        onClick={() => openInfo(!infoOpen)}
+        faceClassName={infoOpen ? 'bg-accent-soft text-accent' : ''}
       >
         <IconInfoCircle size={22} />
       </HitButton>
-    </>
+      {notes && !infoOpen && notesDot}
+    </div>
   )
+
+  function openInfo(open: boolean) {
+    setMenu(open ? 'info' : null)
+    setSheetFull(false)
+  }
+  function startEdit() {
+    setDraft(notes)
+    setEditing(true)
+  }
+  function saveEdit() {
+    if (activeId === null) return
+    setNotesOverride({ ...notesOverride, [activeId]: draft.trim() })
+    setEditing(false)
+    flash('Notes saved (mockup: nothing is written)')
+  }
+  function setBar(visible: boolean) {
+    if (activeId === null) return
+    setBarHidden({ ...barHidden, [activeId]: !visible })
+  }
+  const sectionLabel = 'text-xs font-semibold tracking-wider text-ink-muted uppercase'
+  const details: [string, string][] = piece
+    ? (
+        [
+          ['Opus', piece.workOpusNumber.value],
+          ['Keys', piece.keys.map((k) => k.name).join(' › ')],
+          ['Sheet type', piece.sheetType.value?.name ?? ''],
+          [
+            'Book',
+            piece.sourceBookTitle
+              ? `${piece.sourceBookTitle}${piece.sourcePageStart ? (piece.sourcePageEnd && piece.sourcePageEnd !== piece.sourcePageStart ? ` (pp. ${piece.sourcePageStart}–${piece.sourcePageEnd})` : ` (p. ${piece.sourcePageStart})`) : ''}`
+              : '',
+          ],
+          ['Duration', piece.duration ? formatDuration(piece.duration) : ''],
+          ['Pages', String(piece.pageCount)],
+        ] as [string, string][]
+      ).filter(([, v]) => v)
+    : []
+
+  const infoBody = (
+    <div className="flex flex-col gap-5 px-4 pt-1 pb-5">
+      <section className="flex flex-col gap-2">
+        <div className="flex min-h-12 items-center">
+          <h3 className={sectionLabel}>Your notes</h3>
+          <span className="flex-1" />
+          {notes && !editing && activeId !== null && (
+            <>
+              {/* The shared Toggle (36×20) in a 48pt row; a tap anywhere on
+                  the row flips it too. */}
+              <div
+                data-hit
+                className={`${HIT} px-2`}
+                onClick={(event) => {
+                  if (event.target === event.currentTarget) setBar(!!barHidden[activeId])
+                }}
+              >
+                <Toggle
+                  checked={!barHidden[activeId]}
+                  onChange={setBar}
+                  label="Show in notes bar"
+                />
+              </div>
+              <HitButton label="Edit your notes" onClick={startEdit}>
+                <IconPencil size={20} />
+              </HitButton>
+            </>
+          )}
+        </div>
+        {editing ? (
+          <>
+            <textarea
+              autoFocus
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              aria-label="Your notes"
+              className="min-h-40 w-full resize-y rounded-xl border border-accent bg-paper-raised px-4 py-3 text-base leading-relaxed text-ink outline-none select-text"
+            />
+            <div className="flex items-center">
+              <span className="mr-auto text-xs text-ink-muted">
+                Markdown and :shortcodes: work here.
+              </span>
+              <HitButton
+                label="Cancel"
+                onClick={() => setEditing(false)}
+                faceClassName="border border-border bg-paper-raised px-3 font-medium hover:border-accent"
+              >
+                Cancel
+              </HitButton>
+              <HitButton
+                label="Done"
+                onClick={saveEdit}
+                faceClassName="bg-accent-fill px-3 font-medium text-white group-hover/b:bg-accent-fill/90"
+              >
+                <IconCheck size={18} />
+                Done
+              </HitButton>
+            </div>
+          </>
+        ) : notes ? (
+          <>
+            <div className="rounded-xl border border-accent/40 bg-paper px-4 py-3 text-base leading-relaxed select-text">
+              <MarkdownText>{notes}</MarkdownText>
+            </div>
+            {notesAreExample && (
+              <p className="text-xs text-ink-faint italic">
+                Example notes: this piece has none of its own.
+              </p>
+            )}
+          </>
+        ) : (
+          <>
+            <p className="rounded-xl border border-dashed border-border px-4 py-3 text-sm text-ink-muted italic">
+              {EMPTY_NOTES}
+            </p>
+            <div className="-ml-1">
+              <HitButton
+                label="Add notes"
+                onClick={startEdit}
+                faceClassName="border border-border bg-paper-raised px-3 font-medium hover:border-accent"
+              >
+                <IconPlus size={18} />
+                Add notes
+              </HitButton>
+            </div>
+          </>
+        )}
+      </section>
+      <section className="flex flex-col gap-1">
+        <div className="flex items-baseline justify-between">
+          <h3 className={sectionLabel}>Practice status</h3>
+          <span className="text-sm font-medium">{status ?? 'None'}</span>
+        </div>
+        {/* Tap a status to set it, the current one again to clear it. */}
+        <div className="-ml-1 flex" role="group" aria-label="Practice status">
+          {STATUSES.map(({ name, Icon }) => (
+            <HitButton
+              key={name}
+              label={name}
+              onClick={() => {
+                if (activeId === null) return
+                setStatusOverride({ ...statusOverride, [activeId]: status === name ? null : name })
+              }}
+              faceClassName={
+                status === name
+                  ? 'border border-accent bg-accent-soft text-accent'
+                  : 'border border-border text-ink-soft group-hover/b:bg-(--sv-hover)'
+              }
+            >
+              <Icon size={20} />
+            </HitButton>
+          ))}
+        </div>
+      </section>
+      {piece && (
+        <section className="flex flex-col gap-2">
+          <h3 className={sectionLabel}>About this piece</h3>
+          <div>
+            <p className="font-display text-lg leading-snug font-medium">{piece.title}</p>
+            {credit && <p className="text-sm text-ink-soft">{credit}</p>}
+          </div>
+          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
+            {details.map(([label, value]) => (
+              <Fragment key={label}>
+                <dt className="text-ink-muted">{label}</dt>
+                <dd>{value}</dd>
+              </Fragment>
+            ))}
+          </dl>
+        </section>
+      )}
+    </div>
+  )
+
+  // Phase 3: a card hanging from Info on tablets and desktop, a bottom sheet
+  // on phones. Portaled, over the backdrop — so a tap on the score closes
+  // Info first rather than turning the page.
+  const infoStyle = useAnchoredPanel(infoAnchorRef, infoOpen && tier !== 'phone', 'below-center', {
+    gap: 6,
+    panelWidth: INFO_WIDTH,
+  })
+  const infoHeader = (title: ReactNode) => (
+    <div className="flex shrink-0 items-center border-b border-border pr-1">
+      {title}
+      <HitButton label="Close Info" onClick={() => openInfo(false)}>
+        <IconX size={20} />
+      </HitButton>
+    </div>
+  )
+  const infoPanel =
+    infoOpen &&
+    (tier === 'phone'
+      ? createPortal(
+          <div
+            className={`fixed inset-x-0 bottom-0 z-50 flex flex-col rounded-t-2xl border-t border-border bg-paper-raised pb-[env(safe-area-inset-bottom)] shadow-2xl [--sv-hover:var(--color-paper-hover)] ${
+              sheetFull ? 'top-[calc(env(safe-area-inset-top)+0.75rem)]' : 'h-[58dvh]'
+            }`}
+          >
+            <span className="pointer-events-none absolute top-1.5 left-1/2 h-[5px] w-10 -translate-x-1/2 rounded-full bg-ink-fainter" />
+            {/* The title row is the handle: tap it to take the full height. */}
+            {infoHeader(
+              <button
+                type="button"
+                data-hit
+                onClick={() => setSheetFull(!sheetFull)}
+                aria-label={sheetFull ? 'Shrink Info' : 'Expand Info'}
+                className={`${HIT} mt-2 flex-1 justify-start pl-4`}
+              >
+                <span className="font-display text-base font-medium">Info</span>
+              </button>,
+            )}
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">{infoBody}</div>
+          </div>,
+          document.body,
+        )
+      : infoStyle &&
+        createPortal(
+          <div
+            style={{ ...infoStyle, width: INFO_WIDTH }}
+            className="z-50 flex max-h-[calc(100dvh-5.5rem)] flex-col overflow-hidden rounded-xl border border-border bg-paper-raised shadow-xl [--sv-hover:var(--color-paper-hover)]"
+          >
+            {infoHeader(<h2 className="flex-1 pl-4 font-display text-base font-medium">Info</h2>)}
+            <div className="min-h-0 overflow-y-auto overscroll-contain">{infoBody}</div>
+          </div>,
+          document.body,
+        ))
 
   const cyclers = (
     <div className="flex items-center">
@@ -562,13 +872,36 @@ export function SheetViewerMockup() {
   const toolsInline = tier === 'wide'
 
   const annotating = mode === 'annotate'
-  const sc = piece
-  const credit = sc
-    ? [
-        ...sc.composer.values.map((p) => p.name),
-        ...sc.arranger.values.map((p) => `arr. ${p.name}`),
-      ].join(', ')
-    : ''
+
+  const annotateButton = (
+    <HitButton
+      label="Annotate"
+      onClick={enterAnnotate}
+      faceClassName={
+        annotateLabel ? 'border border-border px-3 font-medium hover:border-accent' : ''
+      }
+    >
+      <IconPencil size={20} />
+      {annotateLabel && 'Annotate'}
+    </HitButton>
+  )
+  const doneButton = (
+    <HitButton
+      label="Done annotating"
+      onClick={leaveAnnotate}
+      faceClassName={`bg-accent-fill text-white group-hover/b:bg-accent-fill/90 ${annotateLabel ? 'px-3 font-medium' : ''}`}
+    >
+      <IconCheck size={20} />
+      {annotateLabel && 'Done'}
+    </HitButton>
+  )
+  const moreButton = (
+    <div ref={moreAnchorRef} className="relative">
+      <HitButton label="More" onClick={() => setMenu(menu === 'more' ? null : 'more')}>
+        <IconDots size={22} />
+      </HitButton>
+    </div>
+  )
 
   return (
     <div
@@ -582,77 +915,94 @@ export function SheetViewerMockup() {
             : 'border-border bg-paper-raised [--sv-hover:var(--color-paper-hover)]'
         }`}
       >
-        {/* Three columns, the outer two equal, so the cyclers in the middle
-            sit at exactly the same spot in Play and Annotate (Phase 1). */}
-        <div className="relative z-40 grid h-14 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center px-1">
-          <div className="flex min-w-0 items-center">
-            {closeButton}
-            {annotating ? (
-              toolsInline ? (
-                <>
-                  <span className="mx-1 h-7 w-px shrink-0 bg-accent/30" />
-                  {toolButtons}
-                </>
-              ) : (
-                <span className="truncate px-2 text-sm font-medium text-accent">Annotating</span>
-              )
-            ) : (
-              <div className="flex min-w-0 flex-col px-2">
-                <span className="truncate font-display font-medium">{sc?.title ?? 'Loading…'}</span>
-                {tier !== 'phone' && credit && (
-                  <span className="truncate text-xs text-ink-soft">{credit}</span>
-                )}
-              </div>
-            )}
-          </div>
-          {cyclers}
-          <div className="flex min-w-0 items-center justify-end">
-            {!annotating && (
-              <>
-                {tier !== 'phone' && clockButton}
-                {inlineExtras && extras}
-                {!inlineExtras && (
-                  <div ref={moreAnchorRef} className="relative">
-                    <HitButton
-                      label="More"
-                      onClick={() => setMenu(menu === 'more' ? null : 'more')}
-                    >
-                      <IconDots size={22} />
-                    </HitButton>
+        {/* Toolbar rows sit over the menus' backdrop (z-40), so their
+            buttons keep working while a menu is open. */}
+        <div className="relative z-40">
+          {tier === 'phone' ? (
+            <>
+              {/* Phones take two rows (a letter or A4 page leaves the
+                  height to spare): ✕, the title, Info, ⋯ and Annotate/Done,
+                  then a row that's the same in Play and Annotate — the
+                  clock, and the page cyclers pinned to the right edge — so
+                  the cyclers never move between modes or as the clock's
+                  width changes. */}
+              <div className="flex h-14 items-center px-1">
+                {closeButton}
+                {annotating ? (
+                  <span className="min-w-0 flex-1 truncate px-2 text-sm font-medium text-accent">
+                    Annotating
+                  </span>
+                ) : (
+                  <div className="flex min-w-0 flex-1 flex-col px-2">
+                    <span className="truncate font-display font-medium">
+                      {sc?.title ?? 'Loading…'}
+                    </span>
+                    {credit && <span className="truncate text-xs text-ink-soft">{credit}</span>}
                   </div>
                 )}
-                <span className="mx-1 h-7 w-px shrink-0 bg-border" />
-                <HitButton
-                  label="Annotate"
-                  onClick={enterAnnotate}
-                  faceClassName={
-                    tier === 'phone'
-                      ? ''
-                      : 'border border-border px-3 font-medium hover:border-accent'
-                  }
-                >
-                  <IconPencil size={20} />
-                  {tier !== 'phone' && 'Annotate'}
-                </HitButton>
-              </>
-            )}
-            {annotating && (
-              <HitButton
-                label="Done annotating"
-                onClick={leaveAnnotate}
-                faceClassName={`bg-accent-fill text-white group-hover/b:bg-accent-fill/90 ${tier === 'phone' ? '' : 'px-3 font-medium'}`}
+                {infoButton}
+                {moreButton}
+                <span
+                  className={`mx-1 h-7 w-px shrink-0 ${annotating ? 'bg-accent/30' : 'bg-border'}`}
+                />
+                {annotating ? doneButton : annotateButton}
+              </div>
+              <div
+                className={`flex h-14 items-center border-t px-1 ${
+                  annotating ? 'border-accent/30' : 'border-border'
+                }`}
               >
-                <IconCheck size={20} />
-                {tier !== 'phone' && 'Done'}
-              </HitButton>
-            )}
-          </div>
+                <div className="flex min-w-0 flex-1 items-center">{clockButton}</div>
+                {cyclers}
+              </div>
+            </>
+          ) : (
+            /* Three columns, the outer two equal, so the cyclers in the
+               middle sit at exactly the same spot in Play and Annotate
+               (Phase 1). */
+            <div className="grid h-14 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center px-1">
+              <div className="flex min-w-0 items-center">
+                {closeButton}
+                {annotating ? (
+                  toolsInline ? (
+                    <>
+                      <span className="mx-1 h-7 w-px shrink-0 bg-accent/30" />
+                      {toolButtons}
+                    </>
+                  ) : (
+                    <span className="truncate px-2 text-sm font-medium text-accent">
+                      Annotating
+                    </span>
+                  )
+                ) : (
+                  <div className="flex min-w-0 flex-col px-2">
+                    <span className="truncate font-display font-medium">
+                      {sc?.title ?? 'Loading…'}
+                    </span>
+                    {credit && <span className="truncate text-xs text-ink-soft">{credit}</span>}
+                  </div>
+                )}
+              </div>
+              {cyclers}
+              <div className="flex min-w-0 items-center justify-end">
+                {!annotating && (
+                  <>
+                    {clockButton}
+                    {inlineExtras && extras}
+                    {infoButton}
+                    {!inlineExtras && moreButton}
+                    <span className="mx-1 h-7 w-px shrink-0 bg-border" />
+                    {annotateButton}
+                  </>
+                )}
+                {annotating && doneButton}
+              </div>
+            </div>
+          )}
+          {annotating && !toolsInline && (
+            <div className="flex items-center border-t border-accent/30 px-1">{toolButtons}</div>
+          )}
         </div>
-        {annotating && !toolsInline && (
-          <div className="flex items-center overflow-x-auto border-t border-accent/30 px-1">
-            {toolButtons}
-          </div>
-        )}
 
         {menu && (
           <>
@@ -661,16 +1011,9 @@ export function SheetViewerMockup() {
                 score, so a tap there only closes the menu, never turns. */}
             <div className="fixed inset-0 z-30" onPointerDown={() => setMenu(null)} />
             {clockMenu}
+            {infoPanel}
             {menu === 'more' && (
               <div className="absolute top-full right-2 z-50 mt-1.5 w-72 rounded-xl border border-border bg-paper-raised p-2 shadow-xl [--sv-hover:var(--color-paper-hover)]">
-                {tier === 'phone' && (
-                  <MenuRow
-                    icon={<ClockIcon size={20} />}
-                    label="Clock"
-                    trailing={clockOn ? <ClockText text={readout} /> : 'Hidden'}
-                    onClick={() => setMenu('clock')}
-                  />
-                )}
                 <MenuRow
                   icon={<IconMetronome size={20} />}
                   label="Metronome"
@@ -689,14 +1032,6 @@ export function SheetViewerMockup() {
                   onClick={() => {
                     setMenu(null)
                     flash('Photo filters are designed in Phase 5')
-                  }}
-                />
-                <MenuRow
-                  icon={<IconInfoCircle size={20} />}
-                  label="Info"
-                  onClick={() => {
-                    setMenu(null)
-                    flash('The Info drawer is designed in Phases 3–4')
                   }}
                 />
               </div>
@@ -729,10 +1064,36 @@ export function SheetViewerMockup() {
           )}
         </div>
         {showZones && (mode === 'play' || !tool) && <ZoneOverlay />}
+        {/* The notes bar (Phase 3): your notes' first line over the top of
+            the page; tap it for Info, ✕ hides it for this piece (Info's
+            "Show in notes bar" brings it back). Its own taps never turn. */}
+        {showBar && activeId !== null && (
+          <div
+            className="absolute inset-x-0 top-0 z-10 flex items-center border-b border-accent/30 bg-accent-soft pr-1 pl-2 [--sv-hover:var(--color-accent-soft-hover)]"
+            onPointerDown={(event) => event.stopPropagation()}
+            onPointerUp={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              data-hit
+              onClick={() => openInfo(true)}
+              className={`${HIT} min-w-0 flex-1 justify-start group/b`}
+              aria-label="Open your notes"
+            >
+              <span className={`${FACE} ${FACE_HOVER} min-w-0 flex-1 justify-start gap-2.5 px-2`}>
+                <IconNotebook size={18} className="shrink-0 text-accent" />
+                <span className="truncate text-[15px]">{firstLine(notes)}</span>
+              </span>
+            </button>
+            <HitButton label="Hide the notes bar for this piece" onClick={() => setBar(false)}>
+              <IconX size={18} />
+            </HitButton>
+          </div>
+        )}
         {/* Mockup-only controls; they stop their own pointer events so
             using them never turns a page. */}
         <div
-          className="absolute top-3 left-3 z-10 flex flex-col items-start gap-2"
+          className={`absolute ${showBar ? 'top-15' : 'top-3'} left-3 z-10 flex flex-col items-start gap-2`}
           onPointerDown={(event) => event.stopPropagation()}
           onPointerUp={(event) => event.stopPropagation()}
         >
@@ -758,8 +1119,13 @@ export function SheetViewerMockup() {
                 onChange={(v) => {
                   setPieceId(Number(v))
                   setPage(1)
+                  setEditing(false)
                 }}
               />
+              <label className="flex items-center gap-2">
+                <Checkbox checked={hasNotes} onChange={(e) => setHasNotes(e.target.checked)} />
+                Piece has notes
+              </label>
               <label className="flex items-center gap-2">
                 <Checkbox checked={showZones} onChange={(e) => setShowZones(e.target.checked)} />
                 Show tap zones
@@ -778,7 +1144,7 @@ export function SheetViewerMockup() {
         {hint && (
           <div
             key={hint.id}
-            className="pointer-events-none absolute top-4 left-1/2 z-10 -translate-x-1/2 rounded-full bg-scrim/90 px-4 py-2 text-sm whitespace-nowrap text-white"
+            className={`pointer-events-none absolute ${showBar ? 'top-16' : 'top-4'} left-1/2 z-10 -translate-x-1/2 rounded-full bg-scrim/90 px-4 py-2 text-sm whitespace-nowrap text-white`}
           >
             {hint.text}
           </div>
