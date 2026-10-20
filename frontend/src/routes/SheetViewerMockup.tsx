@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -29,6 +30,8 @@ import { getPiece, getPieceThumbnailUrl, searchPieces } from '../api/pieces'
 import { Checkbox } from '../components/Checkbox'
 import { InfoTooltip } from '../components/InfoTooltip'
 import { SingleSelect } from '../components/SingleSelect'
+import { Toggle } from '../components/Toggle'
+import { useAnchoredPanel } from '../hooks/useAnchorRect'
 import { useShortcutBlocker } from '../lib/shortcuts'
 import { useMockupTitle } from '../lib/useMockupTitle'
 
@@ -103,11 +106,16 @@ function ClockText({ text }: { text: string }) {
 }
 
 const pad = (n: number) => String(n).padStart(2, '0')
+// The stopwatch always shows seconds — without them it sat at 00:00 for its
+// first minute and read as broken.
 function stopwatchText(ms: number) {
   const s = Math.floor(ms / 1000)
   return `${pad(Math.floor(s / 3600))}:${pad(Math.floor(s / 60) % 60)}:${pad(s % 60)}`
 }
-const clockFormat = new Intl.DateTimeFormat(undefined, {
+// The clock's seconds are the menu's Show seconds switch (off by default);
+// it keeps its leading zeros either way.
+const clockFormat = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' })
+const clockFormatSeconds = new Intl.DateTimeFormat(undefined, {
   hour: '2-digit',
   minute: '2-digit',
   second: '2-digit',
@@ -204,6 +212,7 @@ export function SheetViewerMockup() {
 
   const [clockOn, setClockOn] = useState(true)
   const [clockMode, setClockMode] = useState<ClockMode>('clock')
+  const [showSeconds, setShowSeconds] = useState(false)
   const [swStart, setSwStart] = useState<number | null>(null)
   const [swAcc, setSwAcc] = useState(0)
   const [now, setNow] = useState(() => Date.now())
@@ -214,9 +223,11 @@ export function SheetViewerMockup() {
   const readout =
     clockMode === 'stopwatch'
       ? stopwatchText(swAcc + (swStart !== null ? now - swStart : 0))
-      : clockFormat.format(now)
+      : (showSeconds ? clockFormatSeconds : clockFormat).format(now)
 
   const last = useRef({ dir: 0, at: 0 })
+  const clockAnchorRef = useRef<HTMLDivElement>(null)
+  const moreAnchorRef = useRef<HTMLDivElement>(null)
   const closeTimer = useRef<number | undefined>(undefined)
   const hintTimer = useRef<number | undefined>(undefined)
   useEffect(
@@ -345,7 +356,7 @@ export function SheetViewerMockup() {
 
   const ClockIcon = !clockOn ? IconClockOff : clockMode === 'stopwatch' ? IconStopwatch : IconClock
   const clockButton = (
-    <div className="relative">
+    <div ref={clockAnchorRef} className="relative">
       <HitButton label="Clock" onClick={() => setMenu(menu === 'clock' ? null : 'clock')}>
         <span className={`flex items-center gap-1.5 ${clockOn ? 'px-2.5' : ''}`}>
           <ClockIcon size={20} />
@@ -358,6 +369,112 @@ export function SheetViewerMockup() {
       </HitButton>
     </div>
   )
+
+  // Centered under the clock — or under ⋯ on a phone, where the clock lives
+  // in that menu — and kept on screen at the edges. Portaled to <body>, so
+  // it sits over the backdrop that closes it.
+  const clockMenuStyle = useAnchoredPanel(
+    tier === 'phone' ? moreAnchorRef : clockAnchorRef,
+    menu === 'clock',
+    'below-center',
+    { gap: 6, panelWidth: 288 },
+  )
+  const clockMenu =
+    menu === 'clock' &&
+    clockMenuStyle &&
+    createPortal(
+      <div
+        style={clockMenuStyle}
+        className="z-50 w-72 rounded-xl border border-border bg-paper-raised p-2 shadow-xl [--sv-hover:var(--color-paper-hover)]"
+      >
+        <div className="flex rounded-[13px] bg-paper-sunken px-1">
+          {(['clock', 'stopwatch'] as const).map((m) => (
+            <button
+              key={m}
+              type="button"
+              data-hit
+              onClick={() => setClockMode(m)}
+              className={`${HIT} flex-1 group/b`}
+            >
+              <span
+                className={`${FACE} w-full gap-2 ${
+                  clockMode === m ? 'bg-paper-raised font-medium shadow-sm' : 'text-ink-soft'
+                }`}
+              >
+                {m === 'clock' ? <IconClock size={18} /> : <IconStopwatch size={18} />}
+                {m === 'clock' ? 'Clock' : 'Stopwatch'}
+              </span>
+            </button>
+          ))}
+        </div>
+        <div className="py-3 text-center text-[34px] leading-tight font-medium">
+          <ClockText text={readout} />
+        </div>
+        {clockMode === 'stopwatch' && (
+          <div className="flex">
+            <button
+              type="button"
+              data-hit
+              className={`${HIT} flex-1 group/b`}
+              onClick={() => {
+                if (swStart !== null) {
+                  setSwAcc(swAcc + Date.now() - swStart)
+                  setSwStart(null)
+                } else setSwStart(Date.now())
+              }}
+            >
+              <span className={`${FACE} ${FACE_HOVER} w-full justify-start px-3 gap-2.5`}>
+                {swStart !== null ? <IconPlayerPause size={20} /> : <IconPlayerPlay size={20} />}
+                {swStart !== null ? 'Pause' : swAcc ? 'Resume' : 'Start'}
+              </span>
+            </button>
+            <button
+              type="button"
+              data-hit
+              className={`${HIT} flex-1 group/b`}
+              onClick={() => {
+                setSwAcc(0)
+                setSwStart(swStart !== null ? Date.now() : null)
+              }}
+            >
+              <span className={`${FACE} ${FACE_HOVER} w-full justify-start px-3 gap-2.5`}>
+                <IconRefresh size={20} />
+                Reset
+              </span>
+            </button>
+          </div>
+        )}
+        {/* Clock mode only: the stopwatch always shows seconds. */}
+        {clockMode === 'clock' && (
+          <>
+            {/* The switch itself is the shared Toggle (36×20); the row
+                    around it is the 48pt target, so a tap anywhere on the
+                    row flips it too. */}
+            <div
+              data-hit
+              className={`${HIT} w-full justify-start px-3`}
+              onClick={(event) => {
+                if (event.target === event.currentTarget) setShowSeconds(!showSeconds)
+              }}
+            >
+              <Toggle checked={showSeconds} onChange={setShowSeconds} label="Show seconds" />
+            </div>
+          </>
+        )}
+        <button
+          type="button"
+          data-hit
+          className={`${HIT} w-full group/b`}
+          onClick={() => setClockOn(!clockOn)}
+        >
+          <span className={`${FACE} ${FACE_HOVER} w-full justify-start px-3 gap-2.5`}>
+            {clockOn ? <IconClockOff size={20} /> : <IconClock size={20} />}
+            {clockOn ? 'Hide clock' : 'Show clock'}
+          </span>
+        </button>
+      </div>,
+      document.body,
+    )
 
   const inlineExtras = tier === 'wide'
   const extras = (
@@ -495,7 +612,7 @@ export function SheetViewerMockup() {
                 {tier !== 'phone' && clockButton}
                 {inlineExtras && extras}
                 {!inlineExtras && (
-                  <div className="relative">
+                  <div ref={moreAnchorRef} className="relative">
                     <HitButton
                       label="More"
                       onClick={() => setMenu(menu === 'more' ? null : 'more')}
@@ -543,84 +660,7 @@ export function SheetViewerMockup() {
                 tapping the clock or ⋯ again closes its menu — and over the
                 score, so a tap there only closes the menu, never turns. */}
             <div className="fixed inset-0 z-30" onPointerDown={() => setMenu(null)} />
-            {menu === 'clock' && (
-              <div className="absolute top-full right-2 z-50 mt-1.5 w-72 rounded-xl border border-border bg-paper-raised p-2 shadow-xl [--sv-hover:var(--color-paper-hover)]">
-                <div className="flex rounded-[13px] bg-paper-sunken px-1">
-                  {(['clock', 'stopwatch'] as const).map((m) => (
-                    <button
-                      key={m}
-                      type="button"
-                      data-hit
-                      onClick={() => setClockMode(m)}
-                      className={`${HIT} flex-1 group/b`}
-                    >
-                      <span
-                        className={`${FACE} w-full gap-2 ${
-                          clockMode === m
-                            ? 'bg-paper-raised font-medium shadow-sm'
-                            : 'text-ink-soft'
-                        }`}
-                      >
-                        {m === 'clock' ? <IconClock size={18} /> : <IconStopwatch size={18} />}
-                        {m === 'clock' ? 'Clock' : 'Stopwatch'}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-                <div className="py-3 text-center text-[34px] leading-tight font-medium">
-                  <ClockText text={readout} />
-                </div>
-                {clockMode === 'stopwatch' && (
-                  <div className="flex">
-                    <button
-                      type="button"
-                      data-hit
-                      className={`${HIT} flex-1 group/b`}
-                      onClick={() => {
-                        if (swStart !== null) {
-                          setSwAcc(swAcc + Date.now() - swStart)
-                          setSwStart(null)
-                        } else setSwStart(Date.now())
-                      }}
-                    >
-                      <span className={`${FACE} ${FACE_HOVER} w-full justify-start px-3 gap-2.5`}>
-                        {swStart !== null ? (
-                          <IconPlayerPause size={20} />
-                        ) : (
-                          <IconPlayerPlay size={20} />
-                        )}
-                        {swStart !== null ? 'Pause' : swAcc ? 'Resume' : 'Start'}
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      data-hit
-                      className={`${HIT} flex-1 group/b`}
-                      onClick={() => {
-                        setSwAcc(0)
-                        setSwStart(swStart !== null ? Date.now() : null)
-                      }}
-                    >
-                      <span className={`${FACE} ${FACE_HOVER} w-full justify-start px-3 gap-2.5`}>
-                        <IconRefresh size={20} />
-                        Reset
-                      </span>
-                    </button>
-                  </div>
-                )}
-                <button
-                  type="button"
-                  data-hit
-                  className={`${HIT} w-full group/b`}
-                  onClick={() => setClockOn(!clockOn)}
-                >
-                  <span className={`${FACE} ${FACE_HOVER} w-full justify-start px-3 gap-2.5`}>
-                    {clockOn ? <IconClockOff size={20} /> : <IconClock size={20} />}
-                    {clockOn ? 'Hide clock' : 'Show clock'}
-                  </span>
-                </button>
-              </div>
-            )}
+            {clockMenu}
             {menu === 'more' && (
               <div className="absolute top-full right-2 z-50 mt-1.5 w-72 rounded-xl border border-border bg-paper-raised p-2 shadow-xl [--sv-hover:var(--color-paper-hover)]">
                 {tier === 'phone' && (
