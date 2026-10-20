@@ -10,6 +10,7 @@ import {
   IconCheck,
   IconChevronLeft,
   IconChevronRight,
+  IconCircle,
   IconCircleCheckFilled,
   IconCircleDashed,
   IconCircleHalf2,
@@ -19,9 +20,11 @@ import {
   IconContrast,
   IconDots,
   IconEraser,
+  IconGripVertical,
   IconHighlight,
   IconHourglassEmpty,
   IconInfoCircle,
+  IconListNumbers,
   IconMetronome,
   IconMinus,
   IconNotebook,
@@ -29,6 +32,7 @@ import {
   IconPhotoCog,
   IconPlayerPause,
   IconPlayerPlay,
+  IconPlaylist,
   IconPlus,
   IconRefresh,
   IconStopwatch,
@@ -101,6 +105,30 @@ const EXAMPLE_NOTES =
 const EMPTY_NOTES =
   'Nothing yet. Big picture notes go here: what to remember about this piece, or a log of how practice is going. Markings on the music can be made in Annotate mode.'
 const INFO_WIDTH = 380
+const QUEUE_WIDTH = 380
+// Phase 6: a piece counts as practiced today once its last page has been
+// reached and at least this long has been spent on it.
+const PRACTICED_MS = 60_000
+
+// A setlist's custom entries (Phase 6): each gets a placeholder page in the
+// session, drawn like the Setlist PDF's Generated Program Page. Fixtures.
+interface CustomEntry {
+  name: string
+  role: string
+  notes?: string
+  duration?: string
+}
+const CUSTOM_ENTRIES: Record<string, CustomEntry> = {
+  'c:welcome': {
+    name: 'Welcome and Announcements',
+    role: 'Welcome',
+    notes: 'Introduce the guest choir before the prelude.',
+    duration: '3:00',
+  },
+  'c:offering': { name: 'Offering', role: 'Offertory', duration: '4:00' },
+  'c:benediction': { name: 'Benediction', role: 'Sending' },
+}
+type QueueKey = number | string
 const PHOTO_WIDTH = 320
 
 // Photo controls (Phase 5): discrete steps, never live-dragged values.
@@ -259,13 +287,53 @@ export function SheetViewerMockup() {
     queryFn: () => getPiece(activeId as number),
     enabled: activeId !== null,
   })
-  const pageCount = piece?.pageCount ?? 1
+  // A setlist session's custom entry showing instead of a piece.
+  const [customKey, setCustomKey] = useState<string | null>(null)
+  const custom = customKey ? CUSTOM_ENTRIES[customKey] : null
+  const pageCount = custom ? 1 : (piece?.pageCount ?? 1)
+
+  // Practice List (Phase 6). Mockup fixtures from the library's newest
+  // multi-page pieces; nothing is written.
+  type SessionKind = 'piece' | 'list' | 'setlist'
+  const [sessionKind, setSessionKind] = useState<SessionKind>('piece')
+  const [listOverride, setListOverride] = useState<number[] | null>(null)
+  const multi = recent.filter((p) => p.pageCount > 1)
+  const practiceList = listOverride ?? multi.slice(0, 5).map((p) => p.id)
+  const setlistPieces = multi.slice(5, 10).map((p) => p.id)
+  const setlistQueue: QueueKey[] = [
+    'c:welcome',
+    ...setlistPieces.slice(0, 2),
+    'c:offering',
+    ...setlistPieces.slice(2),
+    'c:benediction',
+  ]
+  const SETLIST_NAME = 'Sunday Service (example)'
+  const queueIds: QueueKey[] =
+    sessionKind === 'list' ? practiceList : sessionKind === 'setlist' ? setlistQueue : []
+  const currentKey: QueueKey | null = customKey ?? activeId
+  const queueIndex = currentKey === null ? -1 : queueIds.indexOf(currentKey)
+  const byId = new Map(recent.map((p) => [p.id, p]))
+  // Practiced today: true marked, false explicitly unmarked (not re-marked
+  // automatically that day). Clears at midnight in the real thing.
+  const [practiced, setPracticed] = useState<Record<number, boolean>>({})
+  const [fastMinute, setFastMinute] = useState(false)
+  const [dragIndex, setDragIndex] = useState<number | null>(null)
+  // The floating card that follows the pointer while dragging (Edit
+  // Program's own pattern): where the pointer is, and where it grabbed the
+  // row, so the card keeps that offset.
+  const [dragGhost, setDragGhost] = useState<{
+    x: number
+    y: number
+    dx: number
+    dy: number
+    width: number
+  } | null>(null)
 
   const [page, setPage] = useState(1)
   const [mode, setMode] = useState<'play' | 'annotate'>('play')
   const [tool, setTool] = useState<Tool | null>(null)
   const [color, setColor] = useState(0)
-  const [menu, setMenu] = useState<'clock' | 'more' | 'info' | 'photo' | null>(null)
+  const [menu, setMenu] = useState<'clock' | 'more' | 'info' | 'photo' | 'queue' | null>(null)
   // Photo controls and the margin, per piece (a practice setting).
   const [photoByPiece, setPhotoByPiece] = useState<Record<number, Photo>>({})
   // The theme and Dark Mode Scores as the page opened with them; the Mockup
@@ -323,7 +391,8 @@ export function SheetViewerMockup() {
       : (piece?.practiceStatus ?? null)
   const infoOpen = menu === 'info'
   // Hidden while any menu or Info is open, so nothing stacks over it.
-  const showBar = notes !== '' && activeId !== null && !barHidden[activeId] && menu === null
+  const showBar =
+    notes !== '' && activeId !== null && !barHidden[activeId] && menu === null && !customKey
 
   const photo = (activeId !== null && photoByPiece[activeId]) || PHOTO_DEFAULT
   function setPhoto(change: Partial<Photo>) {
@@ -358,6 +427,7 @@ export function SheetViewerMockup() {
 
   const last = useRef({ dir: 0, at: 0 })
   const photoAnchorRef = useRef<HTMLDivElement>(null)
+  const queueAnchorRef = useRef<HTMLDivElement>(null)
   const phoneRow2Ref = useRef<HTMLDivElement>(null)
   const infoAnchorRef = useRef<HTMLDivElement>(null)
   const clockAnchorRef = useRef<HTMLDivElement>(null)
@@ -387,10 +457,54 @@ export function SheetViewerMockup() {
     last.current = { dir, at: t }
     const next = Math.max(1, Math.min(pageCount, page + dir))
     if (next === page) {
-      flash(dir < 0 ? 'First page' : 'Last page')
+      // In a queue (the Practice List or a setlist), turning past a piece's
+      // end goes on to the next piece; back from its start, to the previous
+      // piece's last page.
+      const neighbor = queueIndex >= 0 ? queueIds[queueIndex + dir] : undefined
+      if (neighbor !== undefined) {
+        const target = typeof neighbor === 'number' ? byId.get(neighbor) : undefined
+        goToPiece(neighbor, dir > 0 ? 1 : (target?.pageCount ?? 1))
+        const name = typeof neighbor === 'string' ? CUSTOM_ENTRIES[neighbor]?.name : target?.title
+        flash(`${dir > 0 ? 'Next' : 'Previous'}: ${name ?? 'entry'}`)
+        return
+      }
+      flash(dir < 0 ? 'First page' : queueIds.length ? 'End of the list' : 'Last page')
       return
     }
     setPage(next)
+  }
+  function goToPiece(key: QueueKey, toPage = 1) {
+    setEditing(false)
+    if (typeof key === 'string') {
+      setCustomKey(key)
+      setPage(1)
+      return
+    }
+    setCustomKey(null)
+    setPieceId(key)
+    setPage(toPage)
+  }
+  function openSession(kind: SessionKind) {
+    setSessionKind(kind)
+    setMenu(null)
+    setCustomKey(null)
+    if (kind === 'list') {
+      // The sidebar entry always starts at the top of the list (user, Phase
+      // 6 review — not where you last were).
+      if (practiceList.length === 0) {
+        setMenu('queue')
+        return
+      }
+      setPieceId(practiceList[0])
+      setPage(1)
+    } else if (kind === 'piece') {
+      // Play on a piece that's on the list opens the list at it.
+      if (activeId !== null && practiceList.includes(activeId)) setSessionKind('list')
+      setPage(1)
+    } else if (kind === 'setlist') {
+      setCustomKey(setlistQueue[0] as string)
+      setPage(1)
+    }
   }
   const turnRef = useRef(turn)
   const setMenuRef = useRef(setMenu)
@@ -426,6 +540,38 @@ export function SheetViewerMockup() {
     document.addEventListener('keydown', onKey, true)
     return () => document.removeEventListener('keydown', onKey, true)
   }, [menuOpen])
+
+  // Practiced today: time on each piece adds up while it's showing; once its
+  // last page has been reached too, it's marked (Phase 6).
+  // A custom entry isn't a piece: nothing to mark.
+  const viewId = customKey ? null : activeId
+  const spent = useRef(new Map<number, number>())
+  const viewing = useRef<{ id: number | null; since: number }>({ id: null, since: 0 })
+  const reachedLast = useRef(new Set<number>())
+  const threshold = useRef(PRACTICED_MS)
+  useEffect(() => {
+    threshold.current = fastMinute ? 5_000 : PRACTICED_MS
+  }, [fastMinute])
+  useEffect(() => {
+    const now = Date.now()
+    const prev = viewing.current
+    if (prev.id !== null)
+      spent.current.set(prev.id, (spent.current.get(prev.id) ?? 0) + now - prev.since)
+    viewing.current = { id: viewId, since: now }
+  }, [viewId])
+  useEffect(() => {
+    if (viewId !== null && piece?.id === viewId && page >= pageCount)
+      reachedLast.current.add(viewId)
+  }, [viewId, piece, page, pageCount])
+  useEffect(() => {
+    const t = window.setInterval(() => {
+      const { id, since } = viewing.current
+      if (id === null || !reachedLast.current.has(id)) return
+      if ((spent.current.get(id) ?? 0) + Date.now() - since < threshold.current) return
+      setPracticed((prev) => (id in prev ? prev : { ...prev, [id]: true }))
+    }, 1000)
+    return () => window.clearInterval(t)
+  }, [])
 
   // Neighbors load ahead so a turn shows the next page at once.
   useEffect(() => {
@@ -1020,15 +1166,301 @@ export function SheetViewerMockup() {
           document.body,
         ))
 
+  // The queue (Phase 6): a card under its button (a bottom sheet on phones),
+  // like Info. The Practice List can be reordered and trimmed here; a
+  // setlist's queue is jump-only (its order is the real program).
+  const editableQueue = sessionKind === 'list'
+  const queueStyle = useAnchoredPanel(
+    queueAnchorRef,
+    menu === 'queue' && tier !== 'phone',
+    'below-center',
+    { gap: 6, panelWidth: QUEUE_WIDTH },
+  )
+  const queueList = useRef<HTMLUListElement>(null)
+  useEffect(() => {
+    if (dragIndex === null) return
+    document.body.style.cursor = 'grabbing'
+    return () => {
+      document.body.style.cursor = ''
+    }
+  }, [dragIndex])
+  function endDrag() {
+    setDragIndex(null)
+    setDragGhost(null)
+  }
+  function moveDrag(event: React.PointerEvent<HTMLUListElement>) {
+    if (dragIndex === null || !queueList.current) return
+    if (dragGhost) setDragGhost({ ...dragGhost, x: event.clientX, y: event.clientY })
+    const rows = [...queueList.current.querySelectorAll<HTMLElement>('[data-row]')]
+    let target = rows.length - 1
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i].getBoundingClientRect()
+      if (event.clientY < r.top + r.height / 2) {
+        target = i
+        break
+      }
+    }
+    if (target === dragIndex) return
+    const next = [...practiceList]
+    const [moved] = next.splice(dragIndex, 1)
+    next.splice(target, 0, moved)
+    setListOverride(next)
+    setDragIndex(target)
+  }
+  const queuePieces = queueIds.filter((k): k is number => typeof k === 'number')
+  const practicedCount = queuePieces.filter((id) => practiced[id]).length
+  const queueTitle = sessionKind === 'setlist' ? SETLIST_NAME : 'Practice List'
+  const queueSub =
+    sessionKind === 'setlist'
+      ? `Setlist, in its order for this session • ${practicedCount} of ${queuePieces.length} practiced today`
+      : `${practicedCount} of ${queueIds.length} practiced today`
+  const queueBody =
+    queueIds.length === 0 ? (
+      <p className="px-5 pt-3 pb-5 text-sm text-ink-muted italic">
+        Your Practice List is empty. Add pieces from a piece’s Play button: Add to Practice List.
+      </p>
+    ) : (
+      <ul
+        ref={queueList}
+        className="flex flex-col px-3 pt-2 pb-3 select-none"
+        onPointerMove={moveDrag}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+        onLostPointerCapture={endDrag}
+      >
+        {queueIds.map((id, i) => {
+          if (typeof id === 'string') {
+            const entry = CUSTOM_ENTRIES[id]
+            const current = id === customKey
+            return (
+              <li
+                key={id}
+                data-row
+                className={`flex items-center rounded-[10px] ${current ? 'bg-accent-soft [--sv-hover:var(--color-accent-soft-hover)]' : ''}`}
+              >
+                <button
+                  type="button"
+                  data-hit
+                  onClick={() => {
+                    goToPiece(id)
+                    setMenu(null)
+                  }}
+                  className={`${HIT} min-w-0 flex-1 justify-start group/b`}
+                >
+                  <span className={`${FACE} ${FACE_HOVER} w-full justify-start px-2`}>
+                    <span className="flex min-w-0 flex-col text-left">
+                      <span className="truncate font-display font-medium italic">{entry.name}</span>
+                      <span className="truncate text-xs text-ink-soft">
+                        {current ? 'Now open' : entry.role}
+                      </span>
+                    </span>
+                  </span>
+                </button>
+                {/* No practiced mark: a custom entry isn't a piece. */}
+                <span className="w-12 shrink-0" />
+              </li>
+            )
+          }
+          const p = byId.get(id)
+          const current = id === activeId && !customKey
+          const done = practiced[id] === true
+          const who = p
+            ? [
+                ...p.composer.values.map((x) => x.name),
+                ...p.arranger.values.map((x) => `arr. ${x.name}`),
+              ].join(', ')
+            : ''
+          return (
+            <li
+              key={id}
+              data-row
+              className={`flex items-center rounded-[10px] ${current ? 'bg-accent-soft [--sv-hover:var(--color-accent-soft-hover)]' : ''} ${dragIndex === i ? 'opacity-40' : ''}`}
+            >
+              {editableQueue && (
+                <span
+                  data-hit
+                  aria-label={`Drag to reorder ${p?.title ?? ''}`}
+                  className={`${HIT} touch-none text-ink-faint ${dragIndex === i ? 'cursor-grabbing!' : 'cursor-grab! active:cursor-grabbing!'}`}
+                  onPointerDown={(event) => {
+                    // No text selection mid-drag (the card is portaled
+                    // outside the viewer's select-none).
+                    event.preventDefault()
+                    queueList.current?.setPointerCapture(event.pointerId)
+                    setDragIndex(i)
+                    const row = (event.currentTarget as HTMLElement).closest('[data-row]')
+                    const r = row?.getBoundingClientRect()
+                    if (r)
+                      setDragGhost({
+                        x: event.clientX,
+                        y: event.clientY,
+                        dx: event.clientX - r.left,
+                        dy: event.clientY - r.top,
+                        width: r.width,
+                      })
+                  }}
+                >
+                  <IconGripVertical size={20} />
+                </span>
+              )}
+              <button
+                type="button"
+                data-hit
+                onClick={() => {
+                  goToPiece(id)
+                  setMenu(null)
+                }}
+                className={`${HIT} min-w-0 flex-1 justify-start group/b`}
+              >
+                {/* The same hover fill as the row's other buttons, so the
+                    title reads as tappable. */}
+                <span className={`${FACE} ${FACE_HOVER} w-full justify-start px-2`}>
+                  <span className="flex min-w-0 flex-col text-left">
+                    <span className="truncate font-display font-medium">{p?.title ?? '…'}</span>
+                    <span className="truncate text-xs text-ink-soft">
+                      {current ? 'Now open' : who || `${p?.pageCount ?? ''} pp.`}
+                    </span>
+                  </span>
+                </span>
+              </button>
+              <HitButton
+                label={done ? 'Practiced today: tap to unmark' : 'Mark as practiced today'}
+                onClick={() => setPracticed({ ...practiced, [id]: !done })}
+                faceClassName={`${FACE_HOVER} ${done ? 'text-accent' : 'text-ink-fainter'}`}
+              >
+                {done ? <IconCircleCheckFilled size={22} /> : <IconCircle size={22} />}
+              </HitButton>
+              {editableQueue && (
+                <HitButton
+                  label={`Remove ${p?.title ?? ''} from the Practice List`}
+                  onClick={() => setListOverride(practiceList.filter((x) => x !== id))}
+                >
+                  <IconX size={18} />
+                </HitButton>
+              )}
+            </li>
+          )
+        })}
+      </ul>
+    )
+  const queueHeader = (titleEl: ReactNode) => (
+    <div className="flex shrink-0 items-center border-b border-border pr-4">
+      {titleEl}
+      <HitButton label="Close the queue" onClick={() => setMenu(null)}>
+        <IconX size={20} />
+      </HitButton>
+    </div>
+  )
+  const queueTitleBlock = (
+    <span className="flex min-w-0 flex-col">
+      <span className="truncate font-display text-base font-medium">{queueTitle}</span>
+      {queueIds.length > 0 && <span className="truncate text-xs text-ink-soft">{queueSub}</span>}
+    </span>
+  )
+  const draggedId = dragIndex !== null ? practiceList[dragIndex] : undefined
+  const dragged = draggedId !== undefined ? byId.get(draggedId) : undefined
+  const ghostCard =
+    dragGhost &&
+    dragged &&
+    createPortal(
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'fixed',
+          left: dragGhost.x - dragGhost.dx,
+          top: dragGhost.y - dragGhost.dy,
+          width: dragGhost.width,
+          pointerEvents: 'none',
+          zIndex: 9999,
+        }}
+        className="flex h-12 items-center rounded-[10px] border border-accent bg-paper-raised font-sans text-ink shadow-xl select-none"
+      >
+        <span className="flex w-12 shrink-0 justify-center text-ink-faint">
+          <IconGripVertical size={20} />
+        </span>
+        <span className="flex min-w-0 flex-col px-2">
+          <span className="truncate font-display font-medium">{dragged.title}</span>
+          <span className="truncate text-xs text-ink-soft">
+            {[
+              ...dragged.composer.values.map((x) => x.name),
+              ...dragged.arranger.values.map((x) => `arr. ${x.name}`),
+            ].join(', ')}
+          </span>
+        </span>
+      </div>,
+      document.body,
+    )
+  const queuePanel =
+    menu === 'queue' &&
+    (tier === 'phone'
+      ? createPortal(
+          <div
+            className={`fixed inset-x-0 bottom-0 z-50 flex flex-col rounded-t-2xl border-t border-border bg-paper-raised pb-[env(safe-area-inset-bottom)] shadow-2xl [--sv-hover:var(--color-paper-hover)] ${
+              sheetFull ? 'top-[calc(env(safe-area-inset-top)+0.75rem)]' : 'h-[58dvh]'
+            }`}
+          >
+            <span className="pointer-events-none absolute top-1.5 left-1/2 h-[5px] w-10 -translate-x-1/2 rounded-full bg-ink-fainter" />
+            {queueHeader(
+              <button
+                type="button"
+                data-hit
+                onClick={() => setSheetFull(!sheetFull)}
+                aria-label={sheetFull ? 'Shrink the queue' : 'Expand the queue'}
+                className={`${HIT} mt-2 min-w-0 flex-1 justify-start pl-5`}
+              >
+                {queueTitleBlock}
+              </button>,
+            )}
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">{queueBody}</div>
+          </div>,
+          document.body,
+        )
+      : queueStyle &&
+        createPortal(
+          <div
+            style={{ ...queueStyle, width: QUEUE_WIDTH }}
+            className="z-50 flex max-h-[calc(100dvh-5.5rem)] flex-col overflow-hidden rounded-xl border border-border bg-paper-raised shadow-xl [--sv-hover:var(--color-paper-hover)]"
+          >
+            {queueHeader(
+              <div className="flex min-h-12 min-w-0 flex-1 items-center pl-5">
+                {queueTitleBlock}
+              </div>,
+            )}
+            <div className="min-h-0 overflow-y-auto overscroll-contain">{queueBody}</div>
+          </div>,
+          document.body,
+        ))
+  const queueButton = sessionKind !== 'piece' && mode !== 'annotate' && (
+    <div ref={queueAnchorRef} className="relative">
+      <HitButton
+        label={sessionKind === 'setlist' ? 'Setlist queue' : 'Practice List'}
+        onClick={() => {
+          setMenu(menu === 'queue' ? null : 'queue')
+          setSheetFull(false)
+        }}
+        faceClassName={menu === 'queue' ? 'bg-accent-soft text-accent' : ''}
+      >
+        {sessionKind === 'setlist' ? <IconListNumbers size={22} /> : <IconPlaylist size={22} />}
+      </HitButton>
+    </div>
+  )
+
   const cyclers = (
     <div className="flex items-center">
-      <HitButton label="Previous page" onClick={() => turn(-1)} disabled={page <= 1}>
+      <HitButton
+        label="Previous page"
+        onClick={() => turn(-1)}
+        disabled={page <= 1 && !(queueIndex > 0)}
+      >
         <IconChevronLeft size={22} />
       </HitButton>
       <span className="w-[4.5em] text-center text-sm text-ink-soft tabular-nums">
         {page} / {pageCount}
       </span>
-      <HitButton label="Next page" onClick={() => turn(1)} disabled={page >= pageCount}>
+      <HitButton
+        label="Next page"
+        onClick={() => turn(1)}
+        disabled={page >= pageCount && !(queueIndex >= 0 && queueIndex < queueIds.length - 1)}
+      >
         <IconChevronRight size={22} />
       </HitButton>
     </div>
@@ -1136,19 +1568,24 @@ export function SheetViewerMockup() {
                   width changes. */}
               <div className="flex h-14 items-center px-1">
                 {closeButton}
+                {queueButton}
                 {annotating ? (
                   <span className="min-w-0 flex-1 truncate px-2 text-sm font-medium text-accent">
                     Annotating
                   </span>
                 ) : (
                   <div className="flex min-w-0 flex-1 flex-col px-2">
-                    <span className="truncate font-display font-medium">
-                      {sc?.title ?? 'Loading…'}
+                    <span className={`truncate font-display font-medium ${custom ? 'italic' : ''}`}>
+                      {custom ? custom.name : (sc?.title ?? 'Loading…')}
                     </span>
-                    {credit && <span className="truncate text-xs text-ink-soft">{credit}</span>}
+                    {(custom ? custom.role : credit) && (
+                      <span className="truncate text-xs text-ink-soft">
+                        {custom ? custom.role : credit}
+                      </span>
+                    )}
                   </div>
                 )}
-                {infoButton}
+                {!custom && infoButton}
                 {moreButton}
                 <span
                   className={`mx-1 h-7 w-px shrink-0 ${annotating ? 'bg-accent/30' : 'bg-border'}`}
@@ -1172,6 +1609,7 @@ export function SheetViewerMockup() {
             <div className="grid h-14 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center px-1">
               <div className="flex min-w-0 items-center">
                 {closeButton}
+                {queueButton}
                 {annotating ? (
                   toolsInline ? (
                     <>
@@ -1185,10 +1623,14 @@ export function SheetViewerMockup() {
                   )
                 ) : (
                   <div className="flex min-w-0 flex-col px-2">
-                    <span className="truncate font-display font-medium">
-                      {sc?.title ?? 'Loading…'}
+                    <span className={`truncate font-display font-medium ${custom ? 'italic' : ''}`}>
+                      {custom ? custom.name : (sc?.title ?? 'Loading…')}
                     </span>
-                    {credit && <span className="truncate text-xs text-ink-soft">{credit}</span>}
+                    {(custom ? custom.role : credit) && (
+                      <span className="truncate text-xs text-ink-soft">
+                        {custom ? custom.role : credit}
+                      </span>
+                    )}
                   </div>
                 )}
               </div>
@@ -1199,7 +1641,7 @@ export function SheetViewerMockup() {
                     {clockButton}
                     {inlineExtras && extras}
                     {photoInline && photoButton}
-                    {infoButton}
+                    {!custom && infoButton}
                     {!inlineExtras && moreButton}
                     <span className="mx-1 h-7 w-px shrink-0 bg-border" />
                     {annotateButton}
@@ -1223,6 +1665,8 @@ export function SheetViewerMockup() {
             {clockMenu}
             {infoPanel}
             {photoPanel}
+            {queuePanel}
+            {ghostCard}
             {menu === 'more' && (
               <div className="absolute top-full right-2 z-50 mt-1.5 w-72 rounded-xl border border-border bg-paper-raised p-3 shadow-xl [--sv-hover:var(--color-paper-hover)]">
                 <MenuRow
@@ -1266,21 +1710,25 @@ export function SheetViewerMockup() {
             the user's photo filters compose in one list (see scoreFilter).
             The margin keeps the page clear of the screen's edges. */}
         <div
-          style={{ filter: scoreFilter }}
+          style={{ filter: scoreFilter, containerType: 'size' }}
           className={`absolute inset-0 flex items-center justify-center bg-white ${
             photo.margin
               ? 'p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]'
               : 'pb-[env(safe-area-inset-bottom)]'
           }`}
         >
-          {activeId !== null && (
-            <img
-              key={`${activeId}-${page}`}
-              src={getPieceThumbnailUrl(activeId, page)}
-              alt={`Page ${page}`}
-              draggable={false}
-              className="block max-h-full max-w-full object-contain"
-            />
+          {custom ? (
+            <PlaceholderPage entry={custom} />
+          ) : (
+            activeId !== null && (
+              <img
+                key={`${activeId}-${page}`}
+                src={getPieceThumbnailUrl(activeId, page)}
+                alt={`Page ${page}`}
+                draggable={false}
+                className="block max-h-full max-w-full object-contain"
+              />
+            )
           )}
         </div>
         {showZones && (mode === 'play' || !tool) && <ZoneOverlay />}
@@ -1310,13 +1758,20 @@ export function SheetViewerMockup() {
             </HitButton>
           </div>
         )}
-        {/* Mockup-only controls; they stop their own pointer events so
-            using them never turns a page. */}
-        <div
-          className={`absolute ${showBar ? 'top-15' : 'top-3'} left-3 z-10 flex flex-col items-start gap-2`}
-          onPointerDown={(event) => event.stopPropagation()}
-          onPointerUp={(event) => event.stopPropagation()}
-        >
+        {hint && (
+          <div
+            key={hint.id}
+            className={`pointer-events-none absolute ${showBar ? 'top-16' : 'top-4'} left-1/2 z-10 -translate-x-1/2 rounded-full bg-scrim/90 px-4 py-2 text-sm whitespace-nowrap text-white`}
+          >
+            {hint.text}
+          </div>
+        )}
+      </main>
+      {/* Mockup-only controls, bottom-left and over everything (portaled,
+          above the cards), opening upward; outside the score, so they never
+          turn a page. */}
+      {createPortal(
+        <div className="fixed bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-3 z-[60] flex flex-col-reverse items-start gap-2">
           <button
             type="button"
             onClick={() => setPanelOpen(!panelOpen)}
@@ -1337,11 +1792,36 @@ export function SheetViewerMockup() {
                 }))}
                 value={activeId === null ? '' : String(activeId)}
                 onChange={(v) => {
+                  // Play on a piece: one on your Practice List opens the
+                  // list at it; any other opens just that piece (Phase 6).
+                  setSessionKind(practiceList.includes(Number(v)) ? 'list' : 'piece')
                   setPieceId(Number(v))
                   setPage(1)
                   setEditing(false)
                 }}
               />
+              <SingleSelect
+                size="sm"
+                label="Opened from"
+                options={[
+                  { value: 'piece', label: 'Play on a piece' },
+                  { value: 'list', label: 'The sidebar’s Practice List' },
+                  { value: 'setlist', label: 'Play Set (example setlist)' },
+                ]}
+                value={sessionKind}
+                onChange={(v) => openSession(v as SessionKind)}
+              />
+              <label className="flex items-center gap-2">
+                <Checkbox
+                  checked={practiceList.length === 0}
+                  onChange={(e) => setListOverride(e.target.checked ? [] : null)}
+                />
+                Empty Practice List
+              </label>
+              <label className="flex items-center gap-2">
+                <Checkbox checked={fastMinute} onChange={(e) => setFastMinute(e.target.checked)} />
+                “Practiced” after 5 s, not a minute
+              </label>
               <label className="flex items-center gap-2">
                 <Checkbox checked={hasNotes} onChange={(e) => setHasNotes(e.target.checked)} />
                 Piece has notes
@@ -1374,16 +1854,97 @@ export function SheetViewerMockup() {
               </p>
             </div>
           )}
-        </div>
-        {hint && (
-          <div
-            key={hint.id}
-            className={`pointer-events-none absolute ${showBar ? 'top-16' : 'top-4'} left-1/2 z-10 -translate-x-1/2 rounded-full bg-scrim/90 px-4 py-2 text-sm whitespace-nowrap text-white`}
+        </div>,
+        document.body,
+      )}
+    </div>
+  )
+}
+
+// A custom setlist entry's stand-in page in a setlist session (Phase 6): the
+// Setlist PDF's Generated Program Page (SetlistProgramPageMockup.tsx,
+// drawProgramPage), drawn the same way at a Letter page's proportions —
+// sized in real points against the page's own width (1pt = 100cqw / 612).
+const PRINT_INK = '#1c1815'
+const PRINT_FAINT = '#5c5349'
+const PRINT_FAINTER = '#b3a99e'
+const LETTER = { w: 612, h: 792 }
+const pt = (n: number) => `calc(${n} * 100cqw / ${LETTER.w})`
+function PlaceholderPage({ entry }: { entry: CustomEntry }) {
+  const smallCaps = {
+    fontSize: pt(11 * 1.08),
+    letterSpacing: '0.1em',
+    lineHeight: 'normal',
+    color: PRINT_FAINT,
+  }
+  return (
+    <div
+      className="relative bg-white"
+      style={{
+        width: `min(100cqw, calc(100cqh * ${LETTER.w} / ${LETTER.h}))`,
+        aspectRatio: `${LETTER.w} / ${LETTER.h}`,
+        containerType: 'inline-size',
+      }}
+    >
+      {/* Optically centered: 72pt margins, lifted 4% of the page height. */}
+      <div
+        className="absolute flex flex-col items-center justify-center text-center"
+        style={{ inset: `${pt(72)} ${pt(72)} ${pt(72 + 2 * 0.04 * LETTER.h)}` }}
+      >
+        <div className="flex flex-col items-center" style={{ gap: pt(10) }}>
+          <span
+            aria-hidden="true"
+            style={{
+              display: 'block',
+              width: pt(6),
+              height: pt(6),
+              background: PRINT_FAINTER,
+              transform: 'rotate(45deg)',
+              margin: `${pt(3)} 0 ${pt(11)}`,
+            }}
+          />
+          <span className="font-sans uppercase" style={smallCaps}>
+            {entry.role}
+          </span>
+          <span
+            className="font-display italic"
+            style={{ fontSize: pt(24), lineHeight: 1.24, color: PRINT_INK, width: pt(288) }}
           >
-            {hint.text}
-          </div>
-        )}
-      </main>
+            {entry.name}
+          </span>
+          {entry.notes && (
+            <>
+              <span
+                aria-hidden="true"
+                style={{
+                  height: pt(1),
+                  width: pt(24),
+                  background: PRINT_FAINTER,
+                  margin: `${pt(2)} 0`,
+                }}
+              />
+              <p
+                className="font-sans"
+                style={{
+                  fontSize: pt(12 * 1.08),
+                  letterSpacing: '0.02em',
+                  lineHeight: 1.4,
+                  color: PRINT_FAINT,
+                  width: pt(288),
+                  margin: 0,
+                }}
+              >
+                {entry.notes}
+              </p>
+            </>
+          )}
+          {entry.duration && (
+            <span className="font-sans uppercase tabular-nums" style={smallCaps}>
+              {entry.duration}
+            </span>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
