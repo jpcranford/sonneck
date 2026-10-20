@@ -25,7 +25,7 @@ Sonneck is a bookshelf for your sheet music, whether you have public domain clas
   - **Book-to-piece inheritance.** Set a book's composer, publisher, and year once. Every piece inside it inherits the information automatically, you only ever need to override the pieces that are actually different.
   - **Public domain badge.** A small badge shows whether a piece is Public Domain, Likely Public Domain, Copyleft, or In Copyright — computed automatically from the copyright year and composer death year(s) where possible, or set explicitly when you know better. See [Public domain badge](#public-domain-badge) below for how the calculation works and its limitations.
 - **Search that keeps up with you.** Full-text fuzzy search across your whole library as you type. Grid views are optimized for number of items shown at once, while list views show you the most detail about each piece without having to open it up.
-- **Track your wishlist.** Ever forget you were learning a piece only to rediscover it weeks later at the bottom of your bag? Or buy pieces to learn, only for them to get lost in the stacks? No more! Use the practice status and filter views to track what you want to play, what you have in progress, and even the stuff you never want to touch again! Take *that*, [Sorabji](https://www.youtube.com/watch?v=_OrAewTxBrc)!
+- **Track your wishlist.** Ever forget you were learning a piece only to rediscover it weeks later at the bottom of your bag? Or buy new pieces to learn, only for them to get lost in the stacks? No more! Use the practice status and filter views to track what you want to play, what you have in progress, and even the stuff you never want to touch again! Take *that*, [Sorabji](https://www.youtube.com/watch?v=_OrAewTxBrc)!
 - **Plan your sets.** Setlists can contain a gig date, title, description, and any number of pieces and custom entries that you require. Check the auto-calculated total duration and page count from its details page, reorder things to flow better, and even export the entire set as one combined PDF for convenient backup to another device. Need the program for a bulletin or a group chat? Copy it in one click as Markdown or plain text, complete with every piece's citation.
 - **A truly *responsive* workflow.** None of that "resize-and-rerender-everything" lag. Resize and it's good to go, instantly. Useful keyboard shortcuts throughout — hold `/` or `?` on any page to see them — plus right-click (desktop)/long-press (mobile) context menus for quick edits. Drag and drop a file to upload it, no matter what page you're on.
 - **Easy on the eyes.** Light, dark, or follow your device. Dark mode even goes for your sheet music (if you want it to): turn on Dark Mode Scores in User Settings and pages render as light ink on a dark background, so a late-night practice session doesn't feel like staring into the sun.
@@ -45,12 +45,10 @@ On first launch you'll pick where your library lives (defaults to a `Sonneck Lib
 > - **macOS**: Gatekeeper will say the app "cannot be opened because it is from an unidentified developer." Right-click (or Control-click) the app and choose **Open**, then confirm **Open** again in the dialog that follows — you only need to do this once. (If you already double-clicked it and got a plain "can't be opened" message with no Open option, go to **System Settings → Privacy & Security**, scroll down, and click **Open Anyway** next to the Sonneck mention.)
 > - **Windows**: SmartScreen will say "Windows protected your PC." Click **More info**, then **Run anyway**.
 >
-> This is expected behavior for any unsigned app, but don't worry; every app version is [buitl](.github/workflows/native-build.yml) directly from this repo's own code by GitHub Actions — nothing hidden happens between the code here and the file you download.
-
-**OIDC/SSO sign-in is not available on native apps.** Use Docker instead if you need support for that; see the [Security](#security) section below for more information.
+> This is expected behavior for any unsigned app, but don't worry; every app version is [built](.github/workflows/native-build.yml) directly from this repo's own code by GitHub Actions — nothing hidden happens between the code here and the file you download.
 
 ### Docker Compose
-There's a [`docker-compose.yml`](docker-compose.yml) file in this repo and linked to the releases, complete with helpful comments explaining some common env vars.
+There's a [`docker-compose.yml`](docker-compose.yml) file in this repo and copied to each release, complete with helpful comments explaining some common env vars.
 
 Download the file, tailor it how you want, then run:
 
@@ -102,17 +100,19 @@ Several of these (`BACKUP_CRON`, `BACKUP_RETENTION_DAYS`, `LOG_LEVEL`, `COPYRIGH
 | `AUTH_METHOD` | (unset) | One of `none`, `singlepass`, `oidc` — see [Security](#security) below |
 
 ### Security options
-Sonneck supports the following authentication methods, in order of least to greatest security:
-1. **No password.** Anyone that can find Sonneck can do anything. One user, full admin. If you're just running this as an app on your computer and not gonna use another device, this is fine.
-2. **Password** mode locks the app behind a single password. If you're on a shared computer or planning on using Sonneck on multiple devices, I recommend this option at the very least. I haven't enforced any rules for the password other than length, so make it as simple or complex as makes you feel safe doing.
-3. **Sign in with…** (OIDC/SSO) mode. The sign-in page kicks you over to your SSO provider for sign-in, and once you sign in the SSO provider gives Sonneck your name and profile pic. Sonneck Admins can manage user permissions in Admin Settings. IMO this will be overkill for all but the biggest libraries.
-
-On first launch, a setup screen walks you through picking one of the above (OIDC/SSO is greyed out unless it's already configured — see the [OIDC / SSO setup](docs/oidc-setup.md) doc for details). Setting `AUTH_METHOD` yourself locks that screen to your choice instead of leaving it pickable (a `singlepass` password is still entered there either way, since a password itself has no environment-variable equivalent).
 
 > [!CAUTION]
 > Sonneck on Docker first launches with no security enabled and open to the network (see [Security](#security) below). Until you enable a password or SSO support, anyone who can reach the server over the network can use the full API, with no separation between "trusted operator" and "anonymous visitor." It should go without saying but **do not expose it on the open internet like this.**
 
-**Behind an authenticating reverse proxy** (e.g. Cloudflare Access, Authelia, Authentik):  There's a secret fourth option, which is gating Sonneck behind an authenticating reverse proxy. How exactly to do it varies by proxy, but you should probably know to let the app's icon files through without a login, or the home-screen/installed app icon can't load, since e.g. iOS fetches the home-screen icon without your login cookie and gets the login page instead. They're public images, nothing from your library: 
+Sonneck supports the following authentication methods, in order of least to greatest security:
+1. **No password.** Anyone that can find Sonneck can do anything. One user, full admin. If you're just running this as an app on your computer and not gonna use another device, this is fine.
+2. **Password** mode locks the app behind a single password. If you're on a shared computer or planning on using Sonneck on multiple devices, I recommend this option at the very least. I haven't enforced any rules for the password other than length, so make it as simple or complex as makes you feel safe doing.
+3. **Sign in with…** (OIDC/SSO) mode, only available on Docker installs. The sign-in page kicks you over to your SSO provider for sign-in, and once you sign in the SSO provider gives Sonneck your name and profile pic. Sonneck Admins can manage user permissions in Admin Settings. IMO this will be overkill for all but the biggest libraries.
+
+On first launch, a setup screen walks you through picking one of the above (OIDC/SSO is greyed out unless it's already configured — see the [OIDC / SSO setup](docs/oidc-setup.md) doc for details). Setting `AUTH_METHOD` yourself locks that screen to your choice instead of leaving it pickable (a `singlepass` password is still entered there either way, since a password itself has no environment-variable equivalent).
+
+#### Authenticating reverse proxies
+There's a secret fourth option, which is gating Sonneck behind an authenticating reverse proxy, such as Cloudflare Access, Authelia, or Authentik. How exactly to do it varies by proxy, but you probably will need to let the following files through without a login, since e.g. iOS fetches the home-screen icon without your login cookie and gets the login page instead. They're public images, nothing from your library: 
 
 ```
 /favicon.svg
@@ -123,7 +123,7 @@ On first launch, a setup screen walks you through picking one of the above (OIDC
 /manifest.webmanifest
 ```
 
-For example, in Cloudflare Access, this is set up as a separate application covering these paths with a **Bypass** policy.
+For example, in Cloudflare Access, this is set up as a separate application covering these paths with a **Bypass** policy. The greater specificity for these paths will make it take priority over the main application.
 
 ### Public domain badge
 A piece's badge is one of four states: **In Public Domain** or **Copyleft** (both set explicitly by you), or **Likely Public Domain** / **In Copyright** (computed automatically). The computed states use a per-region formula, reviewed against IMSLP's [Copyright Made Simple](https://imslp.org/wiki/IMSLP:Copyright_Made_Simple) and [Public domain](https://imslp.org/wiki/Public_domain) pages. `COPYRIGHT_REGION` (above) picks which region's rule applies to your whole library — the U.S. rule is based on the copyright year alone; the EU/UK/Canada rules are based on the composer's death year (falling back to an approximation from the copyright year if no death year is on record).
@@ -168,7 +168,7 @@ DATA_DIR=./data go run ./cmd/sonneck <command>
 
 ## Planned features
 - Support for image files, and also support for a folder of image files to be uploaded/assembled into a piece
-- **Sheet Viewer!** The practice view every app like this seems to have, with Bluetooth page turner support, server-saved annotations, and a built-in metronome, possibly with some simple gap support there. Maybe some music theory references too, why not; it's not like the circle of fifths has changed in the last 400 years.
+- **Sheet Viewer!** The practice view every app like this seems to have, with Bluetooth page turner support, server-saved annotations, and a built-in metronome, possibly with some simple gap support there. Maybe some music theory references too, why not; it's not like the circle of fifths has changed in the last 400 years. Also, possibly, importing PDF annotations for mild cross-compatibility with whatever other tools are used.
 - **Folders, both smart and otherwise.** Save filters to be automatic folders of music– think "pieces I've Learned and are solo pieces for the piano" or "lead sheets from books x, y, and z" accessible under a name in the sidebar.
 - **Configurable citation format.** Just in case you don't like the defaults.
 - Server-side printer support? Unsure about this one, but essentially the server would have a dedicated printer with the same settings saved, boiling a whole process down into a simple "Send to Printer" button. Dunno if this is achievable or just a fever dream.
@@ -194,8 +194,9 @@ Despite all the caution and guardrails, I still don’t trust it– I don't know
 - My beautiful girlfriend, for helping design the logo
 - The frontend serif typeface is [Libre Baskerville](https://github.com/impallari/Libre-Baskerville) by Pablo Impallari, [Google Fonts](https://fonts.google.com/), licensed under the [SIL Open Font License 1.1](https://fonts.google.com/specimen/Libre+Baskerville/license). Self-hosted rather than loaded from Google Fonts at runtime.
 - The frontend sans-serif typeface is [Cabin](https://github.com/impallari/Cabin) by Impallari Type and Rodrigo Fuenzalida, also for Google Fonts and licensed under the SIL Open Font License 1.1. Self-hosted rather than loaded from Google Fonts at runtime.
+- The Sheet Viewer's clock uses [Atkinson Hyperlegible Next](https://github.com/googlefonts/atkinson-hyperlegible-next) by the Braille Institute of America, for Google Fonts, licensed under the SIL Open Font License 1.1. Self-hosted rather than loaded from Google Fonts at runtime.
 - The cursive S logo is taken from the [Gwendolyn](https://github.com/googlefonts/gwendolyn) font's capital S and the rest of the wordmark was built with [Mea Culpa](https://github.com/googlefonts/mea-culpa). Both fonts were designed by Robert Leuschke for Google Fonts and licensed under the SIL Open Font License 1.1. Logo and wordmark rendered as SVG and self-hosted.
 - The music symbols supported in Markdown fields (`:forte:`, `:flat:`, `:segno:`, and the rest) render via [Bravura Text](https://github.com/steinbergmedia/bravura), the SMuFL music-notation font from Steinberg Media Technologies, licensed under the SIL Open Font License 1.1. Self-hosted as a tiny subset (a few KB, not the ~3MB full release) containing only the specific glyphs this app supports.
-- The fleuron used on generated setlist covers was redrawn from a border printed in *An Exhibit of Garamond Type with Appropriate Ornaments* (Redfield-Kendrick-Odell Co., 1927), although it's a design first shown as one of Caslon's original [flower ornaments](https://archive.org/details/specimenofprinti00caslrich/page/n88/mode/1up), ca. 1785 but possibly from even earlier than that. It's a flower symbol almost as old as Western music, and has been used alongside several serif typefaces both then and now.
+- The fleuron used on generated setlist covers was redrawn from a border printed in *An Exhibit of Garamond Type with Appropriate Ornaments* (Redfield-Kendrick-Odell Co., 1927), although it's a design first shown as one of Caslon's original [flower ornaments](https://archive.org/details/specimenofprinti00caslrich/page/n88/mode/1up), ca. 1785 but possibly from even earlier than that. It's a flower symbol almost as old as Western music, and has been used alongside several serif typefaces across the centuries.
 - My inspirations, for showing me what's possible with modern tech. [RomM](https://github.com/rommapp/romm), [Plex](https://www.plex.tv/your-media/), and [Calibre](https://calibre-ebook.com/) stand out.
 - Despite some passing resemblance in name, we are in no way affiliated with a certain blue runs-fast creature. Whatever species it claims to be.

@@ -46,6 +46,7 @@ import { UserSettingsMockup } from './routes/UserSettingsMockup'
 import { AdminSettingsMockup } from './routes/AdminSettingsMockup'
 import { AuthChangeFlowMockup } from './routes/AuthChangeFlowMockup'
 import { LoginScreenMockup } from './routes/LoginScreenMockup'
+import { SheetViewerMockup } from './routes/SheetViewerMockup'
 import { CitationLogicMockup } from './routes/CitationLogicMockup'
 import { DeviceInfoMockup } from './routes/DeviceInfoMockup'
 import { FirstLaunchMockup } from './routes/FirstLaunchMockup'
@@ -237,6 +238,9 @@ function AppRoutes() {
       {/* Also not nested inside <AppShell /> — same reasoning as
           auth-change-flow above (a full-page boot-time gate). */}
       <Route path="mockup/login-screen" element={<LoginScreenMockup />} />
+      {/* Also not nested inside <AppShell /> — the Sheet Viewer is a
+          full-screen mode with its own toolbar and no sidebar. */}
+      <Route path="mockup/sheet-viewer" element={<SheetViewerMockup />} />
     </Routes>
   )
 }

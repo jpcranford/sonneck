@@ -144,6 +144,16 @@ const SECTIONS: { title: string; mockups: Mockup[] }[] = [
     ],
   },
   {
+    title: 'Sheet Viewer',
+    mockups: [
+      {
+        to: '/mockup/sheet-viewer',
+        name: 'Sheet Viewer',
+        note: 'The full-screen practice and performance mode, Phase 2: real pages from a piece you pick, a top toolbar, side-thirds tap zones (pedal keys too), two-tap close, the clock and stopwatch, faint coming-soon Metronome and Theory buttons, and Annotate’s tinted toolbar with placeholder tools. The page cyclers stay put in both modes. Toggles for tap zones and 48pt hit areas.',
+      },
+    ],
+  },
+  {
     title: 'Upload Flows',
     mockups: [
       {
