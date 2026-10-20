@@ -512,17 +512,24 @@ export function SheetViewerMockup() {
         {/* Clock mode only: the stopwatch always shows seconds. */}
         {clockMode === 'clock' && (
           <>
-            {/* The switch itself is the shared Toggle (36×20); the row
-                    around it is the 48pt target, so a tap anywhere on the
-                    row flips it too. */}
+            {/* The Sheet Viewer's switch row (design D): label first,
+                lined up with the icon rows' text (12px padding + 20px icon
+                + 10px gap), the 44×26 switch at the right edge; the whole
+                48pt row flips it. */}
             <div
               data-hit
-              className={`${HIT} w-full justify-start px-3`}
+              className={`${HIT} w-full`}
               onClick={(event) => {
                 if (event.target === event.currentTarget) setShowSeconds(!showSeconds)
               }}
             >
-              <Toggle checked={showSeconds} onChange={setShowSeconds} label="Show seconds" />
+              <Toggle
+                row
+                checked={showSeconds}
+                onChange={setShowSeconds}
+                label="Show seconds"
+                className="h-10 w-full rounded-[10px] pr-3 pl-[42px] hover:bg-(--sv-hover)"
+              />
             </div>
           </>
         )}
@@ -633,21 +640,6 @@ export function SheetViewerMockup() {
           <span className="flex-1" />
           {notes && !editing && activeId !== null && (
             <>
-              {/* The shared Toggle (36×20) in a 48pt row; a tap anywhere on
-                  the row flips it too. */}
-              <div
-                data-hit
-                className={`${HIT} px-2`}
-                onClick={(event) => {
-                  if (event.target === event.currentTarget) setBar(!!barHidden[activeId])
-                }}
-              >
-                <Toggle
-                  checked={!barHidden[activeId]}
-                  onChange={setBar}
-                  label="Show in notes bar"
-                />
-              </div>
               <HitButton label="Edit your notes" onClick={startEdit}>
                 <IconPencil size={20} />
               </HitButton>
@@ -693,6 +685,27 @@ export function SheetViewerMockup() {
               <p className="text-xs text-ink-faint italic">
                 Example notes: this piece has none of its own.
               </p>
+            )}
+            {/* On its own row under the notes (Phase 4 review), in the
+                switch-row style: the label lined up with the notes' text
+                (the card's 1px border + 16px padding), the switch at the
+                card's right edge. */}
+            {activeId !== null && (
+              <div
+                data-hit
+                className={`${HIT} -mx-2 -mt-1`}
+                onClick={(event) => {
+                  if (event.target === event.currentTarget) setBar(!!barHidden[activeId])
+                }}
+              >
+                <Toggle
+                  row
+                  checked={!barHidden[activeId]}
+                  onChange={setBar}
+                  label="Show in notes bar"
+                  className="h-10 w-full rounded-[10px] pr-2 pl-[25px] hover:bg-(--sv-hover)"
+                />
+              </div>
             )}
           </>
         ) : (

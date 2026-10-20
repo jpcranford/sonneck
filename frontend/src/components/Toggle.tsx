@@ -9,6 +9,13 @@ import type { ReactNode } from 'react'
 // alongside, stays a sibling outside this component rather than nested
 // inside the clickable label, so its own click never also toggles the
 // switch.
+//
+// `row` is the Sheet Viewer's switch-row style (design D, picked from a
+// side-by-side: https://claude.ai/artifact/Cx5oktzeNJnW1BCXRmnBmH): the
+// label first at the surrounding text's size, a larger 44×26 switch at the
+// row's right edge, and the whole row clickable. The caller sizes the row
+// (`className`, e.g. a 48pt height and the padding that lines the label up
+// with the text around it).
 export function Toggle({
   checked,
   onChange,
@@ -16,47 +23,69 @@ export function Toggle({
   id,
   disabled,
   title,
+  row,
+  className = '',
 }: {
   checked: boolean
   onChange: (checked: boolean) => void
   label: ReactNode
   id?: string
-  // "Coming soon" settings (e.g. User Settings' Paginated views) and
-  // permission-gated controls both need this — a real disabled state, not
-  // just an onChange that's never wired up, since the switch/label pair
-  // would otherwise still visibly track clicks (the thumb slides, the
-  // track recolors) for a setting that either does nothing yet or the
-  // viewer can't actually change, matching CLAUDE.md's own permission-
-  // aware UI gating convention (real `disabled`, faint container opacity,
-  // a `title` explaining why).
   disabled?: boolean
   title?: string
+  row?: boolean
+  className?: string
 }) {
-  return (
-    <div className={`flex items-center gap-2 ${disabled ? 'opacity-50' : ''}`} title={title}>
-      <button
-        id={id}
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        disabled={disabled}
-        onClick={() => onChange(!checked)}
-        className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus-visible:outline focus-visible:outline-accent ${
-          disabled ? 'cursor-not-allowed' : 'cursor-pointer'
-        } ${checked ? 'bg-accent-fill' : 'bg-border'}`}
-      >
-        <span
-          className={`inline-block size-3.5 transform rounded-full bg-white shadow transition-transform ${
-            checked ? 'translate-x-[18px]' : 'translate-x-1'
-          }`}
-        />
-      </button>
+  const toggle = () => !disabled && onChange(!checked)
+  const switchButton = (
+    <button
+      id={id}
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+      className={`relative inline-flex shrink-0 items-center rounded-full transition-colors focus-visible:outline focus-visible:outline-accent ${
+        row ? 'h-[26px] w-11' : 'h-5 w-9'
+      } ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'} ${checked ? 'bg-accent-fill' : 'bg-border'}`}
+    >
       <span
-        className={`text-sm text-ink select-none ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
-        onClick={() => !disabled && onChange(!checked)}
+        className={`inline-block transform rounded-full bg-white shadow transition-transform ${
+          row
+            ? `size-5 ${checked ? 'translate-x-[21px]' : 'translate-x-[3px]'}`
+            : `size-3.5 ${checked ? 'translate-x-[18px]' : 'translate-x-1'}`
+        }`}
+      />
+    </button>
+  )
+  const labelSpan = (
+    <span
+      className={`${row ? 'min-w-0 flex-1 truncate' : 'text-sm'} text-ink select-none ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+      onClick={toggle}
+    >
+      {label}
+    </span>
+  )
+  if (row) {
+    return (
+      <div
+        className={`flex items-center gap-3 ${disabled ? 'opacity-50' : 'cursor-pointer'} ${className}`}
+        title={title}
+        onClick={(event) => {
+          if (event.target === event.currentTarget) toggle()
+        }}
       >
-        {label}
-      </span>
+        {labelSpan}
+        {switchButton}
+      </div>
+    )
+  }
+  return (
+    <div
+      className={`flex items-center gap-2 ${disabled ? 'opacity-50' : ''} ${className}`}
+      title={title}
+    >
+      {switchButton}
+      {labelSpan}
     </div>
   )
 }
