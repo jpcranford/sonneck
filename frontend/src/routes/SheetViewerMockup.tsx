@@ -7,15 +7,12 @@ import {
   IconArrowBackUp,
   IconArrowLeft,
   IconBallpen,
-  IconBan,
   IconCheck,
   IconChevronLeft,
   IconChevronRight,
   IconCircle,
   IconCircleOff,
   IconCircleCheckFilled,
-  IconCircleDashed,
-  IconCircleHalf2,
   IconClef,
   IconClock,
   IconClockOff,
@@ -24,7 +21,6 @@ import {
   IconEraser,
   IconGripVertical,
   IconHighlight,
-  IconHourglassEmpty,
   IconInfoCircle,
   IconListNumbers,
   IconMetronome,
@@ -43,12 +39,15 @@ import {
   IconX,
 } from '@tabler/icons-react'
 import { getPiece, getPieceThumbnailUrl, searchPieces } from '../api/pieces'
+import { listPracticeStatuses } from '../api/lookups'
 import { Checkbox } from '../components/Checkbox'
 import { InfoTooltip } from '../components/InfoTooltip'
 import { MarkdownText } from '../components/MarkdownText'
+import { PracticeStatusKeyIcon } from '../components/PracticeStatusIcon'
 import { SingleSelect } from '../components/SingleSelect'
 import { Toggle } from '../components/Toggle'
 import { useAnchoredPanel } from '../hooks/useAnchorRect'
+import { sortPracticeStatuses } from '../lib/practiceStatusOrder'
 import { useShortcutBlocker } from '../lib/shortcuts'
 import { useMockupTitle } from '../lib/useMockupTitle'
 
@@ -92,13 +91,6 @@ const COLORS = ['#2b2622', '#c0392b', '#2f6fb5', '#e0a526']
 
 // Practice statuses in practice order, by their durable icon (the real
 // strip reads the viewer's own list; this mockup writes nothing).
-const STATUSES = [
-  { name: 'Want to Learn', Icon: IconCircleDashed },
-  { name: 'Learning', Icon: IconCircleHalf2 },
-  { name: 'Learned', Icon: IconCircleCheckFilled },
-  { name: 'Stalled', Icon: IconHourglassEmpty },
-  { name: 'Dropped', Icon: IconBan },
-]
 // Shown when the picked piece has no notes of its own yet.
 const EXAMPLE_NOTES =
   '**Big picture:** keep it moving; the middle section is a waltz, not a ballad.\nOct 12 — first time through at tempo. Left hand still heavy in the bridge.'
@@ -368,6 +360,12 @@ export function SheetViewerMockup() {
   // statuses and the bar's on/off are kept per piece but never written.
   const [notesOverride, setNotesOverride] = useState<Record<number, string>>({})
   const [statusOverride, setStatusOverride] = useState<Record<number, string | null>>({})
+  const [hoveredStatus, setHoveredStatus] = useState<string | null>(null)
+  // Your own statuses (read only — the mockup writes nothing).
+  const { data: practiceStatuses = [] } = useQuery({
+    queryKey: ['practice-statuses'],
+    queryFn: listPracticeStatuses,
+  })
   const [barHidden, setBarHidden] = useState<Record<number, boolean>>({})
   const [hasNotes, setHasNotes] = useState(true)
   const [editing, setEditing] = useState(false)
@@ -1087,30 +1085,54 @@ export function SheetViewerMockup() {
           </>
         )}
       </section>
-      <section className="flex flex-col gap-1">
-        <div className="flex items-baseline justify-between">
+      {/* Phase 7: the real PracticeStatusStrip's design at 48pt — your own
+          statuses in practice order (a status with no icon shows its
+          initial), raised tiles whose border turns green on hover, the
+          current one filled; the label line names the hovered or focused
+          status, else the current one. Tap a status to set it, the current
+          one again to clear it. */}
+      <section className="flex flex-col gap-1" onMouseLeave={() => setHoveredStatus(null)}>
+        <div className="flex items-baseline justify-between gap-3">
           <h3 className={sectionLabel}>Practice status</h3>
-          <span className="text-sm font-medium">{status ?? 'None'}</span>
+          <span className="truncate text-sm font-medium">{hoveredStatus ?? status ?? 'None'}</span>
         </div>
-        {/* Tap a status to set it, the current one again to clear it. */}
-        <div className="-mb-1 -ml-1 flex" role="group" aria-label="Practice status">
-          {STATUSES.map(({ name, Icon }) => (
-            <HitButton
-              key={name}
-              label={name}
-              onClick={() => {
-                if (activeId === null) return
-                setStatusOverride({ ...statusOverride, [activeId]: status === name ? null : name })
-              }}
-              faceClassName={
-                status === name
-                  ? 'border border-accent bg-accent-soft text-accent'
-                  : 'border border-border text-ink-soft group-hover/b:bg-(--sv-hover)'
-              }
-            >
-              <Icon size={20} />
-            </HitButton>
-          ))}
+        <div className="-mb-1 -ml-1 flex flex-wrap" role="radiogroup" aria-label="Practice status">
+          {sortPracticeStatuses(practiceStatuses).map((item) => {
+            const isCurrent = status === item.name
+            return (
+              <button
+                key={item.id}
+                type="button"
+                data-hit
+                role="radio"
+                aria-checked={isCurrent}
+                aria-label={isCurrent ? `${item.name} (tap to clear)` : item.name}
+                title={isCurrent ? `${item.name} — tap to clear` : item.name}
+                onMouseEnter={() => setHoveredStatus(item.name)}
+                onFocus={() => setHoveredStatus(item.name)}
+                onBlur={() => setHoveredStatus(null)}
+                onClick={() => {
+                  if (activeId === null) return
+                  setStatusOverride({ ...statusOverride, [activeId]: isCurrent ? null : item.name })
+                }}
+                className={`${HIT} group/b`}
+              >
+                <span
+                  className={`${FACE} border text-sm font-medium ${
+                    isCurrent
+                      ? 'border-accent bg-accent-soft text-accent'
+                      : 'border-border bg-paper-raised text-ink-soft group-hover/b:border-accent group-hover/b:text-ink'
+                  }`}
+                >
+                  {item.iconKey ? (
+                    <PracticeStatusKeyIcon iconKey={item.iconKey} size={20} />
+                  ) : (
+                    item.name.slice(0, 1).toUpperCase()
+                  )}
+                </span>
+              </button>
+            )
+          })}
         </div>
       </section>
       {piece && (
