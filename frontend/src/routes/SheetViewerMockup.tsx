@@ -1,16 +1,18 @@
 import { Fragment, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
   IconAdjustmentsHorizontal,
   IconArrowBackUp,
+  IconArrowLeft,
   IconBallpen,
   IconBan,
   IconCheck,
   IconChevronLeft,
   IconChevronRight,
   IconCircle,
+  IconCircleOff,
   IconCircleCheckFilled,
   IconCircleDashed,
   IconCircleHalf2,
@@ -106,9 +108,10 @@ const EMPTY_NOTES =
   'Nothing yet. Big picture notes go here: what to remember about this piece, or a log of how practice is going. Markings on the music can be made in Annotate mode.'
 const INFO_WIDTH = 380
 const QUEUE_WIDTH = 380
-// Phase 6: a piece counts as practiced today once its last page has been
+// Phase 6 (30s per the round-3 answers): a piece counts as practiced today
+// once its last page has been
 // reached and at least this long has been spent on it.
-const PRACTICED_MS = 60_000
+const PRACTICED_MS = 30_000
 
 // A setlist's custom entries (Phase 6): each gets a placeholder page in the
 // session, drawn like the Setlist PDF's Generated Program Page. Fixtures.
@@ -154,9 +157,9 @@ function formatDuration(seconds: number) {
   const m = Math.floor(seconds / 60)
   return `${m}:${String(seconds % 60).padStart(2, '0')}`
 }
-// The notes bar shows the first line as plain text.
+// The notes bar shows the first line, Markdown and all.
 function firstLine(markdown: string) {
-  return (markdown.split('\n').find((l) => l.trim()) ?? '').replace(/[*_`#>]/g, '').trim()
+  return (markdown.split('\n').find((l) => l.trim()) ?? '').trim()
 }
 
 // Debounced turns (locked plan rule): a turn in the same direction within
@@ -288,14 +291,22 @@ export function SheetViewerMockup() {
     enabled: activeId !== null,
   })
   // A setlist session's custom entry showing instead of a piece.
-  const [customKey, setCustomKey] = useState<string | null>(null)
+  // Entry points link here with ?from=list (the sidebar's Practice List)
+  // or ?from=setlist (Play Set); plain Play opens a single piece.
+  const [searchParams] = useSearchParams()
+  const from = searchParams.get('from')
+  const [customKey, setCustomKey] = useState<string | null>(() =>
+    from === 'setlist' ? 'c:welcome' : null,
+  )
   const custom = customKey ? CUSTOM_ENTRIES[customKey] : null
   const pageCount = custom ? 1 : (piece?.pageCount ?? 1)
 
   // Practice List (Phase 6). Mockup fixtures from the library's newest
   // multi-page pieces; nothing is written.
   type SessionKind = 'piece' | 'list' | 'setlist'
-  const [sessionKind, setSessionKind] = useState<SessionKind>('piece')
+  const [sessionKind, setSessionKind] = useState<SessionKind>(() =>
+    from === 'list' ? 'list' : from === 'setlist' ? 'setlist' : 'piece',
+  )
   const [listOverride, setListOverride] = useState<number[] | null>(null)
   const multi = recent.filter((p) => p.pageCount > 1)
   const practiceList = listOverride ?? multi.slice(0, 5).map((p) => p.id)
@@ -317,6 +328,8 @@ export function SheetViewerMockup() {
   // automatically that day). Clears at midnight in the real thing.
   const [practiced, setPracticed] = useState<Record<number, boolean>>({})
   const [fastMinute, setFastMinute] = useState(false)
+  // User Settings' "Track practice in the Sheet Viewer" (on by default).
+  const [trackingOn, setTrackingOn] = useState(true)
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   // The floating card that follows the pointer while dragging (Edit
   // Program's own pattern): where the pointer is, and where it grabbed the
@@ -549,9 +562,11 @@ export function SheetViewerMockup() {
   const viewing = useRef<{ id: number | null; since: number }>({ id: null, since: 0 })
   const reachedLast = useRef(new Set<number>())
   const threshold = useRef(PRACTICED_MS)
+  const tracking = useRef(true)
   useEffect(() => {
     threshold.current = fastMinute ? 5_000 : PRACTICED_MS
-  }, [fastMinute])
+    tracking.current = trackingOn
+  }, [fastMinute, trackingOn])
   useEffect(() => {
     const now = Date.now()
     const prev = viewing.current
@@ -566,7 +581,8 @@ export function SheetViewerMockup() {
   useEffect(() => {
     const t = window.setInterval(() => {
       const { id, since } = viewing.current
-      if (id === null || !reachedLast.current.has(id)) return
+      // User Settings' practice-tracking switch off: nothing is recorded.
+      if (!tracking.current || id === null || !reachedLast.current.has(id)) return
       if ((spent.current.get(id) ?? 0) + Date.now() - since < threshold.current) return
       setPracticed((prev) => (id in prev ? prev : { ...prev, [id]: true }))
     }, 1000)
@@ -631,13 +647,17 @@ export function SheetViewerMockup() {
     turn(dir)
   }
 
+  // Exit: the back arrow (picked from a side-by-side,
+  // https://claude.ai/artifact/Q9qdB9FgMXvie3ceDJbuFZ) — the app's "go
+  // back", which is where exiting takes you; ✕ elsewhere closes a window or
+  // removes something (the queue's ✕ removes a piece). Two taps.
   const closeButton = (
     <HitButton
-      label={closeArmed ? 'Tap again to close' : 'Close'}
+      label={closeArmed ? 'Tap again to exit' : 'Exit'}
       onClick={pressClose}
       faceClassName={closeArmed ? 'bg-danger-fill px-3 font-medium text-white' : ''}
     >
-      {closeArmed ? 'Close?' : <IconX size={22} />}
+      {closeArmed ? 'Exit?' : <IconArrowLeft size={22} />}
     </HitButton>
   )
 
@@ -672,7 +692,7 @@ export function SheetViewerMockup() {
     createPortal(
       <div
         style={clockMenuStyle}
-        className="z-50 w-72 rounded-xl border border-border bg-paper-raised px-3 pt-3 pb-2 shadow-xl [--sv-hover:var(--color-paper-hover)]"
+        className="z-50 w-72 rounded-xl border border-border bg-paper px-3 pt-3 pb-2 shadow-xl [--sv-hover:var(--color-paper-hover)]"
       >
         <div className="flex rounded-[13px] bg-paper-sunken px-1">
           {(['clock', 'stopwatch'] as const).map((m) => (
@@ -866,7 +886,7 @@ export function SheetViewerMockup() {
     createPortal(
       <div
         style={{ ...photoStyle, width: PHOTO_WIDTH }}
-        className="z-50 rounded-xl border border-border bg-paper-raised px-3 pt-3 pb-2 shadow-xl [--sv-hover:var(--color-paper-hover)]"
+        className="z-50 rounded-xl border border-border bg-paper px-3 pt-3 pb-2 shadow-xl [--sv-hover:var(--color-paper-hover)]"
       >
         {stepperRow('Brightness', IconSun, photo.brightness, (v) => setPhoto({ brightness: v }))}
         {stepperRow('Contrast', IconContrast, photo.contrast, (v) => setPhoto({ contrast: v }))}
@@ -914,7 +934,7 @@ export function SheetViewerMockup() {
   // A dot on Info whenever the piece has notes and Info is closed (Phase 3).
   const notesDot = (
     <span
-      className={`pointer-events-none absolute top-[11px] right-[11px] size-[9px] rounded-full bg-accent-fill ring-2 ${mode === 'annotate' ? 'ring-accent-soft' : 'ring-paper-raised'}`}
+      className={`pointer-events-none absolute top-[11px] right-[11px] size-[9px] rounded-full bg-accent-fill ring-2 ${mode === 'annotate' ? 'ring-accent-soft' : 'ring-paper'}`}
     />
   )
   const infoButton = (
@@ -1019,7 +1039,7 @@ export function SheetViewerMockup() {
           </>
         ) : notes ? (
           <>
-            <div className="rounded-xl border border-accent/40 bg-paper px-4 py-3 text-base leading-relaxed select-text">
+            <div className="rounded-xl border border-accent/40 bg-paper-raised px-4 py-3 text-base leading-relaxed select-text">
               <MarkdownText>{notes}</MarkdownText>
             </div>
             {notesAreExample && (
@@ -1133,7 +1153,7 @@ export function SheetViewerMockup() {
     (tier === 'phone'
       ? createPortal(
           <div
-            className={`fixed inset-x-0 bottom-0 z-50 flex flex-col rounded-t-2xl border-t border-border bg-paper-raised pb-[env(safe-area-inset-bottom)] shadow-2xl [--sv-hover:var(--color-paper-hover)] ${
+            className={`fixed inset-x-0 bottom-0 z-50 flex flex-col rounded-t-2xl border-t border-border bg-paper pb-[env(safe-area-inset-bottom)] shadow-2xl [--sv-hover:var(--color-paper-hover)] ${
               sheetFull ? 'top-[calc(env(safe-area-inset-top)+0.75rem)]' : 'h-[58dvh]'
             }`}
           >
@@ -1158,7 +1178,7 @@ export function SheetViewerMockup() {
         createPortal(
           <div
             style={{ ...infoStyle, width: INFO_WIDTH }}
-            className="z-50 flex max-h-[calc(100dvh-5.5rem)] flex-col overflow-hidden rounded-xl border border-border bg-paper-raised shadow-xl [--sv-hover:var(--color-paper-hover)]"
+            className="z-50 flex max-h-[calc(100dvh-5.5rem)] flex-col overflow-hidden rounded-xl border border-border bg-paper shadow-xl [--sv-hover:var(--color-paper-hover)]"
           >
             {infoHeader(<h2 className="flex-1 pl-5 font-display text-base font-medium">Info</h2>)}
             <div className="min-h-0 overflow-y-auto overscroll-contain">{infoBody}</div>
@@ -1208,12 +1228,18 @@ export function SheetViewerMockup() {
     setDragIndex(target)
   }
   const queuePieces = queueIds.filter((k): k is number => typeof k === 'number')
-  const practicedCount = queuePieces.filter((id) => practiced[id]).length
+  // Practiced marks show in the Practice List only: a setlist session
+  // still records practice, invisibly, and none of it shows (or is
+  // recorded) with tracking off in User Settings.
+  const showMarks = trackingOn && sessionKind === 'list'
+  const practicedCount = queuePieces.filter((id) => practiced[id] === true).length
   const queueTitle = sessionKind === 'setlist' ? SETLIST_NAME : 'Practice List'
   const queueSub =
     sessionKind === 'setlist'
-      ? `Setlist, in its order for this session • ${practicedCount} of ${queuePieces.length} practiced today`
-      : `${practicedCount} of ${queueIds.length} practiced today`
+      ? 'Setlist, in its order for this session'
+      : showMarks
+        ? `${practicedCount} of ${queueIds.length} practiced today`
+        : `${queueIds.length} pieces`
   const queueBody =
     queueIds.length === 0 ? (
       <p className="px-5 pt-3 pb-5 text-sm text-ink-muted italic">
@@ -1247,8 +1273,8 @@ export function SheetViewerMockup() {
                   }}
                   className={`${HIT} min-w-0 flex-1 justify-start group/b`}
                 >
-                  <span className={`${FACE} ${FACE_HOVER} w-full justify-start px-2`}>
-                    <span className="flex min-w-0 flex-col text-left">
+                  <span className={`${FACE} ${FACE_HOVER} h-11 w-full justify-start px-2`}>
+                    <span className="flex min-w-0 -translate-y-[0.5px] flex-col text-left">
                       <span className="truncate font-display font-medium italic">{entry.name}</span>
                       <span className="truncate text-xs text-ink-soft">
                         {current ? 'Now open' : entry.role}
@@ -1256,14 +1282,14 @@ export function SheetViewerMockup() {
                     </span>
                   </span>
                 </button>
-                {/* No practiced mark: a custom entry isn't a piece. */}
-                <span className="w-12 shrink-0" />
               </li>
             )
           }
           const p = byId.get(id)
           const current = id === activeId && !customKey
           const done = practiced[id] === true
+          // Unmarked today: the automatic rule leaves it alone until tomorrow.
+          const unmarked = practiced[id] === false
           const who = p
             ? [
                 ...p.composer.values.map((x) => x.name),
@@ -1312,9 +1338,12 @@ export function SheetViewerMockup() {
                 className={`${HIT} min-w-0 flex-1 justify-start group/b`}
               >
                 {/* The same hover fill as the row's other buttons, so the
-                    title reads as tappable. */}
-                <span className={`${FACE} ${FACE_HOVER} w-full justify-start px-2`}>
-                  <span className="flex min-w-0 flex-col text-left">
+                    title reads as tappable — 44px in the 48pt row, so the
+                    two lines have room and neighbors stay close. The text
+                    sits half a pixel high: measured by its ink, the title's
+                    leading otherwise leaves the top ~1px roomier. */}
+                <span className={`${FACE} ${FACE_HOVER} h-11 w-full justify-start px-2`}>
+                  <span className="flex min-w-0 -translate-y-[0.5px] flex-col text-left">
                     <span className="truncate font-display font-medium">{p?.title ?? '…'}</span>
                     <span className="truncate text-xs text-ink-soft">
                       {current ? 'Now open' : who || `${p?.pageCount ?? ''} pp.`}
@@ -1322,13 +1351,27 @@ export function SheetViewerMockup() {
                   </span>
                 </span>
               </button>
-              <HitButton
-                label={done ? 'Practiced today: tap to unmark' : 'Mark as practiced today'}
-                onClick={() => setPracticed({ ...practiced, [id]: !done })}
-                faceClassName={`${FACE_HOVER} ${done ? 'text-accent' : 'text-ink-fainter'}`}
-              >
-                {done ? <IconCircleCheckFilled size={22} /> : <IconCircle size={22} />}
-              </HitButton>
+              {showMarks && (
+                <HitButton
+                  label={
+                    done
+                      ? 'Practiced today: tap to unmark'
+                      : unmarked
+                        ? 'Unmarked for today: tap to mark as practiced'
+                        : 'Mark as practiced today'
+                  }
+                  onClick={() => setPracticed({ ...practiced, [id]: !done })}
+                  faceClassName={`${FACE_HOVER} ${done ? 'text-accent' : unmarked ? 'text-ink-faint' : 'text-ink-fainter'}`}
+                >
+                  {done ? (
+                    <IconCircleCheckFilled size={22} />
+                  ) : unmarked ? (
+                    <IconCircleOff size={22} />
+                  ) : (
+                    <IconCircle size={22} />
+                  )}
+                </HitButton>
+              )}
               {editableQueue && (
                 <HitButton
                   label={`Remove ${p?.title ?? ''} from the Practice List`}
@@ -1394,7 +1437,7 @@ export function SheetViewerMockup() {
     (tier === 'phone'
       ? createPortal(
           <div
-            className={`fixed inset-x-0 bottom-0 z-50 flex flex-col rounded-t-2xl border-t border-border bg-paper-raised pb-[env(safe-area-inset-bottom)] shadow-2xl [--sv-hover:var(--color-paper-hover)] ${
+            className={`fixed inset-x-0 bottom-0 z-50 flex flex-col rounded-t-2xl border-t border-border bg-paper pb-[env(safe-area-inset-bottom)] shadow-2xl [--sv-hover:var(--color-paper-hover)] ${
               sheetFull ? 'top-[calc(env(safe-area-inset-top)+0.75rem)]' : 'h-[58dvh]'
             }`}
           >
@@ -1418,7 +1461,7 @@ export function SheetViewerMockup() {
         createPortal(
           <div
             style={{ ...queueStyle, width: QUEUE_WIDTH }}
-            className="z-50 flex max-h-[calc(100dvh-5.5rem)] flex-col overflow-hidden rounded-xl border border-border bg-paper-raised shadow-xl [--sv-hover:var(--color-paper-hover)]"
+            className="z-50 flex max-h-[calc(100dvh-5.5rem)] flex-col overflow-hidden rounded-xl border border-border bg-paper shadow-xl [--sv-hover:var(--color-paper-hover)]"
           >
             {queueHeader(
               <div className="flex min-h-12 min-w-0 flex-1 items-center pl-5">
@@ -1552,7 +1595,7 @@ export function SheetViewerMockup() {
         className={`relative z-20 shrink-0 border-b pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)] ${
           annotating
             ? 'border-accent/30 bg-accent-soft [--sv-hover:var(--color-accent-soft-hover)]'
-            : 'border-border bg-paper-raised [--sv-hover:var(--color-paper-hover)]'
+            : 'border-border bg-paper [--sv-hover:var(--color-paper-hover)]'
         }`}
       >
         {/* Toolbar rows sit over the menus' backdrop (z-40), so their
@@ -1668,7 +1711,7 @@ export function SheetViewerMockup() {
             {queuePanel}
             {ghostCard}
             {menu === 'more' && (
-              <div className="absolute top-full right-2 z-50 mt-1.5 w-72 rounded-xl border border-border bg-paper-raised p-3 shadow-xl [--sv-hover:var(--color-paper-hover)]">
+              <div className="absolute top-full right-2 z-50 mt-1.5 w-72 rounded-xl border border-border bg-paper p-3 shadow-xl [--sv-hover:var(--color-paper-hover)]">
                 <MenuRow
                   icon={<IconMetronome size={20} />}
                   label="Metronome"
@@ -1750,7 +1793,12 @@ export function SheetViewerMockup() {
             >
               <span className={`${FACE} ${FACE_HOVER} min-w-0 flex-1 justify-start gap-2.5 px-2`}>
                 <IconNotebook size={18} className="shrink-0 text-accent" />
-                <span className="truncate text-[15px]">{firstLine(notes)}</span>
+                {/* The first line through MarkdownText, like the notes
+                    everywhere else (bold, italics, music symbols), cut to
+                    one line. */}
+                <MarkdownText className="min-w-0 truncate text-[15px] [&_p]:inline">
+                  {firstLine(notes)}
+                </MarkdownText>
               </span>
             </button>
             <HitButton label="Hide the notes bar for this piece" onClick={() => setBar(false)}>
@@ -1820,7 +1868,11 @@ export function SheetViewerMockup() {
               </label>
               <label className="flex items-center gap-2">
                 <Checkbox checked={fastMinute} onChange={(e) => setFastMinute(e.target.checked)} />
-                “Practiced” after 5 s, not a minute
+                “Practiced” after 5 s, not 30
+              </label>
+              <label className="flex items-center gap-2">
+                <Checkbox checked={trackingOn} onChange={(e) => setTrackingOn(e.target.checked)} />
+                Practice tracking (User Settings)
               </label>
               <label className="flex items-center gap-2">
                 <Checkbox checked={hasNotes} onChange={(e) => setHasNotes(e.target.checked)} />
@@ -1850,7 +1902,7 @@ export function SheetViewerMockup() {
               </label>
               <p className="text-xs text-ink-soft">
                 Tap the score&rsquo;s sides to turn pages; arrow keys, Space and Page Up/Down act as
-                a pedal. The ✕ needs two taps.
+                a pedal. The exit arrow needs two taps.
               </p>
             </div>
           )}
