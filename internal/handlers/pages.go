@@ -106,7 +106,12 @@ func (s *Server) renderPage(ctx context.Context, src, hash string, page int) err
 	if err != nil {
 		return err
 	}
-	img, err := pdf.RenderPageGray(ctx, s.Cfg.PDFBinDir, src, page, PageDPI, scanned, dir)
+	// The renderer's temp file (an 8MB uncompressed TIFF for an engraved
+	// page) goes in the system's temp folder, not under DATA_DIR: /data is
+	// often a network share or, on a Mac, Docker's slow shared folder, where
+	// writing and reading it back cost more than the render itself (~600ms a
+	// page measured). Only the finished PNG lands in the cache.
+	img, err := pdf.RenderPageGray(ctx, s.Cfg.PDFBinDir, src, page, PageDPI, scanned, os.TempDir())
 	if err != nil {
 		return err
 	}
