@@ -430,13 +430,13 @@ export function SheetViewerMockup() {
   // frame), never on the annotation layer, a sibling.
   const scoreFilter =
     [
-      theme === 'dark' ? (darkScores ? 'invert(0.9) hue-rotate(180deg)' : 'brightness(0.85)') : '',
+      theme === 'dark' ? (darkScores ? 'invert(0.95) hue-rotate(180deg)' : 'brightness(0.85)') : '',
       photo.brightness !== 100 ? `brightness(${photo.brightness / 100})` : '',
       photo.contrast !== 100 ? `contrast(${photo.contrast / 100})` : '',
       photo.grayscale ? 'grayscale(1)' : '',
-      // A full invert, deliberately unlike Dark Mode Scores' invert(0.9):
+      // A full invert, deliberately unlike Dark Mode Scores' invert(0.95):
       // a light-theme Invert reaches true black, where Dark Mode Scores
-      // stops at near-black (#1a1a1a). Kept as is for now (user, Phase 5);
+      // stops at near-black (#0d0d0d). Kept as is for now (user, Phase 5);
       // matching the two is an open question for later.
       photo.invert && !invertHidden ? 'invert(1) hue-rotate(180deg)' : '',
     ]
@@ -1559,12 +1559,17 @@ export function SheetViewerMockup() {
   const toolsInline = tier === 'wide'
   // Inline (wide screens), Undo and Redo sit beside Done on the right, where
   // the Annotate toolbar has room; the tools fill the left side.
+  // Undo and Redo fade (disabled) when there's nothing to undo or redo. The
+  // mockup marks nothing yet, so both stay faded until marking (Phase 15)
+  // gives them a history.
+  const canUndo = false
+  const canRedo = false
   const undoRedo = (
     <>
-      <HitButton label="Undo" onClick={() => flash('Undo arrives with marking (Phase 15)')}>
+      <HitButton label="Undo" onClick={() => {}} disabled={!canUndo}>
         <IconArrowBackUp size={22} />
       </HitButton>
-      <HitButton label="Redo" onClick={() => flash('Redo arrives with marking (Phase 15)')}>
+      <HitButton label="Redo" onClick={() => {}} disabled={!canRedo}>
         <IconArrowForwardUp size={22} />
       </HitButton>
     </>

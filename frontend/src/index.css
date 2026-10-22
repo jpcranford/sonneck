@@ -632,13 +632,14 @@ body:has(#app-scroll-container) .titlebar-drag-strip {
 /* Dark Mode Scores (User Settings › Appearance, lib/theme.ts's
    useDarkScoresSync): every sheet-music page image carries the score-page
    class, and while the setting is on and the theme is dark it shows light
-   notes on a dark page. invert(0.9) rather than a full invert keeps the page
-   a near-black close to the dark paper instead of pure black, and the notes
-   a soft white; hue-rotate puts colored marks (pencil, highlighter) back on
-   their own hue after the invert. Book covers and portraits aren't tagged,
+   notes on a dark page. invert(0.95) (white paper to #0d0d0d, black notes to
+   #f2f2f2, 17.4:1 — picked from a side-by-side for more contrast than the
+   earlier 0.9, https://claude.ai/artifact/M532zRxYKg6HhDRSj4B1N2) stops just
+   short of pure black and white; hue-rotate puts colored marks (pencil,
+   highlighter) back on their own hue after the invert. Book covers and portraits aren't tagged,
    so they stay as they are. */
 :root[data-theme='dark'][data-dark-scores] .score-page {
-  filter: invert(0.9) hue-rotate(180deg);
+  filter: invert(0.95) hue-rotate(180deg);
 }
 
 /* With Dark Mode Scores off, the dark theme still dims every score page a

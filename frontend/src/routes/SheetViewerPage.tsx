@@ -332,13 +332,13 @@ function SheetViewer({ pieceId }: { pieceId: number }) {
   // and its mat together, so an invert doesn't leave a white frame.
   const scoreFilter =
     [
-      dark ? (darkScores ? 'invert(0.9) hue-rotate(180deg)' : 'brightness(0.85)') : '',
+      dark ? (darkScores ? 'invert(0.95) hue-rotate(180deg)' : 'brightness(0.85)') : '',
       photo.brightness !== 100 ? `brightness(${photo.brightness / 100})` : '',
       photo.contrast !== 100 ? `contrast(${photo.contrast / 100})` : '',
       photo.grayscale ? 'grayscale(1)' : '',
-      // A full invert, deliberately unlike Dark Mode Scores' invert(0.9):
+      // A full invert, deliberately unlike Dark Mode Scores' invert(0.95):
       // a light-theme Invert reaches true black, where Dark Mode Scores
-      // stops at near-black (#1a1a1a). Matching the two is an open question.
+      // stops at near-black (#0d0d0d). Matching the two is an open question.
       photo.invert && !invertLocked ? 'invert(1) hue-rotate(180deg)' : '',
     ]
       .filter(Boolean)
