@@ -182,6 +182,19 @@ func CountPiecesWithFileHash(ctx context.Context, q Queryer, hash string) (int, 
 	return count, err
 }
 
+// PageCountForFileHash returns the page count of the pieces whose file has
+// hash (pieces sharing a file share its page count), and false when no
+// piece has it any more — the Sheet Viewer's page cache is keyed by file
+// hash, so its cleanup asks this rather than starting from piece rows.
+func PageCountForFileHash(ctx context.Context, q Queryer, hash string) (int, bool, error) {
+	var count sql.NullInt64
+	err := q.QueryRowContext(ctx, `SELECT MAX(page_count) FROM pieces WHERE file_hash = ?`, hash).Scan(&count)
+	if err != nil {
+		return 0, false, err
+	}
+	return int(count.Int64), count.Valid, nil
+}
+
 // GetPieceByFileHash supports the single-piece-upload dedupe rule
 // (handleCreatePiece): reuse an existing Piece on SHA-256 match rather than
 // creating a duplicate row for identical file content, mirroring

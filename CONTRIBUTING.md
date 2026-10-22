@@ -36,7 +36,7 @@ Sonneck is a single Go binary that serves a React frontend and talks to a single
 | Database | SQLite (`modernc.org/sqlite`, pure Go, no CGO) | File-based, trivial to back up, fits a single-instance deployment |
 | Schema migrations | [`goose`](https://github.com/pressly/goose) | Every schema change is a checked-in migration file — see [Database migrations](#database-migrations) |
 | Search | SQLite FTS5 | Built into SQLite itself — no separate search engine or index-file lifecycle to manage |
-| PDF rendering | `poppler-utils` (`pdftoppm`/`pdftocairo`/`pdfseparate`/`pdfunite`, shelled out from Go) | Small, well-documented, ubiquitous CLI tools |
+| PDF rendering | `poppler-utils` (`pdftoppm`/`pdftocairo`/`pdfimages`/`pdfseparate`/`pdfunite`, shelled out from Go) | Small, well-documented, ubiquitous CLI tools |
 | Frontend language | TypeScript | Self-documents the API surface; types mirror the backend's response contract |
 | Frontend framework | React + Vite | Modern build tooling |
 | Frontend data fetching | TanStack Query | One consistent caching/loading/error pattern instead of ad-hoc `useEffect`/`useState` per component |
@@ -81,7 +81,7 @@ sonneck/
 │   ├── libraryconfig/           # DATA_DIR/config.yml load/save for Admin Settings' Library Settings card
 │   ├── models/                # Core domain structs (Piece, Book, Person, lookups)
 │   ├── oidcauth/                # OIDC discovery/token exchange (multi-user support)
-│   ├── pdf/                    # Page splitting/thumbnail generation via poppler-utils
+│   ├── pdf/                    # Page splitting, thumbnails and the Sheet Viewer's full-size pages via poppler-utils
 │   ├── peoplemigrate/           # One-shot backfill splitting legacy composer/arranger strings into Person rows (admin CLI command, also runs automatically on startup)
 │   ├── repo/                   # All SQL lives here — the only layer that touches the DB
 │   ├── storage/                # File storage on disk (originals, extracted pieces)
@@ -120,7 +120,7 @@ A few things worth knowing about that aren't obvious from the tree alone:
 **Prerequisites:**
 - Go 1.26+ (see `go.mod` for the exact floor)
 - Node 20.19+ (or 22.12+) and npm
-- `poppler-utils` installed and on your `PATH` (provides `pdfinfo`/`pdfseparate`/`pdfunite`/`pdftocairo`/`pdftoppm`) — `brew install poppler` on macOS, `apt-get install poppler-utils` on Debian/Ubuntu
+- `poppler-utils` installed and on your `PATH` (provides `pdfinfo`/`pdfimages`/`pdfseparate`/`pdfunite`/`pdftocairo`/`pdftoppm`) — `brew install poppler` on macOS, `apt-get install poppler-utils` on Debian/Ubuntu
 
 **Backend** (from the repo root):
 ```sh
@@ -173,6 +173,7 @@ Migrations run automatically against `$DATA_DIR` on every backend startup (inclu
 - **Permission checks**: any handler that needs one calls `requirePermission(w, r, models.PermissionX)` as its first line — the one shared gate, not a blanket route-metadata middleware (requirements vary too much per-handler for that). See `CLAUDE.md` > Multi-user support for the current `read`/`download`/`practice`/`edit`/`upload`/`create`/`delete`/`admin` mapping if you're adding a new endpoint.
 - **Logging** uses the standard library's `log/slog` with structured fields (`logger.Info("piece deleted", "pieceId", piece.ID)`), not string interpolation. Destructive-but-expected actions (deletions, file replacement) log at `INFO`, not `DEBUG`/`WARN`.
 - **File hashing** is SHA-256, streamed incrementally — never buffer a full upload into memory before hashing.
+- **Sheet Viewer pages** (`internal/handlers/pages.go`, `internal/pdf/page.go`) are cached by file hash under a render version: if you change how they render (resolution, renderer, encoding), bump `pageRenderVersion` so every page renders afresh at a new address. A poppler tool `internal/pdf` newly runs also has to be added to the macOS app's bundle list in `.github/workflows/native-build.yml`.
 - **Frontend type-checking**: `frontend/tsconfig.json` is a solution-style config (`{ files: [], references: [...] }`). Running `tsc --noEmit -p .` against it is a silent no-op — it type-checks nothing and reports no errors either way. Always run `tsc --noEmit -p tsconfig.app.json` instead.
 - **Frontend data fetching** goes through TanStack Query — not ad-hoc `useEffect`/`useState` per component. Every successful mutation marks all loaded data stale without fetching it (`main.tsx`), so off-screen lists refresh when next shown; a save must still invalidate the lists it changes *on screen* (filter counts included), and a mutation that only looks something up (no write) gets `meta: { readOnly: true }`.
 - **An edit window starts from fresh data** (`hooks/useFreshOnOpen.ts`, fields locked until it lands), and a save that returns its record goes through `lib/refreshAfterSave.ts`. **A thumbnail or first-page cover URL takes a version** from `hooks/useThumbnailVersion.ts` (file hash + redraw stamp), so browsers can cache it for good and still see a replaced file at once.

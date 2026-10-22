@@ -1,4 +1,4 @@
-import { apiDelete, apiGet, apiPatch, apiUpload, apiUploadWithStatus } from './client'
+import { apiDelete, apiGet, apiPatch, apiPost, apiUpload, apiUploadWithStatus } from './client'
 import type { Piece, PieceWriteRequest } from './types'
 
 /**
@@ -48,6 +48,23 @@ export function getPieceFileUrl(id: number): string {
 export function getPieceThumbnailUrl(id: number, page: number = 1, version?: string): string {
   const url = `/api/pieces/${id}/pages/${page}/thumbnail`
   return version ? `${url}?v=${version}` : url
+}
+
+/**
+ * A full-size Sheet Viewer page (300ppi grayscale PNG). `version` is the
+ * piece's file hash plus GET /api/config's pagesVersion, so a replaced file
+ * or a redraw gets a new address and the browser can keep each one for good.
+ */
+export function getPiecePageUrl(id: number, page: number, version?: string): string {
+  const url = `/api/pieces/${id}/pages/${page}`
+  return version ? `${url}?v=${version}` : url
+}
+
+/** Starts rendering every page of a piece in the background — sent when the
+ * piece opens in the Sheet Viewer, so later pages are ready before they're
+ * turned to. */
+export function preparePiecePages(id: number): Promise<{ pageCount: number }> {
+  return apiPost(`/api/pieces/${id}/pages/prepare`)
 }
 
 export function replacePieceFile(

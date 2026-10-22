@@ -598,6 +598,7 @@ func (s *Server) handleDeleteBook(w http.ResponseWriter, r *http.Request) {
 			if err := os.Remove(p.FilePath); err != nil && !os.IsNotExist(err) {
 				s.Logger.Error("failed to remove piece file after delete", "error", err, "pieceId", p.ID, "filePath", p.FilePath)
 			}
+			s.removePageCache(p.FileHash)
 		}
 		s.Logger.Info("piece deleted", "pieceId", p.ID, "fileHash", p.FileHash, "title", p.Title)
 	}

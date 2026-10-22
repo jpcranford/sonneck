@@ -209,6 +209,7 @@ function HitButton({
   faceClassName = '',
   disabled,
   title,
+  inset,
 }: {
   label: string
   onClick: () => void
@@ -216,6 +217,11 @@ function HitButton({
   faceClassName?: string
   disabled?: boolean
   title?: string
+  /** Keeps a face wider than 40px 4px inside its tap area, as a 40px face
+   * always is — so a wide toolbar button (the armed "Exit?", the labeled
+   * Annotate, the clock) sits as far from the screen's edge and its
+   * neighbors as an icon does. */
+  inset?: boolean
 }) {
   return (
     <button
@@ -225,7 +231,7 @@ function HitButton({
       title={title ?? label}
       disabled={disabled}
       onClick={onClick}
-      className={`${HIT} group/b disabled:opacity-50`}
+      className={`${HIT} group/b disabled:opacity-50 ${inset ? 'px-1' : ''}`}
     >
       <span className={`${FACE} ${faceClassName || FACE_HOVER}`}>{children}</span>
     </button>
@@ -653,6 +659,7 @@ export function SheetViewerMockup() {
     <HitButton
       label={closeArmed ? 'Tap again to exit' : 'Exit'}
       onClick={pressClose}
+      inset
       faceClassName={closeArmed ? 'bg-danger-fill px-3 font-medium text-white' : ''}
     >
       {closeArmed ? 'Exit?' : <IconArrowLeft size={22} />}
@@ -662,7 +669,7 @@ export function SheetViewerMockup() {
   const ClockIcon = !clockOn ? IconClockOff : clockMode === 'stopwatch' ? IconStopwatch : IconClock
   const clockButton = (
     <div ref={clockAnchorRef} className="relative">
-      <HitButton label="Clock" onClick={() => setMenu(menu === 'clock' ? null : 'clock')}>
+      <HitButton label="Clock" onClick={() => setMenu(menu === 'clock' ? null : 'clock')} inset>
         <span className={`flex items-center gap-1.5 ${clockOn ? 'px-2.5' : ''}`}>
           <ClockIcon size={20} />
           {clockOn && (
@@ -1582,6 +1589,7 @@ export function SheetViewerMockup() {
     <HitButton
       label="Annotate"
       onClick={enterAnnotate}
+      inset
       faceClassName={
         annotateLabel ? 'border border-border px-3 font-medium hover:border-accent' : ''
       }
@@ -1594,6 +1602,7 @@ export function SheetViewerMockup() {
     <HitButton
       label="Done annotating"
       onClick={leaveAnnotate}
+      inset
       faceClassName={`bg-accent-fill text-white group-hover/b:bg-accent-fill/90 ${annotateLabel ? 'px-3 font-medium' : ''}`}
     >
       <IconCheck size={20} />

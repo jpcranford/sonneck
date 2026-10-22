@@ -323,6 +323,7 @@ export function PiecePage() {
   const canDelete = hasPermission(me, 'delete')
   const canUpload = hasPermission(me, 'upload')
   const canCreate = hasPermission(me, 'create')
+  const canPractice = hasPermission(me, 'practice')
 
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [downloadOpen, setDownloadOpen] = useState(false)
@@ -745,29 +746,20 @@ export function PiecePage() {
                 shows, so both sit with the preview rather than in the info
                 column's field list. */}
             <div className="flex flex-wrap items-center justify-center gap-2">
-              {/* Play — the future Sheet Viewer's entry point (design doc
-                  §13, not built yet), given the accent-solid treatment
-                  Download PDF used to own alone, since this is now the
-                  page's one primary action. Labeled "Play" itself, with
-                  the "not wired up yet" fact carried by a real InfoTooltip
-                  (this page's own existing hover/tap-to-open convention,
-                  e.g. the copyright badge above) — a native `disabled`
-                  button can't be hovered/tapped to reveal anything, so
-                  this stays a genuinely clickable trigger. Faint (opacity)
-                  + showPointerCursor={false} (same "status display, not a
-                  control" treatment the copyright badge already uses)
-                  reads as "not really live yet" without disabling the
-                  tooltip itself. Ported from the already-approved mockup
-                  (/mockup/piece-details). */}
-              <InfoTooltip
-                message="Coming soon — will play through the future Sheet Viewer."
-                ariaLabel="Play (coming soon with the Sheet Viewer)"
-                showPointerCursor={false}
-                triggerClassName="flex items-center gap-2 rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-sm text-white opacity-50"
-              >
-                <IconPlayerPlay size={16} />
-                Play
-              </InfoTooltip>
+              {/* Play — opens the piece in the Sheet Viewer, the page's one
+                  primary action, so it carries the accent-solid treatment.
+                  Hidden without `practice`, which gates the whole viewer.
+                  The mockup's split button (its caret adds the piece to the
+                  Practice List) arrives with the Practice List's build. */}
+              {canPractice && (
+                <Link
+                  to={`/pieces/${piece.id}/play`}
+                  className="flex items-center gap-2 rounded-md bg-accent-fill px-4 py-2 font-display text-sm font-medium text-white hover:bg-accent-fill/90"
+                >
+                  <IconPlayerPlay size={16} />
+                  Play
+                </Link>
+              )}
 
               {/* Positioning context lives on this outer div, not the
                   inner pill — the inner div's own overflow-hidden (needed

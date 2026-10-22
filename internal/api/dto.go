@@ -583,6 +583,10 @@ type ConfigResponse struct {
 	// redraw, like a replaced file, gives each thumbnail a new address, and
 	// browsers can keep the old one indefinitely (see imageCacheHeaders).
 	ThumbnailsRedrawn string `json:"thumbnailsRedrawn"`
+	// PagesVersion is the version part of every Sheet Viewer page URL: the
+	// server's page-render version, plus when the regenerate-pages command
+	// last redrew them.
+	PagesVersion string `json:"pagesVersion"`
 }
 
 // AuthChangePendingResponse carries enough for the frontend to render the

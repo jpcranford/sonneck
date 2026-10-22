@@ -254,6 +254,40 @@ func runSubcommand(name string, conn *sql.DB, cfg *config.Config, logger *slog.L
 			os.Exit(1)
 		}
 		logger.Info("thumbnail cleanup completed", "removed", result.Removed, "regenerated", result.Regenerated)
+	case "regenerate-pages":
+		// The Sheet Viewer's full-size pages (cache/pages), redrawn after a
+		// change to how they render. Safe against a live server for the
+		// same reasons as regenerate-thumbnails: cache writes only, each
+		// landing by an atomic rename. With piece IDs, those pieces; with
+		// none, every piece that already has pages.
+		var ids []int64
+		for _, arg := range os.Args[2:] {
+			id, err := strconv.ParseInt(arg, 10, 64)
+			if err != nil || id <= 0 {
+				logger.Error("piece IDs must be whole numbers", "got", arg)
+				os.Exit(1)
+			}
+			ids = append(ids, id)
+		}
+		s := &handlers.Server{DB: conn, Cfg: cfg, Logger: logger}
+		count, err := s.RegeneratePages(context.Background(), ids)
+		if err != nil {
+			logger.Error("page regeneration failed", "error", err, "regenerated", count)
+			os.Exit(1)
+		}
+		logger.Info("page regeneration completed", "count", count)
+	case "cleanup-pages":
+		// Routine maintenance for cache/pages, like cleanup-thumbnails:
+		// removes only what nothing can use (older render versions, files no
+		// piece has, pages past a file's end, unreadable or leftover temp
+		// files); every other page stays.
+		s := &handlers.Server{DB: conn, Cfg: cfg, Logger: logger}
+		removed, err := s.CleanupPages(context.Background())
+		if err != nil {
+			logger.Error("page cleanup failed", "error", err, "removed", removed)
+			os.Exit(1)
+		}
+		logger.Info("page cleanup completed", "removed", removed)
 	case "migrate-people":
 		// Safe against a live server (WAL mode) — reads/writes go
 		// through the same repo layer every real request already uses, no
