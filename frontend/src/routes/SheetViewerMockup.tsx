@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import {
   IconAdjustmentsHorizontal,
   IconArrowBackUp,
+  IconArrowForwardUp,
   IconArrowLeft,
   IconBallpen,
   IconCheck,
@@ -202,13 +203,16 @@ const clockFormatSeconds = new Intl.DateTimeFormat(undefined, {
   second: '2-digit',
 })
 
+// No title tooltips on the viewer's controls (user, 2026-10-21): once Chrome
+// on the Mac shows one, it keeps the plain arrow cursor while tooltip mode
+// lasts, and a toolbar of touching buttons never lets it reset — so the hand
+// cursor vanished across the whole bar. Each control keeps its aria-label.
 function HitButton({
   label,
   onClick,
   children,
   faceClassName = '',
   disabled,
-  title,
   inset,
 }: {
   label: string
@@ -216,7 +220,6 @@ function HitButton({
   children: ReactNode
   faceClassName?: string
   disabled?: boolean
-  title?: string
   /** Keeps a face wider than 40px 4px inside its tap area, as a 40px face
    * always is — so a wide toolbar button (the armed "Exit?", the labeled
    * Annotate, the clock) sits as far from the screen's edge and its
@@ -228,7 +231,6 @@ function HitButton({
       type="button"
       data-hit
       aria-label={label}
-      title={title ?? label}
       disabled={disabled}
       onClick={onClick}
       className={`${HIT} group/b disabled:opacity-50 ${inset ? 'px-1' : ''}`}
@@ -372,7 +374,8 @@ export function SheetViewerMockup() {
     queryKey: ['practice-statuses'],
     queryFn: listPracticeStatuses,
   })
-  const [barHidden, setBarHidden] = useState<Record<number, boolean>>({})
+  // The notes bar is off until turned on for a piece (user, 2026-10-21).
+  const [barShown, setBarShown] = useState<Record<number, boolean>>({})
   const [hasNotes, setHasNotes] = useState(true)
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
@@ -409,7 +412,7 @@ export function SheetViewerMockup() {
   const infoOpen = menu === 'info'
   // Hidden while any menu or Info is open, so nothing stacks over it.
   const showBar =
-    notes !== '' && activeId !== null && !barHidden[activeId] && menu === null && !customKey
+    notes !== '' && activeId !== null && !!barShown[activeId] && menu === null && !customKey
 
   const photo = (activeId !== null && photoByPiece[activeId]) || PHOTO_DEFAULT
   function setPhoto(change: Partial<Photo>) {
@@ -655,14 +658,23 @@ export function SheetViewerMockup() {
   // https://claude.ai/artifact/Q9qdB9FgMXvie3ceDJbuFZ) — the app's "go
   // back", which is where exiting takes you; ✕ elsewhere closes a window or
   // removes something (the queue's ✕ removes a piece). Two taps.
+  // A fixed width (picked from a side-by-side,
+  // https://claude.ai/artifact/AGotxhczR6JhLquY1YMJBB): the arrow and the
+  // armed "Exit?" share one grid cell, so the face is always as wide as
+  // "Exit?" and the toolbar never shifts when it's tapped.
   const closeButton = (
     <HitButton
       label={closeArmed ? 'Tap again to exit' : 'Exit'}
       onClick={pressClose}
       inset
-      faceClassName={closeArmed ? 'bg-danger-fill px-3 font-medium text-white' : ''}
+      faceClassName={`px-3 font-medium ${closeArmed ? 'bg-danger-fill text-white' : FACE_HOVER}`}
     >
-      {closeArmed ? 'Exit?' : <IconArrowLeft size={22} />}
+      <span className="grid place-items-center [&>*]:col-start-1 [&>*]:row-start-1">
+        <span className={closeArmed ? 'invisible' : ''}>
+          <IconArrowLeft size={22} />
+        </span>
+        <span className={closeArmed ? '' : 'invisible'}>Exit?</span>
+      </span>
     </HitButton>
   )
 
@@ -946,9 +958,16 @@ export function SheetViewerMockup() {
     <div ref={infoAnchorRef} className="relative">
       <HitButton
         label="Info"
-        title="Info: your notes, practice status and the piece’s details"
         onClick={() => openInfo(!infoOpen)}
-        faceClassName={infoOpen ? 'bg-accent-soft text-accent' : ''}
+        // Open, it takes the surface's own "on" look: the tint in Play; in
+        // Annotate, whose toolbar is that tint already, a picked tool's fill.
+        faceClassName={
+          infoOpen
+            ? mode === 'annotate'
+              ? 'bg-accent-fill text-white'
+              : 'bg-accent-soft text-accent'
+            : ''
+        }
       >
         <IconInfoCircle size={22} />
       </HitButton>
@@ -972,7 +991,7 @@ export function SheetViewerMockup() {
   }
   function setBar(visible: boolean) {
     if (activeId === null) return
-    setBarHidden({ ...barHidden, [activeId]: !visible })
+    setBarShown({ ...barShown, [activeId]: visible })
   }
   const sectionLabel = 'text-xs font-semibold tracking-wider text-ink-muted uppercase'
   const details: [string, string][] = piece
@@ -1061,12 +1080,12 @@ export function SheetViewerMockup() {
                 data-hit
                 className={`${HIT} -mx-2 -mt-1 -mb-2`}
                 onClick={(event) => {
-                  if (event.target === event.currentTarget) setBar(!!barHidden[activeId])
+                  if (event.target === event.currentTarget) setBar(!barShown[activeId])
                 }}
               >
                 <Toggle
                   row
-                  checked={!barHidden[activeId]}
+                  checked={!!barShown[activeId]}
                   onChange={setBar}
                   label="Show in notes bar"
                   className="h-10 w-full rounded-[10px] pr-2 pl-[25px] hover:bg-(--sv-hover)"
@@ -1114,7 +1133,6 @@ export function SheetViewerMockup() {
                 role="radio"
                 aria-checked={isCurrent}
                 aria-label={isCurrent ? `${item.name} (tap to clear)` : item.name}
-                title={isCurrent ? `${item.name} — tap to clear` : item.name}
                 onMouseEnter={() => setHoveredStatus(item.name)}
                 onFocus={() => setHoveredStatus(item.name)}
                 onBlur={() => setHoveredStatus(null)}
@@ -1538,6 +1556,19 @@ export function SheetViewerMockup() {
     </div>
   )
 
+  const toolsInline = tier === 'wide'
+  // Inline (wide screens), Undo and Redo sit beside Done on the right, where
+  // the Annotate toolbar has room; the tools fill the left side.
+  const undoRedo = (
+    <>
+      <HitButton label="Undo" onClick={() => flash('Undo arrives with marking (Phase 15)')}>
+        <IconArrowBackUp size={22} />
+      </HitButton>
+      <HitButton label="Redo" onClick={() => flash('Redo arrives with marking (Phase 15)')}>
+        <IconArrowForwardUp size={22} />
+      </HitButton>
+    </>
+  )
   const toolButtons = (
     <>
       {TOOLS.map(({ key, label, Icon }) => (
@@ -1576,12 +1607,9 @@ export function SheetViewerMockup() {
           </HitButton>
         )
       })}
-      <HitButton label="Undo" onClick={() => flash('Undo arrives with marking (Phase 15)')}>
-        <IconArrowBackUp size={22} />
-      </HitButton>
+      {!toolsInline && undoRedo}
     </>
   )
-  const toolsInline = tier === 'wide'
 
   const annotating = mode === 'annotate'
 
@@ -1721,6 +1749,7 @@ export function SheetViewerMockup() {
                     {annotateButton}
                   </>
                 )}
+                {annotating && toolsInline && undoRedo}
                 {annotating && doneButton}
               </div>
             </div>

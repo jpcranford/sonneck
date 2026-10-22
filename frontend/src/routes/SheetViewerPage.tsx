@@ -149,13 +149,16 @@ const clockFormatSeconds = new Intl.DateTimeFormat(undefined, {
   second: '2-digit',
 })
 
+// No title tooltips on the viewer's controls: once Chrome on the Mac shows
+// one, it keeps the plain arrow cursor while tooltip mode lasts, and a
+// toolbar of touching buttons never lets it reset — so the hand cursor
+// vanished across the whole bar. Each control keeps its aria-label.
 function HitButton({
   label,
   onClick,
   children,
   faceClassName = '',
   disabled,
-  title,
   inset,
 }: {
   label: string
@@ -163,7 +166,6 @@ function HitButton({
   children: ReactNode
   faceClassName?: string
   disabled?: boolean
-  title?: string
   /** Keeps a face wider than 40px 4px inside its tap area, as a 40px face
    * always is — so a wide toolbar button (the armed "Exit?", the labeled
    * Annotate, the clock) sits as far from the screen's edge and its
@@ -175,7 +177,6 @@ function HitButton({
       type="button"
       data-hit
       aria-label={label}
-      title={title ?? label}
       disabled={disabled}
       onClick={onClick}
       className={`${HIT} group/b disabled:opacity-50 ${inset ? 'px-1' : ''}`}
@@ -461,15 +462,23 @@ function SheetViewer({ pieceId }: { pieceId: number }) {
   }
 
   // Exit: the back arrow — the app's "go back", which is where exiting takes
-  // you. Two taps, the first arming it for 3 seconds.
+  // you. Two taps, the first arming it for 3 seconds. A fixed width (picked
+  // from a side-by-side, https://claude.ai/artifact/AGotxhczR6JhLquY1YMJBB):
+  // the arrow and the armed "Exit?" share one grid cell, so the face is
+  // always as wide as "Exit?" and the toolbar never shifts when it's tapped.
   const closeButton = (
     <HitButton
       label={closeArmed ? 'Tap again to exit' : 'Exit'}
       onClick={pressClose}
       inset
-      faceClassName={closeArmed ? 'bg-danger-fill px-3 font-medium text-white' : ''}
+      faceClassName={`px-3 font-medium ${closeArmed ? 'bg-danger-fill text-white' : FACE_HOVER}`}
     >
-      {closeArmed ? 'Exit?' : <IconArrowLeft size={22} />}
+      <span className="grid place-items-center [&>*]:col-start-1 [&>*]:row-start-1">
+        <span className={closeArmed ? 'invisible' : ''}>
+          <IconArrowLeft size={22} />
+        </span>
+        <span className={closeArmed ? '' : 'invisible'}>Exit?</span>
+      </span>
     </HitButton>
   )
 
