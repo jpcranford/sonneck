@@ -121,8 +121,24 @@ function subscribeResize(callback: () => void) {
   window.addEventListener('resize', callback)
   return () => window.removeEventListener('resize', callback)
 }
+// The layout viewport's width, which pinch-zoom never changes: iPad Safari
+// shrinks window.innerWidth as you zoom in, which switched the toolbar to
+// its phone layout mid-zoom and redrew every page.
 function useWindowWidth() {
-  return useSyncExternalStore(subscribeResize, () => window.innerWidth)
+  return useSyncExternalStore(subscribeResize, () => document.documentElement.clientWidth)
+}
+
+// Whether the page is pinch-zoomed in (the visual viewport scaled up).
+// Browsers without visualViewport never report it.
+function subscribeViewportZoom(callback: () => void) {
+  window.visualViewport?.addEventListener('resize', callback)
+  return () => window.visualViewport?.removeEventListener('resize', callback)
+}
+function usePinchZoomed() {
+  return useSyncExternalStore(
+    subscribeViewportZoom,
+    () => (window.visualViewport?.scale ?? 1) > 1.05,
+  )
 }
 
 // The theme and Dark Mode Scores as <html> has them right now — they can
@@ -370,6 +386,11 @@ function SheetViewer({ pieceId }: { pieceId: number }) {
   useNoPageScroll()
   const navigate = useNavigate()
   const width = useWindowWidth()
+  // Pinch-zoomed in, the score pans instead of turning: taps and swipes
+  // on it do nothing (the pedal keys and the toolbar still turn).
+  // The current page's full 300ppi image also lies over its screen-size
+  // drawing then, so zoomed detail stays sharp.
+  const zoomed = usePinchZoomed()
   const tier = width >= 1100 ? 'wide' : width >= 640 ? 'mid' : 'phone'
   // Below 900px a labeled Annotate button doesn't fit, so it's an icon.
   const annotateLabel = width >= 900
@@ -629,6 +650,8 @@ function SheetViewer({ pieceId }: { pieceId: number }) {
   const down = useRef<StagePoint | null>(null)
   const fingers = useRef(new Set<number>())
   function onStagePointerDown(event: React.PointerEvent<HTMLDivElement>) {
+    // Zoomed in, a drag pans the page; leave it to the browser.
+    if (zoomed) return
     fingers.current.add(event.pointerId)
     // Its lift always reaches the score, even over the toolbar, so a
     // finger is never left counted as down.
@@ -1233,6 +1256,7 @@ function SheetViewer({ pieceId }: { pieceId: number }) {
                 onReady={() => setReady((r) => ({ ...r, [url]: true }))}
                 onError={() => setFailed((f) => ({ ...f, [url]: true }))}
                 className={p === page && ready[url] ? '' : 'opacity-0'}
+                sharp={zoomed && p === page}
               />
             )
           })}
@@ -1347,7 +1371,7 @@ function SheetViewer({ pieceId }: { pieceId: number }) {
       </header>
 
       <main
-        className="relative min-h-0 flex-1 cursor-default touch-pinch-zoom overflow-hidden"
+        className={`relative min-h-0 flex-1 cursor-default overflow-hidden ${zoomed ? 'touch-manipulation' : 'touch-pinch-zoom'}`}
         onPointerDown={onStagePointerDown}
         onPointerUp={onStagePointerUp}
         onPointerCancel={onStagePointerCancel}
@@ -1426,6 +1450,11 @@ function SheetViewer({ pieceId }: { pieceId: number }) {
 // stretching a 1379px drawing over 1380 screen pixels, measured from barline
 // positions in an iPad screenshot), and it's placed on whole device pixels
 // rather than centered with CSS.
+//
+// Pinch-zoomed in, the drawing alone would only magnify screen pixels, so
+// the current page's full 300ppi image is laid over it in the same spot
+// (`sharp`) — transparent until loaded — and let go on zooming out, keeping
+// memory and turns as they are unzoomed.
 function PageCanvas({
   src,
   width,
@@ -1434,6 +1463,7 @@ function PageCanvas({
   onReady,
   onError,
   className,
+  sharp,
 }: {
   src: string
   width: number
@@ -1442,8 +1472,17 @@ function PageCanvas({
   onReady: () => void
   onError: () => void
   className: string
+  /** Lay the full page over the drawing (pinch-zoomed in). */
+  sharp: boolean
 }) {
   const ref = useRef<HTMLCanvasElement>(null)
+  // Where the drawing sits, for the full page laid over it.
+  const [placed, setPlaced] = useState<{
+    left: number
+    top: number
+    width: number
+    height: number
+  } | null>(null)
   const callbacks = useRef({ onReady, onError })
   useEffect(() => {
     callbacks.current = { onReady, onError }
@@ -1478,8 +1517,11 @@ function PageCanvas({
           // (the score area may start between pixels too).
           const snap = (start: number, room: number, size: number) =>
             Math.round((start + (room - size / dpr) / 2) * dpr) / dpr - start
-          canvas.style.left = `${snap(area.left, area.width, canvas.width)}px`
-          canvas.style.top = `${snap(area.top, area.height, canvas.height)}px`
+          const left = snap(area.left, area.width, canvas.width)
+          const top = snap(area.top, area.height, canvas.height)
+          canvas.style.left = `${left}px`
+          canvas.style.top = `${top}px`
+          setPlaced({ left, top, width: cssWidth, height: cssHeight })
         }
         callbacks.current.onReady()
       })
@@ -1494,13 +1536,26 @@ function PageCanvas({
     }
   }, [src, width, height])
   return (
-    <canvas
-      ref={ref}
-      role={label ? 'img' : undefined}
-      aria-label={label}
-      aria-hidden={label ? undefined : true}
-      className={`absolute block ${className}`}
-    />
+    <>
+      <canvas
+        ref={ref}
+        role={label ? 'img' : undefined}
+        aria-label={label}
+        aria-hidden={label ? undefined : true}
+        className={`absolute block ${className}`}
+      />
+      {/* Transparent until it loads, so the drawing shows meanwhile. */}
+      {sharp && placed && (
+        <img
+          src={src}
+          alt=""
+          aria-hidden
+          draggable={false}
+          style={placed}
+          className={`absolute block ${className}`}
+        />
+      )}
+    </>
   )
 }
 

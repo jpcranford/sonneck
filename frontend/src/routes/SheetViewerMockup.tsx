@@ -172,8 +172,24 @@ function subscribeResize(callback: () => void) {
   window.addEventListener('resize', callback)
   return () => window.removeEventListener('resize', callback)
 }
+// The layout viewport's width, which pinch-zoom never changes: iPad Safari
+// shrinks window.innerWidth as you zoom in, which switched the toolbar to
+// its phone layout mid-zoom and redrew every page.
 function useWindowWidth() {
-  return useSyncExternalStore(subscribeResize, () => window.innerWidth)
+  return useSyncExternalStore(subscribeResize, () => document.documentElement.clientWidth)
+}
+
+// Whether the page is pinch-zoomed in (the visual viewport scaled up).
+// Browsers without visualViewport never report it.
+function subscribeViewportZoom(callback: () => void) {
+  window.visualViewport?.addEventListener('resize', callback)
+  return () => window.visualViewport?.removeEventListener('resize', callback)
+}
+function usePinchZoomed() {
+  return useSyncExternalStore(
+    subscribeViewportZoom,
+    () => (window.visualViewport?.scale ?? 1) > 1.05,
+  )
 }
 
 /** The clock and stopwatch readouts: Atkinson Hyperlegible Next with
@@ -285,6 +301,9 @@ export function SheetViewerMockup() {
   useNoPageScroll()
   const navigate = useNavigate()
   const width = useWindowWidth()
+  // Pinch-zoomed in, the score pans instead of turning: taps and swipes
+  // on it do nothing (the pedal keys and the toolbar still turn).
+  const zoomed = usePinchZoomed()
   const tier = width >= 1100 ? 'wide' : width >= 640 ? 'mid' : 'phone'
   // Below 900px the labeled Annotate button doesn't fit (beside the clock
   // and Info with the cyclers centered; on a phone, beside the title, Info
@@ -659,6 +678,8 @@ export function SheetViewerMockup() {
   const down = useRef<StagePoint | null>(null)
   const fingers = useRef(new Set<number>())
   function onStagePointerDown(event: React.PointerEvent<HTMLDivElement>) {
+    // Zoomed in, a drag pans the page; leave it to the browser.
+    if (zoomed) return
     fingers.current.add(event.pointerId)
     // Its lift always reaches the score, even over the toolbar, so a
     // finger is never left counted as down.
@@ -1835,7 +1856,7 @@ export function SheetViewerMockup() {
       </header>
 
       <main
-        className="relative min-h-0 flex-1 cursor-default touch-pinch-zoom overflow-hidden"
+        className={`relative min-h-0 flex-1 cursor-default overflow-hidden ${zoomed ? 'touch-manipulation' : 'touch-pinch-zoom'}`}
         onPointerDown={onStagePointerDown}
         onPointerUp={onStagePointerUp}
         onPointerCancel={onStagePointerCancel}
