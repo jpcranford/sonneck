@@ -191,8 +191,11 @@ function ClockText({ text }: { text: string }) {
 const pad = (n: number) => String(n).padStart(2, '0')
 // The stopwatch always shows seconds — without them it sat at 00:00 for its
 // first minute and read as broken.
+// Started or resumed between two of the readout's 250ms ticks, "now" is still
+// the last tick's time, a moment before the start — clamped, so it never
+// reads as negative (-1 seconds).
 function stopwatchText(ms: number) {
-  const s = Math.floor(ms / 1000)
+  const s = Math.floor(Math.max(0, ms) / 1000)
   return `${pad(Math.floor(s / 3600))}:${pad(Math.floor(s / 60) % 60)}:${pad(s % 60)}`
 }
 // The clock's seconds are the menu's Show seconds switch (off by default);
@@ -401,7 +404,7 @@ export function SheetViewerMockup() {
   }, [])
   const readout =
     clockMode === 'stopwatch'
-      ? stopwatchText(swAcc + (swStart !== null ? now - swStart : 0))
+      ? stopwatchText(swAcc + (swStart !== null ? Math.max(0, now - swStart) : 0))
       : (showSeconds ? clockFormatSeconds : clockFormat).format(now)
 
   const edited =
