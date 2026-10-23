@@ -38,7 +38,7 @@ import {
   IconTypography,
   IconX,
 } from '@tabler/icons-react'
-import { getPiece, getPieceThumbnailUrl, searchPieces } from '../api/pieces'
+import { getPiece, getPiecePageUrl, getPieceThumbnailUrl, searchPieces } from '../api/pieces'
 import { listPracticeStatuses } from '../api/lookups'
 import { Checkbox } from '../components/Checkbox'
 import { InfoTooltip } from '../components/InfoTooltip'
@@ -52,6 +52,12 @@ import { stageTurn, type StagePoint } from '../lib/sheetViewerGestures'
 import { sortPracticeStatuses } from '../lib/practiceStatusOrder'
 import { useShortcutBlocker } from '../lib/shortcuts'
 import { useMockupTitle } from '../lib/useMockupTitle'
+import { copyToClipboard } from '../lib/clipboard'
+import {
+  clearInterruptedTurnTest,
+  interruptedTurnTest,
+  runTurnTest,
+} from '../lib/sheetViewerTurnTest'
 
 // Sheet Viewer, Phase 2 of its plan: the mode's working page — score and
 // toolbar — with no annotations and no new backend. Built from the Phase 1
@@ -286,6 +292,11 @@ export function SheetViewerMockup() {
   const annotateLabel = width >= 900
 
   const [pieceId, setPieceId] = useState<number | null>(null)
+  // The Mockup panel's turn test (lib/sheetViewerTurnTest.ts). A run that
+  // Safari cut short by reloading the tab shows its report on return.
+  const [turnTestResult, setTurnTestResult] = useState<string | null>(interruptedTurnTest)
+  const [turnTestRunning, setTurnTestRunning] = useState(false)
+  const [turnTestCopied, setTurnTestCopied] = useState(false)
   const { data: recent = [] } = useQuery({
     queryKey: ['pieces', 'sheet-viewer-mockup'],
     queryFn: () => searchPieces({ sort: 'dateAdded', dir: 'desc', limit: 60 }),
@@ -1986,6 +1997,62 @@ export function SheetViewerMockup() {
                 Tap the score&rsquo;s sides to turn pages; arrow keys, Space and Page Up/Down act as
                 a pedal. The exit arrow needs two taps.
               </p>
+              <div className="flex flex-col gap-2 border-t border-border pt-3">
+                <p className="font-medium">Turn test</p>
+                <p className="text-xs text-ink-soft">
+                  Times page turns on this piece&rsquo;s real pages, the old build&rsquo;s way and
+                  the current one. About half a minute; don&rsquo;t touch the screen.
+                </p>
+                <button
+                  type="button"
+                  disabled={turnTestRunning || !piece || piece.pageCount < 3}
+                  onClick={async () => {
+                    if (!piece) return
+                    setTurnTestRunning(true)
+                    setTurnTestCopied(false)
+                    const id = piece.id
+                    setTurnTestResult(
+                      await runTurnTest((p) => getPiecePageUrl(id, p), piece.pageCount),
+                    )
+                    setTurnTestRunning(false)
+                  }}
+                  className="h-9 cursor-pointer rounded-lg border border-border bg-paper-raised font-medium text-ink hover:border-accent disabled:opacity-50"
+                >
+                  {turnTestRunning
+                    ? 'Running…'
+                    : piece && piece.pageCount < 3
+                      ? 'Pick a piece of 3+ pages'
+                      : 'Run turn test'}
+                </button>
+                {turnTestResult && (
+                  <>
+                    <pre className="max-h-48 overflow-auto rounded-lg bg-paper-sunken p-2 text-xs whitespace-pre-wrap select-text">
+                      {turnTestResult}
+                    </pre>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={async () =>
+                          setTurnTestCopied(await copyToClipboard(turnTestResult))
+                        }
+                        className="h-8 flex-1 cursor-pointer rounded-lg border border-border bg-paper-raised text-ink hover:border-accent"
+                      >
+                        {turnTestCopied ? 'Copied' : 'Copy'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          clearInterruptedTurnTest()
+                          setTurnTestResult(null)
+                        }}
+                        className="h-8 flex-1 cursor-pointer rounded-lg border border-border bg-paper-raised text-ink hover:border-accent"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           )}
         </div>,

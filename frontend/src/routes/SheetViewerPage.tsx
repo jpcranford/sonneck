@@ -425,6 +425,21 @@ function SheetViewer({ pieceId }: { pieceId: number }) {
     return () => document.removeEventListener('keydown', onKey, true)
   }, [menuOpen])
 
+  // The score area's size, for drawing each page at screen size. Measured
+  // whole pixels, so a redraw only follows a real change (rotation, the edge
+  // margin).
+  const [stageBox, setStageBox] = useState<{ w: number; h: number } | null>(null)
+  function measureStage(el: HTMLDivElement | null) {
+    if (!el) return
+    const observer = new ResizeObserver(([entry]) => {
+      const w = Math.round(entry.contentRect.width)
+      const h = Math.round(entry.contentRect.height)
+      setStageBox((box) => (box && box.w === w && box.h === h ? box : { w, h }))
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }
+
   // The preload window: the page showing, the two after it and the one
   // before stay mounted and decoded, stacked in one place with only the
   // current one visible, so a turn just changes which one shows. Pages
@@ -809,31 +824,24 @@ function SheetViewer({ pieceId }: { pieceId: number }) {
     )
   } else if (pageVersion) {
     stage = (
-      <div className="relative h-full w-full">
-        {windowPages.map((p) => {
-          const url = pageUrl(p)
-          if (failed[url]) return null
-          return (
-            <img
-              key={`${url}#${attempt}`}
-              src={url}
-              alt={p === page ? `Page ${p} of ${piece?.title ?? ''}` : ''}
-              aria-hidden={p === page ? undefined : true}
-              draggable={false}
-              onLoad={(event) => {
-                // Decoded before it can show, so a turn never waits on it.
-                event.currentTarget
-                  .decode()
-                  .catch(() => {})
-                  .then(() => setReady((r) => ({ ...r, [url]: true })))
-              }}
-              onError={() => setFailed((f) => ({ ...f, [url]: true }))}
-              className={`absolute inset-0 m-auto block max-h-full max-w-full object-contain ${
-                p === page && ready[url] ? '' : 'opacity-0'
-              }`}
-            />
-          )
-        })}
+      <div ref={measureStage} className="relative h-full w-full">
+        {stageBox &&
+          windowPages.map((p) => {
+            const url = pageUrl(p)
+            if (failed[url]) return null
+            return (
+              <PageCanvas
+                key={`${url}#${attempt}`}
+                src={url}
+                width={stageBox.w}
+                height={stageBox.h}
+                label={p === page ? `Page ${p} of ${piece?.title ?? ''}` : undefined}
+                onReady={() => setReady((r) => ({ ...r, [url]: true }))}
+                onError={() => setFailed((f) => ({ ...f, [url]: true }))}
+                className={p === page && ready[url] ? '' : 'opacity-0'}
+              />
+            )
+          })}
         {currentFailed ? (
           <StageMessage>
             <p>Page {page} couldn’t be prepared.</p>
@@ -974,6 +982,81 @@ function SheetViewer({ pieceId }: { pieceId: number }) {
         )}
       </main>
     </div>
+  )
+}
+
+// One page of the preload window, drawn into a canvas at the screen's own
+// size when it loads. A turn then only shows a canvas that's already drawn:
+// measured on an iPad, showing a hidden 300ppi <img> cost 230–290ms a turn
+// (WebKit draws an opacity-0 image only once it's shown, scaling the full
+// page down then), a pre-drawn canvas ~30ms. The decoded image is let go
+// once drawn. A resize redraws it from the browser's cache.
+function PageCanvas({
+  src,
+  width,
+  height,
+  label,
+  onReady,
+  onError,
+  className,
+}: {
+  src: string
+  width: number
+  height: number
+  label?: string
+  onReady: () => void
+  onError: () => void
+  className: string
+}) {
+  const ref = useRef<HTMLCanvasElement>(null)
+  const callbacks = useRef({ onReady, onError })
+  useEffect(() => {
+    callbacks.current = { onReady, onError }
+  })
+  useEffect(() => {
+    const canvas = ref.current
+    if (!canvas || !width || !height) return
+    let cancelled = false
+    const img = new Image()
+    img.src = src
+    img
+      .decode()
+      .then(() => {
+        if (cancelled) return
+        const dpr = window.devicePixelRatio || 1
+        const scale = Math.min(
+          (width * dpr) / img.naturalWidth,
+          (height * dpr) / img.naturalHeight,
+          1,
+        )
+        const context = canvas.getContext('2d')
+        if (!context) throw new Error('no canvas')
+        canvas.width = Math.round(img.naturalWidth * scale)
+        canvas.height = Math.round(img.naturalHeight * scale)
+        context.imageSmoothingQuality = 'high'
+        context.drawImage(img, 0, 0, canvas.width, canvas.height)
+        canvas.style.width = `${canvas.width / dpr}px`
+        canvas.style.height = `${canvas.height / dpr}px`
+        callbacks.current.onReady()
+      })
+      .catch(() => {
+        if (!cancelled) callbacks.current.onError()
+      })
+      .finally(() => {
+        img.src = ''
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [src, width, height])
+  return (
+    <canvas
+      ref={ref}
+      role={label ? 'img' : undefined}
+      aria-label={label}
+      aria-hidden={label ? undefined : true}
+      className={`absolute inset-0 m-auto block max-h-full max-w-full ${className}`}
+    />
   )
 }
 
