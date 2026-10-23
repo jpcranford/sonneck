@@ -49,6 +49,7 @@ import { SingleSelect } from '../components/SingleSelect'
 import { Toggle } from '../components/Toggle'
 import { useAnchoredPanel } from '../hooks/useAnchorRect'
 import { useNoPageScroll } from '../hooks/useNoPageScroll'
+import { stageTurn, type StagePoint } from '../lib/sheetViewerGestures'
 import { sortPracticeStatuses } from '../lib/practiceStatusOrder'
 import { useShortcutBlocker } from '../lib/shortcuts'
 import { useMockupTitle } from '../lib/useMockupTitle'
@@ -642,22 +643,36 @@ export function SheetViewerMockup() {
     }
   }
 
-  const down = useRef<{ x: number; y: number } | null>(null)
+  // One finger on the score: a tap turns by where it lands, a swipe by which
+  // way it goes (lib/sheetViewerGestures.ts). A second finger (a pinch)
+  // cancels it.
+  const down = useRef<StagePoint | null>(null)
+  const fingers = useRef(new Set<number>())
+  function onStagePointerDown(event: React.PointerEvent<HTMLDivElement>) {
+    fingers.current.add(event.pointerId)
+    // Its lift always reaches the score, even over the toolbar, so a
+    // finger is never left counted as down.
+    event.currentTarget.setPointerCapture(event.pointerId)
+    if (fingers.current.size > 1) down.current = null
+    else if (event.button === 0)
+      down.current = { x: event.clientX, y: event.clientY, t: performance.now() }
+  }
   function onStagePointerUp(event: React.PointerEvent<HTMLDivElement>) {
+    fingers.current.delete(event.pointerId)
     const start = down.current
     down.current = null
-    if (!start || Math.hypot(event.clientX - start.x, event.clientY - start.y) > 12) return
+    if (!start) return
     if (mode === 'annotate' && tool) {
       flash('Marking the page arrives in Phase 15')
       return
     }
-    // Side thirds (Phase 1): left third back, right third forward; the
-    // middle column splits top (back) from bottom (forward).
-    const rect = event.currentTarget.getBoundingClientRect()
-    const x = (event.clientX - rect.left) / rect.width
-    const y = (event.clientY - rect.top) / rect.height
-    const dir = x < 1 / 3 ? -1 : x > 2 / 3 ? 1 : y < 0.5 ? -1 : 1
-    turn(dir)
+    const end = { x: event.clientX, y: event.clientY, t: performance.now() }
+    const dir = stageTurn(start, end, event.currentTarget.getBoundingClientRect())
+    if (dir) turn(dir)
+  }
+  function onStagePointerCancel(event: React.PointerEvent<HTMLDivElement>) {
+    fingers.current.delete(event.pointerId)
+    down.current = null
   }
 
   // Exit: the back arrow (picked from a side-by-side,
@@ -1811,13 +1826,10 @@ export function SheetViewerMockup() {
 
       <main
         className="relative min-h-0 flex-1 cursor-default touch-pinch-zoom overflow-hidden"
-        onPointerDown={(event) => {
-          if (event.button === 0) down.current = { x: event.clientX, y: event.clientY }
-        }}
+        onPointerDown={onStagePointerDown}
         onPointerUp={onStagePointerUp}
-        onPointerCancel={() => {
-          down.current = null
-        }}
+        onPointerCancel={onStagePointerCancel}
+        onLostPointerCapture={onStagePointerCancel}
       >
         {/* Plain white mat (plan: launch default). Its filter is set here,
             not by index.css's score-page rules, so the theme's treatment and

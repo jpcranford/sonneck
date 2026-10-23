@@ -31,6 +31,7 @@ import { InfoTooltip } from '../components/InfoTooltip'
 import { Toggle } from '../components/Toggle'
 import { useAnchoredPanel } from '../hooks/useAnchorRect'
 import { useNoPageScroll } from '../hooks/useNoPageScroll'
+import { stageTurn, type StagePoint } from '../lib/sheetViewerGestures'
 import { hasPermission, useAuth } from '../lib/AuthContext'
 import { useShortcutBlocker } from '../lib/shortcuts'
 import { useDarkScoresSync, useThemeSync } from '../lib/theme'
@@ -459,17 +460,32 @@ function SheetViewer({ pieceId }: { pieceId: number }) {
     else navigate(`/pieces/${pieceId}`, { replace: true })
   }
 
-  const down = useRef<{ x: number; y: number } | null>(null)
+  // One finger on the score: a tap turns by where it lands, a swipe by which
+  // way it goes (lib/sheetViewerGestures.ts). A second finger (a pinch)
+  // cancels it.
+  const down = useRef<StagePoint | null>(null)
+  const fingers = useRef(new Set<number>())
+  function onStagePointerDown(event: React.PointerEvent<HTMLDivElement>) {
+    fingers.current.add(event.pointerId)
+    // Its lift always reaches the score, even over the toolbar, so a
+    // finger is never left counted as down.
+    event.currentTarget.setPointerCapture(event.pointerId)
+    if (fingers.current.size > 1) down.current = null
+    else if (event.button === 0)
+      down.current = { x: event.clientX, y: event.clientY, t: performance.now() }
+  }
   function onStagePointerUp(event: React.PointerEvent<HTMLDivElement>) {
+    fingers.current.delete(event.pointerId)
     const start = down.current
     down.current = null
-    if (!start || Math.hypot(event.clientX - start.x, event.clientY - start.y) > 12) return
-    // Side thirds: left third back, right third forward; the middle column
-    // splits top (back) from bottom (forward).
-    const rect = event.currentTarget.getBoundingClientRect()
-    const x = (event.clientX - rect.left) / rect.width
-    const y = (event.clientY - rect.top) / rect.height
-    turn(x < 1 / 3 ? -1 : x > 2 / 3 ? 1 : y < 0.5 ? -1 : 1)
+    if (!start) return
+    const end = { x: event.clientX, y: event.clientY, t: performance.now() }
+    const dir = stageTurn(start, end, event.currentTarget.getBoundingClientRect())
+    if (dir) turn(dir)
+  }
+  function onStagePointerCancel(event: React.PointerEvent<HTMLDivElement>) {
+    fingers.current.delete(event.pointerId)
+    down.current = null
   }
 
   // Exit: the back arrow — the app's "go back", which is where exiting takes
@@ -930,13 +946,10 @@ function SheetViewer({ pieceId }: { pieceId: number }) {
 
       <main
         className="relative min-h-0 flex-1 cursor-default touch-pinch-zoom overflow-hidden"
-        onPointerDown={(event) => {
-          if (event.button === 0) down.current = { x: event.clientX, y: event.clientY }
-        }}
+        onPointerDown={onStagePointerDown}
         onPointerUp={onStagePointerUp}
-        onPointerCancel={() => {
-          down.current = null
-        }}
+        onPointerCancel={onStagePointerCancel}
+        onLostPointerCapture={onStagePointerCancel}
       >
         {/* A plain white mat. Its filter is set here, not by index.css's
             score-page rules, so the theme's treatment and the photo filters
