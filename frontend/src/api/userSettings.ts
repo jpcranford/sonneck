@@ -17,6 +17,9 @@ export interface UserSettings {
   clockShown: boolean
   clockMode: 'clock' | 'stopwatch'
   clockSeconds: boolean
+  // User Settings › Sheet Viewer › Track practice: off, the viewer marks
+  // nothing practiced and records nothing.
+  trackPractice: boolean
 }
 
 export type TurnGuardMs = 0 | 250 | 500 | 750 | 1000

@@ -316,6 +316,9 @@ type UserSettings struct {
 	ClockShown   bool   `json:"clockShown"`
 	ClockMode    string `json:"clockMode"`
 	ClockSeconds bool   `json:"clockSeconds"`
+	// TrackPractice (migration 00033): off, the Sheet Viewer marks nothing
+	// practiced and records nothing.
+	TrackPractice bool `json:"trackPractice"`
 }
 
 // ClockModes are the Sheet Viewer clock's modes.
@@ -331,10 +334,10 @@ func GetUserSettings(ctx context.Context, q Queryer, userID int64) (*UserSetting
 	err := q.QueryRowContext(ctx, `
 		SELECT show_books_in_sidebar, theme_preference, content_view_mode, dark_mode_scores,
 			sheet_viewer_turn_guard_ms, sheet_viewer_clock_shown, sheet_viewer_clock_mode,
-			sheet_viewer_clock_seconds
+			sheet_viewer_clock_seconds, track_practice
 		FROM user_settings WHERE user_id = ?`, userID,
 	).Scan(&s.ShowBooksInSidebar, &s.ThemePreference, &s.ContentViewMode, &s.DarkModeScores, &s.TurnGuardMs,
-		&s.ClockShown, &s.ClockMode, &s.ClockSeconds)
+		&s.ClockShown, &s.ClockMode, &s.ClockSeconds, &s.TrackPractice)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -350,10 +353,10 @@ func UpdateUserSettings(ctx context.Context, q Queryer, userID int64, s UserSett
 	_, err := q.ExecContext(ctx, `
 		UPDATE user_settings SET show_books_in_sidebar = ?, theme_preference = ?, content_view_mode = ?,
 			dark_mode_scores = ?, sheet_viewer_turn_guard_ms = ?, sheet_viewer_clock_shown = ?,
-			sheet_viewer_clock_mode = ?, sheet_viewer_clock_seconds = ?
+			sheet_viewer_clock_mode = ?, sheet_viewer_clock_seconds = ?, track_practice = ?
 		WHERE user_id = ?`,
 		s.ShowBooksInSidebar, s.ThemePreference, s.ContentViewMode, s.DarkModeScores, s.TurnGuardMs,
-		s.ClockShown, s.ClockMode, s.ClockSeconds, userID,
+		s.ClockShown, s.ClockMode, s.ClockSeconds, s.TrackPractice, userID,
 	)
 	return err
 }

@@ -320,13 +320,13 @@ func DeleteUser(ctx context.Context, q Queryer, id int64) error {
 // cleanup by hand.
 func ApplyAuthChangeDowngrade(ctx context.Context, q Queryer, keepUserID int64) error {
 	if keepUserID != 1 {
-		ownedTables := []string{"practice_statuses", "user_tags", "setlists"}
+		ownedTables := []string{"practice_statuses", "user_tags", "setlists", "practice_list_entries"}
 		for _, table := range ownedTables {
 			if _, err := q.ExecContext(ctx, `DELETE FROM `+table+` WHERE owner_user_id = 1`); err != nil {
 				return err
 			}
 		}
-		perUserTables := []string{"piece_favorites", "piece_practice_status", "piece_user_notes", "piece_practice_settings", "user_settings"}
+		perUserTables := []string{"piece_favorites", "piece_practice_status", "piece_user_notes", "piece_practice_settings", "piece_practice_days", "user_settings"}
 		for _, table := range perUserTables {
 			if _, err := q.ExecContext(ctx, `DELETE FROM `+table+` WHERE user_id = 1`); err != nil {
 				return err

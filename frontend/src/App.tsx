@@ -47,7 +47,7 @@ import { AdminSettingsMockup } from './routes/AdminSettingsMockup'
 import { AuthChangeFlowMockup } from './routes/AuthChangeFlowMockup'
 import { LoginScreenMockup } from './routes/LoginScreenMockup'
 import { SheetViewerMockup } from './routes/SheetViewerMockup'
-import { SheetViewerPage } from './routes/SheetViewerPage'
+import { PracticeListPlayPage, SetlistPlayPage, SheetViewerPage } from './routes/SheetViewerPage'
 import { CitationLogicMockup } from './routes/CitationLogicMockup'
 import { DeviceInfoMockup } from './routes/DeviceInfoMockup'
 import { FirstLaunchMockup } from './routes/FirstLaunchMockup'
@@ -242,6 +242,8 @@ function AppRoutes() {
       {/* Also not nested inside <AppShell /> — the Sheet Viewer is a
           full-screen mode with its own toolbar and no sidebar. */}
       <Route path="pieces/:id/play" element={<SheetViewerPage />} />
+      <Route path="practice-list/play" element={<PracticeListPlayPage />} />
+      <Route path="setlists/:id/play" element={<SetlistPlayPage />} />
       <Route path="mockup/sheet-viewer" element={<SheetViewerMockup />} />
     </Routes>
   )

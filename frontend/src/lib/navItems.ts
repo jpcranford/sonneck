@@ -11,6 +11,7 @@ import {
   IconCircleHalf2,
   IconCircleDashed,
   IconCircleCheckFilled,
+  IconPlaylist,
 } from '@tabler/icons-react'
 
 // Shared between Sidebar.tsx (desktop rail) and MobileNav.tsx (mobile top
@@ -53,6 +54,9 @@ export const NAV_ITEMS: NavItem[] = [
 // own right — split below the divider from the primary nav above.
 export const SECONDARY_NAV_ITEMS: NavItem[] = [
   { to: '/favorites', label: 'Favorites', icon: IconHeart },
+  // The Sheet Viewer's Practice List: opens the viewer full screen on the
+  // list, from the top. Needs `practice`, like the viewer.
+  { to: '/practice-list/play', label: 'Practice List', icon: IconPlaylist, permission: 'practice' },
   // Same icon as the "Want to Learn" practice-status pill
   // (PracticeStatusIcon) — this view is a filter on exactly that status.
   { to: '/want-to-learn', label: 'Want to Learn', icon: IconCircleDashed },

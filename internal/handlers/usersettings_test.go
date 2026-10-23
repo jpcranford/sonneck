@@ -109,3 +109,22 @@ func TestUserSettings_Clock(t *testing.T) {
 		t.Errorf("unknown clockMode: status %d, want 400", rec.Code)
 	}
 }
+
+// Track practice (migration 00033) is on by default and saves.
+func TestUserSettings_TrackPractice(t *testing.T) {
+	h := newTestServer(t)
+	var settings repo.UserSettings
+	decodeData(t, doJSON(t, h, http.MethodGet, "/api/user-settings", nil), &settings)
+	if !settings.TrackPractice {
+		t.Fatal("trackPractice should default to true")
+	}
+	settings.TrackPractice = false
+	if rec := doJSON(t, h, http.MethodPatch, "/api/user-settings", settings); rec.Code != http.StatusOK {
+		t.Fatalf("PATCH: status %d", rec.Code)
+	}
+	var reread repo.UserSettings
+	decodeData(t, doJSON(t, h, http.MethodGet, "/api/user-settings", nil), &reread)
+	if reread.TrackPractice {
+		t.Error("trackPractice didn't save as off")
+	}
+}

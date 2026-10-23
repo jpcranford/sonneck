@@ -7,11 +7,16 @@ import {
   IconCheck,
   IconChevronLeft,
   IconChevronRight,
+  IconCircle,
+  IconCircleCheckFilled,
+  IconCircleOff,
   IconClef,
   IconClock,
   IconContrast,
   IconDots,
+  IconGripVertical,
   IconInfoCircle,
+  IconListNumbers,
   IconMetronome,
   IconMinus,
   IconNotebook,
@@ -19,6 +24,7 @@ import {
   IconPhotoCog,
   IconPlayerPause,
   IconPlayerPlay,
+  IconPlaylist,
   IconPlus,
   IconRefresh,
   IconStopwatch,
@@ -27,6 +33,17 @@ import {
 } from '@tabler/icons-react'
 import { ApiError } from '../api/client'
 import { getConfig } from '../api/config'
+import {
+  getPracticed,
+  getPracticeList,
+  removeFromPracticeList,
+  reorderPracticeList,
+  setPracticed,
+  type PracticedState,
+  type PracticeListEntry,
+} from '../api/practiceList'
+import { getSetlist } from '../api/setlists'
+import type { SetlistPieceSummary } from '../api/types'
 import { listPracticeStatuses } from '../api/lookups'
 import {
   DEFAULT_PRACTICE_SETTINGS,
@@ -51,6 +68,7 @@ import { PracticeStatusKeyIcon } from '../components/PracticeStatusIcon'
 import { Toggle } from '../components/Toggle'
 import { useAnchoredPanel } from '../hooks/useAnchorRect'
 import { useNoPageScroll } from '../hooks/useNoPageScroll'
+import { useToday } from '../hooks/useToday'
 import { stageTurn, type StagePoint } from '../lib/sheetViewerGestures'
 import { hasPermission, useAuth } from '../lib/AuthContext'
 import { useShortcutBlocker } from '../lib/shortcuts'
@@ -89,6 +107,11 @@ const PHOTO_MAX = 150
 const SAVE_DELAY_MS = 400
 
 const INFO_WIDTH = 380
+const QUEUE_WIDTH = 380
+// A piece counts as practiced today once its last page has been reached and
+// this long has been spent on it in the viewer (a one-page piece needs only
+// the time).
+const PRACTICED_MS = 30_000
 // Notes are broad strokes and a practice log; markings on the music belong
 // in Annotate.
 const EMPTY_NOTES =
@@ -367,18 +390,285 @@ function StepperRow({
 
 type ClockMode = 'clock' | 'stopwatch'
 
+// A session: what the viewer plays through. A piece on its own; the
+// Practice List (from the sidebar, or Play on a piece that's on it, opened
+// at that piece); or a setlist (Play Set), whose custom entries show as
+// placeholder pages. The viewer below shows one item at a time, remounted
+// per item; what has to carry across items lives here.
+type QueueItem =
+  | { kind: 'piece'; key: string; id: number; title: string; credit: string; pageCount: number }
+  | {
+      kind: 'custom'
+      key: string
+      name: string
+      role: string | null
+      notes: string | null
+      durationSeconds: number | null
+    }
+type StartPage = 'first' | 'last'
+
+interface Session {
+  kind: 'piece' | 'list' | 'setlist'
+  /** The queue's title: "Practice List", or the setlist's name. */
+  title: string
+  items: QueueItem[]
+  /** The item showing, or -1 (a piece on its own; an empty list). */
+  index: number
+  goTo: (index: number, page: StartPage, hint?: string) => void
+  /** Where Exit goes when the viewer wasn't opened from inside the app. */
+  exitTo: string
+  /** Practice List only: each piece's mark for today, and its edits. */
+  marks?: Record<number, boolean | null>
+  onMark?: (pieceId: number, practiced: boolean) => void
+  onRemove?: (pieceId: number) => void
+  onReorder?: (pieceIds: number[]) => void
+  shared: SessionShared
+}
+
+// Kept across items: the stopwatch keeps running, the double-turn guard
+// still catches a double tap at a piece's end, and time on a piece adds up
+// toward "practiced" across visits.
+interface SessionShared {
+  swStart: number | null
+  swAcc: number
+  setSwStart: (v: number | null) => void
+  setSwAcc: (v: number) => void
+  /** False when a turn repeats the last one's direction within guardMs
+   * (the double-turn guard); otherwise records it. */
+  allowTurn: (dir: -1 | 1, guardMs: number) => boolean
+  /** Time spent on a piece so far this session, and adding to it. */
+  spentOn: (pieceId: number) => number
+  addSpent: (pieceId: number, ms: number) => void
+  hint: string | null
+}
+
+function useSessionShared(hint: string | null): SessionShared {
+  const [swStart, setSwStart] = useState<number | null>(null)
+  const [swAcc, setSwAcc] = useState(0)
+  const lastTurn = useRef({ dir: 0, at: 0 })
+  const spent = useRef(new Map<number, number>())
+  function allowTurn(dir: -1 | 1, guardMs: number) {
+    const t = performance.now()
+    if (dir === lastTurn.current.dir && t - lastTurn.current.at < guardMs) return false
+    lastTurn.current = { dir, at: t }
+    return true
+  }
+  function spentOn(pieceId: number) {
+    return spent.current.get(pieceId) ?? 0
+  }
+  function addSpent(pieceId: number, ms: number) {
+    spent.current.set(pieceId, spentOn(pieceId) + ms)
+  }
+  return { swStart, swAcc, setSwStart, setSwAcc, allowTurn, spentOn, addSpent, hint }
+}
+
+function pieceItem(piece: SetlistPieceSummary, key: string): QueueItem {
+  return {
+    kind: 'piece',
+    key,
+    id: piece.id,
+    title: piece.title,
+    credit: [
+      ...piece.composer.map((p) => p.name),
+      ...piece.arranger.map((p) => `arr. ${p.name}`),
+    ].join(', '),
+    pageCount: piece.pageCount,
+  }
+}
+
 /** /pieces/:id/play. The whole viewer needs the `practice` permission;
- * without it (a link followed, a typed address) it goes back to the piece. */
+ * without it (a link followed, a typed address) it goes back to the piece.
+ * A piece on your Practice List opens the list at that piece. */
 export function SheetViewerPage() {
   const { id } = useParams()
   const me = useAuth()
   const pieceId = Number(id)
   if (!Number.isInteger(pieceId) || pieceId < 1) return <Navigate to="/" replace />
   if (!hasPermission(me, 'practice')) return <Navigate to={`/pieces/${pieceId}`} replace />
-  return <SheetViewer key={pieceId} pieceId={pieceId} />
+  return <PieceOrListSession key={pieceId} pieceId={pieceId} />
 }
 
-function SheetViewer({ pieceId }: { pieceId: number }) {
+/** /practice-list/play — the sidebar's Practice List, from the top. */
+export function PracticeListPlayPage() {
+  const me = useAuth()
+  if (!hasPermission(me, 'practice')) return <Navigate to="/" replace />
+  return <ListSession startId={null} />
+}
+
+/** /setlists/:id/play — Play Set: the setlist in its order, for this
+ * session only (the Practice List is left alone). */
+export function SetlistPlayPage() {
+  const { id } = useParams()
+  const me = useAuth()
+  const setlistId = Number(id)
+  if (!Number.isInteger(setlistId) || setlistId < 1) return <Navigate to="/" replace />
+  if (!hasPermission(me, 'practice')) return <Navigate to={`/setlists/${setlistId}`} replace />
+  return <SetlistSession key={setlistId} setlistId={setlistId} />
+}
+
+function PieceOrListSession({ pieceId }: { pieceId: number }) {
+  const day = useToday()
+  const { data: entries, isError } = useQuery({
+    queryKey: ['practice-list', day],
+    queryFn: () => getPracticeList(day),
+  })
+  const [hint, setHint] = useState<string | null>(null)
+  const shared = useSessionShared(hint)
+  if (!entries && !isError) return <div className="fixed inset-0 bg-paper" />
+  if (entries?.some((e) => e.piece.id === pieceId)) return <ListSession startId={pieceId} />
+  const item: QueueItem = {
+    kind: 'piece',
+    key: `p:${pieceId}`,
+    id: pieceId,
+    title: '',
+    credit: '',
+    pageCount: 1,
+  }
+  const session: Session = {
+    kind: 'piece',
+    title: '',
+    items: [],
+    index: -1,
+    goTo: (_index, _page, next) => setHint(next ?? null),
+    exitTo: `/pieces/${pieceId}`,
+    shared,
+  }
+  return <SheetViewer key={item.key} item={item} startPage="first" session={session} />
+}
+
+function ListSession({ startId }: { startId: number | null }) {
+  const day = useToday()
+  const queryClient = useQueryClient()
+  const listKey = ['practice-list', day]
+  const { data: entries, isError } = useQuery({
+    queryKey: listKey,
+    queryFn: () => getPracticeList(day),
+  })
+  const [current, setCurrent] = useState<{ id: number | null; page: StartPage }>({
+    id: startId,
+    page: 'first',
+  })
+  const [hint, setHint] = useState<string | null>(null)
+  const shared = useSessionShared(hint)
+
+  if (!entries && !isError) return <div className="fixed inset-0 bg-paper" />
+  const list = entries ?? []
+  const items = list.map((e) => pieceItem(e.piece, `p:${e.piece.id}`))
+  // The sidebar's entry starts at the top; a piece taken off the list while
+  // showing gives way to the top too.
+  let index = items.findIndex((i) => i.kind === 'piece' && i.id === current.id)
+  if (index < 0 && items.length) index = 0
+
+  function updateList(change: (entries: PracticeListEntry[]) => PracticeListEntry[]) {
+    queryClient.setQueryData<PracticeListEntry[]>(listKey, (old) => change(old ?? []))
+  }
+  function failed(message: string) {
+    setHint(message)
+    queryClient.invalidateQueries({ queryKey: ['practice-list'] })
+  }
+  const session: Session = {
+    kind: 'list',
+    title: 'Practice List',
+    items,
+    index,
+    goTo: (i, page, next) => {
+      const item = items[i]
+      if (item?.kind !== 'piece') return
+      setCurrent({ id: item.id, page })
+      setHint(next ?? null)
+    },
+    exitTo: '/',
+    marks: Object.fromEntries(list.map((e) => [e.piece.id, e.practiced])),
+    onMark: (pieceId, practiced) => {
+      updateList((old) => old.map((e) => (e.piece.id === pieceId ? { ...e, practiced } : e)))
+      queryClient.setQueryData<PracticedState>(['practiced', pieceId, day], (old) => ({
+        practiced,
+        lastPracticed: practiced ? day : (old?.lastPracticed ?? null),
+      }))
+      setPracticed(pieceId, day, practiced)
+        .then(() => queryClient.invalidateQueries({ queryKey: ['practiced', pieceId] }))
+        .catch(() => failed('Couldn’t save the mark'))
+    },
+    onRemove: (pieceId) => {
+      updateList((old) => old.filter((e) => e.piece.id !== pieceId))
+      removeFromPracticeList(pieceId).catch(() => failed('Couldn’t remove that piece'))
+    },
+    onReorder: (pieceIds) => {
+      updateList((old) => pieceIds.flatMap((id) => old.filter((e) => e.piece.id === id)))
+      reorderPracticeList(pieceIds).catch(() => failed('Couldn’t save the new order'))
+    },
+    shared,
+  }
+  const item = index >= 0 ? items[index] : null
+  return (
+    <SheetViewer
+      key={item?.key ?? 'empty'}
+      item={item}
+      startPage={current.page}
+      session={session}
+    />
+  )
+}
+
+function SetlistSession({ setlistId }: { setlistId: number }) {
+  const { data: setlist, error } = useQuery({
+    queryKey: ['setlist', setlistId],
+    queryFn: () => getSetlist(setlistId),
+  })
+  const [current, setCurrent] = useState<{ index: number; page: StartPage }>({
+    index: 0,
+    page: 'first',
+  })
+  const [hint, setHint] = useState<string | null>(null)
+  const shared = useSessionShared(hint)
+  if (!setlist && !error) return <div className="fixed inset-0 bg-paper" />
+  const items: QueueItem[] = (setlist?.entries ?? []).map((e) =>
+    e.kind === 'piece' && e.piece
+      ? pieceItem(e.piece, `e:${e.id}`)
+      : {
+          kind: 'custom',
+          key: `e:${e.id}`,
+          name: e.customName ?? '',
+          role: e.role,
+          notes: e.customNotes ?? null,
+          durationSeconds: e.customDurationSeconds ?? null,
+        },
+  )
+  const index = items.length ? Math.min(current.index, items.length - 1) : -1
+  const session: Session = {
+    kind: 'setlist',
+    title: setlist?.name ?? 'Setlist',
+    items,
+    index,
+    goTo: (i, page, next) => {
+      setCurrent({ index: i, page })
+      setHint(next ?? null)
+    },
+    exitTo: `/setlists/${setlistId}`,
+    shared,
+  }
+  const item = index >= 0 ? items[index] : null
+  return (
+    <SheetViewer
+      key={item?.key ?? 'empty'}
+      item={item}
+      startPage={current.page}
+      session={session}
+    />
+  )
+}
+
+function SheetViewer({
+  item,
+  startPage,
+  session,
+}: {
+  item: QueueItem | null
+  startPage: StartPage
+  session: Session
+}) {
+  const pieceId = item?.kind === 'piece' ? item.id : null
+  const custom = item?.kind === 'custom' ? item : null
   // Page shortcuts (letters, numbers, the shortcut help) stay off while the
   // viewer is up; it has its own keys — the pedal set.
   useShortcutBlocker(true)
@@ -405,10 +695,14 @@ function SheetViewer({ pieceId }: { pieceId: number }) {
     data: piece,
     error: pieceError,
     refetch: refetchPiece,
-  } = useQuery({ queryKey: ['piece', pieceId], queryFn: () => getPiece(pieceId) })
+  } = useQuery({
+    queryKey: ['piece', pieceId],
+    queryFn: () => getPiece(pieceId as number),
+    enabled: pieceId !== null,
+  })
   const { data: config } = useQuery({ queryKey: ['config'], queryFn: getConfig })
-  usePageTitle(piece?.title)
-  const pageCount = piece?.pageCount ?? 1
+  usePageTitle(custom ? custom.name : piece?.title)
+  const pageCount = custom ? 1 : (piece?.pageCount ?? 1)
   const pageVersion =
     piece && config ? `${piece.fileHash.slice(0, 16)}.${config.pagesVersion}` : undefined
 
@@ -416,20 +710,33 @@ function SheetViewer({ pieceId }: { pieceId: number }) {
   // ready before they're turned to. Its failure only means each page
   // renders as it's asked for.
   useEffect(() => {
-    preparePiecePages(pieceId).catch(() => {})
+    if (pieceId !== null) preparePiecePages(pieceId).catch(() => {})
   }, [pieceId])
 
-  const [page, setPage] = useState(1)
+  // Arriving backward from the next item starts on this one's last page,
+  // known once the piece has loaded.
+  const [pageState, setPage] = useState<number | 'last'>(startPage === 'last' ? 'last' : 1)
+  const page = pageState === 'last' ? pageCount : pageState
   // Per page URL: decoded and ready to show; failed to load. A retry bumps
   // attempt, which remounts the failed page.
   const [ready, setReady] = useState<Record<string, boolean>>({})
   const [failed, setFailed] = useState<Record<string, boolean>>({})
   const [attempt, setAttempt] = useState(0)
-  const [menu, setMenu] = useState<'clock' | 'more' | 'photo' | 'info' | null>(null)
+  // An empty Practice List opens with its queue showing what to do.
+  const [menu, setMenu] = useState<'clock' | 'more' | 'photo' | 'info' | 'queue' | null>(
+    session.kind === 'list' && !item ? 'queue' : null,
+  )
   const [closeArmed, setCloseArmed] = useState(false)
-  const [hint, setHint] = useState<{ text: string; id: number } | null>(null)
+  // A pill the session handed over (moving to the next item shows its
+  // name), shown on arrival.
+  const [hint, setHint] = useState<{ text: string; id: number } | null>(() =>
+    session.shared.hint ? { text: session.shared.hint, id: 1 } : null,
+  )
   const queryClient = useQueryClient()
   const hintTimer = useRef<number | undefined>(undefined)
+  useEffect(() => {
+    hintTimer.current = window.setTimeout(() => setHint(null), HINT_MS)
+  }, [])
   // A short-lived pill over the page (a guarded turn, a failed save).
   function flash(text: string) {
     window.clearTimeout(hintTimer.current)
@@ -465,7 +772,8 @@ function SheetViewer({ pieceId }: { pieceId: number }) {
   const practiceKey = ['practice-settings', pieceId]
   const { data: practice = DEFAULT_PRACTICE_SETTINGS } = useQuery({
     queryKey: practiceKey,
-    queryFn: () => getPracticeSettings(pieceId),
+    queryFn: () => getPracticeSettings(pieceId as number),
+    enabled: pieceId !== null,
   })
   const pendingPractice = useRef<PracticeSettings | null>(null)
   const practiceTimer = useRef<number | undefined>(undefined)
@@ -475,7 +783,7 @@ function SheetViewer({ pieceId }: { pieceId: number }) {
       window.clearTimeout(practiceTimer.current)
       const next = pendingPractice.current
       pendingPractice.current = null
-      if (next)
+      if (next && pieceId !== null)
         savePracticeSettings(pieceId, next).catch(() => {
           flash('Couldn’t save this piece’s settings')
           queryClient.invalidateQueries({ queryKey: ['practice-settings', pieceId] })
@@ -492,8 +800,8 @@ function SheetViewer({ pieceId }: { pieceId: number }) {
     practiceTimer.current = window.setTimeout(() => flushPractice.current(), SAVE_DELAY_MS)
   }
   const photo = practice
-  const [swStart, setSwStart] = useState<number | null>(null)
-  const [swAcc, setSwAcc] = useState(0)
+  // The stopwatch belongs to the session, so it keeps running across items.
+  const { swStart, swAcc, setSwStart, setSwAcc } = session.shared
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
     const t = window.setInterval(() => setNow(Date.now()), 250)
@@ -529,12 +837,12 @@ function SheetViewer({ pieceId }: { pieceId: number }) {
   const photoChanged =
     photo.brightness !== 100 || photo.contrast !== 100 || photo.grayscale || photo.invert
 
-  const last = useRef({ dir: 0, at: 0 })
   const photoAnchorRef = useRef<HTMLDivElement>(null)
   const phoneRow2Ref = useRef<HTMLDivElement>(null)
   const clockAnchorRef = useRef<HTMLDivElement>(null)
   const moreAnchorRef = useRef<HTMLDivElement>(null)
   const infoAnchorRef = useRef<HTMLDivElement>(null)
+  const queueAnchorRef = useRef<HTMLDivElement>(null)
   const closeTimer = useRef<number | undefined>(undefined)
   useEffect(
     () => () => {
@@ -545,19 +853,37 @@ function SheetViewer({ pieceId }: { pieceId: number }) {
   )
 
   function turn(dir: -1 | 1) {
-    const t = performance.now()
-    const guard = settings?.turnGuardMs ?? TURN_GUARD_DEFAULT
-    if (dir === last.current.dir && t - last.current.at < guard) {
+    if (!session.shared.allowTurn(dir, settings?.turnGuardMs ?? TURN_GUARD_DEFAULT)) {
       flash('Double-turn ignored')
       return
     }
-    last.current = { dir, at: t }
     const next = Math.max(1, Math.min(pageCount, page + dir))
     if (next === page) {
-      flash(dir < 0 ? 'First page' : 'Last page')
+      // In a queue, turning past an item's end goes on to the next item;
+      // back from its start, to the previous one's last page.
+      const neighbor = session.index >= 0 ? session.items[session.index + dir] : undefined
+      if (neighbor) {
+        const name = neighbor.kind === 'piece' ? neighbor.title : neighbor.name
+        session.goTo(
+          session.index + dir,
+          dir > 0 ? 'first' : 'last',
+          `${dir > 0 ? 'Next' : 'Previous'}: ${name}`,
+        )
+        return
+      }
+      flash(
+        dir < 0
+          ? 'First page'
+          : session.kind === 'piece'
+            ? 'Last page'
+            : session.kind === 'list'
+              ? 'End of the list'
+              : 'End of the setlist',
+      )
       return
     }
     setPage(next)
+    if (pieceId === null) return
     // Pages leaving the preload window unmount; drop their "ready" so one
     // that comes back shows only once it's decoded again.
     const keep = new Set(
@@ -616,7 +942,7 @@ function SheetViewer({ pieceId }: { pieceId: number }) {
   // further away are let go (iPad Safari drops decoded pages it isn't
   // showing anyway; decoding is what a turn costs).
   const windowPages = [page - 1, page, page + 1, page + 2].filter((p) => p >= 1 && p <= pageCount)
-  const pageUrl = (p: number) => getPiecePageUrl(pieceId, p, pageVersion)
+  const pageUrl = (p: number) => getPiecePageUrl(pieceId ?? 0, p, pageVersion)
   const currentUrl = pageUrl(page)
   const currentReady = !!ready[currentUrl]
   const currentFailed = !!failed[currentUrl]
@@ -638,10 +964,10 @@ function SheetViewer({ pieceId }: { pieceId: number }) {
     closeTimer.current = window.setTimeout(() => setCloseArmed(false), CLOSE_CONFIRM_MS)
   }
   // Back where the viewer was opened from; a viewer opened straight from an
-  // address goes to the piece.
+  // address goes to the piece (or the setlist, or home for the list).
   function exit() {
     if ((window.history.state as { idx?: number } | null)?.idx) navigate(-1)
-    else navigate(`/pieces/${pieceId}`, { replace: true })
+    else navigate(session.exitTo, { replace: true })
   }
 
   // One finger on the score: a tap turns by where it lands, a swipe by which
@@ -902,10 +1228,15 @@ function SheetViewer({ pieceId }: { pieceId: number }) {
         ...piece.arranger.values.map((p) => `arr. ${p.name}`),
       ].join(', ')
     : ''
+  // A custom setlist entry shows its name in italics (as the setlist's
+  // program does) and its role.
+  const subtitle = custom ? custom.role : credit
   const titleBlock = (
     <div className="flex min-w-0 flex-1 flex-col px-2">
-      <span className="truncate font-display font-medium">{piece?.title ?? 'Loading…'}</span>
-      {credit && <span className="truncate text-xs text-ink-soft">{credit}</span>}
+      <span className={`truncate font-display font-medium ${custom ? 'italic' : ''}`}>
+        {custom ? custom.name : item ? (piece?.title ?? 'Loading…') : session.title}
+      </span>
+      {subtitle && <span className="truncate text-xs text-ink-soft">{subtitle}</span>}
     </div>
   )
 
@@ -924,7 +1255,7 @@ function SheetViewer({ pieceId }: { pieceId: number }) {
     queryFn: listPracticeStatuses,
   })
   const notesMutation = useMutation({
-    mutationFn: (next: string) => setPieceUserNotes(pieceId, next || null),
+    mutationFn: (next: string) => setPieceUserNotes(pieceId as number, next || null),
     onSuccess: (updated) => {
       queryClient.setQueryData(['piece', pieceId], updated)
       setEditing(false)
@@ -932,7 +1263,7 @@ function SheetViewer({ pieceId }: { pieceId: number }) {
     onError: () => flash('Couldn’t save your notes'),
   })
   const statusMutation = useMutation({
-    mutationFn: (status: string | null) => setPiecePracticeStatus(pieceId, status),
+    mutationFn: (status: string | null) => setPiecePracticeStatus(pieceId as number, status),
     onSuccess: (updated) => {
       queryClient.setQueryData(['piece', pieceId], updated)
       queryClient.invalidateQueries({ queryKey: ['pieces'] })
@@ -954,7 +1285,7 @@ function SheetViewer({ pieceId }: { pieceId: number }) {
     setEditing(true)
   }
   // Hidden while any menu or Info is open, so nothing stacks over it.
-  const showBar = notes !== '' && practice.notesBarShown && menu === null
+  const showBar = !custom && notes !== '' && practice.notesBarShown && menu === null
 
   // A dot on Info whenever the piece has notes and Info is closed.
   const infoButton = (
@@ -1216,22 +1547,420 @@ function SheetViewer({ pieceId }: { pieceId: number }) {
     </div>
   )
 
+  // Practiced today (Track practice on, User Settings): time on a piece
+  // adds up while it shows, across visits in the session; once its last
+  // page has been reached too, it's marked — unless it already has a mark
+  // for today, practiced or explicitly unmarked. A setlist session records
+  // it too, just without showing marks.
+  const day = useToday()
+  const tracking = settings?.trackPractice !== false
+  const { data: practicedToday } = useQuery({
+    queryKey: ['practiced', pieceId, day],
+    queryFn: () => getPracticed(pieceId as number, day),
+    enabled: pieceId !== null && tracking,
+  })
+  const trackState = useRef({ reachedLast: false, marked: false, ready: false, since: 0 })
+  useEffect(() => {
+    trackState.current.ready = tracking && practicedToday !== undefined
+    if (practicedToday?.practiced != null) trackState.current.marked = true
+    if (piece && page >= pageCount) trackState.current.reachedLast = true
+  })
+  useEffect(() => {
+    if (pieceId === null) return
+    const { spentOn, addSpent } = session.shared
+    const state = trackState.current
+    state.since = Date.now()
+    const t = window.setInterval(() => {
+      if (!state.ready || state.marked || !state.reachedLast) return
+      if (spentOn(pieceId) + Date.now() - state.since < PRACTICED_MS) return
+      state.marked = true
+      queryClient.setQueryData<PracticedState>(['practiced', pieceId, day], {
+        practiced: true,
+        lastPracticed: day,
+      })
+      queryClient.setQueryData<PracticeListEntry[]>(['practice-list', day], (old) =>
+        old?.map((e) => (e.piece.id === pieceId ? { ...e, practiced: true } : e)),
+      )
+      setPracticed(pieceId, day, true).catch(() => {
+        state.marked = false
+        queryClient.invalidateQueries({ queryKey: ['practiced', pieceId] })
+      })
+    }, 1000)
+    return () => {
+      window.clearInterval(t)
+      addSpent(pieceId, Date.now() - state.since)
+    }
+  }, [pieceId, day, queryClient, session.shared])
+
+  // The next piece in the queue loads ahead from this piece's last pages,
+  // so moving on to it shows its first page at once.
+  const nextItem = session.index >= 0 ? session.items[session.index + 1] : undefined
+  const nextPieceId = nextItem?.kind === 'piece' ? nextItem.id : null
+  const nearEnd = item !== null && page >= pageCount - 1
+  useEffect(() => {
+    if (!nearEnd || nextPieceId === null || !config) return
+    preparePiecePages(nextPieceId).catch(() => {})
+    queryClient
+      .fetchQuery({ queryKey: ['piece', nextPieceId], queryFn: () => getPiece(nextPieceId) })
+      .then((next) => {
+        new Image().src = getPiecePageUrl(
+          nextPieceId,
+          1,
+          `${next.fileHash.slice(0, 16)}.${config.pagesVersion}`,
+        )
+      })
+      .catch(() => {})
+  }, [nearEnd, nextPieceId, config, queryClient])
+
+  // The queue: a card under its button (a bottom sheet on phones), like
+  // Info. The Practice List can be reordered and trimmed here; a setlist's
+  // queue is jump-only (its order is the real program, edited on Setlist
+  // Details). Marks show in the Practice List only, with tracking on.
+  const editableQueue = session.kind === 'list'
+  const showMarks = tracking && session.kind === 'list'
+  const marks = session.marks ?? {}
+  // While dragging, the order shown; saved whole on the drop.
+  const [dragOrder, setDragOrder] = useState<number[] | null>(null)
+  const [dragIndex, setDragIndex] = useState<number | null>(null)
+  const [dragGhost, setDragGhost] = useState<{
+    x: number
+    y: number
+    dx: number
+    dy: number
+    width: number
+  } | null>(null)
+  const queueItems: QueueItem[] = dragOrder
+    ? dragOrder.flatMap((id) => session.items.filter((q) => q.kind === 'piece' && q.id === id))
+    : session.items
+  const queueList = useRef<HTMLUListElement>(null)
+  useEffect(() => {
+    if (dragIndex === null) return
+    document.body.style.cursor = 'grabbing'
+    return () => {
+      document.body.style.cursor = ''
+    }
+  }, [dragIndex])
+  function endDrag() {
+    if (dragOrder) session.onReorder?.(dragOrder)
+    setDragOrder(null)
+    setDragIndex(null)
+    setDragGhost(null)
+  }
+  function moveDrag(event: React.PointerEvent<HTMLUListElement>) {
+    if (dragIndex === null || !queueList.current) return
+    if (dragGhost) setDragGhost({ ...dragGhost, x: event.clientX, y: event.clientY })
+    const rows = [...queueList.current.querySelectorAll<HTMLElement>('[data-row]')]
+    let target = rows.length - 1
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i].getBoundingClientRect()
+      if (event.clientY < r.top + r.height / 2) {
+        target = i
+        break
+      }
+    }
+    if (target === dragIndex) return
+    const next = queueItems.flatMap((q) => (q.kind === 'piece' ? [q.id] : []))
+    const [moved] = next.splice(dragIndex, 1)
+    next.splice(target, 0, moved)
+    setDragOrder(next)
+    setDragIndex(target)
+  }
+  function jump(i: number) {
+    setMenu(null)
+    if (i !== session.index) session.goTo(i, 'first')
+  }
+  const queuePieceIds = session.items.flatMap((q) => (q.kind === 'piece' ? [q.id] : []))
+  const practicedCount = queuePieceIds.filter((id) => marks[id] === true).length
+  const queueSub =
+    session.kind === 'setlist'
+      ? 'Setlist, in its order for this session'
+      : showMarks
+        ? `${practicedCount} of ${session.items.length} practiced today`
+        : `${session.items.length} ${session.items.length === 1 ? 'piece' : 'pieces'}`
+  const queueBody =
+    session.items.length === 0 ? (
+      <p className="px-5 pt-3 pb-5 text-sm text-ink-muted italic">
+        {session.kind === 'list'
+          ? 'Your Practice List is empty. Add pieces from a piece’s Play button: Add to Practice List.'
+          : 'This setlist has nothing in it yet.'}
+      </p>
+    ) : (
+      <ul
+        ref={queueList}
+        className="flex flex-col px-3 pt-2 pb-3 select-none"
+        onPointerMove={moveDrag}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+        onLostPointerCapture={endDrag}
+      >
+        {queueItems.map((q, i) => {
+          const current = q.key === item?.key
+          const index = session.items.indexOf(q)
+          if (q.kind === 'custom')
+            return (
+              <li
+                key={q.key}
+                data-row
+                className={`flex items-center rounded-[10px] ${current ? 'bg-accent-soft [--sv-hover:var(--color-accent-soft-hover)]' : ''}`}
+              >
+                <button
+                  type="button"
+                  data-hit
+                  onClick={() => jump(index)}
+                  className={`${HIT} min-w-0 flex-1 justify-start group/b`}
+                >
+                  <span className={`${FACE} ${FACE_HOVER} h-11 w-full justify-start px-2`}>
+                    <span className="flex min-w-0 -translate-y-[0.5px] flex-col text-left">
+                      <span className="truncate font-display font-medium italic">{q.name}</span>
+                      <span className="truncate text-xs text-ink-soft">
+                        {current ? 'Now open' : q.role}
+                      </span>
+                    </span>
+                  </span>
+                </button>
+              </li>
+            )
+          const mark = marks[q.id]
+          const done = mark === true
+          // Unmarked today: the automatic rule leaves it alone until tomorrow.
+          const unmarked = mark === false
+          return (
+            <li
+              key={q.key}
+              data-row
+              className={`flex items-center rounded-[10px] ${current ? 'bg-accent-soft [--sv-hover:var(--color-accent-soft-hover)]' : ''} ${dragIndex === i ? 'opacity-40' : ''}`}
+            >
+              {editableQueue && (
+                <span
+                  data-hit
+                  aria-label={`Drag to reorder ${q.title}`}
+                  className={`${HIT} touch-none text-ink-faint ${dragIndex === i ? 'cursor-grabbing!' : 'cursor-grab! active:cursor-grabbing!'}`}
+                  onPointerDown={(event) => {
+                    // No text selection mid-drag (the card is portaled
+                    // outside the viewer's select-none).
+                    event.preventDefault()
+                    queueList.current?.setPointerCapture(event.pointerId)
+                    setDragIndex(i)
+                    const row = (event.currentTarget as HTMLElement).closest('[data-row]')
+                    const r = row?.getBoundingClientRect()
+                    if (r)
+                      setDragGhost({
+                        x: event.clientX,
+                        y: event.clientY,
+                        dx: event.clientX - r.left,
+                        dy: event.clientY - r.top,
+                        width: r.width,
+                      })
+                  }}
+                >
+                  <IconGripVertical size={20} />
+                </span>
+              )}
+              <button
+                type="button"
+                data-hit
+                onClick={() => jump(index)}
+                className={`${HIT} min-w-0 flex-1 justify-start group/b`}
+              >
+                {/* The same hover fill as the row's other buttons, 44px in
+                    the 48pt row. The text sits half a pixel high: measured
+                    by its ink, the title's leading otherwise leaves the top
+                    ~1px roomier. */}
+                <span className={`${FACE} ${FACE_HOVER} h-11 w-full justify-start px-2`}>
+                  <span className="flex min-w-0 -translate-y-[0.5px] flex-col text-left">
+                    <span className="truncate font-display font-medium">{q.title}</span>
+                    <span className="truncate text-xs text-ink-soft">
+                      {current ? 'Now open' : q.credit || `${q.pageCount} pp.`}
+                    </span>
+                  </span>
+                </span>
+              </button>
+              {showMarks && (
+                <HitButton
+                  label={
+                    done
+                      ? 'Practiced today: tap to unmark'
+                      : unmarked
+                        ? 'Unmarked for today: tap to mark as practiced'
+                        : 'Mark as practiced today'
+                  }
+                  onClick={() => session.onMark?.(q.id, !done)}
+                  faceClassName={`${FACE_HOVER} ${done ? 'text-accent' : unmarked ? 'text-ink-faint' : 'text-ink-fainter'}`}
+                >
+                  {done ? (
+                    <IconCircleCheckFilled size={22} />
+                  ) : unmarked ? (
+                    <IconCircleOff size={22} />
+                  ) : (
+                    <IconCircle size={22} />
+                  )}
+                </HitButton>
+              )}
+              {editableQueue && (
+                <HitButton
+                  label={`Remove ${q.title} from the Practice List`}
+                  onClick={() => session.onRemove?.(q.id)}
+                >
+                  <IconX size={18} />
+                </HitButton>
+              )}
+            </li>
+          )
+        })}
+      </ul>
+    )
+  const queueStyle = useAnchoredPanel(
+    queueAnchorRef,
+    menu === 'queue' && tier !== 'phone',
+    'below-center',
+    { gap: 6, panelWidth: QUEUE_WIDTH },
+  )
+  const queueHeader = (titleEl: ReactNode) => (
+    <div className="flex shrink-0 items-center border-b border-border pr-4">
+      {titleEl}
+      <HitButton label="Close the queue" onClick={() => setMenu(null)}>
+        <IconX size={20} />
+      </HitButton>
+    </div>
+  )
+  const queueTitleBlock = (
+    <span className="flex min-w-0 flex-col">
+      <span className="truncate font-display text-base font-medium">{session.title}</span>
+      {session.items.length > 0 && (
+        <span className="truncate text-xs text-ink-soft">{queueSub}</span>
+      )}
+    </span>
+  )
+  const dragged = dragIndex !== null ? queueItems[dragIndex] : undefined
+  const ghostCard =
+    dragGhost &&
+    dragged?.kind === 'piece' &&
+    createPortal(
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'fixed',
+          left: dragGhost.x - dragGhost.dx,
+          top: dragGhost.y - dragGhost.dy,
+          width: dragGhost.width,
+          pointerEvents: 'none',
+          zIndex: 9999,
+        }}
+        className="flex h-12 items-center rounded-[10px] border border-accent bg-paper-raised font-sans text-ink shadow-xl select-none"
+      >
+        <span className="flex w-12 shrink-0 justify-center text-ink-faint">
+          <IconGripVertical size={20} />
+        </span>
+        <span className="flex min-w-0 flex-col px-2">
+          <span className="truncate font-display font-medium">{dragged.title}</span>
+          <span className="truncate text-xs text-ink-soft">{dragged.credit}</span>
+        </span>
+      </div>,
+      document.body,
+    )
+  const queuePanel =
+    menu === 'queue' &&
+    (tier === 'phone'
+      ? createPortal(
+          <div
+            className={`fixed inset-x-0 bottom-0 z-50 flex flex-col rounded-t-2xl border-t border-border bg-paper pb-[env(safe-area-inset-bottom)] font-sans text-ink shadow-2xl select-none [--sv-hover:var(--color-paper-hover)] ${
+              sheetFull ? 'top-[calc(env(safe-area-inset-top)+0.75rem)]' : 'h-[58dvh]'
+            }`}
+          >
+            <span className="pointer-events-none absolute top-1.5 left-1/2 h-[5px] w-10 -translate-x-1/2 rounded-full bg-ink-fainter" />
+            {queueHeader(
+              <button
+                type="button"
+                data-hit
+                onClick={() => setSheetFull(!sheetFull)}
+                aria-label={sheetFull ? 'Shrink the queue' : 'Expand the queue'}
+                className={`${HIT} mt-2 min-w-0 flex-1 justify-start pl-5`}
+              >
+                {queueTitleBlock}
+              </button>,
+            )}
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">{queueBody}</div>
+            {ghostCard}
+          </div>,
+          document.body,
+        )
+      : queueStyle &&
+        createPortal(
+          <div
+            style={{ ...queueStyle, width: QUEUE_WIDTH }}
+            className="z-50 flex max-h-[calc(100dvh-5.5rem)] flex-col overflow-hidden rounded-xl border border-border bg-paper font-sans text-ink shadow-xl select-none [--sv-hover:var(--color-paper-hover)]"
+          >
+            {queueHeader(
+              <div className="flex min-h-12 min-w-0 flex-1 items-center pl-5">
+                {queueTitleBlock}
+              </div>,
+            )}
+            <div className="min-h-0 overflow-y-auto overscroll-contain">{queueBody}</div>
+            {ghostCard}
+          </div>,
+          document.body,
+        ))
+  // Only in a queue: the Practice List's playlist, a setlist's numbered list.
+  const queueButton = session.kind !== 'piece' && (
+    <div ref={queueAnchorRef} className="relative">
+      <HitButton
+        label={session.kind === 'setlist' ? 'Setlist queue' : 'Practice List'}
+        onClick={() => {
+          setMenu(menu === 'queue' ? null : 'queue')
+          setSheetFull(false)
+        }}
+        faceClassName={menu === 'queue' ? 'bg-accent-soft text-accent' : ''}
+      >
+        {session.kind === 'setlist' ? <IconListNumbers size={22} /> : <IconPlaylist size={22} />}
+      </HitButton>
+    </div>
+  )
+
   const cyclers = (
     <div className="flex items-center">
-      <HitButton label="Previous page" onClick={() => turn(-1)} disabled={page <= 1}>
+      <HitButton
+        label="Previous page"
+        onClick={() => turn(-1)}
+        disabled={!item || (page <= 1 && !(session.index > 0))}
+      >
         <IconChevronLeft size={22} />
       </HitButton>
       <span className="w-[4.5em] text-center text-sm text-ink-soft tabular-nums">
-        {page} / {pageCount}
+        {item ? `${page} / ${pageCount}` : ''}
       </span>
-      <HitButton label="Next page" onClick={() => turn(1)} disabled={page >= pageCount}>
+      <HitButton
+        label="Next page"
+        onClick={() => turn(1)}
+        disabled={
+          !item ||
+          (page >= pageCount && !(session.index >= 0 && session.index < session.items.length - 1))
+        }
+      >
         <IconChevronRight size={22} />
       </HitButton>
     </div>
   )
 
   let stage: ReactNode
-  if (pieceError) {
+  if (!item) {
+    // An empty Practice List explains itself in its queue, open from the
+    // start; the page stays blank.
+    stage =
+      session.kind === 'setlist' ? (
+        <StageMessage>
+          <p>This setlist has nothing in it yet.</p>
+        </StageMessage>
+      ) : null
+  } else if (custom) {
+    stage = (
+      <div
+        className="flex h-full w-full items-center justify-center"
+        style={{ containerType: 'size' }}
+      >
+        <PlaceholderPage entry={custom} />
+      </div>
+    )
+  } else if (pieceError) {
     const missing = pieceError instanceof ApiError && pieceError.status === 404
     stage = (
       <StageMessage>
@@ -1296,8 +2025,9 @@ function SheetViewer({ pieceId }: { pieceId: number }) {
                   edge, so they never move as the clock's width changes. */}
               <div className="flex h-14 items-center px-1">
                 {closeButton}
+                {queueButton}
                 {titleBlock}
-                {infoButton}
+                {pieceId !== null && infoButton}
                 {moreButton}
                 <span className="mx-1 h-7 w-px shrink-0 bg-border" />
                 {annotateButton}
@@ -1317,6 +2047,7 @@ function SheetViewer({ pieceId }: { pieceId: number }) {
             <div className="grid h-14 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center px-1">
               <div className="flex min-w-0 items-center">
                 {closeButton}
+                {queueButton}
                 {titleBlock}
               </div>
               {cyclers}
@@ -1324,7 +2055,7 @@ function SheetViewer({ pieceId }: { pieceId: number }) {
                 {clockButton}
                 {inlineExtras && extras}
                 {inlineExtras && photoButton}
-                {infoButton}
+                {pieceId !== null && infoButton}
                 {!inlineExtras && moreButton}
                 <span className="mx-1 h-7 w-px shrink-0 bg-border" />
                 {annotateButton}
@@ -1342,6 +2073,7 @@ function SheetViewer({ pieceId }: { pieceId: number }) {
             {clockMenu}
             {photoPanel}
             {infoPanel}
+            {queuePanel}
             {menu === 'more' && (
               <div className="absolute top-full right-2 z-50 mt-1.5 w-72 rounded-xl border border-border bg-paper p-3 shadow-xl [--sv-hover:var(--color-paper-hover)]">
                 <MenuRow
@@ -1556,6 +2288,95 @@ function PageCanvas({
         />
       )}
     </>
+  )
+}
+
+// A custom setlist entry's stand-in page in a setlist session: the Setlist
+// PDF's Generated Program Page (drawProgramPage, internal/setlistpdf),
+// drawn the same way at a Letter page's proportions — sized in real points
+// against the page's own width (1pt = 100cqw / 612). From the mockup.
+const PRINT_INK = '#1c1815'
+const PRINT_FAINT = '#5c5349'
+const PRINT_FAINTER = '#b3a99e'
+const LETTER = { w: 612, h: 792 }
+const pt = (n: number) => `calc(${n} * 100cqw / ${LETTER.w})`
+function PlaceholderPage({ entry }: { entry: Extract<QueueItem, { kind: 'custom' }> }) {
+  const smallCaps = {
+    fontSize: pt(11 * 1.08),
+    letterSpacing: '0.1em',
+    lineHeight: 'normal',
+    color: PRINT_FAINT,
+  }
+  return (
+    <div
+      className="relative bg-white"
+      style={{
+        width: `min(100cqw, calc(100cqh * ${LETTER.w} / ${LETTER.h}))`,
+        aspectRatio: `${LETTER.w} / ${LETTER.h}`,
+        containerType: 'inline-size',
+      }}
+    >
+      {/* Optically centered: 72pt margins, lifted 4% of the page height. */}
+      <div
+        className="absolute flex flex-col items-center justify-center text-center"
+        style={{ inset: `${pt(72)} ${pt(72)} ${pt(72 + 2 * 0.04 * LETTER.h)}` }}
+      >
+        <div className="flex flex-col items-center" style={{ gap: pt(10) }}>
+          <span
+            aria-hidden="true"
+            style={{
+              display: 'block',
+              width: pt(6),
+              height: pt(6),
+              background: PRINT_FAINTER,
+              transform: 'rotate(45deg)',
+              margin: `${pt(3)} 0 ${pt(11)}`,
+            }}
+          />
+          {entry.role && (
+            <span className="font-sans uppercase" style={smallCaps}>
+              {entry.role}
+            </span>
+          )}
+          <span
+            className="font-display italic"
+            style={{ fontSize: pt(24), lineHeight: 1.24, color: PRINT_INK, width: pt(288) }}
+          >
+            {entry.name}
+          </span>
+          {entry.notes && (
+            <>
+              <span
+                aria-hidden="true"
+                style={{
+                  height: pt(1),
+                  width: pt(24),
+                  background: PRINT_FAINTER,
+                  margin: `${pt(2)} 0`,
+                }}
+              />
+              <div
+                className="font-sans"
+                style={{
+                  fontSize: pt(12 * 1.08),
+                  letterSpacing: '0.02em',
+                  lineHeight: 1.4,
+                  color: PRINT_FAINT,
+                  width: pt(288),
+                }}
+              >
+                <MarkdownText>{entry.notes}</MarkdownText>
+              </div>
+            </>
+          )}
+          {entry.durationSeconds != null && (
+            <span className="font-sans uppercase tabular-nums" style={smallCaps}>
+              {formatDuration(entry.durationSeconds)}
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
   )
 }
 

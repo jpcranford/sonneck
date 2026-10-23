@@ -194,6 +194,11 @@ func BuildSetlistResponse(ctx context.Context, q repo.Queryer, s *repo.Setlist) 
 // resolver); Keys/Duration/PageCount are read directly off the piece,
 // which is correct (not a shortcut) since none of the three is
 // book-inheritable.
+// BuildPieceSummary is the same lean piece shape, for the Practice List.
+func BuildPieceSummary(ctx context.Context, q repo.Queryer, pieceID int64) (*SetlistPieceSummary, error) {
+	return buildSetlistPieceSummary(ctx, q, pieceID)
+}
+
 func buildSetlistPieceSummary(ctx context.Context, q repo.Queryer, pieceID int64) (*SetlistPieceSummary, error) {
 	p, err := repo.GetPieceByID(ctx, q, pieceID)
 	if err != nil {
