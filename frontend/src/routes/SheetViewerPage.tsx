@@ -30,6 +30,7 @@ import { getUserSettings, TURN_GUARD_DEFAULT } from '../api/userSettings'
 import { InfoTooltip } from '../components/InfoTooltip'
 import { Toggle } from '../components/Toggle'
 import { useAnchoredPanel } from '../hooks/useAnchorRect'
+import { useNoPageScroll } from '../hooks/useNoPageScroll'
 import { hasPermission, useAuth } from '../lib/AuthContext'
 import { useShortcutBlocker } from '../lib/shortcuts'
 import { useDarkScoresSync, useThemeSync } from '../lib/theme'
@@ -264,6 +265,8 @@ function SheetViewer({ pieceId }: { pieceId: number }) {
   // Page shortcuts (letters, numbers, the shortcut help) stay off while the
   // viewer is up; it has its own keys — the pedal set.
   useShortcutBlocker(true)
+  // Nothing here scrolls: no page bounce, no browser pull-to-refresh.
+  useNoPageScroll()
   const navigate = useNavigate()
   const width = useWindowWidth()
   const tier = width >= 1100 ? 'wide' : width >= 640 ? 'mid' : 'phone'
@@ -923,7 +926,7 @@ function SheetViewer({ pieceId }: { pieceId: number }) {
       </header>
 
       <main
-        className="relative min-h-0 flex-1 cursor-default touch-manipulation overflow-hidden"
+        className="relative min-h-0 flex-1 cursor-default touch-pinch-zoom overflow-hidden"
         onPointerDown={(event) => {
           if (event.button === 0) down.current = { x: event.clientX, y: event.clientY }
         }}

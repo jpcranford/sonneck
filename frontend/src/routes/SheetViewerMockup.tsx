@@ -48,6 +48,7 @@ import { PracticeStatusKeyIcon } from '../components/PracticeStatusIcon'
 import { SingleSelect } from '../components/SingleSelect'
 import { Toggle } from '../components/Toggle'
 import { useAnchoredPanel } from '../hooks/useAnchorRect'
+import { useNoPageScroll } from '../hooks/useNoPageScroll'
 import { sortPracticeStatuses } from '../lib/practiceStatusOrder'
 import { useShortcutBlocker } from '../lib/shortcuts'
 import { useMockupTitle } from '../lib/useMockupTitle'
@@ -271,6 +272,8 @@ export function SheetViewerMockup() {
   // Page shortcuts (letters, numbers, the shortcut help) stay off while the
   // viewer is up; it has its own keys — the pedal set below.
   useShortcutBlocker(true)
+  // Nothing here scrolls: no page bounce, no browser pull-to-refresh.
+  useNoPageScroll()
   const navigate = useNavigate()
   const width = useWindowWidth()
   const tier = width >= 1100 ? 'wide' : width >= 640 ? 'mid' : 'phone'
@@ -1804,7 +1807,7 @@ export function SheetViewerMockup() {
       </header>
 
       <main
-        className="relative min-h-0 flex-1 cursor-default touch-manipulation overflow-hidden"
+        className="relative min-h-0 flex-1 cursor-default touch-pinch-zoom overflow-hidden"
         onPointerDown={(event) => {
           if (event.button === 0) down.current = { x: event.clientX, y: event.clientY }
         }}
