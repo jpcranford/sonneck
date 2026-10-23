@@ -30,8 +30,7 @@ export const SWIPE_AXIS_RATIO = 1.5
  *
  * A tap uses the side thirds: the left third goes back, the right third
  * forward, and the middle column splits top (back) from bottom (forward).
- * A swipe follows both mental models the tap zones do: left or up turns
- * forward (paging, or scrolling down the music), right or down turns back.
+ * A swipe left or down turns forward, right or up turns back.
  * A press that moves too little to be a swipe, too slowly, or diagonally
  * does nothing — it was neither.
  */
@@ -47,6 +46,6 @@ export function stageTurn(start: StagePoint, end: StagePoint, rect: StageRect): 
   const ax = Math.abs(dx)
   const ay = Math.abs(dy)
   if (ax >= SWIPE_MIN_PX && ax >= ay * SWIPE_AXIS_RATIO) return dx < 0 ? 1 : -1
-  if (ay >= SWIPE_MIN_PX && ay >= ax * SWIPE_AXIS_RATIO) return dy < 0 ? 1 : -1
+  if (ay >= SWIPE_MIN_PX && ay >= ax * SWIPE_AXIS_RATIO) return dy > 0 ? 1 : -1
   return null
 }

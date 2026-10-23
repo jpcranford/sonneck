@@ -16,11 +16,11 @@ describe('stageTurn', () => {
     expect(stageTurn(at(800, 600), at(808, 605, 100), rect)).toBe(1)
   })
 
-  it('turns forward on a swipe left or up, back on a swipe right or down', () => {
+  it('turns forward on a swipe left or down, back on a swipe right or up', () => {
     expect(stageTurn(at(600, 600), at(400, 610, 200), rect)).toBe(1)
     expect(stageTurn(at(400, 600), at(600, 590, 200), rect)).toBe(-1)
-    expect(stageTurn(at(450, 800), at(455, 600, 200), rect)).toBe(1)
-    expect(stageTurn(at(450, 600), at(445, 800, 200), rect)).toBe(-1)
+    expect(stageTurn(at(450, 800), at(455, 600, 200), rect)).toBe(-1)
+    expect(stageTurn(at(450, 600), at(445, 800, 200), rect)).toBe(1)
   })
 
   it('goes by the swipe, not where it starts', () => {
