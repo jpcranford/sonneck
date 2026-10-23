@@ -471,7 +471,7 @@ export function SheetViewerMockup() {
   function turn(dir: -1 | 1) {
     const t = performance.now()
     if (dir === last.current.dir && t - last.current.at < DEBOUNCE_MS) {
-      flash('Ignored: same direction within 0.5 s')
+      flash('Double-turn ignored')
       return
     }
     last.current = { dir, at: t }

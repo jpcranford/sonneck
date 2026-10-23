@@ -237,16 +237,24 @@ type UserSettings struct {
 	// DarkModeScores inverts sheet-music page images while the dark theme
 	// is on (migration 00030). Applied entirely in the frontend.
 	DarkModeScores bool `json:"darkModeScores"`
+	// TurnGuardMs is the Sheet Viewer's double-turn guard (migration
+	// 00031): a second page turn the same way within this many milliseconds
+	// is ignored; 0 is off. One of TurnGuardChoices.
+	TurnGuardMs int `json:"turnGuardMs"`
 }
+
+// TurnGuardChoices are the double-turn guard's allowed values, in ms.
+var TurnGuardChoices = []int{0, 250, 500, 750, 1000}
 
 // GetUserSettings loads userID's settings row — always exists once the
 // user does (seeded at account creation, same as practice_statuses).
 func GetUserSettings(ctx context.Context, q Queryer, userID int64) (*UserSettings, error) {
 	s := &UserSettings{}
 	err := q.QueryRowContext(ctx, `
-		SELECT show_books_in_sidebar, theme_preference, content_view_mode, dark_mode_scores
+		SELECT show_books_in_sidebar, theme_preference, content_view_mode, dark_mode_scores,
+			sheet_viewer_turn_guard_ms
 		FROM user_settings WHERE user_id = ?`, userID,
-	).Scan(&s.ShowBooksInSidebar, &s.ThemePreference, &s.ContentViewMode, &s.DarkModeScores)
+	).Scan(&s.ShowBooksInSidebar, &s.ThemePreference, &s.ContentViewMode, &s.DarkModeScores, &s.TurnGuardMs)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -261,9 +269,9 @@ func GetUserSettings(ctx context.Context, q Queryer, userID int64) (*UserSetting
 func UpdateUserSettings(ctx context.Context, q Queryer, userID int64, s UserSettings) error {
 	_, err := q.ExecContext(ctx, `
 		UPDATE user_settings SET show_books_in_sidebar = ?, theme_preference = ?, content_view_mode = ?,
-			dark_mode_scores = ?
+			dark_mode_scores = ?, sheet_viewer_turn_guard_ms = ?
 		WHERE user_id = ?`,
-		s.ShowBooksInSidebar, s.ThemePreference, s.ContentViewMode, s.DarkModeScores, userID,
+		s.ShowBooksInSidebar, s.ThemePreference, s.ContentViewMode, s.DarkModeScores, s.TurnGuardMs, userID,
 	)
 	return err
 }

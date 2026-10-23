@@ -26,7 +26,7 @@ import {
 import { ApiError } from '../api/client'
 import { getConfig } from '../api/config'
 import { getPiece, getPiecePageUrl, preparePiecePages } from '../api/pieces'
-import { getUserSettings } from '../api/userSettings'
+import { getUserSettings, TURN_GUARD_DEFAULT } from '../api/userSettings'
 import { InfoTooltip } from '../components/InfoTooltip'
 import { Toggle } from '../components/Toggle'
 import { useAnchoredPanel } from '../hooks/useAnchorRect'
@@ -74,10 +74,11 @@ const PHOTO_STEP = 10
 const PHOTO_MIN = 50
 const PHOTO_MAX = 150
 
-// A turn in the same direction within this long of the last one is ignored
-// (an accidental double tap or a bouncing pedal); the opposite direction
-// always fires, and every turn resets both.
-const DEBOUNCE_MS = 500
+// A turn in the same direction within the user's double-turn guard (User
+// Settings › Sheet Viewer, 500ms by default) of the last one is ignored — an
+// accidental double tap or a bouncing pedal — with a "Double-turn ignored"
+// pill, so it's clear the press registered; the opposite direction always
+// fires, and every turn resets both.
 const CLOSE_CONFIRM_MS = 3000
 const HINT_MS = 1800
 // How long a page may take before "Preparing page…" shows, so a page that's
@@ -369,7 +370,11 @@ function SheetViewer({ pieceId }: { pieceId: number }) {
 
   function turn(dir: -1 | 1) {
     const t = performance.now()
-    if (dir === last.current.dir && t - last.current.at < DEBOUNCE_MS) return
+    const guard = settings?.turnGuardMs ?? TURN_GUARD_DEFAULT
+    if (dir === last.current.dir && t - last.current.at < guard) {
+      flash('Double-turn ignored')
+      return
+    }
     last.current = { dir, at: t }
     const next = Math.max(1, Math.min(pageCount, page + dir))
     if (next === page) {

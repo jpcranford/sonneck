@@ -382,6 +382,8 @@ export function UserSettingsMockup() {
   // default true, before the label flipped to "Hide Books in sidebar".
   const [hideBooksInSidebar, setHideBooksInSidebar] = useState(false)
   const [trackPractice, setTrackPractice] = useState(true)
+  // The double-turn guard, in ms (real page: user_settings.sheet_viewer_turn_guard_ms).
+  const [turnGuardMs, setTurnGuardMs] = useState(500)
   const [darkModeScores, setDarkModeScores] = useState(false)
   // Default false (not paginated — infinite scroll shown, the real
   // default) — see this file's own header comment. Migration 00024's
@@ -556,6 +558,25 @@ export function UserSettingsMockup() {
                 onChange={setTrackPractice}
                 label=""
                 id="track-practice"
+              />
+            }
+          />
+          <SettingsRow
+            label="Ignore double page turns"
+            help="A second turn the same way this soon after the last one is ignored, so a double tap or a bouncing pedal doesn't skip a page. Turning back always works."
+            control={
+              <SingleSelect
+                ariaLabel="Ignore double page turns"
+                size="sm"
+                value={String(turnGuardMs)}
+                onChange={(next) => setTurnGuardMs(Number(next))}
+                options={[
+                  { value: '0', label: 'Off' },
+                  { value: '250', label: '¼ second' },
+                  { value: '500', label: '½ second (default)' },
+                  { value: '750', label: '¾ second' },
+                  { value: '1000', label: '1 second' },
+                ]}
               />
             }
           />
