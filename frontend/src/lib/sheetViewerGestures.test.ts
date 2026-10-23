@@ -16,11 +16,18 @@ describe('stageTurn', () => {
     expect(stageTurn(at(800, 600), at(808, 605, 100), rect)).toBe(1)
   })
 
-  it('turns forward on a swipe left or down, back on a swipe right or up', () => {
+  it('turns forward on a swipe left or up, back on a swipe right or down', () => {
     expect(stageTurn(at(600, 600), at(400, 610, 200), rect)).toBe(1)
     expect(stageTurn(at(400, 600), at(600, 590, 200), rect)).toBe(-1)
-    expect(stageTurn(at(450, 800), at(455, 600, 200), rect)).toBe(-1)
-    expect(stageTurn(at(450, 600), at(445, 800, 200), rect)).toBe(1)
+    expect(stageTurn(at(450, 800), at(455, 600, 200), rect)).toBe(1)
+    expect(stageTurn(at(450, 600), at(445, 800, 200), rect)).toBe(-1)
+  })
+
+  it('takes every diagonal by its horizontal part', () => {
+    expect(stageTurn(at(600, 600), at(500, 520, 200), rect)).toBe(1)
+    expect(stageTurn(at(500, 520), at(600, 600, 200), rect)).toBe(-1)
+    expect(stageTurn(at(500, 600), at(600, 520, 200), rect)).toBe(-1)
+    expect(stageTurn(at(600, 520), at(500, 600, 200), rect)).toBe(1)
   })
 
   it('goes by the swipe, not where it starts', () => {
@@ -28,9 +35,9 @@ describe('stageTurn', () => {
     expect(stageTurn(at(250, 600), at(50, 600, 150), rect)).toBe(1)
   })
 
-  it('does nothing for a short, slow or diagonal drag', () => {
+  it('does nothing for a short or slow drag', () => {
     expect(stageTurn(at(600, 600), at(570, 600, 100), rect)).toBeNull()
+    expect(stageTurn(at(600, 600), at(570, 575, 100), rect)).toBeNull()
     expect(stageTurn(at(600, 600), at(400, 600, 1200), rect)).toBeNull()
-    expect(stageTurn(at(600, 600), at(500, 520, 200), rect)).toBeNull()
   })
 })

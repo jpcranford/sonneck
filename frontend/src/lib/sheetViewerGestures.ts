@@ -18,11 +18,12 @@ export interface StageRect {
 
 /** A press that moves less than this is a tap. */
 export const TAP_SLOP_PX = 12
-/** A swipe travels at least this far along its axis… */
+/** A swipe travels at least this far… */
 export const SWIPE_MIN_PX = 40
-/** …within this long… */
+/** …within this long. */
 export const SWIPE_MAX_MS = 800
-/** …and this many times further along it than across it. */
+/** A swipe is vertical when it goes this many times further up or down
+ * than sideways; anything else is horizontal. */
 export const SWIPE_AXIS_RATIO = 1.5
 
 /**
@@ -30,9 +31,11 @@ export const SWIPE_AXIS_RATIO = 1.5
  *
  * A tap uses the side thirds: the left third goes back, the right third
  * forward, and the middle column splits top (back) from bottom (forward).
- * A swipe left or down turns forward, right or up turns back.
- * A press that moves too little to be a swipe, too slowly, or diagonally
- * does nothing — it was neither.
+ * A swipe left turns forward and right turns back, like paging; up turns
+ * forward and down back, like scrolling the music. Any swipe that isn't
+ * mostly vertical goes by its horizontal part, diagonals included. A press
+ * that moves too little to be a swipe, or too slowly, does nothing — it was
+ * neither.
  */
 export function stageTurn(start: StagePoint, end: StagePoint, rect: StageRect): -1 | 1 | null {
   const dx = end.x - start.x
@@ -45,7 +48,7 @@ export function stageTurn(start: StagePoint, end: StagePoint, rect: StageRect): 
   if (end.t - start.t > SWIPE_MAX_MS) return null
   const ax = Math.abs(dx)
   const ay = Math.abs(dy)
-  if (ax >= SWIPE_MIN_PX && ax >= ay * SWIPE_AXIS_RATIO) return dx < 0 ? 1 : -1
-  if (ay >= SWIPE_MIN_PX && ay >= ax * SWIPE_AXIS_RATIO) return dy > 0 ? 1 : -1
+  if (ay >= SWIPE_MIN_PX && ay >= ax * SWIPE_AXIS_RATIO) return dy < 0 ? 1 : -1
+  if (Math.hypot(dx, dy) >= SWIPE_MIN_PX) return dx < 0 ? 1 : -1
   return null
 }
