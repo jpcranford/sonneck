@@ -1419,6 +1419,13 @@ function SheetViewer({ pieceId }: { pieceId: number }) {
 // (WebKit draws an opacity-0 image only once it's shown, scaling the full
 // page down then), a pre-drawn canvas ~30ms. The decoded image is let go
 // once drawn. A resize redraws it from the browser's cache.
+//
+// Its drawing is shown at exactly its own pixel size, or the screen
+// resamples it and fine detail goes soft: so its size is a whole number of
+// CSS pixels (iPad Safari rounds a 689.5pt-wide canvas up to 690pt —
+// stretching a 1379px drawing over 1380 screen pixels, measured from barline
+// positions in an iPad screenshot), and it's placed on whole device pixels
+// rather than centered with CSS.
 function PageCanvas({
   src,
   width,
@@ -1452,19 +1459,28 @@ function PageCanvas({
       .then(() => {
         if (cancelled) return
         const dpr = window.devicePixelRatio || 1
-        const scale = Math.min(
-          (width * dpr) / img.naturalWidth,
-          (height * dpr) / img.naturalHeight,
-          1,
-        )
+        // Fit the score area in whole CSS pixels, never past the page's own
+        // 300ppi pixels.
+        const scale = Math.min(width / img.naturalWidth, height / img.naturalHeight, 1 / dpr)
+        const cssWidth = Math.floor(img.naturalWidth * scale)
+        const cssHeight = Math.floor(img.naturalHeight * scale)
         const context = canvas.getContext('2d')
         if (!context) throw new Error('no canvas')
-        canvas.width = Math.round(img.naturalWidth * scale)
-        canvas.height = Math.round(img.naturalHeight * scale)
+        canvas.width = Math.round(cssWidth * dpr)
+        canvas.height = Math.round(cssHeight * dpr)
         context.imageSmoothingQuality = 'high'
         context.drawImage(img, 0, 0, canvas.width, canvas.height)
-        canvas.style.width = `${canvas.width / dpr}px`
-        canvas.style.height = `${canvas.height / dpr}px`
+        canvas.style.width = `${cssWidth}px`
+        canvas.style.height = `${cssHeight}px`
+        const area = canvas.parentElement?.getBoundingClientRect()
+        if (area) {
+          // Centered, then rounded to a device pixel on the screen itself
+          // (the score area may start between pixels too).
+          const snap = (start: number, room: number, size: number) =>
+            Math.round((start + (room - size / dpr) / 2) * dpr) / dpr - start
+          canvas.style.left = `${snap(area.left, area.width, canvas.width)}px`
+          canvas.style.top = `${snap(area.top, area.height, canvas.height)}px`
+        }
         callbacks.current.onReady()
       })
       .catch(() => {
@@ -1483,7 +1499,7 @@ function PageCanvas({
       role={label ? 'img' : undefined}
       aria-label={label}
       aria-hidden={label ? undefined : true}
-      className={`absolute inset-0 m-auto block max-h-full max-w-full ${className}`}
+      className={`absolute block ${className}`}
     />
   )
 }

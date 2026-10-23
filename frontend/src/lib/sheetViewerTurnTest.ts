@@ -74,17 +74,20 @@ async function loadImage(url: string) {
 }
 
 function drawCanvas(img: HTMLImageElement, width: number, height: number) {
+  // Sized like PageCanvas: whole CSS pixels, so it shows at its own size.
   const dpr = window.devicePixelRatio || 1
-  const scale = Math.min((width * dpr) / img.naturalWidth, (height * dpr) / img.naturalHeight, 1)
+  const scale = Math.min(width / img.naturalWidth, height / img.naturalHeight, 1 / dpr)
+  const cssWidth = Math.floor(img.naturalWidth * scale)
+  const cssHeight = Math.floor(img.naturalHeight * scale)
   const canvas = document.createElement('canvas')
-  canvas.width = Math.round(img.naturalWidth * scale)
-  canvas.height = Math.round(img.naturalHeight * scale)
+  canvas.width = Math.round(cssWidth * dpr)
+  canvas.height = Math.round(cssHeight * dpr)
   const context = canvas.getContext('2d')
   if (!context) throw new Error('no canvas')
   context.imageSmoothingQuality = 'high'
   context.drawImage(img, 0, 0, canvas.width, canvas.height)
-  canvas.style.width = `${canvas.width / dpr}px`
-  canvas.style.height = `${canvas.height / dpr}px`
+  canvas.style.width = `${cssWidth}px`
+  canvas.style.height = `${cssHeight}px`
   return canvas
 }
 
