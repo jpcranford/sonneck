@@ -1391,7 +1391,7 @@ function SheetViewer({
                 row
                 checked={practice.notesBarShown}
                 onChange={(v) => setPractice({ notesBarShown: v })}
-                label="Show in notes bar"
+                label="Show as banner"
                 className="h-10 w-full rounded-[10px] pr-2 pl-[25px] hover:bg-(--sv-hover)"
               />
             </div>
@@ -2124,8 +2124,8 @@ function SheetViewer({
           {stage}
         </div>
         {/* The notes bar: your notes' first line over the top of the page;
-            tap it for Info, ✕ hides it for this piece (Info's "Show in
-            notes bar" brings it back). Its own taps never turn. */}
+            tap it for Info, ✕ hides it for this piece (Info's "Show as
+            banner" brings it back). Its own taps never turn. */}
         {showBar && (
           <div
             className="absolute inset-x-0 top-0 z-10 flex items-center border-b border-accent/30 bg-accent-soft pr-1 pl-2 [--sv-hover:var(--color-accent-soft-hover)]"
@@ -2149,7 +2149,7 @@ function SheetViewer({
               </span>
             </button>
             <HitButton
-              label="Hide the notes bar for this piece"
+              label="Hide the banner for this piece"
               onClick={() => setPractice({ notesBarShown: false })}
             >
               <IconX size={18} />
