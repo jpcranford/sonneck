@@ -2,7 +2,7 @@
 
 Thanks for taking a look. Sonneck started as a personal tool — a self-hosted sheet music library for my own use — and quickly spiraled out of control. I'm more than happy to have other people poke at, use, and improve this thing. If that's you, this file is the map.
 
-If anything here is wrong, confusing, or out of date, that's itself a welcome bug report — open an issue, or just fix it with a PR.
+If anything here is wrong, confusing, or out of date, that's itself a welcome bug report — open an [issue](#reporting-bugs--suggesting-features), or just fix it with a PR.
 
 > [!NOTE]
 > I said it in the README and I'll say it again here: this has involved a *lot* of AI-assisted development (probably too much tbh), and I'll welcome the eyes and/or code of any human who wants to make it more secure, reliable, robust, or just plain cleaner.
@@ -11,20 +11,59 @@ If anything here is wrong, confusing, or out of date, that's itself a welcome bu
 
 ## Table of contents
 
+- [Code of conduct](#code-of-conduct)
+- [Recognition](#recognition)
+- [Reporting bugs & suggesting features](#reporting-bugs--suggesting-features)
+- [Making a change](#making-a-change)
+- [Conventions & house rules](#conventions--house-rules)
 - [Architecture summary](#architecture-summary)
 - [File structure](#file-structure)
 - [Local development setup](#local-development-setup)
 - [Docker](#docker)
 - [Database migrations](#database-migrations)
-- [Conventions & house rules](#conventions--house-rules)
 - [Testing](#testing)
 - [Music symbol shortcodes](#music-symbol-shortcodes)
 - [Setlist PDF fleuron](#setlist-pdf-fleuron)
-- [Making a change](#making-a-change)
-- [Reporting bugs & suggesting features](#reporting-bugs--suggesting-features)
-- [Code of conduct](#code-of-conduct)
-- [Recognition](#recognition)
-- [Questions](#questions)
+
+## Code of conduct
+
+No formal document yet — this is a small project at an early stage. The short version: be respectful, assume good faith, keep criticism aimed at the code and not the person who wrote it. If that ever stops being enough, a real one will get written.
+
+## Recognition
+
+Contributors get credited — see the README's [Acknowledgements](./README.md#acknowledgements) section for the existing pattern (design credits, font licenses, etc.). Meaningful code contributions will get the same treatment.
+
+This project has involved a lot of AI-assisted development (see the note at the top of this file), but an AI coding tool isn't a contributor — it's a tool, same category as an editor or a compiler, not a person who gets listed alongside one. (I’m not branding my new porch deck with “Co-built by Black & Decker,” now am I?) No AI tool gets added to Contributors/Acknowledgements, and no commit or PR in this repo should carry a `Co-Authored-By: <AI>` trailer or a "Generated with ..." badge crediting one, no matter how much of the diff it helped produce. If you used one, that's fine — just own the result yourself, the same way you'd own code from any other tool.
+
+## Reporting bugs & suggesting features
+
+Open a GitHub issue. For bug reports, the most useful info I want to know is: what you expected, what actually happened, and how to reproduce it, and how you're running it (your OS, and native app or Docker). Screenshots help a *lot* for anything UI-related. For feature requests, take a quick look at the README's [Planned features](./README.md#planned-features) section first in case it's already on the list. Doesn't really matter either way, I'll still see and evaluate the feature but if I see you got a planned feature off the ground I'll go nuts.
+
+## Making a change
+
+1. Fork/branch, make your change.
+2. Run the relevant tests and linters (see below). `.github/workflows/docker-publish.yml` validates that the Docker image still builds on every push to `main`, but it doesn't run `go test`/`npm test`/lint for you — a green local run of those before opening a PR is still the real safety net.
+3. Open a pull request with a clear description of *why*, not just *what* — the diff already shows what changed; the description is where the reasoning goes; that's genuinely more useful to a future reader than a restatement of the diff.
+4. If your change touches a documented convention or a deliberate deviation described in `CLAUDE.md`, update that file in the same PR rather than leaving it stale.
+
+Commit messages: a clear, present-tense summary line is enough. No required format beyond that. One thing *not* to include: a `Co-Authored-By: <AI tool>` trailer or a "Generated with ..." badge, even if you used one to help write the change — see above for why.
+
+## Conventions & house rules
+
+`CLAUDE.md` is the canonical source for this project's conventions — originally written as house rules for AI-assisted sessions, but it doubles as the most complete, current description of how the codebase actually works, including every place real behavior deviates from the original design doc and why. Skim it before making a non-trivial change; it'll save you from re-deciding something that was already deliberated (trust me, I'm a fickle bastard who isn't satisfied until I've tried it at least 3 different ways and conceded to the least-bothersome one). A few of the most load-bearing rules, pulled up here so they're not easy to miss:
+
+- **API responses** always go through the `{data}`/`{error}` envelope below — no per-handler improvisation.
+- **Permission checks**: any handler that needs one calls `requirePermission(w, r, models.PermissionX)` as its first line — the one shared gate, not a blanket route-metadata middleware (requirements vary too much per-handler for that). See `CLAUDE.md` > Multi-user support for the current `read`/`download`/`practice`/`edit`/`upload`/`create`/`delete`/`admin` mapping if you're adding a new endpoint.
+- **Logging** uses the standard library's `log/slog` with structured fields (`logger.Info("piece deleted", "pieceId", piece.ID)`), not string interpolation. Destructive-but-expected actions (deletions, file replacement) log at `INFO`, not `DEBUG`/`WARN`.
+- **File hashing** is SHA-256, streamed incrementally — never buffer a full upload into memory before hashing.
+- **Sheet Viewer pages** (`internal/handlers/pages.go`, `internal/pdf/page.go`) are cached by file hash under a render version: if you change how they render (resolution, renderer, encoding), bump `pageRenderVersion` so every page renders afresh at a new address. A poppler tool `internal/pdf` newly runs also has to be added to the macOS app's bundle list in `.github/workflows/native-build.yml`.
+- **Frontend type-checking**: `frontend/tsconfig.json` is a solution-style config (`{ files: [], references: [...] }`). Running `tsc --noEmit -p .` against it is a silent no-op — it type-checks nothing and reports no errors either way. Always run `tsc --noEmit -p tsconfig.app.json` instead.
+- **Frontend data fetching** goes through TanStack Query — not ad-hoc `useEffect`/`useState` per component. Every successful mutation marks all loaded data stale without fetching it (`main.tsx`), so off-screen lists refresh when next shown; a save must still invalidate the lists it changes *on screen* (filter counts included), and a mutation that only looks something up (no write) gets `meta: { readOnly: true }`.
+- **An edit window starts from fresh data** (`hooks/useFreshOnOpen.ts`, fields locked until it lands), and a save that returns its record goes through `lib/refreshAfterSave.ts`. **A thumbnail or first-page cover URL takes a version** from `hooks/useThumbnailVersion.ts` (file hash + redraw stamp), so browsers can cache it for good and still see a replaced file at once.
+- **Adding a font cut**: the self-hosted Cabin/Libre Baskerville/Atkinson Hyperlegible Next files come from Google Fonts' CSS2 API with **one weight per request** (a combined multi-weight request returns the same file for every weight) — add the latin and latin-ext woff2 pair plus matching `@font-face` rules in `frontend/src/index.css`, and check the new file's name table (fontTools) says the cut you meant.
+- **Frontend forms** use `react-hook-form` with light client-side validation only (required fields, obviously-plausible ranges). The backend remains the sole authority for everything else — don't build a second, parallel validation schema that has to be kept in sync by hand.
+- **A control the viewer's own permissions can't actually use** (checked via `hasPermission(me, perm)` from `lib/AuthContext.tsx`, never a bare `me.permissions.includes(...)` — `admin` counts as every permission, the same as the server) is left out entirely, never a normal clickable control that would just 403 — along with anything only it needed (a divider, a menu button with no items left), and its keyboard shortcut set to `enabled: false`. `CLAUDE.md` > Multi-user support lists where this applies. A control disabled for another reason (not yet built, nothing to act on) still fades.
+- **This project's React Compiler setup is stricter than default React advice on two points**: it flags reading a ref's `.current` during render, not just writing one (a value that needs to persist across renders has to be real `useState`, updated from an event handler or effect — never a ref read inline in the render body), and it flags a bare `setState` call directly inside a plain `useEffect` body (prefer updating state from the specific event handler that causes the change).
 
 ## Architecture summary
 
@@ -181,23 +220,6 @@ Write both the `-- +goose Up` and `-- +goose Down` sections. If a down migration
 
 Migrations run automatically against `$DATA_DIR` on every backend startup (including `go run`), so you don't need a separate step to apply one locally — just restart the backend.
 
-## Conventions & house rules
-
-`CLAUDE.md` is the canonical source for this project's conventions — originally written as house rules for AI-assisted sessions, but it doubles as the most complete, current description of how the codebase actually works, including every place real behavior deviates from the original design doc and why. Skim it before making a non-trivial change; it'll save you from re-deciding something that was already deliberated. A few of the most load-bearing rules, pulled up here so they're not easy to miss:
-
-- **API responses** always go through the `{data}`/`{error}` envelope above — no per-handler improvisation.
-- **Permission checks**: any handler that needs one calls `requirePermission(w, r, models.PermissionX)` as its first line — the one shared gate, not a blanket route-metadata middleware (requirements vary too much per-handler for that). See `CLAUDE.md` > Multi-user support for the current `read`/`download`/`practice`/`edit`/`upload`/`create`/`delete`/`admin` mapping if you're adding a new endpoint.
-- **Logging** uses the standard library's `log/slog` with structured fields (`logger.Info("piece deleted", "pieceId", piece.ID)`), not string interpolation. Destructive-but-expected actions (deletions, file replacement) log at `INFO`, not `DEBUG`/`WARN`.
-- **File hashing** is SHA-256, streamed incrementally — never buffer a full upload into memory before hashing.
-- **Sheet Viewer pages** (`internal/handlers/pages.go`, `internal/pdf/page.go`) are cached by file hash under a render version: if you change how they render (resolution, renderer, encoding), bump `pageRenderVersion` so every page renders afresh at a new address. A poppler tool `internal/pdf` newly runs also has to be added to the macOS app's bundle list in `.github/workflows/native-build.yml`.
-- **Frontend type-checking**: `frontend/tsconfig.json` is a solution-style config (`{ files: [], references: [...] }`). Running `tsc --noEmit -p .` against it is a silent no-op — it type-checks nothing and reports no errors either way. Always run `tsc --noEmit -p tsconfig.app.json` instead.
-- **Frontend data fetching** goes through TanStack Query — not ad-hoc `useEffect`/`useState` per component. Every successful mutation marks all loaded data stale without fetching it (`main.tsx`), so off-screen lists refresh when next shown; a save must still invalidate the lists it changes *on screen* (filter counts included), and a mutation that only looks something up (no write) gets `meta: { readOnly: true }`.
-- **An edit window starts from fresh data** (`hooks/useFreshOnOpen.ts`, fields locked until it lands), and a save that returns its record goes through `lib/refreshAfterSave.ts`. **A thumbnail or first-page cover URL takes a version** from `hooks/useThumbnailVersion.ts` (file hash + redraw stamp), so browsers can cache it for good and still see a replaced file at once.
-- **Adding a font cut**: the self-hosted Cabin/Libre Baskerville/Atkinson Hyperlegible Next files come from Google Fonts' CSS2 API with **one weight per request** (a combined multi-weight request returns the same file for every weight) — add the latin and latin-ext woff2 pair plus matching `@font-face` rules in `frontend/src/index.css`, and check the new file's name table (fontTools) says the cut you meant.
-- **Frontend forms** use `react-hook-form` with light client-side validation only (required fields, obviously-plausible ranges). The backend remains the sole authority for everything else — don't build a second, parallel validation schema that has to be kept in sync by hand.
-- **A control the viewer's own permissions can't actually use** (checked via `hasPermission(me, perm)` from `lib/AuthContext.tsx`, never a bare `me.permissions.includes(...)` — `admin` counts as every permission, the same as the server) is left out entirely, never a normal clickable control that would just 403 — along with anything only it needed (a divider, a menu button with no items left), and its keyboard shortcut set to `enabled: false`. `CLAUDE.md` > Multi-user support lists where this applies. A control disabled for another reason (not yet built, nothing to act on) still fades.
-- **This project's React Compiler setup is stricter than default React advice on two points**: it flags reading a ref's `.current` during render, not just writing one (a value that needs to persist across renders has to be real `useState`, updated from an event handler or effect — never a ref read inline in the render body), and it flags a bare `setState` call directly inside a plain `useEffect` body (prefer updating state from the specific event handler that causes the change).
-
 ## Testing
 
 **Backend:**
@@ -254,30 +276,3 @@ Using it somewhere new:
 - **Borders:** the flower repeats cleanly edge to edge. Place copies side by side at a pitch equal to their rendered width to rebuild the original border; a small negative gap tightens it the way the metal type set.
 - **Accessibility:** it's decorative. Inlined, give it `aria-hidden="true"` and `focusable="false"`; as an `<img>`, `alt=""`.
 - **Inline with text:** it looks best at about 1–1.2× the text's cap height, with `vertical-align: middle` or a slight negative offset.
-
-## Making a change
-
-1. Fork/branch, make your change.
-2. Run the relevant tests and linters above. `.github/workflows/docker-publish.yml` validates that the Docker image still builds on every push to `main`, but it doesn't run `go test`/`npm test`/lint for you — a green local run of those before opening a PR is still the real safety net.
-3. Open a pull request with a clear description of *why*, not just *what* — the diff already shows what changed; the description is where the reasoning goes; that's genuinely more useful to a future reader than a restatement of the diff.
-4. If your change touches a documented convention or a deliberate deviation described in `CLAUDE.md`, update that file in the same PR rather than leaving it stale.
-
-Commit messages: a clear, present-tense summary line is enough. No required format beyond that. One thing *not* to include: a `Co-Authored-By: <AI tool>` trailer or a "Generated with ..." badge, even if you used one to help write the change — see [Recognition](#recognition) below for why.
-
-## Reporting bugs & suggesting features
-
-Open a GitHub issue. For bug reports, the most useful info I want to know is: what you expected, what actually happened, and how to reproduce it. Screenshots help a *lot* for anything UI-related. For feature requests, take a quick look at the README's [Planned features](./README.md#planned-features) section first in case it's already on the list. Doesn't really matter either way, I'll still see and evaluate the feature but if I see you got a planned feature off the ground I'll go nuts.
-
-## Code of conduct
-
-No formal document yet — this is a small project at an early stage. The short version: be respectful, assume good faith, keep criticism aimed at the code and not the person who wrote it. If that ever stops being enough, a real one will get written.
-
-## Recognition
-
-Contributors get credited — see the README's [Acknowledgements](./README.md#acknowledgements) section for the existing pattern (design credits, font licenses, etc.). Meaningful code contributions will get the same treatment.
-
-This project has involved a lot of AI-assisted development (see the note at the top of this file), but an AI coding tool isn't a contributor — it's a tool, same category as an editor or a compiler, not a person who gets listed alongside one. (I’m not branding my new porch deck with “Co-built by Black & Decker,” now am I?) No AI tool gets added to Contributors/Acknowledgements, and no commit or PR in this repo should carry a `Co-Authored-By: <AI>` trailer or a "Generated with ..." badge crediting one, no matter how much of the diff it helped produce. If you used one, that's fine — just own the result yourself, the same way you'd own code from any other tool.
-
-## Questions
-
-Open a GitHub issue, or start a discussion if the repo has Discussions enabled. There's no separate chat/forum for this project right now.
