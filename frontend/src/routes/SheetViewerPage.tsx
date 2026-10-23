@@ -8,7 +8,6 @@ import {
   IconChevronRight,
   IconClef,
   IconClock,
-  IconClockOff,
   IconContrast,
   IconDots,
   IconInfoCircle,
@@ -509,7 +508,7 @@ function SheetViewer({ pieceId }: { pieceId: number }) {
     </HitButton>
   )
 
-  const ClockIcon = !clockOn ? IconClockOff : clockMode === 'stopwatch' ? IconStopwatch : IconClock
+  const ClockIcon = clockMode === 'stopwatch' ? IconStopwatch : IconClock
   const clockButton = (
     <div ref={clockAnchorRef} className="relative">
       <HitButton label="Clock" onClick={() => setMenu(menu === 'clock' ? null : 'clock')} inset>
@@ -608,8 +607,8 @@ function SheetViewer({ pieceId }: { pieceId: number }) {
           onClick={() => setClockOn(!clockOn)}
         >
           <span className={`${FACE} ${FACE_HOVER} w-full justify-start gap-2.5 px-3`}>
-            {clockOn ? <IconClockOff size={20} /> : <IconClock size={20} />}
-            {clockOn ? 'Hide clock' : 'Show clock'}
+            {clockMode === 'stopwatch' ? <IconStopwatch size={20} /> : <IconClock size={20} />}
+            {clockOn ? 'Hide' : 'Show'} {clockMode === 'stopwatch' ? 'stopwatch' : 'clock'}
           </span>
         </button>
       </div>,

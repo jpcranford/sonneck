@@ -16,7 +16,6 @@ import {
   IconCircleCheckFilled,
   IconClef,
   IconClock,
-  IconClockOff,
   IconContrast,
   IconDots,
   IconEraser,
@@ -699,7 +698,7 @@ export function SheetViewerMockup() {
     </HitButton>
   )
 
-  const ClockIcon = !clockOn ? IconClockOff : clockMode === 'stopwatch' ? IconStopwatch : IconClock
+  const ClockIcon = clockMode === 'stopwatch' ? IconStopwatch : IconClock
   const clockButton = (
     <div ref={clockAnchorRef} className="relative">
       <HitButton label="Clock" onClick={() => setMenu(menu === 'clock' ? null : 'clock')} inset>
@@ -820,8 +819,8 @@ export function SheetViewerMockup() {
           onClick={() => setClockOn(!clockOn)}
         >
           <span className={`${FACE} ${FACE_HOVER} w-full justify-start px-3 gap-2.5`}>
-            {clockOn ? <IconClockOff size={20} /> : <IconClock size={20} />}
-            {clockOn ? 'Hide clock' : 'Show clock'}
+            {clockMode === 'stopwatch' ? <IconStopwatch size={20} /> : <IconClock size={20} />}
+            {clockOn ? 'Hide' : 'Show'} {clockMode === 'stopwatch' ? 'stopwatch' : 'clock'}
           </span>
         </button>
       </div>,
