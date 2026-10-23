@@ -239,6 +239,23 @@ func TestAuthChangeComplete_MultiAccountDowngrade_ValidatesAndCollapses(t *testi
 	}
 	restarted := serverWithAuthMethod(t, conn, "singlepass")
 
+	// A setlist each for id=1 ("Original") and Alex, Alex's with an entry:
+	// the survivor's setlists must move onto id=1, entries and all, and
+	// id=1's own are replaced like its other data.
+	if _, err := conn.ExecContext(ctx, `INSERT INTO setlists (owner_user_id, name) VALUES (1, 'Original set')`); err != nil {
+		t.Fatalf("seeding id=1's setlist: %v", err)
+	}
+	if _, err := conn.ExecContext(ctx, `
+		INSERT INTO setlists (owner_user_id, name)
+		SELECT id, 'Alex set' FROM users WHERE display_name = 'Alex'`); err != nil {
+		t.Fatalf("seeding Alex's setlist: %v", err)
+	}
+	if _, err := conn.ExecContext(ctx, `
+		INSERT INTO setlist_entries (setlist_id, sort_order, custom_name)
+		SELECT id, 0, 'Welcome' FROM setlists WHERE name = 'Alex set'`); err != nil {
+		t.Fatalf("seeding Alex's setlist entry: %v", err)
+	}
+
 	// Missing keepUserId: rejected.
 	rec := doJSON(t, restarted, http.MethodPost, "/api/auth-change/complete", map[string]string{"password": "correcthorse"})
 	if rec.Code != http.StatusBadRequest {
@@ -309,6 +326,32 @@ func TestAuthChangeComplete_MultiAccountDowngrade_ValidatesAndCollapses(t *testi
 	}
 	if practiceStatusCount != 5 {
 		t.Errorf("practice_statuses owned by id=1 = %d, want exactly 5", practiceStatusCount)
+	}
+
+	var setlistNames []string
+	rows, err := conn.QueryContext(ctx, `SELECT name FROM setlists WHERE owner_user_id = 1 ORDER BY name`)
+	if err != nil {
+		t.Fatalf("listing setlists: %v", err)
+	}
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			t.Fatal(err)
+		}
+		setlistNames = append(setlistNames, name)
+	}
+	rows.Close()
+	if len(setlistNames) != 1 || setlistNames[0] != "Alex set" {
+		t.Errorf("setlists owned by id=1 = %v, want exactly [Alex set]", setlistNames)
+	}
+	var entryCount int
+	if err := conn.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM setlist_entries e JOIN setlists s ON s.id = e.setlist_id
+		WHERE s.owner_user_id = 1`).Scan(&entryCount); err != nil {
+		t.Fatalf("counting setlist entries: %v", err)
+	}
+	if entryCount != 1 {
+		t.Errorf("entries in id=1's setlists = %d, want 1 (Alex's entry kept)", entryCount)
 	}
 
 	loginRec := doJSON(t, restarted, http.MethodPost, "/api/auth/login", map[string]string{"password": "correcthorse"})
