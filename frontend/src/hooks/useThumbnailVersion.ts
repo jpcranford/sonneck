@@ -20,3 +20,16 @@ export function useThumbnailVersion(): (fileHash: string | null | undefined) => 
     return redrawn ? `${hash}.${redrawn}` : hash
   }
 }
+
+/**
+ * The same for a Sheet Viewer page (GET /api/pieces/{id}/pages/{n}): the
+ * file's hash plus GET /api/config's pagesVersion (the render version and
+ * when pages were last redrawn by regenerate-pages). Undefined until the
+ * config has loaded, so a page is never requested under a stale version.
+ */
+export function usePageVersion(): (fileHash: string | null | undefined) => string | undefined {
+  const { data: config } = useQuery({ queryKey: ['config'], queryFn: getConfig })
+  const pagesVersion = config?.pagesVersion
+  return (fileHash) =>
+    fileHash && pagesVersion ? `${fileHash.slice(0, 16)}.${pagesVersion}` : undefined
+}

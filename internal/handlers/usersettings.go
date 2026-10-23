@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"slices"
 
 	"github.com/jpcranford/sonneck/internal/api"
 	"github.com/jpcranford/sonneck/internal/models"
@@ -43,7 +44,15 @@ func (s *Server) handleUpdateUserSettings(w http.ResponseWriter, r *http.Request
 	if !ok {
 		return
 	}
-	var req repo.UserSettings
+	// Start from the stored row, so a field the request leaves out keeps its
+	// value instead of resetting (an older client that doesn't know a newer
+	// setting, say).
+	current, err := repo.GetUserSettings(r.Context(), s.DB, user.ID)
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+	req := *current
 	if err := decodeJSON(r, &req); err != nil {
 		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid request body: "+err.Error())
 		return
@@ -62,6 +71,15 @@ func (s *Server) handleUpdateUserSettings(w http.ResponseWriter, r *http.Request
 	case "paginated", "infinite":
 	default:
 		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "contentViewMode must be one of paginated, infinite")
+		return
+	}
+	if !slices.Contains(repo.TurnGuardChoices, req.TurnGuardMs) {
+		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "turnGuardMs must be one of 0, 250, 500, 750, 1000")
+		return
+	}
+
+	if !slices.Contains(repo.ClockModes, req.ClockMode) {
+		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "clockMode must be one of clock, stopwatch")
 		return
 	}
 

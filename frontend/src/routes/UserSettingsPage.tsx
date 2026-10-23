@@ -20,10 +20,17 @@ import { SingleSelect } from '../components/SingleSelect'
 import { Toggle } from '../components/Toggle'
 import { sortPracticeStatuses } from '../lib/practiceStatusOrder'
 import { usePageTitle } from '../lib/usePageTitle'
-import { useAuth } from '../lib/AuthContext'
+import { hasPermission, useAuth } from '../lib/AuthContext'
 import { ApiError } from '../api/client'
 import { updateMe, changePassword } from '../api/auth'
-import { getUserSettings, updateUserSettings, type UserSettings } from '../api/userSettings'
+import {
+  getUserSettings,
+  TURN_GUARD_DEFAULT,
+  TURN_GUARD_OPTIONS,
+  updateUserSettings,
+  type TurnGuardMs,
+  type UserSettings,
+} from '../api/userSettings'
 import {
   listPracticeStatuses,
   listUserTags,
@@ -621,6 +628,44 @@ export function UserSettingsPage() {
             }
           />
         </SettingsCard>
+
+        {/* The Sheet Viewer's settings — hidden without the practice
+            permission, which is the only way into the viewer. */}
+        {hasPermission(me, 'practice') && (
+          <SettingsCard title="Sheet Viewer">
+            {/* Practice tracking: the viewer's practiced-today marks and
+                the record of practiced days. On by default. */}
+            <SettingsRow
+              label="Track practice"
+              help="Mark pieces as practiced today once you've played them through in the Sheet Viewer, and keep a record of the days you practiced each one. Turned off, nothing is marked or recorded."
+              control={
+                <Toggle
+                  checked={settings?.trackPractice ?? true}
+                  onChange={(checked) => patchSettings({ trackPractice: checked })}
+                  label=""
+                  id="track-practice"
+                  disabled={settingsLoading}
+                />
+              }
+            />
+            <SettingsRow
+              label="Ignore double page turns"
+              help="A second turn the same way this soon after the last one is ignored, so a double tap or a bouncing pedal doesn't skip a page. Turning back always works."
+              control={
+                <SingleSelect
+                  ariaLabel="Ignore double page turns"
+                  size="sm"
+                  value={String(settings?.turnGuardMs ?? TURN_GUARD_DEFAULT)}
+                  onChange={(next) => patchSettings({ turnGuardMs: Number(next) as TurnGuardMs })}
+                  options={TURN_GUARD_OPTIONS.map((o) => ({
+                    value: String(o.value),
+                    label: o.value === TURN_GUARD_DEFAULT ? `${o.label} (default)` : o.label,
+                  }))}
+                />
+              }
+            />
+          </SettingsCard>
+        )}
 
         <SettingsCard title="Your Tags & Practice Status">
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">

@@ -2,6 +2,8 @@ import { forwardRef, useRef, useState, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { deletePiece, setPiecePracticeStatus, updatePiece } from '../api/pieces'
 import { listPracticeStatuses } from '../api/lookups'
+import { addToPracticeList, getPracticeList, removeFromPracticeList } from '../api/practiceList'
+import { useToday } from '../hooks/useToday'
 import { ApiError } from '../api/client'
 import type { Piece } from '../api/types'
 import { hasPermission, useAuth } from '../lib/AuthContext'
@@ -29,8 +31,9 @@ interface PieceContextMenuProps {
 // Shared right-click menu for piece cards (Library grid + list, Book
 // Details, Person Details): the practice status strip on top (hidden
 // without `practice`), then a favorite toggle, "Add to Setlist" (hidden
-// without `create`), "Edit Piece", and, at the end, a destructive
-// "Delete Piece".
+// without `create`), "Add to Practice List" or "Remove from Practice List"
+// (hidden without `practice`), "Edit Piece", and, at the end, a
+// destructive "Delete Piece".
 export const PieceContextMenu = forwardRef<ContextMenuHandle, PieceContextMenuProps>(
   function PieceContextMenu({ piece, children, hideTriggerButton, siblingPieces }, ref) {
     const [editOpen, setEditOpen] = useState(false)
@@ -55,6 +58,24 @@ export const PieceContextMenu = forwardRef<ContextMenuHandle, PieceContextMenuPr
       queryKey: ['practice-statuses'],
       queryFn: listPracticeStatuses,
       enabled: canPractice,
+    })
+
+    // The Sheet Viewer's Practice List: one shared cache entry for every
+    // card (the same one Piece Details and the viewer use).
+    const today = useToday()
+    const { data: practiceList } = useQuery({
+      queryKey: ['practice-list', today],
+      queryFn: () => getPracticeList(today),
+      enabled: canPractice,
+    })
+    const onPracticeList = !!practiceList?.some((e) => e.piece.id === piece.id)
+    const practiceListMutation = useMutation({
+      mutationFn: async (add: boolean) => {
+        if (add) await addToPracticeList([piece.id])
+        else await removeFromPracticeList(piece.id)
+      },
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: ['practice-list'] }),
+      onError: () => showAlert('Could not update your Practice List.'),
     })
 
     // Same full-replace PATCH pattern as PiecePage's own favorite toggle
@@ -138,6 +159,15 @@ export const PieceContextMenu = forwardRef<ContextMenuHandle, PieceContextMenuPr
               : []),
             ...(canCreate
               ? [{ label: 'Add to Setlist', onSelect: () => setPickerOpen(true) }]
+              : []),
+            // Added to the end of the list.
+            ...(canPractice && practiceList
+              ? [
+                  {
+                    label: onPracticeList ? 'Remove from Practice List' : 'Add to Practice List',
+                    onSelect: () => practiceListMutation.mutate(!onPracticeList),
+                  },
+                ]
               : []),
             ...(canEdit
               ? [

@@ -274,7 +274,8 @@ func SetOIDCSubject(ctx context.Context, q Queryer, userID int64, subject string
 
 // DeleteUser removes only this app's own users row — cascades via
 // ON DELETE CASCADE to user_permissions/sessions/piece_favorites/
-// piece_practice_status/piece_user_notes/user_settings, and to any
+// piece_practice_status/piece_user_notes/piece_practice_settings/
+// user_settings, and to any
 // user_tags/practice_statuses row it owns. Callers are responsible for the
 // "can't delete the last admin" guard (business rule, not a DB constraint —
 // same "handler enforces, repo executes" convention as every other
@@ -310,6 +311,8 @@ func DeleteUser(ctx context.Context, q Queryer, id int64) error {
 //     Learn") can't coexist under one owner, and user_settings has user_id
 //     as its own primary key, so two rows can't share an id either. Wiping
 //     id=1's own rows first, then reassigning the survivor's, avoids both.
+//     Setlists move the same way (their entries follow by setlist_id); a
+//     setlist left on the deleted accounts would go with them.
 //
 // Either way, every other account (and everything it owns) is removed in
 // one final DELETE, cascading via the same ON DELETE CASCADE chain
@@ -317,13 +320,13 @@ func DeleteUser(ctx context.Context, q Queryer, id int64) error {
 // cleanup by hand.
 func ApplyAuthChangeDowngrade(ctx context.Context, q Queryer, keepUserID int64) error {
 	if keepUserID != 1 {
-		ownedTables := []string{"practice_statuses", "user_tags"}
+		ownedTables := []string{"practice_statuses", "user_tags", "setlists", "practice_list_entries"}
 		for _, table := range ownedTables {
 			if _, err := q.ExecContext(ctx, `DELETE FROM `+table+` WHERE owner_user_id = 1`); err != nil {
 				return err
 			}
 		}
-		perUserTables := []string{"piece_favorites", "piece_practice_status", "piece_user_notes", "user_settings"}
+		perUserTables := []string{"piece_favorites", "piece_practice_status", "piece_user_notes", "piece_practice_settings", "piece_practice_days", "user_settings"}
 		for _, table := range perUserTables {
 			if _, err := q.ExecContext(ctx, `DELETE FROM `+table+` WHERE user_id = 1`); err != nil {
 				return err

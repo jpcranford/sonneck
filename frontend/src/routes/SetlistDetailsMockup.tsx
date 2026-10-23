@@ -1,4 +1,5 @@
 import {
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -10,12 +11,14 @@ import {
   IconArchive,
   IconArrowLeft,
   IconCalendar,
+  IconCheck,
   IconChevronDown,
   IconCopy,
   IconDownload,
   IconEditFilled,
   IconListDetails,
   IconPlayerPlay,
+  IconPlaylistAdd,
   IconTrash,
 } from '@tabler/icons-react'
 import { ContextMenu, type ContextMenuItem } from '../components/ContextMenu'
@@ -395,6 +398,15 @@ export function SetlistDetailsMockup() {
   // state PiecePage.tsx's own `downloadOpen` uses (no outside-click
   // dismiss there either, confirmed by reading that file directly).
   const [downloadOpen, setDownloadOpen] = useState(false)
+  const [playMenuOpen, setPlayMenuOpen] = useState(false)
+  // Practice List feedback for "Add all pieces" (mockup state: how many of
+  // this set's pieces are already on the list).
+  const setPieceCount = entries.filter((e) => e.kind === 'piece').length
+  const [piecesOnList, setPiecesOnList] = useState(0)
+  const piecesToAdd = setPieceCount - piecesOnList
+  const [justAdded, setJustAdded] = useState<number | null>(null)
+  const addFeedbackTimer = useRef<number | undefined>(undefined)
+  useEffect(() => () => window.clearTimeout(addFeedbackTimer.current), [])
 
   const displayNumbers = useMemo(() => computeDisplayNumbers(entries), [entries])
   const [copyToast, setCopyToast] = useState<{ x: number; y: number } | null>(null)
@@ -673,15 +685,68 @@ export function SetlistDetailsMockup() {
           not always from the same one. Same fix ported to
           `PieceDetailsSample.tsx` and the real `PiecePage.tsx`. */}
       <div className="flex flex-wrap items-center gap-2">
-        <InfoTooltip
-          message="Coming soon — will play through the set's pieces one after another via the future Sheet Viewer, with placeholder pages standing in for custom entries. Built once the Sheet Viewer's own core playback exists."
-          ariaLabel="Play Set (coming soon with the Sheet Viewer)"
-          showPointerCursor={false}
-          triggerClassName="flex items-center gap-2 rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-sm text-white opacity-50"
-        >
-          <IconPlayerPlay size={16} />
-          Play Set
-        </InfoTooltip>
+        {/* Play Set (Sheet Viewer Phase 6): opens the viewer on this set,
+            in its order, for that session only — custom entries get
+            placeholder pages. The caret adds every piece to the Practice
+            List (custom entries skipped, pieces already there left as
+            they are). */}
+        <div className="relative">
+          <div className="flex">
+            <Link
+              to="/mockup/sheet-viewer?from=setlist"
+              className="flex cursor-pointer items-center gap-2 rounded-l-md bg-accent-fill px-4 py-2 font-display font-medium text-sm text-white hover:bg-accent-fill/90"
+            >
+              <IconPlayerPlay size={16} />
+              Play Set
+            </Link>
+            <button
+              type="button"
+              onClick={() => setPlayMenuOpen((o) => !o)}
+              aria-label="More play options"
+              className="flex cursor-pointer items-center justify-center rounded-r-md border-l border-white/25 bg-accent-fill px-2 text-white hover:bg-accent-fill/90"
+            >
+              <IconChevronDown size={16} />
+            </button>
+          </div>
+          {playMenuOpen && (
+            <div className="absolute top-full left-0 z-10 mt-1 w-72 rounded-md border border-border bg-paper-raised py-1 text-left shadow-lg">
+              {/* Feedback stays in the menu item (option 1): after a tap it
+                  reads "Added N pieces" for a second, then the menu closes;
+                  reopened, it reflects the list — "Add N more pieces…", or
+                  a greyed "All pieces are on your Practice List". Nothing
+                  appears in the button row. */}
+              <button
+                type="button"
+                disabled={piecesToAdd === 0 && !justAdded}
+                onClick={() => {
+                  if (justAdded !== null) return
+                  setJustAdded(piecesToAdd)
+                  addFeedbackTimer.current = window.setTimeout(() => {
+                    setPlayMenuOpen(false)
+                    setJustAdded(null)
+                    setPiecesOnList(setPieceCount)
+                  }, 1000)
+                }}
+                className={`flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm hover:bg-paper-hover disabled:opacity-50 ${
+                  justAdded !== null ? 'text-accent' : 'text-ink'
+                }`}
+              >
+                {justAdded !== null || piecesToAdd === 0 ? (
+                  <IconCheck size={16} />
+                ) : (
+                  <IconPlaylistAdd size={16} />
+                )}
+                {justAdded !== null
+                  ? `Added ${justAdded} ${justAdded === 1 ? 'piece' : 'pieces'}`
+                  : piecesToAdd === 0
+                    ? 'All pieces are on your Practice List'
+                    : piecesOnList === 0
+                      ? 'Add all pieces to Practice List'
+                      : `Add ${piecesToAdd} more ${piecesToAdd === 1 ? 'piece' : 'pieces'} to Practice List`}
+              </button>
+            </div>
+          )}
+        </div>
 
         <div className="relative">
           <div className="flex">

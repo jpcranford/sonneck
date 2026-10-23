@@ -44,7 +44,7 @@ const SECTIONS: { title: string; mockups: Mockup[] }[] = [
       {
         to: '/mockup/sidebar-setlists',
         name: 'Sidebar Setlists',
-        note: 'Setlists feature, Phase 5 — replaces the inert "Coming soon" Setlists placeholder with a divider, an "Upcoming Sets" heading, 5 fixture setlists (real gig dates relative to today, soonest first), and a "⋯" menu for View All/Archive (both still-unbuilt, Phase 10). Try collapsing the rail or the mobile drawer.',
+        note: 'Setlists feature, Phase 5 — replaces the inert "Coming soon" Setlists placeholder with a divider, an "Upcoming Sets" heading, 5 fixture setlists (real gig dates relative to today, soonest first), and a "⋯" menu for View All/Archive (both still-unbuilt, Phase 10). Also carries the Sheet Viewer’s Practice List entry (above Want to Learn), which opens the viewer on the list. Try collapsing the rail or the mobile drawer.',
       },
       {
         to: '/mockup/device-info',
@@ -79,7 +79,7 @@ const SECTIONS: { title: string; mockups: Mockup[] }[] = [
       {
         to: '/mockup/add-to-setlist',
         name: 'Add to Setlist',
-        note: 'Setlists feature, Phase 5 — the Library grid/list cards’ new right-click "Add to Setlist" item and the "already in a setlist" indicator next to the favorite heart. The same menu now opens with a practice status strip (design C′). Right-click/long-press a card to try both.',
+        note: 'Setlists feature, Phase 5 — the Library grid/list cards’ new right-click "Add to Setlist" item and the "already in a setlist" indicator next to the favorite heart. The same menu now opens with a practice status strip (design C′). Right-click/long-press a card to try both. The menu also has Add to (or Remove from) Practice List, for the Sheet Viewer.',
       },
     ],
   },
@@ -89,7 +89,7 @@ const SECTIONS: { title: string; mockups: Mockup[] }[] = [
       {
         to: '/mockup/piece-details',
         name: 'Piece Details',
-        note: 'Reference sample for the Piece Details page (§14) — kept as a standing design reference.',
+        note: 'Reference sample for the Piece Details page (§14) — kept as a standing design reference. Play opens the Sheet Viewer mockup; its caret adds the piece to (or removes it from) the Practice List.',
       },
       {
         to: '/mockup/edit-piece-modal',
@@ -124,7 +124,7 @@ const SECTIONS: { title: string; mockups: Mockup[] }[] = [
       {
         to: '/mockup/setlist-details',
         name: 'Setlist Details',
-        note: 'Setlists feature, Phase 6 — the full Setlist Details page (§13), built against the approved "Stats dashboard" layout and rough-in decisions: relative gig date, role labels, non-piece entries (one with a note callout, one toggled to count as music), a real Archive/Unarchive confirm modal, and each row’s right-click menu. Play/Edit/Add Entries are inert (later phases); Archive and Remove are real.',
+        note: 'Setlists feature, Phase 6 — the full Setlist Details page (§13), built against the approved "Stats dashboard" layout and rough-in decisions: relative gig date, role labels, non-piece entries (one with a note callout, one toggled to count as music), a real Archive/Unarchive confirm modal, and each row’s right-click menu. Play Set opens the Sheet Viewer mockup on the set (custom entries as placeholder pages), and its caret adds every piece to the Practice List; Archive and Remove are real.',
       },
       {
         to: '/mockup/edit-setlist',
@@ -140,6 +140,16 @@ const SECTIONS: { title: string; mockups: Mockup[] }[] = [
         to: '/mockup/setlist-program-page',
         name: 'Download Set PDF',
         note: 'Setlists "Download Set PDF" export (§13) — all four locked page directions, in packet order: Cover, Table of Contents, a Generated Program Page (the stand-in page a custom, non-piece entry contributes, since it has no sheet music of its own), and Colophon. Only the cover and colophon reference the app itself. Preview-entry and page-shape (Letter/A4) toggles exist only in this mockup — a real generated page shows one entry at one fixed shape.',
+      },
+    ],
+  },
+  {
+    title: 'Sheet Viewer',
+    mockups: [
+      {
+        to: '/mockup/sheet-viewer',
+        name: 'Sheet Viewer',
+        note: 'The full-screen practice and performance mode: real pages from a piece you pick, a top toolbar, side-thirds tap zones (pedal keys too), two-tap close, the clock and stopwatch, faint coming-soon Metronome and Theory buttons, Annotate’s tinted toolbar with placeholder tools, and Info (Phase 4): a card under the Info button (a bottom sheet on phones) with your notes, editable in place, the practice-status buttons and the piece’s details, plus the notes bar over the page and a dot on Info when the piece has notes. Photo filters (Phase 5): brightness and contrast in steps, grayscale and invert, stacked on top of the dark theme’s dim or Dark Mode Scores, and kept per piece; the photo panel also holds the edge margin, and Invert locks on under Dark Mode Scores; the Mockup panel can try the other theme and Dark Mode Scores. The Practice List (Phase 6): a queue button opens the list (or a setlist’s order, jump-only) with drag to reorder, remove, and practiced-today marks that set themselves once you’ve reached a piece’s last page and spent a minute on it; turning past a piece’s end goes on to the next. A setlist session shows each custom entry as a placeholder page, like the Setlist PDF’s. The Mockup panel picks where the viewer was opened from. Nothing is written to the library. The page cyclers stay put in both modes. Toggles for notes, tap zones and 48pt hit areas. The Mockup panel’s Turn test times page turns on the picked piece’s real 300ppi pages, the old build’s stacked images against the current canvases — for running on the iPad.',
       },
     ],
   },
@@ -184,7 +194,7 @@ const SECTIONS: { title: string; mockups: Mockup[] }[] = [
       {
         to: '/mockup/user-settings',
         name: 'User Settings',
-        note: 'Multi-user support — separate cards per section: Account (display name, identity line, Change Password), Appearance (Theme, Dark disabled/"Soon"), Library (Hide Books in sidebar, Paginated views), Your Tags and Practice Status (per-user create/delete/merge, same pattern as Admin Settings\' Lookup Tables). Switch identity state to see the Account card adapt.',
+        note: 'Multi-user support — separate cards per section: Account (display name, identity line, Change Password), Appearance (Theme, Dark disabled/"Soon"), Library (Hide Books in sidebar, Paginated views), Your Tags and Practice Status (per-user create/delete/merge, same pattern as Admin Settings\' Lookup Tables). Switch identity state to see the Account card adapt. Sheet Viewer card: Track practice (on by default) turns off the viewer’s practiced-today marks and their record.',
       },
       {
         to: '/mockup/admin-settings',

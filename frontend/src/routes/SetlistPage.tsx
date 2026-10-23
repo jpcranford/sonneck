@@ -1,20 +1,23 @@
-import { useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   IconArchive,
   IconArrowLeft,
   IconCalendar,
+  IconCheck,
   IconChevronDown,
   IconCopy,
   IconDownload,
   IconEditFilled,
   IconListDetails,
   IconPlayerPlay,
+  IconPlaylistAdd,
   IconTrash,
 } from '@tabler/icons-react'
 import { ApiError } from '../api/client'
 import { getPiece } from '../api/pieces'
+import { addToPracticeList, getPracticeList } from '../api/practiceList'
 import {
   addSetlistEntry,
   createSetlist,
@@ -169,6 +172,43 @@ export function SetlistPage() {
   const notFound = error instanceof ApiError && error.code === 'NOT_FOUND'
 
   usePageTitle(setlist?.name ?? 'Setlist')
+
+  // Play Set opens the Sheet Viewer on this set, and its caret adds the
+  // set's pieces to the Practice List; both need `practice`, like the
+  // viewer.
+  const canPractice = hasPermission(useAuth(), 'practice')
+  const [playMenuOpen, setPlayMenuOpen] = useState(false)
+  const { data: practiceList } = useQuery({
+    queryKey: ['practice-list', today],
+    queryFn: () => getPracticeList(today),
+    enabled: canPractice,
+  })
+  // The set's pieces in its order, once each, and how many aren't on the
+  // list yet (custom entries have nothing to add).
+  const setPieceIds = [
+    ...new Set(
+      (setlist?.entries ?? []).flatMap((e) => (e.kind === 'piece' && e.piece ? [e.piece.id] : [])),
+    ),
+  ]
+  const listed = new Set(practiceList?.map((e) => e.piece.id))
+  const piecesToAdd = setPieceIds.filter((id) => !listed.has(id))
+  // After a tap the item reads "Added N pieces" for a second, then the
+  // menu closes.
+  const [justAdded, setJustAdded] = useState<number | null>(null)
+  const addFeedbackTimer = useRef<number | undefined>(undefined)
+  useEffect(() => () => window.clearTimeout(addFeedbackTimer.current), [])
+  const addAllMutation = useMutation({
+    mutationFn: () => addToPracticeList(piecesToAdd),
+    onSuccess: ({ added }) => {
+      setJustAdded(added)
+      addFeedbackTimer.current = window.setTimeout(() => {
+        setPlayMenuOpen(false)
+        setJustAdded(null)
+      }, 1000)
+      queryClient.invalidateQueries({ queryKey: ['practice-list'] })
+    },
+    onError: () => showAlert('Could not add these pieces to your Practice List.'),
+  })
 
   const [archiveModalOpen, setArchiveModalOpen] = useState(false)
   const [duplicateModalOpen, setDuplicateModalOpen] = useState(false)
@@ -432,15 +472,63 @@ export function SetlistPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <InfoTooltip
-              message="Coming soon — will play through the set's pieces one after another via the future Sheet Viewer, with placeholder pages standing in for custom entries. Built once the Sheet Viewer's own core playback exists."
-              ariaLabel="Play Set (coming soon with the Sheet Viewer)"
-              showPointerCursor={false}
-              triggerClassName="flex items-center gap-2 rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-sm text-white opacity-50"
-            >
-              <IconPlayerPlay size={16} />
-              Play Set
-            </InfoTooltip>
+            {/* Play Set: the set in its order, for that session only —
+                custom entries get placeholder pages. The caret adds every
+                piece to the Practice List (custom entries skipped, pieces
+                already there left as they are); its feedback stays in the
+                menu item. Hidden without `practice`. */}
+            {canPractice && (
+              <div className="relative">
+                <div className="flex">
+                  <Link
+                    to={`/setlists/${setlistId}/play`}
+                    className="flex cursor-pointer items-center gap-2 rounded-l-md bg-accent-fill px-4 py-2 font-display font-medium text-sm text-white hover:bg-accent-fill/90"
+                  >
+                    <IconPlayerPlay size={16} />
+                    Play Set
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => setPlayMenuOpen((o) => !o)}
+                    aria-label="More play options"
+                    className="flex cursor-pointer items-center justify-center rounded-r-md border-l border-white/25 bg-accent-fill px-2 text-white hover:bg-accent-fill/90"
+                  >
+                    <IconChevronDown size={16} />
+                  </button>
+                </div>
+                {playMenuOpen && (
+                  <div className="absolute top-full left-0 z-10 mt-1 w-72 rounded-md border border-border bg-paper-raised py-1 text-left shadow-lg">
+                    <button
+                      type="button"
+                      disabled={
+                        !practiceList ||
+                        addAllMutation.isPending ||
+                        (piecesToAdd.length === 0 && justAdded === null)
+                      }
+                      onClick={() => {
+                        if (justAdded === null) addAllMutation.mutate()
+                      }}
+                      className={`flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm hover:bg-paper-hover disabled:opacity-50 ${
+                        justAdded !== null ? 'text-accent' : 'text-ink'
+                      }`}
+                    >
+                      {justAdded !== null || piecesToAdd.length === 0 ? (
+                        <IconCheck size={16} />
+                      ) : (
+                        <IconPlaylistAdd size={16} />
+                      )}
+                      {justAdded !== null
+                        ? `Added ${justAdded} ${justAdded === 1 ? 'piece' : 'pieces'}`
+                        : piecesToAdd.length === 0
+                          ? 'All pieces are on your Practice List'
+                          : piecesToAdd.length === setPieceIds.length
+                            ? 'Add all pieces to Practice List'
+                            : `Add ${piecesToAdd.length} more ${piecesToAdd.length === 1 ? 'piece' : 'pieces'} to Practice List`}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="relative">
               {/* Without `download` the download half is hidden, and the menu's

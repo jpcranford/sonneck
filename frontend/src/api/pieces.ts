@@ -1,4 +1,12 @@
-import { apiDelete, apiGet, apiPatch, apiUpload, apiUploadWithStatus } from './client'
+import {
+  apiDelete,
+  apiGet,
+  apiPatch,
+  apiPost,
+  apiPut,
+  apiUpload,
+  apiUploadWithStatus,
+} from './client'
 import type { Piece, PieceWriteRequest } from './types'
 
 /**
@@ -50,6 +58,23 @@ export function getPieceThumbnailUrl(id: number, page: number = 1, version?: str
   return version ? `${url}?v=${version}` : url
 }
 
+/**
+ * A full-size Sheet Viewer page (300ppi grayscale PNG). `version` is the
+ * piece's file hash plus GET /api/config's pagesVersion, so a replaced file
+ * or a redraw gets a new address and the browser can keep each one for good.
+ */
+export function getPiecePageUrl(id: number, page: number, version?: string): string {
+  const url = `/api/pieces/${id}/pages/${page}`
+  return version ? `${url}?v=${version}` : url
+}
+
+/** Starts rendering every page of a piece in the background — sent when the
+ * piece opens in the Sheet Viewer, so later pages are ready before they're
+ * turned to. */
+export function preparePiecePages(id: number): Promise<{ pageCount: number }> {
+  return apiPost(`/api/pieces/${id}/pages/prepare`)
+}
+
 export function replacePieceFile(
   id: number,
   file: File,
@@ -62,6 +87,46 @@ export function replacePieceFile(
 // the `practice` permission, not `edit`.
 export function setPiecePracticeStatus(id: number, practiceStatus: string | null): Promise<Piece> {
   return apiPatch<Piece>(`/api/pieces/${id}/practice-status`, { practiceStatus })
+}
+
+// The caller's own notes on one piece (empty or null clears them), from the
+// Sheet Viewer's Info panel — needs `practice`, not `edit`.
+export function setPieceUserNotes(id: number, userNotes: string | null): Promise<Piece> {
+  return apiPatch<Piece>(`/api/pieces/${id}/user-notes`, { userNotes })
+}
+
+// The caller's Sheet Viewer settings for one piece (internal/repo's
+// PracticeSettings): the page's look and the notes bar. The clock's
+// settings are per account instead (UserSettings).
+export interface PracticeSettings {
+  /** Percent, 50–150 in steps of 10. */
+  brightness: number
+  contrast: number
+  grayscale: boolean
+  invert: boolean
+  edgeMargin: boolean
+  notesBarShown: boolean
+}
+
+export const DEFAULT_PRACTICE_SETTINGS: PracticeSettings = {
+  brightness: 100,
+  contrast: 100,
+  grayscale: false,
+  invert: false,
+  edgeMargin: false,
+  notesBarShown: false,
+}
+
+export function getPracticeSettings(id: number): Promise<PracticeSettings> {
+  return apiGet<PracticeSettings>(`/api/pieces/${id}/practice-settings`)
+}
+
+// Full replace: every field, every time.
+export function savePracticeSettings(
+  id: number,
+  settings: PracticeSettings,
+): Promise<PracticeSettings> {
+  return apiPut<PracticeSettings>(`/api/pieces/${id}/practice-settings`, settings)
 }
 
 export function setPieceThumbnailPage(id: number, page: number): Promise<Piece> {

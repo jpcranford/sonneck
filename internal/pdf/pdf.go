@@ -1,7 +1,8 @@
-// Package pdf shells out to poppler-utils (pdfinfo, pdfseparate, pdfunite,
-// pdftocairo, pdftoppm — design doc §2) for the PDF operations the app
-// needs: counting pages, extracting a page range into a standalone PDF,
-// merging PDFs, and rendering a single page as a thumbnail image.
+// Package pdf shells out to poppler-utils (pdfinfo, pdfimages, pdfseparate,
+// pdfunite, pdftocairo, pdftoppm — design doc §2) for the PDF operations the
+// app needs: counting pages, extracting a page range into a standalone PDF,
+// merging PDFs, rendering a single page as a thumbnail image, and rendering
+// the Sheet Viewer's full-size grayscale pages (page.go).
 package pdf
 
 import (

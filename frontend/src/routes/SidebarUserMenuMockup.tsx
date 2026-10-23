@@ -9,6 +9,7 @@ import {
   IconHeart,
   IconCircleHalf2,
   IconCircleDashed,
+  IconPlaylist,
   IconCircleCheckFilled,
   IconLayoutSidebarLeftCollapseFilled,
   IconLayoutSidebarLeftExpandFilled,
@@ -67,6 +68,9 @@ const NAV_ITEMS: NavItem[] = [
 ]
 const SECONDARY_NAV_ITEMS: NavItem[] = [
   { to: '/favorites', label: 'Favorites', icon: IconHeart },
+  // Sheet Viewer Phase 6: opens the viewer on your Practice List, from
+  // the top. Hidden without the practice permission.
+  { to: '/mockup/sheet-viewer?from=list', label: 'Practice List', icon: IconPlaylist },
   { to: '/want-to-learn', label: 'Want to Learn', icon: IconCircleDashed },
   { to: '/practicing', label: 'Currently Practicing', icon: IconCircleHalf2 },
   { to: '/learned', label: 'Learned', icon: IconCircleCheckFilled },

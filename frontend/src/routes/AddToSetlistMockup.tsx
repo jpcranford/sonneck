@@ -421,6 +421,7 @@ function FixtureGridCard({
   onSetPracticeStatus: (status: string | null) => void
 }) {
   const [pickerOpen, setPickerOpen] = useState(false)
+  const [onPracticeList, setOnPracticeList] = useState(false)
   const inSetlist = setlistIds.length > 0
   const inSetlistNames = setlistIds
     .map((id) => ALL_MOCK_SETLISTS.find((s) => s.id === id)?.name)
@@ -443,6 +444,12 @@ function FixtureGridCard({
             onSelect: () => {},
           },
           { label: 'Add to Setlist', onSelect: () => setPickerOpen(true) },
+          // Sheet Viewer plan, Phase 6: added to the end of the list;
+          // hidden without the practice permission.
+          {
+            label: onPracticeList ? 'Remove from Practice List' : 'Add to Practice List',
+            onSelect: () => setOnPracticeList(!onPracticeList),
+          },
           { label: 'Edit Piece', onSelect: () => {} },
           { label: 'Delete Piece', destructive: true, onSelect: () => {} },
         ]}
@@ -500,6 +507,7 @@ function FixtureListCard({
   onSetPracticeStatus: (status: string | null) => void
 }) {
   const [pickerOpen, setPickerOpen] = useState(false)
+  const [onPracticeList, setOnPracticeList] = useState(false)
   const inSetlist = setlistIds.length > 0
   const inSetlistNames = setlistIds
     .map((id) => ALL_MOCK_SETLISTS.find((s) => s.id === id)?.name)
@@ -522,6 +530,12 @@ function FixtureListCard({
             onSelect: () => {},
           },
           { label: 'Add to Setlist', onSelect: () => setPickerOpen(true) },
+          // Sheet Viewer plan, Phase 6: added to the end of the list;
+          // hidden without the practice permission.
+          {
+            label: onPracticeList ? 'Remove from Practice List' : 'Add to Practice List',
+            onSelect: () => setOnPracticeList(!onPracticeList),
+          },
           { label: 'Edit Piece', onSelect: () => {} },
           { label: 'Delete Piece', destructive: true, onSelect: () => {} },
         ]}

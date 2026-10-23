@@ -20,12 +20,15 @@ import {
   IconImageInPicture,
   IconMusic,
   IconPlayerPlay,
+  IconPlaylistAdd,
+  IconPlaylistX,
   IconRefresh,
   IconTrash,
   IconX,
 } from '@tabler/icons-react'
 import type { CopyrightStatus, PracticeStatus } from '../api/types'
 import { copyToClipboard } from '../lib/clipboard'
+import { formatDateOnly } from '../lib/dateOnly'
 import { COPYRIGHT_BADGE_META, copyrightTooltipText } from '../lib/copyrightBadge'
 import { AddToSetlistPicker } from './AddToSetlistMockup'
 import { InfoTooltip } from '../components/InfoTooltip'
@@ -523,6 +526,9 @@ function ActionButton({
   )
 }
 
+// The last day this fixture piece was marked practiced (Sheet Viewer).
+const LAST_PRACTICED = '2026-10-12'
+
 export function PieceDetailsSample() {
   useMockupTitle('Piece Details')
 
@@ -534,6 +540,8 @@ export function PieceDetailsSample() {
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [favorite, setFavorite] = useState(piece.favorite)
   const [downloadOpen, setDownloadOpen] = useState(false)
+  const [playMenuOpen, setPlayMenuOpen] = useState(false)
+  const [onPracticeList, setOnPracticeList] = useState(false)
   const [moreActionsOpen, setMoreActionsOpen] = useState(false)
   const [addToSetlistOpen, setAddToSetlistOpen] = useState(false)
   // Starts already in one setlist, fixture-only — demonstrates the "this
@@ -850,29 +858,46 @@ export function PieceDetailsSample() {
           )}
 
           <div className="flex flex-wrap items-center justify-center gap-2">
-            {/* Play — the future Sheet Viewer's entry point (design doc
-                §13, not built yet), given the accent-solid treatment
-                Download PDF used to own alone, since this is now the
-                page's one primary action. Labeled "Play" itself (not
-                "Coming Soon" — corrected per direct feedback), with the
-                "not wired up yet" fact carried by a real InfoTooltip
-                instead (this app's own existing hover/tap-to-open
-                convention, e.g. the copyright badge above) — a native
-                `disabled` button can't be hovered/tapped to reveal
-                anything, so this stays a genuinely clickable trigger.
-                Faint (opacity) + showPointerCursor={false} (same
-                "status display, not a control" treatment the copyright
-                badge above already uses) reads as "not really live yet"
-                without actually disabling the tooltip itself. */}
-            <InfoTooltip
-              message="Coming soon — will play through the future Sheet Viewer."
-              ariaLabel="Play (coming soon with the Sheet Viewer)"
-              showPointerCursor={false}
-              triggerClassName="flex items-center gap-2 rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-sm text-white opacity-50"
-            >
-              <IconPlayerPlay size={16} />
-              Play
-            </InfoTooltip>
+            {/* Play (Sheet Viewer Phase 6): a split button like Download
+                PDF's, solid accent as the page's primary action. The main
+                half opens the Sheet Viewer mockup; the caret holds "Add to
+                Practice List" (or Remove, when it's already there — a piece
+                is on the list once at most). Hidden without the practice
+                permission in the real page. */}
+            <div className="relative">
+              <div className="flex">
+                <Link
+                  to="/mockup/sheet-viewer"
+                  className="flex cursor-pointer items-center gap-2 rounded-l-md bg-accent-fill px-4 py-2 font-display font-medium text-sm text-white hover:bg-accent-fill/90"
+                >
+                  <IconPlayerPlay size={16} />
+                  Play
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => setPlayMenuOpen((o) => !o)}
+                  aria-label="More play options"
+                  className="flex cursor-pointer items-center justify-center rounded-r-md border-l border-white/25 bg-accent-fill px-2 text-white hover:bg-accent-fill/90"
+                >
+                  <IconChevronDown size={16} />
+                </button>
+              </div>
+              {playMenuOpen && (
+                <div className="absolute top-full left-0 z-10 mt-1 w-64 rounded-md border border-border bg-paper-raised py-1 text-left shadow-lg">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOnPracticeList(!onPracticeList)
+                      setPlayMenuOpen(false)
+                    }}
+                    className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-paper-hover"
+                  >
+                    {onPracticeList ? <IconPlaylistX size={16} /> : <IconPlaylistAdd size={16} />}
+                    {onPracticeList ? 'Remove from Practice List' : 'Add to Practice List'}
+                  </button>
+                </div>
+              )}
+            </div>
 
             {/* Download PDF — still matches the other buttons' bordered/
                 paper-raised palette (not the accent-solid treatment Play
@@ -1425,6 +1450,18 @@ export function PieceDetailsSample() {
                 </DetailRow>
                 <DetailRow small tight label="Last updated">
                   {formatDate(piece.updatedAt)}
+                </DetailRow>
+                {/* Sheet Viewer plan, Phase 6: the last day this piece was
+                    marked practiced in the Sheet Viewer — a calendar day
+                    in the viewer's own time zone, so formatted as a
+                    date-only value. Left out entirely while practice
+                    tracking is off in User Settings. */}
+                <DetailRow small tight label="Last practiced">
+                  {formatDateOnly(LAST_PRACTICED, {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                  })}
                 </DetailRow>
                 <DetailRow small tight label="Copyright year">
                   {piece.copyrightYear ?? '—'}

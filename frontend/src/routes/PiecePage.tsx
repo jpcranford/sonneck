@@ -21,6 +21,8 @@ import {
   IconImageInPicture,
   IconMusic,
   IconPlayerPlay,
+  IconPlaylistAdd,
+  IconPlaylistX,
   IconRefresh,
   IconTrash,
 } from '@tabler/icons-react'
@@ -40,6 +42,7 @@ import {
   getCitation,
   getPiece,
   getPieceFileUrl,
+  getPiecePageUrl,
   getPieceThumbnailUrl,
   getRandomPiece,
   replacePieceFile,
@@ -47,6 +50,15 @@ import {
   updatePiece,
 } from '../api/pieces'
 import { listPieceSetlistMemberships } from '../api/setlists'
+import {
+  addToPracticeList,
+  getPracticed,
+  getPracticeList,
+  removeFromPracticeList,
+} from '../api/practiceList'
+import { getUserSettings } from '../api/userSettings'
+import { useToday } from '../hooks/useToday'
+import { formatDateOnly } from '../lib/dateOnly'
 import { AddToSetlistPicker } from '../components/AddToSetlistPicker'
 import { ApiError } from '../api/client'
 import { pieceToWriteRequest } from '../lib/pieceToWriteRequest'
@@ -59,7 +71,7 @@ import { PageLightbox } from '../components/PageLightbox'
 import { PracticeStatusIcon } from '../components/PracticeStatusIcon'
 import { confirmAction, showAlert } from '../lib/dialogs'
 import { EDIT_PIECE_KEYS, useShortcuts } from '../lib/shortcuts'
-import { useThumbnailVersion } from '../hooks/useThumbnailVersion'
+import { usePageVersion, useThumbnailVersion } from '../hooks/useThumbnailVersion'
 
 // Mirrors UploadPage's own cap (backend's MaxUploadBytes) — same reasoning
 // as there: reject an oversized file instantly rather than after a slow
@@ -231,6 +243,7 @@ function ActionButton({
 
 export function PiecePage() {
   const thumbVersion = useThumbnailVersion()
+  const pageVersion = usePageVersion()
   const { id } = useParams<{ id: string }>()
   const pieceId = Number(id)
   const queryClient = useQueryClient()
@@ -323,8 +336,10 @@ export function PiecePage() {
   const canDelete = hasPermission(me, 'delete')
   const canUpload = hasPermission(me, 'upload')
   const canCreate = hasPermission(me, 'create')
+  const canPractice = hasPermission(me, 'practice')
 
   const [lightboxOpen, setLightboxOpen] = useState(false)
+  const [playMenuOpen, setPlayMenuOpen] = useState(false)
   const [downloadOpen, setDownloadOpen] = useState(false)
   const [moreActionsOpen, setMoreActionsOpen] = useState(false)
   const [replaceConfirming, setReplaceConfirming] = useState(false)
@@ -337,6 +352,35 @@ export function PiecePage() {
   const [addToSetlistOpen, setAddToSetlistOpen] = useState(false)
   const addToSetlistButtonRef = useRef<HTMLButtonElement>(null)
   const replaceFileInputRef = useRef<HTMLInputElement>(null)
+
+  // The Practice List (Sheet Viewer): Play's caret adds the piece or takes
+  // it off, and More info's "Last practiced" (left out while Track practice
+  // is off in User Settings). Both need `practice`, like the viewer.
+  const today = useToday()
+  const { data: practiceList } = useQuery({
+    queryKey: ['practice-list', today],
+    queryFn: () => getPracticeList(today),
+    enabled: canPractice,
+  })
+  const onPracticeList = !!practiceList?.some((e) => e.piece.id === pieceId)
+  const practiceListMutation = useMutation({
+    mutationFn: async (add: boolean) => {
+      if (add) await addToPracticeList([pieceId])
+      else await removeFromPracticeList(pieceId)
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['practice-list'] }),
+  })
+  const { data: userSettings } = useQuery({
+    queryKey: ['user-settings'],
+    queryFn: getUserSettings,
+    enabled: canPractice,
+  })
+  const trackPractice = canPractice && userSettings?.trackPractice !== false
+  const { data: practiced } = useQuery({
+    queryKey: ['practiced', pieceId, today],
+    queryFn: () => getPracticed(pieceId, today),
+    enabled: trackPractice,
+  })
 
   // "Already in a setlist" indicator (decision 6) — real as of the
   // Setlists backend build. Same bulk membership fetch every other real
@@ -732,6 +776,13 @@ export function PiecePage() {
               <PageLightbox
                 key={page}
                 imageUrl={getPieceThumbnailUrl(piece.id, page, thumbVersion(piece.fileHash))}
+                // The Sheet Viewer's 300ppi page, sharp when zoomed in.
+                // Its endpoint needs `practice`, like the viewer.
+                fullImageUrl={
+                  canPractice
+                    ? getPiecePageUrl(piece.id, page, pageVersion(piece.fileHash))
+                    : undefined
+                }
                 alt={`Page ${page} of ${piece.title}`}
                 page={page}
                 pageCount={piece.pageCount}
@@ -745,29 +796,53 @@ export function PiecePage() {
                 shows, so both sit with the preview rather than in the info
                 column's field list. */}
             <div className="flex flex-wrap items-center justify-center gap-2">
-              {/* Play — the future Sheet Viewer's entry point (design doc
-                  §13, not built yet), given the accent-solid treatment
-                  Download PDF used to own alone, since this is now the
-                  page's one primary action. Labeled "Play" itself, with
-                  the "not wired up yet" fact carried by a real InfoTooltip
-                  (this page's own existing hover/tap-to-open convention,
-                  e.g. the copyright badge above) — a native `disabled`
-                  button can't be hovered/tapped to reveal anything, so
-                  this stays a genuinely clickable trigger. Faint (opacity)
-                  + showPointerCursor={false} (same "status display, not a
-                  control" treatment the copyright badge already uses)
-                  reads as "not really live yet" without disabling the
-                  tooltip itself. Ported from the already-approved mockup
-                  (/mockup/piece-details). */}
-              <InfoTooltip
-                message="Coming soon — will play through the future Sheet Viewer."
-                ariaLabel="Play (coming soon with the Sheet Viewer)"
-                showPointerCursor={false}
-                triggerClassName="flex items-center gap-2 rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-sm text-white opacity-50"
-              >
-                <IconPlayerPlay size={16} />
-                Play
-              </InfoTooltip>
+              {/* Play — opens the piece in the Sheet Viewer, the page's one
+                  primary action, so it carries the accent-solid treatment.
+                  A split button like Download PDF's: the caret adds the
+                  piece to the Practice List, or takes it off (a piece is on
+                  it once at most). Hidden without `practice`, which gates
+                  the whole viewer. */}
+              {canPractice && (
+                <div className="relative">
+                  <div className="flex">
+                    <Link
+                      to={`/pieces/${piece.id}/play`}
+                      className="flex items-center gap-2 rounded-l-md bg-accent-fill px-4 py-2 font-display text-sm font-medium text-white hover:bg-accent-fill/90"
+                    >
+                      <IconPlayerPlay size={16} />
+                      Play
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => setPlayMenuOpen((o) => !o)}
+                      aria-label="More play options"
+                      className="flex cursor-pointer items-center justify-center rounded-r-md border-l border-white/25 bg-accent-fill px-2 text-white hover:bg-accent-fill/90"
+                    >
+                      <IconChevronDown size={16} />
+                    </button>
+                  </div>
+                  {playMenuOpen && (
+                    <div className="absolute top-full left-0 z-10 mt-1 w-64 rounded-md border border-border bg-paper-raised py-1 text-left shadow-lg">
+                      <button
+                        type="button"
+                        disabled={!practiceList || practiceListMutation.isPending}
+                        onClick={() => {
+                          practiceListMutation.mutate(!onPracticeList)
+                          setPlayMenuOpen(false)
+                        }}
+                        className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-paper-hover"
+                      >
+                        {onPracticeList ? (
+                          <IconPlaylistX size={16} />
+                        ) : (
+                          <IconPlaylistAdd size={16} />
+                        )}
+                        {onPracticeList ? 'Remove from Practice List' : 'Add to Practice List'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Positioning context lives on this outer div, not the
                   inner pill — the inner div's own overflow-hidden (needed
@@ -1503,6 +1578,19 @@ export function PiecePage() {
                   <DetailRow small tight label="Last updated">
                     {formatDate(piece.updatedAt)}
                   </DetailRow>
+                  {/* The latest day you marked it practiced — your own
+                      calendar day, so formatted as a date-only value. */}
+                  {trackPractice && (
+                    <DetailRow small tight label="Last practiced">
+                      {practiced?.lastPracticed
+                        ? formatDateOnly(practiced.lastPracticed, {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric',
+                          })
+                        : '—'}
+                    </DetailRow>
+                  )}
                   <DetailRow small tight label="Copyright year">
                     {piece.copyrightYear.value ?? '—'}
                   </DetailRow>

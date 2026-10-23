@@ -168,13 +168,15 @@ jobs:
           mkdir -p poppler-bundle/bin poppler-bundle/libs
           # Every tool internal/pdf runs: pdfinfo (page counts), pdfseparate +
           # pdfunite (the book split; pdfunite also builds the Set PDF),
-          # pdftocairo (the split's fallback), pdftoppm (thumbnails).
-          for tool in pdfinfo pdfseparate pdfunite pdftocairo pdftoppm; do
+          # pdftocairo (the split's fallback, and the Sheet Viewer's engraved
+          # pages), pdftoppm (thumbnails, scanned pages), pdfimages (telling
+          # a scanned page from an engraved one).
+          for tool in pdfinfo pdfimages pdfseparate pdfunite pdftocairo pdftoppm; do
             cp "$(brew --prefix poppler)/bin/$tool" poppler-bundle/bin/
           done
           dylibbundler -od -b \
-            -x poppler-bundle/bin/pdfinfo -x poppler-bundle/bin/pdfseparate -x poppler-bundle/bin/pdfunite \
-            -x poppler-bundle/bin/pdftocairo -x poppler-bundle/bin/pdftoppm \
+            -x poppler-bundle/bin/pdfinfo -x poppler-bundle/bin/pdfimages -x poppler-bundle/bin/pdfseparate \
+            -x poppler-bundle/bin/pdfunite -x poppler-bundle/bin/pdftocairo -x poppler-bundle/bin/pdftoppm \
             -d poppler-bundle/libs \
             -s "$(brew --prefix poppler)/lib" -s "$(brew --prefix)/lib"
 

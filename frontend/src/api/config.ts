@@ -49,6 +49,10 @@ export interface AppConfig {
   /** When thumbnails were last redrawn (Unix seconds, "" if never) — part of
    * every thumbnail URL's version (hooks/useThumbnailVersion). */
   thumbnailsRedrawn: string
+  /** The version part of every Sheet Viewer page URL: the server's
+   * page-render version, plus when the regenerate-pages command last redrew
+   * them. */
+  pagesVersion: string
 }
 
 export function getConfig(): Promise<AppConfig> {

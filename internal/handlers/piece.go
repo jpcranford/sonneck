@@ -373,6 +373,7 @@ func (s *Server) handleDeletePiece(w http.ResponseWriter, r *http.Request) {
 		if err := os.Remove(deletedPiece.FilePath); err != nil && !os.IsNotExist(err) {
 			s.Logger.Error("failed to remove piece file after delete", "error", err, "pieceId", id, "filePath", deletedPiece.FilePath)
 		}
+		s.removePageCache(deletedPiece.FileHash)
 	}
 	s.Logger.Info("piece deleted", "pieceId", deletedPiece.ID, "fileHash", deletedPiece.FileHash, "title", deletedPiece.Title)
 
@@ -599,6 +600,7 @@ func (s *Server) handleReplacePieceFile(w http.ResponseWriter, r *http.Request) 
 			if err := os.Remove(oldFilePath); err != nil && !os.IsNotExist(err) {
 				s.Logger.Error("failed to remove old piece file after replace", "error", err, "pieceId", id, "filePath", oldFilePath)
 			}
+			s.removePageCache(oldFileHash)
 		}
 	}
 

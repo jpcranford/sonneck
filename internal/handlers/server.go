@@ -49,6 +49,9 @@ type Server struct {
 	// native-only frontend branch.
 	BuildTarget string
 
+	// pages is the Sheet Viewer's page-render bookkeeping (pages.go).
+	pages pageRenderer
+
 	// OIDCAuth is nil unless the resolved auth method is genuinely "oidc" —
 	// mirrors BackupScheduler's own "nil in
 	// test/CLI-subcommand construction" convention. handleOIDCLogin/
@@ -233,8 +236,19 @@ func New(db *sql.DB, cfg *config.Config, logger *slog.Logger, frontend fs.FS, sc
 	mux.HandleFunc("POST /api/pieces/{id}/replace-file", s.handleReplacePieceFile)
 	mux.HandleFunc("PATCH /api/pieces/{id}/thumbnail-page", s.handleSetPieceThumbnailPage)
 	mux.HandleFunc("PATCH /api/pieces/{id}/practice-status", s.handleSetPiecePracticeStatus)
+	mux.HandleFunc("PATCH /api/pieces/{id}/user-notes", s.handleSetPieceUserNotes)
+	mux.HandleFunc("GET /api/pieces/{id}/practiced", s.handleGetPracticed)
+	mux.HandleFunc("PUT /api/pieces/{id}/practiced/{day}", s.handleSetPracticed)
+	mux.HandleFunc("GET /api/practice-list", s.handleGetPracticeList)
+	mux.HandleFunc("POST /api/practice-list", s.handleAddToPracticeList)
+	mux.HandleFunc("PUT /api/practice-list/order", s.handleReorderPracticeList)
+	mux.HandleFunc("DELETE /api/practice-list/{pieceId}", s.handleRemoveFromPracticeList)
+	mux.HandleFunc("GET /api/pieces/{id}/practice-settings", s.handleGetPracticeSettings)
+	mux.HandleFunc("PUT /api/pieces/{id}/practice-settings", s.handlePutPracticeSettings)
 	mux.HandleFunc("GET /api/pieces/{id}/citation", s.handleGetCitation)
 	mux.HandleFunc("GET /api/pieces/{id}/pages/{page}/thumbnail", s.handlePieceThumbnail)
+	mux.HandleFunc("GET /api/pieces/{id}/pages/{page}", s.handlePiecePage)
+	mux.HandleFunc("POST /api/pieces/{id}/pages/prepare", s.handlePreparePiecePages)
 
 	mux.HandleFunc("POST /api/books", s.handleUploadBook)
 	mux.HandleFunc("GET /api/books", s.handleListBooks)
@@ -326,6 +340,7 @@ func (s *Server) handleGetConfig(w http.ResponseWriter, r *http.Request) {
 		FirstLaunchCompleted: settings.FirstLaunchCompletedAt != nil,
 		BuildTarget:          s.BuildTarget,
 		ThumbnailsRedrawn:    s.thumbnailsRedrawn(),
+		PagesVersion:         s.pagesVersion(),
 	}
 	if !resp.FirstLaunchCompleted {
 		resp.DataDir = &s.Cfg.DataDir
