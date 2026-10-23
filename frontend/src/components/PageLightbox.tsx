@@ -17,6 +17,7 @@ import { useShortcutBlocker } from '../lib/shortcuts'
 // thing" convention as every other mockup in this codebase.
 export function PageLightbox({
   imageUrl,
+  fullImageUrl,
   alt,
   page,
   pageCount,
@@ -27,6 +28,11 @@ export function PageLightbox({
   onNext,
 }: {
   imageUrl: string
+  // A sharper copy of the page (Piece Details: the Sheet Viewer's 300ppi
+  // page), shown in place of imageUrl once it has loaded — imageUrl, already
+  // on screen as the thumbnail, shows at once meanwhile. Left out where
+  // there's none, or the viewer can't fetch it.
+  fullImageUrl?: string
   alt: string
   page: number
   pageCount: number
@@ -62,6 +68,22 @@ export function PageLightbox({
   // own recommended pattern for "reset state when a prop changes"),
   // rather than an effect calling setState for the same result.
   const [zoom, setZoom] = useState<'fit' | 'actual'>('fit')
+  const [fullReady, setFullReady] = useState(false)
+  useEffect(() => {
+    if (!fullImageUrl) return
+    let cancelled = false
+    const img = new Image()
+    img.src = fullImageUrl
+    img
+      .decode()
+      .then(() => {
+        if (!cancelled) setFullReady(true)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [fullImageUrl])
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -120,7 +142,7 @@ export function PageLightbox({
             light. */}
         <span className="block rounded-md shadow-2xl">
           <img
-            src={imageUrl}
+            src={fullReady && fullImageUrl ? fullImageUrl : imageUrl}
             alt={alt}
             className={
               zoom === 'fit'

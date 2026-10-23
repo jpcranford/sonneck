@@ -78,3 +78,34 @@ func TestUserSettings_TurnGuard(t *testing.T) {
 		t.Errorf("after a save without turnGuardMs: %+v, want turnGuardMs 750 kept and theme dark", reread)
 	}
 }
+
+// The Sheet Viewer's clock settings (migration 00032) follow the user to
+// every piece: shown, clock mode, no seconds by default; the mode is
+// checked.
+func TestUserSettings_Clock(t *testing.T) {
+	h := newTestServer(t)
+
+	var initial repo.UserSettings
+	decodeData(t, doJSON(t, h, http.MethodGet, "/api/user-settings", nil), &initial)
+	if !initial.ClockShown || initial.ClockMode != "clock" || initial.ClockSeconds {
+		t.Fatalf("clock defaults = shown %v, mode %q, seconds %v; want true, clock, false",
+			initial.ClockShown, initial.ClockMode, initial.ClockSeconds)
+	}
+
+	updated := initial
+	updated.ClockShown = false
+	updated.ClockMode = "stopwatch"
+	updated.ClockSeconds = true
+	if rec := doJSON(t, h, http.MethodPatch, "/api/user-settings", updated); rec.Code != http.StatusOK {
+		t.Fatalf("PATCH: status %d, body %s", rec.Code, rec.Body.String())
+	}
+	var reread repo.UserSettings
+	decodeData(t, doJSON(t, h, http.MethodGet, "/api/user-settings", nil), &reread)
+	if reread != updated {
+		t.Errorf("after saving, got %+v, want %+v", reread, updated)
+	}
+
+	if rec := doJSON(t, h, http.MethodPatch, "/api/user-settings", map[string]any{"clockMode": "metronome"}); rec.Code != http.StatusBadRequest {
+		t.Errorf("unknown clockMode: status %d, want 400", rec.Code)
+	}
+}

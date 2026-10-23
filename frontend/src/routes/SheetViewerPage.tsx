@@ -1,9 +1,10 @@
 import { Fragment, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   IconArrowLeft,
+  IconCheck,
   IconChevronLeft,
   IconChevronRight,
   IconClef,
@@ -13,6 +14,7 @@ import {
   IconInfoCircle,
   IconMetronome,
   IconMinus,
+  IconNotebook,
   IconPencil,
   IconPhotoCog,
   IconPlayerPause,
@@ -21,28 +23,50 @@ import {
   IconRefresh,
   IconStopwatch,
   IconSun,
+  IconX,
 } from '@tabler/icons-react'
 import { ApiError } from '../api/client'
 import { getConfig } from '../api/config'
-import { getPiece, getPiecePageUrl, preparePiecePages } from '../api/pieces'
-import { getUserSettings, TURN_GUARD_DEFAULT } from '../api/userSettings'
+import { listPracticeStatuses } from '../api/lookups'
+import {
+  DEFAULT_PRACTICE_SETTINGS,
+  getPiece,
+  getPiecePageUrl,
+  getPracticeSettings,
+  preparePiecePages,
+  savePracticeSettings,
+  setPiecePracticeStatus,
+  setPieceUserNotes,
+  type PracticeSettings,
+} from '../api/pieces'
+import {
+  getUserSettings,
+  TURN_GUARD_DEFAULT,
+  updateUserSettings,
+  type UserSettings,
+} from '../api/userSettings'
 import { InfoTooltip } from '../components/InfoTooltip'
+import { MarkdownText } from '../components/MarkdownText'
+import { PracticeStatusKeyIcon } from '../components/PracticeStatusIcon'
 import { Toggle } from '../components/Toggle'
 import { useAnchoredPanel } from '../hooks/useAnchorRect'
 import { useNoPageScroll } from '../hooks/useNoPageScroll'
 import { stageTurn, type StagePoint } from '../lib/sheetViewerGestures'
 import { hasPermission, useAuth } from '../lib/AuthContext'
 import { useShortcutBlocker } from '../lib/shortcuts'
+import { sortPracticeStatuses } from '../lib/practiceStatusOrder'
 import { useDarkScoresSync, useThemeSync } from '../lib/theme'
 import { usePageTitle } from '../lib/usePageTitle'
 
 // The Sheet Viewer (design doc §13; plan phases in memory): a full-screen
 // mode for reading a piece — the score, and a toolbar that's always there.
 // Built from /mockup/sheet-viewer (SheetViewerMockup.tsx), which stays the
-// design's reference. Phase 9 of its plan: real pages, turning (tap zones,
-// pedal keys, debounced), the clock, photo filters and the edge margin.
-// Info and Annotate show as coming soon until their phases; nothing here is
-// saved yet (practice settings arrive with Phase 10).
+// design's reference. Phases 9–10 of its plan: real pages, turning (tap
+// zones, swipes, pedal keys, debounced), the clock, photo filters and the
+// edge margin, and Info — your notes, practice status and the piece's
+// details — with the notes bar. Settings are saved: the clock's per account,
+// the page's look and the notes bar per piece. Annotate shows as coming soon
+// until its phase.
 //
 // Every control's hit area is 48×48: a 48px button around a smaller drawn
 // face. Each carries data-hit for frontend/scripts/check-hit-areas.mjs.
@@ -57,23 +81,27 @@ const FACE_HOVER = 'group-hover/b:bg-(--sv-hover)'
 const PHOTO_WIDTH = 320
 
 // Photo controls: discrete steps, never live-dragged values.
-interface Photo {
-  brightness: number
-  contrast: number
-  grayscale: boolean
-  invert: boolean
-  margin: boolean
-}
-const PHOTO_DEFAULT: Photo = {
-  brightness: 100,
-  contrast: 100,
-  grayscale: false,
-  invert: false,
-  margin: false,
-}
 const PHOTO_STEP = 10
 const PHOTO_MIN = 50
 const PHOTO_MAX = 150
+// A burst of changes (stepping brightness) is saved once, this long after
+// the last.
+const SAVE_DELAY_MS = 400
+
+const INFO_WIDTH = 380
+// Notes are broad strokes and a practice log; markings on the music belong
+// in Annotate.
+const EMPTY_NOTES =
+  'Nothing yet. Big picture notes go here: what to remember about this piece, or a log of how practice is going. Markings on the music can be made in Annotate mode.'
+
+function formatDuration(seconds: number) {
+  const m = Math.floor(seconds / 60)
+  return `${m}:${String(seconds % 60).padStart(2, '0')}`
+}
+// The notes bar shows the first line, Markdown and all.
+function firstLine(markdown: string) {
+  return (markdown.split('\n').find((l) => l.trim()) ?? '').trim()
+}
 
 // A turn in the same direction within the user's double-turn guard (User
 // Settings › Sheet Viewer, 500ms by default) of the last one is ignored — an
@@ -251,6 +279,76 @@ function MenuRow({
   )
 }
 
+// The Sheet Viewer's switch row (design D): label first, lined up with the
+// icon rows' text (12px padding + 20px icon + 10px gap), the 44×26 switch at
+// the right edge; the whole 48pt row flips it.
+function SwitchRow({
+  label,
+  checked,
+  onChange,
+  disabled,
+}: {
+  label: string
+  checked: boolean
+  onChange: (v: boolean) => void
+  disabled?: boolean
+}) {
+  return (
+    <div
+      data-hit
+      className={`${HIT} w-full`}
+      onClick={(event) => {
+        if (!disabled && event.target === event.currentTarget) onChange(!checked)
+      }}
+    >
+      <Toggle
+        row
+        checked={checked}
+        onChange={onChange}
+        label={label}
+        disabled={disabled}
+        className="h-10 w-full rounded-[10px] pr-3 pl-[42px] hover:bg-(--sv-hover)"
+      />
+    </div>
+  )
+}
+
+function StepperRow({
+  label,
+  Icon,
+  value,
+  onChange,
+}: {
+  label: string
+  Icon: typeof IconSun
+  value: number
+  onChange: (v: number) => void
+}) {
+  return (
+    <div className="flex h-12 items-center">
+      <span className="flex min-w-0 flex-1 items-center gap-2.5 pl-3">
+        <Icon size={20} className="shrink-0" />
+        <span className="truncate">{label}</span>
+      </span>
+      <HitButton
+        label={`Less ${label.toLowerCase()}`}
+        onClick={() => onChange(value - PHOTO_STEP)}
+        disabled={value <= PHOTO_MIN}
+      >
+        <IconMinus size={20} />
+      </HitButton>
+      <span className="w-12 text-center font-clock tabular-nums">{value}%</span>
+      <HitButton
+        label={`More ${label.toLowerCase()}`}
+        onClick={() => onChange(value + PHOTO_STEP)}
+        disabled={value >= PHOTO_MAX}
+      >
+        <IconPlus size={20} />
+      </HitButton>
+    </div>
+  )
+}
+
 type ClockMode = 'clock' | 'stopwatch'
 
 /** /pieces/:id/play. The whole viewer needs the `practice` permission;
@@ -306,14 +404,73 @@ function SheetViewer({ pieceId }: { pieceId: number }) {
   const [ready, setReady] = useState<Record<string, boolean>>({})
   const [failed, setFailed] = useState<Record<string, boolean>>({})
   const [attempt, setAttempt] = useState(0)
-  const [menu, setMenu] = useState<'clock' | 'more' | 'photo' | null>(null)
-  const [photo, setPhotoState] = useState<Photo>(PHOTO_DEFAULT)
+  const [menu, setMenu] = useState<'clock' | 'more' | 'photo' | 'info' | null>(null)
   const [closeArmed, setCloseArmed] = useState(false)
   const [hint, setHint] = useState<{ text: string; id: number } | null>(null)
+  const queryClient = useQueryClient()
+  const hintTimer = useRef<number | undefined>(undefined)
+  // A short-lived pill over the page (a guarded turn, a failed save).
+  function flash(text: string) {
+    window.clearTimeout(hintTimer.current)
+    // A new id each time, so a pill replacing one still showing restarts.
+    setHint((current) => ({ text, id: (current?.id ?? 0) + 1 }))
+    hintTimer.current = window.setTimeout(() => setHint(null), HINT_MS)
+  }
 
-  const [clockOn, setClockOn] = useState(true)
-  const [clockMode, setClockMode] = useState<ClockMode>('clock')
-  const [showSeconds, setShowSeconds] = useState(false)
+  // The clock's settings follow the user to every piece (user_settings),
+  // saved as they change.
+  const clockOn = settings?.clockShown ?? true
+  const clockMode: ClockMode = settings?.clockMode ?? 'clock'
+  const showSeconds = settings?.clockSeconds ?? false
+  function setClock(
+    change: Partial<Pick<UserSettings, 'clockShown' | 'clockMode' | 'clockSeconds'>>,
+  ) {
+    if (!settings) return
+    const next = { ...settings, ...change }
+    queryClient.setQueryData(['user-settings'], next)
+    updateUserSettings(next).catch(() => {
+      flash('Couldn’t save the clock setting')
+      queryClient.invalidateQueries({ queryKey: ['user-settings'] })
+    })
+  }
+  const setClockOn = (clockShown: boolean) => setClock({ clockShown })
+  const setClockMode = (mode: ClockMode) => setClock({ clockMode: mode })
+  const setShowSeconds = (clockSeconds: boolean) => setClock({ clockSeconds })
+
+  // The page's look and the notes bar are kept per piece: shown at once,
+  // saved shortly after the last change. Its own cache key, outside
+  // ['piece', id], so a refresh of the piece never overwrites a change
+  // that's still waiting to be saved.
+  const practiceKey = ['practice-settings', pieceId]
+  const { data: practice = DEFAULT_PRACTICE_SETTINGS } = useQuery({
+    queryKey: practiceKey,
+    queryFn: () => getPracticeSettings(pieceId),
+  })
+  const pendingPractice = useRef<PracticeSettings | null>(null)
+  const practiceTimer = useRef<number | undefined>(undefined)
+  const flushPractice = useRef(() => {})
+  useEffect(() => {
+    flushPractice.current = () => {
+      window.clearTimeout(practiceTimer.current)
+      const next = pendingPractice.current
+      pendingPractice.current = null
+      if (next)
+        savePracticeSettings(pieceId, next).catch(() => {
+          flash('Couldn’t save this piece’s settings')
+          queryClient.invalidateQueries({ queryKey: ['practice-settings', pieceId] })
+        })
+    }
+  })
+  // Leaving the viewer saves anything still waiting.
+  useEffect(() => () => flushPractice.current(), [])
+  function setPractice(change: Partial<PracticeSettings>) {
+    const next = { ...practice, ...change }
+    queryClient.setQueryData(practiceKey, next)
+    pendingPractice.current = next
+    window.clearTimeout(practiceTimer.current)
+    practiceTimer.current = window.setTimeout(() => flushPractice.current(), SAVE_DELAY_MS)
+  }
+  const photo = practice
   const [swStart, setSwStart] = useState<number | null>(null)
   const [swAcc, setSwAcc] = useState(0)
   const [now, setNow] = useState(() => Date.now())
@@ -326,9 +483,7 @@ function SheetViewer({ pieceId }: { pieceId: number }) {
       ? stopwatchText(swAcc + (swStart !== null ? Math.max(0, now - swStart) : 0))
       : (showSeconds ? clockFormatSeconds : clockFormat).format(now)
 
-  function setPhoto(change: Partial<Photo>) {
-    setPhotoState({ ...photo, ...change })
-  }
+  const setPhoto = setPractice
   // With Dark Mode Scores on, the page is already inverted, so Invert shows
   // as on and locked, and the user's own invert is set aside (not cleared)
   // until Dark Mode Scores is off again.
@@ -358,8 +513,8 @@ function SheetViewer({ pieceId }: { pieceId: number }) {
   const phoneRow2Ref = useRef<HTMLDivElement>(null)
   const clockAnchorRef = useRef<HTMLDivElement>(null)
   const moreAnchorRef = useRef<HTMLDivElement>(null)
+  const infoAnchorRef = useRef<HTMLDivElement>(null)
   const closeTimer = useRef<number | undefined>(undefined)
-  const hintTimer = useRef<number | undefined>(undefined)
   useEffect(
     () => () => {
       window.clearTimeout(closeTimer.current)
@@ -367,12 +522,6 @@ function SheetViewer({ pieceId }: { pieceId: number }) {
     },
     [],
   )
-
-  function flash(text: string) {
-    window.clearTimeout(hintTimer.current)
-    setHint({ text, id: Date.now() })
-    hintTimer.current = window.setTimeout(() => setHint(null), HINT_MS)
-  }
 
   function turn(dir: -1 | 1) {
     const t = performance.now()
@@ -614,7 +763,9 @@ function SheetViewer({ pieceId }: { pieceId: number }) {
           </div>
         )}
         {/* Clock mode only: the stopwatch always shows seconds. */}
-        {clockMode === 'clock' && switchRow('Show seconds', showSeconds, setShowSeconds)}
+        {clockMode === 'clock' && (
+          <SwitchRow label="Show seconds" checked={showSeconds} onChange={setShowSeconds} />
+        )}
         <button
           type="button"
           data-hit
@@ -655,64 +806,6 @@ function SheetViewer({ pieceId }: { pieceId: number }) {
     </div>
   )
 
-  // The Sheet Viewer's switch row (design D): label first, lined up with
-  // the icon rows' text (12px padding + 20px icon + 10px gap), the 44×26
-  // switch at the right edge; the whole 48pt row flips it.
-  function switchRow(
-    label: string,
-    checked: boolean,
-    onChange: (v: boolean) => void,
-    disabled?: boolean,
-  ) {
-    return (
-      <div
-        data-hit
-        className={`${HIT} w-full`}
-        onClick={(event) => {
-          if (!disabled && event.target === event.currentTarget) onChange(!checked)
-        }}
-      >
-        <Toggle
-          row
-          checked={checked}
-          onChange={onChange}
-          label={label}
-          disabled={disabled}
-          className="h-10 w-full rounded-[10px] pr-3 pl-[42px] hover:bg-(--sv-hover)"
-        />
-      </div>
-    )
-  }
-  function stepperRow(
-    label: string,
-    Icon: typeof IconSun,
-    value: number,
-    onChange: (v: number) => void,
-  ) {
-    return (
-      <div className="flex h-12 items-center">
-        <span className="flex min-w-0 flex-1 items-center gap-2.5 pl-3">
-          <Icon size={20} className="shrink-0" />
-          <span className="truncate">{label}</span>
-        </span>
-        <HitButton
-          label={`Less ${label.toLowerCase()}`}
-          onClick={() => onChange(value - PHOTO_STEP)}
-          disabled={value <= PHOTO_MIN}
-        >
-          <IconMinus size={20} />
-        </HitButton>
-        <span className="w-12 text-center font-clock tabular-nums">{value}%</span>
-        <HitButton
-          label={`More ${label.toLowerCase()}`}
-          onClick={() => onChange(value + PHOTO_STEP)}
-          disabled={value >= PHOTO_MAX}
-        >
-          <IconPlus size={20} />
-        </HitButton>
-      </div>
-    )
-  }
   // Under the photo button; under ⋯ on a tablet; on a phone, centered under
   // the whole two-row toolbar so it never covers the page cyclers.
   const photoStyle = useAnchoredPanel(
@@ -729,21 +822,39 @@ function SheetViewer({ pieceId }: { pieceId: number }) {
         style={{ ...photoStyle, width: PHOTO_WIDTH }}
         className="z-50 rounded-xl border border-border bg-paper px-3 pt-3 pb-2 font-sans text-ink shadow-xl select-none [--sv-hover:var(--color-paper-hover)]"
       >
-        {stepperRow('Brightness', IconSun, photo.brightness, (v) => setPhoto({ brightness: v }))}
-        {stepperRow('Contrast', IconContrast, photo.contrast, (v) => setPhoto({ contrast: v }))}
-        {switchRow('Grayscale', photo.grayscale, (v) => setPhoto({ grayscale: v }))}
-        {switchRow(
-          'Invert',
-          invertLocked ? true : photo.invert,
-          (v) => setPhoto({ invert: v }),
-          invertLocked,
-        )}
+        <StepperRow
+          label="Brightness"
+          Icon={IconSun}
+          value={photo.brightness}
+          onChange={(v) => setPhoto({ brightness: v })}
+        />
+        <StepperRow
+          label="Contrast"
+          Icon={IconContrast}
+          value={photo.contrast}
+          onChange={(v) => setPhoto({ contrast: v })}
+        />
+        <SwitchRow
+          label="Grayscale"
+          checked={photo.grayscale}
+          onChange={(v) => setPhoto({ grayscale: v })}
+        />
+        <SwitchRow
+          label="Invert"
+          checked={invertLocked ? true : photo.invert}
+          onChange={(v) => setPhoto({ invert: v })}
+          disabled={invertLocked}
+        />
         {invertLocked && (
           <p className="-mt-1 pr-3 pb-1 pl-[42px] text-xs text-ink-muted">
             Dark Mode Scores already inverts the pages.
           </p>
         )}
-        {switchRow('Edge margin', photo.margin, (v) => setPhoto({ margin: v }))}
+        <SwitchRow
+          label="Edge margin"
+          checked={photo.edgeMargin}
+          onChange={(v) => setPhoto({ edgeMargin: v })}
+        />
         <button
           type="button"
           data-hit
@@ -775,11 +886,294 @@ function SheetViewer({ pieceId }: { pieceId: number }) {
     </div>
   )
 
+  // Info: your notes (edited in place), your practice status and the
+  // piece's details — a card under the Info button on tablets and desktop,
+  // a bottom sheet on phones. It shares the menus' backdrop, so a tap on the
+  // score closes it first rather than turning the page.
+  const notes = piece?.userNotes ?? ''
+  const infoOpen = menu === 'info'
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState('')
+  const [sheetFull, setSheetFull] = useState(false)
+  const [hoveredStatus, setHoveredStatus] = useState<string | null>(null)
+  const { data: practiceStatuses = [] } = useQuery({
+    queryKey: ['practice-statuses'],
+    queryFn: listPracticeStatuses,
+  })
+  const notesMutation = useMutation({
+    mutationFn: (next: string) => setPieceUserNotes(pieceId, next || null),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(['piece', pieceId], updated)
+      setEditing(false)
+    },
+    onError: () => flash('Couldn’t save your notes'),
+  })
+  const statusMutation = useMutation({
+    mutationFn: (status: string | null) => setPiecePracticeStatus(pieceId, status),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(['piece', pieceId], updated)
+      queryClient.invalidateQueries({ queryKey: ['pieces'] })
+      queryClient.invalidateQueries({ queryKey: ['pieceFacets'] })
+    },
+    onError: () => flash('Couldn’t save the practice status'),
+  })
+  // Shown at once while it saves, then the saved piece's.
+  const status = statusMutation.isPending
+    ? (statusMutation.variables ?? null)
+    : (piece?.practiceStatus ?? null)
+
+  function openInfo(open: boolean) {
+    setMenu(open ? 'info' : null)
+    setSheetFull(false)
+  }
+  function startEdit() {
+    setDraft(notes)
+    setEditing(true)
+  }
+  // Hidden while any menu or Info is open, so nothing stacks over it.
+  const showBar = notes !== '' && practice.notesBarShown && menu === null
+
+  // A dot on Info whenever the piece has notes and Info is closed.
   const infoButton = (
-    <SoonButton label="Info" message="Info (your notes, practice status and details): coming soon">
-      <IconInfoCircle size={22} />
-    </SoonButton>
+    <div ref={infoAnchorRef} className="relative">
+      <HitButton
+        label="Info"
+        onClick={() => openInfo(!infoOpen)}
+        faceClassName={infoOpen ? 'bg-accent-soft text-accent' : ''}
+      >
+        <IconInfoCircle size={22} />
+      </HitButton>
+      {notes && !infoOpen && (
+        <span className="pointer-events-none absolute top-[11px] right-[11px] size-[9px] rounded-full bg-accent-fill ring-2 ring-paper" />
+      )}
+    </div>
   )
+
+  const sectionLabel = 'text-xs font-semibold tracking-wider text-ink-muted uppercase'
+  const details: [string, string][] = piece
+    ? (
+        [
+          ['Opus', piece.workOpusNumber.value],
+          ['Keys', piece.keys.map((k) => k.name).join(' › ')],
+          ['Sheet type', piece.sheetType.value?.name ?? ''],
+          [
+            'Book',
+            piece.sourceBookTitle
+              ? `${piece.sourceBookTitle}${piece.sourcePageStart ? (piece.sourcePageEnd && piece.sourcePageEnd !== piece.sourcePageStart ? ` (pp. ${piece.sourcePageStart}–${piece.sourcePageEnd})` : ` (p. ${piece.sourcePageStart})`) : ''}`
+              : '',
+          ],
+          ['Duration', piece.duration ? formatDuration(piece.duration) : ''],
+          ['Pages', String(piece.pageCount)],
+        ] as [string, string][]
+      ).filter(([, v]) => v)
+    : []
+
+  const infoBody = (
+    <div className="flex flex-col gap-5 px-5 pt-3 pb-5">
+      <section className="flex flex-col gap-2">
+        {/* Only as tall as the pencil's face (32px): its 48pt tap area
+            hangs 8px over above and below, and 4px past the right edge, so
+            the label sits as close to the notes as the other sections'
+            labels do and the pencil's face lines up with the content edge. */}
+        <div className="flex min-h-8 items-center">
+          <h3 className={sectionLabel}>Your notes</h3>
+          <span className="flex-1" />
+          {notes && !editing && (
+            <div className="-my-2 -mr-1">
+              <HitButton label="Edit your notes" onClick={startEdit}>
+                <IconPencil size={20} />
+              </HitButton>
+            </div>
+          )}
+        </div>
+        {editing ? (
+          <>
+            <textarea
+              autoFocus
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              aria-label="Your notes"
+              className="min-h-40 w-full resize-y rounded-xl border border-accent bg-paper-raised px-4 py-3 text-base leading-relaxed text-ink outline-none select-text"
+            />
+            <div className="flex items-center">
+              <span className="mr-auto text-xs text-ink-muted">
+                Markdown and :shortcodes: work here.
+              </span>
+              <HitButton
+                label="Cancel"
+                onClick={() => setEditing(false)}
+                faceClassName="border border-border bg-paper-raised px-3 font-medium hover:border-accent"
+              >
+                Cancel
+              </HitButton>
+              <HitButton
+                label="Done"
+                onClick={() => notesMutation.mutate(draft.trim())}
+                disabled={notesMutation.isPending}
+                faceClassName="bg-accent-fill px-3 font-medium text-white group-hover/b:bg-accent-fill/90"
+              >
+                <IconCheck size={18} />
+                Done
+              </HitButton>
+            </div>
+          </>
+        ) : notes ? (
+          <>
+            <div className="rounded-xl border border-accent/40 bg-paper-raised px-4 py-3 text-base leading-relaxed select-text">
+              <MarkdownText>{notes}</MarkdownText>
+            </div>
+            {/* The switch row: the label lined up with the notes' text (the
+                card's 1px border + 16px padding), the switch at the card's
+                right edge. */}
+            <div
+              data-hit
+              className={`${HIT} -mx-2 -mt-1 -mb-2`}
+              onClick={(event) => {
+                if (event.target === event.currentTarget)
+                  setPractice({ notesBarShown: !practice.notesBarShown })
+              }}
+            >
+              <Toggle
+                row
+                checked={practice.notesBarShown}
+                onChange={(v) => setPractice({ notesBarShown: v })}
+                label="Show in notes bar"
+                className="h-10 w-full rounded-[10px] pr-2 pl-[25px] hover:bg-(--sv-hover)"
+              />
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="rounded-xl border border-dashed border-border px-4 py-3 text-sm text-ink-muted italic">
+              {EMPTY_NOTES}
+            </p>
+            <div className="-ml-1">
+              <HitButton
+                label="Add notes"
+                onClick={startEdit}
+                faceClassName="border border-border bg-paper-raised px-3 font-medium hover:border-accent"
+              >
+                <IconPlus size={18} />
+                Add notes
+              </HitButton>
+            </div>
+          </>
+        )}
+      </section>
+      {/* The piece menu's practice status strip at 48pt: your own statuses
+          in practice order (one with no icon shows its initial), the
+          current one filled; the label line names the hovered or focused
+          status, else the current one. Tap a status to set it, the current
+          one again to clear it. */}
+      <section className="flex flex-col gap-1" onMouseLeave={() => setHoveredStatus(null)}>
+        <div className="flex items-baseline justify-between gap-3">
+          <h3 className={sectionLabel}>Practice status</h3>
+          <span className="truncate text-sm font-medium">{hoveredStatus ?? status ?? 'None'}</span>
+        </div>
+        <div className="-mb-1 -ml-1 flex flex-wrap" role="radiogroup" aria-label="Practice status">
+          {sortPracticeStatuses(practiceStatuses).map((item) => {
+            const isCurrent = status === item.name
+            return (
+              <button
+                key={item.id}
+                type="button"
+                data-hit
+                role="radio"
+                aria-checked={isCurrent}
+                aria-label={isCurrent ? `${item.name} (tap to clear)` : item.name}
+                onMouseEnter={() => setHoveredStatus(item.name)}
+                onFocus={() => setHoveredStatus(item.name)}
+                onBlur={() => setHoveredStatus(null)}
+                onClick={() => statusMutation.mutate(isCurrent ? null : item.name)}
+                className={`${HIT} group/b`}
+              >
+                <span
+                  className={`${FACE} border text-sm font-medium ${
+                    isCurrent
+                      ? 'border-accent bg-accent-soft text-accent'
+                      : 'border-border bg-paper-raised text-ink-soft group-hover/b:border-accent group-hover/b:text-ink'
+                  }`}
+                >
+                  {item.iconKey ? (
+                    <PracticeStatusKeyIcon iconKey={item.iconKey} size={20} />
+                  ) : (
+                    item.name.slice(0, 1).toUpperCase()
+                  )}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      </section>
+      {piece && (
+        <section className="flex flex-col gap-2">
+          <h3 className={sectionLabel}>About this piece</h3>
+          <div>
+            <p className="font-display text-lg leading-snug font-medium">{piece.title}</p>
+            {credit && <p className="text-sm text-ink-soft">{credit}</p>}
+          </div>
+          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
+            {details.map(([label, value]) => (
+              <Fragment key={label}>
+                <dt className="text-ink-muted">{label}</dt>
+                <dd>{value}</dd>
+              </Fragment>
+            ))}
+          </dl>
+        </section>
+      )}
+    </div>
+  )
+
+  const infoStyle = useAnchoredPanel(infoAnchorRef, infoOpen && tier !== 'phone', 'below-center', {
+    gap: 6,
+    panelWidth: INFO_WIDTH,
+  })
+  const infoHeader = (title: ReactNode) => (
+    <div className="flex shrink-0 items-center border-b border-border pr-4">
+      {title}
+      <HitButton label="Close Info" onClick={() => openInfo(false)}>
+        <IconX size={20} />
+      </HitButton>
+    </div>
+  )
+  const infoPanel =
+    infoOpen &&
+    (tier === 'phone'
+      ? createPortal(
+          <div
+            className={`fixed inset-x-0 bottom-0 z-50 flex flex-col rounded-t-2xl border-t border-border bg-paper pb-[env(safe-area-inset-bottom)] font-sans text-ink shadow-2xl select-none [--sv-hover:var(--color-paper-hover)] ${
+              sheetFull ? 'top-[calc(env(safe-area-inset-top)+0.75rem)]' : 'h-[58dvh]'
+            }`}
+          >
+            <span className="pointer-events-none absolute top-1.5 left-1/2 h-[5px] w-10 -translate-x-1/2 rounded-full bg-ink-fainter" />
+            {/* The title row is the handle: tap it to take the full height. */}
+            {infoHeader(
+              <button
+                type="button"
+                data-hit
+                onClick={() => setSheetFull(!sheetFull)}
+                aria-label={sheetFull ? 'Shrink Info' : 'Expand Info'}
+                className={`${HIT} mt-2 flex-1 justify-start pl-5`}
+              >
+                <span className="font-display text-base font-medium">Info</span>
+              </button>,
+            )}
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">{infoBody}</div>
+          </div>,
+          document.body,
+        )
+      : infoStyle &&
+        createPortal(
+          <div
+            style={{ ...infoStyle, width: INFO_WIDTH }}
+            className="z-50 flex max-h-[calc(100dvh-5.5rem)] flex-col overflow-hidden rounded-xl border border-border bg-paper font-sans text-ink shadow-xl select-none [--sv-hover:var(--color-paper-hover)]"
+          >
+            {infoHeader(<h2 className="flex-1 pl-5 font-display text-base font-medium">Info</h2>)}
+            <div className="min-h-0 overflow-y-auto overscroll-contain">{infoBody}</div>
+          </div>,
+          document.body,
+        ))
   const annotateButton = (
     <SoonButton
       label="Annotate"
@@ -923,6 +1317,7 @@ function SheetViewer({ pieceId }: { pieceId: number }) {
             <div className="fixed inset-0 z-30" onPointerDown={() => setMenu(null)} />
             {clockMenu}
             {photoPanel}
+            {infoPanel}
             {menu === 'more' && (
               <div className="absolute top-full right-2 z-50 mt-1.5 w-72 rounded-xl border border-border bg-paper p-3 shadow-xl [--sv-hover:var(--color-paper-hover)]">
                 <MenuRow
@@ -965,17 +1360,50 @@ function SheetViewer({ pieceId }: { pieceId: number }) {
         <div
           style={{ filter: scoreFilter }}
           className={`absolute inset-0 bg-white ${
-            photo.margin
+            photo.edgeMargin
               ? 'p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]'
               : 'pb-[env(safe-area-inset-bottom)]'
           }`}
         >
           {stage}
         </div>
+        {/* The notes bar: your notes' first line over the top of the page;
+            tap it for Info, ✕ hides it for this piece (Info's "Show in
+            notes bar" brings it back). Its own taps never turn. */}
+        {showBar && (
+          <div
+            className="absolute inset-x-0 top-0 z-10 flex items-center border-b border-accent/30 bg-accent-soft pr-1 pl-2 [--sv-hover:var(--color-accent-soft-hover)]"
+            onPointerDown={(event) => event.stopPropagation()}
+            onPointerUp={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              data-hit
+              onClick={() => openInfo(true)}
+              className={`${HIT} min-w-0 flex-1 justify-start group/b`}
+              aria-label="Open your notes"
+            >
+              <span className={`${FACE} ${FACE_HOVER} min-w-0 flex-1 justify-start gap-2.5 px-2`}>
+                <IconNotebook size={18} className="shrink-0 text-accent" />
+                {/* The first line through MarkdownText, like the notes
+                    everywhere else, cut to one line. */}
+                <MarkdownText className="min-w-0 truncate text-[15px] [&_p]:inline">
+                  {firstLine(notes)}
+                </MarkdownText>
+              </span>
+            </button>
+            <HitButton
+              label="Hide the notes bar for this piece"
+              onClick={() => setPractice({ notesBarShown: false })}
+            >
+              <IconX size={18} />
+            </HitButton>
+          </div>
+        )}
         {hint && (
           <div
             key={hint.id}
-            className="pointer-events-none absolute top-4 left-1/2 z-10 -translate-x-1/2 rounded-full bg-scrim/90 px-4 py-2 text-sm whitespace-nowrap text-white"
+            className={`pointer-events-none absolute ${showBar ? 'top-16' : 'top-4'} left-1/2 z-10 -translate-x-1/2 rounded-full bg-scrim/90 px-4 py-2 text-sm whitespace-nowrap text-white`}
           >
             {hint.text}
           </div>

@@ -78,6 +78,11 @@ func (s *Server) handleUpdateUserSettings(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	if !slices.Contains(repo.ClockModes, req.ClockMode) {
+		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "clockMode must be one of clock, stopwatch")
+		return
+	}
+
 	if err := repo.UpdateUserSettings(r.Context(), s.DB, user.ID, req); err != nil {
 		s.writeError(w, err)
 		return

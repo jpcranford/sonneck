@@ -40,6 +40,7 @@ import {
   getCitation,
   getPiece,
   getPieceFileUrl,
+  getPiecePageUrl,
   getPieceThumbnailUrl,
   getRandomPiece,
   replacePieceFile,
@@ -59,7 +60,7 @@ import { PageLightbox } from '../components/PageLightbox'
 import { PracticeStatusIcon } from '../components/PracticeStatusIcon'
 import { confirmAction, showAlert } from '../lib/dialogs'
 import { EDIT_PIECE_KEYS, useShortcuts } from '../lib/shortcuts'
-import { useThumbnailVersion } from '../hooks/useThumbnailVersion'
+import { usePageVersion, useThumbnailVersion } from '../hooks/useThumbnailVersion'
 
 // Mirrors UploadPage's own cap (backend's MaxUploadBytes) — same reasoning
 // as there: reject an oversized file instantly rather than after a slow
@@ -231,6 +232,7 @@ function ActionButton({
 
 export function PiecePage() {
   const thumbVersion = useThumbnailVersion()
+  const pageVersion = usePageVersion()
   const { id } = useParams<{ id: string }>()
   const pieceId = Number(id)
   const queryClient = useQueryClient()
@@ -733,6 +735,13 @@ export function PiecePage() {
               <PageLightbox
                 key={page}
                 imageUrl={getPieceThumbnailUrl(piece.id, page, thumbVersion(piece.fileHash))}
+                // The Sheet Viewer's 300ppi page, sharp when zoomed in.
+                // Its endpoint needs `practice`, like the viewer.
+                fullImageUrl={
+                  canPractice
+                    ? getPiecePageUrl(piece.id, page, pageVersion(piece.fileHash))
+                    : undefined
+                }
                 alt={`Page ${page} of ${piece.title}`}
                 page={page}
                 pageCount={piece.pageCount}

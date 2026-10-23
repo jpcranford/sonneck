@@ -79,17 +79,7 @@ func SetUserPieceData(ctx context.Context, q Queryer, userID, pieceID int64, dat
 		return err
 	}
 
-	if data.UserNotes != nil && *data.UserNotes != "" {
-		if _, err := q.ExecContext(ctx, `
-			INSERT INTO piece_user_notes (user_id, piece_id, notes) VALUES (?, ?, ?)
-			ON CONFLICT (user_id, piece_id) DO UPDATE SET notes = excluded.notes`,
-			userID, pieceID, *data.UserNotes,
-		); err != nil {
-			return err
-		}
-	} else if _, err := q.ExecContext(ctx,
-		`DELETE FROM piece_user_notes WHERE user_id = ? AND piece_id = ?`, userID, pieceID,
-	); err != nil {
+	if err := SetUserNotes(ctx, q, userID, pieceID, data.UserNotes); err != nil {
 		return err
 	}
 
@@ -111,6 +101,85 @@ func SetUserPracticeStatus(ctx context.Context, q Queryer, userID, pieceID int64
 	}
 	_, err := q.ExecContext(ctx,
 		`DELETE FROM piece_practice_status WHERE user_id = ? AND piece_id = ?`, userID, pieceID,
+	)
+	return err
+}
+
+// SetUserNotes sets userID's notes on pieceID; empty or nil clears them.
+func SetUserNotes(ctx context.Context, q Queryer, userID, pieceID int64, notes *string) error {
+	if notes != nil && *notes != "" {
+		_, err := q.ExecContext(ctx, `
+			INSERT INTO piece_user_notes (user_id, piece_id, notes) VALUES (?, ?, ?)
+			ON CONFLICT (user_id, piece_id) DO UPDATE SET notes = excluded.notes`,
+			userID, pieceID, *notes,
+		)
+		return err
+	}
+	_, err := q.ExecContext(ctx,
+		`DELETE FROM piece_user_notes WHERE user_id = ? AND piece_id = ?`, userID, pieceID,
+	)
+	return err
+}
+
+// PracticeSettings is one user's Sheet Viewer settings for one piece
+// (migration 00032): the page's look — photo filters and the edge margin —
+// and whether the notes bar shows. The clock's settings are per account
+// instead (UserSettings). JSON tags match GET/PUT
+// /api/pieces/{id}/practice-settings.
+type PracticeSettings struct {
+	// Brightness and Contrast are percentages, PhotoStepMin…PhotoStepMax in
+	// steps of PhotoStep.
+	Brightness    int  `json:"brightness"`
+	Contrast      int  `json:"contrast"`
+	Grayscale     bool `json:"grayscale"`
+	Invert        bool `json:"invert"`
+	EdgeMargin    bool `json:"edgeMargin"`
+	NotesBarShown bool `json:"notesBarShown"`
+}
+
+// The photo panel's brightness/contrast range, in percent.
+const (
+	PhotoStepMin = 50
+	PhotoStepMax = 150
+	PhotoStep    = 10
+)
+
+// DefaultPracticeSettings is what a piece the user has never adjusted uses.
+var DefaultPracticeSettings = PracticeSettings{Brightness: 100, Contrast: 100}
+
+// GetPracticeSettings loads userID's settings for pieceID, or the defaults
+// when there are none.
+func GetPracticeSettings(ctx context.Context, q Queryer, userID, pieceID int64) (PracticeSettings, error) {
+	s := DefaultPracticeSettings
+	err := q.QueryRowContext(ctx, `
+		SELECT brightness, contrast, grayscale, invert, edge_margin, notes_bar_shown
+		FROM piece_practice_settings WHERE user_id = ? AND piece_id = ?`, userID, pieceID,
+	).Scan(&s.Brightness, &s.Contrast, &s.Grayscale, &s.Invert, &s.EdgeMargin, &s.NotesBarShown)
+	if errors.Is(err, sql.ErrNoRows) {
+		return DefaultPracticeSettings, nil
+	}
+	return s, err
+}
+
+// SetPracticeSettings writes userID's full settings for pieceID
+// (full-replace). Settings back at the defaults remove the row, so the
+// table only holds pieces someone actually adjusted.
+func SetPracticeSettings(ctx context.Context, q Queryer, userID, pieceID int64, s PracticeSettings) error {
+	if s == DefaultPracticeSettings {
+		_, err := q.ExecContext(ctx,
+			`DELETE FROM piece_practice_settings WHERE user_id = ? AND piece_id = ?`, userID, pieceID,
+		)
+		return err
+	}
+	_, err := q.ExecContext(ctx, `
+		INSERT INTO piece_practice_settings
+			(user_id, piece_id, brightness, contrast, grayscale, invert, edge_margin, notes_bar_shown)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT (user_id, piece_id) DO UPDATE SET
+			brightness = excluded.brightness, contrast = excluded.contrast,
+			grayscale = excluded.grayscale, invert = excluded.invert,
+			edge_margin = excluded.edge_margin, notes_bar_shown = excluded.notes_bar_shown`,
+		userID, pieceID, s.Brightness, s.Contrast, s.Grayscale, s.Invert, s.EdgeMargin, s.NotesBarShown,
 	)
 	return err
 }
@@ -241,7 +310,16 @@ type UserSettings struct {
 	// 00031): a second page turn the same way within this many milliseconds
 	// is ignored; 0 is off. One of TurnGuardChoices.
 	TurnGuardMs int `json:"turnGuardMs"`
+	// The Sheet Viewer's clock (migration 00032), the same on every piece:
+	// whether it shows, ClockModes, and the clock's seconds (the stopwatch
+	// always shows them).
+	ClockShown   bool   `json:"clockShown"`
+	ClockMode    string `json:"clockMode"`
+	ClockSeconds bool   `json:"clockSeconds"`
 }
+
+// ClockModes are the Sheet Viewer clock's modes.
+var ClockModes = []string{"clock", "stopwatch"}
 
 // TurnGuardChoices are the double-turn guard's allowed values, in ms.
 var TurnGuardChoices = []int{0, 250, 500, 750, 1000}
@@ -252,9 +330,11 @@ func GetUserSettings(ctx context.Context, q Queryer, userID int64) (*UserSetting
 	s := &UserSettings{}
 	err := q.QueryRowContext(ctx, `
 		SELECT show_books_in_sidebar, theme_preference, content_view_mode, dark_mode_scores,
-			sheet_viewer_turn_guard_ms
+			sheet_viewer_turn_guard_ms, sheet_viewer_clock_shown, sheet_viewer_clock_mode,
+			sheet_viewer_clock_seconds
 		FROM user_settings WHERE user_id = ?`, userID,
-	).Scan(&s.ShowBooksInSidebar, &s.ThemePreference, &s.ContentViewMode, &s.DarkModeScores, &s.TurnGuardMs)
+	).Scan(&s.ShowBooksInSidebar, &s.ThemePreference, &s.ContentViewMode, &s.DarkModeScores, &s.TurnGuardMs,
+		&s.ClockShown, &s.ClockMode, &s.ClockSeconds)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -269,9 +349,11 @@ func GetUserSettings(ctx context.Context, q Queryer, userID int64) (*UserSetting
 func UpdateUserSettings(ctx context.Context, q Queryer, userID int64, s UserSettings) error {
 	_, err := q.ExecContext(ctx, `
 		UPDATE user_settings SET show_books_in_sidebar = ?, theme_preference = ?, content_view_mode = ?,
-			dark_mode_scores = ?, sheet_viewer_turn_guard_ms = ?
+			dark_mode_scores = ?, sheet_viewer_turn_guard_ms = ?, sheet_viewer_clock_shown = ?,
+			sheet_viewer_clock_mode = ?, sheet_viewer_clock_seconds = ?
 		WHERE user_id = ?`,
-		s.ShowBooksInSidebar, s.ThemePreference, s.ContentViewMode, s.DarkModeScores, s.TurnGuardMs, userID,
+		s.ShowBooksInSidebar, s.ThemePreference, s.ContentViewMode, s.DarkModeScores, s.TurnGuardMs,
+		s.ClockShown, s.ClockMode, s.ClockSeconds, userID,
 	)
 	return err
 }

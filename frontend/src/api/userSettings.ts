@@ -12,6 +12,11 @@ export interface UserSettings {
   // The Sheet Viewer's double-turn guard: a second page turn the same way
   // within this many milliseconds is ignored; 0 is off.
   turnGuardMs: TurnGuardMs
+  // The Sheet Viewer's clock, the same on every piece: shown or hidden,
+  // clock or stopwatch, and the clock's seconds.
+  clockShown: boolean
+  clockMode: 'clock' | 'stopwatch'
+  clockSeconds: boolean
 }
 
 export type TurnGuardMs = 0 | 250 | 500 | 750 | 1000

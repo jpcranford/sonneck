@@ -1,4 +1,12 @@
-import { apiDelete, apiGet, apiPatch, apiPost, apiUpload, apiUploadWithStatus } from './client'
+import {
+  apiDelete,
+  apiGet,
+  apiPatch,
+  apiPost,
+  apiPut,
+  apiUpload,
+  apiUploadWithStatus,
+} from './client'
 import type { Piece, PieceWriteRequest } from './types'
 
 /**
@@ -79,6 +87,46 @@ export function replacePieceFile(
 // the `practice` permission, not `edit`.
 export function setPiecePracticeStatus(id: number, practiceStatus: string | null): Promise<Piece> {
   return apiPatch<Piece>(`/api/pieces/${id}/practice-status`, { practiceStatus })
+}
+
+// The caller's own notes on one piece (empty or null clears them), from the
+// Sheet Viewer's Info panel — needs `practice`, not `edit`.
+export function setPieceUserNotes(id: number, userNotes: string | null): Promise<Piece> {
+  return apiPatch<Piece>(`/api/pieces/${id}/user-notes`, { userNotes })
+}
+
+// The caller's Sheet Viewer settings for one piece (internal/repo's
+// PracticeSettings): the page's look and the notes bar. The clock's
+// settings are per account instead (UserSettings).
+export interface PracticeSettings {
+  /** Percent, 50–150 in steps of 10. */
+  brightness: number
+  contrast: number
+  grayscale: boolean
+  invert: boolean
+  edgeMargin: boolean
+  notesBarShown: boolean
+}
+
+export const DEFAULT_PRACTICE_SETTINGS: PracticeSettings = {
+  brightness: 100,
+  contrast: 100,
+  grayscale: false,
+  invert: false,
+  edgeMargin: false,
+  notesBarShown: false,
+}
+
+export function getPracticeSettings(id: number): Promise<PracticeSettings> {
+  return apiGet<PracticeSettings>(`/api/pieces/${id}/practice-settings`)
+}
+
+// Full replace: every field, every time.
+export function savePracticeSettings(
+  id: number,
+  settings: PracticeSettings,
+): Promise<PracticeSettings> {
+  return apiPut<PracticeSettings>(`/api/pieces/${id}/practice-settings`, settings)
 }
 
 export function setPieceThumbnailPage(id: number, page: number): Promise<Piece> {
