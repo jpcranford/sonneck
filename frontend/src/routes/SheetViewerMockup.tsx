@@ -55,6 +55,7 @@ import { stageTurn, type StagePoint } from '../lib/sheetViewerGestures'
 import { sortPracticeStatuses } from '../lib/practiceStatusOrder'
 import { useShortcutBlocker } from '../lib/shortcuts'
 import { useMockupTitle } from '../lib/useMockupTitle'
+import { resetTips, takeTip } from '../lib/sheetViewerTips'
 import {
   applyChange,
   eraserTouches,
@@ -131,14 +132,15 @@ const LAYER_COLORS: { name: string; light: string; dim: string; dark: string }[]
 type PageLook = 'light' | 'dim' | 'dark'
 const layerColor = (layer: number, look: PageLook) => LAYER_COLORS[layer][look]
 // The tools' sizes, as a share of the page's width (picked in the size
-// playground), so a mark keeps its weight at any screen size. The eraser's
-// is the width of its reach; M is about 16pt across on an iPad in landscape.
+// playground; the pen's retuned on the iPad), so a mark keeps its weight at
+// any screen size. The eraser's is the width of its reach; M is about 28pt
+// across on an iPad in landscape.
 type Size = 'S' | 'M' | 'L'
 const SIZES: Record<Tool, Record<Size, number>> = {
-  pen: { S: 0.15, M: 0.25, L: 0.4 },
+  pen: { S: 0.25, M: 0.39, L: 0.58 },
   highlighter: { S: 1.2, M: 2, L: 3 },
   text: { S: 1.8, M: 2.4, L: 3.2 },
-  eraser: { S: 1.5, M: 3, L: 5 },
+  eraser: { S: 3, M: 5, L: 8 },
 }
 // Each tool remembers its own color and size; these are where they start.
 type ColorTool = 'pen' | 'highlighter' | 'text'
@@ -239,6 +241,7 @@ function seedMarks(page: number): Mark[] {
 // An undo or redo of a change on another page turns there first, then
 // applies it after this long, so you see it happen.
 const UNDO_TURN_MS = 450
+const UNDO_WAIT_MS = 10_000
 
 // Practice statuses in practice order, by their durable icon (the real
 // strip reads the viewer's own list; this mockup writes nothing).
@@ -509,6 +512,9 @@ export function SheetViewerMockup() {
   const [fastMinute, setFastMinute] = useState(false)
   // User Settings' "Track practice in the Sheet Viewer" (on by default).
   const [trackingOn, setTrackingOn] = useState(true)
+  // User Settings' "Show hidden colors faintly" (on by default): off, a
+  // hidden color's marks don't show at all.
+  const [ghostsOn, setGhostsOn] = useState(true)
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   // The floating card that follows the pointer while dragging (Edit
   // Program's own pattern): where the pointer is, and where it grabbed the
@@ -666,6 +672,11 @@ export function SheetViewerMockup() {
     [],
   )
 
+  // An instruction pill: a tip, shown only its first few times
+  // (lib/sheetViewerTips.ts).
+  function tip(id: string, text: string) {
+    if (takeTip(id)) flash(text)
+  }
   function flash(text: string) {
     window.clearTimeout(hintTimer.current)
     setHint({ text, id: Date.now() })
@@ -831,12 +842,12 @@ export function SheetViewerMockup() {
     setMode('annotate')
     setTool(null)
     setMenu(null)
-    flash('Annotate: pick a tool to mark; until then taps turn pages')
+    tip('annotate', 'Annotate: pick a tool to mark; until then taps turn pages')
   }
   function leaveAnnotate() {
     setMode('play')
     setTool(null)
-    flash('Play: taps turn pages')
+    tip('play', 'Play: taps turn pages')
   }
   // B2: tapping the picked tool again opens its color and size (the
   // eraser's, its size); tapping it once more, options showing, puts it
@@ -845,13 +856,13 @@ export function SheetViewerMockup() {
     if (tool !== key) {
       setTool(key)
       setMenu(null)
-      flash(`${TOOLS.find((t) => t.key === key)?.label}: taps mark the page`)
+      tip(`tool-${key}`, `${TOOLS.find((t) => t.key === key)?.label}: taps mark the page`)
     } else if (menu !== 'tool') {
       setMenu('tool')
     } else {
       setTool(null)
       setMenu(null)
-      flash('No tool: taps turn pages')
+      tip('no-tool', 'No tool: taps turn pages')
     }
   }
 
@@ -946,7 +957,7 @@ export function SheetViewerMockup() {
     // Drawing in a hidden color shows that layer again.
     if (hiddenLayers.includes(style.color)) {
       setHiddenLayers(hiddenLayers.filter((l) => l !== style.color))
-      flash(`${LAYER_COLORS[style.color].name} shown`)
+      flash(`${LAYER_COLORS[style.color].name} unhidden`)
     }
     markCount.current += 1
     const mark: StrokeMark = {
@@ -1069,12 +1080,27 @@ export function SheetViewerMockup() {
     const [pid, pg] = change.key.split(':').map(Number)
     if (pid !== activeId || custom) goToPiece(pid, pg)
     else setPage(pg)
+    // A page far away (or in another piece) may not be loaded yet: the
+    // change waits for it to show (pageShown), then UNDO_TURN_MS, so it's
+    // never applied to a page still loading. If it never shows, it applies
+    // anyway after UNDO_WAIT_MS.
     undoPending.current = true
+    awaitingPage.current = { key: change.key, apply }
     window.clearTimeout(undoTimer.current)
-    undoTimer.current = window.setTimeout(() => {
-      undoPending.current = false
-      apply()
-    }, UNDO_TURN_MS)
+    undoTimer.current = window.setTimeout(() => finishPendingStep(), UNDO_WAIT_MS)
+  }
+  const awaitingPage = useRef<{ key: string; apply: () => void } | null>(null)
+  function finishPendingStep() {
+    const pending = awaitingPage.current
+    awaitingPage.current = null
+    undoPending.current = false
+    pending?.apply()
+  }
+  // The page image for `key` has loaded.
+  function pageShown(key: string) {
+    if (awaitingPage.current?.key !== key) return
+    window.clearTimeout(undoTimer.current)
+    undoTimer.current = window.setTimeout(() => finishPendingStep(), UNDO_TURN_MS)
   }
 
   // Exit: the back arrow (picked from a side-by-side,
@@ -1456,19 +1482,27 @@ export function SheetViewerMockup() {
         </div>
         {editing ? (
           <>
-            <textarea
-              autoFocus
-              value={draft}
-              onChange={(event) => setDraft(event.target.value)}
-              aria-label="Your notes"
-              className="min-h-40 w-full resize-y rounded-xl border border-accent bg-paper-raised px-4 py-3 text-base leading-relaxed text-ink outline-none select-text"
-            />
-            <div className="flex items-center">
-              <span className="mr-auto text-xs text-ink-muted">
-                Markdown and :shortcodes: work here.
+            {/* The Markdown hint sits inside the box, in its bottom corner
+                beside the resize grip, the text kept clear of it. */}
+            <div className="relative">
+              <textarea
+                autoFocus
+                value={draft}
+                onChange={(event) => setDraft(event.target.value)}
+                aria-label="Your notes"
+                className="block min-h-40 w-full resize-y rounded-xl border border-accent bg-paper-raised px-4 pt-3 pb-8 text-base leading-relaxed text-ink outline-none select-text"
+              />
+              <span className="pointer-events-none absolute right-6 bottom-2.5 text-xs text-ink-muted italic">
+                Markdown supported
               </span>
+            </div>
+            {/* The buttons sit 4px inside their tap areas, so their faces keep
+                8px apart; the row reaches 4px past the box so Done still
+                lines up with its edge. */}
+            <div className="-mr-1 flex items-center justify-end">
               <HitButton
                 label="Cancel"
+                inset
                 onClick={() => setEditing(false)}
                 faceClassName="border border-border bg-paper-raised px-3 font-medium hover:border-accent"
               >
@@ -1476,6 +1510,7 @@ export function SheetViewerMockup() {
               </HitButton>
               <HitButton
                 label="Done"
+                inset
                 onClick={saveEdit}
                 faceClassName="bg-accent-fill px-3 font-medium text-white group-hover/b:bg-accent-fill/90"
               >
@@ -1510,7 +1545,7 @@ export function SheetViewerMockup() {
                   row
                   checked={!!barShown[activeId]}
                   onChange={setBar}
-                  label="Show as banner"
+                  label="Show practice notes as banner"
                   className="h-10 w-full rounded-[10px] pr-2 pl-[25px] hover:bg-(--sv-hover)"
                 />
               </div>
@@ -2008,6 +2043,11 @@ export function SheetViewerMockup() {
         : [...hiddenLayers, layer],
     )
   }
+  // Tapping a ghost mark unhides its layer, and says so.
+  function unhideFromGhost(layer: number) {
+    setHiddenLayers(hiddenLayers.filter((l) => l !== layer))
+    flash(`${LAYER_COLORS[layer].name} unhidden`)
+  }
   // A color's dot: filled, or (hidden) the crossed-out circle in its color.
   const colorDot = (layer: number, hidden: boolean, picked = false) =>
     hidden ? (
@@ -2430,7 +2470,9 @@ export function SheetViewerMockup() {
                   onLoad={(event) => {
                     const img = event.currentTarget
                     if (img.naturalWidth) setPageAspect(img.naturalWidth / img.naturalHeight)
+                    pageShown(pageKey)
                   }}
+                  onError={() => pageShown(pageKey)}
                   style={{ filter: scoreFilter }}
                   className="block h-full w-full"
                 />
@@ -2440,11 +2482,12 @@ export function SheetViewerMockup() {
                   eraserAt={eraserAt}
                   eraserRadius={eraserRadius}
                   hidden={hiddenLayers}
+                  ghosts={ghostsOn}
                   aspect={pageAspect}
                   look={pageLook}
                   // In Annotate with no tool, a faint mark brings its layer
                   // back (I); with a tool picked, a touch there marks.
-                  onShowLayer={annotating && !tool ? toggleLayer : undefined}
+                  onShowLayer={annotating && !tool ? unhideFromGhost : undefined}
                 />
               </div>
             )
@@ -2453,7 +2496,7 @@ export function SheetViewerMockup() {
         {showZones && (mode === 'play' || !tool) && <ZoneOverlay />}
         {/* The notes bar (Phase 3): your notes' first line over the top of
             the page; tap it for Info, ✕ hides it for this piece (Info's
-            "Show as banner" brings it back). Its own taps never turn. */}
+            "Show practice notes as banner" brings it back). Its own taps never turn. */}
         {showBar && activeId !== null && (
           <div
             className="absolute inset-x-0 top-0 z-10 flex items-center border-b border-accent/30 bg-accent-soft pr-1 pl-2 [--sv-hover:var(--color-accent-soft-hover)]"
@@ -2542,6 +2585,16 @@ export function SheetViewerMockup() {
                 />
                 Empty Practice List
               </label>
+              <button
+                type="button"
+                onClick={() => {
+                  resetTips()
+                  flash('Tips will show again')
+                }}
+                className="cursor-pointer self-start rounded-lg border border-border bg-paper-raised px-3 py-1.5 font-medium hover:border-accent"
+              >
+                Show tips again
+              </button>
               <label className="flex items-center gap-2">
                 <Checkbox checked={fastMinute} onChange={(e) => setFastMinute(e.target.checked)} />
                 “Practiced” after 5 s, not 30
@@ -2549,6 +2602,10 @@ export function SheetViewerMockup() {
               <label className="flex items-center gap-2">
                 <Checkbox checked={trackingOn} onChange={(e) => setTrackingOn(e.target.checked)} />
                 Practice tracking (User Settings)
+              </label>
+              <label className="flex items-center gap-2">
+                <Checkbox checked={ghostsOn} onChange={(e) => setGhostsOn(e.target.checked)} />
+                Hidden colors shown faintly (User Settings)
               </label>
               <label className="flex items-center gap-2">
                 <Checkbox checked={hasNotes} onChange={(e) => setHasNotes(e.target.checked)} />
@@ -2666,6 +2723,7 @@ function PageMarks({
   eraserAt,
   eraserRadius,
   hidden,
+  ghosts,
   aspect,
   look,
   onShowLayer,
@@ -2675,12 +2733,15 @@ function PageMarks({
   eraserAt: [number, number] | null
   eraserRadius: number
   hidden: number[]
+  // Hidden colors' marks as faint ghosts; off (User Settings), not at all.
+  ghosts: boolean
   aspect: number
   look: PageLook
   onShowLayer?: (layer: number) => void
 }) {
   const w = MARKS_W
   const h = w / aspect
+  const shown = ghosts ? marks : marks.filter((m) => !hidden.includes(m.layer))
   return (
     <>
       <svg
@@ -2688,7 +2749,7 @@ function PageMarks({
         className="pointer-events-none absolute inset-0 h-full w-full"
         aria-hidden="true"
       >
-        {marks.map((m) => (
+        {shown.map((m) => (
           <MarkShape
             key={m.id}
             mark={m}
@@ -2718,7 +2779,7 @@ function PageMarks({
         )}
       </svg>
       {onShowLayer &&
-        marks.map((m) => {
+        shown.map((m) => {
           if (!hidden.includes(m.layer)) return null
           const [x, y] = markAnchor(m)
           return (
@@ -2743,6 +2804,9 @@ function PageMarks({
 // out once (the compiler keeps it) rather than again on every frame of the
 // stroke being drawn.
 const MARKS_W = 1000
+// Ghost marks: warm grey at 12% on every page look (tuned in the ghost
+// playground, https://claude.ai/artifact/Sjh9udhJz2mLTLuZf2CrSS).
+const GHOST_OPACITY = 0.12
 function MarkShape({
   mark: m,
   ghost,
@@ -2765,7 +2829,7 @@ function MarkShape({
         x={m.x * w}
         y={m.y * h}
         fill={color}
-        opacity={ghost ? 0.16 : 1}
+        opacity={ghost ? GHOST_OPACITY : 1}
         fontSize={(m.size / 100) * w}
         fontStyle={m.italic ? 'italic' : undefined}
         fontWeight={600}
@@ -2779,7 +2843,7 @@ function MarkShape({
     <path
       d={strokePath(m, w, aspect, !live)}
       fill={color}
-      opacity={ghost ? 0.16 : highlight ? (look === 'dark' ? 0.55 : 0.42) : 1}
+      opacity={ghost ? GHOST_OPACITY : highlight ? (look === 'dark' ? 0.55 : 0.42) : 1}
       // Highlighter: multiplied on light pages, screened on dark ones.
       style={
         highlight && !ghost ? { mixBlendMode: look === 'dark' ? 'screen' : 'multiply' } : undefined
@@ -2788,9 +2852,16 @@ function MarkShape({
   )
 }
 
+// On screen it's drawn half again as large as the printed page (picked from
+// a side-by-side, https://claude.ai/artifact/WRq89mAWk6oVYk4N595MGS, option
+// B): print size read small on a stand. Margins and the optical lift stay
+// the page's; the column widens to 400pt. The Setlist PDF is unchanged.
+const PLACEHOLDER_SCALE = 1.5
+const PLACEHOLDER_COLUMN = 400
+const ps = (n: number) => pt(n * PLACEHOLDER_SCALE)
 function PlaceholderPage({ entry }: { entry: CustomEntry }) {
   const smallCaps = {
-    fontSize: pt(11 * 1.08),
+    fontSize: ps(11 * 1.08),
     letterSpacing: '0.1em',
     lineHeight: 'normal',
     color: PRINT_FAINT,
@@ -2809,16 +2880,16 @@ function PlaceholderPage({ entry }: { entry: CustomEntry }) {
         className="absolute flex flex-col items-center justify-center text-center"
         style={{ inset: `${pt(72)} ${pt(72)} ${pt(72 + 2 * 0.04 * LETTER.h)}` }}
       >
-        <div className="flex flex-col items-center" style={{ gap: pt(10) }}>
+        <div className="flex flex-col items-center" style={{ gap: ps(10) }}>
           <span
             aria-hidden="true"
             style={{
               display: 'block',
-              width: pt(6),
-              height: pt(6),
+              width: ps(6),
+              height: ps(6),
               background: PRINT_FAINTER,
               transform: 'rotate(45deg)',
-              margin: `${pt(3)} 0 ${pt(11)}`,
+              margin: `${ps(3)} 0 ${ps(11)}`,
             }}
           />
           <span className="font-sans uppercase" style={smallCaps}>
@@ -2826,7 +2897,12 @@ function PlaceholderPage({ entry }: { entry: CustomEntry }) {
           </span>
           <span
             className="font-display italic"
-            style={{ fontSize: pt(24), lineHeight: 1.24, color: PRINT_INK, width: pt(288) }}
+            style={{
+              fontSize: ps(24),
+              lineHeight: 1.24,
+              color: PRINT_INK,
+              width: pt(PLACEHOLDER_COLUMN),
+            }}
           >
             {entry.name}
           </span>
@@ -2835,20 +2911,20 @@ function PlaceholderPage({ entry }: { entry: CustomEntry }) {
               <span
                 aria-hidden="true"
                 style={{
-                  height: pt(1),
-                  width: pt(24),
+                  height: ps(1),
+                  width: ps(24),
                   background: PRINT_FAINTER,
-                  margin: `${pt(2)} 0`,
+                  margin: `${ps(2)} 0`,
                 }}
               />
               <p
                 className="font-sans"
                 style={{
-                  fontSize: pt(12 * 1.08),
+                  fontSize: ps(12 * 1.08),
                   letterSpacing: '0.02em',
                   lineHeight: 1.4,
                   color: PRINT_FAINT,
-                  width: pt(288),
+                  width: pt(PLACEHOLDER_COLUMN),
                   margin: 0,
                 }}
               >

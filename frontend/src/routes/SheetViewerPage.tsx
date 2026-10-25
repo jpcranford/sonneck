@@ -1,4 +1,12 @@
-import { Fragment, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
+import {
+  Fragment,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from 'react'
 import { createPortal } from 'react-dom'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -717,9 +725,9 @@ function SheetViewer({
   // known once the piece has loaded.
   const [pageState, setPage] = useState<number | 'last'>(startPage === 'last' ? 'last' : 1)
   const page = pageState === 'last' ? pageCount : pageState
-  // Per page URL: decoded and ready to show; failed to load. A retry bumps
-  // attempt, which remounts the failed page.
-  const [ready, setReady] = useState<Record<string, boolean>>({})
+  // Per page URL: its finished drawing (PageDrawing); failed to load. A
+  // retry bumps attempt, which remounts the failed page.
+  const [ready, setReady] = useState<Record<string, HTMLCanvasElement>>({})
   const [failed, setFailed] = useState<Record<string, boolean>>({})
   const [attempt, setAttempt] = useState(0)
   // An empty Practice List opens with its queue showing what to do.
@@ -937,10 +945,9 @@ function SheetViewer({
   }
 
   // The preload window: the page showing, the two after it and the one
-  // before stay mounted and decoded, stacked in one place with only the
-  // current one visible, so a turn just changes which one shows. Pages
-  // further away are let go (iPad Safari drops decoded pages it isn't
-  // showing anyway; decoding is what a turn costs).
+  // before stay drawn, off screen, so a turn just copies the next one onto
+  // the screen (ShownPage). Pages further away are let go (decoding is what
+  // a turn would otherwise cost).
   const windowPages = [page - 1, page, page + 1, page + 2].filter((p) => p >= 1 && p <= pageCount)
   const pageUrl = (p: number) => getPiecePageUrl(pieceId ?? 0, p, pageVersion)
   const currentUrl = pageUrl(page)
@@ -1342,19 +1349,27 @@ function SheetViewer({
         </div>
         {editing ? (
           <>
-            <textarea
-              autoFocus
-              value={draft}
-              onChange={(event) => setDraft(event.target.value)}
-              aria-label="Your notes"
-              className="min-h-40 w-full resize-y rounded-xl border border-accent bg-paper-raised px-4 py-3 text-base leading-relaxed text-ink outline-none select-text"
-            />
-            <div className="flex items-center">
-              <span className="mr-auto text-xs text-ink-muted">
-                Markdown and :shortcodes: work here.
+            {/* The Markdown hint sits inside the box, in its bottom corner
+                beside the resize grip, the text kept clear of it. */}
+            <div className="relative">
+              <textarea
+                autoFocus
+                value={draft}
+                onChange={(event) => setDraft(event.target.value)}
+                aria-label="Your notes"
+                className="block min-h-40 w-full resize-y rounded-xl border border-accent bg-paper-raised px-4 pt-3 pb-8 text-base leading-relaxed text-ink outline-none select-text"
+              />
+              <span className="pointer-events-none absolute right-6 bottom-2.5 text-xs text-ink-muted italic">
+                Markdown supported
               </span>
+            </div>
+            {/* The buttons sit 4px inside their tap areas, so their faces keep
+                8px apart; the row reaches 4px past the box so Done still
+                lines up with its edge. */}
+            <div className="-mr-1 flex items-center justify-end">
               <HitButton
                 label="Cancel"
+                inset
                 onClick={() => setEditing(false)}
                 faceClassName="border border-border bg-paper-raised px-3 font-medium hover:border-accent"
               >
@@ -1362,6 +1377,7 @@ function SheetViewer({
               </HitButton>
               <HitButton
                 label="Done"
+                inset
                 onClick={() => notesMutation.mutate(draft.trim())}
                 disabled={notesMutation.isPending}
                 faceClassName="bg-accent-fill px-3 font-medium text-white group-hover/b:bg-accent-fill/90"
@@ -1391,7 +1407,7 @@ function SheetViewer({
                 row
                 checked={practice.notesBarShown}
                 onChange={(v) => setPractice({ notesBarShown: v })}
-                label="Show as banner"
+                label="Show practice notes as banner"
                 className="h-10 w-full rounded-[10px] pr-2 pl-[25px] hover:bg-(--sv-hover)"
               />
             </div>
@@ -1976,19 +1992,24 @@ function SheetViewer({
             const url = pageUrl(p)
             if (failed[url]) return null
             return (
-              <PageCanvas
+              <PageDrawing
                 key={`${url}#${attempt}`}
                 src={url}
                 width={stageBox.w}
                 height={stageBox.h}
-                label={p === page ? `Page ${p} of ${piece?.title ?? ''}` : undefined}
-                onReady={() => setReady((r) => ({ ...r, [url]: true }))}
+                onReady={(drawing) => setReady((r) => ({ ...r, [url]: drawing }))}
                 onError={() => setFailed((f) => ({ ...f, [url]: true }))}
-                className={p === page && ready[url] ? '' : 'opacity-0'}
-                sharp={zoomed && p === page}
               />
             )
           })}
+        {ready[currentUrl] && !currentFailed && (
+          <ShownPage
+            drawing={ready[currentUrl]}
+            src={currentUrl}
+            label={`Page ${page} of ${piece?.title ?? ''}`}
+            sharp={zoomed}
+          />
+        )}
         {currentFailed ? (
           <StageMessage>
             <p>Page {page} couldn’t be prepared.</p>
@@ -2169,125 +2190,153 @@ function SheetViewer({
   )
 }
 
-// One page of the preload window, drawn into a canvas at the screen's own
-// size when it loads. A turn then only shows a canvas that's already drawn:
-// measured on an iPad, showing a hidden 300ppi <img> cost 230–290ms a turn
-// (WebKit draws an opacity-0 image only once it's shown, scaling the full
-// page down then), a pre-drawn canvas ~30ms. The decoded image is let go
-// once drawn. A resize redraws it from the browser's cache.
+// One page of the preload window, drawn at the screen's own size when it
+// loads, into a canvas kept off screen; the page on screen is a copy of it
+// (ShownPage). A turn then only copies a finished drawing: measured on an
+// iPad, showing a hidden 300ppi <img> cost 230–290ms a turn (WebKit draws an
+// opacity-0 image only once it's shown, scaling the full page down then); a
+// copy, 12–46ms.
 //
-// Its drawing is shown at exactly its own pixel size, or the screen
-// resamples it and fine detail goes soft: so its size is a whole number of
-// CSS pixels (iPad Safari rounds a 689.5pt-wide canvas up to 690pt —
-// stretching a 1379px drawing over 1380 screen pixels, measured from barline
-// positions in an iPad screenshot), and it's placed on whole device pixels
-// rather than centered with CSS.
+// Why off screen rather than stacked canvases hidden at opacity 0 (14–33ms):
+// on the iPad a canvas drawn while hidden could show softer than a
+// half-resolution copy once revealed, though it held the full drawing
+// (measured from device screenshots), until something made Safari redraw it,
+// like a pinch-zoom. The visible canvas is drawn while it shows, every turn.
 //
-// Pinch-zoomed in, the drawing alone would only magnify screen pixels, so
-// the current page's full 300ppi image is laid over it in the same spot
-// (`sharp`) — transparent until loaded — and let go on zooming out, keeping
-// memory and turns as they are unzoomed.
-function PageCanvas({
+// The page is decoded from its downloaded file (createImageBitmap) and let
+// go once drawn. A resize draws it again from the browser's cache.
+function PageDrawing({
   src,
   width,
   height,
-  label,
   onReady,
   onError,
-  className,
-  sharp,
 }: {
   src: string
   width: number
   height: number
-  label?: string
-  onReady: () => void
+  onReady: (drawing: HTMLCanvasElement) => void
   onError: () => void
-  className: string
-  /** Lay the full page over the drawing (pinch-zoomed in). */
-  sharp: boolean
 }) {
-  const ref = useRef<HTMLCanvasElement>(null)
-  // Where the drawing sits, for the full page laid over it.
-  const [placed, setPlaced] = useState<{
-    left: number
-    top: number
-    width: number
-    height: number
-  } | null>(null)
   const callbacks = useRef({ onReady, onError })
   useEffect(() => {
     callbacks.current = { onReady, onError }
   })
   useEffect(() => {
-    const canvas = ref.current
-    if (!canvas || !width || !height) return
+    if (!width || !height) return
     let cancelled = false
-    const img = new Image()
-    img.src = src
-    img
-      .decode()
-      .then(() => {
-        if (cancelled) return
+    let drawn: HTMLCanvasElement | null = null
+    fetch(src)
+      .then((response) => {
+        if (!response.ok) throw new Error(`page ${response.status}`)
+        return response.blob()
+      })
+      .then((blob) => createImageBitmap(blob))
+      .then((img) => {
+        if (cancelled) {
+          img.close()
+          return
+        }
         const dpr = window.devicePixelRatio || 1
         // Fit the score area in whole CSS pixels, never past the page's own
         // 300ppi pixels.
-        const scale = Math.min(width / img.naturalWidth, height / img.naturalHeight, 1 / dpr)
-        const cssWidth = Math.floor(img.naturalWidth * scale)
-        const cssHeight = Math.floor(img.naturalHeight * scale)
+        const scale = Math.min(width / img.width, height / img.height, 1 / dpr)
+        const cssWidth = Math.floor(img.width * scale)
+        const cssHeight = Math.floor(img.height * scale)
+        const canvas = document.createElement('canvas')
         const context = canvas.getContext('2d')
         if (!context) throw new Error('no canvas')
         canvas.width = Math.round(cssWidth * dpr)
         canvas.height = Math.round(cssHeight * dpr)
         context.imageSmoothingQuality = 'high'
         context.drawImage(img, 0, 0, canvas.width, canvas.height)
-        canvas.style.width = `${cssWidth}px`
-        canvas.style.height = `${cssHeight}px`
-        const area = canvas.parentElement?.getBoundingClientRect()
-        if (area) {
-          // Centered, then rounded to a device pixel on the screen itself
-          // (the score area may start between pixels too).
-          const snap = (start: number, room: number, size: number) =>
-            Math.round((start + (room - size / dpr) / 2) * dpr) / dpr - start
-          const left = snap(area.left, area.width, canvas.width)
-          const top = snap(area.top, area.height, canvas.height)
-          canvas.style.left = `${left}px`
-          canvas.style.top = `${top}px`
-          setPlaced({ left, top, width: cssWidth, height: cssHeight })
-        }
-        callbacks.current.onReady()
+        canvas.dataset.cssWidth = String(cssWidth)
+        canvas.dataset.cssHeight = String(cssHeight)
+        img.close()
+        drawn = canvas
+        callbacks.current.onReady(canvas)
       })
       .catch(() => {
         if (!cancelled) callbacks.current.onError()
       })
-      .finally(() => {
-        img.src = ''
-      })
     return () => {
       cancelled = true
+      // Free its memory at once (iPad Safari caps what all canvases may
+      // hold); the screen keeps its own copy.
+      if (drawn) {
+        drawn.width = 0
+        drawn.height = 0
+      }
     }
   }, [src, width, height])
+  return null
+}
+
+// The page on screen: the current page's drawing copied onto the one
+// visible canvas, before the frame is painted.
+//
+// It's shown at exactly its own pixel size, or the screen resamples it and
+// fine detail goes soft: so its size is a whole number of CSS pixels (iPad
+// Safari rounds a 689.5pt-wide canvas up to 690pt — stretching a 1379px
+// drawing over 1380 screen pixels, measured from barline positions in an
+// iPad screenshot), and it's placed on whole device pixels rather than
+// centered with CSS.
+//
+// Pinch-zoomed in, the drawing alone would only magnify screen pixels, so
+// the page's full 300ppi image is laid over it in the same spot (`sharp`) —
+// transparent until loaded — and let go on zooming out, keeping memory and
+// turns as they are unzoomed.
+function ShownPage({
+  drawing,
+  src,
+  label,
+  sharp,
+}: {
+  drawing: HTMLCanvasElement
+  src: string
+  label: string
+  sharp: boolean
+}) {
+  const wrapRef = useRef<HTMLDivElement>(null)
+  const ref = useRef<HTMLCanvasElement>(null)
+  useLayoutEffect(() => {
+    const canvas = ref.current
+    const wrap = wrapRef.current
+    // A drawing freed by a resize, its replacement still on the way: keep
+    // what's showing.
+    if (!canvas || !wrap || !drawing.width) return
+    const dpr = window.devicePixelRatio || 1
+    const cssWidth = Number(drawing.dataset.cssWidth)
+    const cssHeight = Number(drawing.dataset.cssHeight)
+    canvas.width = drawing.width
+    canvas.height = drawing.height
+    canvas.getContext('2d')?.drawImage(drawing, 0, 0)
+    wrap.style.width = `${cssWidth}px`
+    wrap.style.height = `${cssHeight}px`
+    const area = wrap.parentElement?.getBoundingClientRect()
+    if (area) {
+      // Centered, then rounded to a device pixel on the screen itself (the
+      // score area may start between pixels too).
+      const snap = (start: number, room: number, size: number) =>
+        Math.round((start + (room - size) / 2) * dpr) / dpr - start
+      wrap.style.left = `${snap(area.left, area.width, cssWidth)}px`
+      wrap.style.top = `${snap(area.top, area.height, cssHeight)}px`
+    }
+  }, [drawing])
   return (
-    <>
-      <canvas
-        ref={ref}
-        role={label ? 'img' : undefined}
-        aria-label={label}
-        aria-hidden={label ? undefined : true}
-        className={`absolute block ${className}`}
-      />
+    <div ref={wrapRef} className="absolute">
+      <canvas ref={ref} role="img" aria-label={label} className="block h-full w-full" />
       {/* Transparent until it loads, so the drawing shows meanwhile. */}
-      {sharp && placed && (
+      {sharp && (
         <img
           src={src}
           alt=""
           aria-hidden
           draggable={false}
-          style={placed}
-          className={`absolute block ${className}`}
+          className="absolute inset-0 block h-full w-full"
         />
       )}
-    </>
+    </div>
   )
 }
 
@@ -2300,9 +2349,16 @@ const PRINT_FAINT = '#5c5349'
 const PRINT_FAINTER = '#b3a99e'
 const LETTER = { w: 612, h: 792 }
 const pt = (n: number) => `calc(${n} * 100cqw / ${LETTER.w})`
+// On screen it's drawn half again as large as the printed page (picked from
+// a side-by-side, https://claude.ai/artifact/WRq89mAWk6oVYk4N595MGS, option
+// B): print size read small on a stand. Margins and the optical lift stay
+// the page's; the column widens to 400pt. The Setlist PDF is unchanged.
+const PLACEHOLDER_SCALE = 1.5
+const PLACEHOLDER_COLUMN = 400
+const ps = (n: number) => pt(n * PLACEHOLDER_SCALE)
 function PlaceholderPage({ entry }: { entry: Extract<QueueItem, { kind: 'custom' }> }) {
   const smallCaps = {
-    fontSize: pt(11 * 1.08),
+    fontSize: ps(11 * 1.08),
     letterSpacing: '0.1em',
     lineHeight: 'normal',
     color: PRINT_FAINT,
@@ -2321,16 +2377,16 @@ function PlaceholderPage({ entry }: { entry: Extract<QueueItem, { kind: 'custom'
         className="absolute flex flex-col items-center justify-center text-center"
         style={{ inset: `${pt(72)} ${pt(72)} ${pt(72 + 2 * 0.04 * LETTER.h)}` }}
       >
-        <div className="flex flex-col items-center" style={{ gap: pt(10) }}>
+        <div className="flex flex-col items-center" style={{ gap: ps(10) }}>
           <span
             aria-hidden="true"
             style={{
               display: 'block',
-              width: pt(6),
-              height: pt(6),
+              width: ps(6),
+              height: ps(6),
               background: PRINT_FAINTER,
               transform: 'rotate(45deg)',
-              margin: `${pt(3)} 0 ${pt(11)}`,
+              margin: `${ps(3)} 0 ${ps(11)}`,
             }}
           />
           {entry.role && (
@@ -2340,7 +2396,12 @@ function PlaceholderPage({ entry }: { entry: Extract<QueueItem, { kind: 'custom'
           )}
           <span
             className="font-display italic"
-            style={{ fontSize: pt(24), lineHeight: 1.24, color: PRINT_INK, width: pt(288) }}
+            style={{
+              fontSize: ps(24),
+              lineHeight: 1.24,
+              color: PRINT_INK,
+              width: pt(PLACEHOLDER_COLUMN),
+            }}
           >
             {entry.name}
           </span>
@@ -2349,20 +2410,20 @@ function PlaceholderPage({ entry }: { entry: Extract<QueueItem, { kind: 'custom'
               <span
                 aria-hidden="true"
                 style={{
-                  height: pt(1),
-                  width: pt(24),
+                  height: ps(1),
+                  width: ps(24),
                   background: PRINT_FAINTER,
-                  margin: `${pt(2)} 0`,
+                  margin: `${ps(2)} 0`,
                 }}
               />
               <div
                 className="font-sans"
                 style={{
-                  fontSize: pt(12 * 1.08),
+                  fontSize: ps(12 * 1.08),
                   letterSpacing: '0.02em',
                   lineHeight: 1.4,
                   color: PRINT_FAINT,
-                  width: pt(288),
+                  width: pt(PLACEHOLDER_COLUMN),
                 }}
               >
                 <MarkdownText>{entry.notes}</MarkdownText>

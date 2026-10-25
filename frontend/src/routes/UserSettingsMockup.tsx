@@ -16,6 +16,7 @@ import { Radio } from '../components/Radio'
 import { SingleSelect } from '../components/SingleSelect'
 import { Toggle } from '../components/Toggle'
 import { useMockupTitle } from '../lib/useMockupTitle'
+import { resetTips } from '../lib/sheetViewerTips'
 
 // User Settings — Option 2 ("separate cards per section"):
 // Account/Appearance/Library each get their own bordered card with a
@@ -382,6 +383,8 @@ export function UserSettingsMockup() {
   // default true, before the label flipped to "Hide Books in sidebar".
   const [hideBooksInSidebar, setHideBooksInSidebar] = useState(false)
   const [trackPractice, setTrackPractice] = useState(true)
+  const [tipsReset, setTipsReset] = useState(false)
+  const [ghostMarks, setGhostMarks] = useState(true)
   // The double-turn guard, in ms (real page: user_settings.sheet_viewer_turn_guard_ms).
   const [turnGuardMs, setTurnGuardMs] = useState(500)
   const [darkModeScores, setDarkModeScores] = useState(false)
@@ -578,6 +581,30 @@ export function UserSettingsMockup() {
                   { value: '1000', label: '1 second' },
                 ]}
               />
+            }
+          />
+          <SettingsRow
+            label="Show hidden colors faintly"
+            help="When you hide a color in Annotate, its marks stay on the page as faint gray ghosts, so you can tell something is there; in Annotate, tap one to show its color again. Turned off, hidden marks don't show at all."
+            control={
+              <Toggle checked={ghostMarks} onChange={setGhostMarks} label="" id="ghost-marks" />
+            }
+          />
+          <SettingsRow
+            label="Tips"
+            help="The Sheet Viewer explains its taps and tools the first few times you use them. Show them again from the start."
+            control={
+              <button
+                type="button"
+                onClick={() => {
+                  resetTips()
+                  setTipsReset(true)
+                }}
+                disabled={tipsReset}
+                className="cursor-pointer rounded-lg border border-border bg-paper-raised px-3 py-1.5 text-sm font-medium whitespace-nowrap text-ink hover:border-accent disabled:opacity-50"
+              >
+                {tipsReset ? 'Tips will show again' : 'Show tips again'}
+              </button>
             }
           />
         </SettingsCard>
