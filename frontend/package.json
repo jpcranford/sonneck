@@ -19,6 +19,7 @@
     "@tanstack/react-query": "^5.101.4",
     "@types/qrcode": "1.5.5",
     "mdast-util-find-and-replace": "^3.0.2",
+    "perfect-freehand": "^1.2.2",
     "qrcode": "1.5.4",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",

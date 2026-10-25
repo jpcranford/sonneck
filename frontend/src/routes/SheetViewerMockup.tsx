@@ -37,6 +37,9 @@ import {
   IconSun,
   IconTypography,
   IconX,
+  IconEye,
+  IconEyeOff,
+  IconStack2,
 } from '@tabler/icons-react'
 import { getPiece, getPiecePageUrl, getPieceThumbnailUrl, searchPieces } from '../api/pieces'
 import { listPracticeStatuses } from '../api/lookups'
@@ -52,6 +55,17 @@ import { stageTurn, type StagePoint } from '../lib/sheetViewerGestures'
 import { sortPracticeStatuses } from '../lib/practiceStatusOrder'
 import { useShortcutBlocker } from '../lib/shortcuts'
 import { useMockupTitle } from '../lib/useMockupTitle'
+import {
+  applyChange,
+  eraserTouches,
+  markAnchor,
+  removedSince,
+  strokePath,
+  type Mark,
+  type MarkChange,
+  type MarkPoint,
+  type StrokeMark,
+} from '../lib/sheetViewerMarks'
 import { copyToClipboard } from '../lib/clipboard'
 import {
   clearInterruptedTurnTest,
@@ -90,12 +104,141 @@ const FACE_HOVER = 'group-hover/b:bg-(--sv-hover)'
 const TOOLS = [
   { key: 'pen', label: 'Pen', Icon: IconBallpen },
   { key: 'highlighter', label: 'Highlighter', Icon: IconHighlight },
-  { key: 'eraser', label: 'Eraser', Icon: IconEraser },
   { key: 'text', label: 'Text', Icon: IconTypography },
+  // Last, after the three tools that draw in a color.
+  { key: 'eraser', label: 'Eraser', Icon: IconEraser },
 ] as const
 type Tool = (typeof TOOLS)[number]['key']
-// Placeholder palette — the real one is designed in Phase 11.
-const COLORS = ['#2b2622', '#c0392b', '#2f6fb5', '#e0a526']
+// The annotation palette (Phases 11–13): six colors, each its own layer.
+// Each is tuned so a mark reads as well where it crosses a note as on blank
+// paper, which lands on nearly the same value on a white page and on Dark
+// Mode Scores — one set for both — and a little deeper on the dark theme's
+// dimmed page. Dark is the exception: it's for correcting the print, so it
+// stays close to (not quite) the printed ink, and on an inverted page it's
+// that ink as the page's own invert shows it. Yellow is the highlighter's;
+// it sits behind the notes, multiplied on light pages and screened on dark
+// ones.
+const LAYER_COLORS: { name: string; light: string; dim: string; dark: string }[] = [
+  { name: 'Vermilion', light: '#d73d2d', dim: '#c43426', dark: '#d63a2a' },
+  { name: 'Yellow', light: '#f2c12e', dim: '#f2c12e', dark: '#f2c12e' },
+  { name: 'Cobalt', light: '#2c71e2', dim: '#1d64d8', dark: '#2a70e2' },
+  { name: 'Green', light: '#1b8749', dim: '#187941', dark: '#1a8548' },
+  { name: 'Violet', light: '#8e5fc3', dim: '#8350bd', dark: '#8d5ec3' },
+  { name: 'Dark', light: '#2b2622', dim: '#2b2622', dark: '#d3cfcb' },
+]
+// How the page currently looks: white, the dark theme's dimmed page, or
+// inverted (Dark Mode Scores, or the photo panel's Invert).
+type PageLook = 'light' | 'dim' | 'dark'
+const layerColor = (layer: number, look: PageLook) => LAYER_COLORS[layer][look]
+// The tools' sizes, as a share of the page's width (picked in the size
+// playground), so a mark keeps its weight at any screen size.
+type Size = 'S' | 'M' | 'L'
+const SIZES: Record<'pen' | 'highlighter' | 'text', Record<Size, number>> = {
+  pen: { S: 0.15, M: 0.25, L: 0.4 },
+  highlighter: { S: 1.2, M: 2, L: 3 },
+  text: { S: 1.8, M: 2.4, L: 3.2 },
+}
+// Each tool remembers its own color and size; these are where they start.
+type ColorTool = 'pen' | 'highlighter' | 'text'
+const TOOL_START: Record<ColorTool, { color: number; size: Size }> = {
+  pen: { color: 0, size: 'M' },
+  highlighter: { color: 1, size: 'M' },
+  text: { color: 0, size: 'M' },
+}
+
+// Sample marks the pages start with, so the layers have something to hide
+// before anything is drawn. Each is in fractions of the page — x of its width, y
+// of its height — so it lands in the same place on any page, and drawn at
+// the tools' medium sizes. Page 1 has a mark on every color, page 2 on two,
+// the rest on one.
+type SampleMark =
+  | { layer: number; kind: 'ring'; x: number; y: number; rx: number; ry: number }
+  | { layer: number; kind: 'line'; points: [number, number][]; highlight?: boolean }
+  | { layer: number; kind: 'text'; x: number; y: number; text: string; italic?: boolean }
+const SAMPLE_MARKS: SampleMark[][] = [
+  [
+    { layer: 0, kind: 'ring', x: 0.5, y: 0.3, rx: 0.07, ry: 0.035 },
+    { layer: 2, kind: 'text', x: 0.62, y: 0.22, text: '2' },
+    { layer: 2, kind: 'text', x: 0.67, y: 0.22, text: '1' },
+    { layer: 2, kind: 'text', x: 0.72, y: 0.22, text: '3' },
+    {
+      layer: 1,
+      kind: 'line',
+      points: [
+        [0.3, 0.45],
+        [0.55, 0.45],
+      ],
+      highlight: true,
+    },
+    {
+      layer: 3,
+      kind: 'line',
+      points: [
+        [0.18, 0.62],
+        [0.25, 0.6],
+        [0.32, 0.62],
+      ],
+    },
+    {
+      layer: 4,
+      kind: 'line',
+      points: [
+        [0.42, 0.7],
+        [0.28, 0.715],
+        [0.42, 0.73],
+      ],
+    },
+    { layer: 5, kind: 'text', x: 0.12, y: 0.85, text: 'cresc.', italic: true },
+  ],
+  [
+    { layer: 0, kind: 'ring', x: 0.35, y: 0.5, rx: 0.06, ry: 0.03 },
+    { layer: 5, kind: 'text', x: 0.7, y: 0.35, text: 'p sub.', italic: true },
+  ],
+  [{ layer: 2, kind: 'text', x: 0.4, y: 0.3, text: '4' }],
+]
+// A page's starting marks as real marks (lib/sheetViewerMarks.ts), so they
+// can be erased and their erasing undone like anything drawn. A ring becomes
+// a pen stroke around it.
+function seedMarks(page: number): Mark[] {
+  return SAMPLE_MARKS[Math.min(page, SAMPLE_MARKS.length) - 1].map((m, i): Mark => {
+    const id = `s${page}-${i}`
+    if (m.kind === 'text')
+      return {
+        id,
+        kind: 'text',
+        layer: m.layer,
+        x: m.x,
+        y: m.y,
+        size: SIZES.text.M,
+        text: m.text,
+        italic: m.italic,
+      }
+    const tool = m.kind === 'line' && m.highlight ? 'highlighter' : 'pen'
+    const points: MarkPoint[] =
+      m.kind === 'ring'
+        ? Array.from({ length: 49 }, (_, k) => {
+            const t = (k / 48) * 2 * Math.PI
+            return [m.x + m.rx * Math.cos(t), m.y + m.ry * Math.sin(t), 0.5]
+          })
+        : m.points.map(([x, y]) => [x, y, 0.5])
+    return {
+      id,
+      kind: 'stroke',
+      tool,
+      layer: m.layer,
+      size: SIZES[tool].M,
+      points,
+      // An even pressure: their few far-apart points would read as a fast,
+      // thin stroke if it were simulated from speed.
+      pressure: true,
+    }
+  })
+}
+// The eraser's reach, as a share of the page's width (no size options).
+const ERASER_RADIUS = 0.015
+// An undo or redo of a change on another page turns there first, then
+// applies it after this long, so you see it happen.
+const UNDO_TURN_MS = 450
 
 // Practice statuses in practice order, by their durable icon (the real
 // strip reads the viewer's own list; this mockup writes nothing).
@@ -381,8 +524,25 @@ export function SheetViewerMockup() {
   const [page, setPage] = useState(1)
   const [mode, setMode] = useState<'play' | 'annotate'>('play')
   const [tool, setTool] = useState<Tool | null>(null)
-  const [color, setColor] = useState(0)
-  const [menu, setMenu] = useState<'clock' | 'more' | 'info' | 'photo' | 'queue' | null>(null)
+  // Each tool's own color and size (B2: a tool remembers what it last used).
+  const [toolStyle, setToolStyle] = useState(TOOL_START)
+  const [menu, setMenu] = useState<
+    'clock' | 'more' | 'info' | 'photo' | 'queue' | 'layers' | 'tool' | null
+  >(null)
+  // Phase 11 trial: color layers hidden (kept per piece in the real thing),
+  // and the page image's shape, so the marks can be laid over it.
+  const [hiddenLayers, setHiddenLayers] = useState<number[]>([])
+  const [pageAspect, setPageAspect] = useState(8.5 / 11)
+  // Phase 15: every page's marks, by "pieceId:page" (a page not yet touched
+  // shows its sample marks), the stroke being drawn, where the eraser is,
+  // and the session's undo history.
+  const [marksByPage, setMarksByPage] = useState<Record<string, Mark[]>>({})
+  const [live, setLive] = useState<StrokeMark | null>(null)
+  const [eraserAt, setEraserAt] = useState<[number, number] | null>(null)
+  const [history, setHistory] = useState<{ done: MarkChange[]; undone: MarkChange[] }>({
+    done: [],
+    undone: [],
+  })
   // Photo controls and the margin, per piece (a practice setting).
   const [photoByPiece, setPhotoByPiece] = useState<Record<number, Photo>>({})
   // The theme and Dark Mode Scores as the page opened with them; the Mockup
@@ -484,16 +644,21 @@ export function SheetViewerMockup() {
   const last = useRef({ dir: 0, at: 0 })
   const photoAnchorRef = useRef<HTMLDivElement>(null)
   const queueAnchorRef = useRef<HTMLDivElement>(null)
+  const layersAnchorRef = useRef<HTMLDivElement>(null)
+  const toolAnchorRef = useRef<HTMLDivElement>(null)
   const phoneRow2Ref = useRef<HTMLDivElement>(null)
   const infoAnchorRef = useRef<HTMLDivElement>(null)
   const clockAnchorRef = useRef<HTMLDivElement>(null)
   const moreAnchorRef = useRef<HTMLDivElement>(null)
   const closeTimer = useRef<number | undefined>(undefined)
   const hintTimer = useRef<number | undefined>(undefined)
+  const undoTimer = useRef<number | undefined>(undefined)
+  const pageBoxRef = useRef<HTMLDivElement>(null)
   useEffect(
     () => () => {
       window.clearTimeout(closeTimer.current)
       window.clearTimeout(hintTimer.current)
+      window.clearTimeout(undoTimer.current)
     },
     [],
   )
@@ -564,8 +729,10 @@ export function SheetViewerMockup() {
   }
   const turnRef = useRef(turn)
   const setMenuRef = useRef(setMenu)
+  const stepHistoryRef = useRef(stepHistory)
   useEffect(() => {
     turnRef.current = turn
+    stepHistoryRef.current = stepHistory
   })
 
   // Page-turner pedals pair as keyboards sending this fixed set (plan:
@@ -575,6 +742,12 @@ export function SheetViewerMockup() {
   const menuOpen = menu === 'clock' || menu === 'more'
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
+      // ⌘Z / ⇧⌘Z (Ctrl elsewhere), with a keyboard attached.
+      if ((event.metaKey || event.ctrlKey) && !event.altKey && event.key.toLowerCase() === 'z') {
+        event.preventDefault()
+        if (!event.repeat) stepHistoryRef.current(event.shiftKey ? 'redo' : 'undo')
+        return
+      }
       if (event.metaKey || event.ctrlKey || event.altKey) return
       const target = event.target as Element | null
       if (target?.closest('input, textarea, select, [role="listbox"]')) return
@@ -662,13 +835,20 @@ export function SheetViewerMockup() {
     setTool(null)
     flash('Play: taps turn pages')
   }
+  // B2: tapping the picked tool again opens its color and size; tapping it
+  // once more (options showing), or the eraser again, puts it down, so taps
+  // turn pages again.
   function pickTool(key: Tool) {
-    if (tool === key) {
-      setTool(null)
-      flash('No tool: taps turn pages')
-    } else {
+    if (tool !== key) {
       setTool(key)
+      setMenu(null)
       flash(`${TOOLS.find((t) => t.key === key)?.label}: taps mark the page`)
+    } else if (key !== 'eraser' && menu !== 'tool') {
+      setMenu('tool')
+    } else {
+      setTool(null)
+      setMenu(null)
+      flash('No tool: taps turn pages')
     }
   }
 
@@ -678,6 +858,12 @@ export function SheetViewerMockup() {
   const down = useRef<StagePoint | null>(null)
   const fingers = useRef(new Set<number>())
   function onStagePointerDown(event: React.PointerEvent<HTMLDivElement>) {
+    // Pen, highlighter or eraser picked: the pointer marks the page, zoomed
+    // in or not (two fingers still pinch and pan).
+    if (markTool()) {
+      startMark(event)
+      return
+    }
     // Zoomed in, a drag pans the page; leave it to the browser.
     if (zoomed) return
     fingers.current.add(event.pointerId)
@@ -689,12 +875,13 @@ export function SheetViewerMockup() {
       down.current = { x: event.clientX, y: event.clientY, t: performance.now() }
   }
   function onStagePointerUp(event: React.PointerEvent<HTMLDivElement>) {
+    if (finishMark(event)) return
     fingers.current.delete(event.pointerId)
     const start = down.current
     down.current = null
     if (!start) return
     if (mode === 'annotate' && tool) {
-      flash('Marking the page arrives in Phase 15')
+      if (tool === 'text') flash('Text boxes arrive in Phase 17')
       return
     }
     const end = { x: event.clientX, y: event.clientY, t: performance.now() }
@@ -702,8 +889,189 @@ export function SheetViewerMockup() {
     if (dir) turn(dir)
   }
   function onStagePointerCancel(event: React.PointerEvent<HTMLDivElement>) {
+    if (marking.current?.id === event.pointerId) cancelMark()
     fingers.current.delete(event.pointerId)
     down.current = null
+  }
+
+  // Marking (Phase 15). Strokes go through perfect-freehand
+  // (lib/sheetViewerMarks.ts) with an Apple Pencil's real pressure, or
+  // pressure simulated from speed for a finger or mouse. Every point is a
+  // share of the page, so marks keep their place at any size.
+  const pageKey = `${activeId}:${page}`
+  const marksFor = (key: string) => marksByPage[key] ?? seedMarks(Number(key.split(':')[1]))
+  const marking = useRef<{ id: number; type: string } | null>(null)
+  const liveRef = useRef<StrokeMark | null>(null)
+  const erasing = useRef<{
+    key: string
+    before: Mark[]
+    removed: Set<string>
+    last: [number, number]
+  } | null>(null)
+  const markCount = useRef(0)
+  function markTool() {
+    if (mode !== 'annotate' || custom || activeId === null) return null
+    return tool === 'pen' || tool === 'highlighter' || tool === 'eraser' ? tool : null
+  }
+  function pagePoint(event: { clientX: number; clientY: number }): [number, number] | null {
+    const box = pageBoxRef.current?.getBoundingClientRect()
+    if (!box?.width) return null
+    return [(event.clientX - box.left) / box.width, (event.clientY - box.top) / box.height]
+  }
+  function startMark(event: React.PointerEvent<HTMLDivElement>) {
+    const current = marking.current
+    if (current && current.id !== event.pointerId) {
+      // A palm that landed before the Pencil: drop its mark, take the Pencil.
+      // A finger while the Pencil draws: ignored. A second finger: a pinch,
+      // so the mark it would have left is dropped.
+      if (current.type === 'pen' && event.pointerType !== 'pen') return
+      cancelMark()
+      if (event.pointerType !== 'pen') return
+    }
+    if (event.button !== 0) return
+    const p = pagePoint(event)
+    const t = markTool()
+    if (!p || !t) return
+    event.currentTarget.setPointerCapture(event.pointerId)
+    marking.current = { id: event.pointerId, type: event.pointerType }
+    if (t === 'eraser') {
+      erasing.current = { key: pageKey, before: marksFor(pageKey), removed: new Set(), last: p }
+      eraseTo(p)
+      return
+    }
+    const style = toolStyle[t]
+    // Drawing in a hidden color shows that layer again.
+    if (hiddenLayers.includes(style.color)) {
+      setHiddenLayers(hiddenLayers.filter((l) => l !== style.color))
+      flash(`${LAYER_COLORS[style.color].name} shown`)
+    }
+    markCount.current += 1
+    const mark: StrokeMark = {
+      id: `m${markCount.current}`,
+      kind: 'stroke',
+      tool: t,
+      layer: style.color,
+      size: SIZES[t][style.size],
+      pressure: event.pointerType === 'pen',
+      points: [[p[0], p[1], event.pressure || 0.5]],
+    }
+    liveRef.current = mark
+    setLive(mark)
+  }
+  function onStagePointerMove(event: React.PointerEvent<HTMLDivElement>) {
+    if (marking.current?.id !== event.pointerId) return
+    // A Pencil reports far more often than the screen draws; take every
+    // point it sent since the last frame.
+    const events = event.nativeEvent.getCoalescedEvents?.() ?? []
+    const all = events.length ? events : [event.nativeEvent]
+    if (erasing.current) {
+      for (const e of all) {
+        const p = pagePoint(e)
+        if (p) eraseTo(p)
+      }
+      return
+    }
+    const mark = liveRef.current
+    if (!mark) return
+    const added: MarkPoint[] = []
+    for (const e of all) {
+      const p = pagePoint(e)
+      if (p) added.push([p[0], p[1], e.pressure || 0.5])
+    }
+    const next = { ...mark, points: [...mark.points, ...added] }
+    liveRef.current = next
+    setLive(next)
+  }
+  // The eraser removes every visible mark it touches, any color, text too,
+  // whole marks only; a hidden layer's marks are never erased.
+  function eraseTo(p: [number, number]) {
+    const e = erasing.current
+    if (!e) return
+    const from = e.last
+    e.last = p
+    setEraserAt(p)
+    const hit = e.before.filter(
+      (m) =>
+        !e.removed.has(m.id) &&
+        !hiddenLayers.includes(m.layer) &&
+        eraserTouches(m, from, p, ERASER_RADIUS, pageAspect),
+    )
+    if (!hit.length) return
+    const ids = new Set(hit.map((m) => m.id))
+    for (const id of ids) e.removed.add(id)
+    const key = e.key
+    setMarksByPage((prev) => ({
+      ...prev,
+      [key]: (prev[key] ?? e.before).filter((m) => !ids.has(m.id)),
+    }))
+  }
+  function finishMark(event: React.PointerEvent<HTMLDivElement>) {
+    if (marking.current?.id !== event.pointerId) return false
+    marking.current = null
+    const e = erasing.current
+    if (e) {
+      erasing.current = null
+      setEraserAt(null)
+      const removed = removedSince(e.before, e.removed)
+      if (removed.length) record({ key: e.key, added: [], removed })
+      return true
+    }
+    const mark = liveRef.current
+    liveRef.current = null
+    setLive(null)
+    if (mark) {
+      const key = pageKey
+      setMarksByPage((prev) => ({ ...prev, [key]: [...(prev[key] ?? marksFor(key)), mark] }))
+      record({ key, added: [mark], removed: [] })
+    }
+    return true
+  }
+  function cancelMark() {
+    marking.current = null
+    liveRef.current = null
+    setLive(null)
+    const e = erasing.current
+    if (e) {
+      erasing.current = null
+      setEraserAt(null)
+      setMarksByPage((prev) => ({ ...prev, [e.key]: e.before }))
+    }
+  }
+  // Undo and Redo (plan: marking, erasing and text edits, never hide/show;
+  // the whole session's history). A change on another page — or another
+  // piece in the queue — turns there first, then visibly applies.
+  function record(change: MarkChange) {
+    setHistory((h) => ({ done: [...h.done, change], undone: [] }))
+  }
+  const undoPending = useRef(false)
+  function stepHistory(direction: 'undo' | 'redo') {
+    if (mode !== 'annotate' || undoPending.current || marking.current) return
+    const change = (direction === 'undo' ? history.done : history.undone).at(-1)
+    if (!change) return
+    const apply = () => {
+      setMarksByPage((prev) => ({
+        ...prev,
+        [change.key]: applyChange(prev[change.key] ?? marksFor(change.key), change, direction),
+      }))
+      setHistory((h) =>
+        direction === 'undo'
+          ? { done: h.done.slice(0, -1), undone: [...h.undone, change] }
+          : { done: [...h.done, change], undone: h.undone.slice(0, -1) },
+      )
+    }
+    if (change.key === pageKey && !custom) {
+      apply()
+      return
+    }
+    const [pid, pg] = change.key.split(':').map(Number)
+    if (pid !== activeId || custom) goToPiece(pid, pg)
+    else setPage(pg)
+    undoPending.current = true
+    window.clearTimeout(undoTimer.current)
+    undoTimer.current = window.setTimeout(() => {
+      undoPending.current = false
+      apply()
+    }, UNDO_TURN_MS)
   }
 
   // Exit: the back arrow (picked from a side-by-side,
@@ -1611,64 +1979,200 @@ export function SheetViewerMockup() {
   const toolsInline = tier === 'wide'
   // Inline (wide screens), Undo and Redo sit beside Done on the right, where
   // the Annotate toolbar has room; the tools fill the left side.
-  // Undo and Redo fade (disabled) when there's nothing to undo or redo. The
-  // mockup marks nothing yet, so both stay faded until marking (Phase 15)
-  // gives them a history.
-  const canUndo = false
-  const canRedo = false
+  // Undo and Redo fade (disabled) when there's nothing to undo or redo.
+  const canUndo = history.done.length > 0
+  const canRedo = history.undone.length > 0
   const undoRedo = (
     <>
-      <HitButton label="Undo" onClick={() => {}} disabled={!canUndo}>
+      <HitButton label="Undo" onClick={() => stepHistory('undo')} disabled={!canUndo}>
         <IconArrowBackUp size={22} />
       </HitButton>
-      <HitButton label="Redo" onClick={() => {}} disabled={!canRedo}>
+      <HitButton label="Redo" onClick={() => stepHistory('redo')} disabled={!canRedo}>
         <IconArrowForwardUp size={22} />
       </HitButton>
     </>
   )
+  // The page's look, for the layer colors: inverted (Dark Mode Scores or
+  // the photo panel's Invert), the dark theme's dimmed page, or white.
+  const pageLook: PageLook =
+    invertHidden || photo.invert ? 'dark' : theme === 'dark' ? 'dim' : 'light'
+  // The marks on this page. A custom setlist entry has none.
+  const pageMarks = custom || activeId === null ? [] : marksFor(pageKey)
+  function toggleLayer(layer: number) {
+    setHiddenLayers(
+      hiddenLayers.includes(layer)
+        ? hiddenLayers.filter((l) => l !== layer)
+        : [...hiddenLayers, layer],
+    )
+  }
+  // A color's dot: filled, or (hidden) the crossed-out circle in its color.
+  const colorDot = (layer: number, hidden: boolean, picked = false) =>
+    hidden ? (
+      <IconCircleOff size={24} stroke={2.2} style={{ color: layerColor(layer, pageLook) }} />
+    ) : (
+      <span
+        className="size-[22px] shrink-0 rounded-full"
+        style={{
+          background: layerColor(layer, pageLook),
+          boxShadow: picked
+            ? '0 0 0 2px var(--color-paper), 0 0 0 4px var(--color-ink)'
+            : 'inset 0 0 0 1px rgb(0 0 0 / 0.08)',
+        }}
+      />
+    )
+  const layersStyle = useAnchoredPanel(layersAnchorRef, menu === 'layers', 'below-center', {
+    gap: 6,
+    panelWidth: 232,
+  })
+  // The Layers menu (B2): no color names — each row is the color, its marks
+  // on this page and its eye (the name stays as the row's label for screen
+  // readers). A hidden color shows as a crossed-out circle in its color.
+  const layersPanel =
+    menu === 'layers' &&
+    layersStyle &&
+    createPortal(
+      <div
+        style={{ ...layersStyle, width: 232 }}
+        className="z-50 rounded-xl border border-border bg-paper px-3 pt-3 pb-2 font-sans text-ink shadow-xl select-none [--sv-hover:var(--color-paper-hover)]"
+      >
+        <p className="px-1 pb-1 text-xs font-semibold tracking-wider text-ink-muted uppercase">
+          Layers
+        </p>
+        {LAYER_COLORS.map((c, i) => {
+          const hidden = hiddenLayers.includes(i)
+          const n = pageMarks.filter((m) => m.layer === i).length
+          return (
+            <div key={c.name} aria-label={c.name} className="flex h-12 items-center pl-2.5">
+              <span className="flex size-6 items-center justify-center">{colorDot(i, hidden)}</span>
+              <span className="flex-1 pl-3 text-sm text-ink-muted tabular-nums">
+                {n} {n === 1 ? 'mark' : 'marks'}
+              </span>
+              <HitButton
+                label={hidden ? `Show ${c.name}` : `Hide ${c.name}`}
+                onClick={() => toggleLayer(i)}
+                faceClassName={`${FACE_HOVER} ${hidden ? 'text-ink-faint' : ''}`}
+              >
+                {hidden ? <IconEyeOff size={22} /> : <IconEye size={22} />}
+              </HitButton>
+            </div>
+          )
+        })}
+      </div>,
+      document.body,
+    )
+  const layersButton = (
+    <div ref={layersAnchorRef} className="relative">
+      <HitButton
+        label="Layers"
+        onClick={() => setMenu(menu === 'layers' ? null : 'layers')}
+        faceClassName={menu === 'layers' ? 'bg-accent-fill text-white' : ''}
+      >
+        <IconStack2 size={22} />
+      </HitButton>
+    </div>
+  )
+  // The picked tool's options: its six colors and S / M / L. Picking a
+  // hidden color is allowed — it shows again as soon as you mark with it
+  // (once Phase 15 draws).
+  const optionsTool: ColorTool | null = tool && tool !== 'eraser' ? tool : null
+  const optionsStyle = optionsTool ? toolStyle[optionsTool] : null
+  const toolOptionsStyle = useAnchoredPanel(toolAnchorRef, menu === 'tool', 'below-center', {
+    gap: 6,
+    panelWidth: 312,
+  })
+  const toolOptionsPanel =
+    menu === 'tool' &&
+    optionsTool &&
+    optionsStyle &&
+    toolOptionsStyle &&
+    createPortal(
+      <div
+        style={{ ...toolOptionsStyle, width: 312 }}
+        className="z-50 rounded-xl border border-border bg-paper px-3 pt-3 pb-3 font-sans text-ink shadow-xl select-none [--sv-hover:var(--color-paper-hover)]"
+      >
+        <p className="px-1 pb-1 text-xs font-semibold tracking-wider text-ink-muted uppercase">
+          {TOOLS.find((t) => t.key === optionsTool)?.label} color
+        </p>
+        <div className="flex">
+          {LAYER_COLORS.map((c, i) => (
+            <HitButton
+              key={c.name}
+              label={`${c.name}${hiddenLayers.includes(i) ? ' (hidden)' : ''}`}
+              onClick={() =>
+                setToolStyle({ ...toolStyle, [optionsTool]: { ...optionsStyle, color: i } })
+              }
+              faceClassName={FACE_HOVER}
+            >
+              {colorDot(i, hiddenLayers.includes(i), optionsStyle.color === i)}
+            </HitButton>
+          ))}
+        </div>
+        <p className="px-1 pt-2 pb-1 text-xs font-semibold tracking-wider text-ink-muted uppercase">
+          Size
+        </p>
+        <div className="flex rounded-[13px] bg-paper-sunken px-1">
+          {(['S', 'M', 'L'] as const).map((sz) => (
+            <button
+              key={sz}
+              type="button"
+              data-hit
+              aria-label={{ S: 'Small', M: 'Medium', L: 'Large' }[sz]}
+              onClick={() =>
+                setToolStyle({ ...toolStyle, [optionsTool]: { ...optionsStyle, size: sz } })
+              }
+              className={`${HIT} flex-1 group/b`}
+            >
+              <span
+                className={`${FACE} w-full font-medium ${
+                  optionsStyle.size === sz
+                    ? 'bg-paper-raised shadow-sm'
+                    : `text-ink-soft ${FACE_HOVER}`
+                }`}
+              >
+                {sz}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>,
+      document.body,
+    )
   const toolButtons = (
     <>
-      {TOOLS.map(({ key, label, Icon }) => (
-        <HitButton
-          key={key}
-          label={label}
-          onClick={() => pickTool(key)}
-          faceClassName={tool === key ? 'bg-accent-fill text-white' : ''}
-        >
-          <Icon size={22} />
-        </HitButton>
-      ))}
-      <span className="mx-1 h-7 w-px shrink-0 bg-accent/30" />
-      {/* Phones fold the palette to one swatch that steps through the
-          colors (Phase 0: rows fold, never shrink) — a stand-in until
-          Phase 11 designs the real controls. */}
-      {(tier === 'phone' ? [COLORS[color]] : COLORS).map((c) => {
-        const i = COLORS.indexOf(c)
+      {TOOLS.map(({ key, label, Icon }) => {
+        const picked = tool === key
+        // Pen, highlighter and text carry a bar of their own color under
+        // the icon; the eraser has none.
+        const own = key !== 'eraser' ? toolStyle[key] : null
         return (
-          <HitButton
-            key={c}
-            label={tier === 'phone' ? 'Next color' : `Color ${i + 1}`}
-            onClick={() => setColor(tier === 'phone' ? (color + 1) % COLORS.length : i)}
-            faceClassName=" "
-          >
-            <span
-              className="size-[22px] rounded-full"
-              style={{
-                background: c,
-                boxShadow:
-                  color === i
-                    ? '0 0 0 2px var(--color-accent-soft), 0 0 0 4px var(--color-ink)'
-                    : undefined,
-              }}
-            />
-          </HitButton>
+          <div key={key} ref={picked ? toolAnchorRef : undefined} className="relative">
+            <HitButton
+              label={picked && own ? `${label}: color and size` : label}
+              onClick={() => pickTool(key)}
+              faceClassName={picked ? 'bg-accent-fill text-white' : ''}
+            >
+              <Icon size={22} />
+              {own && (
+                <span
+                  className="pointer-events-none absolute bottom-[9px] left-1/2 h-[3px] w-3.5 -translate-x-1/2 rounded-full"
+                  style={{
+                    background: layerColor(own.color, pageLook),
+                    boxShadow: picked ? '0 0 0 1.5px white' : undefined,
+                  }}
+                />
+              )}
+            </HitButton>
+          </div>
         )
       })}
+      <span className="mx-1 h-7 w-px shrink-0 bg-accent/30" />
+      {!toolsInline && layersButton}
       {!toolsInline && undoRedo}
     </>
   )
 
   const annotating = mode === 'annotate'
+  const drawing = markTool() !== null
 
   const annotateButton = (
     <HitButton
@@ -1806,6 +2310,9 @@ export function SheetViewerMockup() {
                     {annotateButton}
                   </>
                 )}
+                {/* Inline (wide), Layers joins Undo and Redo on the right:
+                    the tools and swatches already fill the left side. */}
+                {annotating && toolsInline && layersButton}
                 {annotating && toolsInline && undoRedo}
                 {annotating && doneButton}
               </div>
@@ -1826,6 +2333,8 @@ export function SheetViewerMockup() {
             {infoPanel}
             {photoPanel}
             {queuePanel}
+            {layersPanel}
+            {toolOptionsPanel}
             {ghostCard}
             {menu === 'more' && (
               <div className="absolute top-full right-2 z-50 mt-1.5 w-72 rounded-xl border border-border bg-paper p-3 shadow-xl [--sv-hover:var(--color-paper-hover)]">
@@ -1856,8 +2365,9 @@ export function SheetViewerMockup() {
       </header>
 
       <main
-        className={`relative min-h-0 flex-1 cursor-default overflow-hidden ${zoomed ? 'touch-manipulation' : 'touch-pinch-zoom'}`}
+        className={`relative min-h-0 flex-1 cursor-default overflow-hidden ${zoomed && !drawing ? 'touch-manipulation' : 'touch-pinch-zoom'} ${drawing ? 'select-none [-webkit-touch-callout:none]' : ''}`}
         onPointerDown={onStagePointerDown}
+        onPointerMove={onStagePointerMove}
         onPointerUp={onStagePointerUp}
         onPointerCancel={onStagePointerCancel}
         onLostPointerCapture={onStagePointerCancel}
@@ -1866,25 +2376,57 @@ export function SheetViewerMockup() {
             not by index.css's score-page rules, so the theme's treatment and
             the user's photo filters compose in one list (see scoreFilter).
             The margin keeps the page clear of the screen's edges. */}
+        {/* The filter is on the mat and the page image, never the marks
+            laid over them (plan: an invert mustn't recolor annotations). */}
+        <div style={{ filter: scoreFilter }} className="absolute inset-0 bg-white" />
         <div
-          style={{ filter: scoreFilter, containerType: 'size' }}
-          className={`absolute inset-0 flex items-center justify-center bg-white ${
+          style={{ containerType: 'size' }}
+          className={`absolute inset-0 flex items-center justify-center ${
             photo.margin
               ? 'p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]'
               : 'pb-[env(safe-area-inset-bottom)]'
           }`}
         >
           {custom ? (
-            <PlaceholderPage entry={custom} />
+            <div style={{ filter: scoreFilter }}>
+              <PlaceholderPage entry={custom} />
+            </div>
           ) : (
             activeId !== null && (
-              <img
-                key={`${activeId}-${page}`}
-                src={getPieceThumbnailUrl(activeId, page)}
-                alt={`Page ${page}`}
-                draggable={false}
-                className="block max-h-full max-w-full object-contain"
-              />
+              // The page, fitted to the stage at its own shape, with the
+              // marks over it in the same box.
+              <div
+                ref={pageBoxRef}
+                className="relative"
+                style={{
+                  width: `min(100cqw, calc(100cqh * ${pageAspect}))`,
+                  aspectRatio: pageAspect,
+                }}
+              >
+                <img
+                  key={`${activeId}-${page}`}
+                  src={getPieceThumbnailUrl(activeId, page)}
+                  alt={`Page ${page}`}
+                  draggable={false}
+                  onLoad={(event) => {
+                    const img = event.currentTarget
+                    if (img.naturalWidth) setPageAspect(img.naturalWidth / img.naturalHeight)
+                  }}
+                  style={{ filter: scoreFilter }}
+                  className="block h-full w-full"
+                />
+                <PageMarks
+                  marks={pageMarks}
+                  live={live}
+                  eraserAt={eraserAt}
+                  hidden={hiddenLayers}
+                  aspect={pageAspect}
+                  look={pageLook}
+                  // In Annotate with no tool, a faint mark brings its layer
+                  // back (I); with a tool picked, a touch there marks.
+                  onShowLayer={annotating && !tool ? toggleLayer : undefined}
+                />
+              </div>
             )
           )}
         </div>
@@ -2092,6 +2634,138 @@ const PRINT_FAINT = '#5c5349'
 const PRINT_FAINTER = '#b3a99e'
 const LETTER = { w: 612, h: 792 }
 const pt = (n: number) => `calc(${n} * 100cqw / ${LETTER.w})`
+// The page's marks over it, in each layer's color for the page's look. A
+// hidden layer's marks stay as a faint gray ghost (H2) in Play and
+// Annotate, so hiding never reads as "nothing here"; in Annotate each ghost
+// is a 48pt tap area that shows its layer again (I). Those taps never turn
+// the page. The stroke being drawn, and the eraser's reach while it's down,
+// draw on top.
+function PageMarks({
+  marks,
+  live,
+  eraserAt,
+  hidden,
+  aspect,
+  look,
+  onShowLayer,
+}: {
+  marks: Mark[]
+  live: StrokeMark | null
+  eraserAt: [number, number] | null
+  hidden: number[]
+  aspect: number
+  look: PageLook
+  onShowLayer?: (layer: number) => void
+}) {
+  const w = MARKS_W
+  const h = w / aspect
+  return (
+    <>
+      <svg
+        viewBox={`0 0 ${w} ${h}`}
+        className="pointer-events-none absolute inset-0 h-full w-full"
+        aria-hidden="true"
+      >
+        {marks.map((m) => (
+          <MarkShape
+            key={m.id}
+            mark={m}
+            ghost={hidden.includes(m.layer)}
+            look={look}
+            aspect={aspect}
+          />
+        ))}
+        {live && (
+          <MarkShape
+            mark={live}
+            ghost={hidden.includes(live.layer)}
+            look={look}
+            aspect={aspect}
+            live
+          />
+        )}
+        {eraserAt && (
+          <circle
+            cx={eraserAt[0] * w}
+            cy={eraserAt[1] * h}
+            r={ERASER_RADIUS * w}
+            fill="rgb(122 116 110 / 0.12)"
+            stroke="#7a746e"
+            strokeWidth={1.5}
+          />
+        )}
+      </svg>
+      {onShowLayer &&
+        marks.map((m) => {
+          if (!hidden.includes(m.layer)) return null
+          const [x, y] = markAnchor(m)
+          return (
+            <button
+              key={m.id}
+              type="button"
+              data-hit
+              aria-label={`Show ${LAYER_COLORS[m.layer].name}`}
+              onPointerDown={(event) => event.stopPropagation()}
+              onPointerUp={(event) => event.stopPropagation()}
+              onClick={() => onShowLayer(m.layer)}
+              className="absolute size-12 -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full hover:bg-ink/5"
+              style={{ left: `${x * 100}%`, top: `${y * 100}%` }}
+            />
+          )
+        })}
+    </>
+  )
+}
+
+// One mark. Its own component, so a finished stroke's outline is worked
+// out once (the compiler keeps it) rather than again on every frame of the
+// stroke being drawn.
+const MARKS_W = 1000
+function MarkShape({
+  mark: m,
+  ghost,
+  look,
+  aspect,
+  live = false,
+}: {
+  mark: Mark
+  ghost: boolean
+  look: PageLook
+  aspect: number
+  live?: boolean
+}) {
+  const w = MARKS_W
+  const h = w / aspect
+  const color = ghost ? '#7a746e' : layerColor(m.layer, look)
+  if (m.kind === 'text')
+    return (
+      <text
+        x={m.x * w}
+        y={m.y * h}
+        fill={color}
+        opacity={ghost ? 0.16 : 1}
+        fontSize={(m.size / 100) * w}
+        fontStyle={m.italic ? 'italic' : undefined}
+        fontWeight={600}
+        className="font-display"
+      >
+        {m.text}
+      </text>
+    )
+  const highlight = m.tool === 'highlighter'
+  return (
+    <path
+      d={strokePath(m, w, aspect, !live)}
+      fill={color}
+      opacity={ghost ? 0.16 : highlight ? (look === 'dark' ? 0.55 : 0.42) : 1}
+      // Highlighter: multiplied on light pages, screened on dark ones.
+      style={
+        highlight && !ghost ? { mixBlendMode: look === 'dark' ? 'screen' : 'multiply' } : undefined
+      }
+    />
+  )
+}
+
 function PlaceholderPage({ entry }: { entry: CustomEntry }) {
   const smallCaps = {
     fontSize: pt(11 * 1.08),
