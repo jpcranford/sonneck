@@ -131,12 +131,14 @@ const LAYER_COLORS: { name: string; light: string; dim: string; dark: string }[]
 type PageLook = 'light' | 'dim' | 'dark'
 const layerColor = (layer: number, look: PageLook) => LAYER_COLORS[layer][look]
 // The tools' sizes, as a share of the page's width (picked in the size
-// playground), so a mark keeps its weight at any screen size.
+// playground), so a mark keeps its weight at any screen size. The eraser's
+// is the width of its reach; M is about 16pt across on an iPad in landscape.
 type Size = 'S' | 'M' | 'L'
-const SIZES: Record<'pen' | 'highlighter' | 'text', Record<Size, number>> = {
+const SIZES: Record<Tool, Record<Size, number>> = {
   pen: { S: 0.15, M: 0.25, L: 0.4 },
   highlighter: { S: 1.2, M: 2, L: 3 },
   text: { S: 1.8, M: 2.4, L: 3.2 },
+  eraser: { S: 1.5, M: 3, L: 5 },
 }
 // Each tool remembers its own color and size; these are where they start.
 type ColorTool = 'pen' | 'highlighter' | 'text'
@@ -234,8 +236,6 @@ function seedMarks(page: number): Mark[] {
     }
   })
 }
-// The eraser's reach, as a share of the page's width (no size options).
-const ERASER_RADIUS = 0.015
 // An undo or redo of a change on another page turns there first, then
 // applies it after this long, so you see it happen.
 const UNDO_TURN_MS = 450
@@ -526,6 +526,9 @@ export function SheetViewerMockup() {
   const [tool, setTool] = useState<Tool | null>(null)
   // Each tool's own color and size (B2: a tool remembers what it last used).
   const [toolStyle, setToolStyle] = useState(TOOL_START)
+  // The eraser has a size but no color.
+  const [eraserSize, setEraserSize] = useState<Size>('M')
+  const eraserRadius = SIZES.eraser[eraserSize] / 200
   const [menu, setMenu] = useState<
     'clock' | 'more' | 'info' | 'photo' | 'queue' | 'layers' | 'tool' | null
   >(null)
@@ -835,15 +838,15 @@ export function SheetViewerMockup() {
     setTool(null)
     flash('Play: taps turn pages')
   }
-  // B2: tapping the picked tool again opens its color and size; tapping it
-  // once more (options showing), or the eraser again, puts it down, so taps
-  // turn pages again.
+  // B2: tapping the picked tool again opens its color and size (the
+  // eraser's, its size); tapping it once more, options showing, puts it
+  // down, so taps turn pages again.
   function pickTool(key: Tool) {
     if (tool !== key) {
       setTool(key)
       setMenu(null)
       flash(`${TOOLS.find((t) => t.key === key)?.label}: taps mark the page`)
-    } else if (key !== 'eraser' && menu !== 'tool') {
+    } else if (menu !== 'tool') {
       setMenu('tool')
     } else {
       setTool(null)
@@ -994,7 +997,7 @@ export function SheetViewerMockup() {
       (m) =>
         !e.removed.has(m.id) &&
         !hiddenLayers.includes(m.layer) &&
-        eraserTouches(m, from, p, ERASER_RADIUS, pageAspect),
+        eraserTouches(m, from, p, eraserRadius, pageAspect),
     )
     if (!hit.length) return
     const ids = new Set(hit.map((m) => m.id))
@@ -2071,11 +2074,20 @@ export function SheetViewerMockup() {
       </HitButton>
     </div>
   )
-  // The picked tool's options: its six colors and S / M / L. Picking a
-  // hidden color is allowed — it shows again as soon as you mark with it
-  // (once Phase 15 draws).
-  const optionsTool: ColorTool | null = tool && tool !== 'eraser' ? tool : null
-  const optionsStyle = optionsTool ? toolStyle[optionsTool] : null
+  // The picked tool's options: its six colors and S / M / L (the eraser:
+  // just S / M / L). Picking a hidden color is allowed — it shows again as
+  // soon as you mark with it.
+  const optionsTool = tool
+  const optionsStyle = optionsTool
+    ? optionsTool === 'eraser'
+      ? { color: null, size: eraserSize }
+      : toolStyle[optionsTool]
+    : null
+  function setOptionsSize(size: Size) {
+    if (optionsTool === 'eraser') setEraserSize(size)
+    else if (optionsTool)
+      setToolStyle({ ...toolStyle, [optionsTool]: { ...toolStyle[optionsTool], size } })
+  }
   const toolOptionsStyle = useAnchoredPanel(toolAnchorRef, menu === 'tool', 'below-center', {
     gap: 6,
     panelWidth: 312,
@@ -2090,25 +2102,34 @@ export function SheetViewerMockup() {
         style={{ ...toolOptionsStyle, width: 312 }}
         className="z-50 rounded-xl border border-border bg-paper px-3 pt-3 pb-3 font-sans text-ink shadow-xl select-none [--sv-hover:var(--color-paper-hover)]"
       >
-        <p className="px-1 pb-1 text-xs font-semibold tracking-wider text-ink-muted uppercase">
-          {TOOLS.find((t) => t.key === optionsTool)?.label} color
-        </p>
-        <div className="flex">
-          {LAYER_COLORS.map((c, i) => (
-            <HitButton
-              key={c.name}
-              label={`${c.name}${hiddenLayers.includes(i) ? ' (hidden)' : ''}`}
-              onClick={() =>
-                setToolStyle({ ...toolStyle, [optionsTool]: { ...optionsStyle, color: i } })
-              }
-              faceClassName={FACE_HOVER}
-            >
-              {colorDot(i, hiddenLayers.includes(i), optionsStyle.color === i)}
-            </HitButton>
-          ))}
-        </div>
-        <p className="px-1 pt-2 pb-1 text-xs font-semibold tracking-wider text-ink-muted uppercase">
-          Size
+        {optionsTool !== 'eraser' && (
+          <>
+            <p className="px-1 pb-1 text-xs font-semibold tracking-wider text-ink-muted uppercase">
+              {TOOLS.find((t) => t.key === optionsTool)?.label} color
+            </p>
+            <div className="flex">
+              {LAYER_COLORS.map((c, i) => (
+                <HitButton
+                  key={c.name}
+                  label={`${c.name}${hiddenLayers.includes(i) ? ' (hidden)' : ''}`}
+                  onClick={() =>
+                    setToolStyle({
+                      ...toolStyle,
+                      [optionsTool]: { ...toolStyle[optionsTool], color: i },
+                    })
+                  }
+                  faceClassName={FACE_HOVER}
+                >
+                  {colorDot(i, hiddenLayers.includes(i), optionsStyle.color === i)}
+                </HitButton>
+              ))}
+            </div>
+          </>
+        )}
+        <p
+          className={`px-1 pb-1 text-xs font-semibold tracking-wider text-ink-muted uppercase ${optionsTool === 'eraser' ? '' : 'pt-2'}`}
+        >
+          {optionsTool === 'eraser' ? 'Eraser size' : 'Size'}
         </p>
         <div className="flex rounded-[13px] bg-paper-sunken px-1">
           {(['S', 'M', 'L'] as const).map((sz) => (
@@ -2117,9 +2138,7 @@ export function SheetViewerMockup() {
               type="button"
               data-hit
               aria-label={{ S: 'Small', M: 'Medium', L: 'Large' }[sz]}
-              onClick={() =>
-                setToolStyle({ ...toolStyle, [optionsTool]: { ...optionsStyle, size: sz } })
-              }
+              onClick={() => setOptionsSize(sz)}
               className={`${HIT} flex-1 group/b`}
             >
               <span
@@ -2147,7 +2166,7 @@ export function SheetViewerMockup() {
         return (
           <div key={key} ref={picked ? toolAnchorRef : undefined} className="relative">
             <HitButton
-              label={picked && own ? `${label}: color and size` : label}
+              label={picked ? `${label}: ${key === 'eraser' ? 'size' : 'color and size'}` : label}
               onClick={() => pickTool(key)}
               faceClassName={picked ? 'bg-accent-fill text-white' : ''}
             >
@@ -2419,6 +2438,7 @@ export function SheetViewerMockup() {
                   marks={pageMarks}
                   live={live}
                   eraserAt={eraserAt}
+                  eraserRadius={eraserRadius}
                   hidden={hiddenLayers}
                   aspect={pageAspect}
                   look={pageLook}
@@ -2644,6 +2664,7 @@ function PageMarks({
   marks,
   live,
   eraserAt,
+  eraserRadius,
   hidden,
   aspect,
   look,
@@ -2652,6 +2673,7 @@ function PageMarks({
   marks: Mark[]
   live: StrokeMark | null
   eraserAt: [number, number] | null
+  eraserRadius: number
   hidden: number[]
   aspect: number
   look: PageLook
@@ -2688,7 +2710,7 @@ function PageMarks({
           <circle
             cx={eraserAt[0] * w}
             cy={eraserAt[1] * h}
-            r={ERASER_RADIUS * w}
+            r={eraserRadius * w}
             fill="rgb(122 116 110 / 0.12)"
             stroke="#7a746e"
             strokeWidth={1.5}
