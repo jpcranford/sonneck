@@ -500,7 +500,7 @@ export function SheetViewerPage() {
 export function PracticeListPlayPage() {
   const me = useAuth()
   if (!hasPermission(me, 'practice')) return <Navigate to="/" replace />
-  return <ListSession startId={null} />
+  return <ListSession startId={null} exitTo="/" />
 }
 
 /** /setlists/:id/play — Play Set: the setlist in its order, for this
@@ -523,7 +523,8 @@ function PieceOrListSession({ pieceId }: { pieceId: number }) {
   const [hint, setHint] = useState<string | null>(null)
   const shared = useSessionShared(hint)
   if (!entries && !isError) return <div className="fixed inset-0 bg-paper" />
-  if (entries?.some((e) => e.piece.id === pieceId)) return <ListSession startId={pieceId} />
+  if (entries?.some((e) => e.piece.id === pieceId))
+    return <ListSession startId={pieceId} exitTo={`/pieces/${pieceId}`} />
   const item: QueueItem = {
     kind: 'piece',
     key: `p:${pieceId}`,
@@ -544,7 +545,7 @@ function PieceOrListSession({ pieceId }: { pieceId: number }) {
   return <SheetViewer key={item.key} item={item} startPage="first" session={session} />
 }
 
-function ListSession({ startId }: { startId: number | null }) {
+function ListSession({ startId, exitTo }: { startId: number | null; exitTo: string }) {
   const day = useToday()
   const queryClient = useQueryClient()
   const listKey = ['practice-list', day]
@@ -585,7 +586,7 @@ function ListSession({ startId }: { startId: number | null }) {
       setCurrent({ id: item.id, page })
       setHint(next ?? null)
     },
-    exitTo: '/',
+    exitTo,
     marks: Object.fromEntries(list.map((e) => [e.piece.id, e.practiced])),
     onMark: (pieceId, practiced) => {
       updateList((old) => old.map((e) => (e.piece.id === pieceId ? { ...e, practiced } : e)))

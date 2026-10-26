@@ -254,14 +254,16 @@ export function PiecePage() {
   // Currently Practicing's cards, Book Details' pieces list, Upload's
   // post-upload views) passes `state: { backLabel }` when it navigates
   // here — see ClickableCard.tsx's
-  // own `state` prop and each of those call sites. `location.key ===
-  // 'default'` is React Router's own signal that there's no real history
-  // entry behind this one (a hard refresh, or the piece URL opened
-  // directly) — in that case there's nothing for a real "back" to do, so
-  // fall back to the Library rather than leaving the button inert or
-  // navigating the browser out of the app entirely.
+  // own `state` prop and each of those call sites. React Router numbers
+  // the app's own history entries from 0 (`history.state.idx`), so an index
+  // of 0 means no page of the app sits behind this one (the piece URL opened
+  // directly, or the Sheet Viewer's Exit replacing a viewer opened that way)
+  // — then there's nothing for a real "back" to do, so fall back to the
+  // Library rather than navigating the browser to whatever came before.
+  // `location.key` can't tell: a replaced entry has a key of its own.
   const backLabel = (location.state as { backLabel?: string } | null)?.backLabel
-  const hasBackHistory = location.key !== 'default'
+  const hasBackHistory =
+    location.key !== 'default' && ((window.history.state as { idx?: number } | null)?.idx ?? 0) > 0
 
   function handleBack() {
     if (hasBackHistory) {
