@@ -2252,6 +2252,8 @@ function PageDrawing({
         context.drawImage(img, 0, 0, canvas.width, canvas.height)
         canvas.dataset.cssWidth = String(cssWidth)
         canvas.dataset.cssHeight = String(cssHeight)
+        canvas.dataset.areaWidth = String(width)
+        canvas.dataset.areaHeight = String(height)
         img.close()
         drawn = canvas
         callbacks.current.onReady(canvas)
@@ -2299,29 +2301,52 @@ function ShownPage({
 }) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const ref = useRef<HTMLCanvasElement>(null)
+  // The drawing's pixels, copied in. A drawing freed by a resize, its
+  // replacement still on the way, is skipped: what's showing stays.
   useLayoutEffect(() => {
     const canvas = ref.current
-    const wrap = wrapRef.current
-    // A drawing freed by a resize, its replacement still on the way: keep
-    // what's showing.
-    if (!canvas || !wrap || !drawing.width) return
-    const dpr = window.devicePixelRatio || 1
-    const cssWidth = Number(drawing.dataset.cssWidth)
-    const cssHeight = Number(drawing.dataset.cssHeight)
+    if (!canvas || !drawing.width) return
     canvas.width = drawing.width
     canvas.height = drawing.height
     canvas.getContext('2d')?.drawImage(drawing, 0, 0)
-    wrap.style.width = `${cssWidth}px`
-    wrap.style.height = `${cssHeight}px`
-    const area = wrap.parentElement?.getBoundingClientRect()
-    if (area) {
+  }, [drawing])
+  // Its size and place. Drawn for this score area, at exactly its own size;
+  // after a resize (rotation, the edge margin), the drawing it has is
+  // stretched to fit the new area, centered, until the new one lands a
+  // moment later — softer for that moment, but never out of place. Placed
+  // from the score area's own resize observer, in the same frame as the
+  // resize, never a frame behind it.
+  useLayoutEffect(() => {
+    const wrap = wrapRef.current
+    const parent = wrap?.parentElement
+    if (!wrap || !parent) return
+    const place = () => {
+      const area = parent.getBoundingClientRect()
+      if (!area.width || !area.height) return
+      const dpr = window.devicePixelRatio || 1
+      let width = Number(drawing.dataset.cssWidth)
+      let height = Number(drawing.dataset.cssHeight)
+      const drawnFor =
+        Number(drawing.dataset.areaWidth) === Math.round(area.width) &&
+        Number(drawing.dataset.areaHeight) === Math.round(area.height)
+      if (!drawnFor) {
+        const scale = Math.min(area.width / width, area.height / height)
+        width = Math.floor(width * scale)
+        height = Math.floor(height * scale)
+      }
       // Centered, then rounded to a device pixel on the screen itself (the
       // score area may start between pixels too).
       const snap = (start: number, room: number, size: number) =>
         Math.round((start + (room - size) / 2) * dpr) / dpr - start
-      wrap.style.left = `${snap(area.left, area.width, cssWidth)}px`
-      wrap.style.top = `${snap(area.top, area.height, cssHeight)}px`
+      wrap.style.width = `${width}px`
+      wrap.style.height = `${height}px`
+      wrap.style.left = `${snap(area.left, area.width, width)}px`
+      wrap.style.top = `${snap(area.top, area.height, height)}px`
     }
+    place()
+    const observer = new ResizeObserver(place)
+    observer.observe(parent)
+    return () => observer.disconnect()
   }, [drawing])
   return (
     <div ref={wrapRef} className="absolute">
