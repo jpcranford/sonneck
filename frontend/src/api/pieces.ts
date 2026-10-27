@@ -105,7 +105,9 @@ export interface PracticeSettings {
   grayscale: boolean
   invert: boolean
   edgeMargin: boolean
-  notesBarShown: boolean
+  // Null until the user sets this piece's banner: then it follows User
+  // Settings' notesBarDefault.
+  notesBarShown: boolean | null
 }
 
 export const DEFAULT_PRACTICE_SETTINGS: PracticeSettings = {
@@ -114,7 +116,7 @@ export const DEFAULT_PRACTICE_SETTINGS: PracticeSettings = {
   grayscale: false,
   invert: false,
   edgeMargin: false,
-  notesBarShown: false,
+  notesBarShown: null,
 }
 
 export function getPracticeSettings(id: number): Promise<PracticeSettings> {

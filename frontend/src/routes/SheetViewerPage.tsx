@@ -784,6 +784,9 @@ function SheetViewer({
     queryFn: () => getPracticeSettings(pieceId as number),
     enabled: pieceId !== null,
   })
+  // A piece whose banner the user hasn't set follows User Settings' "Show
+  // practice notes as banner"; switching it here sets it for this piece.
+  const notesBarShown = practice.notesBarShown ?? settings?.notesBarDefault ?? false
   const pendingPractice = useRef<PracticeSettings | null>(null)
   const practiceTimer = useRef<number | undefined>(undefined)
   const flushPractice = useRef(() => {})
@@ -1293,7 +1296,7 @@ function SheetViewer({
     setEditing(true)
   }
   // Hidden while any menu or Info is open, so nothing stacks over it.
-  const showBar = !custom && notes !== '' && practice.notesBarShown && menu === null
+  const showBar = !custom && notes !== '' && notesBarShown && menu === null
 
   // A dot on Info whenever the piece has notes and Info is closed.
   const infoButton = (
@@ -1401,12 +1404,12 @@ function SheetViewer({
               className={`${HIT} -mx-2 -mt-1 -mb-2`}
               onClick={(event) => {
                 if (event.target === event.currentTarget)
-                  setPractice({ notesBarShown: !practice.notesBarShown })
+                  setPractice({ notesBarShown: !notesBarShown })
               }}
             >
               <Toggle
                 row
-                checked={practice.notesBarShown}
+                checked={notesBarShown}
                 onChange={(v) => setPractice({ notesBarShown: v })}
                 label="Show practice notes as banner"
                 className="h-10 w-full rounded-[10px] pr-2 pl-[25px] hover:bg-(--sv-hover)"

@@ -518,6 +518,9 @@ export function SheetViewerMockup() {
   // User Settings' "Show hidden colors faintly" (on by default): off, a
   // hidden color's marks don't show at all.
   const [ghostsOn, setGhostsOn] = useState(true)
+  // User Settings' "Show practice notes as banner" (off by default): the
+  // banner for a piece whose own switch hasn't been set.
+  const [barDefault, setBarDefault] = useState(false)
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   // The floating card that follows the pointer while dragging (Edit
   // Program's own pattern): where the pointer is, and where it grabbed the
@@ -582,8 +585,9 @@ export function SheetViewerMockup() {
     queryKey: ['practice-statuses'],
     queryFn: listPracticeStatuses,
   })
-  // The notes bar is off until turned on for a piece (user, 2026-10-21).
+  // Each piece's own banner choice; a piece without one follows barDefault.
   const [barShown, setBarShown] = useState<Record<number, boolean>>({})
+  const barOn = activeId !== null && (barShown[activeId] ?? barDefault)
   const [hasNotes, setHasNotes] = useState(true)
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
@@ -619,8 +623,7 @@ export function SheetViewerMockup() {
       : (piece?.practiceStatus ?? null)
   const infoOpen = menu === 'info'
   // Hidden while any menu or Info is open, so nothing stacks over it.
-  const showBar =
-    notes !== '' && activeId !== null && !!barShown[activeId] && menu === null && !customKey
+  const showBar = notes !== '' && barOn && menu === null && !customKey
 
   const photo = (activeId !== null && photoByPiece[activeId]) || PHOTO_DEFAULT
   function setPhoto(change: Partial<Photo>) {
@@ -1541,12 +1544,12 @@ export function SheetViewerMockup() {
                 data-hit
                 className={`${HIT} -mx-2 -mt-1 -mb-2`}
                 onClick={(event) => {
-                  if (event.target === event.currentTarget) setBar(!barShown[activeId])
+                  if (event.target === event.currentTarget) setBar(!barOn)
                 }}
               >
                 <Toggle
                   row
-                  checked={!!barShown[activeId]}
+                  checked={barOn}
                   onChange={setBar}
                   label="Show practice notes as banner"
                   className="h-10 w-full rounded-[10px] pr-2 pl-[25px] hover:bg-(--sv-hover)"
@@ -2611,6 +2614,10 @@ export function SheetViewerMockup() {
               <label className="flex items-center gap-2">
                 <Checkbox checked={ghostsOn} onChange={(e) => setGhostsOn(e.target.checked)} />
                 Hidden colors shown faintly (User Settings)
+              </label>
+              <label className="flex items-center gap-2">
+                <Checkbox checked={barDefault} onChange={(e) => setBarDefault(e.target.checked)} />
+                Notes banner by default (User Settings)
               </label>
               <label className="flex items-center gap-2">
                 <Checkbox checked={hasNotes} onChange={(e) => setHasNotes(e.target.checked)} />

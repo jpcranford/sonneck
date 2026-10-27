@@ -664,6 +664,21 @@ export function UserSettingsPage() {
                 />
               }
             />
+            {/* The notes banner's default; a piece's own Info switch
+                overrides it for that piece. */}
+            <SettingsRow
+              label="Show practice notes as banner"
+              help="For pieces you haven't set yourself."
+              control={
+                <Toggle
+                  checked={settings?.notesBarDefault ?? false}
+                  onChange={(checked) => patchSettings({ notesBarDefault: checked })}
+                  label=""
+                  id="notes-bar-default"
+                  disabled={settingsLoading}
+                />
+              }
+            />
           </SettingsCard>
         )}
 

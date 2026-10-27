@@ -123,18 +123,20 @@ func SetUserNotes(ctx context.Context, q Queryer, userID, pieceID int64, notes *
 
 // PracticeSettings is one user's Sheet Viewer settings for one piece
 // (migration 00032): the page's look — photo filters and the edge margin —
-// and whether the notes bar shows. The clock's settings are per account
+// and whether the notes bar shows (migration 00034: nil when the user
+// hasn't chosen for this piece, so it follows UserSettings.NotesBarDefault).
+// The clock's settings are per account
 // instead (UserSettings). JSON tags match GET/PUT
 // /api/pieces/{id}/practice-settings.
 type PracticeSettings struct {
 	// Brightness and Contrast are percentages, PhotoStepMin…PhotoStepMax in
 	// steps of PhotoStep.
-	Brightness    int  `json:"brightness"`
-	Contrast      int  `json:"contrast"`
-	Grayscale     bool `json:"grayscale"`
-	Invert        bool `json:"invert"`
-	EdgeMargin    bool `json:"edgeMargin"`
-	NotesBarShown bool `json:"notesBarShown"`
+	Brightness    int   `json:"brightness"`
+	Contrast      int   `json:"contrast"`
+	Grayscale     bool  `json:"grayscale"`
+	Invert        bool  `json:"invert"`
+	EdgeMargin    bool  `json:"edgeMargin"`
+	NotesBarShown *bool `json:"notesBarShown"`
 }
 
 // The photo panel's brightness/contrast range, in percent.
@@ -152,7 +154,7 @@ var DefaultPracticeSettings = PracticeSettings{Brightness: 100, Contrast: 100}
 func GetPracticeSettings(ctx context.Context, q Queryer, userID, pieceID int64) (PracticeSettings, error) {
 	s := DefaultPracticeSettings
 	err := q.QueryRowContext(ctx, `
-		SELECT brightness, contrast, grayscale, invert, edge_margin, notes_bar_shown
+		SELECT brightness, contrast, grayscale, invert, edge_margin, notes_bar
 		FROM piece_practice_settings WHERE user_id = ? AND piece_id = ?`, userID, pieceID,
 	).Scan(&s.Brightness, &s.Contrast, &s.Grayscale, &s.Invert, &s.EdgeMargin, &s.NotesBarShown)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -173,12 +175,12 @@ func SetPracticeSettings(ctx context.Context, q Queryer, userID, pieceID int64, 
 	}
 	_, err := q.ExecContext(ctx, `
 		INSERT INTO piece_practice_settings
-			(user_id, piece_id, brightness, contrast, grayscale, invert, edge_margin, notes_bar_shown)
+			(user_id, piece_id, brightness, contrast, grayscale, invert, edge_margin, notes_bar)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT (user_id, piece_id) DO UPDATE SET
 			brightness = excluded.brightness, contrast = excluded.contrast,
 			grayscale = excluded.grayscale, invert = excluded.invert,
-			edge_margin = excluded.edge_margin, notes_bar_shown = excluded.notes_bar_shown`,
+			edge_margin = excluded.edge_margin, notes_bar = excluded.notes_bar`,
 		userID, pieceID, s.Brightness, s.Contrast, s.Grayscale, s.Invert, s.EdgeMargin, s.NotesBarShown,
 	)
 	return err
@@ -319,6 +321,10 @@ type UserSettings struct {
 	// TrackPractice (migration 00033): off, the Sheet Viewer marks nothing
 	// practiced and records nothing.
 	TrackPractice bool `json:"trackPractice"`
+	// NotesBarDefault (migration 00034): whether the notes bar shows on a
+	// piece whose banner the user hasn't set (PracticeSettings.NotesBarShown
+	// nil).
+	NotesBarDefault bool `json:"notesBarDefault"`
 }
 
 // ClockModes are the Sheet Viewer clock's modes.
@@ -334,10 +340,10 @@ func GetUserSettings(ctx context.Context, q Queryer, userID int64) (*UserSetting
 	err := q.QueryRowContext(ctx, `
 		SELECT show_books_in_sidebar, theme_preference, content_view_mode, dark_mode_scores,
 			sheet_viewer_turn_guard_ms, sheet_viewer_clock_shown, sheet_viewer_clock_mode,
-			sheet_viewer_clock_seconds, track_practice
+			sheet_viewer_clock_seconds, track_practice, sheet_viewer_notes_bar_default
 		FROM user_settings WHERE user_id = ?`, userID,
 	).Scan(&s.ShowBooksInSidebar, &s.ThemePreference, &s.ContentViewMode, &s.DarkModeScores, &s.TurnGuardMs,
-		&s.ClockShown, &s.ClockMode, &s.ClockSeconds, &s.TrackPractice)
+		&s.ClockShown, &s.ClockMode, &s.ClockSeconds, &s.TrackPractice, &s.NotesBarDefault)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -353,10 +359,11 @@ func UpdateUserSettings(ctx context.Context, q Queryer, userID int64, s UserSett
 	_, err := q.ExecContext(ctx, `
 		UPDATE user_settings SET show_books_in_sidebar = ?, theme_preference = ?, content_view_mode = ?,
 			dark_mode_scores = ?, sheet_viewer_turn_guard_ms = ?, sheet_viewer_clock_shown = ?,
-			sheet_viewer_clock_mode = ?, sheet_viewer_clock_seconds = ?, track_practice = ?
+			sheet_viewer_clock_mode = ?, sheet_viewer_clock_seconds = ?, track_practice = ?,
+			sheet_viewer_notes_bar_default = ?
 		WHERE user_id = ?`,
 		s.ShowBooksInSidebar, s.ThemePreference, s.ContentViewMode, s.DarkModeScores, s.TurnGuardMs,
-		s.ClockShown, s.ClockMode, s.ClockSeconds, s.TrackPractice, userID,
+		s.ClockShown, s.ClockMode, s.ClockSeconds, s.TrackPractice, s.NotesBarDefault, userID,
 	)
 	return err
 }

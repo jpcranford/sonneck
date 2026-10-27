@@ -20,6 +20,9 @@ export interface UserSettings {
   // User Settings › Sheet Viewer › Track practice: off, the viewer marks
   // nothing practiced and records nothing.
   trackPractice: boolean
+  // User Settings › Sheet Viewer › Show practice notes as banner: whether
+  // the notes banner shows on a piece whose banner hasn't been set.
+  notesBarDefault: boolean
 }
 
 export type TurnGuardMs = 0 | 250 | 500 | 750 | 1000

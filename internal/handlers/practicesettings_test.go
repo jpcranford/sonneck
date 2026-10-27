@@ -2,6 +2,7 @@ package handlers_test
 
 import (
 	"net/http"
+	"reflect"
 	"testing"
 
 	"github.com/jpcranford/sonneck/internal/repo"
@@ -57,8 +58,8 @@ func TestSetPieceUserNotes(t *testing.T) {
 }
 
 // Per-piece viewer settings: the defaults until saved, a full replace,
-// photo steps checked, back-to-defaults removes the row, and `practice`
-// required.
+// photo steps checked, back-to-defaults removes the row (a banner the user
+// hid on purpose isn't a default), and `practice` required.
 func TestPracticeSettings(t *testing.T) {
 	h, conn := newTestServerWithDB(t)
 	pieceID := uploadTestPiece(t, h)
@@ -66,16 +67,18 @@ func TestPracticeSettings(t *testing.T) {
 
 	var got repo.PracticeSettings
 	decodeData(t, doJSON(t, h, http.MethodGet, url, nil), &got)
-	if got != repo.DefaultPracticeSettings {
-		t.Fatalf("unsaved settings = %+v, want the defaults", got)
+	if !reflect.DeepEqual(got, repo.DefaultPracticeSettings) || got.NotesBarShown != nil {
+		t.Fatalf("unsaved settings = %+v, want the defaults, banner not chosen", got)
 	}
 
-	want := repo.PracticeSettings{Brightness: 120, Contrast: 80, Grayscale: true, EdgeMargin: true, NotesBarShown: true}
+	shown := true
+	want := repo.PracticeSettings{Brightness: 120, Contrast: 80, Grayscale: true, EdgeMargin: true, NotesBarShown: &shown}
 	if rec := doJSON(t, h, http.MethodPut, url, want); rec.Code != http.StatusOK {
 		t.Fatalf("PUT: status %d, body %s", rec.Code, rec.Body.String())
 	}
+	got = repo.PracticeSettings{}
 	decodeData(t, doJSON(t, h, http.MethodGet, url, nil), &got)
-	if got != want {
+	if !reflect.DeepEqual(got, want) {
 		t.Errorf("after saving, got %+v, want %+v", got, want)
 	}
 
@@ -92,12 +95,29 @@ func TestPracticeSettings(t *testing.T) {
 	if rec := doJSON(t, h, http.MethodPut, url, repo.DefaultPracticeSettings); rec.Code != http.StatusOK {
 		t.Fatalf("PUT defaults: status %d", rec.Code)
 	}
-	var rows int
-	if err := conn.QueryRow(`SELECT COUNT(*) FROM piece_practice_settings`).Scan(&rows); err != nil {
-		t.Fatal(err)
+	countRows := func() int {
+		var rows int
+		if err := conn.QueryRow(`SELECT COUNT(*) FROM piece_practice_settings`).Scan(&rows); err != nil {
+			t.Fatal(err)
+		}
+		return rows
 	}
-	if rows != 0 {
+	if rows := countRows(); rows != 0 {
 		t.Errorf("rows after saving the defaults = %d, want 0", rows)
+	}
+
+	hidden := false
+	hiddenOnly := repo.PracticeSettings{Brightness: 100, Contrast: 100, NotesBarShown: &hidden}
+	if rec := doJSON(t, h, http.MethodPut, url, hiddenOnly); rec.Code != http.StatusOK {
+		t.Fatalf("PUT hidden banner: status %d", rec.Code)
+	}
+	got = repo.PracticeSettings{}
+	decodeData(t, doJSON(t, h, http.MethodGet, url, nil), &got)
+	if got.NotesBarShown == nil || *got.NotesBarShown {
+		t.Errorf("banner hidden on purpose read back as %v, want false", got.NotesBarShown)
+	}
+	if rows := countRows(); rows != 1 {
+		t.Errorf("rows after hiding the banner = %d, want 1", rows)
 	}
 
 	if rec := doJSON(t, h, http.MethodGet, apiPiecesURL(99999)+"/practice-settings", nil); rec.Code != http.StatusNotFound {

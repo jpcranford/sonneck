@@ -385,6 +385,7 @@ export function UserSettingsMockup() {
   const [trackPractice, setTrackPractice] = useState(true)
   const [tipsReset, setTipsReset] = useState(false)
   const [ghostMarks, setGhostMarks] = useState(true)
+  const [notesBarDefault, setNotesBarDefault] = useState(false)
   // The double-turn guard, in ms (real page: user_settings.sheet_viewer_turn_guard_ms).
   const [turnGuardMs, setTurnGuardMs] = useState(500)
   const [darkModeScores, setDarkModeScores] = useState(false)
@@ -580,6 +581,18 @@ export function UserSettingsMockup() {
                   { value: '750', label: '¾ second' },
                   { value: '1000', label: '1 second' },
                 ]}
+              />
+            }
+          />
+          <SettingsRow
+            label="Show practice notes as banner"
+            help="For pieces you haven't set yourself."
+            control={
+              <Toggle
+                checked={notesBarDefault}
+                onChange={setNotesBarDefault}
+                label=""
+                id="notes-bar-default"
               />
             }
           />
