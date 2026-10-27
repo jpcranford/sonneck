@@ -184,6 +184,11 @@ const SLOW_PAGE_MS = 300
 // applies it this long after the page shows, so you see it happen — or
 // after UNDO_WAIT_MS if the page never shows.
 const UNDO_TURN_MS = 450
+// TEMPORARY (turn-speed diagnosis on the iPad): ?turntime shows each turn's
+// time from the tap or key to the new page painted; ?nomarks leaves the
+// marks layer out; ?parentfilter puts the photo filter back on the page's
+// container. Remove once measured.
+let lastInputAt = 0
 const UNDO_WAIT_MS = 10_000
 // Page-turner pedals pair as keyboards sending this fixed set; no remapping.
 const BACK_KEYS = ['ArrowLeft', 'ArrowUp', 'PageUp']
@@ -1420,7 +1425,7 @@ function SheetViewer({
     if (!textEdit) return
     function measure() {
       const field = textWrapRef.current
-      const page = pageBoxRef.current?.parentElement
+      const page = pageBoxRef.current
       const area = page?.parentElement
       if (!field || !page || !area) return
       const applied = new DOMMatrixReadOnly(getComputedStyle(page).transform).m42
@@ -2483,7 +2488,25 @@ function SheetViewer({
       {!toolsInline && undoRedo}
     </>
   )
+  const [turnDebug] = useState(() => new URLSearchParams(window.location.search))
+  useEffect(() => {
+    if (!turnDebug.has('turntime')) return
+    const mark = (event: Event) => {
+      lastInputAt = event.timeStamp
+    }
+    window.addEventListener('pointerup', mark, true)
+    window.addEventListener('keydown', mark, true)
+    return () => {
+      window.removeEventListener('pointerup', mark, true)
+      window.removeEventListener('keydown', mark, true)
+    }
+  }, [turnDebug])
   const drawingTool = markTool() !== null
+  // The stage's inset from the screen's edges: the edge margin, else just
+  // the home indicator. The marks layer takes the same, so it lines up.
+  const stageInset = photo.edgeMargin
+    ? 'p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]'
+    : 'pb-[env(safe-area-inset-bottom)]'
   // Text marks take the pointer (tap to edit, drag to move) with the Text
   // tool picked, once the page's marks are in.
   const textTool = annotating && tool === 'text' && !!loadedPages
@@ -2889,6 +2912,10 @@ function SheetViewer({
   )
 
   let stage: ReactNode
+  // The marks, in their own layer over the page (outside the filtered
+  // stage, so an invert never recolors them), kept on the page's exact box
+  // by ShownPage.
+  let marksLayer: ReactNode = null
   if (!item) {
     // An empty Practice List explains itself in its queue, open from the
     // start; the page stays blank.
@@ -2904,9 +2931,7 @@ function SheetViewer({
         className="flex h-full w-full items-center justify-center"
         style={{ containerType: 'size' }}
       >
-        <div style={{ filter: scoreFilter }}>
-          <PlaceholderPage entry={custom} />
-        </div>
+        <PlaceholderPage entry={custom} />
       </div>
     )
   } else if (pieceError) {
@@ -2918,6 +2943,94 @@ function SheetViewer({
       </StageMessage>
     )
   } else if (pageVersion) {
+    if (ready[currentUrl] && !currentFailed && !turnDebug.has('nomarks'))
+      marksLayer = (
+        <div
+          ref={pageBoxRef}
+          className="absolute transition-transform duration-200 ease-out motion-reduce:transition-none"
+          style={{ transform: lift ? `translateY(${-lift}px)` : undefined }}
+        >
+          <PageMarks
+            marks={pageMarks}
+            live={live}
+            eraserAt={eraserAt}
+            eraserRadius={eraserRadius}
+            hidden={hiddenLayers}
+            ghosts={ghostsOn}
+            aspect={pageAspect}
+            look={pageLook}
+            // In Annotate with no tool, a faint mark brings its layer
+            // back; with a tool picked, a touch there marks.
+            onShowLayer={annotating && !tool ? unhideFromGhost : undefined}
+          />
+          <TextMarks
+            marks={pageMarks.filter(
+              (m): m is TextMark => m.kind === 'text' && m.id !== textEdit?.original?.id,
+            )}
+            hidden={hiddenLayers}
+            ghosts={ghostsOn}
+            look={pageLook}
+            drag={textDrag}
+            onDragStart={textTool ? () => finishText() : undefined}
+            onDragMove={textTool ? (id, dx, dy) => setTextDrag({ id, dx, dy }) : undefined}
+            onDragEnd={
+              textTool
+                ? (m, dx, dy, moved) => {
+                    setTextDrag(null)
+                    if (moved) moveText(m, dx, dy)
+                    else editText(m)
+                  }
+                : undefined
+            }
+            onDragCancel={textTool ? () => setTextDrag(null) : undefined}
+          >
+            {/* The text box: mounted while the Text tool is picked (see
+                    openTextBox), shown while one is open. It sizes itself to
+                    what's typed (the grid's ::after copy), up to the page's
+                    right edge, where it wraps. */}
+            {annotating && tool === 'text' && (
+              <div
+                ref={textWrapRef}
+                data-value={textEdit?.text ?? ''}
+                onPointerDown={(event) => event.stopPropagation()}
+                onPointerUp={(event) => event.stopPropagation()}
+                className="pointer-events-auto absolute inline-grid w-max font-hand after:invisible after:whitespace-pre-wrap after:content-[attr(data-value)_'_'] after:[grid-area:1/1] after:[overflow-wrap:anywhere]"
+                style={{
+                  ...(textEdit ? textBoxStyle(textEdit) : { left: 0, top: 0 }),
+                  visibility: textEdit ? 'visible' : 'hidden',
+                  lineHeight: TEXT_LINE_HEIGHT,
+                  outline: `1.5px dashed ${textEdit ? layerColor(textEdit.layer, pageLook) : 'transparent'}`,
+                  outlineOffset: '0.25em',
+                  borderRadius: '0.15em',
+                }}
+              >
+                <textarea
+                  ref={textFieldRef}
+                  rows={1}
+                  value={textEdit?.text ?? ''}
+                  onChange={(event) =>
+                    textEdit && setTextEdit({ ...textEdit, text: event.target.value })
+                  }
+                  onKeyDown={(event) => {
+                    if (event.key === 'Escape') {
+                      event.preventDefault()
+                      finishText()
+                    }
+                  }}
+                  aria-label="Text mark"
+                  spellCheck={false}
+                  autoCapitalize="off"
+                  className="min-w-[0.6em] resize-none overflow-hidden border-0 bg-transparent p-0 whitespace-pre-wrap outline-none [font:inherit] [grid-area:1/1] [overflow-wrap:anywhere]"
+                  style={{
+                    color: textEdit ? layerColor(textEdit.layer, pageLook) : undefined,
+                    fontStyle: textEdit?.italic ? 'italic' : undefined,
+                  }}
+                />
+              </div>
+            )}
+          </TextMarks>
+        </div>
+      )
     stage = (
       <div ref={measureStage} className="relative h-full w-full">
         {stageBox &&
@@ -2941,91 +3054,12 @@ function SheetViewer({
             src={currentUrl}
             label={`Page ${page} of ${piece?.title ?? ''}`}
             sharp={zoomed}
-            filter={scoreFilter}
             lift={lift}
-          >
-            <div ref={pageBoxRef} className="absolute inset-0">
-              <PageMarks
-                marks={pageMarks}
-                live={live}
-                eraserAt={eraserAt}
-                eraserRadius={eraserRadius}
-                hidden={hiddenLayers}
-                ghosts={ghostsOn}
-                aspect={pageAspect}
-                look={pageLook}
-                // In Annotate with no tool, a faint mark brings its layer
-                // back; with a tool picked, a touch there marks.
-                onShowLayer={annotating && !tool ? unhideFromGhost : undefined}
-              />
-              <TextMarks
-                marks={pageMarks.filter(
-                  (m): m is TextMark => m.kind === 'text' && m.id !== textEdit?.original?.id,
-                )}
-                hidden={hiddenLayers}
-                ghosts={ghostsOn}
-                look={pageLook}
-                drag={textDrag}
-                onDragStart={textTool ? () => finishText() : undefined}
-                onDragMove={textTool ? (id, dx, dy) => setTextDrag({ id, dx, dy }) : undefined}
-                onDragEnd={
-                  textTool
-                    ? (m, dx, dy, moved) => {
-                        setTextDrag(null)
-                        if (moved) moveText(m, dx, dy)
-                        else editText(m)
-                      }
-                    : undefined
-                }
-                onDragCancel={textTool ? () => setTextDrag(null) : undefined}
-              >
-                {/* The text box: mounted while the Text tool is picked (see
-                    openTextBox), shown while one is open. It sizes itself to
-                    what's typed (the grid's ::after copy), up to the page's
-                    right edge, where it wraps. */}
-                {annotating && tool === 'text' && (
-                  <div
-                    ref={textWrapRef}
-                    data-value={textEdit?.text ?? ''}
-                    onPointerDown={(event) => event.stopPropagation()}
-                    onPointerUp={(event) => event.stopPropagation()}
-                    className="pointer-events-auto absolute inline-grid w-max font-hand after:invisible after:whitespace-pre-wrap after:content-[attr(data-value)_'_'] after:[grid-area:1/1] after:[overflow-wrap:anywhere]"
-                    style={{
-                      ...(textEdit ? textBoxStyle(textEdit) : { left: 0, top: 0 }),
-                      visibility: textEdit ? 'visible' : 'hidden',
-                      lineHeight: TEXT_LINE_HEIGHT,
-                      outline: `1.5px dashed ${textEdit ? layerColor(textEdit.layer, pageLook) : 'transparent'}`,
-                      outlineOffset: '0.25em',
-                      borderRadius: '0.15em',
-                    }}
-                  >
-                    <textarea
-                      ref={textFieldRef}
-                      rows={1}
-                      value={textEdit?.text ?? ''}
-                      onChange={(event) =>
-                        textEdit && setTextEdit({ ...textEdit, text: event.target.value })
-                      }
-                      onKeyDown={(event) => {
-                        if (event.key === 'Escape') {
-                          event.preventDefault()
-                          finishText()
-                        }
-                      }}
-                      aria-label="Text mark"
-                      spellCheck={false}
-                      autoCapitalize="off"
-                      className="min-w-[0.6em] resize-none overflow-hidden border-0 bg-transparent p-0 whitespace-pre-wrap outline-none [font:inherit] [grid-area:1/1] [overflow-wrap:anywhere]"
-                      style={{
-                        color: textEdit ? layerColor(textEdit.layer, pageLook) : undefined,
-                        fontStyle: textEdit?.italic ? 'italic' : undefined,
-                      }}
-                    />
-                  </div>
-                )}
-              </TextMarks>
-            </div>
-          </ShownPage>
+            mirror={pageBoxRef}
+            onPainted={
+              turnDebug.has('turntime') ? (ms) => flash(`Turn ${Math.round(ms)} ms`) : undefined
+            }
+          />
         )}
         {currentFailed ? (
           <StageMessage>
@@ -3199,18 +3233,23 @@ function SheetViewer({
             score-page rules, so the theme's treatment and the photo filters
             compose in one list (scoreFilter). The edge margin keeps the page
             clear of the screen's edges. */}
-        {/* The filter is on the mat and the page itself, never the marks
-            laid over it: an invert mustn't recolor annotations. */}
+        {/* The filter is on the mat and the stage, never the marks laid
+            over the page (their own layer below): an invert mustn't recolor
+            annotations. Measured on an iPad, a filter on the page's canvas
+            itself made turns slower (25–60ms, spikes past 100) than on the
+            stage around it (under 40ms). */}
         <div style={{ filter: scoreFilter }} className="absolute inset-0 bg-white" />
-        <div
-          className={`absolute inset-0 ${
-            photo.edgeMargin
-              ? 'p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]'
-              : 'pb-[env(safe-area-inset-bottom)]'
-          }`}
-        >
+        <div style={{ filter: scoreFilter }} className={`absolute inset-0 ${stageInset}`}>
           {stage}
         </div>
+        {/* The marks, laid over the page from outside the filtered stage
+            (same inset, so the same box). Only their own controls take the
+            pointer; everything else reaches the stage underneath. */}
+        {marksLayer && (
+          <div className={`pointer-events-none absolute inset-0 ${stageInset}`}>
+            <div className="relative h-full w-full">{marksLayer}</div>
+          </div>
+        )}
         {/* The notes bar: your notes' first line over the top of the page;
             tap it for Info, ✕ hides it for this piece (Info's "Show as
             banner" brings it back). Its own taps never turn. */}
@@ -3388,22 +3427,36 @@ function ShownPage({
   src,
   label,
   sharp,
-  filter,
   lift,
-  children,
+  mirror,
+  onPainted,
 }: {
   drawing: HTMLCanvasElement
   src: string
   label: string
   sharp: boolean
-  // The theme's and the photo filters, on the page alone (the marks laid
-  // over it keep their colors).
-  filter: string
   // How far the page lifts to keep an open text box above the keyboard.
   lift: number
-  // The marks, laid over the page in the same box.
-  children?: ReactNode
+  // The marks layer's box, kept on exactly the page's size and place.
+  mirror: React.RefObject<HTMLDivElement | null>
+  // TEMPORARY: told how long after the last tap or key the page painted.
+  onPainted?: (ms: number) => void
 }) {
+  const painted = useRef(onPainted)
+  useEffect(() => {
+    painted.current = onPainted
+  })
+  useEffect(() => {
+    if (!painted.current || !lastInputAt) return
+    let timer = 0
+    const frame = requestAnimationFrame(() => {
+      timer = window.setTimeout(() => painted.current?.(performance.now() - lastInputAt), 0)
+    })
+    return () => {
+      cancelAnimationFrame(frame)
+      window.clearTimeout(timer)
+    }
+  }, [drawing])
   const wrapRef = useRef<HTMLDivElement>(null)
   const ref = useRef<HTMLCanvasElement>(null)
   // The drawing's pixels, copied in. A drawing freed by a resize, its
@@ -3443,10 +3496,13 @@ function ShownPage({
       // score area may start between pixels too).
       const snap = (start: number, room: number, size: number) =>
         Math.round((start + (room - size) / 2) * dpr) / dpr - start
-      wrap.style.width = `${width}px`
-      wrap.style.height = `${height}px`
-      wrap.style.left = `${snap(area.left, area.width, width)}px`
-      wrap.style.top = `${snap(area.top, area.height, height)}px`
+      for (const box of [wrap, mirror.current]) {
+        if (!box) continue
+        box.style.width = `${width}px`
+        box.style.height = `${height}px`
+        box.style.left = `${snap(area.left, area.width, width)}px`
+        box.style.top = `${snap(area.top, area.height, height)}px`
+      }
     }
     place()
     const observer = new ResizeObserver(place)
@@ -3459,13 +3515,7 @@ function ShownPage({
       className="absolute transition-transform duration-200 ease-out motion-reduce:transition-none"
       style={{ transform: lift ? `translateY(${-lift}px)` : undefined }}
     >
-      <canvas
-        ref={ref}
-        role="img"
-        aria-label={label}
-        className="block h-full w-full"
-        style={{ filter }}
-      />
+      <canvas ref={ref} role="img" aria-label={label} className="block h-full w-full" />
       {/* Transparent until it loads, so the drawing shows meanwhile. */}
       {sharp && (
         <img
@@ -3474,10 +3524,8 @@ function ShownPage({
           aria-hidden
           draggable={false}
           className="absolute inset-0 block h-full w-full"
-          style={{ filter }}
         />
       )}
-      {children}
     </div>
   )
 }
