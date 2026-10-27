@@ -110,22 +110,24 @@ const TOOLS = [
   { key: 'eraser', label: 'Eraser', Icon: IconEraser },
 ] as const
 type Tool = (typeof TOOLS)[number]['key']
+// See toolsInline.
+const TOOLS_INLINE_MIN_WIDTH = 720
 // The annotation palette (Phases 11–13): six colors, each its own layer.
 // Each is tuned so a mark reads as well where it crosses a note as on blank
 // paper, which lands on nearly the same value on a white page and on Dark
 // Mode Scores — one set for both — and a little deeper on the dark theme's
-// dimmed page. Dark is the exception: it's for correcting the print, so it
+// dimmed page. Ink is the exception: it's for correcting the print, so it
 // stays close to (not quite) the printed ink, and on an inverted page it's
 // that ink as the page's own invert shows it. Yellow is the highlighter's;
 // it sits behind the notes, multiplied on light pages and screened on dark
 // ones.
 const LAYER_COLORS: { name: string; light: string; dim: string; dark: string }[] = [
-  { name: 'Vermilion', light: '#d73d2d', dim: '#c43426', dark: '#d63a2a' },
+  { name: 'Red', light: '#d73d2d', dim: '#c43426', dark: '#d63a2a' },
   { name: 'Yellow', light: '#f2c12e', dim: '#f2c12e', dark: '#f2c12e' },
-  { name: 'Cobalt', light: '#2c71e2', dim: '#1d64d8', dark: '#2a70e2' },
+  { name: 'Blue', light: '#2c71e2', dim: '#1d64d8', dark: '#2a70e2' },
   { name: 'Green', light: '#1b8749', dim: '#187941', dark: '#1a8548' },
-  { name: 'Violet', light: '#8e5fc3', dim: '#8350bd', dark: '#8d5ec3' },
-  { name: 'Dark', light: '#2b2622', dim: '#2b2622', dark: '#d3cfcb' },
+  { name: 'Purple', light: '#8e5fc3', dim: '#8350bd', dark: '#8d5ec3' },
+  { name: 'Ink', light: '#2b2622', dim: '#2b2622', dark: '#d3cfcb' },
 ]
 // How the page currently looks: white, the dark theme's dimmed page, or
 // inverted (Dark Mode Scores, or the photo panel's Invert).
@@ -142,12 +144,13 @@ const SIZES: Record<Tool, Record<Size, number>> = {
   text: { S: 1.8, M: 2.4, L: 3.2 },
   eraser: { S: 3, M: 5, L: 8 },
 }
-// Each tool remembers its own color and size; these are where they start.
+// Each tool remembers its own color and size; these are where they start:
+// the pen in Ink, the highlighter in Yellow, text in Blue.
 type ColorTool = 'pen' | 'highlighter' | 'text'
 const TOOL_START: Record<ColorTool, { color: number; size: Size }> = {
-  pen: { color: 0, size: 'M' },
+  pen: { color: 5, size: 'M' },
   highlighter: { color: 1, size: 'M' },
-  text: { color: 0, size: 'M' },
+  text: { color: 2, size: 'M' },
 }
 
 // Sample marks the pages start with, so the layers have something to hide
@@ -1493,7 +1496,7 @@ export function SheetViewerMockup() {
                 className="block min-h-40 w-full resize-y rounded-xl border border-accent bg-paper-raised px-4 pt-3 pb-8 text-base leading-relaxed text-ink outline-none select-text"
               />
               <span className="pointer-events-none absolute right-6 bottom-2.5 text-xs text-ink-muted italic">
-                Markdown supported
+                Markdown and :shortcodes: supported
               </span>
             </div>
             {/* The buttons sit 4px inside their tap areas, so their faces keep
@@ -2014,9 +2017,11 @@ export function SheetViewerMockup() {
     </div>
   )
 
-  const toolsInline = tier === 'wide'
-  // Inline (wide screens), Undo and Redo sit beside Done on the right, where
-  // the Annotate toolbar has room; the tools fill the left side.
+  // From 720px (every iPad, portrait included) the Annotate tools share the
+  // one toolbar row: the tools left of the page cyclers, Layers, Undo and
+  // Redo beside Done on the right, since all of them don't fit on one side.
+  // Narrower, they take a second row. The tools' side first fits at 712px.
+  const toolsInline = width >= TOOLS_INLINE_MIN_WIDTH
   // Undo and Redo fade (disabled) when there's nothing to undo or redo.
   const canUndo = history.done.length > 0
   const canRedo = history.undone.length > 0

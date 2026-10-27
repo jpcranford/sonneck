@@ -1361,7 +1361,7 @@ function SheetViewer({
                 className="block min-h-40 w-full resize-y rounded-xl border border-accent bg-paper-raised px-4 pt-3 pb-8 text-base leading-relaxed text-ink outline-none select-text"
               />
               <span className="pointer-events-none absolute right-6 bottom-2.5 text-xs text-ink-muted italic">
-                Markdown supported
+                Markdown and :shortcodes: supported
               </span>
             </div>
             {/* The buttons sit 4px inside their tap areas, so their faces keep
