@@ -555,7 +555,7 @@ export function UserSettingsMockup() {
         <SettingsCard title="Sheet Viewer">
           <SettingsRow
             label="Track practice"
-            help="Mark pieces as practiced today once you've played them through in the Sheet Viewer, and keep a record of the days you practiced each one. Turned off, nothing is marked or recorded."
+            help="Mark pieces as practiced today once you've spent 30 seconds on them in the Sheet Viewer, and keep a record of the days you practiced each one. Turned off, nothing is marked or recorded."
             control={
               <Toggle
                 checked={trackPractice}

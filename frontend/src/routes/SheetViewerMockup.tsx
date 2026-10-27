@@ -268,9 +268,8 @@ const EMPTY_NOTES =
   'Nothing yet. Big picture notes go here: what to remember about this piece, or a log of how practice is going. Markings on the music can be made in Annotate mode.'
 const INFO_WIDTH = 380
 const QUEUE_WIDTH = 380
-// Phase 6 (30s per the round-3 answers): a piece counts as practiced today
-// once its last page has been
-// reached and at least this long has been spent on it.
+// A piece counts as practiced today once at least this long has been spent
+// on it (30s; no longer also needing its last page reached, user 2026-10-27).
 const PRACTICED_MS = 30_000
 
 // A setlist's custom entries (Phase 6): each gets a placeholder page in the
@@ -811,13 +810,12 @@ export function SheetViewerMockup() {
     return () => document.removeEventListener('keydown', onKey, true)
   }, [menuOpen])
 
-  // Practiced today: time on each piece adds up while it's showing; once its
-  // last page has been reached too, it's marked (Phase 6).
+  // Practiced today: time on each piece adds up while it's showing; past
+  // PRACTICED_MS, it's marked.
   // A custom entry isn't a piece: nothing to mark.
   const viewId = customKey ? null : activeId
   const spent = useRef(new Map<number, number>())
   const viewing = useRef<{ id: number | null; since: number }>({ id: null, since: 0 })
-  const reachedLast = useRef(new Set<number>())
   const threshold = useRef(PRACTICED_MS)
   const tracking = useRef(true)
   useEffect(() => {
@@ -832,14 +830,10 @@ export function SheetViewerMockup() {
     viewing.current = { id: viewId, since: now }
   }, [viewId])
   useEffect(() => {
-    if (viewId !== null && piece?.id === viewId && page >= pageCount)
-      reachedLast.current.add(viewId)
-  }, [viewId, piece, page, pageCount])
-  useEffect(() => {
     const t = window.setInterval(() => {
       const { id, since } = viewing.current
       // User Settings' practice-tracking switch off: nothing is recorded.
-      if (!tracking.current || id === null || !reachedLast.current.has(id)) return
+      if (!tracking.current || id === null) return
       if ((spent.current.get(id) ?? 0) + Date.now() - since < threshold.current) return
       setPracticed((prev) => (id in prev ? prev : { ...prev, [id]: true }))
     }, 1000)

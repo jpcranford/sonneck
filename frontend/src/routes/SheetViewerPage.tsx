@@ -116,9 +116,8 @@ const SAVE_DELAY_MS = 400
 
 const INFO_WIDTH = 380
 const QUEUE_WIDTH = 380
-// A piece counts as practiced today once its last page has been reached and
-// this long has been spent on it in the viewer (a one-page piece needs only
-// the time).
+// A piece counts as practiced today once this long has been spent on it in
+// the viewer, across visits in a session.
 const PRACTICED_MS = 30_000
 // Notes are broad strokes and a practice log; markings on the music belong
 // in Annotate.
@@ -1579,11 +1578,10 @@ function SheetViewer({
     queryFn: () => getPracticed(pieceId as number, day),
     enabled: pieceId !== null && tracking,
   })
-  const trackState = useRef({ reachedLast: false, marked: false, ready: false, since: 0 })
+  const trackState = useRef({ marked: false, ready: false, since: 0 })
   useEffect(() => {
     trackState.current.ready = tracking && practicedToday !== undefined
     if (practicedToday?.practiced != null) trackState.current.marked = true
-    if (piece && page >= pageCount) trackState.current.reachedLast = true
   })
   useEffect(() => {
     if (pieceId === null) return
@@ -1591,7 +1589,7 @@ function SheetViewer({
     const state = trackState.current
     state.since = Date.now()
     const t = window.setInterval(() => {
-      if (!state.ready || state.marked || !state.reachedLast) return
+      if (!state.ready || state.marked) return
       if (spentOn(pieceId) + Date.now() - state.since < PRACTICED_MS) return
       state.marked = true
       queryClient.setQueryData<PracticedState>(['practiced', pieceId, day], {
