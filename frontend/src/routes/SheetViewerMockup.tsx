@@ -1276,12 +1276,25 @@ export function SheetViewerMockup() {
     // While typing, Undo drops what's in the box (an edited mark stays as
     // it was); Redo does nothing until the box closes.
     if (textEdit) {
-      if (direction === 'undo') closeTextBox()
+      if (direction === 'undo') {
+        closeTextBox()
+        flash('Undo: typing')
+      }
       return
     }
     if (mode !== 'annotate' || undoPending.current || marking.current) return
     const change = (direction === 'undo' ? history.done : history.undone).at(-1)
     if (!change) return
+    // A pill names what's undone or redone, so a press always shows; one
+    // elsewhere says where, since the view turns there first.
+    const [changePiece, changePage] = change.key.split(':').map(Number)
+    const where =
+      change.key === pageKey && !custom
+        ? ''
+        : changePiece === activeId && !custom
+          ? `, page ${changePage}`
+          : `, ${byId.get(changePiece)?.title ?? 'another piece'}`
+    flash(`${direction === 'undo' ? 'Undo' : 'Redo'}: ${describeChange(change)}${where}`)
     const apply = () => {
       setMarksByPage((prev) => ({
         ...prev,
@@ -3024,6 +3037,21 @@ const PRINT_FAINT = '#5c5349'
 const PRINT_FAINTER = '#b3a99e'
 const LETTER = { w: 612, h: 792 }
 const pt = (n: number) => `calc(${n} * 100cqw / ${LETTER.w})`
+// What an undo step did, for its pill: marks added, erased, or a text mark
+// edited or moved (one replaced by another).
+function describeChange(change: MarkChange) {
+  const added = change.added[0]
+  if (change.added.length && change.removed.length) return 'text edit'
+  if (!added)
+    return change.removed.length > 1
+      ? 'erase'
+      : change.removed[0]?.mark.kind === 'text'
+        ? 'text removed'
+        : 'erase'
+  if (added.kind === 'text') return 'text'
+  return added.tool === 'highlighter' ? 'highlight' : 'pen stroke'
+}
+
 // An open text box (Phase 17): a new one (original null) or an existing
 // text mark being edited, which is hidden while its box is open.
 type TextEdit = {
