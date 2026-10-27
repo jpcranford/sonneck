@@ -22,12 +22,18 @@ export type TextMark = {
   kind: 'text'
   layer: number
   x: number
-  // The baseline.
+  // The first line's baseline. Lines are 1.25 of the size apart, and the
+  // first line's box starts one size above its baseline.
   y: number
   size: number
+  // Markdown and :shortcodes:; a newline starts a new line.
   text: string
   italic?: boolean
 }
+
+// A box as shares of the page: x of its width, y of its height.
+export type PageBox = { left: number; top: number; right: number; bottom: number }
+export const TEXT_LINE_HEIGHT = 1.25
 export type Mark = StrokeMark | TextMark
 
 // The stroke's outline as an SVG path, in a box `width` units wide and
@@ -68,32 +74,50 @@ function pathFromOutline(points: number[][]) {
 // Where a mark's "show this layer" tap area goes: the middle of a stroke's
 // path, the middle of a text's line.
 export function markAnchor(mark: Mark): [number, number] {
-  if (mark.kind === 'text') return [mark.x + textWidth(mark) / 2, mark.y - mark.size / 200]
+  if (mark.kind === 'text') return [mark.x + textWidth(mark) / 2, mark.y - mark.size / 300]
   const p = mark.points[Math.floor(mark.points.length / 2)]
   return [p[0], p[1]]
 }
 
 // A text's rough width, as a share of the page width (about half an em a
-// character).
-const textWidth = (mark: TextMark) => (mark.size / 100) * 0.5 * mark.text.length
+// character, its longest line), for when its drawn box isn't known.
+const textLines = (mark: TextMark) => mark.text.split('\n')
+const textWidth = (mark: TextMark) =>
+  (mark.size / 100) * 0.5 * Math.max(...textLines(mark).map((l) => l.length))
 
 // Does an eraser moved from a to b (page shares) with the given radius (a
 // share of the page width) touch the mark? Measured in page-width units, so
-// a circle stays round on any page shape.
+// a circle stays round on any page shape. A text's drawn box, when known
+// (it wraps at the page's edge), stands in for its estimated one.
 export function eraserTouches(
   mark: Mark,
   a: [number, number],
   b: [number, number],
   radius: number,
   aspect: number,
+  textBox?: PageBox,
 ) {
   const u = (p: readonly number[]): Vec => [p[0], p[1] / aspect]
   const ea = u(a)
   const eb = u(b)
   if (mark.kind === 'text') {
     const s = mark.size / 100
-    const top = u([0, mark.y])[1] - s
-    const box = { left: mark.x, right: mark.x + textWidth(mark), top, bottom: top + s * 1.2 }
+    const box = textBox
+      ? {
+          left: textBox.left,
+          right: textBox.right,
+          top: textBox.top / aspect,
+          bottom: textBox.bottom / aspect,
+        }
+      : (() => {
+          const top = u([0, mark.y])[1] - s
+          return {
+            left: mark.x,
+            right: mark.x + textWidth(mark),
+            top,
+            bottom: top + s * TEXT_LINE_HEIGHT * textLines(mark).length,
+          }
+        })()
     return segmentBoxDistance(ea, eb, box) <= radius
   }
   const reach = radius + mark.size / 200

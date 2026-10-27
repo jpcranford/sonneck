@@ -1,4 +1,12 @@
-import { Fragment, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
+import {
+  Fragment,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type CSSProperties,
+  type ReactNode,
+} from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -62,10 +70,13 @@ import {
   markAnchor,
   removedSince,
   strokePath,
+  TEXT_LINE_HEIGHT,
   type Mark,
   type MarkChange,
   type MarkPoint,
+  type PageBox,
   type StrokeMark,
+  type TextMark,
 } from '../lib/sheetViewerMarks'
 import { copyToClipboard } from '../lib/clipboard'
 import {
@@ -141,7 +152,7 @@ type Size = 'S' | 'M' | 'L'
 const SIZES: Record<Tool, Record<Size, number>> = {
   pen: { S: 0.25, M: 0.39, L: 0.58 },
   highlighter: { S: 1.2, M: 2, L: 3 },
-  text: { S: 1.8, M: 2.4, L: 3.2 },
+  text: { S: 1.4, M: 1.8, L: 2.4 },
   eraser: { S: 3, M: 5, L: 8 },
 }
 // Each tool remembers its own color and size; these are where they start:
@@ -554,6 +565,14 @@ export function SheetViewerMockup() {
   const [marksByPage, setMarksByPage] = useState<Record<string, Mark[]>>({})
   const [live, setLive] = useState<StrokeMark | null>(null)
   const [eraserAt, setEraserAt] = useState<[number, number] | null>(null)
+  // Phase 17: the text box open for typing, how far the page is lifted to
+  // keep it clear of the keyboard, and a text mark being dragged.
+  const [textEdit, setTextEdit] = useState<TextEdit | null>(null)
+  const [lift, setLift] = useState(0)
+  const [textDrag, setTextDrag] = useState<{ id: string; dx: number; dy: number } | null>(null)
+  // Mockup panel: pretend an on-screen keyboard covers the bottom 40%, for
+  // trying the lift without an iPad.
+  const [fakeKeyboard, setFakeKeyboard] = useState(false)
   const [history, setHistory] = useState<{ done: MarkChange[]; undone: MarkChange[] }>({
     done: [],
     undone: [],
@@ -690,6 +709,7 @@ export function SheetViewerMockup() {
   }
 
   function turn(dir: -1 | 1) {
+    finishText()
     const t = performance.now()
     if (dir === last.current.dir && t - last.current.at < DEBOUNCE_MS) {
       flash('Double-turn ignored')
@@ -762,6 +782,9 @@ export function SheetViewerMockup() {
   const menuOpen = menu === 'clock' || menu === 'more'
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
+      // Typing in a field (a text mark, the notes): its own keys, ⌘Z too.
+      const target = event.target as Element | null
+      if (target?.closest('input, textarea, select, [role="listbox"]')) return
       // ⌘Z / ⇧⌘Z (Ctrl elsewhere), with a keyboard attached.
       if ((event.metaKey || event.ctrlKey) && !event.altKey && event.key.toLowerCase() === 'z') {
         event.preventDefault()
@@ -769,8 +792,6 @@ export function SheetViewerMockup() {
         return
       }
       if (event.metaKey || event.ctrlKey || event.altKey) return
-      const target = event.target as Element | null
-      if (target?.closest('input, textarea, select, [role="listbox"]')) return
       if (event.key === 'Escape') {
         setMenuRef.current(null)
         return
@@ -851,6 +872,7 @@ export function SheetViewerMockup() {
     tip('annotate', 'Annotate: pick a tool to mark; until then taps turn pages')
   }
   function leaveAnnotate() {
+    finishText()
     setMode('play')
     setTool(null)
     tip('play', 'Play: taps turn pages')
@@ -860,12 +882,19 @@ export function SheetViewerMockup() {
   // down, so taps turn pages again.
   function pickTool(key: Tool) {
     if (tool !== key) {
+      finishText()
       setTool(key)
       setMenu(null)
-      tip(`tool-${key}`, `${TOOLS.find((t) => t.key === key)?.label}: taps mark the page`)
+      tip(
+        `tool-${key}`,
+        key === 'text'
+          ? 'Text: tap the page to write; tap text to edit it, or drag it to move it'
+          : `${TOOLS.find((t) => t.key === key)?.label}: taps mark the page`,
+      )
     } else if (menu !== 'tool') {
       setMenu('tool')
     } else {
+      finishText()
       setTool(null)
       setMenu(null)
       tip('no-tool', 'No tool: taps turn pages')
@@ -878,6 +907,12 @@ export function SheetViewerMockup() {
   const down = useRef<StagePoint | null>(null)
   const fingers = useRef(new Set<number>())
   function onStagePointerDown(event: React.PointerEvent<HTMLDivElement>) {
+    // A tap anywhere while a text box is open finishes it, and only that.
+    if (textEdit) {
+      finishText()
+      down.current = null
+      return
+    }
     // Pen, highlighter or eraser picked: the pointer marks the page, zoomed
     // in or not (two fingers still pinch and pan).
     if (markTool()) {
@@ -901,7 +936,12 @@ export function SheetViewerMockup() {
     down.current = null
     if (!start) return
     if (mode === 'annotate' && tool) {
-      if (tool === 'text') flash('Text boxes arrive in Phase 17')
+      // The Text tool: a tap on the page opens a text box there.
+      if (tool === 'text' && !custom && activeId !== null) {
+        const p = pagePoint({ clientX: start.x, clientY: start.y })
+        const moved = Math.hypot(event.clientX - start.x, event.clientY - start.y)
+        if (p && moved < 10 && p[0] >= 0 && p[0] <= 1 && p[1] >= 0 && p[1] <= 1) startTextBox(p)
+      }
       return
     }
     const end = { x: event.clientX, y: event.clientY, t: performance.now() }
@@ -927,6 +967,9 @@ export function SheetViewerMockup() {
     before: Mark[]
     removed: Set<string>
     last: [number, number]
+    // Each text mark's drawn box: text wraps, so its size is only known
+    // from the page.
+    textBoxes: Map<string, PageBox>
   } | null>(null)
   const markCount = useRef(0)
   function markTool() {
@@ -955,7 +998,13 @@ export function SheetViewerMockup() {
     event.currentTarget.setPointerCapture(event.pointerId)
     marking.current = { id: event.pointerId, type: event.pointerType }
     if (t === 'eraser') {
-      erasing.current = { key: pageKey, before: marksFor(pageKey), removed: new Set(), last: p }
+      erasing.current = {
+        key: pageKey,
+        before: marksFor(pageKey),
+        removed: new Set(),
+        last: p,
+        textBoxes: drawnTextBoxes(),
+      }
       eraseTo(p)
       return
     }
@@ -1014,7 +1063,7 @@ export function SheetViewerMockup() {
       (m) =>
         !e.removed.has(m.id) &&
         !hiddenLayers.includes(m.layer) &&
-        eraserTouches(m, from, p, eraserRadius, pageAspect),
+        eraserTouches(m, from, p, eraserRadius, pageAspect, e.textBoxes.get(m.id)),
     )
     if (!hit.length) return
     const ids = new Set(hit.map((m) => m.id))
@@ -1057,6 +1106,165 @@ export function SheetViewerMockup() {
       setMarksByPage((prev) => ({ ...prev, [e.key]: e.before }))
     }
   }
+
+  // Text marks (Phase 17). One text field stays mounted while the Text tool
+  // is picked, so a tap can move it into place and focus it inside the tap
+  // itself: iPad Safari raises the keyboard only for a focus made in the
+  // user's own gesture. Return starts a new line; a tap anywhere else, or
+  // another tool, finishes the box; a box finished empty adds nothing (or,
+  // when editing, removes the mark). Each finished box is one undo step.
+  const textFieldRef = useRef<HTMLTextAreaElement>(null)
+  const textWrapRef = useRef<HTMLDivElement>(null)
+  function openTextBox(edit: TextEdit) {
+    const wrap = textWrapRef.current
+    const field = textFieldRef.current
+    if (!wrap || !field) return
+    Object.assign(wrap.style, textBoxStyle(edit), { visibility: 'visible' })
+    wrap.dataset.value = edit.text
+    field.value = edit.text
+    // The page lifts itself clear of the keyboard; Safari mustn't scroll too.
+    field.focus({ preventScroll: true })
+    field.setSelectionRange(edit.text.length, edit.text.length)
+    setTextEdit(edit)
+  }
+  function startTextBox(p: [number, number]) {
+    const style = toolStyle.text
+    const size = SIZES.text[style.size]
+    // The first line's middle sits on the tap: its baseline 3/8 of a line
+    // below it (the line is 1.25 sizes, its baseline 1 size down).
+    const em = (size / 100) * pageAspect
+    if (hiddenLayers.includes(style.color)) {
+      setHiddenLayers(hiddenLayers.filter((l) => l !== style.color))
+      flash(`${LAYER_COLORS[style.color].name} unhidden`)
+    }
+    openTextBox({
+      key: pageKey,
+      x: Math.min(p[0], 0.9),
+      y: p[1] + em * (1 - TEXT_LINE_HEIGHT / 2),
+      layer: style.color,
+      size,
+      text: '',
+      original: null,
+    })
+  }
+  function editText(m: TextMark) {
+    finishText()
+    openTextBox({ ...m, key: pageKey, original: m })
+  }
+  // Put a finished box's change in place of the mark it edits (same id, same
+  // depth), or add it.
+  function placeText(key: string, original: TextMark | null, mark: TextMark | null) {
+    const list = marksFor(key)
+    const index = original ? list.findIndex((m) => m.id === original.id) : -1
+    const removed = original && index >= 0 ? [{ mark: original, index }] : []
+    setMarksByPage((prev) => {
+      const next = [...(prev[key] ?? list)]
+      if (index >= 0) {
+        if (mark) next[index] = mark
+        else next.splice(index, 1)
+      } else if (mark) next.push(mark)
+      return { ...prev, [key]: next }
+    })
+    if (removed.length || mark) record({ key, added: mark ? [mark] : [], removed })
+  }
+  function finishText() {
+    const edit = textEdit
+    if (!edit) return
+    closeTextBox()
+    const text = edit.text.replace(/\s+$/, '')
+    const { key, original } = edit
+    if (!text.trim()) {
+      if (original) placeText(key, original, null)
+      return
+    }
+    if (
+      original &&
+      text === original.text &&
+      edit.layer === original.layer &&
+      edit.size === original.size
+    )
+      return
+    if (hiddenLayers.includes(edit.layer)) {
+      setHiddenLayers(hiddenLayers.filter((l) => l !== edit.layer))
+      flash(`${LAYER_COLORS[edit.layer].name} unhidden`)
+    }
+    if (!original) markCount.current += 1
+    placeText(key, original, {
+      id: original?.id ?? `t${markCount.current}`,
+      kind: 'text',
+      layer: edit.layer,
+      x: edit.x,
+      y: edit.y,
+      size: edit.size,
+      text,
+      italic: original?.italic,
+    })
+  }
+  // Closes the box without keeping what's in it (Undo while typing).
+  function closeTextBox() {
+    textFieldRef.current?.blur()
+    setTextEdit(null)
+    setLift(0)
+  }
+  // A text mark dragged with the Text tool: dx, dy as shares of the page.
+  function moveText(m: TextMark, dx: number, dy: number) {
+    const em = (m.size / 100) * pageAspect
+    placeText(pageKey, m, {
+      ...m,
+      x: Math.max(0, Math.min(0.95, m.x + dx)),
+      y: Math.max(em, Math.min(1, m.y + dy)),
+    })
+  }
+  // Every drawn text mark's box on this page, as shares of the page.
+  function drawnTextBoxes() {
+    const boxes = new Map<string, PageBox>()
+    const page = pageBoxRef.current
+    const box = page?.getBoundingClientRect()
+    if (!page || !box?.width) return boxes
+    page.querySelectorAll<HTMLElement>('[data-text-mark]').forEach((el) => {
+      const r = el.getBoundingClientRect()
+      boxes.set(el.dataset.textMark ?? '', {
+        left: (r.left - box.left) / box.width,
+        right: (r.right - box.left) / box.width,
+        top: (r.top - box.top) / box.height,
+        bottom: (r.bottom - box.top) / box.height,
+      })
+    })
+    return boxes
+  }
+  // While a box is open, the page lifts just enough to keep it above the
+  // keyboard (the visual viewport's bottom), never past its own top, and
+  // settles back when it closes.
+  useEffect(() => {
+    if (!textEdit) return
+    function measure() {
+      const wrap = textWrapRef.current
+      const page = pageBoxRef.current
+      const stage = page?.parentElement
+      if (!wrap || !page || !stage) return
+      const applied = new DOMMatrixReadOnly(getComputedStyle(page).transform).m42
+      const r = wrap.getBoundingClientRect()
+      const top = r.top - applied
+      const bottom = r.bottom - applied
+      const vv = window.visualViewport
+      const visibleBottom = fakeKeyboard
+        ? window.innerHeight * 0.6
+        : vv
+          ? vv.offsetTop + vv.height
+          : window.innerHeight
+      const room = Math.max(0, top - stage.getBoundingClientRect().top - LIFT_GAP)
+      setLift(Math.min(room, Math.max(0, bottom + LIFT_GAP - visibleBottom)))
+    }
+    const raf = requestAnimationFrame(measure)
+    const vv = window.visualViewport
+    vv?.addEventListener('resize', measure)
+    vv?.addEventListener('scroll', measure)
+    return () => {
+      cancelAnimationFrame(raf)
+      vv?.removeEventListener('resize', measure)
+      vv?.removeEventListener('scroll', measure)
+    }
+  }, [textEdit, fakeKeyboard])
   // Undo and Redo (plan: marking, erasing and text edits, never hide/show;
   // the whole session's history). A change on another page — or another
   // piece in the queue — turns there first, then visibly applies.
@@ -1065,6 +1273,12 @@ export function SheetViewerMockup() {
   }
   const undoPending = useRef(false)
   function stepHistory(direction: 'undo' | 'redo') {
+    // While typing, Undo drops what's in the box (an edited mark stays as
+    // it was); Redo does nothing until the box closes.
+    if (textEdit) {
+      if (direction === 'undo') closeTextBox()
+      return
+    }
     if (mode !== 'annotate' || undoPending.current || marking.current) return
     const change = (direction === 'undo' ? history.done : history.undone).at(-1)
     if (!change) return
@@ -2135,6 +2349,8 @@ export function SheetViewerMockup() {
     if (optionsTool === 'eraser') setEraserSize(size)
     else if (optionsTool)
       setToolStyle({ ...toolStyle, [optionsTool]: { ...toolStyle[optionsTool], size } })
+    // An open text box takes the new size too.
+    if (optionsTool === 'text' && textEdit) setTextEdit({ ...textEdit, size: SIZES.text[size] })
   }
   const toolOptionsStyle = useAnchoredPanel(toolAnchorRef, menu === 'tool', 'below-center', {
     gap: 6,
@@ -2148,6 +2364,8 @@ export function SheetViewerMockup() {
     createPortal(
       <div
         style={{ ...toolOptionsStyle, width: 312 }}
+        // Picking a color or size keeps the text box's keyboard up.
+        onMouseDown={(event) => textEdit && event.preventDefault()}
         className="z-50 rounded-xl border border-border bg-paper px-3 pt-3 pb-3 font-sans text-ink shadow-xl select-none [--sv-hover:var(--color-paper-hover)]"
       >
         {optionsTool !== 'eraser' && (
@@ -2160,12 +2378,14 @@ export function SheetViewerMockup() {
                 <HitButton
                   key={c.name}
                   label={`${c.name}${hiddenLayers.includes(i) ? ' (hidden)' : ''}`}
-                  onClick={() =>
+                  onClick={() => {
                     setToolStyle({
                       ...toolStyle,
                       [optionsTool]: { ...toolStyle[optionsTool], color: i },
                     })
-                  }
+                    // An open text box takes the new color too.
+                    if (optionsTool === 'text' && textEdit) setTextEdit({ ...textEdit, layer: i })
+                  }}
                   faceClassName={FACE_HOVER}
                 >
                   {colorDot(i, hiddenLayers.includes(i), optionsStyle.color === i)}
@@ -2212,7 +2432,12 @@ export function SheetViewerMockup() {
         // the icon; the eraser has none.
         const own = key !== 'eraser' ? toolStyle[key] : null
         return (
-          <div key={key} ref={picked ? toolAnchorRef : undefined} className="relative">
+          <div
+            key={key}
+            ref={picked ? toolAnchorRef : undefined}
+            onMouseDown={(event) => key === 'text' && textEdit && event.preventDefault()}
+            className="relative"
+          >
             <HitButton
               label={picked ? `${label}: ${key === 'eraser' ? 'size' : 'color and size'}` : label}
               onClick={() => pickTool(key)}
@@ -2464,10 +2689,11 @@ export function SheetViewerMockup() {
               // marks over it in the same box.
               <div
                 ref={pageBoxRef}
-                className="relative"
+                className="relative transition-transform duration-200 ease-out motion-reduce:transition-none"
                 style={{
                   width: `min(100cqw, calc(100cqh * ${pageAspect}))`,
                   aspectRatio: pageAspect,
+                  transform: lift ? `translateY(${-lift}px)` : undefined,
                 }}
               >
                 <img
@@ -2497,6 +2723,74 @@ export function SheetViewerMockup() {
                   // back (I); with a tool picked, a touch there marks.
                   onShowLayer={annotating && !tool ? unhideFromGhost : undefined}
                 />
+                <TextMarks
+                  marks={pageMarks.filter(
+                    (m): m is TextMark => m.kind === 'text' && m.id !== textEdit?.original?.id,
+                  )}
+                  hidden={hiddenLayers}
+                  ghosts={ghostsOn}
+                  look={pageLook}
+                  drag={textDrag}
+                  onDrag={
+                    annotating && tool === 'text'
+                      ? {
+                          start: () => finishText(),
+                          move: (id, dx, dy) => setTextDrag({ id, dx, dy }),
+                          end: (m, dx, dy, moved) => {
+                            setTextDrag(null)
+                            if (moved) moveText(m, dx, dy)
+                            else editText(m)
+                          },
+                          cancel: () => setTextDrag(null),
+                        }
+                      : undefined
+                  }
+                >
+                  {/* The text box: mounted while the Text tool is picked (see
+                      openTextBox), shown while one is open. It sizes itself
+                      to what's typed (the grid's ::after copy), up to the
+                      page's right edge, where it wraps. */}
+                  {annotating && tool === 'text' && (
+                    <div
+                      ref={textWrapRef}
+                      data-value={textEdit?.text ?? ''}
+                      onPointerDown={(event) => event.stopPropagation()}
+                      onPointerUp={(event) => event.stopPropagation()}
+                      className="pointer-events-auto absolute inline-grid w-max font-hand after:invisible after:whitespace-pre-wrap after:content-[attr(data-value)_'_'] after:[grid-area:1/1] after:[overflow-wrap:anywhere]"
+                      style={{
+                        ...(textEdit ? textBoxStyle(textEdit) : { left: 0, top: 0 }),
+                        visibility: textEdit ? 'visible' : 'hidden',
+                        lineHeight: TEXT_LINE_HEIGHT,
+                        outline: `1.5px dashed ${textEdit ? layerColor(textEdit.layer, pageLook) : 'transparent'}`,
+                        outlineOffset: '0.25em',
+                        borderRadius: '0.15em',
+                      }}
+                    >
+                      <textarea
+                        ref={textFieldRef}
+                        rows={1}
+                        value={textEdit?.text ?? ''}
+                        onChange={(event) =>
+                          textEdit && setTextEdit({ ...textEdit, text: event.target.value })
+                        }
+                        onKeyDown={(event) => {
+                          if (event.key === 'Escape') {
+                            event.preventDefault()
+                            finishText()
+                          }
+                        }}
+                        aria-label="Text mark"
+                        spellCheck={false}
+                        autoCapitalize="off"
+                        className="min-w-[0.6em] resize-none overflow-hidden border-0 bg-transparent p-0 whitespace-pre-wrap outline-none [font:inherit] [grid-area:1/1] [overflow-wrap:anywhere]"
+                        style={{
+                          color: textEdit ? layerColor(textEdit.layer, pageLook) : undefined,
+                          fontStyle: textEdit?.italic ? 'italic' : undefined,
+                        }}
+                      />
+                    </div>
+                  )}
+                </TextMarks>
               </div>
             )
           )}
@@ -2616,6 +2910,13 @@ export function SheetViewerMockup() {
                 Hidden colors shown faintly (User Settings)
               </label>
               <label className="flex items-center gap-2">
+                <Checkbox
+                  checked={fakeKeyboard}
+                  onChange={(e) => setFakeKeyboard(e.target.checked)}
+                />
+                Pretend a keyboard covers the bottom 40% while typing
+              </label>
+              <label className="flex items-center gap-2">
                 <Checkbox checked={barDefault} onChange={(e) => setBarDefault(e.target.checked)} />
                 Notes banner by default (User Settings)
               </label>
@@ -2723,6 +3024,144 @@ const PRINT_FAINT = '#5c5349'
 const PRINT_FAINTER = '#b3a99e'
 const LETTER = { w: 612, h: 792 }
 const pt = (n: number) => `calc(${n} * 100cqw / ${LETTER.w})`
+// An open text box (Phase 17): a new one (original null) or an existing
+// text mark being edited, which is hidden while its box is open.
+type TextEdit = {
+  key: string
+  x: number
+  y: number
+  layer: number
+  size: number
+  italic?: boolean
+  text: string
+  original: TextMark | null
+}
+// Where a text mark (or its box) sits: its left edge at x, its first line's
+// box one size above the baseline, at its size (a percent of the page's
+// width, so cqw on the page-wide text layer), wrapping at the page's edge.
+function textBoxStyle(m: { x: number; y: number; size: number }): CSSProperties {
+  return {
+    left: `${m.x * 100}%`,
+    top: `calc(${m.y * 100}% - ${m.size}cqw)`,
+    fontSize: `${m.size}cqw`,
+    maxWidth: `calc(${(1 - m.x) * 100}% - 1cqw)`,
+  }
+}
+// How far above the keyboard an open text box stays, in px.
+const LIFT_GAP = 16
+
+// The page's text marks, as real text over it (plan: DOM elements, through
+// MarkdownText with the :shortcode: symbols), in Quintessential. Hidden
+// colors' text shows as a ghost like any mark. With the Text tool picked
+// (onDrag), a text mark takes the pointer: a tap edits it, a drag moves it.
+// Children (the open text box) share its page-wide container.
+function TextMarks({
+  marks,
+  hidden,
+  ghosts,
+  look,
+  drag,
+  onDrag,
+  children,
+}: {
+  marks: TextMark[]
+  hidden: number[]
+  ghosts: boolean
+  look: PageLook
+  drag: { id: string; dx: number; dy: number } | null
+  onDrag?: {
+    start: () => void
+    move: (id: string, dx: number, dy: number) => void
+    end: (m: TextMark, dx: number, dy: number, moved: boolean) => void
+    cancel: () => void
+  }
+  children?: ReactNode
+}) {
+  const press = useRef<{ x: number; y: number; moved: boolean; dx: number; dy: number } | null>(
+    null,
+  )
+  const shown = ghosts ? marks : marks.filter((m) => !hidden.includes(m.layer))
+  return (
+    <div className="pointer-events-none absolute inset-0" style={{ containerType: 'inline-size' }}>
+      {shown.map((m) => {
+        const ghost = hidden.includes(m.layer)
+        const live = onDrag && !ghost
+        const at = drag?.id === m.id ? { ...m, x: m.x + drag.dx, y: m.y + drag.dy } : m
+        return (
+          <div
+            key={m.id}
+            data-text-mark={m.id}
+            className={`absolute w-max [overflow-wrap:anywhere] ${
+              live ? 'pointer-events-auto cursor-move touch-none' : ''
+            }`}
+            style={{
+              ...textBoxStyle(at),
+              lineHeight: TEXT_LINE_HEIGHT,
+              color: ghost ? '#7a746e' : layerColor(m.layer, look),
+              opacity: ghost ? GHOST_OPACITY : 1,
+              fontStyle: m.italic ? 'italic' : undefined,
+            }}
+            onPointerDown={
+              live
+                ? (event) => {
+                    event.stopPropagation()
+                    if (event.button !== 0) return
+                    onDrag.start()
+                    event.currentTarget.setPointerCapture(event.pointerId)
+                    press.current = {
+                      x: event.clientX,
+                      y: event.clientY,
+                      moved: false,
+                      dx: 0,
+                      dy: 0,
+                    }
+                  }
+                : undefined
+            }
+            onPointerMove={
+              live
+                ? (event) => {
+                    const p = press.current
+                    const page = event.currentTarget.parentElement?.getBoundingClientRect()
+                    if (!p || !page?.width) return
+                    const mx = event.clientX - p.x
+                    const my = event.clientY - p.y
+                    if (!p.moved && Math.hypot(mx, my) < 8) return
+                    p.moved = true
+                    p.dx = mx / page.width
+                    p.dy = my / page.height
+                    onDrag.move(m.id, p.dx, p.dy)
+                  }
+                : undefined
+            }
+            onPointerUp={
+              live
+                ? (event) => {
+                    event.stopPropagation()
+                    const p = press.current
+                    press.current = null
+                    if (p) onDrag.end(m, p.dx, p.dy, p.moved)
+                  }
+                : undefined
+            }
+            onPointerCancel={
+              live
+                ? () => {
+                    press.current = null
+                    onDrag.cancel()
+                  }
+                : undefined
+            }
+          >
+            <MarkdownText className="font-hand!">{m.text}</MarkdownText>
+          </div>
+        )
+      })}
+      {children}
+    </div>
+  )
+}
+
 // The page's marks over it, in each layer's color for the page's look. A
 // hidden layer's marks stay as a faint gray ghost (H2) in Play and
 // Annotate, so hiding never reads as "nothing here"; in Annotate each ghost
@@ -2756,20 +3195,24 @@ function PageMarks({
   const shown = ghosts ? marks : marks.filter((m) => !hidden.includes(m.layer))
   return (
     <>
+      {/* Strokes only; text marks are real text (TextMarks). */}
       <svg
         viewBox={`0 0 ${w} ${h}`}
         className="pointer-events-none absolute inset-0 h-full w-full"
         aria-hidden="true"
       >
-        {shown.map((m) => (
-          <MarkShape
-            key={m.id}
-            mark={m}
-            ghost={hidden.includes(m.layer)}
-            look={look}
-            aspect={aspect}
-          />
-        ))}
+        {shown.map(
+          (m) =>
+            m.kind === 'stroke' && (
+              <MarkShape
+                key={m.id}
+                mark={m}
+                ghost={hidden.includes(m.layer)}
+                look={look}
+                aspect={aspect}
+              />
+            ),
+        )}
         {live && (
           <MarkShape
             mark={live}
@@ -2833,23 +3276,8 @@ function MarkShape({
   live?: boolean
 }) {
   const w = MARKS_W
-  const h = w / aspect
   const color = ghost ? '#7a746e' : layerColor(m.layer, look)
-  if (m.kind === 'text')
-    return (
-      <text
-        x={m.x * w}
-        y={m.y * h}
-        fill={color}
-        opacity={ghost ? GHOST_OPACITY : 1}
-        fontSize={(m.size / 100) * w}
-        fontStyle={m.italic ? 'italic' : undefined}
-        fontWeight={600}
-        className="font-display"
-      >
-        {m.text}
-      </text>
-    )
+  if (m.kind === 'text') return null
   const highlight = m.tool === 'highlighter'
   return (
     <path

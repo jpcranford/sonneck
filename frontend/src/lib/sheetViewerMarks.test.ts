@@ -58,6 +58,18 @@ describe('eraserTouches', () => {
     expect(eraserTouches(text, [0.52, 0.49], [0.52, 0.49], 0.005, ASPECT)).toBe(true)
     expect(eraserTouches(text, [0.52, 0.7], [0.52, 0.7], 0.005, ASPECT)).toBe(false)
   })
+  it("reaches a text's second line", () => {
+    const twoLines: TextMark = { ...text, text: 'Gt. to Ped.\noff at bar 12' }
+    // The second line sits 1.25 sizes below the first: about 0.023 of the
+    // height on a Letter page at size 2.4.
+    expect(eraserTouches(twoLines, [0.52, 0.515], [0.52, 0.515], 0.002, ASPECT)).toBe(true)
+    expect(eraserTouches(text, [0.52, 0.515], [0.52, 0.515], 0.002, ASPECT)).toBe(false)
+  })
+  it("uses a text's drawn box when it's known", () => {
+    const box = { left: 0.5, top: 0.48, right: 0.6, bottom: 0.56 }
+    expect(eraserTouches(text, [0.58, 0.55], [0.58, 0.55], 0.002, ASPECT, box)).toBe(true)
+    expect(eraserTouches(text, [0.58, 0.55], [0.58, 0.55], 0.002, ASPECT)).toBe(false)
+  })
 })
 
 describe('applyChange', () => {
