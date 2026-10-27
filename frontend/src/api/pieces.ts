@@ -180,6 +180,9 @@ export interface SearchPiecesParams {
   /** Pieces with a non-blank *effective* IMSLP number (own or inherited
    * from their book) — same tri-state shape as `bookless` now. */
   hasImslpNumber?: boolean
+  /** Pieces the signed-in account has annotated: marked in the Sheet Viewer,
+   * or written notes on (its own only) — tri-state like `bookless`. */
+  hasAnnotations?: boolean
   /** Book Details page: every piece belonging to this book, sorted by
    * start page ascending (server-side tie-break: a same-start-page 1-page
    * piece sorts before a longer one) instead of the default newest-first
@@ -239,6 +242,7 @@ export interface PieceFacetsParams {
   practiceStatusSlot?: 'want_to_learn' | 'practicing' | 'learned'
   bookless?: boolean
   hasImslpNumber?: boolean
+  hasAnnotations?: boolean
 }
 
 /** practiceStatus has no separate lookup table/ID (a CHECK constraint on
@@ -259,6 +263,7 @@ export interface PieceFacets {
   favorite: number
   bookless: number
   hasImslpNumber: number
+  hasAnnotations: number
 }
 
 export function getPieceFacets(params: PieceFacetsParams = {}): Promise<PieceFacets> {

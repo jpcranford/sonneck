@@ -137,3 +137,58 @@ func TestUserSettings_GhostMarks(t *testing.T) {
 		t.Error("ghostMarks didn't save as off")
 	}
 }
+
+// "Has annotations" (Filter Drawer): the pieces the caller has marked or
+// written notes on — their own only — as a tri-state filter with its live
+// count.
+func TestHasAnnotationsFilterAndCount(t *testing.T) {
+	h, conn := newTestServerWithDB(t)
+	marked := createTestPiece(t, h, map[string]any{"title": "Marked"})
+	plain := createTestPiece(t, h, map[string]any{"title": "Plain"})
+	theirs := createTestPiece(t, h, map[string]any{"title": "Marked by someone else"})
+	noted := createTestPiece(t, h, map[string]any{"title": "Noted", "userNotes": "Slow the coda."})
+	blank := createTestPiece(t, h, map[string]any{"title": "Blank notes", "userNotes": "   "})
+
+	mark := []map[string]any{{"id": "t", "kind": "text", "layer": 0, "x": 0.1, "y": 0.1, "size": 1.8, "text": "rit."}}
+	if rec := doJSON(t, h, http.MethodPut, apiPiecesURL(marked.ID)+"/annotations/1", map[string]any{"marks": mark}); rec.Code != http.StatusOK {
+		t.Fatalf("PUT: status %d, body %s", rec.Code, rec.Body.String())
+	}
+	if _, err := conn.Exec(`INSERT INTO users (id, display_name) VALUES (2, 'Other')`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := conn.Exec(`INSERT INTO piece_annotations (user_id, piece_id, page, marks) VALUES (2, ?, 1, '[]')`, theirs.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	ids := func(query string) map[int64]bool {
+		var results []pieceResponse
+		decodeData(t, doJSON(t, h, http.MethodGet, "/api/pieces?"+query, nil), &results)
+		got := map[int64]bool{}
+		for _, r := range results {
+			got[r.ID] = true
+		}
+		return got
+	}
+	if got := ids("hasAnnotations=true"); len(got) != 2 || !got[marked.ID] || !got[noted.ID] {
+		t.Errorf("hasAnnotations=true returned %v, want %d and %d", got, marked.ID, noted.ID)
+	}
+	if got := ids("hasAnnotations=false"); len(got) != 3 || !got[plain.ID] || !got[theirs.ID] || !got[blank.ID] {
+		t.Errorf("hasAnnotations=false returned %v, want %d, %d and %d", got, plain.ID, theirs.ID, blank.ID)
+	}
+	if rec := doJSON(t, h, http.MethodGet, "/api/pieces?hasAnnotations=maybe", nil); rec.Code != http.StatusBadRequest {
+		t.Errorf("a bad value: status %d, want 400", rec.Code)
+	}
+
+	var facets struct {
+		HasAnnotations int `json:"hasAnnotations"`
+	}
+	decodeData(t, doJSON(t, h, http.MethodGet, "/api/pieces/facets", nil), &facets)
+	if facets.HasAnnotations != 2 {
+		t.Errorf("hasAnnotations count = %d, want 2", facets.HasAnnotations)
+	}
+	// The count narrows with the other filters, never with its own.
+	decodeData(t, doJSON(t, h, http.MethodGet, "/api/pieces/facets?query=Plain&hasAnnotations=true", nil), &facets)
+	if facets.HasAnnotations != 0 {
+		t.Errorf("hasAnnotations count while searching Plain = %d, want 0", facets.HasAnnotations)
+	}
+}

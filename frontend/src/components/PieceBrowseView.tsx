@@ -247,7 +247,12 @@ export function PieceBrowseView({
   const activeCount = activePieceFilterCount(drawerFilters)
 
   function clearDrawerFilter(field: keyof PieceFilterState, value?: string) {
-    if (field === 'favorite' || field === 'bookless' || field === 'hasImslpNumber') {
+    if (
+      field === 'favorite' ||
+      field === 'bookless' ||
+      field === 'hasImslpNumber' ||
+      field === 'hasAnnotations'
+    ) {
       setDrawerFilters((f) => ({ ...f, [field]: 'neutral' }))
       return
     }
@@ -272,6 +277,15 @@ export function PieceBrowseView({
             field: 'hasImslpNumber' as const,
             label: 'Has IMSLP number',
             state: drawerFilters.hasImslpNumber,
+          },
+        ]
+      : []),
+    ...(drawerFilters.hasAnnotations !== 'neutral'
+      ? [
+          {
+            field: 'hasAnnotations' as const,
+            label: 'Has annotations',
+            state: drawerFilters.hasAnnotations,
           },
         ]
       : []),
@@ -447,6 +461,7 @@ export function PieceBrowseView({
         hideFavorite={filters?.favorite !== undefined}
         hideBookless={filters?.bookless !== undefined}
         hideHasImslpNumber={filters?.hasImslpNumber !== undefined}
+        hideHasAnnotations={filters?.hasAnnotations !== undefined}
         hidePracticeStatus={
           filters?.practiceStatus !== undefined || filters?.practiceStatusSlot !== undefined
         }

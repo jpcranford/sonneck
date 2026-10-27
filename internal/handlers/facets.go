@@ -69,6 +69,9 @@ type PieceFacets struct {
 	Favorite         int           `json:"favorite"`
 	Bookless         int           `json:"bookless"`
 	HasImslpNumber   int           `json:"hasImslpNumber"`
+	// HasAnnotations counts the pieces the caller has marked in the Sheet
+	// Viewer or written notes on (their own only).
+	HasAnnotations int `json:"hasAnnotations"`
 }
 
 type BookFacets struct {
@@ -276,6 +279,14 @@ func (s *Server) handlePieceFacets(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	annWhere, annArgs := buildWhere("hasAnnotations")
+	hasAnnotations, err := countPiecesMatching(ctx, s.DB, annotatedPiecesCondition, textJoin, annWhere,
+		append(annotatedPiecesArgs(user.ID), annArgs...))
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+
 	api.WriteData(w, http.StatusOK, PieceFacets{
 		Keys:             keys,
 		Instruments:      instruments,
@@ -285,6 +296,7 @@ func (s *Server) handlePieceFacets(w http.ResponseWriter, r *http.Request) {
 		Favorite:         favorite,
 		Bookless:         bookless,
 		HasImslpNumber:   hasImslpNumber,
+		HasAnnotations:   hasAnnotations,
 	})
 }
 
