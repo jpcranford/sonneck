@@ -1118,7 +1118,14 @@ export function SheetViewerMockup() {
     field.value = edit.text
     // The page lifts itself clear of the keyboard; Safari mustn't scroll too.
     field.focus({ preventScroll: true })
-    field.setSelectionRange(edit.text.length, edit.text.length)
+    const end = edit.text.length
+    field.setSelectionRange(end, end)
+    // A touch's own click follows the tap into the field just opened and
+    // would put the cursor where the finger was: for a moment, put it back
+    // at the end. (A deliberate tap in the box later still moves it.)
+    const keepEnd = () => field.setSelectionRange(end, end)
+    field.addEventListener('click', keepEnd, { once: true })
+    window.setTimeout(() => field.removeEventListener('click', keepEnd), 400)
     setTextEdit(edit)
   }
   function startTextBox(p: [number, number]) {

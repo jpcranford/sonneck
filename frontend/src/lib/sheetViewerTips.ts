@@ -3,8 +3,9 @@
 // tips again" starts them over. Feedback pills ("Double-turn ignored") are
 // not tips and always show.
 //
-// The mockups count in this browser's storage. The real viewer's storage is
-// decided when it's built.
+// Counted in this browser's storage, per device (user, 2026-10-27): tips
+// are about this device's taps and gestures, so a new device shows them
+// again. The real viewer and the mockups share the count.
 
 export const TIP_SHOWS = 3
 const KEY = 'sonneck-sheet-viewer-tips'

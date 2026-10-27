@@ -19,6 +19,7 @@ import { Radio } from '../components/Radio'
 import { SingleSelect } from '../components/SingleSelect'
 import { Toggle } from '../components/Toggle'
 import { sortPracticeStatuses } from '../lib/practiceStatusOrder'
+import { resetTips } from '../lib/sheetViewerTips'
 import { usePageTitle } from '../lib/usePageTitle'
 import { hasPermission, useAuth } from '../lib/AuthContext'
 import { ApiError } from '../api/client'
@@ -438,6 +439,8 @@ export function UserSettingsPage() {
   const queryClient = useQueryClient()
 
   const [name, setName] = useState(me.displayName)
+  // Sheet Viewer › Tips: set once "Show tips again" has been pressed here.
+  const [tipsReset, setTipsReset] = useState(false)
   // Enter/Escape on the name field both end in a blur (the actual save
   // trigger — see that input's own onBlur) — Escape needs blur to run
   // without saving the just-reverted text. Since `name` is controlled
@@ -677,6 +680,38 @@ export function UserSettingsPage() {
                   id="notes-bar-default"
                   disabled={settingsLoading}
                 />
+              }
+            />
+            <SettingsRow
+              label="Show hidden colors faintly"
+              help="When you hide a color in Annotate, its marks stay on the page as faint gray ghosts, so you can tell something is there; in Annotate, tap one to show its color again. Turned off, hidden marks don't show at all."
+              control={
+                <Toggle
+                  checked={settings?.ghostMarks ?? true}
+                  onChange={(checked) => patchSettings({ ghostMarks: checked })}
+                  label=""
+                  id="ghost-marks"
+                  disabled={settingsLoading}
+                />
+              }
+            />
+            {/* Tips are counted in this browser (lib/sheetViewerTips.ts):
+                they're about this device's taps and gestures. */}
+            <SettingsRow
+              label="Tips"
+              help="The Sheet Viewer explains its taps and tools the first few times you use them. Show them again from the start, on this device."
+              control={
+                <button
+                  type="button"
+                  onClick={() => {
+                    resetTips()
+                    setTipsReset(true)
+                  }}
+                  disabled={tipsReset}
+                  className="cursor-pointer rounded-lg border border-border bg-paper-raised px-3 py-1.5 text-sm font-medium whitespace-nowrap text-ink hover:border-accent disabled:opacity-50"
+                >
+                  {tipsReset ? 'Tips will show again' : 'Show tips again'}
+                </button>
               }
             />
           </SettingsCard>

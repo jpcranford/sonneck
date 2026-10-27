@@ -11,6 +11,8 @@ import { createPortal } from 'react-dom'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  IconArrowBackUp,
+  IconArrowForwardUp,
   IconArrowLeft,
   IconCheck,
   IconChevronLeft,
@@ -22,6 +24,8 @@ import {
   IconClock,
   IconContrast,
   IconDots,
+  IconEye,
+  IconEyeOff,
   IconGripVertical,
   IconInfoCircle,
   IconListNumbers,
@@ -35,10 +39,12 @@ import {
   IconPlaylist,
   IconPlus,
   IconRefresh,
+  IconStack2,
   IconStopwatch,
   IconSun,
   IconX,
 } from '@tabler/icons-react'
+import { getAnnotations, savePageAnnotations, type AnnotationPages } from '../api/annotations'
 import { ApiError } from '../api/client'
 import { getConfig } from '../api/config'
 import {
@@ -71,6 +77,7 @@ import {
   type UserSettings,
 } from '../api/userSettings'
 import { InfoTooltip } from '../components/InfoTooltip'
+import { PageMarks, TextMarks } from '../components/SheetViewerAnnotations'
 import { MarkdownText } from '../components/MarkdownText'
 import { PracticeStatusKeyIcon } from '../components/PracticeStatusIcon'
 import { Toggle } from '../components/Toggle'
@@ -78,6 +85,35 @@ import { useAnchoredPanel } from '../hooks/useAnchorRect'
 import { useNoPageScroll } from '../hooks/useNoPageScroll'
 import { useToday } from '../hooks/useToday'
 import { stageTurn, type StagePoint } from '../lib/sheetViewerGestures'
+import {
+  applyChange,
+  eraserTouches,
+  removedSince,
+  TEXT_LINE_HEIGHT,
+  type Mark,
+  type MarkChange,
+  type MarkPoint,
+  type PageBox,
+  type StrokeMark,
+  type TextMark,
+} from '../lib/sheetViewerMarks'
+import { takeTip } from '../lib/sheetViewerTips'
+import {
+  describeChange,
+  LAYER_COLORS,
+  layerColor,
+  LIFT_GAP,
+  SIZES,
+  textBoxStyle,
+  TOOL_START,
+  TOOLS,
+  TOOLS_INLINE_MIN_WIDTH,
+  type ColorTool,
+  type PageLook,
+  type Size,
+  type TextEdit,
+  type Tool,
+} from '../lib/sheetViewerTools'
 import { hasPermission, useAuth } from '../lib/AuthContext'
 import { useShortcutBlocker } from '../lib/shortcuts'
 import { sortPracticeStatuses } from '../lib/practiceStatusOrder'
@@ -91,8 +127,9 @@ import { usePageTitle } from '../lib/usePageTitle'
 // zones, swipes, pedal keys, debounced), the clock, photo filters and the
 // edge margin, and Info — your notes, practice status and the piece's
 // details — with the notes bar. Settings are saved: the clock's per account,
-// the page's look and the notes bar per piece. Annotate shows as coming soon
-// until its phase.
+// the page's look and the notes bar per piece. Annotate (phase 18): pen,
+// highlighter, text and eraser, in six colors that can be hidden per piece,
+// with undo across the session, each account's marks saved page by page.
 //
 // Every control's hit area is 48×48: a 48px button around a smaller drawn
 // face. Each carries data-hit for frontend/scripts/check-hit-areas.mjs.
@@ -143,6 +180,11 @@ const HINT_MS = 1800
 // How long a page may take before "Preparing page…" shows, so a page that's
 // already rendered never flashes it.
 const SLOW_PAGE_MS = 300
+// An undo or redo of a change on another page turns there first, then
+// applies it this long after the page shows, so you see it happen — or
+// after UNDO_WAIT_MS if the page never shows.
+const UNDO_TURN_MS = 450
+const UNDO_WAIT_MS = 10_000
 // Page-turner pedals pair as keyboards sending this fixed set; no remapping.
 const BACK_KEYS = ['ArrowLeft', 'ArrowUp', 'PageUp']
 const FORWARD_KEYS = ['ArrowRight', 'ArrowDown', 'PageDown', ' ', 'Enter']
@@ -412,7 +454,9 @@ type QueueItem =
       notes: string | null
       durationSeconds: number | null
     }
-type StartPage = 'first' | 'last'
+// Where an item opens: its first or last page, or a given page (an undo
+// that turns back to another piece).
+type StartPage = 'first' | 'last' | number
 
 interface Session {
   kind: 'piece' | 'list' | 'setlist'
@@ -447,6 +491,144 @@ interface SessionShared {
   spentOn: (pieceId: number) => number
   addSpent: (pieceId: number, ms: number) => void
   hint: string | null
+  annotations: AnnotationSession
+}
+
+// Annotate's session-long state, which outlives each item's viewer: the
+// mode, the picked tool and each tool's color and size, every visited
+// piece's marks (as loaded, then as edited), the undo history, and saving.
+// A page is saved whole, shortly after its last change, and when the
+// viewer closes or the app goes to the background.
+interface AnnotationSession {
+  mode: 'play' | 'annotate'
+  setMode: (mode: 'play' | 'annotate') => void
+  tool: Tool | null
+  setTool: (tool: Tool | null) => void
+  toolStyle: Record<ColorTool, { color: number; size: Size }>
+  setToolStyle: (style: Record<ColorTool, { color: number; size: Size }>) => void
+  eraserSize: Size
+  setEraserSize: (size: Size) => void
+  /** Marks by piece id, then page; a piece not loaded yet is missing. */
+  pages: Record<number, AnnotationPages>
+  load: (pieceId: number) => void
+  update: (pieceId: number, page: number, change: (marks: Mark[]) => Mark[]) => void
+  history: { done: MarkChange[]; undone: MarkChange[] }
+  record: (change: MarkChange) => void
+  /** Undoes (or redoes) the last change, wherever it was. */
+  apply: (direction: 'undo' | 'redo') => void
+  /** A step handed to the item it turns to, applied once its page shows. */
+  pending: { key: string; direction: 'undo' | 'redo' } | null
+  setPending: (step: { key: string; direction: 'undo' | 'redo' } | null) => void
+  /** Where a failed load or save is reported: the item showing. */
+  setNotify: (notify: (text: string) => void) => void
+}
+
+function useAnnotationSession(): AnnotationSession {
+  const [mode, setMode] = useState<'play' | 'annotate'>('play')
+  const [tool, setTool] = useState<Tool | null>(null)
+  const [toolStyle, setToolStyle] = useState(TOOL_START)
+  const [eraserSize, setEraserSize] = useState<Size>('M')
+  const [pages, setPages] = useState<Record<number, AnnotationPages>>({})
+  const [history, setHistory] = useState<{ done: MarkChange[]; undone: MarkChange[] }>({
+    done: [],
+    undone: [],
+  })
+  const [pending, setPending] = useState<{ key: string; direction: 'undo' | 'redo' } | null>(null)
+  // Mirrors of the two states, read by saves and by steps applied from a
+  // timer, which mustn't see an older render's copy.
+  const pagesRef = useRef(pages)
+  const historyRef = useRef(history)
+  const loading = useRef(new Set<number>())
+  const unsaved = useRef(new Set<string>())
+  const saveTimer = useRef<number | undefined>(undefined)
+  const notify = useRef<(text: string) => void>(() => {})
+  function setAllPages(next: Record<number, AnnotationPages>) {
+    pagesRef.current = next
+    setPages(next)
+  }
+  function load(pieceId: number) {
+    if (pagesRef.current[pieceId] || loading.current.has(pieceId)) return
+    loading.current.add(pieceId)
+    getAnnotations(pieceId)
+      .then((loaded) => setAllPages({ ...pagesRef.current, [pieceId]: loaded }))
+      .catch(() => {
+        loading.current.delete(pieceId)
+        notify.current('Couldn’t load your marks')
+      })
+  }
+  function flush() {
+    window.clearTimeout(saveTimer.current)
+    const keys = [...unsaved.current]
+    unsaved.current.clear()
+    for (const key of keys) {
+      const [pieceId, page] = key.split(':').map(Number)
+      savePageAnnotations(pieceId, page, pagesRef.current[pieceId]?.[page] ?? []).catch(() =>
+        notify.current('Couldn’t save your marks'),
+      )
+    }
+  }
+  function update(pieceId: number, page: number, change: (marks: Mark[]) => Mark[]) {
+    const piece = pagesRef.current[pieceId] ?? {}
+    setAllPages({ ...pagesRef.current, [pieceId]: { ...piece, [page]: change(piece[page] ?? []) } })
+    unsaved.current.add(`${pieceId}:${page}`)
+    window.clearTimeout(saveTimer.current)
+    saveTimer.current = window.setTimeout(flush, SAVE_DELAY_MS)
+  }
+  function setAllHistory(next: { done: MarkChange[]; undone: MarkChange[] }) {
+    historyRef.current = next
+    setHistory(next)
+  }
+  function record(change: MarkChange) {
+    setAllHistory({ done: [...historyRef.current.done, change], undone: [] })
+  }
+  function apply(direction: 'undo' | 'redo') {
+    const h = historyRef.current
+    const change = (direction === 'undo' ? h.done : h.undone).at(-1)
+    if (!change) return
+    const [pieceId, page] = change.key.split(':').map(Number)
+    update(pieceId, page, (marks) => applyChange(marks, change, direction))
+    setAllHistory(
+      direction === 'undo'
+        ? { done: h.done.slice(0, -1), undone: [...h.undone, change] }
+        : { done: [...h.done, change], undone: h.undone.slice(0, -1) },
+    )
+  }
+  // Closing the viewer, or the app going to the background, saves at once.
+  const flushRef = useRef(flush)
+  useEffect(() => {
+    flushRef.current = flush
+  })
+  useEffect(() => {
+    const onHide = () => {
+      if (document.visibilityState === 'hidden') flushRef.current()
+    }
+    document.addEventListener('visibilitychange', onHide)
+    return () => {
+      document.removeEventListener('visibilitychange', onHide)
+      flushRef.current()
+    }
+  }, [])
+  return {
+    mode,
+    setMode,
+    tool,
+    setTool,
+    toolStyle,
+    setToolStyle,
+    eraserSize,
+    setEraserSize,
+    pages,
+    load,
+    update,
+    history,
+    record,
+    apply,
+    pending,
+    setPending,
+    setNotify: (fn) => {
+      notify.current = fn
+    },
+  }
 }
 
 function useSessionShared(hint: string | null): SessionShared {
@@ -466,7 +648,8 @@ function useSessionShared(hint: string | null): SessionShared {
   function addSpent(pieceId: number, ms: number) {
     spent.current.set(pieceId, spentOn(pieceId) + ms)
   }
-  return { swStart, swAcc, setSwStart, setSwAcc, allowTurn, spentOn, addSpent, hint }
+  const annotations = useAnnotationSession()
+  return { swStart, swAcc, setSwStart, setSwAcc, allowTurn, spentOn, addSpent, hint, annotations }
 }
 
 function pieceItem(piece: SetlistPieceSummary, key: string): QueueItem {
@@ -723,7 +906,9 @@ function SheetViewer({
 
   // Arriving backward from the next item starts on this one's last page,
   // known once the piece has loaded.
-  const [pageState, setPage] = useState<number | 'last'>(startPage === 'last' ? 'last' : 1)
+  const [pageState, setPage] = useState<number | 'last'>(
+    startPage === 'last' ? 'last' : startPage === 'first' ? 1 : startPage,
+  )
   const page = pageState === 'last' ? pageCount : pageState
   // Per page URL: its finished drawing (PageDrawing); failed to load. A
   // retry bumps attempt, which remounts the failed page.
@@ -731,9 +916,9 @@ function SheetViewer({
   const [failed, setFailed] = useState<Record<string, boolean>>({})
   const [attempt, setAttempt] = useState(0)
   // An empty Practice List opens with its queue showing what to do.
-  const [menu, setMenu] = useState<'clock' | 'more' | 'photo' | 'info' | 'queue' | null>(
-    session.kind === 'list' && !item ? 'queue' : null,
-  )
+  const [menu, setMenu] = useState<
+    'clock' | 'more' | 'photo' | 'info' | 'queue' | 'layers' | 'tool' | null
+  >(session.kind === 'list' && !item ? 'queue' : null)
   const [closeArmed, setCloseArmed] = useState(false)
   // A pill the session handed over (moving to the next item shows its
   // name), shown on arrival.
@@ -848,6 +1033,500 @@ function SheetViewer({
   const photoChanged =
     photo.brightness !== 100 || photo.contrast !== 100 || photo.grayscale || photo.invert
 
+  // Shows a page of this item (a turn, or an undo turning back).
+  function showPage(next: number) {
+    setPage(next)
+    if (pieceId === null) return
+    // Pages leaving the preload window unmount; drop their "ready" so one
+    // that comes back shows only once it's decoded again.
+    const keep = new Set(
+      [next - 1, next, next + 1, next + 2].map((p) => getPiecePageUrl(pieceId, p, pageVersion)),
+    )
+    setReady((r) => Object.fromEntries(Object.entries(r).filter(([url]) => keep.has(url))))
+  }
+
+  // Annotate (plan phases 11–18, built from the mockup). The mode, the
+  // tools and the undo history belong to the session (useAnnotationSession),
+  // so they carry on into the next item. Marks are the account's own, saved
+  // a page at a time; hidden colors are kept per piece. A custom setlist
+  // entry has nothing to annotate.
+  const annot = session.shared.annotations
+  const annotating = annot.mode === 'annotate' && !custom
+  const { tool, toolStyle, eraserSize, setToolStyle, setEraserSize } = annot
+  const eraserRadius = SIZES.eraser[eraserSize] / 200
+  const hiddenLayers = LAYER_COLORS.map((_, i) => i).filter((i) => practice.hiddenColors & (1 << i))
+  function setHiddenLayers(layers: number[]) {
+    setPractice({ hiddenColors: layers.reduce((mask, l) => mask | (1 << l), 0) })
+  }
+  const ghostsOn = settings?.ghostMarks ?? true
+  // The page's look, for the colors: inverted (Dark Mode Scores or the
+  // photo panel's Invert), the dark theme's dimmed page, or white.
+  const pageLook: PageLook = invertLocked || photo.invert ? 'dark' : dark ? 'dim' : 'light'
+  useEffect(() => {
+    if (pieceId !== null) annot.load(pieceId)
+  }, [pieceId, annot])
+  useEffect(() => {
+    annot.setNotify(flash)
+  })
+  const loadedPages = pieceId !== null ? annot.pages[pieceId] : undefined
+  const pageKey = `${pieceId}:${page}`
+  const pageMarks = loadedPages?.[page] ?? []
+  const marksFor = (key: string) => {
+    const [pid, pg] = key.split(':').map(Number)
+    return annot.pages[pid]?.[pg] ?? []
+  }
+  const updateKey = (key: string, change: (marks: Mark[]) => Mark[]) => {
+    const [pid, pg] = key.split(':').map(Number)
+    annot.update(pid, pg, change)
+  }
+
+  function tip(id: string, text: string) {
+    if (takeTip(id)) flash(text)
+  }
+  function enterAnnotate() {
+    annot.setMode('annotate')
+    annot.setTool(null)
+    setMenu(null)
+    tip('annotate', 'Annotate: pick a tool to mark; until then taps turn pages')
+  }
+  function leaveAnnotate() {
+    finishText()
+    annot.setMode('play')
+    annot.setTool(null)
+    setMenu(null)
+    tip('play', 'Play: taps turn pages')
+  }
+  // Tapping the picked tool again opens its color and size (the eraser's,
+  // its size); tapping it once more, options showing, puts it down, so taps
+  // turn pages again.
+  function pickTool(key: Tool) {
+    if (tool !== key) {
+      finishText()
+      annot.setTool(key)
+      setMenu(null)
+      tip(
+        `tool-${key}`,
+        key === 'text'
+          ? 'Text: tap the page to write; tap text to edit it, or drag it to move it'
+          : `${TOOLS.find((t) => t.key === key)?.label}: taps mark the page`,
+      )
+    } else if (menu !== 'tool') {
+      setMenu('tool')
+    } else {
+      finishText()
+      annot.setTool(null)
+      setMenu(null)
+      tip('no-tool', 'No tool: taps turn pages')
+    }
+  }
+
+  // Marking. Strokes go through perfect-freehand (lib/sheetViewerMarks.ts)
+  // with an Apple Pencil's real pressure, or pressure simulated from speed
+  // for a finger or mouse. Every point is a share of the page.
+  const pageBoxRef = useRef<HTMLDivElement>(null)
+  // The page showing's drawing, once it's ready: its shape is the page's.
+  const drawingNow = ready[getPiecePageUrl(pieceId ?? 0, page, pageVersion)]
+  const pageAspect = drawingNow
+    ? Number(drawingNow.dataset.cssWidth) / Number(drawingNow.dataset.cssHeight)
+    : 8.5 / 11
+  const [live, setLive] = useState<StrokeMark | null>(null)
+  const [eraserAt, setEraserAt] = useState<[number, number] | null>(null)
+  const marking = useRef<{ id: number; type: string } | null>(null)
+  const liveRef = useRef<StrokeMark | null>(null)
+  const erasing = useRef<{
+    key: string
+    before: Mark[]
+    removed: Set<string>
+    last: [number, number]
+    textBoxes: Map<string, PageBox>
+  } | null>(null)
+  // Marks are only made once the page's saved marks are in, so a load can't
+  // replace them.
+  function markTool() {
+    if (!annotating || pieceId === null || !loadedPages || !drawingNow) return null
+    return tool === 'pen' || tool === 'highlighter' || tool === 'eraser' ? tool : null
+  }
+  function pagePoint(event: { clientX: number; clientY: number }): [number, number] | null {
+    const box = pageBoxRef.current?.getBoundingClientRect()
+    if (!box?.width) return null
+    return [(event.clientX - box.left) / box.width, (event.clientY - box.top) / box.height]
+  }
+  // A new mark's id: unique on the page, and across devices editing it.
+  // getRandomValues, not randomUUID: randomUUID only exists over HTTPS, and
+  // Sonneck is usually reached over plain HTTP on the local network.
+  function newMarkId() {
+    return Array.from(crypto.getRandomValues(new Uint32Array(3)), (n) => n.toString(36)).join('')
+  }
+  function startMark(event: React.PointerEvent<HTMLDivElement>) {
+    const current = marking.current
+    if (current && current.id !== event.pointerId) {
+      // A palm that landed before the Pencil: drop its mark, take the Pencil.
+      // A finger while the Pencil draws: ignored. A second finger: a pinch,
+      // so the mark it would have left is dropped.
+      if (current.type === 'pen' && event.pointerType !== 'pen') return
+      cancelMark()
+      if (event.pointerType !== 'pen') return
+    }
+    if (event.button !== 0) return
+    const p = pagePoint(event)
+    const t = markTool()
+    if (!p || !t) return
+    event.currentTarget.setPointerCapture(event.pointerId)
+    marking.current = { id: event.pointerId, type: event.pointerType }
+    if (t === 'eraser') {
+      erasing.current = {
+        key: pageKey,
+        before: pageMarks,
+        removed: new Set(),
+        last: p,
+        textBoxes: drawnTextBoxes(),
+      }
+      eraseTo(p)
+      return
+    }
+    const style = toolStyle[t]
+    // Drawing in a hidden color shows that layer again.
+    if (hiddenLayers.includes(style.color)) {
+      setHiddenLayers(hiddenLayers.filter((l) => l !== style.color))
+      flash(`${LAYER_COLORS[style.color].name} unhidden`)
+    }
+    const mark: StrokeMark = {
+      id: newMarkId(),
+      kind: 'stroke',
+      tool: t,
+      layer: style.color,
+      size: SIZES[t][style.size],
+      pressure: event.pointerType === 'pen',
+      points: [[p[0], p[1], event.pressure || 0.5]],
+    }
+    liveRef.current = mark
+    setLive(mark)
+  }
+  function onStagePointerMove(event: React.PointerEvent<HTMLDivElement>) {
+    if (marking.current?.id !== event.pointerId) return
+    // A Pencil reports far more often than the screen draws; take every
+    // point it sent since the last frame.
+    const events = event.nativeEvent.getCoalescedEvents?.() ?? []
+    const all = events.length ? events : [event.nativeEvent]
+    if (erasing.current) {
+      for (const e of all) {
+        const p = pagePoint(e)
+        if (p) eraseTo(p)
+      }
+      return
+    }
+    const mark = liveRef.current
+    if (!mark) return
+    const added: MarkPoint[] = []
+    for (const e of all) {
+      const p = pagePoint(e)
+      if (p) added.push([p[0], p[1], e.pressure || 0.5])
+    }
+    const next = { ...mark, points: [...mark.points, ...added] }
+    liveRef.current = next
+    setLive(next)
+  }
+  // The eraser removes every visible mark it touches, any color, text too,
+  // whole marks only; a hidden color's marks are never erased.
+  function eraseTo(p: [number, number]) {
+    const e = erasing.current
+    if (!e) return
+    const from = e.last
+    e.last = p
+    setEraserAt(p)
+    const hit = e.before.filter(
+      (m) =>
+        !e.removed.has(m.id) &&
+        !hiddenLayers.includes(m.layer) &&
+        eraserTouches(m, from, p, eraserRadius, pageAspect, e.textBoxes.get(m.id)),
+    )
+    if (!hit.length) return
+    const ids = new Set(hit.map((m) => m.id))
+    for (const id of ids) e.removed.add(id)
+    updateKey(e.key, (marks) => marks.filter((m) => !ids.has(m.id)))
+  }
+  function finishMark(event: React.PointerEvent<HTMLDivElement>) {
+    if (marking.current?.id !== event.pointerId) return false
+    marking.current = null
+    const e = erasing.current
+    if (e) {
+      erasing.current = null
+      setEraserAt(null)
+      const removed = removedSince(e.before, e.removed)
+      if (removed.length) annot.record({ key: e.key, added: [], removed })
+      return true
+    }
+    const mark = liveRef.current
+    liveRef.current = null
+    setLive(null)
+    if (mark) {
+      updateKey(pageKey, (marks) => [...marks, mark])
+      annot.record({ key: pageKey, added: [mark], removed: [] })
+    }
+    return true
+  }
+  function cancelMark() {
+    marking.current = null
+    liveRef.current = null
+    setLive(null)
+    const e = erasing.current
+    if (e) {
+      erasing.current = null
+      setEraserAt(null)
+      updateKey(e.key, () => e.before)
+    }
+  }
+
+  // Text marks. One text field stays mounted while the Text tool is picked,
+  // so a tap can move it into place and focus it inside the tap itself:
+  // iPad Safari raises the keyboard only for a focus made in the user's own
+  // gesture. Return starts a new line; a tap anywhere else, another tool or
+  // a page turn finishes the box; finished empty, it adds nothing (or
+  // removes the mark it edited). Each finished box is one undo step.
+  const [textEdit, setTextEdit] = useState<TextEdit | null>(null)
+  const [lift, setLift] = useState(0)
+  const [textDrag, setTextDrag] = useState<{ id: string; dx: number; dy: number } | null>(null)
+  const textFieldRef = useRef<HTMLTextAreaElement>(null)
+  const textWrapRef = useRef<HTMLDivElement>(null)
+  function openTextBox(edit: TextEdit) {
+    const wrap = textWrapRef.current
+    const field = textFieldRef.current
+    if (!wrap || !field) return
+    Object.assign(wrap.style, textBoxStyle(edit), { visibility: 'visible' })
+    wrap.dataset.value = edit.text
+    field.value = edit.text
+    // The page lifts itself clear of the keyboard; Safari mustn't scroll too.
+    field.focus({ preventScroll: true })
+    const end = edit.text.length
+    field.setSelectionRange(end, end)
+    // A touch's own click follows the tap into the field just opened and
+    // would put the cursor where the finger was: for a moment, put it back
+    // at the end. (A deliberate tap in the box later still moves it.)
+    const keepEnd = () => field.setSelectionRange(end, end)
+    field.addEventListener('click', keepEnd, { once: true })
+    window.setTimeout(() => field.removeEventListener('click', keepEnd), 400)
+    setTextEdit(edit)
+  }
+  function startTextBox(p: [number, number]) {
+    if (!loadedPages) return
+    const style = toolStyle.text
+    const size = SIZES.text[style.size]
+    // The first line's middle sits on the tap: its baseline 3/8 of a line
+    // below it (the line is 1.25 sizes, its baseline 1 size down).
+    const em = (size / 100) * pageAspect
+    if (hiddenLayers.includes(style.color)) {
+      setHiddenLayers(hiddenLayers.filter((l) => l !== style.color))
+      flash(`${LAYER_COLORS[style.color].name} unhidden`)
+    }
+    openTextBox({
+      key: pageKey,
+      x: Math.min(p[0], 0.9),
+      y: p[1] + em * (1 - TEXT_LINE_HEIGHT / 2),
+      layer: style.color,
+      size,
+      text: '',
+      original: null,
+    })
+  }
+  function editText(m: TextMark) {
+    finishText()
+    openTextBox({ ...m, key: pageKey, original: m })
+  }
+  // Put a finished box's change in place of the mark it edits (same id, same
+  // depth), or add it.
+  function placeText(key: string, original: TextMark | null, mark: TextMark | null) {
+    const list = marksFor(key)
+    const index = original ? list.findIndex((m) => m.id === original.id) : -1
+    const removed = original && index >= 0 ? [{ mark: original, index }] : []
+    updateKey(key, (prev) => {
+      const next = [...prev]
+      const at = original ? next.findIndex((m) => m.id === original.id) : -1
+      if (at >= 0) {
+        if (mark) next[at] = mark
+        else next.splice(at, 1)
+      } else if (mark) next.push(mark)
+      return next
+    })
+    if (removed.length || mark) annot.record({ key, added: mark ? [mark] : [], removed })
+  }
+  function finishText() {
+    const edit = textEdit
+    if (!edit) return
+    closeTextBox()
+    const text = edit.text.replace(/\s+$/, '')
+    const { key, original } = edit
+    if (!text.trim()) {
+      if (original) placeText(key, original, null)
+      return
+    }
+    if (
+      original &&
+      text === original.text &&
+      edit.layer === original.layer &&
+      edit.size === original.size
+    )
+      return
+    if (hiddenLayers.includes(edit.layer)) {
+      setHiddenLayers(hiddenLayers.filter((l) => l !== edit.layer))
+      flash(`${LAYER_COLORS[edit.layer].name} unhidden`)
+    }
+    placeText(key, original, {
+      id: original?.id ?? newMarkId(),
+      kind: 'text',
+      layer: edit.layer,
+      x: edit.x,
+      y: edit.y,
+      size: edit.size,
+      text,
+      italic: original?.italic,
+    })
+  }
+  // Closes the box without keeping what's in it (Undo while typing).
+  function closeTextBox() {
+    textFieldRef.current?.blur()
+    setTextEdit(null)
+    setLift(0)
+  }
+  // A text mark dragged with the Text tool: dx, dy as shares of the page.
+  function moveText(m: TextMark, dx: number, dy: number) {
+    const em = (m.size / 100) * pageAspect
+    placeText(pageKey, m, {
+      ...m,
+      x: Math.max(0, Math.min(0.95, m.x + dx)),
+      y: Math.max(em, Math.min(1, m.y + dy)),
+    })
+  }
+  // Every drawn text mark's box on this page, as shares of the page (text
+  // wraps, so its size is only known from the page).
+  function drawnTextBoxes() {
+    const boxes = new Map<string, PageBox>()
+    const box = pageBoxRef.current?.getBoundingClientRect()
+    if (!pageBoxRef.current || !box?.width) return boxes
+    pageBoxRef.current.querySelectorAll<HTMLElement>('[data-text-mark]').forEach((el) => {
+      const r = el.getBoundingClientRect()
+      boxes.set(el.dataset.textMark ?? '', {
+        left: (r.left - box.left) / box.width,
+        right: (r.right - box.left) / box.width,
+        top: (r.top - box.top) / box.height,
+        bottom: (r.bottom - box.top) / box.height,
+      })
+    })
+    return boxes
+  }
+  // While a box is open, the page lifts just enough to keep it above the
+  // keyboard (the visual viewport's bottom), never past the box's own top,
+  // and settles back when it closes.
+  useEffect(() => {
+    if (!textEdit) return
+    function measure() {
+      const field = textWrapRef.current
+      const page = pageBoxRef.current?.parentElement
+      const area = page?.parentElement
+      if (!field || !page || !area) return
+      const applied = new DOMMatrixReadOnly(getComputedStyle(page).transform).m42
+      const r = field.getBoundingClientRect()
+      const top = r.top - applied
+      const bottom = r.bottom - applied
+      const vv = window.visualViewport
+      const visibleBottom = vv ? vv.offsetTop + vv.height : window.innerHeight
+      const room = Math.max(0, top - area.getBoundingClientRect().top - LIFT_GAP)
+      setLift(Math.min(room, Math.max(0, bottom + LIFT_GAP - visibleBottom)))
+    }
+    const raf = requestAnimationFrame(measure)
+    const vv = window.visualViewport
+    vv?.addEventListener('resize', measure)
+    vv?.addEventListener('scroll', measure)
+    return () => {
+      cancelAnimationFrame(raf)
+      vv?.removeEventListener('resize', measure)
+      vv?.removeEventListener('scroll', measure)
+    }
+  }, [textEdit])
+
+  // Undo and Redo: the whole session's history, marking, erasing and text
+  // edits (never hide/show). A change on another page, or another piece in
+  // the queue, turns there first, then visibly applies once the page shows
+  // (UNDO_TURN_MS) — or after UNDO_WAIT_MS if it never does. Every press
+  // shows a pill naming what it did.
+  const [awaiting, setAwaiting] = useState<{ key: string; direction: 'undo' | 'redo' } | null>(null)
+  const handedOver =
+    annot.pending && pieceId !== null && annot.pending.key.startsWith(`${pieceId}:`)
+      ? annot.pending
+      : null
+  const waiting = awaiting ?? handedOver
+  useEffect(() => {
+    if (!waiting) return
+    const shown = waiting.key === pageKey && !!drawingNow
+    const t = window.setTimeout(
+      () => {
+        annot.apply(waiting.direction)
+        setAwaiting(null)
+        annot.setPending(null)
+      },
+      shown ? UNDO_TURN_MS : UNDO_WAIT_MS,
+    )
+    return () => window.clearTimeout(t)
+  }, [waiting, pageKey, drawingNow, annot])
+  function stepHistory(direction: 'undo' | 'redo') {
+    // While typing, Undo drops what's in the box (an edited mark stays as
+    // it was); Redo does nothing until the box closes.
+    if (textEdit) {
+      if (direction === 'undo') {
+        closeTextBox()
+        flash('Undo: typing')
+      }
+      return
+    }
+    if (!annotating || waiting || marking.current) return
+    const h = annot.history
+    const change = (direction === 'undo' ? h.done : h.undone).at(-1)
+    if (!change) return
+    const [pid, pg] = change.key.split(':').map(Number)
+    const elsewhere = session.items.find((i) => i.kind === 'piece' && i.id === pid)
+    const where =
+      pid !== pieceId
+        ? `, ${elsewhere?.kind === 'piece' ? elsewhere.title : 'another piece'}`
+        : pg !== page
+          ? `, page ${pg}`
+          : ''
+    const pillText = `${direction === 'undo' ? 'Undo' : 'Redo'}: ${describeChange(change)}${where}`
+    flash(pillText)
+    if (pid === pieceId && pg === page) {
+      annot.apply(direction)
+      return
+    }
+    if (pid === pieceId) {
+      showPage(pg)
+      setAwaiting({ key: change.key, direction })
+      return
+    }
+    const index = session.items.findIndex((i) => i.kind === 'piece' && i.id === pid)
+    if (index < 0) {
+      annot.apply(direction)
+      return
+    }
+    annot.setPending({ key: change.key, direction })
+    // The pill goes with it: the next item's viewer shows it on arrival.
+    session.goTo(index, pg, pillText)
+  }
+  const stepHistoryRef = useRef(stepHistory)
+  useEffect(() => {
+    stepHistoryRef.current = stepHistory
+  })
+
+  function toggleLayer(layer: number) {
+    setHiddenLayers(
+      hiddenLayers.includes(layer)
+        ? hiddenLayers.filter((l) => l !== layer)
+        : [...hiddenLayers, layer],
+    )
+  }
+  // Tapping a ghost mark unhides its layer, and says so.
+  function unhideFromGhost(layer: number) {
+    setHiddenLayers(hiddenLayers.filter((l) => l !== layer))
+    flash(`${LAYER_COLORS[layer].name} unhidden`)
+  }
+
   const photoAnchorRef = useRef<HTMLDivElement>(null)
   const phoneRow2Ref = useRef<HTMLDivElement>(null)
   const clockAnchorRef = useRef<HTMLDivElement>(null)
@@ -864,6 +1543,7 @@ function SheetViewer({
   )
 
   function turn(dir: -1 | 1) {
+    finishText()
     if (!session.shared.allowTurn(dir, settings?.turnGuardMs ?? TURN_GUARD_DEFAULT)) {
       flash('Double-turn ignored')
       return
@@ -893,14 +1573,7 @@ function SheetViewer({
       )
       return
     }
-    setPage(next)
-    if (pieceId === null) return
-    // Pages leaving the preload window unmount; drop their "ready" so one
-    // that comes back shows only once it's decoded again.
-    const keep = new Set(
-      [next - 1, next, next + 1, next + 2].map((p) => getPiecePageUrl(pieceId, p, pageVersion)),
-    )
-    setReady((r) => Object.fromEntries(Object.entries(r).filter(([url]) => keep.has(url))))
+    showPage(next)
   }
   const turnRef = useRef(turn)
   useEffect(() => {
@@ -912,9 +1585,16 @@ function SheetViewer({
   const menuOpen = menu !== null
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
-      if (event.metaKey || event.ctrlKey || event.altKey) return
+      // Typing in a field (a text mark, the notes): its own keys, ⌘Z too.
       const target = event.target as Element | null
       if (target?.closest('input, textarea, select, [role="listbox"]')) return
+      // ⌘Z / ⇧⌘Z (Ctrl elsewhere), with a keyboard attached.
+      if ((event.metaKey || event.ctrlKey) && !event.altKey && event.key.toLowerCase() === 'z') {
+        event.preventDefault()
+        if (!event.repeat) stepHistoryRef.current(event.shiftKey ? 'redo' : 'undo')
+        return
+      }
+      if (event.metaKey || event.ctrlKey || event.altKey) return
       if (event.key === 'Escape') {
         setMenu(null)
         return
@@ -964,6 +1644,7 @@ function SheetViewer({
   }, [currentUrl, currentReady, pageVersion])
 
   function pressClose() {
+    finishText()
     window.clearTimeout(closeTimer.current)
     if (closeArmed) {
       setCloseArmed(false)
@@ -986,6 +1667,18 @@ function SheetViewer({
   const down = useRef<StagePoint | null>(null)
   const fingers = useRef(new Set<number>())
   function onStagePointerDown(event: React.PointerEvent<HTMLDivElement>) {
+    // A tap anywhere while a text box is open finishes it, and only that.
+    if (textEdit) {
+      finishText()
+      down.current = null
+      return
+    }
+    // Pen, highlighter or eraser picked: the pointer marks the page, zoomed
+    // in or not (two fingers still pinch and pan).
+    if (markTool()) {
+      startMark(event)
+      return
+    }
     // Zoomed in, a drag pans the page; leave it to the browser.
     if (zoomed) return
     fingers.current.add(event.pointerId)
@@ -994,18 +1687,29 @@ function SheetViewer({
     event.currentTarget.setPointerCapture(event.pointerId)
     if (fingers.current.size > 1) down.current = null
     else if (event.button === 0)
-      down.current = { x: event.clientX, y: event.clientY, t: performance.now() }
+      down.current = { x: event.clientX, y: event.clientY, t: event.timeStamp }
   }
   function onStagePointerUp(event: React.PointerEvent<HTMLDivElement>) {
+    if (finishMark(event)) return
     fingers.current.delete(event.pointerId)
     const start = down.current
     down.current = null
     if (!start) return
-    const end = { x: event.clientX, y: event.clientY, t: performance.now() }
+    if (annotating && tool) {
+      // The Text tool: a tap on the page opens a text box there.
+      if (tool === 'text') {
+        const p = pagePoint({ clientX: start.x, clientY: start.y })
+        const moved = Math.hypot(event.clientX - start.x, event.clientY - start.y)
+        if (p && moved < 10 && p[0] >= 0 && p[0] <= 1 && p[1] >= 0 && p[1] <= 1) startTextBox(p)
+      }
+      return
+    }
+    const end = { x: event.clientX, y: event.clientY, t: event.timeStamp }
     const dir = stageTurn(start, end, event.currentTarget.getBoundingClientRect())
     if (dir) turn(dir)
   }
   function onStagePointerCancel(event: React.PointerEvent<HTMLDivElement>) {
+    if (marking.current?.id === event.pointerId) cancelMark()
     fingers.current.delete(event.pointerId)
     down.current = null
   }
@@ -1303,7 +2007,11 @@ function SheetViewer({
       <HitButton
         label="Info"
         onClick={() => openInfo(!infoOpen)}
-        faceClassName={infoOpen ? 'bg-accent-soft text-accent' : ''}
+        // Annotate's toolbar is already the tint Play uses for "open", so
+        // there an open Info takes a picked tool's look.
+        faceClassName={
+          infoOpen ? (annotating ? 'bg-accent-fill text-white' : 'bg-accent-soft text-accent') : ''
+        }
       >
         <IconInfoCircle size={22} />
       </HitButton>
@@ -1548,16 +2256,237 @@ function SheetViewer({
           document.body,
         ))
   const annotateButton = (
-    <SoonButton
+    <HitButton
       label="Annotate"
-      message="Annotate: coming soon"
+      onClick={enterAnnotate}
       inset
-      faceClassName={annotateLabel ? 'border border-border px-3 font-medium' : ''}
+      faceClassName={
+        annotateLabel ? 'border border-border px-3 font-medium hover:border-accent' : ''
+      }
     >
       <IconPencil size={20} />
       {annotateLabel && 'Annotate'}
-    </SoonButton>
+    </HitButton>
   )
+  const doneButton = (
+    <HitButton
+      label="Done annotating"
+      onClick={leaveAnnotate}
+      inset
+      faceClassName={`bg-accent-fill text-white group-hover/b:bg-accent-fill/90 ${annotateLabel ? 'px-3 font-medium' : ''}`}
+    >
+      <IconCheck size={20} />
+      {annotateLabel && 'Done'}
+    </HitButton>
+  )
+  // From 720px (every iPad, portrait included) the tools share the one
+  // toolbar row: the tools left of the page cyclers, Layers, Undo and Redo
+  // beside Done on the right. Narrower, they take a second row.
+  const toolsInline = width >= TOOLS_INLINE_MIN_WIDTH
+  // Undo and Redo fade (disabled) when there's nothing to undo or redo.
+  const undoRedo = (
+    <>
+      <HitButton
+        label="Undo"
+        onClick={() => stepHistory('undo')}
+        disabled={!annot.history.done.length && !textEdit}
+      >
+        <IconArrowBackUp size={22} />
+      </HitButton>
+      <HitButton
+        label="Redo"
+        onClick={() => stepHistory('redo')}
+        disabled={!annot.history.undone.length}
+      >
+        <IconArrowForwardUp size={22} />
+      </HitButton>
+    </>
+  )
+  const layersAnchorRef = useRef<HTMLDivElement>(null)
+  const toolAnchorRef = useRef<HTMLDivElement>(null)
+  const layersStyle = useAnchoredPanel(layersAnchorRef, menu === 'layers', 'below-center', {
+    gap: 6,
+    panelWidth: 232,
+  })
+  // The Layers menu: no color names — each row is the color, its marks on
+  // this page and its eye (the name stays as the row's label for screen
+  // readers). A hidden color shows as a crossed-out circle in its color.
+  const layersPanel =
+    menu === 'layers' &&
+    layersStyle &&
+    createPortal(
+      <div
+        style={{ ...layersStyle, width: 232 }}
+        className="z-50 rounded-xl border border-border bg-paper px-3 pt-3 pb-2 font-sans text-ink shadow-xl select-none [--sv-hover:var(--color-paper-hover)]"
+      >
+        <p className="px-1 pb-1 text-xs font-semibold tracking-wider text-ink-muted uppercase">
+          Layers
+        </p>
+        {LAYER_COLORS.map((c, i) => {
+          const hidden = hiddenLayers.includes(i)
+          const n = pageMarks.filter((m) => m.layer === i).length
+          return (
+            <div key={c.name} aria-label={c.name} className="flex h-12 items-center pl-2.5">
+              <span className="flex size-6 items-center justify-center">
+                <ColorDot layer={i} hidden={hidden} look={pageLook} />
+              </span>
+              <span className="flex-1 pl-3 text-sm text-ink-muted tabular-nums">
+                {n} {n === 1 ? 'mark' : 'marks'}
+              </span>
+              <HitButton
+                label={hidden ? `Show ${c.name}` : `Hide ${c.name}`}
+                onClick={() => toggleLayer(i)}
+                faceClassName={`${FACE_HOVER} ${hidden ? 'text-ink-faint' : ''}`}
+              >
+                {hidden ? <IconEyeOff size={22} /> : <IconEye size={22} />}
+              </HitButton>
+            </div>
+          )
+        })}
+      </div>,
+      document.body,
+    )
+  const layersButton = (
+    <div ref={layersAnchorRef} className="relative">
+      <HitButton
+        label="Layers"
+        onClick={() => setMenu(menu === 'layers' ? null : 'layers')}
+        faceClassName={menu === 'layers' ? 'bg-accent-fill text-white' : ''}
+      >
+        <IconStack2 size={22} />
+      </HitButton>
+    </div>
+  )
+  // The picked tool's options: its six colors and S / M / L (the eraser:
+  // just S / M / L). Picking a hidden color is allowed — it shows again as
+  // soon as you mark with it. An open text box takes either change too.
+  const optionsStyle = tool
+    ? tool === 'eraser'
+      ? { color: null, size: eraserSize }
+      : toolStyle[tool]
+    : null
+  function setOptionsSize(size: Size) {
+    if (tool === 'eraser') setEraserSize(size)
+    else if (tool) setToolStyle({ ...toolStyle, [tool]: { ...toolStyle[tool], size } })
+    if (tool === 'text' && textEdit) setTextEdit({ ...textEdit, size: SIZES.text[size] })
+  }
+  function setOptionsColor(color: number) {
+    if (!tool || tool === 'eraser') return
+    setToolStyle({ ...toolStyle, [tool]: { ...toolStyle[tool], color } })
+    if (tool === 'text' && textEdit) setTextEdit({ ...textEdit, layer: color })
+  }
+  const toolOptionsStyle = useAnchoredPanel(toolAnchorRef, menu === 'tool', 'below-center', {
+    gap: 6,
+    panelWidth: 312,
+  })
+  const toolOptionsPanel =
+    menu === 'tool' &&
+    tool &&
+    optionsStyle &&
+    toolOptionsStyle &&
+    createPortal(
+      <div
+        style={{ ...toolOptionsStyle, width: 312 }}
+        // Picking a color or size keeps the text box's keyboard up.
+        onMouseDown={(event) => textEdit && event.preventDefault()}
+        className="z-50 rounded-xl border border-border bg-paper px-3 pt-3 pb-3 font-sans text-ink shadow-xl select-none [--sv-hover:var(--color-paper-hover)]"
+      >
+        {tool !== 'eraser' && (
+          <>
+            <p className="px-1 pb-1 text-xs font-semibold tracking-wider text-ink-muted uppercase">
+              {TOOLS.find((t) => t.key === tool)?.label} color
+            </p>
+            <div className="flex">
+              {LAYER_COLORS.map((c, i) => (
+                <HitButton
+                  key={c.name}
+                  label={`${c.name}${hiddenLayers.includes(i) ? ' (hidden)' : ''}`}
+                  onClick={() => setOptionsColor(i)}
+                  faceClassName={FACE_HOVER}
+                >
+                  <ColorDot
+                    layer={i}
+                    hidden={hiddenLayers.includes(i)}
+                    picked={optionsStyle.color === i}
+                    look={pageLook}
+                  />
+                </HitButton>
+              ))}
+            </div>
+          </>
+        )}
+        <p
+          className={`px-1 pb-1 text-xs font-semibold tracking-wider text-ink-muted uppercase ${tool === 'eraser' ? '' : 'pt-2'}`}
+        >
+          {tool === 'eraser' ? 'Eraser size' : 'Size'}
+        </p>
+        <div className="flex rounded-[13px] bg-paper-sunken px-1">
+          {(['S', 'M', 'L'] as const).map((sz) => (
+            <button
+              key={sz}
+              type="button"
+              data-hit
+              aria-label={{ S: 'Small', M: 'Medium', L: 'Large' }[sz]}
+              onClick={() => setOptionsSize(sz)}
+              className={`${HIT} flex-1 group/b`}
+            >
+              <span
+                className={`${FACE} w-full font-medium ${
+                  optionsStyle.size === sz
+                    ? 'bg-paper-raised shadow-sm'
+                    : `text-ink-soft ${FACE_HOVER}`
+                }`}
+              >
+                {sz}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>,
+      document.body,
+    )
+  const toolButtons = (
+    <>
+      {TOOLS.map(({ key, label, Icon }) => {
+        const picked = tool === key
+        // Pen, highlighter and text carry a bar of their own color under
+        // the icon; the eraser has none.
+        const own = key !== 'eraser' ? toolStyle[key] : null
+        return (
+          <div
+            key={key}
+            ref={picked ? toolAnchorRef : undefined}
+            onMouseDown={(event) => key === 'text' && textEdit && event.preventDefault()}
+            className="relative"
+          >
+            <HitButton
+              label={picked ? `${label}: ${key === 'eraser' ? 'size' : 'color and size'}` : label}
+              onClick={() => pickTool(key)}
+              faceClassName={picked ? 'bg-accent-fill text-white' : ''}
+            >
+              <Icon size={22} />
+              {own && (
+                <span
+                  className="pointer-events-none absolute bottom-[9px] left-1/2 h-[3px] w-3.5 -translate-x-1/2 rounded-full"
+                  style={{
+                    background: layerColor(own.color, pageLook),
+                    boxShadow: picked ? '0 0 0 1.5px white' : undefined,
+                  }}
+                />
+              )}
+            </HitButton>
+          </div>
+        )
+      })}
+      <span className="mx-1 h-7 w-px shrink-0 bg-accent/30" />
+      {!toolsInline && layersButton}
+      {!toolsInline && undoRedo}
+    </>
+  )
+  const drawingTool = markTool() !== null
+  // Text marks take the pointer (tap to edit, drag to move) with the Text
+  // tool picked, once the page's marks are in.
+  const textTool = annotating && tool === 'text' && !!loadedPages
   const moreButton = (
     <div ref={moreAnchorRef} className="relative">
       <HitButton label="More" onClick={() => setMenu(menu === 'more' ? null : 'more')}>
@@ -1919,7 +2848,7 @@ function SheetViewer({
           document.body,
         ))
   // Only in a queue: the Practice List's playlist, a setlist's numbered list.
-  const queueButton = session.kind !== 'piece' && (
+  const queueButton = session.kind !== 'piece' && !annotating && (
     <div ref={queueAnchorRef} className="relative">
       <HitButton
         label={session.kind === 'setlist' ? 'Setlist queue' : 'Practice List'}
@@ -1975,7 +2904,9 @@ function SheetViewer({
         className="flex h-full w-full items-center justify-center"
         style={{ containerType: 'size' }}
       >
-        <PlaceholderPage entry={custom} />
+        <div style={{ filter: scoreFilter }}>
+          <PlaceholderPage entry={custom} />
+        </div>
       </div>
     )
   } else if (pieceError) {
@@ -2010,7 +2941,91 @@ function SheetViewer({
             src={currentUrl}
             label={`Page ${page} of ${piece?.title ?? ''}`}
             sharp={zoomed}
-          />
+            filter={scoreFilter}
+            lift={lift}
+          >
+            <div ref={pageBoxRef} className="absolute inset-0">
+              <PageMarks
+                marks={pageMarks}
+                live={live}
+                eraserAt={eraserAt}
+                eraserRadius={eraserRadius}
+                hidden={hiddenLayers}
+                ghosts={ghostsOn}
+                aspect={pageAspect}
+                look={pageLook}
+                // In Annotate with no tool, a faint mark brings its layer
+                // back; with a tool picked, a touch there marks.
+                onShowLayer={annotating && !tool ? unhideFromGhost : undefined}
+              />
+              <TextMarks
+                marks={pageMarks.filter(
+                  (m): m is TextMark => m.kind === 'text' && m.id !== textEdit?.original?.id,
+                )}
+                hidden={hiddenLayers}
+                ghosts={ghostsOn}
+                look={pageLook}
+                drag={textDrag}
+                onDragStart={textTool ? () => finishText() : undefined}
+                onDragMove={textTool ? (id, dx, dy) => setTextDrag({ id, dx, dy }) : undefined}
+                onDragEnd={
+                  textTool
+                    ? (m, dx, dy, moved) => {
+                        setTextDrag(null)
+                        if (moved) moveText(m, dx, dy)
+                        else editText(m)
+                      }
+                    : undefined
+                }
+                onDragCancel={textTool ? () => setTextDrag(null) : undefined}
+              >
+                {/* The text box: mounted while the Text tool is picked (see
+                    openTextBox), shown while one is open. It sizes itself to
+                    what's typed (the grid's ::after copy), up to the page's
+                    right edge, where it wraps. */}
+                {annotating && tool === 'text' && (
+                  <div
+                    ref={textWrapRef}
+                    data-value={textEdit?.text ?? ''}
+                    onPointerDown={(event) => event.stopPropagation()}
+                    onPointerUp={(event) => event.stopPropagation()}
+                    className="pointer-events-auto absolute inline-grid w-max font-hand after:invisible after:whitespace-pre-wrap after:content-[attr(data-value)_'_'] after:[grid-area:1/1] after:[overflow-wrap:anywhere]"
+                    style={{
+                      ...(textEdit ? textBoxStyle(textEdit) : { left: 0, top: 0 }),
+                      visibility: textEdit ? 'visible' : 'hidden',
+                      lineHeight: TEXT_LINE_HEIGHT,
+                      outline: `1.5px dashed ${textEdit ? layerColor(textEdit.layer, pageLook) : 'transparent'}`,
+                      outlineOffset: '0.25em',
+                      borderRadius: '0.15em',
+                    }}
+                  >
+                    <textarea
+                      ref={textFieldRef}
+                      rows={1}
+                      value={textEdit?.text ?? ''}
+                      onChange={(event) =>
+                        textEdit && setTextEdit({ ...textEdit, text: event.target.value })
+                      }
+                      onKeyDown={(event) => {
+                        if (event.key === 'Escape') {
+                          event.preventDefault()
+                          finishText()
+                        }
+                      }}
+                      aria-label="Text mark"
+                      spellCheck={false}
+                      autoCapitalize="off"
+                      className="min-w-[0.6em] resize-none overflow-hidden border-0 bg-transparent p-0 whitespace-pre-wrap outline-none [font:inherit] [grid-area:1/1] [overflow-wrap:anywhere]"
+                      style={{
+                        color: textEdit ? layerColor(textEdit.layer, pageLook) : undefined,
+                        fontStyle: textEdit?.italic ? 'italic' : undefined,
+                      }}
+                    />
+                  </div>
+                )}
+              </TextMarks>
+            </div>
+          </ShownPage>
         )}
         {currentFailed ? (
           <StageMessage>
@@ -2036,7 +3051,13 @@ function SheetViewer({
 
   return (
     <div className="group/sv fixed inset-0 flex flex-col bg-paper font-sans text-ink select-none">
-      <header className="relative z-20 shrink-0 border-b border-border bg-paper pt-[max(env(safe-area-inset-top),var(--titlebar-inset))] pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)] [--sv-hover:var(--color-paper-hover)]">
+      <header
+        className={`relative z-20 shrink-0 border-b pt-[max(env(safe-area-inset-top),var(--titlebar-inset))] pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)] ${
+          annotating
+            ? 'border-accent/30 bg-accent-soft [--sv-hover:var(--color-accent-soft-hover)]'
+            : 'border-border bg-paper [--sv-hover:var(--color-paper-hover)]'
+        }`}
+      >
         {/* Toolbar rows sit over the menus' backdrop (z-40), so their
             buttons keep working while a menu is open. */}
         <div className="relative z-40">
@@ -2049,15 +3070,25 @@ function SheetViewer({
               <div className="flex h-14 items-center px-1">
                 {closeButton}
                 {queueButton}
-                {titleBlock}
+                {annotating ? (
+                  <span className="min-w-0 flex-1 truncate px-2 text-sm font-medium text-accent">
+                    Annotating
+                  </span>
+                ) : (
+                  titleBlock
+                )}
                 {pieceId !== null && infoButton}
                 {moreButton}
-                <span className="mx-1 h-7 w-px shrink-0 bg-border" />
-                {annotateButton}
+                <span
+                  className={`mx-1 h-7 w-px shrink-0 ${annotating ? 'bg-accent/30' : 'bg-border'}`}
+                />
+                {annotating ? doneButton : custom ? null : annotateButton}
               </div>
               <div
                 ref={phoneRow2Ref}
-                className="flex h-14 items-center border-t border-border px-1"
+                className={`flex h-14 items-center border-t px-1 ${
+                  annotating ? 'border-accent/30' : 'border-border'
+                }`}
               >
                 <div className="flex min-w-0 flex-1 items-center">{clockButton}</div>
                 {cyclers}
@@ -2071,19 +3102,48 @@ function SheetViewer({
               <div className="flex min-w-0 items-center">
                 {closeButton}
                 {queueButton}
-                {titleBlock}
+                {annotating ? (
+                  toolsInline ? (
+                    <>
+                      <span className="mx-1 h-7 w-px shrink-0 bg-accent/30" />
+                      {toolButtons}
+                    </>
+                  ) : (
+                    <span className="truncate px-2 text-sm font-medium text-accent">
+                      Annotating
+                    </span>
+                  )
+                ) : (
+                  titleBlock
+                )}
               </div>
               {cyclers}
               <div className="flex min-w-0 items-center justify-end">
-                {clockButton}
-                {inlineExtras && extras}
-                {inlineExtras && photoButton}
-                {pieceId !== null && infoButton}
-                {!inlineExtras && moreButton}
-                <span className="mx-1 h-7 w-px shrink-0 bg-border" />
-                {annotateButton}
+                {!annotating && (
+                  <>
+                    {clockButton}
+                    {inlineExtras && extras}
+                    {inlineExtras && photoButton}
+                    {pieceId !== null && infoButton}
+                    {!inlineExtras && moreButton}
+                    {!custom && (
+                      <>
+                        <span className="mx-1 h-7 w-px shrink-0 bg-border" />
+                        {annotateButton}
+                      </>
+                    )}
+                  </>
+                )}
+                {/* Inline, Layers joins Undo and Redo on the right: the
+                    tools already fill the left side. */}
+                {annotating && toolsInline && layersButton}
+                {annotating && toolsInline && undoRedo}
+                {annotating && doneButton}
               </div>
             </div>
+          )}
+          {annotating && !toolsInline && (
+            <div className="flex items-center border-t border-accent/30 px-1">{toolButtons}</div>
           )}
         </div>
 
@@ -2097,6 +3157,8 @@ function SheetViewer({
             {photoPanel}
             {infoPanel}
             {queuePanel}
+            {layersPanel}
+            {toolOptionsPanel}
             {menu === 'more' && (
               <div className="absolute top-full right-2 z-50 mt-1.5 w-72 rounded-xl border border-border bg-paper p-3 shadow-xl [--sv-hover:var(--color-paper-hover)]">
                 <MenuRow
@@ -2126,8 +3188,9 @@ function SheetViewer({
       </header>
 
       <main
-        className={`relative min-h-0 flex-1 cursor-default overflow-hidden ${zoomed ? 'touch-manipulation' : 'touch-pinch-zoom'}`}
+        className={`relative min-h-0 flex-1 cursor-default overflow-hidden ${zoomed && !drawingTool ? 'touch-manipulation' : 'touch-pinch-zoom'} ${drawingTool ? 'select-none [-webkit-touch-callout:none]' : ''}`}
         onPointerDown={onStagePointerDown}
+        onPointerMove={onStagePointerMove}
         onPointerUp={onStagePointerUp}
         onPointerCancel={onStagePointerCancel}
         onLostPointerCapture={onStagePointerCancel}
@@ -2136,9 +3199,11 @@ function SheetViewer({
             score-page rules, so the theme's treatment and the photo filters
             compose in one list (scoreFilter). The edge margin keeps the page
             clear of the screen's edges. */}
+        {/* The filter is on the mat and the page itself, never the marks
+            laid over it: an invert mustn't recolor annotations. */}
+        <div style={{ filter: scoreFilter }} className="absolute inset-0 bg-white" />
         <div
-          style={{ filter: scoreFilter }}
-          className={`absolute inset-0 bg-white ${
+          className={`absolute inset-0 ${
             photo.edgeMargin
               ? 'p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]'
               : 'pb-[env(safe-area-inset-bottom)]'
@@ -2189,6 +3254,34 @@ function SheetViewer({
         )}
       </main>
     </div>
+  )
+}
+
+// An annotation color's dot: filled, or (hidden) the crossed-out circle in
+// its color; ringed when it's the picked tool's.
+function ColorDot({
+  layer,
+  hidden,
+  picked = false,
+  look,
+}: {
+  layer: number
+  hidden: boolean
+  picked?: boolean
+  look: PageLook
+}) {
+  return hidden ? (
+    <IconCircleOff size={24} stroke={2.2} style={{ color: layerColor(layer, look) }} />
+  ) : (
+    <span
+      className="size-[22px] shrink-0 rounded-full"
+      style={{
+        background: layerColor(layer, look),
+        boxShadow: picked
+          ? '0 0 0 2px var(--color-paper), 0 0 0 4px var(--color-ink)'
+          : 'inset 0 0 0 1px rgb(0 0 0 / 0.08)',
+      }}
+    />
   )
 }
 
@@ -2295,11 +3388,21 @@ function ShownPage({
   src,
   label,
   sharp,
+  filter,
+  lift,
+  children,
 }: {
   drawing: HTMLCanvasElement
   src: string
   label: string
   sharp: boolean
+  // The theme's and the photo filters, on the page alone (the marks laid
+  // over it keep their colors).
+  filter: string
+  // How far the page lifts to keep an open text box above the keyboard.
+  lift: number
+  // The marks, laid over the page in the same box.
+  children?: ReactNode
 }) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const ref = useRef<HTMLCanvasElement>(null)
@@ -2351,8 +3454,18 @@ function ShownPage({
     return () => observer.disconnect()
   }, [drawing])
   return (
-    <div ref={wrapRef} className="absolute">
-      <canvas ref={ref} role="img" aria-label={label} className="block h-full w-full" />
+    <div
+      ref={wrapRef}
+      className="absolute transition-transform duration-200 ease-out motion-reduce:transition-none"
+      style={{ transform: lift ? `translateY(${-lift}px)` : undefined }}
+    >
+      <canvas
+        ref={ref}
+        role="img"
+        aria-label={label}
+        className="block h-full w-full"
+        style={{ filter }}
+      />
       {/* Transparent until it loads, so the drawing shows meanwhile. */}
       {sharp && (
         <img
@@ -2361,8 +3474,10 @@ function ShownPage({
           aria-hidden
           draggable={false}
           className="absolute inset-0 block h-full w-full"
+          style={{ filter }}
         />
       )}
+      {children}
     </div>
   )
 }

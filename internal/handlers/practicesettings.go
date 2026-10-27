@@ -82,6 +82,10 @@ func (s *Server) handlePutPracticeSettings(w http.ResponseWriter, r *http.Reques
 		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid request body: "+err.Error())
 		return
 	}
+	if req.HiddenColors < 0 || req.HiddenColors >= 1<<repo.AnnotationColors {
+		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "hiddenColors must name only the six colors")
+		return
+	}
 	for _, v := range []int{req.Brightness, req.Contrast} {
 		if v < repo.PhotoStepMin || v > repo.PhotoStepMax || v%repo.PhotoStep != 0 {
 			api.WriteError(w, http.StatusBadRequest, api.CodeValidationError,

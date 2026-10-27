@@ -605,7 +605,7 @@ export function UserSettingsMockup() {
           />
           <SettingsRow
             label="Tips"
-            help="The Sheet Viewer explains its taps and tools the first few times you use them. Show them again from the start."
+            help="The Sheet Viewer explains its taps and tools the first few times you use them. Show them again from the start, on this device."
             control={
               <button
                 type="button"

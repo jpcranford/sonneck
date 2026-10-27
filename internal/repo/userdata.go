@@ -137,6 +137,9 @@ type PracticeSettings struct {
 	Invert        bool  `json:"invert"`
 	EdgeMargin    bool  `json:"edgeMargin"`
 	NotesBarShown *bool `json:"notesBarShown"`
+	// HiddenColors (migration 00035): the annotation colors hidden on this
+	// piece, bit i for color i.
+	HiddenColors int `json:"hiddenColors"`
 }
 
 // The photo panel's brightness/contrast range, in percent.
@@ -154,9 +157,9 @@ var DefaultPracticeSettings = PracticeSettings{Brightness: 100, Contrast: 100}
 func GetPracticeSettings(ctx context.Context, q Queryer, userID, pieceID int64) (PracticeSettings, error) {
 	s := DefaultPracticeSettings
 	err := q.QueryRowContext(ctx, `
-		SELECT brightness, contrast, grayscale, invert, edge_margin, notes_bar
+		SELECT brightness, contrast, grayscale, invert, edge_margin, notes_bar, hidden_colors
 		FROM piece_practice_settings WHERE user_id = ? AND piece_id = ?`, userID, pieceID,
-	).Scan(&s.Brightness, &s.Contrast, &s.Grayscale, &s.Invert, &s.EdgeMargin, &s.NotesBarShown)
+	).Scan(&s.Brightness, &s.Contrast, &s.Grayscale, &s.Invert, &s.EdgeMargin, &s.NotesBarShown, &s.HiddenColors)
 	if errors.Is(err, sql.ErrNoRows) {
 		return DefaultPracticeSettings, nil
 	}
@@ -175,13 +178,14 @@ func SetPracticeSettings(ctx context.Context, q Queryer, userID, pieceID int64, 
 	}
 	_, err := q.ExecContext(ctx, `
 		INSERT INTO piece_practice_settings
-			(user_id, piece_id, brightness, contrast, grayscale, invert, edge_margin, notes_bar)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+			(user_id, piece_id, brightness, contrast, grayscale, invert, edge_margin, notes_bar, hidden_colors)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT (user_id, piece_id) DO UPDATE SET
 			brightness = excluded.brightness, contrast = excluded.contrast,
 			grayscale = excluded.grayscale, invert = excluded.invert,
-			edge_margin = excluded.edge_margin, notes_bar = excluded.notes_bar`,
-		userID, pieceID, s.Brightness, s.Contrast, s.Grayscale, s.Invert, s.EdgeMargin, s.NotesBarShown,
+			edge_margin = excluded.edge_margin, notes_bar = excluded.notes_bar,
+			hidden_colors = excluded.hidden_colors`,
+		userID, pieceID, s.Brightness, s.Contrast, s.Grayscale, s.Invert, s.EdgeMargin, s.NotesBarShown, s.HiddenColors,
 	)
 	return err
 }
@@ -325,6 +329,9 @@ type UserSettings struct {
 	// piece whose banner the user hasn't set (PracticeSettings.NotesBarShown
 	// nil).
 	NotesBarDefault bool `json:"notesBarDefault"`
+	// GhostMarks (migration 00035): a hidden annotation color's marks stay
+	// as faint ghosts.
+	GhostMarks bool `json:"ghostMarks"`
 }
 
 // ClockModes are the Sheet Viewer clock's modes.
@@ -340,10 +347,11 @@ func GetUserSettings(ctx context.Context, q Queryer, userID int64) (*UserSetting
 	err := q.QueryRowContext(ctx, `
 		SELECT show_books_in_sidebar, theme_preference, content_view_mode, dark_mode_scores,
 			sheet_viewer_turn_guard_ms, sheet_viewer_clock_shown, sheet_viewer_clock_mode,
-			sheet_viewer_clock_seconds, track_practice, sheet_viewer_notes_bar_default
+			sheet_viewer_clock_seconds, track_practice, sheet_viewer_notes_bar_default,
+			sheet_viewer_ghost_marks
 		FROM user_settings WHERE user_id = ?`, userID,
 	).Scan(&s.ShowBooksInSidebar, &s.ThemePreference, &s.ContentViewMode, &s.DarkModeScores, &s.TurnGuardMs,
-		&s.ClockShown, &s.ClockMode, &s.ClockSeconds, &s.TrackPractice, &s.NotesBarDefault)
+		&s.ClockShown, &s.ClockMode, &s.ClockSeconds, &s.TrackPractice, &s.NotesBarDefault, &s.GhostMarks)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -360,10 +368,10 @@ func UpdateUserSettings(ctx context.Context, q Queryer, userID int64, s UserSett
 		UPDATE user_settings SET show_books_in_sidebar = ?, theme_preference = ?, content_view_mode = ?,
 			dark_mode_scores = ?, sheet_viewer_turn_guard_ms = ?, sheet_viewer_clock_shown = ?,
 			sheet_viewer_clock_mode = ?, sheet_viewer_clock_seconds = ?, track_practice = ?,
-			sheet_viewer_notes_bar_default = ?
+			sheet_viewer_notes_bar_default = ?, sheet_viewer_ghost_marks = ?
 		WHERE user_id = ?`,
 		s.ShowBooksInSidebar, s.ThemePreference, s.ContentViewMode, s.DarkModeScores, s.TurnGuardMs,
-		s.ClockShown, s.ClockMode, s.ClockSeconds, s.TrackPractice, s.NotesBarDefault, userID,
+		s.ClockShown, s.ClockMode, s.ClockSeconds, s.TrackPractice, s.NotesBarDefault, s.GhostMarks, userID,
 	)
 	return err
 }

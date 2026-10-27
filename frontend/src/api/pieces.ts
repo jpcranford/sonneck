@@ -108,6 +108,8 @@ export interface PracticeSettings {
   // Null until the user sets this piece's banner: then it follows User
   // Settings' notesBarDefault.
   notesBarShown: boolean | null
+  // The annotation colors hidden on this piece: bit i for color i.
+  hiddenColors: number
 }
 
 export const DEFAULT_PRACTICE_SETTINGS: PracticeSettings = {
@@ -117,6 +119,7 @@ export const DEFAULT_PRACTICE_SETTINGS: PracticeSettings = {
   invert: false,
   edgeMargin: false,
   notesBarShown: null,
+  hiddenColors: 0,
 }
 
 export function getPracticeSettings(id: number): Promise<PracticeSettings> {

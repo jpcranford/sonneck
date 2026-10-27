@@ -245,6 +245,8 @@ func New(db *sql.DB, cfg *config.Config, logger *slog.Logger, frontend fs.FS, sc
 	mux.HandleFunc("DELETE /api/practice-list/{pieceId}", s.handleRemoveFromPracticeList)
 	mux.HandleFunc("GET /api/pieces/{id}/practice-settings", s.handleGetPracticeSettings)
 	mux.HandleFunc("PUT /api/pieces/{id}/practice-settings", s.handlePutPracticeSettings)
+	mux.HandleFunc("GET /api/pieces/{id}/annotations", s.handleGetAnnotations)
+	mux.HandleFunc("PUT /api/pieces/{id}/annotations/{page}", s.handlePutPageAnnotations)
 	mux.HandleFunc("GET /api/pieces/{id}/citation", s.handleGetCitation)
 	mux.HandleFunc("GET /api/pieces/{id}/pages/{page}/thumbnail", s.handlePieceThumbnail)
 	mux.HandleFunc("GET /api/pieces/{id}/pages/{page}", s.handlePiecePage)
