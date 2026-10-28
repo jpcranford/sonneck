@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react'
+import { useDismiss } from '../hooks/useDismiss'
 import { Link } from 'react-router-dom'
 import {
   IconArrowLeft,
@@ -538,11 +539,19 @@ export function PieceDetailsSample() {
   const [page, setPage] = useState(1)
   const [thumbnailPage, setThumbnailPage] = useState(1)
   const [lightboxOpen, setLightboxOpen] = useState(false)
+  // The three menus under the page (Play's caret, Download's caret and ⋯):
+  // one open at a time, so opening one closes whichever else was open.
+  const [openMenu, setOpenMenu] = useState<'play' | 'download' | 'more' | null>(null)
+  const toggleMenu = (menu: 'play' | 'download' | 'more') =>
+    setOpenMenu((open) => (open === menu ? null : menu))
+  const playMenuOpen = openMenu === 'play'
+  const downloadOpen = openMenu === 'download'
+  const moreActionsOpen = openMenu === 'more'
+  // A press outside the row, or Escape, closes whichever is open.
+  const menuRowRef = useRef<HTMLDivElement>(null)
+  useDismiss(openMenu !== null, menuRowRef, () => setOpenMenu(null))
   const [favorite, setFavorite] = useState(piece.favorite)
-  const [downloadOpen, setDownloadOpen] = useState(false)
-  const [playMenuOpen, setPlayMenuOpen] = useState(false)
   const [onPracticeList, setOnPracticeList] = useState(false)
-  const [moreActionsOpen, setMoreActionsOpen] = useState(false)
   const [addToSetlistOpen, setAddToSetlistOpen] = useState(false)
   // Starts already in one setlist, fixture-only — demonstrates the "this
   // piece is already in a setlist" indicator next to the favorite heart
@@ -857,7 +866,7 @@ export function PieceDetailsSample() {
             />
           )}
 
-          <div className="flex flex-wrap items-center justify-center gap-2">
+          <div ref={menuRowRef} className="flex flex-wrap items-center justify-center gap-2">
             {/* Play (Sheet Viewer Phase 6): a split button like Download
                 PDF's, solid accent as the page's primary action. The main
                 half opens the Sheet Viewer mockup; the caret holds "Add to
@@ -875,7 +884,7 @@ export function PieceDetailsSample() {
                 </Link>
                 <button
                   type="button"
-                  onClick={() => setPlayMenuOpen((o) => !o)}
+                  onClick={() => toggleMenu('play')}
                   aria-label="More play options"
                   className="flex cursor-pointer items-center justify-center rounded-r-md border-l border-white/25 bg-accent-fill px-2 text-white hover:bg-accent-fill/90"
                 >
@@ -888,7 +897,7 @@ export function PieceDetailsSample() {
                     type="button"
                     onClick={() => {
                       setOnPracticeList(!onPracticeList)
-                      setPlayMenuOpen(false)
+                      setOpenMenu(null)
                     }}
                     className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-paper-hover"
                   >
@@ -930,7 +939,7 @@ export function PieceDetailsSample() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setDownloadOpen((o) => !o)}
+                  onClick={() => toggleMenu('download')}
                   aria-label="More download options"
                   className="relative -ml-px flex cursor-pointer items-center justify-center rounded-r-md border border-border bg-paper-raised px-2 text-ink transition-colors hover:z-10 hover:border-accent"
                 >
@@ -962,7 +971,7 @@ export function PieceDetailsSample() {
             <div className="relative">
               <button
                 type="button"
-                onClick={() => setMoreActionsOpen((o) => !o)}
+                onClick={() => toggleMenu('more')}
                 aria-label="More actions"
                 className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent"
               >
@@ -974,7 +983,7 @@ export function PieceDetailsSample() {
                     type="button"
                     onClick={() => {
                       setReplaceConfirming(true)
-                      setMoreActionsOpen(false)
+                      setOpenMenu(null)
                     }}
                     className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-paper-hover"
                   >
@@ -985,7 +994,7 @@ export function PieceDetailsSample() {
                     type="button"
                     onClick={() => {
                       setThumbnailPage(page)
-                      setMoreActionsOpen(false)
+                      setOpenMenu(null)
                     }}
                     disabled={page === thumbnailPage}
                     className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-paper-hover disabled:text-ink-soft/50 disabled:hover:bg-transparent"

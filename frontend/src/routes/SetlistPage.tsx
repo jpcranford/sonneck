@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react'
+import { useDismiss } from '../hooks/useDismiss'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -178,11 +179,20 @@ export function SetlistPage() {
 
   usePageTitle(setlist?.name ?? 'Setlist')
 
+  // The two menus under the header (Play Set's caret and Download's / Copy
+  // Program's): one open at a time, and a press outside the row or Escape
+  // closes it (hooks/useDismiss.ts), as on Piece Details.
+  const [openMenu, setOpenMenu] = useState<'play' | 'download' | null>(null)
+  const toggleMenu = (menu: 'play' | 'download') =>
+    setOpenMenu((open) => (open === menu ? null : menu))
+  const playMenuOpen = openMenu === 'play'
+  const downloadOpen = openMenu === 'download'
+  const menuRowRef = useRef<HTMLDivElement>(null)
+  useDismiss(openMenu !== null, menuRowRef, () => setOpenMenu(null))
   // Play Set opens the Sheet Viewer on this set, and its caret adds the
   // set's pieces to the Practice List; both need `practice`, like the
   // viewer.
   const canPractice = hasPermission(useAuth(), 'practice')
-  const [playMenuOpen, setPlayMenuOpen] = useState(false)
   const { data: practiceList } = useQuery({
     queryKey: ['practice-list', today],
     queryFn: () => getPracticeList(today),
@@ -216,7 +226,7 @@ export function SetlistPage() {
     onSuccess: ({ added }) => {
       setJustAdded(added)
       addFeedbackTimer.current = window.setTimeout(() => {
-        setPlayMenuOpen(false)
+        setOpenMenu(null)
         setJustAdded(null)
       }, 1000)
       queryClient.invalidateQueries({ queryKey: ['practice-list'] })
@@ -230,7 +240,6 @@ export function SetlistPage() {
   const [duplicateGigDate, setDuplicateGigDate] = useState('')
   const [editSetlistOpen, setEditSetlistOpen] = useState(false)
   const [editSetlistTab, setEditSetlistTab] = useState<'details' | 'program'>('details')
-  const [downloadOpen, setDownloadOpen] = useState(false)
   // The program copy items (and the C / M shortcuts): both texts load with
   // the page, so a click or key press can copy at once — Safari, and the
   // plain-HTTP fallback in lib/clipboard.ts, only allow a copy inside the
@@ -242,7 +251,7 @@ export function SetlistPage() {
   const [copyToast, setCopyToast] = useState<{ x: number; y: number } | null>(null)
   function handleCopyProgram(text: string, event: MouseEvent) {
     const { clientX: x, clientY: y } = event
-    setDownloadOpen(false)
+    setOpenMenu(null)
     void copyToClipboard(text).then((copied) => {
       if (!copied) return
       setCopyToast({ x, y })
@@ -485,7 +494,7 @@ export function SetlistPage() {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div ref={menuRowRef} className="flex flex-wrap items-center gap-2">
             {/* Play Set: the set in its order, for that session only —
                 custom entries get placeholder pages. The caret adds every
                 piece to the Practice List (custom entries skipped, pieces
@@ -503,7 +512,7 @@ export function SetlistPage() {
                   </Link>
                   <button
                     type="button"
-                    onClick={() => setPlayMenuOpen((o) => !o)}
+                    onClick={() => toggleMenu('play')}
                     aria-label="More play options"
                     className="flex cursor-pointer items-center justify-center rounded-r-md border-l border-white/25 bg-accent-fill px-2 text-white hover:bg-accent-fill/90"
                   >
@@ -561,7 +570,7 @@ export function SetlistPage() {
                   <button
                     ref={downloadMenuButtonRef}
                     type="button"
-                    onClick={() => setDownloadOpen((o) => !o)}
+                    onClick={() => toggleMenu('download')}
                     aria-label="More download and copy options"
                     className="relative -ml-px flex cursor-pointer items-center justify-center rounded-r-md border border-border bg-paper-raised px-2 text-ink transition-colors hover:z-10 hover:border-accent"
                   >
@@ -572,7 +581,7 @@ export function SetlistPage() {
                 <button
                   ref={downloadMenuButtonRef}
                   type="button"
-                  onClick={() => setDownloadOpen((o) => !o)}
+                  onClick={() => toggleMenu('download')}
                   className="flex cursor-pointer items-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm text-ink transition-colors hover:border-accent"
                 >
                   <IconCopy size={16} />

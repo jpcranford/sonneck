@@ -6,6 +6,7 @@ import {
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from 'react'
+import { useDismiss } from '../hooks/useDismiss'
 import { Link } from 'react-router-dom'
 import {
   IconArchive,
@@ -393,11 +394,16 @@ export function SetlistDetailsMockup() {
     setEditSetlistOpen(true)
   }
 
-  // Download Set PDF's own "+ Annotations" dropdown — same toggle-only
-  // state PiecePage.tsx's own `downloadOpen` uses (no outside-click
-  // dismiss there either, confirmed by reading that file directly).
-  const [downloadOpen, setDownloadOpen] = useState(false)
-  const [playMenuOpen, setPlayMenuOpen] = useState(false)
+  // The two menus under the header (Play Set's caret and Download's / Copy
+  // Program's): one open at a time, and a press outside the row or Escape
+  // closes it (hooks/useDismiss.ts), as on Piece Details.
+  const [openMenu, setOpenMenu] = useState<'play' | 'download' | null>(null)
+  const toggleMenu = (menu: 'play' | 'download') =>
+    setOpenMenu((open) => (open === menu ? null : menu))
+  const playMenuOpen = openMenu === 'play'
+  const downloadOpen = openMenu === 'download'
+  const menuRowRef = useRef<HTMLDivElement>(null)
+  useDismiss(openMenu !== null, menuRowRef, () => setOpenMenu(null))
   // Practice List feedback for "Add all pieces" (mockup state: how many of
   // this set's pieces are already on the list).
   const setPieceCount = entries.filter((e) => e.kind === 'piece').length
@@ -417,7 +423,7 @@ export function SetlistDetailsMockup() {
       entries,
       displayNumbers,
     )
-    setDownloadOpen(false)
+    setOpenMenu(null)
     void copyToClipboard(program[format]).then((copied) => {
       if (!copied) return
       setCopyToast({ x, y })
@@ -683,7 +689,7 @@ export function SetlistDetailsMockup() {
           genuinely recolors from whichever side is actually hovered,
           not always from the same one. Same fix ported to
           `PieceDetailsSample.tsx` and the real `PiecePage.tsx`. */}
-      <div className="flex flex-wrap items-center gap-2">
+      <div ref={menuRowRef} className="flex flex-wrap items-center gap-2">
         {/* Play Set (Sheet Viewer Phase 6): opens the viewer on this set,
             in its order, for that session only — custom entries get
             placeholder pages. The caret adds every piece to the Practice
@@ -700,7 +706,7 @@ export function SetlistDetailsMockup() {
             </Link>
             <button
               type="button"
-              onClick={() => setPlayMenuOpen((o) => !o)}
+              onClick={() => toggleMenu('play')}
               aria-label="More play options"
               className="flex cursor-pointer items-center justify-center rounded-r-md border-l border-white/25 bg-accent-fill px-2 text-white hover:bg-accent-fill/90"
             >
@@ -721,7 +727,7 @@ export function SetlistDetailsMockup() {
                   if (justAdded !== null) return
                   setJustAdded(piecesToAdd)
                   addFeedbackTimer.current = window.setTimeout(() => {
-                    setPlayMenuOpen(false)
+                    setOpenMenu(null)
                     setJustAdded(null)
                     setPiecesOnList(setPieceCount)
                   }, 1000)
@@ -771,7 +777,7 @@ export function SetlistDetailsMockup() {
             <button
               ref={downloadMenuButtonRef}
               type="button"
-              onClick={() => setDownloadOpen((o) => !o)}
+              onClick={() => toggleMenu('download')}
               aria-label="More download and copy options"
               className="relative -ml-px flex cursor-pointer items-center justify-center rounded-r-md border border-border bg-paper-raised px-2 text-ink transition-colors hover:z-10 hover:border-accent"
             >
