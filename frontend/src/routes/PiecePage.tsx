@@ -415,10 +415,10 @@ export function PiecePage() {
     queryKey: ['setlist-memberships'],
     queryFn: listPieceSetlistMemberships,
   })
-  const pieceSetlistNames = setlistMemberships
-    .filter((m) => m.pieceId === piece?.id)
-    .map((m) => m.setlistName)
-    .join(', ')
+  // In a set that isn't archived (undated sets count).
+  const inUpcomingSet = setlistMemberships.some(
+    (m) => m.pieceId === piece?.id && !m.setlistArchived,
+  )
 
   const favoriteMutation = useMutation({
     mutationFn: () =>
@@ -1101,15 +1101,15 @@ export function PiecePage() {
                       status display, not a control, same reasoning as the
                       copyright badge: needs a real tap-accessible tooltip
                       (InfoTooltip), not a hover-only native title, so a
-                      touch device can still learn which setlist(s) it's
-                      naming. Filled icon, same "solid = affirmative state"
+                      touch device can still read it ("In an upcoming set").
+                      Filled icon, same "solid = affirmative state"
                       precedent as the favorite heart right next to it —
-                      only ever rendered when the piece is actually in at
-                      least one. */}
-                  {pieceSetlistNames && (
+                      only rendered when the piece is in a set that isn't
+                      archived. */}
+                  {inUpcomingSet && (
                     <InfoTooltip
-                      message={`In ${pieceSetlistNames}`}
-                      ariaLabel="This piece is in a setlist"
+                      message="In an upcoming set"
+                      ariaLabel="In an upcoming set"
                       showPointerCursor={false}
                       triggerClassName="text-accent"
                     >

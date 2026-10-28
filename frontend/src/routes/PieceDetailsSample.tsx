@@ -33,7 +33,7 @@ import { formatDateOnly } from '../lib/dateOnly'
 import { COPYRIGHT_BADGE_META, copyrightTooltipText } from '../lib/copyrightBadge'
 import { AddToSetlistPicker } from './AddToSetlistMockup'
 import { InfoTooltip } from '../components/InfoTooltip'
-import { ALL_MOCK_SETLISTS } from '../lib/setlistsMockupFixture'
+import { ALL_MOCK_SETLISTS, isEffectivelyArchived } from '../lib/setlistsMockupFixture'
 import { MarkdownText } from '../components/MarkdownText'
 import { PracticeStatusIcon } from '../components/PracticeStatusIcon'
 import { hyphenateISBN } from '../lib/isbn'
@@ -1074,17 +1074,17 @@ export function PieceDetailsSample() {
                     status display, not a control, same reasoning as the
                     copyright badge: needs a real tap-accessible tooltip
                     (InfoTooltip), not a hover-only native title, so a touch
-                    device can still learn which setlist(s) it's naming.
+                    device can still read it ("In an upcoming set").
                     Filled icon, same "solid = affirmative state" precedent
-                    as the favorite heart right next to it — only ever
-                    rendered when the piece is actually in at least one. */}
-                {pieceSetlistIds.length > 0 && (
+                    as the favorite heart right next to it — only rendered
+                    when the piece is in a set that isn't archived. */}
+                {pieceSetlistIds.some((id) => {
+                  const set = ALL_MOCK_SETLISTS.find((s) => s.id === id)
+                  return set && !isEffectivelyArchived(set)
+                }) && (
                   <InfoTooltip
-                    message={`In ${pieceSetlistIds
-                      .map((id) => ALL_MOCK_SETLISTS.find((s) => s.id === id)?.name)
-                      .filter(Boolean)
-                      .join(', ')}`}
-                    ariaLabel="This piece is in a setlist"
+                    message="In an upcoming set"
+                    ariaLabel="In an upcoming set"
                     showPointerCursor={false}
                     triggerClassName="text-accent"
                   >

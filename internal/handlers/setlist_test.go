@@ -356,3 +356,36 @@ func TestGetSetlistProgram_ListsEntriesAndSources(t *testing.T) {
 		t.Errorf("program of a missing setlist: status %d, want 404", rec.Code)
 	}
 }
+
+// A membership carries its setlist's effective archived state, so the
+// "in an upcoming set" indicator can skip archived sets: a past gig date
+// archives it, an undated set never is.
+func TestListPieceSetlistMemberships_CarriesArchived(t *testing.T) {
+	h := newTestServer(t)
+	pieceID := uploadTestPiece(t, h)
+	for _, body := range []map[string]any{
+		{"name": "Long ago", "gigDate": "2001-01-01"},
+		{"name": "Someday"},
+	} {
+		rec := doJSON(t, h, http.MethodPost, "/api/setlists", body)
+		var s struct {
+			ID int64 `json:"id"`
+		}
+		decodeData(t, rec, &s)
+		if rec := doJSON(t, h, http.MethodPost, setlistURL(s.ID, "/entries"), map[string]any{"pieceId": pieceID}); rec.Code != http.StatusCreated {
+			t.Fatalf("add entry: status %d", rec.Code)
+		}
+	}
+	var got []struct {
+		SetlistName     string `json:"setlistName"`
+		SetlistArchived bool   `json:"setlistArchived"`
+	}
+	decodeData(t, doJSON(t, h, http.MethodGet, "/api/setlists/memberships", nil), &got)
+	archived := map[string]bool{}
+	for _, m := range got {
+		archived[m.SetlistName] = m.SetlistArchived
+	}
+	if !archived["Long ago"] || archived["Someday"] {
+		t.Errorf("archived by set = %v, want Long ago archived, Someday not", archived)
+	}
+}

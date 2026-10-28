@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/jpcranford/sonneck/internal/api"
 	"github.com/jpcranford/sonneck/internal/models"
@@ -43,7 +44,7 @@ func (s *Server) handleListPieceSetlistMemberships(w http.ResponseWriter, r *htt
 	if !ok {
 		return
 	}
-	memberships, err := repo.ListPieceSetlistMemberships(r.Context(), s.DB, user.ID)
+	memberships, err := repo.ListPieceSetlistMemberships(r.Context(), s.DB, user.ID, time.Now().Format("2006-01-02"))
 	if err != nil {
 		s.writeError(w, err)
 		return

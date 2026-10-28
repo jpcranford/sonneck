@@ -472,4 +472,7 @@ export interface PieceSetlistMembership {
   setlistId: number
   setlistName: string
   entryId: number
+  /** The setlist's effectiveArchived: the "in an upcoming set" indicator
+   * counts only sets that aren't. */
+  setlistArchived: boolean
 }

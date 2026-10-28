@@ -21,6 +21,7 @@ import { EditSetlistModal } from './EditSetlistMockup'
 import {
   ALL_MOCK_SETLISTS,
   getUpcomingSetlists,
+  isEffectivelyArchived,
   type MockSetlist,
 } from '../lib/setlistsMockupFixture'
 import { useMockupTitle } from '../lib/useMockupTitle'
@@ -422,11 +423,11 @@ function FixtureGridCard({
 }) {
   const [pickerOpen, setPickerOpen] = useState(false)
   const [onPracticeList, setOnPracticeList] = useState(false)
-  const inSetlist = setlistIds.length > 0
-  const inSetlistNames = setlistIds
-    .map((id) => ALL_MOCK_SETLISTS.find((s) => s.id === id)?.name)
-    .filter(Boolean)
-    .join(', ')
+  // In a set that isn't archived (undated sets count).
+  const inUpcomingSet = setlistIds.some((id) => {
+    const set = ALL_MOCK_SETLISTS.find((s) => s.id === id)
+    return set && !isEffectivelyArchived(set)
+  })
 
   return (
     <div className="relative">
@@ -471,8 +472,8 @@ function FixtureGridCard({
                   <IconHeartFilled size={13} />
                 </span>
               )}
-              {inSetlist && (
-                <span className="shrink-0 text-accent" title={`In ${inSetlistNames}`}>
+              {inUpcomingSet && (
+                <span className="shrink-0 text-accent" title="In an upcoming set">
                   <IconCalendarFilled size={13} />
                 </span>
               )}
@@ -508,11 +509,11 @@ function FixtureListCard({
 }) {
   const [pickerOpen, setPickerOpen] = useState(false)
   const [onPracticeList, setOnPracticeList] = useState(false)
-  const inSetlist = setlistIds.length > 0
-  const inSetlistNames = setlistIds
-    .map((id) => ALL_MOCK_SETLISTS.find((s) => s.id === id)?.name)
-    .filter(Boolean)
-    .join(', ')
+  // In a set that isn't archived (undated sets count).
+  const inUpcomingSet = setlistIds.some((id) => {
+    const set = ALL_MOCK_SETLISTS.find((s) => s.id === id)
+    return set && !isEffectivelyArchived(set)
+  })
 
   return (
     <div className="relative">
@@ -549,8 +550,8 @@ function FixtureListCard({
                   <IconHeartFilled size={13} />
                 </span>
               )}
-              {inSetlist && (
-                <span className="shrink-0 text-accent" title={`In ${inSetlistNames}`}>
+              {inUpcomingSet && (
+                <span className="shrink-0 text-accent" title="In an upcoming set">
                   <IconCalendarFilled size={13} />
                 </span>
               )}

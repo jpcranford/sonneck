@@ -55,10 +55,8 @@ export function PieceGridCard({ piece, backLabel, siblingPieces }: PieceGridCard
     queryKey: ['setlist-memberships'],
     queryFn: listPieceSetlistMemberships,
   })
-  const inSetlistNames = memberships
-    .filter((m) => m.pieceId === piece.id)
-    .map((m) => m.setlistName)
-    .join(', ')
+  // In a set that isn't archived (undated sets count).
+  const inUpcomingSet = memberships.some((m) => m.pieceId === piece.id && !m.setlistArchived)
 
   return (
     // No visible "⋯" trigger on grid cards — a permanently-visible
@@ -107,8 +105,8 @@ export function PieceGridCard({ piece, backLabel, siblingPieces }: PieceGridCard
                 <IconHeartFilled size={13} />
               </span>
             )}
-            {inSetlistNames && (
-              <span className="shrink-0 text-accent" title={`In ${inSetlistNames}`}>
+            {inUpcomingSet && (
+              <span className="shrink-0 text-accent" title="In an upcoming set">
                 <IconCalendarFilled size={13} />
               </span>
             )}

@@ -234,6 +234,9 @@ type PieceSetlistMembership struct {
 	SetlistID   int64  `json:"setlistId"`
 	SetlistName string `json:"setlistName"`
 	EntryID     int64  `json:"entryId"`
+	// SetlistArchived is the setlist's EffectiveArchived: the "in a setlist"
+	// indicator only counts sets that aren't.
+	SetlistArchived bool `json:"setlistArchived"`
 }
 
 // ListPieceSetlistMemberships returns every piece-entry membership across
@@ -242,9 +245,9 @@ type PieceSetlistMembership struct {
 // also what the single-piece Add to Setlist picker filters client-side by
 // pieceId. A piece repeated within one setlist (decision 4) yields two
 // separate rows here, each with its own real entryId.
-func ListPieceSetlistMemberships(ctx context.Context, q Queryer, ownerUserID int64) ([]PieceSetlistMembership, error) {
+func ListPieceSetlistMemberships(ctx context.Context, q Queryer, ownerUserID int64, today string) ([]PieceSetlistMembership, error) {
 	rows, err := q.QueryContext(ctx, `
-		SELECT se.piece_id, s.id, s.name, se.id
+		SELECT se.piece_id, s.id, s.name, se.id, s.archived, s.gig_date
 		FROM setlist_entries se
 		JOIN setlists s ON s.id = se.setlist_id
 		WHERE s.owner_user_id = ? AND se.piece_id IS NOT NULL
@@ -258,9 +261,11 @@ func ListPieceSetlistMemberships(ctx context.Context, q Queryer, ownerUserID int
 	memberships := []PieceSetlistMembership{}
 	for rows.Next() {
 		var m PieceSetlistMembership
-		if err := rows.Scan(&m.PieceID, &m.SetlistID, &m.SetlistName, &m.EntryID); err != nil {
+		var set Setlist
+		if err := rows.Scan(&m.PieceID, &m.SetlistID, &m.SetlistName, &m.EntryID, &set.Archived, &set.GigDate); err != nil {
 			return nil, err
 		}
+		m.SetlistArchived = set.EffectiveArchived(today)
 		memberships = append(memberships, m)
 	}
 	return memberships, rows.Err()
