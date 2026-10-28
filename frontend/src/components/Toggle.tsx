@@ -10,10 +10,12 @@ import type { ReactNode } from 'react'
 // inside the clickable label, so its own click never also toggles the
 // switch.
 //
-// `row` is the Sheet Viewer's switch-row style (design D, picked from a
-// side-by-side: https://claude.ai/artifact/Cx5oktzeNJnW1BCXRmnBmH): the
-// label first at the surrounding text's size, a larger 44×26 switch at the
-// row's right edge, and the whole row clickable. The caller sizes the row
+// The switch is 44×26 everywhere (the size the Sheet Viewer's rows
+// introduced, adopted app-wide). `row` is the Sheet Viewer's switch-row
+// style (design D, picked from a side-by-side:
+// https://claude.ai/artifact/Cx5oktzeNJnW1BCXRmnBmH): the label first at the
+// surrounding text's size, the switch at the row's right edge, and the
+// whole row clickable. The caller sizes the row
 // (`className`, e.g. a 48pt height and the padding that lines the label up
 // with the text around it).
 export function Toggle({
@@ -44,15 +46,11 @@ export function Toggle({
       aria-checked={checked}
       disabled={disabled}
       onClick={() => onChange(!checked)}
-      className={`relative inline-flex shrink-0 items-center rounded-full transition-colors focus-visible:outline focus-visible:outline-accent ${
-        row ? 'h-[26px] w-11' : 'h-5 w-9'
-      } ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'} ${checked ? 'bg-accent-fill' : 'bg-border'}`}
+      className={`relative inline-flex h-[26px] w-11 shrink-0 items-center rounded-full transition-colors focus-visible:outline focus-visible:outline-accent ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'} ${checked ? 'bg-accent-fill' : 'bg-border'}`}
     >
       <span
-        className={`inline-block transform rounded-full bg-white shadow transition-transform ${
-          row
-            ? `size-5 ${checked ? 'translate-x-[21px]' : 'translate-x-[3px]'}`
-            : `size-3.5 ${checked ? 'translate-x-[18px]' : 'translate-x-1'}`
+        className={`inline-block size-5 transform rounded-full bg-white shadow transition-transform ${
+          checked ? 'translate-x-[21px]' : 'translate-x-[3px]'
         }`}
       />
     </button>
