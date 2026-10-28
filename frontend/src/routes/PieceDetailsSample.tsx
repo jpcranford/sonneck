@@ -23,7 +23,7 @@ import {
   IconMusic,
   IconPlayerPlay,
   IconPlaylistAdd,
-  IconPlaylistX,
+  IconPlaylistFilled,
   IconRefresh,
   IconTrash,
   IconX,
@@ -540,12 +540,11 @@ export function PieceDetailsSample() {
   const [page, setPage] = useState(1)
   const [thumbnailPage, setThumbnailPage] = useState(1)
   const [lightboxOpen, setLightboxOpen] = useState(false)
-  // The three menus under the page (Play's caret, Download's caret and ⋯):
+  // The two menus under the page (Download's caret and ⋯):
   // one open at a time, so opening one closes whichever else was open.
-  const [openMenu, setOpenMenu] = useState<'play' | 'download' | 'more' | null>(null)
-  const toggleMenu = (menu: 'play' | 'download' | 'more') =>
+  const [openMenu, setOpenMenu] = useState<'download' | 'more' | null>(null)
+  const toggleMenu = (menu: 'download' | 'more') =>
     setOpenMenu((open) => (open === menu ? null : menu))
-  const playMenuOpen = openMenu === 'play'
   const downloadOpen = openMenu === 'download'
   const moreActionsOpen = openMenu === 'more'
   // A press outside the row, or Escape, closes whichever is open.
@@ -871,49 +870,18 @@ export function PieceDetailsSample() {
           )}
 
           <div ref={menuRowRef} className="flex flex-wrap items-center justify-center gap-2">
-            {/* Play (Sheet Viewer Phase 6): a split button like Download
-                PDF's, solid accent as the page's primary action. The main
-                half opens the Sheet Viewer mockup; the caret holds "Add to
-                Practice List" (or Remove, when it's already there — a piece
-                is on the list once at most). Hidden without the practice
-                permission in the real page. */}
-            <div className="relative">
-              <div className="flex">
-                <Link
-                  to="/mockup/sheet-viewer"
-                  className="flex cursor-pointer items-center gap-2 rounded-l-md bg-accent-fill px-4 py-2 font-display font-medium text-sm text-white hover:bg-accent-fill/90"
-                >
-                  <IconPlayerPlay size={16} />
-                  Play
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => toggleMenu('play')}
-                  aria-label="More play options"
-                  className="flex cursor-pointer items-center justify-center rounded-r-md border-l border-white/25 bg-accent-fill px-2 text-white hover:bg-accent-fill/90"
-                >
-                  <IconChevronDown size={16} />
-                </button>
-              </div>
-              {playMenuOpen && (
-                <div
-                  ref={openMenuRef}
-                  className="absolute top-full left-0 z-10 mt-1 w-64 rounded-md border border-border bg-paper-raised py-1 text-left shadow-lg"
-                >
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setOnPracticeList(!onPracticeList)
-                      setOpenMenu(null)
-                    }}
-                    className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-paper-hover"
-                  >
-                    {onPracticeList ? <IconPlaylistX size={16} /> : <IconPlaylistAdd size={16} />}
-                    {onPracticeList ? 'Remove from Practice List' : 'Add to Practice List'}
-                  </button>
-                </div>
-              )}
-            </div>
+            {/* Play (Sheet Viewer Phase 6): solid accent as the page's
+                primary action; opens the Sheet Viewer mockup. Adding the
+                piece to the Practice List is the list icon in the
+                title row. Hidden without the
+                practice permission in the real page. */}
+            <Link
+              to="/mockup/sheet-viewer"
+              className="flex cursor-pointer items-center gap-2 rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-sm text-white hover:bg-accent-fill/90"
+            >
+              <IconPlayerPlay size={16} />
+              Play
+            </Link>
 
             {/* Download PDF — still matches the other buttons' bordered/
                 paper-raised palette (not the accent-solid treatment Play
@@ -1083,13 +1051,33 @@ export function PieceDetailsSample() {
             <div className="flex items-start justify-between gap-4">
               <h1 className="font-display text-3xl font-medium text-ink">{piece.title}</h1>
               <div className="mt-1 flex shrink-0 items-center gap-3">
+                {/* The Practice List, first in this row, before the setlist
+                    indicator and the heart (placement C of a
+                    side-by-side, https://claude.ai/artifact/So7jd1j9CrFsetgXYGRwv6):
+                    a one-tap toggle that shows whether the piece is on it,
+                    filled like the heart when it is (the sidebar's Practice
+                    List icon). Hidden without `practice` in the real page. */}
+                <button
+                  type="button"
+                  onClick={() => setOnPracticeList(!onPracticeList)}
+                  aria-pressed={onPracticeList}
+                  aria-label={onPracticeList ? 'Remove from Practice List' : 'Add to Practice List'}
+                  title={onPracticeList ? 'On your Practice List' : 'Add to Practice List'}
+                  className="cursor-pointer text-ink-soft hover:text-accent"
+                >
+                  {onPracticeList ? (
+                    <IconPlaylistFilled size={24} className="text-accent" />
+                  ) : (
+                    <IconPlaylistAdd size={24} />
+                  )}
+                </button>
                 {/* "Already in a setlist" indicator (decision 6) — a pure
                     status display, not a control, same reasoning as the
                     copyright badge: needs a real tap-accessible tooltip
                     (InfoTooltip), not a hover-only native title, so a touch
                     device can still read it ("In an upcoming set").
                     Filled icon, same "solid = affirmative state" precedent
-                    as the favorite heart right next to it — only rendered
+                    as the favorite heart in this row — only rendered
                     when the piece is in a set that isn't archived. */}
                 {pieceSetlistIds.some((id) => {
                   const set = ALL_MOCK_SETLISTS.find((s) => s.id === id)

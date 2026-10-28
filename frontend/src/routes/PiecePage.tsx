@@ -24,7 +24,7 @@ import {
   IconMusic,
   IconPlayerPlay,
   IconPlaylistAdd,
-  IconPlaylistX,
+  IconPlaylistFilled,
   IconRefresh,
   IconTrash,
 } from '@tabler/icons-react'
@@ -348,12 +348,11 @@ export function PiecePage() {
   const canPractice = hasPermission(me, 'practice')
 
   const [lightboxOpen, setLightboxOpen] = useState(false)
-  // The three menus under the page (Play's caret, Download's caret and ⋯):
+  // The two menus under the page (Download's caret and ⋯):
   // one open at a time, so opening one closes whichever else was open.
-  const [openMenu, setOpenMenu] = useState<'play' | 'download' | 'more' | null>(null)
-  const toggleMenu = (menu: 'play' | 'download' | 'more') =>
+  const [openMenu, setOpenMenu] = useState<'download' | 'more' | null>(null)
+  const toggleMenu = (menu: 'download' | 'more') =>
     setOpenMenu((open) => (open === menu ? null : menu))
-  const playMenuOpen = openMenu === 'play'
   const downloadOpen = openMenu === 'download'
   const moreActionsOpen = openMenu === 'more'
   // A press outside the row, or Escape, closes whichever is open.
@@ -373,7 +372,7 @@ export function PiecePage() {
   const addToSetlistButtonRef = useRef<HTMLButtonElement>(null)
   const replaceFileInputRef = useRef<HTMLInputElement>(null)
 
-  // The Practice List (Sheet Viewer): Play's caret adds the piece or takes
+  // The Practice List (Sheet Viewer): the list icon in the title row adds the piece or takes
   // it off, and More info's "Last practiced" (left out while Track practice
   // is off in User Settings). Both need `practice`, like the viewer.
   const today = useToday()
@@ -828,53 +827,17 @@ export function PiecePage() {
             <div ref={menuRowRef} className="flex flex-wrap items-center justify-center gap-2">
               {/* Play — opens the piece in the Sheet Viewer, the page's one
                   primary action, so it carries the accent-solid treatment.
-                  A split button like Download PDF's: the caret adds the
-                  piece to the Practice List, or takes it off (a piece is on
-                  it once at most). Hidden without `practice`, which gates
-                  the whole viewer. */}
+                  Adding the piece to the Practice List is the list icon
+                  in the title row. Hidden
+                  without `practice`, which gates the whole viewer. */}
               {canPractice && (
-                <div className="relative">
-                  <div className="flex">
-                    <Link
-                      to={`/pieces/${piece.id}/play`}
-                      className="flex items-center gap-2 rounded-l-md bg-accent-fill px-4 py-2 font-display text-sm font-medium text-white hover:bg-accent-fill/90"
-                    >
-                      <IconPlayerPlay size={16} />
-                      Play
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={() => toggleMenu('play')}
-                      aria-label="More play options"
-                      className="flex cursor-pointer items-center justify-center rounded-r-md border-l border-white/25 bg-accent-fill px-2 text-white hover:bg-accent-fill/90"
-                    >
-                      <IconChevronDown size={16} />
-                    </button>
-                  </div>
-                  {playMenuOpen && (
-                    <div
-                      ref={openMenuRef}
-                      className="absolute top-full left-0 z-10 mt-1 w-64 rounded-md border border-border bg-paper-raised py-1 text-left shadow-lg"
-                    >
-                      <button
-                        type="button"
-                        disabled={!practiceList || practiceListMutation.isPending}
-                        onClick={() => {
-                          practiceListMutation.mutate(!onPracticeList)
-                          setOpenMenu(null)
-                        }}
-                        className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-paper-hover"
-                      >
-                        {onPracticeList ? (
-                          <IconPlaylistX size={16} />
-                        ) : (
-                          <IconPlaylistAdd size={16} />
-                        )}
-                        {onPracticeList ? 'Remove from Practice List' : 'Add to Practice List'}
-                      </button>
-                    </div>
-                  )}
-                </div>
+                <Link
+                  to={`/pieces/${piece.id}/play`}
+                  className="flex items-center gap-2 rounded-md bg-accent-fill px-4 py-2 font-display text-sm font-medium text-white hover:bg-accent-fill/90"
+                >
+                  <IconPlayerPlay size={16} />
+                  Play
+                </Link>
               )}
 
               {/* Positioning context lives on this outer div, not the
@@ -1110,13 +1073,39 @@ export function PiecePage() {
               <div className="flex items-start justify-between gap-4">
                 <h1 className="font-display text-3xl font-medium text-ink">{piece.title}</h1>
                 <div className="mt-1 flex shrink-0 items-center gap-3">
+                  {/* The Practice List, first in this row, before the setlist
+                      indicator and the heart (placement C of a
+                      side-by-side, https://claude.ai/artifact/So7jd1j9CrFsetgXYGRwv6):
+                      a one-tap toggle that shows whether the piece is on
+                      it, filled like the heart when it is (the sidebar's
+                      Practice List icon). Needs `practice`, like the
+                      viewer; a piece is on the list once at most. */}
+                  {canPractice && (
+                    <button
+                      type="button"
+                      onClick={() => practiceListMutation.mutate(!onPracticeList)}
+                      disabled={!practiceList || practiceListMutation.isPending}
+                      aria-label={
+                        onPracticeList ? 'Remove from Practice List' : 'Add to Practice List'
+                      }
+                      title={onPracticeList ? 'On your Practice List' : 'Add to Practice List'}
+                      aria-pressed={onPracticeList}
+                      className="cursor-pointer text-ink-soft hover:text-accent disabled:opacity-50"
+                    >
+                      {onPracticeList ? (
+                        <IconPlaylistFilled size={24} className="text-accent" />
+                      ) : (
+                        <IconPlaylistAdd size={24} />
+                      )}
+                    </button>
+                  )}
                   {/* "Already in a setlist" indicator (decision 6) — a pure
                       status display, not a control, same reasoning as the
                       copyright badge: needs a real tap-accessible tooltip
                       (InfoTooltip), not a hover-only native title, so a
                       touch device can still read it ("In an upcoming set").
                       Filled icon, same "solid = affirmative state"
-                      precedent as the favorite heart right next to it —
+                      precedent as the favorite heart in this row —
                       only rendered when the piece is in a set that isn't
                       archived. */}
                   {inUpcomingSet && (
