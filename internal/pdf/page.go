@@ -104,10 +104,12 @@ func RenderPageGray(ctx context.Context, binDir, src string, page, dpi int, scan
 	tifPath := prefix + ".tif"
 	defer os.Remove(tifPath)
 
-	cmd := exec.CommandContext(ctx, toolPath(binDir, "pdftocairo"), "-gray", "-tiff",
+	// -cropbox, like the scan path and thumbnails: the page as every PDF
+	// app shows it, which is also where annotated downloads place marks.
+	cmd := exec.CommandContext(ctx, toolPath(binDir, "pdftocairo"), "-gray", "-tiff", "-cropbox",
 		"-r", r, "-f", p, "-l", p, "-singlefile", src, prefix)
 	if out, err := cmd.CombinedOutput(); err != nil {
-		return nil, fmt.Errorf("pdftocairo -gray -tiff -f %d %s: %w: %s", page, src, err, out)
+		return nil, fmt.Errorf("pdftocairo -gray -tiff -cropbox -f %d %s: %w: %s", page, src, err, out)
 	}
 	f, err := os.Open(tifPath)
 	if err != nil {

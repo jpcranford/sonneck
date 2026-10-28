@@ -13,7 +13,7 @@ import (
 )
 
 func pagePath(dataDir, hash string, page int) string {
-	return filepath.Join(dataDir, "cache", "pages", "v1", hash, fmt.Sprintf("%d.png", page))
+	return filepath.Join(dataDir, "cache", "pages", "v2", hash, fmt.Sprintf("%d.png", page))
 }
 
 func uploadPagesPiece(t *testing.T, h http.Handler, pages int) pieceResponse {
@@ -168,8 +168,8 @@ func TestCleanupPages(t *testing.T) {
 		old := time.Now().Add(-age)
 		os.Chtimes(path, old, old)
 	}
-	write(filepath.Join(dataDir, "cache", "pages", "v0", p.FileHash, "1.png"), "old version", 0)  // older render version
-	write(filepath.Join(dataDir, "cache", "pages", "v1", "deadbeef", "1.png"), "no such file", 0) // no piece has it
+	write(filepath.Join(dataDir, "cache", "pages", "v1", p.FileHash, "1.png"), "old version", 0)  // older render version
+	write(filepath.Join(dataDir, "cache", "pages", "v2", "deadbeef", "1.png"), "no such file", 0) // no piece has it
 	write(filepath.Join(dir, "3.png"), "past the end", 0)                                         // the piece has 2 pages
 	write(filepath.Join(dir, "2.png"), "not a png", 0)                                            // unreadable
 	write(filepath.Join(dir, "1-123.tmp"), "", 2*time.Hour)                                       // leftover temp
@@ -191,7 +191,7 @@ func TestCleanupPages(t *testing.T) {
 			t.Errorf("%s exists = %v, want %v", name, got, want)
 		}
 	}
-	for _, gone := range []string{filepath.Join(dataDir, "cache", "pages", "v0"), filepath.Join(dataDir, "cache", "pages", "v1", "deadbeef")} {
+	for _, gone := range []string{filepath.Join(dataDir, "cache", "pages", "v1"), filepath.Join(dataDir, "cache", "pages", "v2", "deadbeef")} {
 		if _, err := os.Stat(gone); !os.IsNotExist(err) {
 			t.Errorf("%s still there", gone)
 		}
@@ -235,7 +235,7 @@ func TestRegeneratePages(t *testing.T) {
 		PagesVersion string `json:"pagesVersion"`
 	}
 	decodeData(t, recordRequest(h, httptestGet(t, "/api/config")), &after)
-	if before.PagesVersion != "1" || after.PagesVersion == before.PagesVersion {
-		t.Errorf("pagesVersion %q → %q, want \"1\" then a redrawn version", before.PagesVersion, after.PagesVersion)
+	if before.PagesVersion != "2" || after.PagesVersion == before.PagesVersion {
+		t.Errorf("pagesVersion %q → %q, want \"2\" then a redrawn version", before.PagesVersion, after.PagesVersion)
 	}
 }

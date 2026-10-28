@@ -17,3 +17,31 @@ export async function getAnnotations(pieceId: number): Promise<AnnotationPages> 
 export function savePageAnnotations(pieceId: number, page: number, marks: Mark[]) {
   return apiPut(`/api/pieces/${pieceId}/annotations/${page}`, { marks })
 }
+
+// Download PDF + Annotations (internal/handlers/annotatedpdf.go): how many
+// marks a download would carry, and how many it leaves out for being in a
+// color hidden on that piece. A setlist's counts cover its pieces, each once.
+export type AnnotationSummary = { shown: number; hidden: number }
+
+export function getPieceAnnotationSummary(pieceId: number) {
+  return apiGet<AnnotationSummary>(`/api/pieces/${pieceId}/annotations/summary`)
+}
+
+export function getSetlistAnnotationSummary(setlistId: number) {
+  return apiGet<AnnotationSummary>(`/api/setlists/${setlistId}/annotations/summary`)
+}
+
+// The annotated download's address: the plain one, asked for annotations.
+export const withAnnotations = (url: string) => `${url}?annotations=true`
+
+// Why "+ Annotations" is faded (nothing to export), or null when it isn't.
+export function annotationExportBlocked(
+  summary: AnnotationSummary | undefined,
+  scope: 'piece' | 'set',
+): string | null {
+  if (!summary || summary.shown > 0) return null
+  const where = scope === 'piece' ? 'this piece' : "this set's pieces"
+  return summary.hidden > 0
+    ? `Your annotations on ${where} are all in hidden colors. Show a color in the Sheet Viewer's Layers menu to include it.`
+    : `No annotations on ${where} yet. Draw some in the Sheet Viewer first.`
+}

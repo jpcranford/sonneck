@@ -939,17 +939,17 @@ export function PieceDetailsSample() {
               </div>
               {downloadOpen && (
                 <div className="absolute top-full left-0 z-10 mt-1 w-64 rounded-md border border-border bg-paper-raised py-1 text-left shadow-lg">
-                  {/* InfoTooltip, not a disabled button: a disabled element takes no taps,
-                      so on touch there would be no way to learn why it's inert. */}
-                  <InfoTooltip
-                    message="Coming soon — downloads a copy of this piece's PDF with your annotations drawn on it, once annotations exist."
-                    ariaLabel="Download PDF + Annotations (coming soon with annotations)"
-                    showPointerCursor={false}
-                    triggerClassName="block w-full px-3 py-2 text-left text-sm text-ink-soft opacity-50"
+                  {/* The real page's item (PiecePage.tsx): the piece's PDF
+                      with your Sheet Viewer marks as real annotations,
+                      hidden colors left out. With nothing to export it
+                      fades, its reason on a tap. Inert here. */}
+                  <button
+                    type="button"
+                    className="block w-full cursor-pointer px-3 py-2 text-left text-sm text-ink hover:bg-paper-hover"
                   >
                     Download PDF + Annotations
-                    <span className="block text-xs italic">Coming with annotations (§13)</span>
-                  </InfoTooltip>
+                    <span className="block text-xs text-ink-muted">Hidden colors are left out</span>
+                  </button>
                 </div>
               )}
             </div>

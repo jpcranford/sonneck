@@ -66,6 +66,11 @@ import { secondsToMMSS } from '../lib/duration'
 import { EditBookModal } from '../components/EditBookModal'
 import { EditPieceModal } from '../components/EditPieceModal'
 import { InfoTooltip } from '../components/InfoTooltip'
+import {
+  annotationExportBlocked,
+  getPieceAnnotationSummary,
+  withAnnotations,
+} from '../api/annotations'
 import { MarkdownText } from '../components/MarkdownText'
 import { PageLightbox } from '../components/PageLightbox'
 import { PracticeStatusIcon } from '../components/PracticeStatusIcon'
@@ -378,6 +383,16 @@ export function PiecePage() {
     enabled: canPractice,
   })
   const trackPractice = canPractice && userSettings?.trackPractice !== false
+  // Download PDF + Annotations: whether there's anything to export (the
+  // item fades with the reason when not). Marks are saved by the viewer
+  // outside any mutation, so this is fetched fresh on each visit.
+  const { data: annotationSummary } = useQuery({
+    queryKey: ['piece', pieceId, 'annotation-summary'],
+    queryFn: () => getPieceAnnotationSummary(pieceId),
+    enabled: canPractice,
+    staleTime: 0,
+  })
+  const annotationsBlocked = annotationExportBlocked(annotationSummary, 'piece')
   const { data: practiced } = useQuery({
     queryKey: ['practiced', pieceId, today],
     queryFn: () => getPracticed(pieceId, today),
@@ -910,17 +925,33 @@ export function PiecePage() {
                       >
                         Download Piece PDF
                       </DownloadLink>
-                      {/* InfoTooltip, not a disabled button: a disabled element takes no taps,
-                        so on touch there would be no way to learn why it's inert. */}
-                      <InfoTooltip
-                        message="Coming soon — downloads a copy of this piece's PDF with your annotations drawn on it, once annotations exist."
-                        ariaLabel="Download PDF + Annotations (coming soon with annotations)"
-                        showPointerCursor={false}
-                        triggerClassName="block w-full px-3 py-2 text-left text-sm text-ink-soft opacity-50"
-                      >
-                        Download PDF + Annotations
-                        <span className="block text-xs italic">Coming with annotations (§13)</span>
-                      </InfoTooltip>
+                      {/* Your Sheet Viewer marks as real PDF annotations
+                        (needs practice, like the viewer). With nothing to
+                        export it fades, with the reason on a tap: an
+                        InfoTooltip, since a disabled element takes no taps. */}
+                      {canPractice &&
+                        (annotationsBlocked ? (
+                          <InfoTooltip
+                            message={annotationsBlocked}
+                            ariaLabel="Download PDF + Annotations (nothing to export)"
+                            showPointerCursor={false}
+                            triggerClassName="block w-full px-3 py-2 text-left text-sm text-ink opacity-50"
+                          >
+                            Download PDF + Annotations
+                          </InfoTooltip>
+                        ) : (
+                          <DownloadLink
+                            href={withAnnotations(getPieceFileUrl(piece.id))}
+                            className="block w-full px-3 py-2 text-left text-sm text-ink hover:bg-paper-hover"
+                          >
+                            Download PDF + Annotations
+                            {!!annotationSummary?.hidden && (
+                              <span className="block text-xs text-ink-muted">
+                                Hidden colors are left out
+                              </span>
+                            )}
+                          </DownloadLink>
+                        ))}
                     </div>
                   )}
                 </div>

@@ -22,7 +22,6 @@ import {
   IconTrash,
 } from '@tabler/icons-react'
 import { ContextMenu, type ContextMenuItem } from '../components/ContextMenu'
-import { InfoTooltip } from '../components/InfoTooltip'
 import { MarkdownText } from '../components/MarkdownText'
 import { Modal } from '../components/Modal'
 import { CONTENT_MAX_W } from '../lib/layout'
@@ -669,9 +668,9 @@ export function SetlistDetailsMockup() {
           bordered/paper-raised pill, same clickable-but-inert main action
           (this mockup has no real concatenation endpoint to link to,
           matching how the real one has no real PDF merge either —
-          nothing in this codebase does), same single disabled dropdown
-          item with the identical "Coming with annotations (§13)" note,
-          just relabeled for the whole set rather than one piece. Hover
+          nothing in this codebase does), same
+          "+ Annotations" item, relabeled for the whole set rather than
+          one piece. Hover
           feedback: a direct correction — an outer wrapper
           `hover:border-accent` highlighted the whole pill regardless of
           which segment was hovered, silently skipping the divider
@@ -798,17 +797,20 @@ export function SetlistDetailsMockup() {
                 </button>
               ))}
               <div className="my-1 h-px bg-border" />
-              {/* InfoTooltip, not a disabled button: a disabled element takes no taps,
-                  so on touch there would be no way to learn why it's inert. */}
-              <InfoTooltip
-                message="Coming soon — downloads the whole set's PDF with your annotations drawn on each piece, once annotations exist."
-                ariaLabel="Download Set PDF + Annotations (coming soon with annotations)"
-                showPointerCursor={false}
-                triggerClassName="block w-full px-3 py-2 text-left text-sm text-ink-soft opacity-50"
+              {/* The real page's item (SetlistPage.tsx): the Set PDF with
+                  your Sheet Viewer marks on each piece as real
+                  annotations, hidden colors left out. With nothing to
+                  export it fades, its reason on a tap. Inert here. */}
+              <button
+                type="button"
+                className="flex w-full cursor-pointer items-start gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-paper-hover"
               >
-                Download Set PDF + Annotations
-                <span className="block text-xs italic">Coming with annotations (§13)</span>
-              </InfoTooltip>
+                <IconDownload size={16} className="mt-0.5 shrink-0 text-ink-soft" />
+                <span>
+                  Download Set PDF + Annotations
+                  <span className="block text-xs text-ink-muted">Hidden colors are left out</span>
+                </span>
+              </button>
             </div>
           )}
         </div>
