@@ -24,6 +24,7 @@ import {
   IconClock,
   IconContrast,
   IconDots,
+  IconDownload,
   IconEye,
   IconEyeOff,
   IconGripVertical,
@@ -44,7 +45,13 @@ import {
   IconSun,
   IconX,
 } from '@tabler/icons-react'
-import { getAnnotations, savePageAnnotations, type AnnotationPages } from '../api/annotations'
+import {
+  getAnnotations,
+  savePageAnnotations,
+  withAnnotations,
+  type AnnotationPages,
+} from '../api/annotations'
+import { startDownload } from '../lib/download'
 import { ApiError } from '../api/client'
 import { getConfig } from '../api/config'
 import {
@@ -62,6 +69,7 @@ import { listPracticeStatuses } from '../api/lookups'
 import {
   DEFAULT_PRACTICE_SETTINGS,
   getPiece,
+  getPieceFileUrl,
   getPiecePageUrl,
   getPracticeSettings,
   preparePiecePages,
@@ -527,6 +535,9 @@ interface AnnotationSession {
   setPending: (step: { key: string; direction: 'undo' | 'redo' } | null) => void
   /** Where a failed load or save is reported: the item showing. */
   setNotify: (notify: (text: string) => void) => void
+  /** Saves every change still waiting, now; true once all of them (and any
+   * save already on its way) have landed. */
+  saveNow: () => Promise<boolean>
 }
 
 function useAnnotationSession(): AnnotationSession {
@@ -547,6 +558,8 @@ function useAnnotationSession(): AnnotationSession {
   const loading = useRef(new Set<number>())
   const unsaved = useRef(new Set<string>())
   const saveTimer = useRef<number | undefined>(undefined)
+  // The saves on their way, and whether they all landed.
+  const inFlight = useRef<Promise<boolean>>(Promise.resolve(true))
   const notify = useRef<(text: string) => void>(() => {})
   function setAllPages(next: Record<number, AnnotationPages>) {
     pagesRef.current = next
@@ -566,12 +579,19 @@ function useAnnotationSession(): AnnotationSession {
     window.clearTimeout(saveTimer.current)
     const keys = [...unsaved.current]
     unsaved.current.clear()
-    for (const key of keys) {
+    const saves = keys.map((key) => {
       const [pieceId, page] = key.split(':').map(Number)
-      savePageAnnotations(pieceId, page, pagesRef.current[pieceId]?.[page] ?? []).catch(() =>
-        notify.current('Couldn’t save your marks'),
+      return savePageAnnotations(pieceId, page, pagesRef.current[pieceId]?.[page] ?? []).then(
+        () => true,
+        () => {
+          notify.current('Couldn’t save your marks')
+          return false
+        },
       )
-    }
+    })
+    const before = inFlight.current.then(() => true)
+    inFlight.current = Promise.all([before, ...saves]).then((done) => done.every(Boolean))
+    return inFlight.current
   }
   function update(pieceId: number, page: number, change: (marks: Mark[]) => Mark[]) {
     const piece = pagesRef.current[pieceId] ?? {}
@@ -634,6 +654,7 @@ function useAnnotationSession(): AnnotationSession {
     setNotify: (fn) => {
       notify.current = fn
     },
+    saveNow: flush,
   }
 }
 
@@ -1075,6 +1096,34 @@ function SheetViewer({
     annot.setNotify(flash)
   })
   const loadedPages = pieceId !== null ? annot.pages[pieceId] : undefined
+  // Info's Download PDF + Annotations (title bar, beside Close): the piece's
+  // PDF with these marks as real annotations, hidden colors left out. It
+  // saves any change still waiting first, so a mark just drawn is in it.
+  // Faded, with its reason on a tap, when there's nothing to export;
+  // hidden without the download permission.
+  const canDownload = hasPermission(useAuth(), 'download')
+  const pieceMarks = Object.values(loadedPages ?? {}).flat()
+  const exportHidden = pieceMarks.filter((m) => hiddenLayers.includes(m.layer)).length
+  const exportShown = pieceMarks.length - exportHidden
+  const exportBlocked = !loadedPages
+    ? 'Still loading your marks'
+    : exportShown > 0
+      ? null
+      : exportHidden > 0
+        ? 'Your marks here are all in hidden colors'
+        : 'No annotations on this piece yet'
+  async function downloadAnnotated() {
+    if (pieceId === null) return
+    if (exportBlocked) {
+      flash(exportBlocked)
+      return
+    }
+    if (!(await annot.saveNow())) return
+    startDownload(withAnnotations(getPieceFileUrl(pieceId)))
+    flash(
+      exportHidden ? 'Downloading, hidden colors left out' : 'Downloading with your annotations',
+    )
+  }
   const pageKey = `${pieceId}:${page}`
   const pageMarks = loadedPages?.[page] ?? []
   const marksFor = (key: string) => {
@@ -2221,6 +2270,19 @@ function SheetViewer({
   const infoHeader = (title: ReactNode) => (
     <div className="flex shrink-0 items-center border-b border-border pr-4">
       {title}
+      {piece && canDownload && (
+        <HitButton
+          label={
+            exportBlocked
+              ? `Download PDF + Annotations (${exportBlocked.toLowerCase()})`
+              : 'Download PDF + Annotations'
+          }
+          onClick={downloadAnnotated}
+          faceClassName={exportBlocked ? 'opacity-50' : ''}
+        >
+          <IconDownload size={20} />
+        </HitButton>
+      )}
       <HitButton label="Close Info" onClick={() => openInfo(false)}>
         <IconX size={20} />
       </HitButton>

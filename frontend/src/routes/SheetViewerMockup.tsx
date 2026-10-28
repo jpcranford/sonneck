@@ -39,6 +39,7 @@ import {
   IconPlayerPause,
   IconPlayerPlay,
   IconPlaylist,
+  IconDownload,
   IconPlus,
   IconRefresh,
   IconStopwatch,
@@ -955,6 +956,13 @@ export function SheetViewerMockup() {
   // share of the page, so marks keep their place at any size.
   const pageKey = `${activeId}:${page}`
   const marksFor = (key: string) => marksByPage[key] ?? seedMarks(Number(key.split(':')[1]))
+  // Info's Download PDF + Annotations: how many of the piece's marks it
+  // would carry, and how many it leaves out for being in a hidden color.
+  const pieceMarks = Array.from({ length: pageCount }, (_, i) =>
+    marksFor(`${activeId}:${i + 1}`),
+  ).flat()
+  const exportHidden = pieceMarks.filter((m) => hiddenLayers.includes(m.layer)).length
+  const exportShown = pieceMarks.length - exportHidden
   const marking = useRef<{ id: number; type: string } | null>(null)
   const liveRef = useRef<StrokeMark | null>(null)
   const erasing = useRef<{
@@ -1885,6 +1893,35 @@ export function SheetViewerMockup() {
   const infoHeader = (title: ReactNode) => (
     <div className="flex shrink-0 items-center border-b border-border pr-4">
       {title}
+      {/* Download PDF + Annotations, beside Close (placement C, picked
+          from a side-by-side: https://claude.ai/artifact/1uuuJRV2mMS1eLBcng1fb7):
+          the piece's PDF with your marks as real annotations, hidden colors
+          left out; the real viewer saves any waiting marks first. Faded,
+          its reason in a pill on a tap, when there's nothing to export.
+          Hidden without the download permission. Inert here. */}
+      {piece && (
+        <HitButton
+          label={
+            exportShown > 0
+              ? 'Download PDF + Annotations'
+              : 'Download PDF + Annotations (nothing to export)'
+          }
+          onClick={() =>
+            flash(
+              exportShown === 0
+                ? exportHidden > 0
+                  ? 'Your marks here are all in hidden colors'
+                  : 'No annotations on this piece yet'
+                : exportHidden > 0
+                  ? 'Downloading, hidden colors left out'
+                  : 'Downloading with your annotations',
+            )
+          }
+          faceClassName={exportShown > 0 ? '' : 'opacity-50'}
+        >
+          <IconDownload size={20} />
+        </HitButton>
+      )}
       <HitButton label="Close Info" onClick={() => openInfo(false)}>
         <IconX size={20} />
       </HitButton>
