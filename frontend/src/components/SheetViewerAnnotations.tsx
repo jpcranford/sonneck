@@ -124,7 +124,10 @@ export function TextMarks({
                 : undefined
             }
           >
-            <MarkdownText className="font-hand!">{m.text}</MarkdownText>
+            {/* Paragraphs (a blank line) sit 0.5em apart — MarkdownText's
+                0.5rem, at the mark's own size, so the gap scales with the
+                text on every screen, as annotated PDFs draw it. */}
+            <MarkdownText className="font-hand! [&_:is(p,ul,ol)]:mb-[0.5em]">{m.text}</MarkdownText>
           </div>
         )
       })}

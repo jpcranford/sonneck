@@ -21,9 +21,9 @@ import (
 
 const (
 	lineHeight = 1.25
-	// Paragraphs (a blank line between) sit apart by MarkdownText's mb-2,
-	// 8px whatever the page's size; about 0.65em at the size M on an iPad.
-	paragraphGap = 0.65
+	// Paragraphs (a blank line between) sit 0.5em apart, as the viewer's
+	// text marks set them.
+	paragraphGap = 0.5
 	// The browser's synthetic italic slant and bold stroke.
 	italicSkew = 0.25
 	boldStroke = 1.0 / 28
