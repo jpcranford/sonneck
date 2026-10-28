@@ -87,7 +87,7 @@ const PRACTICE_STATUSES = ['Want to Learn', 'Learning', 'Learned', 'Stalled', 'D
 // and closes the menu; clicking the current one clears it. The label line
 // names whichever icon is hovered or focused, else the current status —
 // the icons never stand alone.
-function PracticeStatusStrip({
+export function PracticeStatusStrip({
   status,
   onChange,
   close,

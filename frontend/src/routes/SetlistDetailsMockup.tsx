@@ -32,6 +32,7 @@ import { useMockupTitle } from '../lib/useMockupTitle'
 import { EditSetlistModal } from './EditSetlistMockup'
 import { EditEntryModal, type EditEntryValues } from './EditEntryMockup'
 import { EditRoleModal } from './EditRoleMockup'
+import { PracticeStatusStrip } from './AddToSetlistMockup'
 import { formatDateOnly } from '../lib/dateOnly'
 import { confirmAction } from '../lib/dialogs'
 import { copyToClipboard } from '../lib/clipboard'
@@ -300,15 +301,23 @@ function buildProgramCopy(
 // piece is out of this mockup's own scope, same posture every other inert
 // action on this page takes for a dependency it doesn't actually have).
 // A piece entry also gets "Add Role" (no role yet) / "Edit Role" (one set),
-// opening EditRoleMockup.tsx's single-text-box modal.
+// opening EditRoleMockup.tsx's single-text-box modal, and — as every
+// piece's menu in the library has (PieceContextMenu.tsx) — Add to / Remove
+// from Practice List, under the practice status strip (the menu's header).
 function getEntryMenuItems(
   entry: SetlistEntry,
   onRemove: (id: string) => void,
   onEditEntry: (entry: SetlistCustomEntry) => void,
   onEditRole: (entry: SetlistPieceEntry) => void,
+  onPracticeList: boolean,
+  onTogglePracticeList: () => void,
 ): ContextMenuItem[] {
   if (entry.kind === 'piece') {
     return [
+      {
+        label: onPracticeList ? 'Remove from Practice List' : 'Add to Practice List',
+        onSelect: onTogglePracticeList,
+      },
       { label: 'Edit Piece', onSelect: () => {} },
       { label: entry.role ? 'Edit Role' : 'Add Role', onSelect: () => onEditRole(entry) },
       { label: 'Remove from Setlist', destructive: true, onSelect: () => onRemove(entry.id) },
@@ -357,7 +366,7 @@ function HeaderIconButton({
       onClick={onClick}
       aria-label={label}
       title={label}
-      className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent"
+      className="flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent"
     >
       {icon}
     </button>
@@ -452,6 +461,10 @@ export function SetlistDetailsMockup() {
   const [editingEntry, setEditingEntry] = useState<SetlistCustomEntry | null>(null)
   // The piece entry currently open in EditRoleModal, or null.
   const [editingRoleEntry, setEditingRoleEntry] = useState<SetlistPieceEntry | null>(null)
+  // Each piece's practice status and Practice List place, set from its
+  // row's right-click menu (mockup state, by entry).
+  const [entryStatus, setEntryStatus] = useState<Record<string, string | null>>({})
+  const [entryOnList, setEntryOnList] = useState<Record<string, boolean>>({})
 
   function saveRole(role: string | undefined) {
     if (!editingRoleEntry) return
@@ -553,13 +566,55 @@ export function SetlistDetailsMockup() {
 
   return (
     <div className={`${CONTENT_MAX_W} flex flex-1 flex-col gap-6 px-6 py-6 md:px-8 md:py-8`}>
-      <Link
-        to="/mockup"
-        className="inline-flex w-fit items-center gap-1.5 text-sm text-ink-soft hover:text-ink"
-      >
-        <IconArrowLeft size={20} />
-        Setlists
-      </Link>
+      {/* The details pages' shared top toolbar (BookDetailsSample.tsx,
+          PieceDetailsSample.tsx, PersonDetailsSample.tsx): Back on the
+          left; on the right the red Delete with Archive beside it, a
+          divider, Duplicate, and the one labeled action, Edit, last. Wraps to two
+          rows at phone widths; Edit drops its label below 360px. The
+          Back link returns to the mockup index, as every mockup's does. */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <Link
+          to="/mockup"
+          className="inline-flex w-fit items-center gap-1.5 text-sm whitespace-nowrap text-ink-soft hover:text-ink"
+        >
+          <IconArrowLeft size={24} />
+          Back to Setlists
+        </Link>
+        <div className="flex shrink-0 items-stretch gap-2.5">
+          <button
+            type="button"
+            onClick={handleDelete}
+            aria-label="Delete Setlist"
+            title="Delete Setlist"
+            className="flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-danger hover:border-danger"
+          >
+            <IconTrash size={16} />
+          </button>
+          <HeaderIconButton
+            icon={<IconArchive size={16} />}
+            label={archived ? 'Unarchive Setlist' : 'Archive Setlist'}
+            onClick={() => setArchiveModalOpen(true)}
+          />
+          <span aria-hidden="true" className="h-6 w-px self-center bg-border" />
+          <HeaderIconButton
+            icon={<IconCopy size={16} />}
+            label="Duplicate Setlist"
+            onClick={openDuplicateModal}
+          />
+          {/* The "E" shortcut opens the same window, on its Setlist
+              Details tab. */}
+          <button
+            type="button"
+            onClick={() => openEditSetlist('details')}
+            aria-label="Edit Setlist"
+            title="Edit Setlist"
+            className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink hover:border-accent max-[360px]:w-[38px] max-[360px]:px-0"
+          >
+            <IconEditFilled size={16} />
+            <span className="max-[360px]:hidden">Edit Setlist</span>
+          </button>
+        </div>
+      </div>
 
       <div className="rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-4 py-2 text-sm text-ink-soft">
         Reference sample — <span className="font-medium text-ink">Setlist Details</span> (design doc
@@ -618,40 +673,6 @@ export function SetlistDetailsMockup() {
             <span aria-hidden="true">•</span>
             {formatRelativeWeeks(setlist.gigDate, { abbreviated: false })}
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {/* Delete setlist, icon-only, leftmost in the group, permanently
-              red — same treatment as PiecePage.tsx's/BookDetailsPage.tsx's
-              own Delete Piece/Delete Book buttons (size-9 bordered square,
-              text-danger, hover:border-danger). */}
-          <button
-            type="button"
-            onClick={handleDelete}
-            aria-label="Delete setlist"
-            title="Delete setlist"
-            className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-danger hover:border-danger"
-          >
-            <IconTrash size={18} />
-          </button>
-          <span aria-hidden="true" className="h-6 w-px bg-border" />
-          {/* Real now that Phase 10's EditSetlistModal exists — the "E"
-              keyboard shortcut above opens this same modal, landed on its
-              "Setlist Details" tab. */}
-          <HeaderIconButton
-            icon={<IconEditFilled size={16} />}
-            label="Edit setlist"
-            onClick={() => openEditSetlist('details')}
-          />
-          <HeaderIconButton
-            icon={<IconCopy size={16} />}
-            label="Duplicate setlist"
-            onClick={openDuplicateModal}
-          />
-          <HeaderIconButton
-            icon={<IconArchive size={16} />}
-            label={archived ? 'Unarchive setlist' : 'Archive setlist'}
-            onClick={() => setArchiveModalOpen(true)}
-          />
         </div>
       </div>
 
@@ -975,11 +996,26 @@ export function SetlistDetailsMockup() {
               <div key={entry.id} className="border-b border-border last:border-none">
                 <ContextMenu
                   hideTriggerButton
+                  header={
+                    entry.kind === 'piece'
+                      ? (close) => (
+                          <PracticeStatusStrip
+                            status={entryStatus[entry.id] ?? null}
+                            onChange={(status) =>
+                              setEntryStatus((prev) => ({ ...prev, [entry.id]: status }))
+                            }
+                            close={close}
+                          />
+                        )
+                      : undefined
+                  }
                   items={getEntryMenuItems(
                     entry,
                     removeEntry,
                     setEditingEntry,
                     setEditingRoleEntry,
+                    !!entryOnList[entry.id],
+                    () => setEntryOnList((prev) => ({ ...prev, [entry.id]: !prev[entry.id] })),
                   )}
                 >
                   {/* A piece row links to its Piece Details page (here, the

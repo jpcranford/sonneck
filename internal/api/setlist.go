@@ -48,6 +48,10 @@ type SetlistEntryResponse struct {
 	CustomCountsAsMusic   bool                 `json:"customCountsAsMusic"`
 	Role                  *string              `json:"role"`
 	DisplayNumber         *int                 `json:"displayNumber"`
+	// PracticeStatus is a piece entry's practice status for the setlist's
+	// owner (the only account that can open it), for the program row's
+	// right-click strip; omitted for a custom entry.
+	PracticeStatus *string `json:"practiceStatus,omitempty"`
 }
 
 // SetlistSummaryResponse is the shape GET /api/setlists returns per row
@@ -163,6 +167,11 @@ func BuildSetlistResponse(ctx context.Context, q repo.Queryer, s *repo.Setlist) 
 				return nil, err
 			}
 			resp.Piece = summary
+			userData, err := repo.GetUserPieceData(ctx, q, s.OwnerUserID, *e.PieceID)
+			if err != nil {
+				return nil, err
+			}
+			resp.PracticeStatus = userData.PracticeStatus
 		} else {
 			resp.Kind = "custom"
 			resp.CustomName = e.CustomName

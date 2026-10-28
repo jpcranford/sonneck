@@ -428,6 +428,9 @@ export interface SetlistEntry {
   customCountsAsMusic: boolean
   role: string | null
   displayNumber: number | null
+  /** A piece entry's practice status (yours: a setlist is its owner's);
+   * absent when it has none, and on a custom entry. */
+  practiceStatus?: string
 }
 
 /** GET /api/setlists/{id}'s full detail (SetlistResponse) — the summary

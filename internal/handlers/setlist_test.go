@@ -389,3 +389,33 @@ func TestListPieceSetlistMemberships_CarriesArchived(t *testing.T) {
 		t.Errorf("archived by set = %v, want Long ago archived, Someday not", archived)
 	}
 }
+
+// A piece entry carries your practice status for it (for the program row's
+// right-click strip); a custom entry has none.
+func TestGetSetlist_PieceEntryCarriesPracticeStatus(t *testing.T) {
+	h := newTestServer(t)
+	pieceID := uploadTestPiece(t, h)
+	rec := doJSON(t, h, http.MethodPost, "/api/setlists", map[string]any{"name": "Vespers"})
+	var s struct {
+		ID int64 `json:"id"`
+	}
+	decodeData(t, rec, &s)
+	doJSON(t, h, http.MethodPost, setlistURL(s.ID, "/entries"), map[string]any{"pieceId": pieceID})
+	doJSON(t, h, http.MethodPost, setlistURL(s.ID, "/entries"), map[string]any{"customName": "Welcome"})
+	if rec := doJSON(t, h, http.MethodPatch, apiPiecesURL(pieceID)+"/practice-status", map[string]any{"practiceStatus": "Learning"}); rec.Code != http.StatusOK {
+		t.Fatalf("set status: %d %s", rec.Code, rec.Body.String())
+	}
+	var got struct {
+		Entries []struct {
+			Kind           string  `json:"kind"`
+			PracticeStatus *string `json:"practiceStatus"`
+		} `json:"entries"`
+	}
+	decodeData(t, doJSON(t, h, http.MethodGet, setlistURL(s.ID, ""), nil), &got)
+	if len(got.Entries) != 2 || got.Entries[0].PracticeStatus == nil || *got.Entries[0].PracticeStatus != "Learning" {
+		t.Errorf("piece entry status = %v, want Learning", got.Entries)
+	}
+	if got.Entries[1].PracticeStatus != nil {
+		t.Errorf("custom entry has a status: %v", *got.Entries[1].PracticeStatus)
+	}
+}

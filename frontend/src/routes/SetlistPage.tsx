@@ -17,8 +17,9 @@ import {
   IconTrash,
 } from '@tabler/icons-react'
 import { ApiError } from '../api/client'
-import { getPiece } from '../api/pieces'
-import { addToPracticeList, getPracticeList } from '../api/practiceList'
+import { getPiece, setPiecePracticeStatus } from '../api/pieces'
+import { listPracticeStatuses } from '../api/lookups'
+import { addToPracticeList, getPracticeList, removeFromPracticeList } from '../api/practiceList'
 import {
   addSetlistEntry,
   createSetlist,
@@ -46,6 +47,7 @@ import {
 import { MarkdownText } from '../components/MarkdownText'
 import { MetaLine } from '../components/MetaLine'
 import { Modal } from '../components/Modal'
+import { PracticeStatusStrip } from '../components/PracticeStatusStrip'
 import { hasPermission, useAuth } from '../lib/AuthContext'
 import { CONTENT_MAX_W } from '../lib/layout'
 import { personCreditPart } from '../lib/joinNames'
@@ -96,16 +98,28 @@ function formatAbsoluteDate(iso: string): string {
 }
 
 // A piece entry also gets "Add Role" (no role yet) / "Edit Role" (one set),
-// opening EditRoleModal.
+// opening EditRoleModal, and — as every piece's menu in the library has
+// (PieceContextMenu.tsx) — Add to / Remove from Practice List, under the
+// practice status strip (the menu's header), both with `practice` only
+// (practiceList is null without it).
 function getEntryMenuItems(
   entry: SetlistEntry,
   onEditPiece: (pieceId: number) => void,
   onEditEntry: (entry: SetlistEntry) => void,
   onEditRole: (entry: SetlistEntry) => void,
   onRemove: (entryId: number) => void,
+  practiceList: { on: boolean; toggle: () => void } | null,
 ): ContextMenuItem[] {
   if (entry.kind === 'piece') {
     return [
+      ...(practiceList
+        ? [
+            {
+              label: practiceList.on ? 'Remove from Practice List' : 'Add to Practice List',
+              onSelect: practiceList.toggle,
+            },
+          ]
+        : []),
       { label: 'Edit Piece', onSelect: () => entry.piece && onEditPiece(entry.piece.id) },
       { label: entry.role ? 'Edit Role' : 'Add Role', onSelect: () => onEditRole(entry) },
       { label: 'Remove from Setlist', destructive: true, onSelect: () => onRemove(entry.id) },
@@ -149,7 +163,7 @@ function HeaderIconButton({
       onClick={onClick}
       aria-label={label}
       title={label}
-      className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent"
+      className="flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent"
     >
       {icon}
     </button>
@@ -197,6 +211,33 @@ export function SetlistPage() {
     queryKey: ['practice-list', today],
     queryFn: () => getPracticeList(today),
     enabled: canPractice,
+  })
+  // A piece row's right-click menu: its practice status (the strip) and
+  // its place on the Practice List, as in the library's piece menu.
+  const { data: practiceStatuses = [] } = useQuery({
+    queryKey: ['practice-statuses'],
+    queryFn: listPracticeStatuses,
+    enabled: canPractice,
+  })
+  const pieceStatusMutation = useMutation({
+    mutationFn: ({ pieceId, status }: { pieceId: number; status: string | null }) =>
+      setPiecePracticeStatus(pieceId, status),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(['piece', updated.id], updated)
+      queryClient.invalidateQueries({ queryKey: ['setlist', setlistId] })
+      queryClient.invalidateQueries({ queryKey: ['pieces'] })
+      queryClient.invalidateQueries({ queryKey: ['pieceFacets'] })
+    },
+    onError: (error) =>
+      showAlert(error instanceof ApiError ? error.message : 'Could not set the practice status.'),
+  })
+  const pieceListMutation = useMutation({
+    mutationFn: async ({ pieceId, add }: { pieceId: number; add: boolean }) => {
+      if (add) await addToPracticeList([pieceId])
+      else await removeFromPracticeList(pieceId)
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['practice-list'] }),
+    onError: () => showAlert('Could not update your Practice List.'),
   })
   // Download Set PDF + Annotations: whether any piece has marks to export
   // (fetched fresh each visit: the viewer saves marks outside any mutation).
@@ -418,13 +459,59 @@ export function SetlistPage() {
 
   return (
     <div className={`${CONTENT_MAX_W} flex flex-1 flex-col gap-6 px-6 py-6 md:px-8 md:py-8`}>
-      <Link
-        to="/setlists"
-        className="inline-flex w-fit items-center gap-1.5 text-sm text-ink-soft hover:text-ink"
-      >
-        <IconArrowLeft size={20} />
-        Setlists
-      </Link>
+      {/* The details pages' shared top toolbar (Piece, Book and Person
+          Details): Back on the left; on the right the red Delete with
+          Archive beside it, a divider, Duplicate, and the one labeled
+          action, Edit, last. Wraps to two rows on a phone; Edit drops its
+          label below 360px. */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <Link
+          to="/setlists"
+          className="inline-flex w-fit items-center gap-1.5 text-sm whitespace-nowrap text-ink-soft hover:text-ink"
+        >
+          <IconArrowLeft size={24} />
+          Back to Setlists
+        </Link>
+        {setlist && (
+          <div className="flex shrink-0 items-stretch gap-2.5">
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={deleteMutation.isPending}
+              aria-label="Delete Setlist"
+              title="Delete Setlist"
+              className="flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-danger hover:border-danger disabled:opacity-50"
+            >
+              <IconTrash size={16} />
+            </button>
+            <HeaderIconButton
+              icon={<IconArchive size={16} />}
+              label={setlist.archived ? 'Unarchive Setlist' : 'Archive Setlist'}
+              onClick={() => setArchiveModalOpen(true)}
+            />
+            <span aria-hidden="true" className="h-6 w-px self-center bg-border" />
+            {canCreate && (
+              <HeaderIconButton
+                icon={<IconCopy size={16} />}
+                label="Duplicate Setlist"
+                onClick={openDuplicateModal}
+              />
+            )}
+            {/* The "E" shortcut opens the same window, on its Setlist
+                Details tab. */}
+            <button
+              type="button"
+              onClick={() => openEditSetlist('details')}
+              aria-label="Edit Setlist"
+              title="Edit Setlist"
+              className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink hover:border-accent max-[360px]:w-[38px] max-[360px]:px-0"
+            >
+              <IconEditFilled size={16} />
+              <span className="max-[360px]:hidden">Edit Setlist</span>
+            </button>
+          </div>
+        )}
+      </div>
 
       {isLoading && <p className="text-ink-soft">Loading…</p>}
 
@@ -461,36 +548,6 @@ export function SetlistPage() {
                   {formatRelativeWeeks(setlist.gigDate, { abbreviated: false, today })}
                 </div>
               )}
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleDelete}
-                disabled={deleteMutation.isPending}
-                aria-label="Delete setlist"
-                title="Delete setlist"
-                className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-danger hover:border-danger disabled:opacity-50"
-              >
-                <IconTrash size={18} />
-              </button>
-              <span aria-hidden="true" className="h-6 w-px bg-border" />
-              <HeaderIconButton
-                icon={<IconEditFilled size={16} />}
-                label="Edit setlist"
-                onClick={() => openEditSetlist('details')}
-              />
-              {canCreate && (
-                <HeaderIconButton
-                  icon={<IconCopy size={16} />}
-                  label="Duplicate setlist"
-                  onClick={openDuplicateModal}
-                />
-              )}
-              <HeaderIconButton
-                icon={<IconArchive size={16} />}
-                label={setlist.archived ? 'Unarchive setlist' : 'Archive setlist'}
-                onClick={() => setArchiveModalOpen(true)}
-              />
             </div>
           </div>
 
@@ -769,12 +826,46 @@ export function SetlistPage() {
                     <div key={entry.id} className="border-b border-border last:border-none">
                       <ContextMenu
                         hideTriggerButton
+                        header={
+                          entry.kind === 'piece' &&
+                          entry.piece &&
+                          canPractice &&
+                          practiceStatuses.length > 0
+                            ? (close) => (
+                                <PracticeStatusStrip
+                                  statuses={practiceStatuses}
+                                  current={entry.practiceStatus ?? null}
+                                  onChange={(status) => {
+                                    if (entry.piece)
+                                      pieceStatusMutation.mutate({
+                                        pieceId: entry.piece.id,
+                                        status,
+                                      })
+                                    close()
+                                  }}
+                                />
+                              )
+                            : undefined
+                        }
                         items={getEntryMenuItems(
                           entry,
                           setEditingPieceId,
                           setEditingEntry,
                           setEditingRoleEntry,
                           (entryId) => removeMutation.mutate(entryId),
+                          entry.kind === 'piece' && entry.piece && canPractice && practiceList
+                            ? {
+                                on: practiceList.some((e) => e.piece.id === entry.piece?.id),
+                                toggle: () => {
+                                  const pieceId = entry.piece?.id
+                                  if (pieceId === undefined) return
+                                  pieceListMutation.mutate({
+                                    pieceId,
+                                    add: !practiceList.some((e) => e.piece.id === pieceId),
+                                  })
+                                },
+                              }
+                            : null,
                         )}
                       >
                         {/* A piece row is a real link to its Piece Details page
