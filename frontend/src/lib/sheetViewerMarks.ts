@@ -71,6 +71,13 @@ function pathFromOutline(points: number[][]) {
   return `${d}Z`
 }
 
+// Marks wholly off the page are never kept (the server drops them too,
+// repo.StrokeTouchesPage): a stroke may run off an edge as long as one of
+// its points is on the page.
+export function strokeTouchesPage(mark: StrokeMark) {
+  return mark.points.some(([x, y]) => x >= 0 && x <= 1 && y >= 0 && y <= 1)
+}
+
 // Where a mark's "show this layer" tap area goes: the middle of a stroke's
 // path, the middle of a text's line.
 export function markAnchor(mark: Mark): [number, number] {

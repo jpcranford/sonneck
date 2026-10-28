@@ -89,6 +89,7 @@ import {
   applyChange,
   eraserTouches,
   removedSince,
+  strokeTouchesPage,
   TEXT_LINE_HEIGHT,
   type Mark,
   type MarkChange,
@@ -1264,7 +1265,8 @@ function SheetViewer({
     const mark = liveRef.current
     liveRef.current = null
     setLive(null)
-    if (mark) {
+    // A stroke that never touched the page isn't kept.
+    if (mark && strokeTouchesPage(mark)) {
       updateKey(pageKey, (marks) => [...marks, mark])
       annot.record({ key: pageKey, added: [mark], removed: [] })
     }
@@ -1326,7 +1328,8 @@ function SheetViewer({
     openTextBox({
       key: pageKey,
       x: Math.min(p[0], 0.9),
-      y: p[1] + em * (1 - TEXT_LINE_HEIGHT / 2),
+      // Its baseline stays on the page, however low the tap.
+      y: Math.min(1, p[1] + em * (1 - TEXT_LINE_HEIGHT / 2)),
       layer: style.color,
       size,
       text: '',

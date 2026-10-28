@@ -70,6 +70,7 @@ import {
   markAnchor,
   removedSince,
   strokePath,
+  strokeTouchesPage,
   TEXT_LINE_HEIGHT,
   type Mark,
   type MarkChange,
@@ -1082,7 +1083,8 @@ export function SheetViewerMockup() {
     const mark = liveRef.current
     liveRef.current = null
     setLive(null)
-    if (mark) {
+    // A stroke that never touched the page isn't kept.
+    if (mark && strokeTouchesPage(mark)) {
       const key = pageKey
       setMarksByPage((prev) => ({ ...prev, [key]: [...(prev[key] ?? marksFor(key)), mark] }))
       record({ key, added: [mark], removed: [] })
@@ -1141,7 +1143,8 @@ export function SheetViewerMockup() {
     openTextBox({
       key: pageKey,
       x: Math.min(p[0], 0.9),
-      y: p[1] + em * (1 - TEXT_LINE_HEIGHT / 2),
+      // Its baseline stays on the page, however low the tap.
+      y: Math.min(1, p[1] + em * (1 - TEXT_LINE_HEIGHT / 2)),
       layer: style.color,
       size,
       text: '',

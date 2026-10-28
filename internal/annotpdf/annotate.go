@@ -32,6 +32,8 @@ import (
 	"github.com/pdfcpu/pdfcpu/pkg/pdfcpu"
 	"github.com/pdfcpu/pdfcpu/pkg/pdfcpu/model"
 	"github.com/pdfcpu/pdfcpu/pkg/pdfcpu/types"
+
+	"github.com/jpcranford/sonneck/internal/repo"
 )
 
 func init() {
@@ -117,9 +119,9 @@ func Write(src io.ReadSeeker, w io.Writer, pages map[int]json.RawMessage, opts O
 			if opts.hidden(m.Layer) || m.Layer < 0 || m.Layer >= len(layerColors) {
 				continue
 			}
-			if m.Kind == "text" && onPage(m.X, m.Y) {
+			if m.Kind == "text" && repo.TextOnPage(m.X, m.Y, m.Size) {
 				texts = append(texts, m)
-			} else if m.Kind == "stroke" && touchesPage(m.Points) {
+			} else if m.Kind == "stroke" && repo.StrokeTouchesPage(m.Points) {
 				strokes = append(strokes, m)
 			}
 		}
@@ -393,20 +395,6 @@ func (a annotation) textDict(x *model.XRefTable, d types.Dict, color [3]float64)
 	d["BS"] = types.Dict{"W": types.Integer(0)}
 	d["AP"] = types.Dict{"N": *ap}
 	return d, nil
-}
-
-// onPage reports whether a page share is on the page.
-func onPage(x, y float64) bool { return x >= 0 && x <= 1 && y >= 0 && y <= 1 }
-
-// touchesPage reports whether any of a stroke's points is on the page: one
-// that runs off an edge is kept (and clipped), one wholly off it dropped.
-func touchesPage(points [][3]float64) bool {
-	for _, p := range points {
-		if onPage(p[0], p[1]) {
-			return true
-		}
-	}
-	return false
 }
 
 // appearance adds a form XObject drawing content (in display space) over

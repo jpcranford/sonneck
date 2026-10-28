@@ -111,6 +111,9 @@ func NormalizeMarks(data json.RawMessage) (json.RawMessage, int, error) {
 				}
 				points[j] = [3]float64{p[0], p[1], p[2]}
 			}
+			if !StrokeTouchesPage(points) {
+				continue // wholly off the page: never stored
+			}
 			out = append(out, StrokeMark{
 				ID: m.ID, Kind: "stroke", Tool: m.Tool, Layer: m.Layer, Size: m.Size,
 				Points: points, Pressure: m.Pressure,
@@ -122,6 +125,9 @@ func NormalizeMarks(data json.RawMessage) (json.RawMessage, int, error) {
 			if *m.Text == "" || len(*m.Text) > maxTextLength {
 				return nil, 0, bad(i, "text must be 1 to 2000 characters")
 			}
+			if !TextOnPage(*m.X, *m.Y, m.Size) {
+				continue // wholly off the page: never stored
+			}
 			out = append(out, TextMark{
 				ID: m.ID, Kind: "text", Layer: m.Layer, X: *m.X, Y: *m.Y, Size: m.Size,
 				Text: *m.Text, Italic: m.Italic,
@@ -132,6 +138,29 @@ func NormalizeMarks(data json.RawMessage) (json.RawMessage, int, error) {
 	}
 	encoded, err := json.Marshal(out)
 	return encoded, len(out), err
+}
+
+// Marks wholly off the page are never stored: NormalizeMarks drops them
+// (the viewer doesn't make them either), and migration 00036 cleared any
+// saved before. A stroke may run off an edge as long as one of its points
+// is on the page. A text mark's left edge must be on the page and its
+// baseline (y) no more than one text size below it — its box starts a size
+// above the baseline, so it still shows there.
+
+// StrokeTouchesPage reports whether any of a stroke's points is on the page.
+func StrokeTouchesPage(points [][3]float64) bool {
+	for _, p := range points {
+		if p[0] >= 0 && p[0] <= 1 && p[1] >= 0 && p[1] <= 1 {
+			return true
+		}
+	}
+	return false
+}
+
+// TextOnPage reports whether a text mark at x, y of the given size shows on
+// the page.
+func TextOnPage(x, y, size float64) bool {
+	return x >= 0 && x <= 1 && y >= 0 && y <= 1+size/100
 }
 
 func finite(v float64) bool { return !math.IsNaN(v) && !math.IsInf(v, 0) }

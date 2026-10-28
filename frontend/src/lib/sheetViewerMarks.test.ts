@@ -4,6 +4,7 @@ import {
   eraserTouches,
   removedSince,
   strokePath,
+  strokeTouchesPage,
   type Mark,
   type StrokeMark,
   type TextMark,
@@ -106,5 +107,30 @@ describe('strokePath', () => {
     expect(path.startsWith('M')).toBe(true)
     expect(path.endsWith('Z')).toBe(true)
     expect(strokePath(stroke('d', [[0.3, 0.3]]), 1000, ASPECT)).not.toBe('')
+  })
+})
+
+describe('strokeTouchesPage', () => {
+  it('keeps a stroke with any point on the page, even one running off an edge', () => {
+    expect(strokeTouchesPage(stroke('a', [[0.5, 0.5]]))).toBe(true)
+    expect(
+      strokeTouchesPage(
+        stroke('b', [
+          [-0.2, 0.5],
+          [0.1, 0.5],
+        ]),
+      ),
+    ).toBe(true)
+  })
+  it('drops a stroke wholly off the page', () => {
+    expect(
+      strokeTouchesPage(
+        stroke('c', [
+          [1.2, 0.5],
+          [1.4, 0.6],
+        ]),
+      ),
+    ).toBe(false)
+    expect(strokeTouchesPage(stroke('d', [[0.5, -0.1]]))).toBe(false)
   })
 })

@@ -3,6 +3,7 @@ package handlers_test
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/jpcranford/sonneck/internal/repo"
@@ -190,5 +191,41 @@ func TestHasAnnotationsFilterAndCount(t *testing.T) {
 	decodeData(t, doJSON(t, h, http.MethodGet, "/api/pieces/facets?query=Plain&hasAnnotations=true", nil), &facets)
 	if facets.HasAnnotations != 0 {
 		t.Errorf("hasAnnotations count while searching Plain = %d, want 0", facets.HasAnnotations)
+	}
+}
+
+// Marks wholly off the page are never stored: a save drops them, keeping
+// the rest in order, and a page of only those keeps no row.
+func TestAnnotationsOffPageNeverSaved(t *testing.T) {
+	h := newTestServer(t)
+	pieceID := uploadTestPiece(t, h)
+	base := apiPiecesURL(pieceID) + "/annotations"
+	marks := []map[string]any{
+		{"id": "on", "kind": "stroke", "tool": "pen", "layer": 5, "size": 0.39, "pressure": false,
+			"points": [][]float64{{0.5, 0.5, 0.5}}},
+		{"id": "off", "kind": "stroke", "tool": "pen", "layer": 5, "size": 0.39, "pressure": false,
+			"points": [][]float64{{1.2, 0.5, 0.5}, {1.4, 0.5, 0.5}}},
+		{"id": "edge", "kind": "stroke", "tool": "pen", "layer": 5, "size": 0.39, "pressure": false,
+			"points": [][]float64{{-0.2, 0.5, 0.5}, {0.1, 0.5, 0.5}}},
+		{"id": "low", "kind": "text", "layer": 2, "x": 0.2, "y": 1.01, "size": 1.8, "text": "still shows"},
+		{"id": "below", "kind": "text", "layer": 2, "x": 0.2, "y": 1.3, "size": 1.8, "text": "gone"},
+	}
+	if rec := doJSON(t, h, http.MethodPut, base+"/1", map[string]any{"marks": marks}); rec.Code != http.StatusOK {
+		t.Fatalf("PUT: status %d, body %s", rec.Code, rec.Body.String())
+	}
+	if rec := doJSON(t, h, http.MethodPut, base+"/2", map[string]any{"marks": marks[1:2]}); rec.Code != http.StatusOK {
+		t.Fatalf("PUT page 2: status %d, body %s", rec.Code, rec.Body.String())
+	}
+	var got annotationsData
+	decodeData(t, doJSON(t, h, http.MethodGet, base, nil), &got)
+	var ids []string
+	for _, m := range got.Pages["1"] {
+		ids = append(ids, m["id"].(string))
+	}
+	if strings.Join(ids, ",") != "on,edge,low" {
+		t.Errorf("page 1 stored %v, want on, edge, low", ids)
+	}
+	if _, ok := got.Pages["2"]; ok {
+		t.Errorf("page 2 (only an off-page stroke) was stored: %v", got.Pages["2"])
 	}
 }
