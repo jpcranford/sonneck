@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react'
 import { useDismiss } from '../hooks/useDismiss'
+import { useKeepInView } from '../hooks/useKeepInView'
 import { Link } from 'react-router-dom'
 import {
   IconArrowLeft,
@@ -550,6 +551,9 @@ export function PieceDetailsSample() {
   // A press outside the row, or Escape, closes whichever is open.
   const menuRowRef = useRef<HTMLDivElement>(null)
   useDismiss(openMenu !== null, menuRowRef, () => setOpenMenu(null))
+  // On a phone the buttons wrap, so an open menu is slid back on screen.
+  const openMenuRef = useRef<HTMLDivElement>(null)
+  useKeepInView(openMenuRef, openMenu)
   const [favorite, setFavorite] = useState(piece.favorite)
   const [onPracticeList, setOnPracticeList] = useState(false)
   const [addToSetlistOpen, setAddToSetlistOpen] = useState(false)
@@ -892,7 +896,10 @@ export function PieceDetailsSample() {
                 </button>
               </div>
               {playMenuOpen && (
-                <div className="absolute top-full left-0 z-10 mt-1 w-64 rounded-md border border-border bg-paper-raised py-1 text-left shadow-lg">
+                <div
+                  ref={openMenuRef}
+                  className="absolute top-full left-0 z-10 mt-1 w-64 rounded-md border border-border bg-paper-raised py-1 text-left shadow-lg"
+                >
                   <button
                     type="button"
                     onClick={() => {
@@ -947,7 +954,10 @@ export function PieceDetailsSample() {
                 </button>
               </div>
               {downloadOpen && (
-                <div className="absolute top-full left-0 z-10 mt-1 w-64 rounded-md border border-border bg-paper-raised py-1 text-left shadow-lg">
+                <div
+                  ref={openMenuRef}
+                  className="absolute top-full left-0 z-10 mt-1 w-64 rounded-md border border-border bg-paper-raised py-1 text-left shadow-lg"
+                >
                   {/* The real page's item (PiecePage.tsx): the piece's PDF
                       with your Sheet Viewer marks as real annotations,
                       hidden colors left out. With nothing to export it
@@ -978,7 +988,10 @@ export function PieceDetailsSample() {
                 <IconDotsVertical size={18} />
               </button>
               {moreActionsOpen && (
-                <div className="absolute top-full right-0 z-10 mt-1 w-64 overflow-hidden rounded-md border border-border bg-paper-raised py-1 text-left shadow-lg">
+                <div
+                  ref={openMenuRef}
+                  className="absolute top-full right-0 z-10 mt-1 w-64 overflow-hidden rounded-md border border-border bg-paper-raised py-1 text-left shadow-lg"
+                >
                   <button
                     type="button"
                     onClick={() => {

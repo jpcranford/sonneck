@@ -1,5 +1,6 @@
 import { useRef, useState, type MouseEvent, type ReactNode } from 'react'
 import { useDismiss } from '../hooks/useDismiss'
+import { useKeepInView } from '../hooks/useKeepInView'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -358,6 +359,9 @@ export function PiecePage() {
   // A press outside the row, or Escape, closes whichever is open.
   const menuRowRef = useRef<HTMLDivElement>(null)
   useDismiss(openMenu !== null, menuRowRef, () => setOpenMenu(null))
+  // On a phone the buttons wrap, so an open menu is slid back on screen.
+  const openMenuRef = useRef<HTMLDivElement>(null)
+  useKeepInView(openMenuRef, openMenu)
   const [replaceConfirming, setReplaceConfirming] = useState(false)
   const [replaceProgress, setReplaceProgress] = useState(0)
   const [advancedOpen, setAdvancedOpen] = useState(false)
@@ -848,7 +852,10 @@ export function PiecePage() {
                     </button>
                   </div>
                   {playMenuOpen && (
-                    <div className="absolute top-full left-0 z-10 mt-1 w-64 rounded-md border border-border bg-paper-raised py-1 text-left shadow-lg">
+                    <div
+                      ref={openMenuRef}
+                      className="absolute top-full left-0 z-10 mt-1 w-64 rounded-md border border-border bg-paper-raised py-1 text-left shadow-lg"
+                    >
                       <button
                         type="button"
                         disabled={!practiceList || practiceListMutation.isPending}
@@ -925,7 +932,10 @@ export function PiecePage() {
                     </button>
                   </div>
                   {downloadOpen && (
-                    <div className="absolute top-full left-0 z-10 mt-1 w-64 rounded-md border border-border bg-paper-raised py-1 text-left shadow-lg">
+                    <div
+                      ref={openMenuRef}
+                      className="absolute top-full left-0 z-10 mt-1 w-64 rounded-md border border-border bg-paper-raised py-1 text-left shadow-lg"
+                    >
                       {/* hover:bg-paper-hover, the app's one menu-row hover
                         (ContextMenu.tsx, every dropdown list). */}
                       <DownloadLink
@@ -986,7 +996,10 @@ export function PiecePage() {
                     <IconDotsVertical size={18} />
                   </button>
                   {moreActionsOpen && (
-                    <div className="absolute top-full right-0 z-10 mt-1 w-64 overflow-hidden rounded-md border border-border bg-paper-raised py-1 text-left shadow-lg">
+                    <div
+                      ref={openMenuRef}
+                      className="absolute top-full right-0 z-10 mt-1 w-64 overflow-hidden rounded-md border border-border bg-paper-raised py-1 text-left shadow-lg"
+                    >
                       {canUpload && (
                         <button
                           type="button"
