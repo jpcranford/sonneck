@@ -23,6 +23,7 @@ If anything here is wrong, confusing, or out of date, that's itself a welcome bu
 - [Database migrations](#database-migrations)
 - [Testing](#testing)
 - [Music symbol shortcodes](#music-symbol-shortcodes)
+- [Annotated PDF downloads](#annotated-pdf-downloads)
 - [Setlist PDF fleuron](#setlist-pdf-fleuron)
 
 ## Code of conduct
@@ -60,7 +61,7 @@ Commit messages: a clear, present-tense summary line is enough. No required form
 - **Frontend type-checking**: `frontend/tsconfig.json` is a solution-style config (`{ files: [], references: [...] }`). Running `tsc --noEmit -p .` against it is a silent no-op — it type-checks nothing and reports no errors either way. Always run `tsc --noEmit -p tsconfig.app.json` instead.
 - **Frontend data fetching** goes through TanStack Query — not ad-hoc `useEffect`/`useState` per component. Every successful mutation marks all loaded data stale without fetching it (`main.tsx`), so off-screen lists refresh when next shown; a save must still invalidate the lists it changes *on screen* (filter counts included), and a mutation that only looks something up (no write) gets `meta: { readOnly: true }`.
 - **An edit window starts from fresh data** (`hooks/useFreshOnOpen.ts`, fields locked until it lands), and a save that returns its record goes through `lib/refreshAfterSave.ts`. **A thumbnail or first-page cover URL takes a version** from `hooks/useThumbnailVersion.ts` (file hash + redraw stamp), so browsers can cache it for good and still see a replaced file at once.
-- **Adding a font cut**: the self-hosted Cabin/Libre Baskerville/Atkinson Hyperlegible Next files come from Google Fonts' CSS2 API with **one weight per request** (a combined multi-weight request returns the same file for every weight) — add the latin and latin-ext woff2 pair plus matching `@font-face` rules in `frontend/src/index.css`, and check the new file's name table (fontTools) says the cut you meant.
+- **Adding a font cut**: the self-hosted Cabin/Libre Baskerville/Atkinson Hyperlegible Next/Quintessential files come from Google Fonts' CSS2 API with **one weight per request** (a combined multi-weight request returns the same file for every weight) — add the latin and latin-ext woff2 pair plus matching `@font-face` rules in `frontend/src/index.css`, and check the new file's name table (fontTools) says the cut you meant.
 - **Frontend forms** use `react-hook-form` with light client-side validation only (required fields, obviously-plausible ranges). The backend remains the sole authority for everything else — don't build a second, parallel validation schema that has to be kept in sync by hand.
 - **A control the viewer's own permissions can't actually use** (checked via `hasPermission(me, perm)` from `lib/AuthContext.tsx`, never a bare `me.permissions.includes(...)` — `admin` counts as every permission, the same as the server) is left out entirely, never a normal clickable control that would just 403 — along with anything only it needed (a divider, a menu button with no items left), and its keyboard shortcut set to `enabled: false`. `CLAUDE.md` > Multi-user support lists where this applies. A control disabled for another reason (not yet built, nothing to act on) still fades.
 - **This project's React Compiler setup is stricter than default React advice on two points**: it flags reading a ref's `.current` during render, not just writing one (a value that needs to persist across renders has to be real `useState`, updated from an event handler or effect — never a ref read inline in the render body), and it flags a bare `setState` call directly inside a plain `useEffect` body (prefer updating state from the specific event handler that causes the change).
@@ -105,6 +106,7 @@ For the full original design rationale (why SQLite over Postgres, why FTS5 over 
 sonneck/
 ├── cmd/sonneck/main.go        # Entry point — server bootstrap + CLI subcommands
 ├── internal/
+│   ├── annotpdf/              # Download PDF + Annotations: Sheet Viewer marks written into a piece's PDF as real annotations (pdfcpu)
 │   ├── api/                   # {data}/{error} response envelope, shared field validation
 │   ├── auth/                   # Session tokens, password hashing (multi-user support)
 │   ├── backup/                # Scheduled VACUUM INTO snapshot job
@@ -123,6 +125,7 @@ sonneck/
 │   ├── pdf/                    # Page splitting, thumbnails and the Sheet Viewer's full-size pages via poppler-utils
 │   ├── peoplemigrate/           # One-shot backfill splitting legacy composer/arranger strings into Person rows (admin CLI command, also runs automatically on startup)
 │   ├── repo/                   # All SQL lives here — the only layer that touches the DB
+│   ├── richtext/               # The Markdown + :shortcode: subset Sonneck's generated PDFs draw (shared by setlistpdf and annotpdf)
 │   ├── storage/                # File storage on disk (originals, extracted pieces)
 │   ├── testutil/               # Shared test fixtures (e.g. minimal valid PDFs)
 │   ├── webui/                  # Embeds the built frontend (//go:embed) for the single-binary/Docker deployment — see the Docker section below
@@ -247,6 +250,7 @@ Beyond the split-logic requirement above, comprehensive frontend test coverage i
 Piece/book descriptions and a piece's own notes support a small set of `:shortcode:` music symbols (`:forte:`, `:flat:`, `:segno:`, …), documented for end users in [`docs/music-emoji.md`](docs/music-emoji.md). If you're changing that feature:
 
 - The single source of truth for the shortcode → character mapping is `MUSIC_SHORTCODES` in `frontend/src/lib/musicEmoji.ts`. `docs/music-emoji.md`'s table is a hand-maintained mirror of it for humans — if the map changes, update that table to match; nothing regenerates the table text itself.
+- The PDFs Sonneck draws (Setlist PDF, annotated downloads) carry a Go copy of the same map, `Shortcodes` in `internal/richtext/richtext.go`, kept in step by hand.
 - The table's preview images (`docs/music-emoji-images/*.png`) *are* generated — regenerate them any time the shortcode list or the font subset changes, rather than hand-editing:
   ```sh
   cd frontend
@@ -261,6 +265,18 @@ Piece/book descriptions and a piece's own notes support a small set of `:shortco
   .venv/bin/python frontend/scripts/pad-bravura-subset.py frontend/src/assets/fonts/bravura-text-subset.woff2 internal/setlistpdf/assets/fonts/BravuraText-subset.ttf
   ```
 - A few symbols also have a second, non-inserted Unicode codepoint that the `Bravura Text` `@font-face` (`frontend/src/index.css`) is *also* the preferred font for, so pasting or typing the character directly (not via a shortcode) still renders correctly: `flat`/`natural`/`sharp` each additionally cover their SMuFL "alternate code" form (U+ED60–U+ED62), and `treble`/`alto`/`bass` each additionally cover the standard Unicode musical-symbol codepoint (U+1D11E, U+1D121, U+1D122). See that `@font-face`'s `unicode-range` for the exact list.
+
+## Annotated PDF downloads
+
+Download PDF + Annotations (`internal/annotpdf`) redraws each Sheet Viewer mark the way the viewer draws it, so a few things are copies that have to stay in step:
+
+- **Stroke shapes**: `freehand.go` is a Go port of [perfect-freehand](https://github.com/steveruizok/perfect-freehand) (MIT), the library the viewer draws strokes with. `TestGetStrokeMatchesPerfectFreehand` checks it against outlines the JavaScript library produced. After updating perfect-freehand in `frontend/package.json`, regenerate them from the repo root and rerun the test:
+  ```sh
+  node internal/annotpdf/testdata/freehand-fixtures.mjs > internal/annotpdf/testdata/freehand.json
+  go test ./internal/annotpdf
+  ```
+- **Stroke options and colors**: the options `strokePath` passes (`frontend/src/lib/sheetViewerMarks.ts`) and `LAYER_COLORS`' light values (`frontend/src/lib/sheetViewerTools.ts`) are repeated in `annotate.go`.
+- **Text layout**: `text.go` follows `textBoxStyle` and the text marks' line height; `internal/annotpdf/assets/Quintessential-Regular.ttf` is Google Fonts' TTF of the web app's woff2 files.
 
 ## Setlist PDF fleuron
 

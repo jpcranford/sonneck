@@ -105,7 +105,11 @@ export interface PracticeSettings {
   grayscale: boolean
   invert: boolean
   edgeMargin: boolean
-  notesBarShown: boolean
+  // Null until the user sets this piece's banner: then it follows User
+  // Settings' notesBarDefault.
+  notesBarShown: boolean | null
+  // The annotation colors hidden on this piece: bit i for color i.
+  hiddenColors: number
 }
 
 export const DEFAULT_PRACTICE_SETTINGS: PracticeSettings = {
@@ -114,7 +118,8 @@ export const DEFAULT_PRACTICE_SETTINGS: PracticeSettings = {
   grayscale: false,
   invert: false,
   edgeMargin: false,
-  notesBarShown: false,
+  notesBarShown: null,
+  hiddenColors: 0,
 }
 
 export function getPracticeSettings(id: number): Promise<PracticeSettings> {
@@ -175,6 +180,9 @@ export interface SearchPiecesParams {
   /** Pieces with a non-blank *effective* IMSLP number (own or inherited
    * from their book) — same tri-state shape as `bookless` now. */
   hasImslpNumber?: boolean
+  /** Pieces the signed-in account has annotated: marked in the Sheet Viewer,
+   * or written notes on (its own only) — tri-state like `bookless`. */
+  hasAnnotations?: boolean
   /** Book Details page: every piece belonging to this book, sorted by
    * start page ascending (server-side tie-break: a same-start-page 1-page
    * piece sorts before a longer one) instead of the default newest-first
@@ -234,6 +242,7 @@ export interface PieceFacetsParams {
   practiceStatusSlot?: 'want_to_learn' | 'practicing' | 'learned'
   bookless?: boolean
   hasImslpNumber?: boolean
+  hasAnnotations?: boolean
 }
 
 /** practiceStatus has no separate lookup table/ID (a CHECK constraint on
@@ -254,6 +263,7 @@ export interface PieceFacets {
   favorite: number
   bookless: number
   hasImslpNumber: number
+  hasAnnotations: number
 }
 
 export function getPieceFacets(params: PieceFacetsParams = {}): Promise<PieceFacets> {

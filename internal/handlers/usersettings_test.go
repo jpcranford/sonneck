@@ -128,3 +128,25 @@ func TestUserSettings_TrackPractice(t *testing.T) {
 		t.Error("trackPractice didn't save as off")
 	}
 }
+
+// The notes banner's default (migration 00034) is off and saves, and a
+// PATCH that leaves it out keeps it.
+func TestUserSettings_NotesBarDefault(t *testing.T) {
+	h := newTestServer(t)
+	var settings repo.UserSettings
+	decodeData(t, doJSON(t, h, http.MethodGet, "/api/user-settings", nil), &settings)
+	if settings.NotesBarDefault {
+		t.Fatal("notesBarDefault should default to false")
+	}
+	if rec := doJSON(t, h, http.MethodPatch, "/api/user-settings", map[string]any{"notesBarDefault": true}); rec.Code != http.StatusOK {
+		t.Fatalf("PATCH: status %d", rec.Code)
+	}
+	if rec := doJSON(t, h, http.MethodPatch, "/api/user-settings", map[string]any{"clockSeconds": true}); rec.Code != http.StatusOK {
+		t.Fatalf("PATCH other field: status %d", rec.Code)
+	}
+	var reread repo.UserSettings
+	decodeData(t, doJSON(t, h, http.MethodGet, "/api/user-settings", nil), &reread)
+	if !reread.NotesBarDefault {
+		t.Error("notesBarDefault didn't save as on, or a later PATCH reset it")
+	}
+}

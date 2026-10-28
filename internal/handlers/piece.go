@@ -454,6 +454,10 @@ func (s *Server) handleDownloadPieceFile(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	filename := downloadFilename(joinPersonNames(composerNames), arranger, eff.Publisher.Value, p.Title, year)
+	if r.URL.Query().Get("annotations") == "true" {
+		s.serveAnnotatedPiece(w, r, p, filename)
+		return
+	}
 	w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=%q", filename+".pdf"))
 	http.ServeFile(w, r, p.FilePath)
 }

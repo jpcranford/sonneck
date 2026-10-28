@@ -49,6 +49,31 @@ func (s *Server) handleDownloadSetlistPDF(w http.ResponseWriter, r *http.Request
 		s.writeError(w, err)
 		return
 	}
+	// Set PDF + Annotations: each piece with marks to export is spliced in
+	// from an annotated copy of its file.
+	annotated := r.URL.Query().Get("annotations") == "true"
+	if annotated {
+		if _, ok := s.requirePermission(w, r, models.PermissionPractice); !ok {
+			return
+		}
+		ids := make([]int64, len(entries))
+		paths := make([]string, len(entries))
+		for i, e := range resp.Entries {
+			if e.Piece != nil {
+				ids[i] = e.Piece.ID
+			}
+			paths[i] = entries[i].PieceFilePath
+		}
+		remove, err := s.annotatedSetlistFiles(r.Context(), user, ids, paths)
+		if err != nil {
+			s.writeError(w, err)
+			return
+		}
+		defer remove()
+		for i := range entries {
+			entries[i].PieceFilePath = paths[i]
+		}
+	}
 
 	// Dates are written in the requester's own locale (Accept-Language).
 	// The gig date is a calendar day: parsed and formatted with no timezone.
@@ -80,7 +105,11 @@ func (s *Server) handleDownloadSetlistPDF(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	filename := sanitizeFilename(setlist.Name) + ".pdf"
+	filename := sanitizeFilename(setlist.Name)
+	if annotated {
+		filename = annotatedName(filename)
+	}
+	filename += ".pdf"
 	w.Header().Set("Content-Type", "application/pdf")
 	w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=%q", filename))
 	w.Write(out)

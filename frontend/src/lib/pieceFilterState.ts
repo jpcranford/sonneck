@@ -7,7 +7,7 @@
 // the full reasoning. Every array-valued facet (keyId/instrumentId/sheetTypeId/
 // userTagId/practiceStatus) becomes a `Record<string, TriState>` — only
 // non-neutral entries stored, 'neutral' is a key's absence — and every
-// plain-boolean facet (favorite/bookless/hasImslpNumber) becomes a bare
+// plain-boolean facet (favorite/bookless/hasImslpNumber/hasAnnotations) becomes a bare
 // TriState. ID-keyed dimensions store the id as a *string* key (JS object
 // keys are always strings anyway) purely so every dimension can share the
 // same dimensionState/setDimensionState helpers; convert back with
@@ -24,6 +24,7 @@ export interface PieceFilterState {
   favorite: TriState
   bookless: TriState
   hasImslpNumber: TriState
+  hasAnnotations: TriState
 }
 
 export const EMPTY_PIECE_FILTERS: PieceFilterState = {
@@ -35,6 +36,7 @@ export const EMPTY_PIECE_FILTERS: PieceFilterState = {
   favorite: 'neutral',
   bookless: 'neutral',
   hasImslpNumber: 'neutral',
+  hasAnnotations: 'neutral',
 }
 
 export function dimensionState(map: Record<string, TriState>, value: string): TriState {
@@ -64,22 +66,35 @@ export function activePieceFilterCount(f: PieceFilterState): number {
     Object.keys(f.practiceStatus).length +
     (f.favorite !== 'neutral' ? 1 : 0) +
     (f.bookless !== 'neutral' ? 1 : 0) +
-    (f.hasImslpNumber !== 'neutral' ? 1 : 0)
+    (f.hasImslpNumber !== 'neutral' ? 1 : 0) +
+    (f.hasAnnotations !== 'neutral' ? 1 : 0)
   )
 }
 
-function idDimensionParams(map: Record<string, TriState>): { include?: number[]; exclude?: number[] } {
+function idDimensionParams(map: Record<string, TriState>): {
+  include?: number[]
+  exclude?: number[]
+} {
   const entries = Object.entries(map)
   const include = entries.filter(([, s]) => s === 'include').map(([k]) => Number(k))
   const exclude = entries.filter(([, s]) => s === 'exclude').map(([k]) => Number(k))
-  return { include: include.length ? include : undefined, exclude: exclude.length ? exclude : undefined }
+  return {
+    include: include.length ? include : undefined,
+    exclude: exclude.length ? exclude : undefined,
+  }
 }
 
-function stringDimensionParams(map: Record<string, TriState>): { include?: string; exclude?: string } {
+function stringDimensionParams(map: Record<string, TriState>): {
+  include?: string
+  exclude?: string
+} {
   const entries = Object.entries(map)
   const include = entries.filter(([, s]) => s === 'include').map(([k]) => k)
   const exclude = entries.filter(([, s]) => s === 'exclude').map(([k]) => k)
-  return { include: include.length ? include.join(',') : undefined, exclude: exclude.length ? exclude.join(',') : undefined }
+  return {
+    include: include.length ? include.join(',') : undefined,
+    exclude: exclude.length ? exclude.join(',') : undefined,
+  }
 }
 
 function triBool(state: TriState): boolean | undefined {
@@ -114,5 +129,6 @@ export function pieceFilterApiParams(f: PieceFilterState) {
     favorite: triBool(f.favorite),
     bookless: triBool(f.bookless),
     hasImslpNumber: triBool(f.hasImslpNumber),
+    hasAnnotations: triBool(f.hasAnnotations),
   }
 }

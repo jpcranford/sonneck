@@ -1,4 +1,12 @@
-import { Fragment, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
+import {
+  Fragment,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type CSSProperties,
+  type ReactNode,
+} from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -31,12 +39,16 @@ import {
   IconPlayerPause,
   IconPlayerPlay,
   IconPlaylist,
+  IconDownload,
   IconPlus,
   IconRefresh,
   IconStopwatch,
   IconSun,
   IconTypography,
   IconX,
+  IconEye,
+  IconEyeOff,
+  IconStack2,
 } from '@tabler/icons-react'
 import { getPiece, getPiecePageUrl, getPieceThumbnailUrl, searchPieces } from '../api/pieces'
 import { listPracticeStatuses } from '../api/lookups'
@@ -52,6 +64,22 @@ import { stageTurn, type StagePoint } from '../lib/sheetViewerGestures'
 import { sortPracticeStatuses } from '../lib/practiceStatusOrder'
 import { useShortcutBlocker } from '../lib/shortcuts'
 import { useMockupTitle } from '../lib/useMockupTitle'
+import { resetTips, takeTip } from '../lib/sheetViewerTips'
+import {
+  applyChange,
+  eraserTouches,
+  markAnchor,
+  removedSince,
+  strokePath,
+  strokeTouchesPage,
+  TEXT_LINE_HEIGHT,
+  type Mark,
+  type MarkChange,
+  type MarkPoint,
+  type PageBox,
+  type StrokeMark,
+  type TextMark,
+} from '../lib/sheetViewerMarks'
 import { copyToClipboard } from '../lib/clipboard'
 import {
   clearInterruptedTurnTest,
@@ -90,12 +118,146 @@ const FACE_HOVER = 'group-hover/b:bg-(--sv-hover)'
 const TOOLS = [
   { key: 'pen', label: 'Pen', Icon: IconBallpen },
   { key: 'highlighter', label: 'Highlighter', Icon: IconHighlight },
-  { key: 'eraser', label: 'Eraser', Icon: IconEraser },
   { key: 'text', label: 'Text', Icon: IconTypography },
+  // Last, after the three tools that draw in a color.
+  { key: 'eraser', label: 'Eraser', Icon: IconEraser },
 ] as const
 type Tool = (typeof TOOLS)[number]['key']
-// Placeholder palette — the real one is designed in Phase 11.
-const COLORS = ['#2b2622', '#c0392b', '#2f6fb5', '#e0a526']
+// See toolsInline.
+const TOOLS_INLINE_MIN_WIDTH = 720
+// The annotation palette (Phases 11–13): six colors, each its own layer.
+// Each is tuned so a mark reads as well where it crosses a note as on blank
+// paper, which lands on nearly the same value on a white page and on Dark
+// Mode Scores — one set for both — and a little deeper on the dark theme's
+// dimmed page. Ink is the exception: it's for correcting the print, so it
+// stays close to (not quite) the printed ink, and on an inverted page it's
+// that ink as the page's own invert shows it. Yellow is the highlighter's;
+// it sits behind the notes, multiplied on light pages and screened on dark
+// ones.
+const LAYER_COLORS: { name: string; light: string; dim: string; dark: string }[] = [
+  { name: 'Red', light: '#d73d2d', dim: '#c43426', dark: '#d63a2a' },
+  { name: 'Yellow', light: '#f2c12e', dim: '#f2c12e', dark: '#f2c12e' },
+  { name: 'Blue', light: '#2c71e2', dim: '#1d64d8', dark: '#2a70e2' },
+  { name: 'Green', light: '#1b8749', dim: '#187941', dark: '#1a8548' },
+  { name: 'Purple', light: '#8e5fc3', dim: '#8350bd', dark: '#8d5ec3' },
+  { name: 'Ink', light: '#2b2622', dim: '#2b2622', dark: '#d3cfcb' },
+]
+// How the page currently looks: white, the dark theme's dimmed page, or
+// inverted (Dark Mode Scores, or the photo panel's Invert).
+type PageLook = 'light' | 'dim' | 'dark'
+const layerColor = (layer: number, look: PageLook) => LAYER_COLORS[layer][look]
+// The tools' sizes, as a share of the page's width (picked in the size
+// playground; the pen's retuned on the iPad), so a mark keeps its weight at
+// any screen size. The eraser's is the width of its reach; M is about 28pt
+// across on an iPad in landscape.
+type Size = 'S' | 'M' | 'L'
+const SIZES: Record<Tool, Record<Size, number>> = {
+  pen: { S: 0.25, M: 0.39, L: 0.58 },
+  highlighter: { S: 1.2, M: 2, L: 3 },
+  text: { S: 1.4, M: 1.8, L: 2.4 },
+  eraser: { S: 3, M: 5, L: 8 },
+}
+// Each tool remembers its own color and size; these are where they start:
+// the pen in Ink, the highlighter in Yellow, text in Blue.
+type ColorTool = 'pen' | 'highlighter' | 'text'
+const TOOL_START: Record<ColorTool, { color: number; size: Size }> = {
+  pen: { color: 5, size: 'M' },
+  highlighter: { color: 1, size: 'M' },
+  text: { color: 2, size: 'M' },
+}
+
+// Sample marks the pages start with, so the layers have something to hide
+// before anything is drawn. Each is in fractions of the page — x of its width, y
+// of its height — so it lands in the same place on any page, and drawn at
+// the tools' medium sizes. Page 1 has a mark on every color, page 2 on two,
+// the rest on one.
+type SampleMark =
+  | { layer: number; kind: 'ring'; x: number; y: number; rx: number; ry: number }
+  | { layer: number; kind: 'line'; points: [number, number][]; highlight?: boolean }
+  | { layer: number; kind: 'text'; x: number; y: number; text: string; italic?: boolean }
+const SAMPLE_MARKS: SampleMark[][] = [
+  [
+    { layer: 0, kind: 'ring', x: 0.5, y: 0.3, rx: 0.07, ry: 0.035 },
+    { layer: 2, kind: 'text', x: 0.62, y: 0.22, text: '2' },
+    { layer: 2, kind: 'text', x: 0.67, y: 0.22, text: '1' },
+    { layer: 2, kind: 'text', x: 0.72, y: 0.22, text: '3' },
+    {
+      layer: 1,
+      kind: 'line',
+      points: [
+        [0.3, 0.45],
+        [0.55, 0.45],
+      ],
+      highlight: true,
+    },
+    {
+      layer: 3,
+      kind: 'line',
+      points: [
+        [0.18, 0.62],
+        [0.25, 0.6],
+        [0.32, 0.62],
+      ],
+    },
+    {
+      layer: 4,
+      kind: 'line',
+      points: [
+        [0.42, 0.7],
+        [0.28, 0.715],
+        [0.42, 0.73],
+      ],
+    },
+    { layer: 5, kind: 'text', x: 0.12, y: 0.85, text: 'cresc.', italic: true },
+  ],
+  [
+    { layer: 0, kind: 'ring', x: 0.35, y: 0.5, rx: 0.06, ry: 0.03 },
+    { layer: 5, kind: 'text', x: 0.7, y: 0.35, text: 'p sub.', italic: true },
+  ],
+  [{ layer: 2, kind: 'text', x: 0.4, y: 0.3, text: '4' }],
+]
+// A page's starting marks as real marks (lib/sheetViewerMarks.ts), so they
+// can be erased and their erasing undone like anything drawn. A ring becomes
+// a pen stroke around it.
+function seedMarks(page: number): Mark[] {
+  return SAMPLE_MARKS[Math.min(page, SAMPLE_MARKS.length) - 1].map((m, i): Mark => {
+    const id = `s${page}-${i}`
+    if (m.kind === 'text')
+      return {
+        id,
+        kind: 'text',
+        layer: m.layer,
+        x: m.x,
+        y: m.y,
+        size: SIZES.text.M,
+        text: m.text,
+        italic: m.italic,
+      }
+    const tool = m.kind === 'line' && m.highlight ? 'highlighter' : 'pen'
+    const points: MarkPoint[] =
+      m.kind === 'ring'
+        ? Array.from({ length: 49 }, (_, k) => {
+            const t = (k / 48) * 2 * Math.PI
+            return [m.x + m.rx * Math.cos(t), m.y + m.ry * Math.sin(t), 0.5]
+          })
+        : m.points.map(([x, y]) => [x, y, 0.5])
+    return {
+      id,
+      kind: 'stroke',
+      tool,
+      layer: m.layer,
+      size: SIZES[tool].M,
+      points,
+      // An even pressure: their few far-apart points would read as a fast,
+      // thin stroke if it were simulated from speed.
+      pressure: true,
+    }
+  })
+}
+// An undo or redo of a change on another page turns there first, then
+// applies it after this long, so you see it happen.
+const UNDO_TURN_MS = 450
+const UNDO_WAIT_MS = 10_000
 
 // Practice statuses in practice order, by their durable icon (the real
 // strip reads the viewer's own list; this mockup writes nothing).
@@ -108,9 +270,8 @@ const EMPTY_NOTES =
   'Nothing yet. Big picture notes go here: what to remember about this piece, or a log of how practice is going. Markings on the music can be made in Annotate mode.'
 const INFO_WIDTH = 380
 const QUEUE_WIDTH = 380
-// Phase 6 (30s per the round-3 answers): a piece counts as practiced today
-// once its last page has been
-// reached and at least this long has been spent on it.
+// A piece counts as practiced today once at least this long has been spent
+// on it (30s; no longer also needing its last page reached, user 2026-10-27).
 const PRACTICED_MS = 30_000
 
 // A setlist's custom entries (Phase 6): each gets a placeholder page in the
@@ -366,6 +527,12 @@ export function SheetViewerMockup() {
   const [fastMinute, setFastMinute] = useState(false)
   // User Settings' "Track practice in the Sheet Viewer" (on by default).
   const [trackingOn, setTrackingOn] = useState(true)
+  // User Settings' "Show hidden colors faintly" (on by default): off, a
+  // hidden color's marks don't show at all.
+  const [ghostsOn, setGhostsOn] = useState(true)
+  // User Settings' "Show practice notes as banner" (off by default): the
+  // banner for a piece whose own switch hasn't been set.
+  const [barDefault, setBarDefault] = useState(false)
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   // The floating card that follows the pointer while dragging (Edit
   // Program's own pattern): where the pointer is, and where it grabbed the
@@ -381,8 +548,36 @@ export function SheetViewerMockup() {
   const [page, setPage] = useState(1)
   const [mode, setMode] = useState<'play' | 'annotate'>('play')
   const [tool, setTool] = useState<Tool | null>(null)
-  const [color, setColor] = useState(0)
-  const [menu, setMenu] = useState<'clock' | 'more' | 'info' | 'photo' | 'queue' | null>(null)
+  // Each tool's own color and size (B2: a tool remembers what it last used).
+  const [toolStyle, setToolStyle] = useState(TOOL_START)
+  // The eraser has a size but no color.
+  const [eraserSize, setEraserSize] = useState<Size>('M')
+  const eraserRadius = SIZES.eraser[eraserSize] / 200
+  const [menu, setMenu] = useState<
+    'clock' | 'more' | 'info' | 'photo' | 'queue' | 'layers' | 'tool' | null
+  >(null)
+  // Phase 11 trial: color layers hidden (kept per piece in the real thing),
+  // and the page image's shape, so the marks can be laid over it.
+  const [hiddenLayers, setHiddenLayers] = useState<number[]>([])
+  const [pageAspect, setPageAspect] = useState(8.5 / 11)
+  // Phase 15: every page's marks, by "pieceId:page" (a page not yet touched
+  // shows its sample marks), the stroke being drawn, where the eraser is,
+  // and the session's undo history.
+  const [marksByPage, setMarksByPage] = useState<Record<string, Mark[]>>({})
+  const [live, setLive] = useState<StrokeMark | null>(null)
+  const [eraserAt, setEraserAt] = useState<[number, number] | null>(null)
+  // Phase 17: the text box open for typing, how far the page is lifted to
+  // keep it clear of the keyboard, and a text mark being dragged.
+  const [textEdit, setTextEdit] = useState<TextEdit | null>(null)
+  const [lift, setLift] = useState(0)
+  const [textDrag, setTextDrag] = useState<{ id: string; dx: number; dy: number } | null>(null)
+  // Mockup panel: pretend an on-screen keyboard covers the bottom 40%, for
+  // trying the lift without an iPad.
+  const [fakeKeyboard, setFakeKeyboard] = useState(false)
+  const [history, setHistory] = useState<{ done: MarkChange[]; undone: MarkChange[] }>({
+    done: [],
+    undone: [],
+  })
   // Photo controls and the margin, per piece (a practice setting).
   const [photoByPiece, setPhotoByPiece] = useState<Record<number, Photo>>({})
   // The theme and Dark Mode Scores as the page opened with them; the Mockup
@@ -410,8 +605,9 @@ export function SheetViewerMockup() {
     queryKey: ['practice-statuses'],
     queryFn: listPracticeStatuses,
   })
-  // The notes bar is off until turned on for a piece (user, 2026-10-21).
+  // Each piece's own banner choice; a piece without one follows barDefault.
   const [barShown, setBarShown] = useState<Record<number, boolean>>({})
+  const barOn = activeId !== null && (barShown[activeId] ?? barDefault)
   const [hasNotes, setHasNotes] = useState(true)
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
@@ -447,8 +643,7 @@ export function SheetViewerMockup() {
       : (piece?.practiceStatus ?? null)
   const infoOpen = menu === 'info'
   // Hidden while any menu or Info is open, so nothing stacks over it.
-  const showBar =
-    notes !== '' && activeId !== null && !!barShown[activeId] && menu === null && !customKey
+  const showBar = notes !== '' && barOn && menu === null && !customKey
 
   const photo = (activeId !== null && photoByPiece[activeId]) || PHOTO_DEFAULT
   function setPhoto(change: Partial<Photo>) {
@@ -484,20 +679,30 @@ export function SheetViewerMockup() {
   const last = useRef({ dir: 0, at: 0 })
   const photoAnchorRef = useRef<HTMLDivElement>(null)
   const queueAnchorRef = useRef<HTMLDivElement>(null)
+  const layersAnchorRef = useRef<HTMLDivElement>(null)
+  const toolAnchorRef = useRef<HTMLDivElement>(null)
   const phoneRow2Ref = useRef<HTMLDivElement>(null)
   const infoAnchorRef = useRef<HTMLDivElement>(null)
   const clockAnchorRef = useRef<HTMLDivElement>(null)
   const moreAnchorRef = useRef<HTMLDivElement>(null)
   const closeTimer = useRef<number | undefined>(undefined)
   const hintTimer = useRef<number | undefined>(undefined)
+  const undoTimer = useRef<number | undefined>(undefined)
+  const pageBoxRef = useRef<HTMLDivElement>(null)
   useEffect(
     () => () => {
       window.clearTimeout(closeTimer.current)
       window.clearTimeout(hintTimer.current)
+      window.clearTimeout(undoTimer.current)
     },
     [],
   )
 
+  // An instruction pill: a tip, shown only its first few times
+  // (lib/sheetViewerTips.ts).
+  function tip(id: string, text: string) {
+    if (takeTip(id)) flash(text)
+  }
   function flash(text: string) {
     window.clearTimeout(hintTimer.current)
     setHint({ text, id: Date.now() })
@@ -505,6 +710,7 @@ export function SheetViewerMockup() {
   }
 
   function turn(dir: -1 | 1) {
+    finishText()
     const t = performance.now()
     if (dir === last.current.dir && t - last.current.at < DEBOUNCE_MS) {
       flash('Double-turn ignored')
@@ -564,8 +770,10 @@ export function SheetViewerMockup() {
   }
   const turnRef = useRef(turn)
   const setMenuRef = useRef(setMenu)
+  const stepHistoryRef = useRef(stepHistory)
   useEffect(() => {
     turnRef.current = turn
+    stepHistoryRef.current = stepHistory
   })
 
   // Page-turner pedals pair as keyboards sending this fixed set (plan:
@@ -575,9 +783,16 @@ export function SheetViewerMockup() {
   const menuOpen = menu === 'clock' || menu === 'more'
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
-      if (event.metaKey || event.ctrlKey || event.altKey) return
+      // Typing in a field (a text mark, the notes): its own keys, ⌘Z too.
       const target = event.target as Element | null
       if (target?.closest('input, textarea, select, [role="listbox"]')) return
+      // ⌘Z / ⇧⌘Z (Ctrl elsewhere), with a keyboard attached.
+      if ((event.metaKey || event.ctrlKey) && !event.altKey && event.key.toLowerCase() === 'z') {
+        event.preventDefault()
+        if (!event.repeat) stepHistoryRef.current(event.shiftKey ? 'redo' : 'undo')
+        return
+      }
+      if (event.metaKey || event.ctrlKey || event.altKey) return
       if (event.key === 'Escape') {
         setMenuRef.current(null)
         return
@@ -597,13 +812,12 @@ export function SheetViewerMockup() {
     return () => document.removeEventListener('keydown', onKey, true)
   }, [menuOpen])
 
-  // Practiced today: time on each piece adds up while it's showing; once its
-  // last page has been reached too, it's marked (Phase 6).
+  // Practiced today: time on each piece adds up while it's showing; past
+  // PRACTICED_MS, it's marked.
   // A custom entry isn't a piece: nothing to mark.
   const viewId = customKey ? null : activeId
   const spent = useRef(new Map<number, number>())
   const viewing = useRef<{ id: number | null; since: number }>({ id: null, since: 0 })
-  const reachedLast = useRef(new Set<number>())
   const threshold = useRef(PRACTICED_MS)
   const tracking = useRef(true)
   useEffect(() => {
@@ -618,14 +832,10 @@ export function SheetViewerMockup() {
     viewing.current = { id: viewId, since: now }
   }, [viewId])
   useEffect(() => {
-    if (viewId !== null && piece?.id === viewId && page >= pageCount)
-      reachedLast.current.add(viewId)
-  }, [viewId, piece, page, pageCount])
-  useEffect(() => {
     const t = window.setInterval(() => {
       const { id, since } = viewing.current
       // User Settings' practice-tracking switch off: nothing is recorded.
-      if (!tracking.current || id === null || !reachedLast.current.has(id)) return
+      if (!tracking.current || id === null) return
       if ((spent.current.get(id) ?? 0) + Date.now() - since < threshold.current) return
       setPracticed((prev) => (id in prev ? prev : { ...prev, [id]: true }))
     }, 1000)
@@ -655,20 +865,35 @@ export function SheetViewerMockup() {
     setMode('annotate')
     setTool(null)
     setMenu(null)
-    flash('Annotate: pick a tool to mark; until then taps turn pages')
+    tip('annotate', 'Annotate: pick a tool to mark; until then taps turn pages')
   }
   function leaveAnnotate() {
+    finishText()
     setMode('play')
     setTool(null)
-    flash('Play: taps turn pages')
+    tip('play', 'Play: taps turn pages')
   }
+  // B2: tapping the picked tool again opens its color and size (the
+  // eraser's, its size); tapping it once more, options showing, puts it
+  // down, so taps turn pages again.
   function pickTool(key: Tool) {
-    if (tool === key) {
-      setTool(null)
-      flash('No tool: taps turn pages')
-    } else {
+    if (tool !== key) {
+      finishText()
       setTool(key)
-      flash(`${TOOLS.find((t) => t.key === key)?.label}: taps mark the page`)
+      setMenu(null)
+      tip(
+        `tool-${key}`,
+        key === 'text'
+          ? 'Text: tap the page to write; tap text to edit it, or drag it to move it'
+          : `${TOOLS.find((t) => t.key === key)?.label}: taps mark the page`,
+      )
+    } else if (menu !== 'tool') {
+      setMenu('tool')
+    } else {
+      finishText()
+      setTool(null)
+      setMenu(null)
+      tip('no-tool', 'No tool: taps turn pages')
     }
   }
 
@@ -678,6 +903,18 @@ export function SheetViewerMockup() {
   const down = useRef<StagePoint | null>(null)
   const fingers = useRef(new Set<number>())
   function onStagePointerDown(event: React.PointerEvent<HTMLDivElement>) {
+    // A tap anywhere while a text box is open finishes it, and only that.
+    if (textEdit) {
+      finishText()
+      down.current = null
+      return
+    }
+    // Pen, highlighter or eraser picked: the pointer marks the page, zoomed
+    // in or not (two fingers still pinch and pan).
+    if (markTool()) {
+      startMark(event)
+      return
+    }
     // Zoomed in, a drag pans the page; leave it to the browser.
     if (zoomed) return
     fingers.current.add(event.pointerId)
@@ -689,12 +926,18 @@ export function SheetViewerMockup() {
       down.current = { x: event.clientX, y: event.clientY, t: performance.now() }
   }
   function onStagePointerUp(event: React.PointerEvent<HTMLDivElement>) {
+    if (finishMark(event)) return
     fingers.current.delete(event.pointerId)
     const start = down.current
     down.current = null
     if (!start) return
     if (mode === 'annotate' && tool) {
-      flash('Marking the page arrives in Phase 15')
+      // The Text tool: a tap on the page opens a text box there.
+      if (tool === 'text' && !custom && activeId !== null) {
+        const p = pagePoint({ clientX: start.x, clientY: start.y })
+        const moved = Math.hypot(event.clientX - start.x, event.clientY - start.y)
+        if (p && moved < 10 && p[0] >= 0 && p[0] <= 1 && p[1] >= 0 && p[1] <= 1) startTextBox(p)
+      }
       return
     }
     const end = { x: event.clientX, y: event.clientY, t: performance.now() }
@@ -702,8 +945,407 @@ export function SheetViewerMockup() {
     if (dir) turn(dir)
   }
   function onStagePointerCancel(event: React.PointerEvent<HTMLDivElement>) {
+    if (marking.current?.id === event.pointerId) cancelMark()
     fingers.current.delete(event.pointerId)
     down.current = null
+  }
+
+  // Marking (Phase 15). Strokes go through perfect-freehand
+  // (lib/sheetViewerMarks.ts) with an Apple Pencil's real pressure, or
+  // pressure simulated from speed for a finger or mouse. Every point is a
+  // share of the page, so marks keep their place at any size.
+  const pageKey = `${activeId}:${page}`
+  const marksFor = (key: string) => marksByPage[key] ?? seedMarks(Number(key.split(':')[1]))
+  // Info's Download PDF + Annotations: how many of the piece's marks it
+  // would carry, and how many it leaves out for being in a hidden color.
+  const pieceMarks = Array.from({ length: pageCount }, (_, i) =>
+    marksFor(`${activeId}:${i + 1}`),
+  ).flat()
+  const exportHidden = pieceMarks.filter((m) => hiddenLayers.includes(m.layer)).length
+  const exportShown = pieceMarks.length - exportHidden
+  const marking = useRef<{ id: number; type: string } | null>(null)
+  const liveRef = useRef<StrokeMark | null>(null)
+  const erasing = useRef<{
+    key: string
+    before: Mark[]
+    removed: Set<string>
+    last: [number, number]
+    // Each text mark's drawn box: text wraps, so its size is only known
+    // from the page.
+    textBoxes: Map<string, PageBox>
+  } | null>(null)
+  const markCount = useRef(0)
+  function markTool() {
+    if (mode !== 'annotate' || custom || activeId === null) return null
+    return tool === 'pen' || tool === 'highlighter' || tool === 'eraser' ? tool : null
+  }
+  function pagePoint(event: { clientX: number; clientY: number }): [number, number] | null {
+    const box = pageBoxRef.current?.getBoundingClientRect()
+    if (!box?.width) return null
+    return [(event.clientX - box.left) / box.width, (event.clientY - box.top) / box.height]
+  }
+  function startMark(event: React.PointerEvent<HTMLDivElement>) {
+    const current = marking.current
+    if (current && current.id !== event.pointerId) {
+      // A palm that landed before the Pencil: drop its mark, take the Pencil.
+      // A finger while the Pencil draws: ignored. A second finger: a pinch,
+      // so the mark it would have left is dropped.
+      if (current.type === 'pen' && event.pointerType !== 'pen') return
+      cancelMark()
+      if (event.pointerType !== 'pen') return
+    }
+    if (event.button !== 0) return
+    const p = pagePoint(event)
+    const t = markTool()
+    if (!p || !t) return
+    event.currentTarget.setPointerCapture(event.pointerId)
+    marking.current = { id: event.pointerId, type: event.pointerType }
+    if (t === 'eraser') {
+      erasing.current = {
+        key: pageKey,
+        before: marksFor(pageKey),
+        removed: new Set(),
+        last: p,
+        textBoxes: drawnTextBoxes(),
+      }
+      eraseTo(p)
+      return
+    }
+    const style = toolStyle[t]
+    // Drawing in a hidden color shows that layer again.
+    if (hiddenLayers.includes(style.color)) {
+      setHiddenLayers(hiddenLayers.filter((l) => l !== style.color))
+      flash(`${LAYER_COLORS[style.color].name} unhidden`)
+    }
+    markCount.current += 1
+    const mark: StrokeMark = {
+      id: `m${markCount.current}`,
+      kind: 'stroke',
+      tool: t,
+      layer: style.color,
+      size: SIZES[t][style.size],
+      pressure: event.pointerType === 'pen',
+      points: [[p[0], p[1], event.pressure || 0.5]],
+    }
+    liveRef.current = mark
+    setLive(mark)
+  }
+  function onStagePointerMove(event: React.PointerEvent<HTMLDivElement>) {
+    if (marking.current?.id !== event.pointerId) return
+    // A Pencil reports far more often than the screen draws; take every
+    // point it sent since the last frame.
+    const events = event.nativeEvent.getCoalescedEvents?.() ?? []
+    const all = events.length ? events : [event.nativeEvent]
+    if (erasing.current) {
+      for (const e of all) {
+        const p = pagePoint(e)
+        if (p) eraseTo(p)
+      }
+      return
+    }
+    const mark = liveRef.current
+    if (!mark) return
+    const added: MarkPoint[] = []
+    for (const e of all) {
+      const p = pagePoint(e)
+      if (p) added.push([p[0], p[1], e.pressure || 0.5])
+    }
+    const next = { ...mark, points: [...mark.points, ...added] }
+    liveRef.current = next
+    setLive(next)
+  }
+  // The eraser removes every visible mark it touches, any color, text too,
+  // whole marks only; a hidden layer's marks are never erased.
+  function eraseTo(p: [number, number]) {
+    const e = erasing.current
+    if (!e) return
+    const from = e.last
+    e.last = p
+    setEraserAt(p)
+    const hit = e.before.filter(
+      (m) =>
+        !e.removed.has(m.id) &&
+        !hiddenLayers.includes(m.layer) &&
+        eraserTouches(m, from, p, eraserRadius, pageAspect, e.textBoxes.get(m.id)),
+    )
+    if (!hit.length) return
+    const ids = new Set(hit.map((m) => m.id))
+    for (const id of ids) e.removed.add(id)
+    const key = e.key
+    setMarksByPage((prev) => ({
+      ...prev,
+      [key]: (prev[key] ?? e.before).filter((m) => !ids.has(m.id)),
+    }))
+  }
+  function finishMark(event: React.PointerEvent<HTMLDivElement>) {
+    if (marking.current?.id !== event.pointerId) return false
+    marking.current = null
+    const e = erasing.current
+    if (e) {
+      erasing.current = null
+      setEraserAt(null)
+      const removed = removedSince(e.before, e.removed)
+      if (removed.length) record({ key: e.key, added: [], removed })
+      return true
+    }
+    const mark = liveRef.current
+    liveRef.current = null
+    setLive(null)
+    // A stroke that never touched the page isn't kept.
+    if (mark && strokeTouchesPage(mark)) {
+      const key = pageKey
+      setMarksByPage((prev) => ({ ...prev, [key]: [...(prev[key] ?? marksFor(key)), mark] }))
+      record({ key, added: [mark], removed: [] })
+    }
+    return true
+  }
+  function cancelMark() {
+    marking.current = null
+    liveRef.current = null
+    setLive(null)
+    const e = erasing.current
+    if (e) {
+      erasing.current = null
+      setEraserAt(null)
+      setMarksByPage((prev) => ({ ...prev, [e.key]: e.before }))
+    }
+  }
+
+  // Text marks (Phase 17). One text field stays mounted while the Text tool
+  // is picked, so a tap can move it into place and focus it inside the tap
+  // itself: iPad Safari raises the keyboard only for a focus made in the
+  // user's own gesture. Return starts a new line; a tap anywhere else, or
+  // another tool, finishes the box; a box finished empty adds nothing (or,
+  // when editing, removes the mark). Each finished box is one undo step.
+  const textFieldRef = useRef<HTMLTextAreaElement>(null)
+  const textWrapRef = useRef<HTMLDivElement>(null)
+  function openTextBox(edit: TextEdit) {
+    const wrap = textWrapRef.current
+    const field = textFieldRef.current
+    if (!wrap || !field) return
+    Object.assign(wrap.style, textBoxStyle(edit), { visibility: 'visible' })
+    wrap.dataset.value = edit.text
+    field.value = edit.text
+    // The page lifts itself clear of the keyboard; Safari mustn't scroll too.
+    field.focus({ preventScroll: true })
+    const end = edit.text.length
+    field.setSelectionRange(end, end)
+    // A touch's own click follows the tap into the field just opened and
+    // would put the cursor where the finger was: for a moment, put it back
+    // at the end. (A deliberate tap in the box later still moves it.)
+    const keepEnd = () => field.setSelectionRange(end, end)
+    field.addEventListener('click', keepEnd, { once: true })
+    window.setTimeout(() => field.removeEventListener('click', keepEnd), 400)
+    setTextEdit(edit)
+  }
+  function startTextBox(p: [number, number]) {
+    const style = toolStyle.text
+    const size = SIZES.text[style.size]
+    // The first line's middle sits on the tap: its baseline 3/8 of a line
+    // below it (the line is 1.25 sizes, its baseline 1 size down).
+    const em = (size / 100) * pageAspect
+    if (hiddenLayers.includes(style.color)) {
+      setHiddenLayers(hiddenLayers.filter((l) => l !== style.color))
+      flash(`${LAYER_COLORS[style.color].name} unhidden`)
+    }
+    openTextBox({
+      key: pageKey,
+      x: Math.min(p[0], 0.9),
+      // Its baseline stays on the page, however low the tap.
+      y: Math.min(1, p[1] + em * (1 - TEXT_LINE_HEIGHT / 2)),
+      layer: style.color,
+      size,
+      text: '',
+      original: null,
+    })
+  }
+  function editText(m: TextMark) {
+    finishText()
+    openTextBox({ ...m, key: pageKey, original: m })
+  }
+  // Put a finished box's change in place of the mark it edits (same id, same
+  // depth), or add it.
+  function placeText(key: string, original: TextMark | null, mark: TextMark | null) {
+    const list = marksFor(key)
+    const index = original ? list.findIndex((m) => m.id === original.id) : -1
+    const removed = original && index >= 0 ? [{ mark: original, index }] : []
+    setMarksByPage((prev) => {
+      const next = [...(prev[key] ?? list)]
+      if (index >= 0) {
+        if (mark) next[index] = mark
+        else next.splice(index, 1)
+      } else if (mark) next.push(mark)
+      return { ...prev, [key]: next }
+    })
+    if (removed.length || mark) record({ key, added: mark ? [mark] : [], removed })
+  }
+  function finishText() {
+    const edit = textEdit
+    if (!edit) return
+    closeTextBox()
+    const text = edit.text.replace(/\s+$/, '')
+    const { key, original } = edit
+    if (!text.trim()) {
+      if (original) placeText(key, original, null)
+      return
+    }
+    if (
+      original &&
+      text === original.text &&
+      edit.layer === original.layer &&
+      edit.size === original.size
+    )
+      return
+    if (hiddenLayers.includes(edit.layer)) {
+      setHiddenLayers(hiddenLayers.filter((l) => l !== edit.layer))
+      flash(`${LAYER_COLORS[edit.layer].name} unhidden`)
+    }
+    if (!original) markCount.current += 1
+    placeText(key, original, {
+      id: original?.id ?? `t${markCount.current}`,
+      kind: 'text',
+      layer: edit.layer,
+      x: edit.x,
+      y: edit.y,
+      size: edit.size,
+      text,
+      italic: original?.italic,
+    })
+  }
+  // Closes the box without keeping what's in it (Undo while typing).
+  function closeTextBox() {
+    textFieldRef.current?.blur()
+    setTextEdit(null)
+    setLift(0)
+  }
+  // A text mark dragged with the Text tool: dx, dy as shares of the page.
+  function moveText(m: TextMark, dx: number, dy: number) {
+    const em = (m.size / 100) * pageAspect
+    placeText(pageKey, m, {
+      ...m,
+      x: Math.max(0, Math.min(0.95, m.x + dx)),
+      y: Math.max(em, Math.min(1, m.y + dy)),
+    })
+  }
+  // Every drawn text mark's box on this page, as shares of the page.
+  function drawnTextBoxes() {
+    const boxes = new Map<string, PageBox>()
+    const page = pageBoxRef.current
+    const box = page?.getBoundingClientRect()
+    if (!page || !box?.width) return boxes
+    page.querySelectorAll<HTMLElement>('[data-text-mark]').forEach((el) => {
+      const r = el.getBoundingClientRect()
+      boxes.set(el.dataset.textMark ?? '', {
+        left: (r.left - box.left) / box.width,
+        right: (r.right - box.left) / box.width,
+        top: (r.top - box.top) / box.height,
+        bottom: (r.bottom - box.top) / box.height,
+      })
+    })
+    return boxes
+  }
+  // While a box is open, the page lifts just enough to keep it above the
+  // keyboard (the visual viewport's bottom), never past its own top, and
+  // settles back when it closes.
+  useEffect(() => {
+    if (!textEdit) return
+    function measure() {
+      const wrap = textWrapRef.current
+      const page = pageBoxRef.current
+      const stage = page?.parentElement
+      if (!wrap || !page || !stage) return
+      const applied = new DOMMatrixReadOnly(getComputedStyle(page).transform).m42
+      const r = wrap.getBoundingClientRect()
+      const top = r.top - applied
+      const bottom = r.bottom - applied
+      const vv = window.visualViewport
+      const visibleBottom = fakeKeyboard
+        ? window.innerHeight * 0.6
+        : vv
+          ? vv.offsetTop + vv.height
+          : window.innerHeight
+      const room = Math.max(0, top - stage.getBoundingClientRect().top - LIFT_GAP)
+      setLift(Math.min(room, Math.max(0, bottom + LIFT_GAP - visibleBottom)))
+    }
+    const raf = requestAnimationFrame(measure)
+    const vv = window.visualViewport
+    vv?.addEventListener('resize', measure)
+    vv?.addEventListener('scroll', measure)
+    return () => {
+      cancelAnimationFrame(raf)
+      vv?.removeEventListener('resize', measure)
+      vv?.removeEventListener('scroll', measure)
+    }
+  }, [textEdit, fakeKeyboard])
+  // Undo and Redo (plan: marking, erasing and text edits, never hide/show;
+  // the whole session's history). A change on another page — or another
+  // piece in the queue — turns there first, then visibly applies.
+  function record(change: MarkChange) {
+    setHistory((h) => ({ done: [...h.done, change], undone: [] }))
+  }
+  const undoPending = useRef(false)
+  function stepHistory(direction: 'undo' | 'redo') {
+    // While typing, Undo drops what's in the box (an edited mark stays as
+    // it was); Redo does nothing until the box closes.
+    if (textEdit) {
+      if (direction === 'undo') {
+        closeTextBox()
+        flash('Undo: typing')
+      }
+      return
+    }
+    if (mode !== 'annotate' || undoPending.current || marking.current) return
+    const change = (direction === 'undo' ? history.done : history.undone).at(-1)
+    if (!change) return
+    // A pill names what's undone or redone, so a press always shows; one
+    // elsewhere says where, since the view turns there first.
+    const [changePiece, changePage] = change.key.split(':').map(Number)
+    const where =
+      change.key === pageKey && !custom
+        ? ''
+        : changePiece === activeId && !custom
+          ? `, page ${changePage}`
+          : `, ${byId.get(changePiece)?.title ?? 'another piece'}`
+    flash(`${direction === 'undo' ? 'Undo' : 'Redo'}: ${describeChange(change)}${where}`)
+    const apply = () => {
+      setMarksByPage((prev) => ({
+        ...prev,
+        [change.key]: applyChange(prev[change.key] ?? marksFor(change.key), change, direction),
+      }))
+      setHistory((h) =>
+        direction === 'undo'
+          ? { done: h.done.slice(0, -1), undone: [...h.undone, change] }
+          : { done: [...h.done, change], undone: h.undone.slice(0, -1) },
+      )
+    }
+    if (change.key === pageKey && !custom) {
+      apply()
+      return
+    }
+    const [pid, pg] = change.key.split(':').map(Number)
+    if (pid !== activeId || custom) goToPiece(pid, pg)
+    else setPage(pg)
+    // A page far away (or in another piece) may not be loaded yet: the
+    // change waits for it to show (pageShown), then UNDO_TURN_MS, so it's
+    // never applied to a page still loading. If it never shows, it applies
+    // anyway after UNDO_WAIT_MS.
+    undoPending.current = true
+    awaitingPage.current = { key: change.key, apply }
+    window.clearTimeout(undoTimer.current)
+    undoTimer.current = window.setTimeout(() => finishPendingStep(), UNDO_WAIT_MS)
+  }
+  const awaitingPage = useRef<{ key: string; apply: () => void } | null>(null)
+  function finishPendingStep() {
+    const pending = awaitingPage.current
+    awaitingPage.current = null
+    undoPending.current = false
+    pending?.apply()
+  }
+  // The page image for `key` has loaded.
+  function pageShown(key: string) {
+    if (awaitingPage.current?.key !== key) return
+    window.clearTimeout(undoTimer.current)
+    undoTimer.current = window.setTimeout(() => finishPendingStep(), UNDO_TURN_MS)
   }
 
   // Exit: the back arrow (picked from a side-by-side,
@@ -1085,19 +1727,27 @@ export function SheetViewerMockup() {
         </div>
         {editing ? (
           <>
-            <textarea
-              autoFocus
-              value={draft}
-              onChange={(event) => setDraft(event.target.value)}
-              aria-label="Your notes"
-              className="min-h-40 w-full resize-y rounded-xl border border-accent bg-paper-raised px-4 py-3 text-base leading-relaxed text-ink outline-none select-text"
-            />
-            <div className="flex items-center">
-              <span className="mr-auto text-xs text-ink-muted">
-                Markdown and :shortcodes: work here.
+            {/* The Markdown hint sits inside the box, in its bottom corner
+                beside the resize grip, the text kept clear of it. */}
+            <div className="relative">
+              <textarea
+                autoFocus
+                value={draft}
+                onChange={(event) => setDraft(event.target.value)}
+                aria-label="Your notes"
+                className="block min-h-40 w-full resize-y rounded-xl border border-accent bg-paper-raised px-4 pt-3 pb-8 text-base leading-relaxed text-ink outline-none select-text"
+              />
+              <span className="pointer-events-none absolute right-6 bottom-2.5 text-xs text-ink-muted italic">
+                Markdown and :shortcodes: supported
               </span>
+            </div>
+            {/* The buttons sit 4px inside their tap areas, so their faces keep
+                8px apart; the row reaches 4px past the box so Done still
+                lines up with its edge. */}
+            <div className="-mr-1 flex items-center justify-end">
               <HitButton
                 label="Cancel"
+                inset
                 onClick={() => setEditing(false)}
                 faceClassName="border border-border bg-paper-raised px-3 font-medium hover:border-accent"
               >
@@ -1105,6 +1755,7 @@ export function SheetViewerMockup() {
               </HitButton>
               <HitButton
                 label="Done"
+                inset
                 onClick={saveEdit}
                 faceClassName="bg-accent-fill px-3 font-medium text-white group-hover/b:bg-accent-fill/90"
               >
@@ -1132,14 +1783,14 @@ export function SheetViewerMockup() {
                 data-hit
                 className={`${HIT} -mx-2 -mt-1 -mb-2`}
                 onClick={(event) => {
-                  if (event.target === event.currentTarget) setBar(!barShown[activeId])
+                  if (event.target === event.currentTarget) setBar(!barOn)
                 }}
               >
                 <Toggle
                   row
-                  checked={!!barShown[activeId]}
+                  checked={barOn}
                   onChange={setBar}
-                  label="Show in notes bar"
+                  label="Show practice notes as banner"
                   className="h-10 w-full rounded-[10px] pr-2 pl-[25px] hover:bg-(--sv-hover)"
                 />
               </div>
@@ -1242,6 +1893,35 @@ export function SheetViewerMockup() {
   const infoHeader = (title: ReactNode) => (
     <div className="flex shrink-0 items-center border-b border-border pr-4">
       {title}
+      {/* Download PDF + Annotations, beside Close (placement C, picked
+          from a side-by-side: https://claude.ai/artifact/1uuuJRV2mMS1eLBcng1fb7):
+          the piece's PDF with your marks as real annotations, hidden colors
+          left out; the real viewer saves any waiting marks first. Faded,
+          its reason in a pill on a tap, when there's nothing to export.
+          Hidden without the download permission. Inert here. */}
+      {piece && (
+        <HitButton
+          label={
+            exportShown > 0
+              ? 'Download PDF + Annotations'
+              : 'Download PDF + Annotations (nothing to export)'
+          }
+          onClick={() =>
+            flash(
+              exportShown === 0
+                ? exportHidden > 0
+                  ? 'Your marks here are all in hidden colors'
+                  : 'No annotations on this piece yet'
+                : exportHidden > 0
+                  ? 'Downloading, hidden colors left out'
+                  : 'Downloading with your annotations',
+            )
+          }
+          faceClassName={exportShown > 0 ? '' : 'opacity-50'}
+        >
+          <IconDownload size={20} />
+        </HitButton>
+      )}
       <HitButton label="Close Info" onClick={() => openInfo(false)}>
         <IconX size={20} />
       </HitButton>
@@ -1608,67 +2288,237 @@ export function SheetViewerMockup() {
     </div>
   )
 
-  const toolsInline = tier === 'wide'
-  // Inline (wide screens), Undo and Redo sit beside Done on the right, where
-  // the Annotate toolbar has room; the tools fill the left side.
-  // Undo and Redo fade (disabled) when there's nothing to undo or redo. The
-  // mockup marks nothing yet, so both stay faded until marking (Phase 15)
-  // gives them a history.
-  const canUndo = false
-  const canRedo = false
+  // From 720px (every iPad, portrait included) the Annotate tools share the
+  // one toolbar row: the tools left of the page cyclers, Layers, Undo and
+  // Redo beside Done on the right, since all of them don't fit on one side.
+  // Narrower, they take a second row. The tools' side first fits at 712px.
+  const toolsInline = width >= TOOLS_INLINE_MIN_WIDTH
+  // Undo and Redo fade (disabled) when there's nothing to undo or redo.
+  const canUndo = history.done.length > 0
+  const canRedo = history.undone.length > 0
   const undoRedo = (
     <>
-      <HitButton label="Undo" onClick={() => {}} disabled={!canUndo}>
+      <HitButton label="Undo" onClick={() => stepHistory('undo')} disabled={!canUndo}>
         <IconArrowBackUp size={22} />
       </HitButton>
-      <HitButton label="Redo" onClick={() => {}} disabled={!canRedo}>
+      <HitButton label="Redo" onClick={() => stepHistory('redo')} disabled={!canRedo}>
         <IconArrowForwardUp size={22} />
       </HitButton>
     </>
   )
+  // The page's look, for the layer colors: inverted (Dark Mode Scores or
+  // the photo panel's Invert), the dark theme's dimmed page, or white.
+  const pageLook: PageLook =
+    invertHidden || photo.invert ? 'dark' : theme === 'dark' ? 'dim' : 'light'
+  // The marks on this page. A custom setlist entry has none.
+  const pageMarks = custom || activeId === null ? [] : marksFor(pageKey)
+  function toggleLayer(layer: number) {
+    setHiddenLayers(
+      hiddenLayers.includes(layer)
+        ? hiddenLayers.filter((l) => l !== layer)
+        : [...hiddenLayers, layer],
+    )
+  }
+  // Tapping a ghost mark unhides its layer, and says so.
+  function unhideFromGhost(layer: number) {
+    setHiddenLayers(hiddenLayers.filter((l) => l !== layer))
+    flash(`${LAYER_COLORS[layer].name} unhidden`)
+  }
+  // A color's dot: filled, or (hidden) the crossed-out circle in its color.
+  const colorDot = (layer: number, hidden: boolean, picked = false) =>
+    hidden ? (
+      <IconCircleOff size={24} stroke={2.2} style={{ color: layerColor(layer, pageLook) }} />
+    ) : (
+      <span
+        className="size-[22px] shrink-0 rounded-full"
+        style={{
+          background: layerColor(layer, pageLook),
+          boxShadow: picked
+            ? '0 0 0 2px var(--color-paper), 0 0 0 4px var(--color-ink)'
+            : 'inset 0 0 0 1px rgb(0 0 0 / 0.08)',
+        }}
+      />
+    )
+  const layersStyle = useAnchoredPanel(layersAnchorRef, menu === 'layers', 'below-center', {
+    gap: 6,
+    panelWidth: 232,
+  })
+  // The Layers menu (B2): no color names — each row is the color, its marks
+  // on this page and its eye (the name stays as the row's label for screen
+  // readers). A hidden color shows as a crossed-out circle in its color.
+  const layersPanel =
+    menu === 'layers' &&
+    layersStyle &&
+    createPortal(
+      <div
+        style={{ ...layersStyle, width: 232 }}
+        className="z-50 rounded-xl border border-border bg-paper px-3 pt-3 pb-2 font-sans text-ink shadow-xl select-none [--sv-hover:var(--color-paper-hover)]"
+      >
+        <p className="px-1 pb-1 text-xs font-semibold tracking-wider text-ink-muted uppercase">
+          Layers
+        </p>
+        {LAYER_COLORS.map((c, i) => {
+          const hidden = hiddenLayers.includes(i)
+          const n = pageMarks.filter((m) => m.layer === i).length
+          return (
+            <div key={c.name} aria-label={c.name} className="flex h-12 items-center pl-2.5">
+              <span className="flex size-6 items-center justify-center">{colorDot(i, hidden)}</span>
+              <span className="flex-1 pl-3 text-sm text-ink-muted tabular-nums">
+                {n} {n === 1 ? 'mark' : 'marks'}
+              </span>
+              <HitButton
+                label={hidden ? `Show ${c.name}` : `Hide ${c.name}`}
+                onClick={() => toggleLayer(i)}
+                faceClassName={`${FACE_HOVER} ${hidden ? 'text-ink-faint' : ''}`}
+              >
+                {hidden ? <IconEyeOff size={22} /> : <IconEye size={22} />}
+              </HitButton>
+            </div>
+          )
+        })}
+      </div>,
+      document.body,
+    )
+  const layersButton = (
+    <div ref={layersAnchorRef} className="relative">
+      <HitButton
+        label="Layers"
+        onClick={() => setMenu(menu === 'layers' ? null : 'layers')}
+        faceClassName={menu === 'layers' ? 'bg-accent-fill text-white' : ''}
+      >
+        <IconStack2 size={22} />
+      </HitButton>
+    </div>
+  )
+  // The picked tool's options: its six colors and S / M / L (the eraser:
+  // just S / M / L). Picking a hidden color is allowed — it shows again as
+  // soon as you mark with it.
+  const optionsTool = tool
+  const optionsStyle = optionsTool
+    ? optionsTool === 'eraser'
+      ? { color: null, size: eraserSize }
+      : toolStyle[optionsTool]
+    : null
+  function setOptionsSize(size: Size) {
+    if (optionsTool === 'eraser') setEraserSize(size)
+    else if (optionsTool)
+      setToolStyle({ ...toolStyle, [optionsTool]: { ...toolStyle[optionsTool], size } })
+    // An open text box takes the new size too.
+    if (optionsTool === 'text' && textEdit) setTextEdit({ ...textEdit, size: SIZES.text[size] })
+  }
+  const toolOptionsStyle = useAnchoredPanel(toolAnchorRef, menu === 'tool', 'below-center', {
+    gap: 6,
+    panelWidth: 312,
+  })
+  const toolOptionsPanel =
+    menu === 'tool' &&
+    optionsTool &&
+    optionsStyle &&
+    toolOptionsStyle &&
+    createPortal(
+      <div
+        style={{ ...toolOptionsStyle, width: 312 }}
+        // Picking a color or size keeps the text box's keyboard up.
+        onMouseDown={(event) => textEdit && event.preventDefault()}
+        className="z-50 rounded-xl border border-border bg-paper px-3 pt-3 pb-3 font-sans text-ink shadow-xl select-none [--sv-hover:var(--color-paper-hover)]"
+      >
+        {optionsTool !== 'eraser' && (
+          <>
+            <p className="px-1 pb-1 text-xs font-semibold tracking-wider text-ink-muted uppercase">
+              {TOOLS.find((t) => t.key === optionsTool)?.label} color
+            </p>
+            <div className="flex">
+              {LAYER_COLORS.map((c, i) => (
+                <HitButton
+                  key={c.name}
+                  label={`${c.name}${hiddenLayers.includes(i) ? ' (hidden)' : ''}`}
+                  onClick={() => {
+                    setToolStyle({
+                      ...toolStyle,
+                      [optionsTool]: { ...toolStyle[optionsTool], color: i },
+                    })
+                    // An open text box takes the new color too.
+                    if (optionsTool === 'text' && textEdit) setTextEdit({ ...textEdit, layer: i })
+                  }}
+                  faceClassName={FACE_HOVER}
+                >
+                  {colorDot(i, hiddenLayers.includes(i), optionsStyle.color === i)}
+                </HitButton>
+              ))}
+            </div>
+          </>
+        )}
+        <p
+          className={`px-1 pb-1 text-xs font-semibold tracking-wider text-ink-muted uppercase ${optionsTool === 'eraser' ? '' : 'pt-2'}`}
+        >
+          {optionsTool === 'eraser' ? 'Eraser size' : 'Size'}
+        </p>
+        <div className="flex rounded-[13px] bg-paper-sunken px-1">
+          {(['S', 'M', 'L'] as const).map((sz) => (
+            <button
+              key={sz}
+              type="button"
+              data-hit
+              aria-label={{ S: 'Small', M: 'Medium', L: 'Large' }[sz]}
+              onClick={() => setOptionsSize(sz)}
+              className={`${HIT} flex-1 group/b`}
+            >
+              <span
+                className={`${FACE} w-full font-medium ${
+                  optionsStyle.size === sz
+                    ? 'bg-paper-raised shadow-sm'
+                    : `text-ink-soft ${FACE_HOVER}`
+                }`}
+              >
+                {sz}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>,
+      document.body,
+    )
   const toolButtons = (
     <>
-      {TOOLS.map(({ key, label, Icon }) => (
-        <HitButton
-          key={key}
-          label={label}
-          onClick={() => pickTool(key)}
-          faceClassName={tool === key ? 'bg-accent-fill text-white' : ''}
-        >
-          <Icon size={22} />
-        </HitButton>
-      ))}
-      <span className="mx-1 h-7 w-px shrink-0 bg-accent/30" />
-      {/* Phones fold the palette to one swatch that steps through the
-          colors (Phase 0: rows fold, never shrink) — a stand-in until
-          Phase 11 designs the real controls. */}
-      {(tier === 'phone' ? [COLORS[color]] : COLORS).map((c) => {
-        const i = COLORS.indexOf(c)
+      {TOOLS.map(({ key, label, Icon }) => {
+        const picked = tool === key
+        // Pen, highlighter and text carry a bar of their own color under
+        // the icon; the eraser has none.
+        const own = key !== 'eraser' ? toolStyle[key] : null
         return (
-          <HitButton
-            key={c}
-            label={tier === 'phone' ? 'Next color' : `Color ${i + 1}`}
-            onClick={() => setColor(tier === 'phone' ? (color + 1) % COLORS.length : i)}
-            faceClassName=" "
+          <div
+            key={key}
+            ref={picked ? toolAnchorRef : undefined}
+            onMouseDown={(event) => key === 'text' && textEdit && event.preventDefault()}
+            className="relative"
           >
-            <span
-              className="size-[22px] rounded-full"
-              style={{
-                background: c,
-                boxShadow:
-                  color === i
-                    ? '0 0 0 2px var(--color-accent-soft), 0 0 0 4px var(--color-ink)'
-                    : undefined,
-              }}
-            />
-          </HitButton>
+            <HitButton
+              label={picked ? `${label}: ${key === 'eraser' ? 'size' : 'color and size'}` : label}
+              onClick={() => pickTool(key)}
+              faceClassName={picked ? 'bg-accent-fill text-white' : ''}
+            >
+              <Icon size={22} />
+              {own && (
+                <span
+                  className="pointer-events-none absolute bottom-[9px] left-1/2 h-[3px] w-3.5 -translate-x-1/2 rounded-full"
+                  style={{
+                    background: layerColor(own.color, pageLook),
+                    boxShadow: picked ? '0 0 0 1.5px white' : undefined,
+                  }}
+                />
+              )}
+            </HitButton>
+          </div>
         )
       })}
+      <span className="mx-1 h-7 w-px shrink-0 bg-accent/30" />
+      {!toolsInline && layersButton}
       {!toolsInline && undoRedo}
     </>
   )
 
   const annotating = mode === 'annotate'
+  const drawing = markTool() !== null
 
   const annotateButton = (
     <HitButton
@@ -1806,6 +2656,9 @@ export function SheetViewerMockup() {
                     {annotateButton}
                   </>
                 )}
+                {/* Inline (wide), Layers joins Undo and Redo on the right:
+                    the tools and swatches already fill the left side. */}
+                {annotating && toolsInline && layersButton}
                 {annotating && toolsInline && undoRedo}
                 {annotating && doneButton}
               </div>
@@ -1826,6 +2679,8 @@ export function SheetViewerMockup() {
             {infoPanel}
             {photoPanel}
             {queuePanel}
+            {layersPanel}
+            {toolOptionsPanel}
             {ghostCard}
             {menu === 'more' && (
               <div className="absolute top-full right-2 z-50 mt-1.5 w-72 rounded-xl border border-border bg-paper p-3 shadow-xl [--sv-hover:var(--color-paper-hover)]">
@@ -1856,8 +2711,9 @@ export function SheetViewerMockup() {
       </header>
 
       <main
-        className={`relative min-h-0 flex-1 cursor-default overflow-hidden ${zoomed ? 'touch-manipulation' : 'touch-pinch-zoom'}`}
+        className={`relative min-h-0 flex-1 cursor-default overflow-hidden ${zoomed && !drawing ? 'touch-manipulation' : 'touch-pinch-zoom'} ${drawing ? 'select-none [-webkit-touch-callout:none]' : ''}`}
         onPointerDown={onStagePointerDown}
+        onPointerMove={onStagePointerMove}
         onPointerUp={onStagePointerUp}
         onPointerCancel={onStagePointerCancel}
         onLostPointerCapture={onStagePointerCancel}
@@ -1866,32 +2722,137 @@ export function SheetViewerMockup() {
             not by index.css's score-page rules, so the theme's treatment and
             the user's photo filters compose in one list (see scoreFilter).
             The margin keeps the page clear of the screen's edges. */}
+        {/* The filter is on the mat and the page image, never the marks
+            laid over them (plan: an invert mustn't recolor annotations). */}
+        <div style={{ filter: scoreFilter }} className="absolute inset-0 bg-white" />
         <div
-          style={{ filter: scoreFilter, containerType: 'size' }}
-          className={`absolute inset-0 flex items-center justify-center bg-white ${
+          style={{ containerType: 'size' }}
+          className={`absolute inset-0 flex items-center justify-center ${
             photo.margin
               ? 'p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]'
               : 'pb-[env(safe-area-inset-bottom)]'
           }`}
         >
           {custom ? (
-            <PlaceholderPage entry={custom} />
+            <div style={{ filter: scoreFilter }}>
+              <PlaceholderPage entry={custom} />
+            </div>
           ) : (
             activeId !== null && (
-              <img
-                key={`${activeId}-${page}`}
-                src={getPieceThumbnailUrl(activeId, page)}
-                alt={`Page ${page}`}
-                draggable={false}
-                className="block max-h-full max-w-full object-contain"
-              />
+              // The page, fitted to the stage at its own shape, with the
+              // marks over it in the same box.
+              <div
+                ref={pageBoxRef}
+                className="relative transition-transform duration-200 ease-out motion-reduce:transition-none"
+                style={{
+                  width: `min(100cqw, calc(100cqh * ${pageAspect}))`,
+                  aspectRatio: pageAspect,
+                  transform: lift ? `translateY(${-lift}px)` : undefined,
+                }}
+              >
+                <img
+                  key={`${activeId}-${page}`}
+                  src={getPieceThumbnailUrl(activeId, page)}
+                  alt={`Page ${page}`}
+                  draggable={false}
+                  onLoad={(event) => {
+                    const img = event.currentTarget
+                    if (img.naturalWidth) setPageAspect(img.naturalWidth / img.naturalHeight)
+                    pageShown(pageKey)
+                  }}
+                  onError={() => pageShown(pageKey)}
+                  style={{ filter: scoreFilter }}
+                  className="block h-full w-full"
+                />
+                <PageMarks
+                  marks={pageMarks}
+                  live={live}
+                  eraserAt={eraserAt}
+                  eraserRadius={eraserRadius}
+                  hidden={hiddenLayers}
+                  ghosts={ghostsOn}
+                  aspect={pageAspect}
+                  look={pageLook}
+                  // In Annotate with no tool, a faint mark brings its layer
+                  // back (I); with a tool picked, a touch there marks.
+                  onShowLayer={annotating && !tool ? unhideFromGhost : undefined}
+                />
+                <TextMarks
+                  marks={pageMarks.filter(
+                    (m): m is TextMark => m.kind === 'text' && m.id !== textEdit?.original?.id,
+                  )}
+                  hidden={hiddenLayers}
+                  ghosts={ghostsOn}
+                  look={pageLook}
+                  drag={textDrag}
+                  onDrag={
+                    annotating && tool === 'text'
+                      ? {
+                          start: () => finishText(),
+                          move: (id, dx, dy) => setTextDrag({ id, dx, dy }),
+                          end: (m, dx, dy, moved) => {
+                            setTextDrag(null)
+                            if (moved) moveText(m, dx, dy)
+                            else editText(m)
+                          },
+                          cancel: () => setTextDrag(null),
+                        }
+                      : undefined
+                  }
+                >
+                  {/* The text box: mounted while the Text tool is picked (see
+                      openTextBox), shown while one is open. It sizes itself
+                      to what's typed (the grid's ::after copy), up to the
+                      page's right edge, where it wraps. */}
+                  {annotating && tool === 'text' && (
+                    <div
+                      ref={textWrapRef}
+                      data-value={textEdit?.text ?? ''}
+                      onPointerDown={(event) => event.stopPropagation()}
+                      onPointerUp={(event) => event.stopPropagation()}
+                      className="pointer-events-auto absolute inline-grid w-max font-hand after:invisible after:whitespace-pre-wrap after:content-[attr(data-value)_'_'] after:[grid-area:1/1] after:[overflow-wrap:anywhere]"
+                      style={{
+                        ...(textEdit ? textBoxStyle(textEdit) : { left: 0, top: 0 }),
+                        visibility: textEdit ? 'visible' : 'hidden',
+                        lineHeight: TEXT_LINE_HEIGHT,
+                        outline: `1.5px dashed ${textEdit ? layerColor(textEdit.layer, pageLook) : 'transparent'}`,
+                        outlineOffset: '0.25em',
+                        borderRadius: '0.15em',
+                      }}
+                    >
+                      <textarea
+                        ref={textFieldRef}
+                        rows={1}
+                        value={textEdit?.text ?? ''}
+                        onChange={(event) =>
+                          textEdit && setTextEdit({ ...textEdit, text: event.target.value })
+                        }
+                        onKeyDown={(event) => {
+                          if (event.key === 'Escape') {
+                            event.preventDefault()
+                            finishText()
+                          }
+                        }}
+                        aria-label="Text mark"
+                        spellCheck={false}
+                        autoCapitalize="off"
+                        className="min-w-[0.6em] resize-none overflow-hidden border-0 bg-transparent p-0 whitespace-pre-wrap outline-none [font:inherit] [grid-area:1/1] [overflow-wrap:anywhere]"
+                        style={{
+                          color: textEdit ? layerColor(textEdit.layer, pageLook) : undefined,
+                          fontStyle: textEdit?.italic ? 'italic' : undefined,
+                        }}
+                      />
+                    </div>
+                  )}
+                </TextMarks>
+              </div>
             )
           )}
         </div>
         {showZones && (mode === 'play' || !tool) && <ZoneOverlay />}
         {/* The notes bar (Phase 3): your notes' first line over the top of
             the page; tap it for Info, ✕ hides it for this piece (Info's
-            "Show in notes bar" brings it back). Its own taps never turn. */}
+            "Show practice notes as banner" brings it back). Its own taps never turn. */}
         {showBar && activeId !== null && (
           <div
             className="absolute inset-x-0 top-0 z-10 flex items-center border-b border-accent/30 bg-accent-soft pr-1 pl-2 [--sv-hover:var(--color-accent-soft-hover)]"
@@ -1915,7 +2876,7 @@ export function SheetViewerMockup() {
                 </MarkdownText>
               </span>
             </button>
-            <HitButton label="Hide the notes bar for this piece" onClick={() => setBar(false)}>
+            <HitButton label="Hide the banner for this piece" onClick={() => setBar(false)}>
               <IconX size={18} />
             </HitButton>
           </div>
@@ -1980,6 +2941,16 @@ export function SheetViewerMockup() {
                 />
                 Empty Practice List
               </label>
+              <button
+                type="button"
+                onClick={() => {
+                  resetTips()
+                  flash('Tips will show again')
+                }}
+                className="cursor-pointer self-start rounded-lg border border-border bg-paper-raised px-3 py-1.5 font-medium hover:border-accent"
+              >
+                Show tips again
+              </button>
               <label className="flex items-center gap-2">
                 <Checkbox checked={fastMinute} onChange={(e) => setFastMinute(e.target.checked)} />
                 “Practiced” after 5 s, not 30
@@ -1987,6 +2958,21 @@ export function SheetViewerMockup() {
               <label className="flex items-center gap-2">
                 <Checkbox checked={trackingOn} onChange={(e) => setTrackingOn(e.target.checked)} />
                 Practice tracking (User Settings)
+              </label>
+              <label className="flex items-center gap-2">
+                <Checkbox checked={ghostsOn} onChange={(e) => setGhostsOn(e.target.checked)} />
+                Hidden colors shown faintly (User Settings)
+              </label>
+              <label className="flex items-center gap-2">
+                <Checkbox
+                  checked={fakeKeyboard}
+                  onChange={(e) => setFakeKeyboard(e.target.checked)}
+                />
+                Pretend a keyboard covers the bottom 40% while typing
+              </label>
+              <label className="flex items-center gap-2">
+                <Checkbox checked={barDefault} onChange={(e) => setBarDefault(e.target.checked)} />
+                Notes banner by default (User Settings)
               </label>
               <label className="flex items-center gap-2">
                 <Checkbox checked={hasNotes} onChange={(e) => setHasNotes(e.target.checked)} />
@@ -2092,9 +3078,306 @@ const PRINT_FAINT = '#5c5349'
 const PRINT_FAINTER = '#b3a99e'
 const LETTER = { w: 612, h: 792 }
 const pt = (n: number) => `calc(${n} * 100cqw / ${LETTER.w})`
+// What an undo step did, for its pill: marks added, erased, or a text mark
+// edited or moved (one replaced by another).
+function describeChange(change: MarkChange) {
+  const added = change.added[0]
+  if (change.added.length && change.removed.length) return 'text edit'
+  if (!added)
+    return change.removed.length > 1
+      ? 'erase'
+      : change.removed[0]?.mark.kind === 'text'
+        ? 'text removed'
+        : 'erase'
+  if (added.kind === 'text') return 'text'
+  return added.tool === 'highlighter' ? 'highlight' : 'pen stroke'
+}
+
+// An open text box (Phase 17): a new one (original null) or an existing
+// text mark being edited, which is hidden while its box is open.
+type TextEdit = {
+  key: string
+  x: number
+  y: number
+  layer: number
+  size: number
+  italic?: boolean
+  text: string
+  original: TextMark | null
+}
+// Where a text mark (or its box) sits: its left edge at x, its first line's
+// box one size above the baseline, at its size (a percent of the page's
+// width, so cqw on the page-wide text layer), wrapping at the page's edge.
+function textBoxStyle(m: { x: number; y: number; size: number }): CSSProperties {
+  return {
+    left: `${m.x * 100}%`,
+    top: `calc(${m.y * 100}% - ${m.size}cqw)`,
+    fontSize: `${m.size}cqw`,
+    maxWidth: `calc(${(1 - m.x) * 100}% - 1cqw)`,
+    // Not the app's Cabin tracking (body's 0.02em, inherited as a fixed
+    // 0.32px), which would set a note tighter or looser with the screen and
+    // so wrap it differently: plain Quintessential, as annotated PDFs draw it.
+    letterSpacing: 'normal',
+  }
+}
+// How far above the keyboard an open text box stays, in px.
+const LIFT_GAP = 16
+
+// The page's text marks, as real text over it (plan: DOM elements, through
+// MarkdownText with the :shortcode: symbols), in Quintessential. Hidden
+// colors' text shows as a ghost like any mark. With the Text tool picked
+// (onDrag), a text mark takes the pointer: a tap edits it, a drag moves it.
+// Children (the open text box) share its page-wide container.
+function TextMarks({
+  marks,
+  hidden,
+  ghosts,
+  look,
+  drag,
+  onDrag,
+  children,
+}: {
+  marks: TextMark[]
+  hidden: number[]
+  ghosts: boolean
+  look: PageLook
+  drag: { id: string; dx: number; dy: number } | null
+  onDrag?: {
+    start: () => void
+    move: (id: string, dx: number, dy: number) => void
+    end: (m: TextMark, dx: number, dy: number, moved: boolean) => void
+    cancel: () => void
+  }
+  children?: ReactNode
+}) {
+  const press = useRef<{ x: number; y: number; moved: boolean; dx: number; dy: number } | null>(
+    null,
+  )
+  const shown = ghosts ? marks : marks.filter((m) => !hidden.includes(m.layer))
+  return (
+    <div className="pointer-events-none absolute inset-0" style={{ containerType: 'inline-size' }}>
+      {shown.map((m) => {
+        const ghost = hidden.includes(m.layer)
+        const live = onDrag && !ghost
+        const at = drag?.id === m.id ? { ...m, x: m.x + drag.dx, y: m.y + drag.dy } : m
+        return (
+          <div
+            key={m.id}
+            data-text-mark={m.id}
+            className={`absolute w-max [overflow-wrap:anywhere] ${
+              live ? 'pointer-events-auto cursor-move touch-none' : ''
+            }`}
+            style={{
+              ...textBoxStyle(at),
+              lineHeight: TEXT_LINE_HEIGHT,
+              color: ghost ? '#7a746e' : layerColor(m.layer, look),
+              opacity: ghost ? GHOST_OPACITY : 1,
+              fontStyle: m.italic ? 'italic' : undefined,
+            }}
+            onPointerDown={
+              live
+                ? (event) => {
+                    event.stopPropagation()
+                    if (event.button !== 0) return
+                    onDrag.start()
+                    event.currentTarget.setPointerCapture(event.pointerId)
+                    press.current = {
+                      x: event.clientX,
+                      y: event.clientY,
+                      moved: false,
+                      dx: 0,
+                      dy: 0,
+                    }
+                  }
+                : undefined
+            }
+            onPointerMove={
+              live
+                ? (event) => {
+                    const p = press.current
+                    const page = event.currentTarget.parentElement?.getBoundingClientRect()
+                    if (!p || !page?.width) return
+                    const mx = event.clientX - p.x
+                    const my = event.clientY - p.y
+                    if (!p.moved && Math.hypot(mx, my) < 8) return
+                    p.moved = true
+                    p.dx = mx / page.width
+                    p.dy = my / page.height
+                    onDrag.move(m.id, p.dx, p.dy)
+                  }
+                : undefined
+            }
+            onPointerUp={
+              live
+                ? (event) => {
+                    event.stopPropagation()
+                    const p = press.current
+                    press.current = null
+                    if (p) onDrag.end(m, p.dx, p.dy, p.moved)
+                  }
+                : undefined
+            }
+            onPointerCancel={
+              live
+                ? () => {
+                    press.current = null
+                    onDrag.cancel()
+                  }
+                : undefined
+            }
+          >
+            {/* Paragraphs (a blank line) sit 0.5em apart — MarkdownText's
+                0.5rem, at the mark's own size, so the gap scales with the
+                text on every screen, as annotated PDFs draw it. */}
+            <MarkdownText className="font-hand! [&_:is(p,ul,ol)]:mb-[0.5em]">{m.text}</MarkdownText>
+          </div>
+        )
+      })}
+      {children}
+    </div>
+  )
+}
+
+// The page's marks over it, in each layer's color for the page's look. A
+// hidden layer's marks stay as a faint gray ghost (H2) in Play and
+// Annotate, so hiding never reads as "nothing here"; in Annotate each ghost
+// is a 48pt tap area that shows its layer again (I). Those taps never turn
+// the page. The stroke being drawn, and the eraser's reach while it's down,
+// draw on top.
+function PageMarks({
+  marks,
+  live,
+  eraserAt,
+  eraserRadius,
+  hidden,
+  ghosts,
+  aspect,
+  look,
+  onShowLayer,
+}: {
+  marks: Mark[]
+  live: StrokeMark | null
+  eraserAt: [number, number] | null
+  eraserRadius: number
+  hidden: number[]
+  // Hidden colors' marks as faint ghosts; off (User Settings), not at all.
+  ghosts: boolean
+  aspect: number
+  look: PageLook
+  onShowLayer?: (layer: number) => void
+}) {
+  const w = MARKS_W
+  const h = w / aspect
+  const shown = ghosts ? marks : marks.filter((m) => !hidden.includes(m.layer))
+  return (
+    <>
+      {/* Strokes only; text marks are real text (TextMarks). */}
+      <svg
+        viewBox={`0 0 ${w} ${h}`}
+        className="pointer-events-none absolute inset-0 h-full w-full"
+        aria-hidden="true"
+      >
+        {shown.map(
+          (m) =>
+            m.kind === 'stroke' && (
+              <MarkShape
+                key={m.id}
+                mark={m}
+                ghost={hidden.includes(m.layer)}
+                look={look}
+                aspect={aspect}
+              />
+            ),
+        )}
+        {live && (
+          <MarkShape
+            mark={live}
+            ghost={hidden.includes(live.layer)}
+            look={look}
+            aspect={aspect}
+            live
+          />
+        )}
+        {eraserAt && (
+          <circle
+            cx={eraserAt[0] * w}
+            cy={eraserAt[1] * h}
+            r={eraserRadius * w}
+            fill="rgb(122 116 110 / 0.12)"
+            stroke="#7a746e"
+            strokeWidth={1.5}
+          />
+        )}
+      </svg>
+      {onShowLayer &&
+        shown.map((m) => {
+          if (!hidden.includes(m.layer)) return null
+          const [x, y] = markAnchor(m)
+          return (
+            <button
+              key={m.id}
+              type="button"
+              data-hit
+              aria-label={`Show ${LAYER_COLORS[m.layer].name}`}
+              onPointerDown={(event) => event.stopPropagation()}
+              onPointerUp={(event) => event.stopPropagation()}
+              onClick={() => onShowLayer(m.layer)}
+              className="absolute size-12 -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full hover:bg-ink/5"
+              style={{ left: `${x * 100}%`, top: `${y * 100}%` }}
+            />
+          )
+        })}
+    </>
+  )
+}
+
+// One mark. Its own component, so a finished stroke's outline is worked
+// out once (the compiler keeps it) rather than again on every frame of the
+// stroke being drawn.
+const MARKS_W = 1000
+// Ghost marks: warm grey at 12% on every page look (tuned in the ghost
+// playground, https://claude.ai/artifact/Sjh9udhJz2mLTLuZf2CrSS).
+const GHOST_OPACITY = 0.12
+function MarkShape({
+  mark: m,
+  ghost,
+  look,
+  aspect,
+  live = false,
+}: {
+  mark: Mark
+  ghost: boolean
+  look: PageLook
+  aspect: number
+  live?: boolean
+}) {
+  const w = MARKS_W
+  const color = ghost ? '#7a746e' : layerColor(m.layer, look)
+  if (m.kind === 'text') return null
+  const highlight = m.tool === 'highlighter'
+  return (
+    <path
+      d={strokePath(m, w, aspect, !live)}
+      fill={color}
+      opacity={ghost ? GHOST_OPACITY : highlight ? (look === 'dark' ? 0.55 : 0.42) : 1}
+      // Highlighter: multiplied on light pages, screened on dark ones.
+      style={
+        highlight && !ghost ? { mixBlendMode: look === 'dark' ? 'screen' : 'multiply' } : undefined
+      }
+    />
+  )
+}
+
+// On screen it's drawn half again as large as the printed page (picked from
+// a side-by-side, https://claude.ai/artifact/WRq89mAWk6oVYk4N595MGS, option
+// B): print size read small on a stand. Margins and the optical lift stay
+// the page's; the column widens to 400pt. The Setlist PDF is unchanged.
+const PLACEHOLDER_SCALE = 1.5
+const PLACEHOLDER_COLUMN = 400
+const ps = (n: number) => pt(n * PLACEHOLDER_SCALE)
 function PlaceholderPage({ entry }: { entry: CustomEntry }) {
   const smallCaps = {
-    fontSize: pt(11 * 1.08),
+    fontSize: ps(11 * 1.08),
     letterSpacing: '0.1em',
     lineHeight: 'normal',
     color: PRINT_FAINT,
@@ -2113,16 +3396,16 @@ function PlaceholderPage({ entry }: { entry: CustomEntry }) {
         className="absolute flex flex-col items-center justify-center text-center"
         style={{ inset: `${pt(72)} ${pt(72)} ${pt(72 + 2 * 0.04 * LETTER.h)}` }}
       >
-        <div className="flex flex-col items-center" style={{ gap: pt(10) }}>
+        <div className="flex flex-col items-center" style={{ gap: ps(10) }}>
           <span
             aria-hidden="true"
             style={{
               display: 'block',
-              width: pt(6),
-              height: pt(6),
+              width: ps(6),
+              height: ps(6),
               background: PRINT_FAINTER,
               transform: 'rotate(45deg)',
-              margin: `${pt(3)} 0 ${pt(11)}`,
+              margin: `${ps(3)} 0 ${ps(11)}`,
             }}
           />
           <span className="font-sans uppercase" style={smallCaps}>
@@ -2130,7 +3413,12 @@ function PlaceholderPage({ entry }: { entry: CustomEntry }) {
           </span>
           <span
             className="font-display italic"
-            style={{ fontSize: pt(24), lineHeight: 1.24, color: PRINT_INK, width: pt(288) }}
+            style={{
+              fontSize: ps(24),
+              lineHeight: 1.24,
+              color: PRINT_INK,
+              width: pt(PLACEHOLDER_COLUMN),
+            }}
           >
             {entry.name}
           </span>
@@ -2139,20 +3427,20 @@ function PlaceholderPage({ entry }: { entry: CustomEntry }) {
               <span
                 aria-hidden="true"
                 style={{
-                  height: pt(1),
-                  width: pt(24),
+                  height: ps(1),
+                  width: ps(24),
                   background: PRINT_FAINTER,
-                  margin: `${pt(2)} 0`,
+                  margin: `${ps(2)} 0`,
                 }}
               />
               <p
                 className="font-sans"
                 style={{
-                  fontSize: pt(12 * 1.08),
+                  fontSize: ps(12 * 1.08),
                   letterSpacing: '0.02em',
                   lineHeight: 1.4,
                   color: PRINT_FAINT,
-                  width: pt(288),
+                  width: pt(PLACEHOLDER_COLUMN),
                   margin: 0,
                 }}
               >

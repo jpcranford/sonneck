@@ -37,6 +37,11 @@ import { EditPieceModal } from '../components/EditPieceModal'
 import { EditRoleModal } from '../components/EditRoleModal'
 import { EditSetlistModal } from '../components/EditSetlistModal'
 import { InfoTooltip } from '../components/InfoTooltip'
+import {
+  annotationExportBlocked,
+  getSetlistAnnotationSummary,
+  withAnnotations,
+} from '../api/annotations'
 import { MarkdownText } from '../components/MarkdownText'
 import { MetaLine } from '../components/MetaLine'
 import { Modal } from '../components/Modal'
@@ -183,6 +188,15 @@ export function SetlistPage() {
     queryFn: () => getPracticeList(today),
     enabled: canPractice,
   })
+  // Download Set PDF + Annotations: whether any piece has marks to export
+  // (fetched fresh each visit: the viewer saves marks outside any mutation).
+  const { data: annotationSummary } = useQuery({
+    queryKey: ['setlist', setlistId, 'annotation-summary'],
+    queryFn: () => getSetlistAnnotationSummary(setlistId),
+    enabled: canPractice,
+    staleTime: 0,
+  })
+  const annotationsBlocked = annotationExportBlocked(annotationSummary, 'set')
   // The set's pieces in its order, once each, and how many aren't on the
   // list yet (custom entries have nothing to add).
   const setPieceIds = [
@@ -587,20 +601,40 @@ export function SetlistPage() {
                       {label}
                     </button>
                   ))}
-                  {canDownload && (
+                  {canDownload && canPractice && (
                     <>
                       <div className="my-1 h-px bg-border" />
-                      {/* InfoTooltip, not a disabled button: a disabled element takes no taps,
-                          so on touch there would be no way to learn why it's inert. */}
-                      <InfoTooltip
-                        message="Coming soon — downloads the whole set's PDF with your annotations drawn on each piece, once annotations exist."
-                        ariaLabel="Download Set PDF + Annotations (coming soon with annotations)"
-                        showPointerCursor={false}
-                        triggerClassName="block w-full px-3 py-2 text-left text-sm text-ink-soft opacity-50"
-                      >
-                        Download Set PDF + Annotations
-                        <span className="block text-xs italic">Coming with annotations (§13)</span>
-                      </InfoTooltip>
+                      {/* Your Sheet Viewer marks on each piece, as real PDF
+                          annotations (needs practice, like the viewer).
+                          With nothing to export it fades, with the reason
+                          on a tap: an InfoTooltip, since a disabled element
+                          takes no taps. */}
+                      {annotationsBlocked ? (
+                        <InfoTooltip
+                          message={annotationsBlocked}
+                          ariaLabel="Download Set PDF + Annotations (nothing to export)"
+                          showPointerCursor={false}
+                          triggerClassName="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink opacity-50"
+                        >
+                          <IconDownload size={16} className="shrink-0 text-ink-soft" />
+                          Download Set PDF + Annotations
+                        </InfoTooltip>
+                      ) : (
+                        <DownloadLink
+                          href={withAnnotations(getSetlistPdfUrl(setlistId))}
+                          className="flex w-full items-start gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-paper-hover"
+                        >
+                          <IconDownload size={16} className="mt-0.5 shrink-0 text-ink-soft" />
+                          <span>
+                            Download Set PDF + Annotations
+                            {!!annotationSummary?.hidden && (
+                              <span className="block text-xs text-ink-muted">
+                                Hidden colors are left out
+                              </span>
+                            )}
+                          </span>
+                        </DownloadLink>
+                      )}
                     </>
                   )}
                 </div>

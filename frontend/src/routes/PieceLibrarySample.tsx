@@ -66,6 +66,9 @@ interface MockPiece {
   // absence rather than naming a book.
   bookless: boolean
   hasImslpNumber: boolean
+  // Annotated by this account: marked in the Sheet Viewer, or notes written
+  // on it (the real filter counts each account's own).
+  hasAnnotations: boolean
   practiceStatus: 'Want to Learn' | 'Learning' | 'Learned' | 'Stalled'
   // Drives PageCycleControl in the list view — that control renders
   // nothing at all for a pageCount of 1 (the common single-page-upload
@@ -106,6 +109,7 @@ const PIECES: MockPiece[] = [
     favorite: true,
     bookless: false,
     hasImslpNumber: true,
+    hasAnnotations: true,
     practiceStatus: 'Learning',
     pageCount: 3,
     yearWritten: '1848',
@@ -121,6 +125,7 @@ const PIECES: MockPiece[] = [
     favorite: true,
     bookless: false,
     hasImslpNumber: true,
+    hasAnnotations: false,
     practiceStatus: 'Learned',
     pageCount: 1,
     yearWritten: '1722',
@@ -136,6 +141,7 @@ const PIECES: MockPiece[] = [
     favorite: false,
     bookless: false,
     hasImslpNumber: true,
+    hasAnnotations: true,
     practiceStatus: 'Learning',
     pageCount: 4,
     yearWritten: '1831',
@@ -151,6 +157,7 @@ const PIECES: MockPiece[] = [
     favorite: false,
     bookless: true,
     hasImslpNumber: false,
+    hasAnnotations: false,
     practiceStatus: 'Want to Learn',
     pageCount: 5,
     yearWritten: '1905',
@@ -166,6 +173,7 @@ const PIECES: MockPiece[] = [
     favorite: false,
     bookless: false,
     hasImslpNumber: false,
+    hasAnnotations: false,
     practiceStatus: 'Learned',
     pageCount: 1,
     yearWritten: '1956',
@@ -181,6 +189,7 @@ const PIECES: MockPiece[] = [
     favorite: false,
     bookless: false,
     hasImslpNumber: true,
+    hasAnnotations: true,
     practiceStatus: 'Learning',
     pageCount: 2,
     yearWritten: '1801',
@@ -196,6 +205,7 @@ const PIECES: MockPiece[] = [
     favorite: false,
     bookless: true,
     hasImslpNumber: false,
+    hasAnnotations: false,
     practiceStatus: 'Want to Learn',
     pageCount: 1,
     yearWritten: '1731',
@@ -211,6 +221,7 @@ const PIECES: MockPiece[] = [
     favorite: true,
     bookless: true,
     hasImslpNumber: false,
+    hasAnnotations: false,
     practiceStatus: 'Learned',
     pageCount: 1,
     yearWritten: '1888',
@@ -226,6 +237,7 @@ const PIECES: MockPiece[] = [
     favorite: false,
     bookless: false,
     hasImslpNumber: false,
+    hasAnnotations: false,
     practiceStatus: 'Want to Learn',
     pageCount: 1,
     yearWritten: '',
@@ -241,6 +253,7 @@ const PIECES: MockPiece[] = [
     favorite: true,
     bookless: false,
     hasImslpNumber: true,
+    hasAnnotations: false,
     practiceStatus: 'Stalled',
     pageCount: 3,
     yearWritten: '1798',
@@ -321,6 +334,8 @@ function matchesFiltersExcept(
   if (exclude !== 'bookless' && !matchesBoolean(f.bookless, p.bookless)) return false
   if (exclude !== 'hasImslpNumber' && !matchesBoolean(f.hasImslpNumber, p.hasImslpNumber))
     return false
+  if (exclude !== 'hasAnnotations' && !matchesBoolean(f.hasAnnotations, p.hasAnnotations))
+    return false
   if (query.trim() && !p.title.toLowerCase().includes(query.trim().toLowerCase())) return false
   return true
 }
@@ -348,6 +363,11 @@ function countFavorite(f: FilterState, query: string): number {
 }
 function countBookless(f: FilterState, query: string): number {
   return PIECES.filter((p) => p.bookless && matchesFiltersExcept(p, f, 'bookless', query)).length
+}
+function countHasAnnotations(f: FilterState, query: string): number {
+  return PIECES.filter(
+    (p) => p.hasAnnotations && matchesFiltersExcept(p, f, 'hasAnnotations', query),
+  ).length
 }
 function countHasImslp(f: FilterState, query: string): number {
   return PIECES.filter(
@@ -429,6 +449,7 @@ interface FilterState {
   favorite: TriState
   bookless: TriState
   hasImslpNumber: TriState
+  hasAnnotations: TriState
 }
 
 const EMPTY_FILTERS: FilterState = {
@@ -440,6 +461,7 @@ const EMPTY_FILTERS: FilterState = {
   favorite: 'neutral',
   bookless: 'neutral',
   hasImslpNumber: 'neutral',
+  hasAnnotations: 'neutral',
 }
 
 function activeFilterCount(f: FilterState): number {
@@ -451,7 +473,8 @@ function activeFilterCount(f: FilterState): number {
     Object.keys(f.status).length +
     (f.favorite !== 'neutral' ? 1 : 0) +
     (f.bookless !== 'neutral' ? 1 : 0) +
-    (f.hasImslpNumber !== 'neutral' ? 1 : 0)
+    (f.hasImslpNumber !== 'neutral' ? 1 : 0) +
+    (f.hasAnnotations !== 'neutral' ? 1 : 0)
   )
 }
 
@@ -679,6 +702,12 @@ function FilterDrawer({
               count={countHasImslp(filters, query)}
               state={filters.hasImslpNumber}
               onChange={(next) => onChange({ ...filters, hasImslpNumber: next })}
+            />
+            <FacetRow
+              label="Has annotations"
+              count={countHasAnnotations(filters, query)}
+              state={filters.hasAnnotations}
+              onChange={(next) => onChange({ ...filters, hasAnnotations: next })}
             />
           </FacetSection>
 
@@ -1075,7 +1104,12 @@ export function PieceLibrarySample() {
   const activeCount = activeFilterCount(appliedFilters)
 
   function clearAppliedFilter(field: keyof FilterState, value?: string) {
-    if (field === 'favorite' || field === 'bookless' || field === 'hasImslpNumber') {
+    if (
+      field === 'favorite' ||
+      field === 'bookless' ||
+      field === 'hasImslpNumber' ||
+      field === 'hasAnnotations'
+    ) {
       setAppliedFilters((f) => ({ ...f, [field]: 'neutral' }))
       return
     }
@@ -1103,6 +1137,15 @@ export function PieceLibrarySample() {
             field: 'hasImslpNumber' as const,
             label: 'Has IMSLP number',
             state: appliedFilters.hasImslpNumber,
+          },
+        ]
+      : []),
+    ...(appliedFilters.hasAnnotations !== 'neutral'
+      ? [
+          {
+            field: 'hasAnnotations' as const,
+            label: 'Has annotations',
+            state: appliedFilters.hasAnnotations,
           },
         ]
       : []),

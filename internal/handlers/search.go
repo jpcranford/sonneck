@@ -614,6 +614,19 @@ func buildPieceFilterClauses(w http.ResponseWriter, q url.Values, userID int64) 
 		clauses = append(clauses, hasImslpClause(has))
 	}
 
+	// hasAnnotations: pieces the caller has marked in the Sheet Viewer
+	// (piece_annotations, migration 00035) or written notes on (Edit Piece's
+	// notes, the viewer's Info) — each account's own, so scoped to userID
+	// like favorite. Genuinely tri-state.
+	if v := q.Get("hasAnnotations"); v != "" {
+		has, err := strconv.ParseBool(v)
+		if err != nil {
+			api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid hasAnnotations")
+			return nil, false
+		}
+		clauses = append(clauses, hasAnnotationsClause(userID, has))
+	}
+
 	return clauses, true
 }
 
@@ -660,6 +673,22 @@ func hasImslpClause(has bool) namedClause {
 		where = negateClause(where)
 	}
 	return namedClause{name: "hasImslpNumber", where: where}
+}
+
+// annotatedPiecesCondition matches the pieces a user has annotated: any
+// marks (a row is only kept for a page with marks) or non-blank notes. Its
+// two `?` are both the user id (annotatedPiecesArgs).
+const annotatedPiecesCondition = `(p.id IN (SELECT piece_id FROM piece_annotations WHERE user_id = ?)
+	OR p.id IN (SELECT piece_id FROM piece_user_notes WHERE user_id = ? AND NULLIF(TRIM(notes), '') IS NOT NULL))`
+
+func annotatedPiecesArgs(userID int64) []any { return []any{userID, userID} }
+
+func hasAnnotationsClause(userID int64, has bool) namedClause {
+	where := annotatedPiecesCondition
+	if !has {
+		where = negateClause(where)
+	}
+	return namedClause{name: "hasAnnotations", where: where, args: annotatedPiecesArgs(userID)}
 }
 
 // favoriteClause is the join-table-membership counterpart to idListClause,

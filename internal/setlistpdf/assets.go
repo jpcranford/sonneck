@@ -73,3 +73,7 @@ var fontBravuraText []byte
 //
 //go:embed assets/sonneck-s-mark.png
 var sonneckSMarkPNG []byte
+
+// BravuraTextFont is the padded Bravura Text subset, for the other PDFs
+// Sonneck draws music symbols into (internal/annotpdf's text marks).
+func BravuraTextFont() []byte { return fontBravuraText }

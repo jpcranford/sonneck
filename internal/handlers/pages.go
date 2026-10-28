@@ -36,7 +36,7 @@ const (
 	// pageRenderVersion names the cache's subfolder and is part of every
 	// page URL: bump it when the render pipeline changes, and every page
 	// renders afresh under a new address.
-	pageRenderVersion = "1"
+	pageRenderVersion = "2"
 	// pageRenderTimeout bounds one page's render (a 300ppi page takes well
 	// under a second; a huge color scan a few).
 	pageRenderTimeout = 2 * time.Minute

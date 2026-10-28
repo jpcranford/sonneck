@@ -326,7 +326,7 @@ func ApplyAuthChangeDowngrade(ctx context.Context, q Queryer, keepUserID int64) 
 				return err
 			}
 		}
-		perUserTables := []string{"piece_favorites", "piece_practice_status", "piece_user_notes", "piece_practice_settings", "piece_practice_days", "user_settings"}
+		perUserTables := []string{"piece_favorites", "piece_practice_status", "piece_user_notes", "piece_practice_settings", "piece_practice_days", "piece_annotations", "user_settings"}
 		for _, table := range perUserTables {
 			if _, err := q.ExecContext(ctx, `DELETE FROM `+table+` WHERE user_id = 1`); err != nil {
 				return err

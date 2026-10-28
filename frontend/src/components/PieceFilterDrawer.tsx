@@ -7,6 +7,7 @@ import {
   type TriState,
 } from '../lib/pieceFilterState'
 import { useEscapeToClose } from '../hooks/useEscapeToClose'
+import { hasPermission, useAuth } from '../lib/AuthContext'
 
 // Real build of PieceLibrarySample.tsx's own FilterDrawer (Option B of a
 // 4-option comparison). Live-updating (every change writes straight into
@@ -112,6 +113,7 @@ export function PieceFilterDrawer({
   hideFavorite = false,
   hideBookless = false,
   hideHasImslpNumber = false,
+  hideHasAnnotations = false,
   hidePracticeStatus = false,
 }: {
   open: boolean
@@ -128,9 +130,14 @@ export function PieceFilterDrawer({
   hideFavorite?: boolean
   hideBookless?: boolean
   hideHasImslpNumber?: boolean
+  hideHasAnnotations?: boolean
   hidePracticeStatus?: boolean
 }) {
   useEscapeToClose(open, onClose)
+  // Annotations are made in the Sheet Viewer, which needs `practice`:
+  // without it there's nothing to filter by, so the row is left out.
+  const me = useAuth()
+  const showHasAnnotations = !hideHasAnnotations && hasPermission(me, 'practice')
   return (
     <>
       <div
@@ -168,7 +175,7 @@ export function PieceFilterDrawer({
         <div className="flex-1 overflow-y-auto px-4 py-2">
           {facets && (
             <>
-              {(!hideFavorite || !hideBookless || !hideHasImslpNumber) && (
+              {(!hideFavorite || !hideBookless || !hideHasImslpNumber || showHasAnnotations) && (
                 <FacetSection title="Show only">
                   {!hideFavorite && (
                     <FacetRow
@@ -192,6 +199,14 @@ export function PieceFilterDrawer({
                       count={facets.hasImslpNumber}
                       state={filters.hasImslpNumber}
                       onChange={(next) => onChange({ ...filters, hasImslpNumber: next })}
+                    />
+                  )}
+                  {showHasAnnotations && (
+                    <FacetRow
+                      label="Has annotations"
+                      count={facets.hasAnnotations}
+                      state={filters.hasAnnotations}
+                      onChange={(next) => onChange({ ...filters, hasAnnotations: next })}
                     />
                   )}
                 </FacetSection>
