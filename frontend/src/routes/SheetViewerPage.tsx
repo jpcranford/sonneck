@@ -124,7 +124,11 @@ import {
   type Tool,
 } from '../lib/sheetViewerTools'
 import { hasPermission, useAuth } from '../lib/AuthContext'
-import { useShortcutBlocker } from '../lib/shortcuts'
+import { COMMAND_KEY, type ShortcutSection } from '../lib/shortcuts'
+import { Shortcuts } from '../components/Shortcuts'
+import { ShortcutHelp } from '../components/ShortcutHelp'
+import { isAnyModalOpen } from '../components/Modal'
+import { canFullscreen, toggleFullscreen } from '../lib/fullscreen'
 import { sortPracticeStatuses } from '../lib/practiceStatusOrder'
 import { useDarkScoresSync, useThemeSync } from '../lib/theme'
 import { usePageTitle } from '../lib/usePageTitle'
@@ -888,9 +892,6 @@ function SheetViewer({
 }) {
   const pieceId = item?.kind === 'piece' ? item.id : null
   const custom = item?.kind === 'custom' ? item : null
-  // Page shortcuts (letters, numbers, the shortcut help) stay off while the
-  // viewer is up; it has its own keys — the pedal set.
-  useShortcutBlocker(true)
   // Nothing here scrolls: no page bounce, no browser pull-to-refresh.
   useNoPageScroll()
   const navigate = useNavigate()
@@ -1634,6 +1635,15 @@ function SheetViewer({
     showPage(next)
   }
   const turnRef = useRef(turn)
+  // The keys the viewer handles itself (below), each render's own.
+  const keysRef = useRef<{
+    menu: typeof menu
+    escape: () => void
+    goEnd: (end: 'first' | 'last') => void
+    stepPiece: (dir: -1 | 1) => void
+    moveQueue: (dir: -1 | 1) => void
+    openQueued: () => void
+  } | null>(null)
   useEffect(() => {
     turnRef.current = turn
   })
@@ -1646,18 +1656,43 @@ function SheetViewer({
       // Typing in a field (a text mark, the notes): its own keys, ⌘Z too.
       const target = event.target as Element | null
       if (target?.closest('input, textarea, select, [role="listbox"]')) return
-      // ⌘Z / ⇧⌘Z (Ctrl elsewhere), with a keyboard attached.
-      if ((event.metaKey || event.ctrlKey) && !event.altKey && event.key.toLowerCase() === 'z') {
+      const keys = keysRef.current
+      if (!keys) return
+      // ⌘Z undoes; ⇧⌘Z or ⌘Y redoes (Ctrl elsewhere), with a keyboard
+      // attached.
+      const command = (event.metaKey || event.ctrlKey) && !event.altKey
+      const key = event.key.toLowerCase()
+      if (command && (key === 'z' || (key === 'y' && !event.shiftKey))) {
         event.preventDefault()
-        if (!event.repeat) stepHistoryRef.current(event.shiftKey ? 'redo' : 'undo')
+        if (!event.repeat) stepHistoryRef.current(key === 'y' || event.shiftKey ? 'redo' : 'undo')
         return
       }
       if (event.metaKey || event.ctrlKey || event.altKey) return
+      // Esc closes the open panel; with none open, it presses Exit (twice
+      // to leave). A window over the viewer takes its own Esc.
       if (event.key === 'Escape') {
-        setMenu(null)
+        if (!isAnyModalOpen()) keys.escape()
+        return
+      }
+      // In the open queue, ↑ and ↓ pick a piece and Enter opens it.
+      if (keys.menu === 'queue' && ['ArrowUp', 'ArrowDown', 'Enter'].includes(event.key)) {
+        event.preventDefault()
+        if (event.repeat && event.key === 'Enter') return
+        if (event.key === 'Enter') keys.openQueued()
+        else keys.moveQueue(event.key === 'ArrowUp' ? -1 : 1)
         return
       }
       if (menuOpen) return
+      if (event.key === 'Home' || event.key === 'End') {
+        event.preventDefault()
+        if (!event.repeat) keys.goEnd(event.key === 'Home' ? 'first' : 'last')
+        return
+      }
+      if (event.key === '[' || event.key === ']') {
+        event.preventDefault()
+        if (!event.repeat) keys.stepPiece(event.key === '[' ? -1 : 1)
+        return
+      }
       if (BACK_KEYS.includes(event.key)) {
         event.preventDefault()
         if (!event.repeat) turnRef.current(-1)
@@ -2670,6 +2705,26 @@ function SheetViewer({
     ? dragOrder.flatMap((id) => session.items.filter((q) => q.kind === 'piece' && q.id === id))
     : session.items
   const queueList = useRef<HTMLUListElement>(null)
+  // The queue row the arrow keys have picked (Enter opens it), by its place
+  // in the list as shown.
+  const [queueCursor, setQueueCursor] = useState<number | null>(null)
+  function moveQueue(dir: -1 | 1) {
+    const count = queueItems.length
+    if (!count) return
+    const from = queueCursor ?? queueItems.findIndex((q) => q.key === item?.key)
+    const next = from < 0 ? (dir > 0 ? 0 : count - 1) : (from + dir + count) % count
+    setQueueCursor(next)
+    queueList.current?.querySelectorAll('[data-row]')[next]?.scrollIntoView({ block: 'nearest' })
+  }
+  function openQueued() {
+    const q = queueCursor === null ? undefined : queueItems[queueCursor]
+    if (q) jump(session.items.indexOf(q))
+  }
+  function toggleQueue() {
+    setMenu(menu === 'queue' ? null : 'queue')
+    setQueueCursor(null)
+    setSheetFull(false)
+  }
   useEffect(() => {
     if (dragIndex === null) return
     document.body.style.cursor = 'grabbing'
@@ -2746,7 +2801,9 @@ function SheetViewer({
                   onClick={() => jump(index)}
                   className={`${HIT} min-w-0 flex-1 justify-start group/b`}
                 >
-                  <span className={`${FACE} ${FACE_HOVER} h-11 w-full justify-start px-2`}>
+                  <span
+                    className={`${FACE} ${FACE_HOVER} h-11 w-full justify-start px-2 ${menu === 'queue' && queueCursor === i ? 'bg-(--sv-hover)' : ''}`}
+                  >
                     <span className="flex min-w-0 -translate-y-[0.5px] flex-col text-left">
                       <span className="truncate font-display font-medium italic">{q.name}</span>
                       <span className="truncate text-xs text-ink-soft">
@@ -2803,7 +2860,9 @@ function SheetViewer({
                     the 48pt row. The text sits half a pixel high: measured
                     by its ink, the title's leading otherwise leaves the top
                     ~1px roomier. */}
-                <span className={`${FACE} ${FACE_HOVER} h-11 w-full justify-start px-2`}>
+                <span
+                  className={`${FACE} ${FACE_HOVER} h-11 w-full justify-start px-2 ${menu === 'queue' && queueCursor === i ? 'bg-(--sv-hover)' : ''}`}
+                >
                   <span className="flex min-w-0 -translate-y-[0.5px] flex-col text-left">
                     <span className="truncate font-display font-medium">{q.title}</span>
                     <span className="truncate text-xs text-ink-soft">
@@ -2942,10 +3001,7 @@ function SheetViewer({
     <div ref={queueAnchorRef} className="relative">
       <HitButton
         label={session.kind === 'setlist' ? 'Setlist queue' : 'Practice List'}
-        onClick={() => {
-          setMenu(menu === 'queue' ? null : 'queue')
-          setSheetFull(false)
-        }}
+        onClick={toggleQueue}
         faceClassName={menu === 'queue' ? 'bg-accent-soft text-accent' : ''}
       >
         {session.kind === 'setlist' ? <IconListNumbers size={22} /> : <IconPlaylist size={22} />}
@@ -3150,8 +3206,144 @@ function SheetViewer({
     )
   }
 
+  // Keyboard shortcuts (approved on /mockup/sheet-viewer): letters through
+  // the app's shortcut registry (lib/shortcuts.ts — the same rules as every
+  // page, listed in the shortcut help, which the viewer renders for itself
+  // outside AppShell); page turns, Home/End, [ ], Esc and undo/redo in the
+  // viewer's own key handler, listed in the help as sections.
+  function pressEscape() {
+    if (menu !== null) {
+      setMenu(null)
+      return
+    }
+    pressClose()
+  }
+  function goToEnd(end: 'first' | 'last') {
+    finishText()
+    showPage(end === 'first' ? 1 : pageCount)
+  }
+  function stepPiece(dir: -1 | 1) {
+    finishText()
+    const neighbor = session.index >= 0 ? session.items[session.index + dir] : undefined
+    if (!neighbor) {
+      if (session.kind !== 'piece')
+        flash(
+          dir < 0
+            ? session.kind === 'list'
+              ? 'Start of the list'
+              : 'Start of the setlist'
+            : session.kind === 'list'
+              ? 'End of the list'
+              : 'End of the setlist',
+        )
+      return
+    }
+    const name = neighbor.kind === 'piece' ? neighbor.title : neighbor.name
+    session.goTo(session.index + dir, 'first', `${dir > 0 ? 'Next' : 'Previous'}: ${name}`)
+  }
+  function toggleStopwatch() {
+    if (!clockOn || clockMode !== 'stopwatch')
+      setClock({ clockShown: true, clockMode: 'stopwatch' })
+    if (swStart !== null) {
+      setSwAcc(swAcc + Date.now() - swStart)
+      setSwStart(null)
+      flash('Stopwatch paused')
+    } else {
+      setSwStart(Date.now())
+      flash('Stopwatch started')
+    }
+  }
+  useEffect(() => {
+    keysRef.current = {
+      menu,
+      escape: pressEscape,
+      goEnd: goToEnd,
+      stepPiece,
+      moveQueue,
+      openQueued,
+    }
+  })
+  const inQueue = session.kind !== 'piece'
+  const shortcutSections: ShortcutSection[] = [
+    {
+      title: 'Turning pages',
+      before: true,
+      rows: [
+        { keys: ['→'], or: [['↓'], ['PgDn'], ['Space'], ['Enter']], label: 'Next page' },
+        { keys: ['←'], or: [['↑'], ['PgUp']], label: 'Previous page' },
+        { keys: ['Home'], or: [['End']], label: 'First / last page' },
+        ...(inQueue ? [{ keys: ['['], or: [[']']], label: 'Previous / next piece' }] : []),
+      ],
+    },
+    ...(inQueue
+      ? [
+          {
+            title: 'In the queue',
+            rows: [
+              { keys: ['↑'], or: [['↓']], label: 'Pick a piece' },
+              { keys: ['Enter'], label: 'Open it' },
+            ],
+          },
+        ]
+      : []),
+    {
+      title: 'Undo and exit',
+      rows: [
+        { keys: [COMMAND_KEY, 'Z'], label: 'Undo' },
+        { keys: ['Shift', COMMAND_KEY, 'Z'], or: [[COMMAND_KEY, 'Y']], label: 'Redo' },
+        { keys: ['Esc'], label: 'Close a panel, or exit (twice)' },
+      ],
+    },
+  ]
+
   return (
     <div className="group/sv fixed inset-0 flex flex-col bg-paper font-sans text-ink select-none">
+      {/* The shortcut help (hold ? or /), which AppShell shows everywhere
+          else, and the viewer's letter keys. */}
+      <ShortcutHelp />
+      <Shortcuts
+        shortcuts={[
+          { key: 'i', label: 'Info', run: () => openInfo(!infoOpen), enabled: !custom },
+          {
+            key: 'q',
+            label: session.kind === 'setlist' ? 'Setlist queue' : 'Practice List',
+            run: toggleQueue,
+            enabled: inQueue && !annotating,
+          },
+          { key: 'c', label: 'Clock', run: () => setMenu(menu === 'clock' ? null : 'clock') },
+          { key: 's', label: 'Start or pause the stopwatch', run: toggleStopwatch },
+          {
+            key: 'p',
+            label: 'Photo filters',
+            run: () => setMenu(menu === 'photo' ? null : 'photo'),
+          },
+          {
+            key: 'm',
+            label: 'Edge margin',
+            run: () => setPhoto({ edgeMargin: !photo.edgeMargin }),
+          },
+          {
+            key: 'b',
+            label: 'Notes banner',
+            run: () => setPractice({ notesBarShown: !notesBarShown }),
+            enabled: !!notes && !custom,
+          },
+          {
+            key: 'f',
+            label: 'Full screen',
+            run: () =>
+              void toggleFullscreen().catch(() => flash('Full screen isn’t available here')),
+            enabled: canFullscreen(),
+          },
+          {
+            key: 'a',
+            label: annotating ? 'Leave Annotate' : 'Annotate',
+            run: () => (annotating ? leaveAnnotate() : enterAnnotate()),
+            enabled: !custom && pieceId !== null,
+          },
+        ]}
+        options={{ title: 'Sheet Viewer', wide: true, sections: shortcutSections }}
+      />
       <header
         className={`relative z-20 shrink-0 border-b pt-[max(env(safe-area-inset-top),var(--titlebar-inset))] pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)] ${
           annotating

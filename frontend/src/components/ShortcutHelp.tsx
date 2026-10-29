@@ -5,6 +5,7 @@ import {
   shortcutRegistrations,
   useShortcutHold,
   type ReferenceRow,
+  type ShortcutSection,
 } from '../lib/shortcuts'
 
 // The shortcut help (design D, /mockup/shortcut-help): hold / or ? for a
@@ -13,8 +14,9 @@ import {
 // While the key is held, a "Keep holding" pill fills first, centered on
 // the content area (right of the sidebar). Keys the viewer can't use are
 // left off; the page's edit window keys are listed for reference; the
-// sidebar's number keys fold into one "1–N" line. Rendered once, in
-// AppShell; the lists come from lib/shortcuts.ts's registry.
+// sidebar's number keys fold into one "1–N" line. Rendered once in
+// AppShell, and by the Sheet Viewer (outside AppShell) for itself; the
+// lists come from lib/shortcuts.ts's registry.
 
 function Key({ children }: { children: ReactNode }) {
   return (
@@ -44,12 +46,31 @@ function Keys({ keys }: { keys: string[] }) {
   )
 }
 
-function KeyRow({ keys, label }: ReferenceRow) {
+function KeyRow({ keys, label, or }: ReferenceRow) {
   return (
     <div className="flex items-center gap-2.5 py-0.5 text-sm text-ink">
-      <Keys keys={keys} />
+      <span className="inline-flex shrink-0 flex-wrap items-center gap-[3px]">
+        <Keys keys={keys} />
+        {or?.map((alt) => (
+          <span key={alt.join('+')} className="inline-flex items-center gap-[3px]">
+            <span className="text-ink-faint">/</span>
+            <Keys keys={alt} />
+          </span>
+        ))}
+      </span>
       <span>{label}</span>
     </div>
+  )
+}
+
+function Section({ section, first }: { section: ShortcutSection; first: boolean }) {
+  return (
+    <>
+      <p className={`${SECTION} ${first ? '' : 'mt-2.5'}`}>{section.title}</p>
+      {section.rows.map((row) => (
+        <KeyRow key={row.label} {...row} />
+      ))}
+    </>
   )
 }
 
@@ -71,14 +92,21 @@ function ShortcutCard({ heldKey }: { heldKey: string }) {
     .filter((s) => s.enabled !== false)
     .map((s) => ({ keys: [s.key.toUpperCase()], label: s.label }))
   const reference = page.findLast((r) => r.options.reference)?.options.reference
+  const sections = page.findLast((r) => r.options.sections)?.options.sections ?? []
+  const before = sections.filter((s) => s.before)
+  const after = sections.filter((s) => !s.before)
+  const wide = page.some((r) => r.options.wide)
   const sidebarCount = sidebar.flatMap((r) => r.shortcuts).length
   return (
     <div
       role="dialog"
       aria-label="Keyboard shortcuts"
-      className="pointer-events-none fixed right-4 bottom-4 z-[70] max-h-[calc(100dvh-2rem)] w-[270px] overflow-hidden rounded-lg border border-border bg-paper-raised p-4 shadow-lg"
+      className={`pointer-events-none fixed right-4 bottom-4 z-[70] max-h-[calc(100dvh-2rem)] overflow-hidden rounded-lg border border-border bg-paper-raised p-4 shadow-lg ${wide ? 'w-[min(340px,calc(100vw-2rem))]' : 'w-[270px]'}`}
     >
-      <p className={SECTION}>{title}</p>
+      {before.map((section, i) => (
+        <Section key={section.title} section={section} first={i === 0} />
+      ))}
+      <p className={`${SECTION} ${before.length ? 'mt-2.5' : ''}`}>{title}</p>
       {rows.map((row) => (
         <KeyRow key={row.keys[0]} {...row} />
       ))}
@@ -90,6 +118,9 @@ function ShortcutCard({ heldKey }: { heldKey: string }) {
           ))}
         </>
       )}
+      {after.map((section) => (
+        <Section key={section.title} section={section} first={false} />
+      ))}
       {sidebarCount > 0 && (
         <div className="mt-1.5 border-t border-border pt-2">
           <KeyRow keys={['1', String(sidebarCount)]} label="Sidebar, top to bottom" />

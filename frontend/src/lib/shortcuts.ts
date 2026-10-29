@@ -30,10 +30,22 @@ export interface Shortcut {
 }
 
 /** A row the shortcut help lists for reference only — an edit window's
- * keys, which that window handles itself. */
+ * keys, or the Sheet Viewer's page turns, which they handle themselves.
+ * `keys` is one combo (joined with "+"), or a pair like ← → (joined with
+ * nothing); `or` adds other keys that do the same, each its own combo,
+ * shown after a faint "/". */
 export interface ReferenceRow {
   keys: string[]
   label: string
+  or?: string[][]
+}
+
+/** A group of reference rows under its own heading, listed before or
+ * after the page's own shortcuts. */
+export interface ShortcutSection {
+  title: string
+  rows: ReferenceRow[]
+  before?: boolean
 }
 
 export interface ShortcutOptions {
@@ -43,7 +55,17 @@ export interface ShortcutOptions {
   sidebar?: boolean
   /** Keys listed for reference under their own heading. */
   reference?: { title: string; rows: ReferenceRow[] }
+  /** More reference groups, before or after the page's own shortcuts (the
+   * Sheet Viewer's page turns first, its undo and exit keys last). */
+  sections?: ShortcutSection[]
+  /** A wider card, for rows with several keys each. */
+  wide?: boolean
 }
+
+/** ⌘ on Apple devices (iPadOS reports itself as a Mac), Ctrl elsewhere —
+ * for listing a shortcut that takes either. */
+export const COMMAND_KEY =
+  typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.userAgent) ? '⌘' : 'Ctrl'
 
 export const HOLD_MS = 1000
 /** The "Keep holding" pill waits this long into a hold of / — a tap of /
