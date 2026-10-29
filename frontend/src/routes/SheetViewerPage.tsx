@@ -128,6 +128,7 @@ import { useShortcutBlocker } from '../lib/shortcuts'
 import { sortPracticeStatuses } from '../lib/practiceStatusOrder'
 import { useDarkScoresSync, useThemeSync } from '../lib/theme'
 import { usePageTitle } from '../lib/usePageTitle'
+import { MarkdownHint } from '../components/MarkdownHint'
 
 // The Sheet Viewer (design doc §13; plan phases in memory): a full-screen
 // mode for reading a piece — the score, and a toolbar that's always there.
@@ -2117,20 +2118,21 @@ function SheetViewer({
         </div>
         {editing ? (
           <>
-            {/* The Markdown hint sits inside the box, in its bottom corner
-                beside the resize grip, the text kept clear of it. */}
-            <div className="relative">
+            {/* The Markdown hint sits in the box's bottom corner, in its own
+                strip under the text (MarkdownHint), so text never runs
+                beneath it. The box keeps its accent edge and no focus ring. */}
+            <MarkdownHint
+              boxClassName="rounded-xl border border-accent bg-paper-raised focus-within:outline-none"
+              hintClassName="px-4 pb-2.5"
+            >
               <textarea
                 autoFocus
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
                 aria-label="Your notes"
-                className="block min-h-40 w-full resize-y rounded-xl border border-accent bg-paper-raised px-4 pt-3 pb-8 text-base leading-relaxed text-ink outline-none select-text"
+                className="block min-h-40 w-full resize-y bg-transparent px-4 pt-3 pb-1 text-base leading-relaxed text-ink outline-none select-text focus-visible:outline-none"
               />
-              <span className="pointer-events-none absolute right-6 bottom-2.5 text-xs text-ink-muted italic">
-                Markdown and :shortcodes: supported
-              </span>
-            </div>
+            </MarkdownHint>
             {/* The buttons sit 4px inside their tap areas, so their faces keep
                 8px apart; the row reaches 4px past the box so Done still
                 lines up with its edge. */}

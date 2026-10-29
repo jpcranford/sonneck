@@ -25,6 +25,7 @@ import { Toggle } from '../components/Toggle'
 import { daysFromNow } from '../lib/setlistsMockupFixture'
 import { useMockupTitle } from '../lib/useMockupTitle'
 import { isMultilineField } from '../lib/multilineField'
+import { MarkdownHint } from '../components/MarkdownHint'
 
 // Setlists design pass, Phase 10 — decision 23 skipped Phase 9's own
 // comparison Artifact outright (scope had narrowed too far to warrant one —
@@ -910,16 +911,18 @@ export function EditSetlistModal({
           </div>
         </div>
         <label htmlFor="f-custom-description" className="text-sm text-ink-soft">
-          Description <span className="text-ink-soft/60 italic">(Markdown supported)</span>
+          Description
         </label>
-        <textarea
-          id="f-custom-description"
-          value={customDescription}
-          onChange={(event) => setCustomDescription(event.target.value)}
-          placeholder="Reminder: mention the bake sale sign-up sheet before the offering."
-          rows={2}
-          className="mt-1 mb-3 w-full resize-none rounded-md border border-border bg-paper-raised px-3 py-1.5 text-sm text-ink"
-        />
+        <MarkdownHint className="mt-1 mb-3">
+          <textarea
+            id="f-custom-description"
+            value={customDescription}
+            onChange={(event) => setCustomDescription(event.target.value)}
+            placeholder="Reminder: mention the bake sale sign-up sheet before the offering."
+            rows={2}
+            className="w-full resize-none px-3 pt-1.5 pb-1 text-sm text-ink bg-transparent outline-none focus-visible:outline-none"
+          />
+        </MarkdownHint>
         <div className="flex justify-end gap-2">
           <button
             type="button"
@@ -1151,15 +1154,17 @@ export function EditSetlistModal({
             </div>
             <div className="flex flex-col gap-1">
               <label htmlFor="f-setlist-description" className="text-sm text-ink-soft">
-                Description <span className="text-ink-soft/60 italic">(Markdown supported)</span>
+                Description
               </label>
-              <textarea
-                id="f-setlist-description"
-                rows={4}
-                value={description}
-                onChange={(event) => setDescription(event.target.value)}
-                className="min-h-[96px] resize-none rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-              />
+              <MarkdownHint>
+                <textarea
+                  id="f-setlist-description"
+                  rows={4}
+                  value={description}
+                  onChange={(event) => setDescription(event.target.value)}
+                  className="min-h-[96px] resize-none px-3 pt-2 pb-1 text-ink bg-transparent outline-none focus-visible:outline-none"
+                />
+              </MarkdownHint>
             </div>
           </div>
 

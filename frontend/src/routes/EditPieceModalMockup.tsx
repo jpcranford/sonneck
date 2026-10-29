@@ -35,6 +35,7 @@ import {
   inUSRenewalWindow,
 } from '../lib/usRenewalWindow'
 import { isMultilineField } from '../lib/multilineField'
+import { MarkdownHint } from '../components/MarkdownHint'
 
 // ---------------------------------------------------------------------
 // DESIGN MOCKUP — not wired to the API, no real mutations, still not
@@ -1720,14 +1721,16 @@ export function EditPieceModalMockup() {
             )}
             <div className="flex flex-col gap-1">
               <label htmlFor="f-description" className="text-sm text-ink-soft">
-                Description <span className="text-ink-soft/60 italic">(Markdown supported)</span>
+                Description
               </label>
-              <textarea
-                id="f-description"
-                rows={5}
-                className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-                {...register('description')}
-              />
+              <MarkdownHint>
+                <textarea
+                  id="f-description"
+                  rows={5}
+                  className="px-3 pt-2 pb-1 text-ink bg-transparent outline-none focus-visible:outline-none"
+                  {...register('description')}
+                />
+              </MarkdownHint>
             </div>
           </div>
 
@@ -1982,14 +1985,16 @@ export function EditPieceModalMockup() {
               </div>
               <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1">
                 <label htmlFor="f-notes" className="text-sm text-ink-soft">
-                  Your notes <span className="text-ink-soft/60 italic">(Markdown supported)</span>
+                  Your notes
                 </label>
-                <textarea
-                  id="f-notes"
-                  rows={2}
-                  className="min-h-[96px] flex-1 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-                  {...register('userNotes')}
-                />
+                <MarkdownHint className="flex-1 min-h-0">
+                  <textarea
+                    id="f-notes"
+                    rows={2}
+                    className="min-h-[96px] px-3 pt-2 pb-1 text-ink flex-1 bg-transparent outline-none focus-visible:outline-none"
+                    {...register('userNotes')}
+                  />
+                </MarkdownHint>
               </div>
             </div>
           </div>

@@ -27,6 +27,7 @@ import {
 import { useMockupTitle } from '../lib/useMockupTitle'
 import { confirmAction } from '../lib/dialogs'
 import { imslpNumberFromFilename, isDetectedImslpNumber } from '../lib/imslpFromFilename'
+import { MarkdownHint } from '../components/MarkdownHint'
 
 // ---------------------------------------------------------------------
 // DESIGN MOCKUP — Book Upload Wizard, Screen 3 of 6: "About this book"
@@ -887,20 +888,22 @@ export function UploadBookAboutMockup() {
 
             <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1">
               <label htmlFor="f-description" className="text-sm text-ink-soft">
-                Description <span className="text-ink-soft/60 italic">(Markdown supported)</span>
+                Description
               </label>
-              <textarea
-                id="f-description"
-                rows={4}
-                placeholder="Optional notes about this book…"
-                // resize-none, same reasoning as EditBookModalMockup.tsx's
-                // own fix: flex-1/min-h-0 on this column drive the
-                // textarea's actual height, so a manual resize handle
-                // would either get fought back to the flex-derived height
-                // or fight the layout around it.
-                className="min-h-[96px] flex-1 resize-none rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
-                {...register('description')}
-              />
+              <MarkdownHint className="flex-1 min-h-0">
+                <textarea
+                  id="f-description"
+                  rows={4}
+                  placeholder="Optional notes about this book…"
+                  // resize-none, same reasoning as EditBookModalMockup.tsx's
+                  // own fix: flex-1/min-h-0 on this column drive the
+                  // textarea's actual height, so a manual resize handle
+                  // would either get fought back to the flex-derived height
+                  // or fight the layout around it.
+                  className="min-h-[96px] resize-none px-3 pt-2 pb-1 text-ink placeholder:text-ink-soft/40 placeholder:italic flex-1 bg-transparent outline-none focus-visible:outline-none"
+                  {...register('description')}
+                />
+              </MarkdownHint>
             </div>
           </div>
 

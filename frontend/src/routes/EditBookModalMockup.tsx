@@ -14,6 +14,7 @@ import {
   inUSRenewalWindow,
 } from '../lib/usRenewalWindow'
 import { isMultilineField } from '../lib/multilineField'
+import { MarkdownHint } from '../components/MarkdownHint'
 
 // ---------------------------------------------------------------------
 // DESIGN MOCKUP — Book Properties Edit Menu (design doc §16). Not wired
@@ -457,18 +458,20 @@ export function EditBookModalMockup() {
 
             <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1">
               <label htmlFor="f-description" className="text-sm text-ink-soft">
-                Description <span className="text-ink-soft/60 italic">(Markdown supported)</span>
+                Description
               </label>
-              <textarea
-                id="f-description"
-                rows={4}
-                // resize-none — the drag handle had no real effect anyway:
-                // flex-1/min-h-0 on this column drive the textarea's actual
-                // height, so a manual resize either got fought back to the
-                // flex-derived height or fought the layout around it.
-                className="min-h-[96px] flex-1 resize-none rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-                {...register('description')}
-              />
+              <MarkdownHint className="flex-1 min-h-0">
+                <textarea
+                  id="f-description"
+                  rows={4}
+                  // resize-none — the drag handle had no real effect anyway:
+                  // flex-1/min-h-0 on this column drive the textarea's actual
+                  // height, so a manual resize either got fought back to the
+                  // flex-derived height or fought the layout around it.
+                  className="min-h-[96px] resize-none px-3 pt-2 pb-1 text-ink flex-1 bg-transparent outline-none focus-visible:outline-none"
+                  {...register('description')}
+                />
+              </MarkdownHint>
             </div>
           </div>
 

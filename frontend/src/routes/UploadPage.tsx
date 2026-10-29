@@ -34,6 +34,7 @@ import { SingleSelect } from '../components/SingleSelect'
 import { BookUploadWizard } from './BookUploadWizard'
 import { isDetectedImslpNumber } from '../lib/imslpFromFilename'
 import { useThumbnailVersion } from '../hooks/useThumbnailVersion'
+import { MarkdownHint } from '../components/MarkdownHint'
 
 // Mirrors the backend's own cap (internal/handlers/helpers.go MaxUploadBytes)
 // so an oversized file is rejected instantly instead of after a slow upload.
@@ -985,16 +986,17 @@ export function UploadPage() {
                       </div>
                       <div className="flex flex-col gap-1">
                         <label htmlFor="description" className="text-sm text-ink-soft">
-                          Description{' '}
-                          <span className="text-ink-soft/60 italic">(Markdown supported)</span>
+                          Description
                         </label>
-                        <textarea
-                          id="description"
-                          rows={2}
-                          placeholder="Optional notes about this piece…"
-                          className="resize-none rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
-                          {...register('description')}
-                        />
+                        <MarkdownHint>
+                          <textarea
+                            id="description"
+                            rows={2}
+                            placeholder="Optional notes about this piece…"
+                            className="resize-none px-3 pt-2 pb-1 text-ink placeholder:text-ink-soft/40 placeholder:italic bg-transparent outline-none focus-visible:outline-none"
+                            {...register('description')}
+                          />
+                        </MarkdownHint>
                       </div>
                     </div>
                   )}

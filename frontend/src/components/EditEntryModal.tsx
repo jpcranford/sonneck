@@ -9,6 +9,7 @@ import { Modal } from './Modal'
 import { Toggle } from './Toggle'
 import { showAlert } from '../lib/dialogs'
 import { isMultilineField } from '../lib/multilineField'
+import { MarkdownHint } from './MarkdownHint'
 
 // Real port of EditEntryMockup.tsx's own exported EditEntryModal (Setlists
 // design pass, Phase 11 mockup approved; this is Phase 15's real build) — a
@@ -216,16 +217,18 @@ export function EditEntryModal({ open, onClose, setlistId, entry }: EditEntryMod
           </div>
           <div className="flex flex-col gap-1">
             <label htmlFor="f-entry-description" className="text-sm text-ink-soft">
-              Description <span className="text-ink-soft/60 italic">(Markdown supported)</span>
+              Description
             </label>
-            <textarea
-              id="f-entry-description"
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-              placeholder="Reminder: mention the bake sale sign-up sheet before the offering."
-              rows={3}
-              className="w-full resize-none rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-            />
+            <MarkdownHint>
+              <textarea
+                id="f-entry-description"
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+                placeholder="Reminder: mention the bake sale sign-up sheet before the offering."
+                rows={3}
+                className="w-full resize-none px-3 pt-2 pb-1 text-ink bg-transparent outline-none focus-visible:outline-none"
+              />
+            </MarkdownHint>
           </div>
         </fieldset>
       </form>

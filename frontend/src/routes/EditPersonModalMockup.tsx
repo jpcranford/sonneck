@@ -15,6 +15,7 @@ import { Modal } from '../components/Modal'
 import { PALETTE } from '../lib/pieceSplitLogic'
 import { useMockupTitle } from '../lib/useMockupTitle'
 import { isMultilineField } from '../lib/multilineField'
+import { MarkdownHint } from '../components/MarkdownHint'
 
 // ---------------------------------------------------------------------
 // DESIGN MOCKUP — Edit Person modal. Not wired to real data — Save
@@ -509,14 +510,16 @@ export function EditPersonModalMockup() {
 
             <div className="flex flex-col gap-1">
               <label htmlFor="f-bio" className="text-sm text-ink-soft">
-                Biography <span className="text-ink-soft/60 italic">(Markdown supported)</span>
+                Biography
               </label>
-              <textarea
-                id="f-bio"
-                rows={5}
-                className="rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
-                {...register('bio')}
-              />
+              <MarkdownHint>
+                <textarea
+                  id="f-bio"
+                  rows={5}
+                  className="px-3 pt-2 pb-1 text-ink bg-transparent outline-none focus-visible:outline-none"
+                  {...register('bio')}
+                />
+              </MarkdownHint>
             </div>
 
             <div className="flex flex-col gap-3 min-[400px]:flex-row">

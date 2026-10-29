@@ -18,6 +18,7 @@ import { TagComboBox } from '../components/TagComboBox'
 import { SingleSelect } from '../components/SingleSelect'
 import { useMockupTitle } from '../lib/useMockupTitle'
 import { imslpNumberFromFilename, isDetectedImslpNumber } from '../lib/imslpFromFilename'
+import { MarkdownHint } from '../components/MarkdownHint'
 
 // ---------------------------------------------------------------------
 // DESIGN MOCKUP — single-piece Upload's own "details" step (the real
@@ -694,15 +695,17 @@ export function UploadPieceAboutMockup() {
               </div>
               <div className="flex flex-col gap-1">
                 <label htmlFor="f-description" className="text-sm text-ink-soft">
-                  Description <span className="text-ink-soft/60 italic">(Markdown supported)</span>
+                  Description
                 </label>
-                <textarea
-                  id="f-description"
-                  rows={2}
-                  placeholder="Optional notes about this piece…"
-                  className="resize-none rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
-                  {...register('description')}
-                />
+                <MarkdownHint>
+                  <textarea
+                    id="f-description"
+                    rows={2}
+                    placeholder="Optional notes about this piece…"
+                    className="resize-none px-3 pt-2 pb-1 text-ink placeholder:text-ink-soft/40 placeholder:italic bg-transparent outline-none focus-visible:outline-none"
+                    {...register('description')}
+                  />
+                </MarkdownHint>
               </div>
             </CollapsibleSection>
 
