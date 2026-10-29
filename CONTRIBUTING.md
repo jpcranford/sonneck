@@ -38,7 +38,7 @@ This project has involved a lot of AI-assisted development (see the note at the 
 
 ## Reporting bugs & suggesting features
 
-Open a GitHub issue. For bug reports, the most useful info I want to know is: what you expected, what actually happened, and how to reproduce it, and how you're running it (your OS, and native app or Docker). Screenshots help a *lot* for anything UI-related. For feature requests, take a quick look at the README's [Planned features](./README.md#planned-features) section first in case it's already on the list. Doesn't really matter either way, I'll still see and evaluate the feature but if I see you got a planned feature off the ground I'll go nuts.
+Open a GitHub issue. The **Bug report** and **Feature request** forms (`.github/ISSUE_TEMPLATE/`) ask for everything below; a blank issue is still fine for anything that fits neither. For bug reports, the most useful info I want to know is: what you expected, what actually happened, and how to reproduce it, and how you're running it (your OS, and native app or Docker). Screenshots help a *lot* for anything UI-related. For feature requests, take a quick look at the README's [Planned features](./README.md#planned-features) section first in case it's already on the list. Doesn't really matter either way, I'll still see and evaluate the feature but if I see you got a planned feature off the ground I'll go nuts.
 
 ## Making a change
 

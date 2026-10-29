@@ -1,0 +1,71 @@
+name: Feature request
+description: An idea for something Sonneck could do, or do better.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ideas are welcome. Take a quick look at the README's [Planned features](https://github.com/jpcranford/sonneck#planned-features) first in case it's already on the list. Either way, I'll still read it.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: The situation or annoyance behind the idea. Knowing *why* helps more than anything, since there's often more than one way to solve it.
+      placeholder: |
+        I keep separate setlists for each church service, and every week I rebuild the same opening and closing pieces by hand.
+    validations:
+      required: true
+
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like Sonneck to do?
+      description: Describe how it would work from your side, such as what you'd click and what you'd see.
+      placeholder: |
+        A way to save a setlist as a template, then start a new setlist from it.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of the app?
+      options:
+        - Library, search or filters
+        - Piece, Book or Person Details
+        - Editing a piece, book or person
+        - Uploading (a piece, or splitting a book)
+        - Setlists or the Set PDF
+        - Sheet Viewer or annotations
+        - Practice List or practice status
+        - Signing in, accounts or permissions
+        - User Settings or Admin Settings
+        - Installing or running Sonneck
+        - Something new
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: How do you handle it today?
+      description: A workaround you're using now, or another app that does this well.
+    validations:
+      required: false
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Sketches, screenshots or links to similar features elsewhere. Please don't post pages of sheet music that's still under copyright.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Want to help build it?
+      options:
+        - label: I'd like to work on this myself. See CONTRIBUTING.md for how to get set up.
+          required: false

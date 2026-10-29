@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Planned features
+    url: https://github.com/jpcranford/sonneck#planned-features
+    about: What's already on the list, before you suggest it.
+  - name: Contributing guide
+    url: https://github.com/jpcranford/sonneck/blob/main/CONTRIBUTING.md
+    about: How to set up a development copy and send a change.

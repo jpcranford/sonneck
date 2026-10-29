@@ -1,0 +1,119 @@
+name: Bug report
+description: Something in Sonneck isn't working the way it should.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time. The most useful things to know: what you expected, what happened instead, how to make it happen again, and how you're running Sonneck. Screenshots help a *lot* for anything you can see.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What went wrong, and what did you expect to happen instead?
+      placeholder: |
+        I dragged a piece to a new spot in Edit Setlist, but after closing the window it was back where it started. I expected it to stay where I dropped it.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: How can I make it happen?
+      description: The steps, starting from somewhere easy to find. If it only happens sometimes, or only with one particular PDF, say so.
+      placeholder: |
+        1. Open a setlist and press Edit Program
+        2. Drag the second piece to the top
+        3. Close the window
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where in the app?
+      options:
+        - Library, search or filters
+        - Piece, Book or Person Details
+        - Editing a piece, book or person
+        - Uploading (a piece, or splitting a book)
+        - Setlists or the Set PDF
+        - Sheet Viewer or annotations
+        - Practice List or practice status
+        - Signing in, accounts or permissions
+        - User Settings or Admin Settings
+        - Installing or starting Sonneck
+        - Somewhere else
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install
+    attributes:
+      label: How are you running Sonneck?
+      options:
+        - Docker
+        - macOS app
+        - Windows app
+        - From source (go run / Vite)
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: An admin can find it under Admin Settings › Version (for example "0.7" or "Running from source"). For Docker, the image tag you pulled helps too (`latest`, `beta`, `dev`).
+      placeholder: "0.7, image tag :latest"
+    validations:
+      required: true
+
+  - type: input
+    id: device
+    attributes:
+      label: Device and browser
+      description: What you were using when it happened. Many layout and touch bugs only show up on one browser or one device.
+      placeholder: "iPad, Safari 26 / Mac, Firefox 140 / Windows desktop app"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: auth
+    attributes:
+      label: Sign-in method
+      description: Matters most for anything about accounts, permissions, or a button you can't see.
+      options:
+        - No sign-in (none)
+        - Password (singlepass)
+        - Single sign-on (oidc)
+        - Not sure
+    validations:
+      required: false
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots or recordings
+      description: |
+        Drag images or videos in here. Please don't post pages of sheet music that's still under copyright. Crop to the part that shows the problem, or use a public-domain piece.
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: |
+        If something failed on the server side (an error message, a failed upload, a PDF that won't download), the log lines from around that time help a lot. They're in `$DATA_DIR/logs/sonneck-YYYY-MM-DD.log`, or `docker compose logs` for Docker. Skim them first for anything you'd rather not post, like names or addresses.
+      render: text
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before you send it
+      options:
+        - label: I searched the existing issues and didn't find this one.
+          required: true
