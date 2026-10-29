@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import {
   HOLD_MS,
   PILL_DELAY_MS,
@@ -190,8 +191,14 @@ function HoldPill({ delayed }: { delayed: boolean }) {
   )
 }
 
+// Portaled to <body>, so it sits over everything: inside the Sheet Viewer
+// (its own fixed layer) it otherwise fell under the viewer's portaled
+// menus.
 export function ShortcutHelp() {
   const hold = useShortcutHold()
   if (!hold) return null
-  return hold.shown ? <ShortcutCard heldKey={hold.key} /> : <HoldPill delayed={hold.key === '/'} />
+  return createPortal(
+    hold.shown ? <ShortcutCard heldKey={hold.key} /> : <HoldPill delayed={hold.key === '/'} />,
+    document.body,
+  )
 }

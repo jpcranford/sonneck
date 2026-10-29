@@ -1643,6 +1643,7 @@ function SheetViewer({
     stepPiece: (dir: -1 | 1) => void
     moveQueue: (dir: -1 | 1) => void
     openQueued: () => void
+    annotateKey: (key: string) => boolean
   } | null>(null)
   useEffect(() => {
     turnRef.current = turn
@@ -1680,6 +1681,12 @@ function SheetViewer({
         if (event.repeat && event.key === 'Enter') return
         if (event.key === 'Enter') keys.openQueued()
         else keys.moveQueue(event.key === 'ArrowUp' ? -1 : 1)
+        return
+      }
+      // Annotate's own keys (tools, colors, sizes, Layers), only while
+      // annotating — they work with its panels open, too.
+      if (!event.shiftKey && keys.annotateKey(event.key.toLowerCase())) {
+        event.preventDefault()
         return
       }
       if (menuOpen) return
@@ -3135,7 +3142,10 @@ function SheetViewer({
                     textEdit && setTextEdit({ ...textEdit, text: event.target.value })
                   }
                   onKeyDown={(event) => {
-                    if (event.key === 'Escape') {
+                    // Esc or Shift+Enter (as in the app's edit windows)
+                    // finishes the box, keeping it, like a tap elsewhere;
+                    // plain Enter starts a new line.
+                    if (event.key === 'Escape' || (event.key === 'Enter' && event.shiftKey)) {
                       event.preventDefault()
                       finishText()
                     }
@@ -3216,7 +3226,62 @@ function SheetViewer({
       setMenu(null)
       return
     }
+    // In Annotate, step back one thing at a time — the tool, then Annotate
+    // itself — never arming Exit.
+    if (annotating) {
+      if (tool) {
+        finishText()
+        annot.setTool(null)
+        flash('No tool: taps turn pages')
+      } else leaveAnnotate()
+      return
+    }
     pressClose()
+  }
+  // Annotate's keys (approved on /mockup/sheet-viewer): D/H/T/E pick a tool
+  // (its own key again puts it down), 1–6 the picked tool's color, - and =
+  // its size, L the Layers menu. Returns whether the key was one of them.
+  function annotateKey(key: string): boolean {
+    if (!annotating) return false
+    const toolKeys: Record<string, Tool> = { d: 'pen', h: 'highlighter', t: 'text', e: 'eraser' }
+    const label = (t: Tool) => TOOLS.find((x) => x.key === t)?.label ?? ''
+    const picked = toolKeys[key]
+    if (picked) {
+      if (tool === picked) {
+        finishText()
+        annot.setTool(null)
+        setMenu(null)
+        flash('No tool: taps turn pages')
+      } else {
+        pickTool(picked)
+        flash(label(picked))
+      }
+      return true
+    }
+    if (/^[1-6]$/.test(key)) {
+      const color = Number(key) - 1
+      if (!tool || tool === 'eraser') return true
+      setToolStyle({ ...toolStyle, [tool]: { ...toolStyle[tool], color } })
+      if (tool === 'text' && textEdit) setTextEdit({ ...textEdit, layer: color })
+      flash(`${label(tool)}: ${LAYER_COLORS[color].name}`)
+      return true
+    }
+    if (key === '-' || key === '=') {
+      if (!tool) return true
+      const order: Size[] = ['S', 'M', 'L']
+      const current = tool === 'eraser' ? eraserSize : toolStyle[tool].size
+      const size = order[Math.max(0, Math.min(2, order.indexOf(current) + (key === '=' ? 1 : -1)))]
+      if (tool === 'eraser') setEraserSize(size)
+      else setToolStyle({ ...toolStyle, [tool]: { ...toolStyle[tool], size } })
+      if (tool === 'text' && textEdit) setTextEdit({ ...textEdit, size: SIZES.text[size] })
+      flash(`${label(tool)}: ${{ S: 'Small', M: 'Medium', L: 'Large' }[size]}`)
+      return true
+    }
+    if (key === 'l') {
+      setMenu(menu === 'layers' ? null : 'layers')
+      return true
+    }
+    return false
   }
   function goToEnd(end: 'first' | 'last') {
     finishText()
@@ -3261,6 +3326,7 @@ function SheetViewer({
       stepPiece,
       moveQueue,
       openQueued,
+      annotateKey,
     }
   })
   const inQueue = session.kind !== 'piece'
@@ -3286,12 +3352,34 @@ function SheetViewer({
           },
         ]
       : []),
+    ...(annotating
+      ? [
+          {
+            title: 'Annotate',
+            rows: [
+              { keys: ['D'], label: 'Pen' },
+              { keys: ['H'], label: 'Highlighter' },
+              { keys: ['T'], label: 'Text' },
+              { keys: ['E'], label: 'Eraser' },
+              { keys: ['1', '6'], label: 'Color: Red, Yellow, Blue, Green, Purple, Ink' },
+              { keys: ['-'], or: [['=']], label: 'Smaller / larger' },
+              { keys: ['L'], label: 'Layers' },
+              { keys: ['Shift', 'Enter'], or: [['Esc']], label: 'Finish a text box' },
+            ],
+          },
+        ]
+      : []),
     {
-      title: 'Undo and exit',
+      title: annotating ? 'Undo and leave' : 'Undo and exit',
       rows: [
         { keys: [COMMAND_KEY, 'Z'], label: 'Undo' },
         { keys: ['Shift', COMMAND_KEY, 'Z'], or: [[COMMAND_KEY, 'Y']], label: 'Redo' },
-        { keys: ['Esc'], label: 'Close a panel, or exit (twice)' },
+        {
+          keys: ['Esc'],
+          label: annotating
+            ? 'Close a panel, put the tool down, then leave Annotate'
+            : 'Close a panel, or exit (twice)',
+        },
       ],
     },
   ]

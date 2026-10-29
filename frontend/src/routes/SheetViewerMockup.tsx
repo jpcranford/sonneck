@@ -782,6 +782,7 @@ export function SheetViewerMockup() {
     stepPiece: (dir: -1 | 1) => void
     moveQueue: (dir: -1 | 1) => void
     openQueued: () => void
+    annotateKey: (key: string) => boolean
   } | null>(null)
   useEffect(() => {
     turnRef.current = turn
@@ -793,6 +794,7 @@ export function SheetViewerMockup() {
       stepPiece,
       moveQueue,
       openQueued,
+      annotateKey,
     }
   })
 
@@ -830,6 +832,12 @@ export function SheetViewerMockup() {
         if (event.repeat && event.key === 'Enter') return
         if (event.key === 'Enter') keys.openQueued()
         else keys.moveQueue(event.key === 'ArrowUp' ? -1 : 1)
+        return
+      }
+      // Annotate's own keys (tools, colors, sizes, Layers), only while
+      // annotating — they work with its panels open, too.
+      if (!event.shiftKey && keys.annotateKey(event.key.toLowerCase())) {
+        event.preventDefault()
         return
       }
       if (menuOpen) return
@@ -929,7 +937,63 @@ export function SheetViewerMockup() {
       setMenu(null)
       return
     }
+    // In Annotate, step back one thing at a time — the tool, then Annotate
+    // itself — never arming Exit.
+    if (mode === 'annotate') {
+      if (tool) {
+        finishText()
+        setTool(null)
+        flash('No tool: taps turn pages')
+      } else leaveAnnotate()
+      return
+    }
     pressClose()
+  }
+  // Annotate's keys: D/H/T/E pick a tool (its own key again puts it down),
+  // 1–6 the picked tool's color, - and = its size, L the Layers menu.
+  // Returns whether the key was one of them.
+  const TOOL_KEYS: Record<string, Tool> = { d: 'pen', h: 'highlighter', t: 'text', e: 'eraser' }
+  const SIZE_ORDER: Size[] = ['S', 'M', 'L']
+  const SIZE_NAMES: Record<Size, string> = { S: 'Small', M: 'Medium', L: 'Large' }
+  function annotateKey(key: string): boolean {
+    if (mode !== 'annotate') return false
+    const picked = TOOL_KEYS[key]
+    if (picked) {
+      if (tool === picked) {
+        finishText()
+        setTool(null)
+        setMenu(null)
+        flash('No tool: taps turn pages')
+      } else {
+        pickTool(picked)
+        flash(TOOLS.find((t) => t.key === picked)?.label ?? '')
+      }
+      return true
+    }
+    if (/^[1-6]$/.test(key)) {
+      const color = Number(key) - 1
+      if (!tool || tool === 'eraser') return true
+      setToolStyle({ ...toolStyle, [tool]: { ...toolStyle[tool], color } })
+      if (tool === 'text' && textEdit) setTextEdit({ ...textEdit, layer: color })
+      flash(`${TOOLS.find((t) => t.key === tool)?.label}: ${LAYER_COLORS[color].name}`)
+      return true
+    }
+    if (key === '-' || key === '=') {
+      if (!tool) return true
+      const current = tool === 'eraser' ? eraserSize : toolStyle[tool].size
+      const at = SIZE_ORDER.indexOf(current) + (key === '=' ? 1 : -1)
+      const size = SIZE_ORDER[Math.max(0, Math.min(2, at))]
+      if (tool === 'eraser') setEraserSize(size)
+      else setToolStyle({ ...toolStyle, [tool]: { ...toolStyle[tool], size } })
+      if (tool === 'text' && textEdit) setTextEdit({ ...textEdit, size: SIZES.text[size] })
+      flash(`${TOOLS.find((t) => t.key === tool)?.label}: ${SIZE_NAMES[size]}`)
+      return true
+    }
+    if (key === 'l') {
+      setMenu(menu === 'layers' ? null : 'layers')
+      return true
+    }
+    return false
   }
   function goToEnd(end: 'first' | 'last') {
     finishText()
@@ -1000,12 +1064,35 @@ export function SheetViewerMockup() {
           },
         ]
       : []),
+    ...(mode === 'annotate'
+      ? [
+          {
+            title: 'Annotate',
+            rows: [
+              { keys: ['D'], label: 'Pen' },
+              { keys: ['H'], label: 'Highlighter' },
+              { keys: ['T'], label: 'Text' },
+              { keys: ['E'], label: 'Eraser' },
+              { keys: ['1', '6'], label: 'Color: Red, Yellow, Blue, Green, Purple, Ink' },
+              { keys: ['-'], or: [['=']], label: 'Smaller / larger' },
+              { keys: ['L'], label: 'Layers' },
+              { keys: ['Shift', 'Enter'], or: [['Esc']], label: 'Finish a text box' },
+            ],
+          },
+        ]
+      : []),
     {
-      title: 'Undo and exit',
+      title: mode === 'annotate' ? 'Undo and leave' : 'Undo and exit',
       rows: [
         { keys: [COMMAND_KEY, 'Z'], label: 'Undo' },
         { keys: ['Shift', COMMAND_KEY, 'Z'], or: [[COMMAND_KEY, 'Y']], label: 'Redo' },
-        { keys: ['Esc'], label: 'Close a panel, or exit (twice)' },
+        {
+          keys: ['Esc'],
+          label:
+            mode === 'annotate'
+              ? 'Close a panel, put the tool down, then leave Annotate'
+              : 'Close a panel, or exit (twice)',
+        },
       ],
     },
   ]
@@ -3012,7 +3099,10 @@ export function SheetViewerMockup() {
                           textEdit && setTextEdit({ ...textEdit, text: event.target.value })
                         }
                         onKeyDown={(event) => {
-                          if (event.key === 'Escape') {
+                          // Esc or Shift+Enter (as in the app's edit windows)
+                          // finishes the box, keeping it, like a tap
+                          // elsewhere; plain Enter starts a new line.
+                          if (event.key === 'Escape' || (event.key === 'Enter' && event.shiftKey)) {
                             event.preventDefault()
                             finishText()
                           }
