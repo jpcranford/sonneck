@@ -30,6 +30,18 @@ body:
       required: true
 
   - type: dropdown
+    id: install
+    attributes:
+      label: How are you running Sonneck?
+      options:
+        - Docker
+        - macOS app
+        - Windows app
+        - From source (go run / Vite)
+    validations:
+      required: true
+
+  - type: dropdown
     id: area
     attributes:
       label: Where in the app?
@@ -46,19 +58,7 @@ body:
         - Installing or starting Sonneck
         - Somewhere else
     validations:
-      required: true
-
-  - type: dropdown
-    id: install
-    attributes:
-      label: How are you running Sonneck?
-      options:
-        - Docker
-        - macOS app
-        - Windows app
-        - From source (go run / Vite)
-    validations:
-      required: true
+      required: false
 
   - type: input
     id: version
@@ -67,7 +67,7 @@ body:
       description: An admin can find it under Admin Settings › Version (for example "0.7" or "Running from source"). For Docker, the image tag you pulled helps too (`latest`, `beta`, `dev`).
       placeholder: "0.7, image tag :latest"
     validations:
-      required: true
+      required: false
 
   - type: input
     id: device
@@ -76,37 +76,28 @@ body:
       description: What you were using when it happened. Many layout and touch bugs only show up on one browser or one device.
       placeholder: "iPad, Safari 26 / Mac, Firefox 140 / Windows desktop app"
     validations:
-      required: true
-
-  - type: dropdown
-    id: auth
-    attributes:
-      label: Sign-in method
-      description: Matters most for anything about accounts, permissions, or a button you can't see.
-      options:
-        - No sign-in (none)
-        - Password (singlepass)
-        - Single sign-on (oidc)
-        - Not sure
-    validations:
       required: false
+
+  # - type: dropdown
+  #   id: auth
+  #   attributes:
+  #     label: Sign-in method
+  #     description: Matters most for anything about accounts, permissions, or a button you can't see.
+  #     options:
+  #       - No sign-in (none)
+  #       - Password (singlepass)
+  #       - Single sign-on (oidc)
+  #       - Not sure
+  #   validations:
+  #     required: false
 
   - type: textarea
     id: screenshots
     attributes:
-      label: Screenshots or recordings
+      label: Screenshots, recordings, or logs
       description: |
-        Drag images or videos in here. Please don't post pages of sheet music that's still under copyright. Crop to the part that shows the problem, or use a public-domain piece.
-    validations:
-      required: false
-
-  - type: textarea
-    id: logs
-    attributes:
-      label: Logs
-      description: |
-        If something failed on the server side (an error message, a failed upload, a PDF that won't download), the log lines from around that time help a lot. They're in `$DATA_DIR/logs/sonneck-YYYY-MM-DD.log`, or `docker compose logs` for Docker. Skim them first for anything you'd rather not post, like names or addresses.
-      render: text
+        Drag images or videos in here. Please don't post whole pages of sheet music that's still under copyright; crop to the part that shows the problem, or use a public-domain piece. 
+        If something failed on the server side (an error message, a failed upload, a PDF that won't download), the log lines from around that time help a lot. They're in `$DATA_DIR/logs/sonneck-YYYY-MM-DD.log`, or `docker compose logs` for Docker.
     validations:
       required: false
 
