@@ -52,6 +52,7 @@ import { isMultilineField } from '../lib/multilineField'
 import { useThumbnailVersion } from '../hooks/useThumbnailVersion'
 import { refreshAfterSave } from '../lib/refreshAfterSave'
 import { MarkdownHint } from './MarkdownHint'
+import { personCreditPart } from '../lib/joinNames'
 
 // The real Piece Properties Edit Menu (design doc §15) — built from the
 // locked mockup design (EditPieceModalMockup.tsx, /mockup/edit-piece-modal,
@@ -795,6 +796,10 @@ export function EditPieceModal({
   const siblingIndex = siblingPieces?.findIndex((p) => p.id === piece.id) ?? -1
   const showSiblingNav = !!siblingPieces && siblingPieces.length > 1 && siblingIndex !== -1
 
+  const credit = personCreditPart(
+    piece.composer.values.map((p) => p.name),
+    piece.arranger.values.map((p) => p.name),
+  )
   return (
     <Modal
       open={open}
@@ -808,7 +813,13 @@ export function EditPieceModal({
               <h2 id="edit-piece-title" className="font-display text-2xl font-medium text-ink">
                 Edit piece
               </h2>
-              <p className="text-sm text-ink-soft">{piece.title}</p>
+              {/* The piece and its credit on one line, the credit worded as
+                  the library cards word it ("Composer, arr. Arranger"),
+                  book-inherited names included. */}
+              <p className="text-sm text-ink-soft">
+                {piece.title}
+                {credit && <> • {credit}</>}
+              </p>
             </div>
             <button
               type="button"

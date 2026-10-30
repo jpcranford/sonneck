@@ -1157,6 +1157,12 @@ export function EditPieceModalMockup() {
   }
 
   const composer = watch('composer')
+  // The subtitle's credit, worded as the library cards word it: the piece's
+  // own composer, else the book's.
+  const credit = [composer || mockBook.composer, watch('arranger')]
+    .map((name, i) => (name ? (i ? `arr. ${name}` : name) : ''))
+    .filter(Boolean)
+    .join(', ')
   const bpm = Number(watch('bpm'))
   const measureCount = Number(watch('measureCount'))
   const beatsPerMeasure = Number(watch('beatsPerMeasure'))
@@ -1371,7 +1377,10 @@ export function EditPieceModalMockup() {
                     sibling is currently loaded," which only the live form
                     value tracks once goToSibling can reset() to a
                     different one. */}
-                <p className="text-sm text-ink-soft">{watch('title')}</p>
+                <p className="text-sm text-ink-soft">
+                  {watch('title')}
+                  {credit && <> • {credit}</>}
+                </p>
               </div>
               {/* Favorite lives on the Piece Details page's own header now (that
                   page already has its own real toggle) — editing it a
