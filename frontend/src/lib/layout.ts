@@ -25,13 +25,14 @@ export const CONTENT_MAX_W = 'mx-auto w-full max-w-6xl'
 // screenshotted against real content.
 export const WIDE_CONTENT_MAX_W = 'mx-auto w-full max-w-[1800px]'
 
-// Piece Details' page thumbnail: tall enough to read, never so tall that the
-// page and the button row under it can't both fit on screen at once. It
-// leaves room for the button row (its measured height, set as --row-h on
-// the preview column; 38px is one line), the 12px gap above it and 1rem of
-// margin top and bottom (the page's 2rem bottom padding, from lg:) — plus,
-// below md:, the phone top bar (3.5rem), and from lg:, where the page sits
-// at the top of its column, the page padding and toolbar above it (94px,
-// measured), so the buttons are in view without scrolling.
+// Piece Details' page thumbnail. In one column (below lg:) it's at most
+// half the usable screen (the window, less the phone top bar below md:),
+// frame border included.
+// In two columns its column always fits, without scrolling, the page, the
+// 12px gap, the button row (its measured height, set as --row-h on the
+// preview column; 38px is one line) and a peek of Your notes below it (the
+// gap, the label and the note's first line, 63px measured, plus a little
+// room: 4.5rem), under the page padding and toolbar above (94px measured,
+// 6rem).
 export const PIECE_PAGE_MAX_H =
-  'max-h-[calc(100dvh-3.5rem-var(--row-h,38px)-0.75rem-2rem)] md:max-h-[calc(100dvh-var(--row-h,38px)-0.75rem-2rem)] lg:max-h-[calc(100dvh-6rem-var(--row-h,38px)-0.75rem-2rem)]'
+  'max-h-[calc((100dvh-3.5rem)/2-2px)] md:max-h-[calc(100dvh/2-2px)] lg:max-h-[calc(100dvh-6rem-var(--row-h,38px)-0.75rem-4.5rem)]'
