@@ -24,3 +24,14 @@ export const CONTENT_MAX_W = 'mx-auto w-full max-w-6xl'
 // than a near-empty void. Expect to revise once it's actually applied and
 // screenshotted against real content.
 export const WIDE_CONTENT_MAX_W = 'mx-auto w-full max-w-[1800px]'
+
+// Piece Details' page thumbnail: tall enough to read, never so tall that the
+// page and the button row under it can't both fit on screen at once. It
+// leaves room for the button row (its measured height, set as --row-h on
+// the preview column; 38px is one line), the 12px gap above it and 1rem of
+// margin top and bottom (the page's 2rem bottom padding, from lg:) — plus,
+// below md:, the phone top bar (3.5rem), and from lg:, where the page sits
+// at the top of its column, the page padding and toolbar above it (94px,
+// measured), so the buttons are in view without scrolling.
+export const PIECE_PAGE_MAX_H =
+  'max-h-[calc(100dvh-3.5rem-var(--row-h,38px)-0.75rem-2rem)] md:max-h-[calc(100dvh-var(--row-h,38px)-0.75rem-2rem)] lg:max-h-[calc(100dvh-6rem-var(--row-h,38px)-0.75rem-2rem)]'

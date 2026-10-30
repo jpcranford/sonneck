@@ -1,5 +1,14 @@
-import { useRef, useState, type MouseEvent, type ReactNode } from 'react'
+import {
+  useCallback,
+  useRef,
+  useState,
+  type CSSProperties,
+  type MouseEvent,
+  type ReactNode,
+} from 'react'
 import { useDismiss } from '../hooks/useDismiss'
+import { useMeasuredHeight } from '../hooks/useMeasuredHeight'
+import { PIECE_PAGE_MAX_H } from '../lib/layout'
 import { useKeepInView } from '../hooks/useKeepInView'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -358,6 +367,16 @@ export function PiecePage() {
   // A press outside the row, or Escape, closes whichever is open.
   const menuRowRef = useRef<HTMLDivElement>(null)
   useDismiss(openMenu !== null, menuRowRef, () => setOpenMenu(null))
+  // The button row's height (one line, or two once it wraps on a phone)
+  // sets how tall the page above it may be.
+  const [measureRow, rowHeight] = useMeasuredHeight<HTMLDivElement>()
+  const rowRef = useCallback(
+    (el: HTMLDivElement | null) => {
+      menuRowRef.current = el
+      return measureRow(el)
+    },
+    [measureRow],
+  )
   // On a phone the buttons wrap, so an open menu is slid back on screen.
   const openMenuRef = useRef<HTMLDivElement>(null)
   useKeepInView(openMenuRef, openMenu)
@@ -715,28 +734,24 @@ export function PiecePage() {
       )}
 
       {piece && (
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+        /* Two columns from lg: (the page and its buttons on the left, the
+            header and details on the right); one column below that, read
+            header, then page and buttons, then details. Three grid items
+            placed by order below lg: and by row and column from it; the
+            preview spans both of the right column's rows. */
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:grid-rows-[auto_1fr] lg:gap-x-8">
           {/* ---- Preview column (§7/§14: dominates ~half the view) ---- */}
-          {/* order-2 lg:order-1: at mobile widths (grid-cols-1) the info
-              column should read first — the piece's title/composer/details
-              matter more there than the thumbnail. Desktop keeps its
-              original left/right placement since both columns' order
-              resets at lg:. The border-t/pt-6 (removed at lg:) is the same
-              mobile-only separator the info column used to carry — it now
-              belongs here instead, since this column is the one that
-              visually trails on mobile. */}
-          <div className="order-2 flex flex-col gap-3 border-t border-border pt-6 lg:order-1 lg:border-t-0 lg:pt-0">
-            {/* No forced aspect ratio here on purpose — a fixed portrait
-                box (the old aspect-[200/260]) made landscape pieces render
-                small and letterboxed inside a tall frame that didn't match
-                their actual shape. The frame always fills the column's
-                full width (w-full on both the wrapper and the image);
-                height is purely derived from the image's own aspect ratio
-                at that width (h-auto), so every piece — portrait or
-                landscape — renders at a consistent, predictable width
-                instead of shrinking to whatever size the image happens to
-                render at. */}
-            <div className="relative mx-auto flex w-full max-w-md items-center justify-center overflow-hidden rounded-lg border border-border bg-paper-raised shadow-sm">
+          <div
+            style={{ '--row-h': rowHeight ? `${rowHeight}px` : undefined } as CSSProperties}
+            className="order-2 flex flex-col gap-3 lg:order-none lg:col-start-1 lg:row-span-2 lg:row-start-1"
+          >
+            {/* No forced aspect ratio — a fixed portrait box made
+                landscape pieces small and letterboxed. The frame hugs the
+                page at its own shape: as wide as the column allows up to
+                448px (thumbnails render at 100dpi, wider than that), and no
+                taller than leaves the button row on screen too
+                (PIECE_PAGE_MAX_H), narrowing to keep the page's shape. */}
+            <div className="relative mx-auto flex w-fit max-w-[min(28rem,100%)] items-center justify-center overflow-hidden rounded-lg border border-border bg-paper-raised shadow-sm">
               {/* Lightbox trigger — see PageLightbox.tsx's own comment for
                   why it's a standalone component rather than reusing
                   Modal. The whole thumbnail is clickable, not just the
@@ -746,12 +761,12 @@ export function PiecePage() {
                 type="button"
                 onClick={() => setLightboxOpen(true)}
                 aria-label={`View page ${page} larger`}
-                className="block w-full cursor-zoom-in"
+                className="block cursor-zoom-in"
               >
                 <img
                   src={getPieceThumbnailUrl(piece.id, page, thumbVersion(piece.fileHash))}
                   alt={`Page ${page} of ${piece.title}`}
-                  className="score-page h-auto w-full"
+                  className={`score-page block h-auto w-auto max-w-full ${PIECE_PAGE_MAX_H}`}
                 />
               </button>
 
@@ -824,7 +839,7 @@ export function PiecePage() {
             {/* Download / Replace File — act on the file the preview above
                 shows, so both sit with the preview rather than in the info
                 column's field list. */}
-            <div ref={menuRowRef} className="flex flex-wrap items-center justify-center gap-2">
+            <div ref={rowRef} className="flex flex-wrap items-center justify-center gap-2">
               {/* Play — opens the piece in the Sheet Viewer, the page's one
                   primary action, so it carries the accent-solid treatment.
                   Adding the piece to the Practice List is the list icon
@@ -1062,44 +1077,38 @@ export function PiecePage() {
             )}
           </div>
 
-          {/* ---- Info column ---- */}
-          {/* order-1 lg:order-2: reads first on mobile (see the preview
-              column's own comment above) — it's now the first thing on the
-              page at that width, so it carries no top border of its own;
-              the preview column below carries the separator instead. */}
-          <div className="order-1 flex flex-col gap-6 lg:order-2">
-            {/* Header: title, edit + favorite, composer, status pills */}
-            <div className="flex flex-col gap-2">
-              <div className="flex items-start justify-between gap-4">
-                <h1 className="font-display text-3xl font-medium text-ink">{piece.title}</h1>
-                <div className="mt-1 flex shrink-0 items-center gap-3">
-                  {/* The Practice List, first in this row, before the setlist
+          {/* ---- Info column: the header (title, favorite, composer, status pills) ---- */}
+          <div className="order-1 flex flex-col gap-2 lg:order-none lg:col-start-2 lg:row-start-1">
+            <div className="flex items-start justify-between gap-4">
+              <h1 className="font-display text-3xl font-medium text-ink">{piece.title}</h1>
+              <div className="mt-1 flex shrink-0 items-center gap-3">
+                {/* The Practice List, first in this row, before the setlist
                       indicator and the heart (placement C of a
                       side-by-side, https://claude.ai/artifact/So7jd1j9CrFsetgXYGRwv6):
                       a one-tap toggle that shows whether the piece is on
                       it, filled like the heart when it is (the sidebar's
                       Practice List icon). Needs `practice`, like the
                       viewer; a piece is on the list once at most. */}
-                  {canPractice && (
-                    <button
-                      type="button"
-                      onClick={() => practiceListMutation.mutate(!onPracticeList)}
-                      disabled={!practiceList || practiceListMutation.isPending}
-                      aria-label={
-                        onPracticeList ? 'Remove from Practice List' : 'Add to Practice List'
-                      }
-                      title={onPracticeList ? 'On your Practice List' : 'Add to Practice List'}
-                      aria-pressed={onPracticeList}
-                      className="cursor-pointer text-ink-soft hover:text-accent disabled:opacity-50"
-                    >
-                      {onPracticeList ? (
-                        <IconPlaylistFilled size={24} className="text-accent" />
-                      ) : (
-                        <IconPlaylistAdd size={24} />
-                      )}
-                    </button>
-                  )}
-                  {/* "Already in a setlist" indicator (decision 6) — a pure
+                {canPractice && (
+                  <button
+                    type="button"
+                    onClick={() => practiceListMutation.mutate(!onPracticeList)}
+                    disabled={!practiceList || practiceListMutation.isPending}
+                    aria-label={
+                      onPracticeList ? 'Remove from Practice List' : 'Add to Practice List'
+                    }
+                    title={onPracticeList ? 'On your Practice List' : 'Add to Practice List'}
+                    aria-pressed={onPracticeList}
+                    className="cursor-pointer text-ink-soft hover:text-accent disabled:opacity-50"
+                  >
+                    {onPracticeList ? (
+                      <IconPlaylistFilled size={24} className="text-accent" />
+                    ) : (
+                      <IconPlaylistAdd size={24} />
+                    )}
+                  </button>
+                )}
+                {/* "Already in a setlist" indicator (decision 6) — a pure
                       status display, not a control, same reasoning as the
                       copyright badge: needs a real tap-accessible tooltip
                       (InfoTooltip), not a hover-only native title, so a
@@ -1108,43 +1117,43 @@ export function PiecePage() {
                       precedent as the favorite heart in this row —
                       only rendered when the piece is in a set that isn't
                       archived. */}
-                  {inUpcomingSet && (
-                    <InfoTooltip
-                      message="In an upcoming set"
-                      ariaLabel="In an upcoming set"
-                      showPointerCursor={false}
-                      triggerClassName="text-accent"
-                    >
-                      <IconCalendarFilled size={20} />
-                    </InfoTooltip>
-                  )}
-                  {/* Edit moved to the top toolbar (a proper labeled
+                {inUpcomingSet && (
+                  <InfoTooltip
+                    message="In an upcoming set"
+                    ariaLabel="In an upcoming set"
+                    showPointerCursor={false}
+                    triggerClassName="text-accent"
+                  >
+                    <IconCalendarFilled size={20} />
+                  </InfoTooltip>
+                )}
+                {/* Edit moved to the top toolbar (a proper labeled
                       button, not an icon-only one) — see this file's
                       top-of-page comment. Favorite stays here; it's a
                       one-tap toggle, not an editing action, so it doesn't
                       belong in that toolbar. */}
-                  {/* Favoriting saves the whole piece, which needs edit
+                {/* Favoriting saves the whole piece, which needs edit
                       permission — hidden without it. */}
-                  {canEdit && (
-                    <button
-                      type="button"
-                      onClick={() => favoriteMutation.mutate()}
-                      disabled={favoriteMutation.isPending}
-                      aria-label={piece.favorite ? 'Remove from favorites' : 'Add to favorites'}
-                      aria-pressed={piece.favorite}
-                      className="cursor-pointer text-ink-soft hover:text-accent disabled:opacity-50"
-                    >
-                      {piece.favorite ? (
-                        <IconHeartFilled size={24} className="text-accent" />
-                      ) : (
-                        <IconHeart size={24} />
-                      )}
-                    </button>
-                  )}
-                </div>
+                {canEdit && (
+                  <button
+                    type="button"
+                    onClick={() => favoriteMutation.mutate()}
+                    disabled={favoriteMutation.isPending}
+                    aria-label={piece.favorite ? 'Remove from favorites' : 'Add to favorites'}
+                    aria-pressed={piece.favorite}
+                    className="cursor-pointer text-ink-soft hover:text-accent disabled:opacity-50"
+                  >
+                    {piece.favorite ? (
+                      <IconHeartFilled size={24} className="text-accent" />
+                    ) : (
+                      <IconHeart size={24} />
+                    )}
+                  </button>
+                )}
               </div>
+            </div>
 
-              {/* Arranger folded into the composer line ("X • arr. Y")
+            {/* Arranger folded into the composer line ("X • arr. Y")
                   instead of its own details-list row — omitted entirely,
                   same as every other row, when not set. Dot separator
                   matches the Publisher row's publisher/publisherId pairing
@@ -1158,49 +1167,49 @@ export function PiecePage() {
                   JSX-capable sibling of joinNames' plain-text joining);
                   joinNames itself is still used just to decide whether
                   either list is non-empty. */}
-              {(() => {
-                const composerNames = joinNames(piece.composer.values.map((p) => p.name))
-                const arrangerNames = joinNames(piece.arranger.values.map((p) => p.name))
-                return (
-                  // Plain inline flow, not flex/flex-wrap — a flex container
-                  // wraps its *children* as whole units, so with a long
-                  // enough composer list (real bug found live: 5 composers)
-                  // the composer EffectiveValue's own box fills the line by
-                  // itself and the arranger span, having no room left in
-                  // that flex row, drops to an entirely new line below it
-                  // instead of continuing right after the last composer
-                  // name. Removing flex lets the browser's ordinary text
-                  // wrapping merge composer + arranger into one running
-                  // paragraph, the same way any other wrapped sentence
-                  // does — the arranger span picks up right where the
-                  // composer names left off, wrapping only when the whole
-                  // line is actually full.
-                  <p className="text-ink-soft">
-                    {composerNames ? (
-                      <>
-                        <EffectiveValue
-                          value={<PersonNameLinks people={piece.composer.values} />}
-                          inherited={piece.composer.inherited}
-                        />
-                        {arrangerNames && (
-                          <span className="ml-1.5">
-                            • arr. <PersonNameLinks people={piece.arranger.values} />
-                          </span>
-                        )}
-                      </>
-                    ) : arrangerNames ? (
-                      <span className="inline-flex items-center gap-1.5">
-                        arr. <PersonNameLinks people={piece.arranger.values} />
-                        {piece.arranger.inherited && <InheritedNote />}
-                      </span>
-                    ) : (
-                      <span className="text-ink-soft/50">—</span>
-                    )}
-                  </p>
-                )
-              })()}
+            {(() => {
+              const composerNames = joinNames(piece.composer.values.map((p) => p.name))
+              const arrangerNames = joinNames(piece.arranger.values.map((p) => p.name))
+              return (
+                // Plain inline flow, not flex/flex-wrap — a flex container
+                // wraps its *children* as whole units, so with a long
+                // enough composer list (real bug found live: 5 composers)
+                // the composer EffectiveValue's own box fills the line by
+                // itself and the arranger span, having no room left in
+                // that flex row, drops to an entirely new line below it
+                // instead of continuing right after the last composer
+                // name. Removing flex lets the browser's ordinary text
+                // wrapping merge composer + arranger into one running
+                // paragraph, the same way any other wrapped sentence
+                // does — the arranger span picks up right where the
+                // composer names left off, wrapping only when the whole
+                // line is actually full.
+                <p className="text-ink-soft">
+                  {composerNames ? (
+                    <>
+                      <EffectiveValue
+                        value={<PersonNameLinks people={piece.composer.values} />}
+                        inherited={piece.composer.inherited}
+                      />
+                      {arrangerNames && (
+                        <span className="ml-1.5">
+                          • arr. <PersonNameLinks people={piece.arranger.values} />
+                        </span>
+                      )}
+                    </>
+                  ) : arrangerNames ? (
+                    <span className="inline-flex items-center gap-1.5">
+                      arr. <PersonNameLinks people={piece.arranger.values} />
+                      {piece.arranger.inherited && <InheritedNote />}
+                    </span>
+                  ) : (
+                    <span className="text-ink-soft/50">—</span>
+                  )}
+                </p>
+              )
+            })()}
 
-              {/* Practice status + remaining metadata pills (key, sheet
+            {/* Practice status + remaining metadata pills (key, sheet
                   type — instruments moved into the details list below,
                   public domain moved onto the Year written row), with user
                   tags right after practice status. Practice status and
@@ -1216,65 +1225,67 @@ export function PiecePage() {
                   ClickableCard.tsx uses a real <a> elsewhere — cmd/ctrl/
                   middle-click and right-click "open in new tab" work for
                   free. */}
-              <div className="mt-1 flex flex-wrap items-center gap-2">
-                {piece.practiceStatus && (
-                  <Link
-                    to={`/?practiceStatus=${encodeURIComponent(piece.practiceStatus)}`}
-                    className="flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent transition-colors hover:bg-accent/20"
-                  >
-                    <PracticeStatusIcon status={piece.practiceStatus} size={13} />
-                    {piece.practiceStatus}
-                  </Link>
-                )}
-                {piece.userTags.map((tag) => (
-                  <Link
-                    key={tag.id}
-                    to={`/?userTagId=${tag.id}`}
-                    className="rounded-full border border-accent/30 bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent transition-colors hover:bg-accent/20"
-                  >
-                    {tag.name}
-                  </Link>
-                ))}
-                {/* A piece's keys are a sequence, not an unordered set of
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              {piece.practiceStatus && (
+                <Link
+                  to={`/?practiceStatus=${encodeURIComponent(piece.practiceStatus)}`}
+                  className="flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent transition-colors hover:bg-accent/20"
+                >
+                  <PracticeStatusIcon status={piece.practiceStatus} size={13} />
+                  {piece.practiceStatus}
+                </Link>
+              )}
+              {piece.userTags.map((tag) => (
+                <Link
+                  key={tag.id}
+                  to={`/?userTagId=${tag.id}`}
+                  className="rounded-full border border-accent/30 bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent transition-colors hover:bg-accent/20"
+                >
+                  {tag.name}
+                </Link>
+              ))}
+              {/* A piece's keys are a sequence, not an unordered set of
                     tags — a piece that modulates (e.g. A Minor → C Major)
                     needs that order to survive the display. One merged
                     pill, keys joined by a small de-emphasized chevron
                     separator, rather than one separate pill per key with
                     no indication of order at all. */}
-                {piece.keys.length > 0 && (
-                  <span className="flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-xs font-medium text-ink-soft">
-                    <IconMusic size={12} className="shrink-0" />
-                    <span className="flex items-center gap-1">
-                      {piece.keys.map((key, i) => (
-                        // Composite key (id + position), not just key.id —
-                        // a modulating piece can use the same key twice in
-                        // its sequence (migration 00012).
-                        <span key={`${key.id}-${i}`} className="flex items-center gap-1">
-                          {i > 0 && (
-                            <span className="font-normal opacity-[0.55]" aria-hidden="true">
-                              ›
-                            </span>
-                          )}
-                          {/* text-center: at narrow widths a key name can
+              {piece.keys.length > 0 && (
+                <span className="flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-xs font-medium text-ink-soft">
+                  <IconMusic size={12} className="shrink-0" />
+                  <span className="flex items-center gap-1">
+                    {piece.keys.map((key, i) => (
+                      // Composite key (id + position), not just key.id —
+                      // a modulating piece can use the same key twice in
+                      // its sequence (migration 00012).
+                      <span key={`${key.id}-${i}`} className="flex items-center gap-1">
+                        {i > 0 && (
+                          <span className="font-normal opacity-[0.55]" aria-hidden="true">
+                            ›
+                          </span>
+                        )}
+                        {/* text-center: at narrow widths a key name can
                               wrap onto two lines ("E" / "Major") — without
                               this the wrapped lines default to left-align,
                               so a short top word like "E" doesn't sit
                               centered over the wider word below it. */}
-                          <span className="text-center">{key.name}</span>
-                        </span>
-                      ))}
-                    </span>
+                        <span className="text-center">{key.name}</span>
+                      </span>
+                    ))}
                   </span>
-                )}
-                {piece.sheetType.value && (
-                  <span className="flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-xs font-medium text-ink-soft">
-                    {piece.sheetType.value.name}
-                    {piece.sheetType.inherited && <InheritedNote compact />}
-                  </span>
-                )}
-              </div>
+                </span>
+              )}
+              {piece.sheetType.value && (
+                <span className="flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-xs font-medium text-ink-soft">
+                  {piece.sheetType.value.name}
+                  {piece.sheetType.inherited && <InheritedNote compact />}
+                </span>
+              )}
             </div>
+          </div>
 
+          {/* ---- Info column: the details, under the header ---- */}
+          <div className="order-3 flex flex-col gap-6 lg:order-none lg:col-start-2 lg:row-start-2">
             {/* Details — unboxed on purpose: reads as part of the page's
                 normal flow, with just a rule above to separate it from
                 the pills above. Every row is conditional on having

@@ -1,5 +1,15 @@
-import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type MouseEvent,
+  type ReactNode,
+} from 'react'
 import { useDismiss } from '../hooks/useDismiss'
+import { useMeasuredHeight } from '../hooks/useMeasuredHeight'
+import { PIECE_PAGE_MAX_H } from '../lib/layout'
 import { useKeepInView } from '../hooks/useKeepInView'
 import { Link } from 'react-router-dom'
 import {
@@ -263,9 +273,9 @@ function SheetPagePlaceholder({ page }: { page: number }) {
   return (
     <svg
       viewBox="0 0 200 260"
-      width={200}
-      height={260}
-      className="h-auto w-full"
+      width={850}
+      height={1105}
+      className={`block h-auto w-auto max-w-full ${PIECE_PAGE_MAX_H}`}
       role="img"
       aria-label={`Page ${page} preview`}
     >
@@ -550,6 +560,16 @@ export function PieceDetailsSample() {
   // A press outside the row, or Escape, closes whichever is open.
   const menuRowRef = useRef<HTMLDivElement>(null)
   useDismiss(openMenu !== null, menuRowRef, () => setOpenMenu(null))
+  // The button row's height (one line, or two once it wraps on a phone)
+  // sets how tall the page above it may be.
+  const [measureRow, rowHeight] = useMeasuredHeight<HTMLDivElement>()
+  const rowRef = useCallback(
+    (el: HTMLDivElement | null) => {
+      menuRowRef.current = el
+      return measureRow(el)
+    },
+    [measureRow],
+  )
   // On a phone the buttons wrap, so an open menu is slid back on screen.
   const openMenuRef = useRef<HTMLDivElement>(null)
   useKeepInView(openMenuRef, openMenu)
@@ -788,21 +808,23 @@ export function PieceDetailsSample() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+      {/* Two columns from lg: (the page and its buttons on the left, the
+          header and details on the right); one column below that, read
+          header, then page and buttons, then details. Three grid items
+          placed by order below lg: and by row and column from it; the
+          preview spans both of the right column's rows. */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:grid-rows-[auto_1fr] lg:gap-x-8">
         {/* ---- Preview column (§7/§14: dominates ~half the view) ---- */}
-        {/* order-2 lg:order-1: at mobile widths (grid-cols-1) the info
-            column should read first — the piece's title/composer/details
-            matter more there than the thumbnail. Desktop keeps its
-            original left/right placement since both columns' order resets
-            at lg:. The border-t/pt-6 (removed at lg:) is the same
-            mobile-only separator the info column used to carry — it now
-            belongs here instead, since this column is the one that
-            visually trails on mobile. */}
-        <div className="order-2 flex flex-col gap-3 border-t border-border pt-6 lg:order-1 lg:border-t-0 lg:pt-0">
+        <div
+          style={{ '--row-h': rowHeight ? `${rowHeight}px` : undefined } as CSSProperties}
+          className="order-2 flex flex-col gap-3 lg:order-none lg:col-start-1 lg:row-span-2 lg:row-start-1"
+        >
           {/* Same always-full-width fix as PiecePage.tsx — kept in sync
               structurally even though this sample's SVG placeholder is
               always portrait-shaped by construction. */}
-          <div className="relative mx-auto flex w-full max-w-md items-center justify-center overflow-hidden rounded-lg border border-border bg-paper-raised shadow-sm">
+          {/* The frame hugs the page: at most 448px wide, and no taller
+              than leaves the button row on screen too (PIECE_PAGE_MAX_H). */}
+          <div className="relative mx-auto flex w-fit max-w-[min(28rem,100%)] items-center justify-center overflow-hidden rounded-lg border border-border bg-paper-raised shadow-sm">
             {/* Lightbox trigger — see PageLightbox's own comment for the
                 alternatives this was chosen over. The whole thumbnail is
                 clickable, not just a corner badge — the badge below is a
@@ -811,7 +833,7 @@ export function PieceDetailsSample() {
               type="button"
               onClick={() => setLightboxOpen(true)}
               aria-label={`View page ${page} larger`}
-              className="block w-full cursor-zoom-in"
+              className="block cursor-zoom-in"
             >
               <SheetPagePlaceholder page={page} />
             </button>
@@ -869,7 +891,7 @@ export function PieceDetailsSample() {
             />
           )}
 
-          <div ref={menuRowRef} className="flex flex-wrap items-center justify-center gap-2">
+          <div ref={rowRef} className="flex flex-wrap items-center justify-center gap-2">
             {/* Play (Sheet Viewer Phase 6): solid accent as the page's
                 primary action; opens the Sheet Viewer mockup. Adding the
                 piece to the Practice List is the list icon in the
@@ -1041,37 +1063,32 @@ export function PieceDetailsSample() {
           )}
         </div>
 
-        {/* ---- Info column ---- */}
-        {/* order-1 lg:order-2: reads first on mobile (see the preview
-            column's own comment above) — it's now the first thing on the
-            page at that width, so it carries no top border of its own; the
-            preview column below carries the separator instead. */}
-        <div className="order-1 flex flex-col gap-6 lg:order-2">
-          <div className="flex flex-col gap-2">
-            <div className="flex items-start justify-between gap-4">
-              <h1 className="font-display text-3xl font-medium text-ink">{piece.title}</h1>
-              <div className="mt-1 flex shrink-0 items-center gap-3">
-                {/* The Practice List, first in this row, before the setlist
+        {/* ---- Info column: the header (title, credits, pills) ---- */}
+        <div className="order-1 flex flex-col gap-2 lg:order-none lg:col-start-2 lg:row-start-1">
+          <div className="flex items-start justify-between gap-4">
+            <h1 className="font-display text-3xl font-medium text-ink">{piece.title}</h1>
+            <div className="mt-1 flex shrink-0 items-center gap-3">
+              {/* The Practice List, first in this row, before the setlist
                     indicator and the heart (placement C of a
                     side-by-side, https://claude.ai/artifact/So7jd1j9CrFsetgXYGRwv6):
                     a one-tap toggle that shows whether the piece is on it,
                     filled like the heart when it is (the sidebar's Practice
                     List icon). Hidden without `practice` in the real page. */}
-                <button
-                  type="button"
-                  onClick={() => setOnPracticeList(!onPracticeList)}
-                  aria-pressed={onPracticeList}
-                  aria-label={onPracticeList ? 'Remove from Practice List' : 'Add to Practice List'}
-                  title={onPracticeList ? 'On your Practice List' : 'Add to Practice List'}
-                  className="cursor-pointer text-ink-soft hover:text-accent"
-                >
-                  {onPracticeList ? (
-                    <IconPlaylistFilled size={24} className="text-accent" />
-                  ) : (
-                    <IconPlaylistAdd size={24} />
-                  )}
-                </button>
-                {/* "Already in a setlist" indicator (decision 6) — a pure
+              <button
+                type="button"
+                onClick={() => setOnPracticeList(!onPracticeList)}
+                aria-pressed={onPracticeList}
+                aria-label={onPracticeList ? 'Remove from Practice List' : 'Add to Practice List'}
+                title={onPracticeList ? 'On your Practice List' : 'Add to Practice List'}
+                className="cursor-pointer text-ink-soft hover:text-accent"
+              >
+                {onPracticeList ? (
+                  <IconPlaylistFilled size={24} className="text-accent" />
+                ) : (
+                  <IconPlaylistAdd size={24} />
+                )}
+              </button>
+              {/* "Already in a setlist" indicator (decision 6) — a pure
                     status display, not a control, same reasoning as the
                     copyright badge: needs a real tap-accessible tooltip
                     (InfoTooltip), not a hover-only native title, so a touch
@@ -1079,109 +1096,108 @@ export function PieceDetailsSample() {
                     Filled icon, same "solid = affirmative state" precedent
                     as the favorite heart in this row — only rendered
                     when the piece is in a set that isn't archived. */}
-                {pieceSetlistIds.some((id) => {
-                  const set = ALL_MOCK_SETLISTS.find((s) => s.id === id)
-                  return set && !isEffectivelyArchived(set)
-                }) && (
-                  <InfoTooltip
-                    message="In an upcoming set"
-                    ariaLabel="In an upcoming set"
-                    showPointerCursor={false}
-                    triggerClassName="text-accent"
-                  >
-                    <IconCalendarFilled size={20} />
-                  </InfoTooltip>
-                )}
-                {/* Edit moved to the top toolbar (a proper labeled button,
+              {pieceSetlistIds.some((id) => {
+                const set = ALL_MOCK_SETLISTS.find((s) => s.id === id)
+                return set && !isEffectivelyArchived(set)
+              }) && (
+                <InfoTooltip
+                  message="In an upcoming set"
+                  ariaLabel="In an upcoming set"
+                  showPointerCursor={false}
+                  triggerClassName="text-accent"
+                >
+                  <IconCalendarFilled size={20} />
+                </InfoTooltip>
+              )}
+              {/* Edit moved to the top toolbar (a proper labeled button,
                     not an icon-only one) — see this file's top-of-page
                     comment. Favorite stays here; it's a one-tap toggle, not
                     an editing action, so it doesn't belong in that toolbar. */}
-                <button
-                  type="button"
-                  onClick={() => setFavorite((f) => !f)}
-                  aria-pressed={favorite}
-                  aria-label={favorite ? 'Remove from favorites' : 'Add to favorites'}
-                  className="cursor-pointer text-ink-soft hover:text-accent"
-                >
-                  {favorite ? (
-                    <IconHeartFilled size={24} className="text-accent" />
-                  ) : (
-                    <IconHeart size={24} />
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {/* Dot separator only renders when composer is actually
-                present — composer-or-arranger means a piece can have an
-                arranger with no composer at all, and the dot must not
-                render with nothing on its left to separate. */}
-            <p className="flex flex-wrap items-center gap-1.5 text-ink-soft">
-              {piece.composer.value ? (
-                <>
-                  <EffectiveValue
-                    value={piece.composer.value}
-                    inherited={piece.composer.inherited}
-                  />
-                  {piece.arranger.value && <span>• arr. {piece.arranger.value}</span>}
-                </>
-              ) : piece.arranger.value ? (
-                <span className="inline-flex items-center gap-1.5">
-                  arr. {piece.arranger.value}
-                  {piece.arranger.inherited && <InheritedNote />}
-                </span>
-              ) : (
-                <span className="text-ink-soft/50">—</span>
-              )}
-            </p>
-
-            <div className="mt-1 flex flex-wrap items-center gap-2">
-              {piece.practiceStatus && (
-                <span className="flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent">
-                  <PracticeStatusIcon status={piece.practiceStatus} size={13} />
-                  {piece.practiceStatus}
-                </span>
-              )}
-              {piece.userTags.map((tag) => (
-                <span
-                  key={tag.id}
-                  className="rounded-full border border-accent/30 bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent"
-                >
-                  {tag.name}
-                </span>
-              ))}
-              {/* One merged pill for the whole key sequence, kept in sync
-                  with PiecePage.tsx's real version — see that file's
-                  comment for the design rationale. */}
-              {piece.keys.length > 0 && (
-                <span className="flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-xs font-medium text-ink-soft">
-                  <IconMusic size={12} className="shrink-0" />
-                  <span className="flex items-center gap-1">
-                    {piece.keys.map((key, i) => (
-                      // Composite key (id + position), not just key.id — a
-                      // modulating piece can use the same key twice in its
-                      // sequence (migration 00012).
-                      <span key={`${key.id}-${i}`} className="flex items-center gap-1">
-                        {i > 0 && (
-                          <span className="font-normal opacity-[0.55]" aria-hidden="true">
-                            ›
-                          </span>
-                        )}
-                        <span className="text-center">{key.name}</span>
-                      </span>
-                    ))}
-                  </span>
-                </span>
-              )}
-              {piece.sheetType.value && (
-                <span className="flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-xs font-medium text-ink-soft">
-                  {piece.sheetType.value.name}
-                  {piece.sheetType.inherited && <InheritedNote compact />}
-                </span>
-              )}
+              <button
+                type="button"
+                onClick={() => setFavorite((f) => !f)}
+                aria-pressed={favorite}
+                aria-label={favorite ? 'Remove from favorites' : 'Add to favorites'}
+                className="cursor-pointer text-ink-soft hover:text-accent"
+              >
+                {favorite ? (
+                  <IconHeartFilled size={24} className="text-accent" />
+                ) : (
+                  <IconHeart size={24} />
+                )}
+              </button>
             </div>
           </div>
 
+          {/* Dot separator only renders when composer is actually
+                present — composer-or-arranger means a piece can have an
+                arranger with no composer at all, and the dot must not
+                render with nothing on its left to separate. */}
+          <p className="flex flex-wrap items-center gap-1.5 text-ink-soft">
+            {piece.composer.value ? (
+              <>
+                <EffectiveValue value={piece.composer.value} inherited={piece.composer.inherited} />
+                {piece.arranger.value && <span>• arr. {piece.arranger.value}</span>}
+              </>
+            ) : piece.arranger.value ? (
+              <span className="inline-flex items-center gap-1.5">
+                arr. {piece.arranger.value}
+                {piece.arranger.inherited && <InheritedNote />}
+              </span>
+            ) : (
+              <span className="text-ink-soft/50">—</span>
+            )}
+          </p>
+
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            {piece.practiceStatus && (
+              <span className="flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent">
+                <PracticeStatusIcon status={piece.practiceStatus} size={13} />
+                {piece.practiceStatus}
+              </span>
+            )}
+            {piece.userTags.map((tag) => (
+              <span
+                key={tag.id}
+                className="rounded-full border border-accent/30 bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent"
+              >
+                {tag.name}
+              </span>
+            ))}
+            {/* One merged pill for the whole key sequence, kept in sync
+                  with PiecePage.tsx's real version — see that file's
+                  comment for the design rationale. */}
+            {piece.keys.length > 0 && (
+              <span className="flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-xs font-medium text-ink-soft">
+                <IconMusic size={12} className="shrink-0" />
+                <span className="flex items-center gap-1">
+                  {piece.keys.map((key, i) => (
+                    // Composite key (id + position), not just key.id — a
+                    // modulating piece can use the same key twice in its
+                    // sequence (migration 00012).
+                    <span key={`${key.id}-${i}`} className="flex items-center gap-1">
+                      {i > 0 && (
+                        <span className="font-normal opacity-[0.55]" aria-hidden="true">
+                          ›
+                        </span>
+                      )}
+                      <span className="text-center">{key.name}</span>
+                    </span>
+                  ))}
+                </span>
+              </span>
+            )}
+            {piece.sheetType.value && (
+              <span className="flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-xs font-medium text-ink-soft">
+                {piece.sheetType.value.name}
+                {piece.sheetType.inherited && <InheritedNote compact />}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* ---- Info column: the details, under the header ---- */}
+        <div className="order-3 flex flex-col gap-6 lg:order-none lg:col-start-2 lg:row-start-2">
           <div className="divide-y divide-border border-t border-border">
             {/* Reordered 2026-09-12, mockup-only for now, per direct
                 instruction: Opus -> Year written -> Instruments -> IMSLP
