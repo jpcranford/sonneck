@@ -77,11 +77,13 @@ func (s *Server) handleDownloadSetlistPDF(w http.ResponseWriter, r *http.Request
 
 	// Dates are written in the requester's own locale (Accept-Language).
 	// The gig date is a calendar day: parsed and formatted with no timezone.
+	// The table of contents names the day of the week too; the cover doesn't.
 	formatDate := longDateFormatter(r)
-	var gigDate string
+	var gigDate, tocDate string
 	if setlist.GigDate != nil {
 		if t, parseErr := time.Parse("2006-01-02", *setlist.GigDate); parseErr == nil {
 			gigDate = formatDate(t)
+			tocDate = weekdayDateFormatter(r)(t)
 		}
 	}
 	description := ""
@@ -93,6 +95,7 @@ func (s *Server) handleDownloadSetlistPDF(w http.ResponseWriter, r *http.Request
 		Setlist: setlistpdf.Setlist{
 			Name:        setlist.Name,
 			GigDate:     gigDate,
+			TOCDate:     tocDate,
 			Description: description,
 		},
 		Entries:    entries,

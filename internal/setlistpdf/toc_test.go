@@ -133,7 +133,7 @@ func TestTOCPaginationMatchesTheMockup(t *testing.T) {
 		shape     Shape
 		firstPage int // rows on page 1, as the mockup measures them in the browser
 	}{{ShapeLetter, 18}, {ShapeA4, 20}} {
-		in := Input{Setlist: Setlist{Name: "A Festival of Nine Lessons and Carols", GigDate: "December 13, 2026"}, Entries: lessonsAndCarols(), Shape: tc.shape}
+		in := Input{Setlist: Setlist{Name: "A Festival of Nine Lessons and Carols", GigDate: "December 13, 2026", TOCDate: "Sunday, December 13, 2026"}, Entries: lessonsAndCarols(), Shape: tc.shape}
 		_, plan := paginate(in)
 		if len(plan.pages) != 2 {
 			t.Fatalf("%s: %d TOC pages, want 2", tc.shape, len(plan.pages))

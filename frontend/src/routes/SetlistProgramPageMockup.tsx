@@ -31,6 +31,8 @@ import { estimateTotal, type DurationEstimate } from '../lib/setlistEstimate'
 
 const SETLIST = { name: 'Sunday Morning Service', gigDate: '2026-10-04' }
 const LONG_DATE: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'long', day: 'numeric' }
+// The table of contents names the day of the week too; the cover doesn't.
+const WEEKDAY_DATE: Intl.DateTimeFormatOptions = { ...LONG_DATE, weekday: 'long' }
 const COVER_DESCRIPTION =
   'Traditional hymns and choral music for the first Sunday of October — all are welcome to join in the congregational singing.'
 // The cover's optical-center lift, as a fraction of the page height.
@@ -441,7 +443,7 @@ export function SetlistProgramPageMockup() {
                 color: PRINT_FAINT,
               }}
             >
-              {formatDateOnly(toc.gigDate, LONG_DATE)} &bull; {formatTotal(tocTotal)}
+              {formatDateOnly(toc.gigDate, WEEKDAY_DATE)} &bull; {formatTotal(tocTotal)}
             </span>
           </div>
         )}

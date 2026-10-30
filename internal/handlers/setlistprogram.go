@@ -91,7 +91,7 @@ func (s *Server) handleGetSetlistProgram(w http.ResponseWriter, r *http.Request)
 	var date string
 	if setlist.GigDate != nil {
 		if t, parseErr := time.Parse("2006-01-02", *setlist.GigDate); parseErr == nil {
-			date = longDateFormatterText(r)(t)
+			date = weekdayDateFormatterText(r)(t)
 		}
 	}
 	md, text := buildSetlistProgram(setlist.Name, date, entries)

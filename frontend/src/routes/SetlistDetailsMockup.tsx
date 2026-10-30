@@ -217,8 +217,11 @@ function formatPages(pages: number): string {
   return pages === 1 ? '1 page' : `${pages} pages`
 }
 
-function formatAbsoluteDate(iso: string): string {
-  return formatDateOnly(iso, { year: 'numeric', month: 'long', day: 'numeric' })
+// The date line under the title and the copied program's date, with its
+// day of the week ("Sunday, October 4, 2026" — order and wording follow
+// the viewer's locale).
+function formatHeaderDate(iso: string): string {
+  return formatDateOnly(iso, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
 }
 
 // Running count of "counts as music" entries (decision 8) — a piece entry
@@ -428,7 +431,7 @@ export function SetlistDetailsMockup() {
     const { clientX: x, clientY: y } = event
     const program = buildProgramCopy(
       setlist.name,
-      formatAbsoluteDate(setlist.gigDate),
+      formatHeaderDate(setlist.gigDate),
       entries,
       displayNumbers,
     )
@@ -505,7 +508,7 @@ export function SetlistDetailsMockup() {
     const rect = downloadMenuButtonRef.current?.getBoundingClientRect()
     const program = buildProgramCopy(
       setlist.name,
-      formatAbsoluteDate(setlist.gigDate),
+      formatHeaderDate(setlist.gigDate),
       entries,
       displayNumbers,
     )
@@ -669,7 +672,7 @@ export function SetlistDetailsMockup() {
           </h1>
           <div className="mt-1 flex items-center gap-1.5 text-sm text-ink-soft">
             <IconCalendar size={16} />
-            {formatAbsoluteDate(setlist.gigDate)}
+            {formatHeaderDate(setlist.gigDate)}
             <span aria-hidden="true">•</span>
             {formatRelativeWeeks(setlist.gigDate, { abbreviated: false })}
           </div>

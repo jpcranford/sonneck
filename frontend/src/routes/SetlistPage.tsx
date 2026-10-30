@@ -93,8 +93,10 @@ function formatPages(pages: number): string {
   return pages === 1 ? '1 page' : `${pages} pages`
 }
 
-function formatAbsoluteDate(iso: string): string {
-  return formatDateOnly(iso, { year: 'numeric', month: 'long', day: 'numeric' })
+// The date line under the title, with its day of the week ("Sunday,
+// October 4, 2026" — order and wording follow the viewer's locale).
+function formatHeaderDate(iso: string): string {
+  return formatDateOnly(iso, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
 }
 
 // A piece entry also gets "Add Role" (no role yet) / "Edit Role" (one set),
@@ -543,7 +545,7 @@ export function SetlistPage() {
               {setlist.gigDate && (
                 <div className="mt-1 flex items-center gap-1.5 text-sm text-ink-soft">
                   <IconCalendar size={16} />
-                  {formatAbsoluteDate(setlist.gigDate)}
+                  {formatHeaderDate(setlist.gigDate)}
                   <span aria-hidden="true">•</span>
                   {formatRelativeWeeks(setlist.gigDate, { abbreviated: false, today })}
                 </div>

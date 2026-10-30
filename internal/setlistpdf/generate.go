@@ -80,8 +80,11 @@ func setFill(pdf *fpdf.Fpdf, c rgbColor)  { pdf.SetFillColor(c.r, c.g, c.b) }
 // on the repo layer (kept feature-scoped and independently testable, same
 // posture as internal/copyright or internal/wikipedia).
 type Setlist struct {
-	Name        string
-	GigDate     string // already formatted for display (e.g. "October 4, 2026"), or ""
+	Name    string
+	GigDate string // already formatted for display (e.g. "October 4, 2026"), or ""
+	// TOCDate is the gig date as the table of contents writes it, with its
+	// day of the week ("Sunday, October 4, 2026"); GigDate when empty.
+	TOCDate     string
 	Description string // markdown source is not rendered here; plain text only
 }
 
@@ -235,7 +238,9 @@ func (in Input) formatDate(t time.Time) string {
 // duration, whichever the setlist has.
 func (in Input) tocMeta() string {
 	var parts []string
-	if in.Setlist.GigDate != "" {
+	if in.Setlist.TOCDate != "" {
+		parts = append(parts, in.Setlist.TOCDate)
+	} else if in.Setlist.GigDate != "" {
 		parts = append(parts, in.Setlist.GigDate)
 	}
 	if seconds, estimated, ok := TotalDuration(in.Entries); ok {

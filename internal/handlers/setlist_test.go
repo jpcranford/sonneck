@@ -341,12 +341,12 @@ func TestGetSetlistProgram_ListsEntriesAndSources(t *testing.T) {
 		Text     string `json:"text"`
 	}
 	decodeData(t, rec, &program)
-	for _, want := range []string{"# Evensong\n\nOctober 31, 2026\n", "*Welcome*", "\n1. **", "## Sources\n\n1. "} {
+	for _, want := range []string{"# Evensong\n\nSaturday, October 31, 2026\n", "*Welcome*", "\n1. **", "## Sources\n\n1. "} {
 		if !strings.Contains(program.Markdown, want) {
 			t.Errorf("markdown missing %q:\n%s", want, program.Markdown)
 		}
 	}
-	for _, want := range []string{"EVENSONG\nOctober 31, 2026\n", "   Welcome\n", "SOURCES\n1. " + cit.Citation + "\n"} {
+	for _, want := range []string{"EVENSONG\nSaturday, October 31, 2026\n", "   Welcome\n", "SOURCES\n1. " + cit.Citation + "\n"} {
 		if !strings.Contains(program.Text, want) {
 			t.Errorf("text missing %q:\n%s", want, program.Text)
 		}
