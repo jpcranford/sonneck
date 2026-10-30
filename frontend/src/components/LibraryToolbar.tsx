@@ -146,7 +146,7 @@ export function LibraryToolbar<Field extends string>({
         label: viewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view',
         run: () => onViewModeChange(viewMode === 'grid' ? 'list' : 'grid'),
       },
-      { key: 'f', label: 'Filters', run: onOpenFilters },
+      { key: 'g', label: 'Filters', run: onOpenFilters },
       {
         key: 'o',
         label: 'Sort by…',

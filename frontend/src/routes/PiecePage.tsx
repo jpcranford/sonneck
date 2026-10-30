@@ -462,7 +462,7 @@ export function PiecePage() {
       ? [
           { key: 'e', label: 'Edit piece', enabled: canEdit, run: () => setEditOpen(true) },
           {
-            key: 'f',
+            key: 'l',
             label: piece.favorite ? 'Remove from favorites' : 'Add to favorites',
             // Favoriting saves the whole piece, which needs edit permission.
             enabled: canEdit,

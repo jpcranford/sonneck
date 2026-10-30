@@ -1045,7 +1045,7 @@ export function PeopleLibrarySample() {
         label: viewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view',
         run: () => setViewMode((m) => (m === 'grid' ? 'list' : 'grid')),
       },
-      { key: 'f', label: 'Filters', run: () => setDrawerOpen(true) },
+      { key: 'g', label: 'Filters', run: () => setDrawerOpen(true) },
       {
         key: 'o',
         label: 'Sort by…',

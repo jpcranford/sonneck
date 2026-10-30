@@ -53,6 +53,10 @@ export interface ShortcutOptions {
   title?: string
   /** The sidebar's number keys — the help folds them into one line. */
   sidebar?: boolean
+  /** App-wide keys (full screen): listed at the foot of the help, beside
+   * the sidebar line, not under the page's title. A page's own use of the
+   * same key still wins over it. */
+  global?: boolean
   /** Keys listed for reference under their own heading. */
   reference?: { title: string; rows: ReferenceRow[] }
   /** More reference groups, before or after the page's own shortcuts (the

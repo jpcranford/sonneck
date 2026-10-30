@@ -15,7 +15,8 @@ import {
 // While the key is held, a "Keep holding" pill fills first, centered on
 // the content area (right of the sidebar). Keys the viewer can't use are
 // left off; the page's edit window keys are listed for reference; the
-// sidebar's number keys fold into one "1–N" line. Rendered once in
+// sidebar's number keys fold into one "1–N" line, with the app-wide keys
+// (full screen) beside it. Rendered once in
 // AppShell, and by the Sheet Viewer (outside AppShell) for itself; the
 // lists come from lib/shortcuts.ts's registry.
 
@@ -86,7 +87,12 @@ function titleFromDocument(): string {
 function ShortcutCard({ heldKey }: { heldKey: string }) {
   const registrations = shortcutRegistrations()
   const sidebar = registrations.filter((r) => r.options.sidebar)
-  const page = registrations.filter((r) => !r.options.sidebar)
+  const page = registrations.filter((r) => !r.options.sidebar && !r.options.global)
+  const global = registrations
+    .filter((r) => r.options.global)
+    .flatMap((r) => r.shortcuts)
+    .filter((s) => s.enabled !== false)
+    .map((s) => ({ keys: [s.key.toUpperCase()], label: s.label }))
   const title = page.findLast((r) => r.options.title)?.options.title ?? titleFromDocument()
   const rows = page
     .flatMap((r) => r.shortcuts)
@@ -122,9 +128,14 @@ function ShortcutCard({ heldKey }: { heldKey: string }) {
       {after.map((section) => (
         <Section key={section.title} section={section} first={false} />
       ))}
-      {sidebarCount > 0 && (
+      {(sidebarCount > 0 || global.length > 0) && (
         <div className="mt-1.5 border-t border-border pt-2">
-          <KeyRow keys={['1', String(sidebarCount)]} label="Sidebar, top to bottom" />
+          {sidebarCount > 0 && (
+            <KeyRow keys={['1', String(sidebarCount)]} label="Sidebar, top to bottom" />
+          )}
+          {global.map((row) => (
+            <KeyRow key={row.keys[0]} {...row} />
+          ))}
         </div>
       )}
       <p className="mt-2 flex items-center gap-1.5 text-xs text-ink-muted">

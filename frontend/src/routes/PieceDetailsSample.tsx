@@ -623,7 +623,7 @@ export function PieceDetailsSample() {
     [
       { key: 'e', label: 'Edit piece', enabled: false, run: () => {} },
       {
-        key: 'f',
+        key: 'l',
         label: favorite ? 'Remove from favorites' : 'Add to favorites',
         run: () => setFavorite((f) => !f),
       },

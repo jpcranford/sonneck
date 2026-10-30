@@ -35,7 +35,7 @@ interface PageList {
 const LIBRARY_KEYS: Row[] = [
   { keys: ['/'], label: 'Search (tap)' },
   { keys: ['V'], label: 'Switch to list view' },
-  { keys: ['F'], label: 'Filters' },
+  { keys: ['G'], label: 'Filters' },
   { keys: ['O'], label: 'Sort by…' },
   { keys: ['R'], label: 'Reverse the sort' },
 ]
@@ -49,7 +49,7 @@ const PAGES = {
     title: 'Piece Details',
     keys: [
       { keys: ['E'], label: 'Edit piece', needs: 'edit' },
-      { keys: ['F'], label: 'Add to favorites', needs: 'edit' },
+      { keys: ['L'], label: 'Add to favorites', needs: 'edit' },
       { keys: ['P'], label: 'Open the page viewer' },
       { keys: ['D'], label: 'Download PDF', needs: 'download' },
       { keys: ['S'], label: 'Add to setlist', needs: 'create' },
@@ -199,6 +199,7 @@ function ShortcutCard({
       )}
       <div className="mt-1.5 border-t border-border pt-2">
         <KeyRow keys={['1', String(sidebarKeys)]} label="Sidebar, top to bottom" />
+        <KeyRow keys={['F']} label="Full screen" />
       </div>
       <p className="mt-2 flex items-center gap-1.5 text-xs text-ink-muted">
         Let go of <Key>{heldKey}</Key> to close
