@@ -3899,7 +3899,13 @@ const pt = (n: number) => `calc(${n} * ${PAGE_WIDTH} / ${LETTER.w})`
 // The Setlist PDF is unchanged.
 const PLACEHOLDER_SCALE = 1.5
 const PLACEHOLDER_COLUMN = 400
-const ps = (n: number) => pt(n * PLACEHOLDER_SCALE)
+// The text block (and the gaps, diamond and rule in it) never shrinks so
+// far that the notes, its smallest text (12pt × 1.08 × 1.5), drop below
+// 16px — a short screen (a phone on its side) makes the page tiny. Past
+// that floor the whole block grows together; the page's margins don't.
+const PLACEHOLDER_MIN_UNIT = 16 / (12 * 1.08 * PLACEHOLDER_SCALE)
+const ps = (n: number) =>
+  `calc(${n * PLACEHOLDER_SCALE} * max(${PAGE_WIDTH} / ${LETTER.w}, ${PLACEHOLDER_MIN_UNIT}px))`
 function PlaceholderPage({
   entry,
   wideColumn,
