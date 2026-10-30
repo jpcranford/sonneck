@@ -3006,7 +3006,7 @@ export function SheetViewerMockup() {
         >
           {custom ? (
             <div style={{ filter: scoreFilter }}>
-              <PlaceholderPage entry={custom} />
+              <PlaceholderPage entry={custom} wideColumn={tier !== 'phone'} />
             </div>
           ) : (
             activeId !== null && (
@@ -3346,12 +3346,16 @@ export function SheetViewerMockup() {
 // A custom setlist entry's stand-in page in a setlist session (Phase 6): the
 // Setlist PDF's Generated Program Page (SetlistProgramPageMockup.tsx,
 // drawProgramPage), drawn the same way at a Letter page's proportions —
-// sized in real points against the page's own width (1pt = 100cqw / 612).
+// sized in real points against the page's width (1pt = PAGE_WIDTH / 612).
 const PRINT_INK = '#1c1815'
 const PRINT_FAINT = '#5c5349'
 const PRINT_FAINTER = '#b3a99e'
 const LETTER = { w: 612, h: 792 }
-const pt = (n: number) => `calc(${n} * 100cqw / ${LETTER.w})`
+// The page's width, from the viewer area around it (its size container),
+// not the page's own: the page isn't a container, so 50cqw inside it is
+// half the viewer's width.
+const PAGE_WIDTH = `min(100cqw, calc(100cqh * ${LETTER.w} / ${LETTER.h}))`
+const pt = (n: number) => `calc(${n} * ${PAGE_WIDTH} / ${LETTER.w})`
 // What an undo step did, for its pill: marks added, erased, or a text mark
 // edited or moved (one replaced by another).
 function describeChange(change: MarkChange) {
@@ -3645,11 +3649,15 @@ function MarkShape({
 // On screen it's drawn half again as large as the printed page (picked from
 // a side-by-side, https://claude.ai/artifact/WRq89mAWk6oVYk4N595MGS, option
 // B): print size read small on a stand. Margins and the optical lift stay
-// the page's; the column widens to 400pt. The Setlist PDF is unchanged.
+// the page's; the column widens to 400pt. Outside the phone layout the
+// name and notes instead wrap at half the viewer's width, centered — past
+// the page's edges where it's narrower, onto the mat, which is white too.
+// The Setlist PDF is unchanged.
 const PLACEHOLDER_SCALE = 1.5
 const PLACEHOLDER_COLUMN = 400
 const ps = (n: number) => pt(n * PLACEHOLDER_SCALE)
-function PlaceholderPage({ entry }: { entry: CustomEntry }) {
+function PlaceholderPage({ entry, wideColumn }: { entry: CustomEntry; wideColumn: boolean }) {
+  const column = wideColumn ? '50cqw' : pt(PLACEHOLDER_COLUMN)
   const smallCaps = {
     fontSize: ps(11 * 1.08),
     letterSpacing: '0.1em',
@@ -3660,9 +3668,8 @@ function PlaceholderPage({ entry }: { entry: CustomEntry }) {
     <div
       className="relative bg-white"
       style={{
-        width: `min(100cqw, calc(100cqh * ${LETTER.w} / ${LETTER.h}))`,
+        width: PAGE_WIDTH,
         aspectRatio: `${LETTER.w} / ${LETTER.h}`,
-        containerType: 'inline-size',
       }}
     >
       {/* Optically centered: 72pt margins, lifted 4% of the page height. */}
@@ -3691,7 +3698,7 @@ function PlaceholderPage({ entry }: { entry: CustomEntry }) {
               fontSize: ps(24),
               lineHeight: 1.24,
               color: PRINT_INK,
-              width: pt(PLACEHOLDER_COLUMN),
+              width: column,
             }}
           >
             {entry.name}
@@ -3714,7 +3721,7 @@ function PlaceholderPage({ entry }: { entry: CustomEntry }) {
                   letterSpacing: '0.02em',
                   lineHeight: 1.4,
                   color: PRINT_FAINT,
-                  width: pt(PLACEHOLDER_COLUMN),
+                  width: column,
                   margin: 0,
                 }}
               >
