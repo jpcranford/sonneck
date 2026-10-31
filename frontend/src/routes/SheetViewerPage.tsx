@@ -472,6 +472,8 @@ type QueueItem =
       role: string | null
       notes: string | null
       durationSeconds: number | null
+      // Counted as music: its name is set like a piece title.
+      music: boolean
     }
 // Where an item opens: its first or last page, or a given page (an undo
 // that turns back to another piece).
@@ -855,6 +857,7 @@ function SetlistSession({ setlistId }: { setlistId: number }) {
           role: e.role,
           notes: e.customNotes ?? null,
           durationSeconds: e.customDurationSeconds ?? null,
+          music: !!e.customCountsAsMusic,
         },
   )
   const index = items.length ? Math.min(current.index, items.length - 1) : -1
@@ -3950,13 +3953,16 @@ function PlaceholderPage({
               {entry.role}
             </span>
           )}
+          {/* Upright in the title weight when counted as music, as in the
+              Set PDF; italic otherwise. */}
           <span
-            className="font-display italic"
+            className={`font-display ${entry.music ? '' : 'italic'}`}
             style={{
               fontSize: ps(24),
               lineHeight: 1.24,
               color: PRINT_INK,
               width: column,
+              fontWeight: entry.music ? 500 : undefined,
             }}
           >
             {entry.name}

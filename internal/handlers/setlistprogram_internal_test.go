@@ -83,3 +83,16 @@ func TestProgramCredit(t *testing.T) {
 		}
 	}
 }
+
+// A custom entry counted as music is numbered and bold like a piece's title
+// (no credit, no source); one that isn't stays an italic paragraph.
+func TestBuildSetlistProgram_CountedCustomEntryIsBold(t *testing.T) {
+	md, _ := buildSetlistProgram("Evensong", "", []programEntry{
+		{custom: true, number: intPtr(1), role: "Offertory", title: "Congregational Response"},
+		{custom: true, title: "Benediction"},
+	})
+	want := "# Evensong\n\n1. *Offertory:* **Congregational Response**\n\n*Benediction*\n"
+	if md != want {
+		t.Errorf("markdown:\n%q\nwant:\n%q", md, want)
+	}
+}

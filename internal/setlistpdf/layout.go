@@ -65,6 +65,13 @@ type Entry struct {
 	CustomNotes           *string
 }
 
+// IsMusic reports whether the entry is set as music: a piece, or a custom
+// entry counted as music (the ones with a program number). Music is upright
+// in the title weight, other custom entries italic.
+func (e Entry) IsMusic() bool {
+	return e.IsPiece || e.DisplayNumber != nil
+}
+
 // Layout is the deterministic page plan for one export, computed once
 // before any drawing happens: every generated page's place in the packet,
 // and — critically — the page each program entry's own content begins

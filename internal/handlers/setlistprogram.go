@@ -158,8 +158,9 @@ func buildSetlistProgram(name, date string, entries []programEntry) (markdown, t
 			rowPT += e.role + ": "
 		}
 		if e.custom {
-			// A custom entry counted as music: numbered, italic, no credit.
-			rowMD += "*" + escapeMarkdown(e.title) + "*"
+			// A custom entry counted as music: numbered, bold like a piece's
+			// title, no credit.
+			rowMD += "**" + escapeMarkdown(e.title) + "**"
 			rowPT += e.title
 		} else {
 			rowMD += "**" + escapeMarkdown(e.title) + "**"

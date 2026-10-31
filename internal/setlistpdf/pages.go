@@ -208,14 +208,20 @@ func drawProgramPage(pdf *fpdf.Fpdf, size fpdf.SizeType, e Entry) {
 		blocks = append(blocks, label(*e.CustomRole))
 	}
 
-	nameLines := kernedLines(pdf, fontDisplay, "I", programNameSize, e.CustomName, 0, programColumnWidth)
+	// Upright in the title weight when counted as music, as in the table of
+	// contents; italic otherwise.
+	nameFamily, nameStyle := fontDisplay, "I"
+	if e.IsMusic() {
+		nameFamily, nameStyle = fontDisplayMedium, ""
+	}
+	nameLines := kernedLines(pdf, nameFamily, nameStyle, programNameSize, e.CustomName, 0, programColumnWidth)
 	nameLineHeight := programNameLeading * programNameSize
 	blocks = append(blocks, block{float64(len(nameLines)) * nameLineHeight, func(top float64) {
 		setColor(pdf, colorInk)
 		for i, line := range nameLines {
 			baseline := baselineIn(top+float64(i)*nameLineHeight, nameLineHeight, programNameSize, baskervilleAscent, baskervilleDescent)
-			lineW := kernedWidth(pdf, fontDisplay, "I", programNameSize, line, 0)
-			drawKerned(pdf, fontDisplay, "I", programNameSize, (w-lineW)/2, baseline, line, 0)
+			lineW := kernedWidth(pdf, nameFamily, nameStyle, programNameSize, line, 0)
+			drawKerned(pdf, nameFamily, nameStyle, programNameSize, (w-lineW)/2, baseline, line, 0)
 		}
 	}})
 

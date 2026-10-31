@@ -223,6 +223,8 @@ interface TocRow {
   num: string
   title: string
   piece: boolean
+  // A piece, or a custom entry counted as music: set like a piece title.
+  music: boolean
   // The parenthetical's parts, in order: role, the key sequence (short
   // keys, drawn with chevrons between them), duration — any may be absent.
   role?: string
@@ -248,6 +250,7 @@ function tocRows(program: TocProgram, tocPages: number): TocRow[] {
       num: counts ? String(num) : '–',
       title: e.title,
       piece: e.piece,
+      music: counts,
       role: e.role,
       keys: (e.keys ?? []).map(shortKey),
       duration: e.seconds ? formatRowDuration(e.seconds) : undefined,
@@ -263,6 +266,7 @@ interface PreviewEntry {
   role: string | null
   duration: string | null
   description: string | null
+  countsAsMusic?: boolean
 }
 
 const ENTRIES: PreviewEntry[] = [
@@ -285,11 +289,12 @@ const ENTRIES: PreviewEntry[] = [
   },
   {
     key: 'response',
-    label: 'Congregational Response',
+    label: 'Congregational Response (music)',
     name: 'Congregational Response',
     role: 'Offertory',
     duration: '1:30',
     description: null,
+    countsAsMusic: true,
   },
   {
     key: 'benediction',
@@ -301,7 +306,8 @@ const ENTRIES: PreviewEntry[] = [
   },
   {
     key: 'full',
-    label: 'All Fields',
+    label: 'All Fields (music)',
+    countsAsMusic: true,
     name: 'Special Music',
     role: 'Offertory',
     duration: '4:00',
@@ -500,7 +506,11 @@ export function SetlistProgramPageMockup() {
                 >
                   {row.num}
                 </span>
-                {row.piece ? (
+                {/* Music upright, as a printed program sets it — a custom
+                    entry counted as music (an improvisation, a response
+                    sung from memory) too; spoken and ceremonial entries
+                    in the faint italic. */}
+                {row.music ? (
                   <span
                     className="font-display"
                     style={{ fontSize: pt(12), fontWeight: 500, color: PRINT_INK }}
@@ -820,9 +830,17 @@ export function SetlistProgramPageMockup() {
                     {entry.role}
                   </span>
                 )}
+                {/* Upright in the title weight when counted as music, as in
+                    the table of contents; italic otherwise. */}
                 <span
-                  className="font-display italic"
-                  style={{ fontSize: pt(24), lineHeight: 1.24, color: PRINT_INK, width: pt(288) }}
+                  className={`font-display ${entry.countsAsMusic ? '' : 'italic'}`}
+                  style={{
+                    fontSize: pt(24),
+                    lineHeight: 1.24,
+                    color: PRINT_INK,
+                    width: pt(288),
+                    fontWeight: entry.countsAsMusic ? 500 : undefined,
+                  }}
                 >
                   {entry.name}
                 </span>

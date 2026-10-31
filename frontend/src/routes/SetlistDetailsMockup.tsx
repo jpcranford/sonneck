@@ -274,7 +274,8 @@ function buildProgramCopy(
       rowPt += `${entry.role}: `
     }
     if (entry.kind === 'custom') {
-      rowMd += `*${escapeMarkdown(entry.title)}*`
+      // Counted as music, so bold like a piece's title.
+      rowMd += `**${escapeMarkdown(entry.title)}**`
       rowPt += entry.title
     } else {
       const opus = entry.opus ? ` (${entry.opus})` : ''

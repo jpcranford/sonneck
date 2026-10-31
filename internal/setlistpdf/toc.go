@@ -257,9 +257,13 @@ func planTOC(pdf *fpdf.Fpdf, size fpdf.SizeType, s Setlist, meta string, entries
 		}
 		page := fmt.Sprintf("%d", layout.EntryStartPage[i])
 
-		titleFamily, titleStyle, titleColor, title := fontDisplayMedium, "", colorInk, e.PieceTitle
+		titleFamily, titleStyle, titleColor := fontDisplayMedium, "", colorInk
+		if !e.IsMusic() {
+			titleFamily, titleStyle, titleColor = fontDisplay, "I", colorInkSoft
+		}
+		title := e.PieceTitle
 		if !e.IsPiece {
-			titleFamily, titleStyle, titleColor, title = fontDisplay, "I", colorInkSoft, e.CustomName
+			title = e.CustomName
 		}
 		titleSpace := spaceWidth(pdf, titleFamily, titleStyle, tocRowSize)
 		var items []tocItem

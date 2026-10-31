@@ -286,6 +286,8 @@ interface CustomEntry {
   role: string
   notes?: string
   duration?: string
+  // Counted as music: its name is set like a piece title.
+  music?: boolean
 }
 const CUSTOM_ENTRIES: Record<string, CustomEntry> = {
   'c:welcome': {
@@ -294,7 +296,7 @@ const CUSTOM_ENTRIES: Record<string, CustomEntry> = {
     notes: 'Introduce the guest choir before the prelude.',
     duration: '3:00',
   },
-  'c:offering': { name: 'Offering', role: 'Offertory', duration: '4:00' },
+  'c:offering': { name: 'Offering', role: 'Offertory', duration: '4:00', music: true },
   'c:benediction': { name: 'Benediction', role: 'Sending' },
 }
 type QueueKey = number | string
@@ -3698,13 +3700,16 @@ function PlaceholderPage({ entry, wideColumn }: { entry: CustomEntry; wideColumn
           <span className="font-sans uppercase" style={smallCaps}>
             {entry.role}
           </span>
+          {/* Upright in the title weight when counted as music, as in the
+              Set PDF; italic otherwise. */}
           <span
-            className="font-display italic"
+            className={`font-display ${entry.music ? '' : 'italic'}`}
             style={{
               fontSize: ps(24),
               lineHeight: 1.24,
               color: PRINT_INK,
               width: column,
+              fontWeight: entry.music ? 500 : undefined,
             }}
           >
             {entry.name}
