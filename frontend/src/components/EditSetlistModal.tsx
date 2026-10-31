@@ -858,7 +858,9 @@ export function EditSetlistModal({
               disabled={!name.trim() || saving || loadingFresh}
               className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-white hover:bg-accent-fill/90 disabled:opacity-50"
             >
-              {saving ? 'Saving…' : 'Save'}
+              {/* "Save Setlist", not "Save": the Program tab's inline role and
+                  custom-entry cards have small Save buttons of their own. */}
+              {saving ? 'Saving…' : 'Save Setlist'}
             </button>
           </div>
         }
