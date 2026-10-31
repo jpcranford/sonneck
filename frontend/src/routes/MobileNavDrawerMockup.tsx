@@ -109,7 +109,7 @@ export function MobileNavDrawerMockup() {
             type="button"
             onClick={() => setDrawerOpen(true)}
             aria-label="Open menu"
-            className="flex size-9 shrink-0 items-center justify-center rounded-md text-sidebar-text hover:bg-sidebar-hover"
+            className="flex size-9 cursor-pointer shrink-0 items-center justify-center rounded-md text-sidebar-text hover:bg-sidebar-hover"
           >
             <IconMenu2 size={22} />
           </button>
@@ -149,7 +149,7 @@ export function MobileNavDrawerMockup() {
             type="button"
             onClick={() => setDrawerOpen(false)}
             aria-label="Close menu"
-            className="flex size-9 shrink-0 items-center justify-center rounded-md text-sidebar-text-dim hover:text-sidebar-text"
+            className="flex size-9 cursor-pointer shrink-0 items-center justify-center rounded-md text-sidebar-text-dim hover:text-sidebar-text"
           >
             <IconX size={20} />
           </button>

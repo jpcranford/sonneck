@@ -47,7 +47,7 @@ export function MobileNavTopBar({ onOpen }: { onOpen: () => void }) {
         type="button"
         onClick={onOpen}
         aria-label="Open menu"
-        className={`flex size-9 shrink-0 items-center justify-center rounded-md text-sidebar-text hover:bg-sidebar-hover ${noDragRegion}`}
+        className={`flex size-9 cursor-pointer shrink-0 items-center justify-center rounded-md text-sidebar-text hover:bg-sidebar-hover ${noDragRegion}`}
       >
         <IconMenu2 size={22} />
       </button>
@@ -134,7 +134,7 @@ export function MobileNavDrawer({ open, onClose }: { open: boolean; onClose: () 
             type="button"
             onClick={onClose}
             aria-label="Close menu"
-            className="flex size-9 shrink-0 items-center justify-center rounded-md text-sidebar-text-dim hover:text-sidebar-text"
+            className="flex size-9 cursor-pointer shrink-0 items-center justify-center rounded-md text-sidebar-text-dim hover:text-sidebar-text"
           >
             <IconX size={20} />
           </button>
