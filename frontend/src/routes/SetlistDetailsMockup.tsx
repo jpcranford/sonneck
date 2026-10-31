@@ -523,6 +523,7 @@ export function SetlistDetailsMockup() {
     [
       { key: 'e', label: 'Edit setlist', run: () => openEditSetlist('details') },
       { key: 'd', label: 'Download Set PDF', run: () => {} },
+      { key: 'a', label: 'Download Set PDF + Annotations', run: () => {} },
       { key: 'c', label: 'Copy program as plain text', run: () => copyProgramFromKey('text') },
       { key: 'm', label: 'Copy program as Markdown', run: () => copyProgramFromKey('markdown') },
     ],

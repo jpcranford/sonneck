@@ -52,6 +52,7 @@ const PAGES = {
       { keys: ['L'], label: 'Add to favorites', needs: 'edit' },
       { keys: ['P'], label: 'Open the page viewer' },
       { keys: ['D'], label: 'Download PDF', needs: 'download' },
+      { keys: ['A'], label: 'Download PDF + Annotations', needs: 'download' },
       { keys: ['S'], label: 'Add to setlist', needs: 'create' },
       { keys: ['C'], label: 'Copy citation' },
     ],
@@ -89,6 +90,7 @@ const PAGES = {
     keys: [
       { keys: ['E'], label: 'Edit setlist' },
       { keys: ['D'], label: 'Download Set PDF', needs: 'download' },
+      { keys: ['A'], label: 'Download Set PDF + Annotations', needs: 'download' },
       { keys: ['C'], label: 'Copy program as plain text' },
       { keys: ['M'], label: 'Copy program as Markdown' },
     ],

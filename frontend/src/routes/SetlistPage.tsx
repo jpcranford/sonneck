@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react'
 import { useDismiss } from '../hooks/useDismiss'
+import { startDownload } from '../lib/download'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -441,6 +442,16 @@ export function SetlistPage() {
             label: 'Download Set PDF',
             enabled: canDownload,
             run: () => downloadLinkRef.current?.click(),
+          },
+          {
+            // A for annotations, beside D (the Sheet Viewer's A is
+            // Annotate). Its menu item is in the closed dropdown, so it
+            // starts the download itself; inert, like the faded item, when
+            // there's nothing to export.
+            key: 'a',
+            label: 'Download Set PDF + Annotations',
+            enabled: canDownload && canPractice && !!annotationSummary && !annotationsBlocked,
+            run: () => startDownload(withAnnotations(getSetlistPdfUrl(setlistId))),
           },
           {
             key: 'c',

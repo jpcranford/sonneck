@@ -634,6 +634,7 @@ export function PieceDetailsSample() {
       },
       { key: 'p', label: 'Open the page viewer', run: () => setLightboxOpen(true) },
       { key: 'd', label: 'Download PDF', run: () => {} },
+      { key: 'a', label: 'Download PDF + Annotations', run: () => {} },
       { key: 's', label: 'Add to setlist', run: () => setAddToSetlistOpen(true) },
       {
         key: 'c',

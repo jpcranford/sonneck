@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from 'react'
 import { useDismiss } from '../hooks/useDismiss'
+import { startDownload } from '../lib/download'
 import { useMeasuredHeight } from '../hooks/useMeasuredHeight'
 import { PIECE_PAGE_MAX_H } from '../lib/layout'
 import { useKeepInView } from '../hooks/useKeepInView'
@@ -474,6 +475,16 @@ export function PiecePage() {
             label: 'Download PDF',
             enabled: canDownload,
             run: () => downloadLinkRef.current?.click(),
+          },
+          {
+            // A for annotations, beside D (the Sheet Viewer's A is
+            // Annotate). Its menu item is in the closed dropdown, so it
+            // starts the download itself; inert, like the faded item, when
+            // there's nothing to export.
+            key: 'a',
+            label: 'Download PDF + Annotations',
+            enabled: canDownload && canPractice && !!annotationSummary && !annotationsBlocked,
+            run: () => startDownload(withAnnotations(getPieceFileUrl(piece.id))),
           },
           {
             key: 's',
