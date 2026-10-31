@@ -650,28 +650,11 @@ export function SetlistPage() {
               )}
               {downloadOpen && (
                 <div className="absolute top-full left-0 z-10 mt-1 w-64 rounded-md border border-border bg-paper-raised py-1 text-left shadow-lg">
-                  {/* Copying needs only view access, so these stay usable
-                      without the download permission. */}
-                  {(
-                    [
-                      ['markdown', 'Copy program as Markdown'],
-                      ['text', 'Copy program as plain text'],
-                    ] as const
-                  ).map(([format, label]) => (
-                    <button
-                      key={format}
-                      type="button"
-                      disabled={!program}
-                      onClick={(event) => program && handleCopyProgram(program[format], event)}
-                      className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-paper-hover disabled:opacity-50"
-                    >
-                      <IconCopy size={16} className="shrink-0 text-ink-soft" />
-                      {label}
-                    </button>
-                  ))}
+                  {/* The Set PDF with annotations first, right after the
+                      button's own Download Set PDF; the copy items below
+                      the divider. */}
                   {canDownload && canPractice && (
                     <>
-                      <div className="my-1 h-px bg-border" />
                       {/* Your Sheet Viewer marks on each piece, as real PDF
                           annotations (needs practice, like the viewer).
                           With nothing to export it fades, with the reason
@@ -703,8 +686,28 @@ export function SetlistPage() {
                           </span>
                         </DownloadLink>
                       )}
+                      <div className="my-1 h-px bg-border" />
                     </>
                   )}
+                  {/* Copying needs only view access, so these stay usable
+                      without the download permission. */}
+                  {(
+                    [
+                      ['markdown', 'Copy program as Markdown'],
+                      ['text', 'Copy program as plain text'],
+                    ] as const
+                  ).map(([format, label]) => (
+                    <button
+                      key={format}
+                      type="button"
+                      disabled={!program}
+                      onClick={(event) => program && handleCopyProgram(program[format], event)}
+                      className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-paper-hover disabled:opacity-50"
+                    >
+                      <IconCopy size={16} className="shrink-0 text-ink-soft" />
+                      {label}
+                    </button>
+                  ))}
                 </div>
               )}
             </div>

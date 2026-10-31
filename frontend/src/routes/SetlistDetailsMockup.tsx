@@ -811,6 +811,21 @@ export function SetlistDetailsMockup() {
           </div>
           {downloadOpen && (
             <div className="absolute top-full left-0 z-10 mt-1 w-64 rounded-md border border-border bg-paper-raised py-1 text-left shadow-lg">
+              {/* The real page's item (SetlistPage.tsx): the Set PDF with
+                  your Sheet Viewer marks on each piece as real
+                  annotations, hidden colors left out. With nothing to
+                  export it fades, its reason on a tap. Inert here. */}
+              <button
+                type="button"
+                className="flex w-full cursor-pointer items-start gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-paper-hover"
+              >
+                <IconDownload size={16} className="mt-0.5 shrink-0 text-ink-soft" />
+                <span>
+                  Download Set PDF + Annotations
+                  <span className="block text-xs text-ink-muted">Hidden colors are left out</span>
+                </span>
+              </button>
+              <div className="my-1 h-px bg-border" />
               {(
                 [
                   ['markdown', 'Copy program as Markdown'],
@@ -827,21 +842,6 @@ export function SetlistDetailsMockup() {
                   {label}
                 </button>
               ))}
-              <div className="my-1 h-px bg-border" />
-              {/* The real page's item (SetlistPage.tsx): the Set PDF with
-                  your Sheet Viewer marks on each piece as real
-                  annotations, hidden colors left out. With nothing to
-                  export it fades, its reason on a tap. Inert here. */}
-              <button
-                type="button"
-                className="flex w-full cursor-pointer items-start gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-paper-hover"
-              >
-                <IconDownload size={16} className="mt-0.5 shrink-0 text-ink-soft" />
-                <span>
-                  Download Set PDF + Annotations
-                  <span className="block text-xs text-ink-muted">Hidden colors are left out</span>
-                </span>
-              </button>
             </div>
           )}
         </div>
