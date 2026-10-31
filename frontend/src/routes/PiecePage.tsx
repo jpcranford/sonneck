@@ -17,7 +17,7 @@ import {
   IconArrowsDiagonal,
   IconBook2,
   IconCalendarPlus,
-  IconCalendarFilled,
+  IconCalendarCheck,
   IconChevronDown,
   IconChevronLeft,
   IconChevronRight,
@@ -430,9 +430,9 @@ export function PiecePage() {
     enabled: trackPractice,
   })
 
-  // "Already in a setlist" indicator (decision 6) — real as of the
-  // Setlists backend build. Same bulk membership fetch every other real
-  // call site (PieceGridCard/PieceListCard/AddToSetlistPicker) shares.
+  // Whether the piece is in an upcoming set, shown on the Add to Setlist
+  // button. Same bulk membership fetch every other call site
+  // (PieceGridCard/PieceListCard/AddToSetlistPicker) shares.
   const { data: setlistMemberships = [] } = useQuery({
     queryKey: ['setlist-memberships'],
     queryFn: listPieceSetlistMemberships,
@@ -688,15 +688,25 @@ export function PiecePage() {
                 permission — setlists are the one thing it covers. */}
             {canCreate && (
               <div>
+                {/* It also shows whether the piece is in an upcoming set
+                    (one that isn't archived; undated sets count): its
+                    calendar-plus turns into a green calendar-check, as the
+                    Practice List and heart icons turn green when on
+                    (option A of a side-by-side,
+                    https://claude.ai/artifact/LHvR41GDAtnmKMsvSRXmNs). It
+                    replaced a separate calendar indicator in the title
+                    row. */}
                 <button
                   ref={addToSetlistButtonRef}
                   type="button"
                   onClick={() => setAddToSetlistOpen((o) => !o)}
-                  aria-label="Add to Setlist"
-                  title="Add to Setlist"
-                  className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent"
+                  aria-label={
+                    inUpcomingSet ? 'In an upcoming set. Add to Setlist' : 'Add to Setlist'
+                  }
+                  title={inUpcomingSet ? 'In an upcoming set • Add to Setlist' : 'Add to Setlist'}
+                  className={`flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised hover:border-accent ${inUpcomingSet ? 'text-accent' : 'text-ink'}`}
                 >
-                  <IconCalendarPlus size={18} />
+                  {inUpcomingSet ? <IconCalendarCheck size={18} /> : <IconCalendarPlus size={18} />}
                 </button>
                 {addToSetlistOpen && (
                   <AddToSetlistPicker
@@ -1107,25 +1117,6 @@ export function PiecePage() {
                       <IconPlaylistAdd size={24} />
                     )}
                   </button>
-                )}
-                {/* "Already in a setlist" indicator (decision 6) — a pure
-                      status display, not a control, same reasoning as the
-                      copyright badge: needs a real tap-accessible tooltip
-                      (InfoTooltip), not a hover-only native title, so a
-                      touch device can still read it ("In an upcoming set").
-                      Filled icon, same "solid = affirmative state"
-                      precedent as the favorite heart in this row —
-                      only rendered when the piece is in a set that isn't
-                      archived. */}
-                {inUpcomingSet && (
-                  <InfoTooltip
-                    message="In an upcoming set"
-                    ariaLabel="In an upcoming set"
-                    showPointerCursor={false}
-                    triggerClassName="text-accent"
-                  >
-                    <IconCalendarFilled size={20} />
-                  </InfoTooltip>
                 )}
                 {/* Edit moved to the top toolbar (a proper labeled
                       button, not an icon-only one) — see this file's

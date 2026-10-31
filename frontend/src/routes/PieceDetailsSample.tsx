@@ -17,7 +17,7 @@ import {
   IconArrowsDiagonal,
   IconBook2,
   IconCalendarPlus,
-  IconCalendarFilled,
+  IconCalendarCheck,
   IconChevronDown,
   IconChevronLeft,
   IconChevronRight,
@@ -583,6 +583,11 @@ export function PieceDetailsSample() {
   // demonstrates the real "In X, Y" multi-setlist joined message, not just
   // the single-name case.
   const [pieceSetlistIds, setPieceSetlistIds] = useState<string[]>(['1', '2'])
+  // In a set that isn't archived (undated sets count).
+  const inUpcomingSet = pieceSetlistIds.some((id) => {
+    const set = ALL_MOCK_SETLISTS.find((s) => s.id === id)
+    return set && !isEffectivelyArchived(set)
+  })
   const [replaceConfirming, setReplaceConfirming] = useState(false)
   // Simulated version of PiecePage.tsx's replaceMutation.isPending state —
   // there's no real upload here, but the progress-bar UI itself is part of
@@ -753,14 +758,20 @@ export function PieceDetailsSample() {
               button via the wrapping relative div rather than spanning
               the whole toolbar's width. */}
           <div className="relative">
+            {/* It also shows whether the piece is in an upcoming set (one
+                that isn't archived; undated sets count): its calendar-plus
+                turns into a green calendar-check, as the Practice List and
+                heart icons turn green when on (option A of a side-by-side,
+                https://claude.ai/artifact/LHvR41GDAtnmKMsvSRXmNs). It
+                replaced a separate calendar indicator in the title row. */}
             <button
               type="button"
               onClick={() => setAddToSetlistOpen((o) => !o)}
-              aria-label="Add to Setlist"
-              title="Add to Setlist"
-              className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent"
+              aria-label={inUpcomingSet ? 'In an upcoming set. Add to Setlist' : 'Add to Setlist'}
+              title={inUpcomingSet ? 'In an upcoming set • Add to Setlist' : 'Add to Setlist'}
+              className={`flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised hover:border-accent ${inUpcomingSet ? 'text-accent' : 'text-ink'}`}
             >
-              <IconCalendarPlus size={18} />
+              {inUpcomingSet ? <IconCalendarCheck size={18} /> : <IconCalendarPlus size={18} />}
             </button>
             {addToSetlistOpen && (
               <AddToSetlistPicker
@@ -1088,27 +1099,6 @@ export function PieceDetailsSample() {
                   <IconPlaylistAdd size={24} />
                 )}
               </button>
-              {/* "Already in a setlist" indicator (decision 6) — a pure
-                    status display, not a control, same reasoning as the
-                    copyright badge: needs a real tap-accessible tooltip
-                    (InfoTooltip), not a hover-only native title, so a touch
-                    device can still read it ("In an upcoming set").
-                    Filled icon, same "solid = affirmative state" precedent
-                    as the favorite heart in this row — only rendered
-                    when the piece is in a set that isn't archived. */}
-              {pieceSetlistIds.some((id) => {
-                const set = ALL_MOCK_SETLISTS.find((s) => s.id === id)
-                return set && !isEffectivelyArchived(set)
-              }) && (
-                <InfoTooltip
-                  message="In an upcoming set"
-                  ariaLabel="In an upcoming set"
-                  showPointerCursor={false}
-                  triggerClassName="text-accent"
-                >
-                  <IconCalendarFilled size={20} />
-                </InfoTooltip>
-              )}
               {/* Edit moved to the top toolbar (a proper labeled button,
                     not an icon-only one) — see this file's top-of-page
                     comment. Favorite stays here; it's a one-tap toggle, not
