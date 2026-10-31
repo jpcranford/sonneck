@@ -962,11 +962,15 @@ export function SetlistDetailsMockup() {
                     {number ?? '—'}
                   </span>
                   <div className="min-w-0 flex-1">
+                    {/* A custom entry counted as music (an improvisation, a
+                        hymn sung from memory) takes a piece's title look;
+                        other custom entries (announcements, the offering)
+                        stay italics, at the same size. */}
                     <span
                       className={`block break-words ${
-                        entry.kind === 'piece'
+                        entry.kind === 'piece' || entry.countsAsMusic
                           ? 'font-display text-base font-medium text-ink'
-                          : 'font-sans text-sm font-normal text-ink-soft italic'
+                          : 'font-sans text-base font-normal text-ink-soft italic'
                       }`}
                     >
                       {entry.kind === 'piece' && entry.opus
