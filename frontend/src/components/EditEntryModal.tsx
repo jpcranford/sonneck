@@ -10,6 +10,7 @@ import { Toggle } from './Toggle'
 import { showAlert } from '../lib/dialogs'
 import { isMultilineField } from '../lib/multilineField'
 import { MarkdownHint } from './MarkdownHint'
+import { assumedDurationHint } from '../lib/setlistEstimate'
 
 // Real port of EditEntryMockup.tsx's own exported EditEntryModal (Setlists
 // design pass, Phase 11 mockup approved; this is Phase 15's real build) — a
@@ -207,7 +208,7 @@ export function EditEntryModal({ open, onClose, setlistId, entry }: EditEntryMod
                 type="text"
                 value={duration}
                 onChange={(event) => setDuration(event.target.value)}
-                placeholder="3:00"
+                placeholder={assumedDurationHint(countsAsMusic)}
                 className="mt-1 w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
               />
             </div>

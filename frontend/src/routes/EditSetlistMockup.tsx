@@ -26,6 +26,7 @@ import { daysFromNow } from '../lib/setlistsMockupFixture'
 import { useMockupTitle } from '../lib/useMockupTitle'
 import { isMultilineField } from '../lib/multilineField'
 import { MarkdownHint } from '../components/MarkdownHint'
+import { assumedDurationHint } from '../lib/setlistEstimate'
 
 // Setlists design pass, Phase 10 — decision 23 skipped Phase 9's own
 // comparison Artifact outright (scope had narrowed too far to warrant one —
@@ -898,7 +899,7 @@ export function EditSetlistModal({
               type="text"
               value={customDuration}
               onChange={(event) => setCustomDuration(event.target.value)}
-              placeholder="3:00"
+              placeholder={assumedDurationHint(customCountsAsMusic)}
               className="mt-1 w-full rounded-md border border-border bg-paper-raised px-3 py-1.5 text-sm text-ink"
             />
           </div>

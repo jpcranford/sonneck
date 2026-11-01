@@ -36,3 +36,10 @@ export function estimateTotal(entries: EstimateEntry[]): DurationEstimate {
   }
   return { seconds, estimated }
 }
+
+/** The length assumed for an entry left blank, as a duration field's hint
+ * ("2:30" counted as music, "1:30" otherwise) — what the totals will use. */
+export function assumedDurationHint(isMusic: boolean): string {
+  const s = isMusic ? ASSUMED_MUSIC_SECONDS : ASSUMED_ENTRY_SECONDS
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+}

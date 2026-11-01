@@ -41,6 +41,7 @@ import { Toggle } from './Toggle'
 import { showAlert } from '../lib/dialogs'
 import { isMultilineField } from '../lib/multilineField'
 import { MarkdownHint } from './MarkdownHint'
+import { assumedDurationHint } from '../lib/setlistEstimate'
 
 // Real port of EditSetlistMockup.tsx's own exported EditSetlistModal
 // (Setlists design pass, Phase 10 mockup approved, decision 23's full
@@ -683,7 +684,7 @@ export function EditSetlistModal({
               type="text"
               value={customDuration}
               onChange={(event) => setCustomDuration(event.target.value)}
-              placeholder="3:00"
+              placeholder={assumedDurationHint(customCountsAsMusic)}
               className="mt-1 w-full rounded-md border border-border bg-paper-raised px-3 py-1.5 text-sm text-ink"
             />
           </div>
