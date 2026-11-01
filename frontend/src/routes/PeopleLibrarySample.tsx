@@ -31,7 +31,7 @@ import { MarkdownText } from '../components/MarkdownText'
 import { bioExcerpt, personRoleLabel, pluralCount } from '../lib/personCredits'
 import { EmptyState } from '../components/EmptyState'
 import { noMatchMessage } from '../lib/emptyMessages'
-import { useShortcutBlocker, useShortcuts } from '../lib/shortcuts'
+import { useShortcutBlocker, useShortcuts, FILTERS_KEY } from '../lib/shortcuts'
 
 // ---------------------------------------------------------------------
 // DESIGN MOCKUP for the People Library page — same toolbar/grid/list/
@@ -653,7 +653,7 @@ function PersonFilterDrawer({
   onChange: (next: PersonFilterState) => void
   onClose: () => void
 }) {
-  useEscapeToClose(open, onClose)
+  useEscapeToClose(open, onClose, FILTERS_KEY)
   return (
     <>
       <div
@@ -1045,7 +1045,7 @@ export function PeopleLibrarySample() {
         label: viewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view',
         run: () => setViewMode((m) => (m === 'grid' ? 'list' : 'grid')),
       },
-      { key: 'g', label: 'Filters', run: () => setDrawerOpen(true) },
+      { key: FILTERS_KEY, label: 'Filters', run: () => setDrawerOpen(true) },
       {
         key: 'o',
         label: 'Sort by…',

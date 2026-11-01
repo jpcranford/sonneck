@@ -26,7 +26,7 @@ import { PageToolbarPortal } from '../components/PageToolbarSlot'
 import { useEscapeToClose } from '../hooks/useEscapeToClose'
 import { EmptyState } from '../components/EmptyState'
 import { noMatchMessage } from '../lib/emptyMessages'
-import { useShortcutBlocker, useShortcuts } from '../lib/shortcuts'
+import { useShortcutBlocker, useShortcuts, FILTERS_KEY } from '../lib/shortcuts'
 
 // ---------------------------------------------------------------------
 // DESIGN MOCKUP — Piece Library sort/filter (Option B, "Filter Drawer",
@@ -635,7 +635,7 @@ function FilterDrawer({
   onClose: () => void
   onClear: () => void
 }) {
-  useEscapeToClose(open, onClose)
+  useEscapeToClose(open, onClose, FILTERS_KEY)
   return (
     <>
       {/* Same backdrop/slide mechanics as MobileNavDrawer (components/
@@ -1068,7 +1068,7 @@ export function PieceLibrarySample() {
         label: viewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view',
         run: () => setViewMode((m) => (m === 'grid' ? 'list' : 'grid')),
       },
-      { key: 'g', label: 'Filters', run: () => setDrawerOpen(true) },
+      { key: FILTERS_KEY, label: 'Filters', run: () => setDrawerOpen(true) },
       {
         key: 'o',
         label: 'Sort by…',

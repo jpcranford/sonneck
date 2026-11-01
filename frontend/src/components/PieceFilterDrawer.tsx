@@ -6,6 +6,7 @@ import {
   type PieceFilterState,
   type TriState,
 } from '../lib/pieceFilterState'
+import { FILTERS_KEY } from '../lib/shortcuts'
 import { useEscapeToClose } from '../hooks/useEscapeToClose'
 import { hasPermission, useAuth } from '../lib/AuthContext'
 
@@ -133,7 +134,7 @@ export function PieceFilterDrawer({
   hideHasAnnotations?: boolean
   hidePracticeStatus?: boolean
 }) {
-  useEscapeToClose(open, onClose)
+  useEscapeToClose(open, onClose, FILTERS_KEY)
   // Annotations are made in the Sheet Viewer, which needs `practice`:
   // without it there's nothing to filter by, so the row is left out.
   const me = useAuth()

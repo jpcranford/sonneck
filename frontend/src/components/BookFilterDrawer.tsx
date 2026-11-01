@@ -6,6 +6,7 @@ import {
   type BookFilterState,
   type TriState,
 } from '../lib/bookFilterState'
+import { FILTERS_KEY } from '../lib/shortcuts'
 import { useEscapeToClose } from '../hooks/useEscapeToClose'
 
 // Real build of BooksLibrarySample.tsx's own BookFilterDrawer — same
@@ -119,7 +120,7 @@ export function BookFilterDrawer({
   onClose: () => void
   onClear: () => void
 }) {
-  useEscapeToClose(open, onClose)
+  useEscapeToClose(open, onClose, FILTERS_KEY)
   return (
     <>
       <div

@@ -20,6 +20,7 @@ import { WIDE_CONTENT_MAX_W } from '../lib/layout'
 import { usePageTitle } from '../lib/usePageTitle'
 import { useViewPreference } from '../lib/useViewPreference'
 import { showAlert } from '../lib/dialogs'
+import { FILTERS_KEY } from '../lib/shortcuts'
 import { useEscapeToClose } from '../hooks/useEscapeToClose'
 import { bioExcerpt, personRoleLabel, pluralCount } from '../lib/personCredits'
 import { MarkdownText } from '../components/MarkdownText'
@@ -354,7 +355,7 @@ function PersonFilterDrawer({
   onChange: (next: PersonFilterState) => void
   onClose: () => void
 }) {
-  useEscapeToClose(open, onClose)
+  useEscapeToClose(open, onClose, FILTERS_KEY)
   const eras = ERA_ORDER.filter((era) => people.some((p) => getEra(p) === era))
   const countEra = (era: Era) => people.filter((p) => getEra(p) === era).length
   const centuries = [...new Set(people.flatMap(getCenturies))].sort((a, b) => a - b)

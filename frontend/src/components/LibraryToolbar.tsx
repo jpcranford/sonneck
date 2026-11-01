@@ -4,7 +4,7 @@ import { SortControl, type SortDirection, type SortFieldOption } from './SortCon
 import { WIDE_CONTENT_MAX_W } from '../lib/layout'
 import { PageToolbarPortal } from './PageToolbarSlot'
 import { ViewModeToggle } from './ViewModeToggle'
-import { useShortcuts } from '../lib/shortcuts'
+import { useShortcuts, FILTERS_KEY } from '../lib/shortcuts'
 
 /**
  * Shared toolbar for the Piece/Book/Person Library pages — search
@@ -146,7 +146,7 @@ export function LibraryToolbar<Field extends string>({
         label: viewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view',
         run: () => onViewModeChange(viewMode === 'grid' ? 'list' : 'grid'),
       },
-      { key: 'g', label: 'Filters', run: onOpenFilters },
+      { key: FILTERS_KEY, label: 'Filters', run: onOpenFilters },
       {
         key: 'o',
         label: 'Sort by…',

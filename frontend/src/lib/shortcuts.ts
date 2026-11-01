@@ -169,6 +169,25 @@ export function useShortcutHold(): Hold | null {
   )
 }
 
+/** The library pages' Filters key: it opens the filter drawer, and pressed
+ * again while the drawer is open, closes it (hooks/useEscapeToClose.ts). */
+export const FILTERS_KEY = 'g'
+
+/** Whether a keydown is `key` pressed the way a page shortcut is: alone (no
+ * modifier, not held down) and not while typing in a field. For a panel that
+ * pauses page shortcuts but answers its own key (the filter drawers' G). */
+export function isPlainKeyPress(event: KeyboardEvent, key: string): boolean {
+  return (
+    !event.ctrlKey &&
+    !event.metaKey &&
+    !event.altKey &&
+    !event.shiftKey &&
+    !event.repeat &&
+    !isTypingTarget(event.target) &&
+    event.key.toLowerCase() === key
+  )
+}
+
 function isTypingTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false
   if (isMultilineField(target) || target.tagName === 'SELECT') return true
