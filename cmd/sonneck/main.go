@@ -250,10 +250,10 @@ func runSubcommand(name string, conn *sql.DB, cfg *config.Config, logger *slog.L
 		s := &handlers.Server{DB: conn, Cfg: cfg, Logger: logger}
 		result, err := s.CleanupThumbnails(context.Background())
 		if err != nil {
-			logger.Error("thumbnail cleanup failed", "error", err, "removed", result.Removed, "regenerated", result.Regenerated)
+			logger.Error("thumbnail cleanup failed", "error", err, "removed", result.Removed, "regenerated", result.Regenerated, "tempsRemoved", result.TempsRemoved)
 			os.Exit(1)
 		}
-		logger.Info("thumbnail cleanup completed", "removed", result.Removed, "regenerated", result.Regenerated)
+		logger.Info("thumbnail cleanup completed", "removed", result.Removed, "regenerated", result.Regenerated, "tempsRemoved", result.TempsRemoved)
 	case "regenerate-pages":
 		// The Sheet Viewer's full-size pages (cache/pages), redrawn after a
 		// change to how they render. Safe against a live server for the

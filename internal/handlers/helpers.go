@@ -142,16 +142,132 @@ func (s *Server) cachedThumbnail(ctx context.Context, srcPath string, page, dpi 
 		return "", err
 	}
 
-	tmpPNG, err := s.renderThumbnailToTemp(ctx, cacheDir, srcPath, page, dpi, cacheKey)
+	// One render serves every waiting request, and it outlives the request
+	// that started it: a browser drops an image request it no longer needs
+	// (a card scrolled past), which used to kill pdftoppm halfway and leave
+	// its half-written file behind. Finishing it means the next view is
+	// already cached.
+	_, err, _ := s.thumbs.Do(thumbPath, func() (any, error) {
+		if _, err := os.Stat(thumbPath); err == nil {
+			return nil, nil
+		}
+		rctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), thumbnailRenderTimeout)
+		defer cancel()
+		tmpPNG, err := s.renderThumbnailToTemp(rctx, cacheDir, srcPath, page, dpi, cacheKey)
+		if err != nil {
+			return nil, err
+		}
+		if err := storage.MoveIntoPlace(tmpPNG, thumbPath); err != nil {
+			os.Remove(tmpPNG)
+			return nil, err
+		}
+		return nil, nil
+	})
 	if err != nil {
 		return "", err
 	}
-	if err := storage.MoveIntoPlace(tmpPNG, thumbPath); err != nil {
-		os.Remove(tmpPNG)
-		return "", err
-	}
-
 	return thumbPath, nil
+}
+
+// thumbnailRenderTimeout bounds one thumbnail render (well under a second
+// normally; a huge color scan takes a few).
+const thumbnailRenderTimeout = 2 * time.Minute
+
+// thumbnailTempName matches a render's temp files (renderThumbnailToTemp's
+// "<key>-<random>.png", and shrinkThumbnail's ".shrink" rewrite of it).
+var thumbnailTempName = regexp.MustCompile(`^(?:piece|book)-\d+-page-\d+-\d+\.(?:png|tmp|png\.shrink)$`)
+
+// thumbnailTempMaxAge is how old a temp file must be before it counts as
+// abandoned — far longer than any render takes, so one still running is
+// never touched.
+const thumbnailTempMaxAge = 10 * time.Minute
+
+// removeAbandonedThumbnailTemps deletes temp files a render left behind
+// (a crash, or a render killed before the fix that deletes its own),
+// returning how many it removed.
+func removeAbandonedThumbnailTemps(cacheDir string, now time.Time) (int, error) {
+	entries, err := os.ReadDir(cacheDir)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return 0, nil
+		}
+		return 0, err
+	}
+	removed := 0
+	for _, e := range entries {
+		if !thumbnailTempName.MatchString(e.Name()) {
+			continue
+		}
+		info, err := e.Info()
+		if err != nil || now.Sub(info.ModTime()) < thumbnailTempMaxAge {
+			continue
+		}
+		if err := os.Remove(filepath.Join(cacheDir, e.Name())); err == nil {
+			removed++
+		}
+	}
+	return removed, nil
+}
+
+// thumbnailFormatMarker holds the pdf.ThumbnailFormat the cached thumbnails
+// were drawn in. Like thumbnailsRedrawnMarker it sits in cache/, outside
+// the directory it describes.
+func (s *Server) thumbnailFormatMarker() string {
+	return filepath.Join(s.Cfg.DataDir, "cache", "thumbnails-format")
+}
+
+// prepareThumbnailCache runs as the server starts. Thumbnails cached in an
+// older format (pdf.ThumbnailFormat) are cleared, each redrawing the next
+// time it's shown, and the redraw stamp moves so browsers fetch the new
+// ones instead of their cached copies; abandoned temp files are removed.
+// Best effort: a failure is logged, never fatal.
+func (s *Server) prepareThumbnailCache() {
+	if s.Cfg == nil || s.Cfg.DataDir == "" {
+		return
+	}
+	cacheDir := filepath.Join(s.Cfg.DataDir, "cache", "thumbnails")
+	marker := s.thumbnailFormatMarker()
+	if current, err := os.ReadFile(marker); err != nil || strings.TrimSpace(string(current)) != pdf.ThumbnailFormat {
+		cleared := 0
+		if entries, err := os.ReadDir(cacheDir); err == nil {
+			for _, e := range entries {
+				if e.Type().IsRegular() && os.Remove(filepath.Join(cacheDir, e.Name())) == nil {
+					cleared++
+				}
+			}
+		}
+		if err := os.MkdirAll(filepath.Dir(marker), 0o755); err != nil {
+			s.logThumbnailCacheError(err)
+			return
+		}
+		if err := os.WriteFile(marker, []byte(pdf.ThumbnailFormat+"\n"), 0o644); err != nil {
+			s.logThumbnailCacheError(err)
+			return
+		}
+		if cleared > 0 {
+			if err := s.markThumbnailsRedrawn(); err != nil {
+				s.logThumbnailCacheError(err)
+			}
+			s.logInfo("thumbnails cleared for their new format; each redraws when next shown", "format", pdf.ThumbnailFormat, "cleared", cleared)
+		}
+	}
+	if removed, err := removeAbandonedThumbnailTemps(cacheDir, time.Now()); err != nil {
+		s.logThumbnailCacheError(err)
+	} else if removed > 0 {
+		s.logInfo("abandoned thumbnail temp files removed", "removed", removed)
+	}
+}
+
+func (s *Server) logInfo(msg string, args ...any) {
+	if s.Logger != nil {
+		s.Logger.Info(msg, args...)
+	}
+}
+
+func (s *Server) logThumbnailCacheError(err error) {
+	if s.Logger != nil {
+		s.Logger.Error("thumbnail cache preparation failed", "error", err)
+	}
 }
 
 // renderThumbnailToTemp renders page of srcPath to a private, uniquely
@@ -415,6 +531,9 @@ var (
 type CleanupThumbnailsResult struct {
 	Removed     int
 	Regenerated int
+	// TempsRemoved counts abandoned render temp files deleted (older than
+	// thumbnailTempMaxAge, so a render in progress is never touched).
+	TempsRemoved int
 }
 
 // CleanupThumbnails is a single targeted pass over the whole
@@ -441,10 +560,11 @@ type CleanupThumbnailsResult struct {
 // starting from the database and asking "does this row's thumbnail exist"
 // — the whole point is to find cache entries the database side has no
 // record of needing at all, which a query starting from Piece/Book rows
-// could never surface. A filename that doesn't match either pattern (e.g.
-// a stray temp file from an interrupted render) is left alone rather than
-// guessed at — conservative by design for a tool whose whole job is
-// deleting files unattended.
+// could never surface. A render's abandoned temp file (thumbnailTempName,
+// older than thumbnailTempMaxAge) is removed too; any other filename that
+// matches neither pattern is left alone rather than guessed at —
+// conservative by design for a tool whose whole job is deleting files
+// unattended.
 func (s *Server) CleanupThumbnails(ctx context.Context) (CleanupThumbnailsResult, error) {
 	cacheDir := filepath.Join(s.Cfg.DataDir, "cache", "thumbnails")
 	entries, err := os.ReadDir(cacheDir)
@@ -456,6 +576,11 @@ func (s *Server) CleanupThumbnails(ctx context.Context) (CleanupThumbnailsResult
 	}
 
 	var result CleanupThumbnailsResult
+	temps, err := removeAbandonedThumbnailTemps(cacheDir, time.Now())
+	if err != nil {
+		return result, err
+	}
+	result.TempsRemoved = temps
 	// Memoized per run: many page entries share the same owning book/piece,
 	// and this dedupes both the DB lookups and (for books) the
 	// PieceIDsForBook query rather than repeating them once per page.

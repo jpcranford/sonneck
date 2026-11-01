@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"strings"
 
+	"golang.org/x/sync/singleflight"
+
 	"github.com/jpcranford/sonneck/internal/api"
 	"github.com/jpcranford/sonneck/internal/backup"
 	"github.com/jpcranford/sonneck/internal/config"
@@ -51,6 +53,9 @@ type Server struct {
 
 	// pages is the Sheet Viewer's page-render bookkeeping (pages.go).
 	pages pageRenderer
+	// thumbs joins concurrent requests for the same not-yet-rendered
+	// thumbnail into one render (cachedThumbnail).
+	thumbs singleflight.Group
 
 	// OIDCAuth is nil unless the resolved auth method is genuinely "oidc" —
 	// mirrors BackupScheduler's own "nil in
@@ -86,6 +91,7 @@ func New(db *sql.DB, cfg *config.Config, logger *slog.Logger, frontend fs.FS, sc
 		OIDCAuth:        oidcAuth,
 		Native:          native,
 	}
+	s.prepareThumbnailCache()
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", s.handleHealthz)

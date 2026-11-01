@@ -207,14 +207,18 @@ func TestCleanupThumbnails_RemovesPieceThumbnailBeyondPageCount(t *testing.T) {
 	if validRec.Code != http.StatusOK {
 		t.Fatalf("GET page 1 thumbnail: status %d", validRec.Code)
 	}
-	writeStaleCacheFile(t, dataDir, "piece-"+itoa(piece.ID)+"-page-5")
+	// One page past the piece's last: createTestPiece's fixture has as many
+	// pages as pieces created so far in the run (so each file is unique), so
+	// a fixed page number was within range once enough tests had run first.
+	beyond := "piece-" + itoa(piece.ID) + "-page-" + itoa(int64(piece.PageCount+1))
+	writeStaleCacheFile(t, dataDir, beyond)
 
 	result, err := s.CleanupThumbnails(context.Background())
 	if err != nil {
 		t.Fatalf("CleanupThumbnails: %v", err)
 	}
 	assertCacheFileExists(t, dataDir, "piece-"+itoa(piece.ID)+"-page-1", true)
-	assertCacheFileExists(t, dataDir, "piece-"+itoa(piece.ID)+"-page-5", false)
+	assertCacheFileExists(t, dataDir, beyond, false)
 	if result.Removed != 1 {
 		t.Errorf("Removed = %d, want 1", result.Removed)
 	}
@@ -307,7 +311,10 @@ func TestRegeneratePieceThumbnails_OnlyTouchesGivenPieces(t *testing.T) {
 			t.Fatalf("corrupting %s: %v", key, err)
 		}
 	}
-	writeStaleCacheFile(t, dataDir, "piece-"+itoa(target.ID)+"-page-5")
+	// One page past the target's last (see the test above for why it isn't
+	// a fixed number).
+	beyond := "piece-" + itoa(target.ID) + "-page-" + itoa(int64(target.PageCount+1))
+	writeStaleCacheFile(t, dataDir, beyond)
 
 	count, err := s.RegeneratePieceThumbnails(context.Background(), []int64{target.ID})
 	if err != nil {
@@ -320,7 +327,7 @@ func TestRegeneratePieceThumbnails_OnlyTouchesGivenPieces(t *testing.T) {
 	if got, _ := os.ReadFile(thumbnailCachePath(dataDir, targetKey)); string(got) == string(corrupt) {
 		t.Error("target piece's page 1 is still the corrupt file; want it re-rendered")
 	}
-	assertCacheFileExists(t, dataDir, "piece-"+itoa(target.ID)+"-page-5", false)
+	assertCacheFileExists(t, dataDir, beyond, false)
 	if got, _ := os.ReadFile(thumbnailCachePath(dataDir, otherKey)); string(got) != string(corrupt) {
 		t.Error("other piece's cached page changed; want it left alone")
 	}

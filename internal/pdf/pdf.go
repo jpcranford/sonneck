@@ -137,6 +137,9 @@ func Merge(ctx context.Context, binDir string, srcPaths []string, dst string) er
 // via pdftoppm, for the import wizard's split step and the basic piece
 // preview (design doc §5, §7).
 //
+// Stored small (shrinkThumbnail): 16 greys unless the page has real color,
+// and an oversized page scaled to a 1200px long side.
+//
 // -cropbox renders the page's CropBox rather than pdftoppm's default
 // MediaBox. A normal PDF viewer displays CropBox; for a scanned PDF whose
 // MediaBox includes extra untrimmed scanner margin beyond CropBox (a real,
@@ -151,8 +154,16 @@ func RenderThumbnail(ctx context.Context, binDir, src string, page, dpi int, out
 	cmd := exec.CommandContext(ctx, toolPath(binDir, "pdftoppm"), "-png", "-cropbox",
 		"-f", strconv.Itoa(page), "-l", strconv.Itoa(page),
 		"-r", strconv.Itoa(dpi), "-singlefile", src, outPrefix)
+	path := outPrefix + ".png"
 	if out, err := cmd.CombinedOutput(); err != nil {
+		// A render killed partway (its context ended) leaves a half-written
+		// file behind; nothing else would ever remove it.
+		os.Remove(path)
 		return "", fmt.Errorf("pdftoppm -f %d %s: %w: %s", page, src, err, out)
 	}
-	return outPrefix + ".png", nil
+	if err := shrinkThumbnail(path); err != nil {
+		os.Remove(path)
+		return "", fmt.Errorf("thumbnail %s page %d: %w", src, page, err)
+	}
+	return path, nil
 }
