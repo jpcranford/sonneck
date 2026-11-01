@@ -32,6 +32,7 @@ import (
 	"github.com/jpcranford/sonneck/internal/config"
 	"github.com/jpcranford/sonneck/internal/db"
 	"github.com/jpcranford/sonneck/internal/handlers"
+	"github.com/jpcranford/sonneck/internal/librarycheck"
 	"github.com/jpcranford/sonneck/internal/nativeconfig"
 	"github.com/jpcranford/sonneck/internal/netinfo"
 	"github.com/jpcranford/sonneck/internal/oidcauth"
@@ -354,6 +355,10 @@ func main() {
 		SaveFile:              saveFile,
 		OpenPath:              browser.OpenFile,
 	})
+
+	// Same as cmd/sonneck: warn, in the background, about library files the
+	// database points to that are gone.
+	go librarycheck.Report(context.Background(), conn, cfg.DataDir, logger)
 
 	ln, err := netinfo.ListenWithFallback(buildTarget, cfg.Port, settings.ShareOnNetwork)
 	if err != nil {

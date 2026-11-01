@@ -16,6 +16,7 @@ import (
 	"github.com/jpcranford/sonneck/internal/db"
 	"github.com/jpcranford/sonneck/internal/export"
 	"github.com/jpcranford/sonneck/internal/handlers"
+	"github.com/jpcranford/sonneck/internal/librarycheck"
 	"github.com/jpcranford/sonneck/internal/netinfo"
 	"github.com/jpcranford/sonneck/internal/oidcauth"
 	"github.com/jpcranford/sonneck/internal/peoplemigrate"
@@ -175,6 +176,12 @@ func main() {
 	}
 
 	handler := handlers.New(conn, cfg, logger, frontend, scheduler, buildSHA, buildDate, buildVersion, buildTarget, oidcAuth, nil)
+
+	// Warn about any library file the database points to that's gone (lost
+	// outside the app): otherwise the only sign is errors when someone opens
+	// that item. In the background, so a big library on a slow share
+	// doesn't hold up startup.
+	go librarycheck.Report(context.Background(), conn, cfg.DataDir, logger)
 
 	// shareOnNetwork is always false here — this binary's buildTarget stays
 	// "docker" (see the var block above), and ListenAddress/ListenWithFallback
@@ -357,6 +364,14 @@ func runSubcommand(name string, conn *sql.DB, cfg *config.Config, logger *slog.L
 			os.Exit(1)
 		}
 		logger.Info("CSV export completed", "path", path)
+	case "check-library":
+		// Read-only: lists every piece/book PDF, book cover and portrait the
+		// database points to that isn't on disk. Exits 1 if any are missing,
+		// so it can gate a script.
+		if missing := librarycheck.Report(context.Background(), conn, cfg.DataDir, logger); missing != 0 {
+			os.Exit(1) // some missing (each logged above), or the check failed
+		}
+		logger.Info("library check completed: every file is present")
 	default:
 		logger.Error("unknown subcommand", "subcommand", name)
 		os.Exit(1)
