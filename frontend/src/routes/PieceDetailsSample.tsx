@@ -19,6 +19,7 @@ import {
   IconCalendarPlus,
   IconCalendarCheck,
   IconChevronDown,
+  IconCirclePlus,
   IconChevronLeft,
   IconChevronRight,
   IconCopy,
@@ -42,7 +43,7 @@ import type { CopyrightStatus, PracticeStatus } from '../api/types'
 import { copyToClipboard } from '../lib/clipboard'
 import { formatDateOnly } from '../lib/dateOnly'
 import { COPYRIGHT_BADGE_META, copyrightTooltipText } from '../lib/copyrightBadge'
-import { AddToSetlistPicker } from './AddToSetlistMockup'
+import { AddToSetlistPicker, PracticeStatusStrip } from './AddToSetlistMockup'
 import { InfoTooltip } from '../components/InfoTooltip'
 import { ALL_MOCK_SETLISTS, isEffectivelyArchived } from '../lib/setlistsMockupFixture'
 import { MarkdownText } from '../components/MarkdownText'
@@ -545,6 +546,13 @@ export function PieceDetailsSample() {
   useMockupTitle('Piece Details')
 
   const piece = samplePiece
+  // The practice status, set from the header's pill (its strip popover).
+  const [practiceStatus, setPracticeStatus] = useState<string | null>(piece.practiceStatus)
+  const [statusOpen, setStatusOpen] = useState(false)
+  const statusRef = useRef<HTMLDivElement>(null)
+  const statusMenuRef = useRef<HTMLDivElement>(null)
+  useDismiss(statusOpen, statusRef, () => setStatusOpen(false))
+  useKeepInView(statusMenuRef, statusOpen)
   const book = sampleBook
 
   const [page, setPage] = useState(1)
@@ -1141,12 +1149,57 @@ export function PieceDetailsSample() {
           </p>
 
           <div className="mt-1 flex flex-wrap items-center gap-2">
-            {piece.practiceStatus && (
-              <span className="flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent">
-                <PracticeStatusIcon status={piece.practiceStatus} size={13} />
-                {piece.practiceStatus}
-              </span>
-            )}
+            {/* The practice status pill opens the piece menu's status strip
+                (option B of a side-by-side,
+                https://claude.ai/artifact/3JqvB76wr5EoxjBevAcPiT): one tap
+                picks a status, tapping the current one clears it (1A of
+                https://claude.ai/artifact/7vuZLEwTwgDzPYrSWwTozN, the strip
+                saying so while you point at it). With no status, a dashed
+                "Set practice status" pill stands in (2A). */}
+            <div ref={statusRef} className="relative">
+              <button
+                type="button"
+                onClick={() => setStatusOpen((o) => !o)}
+                aria-expanded={statusOpen}
+                aria-haspopup="dialog"
+                className={
+                  practiceStatus
+                    ? 'flex cursor-pointer items-center gap-1.5 rounded-full border border-accent/30 bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent transition-colors hover:bg-accent/20'
+                    : 'flex cursor-pointer items-center gap-1.5 rounded-full border border-dashed border-border px-2.5 py-1 text-xs font-medium text-ink-muted transition-colors hover:border-accent hover:text-ink'
+                }
+              >
+                {practiceStatus ? (
+                  <PracticeStatusIcon status={practiceStatus} size={13} />
+                ) : (
+                  <IconCirclePlus size={13} />
+                )}
+                {practiceStatus ?? 'Set practice status'}
+                <IconChevronDown size={12} />
+              </button>
+              {statusOpen && (
+                <div
+                  ref={statusMenuRef}
+                  className="absolute top-full left-0 z-10 mt-1 w-max rounded-md border border-border bg-paper-raised py-1 text-left shadow-lg"
+                >
+                  <PracticeStatusStrip
+                    status={practiceStatus}
+                    onChange={setPracticeStatus}
+                    close={() => setStatusOpen(false)}
+                  />
+                  {/* The pill's old job: the Library filtered to this
+                      status. Inert here. */}
+                  {practiceStatus && (
+                    <button
+                      type="button"
+                      onClick={() => setStatusOpen(false)}
+                      className="block w-full cursor-pointer px-3 pb-1.5 text-left text-xs text-ink-soft underline-offset-2 hover:text-ink hover:underline"
+                    >
+                      Show all {practiceStatus} pieces
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
             {piece.userTags.map((tag) => (
               <span
                 key={tag.id}

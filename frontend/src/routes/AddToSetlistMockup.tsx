@@ -99,9 +99,12 @@ export function PracticeStatusStrip({
   const [hovered, setHovered] = useState<string | null>(null)
   return (
     <div className="px-3 pt-1.5 pb-2" onMouseLeave={() => setHovered(null)}>
-      <div className="mb-1.5 flex justify-between gap-3 text-xs text-ink-soft">
+      <div className="mb-1.5 flex justify-between gap-3 text-xs whitespace-nowrap text-ink-soft">
         <span>Practice status</span>
-        <span className="font-medium text-ink">{hovered ?? status ?? 'None'}</span>
+        {/* Pointing at the current status says how to clear it. */}
+        <span className="font-medium text-ink">
+          {hovered && hovered === status ? 'Click to clear' : (hovered ?? status ?? 'None')}
+        </span>
       </div>
       <div className="flex gap-1" role="radiogroup" aria-label="Practice status">
         {PRACTICE_STATUSES.map((name) => {

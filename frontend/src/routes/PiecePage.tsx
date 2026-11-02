@@ -20,6 +20,7 @@ import {
   IconCalendarPlus,
   IconCalendarCheck,
   IconChevronDown,
+  IconCirclePlus,
   IconChevronLeft,
   IconChevronRight,
   IconCopy,
@@ -58,9 +59,11 @@ import {
   getPieceThumbnailUrl,
   getRandomPiece,
   replacePieceFile,
+  setPiecePracticeStatus,
   setPieceThumbnailPage,
   updatePiece,
 } from '../api/pieces'
+import { listPracticeStatuses } from '../api/lookups'
 import { listPieceSetlistMemberships } from '../api/setlists'
 import {
   addToPracticeList,
@@ -86,6 +89,7 @@ import {
 import { MarkdownText } from '../components/MarkdownText'
 import { PageLightbox } from '../components/PageLightbox'
 import { PracticeStatusIcon } from '../components/PracticeStatusIcon'
+import { PracticeStatusStrip } from '../components/PracticeStatusStrip'
 import { confirmAction, showAlert } from '../lib/dialogs'
 import { EDIT_PIECE_KEYS, useShortcuts } from '../lib/shortcuts'
 import { usePageVersion, useThumbnailVersion } from '../hooks/useThumbnailVersion'
@@ -356,6 +360,30 @@ export function PiecePage() {
   const canUpload = hasPermission(me, 'upload')
   const canCreate = hasPermission(me, 'create')
   const canPractice = hasPermission(me, 'practice')
+  // The practice status pill's strip (in the header): the viewer's own
+  // statuses (one cache entry with every piece menu), saved through the
+  // practice-status endpoint, never the full piece edit.
+  const [statusOpen, setStatusOpen] = useState(false)
+  const statusRef = useRef<HTMLDivElement>(null)
+  const statusMenuRef = useRef<HTMLDivElement>(null)
+  useDismiss(statusOpen, statusRef, () => setStatusOpen(false))
+  useKeepInView(statusMenuRef, statusOpen)
+  const { data: practiceStatuses = [] } = useQuery({
+    queryKey: ['practice-statuses'],
+    queryFn: listPracticeStatuses,
+    enabled: canPractice,
+  })
+  const practiceStatusMutation = useMutation({
+    mutationFn: (status: string | null) => setPiecePracticeStatus(pieceId, status),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(['piece', pieceId], updated)
+      queryClient.invalidateQueries({ queryKey: ['pieces'] })
+      queryClient.invalidateQueries({ queryKey: ['pieceFacets'] })
+    },
+    onError: (error) => {
+      showAlert(error instanceof ApiError ? error.message : 'Could not set the practice status.')
+    },
+  })
 
   const [lightboxOpen, setLightboxOpen] = useState(false)
   // The two menus under the page (Download's caret and ⋯):
@@ -1228,14 +1256,72 @@ export function PiecePage() {
                   middle-click and right-click "open in new tab" work for
                   free. */}
             <div className="mt-1 flex flex-wrap items-center gap-2">
-              {piece.practiceStatus && (
-                <Link
-                  to={`/?practiceStatus=${encodeURIComponent(piece.practiceStatus)}`}
-                  className="flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent transition-colors hover:bg-accent/20"
-                >
-                  <PracticeStatusIcon status={piece.practiceStatus} size={13} />
-                  {piece.practiceStatus}
-                </Link>
+              {/* The practice status pill opens the piece menu's status
+                  strip (option B of a side-by-side,
+                  https://claude.ai/artifact/3JqvB76wr5EoxjBevAcPiT): one tap
+                  picks a status, tapping the current one clears it. With no
+                  status, a dashed "Set practice status" pill stands in (2A
+                  of https://claude.ai/artifact/7vuZLEwTwgDzPYrSWwTozN), and
+                  under the strip a "Show all … pieces" link keeps the
+                  pill's old job, the Library filtered to that status.
+                  Without `practice` it stays that plain link (or nothing,
+                  with no status). */}
+              {canPractice ? (
+                <div ref={statusRef} className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setStatusOpen((o) => !o)}
+                    aria-expanded={statusOpen}
+                    aria-haspopup="dialog"
+                    className={
+                      piece.practiceStatus
+                        ? 'flex cursor-pointer items-center gap-1.5 rounded-full border border-accent/30 bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent transition-colors hover:bg-accent/20'
+                        : 'flex cursor-pointer items-center gap-1.5 rounded-full border border-dashed border-border px-2.5 py-1 text-xs font-medium text-ink-muted transition-colors hover:border-accent hover:text-ink'
+                    }
+                  >
+                    {piece.practiceStatus ? (
+                      <PracticeStatusIcon status={piece.practiceStatus} size={13} />
+                    ) : (
+                      <IconCirclePlus size={13} />
+                    )}
+                    {piece.practiceStatus ?? 'Set practice status'}
+                    <IconChevronDown size={12} />
+                  </button>
+                  {statusOpen && (
+                    <div
+                      ref={statusMenuRef}
+                      className="absolute top-full left-0 z-10 mt-1 w-max rounded-md border border-border bg-paper-raised py-1 text-left shadow-lg"
+                    >
+                      <PracticeStatusStrip
+                        statuses={practiceStatuses}
+                        current={piece.practiceStatus}
+                        onChange={(status) => {
+                          practiceStatusMutation.mutate(status)
+                          setStatusOpen(false)
+                        }}
+                      />
+                      {piece.practiceStatus && (
+                        <Link
+                          to={`/?practiceStatus=${encodeURIComponent(piece.practiceStatus)}`}
+                          onClick={() => setStatusOpen(false)}
+                          className="block px-3 pb-1.5 text-xs text-ink-soft underline-offset-2 hover:text-ink hover:underline"
+                        >
+                          Show all {piece.practiceStatus} pieces
+                        </Link>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                piece.practiceStatus && (
+                  <Link
+                    to={`/?practiceStatus=${encodeURIComponent(piece.practiceStatus)}`}
+                    className="flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent transition-colors hover:bg-accent/20"
+                  >
+                    <PracticeStatusIcon status={piece.practiceStatus} size={13} />
+                    {piece.practiceStatus}
+                  </Link>
+                )
               )}
               {piece.userTags.map((tag) => (
                 <Link
