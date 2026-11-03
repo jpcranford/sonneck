@@ -13,20 +13,26 @@ import { useShortcuts, FILTERS_KEY } from '../lib/shortcuts'
  * left-aligned. Several things here look like they could be simplified
  * but aren't:
  *
- * - From `sm:` the grid is `auto 1fr auto`: the toggle and the
- *   Filters+Sort cluster each take exactly their own width, and Search's
- *   middle track takes the rest. The right track sizes to whatever is
- *   there now — the current sort label, Filters' label, its active-count
- *   badge — so there's never a gap in front of Filters or an ellipsis in
- *   the sort label, whichever field is picked. (It used to be a hand-
- *   measured px width per library, sized for one label: a shorter one,
- *   like "Title", left a gap beside Search, and the count badge cut the
- *   longest one off.) Accepted cost: while Search is below its cap,
- *   picking a sort field with a different label length nudges Search's
- *   width. Never make that side `minmax(N,1fr)` — a second flexible
- *   track claims leftover space and drifts Filters away from Search as
- *   the window widens (a real, confirmed bug); `auto` takes only what its
- *   content needs.
+ * - From `sm:` Search is centered on the toolbar itself, so on a wide
+ *   window it never moves — not when the sort label changes length, not
+ *   when the filter badge appears (option 2 of a comparison; the mockup
+ *   tried it first). The grid is `minmax(max-content,1fr)
+ *   minmax(0,max-content) minmax(max-content,1fr)`: the middle track (the
+ *   Search + New pair) grows first, up to what the pair wants (Search's
+ *   36rem preferred width, `flex-[0_1_36rem]`, plus New), then the two
+ *   side tracks split what's left equally, each never narrower than its
+ *   own content (the toggle; Filters + Sort, which therefore always fits
+ *   with no ellipsis). Any spare room from a short sort label ("Title")
+ *   lands beside Filters only. When the window is too narrow for that,
+ *   the sides keep their content widths and Search shrinks to fit
+ *   between them, 12px from each (off-center, as before).
+ *   History: the right side was once a hand-measured px width per
+ *   library (a short label left a gap beside Search, the badge cut the
+ *   long one off), then plain `auto` (Search centered between its
+ *   neighbors, so it shifted with the sort label). Never make it a plain
+ *   `1fr` track competing with the middle one — a second flexible track
+ *   claiming leftover space drifted Filters away from Search as the
+ *   window widened (a real, confirmed bug).
  * - `SortControl.tsx`'s own field-picker dropdown is anchored `right-0`
  *   (not the default left-aligned), since Sort always sits at this
  *   toolbar's own right edge — a real bug found alongside the one above:
@@ -148,7 +154,7 @@ export function LibraryToolbar<Field extends string>({
     <PageToolbarPortal>
       <div className="border-b border-border bg-paper">
         <div className={`${WIDE_CONTENT_MAX_W} flex flex-col gap-3 p-4`}>
-          <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 sm:grid-cols-[auto_1fr_auto]">
+          <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 sm:grid-cols-[minmax(max-content,1fr)_minmax(0,max-content)_minmax(max-content,1fr)]">
             <ViewModeToggle
               value={viewMode}
               onChange={onViewModeChange}
@@ -156,7 +162,7 @@ export function LibraryToolbar<Field extends string>({
             />
 
             <div className="col-span-2 row-start-2 flex w-full min-w-0 items-center justify-center gap-3 sm:col-span-1 sm:row-start-auto">
-              <div className="relative min-w-0 max-w-xl flex-1">
+              <div className="relative min-w-0 max-w-xl flex-1 sm:w-[36rem] sm:flex-[0_1_36rem]">
                 <IconSearch
                   size={16}
                   className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-soft"

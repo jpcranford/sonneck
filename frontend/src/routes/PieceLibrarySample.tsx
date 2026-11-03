@@ -1272,7 +1272,14 @@ export function PieceLibrarySample() {
             source order, so `sm:` silently won past both thresholds).
             Two real named breakpoints don't have that problem. */}
           <div className={`${WIDE_CONTENT_MAX_W} flex flex-col gap-3 p-4`}>
-            <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 sm:grid-cols-[auto_1fr_auto]">
+            {/* Option 2 (under review): Search centered on the toolbar itself.
+                The middle track holds Search up to its 36rem cap and is
+                filled first; the side tracks split what's left equally,
+                each at least its own content (toggle; Filters + Sort). So
+                on a wide window Search sits at the toolbar's true center
+                whatever the sort label or filter badge, and a short label
+                like "Title" leaves its spare room beside Filters only. */}
+            <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 sm:grid-cols-[minmax(max-content,1fr)_minmax(0,36rem)_minmax(max-content,1fr)]">
               {/* Grid/list switch, design D — copy of components/ViewModeToggle.tsx. */}
               <div className="flex h-[38px] shrink-0 items-center gap-0.5 rounded-md border border-border bg-paper-raised p-[3px] col-start-1 row-start-1 justify-self-start sm:col-start-auto sm:row-start-auto">
                 <button
