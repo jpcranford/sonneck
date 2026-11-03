@@ -61,6 +61,7 @@ import { EmptyState } from '../components/EmptyState'
 import { EDIT_WINDOW_KEYS, useShortcuts } from '../lib/shortcuts'
 import { estimateTotal } from '../lib/setlistEstimate'
 import { useToday } from '../hooks/useToday'
+import { confirmRemoveCustomEntry } from '../lib/confirmRemoveEntry'
 
 // The real Setlist Details page (§13) — built against SetlistDetailsMockup.tsx
 // (the approved Phase 6 mockup, incl. its own Round 1-10 polish and the
@@ -130,7 +131,15 @@ function getEntryMenuItems(
   }
   return [
     { label: 'Edit Entry', onSelect: () => onEditEntry(entry) },
-    { label: 'Remove from Setlist', destructive: true, onSelect: () => onRemove(entry.id) },
+    {
+      label: 'Remove from Setlist',
+      destructive: true,
+      // A custom entry's typed-in text can't be got back: ask first.
+      onSelect: () =>
+        void confirmRemoveCustomEntry(entry.customName ?? '').then(
+          (ok) => ok && onRemove(entry.id),
+        ),
+    },
   ]
 }
 

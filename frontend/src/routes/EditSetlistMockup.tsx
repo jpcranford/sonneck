@@ -27,6 +27,7 @@ import { useMockupTitle } from '../lib/useMockupTitle'
 import { isMultilineField } from '../lib/multilineField'
 import { MarkdownHint } from '../components/MarkdownHint'
 import { assumedDurationHint } from '../lib/setlistEstimate'
+import { confirmRemoveCustomEntry } from '../lib/confirmRemoveEntry'
 
 // Setlists design pass, Phase 10 — decision 23 skipped Phase 9's own
 // comparison Artifact outright (scope had narrowed too far to warrant one —
@@ -1269,7 +1270,15 @@ export function EditSetlistModal({
                     )}
                     <button
                       type="button"
-                      onClick={() => removeEntry(entry.id)}
+                      onClick={() =>
+                        // A custom entry's typed-in text can't be got back:
+                        // ask first. A piece is just removed.
+                        entry.kind === 'custom'
+                          ? void confirmRemoveCustomEntry(entry.title).then(
+                              (ok) => ok && removeEntry(entry.id),
+                            )
+                          : removeEntry(entry.id)
+                      }
                       aria-label={`Remove ${entry.title}`}
                       className="no-drag mt-0.5 shrink-0 cursor-pointer text-ink-soft hover:text-ink"
                     >

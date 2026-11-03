@@ -42,6 +42,7 @@ import { showAlert } from '../lib/dialogs'
 import { isMultilineField } from '../lib/multilineField'
 import { MarkdownHint } from './MarkdownHint'
 import { assumedDurationHint } from '../lib/setlistEstimate'
+import { confirmRemoveCustomEntry } from '../lib/confirmRemoveEntry'
 
 // Real port of EditSetlistMockup.tsx's own exported EditSetlistModal
 // (Setlists design pass, Phase 10 mockup approved, decision 23's full
@@ -1029,7 +1030,15 @@ export function EditSetlistModal({
                         )}
                         <button
                           type="button"
-                          onClick={() => removeEntry(entry.id)}
+                          onClick={() =>
+                            // A custom entry's typed-in text can't be got
+                            // back: ask first. A piece is just removed.
+                            entry.kind === 'custom'
+                              ? void confirmRemoveCustomEntry(title).then(
+                                  (ok) => ok && removeEntry(entry.id),
+                                )
+                              : removeEntry(entry.id)
+                          }
                           aria-label={`Remove ${title}`}
                           className="no-drag mt-0.5 shrink-0 cursor-pointer text-ink-soft hover:text-ink"
                         >
