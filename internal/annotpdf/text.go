@@ -12,12 +12,13 @@ import (
 
 // A text mark's layout, matching how the Sheet Viewer draws one
 // (components/SheetViewerAnnotations.tsx's TextMarks, lib/sheetViewerTools.ts's
-// textBoxStyle): Quintessential at the mark's size (a percent of the page's
+// textBoxStyle): Lexend Medium at the mark's size (a percent of the page's
 // width) with no letter-spacing, lines 1.25 of the size apart,
 // the box's top one size above y, wrapped 1% of the page short of its right
 // edge, a word too long for a line broken anywhere. Markdown and :shortcodes:
-// as MarkdownText reads them; Quintessential has one weight and no italic,
-// so — like the browser — bold is drawn heavier and italic slanted.
+// as MarkdownText reads them: bold in Lexend Bold, and — Lexend having no
+// italic — italic slanted, like the browser. A music symbol in bold is drawn
+// heavier, as the browser does with Bravura Text's one weight.
 
 const (
 	lineHeight = 1.25
@@ -77,7 +78,16 @@ func layoutText(text string, italic bool, maxWidth float64) textLayout {
 			line, lineText, x = nil, nil, 0
 			y += lineHeight
 		}
-		space := handFont.widths[handFont.glyph(&buf, ' ')] / 1000
+		// A space between two bold words is inside the bold (**slow
+		// practice**), so it takes Lexend Bold's wider space, as in the
+		// browser; any other space is Medium's.
+		space := func(bold bool) float64 {
+			f := handFont
+			if bold {
+				f = handBold
+			}
+			return f.widths[f.glyph(&buf, ' ')] / 1000
+		}
 		for _, unit := range glueUnits(para.Words) {
 			if unit[0].BreakBefore && len(line) > 0 {
 				flush()
@@ -88,7 +98,7 @@ func layoutText(text string, italic bool, maxWidth float64) textLayout {
 			}
 			gap := 0.0
 			if len(line) > 0 {
-				gap = space
+				gap = space(line[len(line)-1].bold && unit[0].Bold)
 			}
 			if len(line) > 0 && x+gap+width > maxWidth {
 				flush()
@@ -163,19 +173,24 @@ func splitWord(buf *sfnt.Buffer, w richtext.Word, maxWidth, x float64) []wordPie
 }
 
 // fontFor picks the font a character is drawn in, the way the browser walks
-// --font-hand: Quintessential, else Bravura Text (the music symbols).
-func fontFor(buf *sfnt.Buffer, r rune, symbol bool) *textFont {
-	if symbol || (r != ' ' && handFont.glyph(buf, r) == 0 && symbolFont.glyph(buf, r) != 0) {
+// --font-hand: Lexend (Bold in a bold word), else Bravura Text (the music
+// symbols).
+func fontFor(buf *sfnt.Buffer, r rune, symbol, bold bool) *textFont {
+	hand := handFont
+	if bold {
+		hand = handBold
+	}
+	if symbol || (r != ' ' && hand.glyph(buf, r) == 0 && symbolFont.glyph(buf, r) != 0) {
 		return symbolFont
 	}
-	return handFont
+	return hand
 }
 
 // wordRuns splits a word into runs of one font, kerned within each.
 func wordRuns(buf *sfnt.Buffer, w richtext.Word) []glyphRun {
 	var runs []glyphRun
 	for _, r := range w.Text {
-		f := fontFor(buf, r, w.Symbol)
+		f := fontFor(buf, r, w.Symbol, w.Bold)
 		g := f.glyph(buf, r)
 		if n := len(runs); n > 0 && runs[n-1].font == f {
 			last := &runs[n-1]
@@ -201,8 +216,8 @@ func wordWidth(buf *sfnt.Buffer, w richtext.Word) float64 {
 	return width
 }
 
-// fontNames are the resource names text appearances use for the two fonts.
-var fontNames = map[*textFont]string{handFont: "Hand", symbolFont: "Sym"}
+// fontNames are the resource names text appearances use for the fonts.
+var fontNames = map[*textFont]string{handFont: "Hand", handBold: "HandBold", symbolFont: "Sym"}
 
 // drawText writes the content-stream operators for a laid-out mark: size
 // in points, its box's top left at (left, top) in a y-up space.
@@ -215,13 +230,15 @@ func drawText(b *strings.Builder, l textLayout, size, left, top float64, color [
 			if w.italic {
 				skew = italicSkew
 			}
-			if w.bold {
-				fmt.Fprintf(b, "2 Tr %s w\n", num(boldStroke*size))
-			} else {
-				b.WriteString("0 Tr\n")
-			}
 			fmt.Fprintf(b, "1 0 %s 1 %s %s Tm\n", num(skew), num(left+w.x*size), num(baseline))
 			for _, run := range w.runs {
+				// Lexend has a real bold; Bravura Text doesn't, so a bold
+				// symbol gets the browser's heavier outline.
+				if w.bold && run.font == symbolFont {
+					fmt.Fprintf(b, "2 Tr %s w\n", num(boldStroke*size))
+				} else {
+					b.WriteString("0 Tr\n")
+				}
 				fmt.Fprintf(b, "/%s %s Tf [", fontNames[run.font], num(size))
 				for gi, g := range run.glyphs {
 					fmt.Fprintf(b, "<%04X>", int(g))

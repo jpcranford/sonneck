@@ -8,7 +8,7 @@
 // viewer draws (freehand.go), pressure included; the highlighter's is
 // multiplied over the page at the viewer's 42%. Text marks become /FreeText
 // annotations whose appearance is the text laid out as the viewer lays it
-// out (text.go), in an embedded Quintessential; an app that edits one
+// out (text.go), in an embedded Lexend; an app that edits one
 // redraws it in a font of its own. Marks are placed through the page's
 // CropBox and /Rotate, as the viewer's page images are rendered.
 //

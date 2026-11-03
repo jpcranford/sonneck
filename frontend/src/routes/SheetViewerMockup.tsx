@@ -3396,15 +3396,17 @@ function textBoxStyle(m: { x: number; y: number; size: number }): CSSProperties 
     maxWidth: `calc(${(1 - m.x) * 100}% - 1cqw)`,
     // Not the app's Cabin tracking (body's 0.02em, inherited as a fixed
     // 0.32px), which would set a note tighter or looser with the screen and
-    // so wrap it differently: plain Quintessential, as annotated PDFs draw it.
+    // so wrap it differently: plain Lexend, as annotated PDFs draw it.
     letterSpacing: 'normal',
+    // Lexend Medium (bold is its 700): heavy enough to read from the stand.
+    fontWeight: 500,
   }
 }
 // How far above the keyboard an open text box stays, in px.
 const LIFT_GAP = 16
 
 // The page's text marks, as real text over it (plan: DOM elements, through
-// MarkdownText with the :shortcode: symbols), in Quintessential. Hidden
+// MarkdownText with the :shortcode: symbols), in Lexend Medium. Hidden
 // colors' text shows as a ghost like any mark. With the Text tool picked
 // (onDrag), a text mark takes the pointer: a tap edits it, a drag moves it.
 // Children (the open text box) share its page-wide container.

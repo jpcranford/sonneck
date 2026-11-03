@@ -18,7 +18,7 @@ import { LAYER_COLORS, layerColor, textBoxStyle, type PageLook } from '../lib/sh
 // tools lib/sheetViewerTools.ts.
 
 // The page's text marks, as real text over it (plan: DOM elements, through
-// MarkdownText with the :shortcode: symbols), in Quintessential. Hidden
+// MarkdownText with the :shortcode: symbols), in Lexend Medium. Hidden
 // colors' text shows as a ghost like any mark. With the Text tool picked
 // (onDragEnd and the rest), a text mark takes the pointer: a tap edits it, a drag moves it.
 // Children (the open text box) share its page-wide container.

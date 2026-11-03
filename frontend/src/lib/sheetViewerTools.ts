@@ -96,8 +96,10 @@ export function textBoxStyle(m: { x: number; y: number; size: number }): CSSProp
     maxWidth: `calc(${(1 - m.x) * 100}% - 1cqw)`,
     // Not the app's Cabin tracking (body's 0.02em, inherited as a fixed
     // 0.32px), which would set a note tighter or looser with the screen and
-    // so wrap it differently: plain Quintessential, as annotated PDFs draw it.
+    // so wrap it differently: plain Lexend, as annotated PDFs draw it.
     letterSpacing: 'normal',
+    // Lexend Medium (bold is its 700): heavy enough to read from the stand.
+    fontWeight: 500,
   }
 }
 // How far above the keyboard an open text box stays, in px.

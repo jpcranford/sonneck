@@ -175,7 +175,8 @@ func TestTextMarkContents(t *testing.T) {
 	if author, _ := types.StringOrHexLiteral(a["T"]); author == nil || *author != "Reader" {
 		t.Errorf("author = %v, want Reader", author)
 	}
-	// The appearance's fonts are both embedded.
+	// The appearance's fonts are all embedded: Lexend Medium and Bold, and
+	// Bravura Text.
 	ap, err := ctx.DereferenceDict(a["AP"])
 	if err != nil {
 		t.Fatal(err)
@@ -196,8 +197,8 @@ func TestTextMarkContents(t *testing.T) {
 	for k := range fonts {
 		names = append(names, k)
 	}
-	if len(names) != 2 {
-		t.Errorf("appearance fonts = %v, want Hand and Sym", strings.Join(names, ", "))
+	if len(names) != 3 {
+		t.Errorf("appearance fonts = %v, want Hand, HandBold and Sym", strings.Join(names, ", "))
 	}
 }
 

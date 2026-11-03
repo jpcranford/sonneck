@@ -14,12 +14,17 @@ import (
 	"github.com/jpcranford/sonneck/internal/setlistpdf"
 )
 
-// Quintessential (Brian J. Bonislawsky, Astigmatic, SIL OFL 1.1), the Sheet
-// Viewer's text-mark font (--font-hand), as Google Fonts ships it: the web
-// app's woff2 files can't be embedded in a PDF.
+// Lexend Medium and Bold (Bonnie Shaver-Troup and Thomas Jockin, SIL OFL
+// 1.1), the Sheet Viewer's text-mark font (--font-hand, at 500; bold at
+// 700). The same fixed cuts of Google's variable Lexend as the web app's
+// woff2 files (frontend/src/index.css), as TrueType, which a PDF can embed:
+// the same letter widths, so a note wraps the same in both.
 //
-//go:embed assets/Quintessential-Regular.ttf
-var quintessentialTTF []byte
+//go:embed assets/Lexend-Medium.ttf
+var lexendMediumTTF []byte
+
+//go:embed assets/Lexend-Bold.ttf
+var lexendBoldTTF []byte
 
 // textFont is a TrueType font as text marks embed it: whole (a few dozen KB,
 // compressed), as a Type 0 font with 2-byte glyph ids, so any of its glyphs
@@ -41,7 +46,8 @@ type textFont struct {
 }
 
 var (
-	handFont   = mustFont("Quintessential-Regular", quintessentialTTF, false)
+	handFont   = mustFont("Lexend-Medium", lexendMediumTTF, false)
+	handBold   = mustFont("Lexend-Bold", lexendBoldTTF, false)
 	symbolFont = mustFont("BravuraText", setlistpdf.BravuraTextFont(), true)
 )
 
