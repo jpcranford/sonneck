@@ -49,6 +49,19 @@ export function listBooks(params: ListBooksParams = {}): Promise<Book[]> {
   return apiGet<Book[]>(`/api/books${qs ? `?${qs}` : ''}`)
 }
 
+/** How many books listBooks' query and filters match, every page together
+ * (GET /api/books/count, the same clauses as the list). */
+export function countBooks(
+  params: Omit<ListBooksParams, 'sort' | 'dir' | 'limit' | 'offset'> = {},
+): Promise<number> {
+  const search = new URLSearchParams()
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined) search.set(key, String(value))
+  }
+  const qs = search.toString()
+  return apiGet<{ total: number }>(`/api/books/count${qs ? `?${qs}` : ''}`).then((r) => r.total)
+}
+
 export interface BookFacets {
   sheetTypes: FacetCount[]
   instruments: FacetCount[]

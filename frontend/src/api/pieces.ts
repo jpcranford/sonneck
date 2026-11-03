@@ -210,6 +210,20 @@ export function searchPieces(params: SearchPiecesParams = {}): Promise<Piece[]> 
   return apiGet<Piece[]>(`/api/pieces${qs ? `?${qs}` : ''}`)
 }
 
+/** How many pieces searchPieces' query and filters match, every page
+ * together (GET /api/pieces/count: the same clauses and search tiers as the
+ * list, so the two always agree). Sort and paging don't apply. */
+export function countPieces(
+  params: Omit<SearchPiecesParams, 'sort' | 'dir' | 'limit' | 'offset'> = {},
+): Promise<number> {
+  const search = new URLSearchParams()
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined) search.set(key, String(value))
+  }
+  const qs = search.toString()
+  return apiGet<{ total: number }>(`/api/pieces/count${qs ? `?${qs}` : ''}`).then((r) => r.total)
+}
+
 /** One filter-drawer facet option (e.g. one Key) paired with how many
  * pieces currently match it. Live/faceted — see internal/handlers/
  * facets.go's own doc comment: a value's own count reflects what checking

@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { IconX } from '@tabler/icons-react'
-import { getBookFacets, listBooks } from '../api/books'
+import { countBooks, getBookFacets, listBooks } from '../api/books'
 import { ApiError } from '../api/client'
 import { useDebouncedValue } from '../hooks/useDebouncedValue'
 import { BookGridCard } from '../components/BookGridCard'
@@ -10,6 +10,7 @@ import { NewBookModal } from '../components/NewBookModal'
 import { BookFilterDrawer } from '../components/BookFilterDrawer'
 import { type SortDirection, type SortFieldOption } from '../components/SortControl'
 import { LibraryToolbar } from '../components/LibraryToolbar'
+import { MatchCount } from '../components/MatchCount'
 import {
   EMPTY_BOOK_FILTERS,
   activeBookFilterCount,
@@ -124,6 +125,22 @@ export function BooksPage() {
     })),
   ]
 
+  // The filter row shows while any filter or a search is active, opening
+  // with how many books match (every match: GET /api/books/count runs the
+  // list's own query). Under 'books', so a save that refreshes the list
+  // refreshes the count; the last number stays up while a new one loads.
+  const showFilterRow = pillEntries.length > 0 || debouncedQuery.trim() !== ''
+  const { data: matchCount } = useQuery({
+    queryKey: ['books', 'count', { query: debouncedQuery, ...debouncedDrawerFilters }],
+    queryFn: () =>
+      countBooks({
+        query: debouncedQuery || undefined,
+        ...bookFilterApiParams(debouncedDrawerFilters),
+      }),
+    enabled: showFilterRow,
+    placeholderData: keepPreviousData,
+  })
+
   return (
     <div className="flex flex-1 flex-col">
       <LibraryToolbar
@@ -144,8 +161,11 @@ export function BooksPage() {
         newButton={canEdit ? { label: 'New Book', onClick: () => setNewBookOpen(true) } : undefined}
         rightColumnGridColsClassName="sm:grid-cols-[auto_1fr_228px] 2xl:grid-cols-[auto_1fr_272px]"
       >
-        {pillEntries.length > 0 && (
+        {showFilterRow && (
           <div className="flex flex-wrap items-center gap-1.5">
+            {matchCount !== undefined && (
+              <MatchCount count={matchCount} singular="book" plural="books" />
+            )}
             {pillEntries.map((entry) => {
               const excluded = entry.state === 'exclude'
               return (
@@ -165,13 +185,15 @@ export function BooksPage() {
                 </span>
               )
             })}
-            <button
-              type="button"
-              onClick={() => setDrawerFilters(EMPTY_BOOK_FILTERS)}
-              className="cursor-pointer text-xs text-ink-soft underline decoration-dotted underline-offset-2 hover:text-ink"
-            >
-              Clear all
-            </button>
+            {pillEntries.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setDrawerFilters(EMPTY_BOOK_FILTERS)}
+                className="cursor-pointer text-xs text-ink-soft underline decoration-dotted underline-offset-2 hover:text-ink"
+              >
+                Clear all
+              </button>
+            )}
           </div>
         )}
       </LibraryToolbar>

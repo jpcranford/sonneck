@@ -33,6 +33,7 @@ import { EmptyState } from '../components/EmptyState'
 import { noMatchMessage } from '../lib/emptyMessages'
 import { useShortcutBlocker, useShortcuts, FILTERS_KEY } from '../lib/shortcuts'
 import { filterChipClass, filterChipRemoveClass } from '../lib/filterChips'
+import { MatchCount } from '../components/MatchCount'
 
 // ---------------------------------------------------------------------
 // DESIGN MOCKUP for the People Library page — same toolbar/grid/list/
@@ -1277,8 +1278,13 @@ export function PeopleLibrarySample() {
               </div>
             </div>
 
-            {pillEntries.length > 0 && (
+            {/* Shown while any filter or a search is active, opening with
+                how many match (moved up from the line above the list). */}
+            {(pillEntries.length > 0 || query.trim() !== '') && (
               <div className="flex flex-wrap items-center gap-1.5">
+                <MatchCount count={sortedPeople.length} singular="person" plural="people">
+                  {!filters.showAll && hiddenCount > 0 && ` • ${hiddenCount} hidden`}
+                </MatchCount>
                 {pillEntries.map((entry) => {
                   const excluded = entry.state === 'exclude'
                   return (
@@ -1298,13 +1304,15 @@ export function PeopleLibrarySample() {
                     </span>
                   )
                 })}
-                <button
-                  type="button"
-                  onClick={() => setFilters((f) => ({ ...f, era: {}, centuries: {} }))}
-                  className="cursor-pointer text-xs text-ink-soft underline decoration-dotted underline-offset-2 hover:text-ink"
-                >
-                  Clear all
-                </button>
+                {pillEntries.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setFilters((f) => ({ ...f, era: {}, centuries: {} }))}
+                    className="cursor-pointer text-xs text-ink-soft underline decoration-dotted underline-offset-2 hover:text-ink"
+                  >
+                    Clear all
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -1321,13 +1329,15 @@ export function PeopleLibrarySample() {
       </div>
 
       <div className={`${WIDE_CONTENT_MAX_W} flex-1 p-4`}>
-        <p className="mb-3 text-xs text-ink-soft tabular-nums">
-          {sortedPeople.length} {sortedPeople.length === 1 ? 'person' : 'people'}
-          {/* Bullet, not an interpunct — CLAUDE.md's own standing dot-
+        {pillEntries.length === 0 && !query.trim() && (
+          <p className="mb-3 text-xs text-ink-soft tabular-nums">
+            {sortedPeople.length} {sortedPeople.length === 1 ? 'person' : 'people'}
+            {/* Bullet, not an interpunct — CLAUDE.md's own standing dot-
               separator convention, caught via a broader grep while fixing
               the same drift on PersonDetailsSample.tsx. */}
-          {!filters.showAll && hiddenCount > 0 && ` • ${hiddenCount} hidden (see Filters)`}
-        </p>
+            {!filters.showAll && hiddenCount > 0 && ` • ${hiddenCount} hidden (see Filters)`}
+          </p>
+        )}
 
         {sortedPeople.length === 0 && <EmptyState {...peopleEmpty} />}
 

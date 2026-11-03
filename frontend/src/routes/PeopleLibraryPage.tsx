@@ -14,6 +14,7 @@ import { InfoIconTooltip } from '../components/InfoIconTooltip'
 import { Modal } from '../components/Modal'
 import { PersonContextMenu } from '../components/PersonContextMenu'
 import { type SortDirection, type SortFieldOption } from '../components/SortControl'
+import { MatchCount } from '../components/MatchCount'
 import { LibraryToolbar } from '../components/LibraryToolbar'
 import { hasPermission, useAuth } from '../lib/AuthContext'
 import { WIDE_CONTENT_MAX_W } from '../lib/layout'
@@ -738,6 +739,8 @@ export function PeopleLibraryPage() {
     })),
   ]
 
+  const showFilterRow = pillEntries.length > 0 || debouncedQuery.trim() !== ''
+
   return (
     <div className="flex flex-1 flex-col">
       <LibraryToolbar
@@ -760,8 +763,16 @@ export function PeopleLibraryPage() {
         }
         rightColumnGridColsClassName="sm:grid-cols-[auto_1fr_212px] 2xl:grid-cols-[auto_1fr_256px]"
       >
-        {pillEntries.length > 0 && (
+        {/* Shown while any filter or a search is active, opening with the
+            people count (and the hidden note) that otherwise sits above the
+            list; the whole list is loaded, so it's counted here. */}
+        {showFilterRow && (
           <div className="flex flex-wrap items-center gap-1.5">
+            {!isLoading && (
+              <MatchCount count={filtered.length} singular="person" plural="people">
+                {!filters.showAll && hiddenCount > 0 && ` • ${hiddenCount} hidden`}
+              </MatchCount>
+            )}
             {pillEntries.map((entry) => {
               const excluded = entry.state === 'exclude'
               return (
@@ -781,13 +792,15 @@ export function PeopleLibraryPage() {
                 </span>
               )
             })}
-            <button
-              type="button"
-              onClick={() => setFilters((f) => ({ ...f, era: {}, centuries: {} }))}
-              className="cursor-pointer text-xs text-ink-soft underline decoration-dotted underline-offset-2 hover:text-ink"
-            >
-              Clear all
-            </button>
+            {pillEntries.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setFilters((f) => ({ ...f, era: {}, centuries: {} }))}
+                className="cursor-pointer text-xs text-ink-soft underline decoration-dotted underline-offset-2 hover:text-ink"
+              >
+                Clear all
+              </button>
+            )}
           </div>
         )}
       </LibraryToolbar>
@@ -795,7 +808,7 @@ export function PeopleLibraryPage() {
       <div className={`${WIDE_CONTENT_MAX_W} flex-1 p-4`}>
         {isLoading && <p className="text-ink-soft">Loading…</p>}
 
-        {!isLoading && (
+        {!isLoading && !showFilterRow && (
           <p className="mb-3 text-xs text-ink-soft tabular-nums">
             {filtered.length} {filtered.length === 1 ? 'person' : 'people'}
             {!filters.showAll && hiddenCount > 0 && ` • ${hiddenCount} hidden (see Filters)`}

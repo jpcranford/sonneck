@@ -27,6 +27,7 @@ import { EmptyState } from '../components/EmptyState'
 import { noMatchMessage } from '../lib/emptyMessages'
 import { useShortcutBlocker, useShortcuts, FILTERS_KEY } from '../lib/shortcuts'
 import { filterChipClass, filterChipRemoveClass } from '../lib/filterChips'
+import { MatchCount } from '../components/MatchCount'
 
 // ---------------------------------------------------------------------
 // DESIGN MOCKUP for the Books Library page. Originally a side-by-side
@@ -1133,8 +1134,11 @@ export function BooksLibrarySample() {
               </div>
             </div>
 
-            {pillEntries.length > 0 && (
+            {/* Shown while any filter or a search is active, opening with
+                how many match (moved up from the line above the list). */}
+            {(pillEntries.length > 0 || query.trim() !== '') && (
               <div className="flex flex-wrap items-center gap-1.5">
+                <MatchCount count={sortedBooks.length} singular="book" plural="books"></MatchCount>
                 {pillEntries.map((entry) => {
                   const excluded = entry.state === 'exclude'
                   return (
@@ -1154,13 +1158,15 @@ export function BooksLibrarySample() {
                     </span>
                   )
                 })}
-                <button
-                  type="button"
-                  onClick={() => setAppliedFilters(EMPTY_BOOK_FILTERS)}
-                  className="cursor-pointer text-xs text-ink-soft underline decoration-dotted underline-offset-2 hover:text-ink"
-                >
-                  Clear all
-                </button>
+                {pillEntries.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setAppliedFilters(EMPTY_BOOK_FILTERS)}
+                    className="cursor-pointer text-xs text-ink-soft underline decoration-dotted underline-offset-2 hover:text-ink"
+                  >
+                    Clear all
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -1177,9 +1183,11 @@ export function BooksLibrarySample() {
       </div>
 
       <div className={`${WIDE_CONTENT_MAX_W} flex-1 p-4`}>
-        <p className="mb-3 text-xs text-ink-soft tabular-nums">
-          {sortedBooks.length} {sortedBooks.length === 1 ? 'book' : 'books'}
-        </p>
+        {pillEntries.length === 0 && !query.trim() && (
+          <p className="mb-3 text-xs text-ink-soft tabular-nums">
+            {sortedBooks.length} {sortedBooks.length === 1 ? 'book' : 'books'}
+          </p>
+        )}
 
         {sortedBooks.length === 0 && (
           <EmptyState {...noMatchMessage('books', query, activeCount > 0)} />

@@ -248,6 +248,18 @@ var bookSortColumns = map[string]sortColumnFunc{
 // complexity — a Book is the top of the hierarchy, nothing to fall back
 // to (CLAUDE.md > Book-level soft inheritance).
 func (s *Server) handleListBooks(w http.ResponseWriter, r *http.Request) {
+	s.listBooks(w, r, false)
+}
+
+// handleCountBooks is GET /api/books/count: how many books the same query
+// and filters as GET /api/books match, all pages together (listBooks with
+// countOnly: COUNT(*) over the identical clauses) — the Books library's
+// "N books" beside its active filters.
+func (s *Server) handleCountBooks(w http.ResponseWriter, r *http.Request) {
+	s.listBooks(w, r, true)
+}
+
+func (s *Server) listBooks(w http.ResponseWriter, r *http.Request, countOnly bool) {
 	if _, ok := s.requirePermission(w, r, models.PermissionRead); !ok {
 		return
 	}
@@ -327,6 +339,16 @@ func (s *Server) handleListBooks(w http.ResponseWriter, r *http.Request) {
 
 	if len(where) > 0 {
 		sqlStr += " WHERE " + strings.Join(where, " AND ")
+	}
+	if countOnly {
+		var n int
+		countSQL := "SELECT COUNT(*) FROM (" + sqlStr + ")"
+		if err := s.DB.QueryRowContext(r.Context(), countSQL, args...).Scan(&n); err != nil {
+			s.writeError(w, err)
+			return
+		}
+		api.WriteData(w, http.StatusOK, pieceCountResponse{Total: n})
+		return
 	}
 
 	sortOrderBy, ok := parseSort(w, q, bookSortColumns, "dateAdded")

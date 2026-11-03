@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { IconX } from '@tabler/icons-react'
-import { getPieceFacets, searchPieces, type SearchPiecesParams } from '../api/pieces'
+import { countPieces, getPieceFacets, searchPieces, type SearchPiecesParams } from '../api/pieces'
 import { ApiError } from '../api/client'
 import { useDebouncedValue } from '../hooks/useDebouncedValue'
 import { PieceGridCard } from './PieceGridCard'
 import { PieceListCard } from './PieceListCard'
 import { type SortDirection, type SortFieldOption } from './SortControl'
+import { MatchCount } from './MatchCount'
 import { LibraryToolbar } from './LibraryToolbar'
 import { PieceFilterDrawer } from './PieceFilterDrawer'
 import {
@@ -322,6 +323,24 @@ export function PieceBrowseView({
     })),
   ]
 
+  // The filter row shows while any filter or a search is active, opening
+  // with how many pieces match: every match, not just the pages loaded so
+  // far (GET /api/pieces/count runs the list's own query). Under 'pieces',
+  // so a save that refreshes the list refreshes the count too; the last
+  // number stays up while a new one loads.
+  const showFilterRow = pillEntries.length > 0 || debouncedQuery.trim() !== ''
+  const { data: matchCount } = useQuery({
+    queryKey: ['pieces', 'count', { query: debouncedQuery, ...debouncedDrawerFilters, ...filters }],
+    queryFn: () =>
+      countPieces({
+        query: debouncedQuery || undefined,
+        ...pieceFilterApiParams(debouncedDrawerFilters),
+        ...filters,
+      }),
+    enabled: showFilterRow,
+    placeholderData: keepPreviousData,
+  })
+
   return (
     <div className="flex flex-1 flex-col">
       <LibraryToolbar
@@ -341,8 +360,11 @@ export function PieceBrowseView({
         onViewModeChange={setViewMode}
         rightColumnGridColsClassName="sm:grid-cols-[auto_1fr_215px] 2xl:grid-cols-[auto_1fr_259px]"
       >
-        {pillEntries.length > 0 && (
+        {showFilterRow && (
           <div className="flex flex-wrap items-center gap-1.5">
+            {matchCount !== undefined && (
+              <MatchCount count={matchCount} singular="piece" plural="pieces" />
+            )}
             {pillEntries.map((entry) => {
               const excluded = entry.state === 'exclude'
               return (
@@ -362,13 +384,15 @@ export function PieceBrowseView({
                 </span>
               )
             })}
-            <button
-              type="button"
-              onClick={() => setDrawerFilters(EMPTY_PIECE_FILTERS)}
-              className="cursor-pointer text-xs text-ink-soft underline decoration-dotted underline-offset-2 hover:text-ink"
-            >
-              Clear all
-            </button>
+            {pillEntries.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setDrawerFilters(EMPTY_PIECE_FILTERS)}
+                className="cursor-pointer text-xs text-ink-soft underline decoration-dotted underline-offset-2 hover:text-ink"
+              >
+                Clear all
+              </button>
+            )}
           </div>
         )}
       </LibraryToolbar>

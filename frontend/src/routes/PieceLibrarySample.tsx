@@ -1356,8 +1356,14 @@ export function PieceLibrarySample() {
               </div>
             </div>
 
-            {pillEntries.length > 0 && (
+            {/* Shown while any filter or a search is active, opening with
+                how many pieces match (PieceBrowseView.tsx asks the server;
+                here it's the sample list's own length). */}
+            {(pillEntries.length > 0 || query.trim() !== '') && (
               <div className="flex flex-wrap items-center gap-1.5">
+                <span className="mr-1 text-xs font-medium tabular-nums text-ink-soft">
+                  {pieces.length.toLocaleString()} {pieces.length === 1 ? 'piece' : 'pieces'}
+                </span>
                 {pillEntries.map((entry) => {
                   const excluded = entry.state === 'exclude'
                   return (
@@ -1377,13 +1383,15 @@ export function PieceLibrarySample() {
                     </span>
                   )
                 })}
-                <button
-                  type="button"
-                  onClick={() => setAppliedFilters(EMPTY_FILTERS)}
-                  className="cursor-pointer text-xs text-ink-soft underline decoration-dotted underline-offset-2 hover:text-ink"
-                >
-                  Clear all
-                </button>
+                {pillEntries.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setAppliedFilters(EMPTY_FILTERS)}
+                    className="cursor-pointer text-xs text-ink-soft underline decoration-dotted underline-offset-2 hover:text-ink"
+                  >
+                    Clear all
+                  </button>
+                )}
               </div>
             )}
           </div>

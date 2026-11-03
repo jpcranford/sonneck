@@ -95,6 +95,24 @@ var pieceSortColumns = map[string]sortColumnFunc{
 // into `where`/`args` once and reused by every attempt (via runQuery/
 // runFuzzyQuery) instead of being recomputed per attempt.
 func (s *Server) handleSearchPieces(w http.ResponseWriter, r *http.Request) {
+	s.searchPieces(w, r, false)
+}
+
+// handleCountPieces is GET /api/pieces/count: how many pieces the same
+// query and filters as GET /api/pieces match, all pages together — the
+// Library's "N pieces" beside its active filters. It runs the identical
+// clauses and tier fallback (searchPieces with countOnly), so the total
+// always agrees with the list; the list itself stays a bare array.
+func (s *Server) handleCountPieces(w http.ResponseWriter, r *http.Request) {
+	s.searchPieces(w, r, true)
+}
+
+// pieceCountResponse is the count endpoints' body (pieces and books).
+type pieceCountResponse struct {
+	Total int `json:"total"`
+}
+
+func (s *Server) searchPieces(w http.ResponseWriter, r *http.Request, countOnly bool) {
 	user, ok := s.requirePermission(w, r, models.PermissionRead)
 	if !ok {
 		return
@@ -203,8 +221,14 @@ func (s *Server) handleSearchPieces(w http.ResponseWriter, r *http.Request) {
 	// clause except the free-text one is identical between the primary and
 	// fallback attempts, so those live in the already-built where/args
 	// above and get prepended to here, not recomputed per attempt.
-	runQuery := func(ftsTable string, sanitize func(string) string) ([]int64, error) {
-		sqlStr := `SELECT p.id FROM pieces p`
+	// Each tier returns its page of ids and how many it matched (with
+	// countOnly, only the count: every matching piece, unpaged).
+	selectCols := "p.id"
+	if countOnly {
+		selectCols = "COUNT(*)"
+	}
+	runQuery := func(ftsTable string, sanitize func(string) string) ([]int64, int, error) {
+		sqlStr := `SELECT ` + selectCols + ` FROM pieces p`
 		var qWhere []string
 		var qArgs []any
 		if query != "" {
@@ -219,6 +243,11 @@ func (s *Server) handleSearchPieces(w http.ResponseWriter, r *http.Request) {
 		qArgs = append(qArgs, args...)
 		if len(qWhere) > 0 {
 			sqlStr += " WHERE " + strings.Join(qWhere, " AND ")
+		}
+		if countOnly {
+			var n int
+			err := s.DB.QueryRowContext(r.Context(), sqlStr, qArgs...).Scan(&n)
+			return nil, n, err
 		}
 
 		if byBook {
@@ -240,18 +269,18 @@ func (s *Server) handleSearchPieces(w http.ResponseWriter, r *http.Request) {
 
 		rows, err := s.DB.QueryContext(r.Context(), sqlStr, qArgs...)
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		defer rows.Close()
 		var ids []int64
 		for rows.Next() {
 			var id int64
 			if err := rows.Scan(&id); err != nil {
-				return nil, err
+				return nil, 0, err
 			}
 			ids = append(ids, id)
 		}
-		return ids, rows.Err()
+		return ids, len(ids), rows.Err()
 	}
 
 	// runFuzzyQuery is the third and last tier — real typo tolerance
@@ -269,7 +298,7 @@ func (s *Server) handleSearchPieces(w http.ResponseWriter, r *http.Request) {
 	// the same "don't add a fourth kind of ordering behavior" consistency
 	// reasoning that already applies to the trigram tier not ranking by
 	// bm25.
-	runFuzzyQuery := func() ([]int64, error) {
+	runFuzzyQuery := func() ([]int64, int, error) {
 		// Same repo.NormalizeAmpersand as the prefix/trigram tiers above —
 		// this tier doesn't route through sanitizeFTSQuery at all (a plain
 		// fuzzydist() WHERE predicate, not a MATCH query), so it needs its
@@ -280,7 +309,7 @@ func (s *Server) handleSearchPieces(w http.ResponseWriter, r *http.Request) {
 		// two.
 		fuzzyQuery := repo.NormalizeAmpersand(query)
 		maxDist := fuzzy.MaxDistance(fuzzyQuery)
-		sqlStr := `SELECT p.id FROM pieces p JOIN pieces_fts ON pieces_fts.piece_id = p.id`
+		sqlStr := `SELECT ` + selectCols + ` FROM pieces p JOIN pieces_fts ON pieces_fts.piece_id = p.id`
 		if needsBookJoin {
 			sqlStr += ` LEFT JOIN books b ON b.id = p.source_book_id`
 		}
@@ -289,6 +318,11 @@ func (s *Server) handleSearchPieces(w http.ResponseWriter, r *http.Request) {
 		qWhere = append(qWhere, where...)
 		qArgs = append(qArgs, args...)
 		sqlStr += " WHERE " + strings.Join(qWhere, " AND ")
+		if countOnly {
+			var n int
+			err := s.DB.QueryRowContext(r.Context(), sqlStr, qArgs...).Scan(&n)
+			return nil, n, err
+		}
 
 		if byBook {
 			sqlStr += " ORDER BY p.source_page_start IS NULL, p.source_page_start ASC, (p.page_count = 1) DESC"
@@ -301,21 +335,21 @@ func (s *Server) handleSearchPieces(w http.ResponseWriter, r *http.Request) {
 
 		rows, err := s.DB.QueryContext(r.Context(), sqlStr, qArgs...)
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		defer rows.Close()
 		var ids []int64
 		for rows.Next() {
 			var id int64
 			if err := rows.Scan(&id); err != nil {
-				return nil, err
+				return nil, 0, err
 			}
 			ids = append(ids, id)
 		}
-		return ids, rows.Err()
+		return ids, len(ids), rows.Err()
 	}
 
-	ids, err := runQuery("pieces_fts", sanitizeFTSQuery)
+	ids, matched, err := runQuery("pieces_fts", sanitizeFTSQuery)
 	if err != nil {
 		s.writeError(w, err)
 		return
@@ -324,8 +358,8 @@ func (s *Server) handleSearchPieces(w http.ResponseWriter, r *http.Request) {
 	// Trigram fallback: only when the primary (prefix) query text
 	// genuinely found nothing — see this function's own doc comment for
 	// why this isn't merged with the primary result instead.
-	if len(ids) == 0 && query != "" {
-		ids, err = runQuery("pieces_fts_trigram", sanitizeTrigramFTSQuery)
+	if matched == 0 && query != "" {
+		ids, matched, err = runQuery("pieces_fts_trigram", sanitizeTrigramFTSQuery)
 		if err != nil {
 			s.writeError(w, err)
 			return
@@ -335,12 +369,17 @@ func (s *Server) handleSearchPieces(w http.ResponseWriter, r *http.Request) {
 	// Fuzzy fallback: only when *both* prior tiers found nothing — same
 	// "don't change common-case behavior" reasoning as the trigram
 	// fallback above, one step further out.
-	if len(ids) == 0 && query != "" {
-		ids, err = runFuzzyQuery()
+	if matched == 0 && query != "" {
+		ids, matched, err = runFuzzyQuery()
 		if err != nil {
 			s.writeError(w, err)
 			return
 		}
+	}
+
+	if countOnly {
+		api.WriteData(w, http.StatusOK, pieceCountResponse{Total: matched})
+		return
 	}
 
 	results := make([]*api.PieceResponse, 0, len(ids))
