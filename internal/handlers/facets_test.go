@@ -2,6 +2,7 @@ package handlers_test
 
 import (
 	"net/http"
+	"strconv"
 	"testing"
 )
 
@@ -384,5 +385,62 @@ func TestPieceFacets_PracticeStatusesInPracticeOrder(t *testing.T) {
 	want := []string{"Want to Learn", "Learning", "Dropped"}
 	if len(got) != len(want) || got[0] != want[0] || got[1] != want[1] || got[2] != want[2] {
 		t.Errorf("practice status facet order = %v, want %v", got, want)
+	}
+}
+
+// TestPieceFacets_SelectedValuesStayListed: a value the request includes or
+// excludes stays in its facet list even when the other filters leave it no
+// matches (count 0) — the drawer needs it to show and undo the selection,
+// and the filter chip takes its name from it. Found as "Not purchased" plus
+// Favorites + Want to Learn showing the chip as "Not 5".
+func TestPieceFacets_SelectedValuesStayListed(t *testing.T) {
+	h := newTestServer(t)
+	createTestPiece(t, h, map[string]any{"title": "Bought", "userTags": []string{"purchased"}, "keys": []string{"D Major"}})
+	wanted := createTestPiece(t, h, map[string]any{"title": "Wanted", "favorite": true})
+	rec := doJSON(t, h, http.MethodPatch, apiPiecesURL(wanted.ID)+"/practice-status", map[string]any{"practiceStatus": "Want to Learn"})
+	decodeData(t, rec, new(any))
+
+	type facet struct {
+		ID    int64  `json:"id"`
+		Name  string `json:"name"`
+		Count int    `json:"count"`
+	}
+	var all struct {
+		Keys     []facet `json:"keys"`
+		UserTags []facet `json:"userTags"`
+	}
+	decodeData(t, doJSON(t, h, http.MethodGet, "/api/pieces/facets", nil), &all)
+	if len(all.UserTags) != 1 || len(all.Keys) != 1 {
+		t.Fatalf("unfiltered facets = %+v, want one tag and one key", all)
+	}
+	tagID, keyID := all.UserTags[0].ID, all.Keys[0].ID
+
+	var facets struct {
+		Keys             []facet `json:"keys"`
+		UserTags         []facet `json:"userTags"`
+		PracticeStatuses []struct {
+			Status string `json:"status"`
+			Count  int    `json:"count"`
+		} `json:"practiceStatuses"`
+	}
+	url := "/api/pieces/facets?favorite=true&practiceStatus=Want+to+Learn&excludeUserTagId=" +
+		strconv.FormatInt(tagID, 10) + "&keyId=" + strconv.FormatInt(keyID, 10) + "&excludePracticeStatus=Dropped"
+	decodeData(t, doJSON(t, h, http.MethodGet, url, nil), &facets)
+
+	if len(facets.UserTags) != 1 || facets.UserTags[0].Name != "purchased" || facets.UserTags[0].Count != 0 {
+		t.Errorf("userTags = %+v, want the excluded tag kept at count 0", facets.UserTags)
+	}
+	if len(facets.Keys) != 1 || facets.Keys[0].Name != "D Major" || facets.Keys[0].Count != 0 {
+		t.Errorf("keys = %+v, want the included key kept at count 0", facets.Keys)
+	}
+	statuses := map[string]int{}
+	for _, s := range facets.PracticeStatuses {
+		statuses[s.Status] = s.Count
+	}
+	if n, ok := statuses["Dropped"]; !ok || n != 0 {
+		t.Errorf("practiceStatuses = %+v, want the excluded Dropped kept at count 0", facets.PracticeStatuses)
+	}
+	if _, ok := statuses["Learned"]; ok {
+		t.Errorf("practiceStatuses = %+v, want an unselected status with no matches left out", facets.PracticeStatuses)
 	}
 }
