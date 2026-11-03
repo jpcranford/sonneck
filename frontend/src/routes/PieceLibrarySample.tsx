@@ -27,6 +27,12 @@ import { useEscapeToClose } from '../hooks/useEscapeToClose'
 import { EmptyState } from '../components/EmptyState'
 import { noMatchMessage } from '../lib/emptyMessages'
 import { useShortcutBlocker, useShortcuts, FILTERS_KEY } from '../lib/shortcuts'
+import { filterChipClass, filterChipRemoveClass, type FilterChipTone } from '../lib/filterChips'
+
+// lib/filterChips.ts's pieceFilterTone, for this mockup's own filter names.
+function mockFilterTone(field: string): FilterChipTone {
+  return ['status', 'userTags', 'favorite', 'hasAnnotations'].includes(field) ? 'own' : 'catalog'
+}
 
 // ---------------------------------------------------------------------
 // DESIGN MOCKUP — Piece Library sort/filter (Option B, "Filter Drawer",
@@ -1357,20 +1363,14 @@ export function PieceLibrarySample() {
                   return (
                     <span
                       key={entry.field + (entry.value ?? '')}
-                      className={`flex items-center gap-1.5 rounded-full border py-1 pr-1.5 pl-3 text-xs font-medium ${
-                        excluded
-                          ? 'border-danger/30 bg-danger-soft text-danger'
-                          : 'border-accent/30 bg-accent-soft text-accent'
-                      }`}
+                      className={`flex items-center gap-1.5 rounded-full border py-1 pr-1.5 pl-3 text-xs font-medium ${filterChipClass(mockFilterTone(entry.field), excluded)}`}
                     >
                       {excluded ? `Not ${entry.label}` : entry.label}
                       <button
                         type="button"
                         onClick={() => clearAppliedFilter(entry.field, entry.value)}
                         aria-label={`Remove ${excluded ? 'not ' : ''}${entry.label} filter`}
-                        className={`flex size-4 cursor-pointer items-center justify-center rounded-full opacity-75 hover:opacity-100 ${
-                          excluded ? 'text-danger' : 'text-accent'
-                        }`}
+                        className={`flex size-4 cursor-pointer items-center justify-center rounded-full opacity-75 hover:opacity-100 ${filterChipRemoveClass(mockFilterTone(entry.field), excluded)}`}
                       >
                         <IconX size={11} />
                       </button>

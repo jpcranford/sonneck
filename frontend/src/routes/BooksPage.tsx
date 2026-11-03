@@ -24,6 +24,7 @@ import { usePageTitle } from '../lib/usePageTitle'
 import { useViewPreference } from '../lib/useViewPreference'
 import { EmptyState } from '../components/EmptyState'
 import { noMatchMessage } from '../lib/emptyMessages'
+import { filterChipClass, filterChipRemoveClass } from '../lib/filterChips'
 
 type BookSortField = 'dateAdded' | 'title' | 'composer' | 'yearPublished'
 
@@ -150,20 +151,14 @@ export function BooksPage() {
               return (
                 <span
                   key={entry.field + entry.value}
-                  className={`flex items-center gap-1.5 rounded-full border py-1 pr-1.5 pl-3 text-xs font-medium ${
-                    excluded
-                      ? 'border-danger/30 bg-danger-soft text-danger'
-                      : 'border-accent/30 bg-accent-soft text-accent'
-                  }`}
+                  className={`flex items-center gap-1.5 rounded-full border py-1 pr-1.5 pl-3 text-xs font-medium ${filterChipClass('catalog', excluded)}`}
                 >
                   {excluded ? `Not ${entry.label}` : entry.label}
                   <button
                     type="button"
                     onClick={() => clearDrawerFilter(entry.field, entry.value)}
                     aria-label={`Remove ${excluded ? 'not ' : ''}${entry.label} filter`}
-                    className={`flex size-4 cursor-pointer items-center justify-center rounded-full opacity-75 hover:opacity-100 ${
-                      excluded ? 'text-danger' : 'text-accent'
-                    }`}
+                    className={`flex size-4 cursor-pointer items-center justify-center rounded-full opacity-75 hover:opacity-100 ${filterChipRemoveClass('catalog', excluded)}`}
                   >
                     <IconX size={11} />
                   </button>
