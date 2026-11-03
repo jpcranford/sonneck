@@ -16,7 +16,7 @@
 An intuitive sheet music organizer app. Import, tag, browse, and download music pieces and books. Made by a musician, for musicians.
 
 ## Features
-Sonneck is a bookshelf for your sheet music, whether you have public domain classics or the newest pop hits. It's currently designed to be a fancy way of replacing a folder of PDFs, but there are [plans](#planned-features) to add more practice-session features later to turn it into a more well-rounded app.
+Sonneck is a bookshelf for your sheet music, whether you have public domain classics or the newest pop hits. It's a fancy way of replacing that folder of PDFs with an all-in-one solution.
 
 - **Organize your sheet music library.** Upload individual pieces or entire books — the built-in book splitter and metadata inheritance make quick work of prepping a whole book's worth of pieces to be found later.
 - **Use it from anywhere.** Any device with a browser can use every feature of Sonneck, with everything you do saved to the library. Edit metadata on your phone, mark up your score on your tablet, or build a setlist on your computer.
@@ -104,10 +104,10 @@ Several of these (`BACKUP_CRON`, `BACKUP_RETENTION_DAYS`, `LOG_LEVEL`, `COPYRIGH
 ### Security options
 
 > [!CAUTION]
-> Sonneck on Docker first launches with no security enabled and open to the network (see [Security](#security) below). Until you enable a password or SSO support, anyone who can reach the server over the network can use the full API, with no separation between "trusted operator" and "anonymous visitor." It should go without saying but **do not expose it on the open internet like this.**
+> **If you are running this on Docker:** Sonneck on Docker first launches with no security enabled and open to the network (see [Security](#security) below). Until you enable a password or SSO support, anyone who can reach the server over the network can use the full API, with no separation between "trusted operator" and "anonymous visitor." It should go without saying but **do not expose it on the open internet like this.**
 
 Sonneck supports the following authentication methods, in order of least to greatest security:
-1. **No password.** Anyone that can find Sonneck can do anything. One user, full admin. If you're just running this as an app on your computer and not gonna use another device, this is fine.
+1. **No password.** Anyone that can find Sonneck can do anything. One user, full admin. If you're just running it as an app on your computer and not gonna use another device, this is fine.
 2. **Password** mode locks the app behind a single password. If you're on a shared computer or planning on using Sonneck on multiple devices, I recommend this option at the very least. I haven't enforced any rules for the password other than length, so make it as simple or complex as makes you feel safe doing.
 3. **Sign in with…** (OIDC/SSO) mode, only available on Docker installs. The sign-in page kicks you over to your SSO provider for sign-in, and once you sign in the SSO provider gives Sonneck your name and profile pic. Sonneck Admins can manage user permissions in Admin Settings. IMO this will be overkill for all but the biggest libraries.
 
@@ -174,10 +174,10 @@ DATA_DIR=./data go run ./cmd/sonneck <command>
 
 ## Planned features
 - Support for image files, and also support for a folder of image files to be uploaded/assembled into a piece
-- **More Sheet Viewer.** A built-in metronome, possibly with some simple gap support. Maybe some music theory references too, why not; it's not like the circle of fifths has changed in the last 400 years. Also, possibly, importing PDF annotations for mild cross-compatibility with whatever other tools are used.
+- **More Sheet Viewer stuff.** A built-in metronome, possibly with some simple gap support. Maybe some music theory references too, why not; it's not like the circle of fifths has changed in the last 400 years. Also, possibly, importing PDF annotations for mild cross-compatibility with whatever other tools you might use.
 - **Folders, both smart and otherwise.** Save filters to be automatic folders of music– think "pieces I've Learned and are solo pieces for the piano" or "lead sheets from books x, y, and z" accessible under a name in the sidebar.
 - **Configurable citation format.** Just in case you don't like the defaults.
-- Server-side printer support? Unsure about this one, but essentially the server would have a dedicated printer with the same settings saved, boiling a whole process down into a simple "Send to Printer" button. Dunno if this is achievable or just a fever dream.
+- Server-side printer support? Unsure about this one, but essentially the server would have a dedicated printer with the same settings saved, boiling a whole tedious process down into a simple "Send to Printer" button. Dunno if this is achievable or just a fever dream.
 
 ## About the name
 Sonneck is named after **Oscar Sonneck** (1873–1928), an American musicologist and librarian. From 1902 to 1917 he was the first chief of the new Music Division at the Library of Congress, where he built the division's holdings into one of the world's great music collections and devised a classification scheme still in use today, with modifications. In 1915, he founded *[The Musical Quarterly](https://en.wikipedia.org/wiki/The_Musical_Quarterly)*, a music-focused academic journal still around today. Around the same time, he also joined the music publisher G. Schirmer, Inc. \(of [yellow cover fame](https://imslp.org/wiki/Schirmer), now part of Hal Leonard and Wise Music Group\) and later became its vice president in 1921.
