@@ -358,7 +358,6 @@ export function PieceBrowseView({
         sortDirectionLabel={DIRECTION_LABEL[sortField][sortDirection]}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
-        rightColumnGridColsClassName="sm:grid-cols-[auto_1fr_215px] 2xl:grid-cols-[auto_1fr_259px]"
       >
         {showFilterRow && (
           <div className="flex flex-wrap items-center gap-1.5">

@@ -1183,7 +1183,7 @@ export function PeopleLibrarySample() {
       <PageToolbarPortal>
         <div className="border-b border-border bg-paper">
           <div className={`${WIDE_CONTENT_MAX_W} flex flex-col gap-3 p-4`}>
-            <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 sm:grid-cols-[auto_1fr_212px] 2xl:grid-cols-[auto_1fr_256px]">
+            <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 sm:grid-cols-[auto_1fr_auto]">
               {/* Grid/list switch, design D — copy of components/ViewModeToggle.tsx. */}
               <div className="flex h-[38px] shrink-0 items-center gap-0.5 rounded-md border border-border bg-paper-raised p-[3px] col-start-1 row-start-1 justify-self-start sm:col-start-auto sm:row-start-auto">
                 <button

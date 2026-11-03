@@ -159,7 +159,6 @@ export function BooksPage() {
         viewMode={viewMode}
         onViewModeChange={setViewMode}
         newButton={canEdit ? { label: 'New Book', onClick: () => setNewBookOpen(true) } : undefined}
-        rightColumnGridColsClassName="sm:grid-cols-[auto_1fr_228px] 2xl:grid-cols-[auto_1fr_272px]"
       >
         {showFilterRow && (
           <div className="flex flex-wrap items-center gap-1.5">

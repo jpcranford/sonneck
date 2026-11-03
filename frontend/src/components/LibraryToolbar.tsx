@@ -13,28 +13,20 @@ import { useShortcuts, FILTERS_KEY } from '../lib/shortcuts'
  * left-aligned. Several things here look like they could be simplified
  * but aren't:
  *
- * - The middle grid track is `1fr`, the two side tracks are rigid exact
- *   values (`auto` for the toggle, a directly-measured exact px for
- *   Filters+Sort, via `rightColumnGridColsClassName`) — never make the
- *   Filters+Sort side `minmax(N,1fr)` again, that was a real, confirmed
- *   bug: a second flexible track lets it independently claim leftover
- *   grid space instead of the two 1fr-ish columns sharing it evenly,
- *   silently drifting Filters away from Sort's own neighbors as the
- *   viewport widens.
- * - `rightColumnGridColsClassName`'s two numbers are exact (icon-only
- *   tier / full-text tier), not a rounded-up guess — an earlier ~10px
- *   safety margin was itself the source of a small constant (non-growing)
- *   gap in front of Filters, visible even when Search was nowhere near
- *   its cap. Measure the real Filters+Sort rendered width per caller (it
- *   genuinely differs — People's shorter "Name" sort label needs a
- *   smaller floor than Piece/Books' "Date Added") and pass the actual
- *   number plus ~1px. **Measure with the WIDEST sort field label
- *   selected, not whatever the default field happens to be** — a real
- *   bug found live: measuring at the default ("Name"/"Date Added") and
- *   then selecting a longer field (e.g. "Piece Count") grows the segmented
- *   sort button past a floor sized for the shorter default, clipping it
- *   at the toolbar's right edge. Every caller's own sort-field list needs
- *   its own widest-label check, not just its default.
+ * - From `sm:` the grid is `auto 1fr auto`: the toggle and the
+ *   Filters+Sort cluster each take exactly their own width, and Search's
+ *   middle track takes the rest. The right track sizes to whatever is
+ *   there now — the current sort label, Filters' label, its active-count
+ *   badge — so there's never a gap in front of Filters or an ellipsis in
+ *   the sort label, whichever field is picked. (It used to be a hand-
+ *   measured px width per library, sized for one label: a shorter one,
+ *   like "Title", left a gap beside Search, and the count badge cut the
+ *   longest one off.) Accepted cost: while Search is below its cap,
+ *   picking a sort field with a different label length nudges Search's
+ *   width. Never make that side `minmax(N,1fr)` — a second flexible
+ *   track claims leftover space and drifts Filters away from Search as
+ *   the window widens (a real, confirmed bug); `auto` takes only what its
+ *   content needs.
  * - `SortControl.tsx`'s own field-picker dropdown is anchored `right-0`
  *   (not the default left-aligned), since Sort always sits at this
  *   toolbar's own right edge — a real bug found alongside the one above:
@@ -88,7 +80,6 @@ export function LibraryToolbar<Field extends string>({
   viewMode,
   onViewModeChange,
   newButton,
-  rightColumnGridColsClassName,
   shortcutTitle,
   children,
 }: {
@@ -111,22 +102,6 @@ export function LibraryToolbar<Field extends string>({
    * viewer lacks the permission it needs — hidden, not faded, like every
    * permission-gated control. */
   newButton?: { label: string; onClick: () => void }
-  /** The literal `sm:grid-cols-[auto_1fr_Npx] 2xl:grid-cols-[auto_1fr_Mpx]`
-   * class string, passed as a complete literal from the caller — not
-   * assembled from separate numeric props. Tailwind's JIT only picks up
-   * arbitrary-value classes that appear as complete literal strings
-   * somewhere in scanned source; a template-literal-interpolated value
-   * built from a numeric prop would silently compile to nothing (the
-   * same "auto-track ignores a percentage child" class of bug found
-   * earlier in this exact toolbar's history, different mechanism, same
-   * root cause: Tailwind never seeing the literal string). N/M are the
-   * Filters+Sort cluster's directly-measured exact px width, one value
-   * per label-visibility tier — genuinely differ per caller (People's
-   * shorter "Name" sort label needs a smaller floor than Piece/Books'
-   * "Date Added"), never a rounded guess (an earlier ~10px safety margin
-   * was itself the source of a small constant, non-growing gap in front
-   * of Filters). */
-  rightColumnGridColsClassName: string
   /** The page's name in the shortcut help ("Library", "Books"). */
   shortcutTitle: string
   /** Filter-pills row, rendered below the main toolbar row — left as
@@ -173,9 +148,7 @@ export function LibraryToolbar<Field extends string>({
     <PageToolbarPortal>
       <div className="border-b border-border bg-paper">
         <div className={`${WIDE_CONTENT_MAX_W} flex flex-col gap-3 p-4`}>
-          <div
-            className={`grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 ${rightColumnGridColsClassName}`}
-          >
+          <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 sm:grid-cols-[auto_1fr_auto]">
             <ViewModeToggle
               value={viewMode}
               onChange={onViewModeChange}

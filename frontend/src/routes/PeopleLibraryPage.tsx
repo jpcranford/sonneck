@@ -761,7 +761,6 @@ export function PeopleLibraryPage() {
         newButton={
           canEdit ? { label: 'New Person', onClick: () => setNewPersonOpen(true) } : undefined
         }
-        rightColumnGridColsClassName="sm:grid-cols-[auto_1fr_212px] 2xl:grid-cols-[auto_1fr_256px]"
       >
         {/* Shown while any filter or a search is active, opening with the
             people count (and the hidden note) that otherwise sits above the
