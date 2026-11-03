@@ -24,10 +24,10 @@ Sonneck is a bookshelf for your sheet music, whether you have public domain clas
 - **Metadata that works for you.** Record key(s), instruments, sheet type, opus number, ISBN, and your own tags, plus a one-click citation generator that collects it all for you. Give it an IMSLP catalog number and it'll auto-fill composer, opus number, year, and publisher for you. The citation line adapts to show only the fields you've actually filled in, and descriptions/user notes support Markdown — including shortcode music symbols like `:mf:` for a mezzo-forte marking (see the [emoji doc](docs/music-emoji.md) for the full list).
   - **Book-to-piece inheritance.** Set a book's composer, publisher, and year once. Every piece inside it inherits the information automatically, you only ever need to override the pieces that are actually different.
   - **Public domain badge.** A small badge shows whether a piece is Public Domain, Likely Public Domain, Copyleft, or In Copyright — computed automatically from the copyright year and composer death year(s) where possible, or set explicitly when you know better. See [Public domain badge](#public-domain-badge) below for how the calculation works and its limitations.
-- **Search that keeps up with you.** Full-text fuzzy search across your whole library as you type. Grid views are optimized for number of items shown at once, while list views show you the most detail about each piece without having to open it up.
+- **Search that keeps up with you.** Full-text fuzzy search across your whole library as you type. Narrow it down with filters for key, instrument, sheet type, practice status, your tags and more (each one can include or exclude), with a live count of how many pieces match. Grid views are optimized for number of items shown at once, while list views show you the most detail about each piece without having to open it up.
 - **Track your wishlist.** Ever forget you were learning a piece only to rediscover it weeks later at the bottom of your bag? Or buy new pieces to learn, only for them to get lost in the stacks? No more! Use the practice status and filter views to track what you want to play, what you have in progress, and even the stuff you never want to touch again! Take *that*, [Sorabji](https://www.youtube.com/watch?v=_OrAewTxBrc)!
 - **Plan your sets.** Setlists can contain a gig date, title, description, and any number of pieces and custom entries that you require. Check the auto-calculated total duration and page count from its details page, reorder things to flow better, and even export the entire set as one combined PDF for convenient backup to another device. Need the program for a bulletin or a group chat? Copy it in one click as Markdown or plain text, complete with every piece's citation.
-- **Practice and perform with the Sheet Viewer.** Hit Play and the piece goes full screen. Turn pages with a tap, swipe, or page turner stompbox; keep an eye on the clock or a stopwatch; and adjust brightness, contrast, or invert a page (remembered per piece) so a faded scan or a dim room is a little easier to read. Your notes and practice status are a tap away. Line pieces up on your Practice List, which automatically marks each ones you've practiced today, or hit Play Set to run through a whole setlist in order, custom entries and all.
+- **Practice and perform with the Sheet Viewer.** Hit Play and the piece goes full screen. Turn pages with a tap, swipe, or page turner stompbox; keep an eye on the clock or a stopwatch; and adjust brightness, contrast, or invert a page (remembered per piece) so a faded scan or a dim room is a little easier to read. Your notes and practice status are a tap away. Line pieces up on your Practice List, which automatically marks each one you've practiced today, or hit Play Set to run through a whole setlist in order, custom entries and all.
   - **Annotations.** Mark up the score with a pen (pressure-sensitive), highlighter, text, and eraser, in six colors you can hide and show like layers. Markings are saved to your account on the server, so they're there on every device. Download a piece or a whole setlist with them included as real PDF annotations, not flattened into the page, so other apps can still move, edit, or delete them.
 - **A truly *responsive* workflow.** None of that "resize-and-rerender-everything" lag. Resize and it's good to go, instantly. Useful keyboard shortcuts throughout — hold `/` or `?` on any page to see them — plus right-click (desktop)/long-press (mobile) context menus for quick edits. Drag and drop a file to upload it, no matter what page you're on.
 - **Easy on the eyes.** Light, dark, or follow your device. Dark mode even goes for your sheet music (if you want it to): turn on Dark Mode Scores in User Settings and pages render as light ink on a dark background, so a late-night practice session doesn't feel like staring into the sun.
@@ -74,7 +74,9 @@ Start the backend:
 ```sh
 cd /sonneck   # wherever the repo is
 DATA_DIR=./data PORT=8080 go run ./cmd/sonneck
-# DATA_DIR *must* be passed somehow or it'll fail.
+# Pass both. Without DATA_DIR, macOS/Windows use the desktop app's own
+# library (~/Music/Sonneck Library); without PORT they listen on 26163,
+# which the frontend dev server doesn't forward to.
 ```
 
 And because that needs to keep running, in a separate terminal run:
@@ -91,20 +93,20 @@ Several of these (`BACKUP_CRON`, `BACKUP_RETENTION_DAYS`, `LOG_LEVEL`, `COPYRIGH
 
 | Variable | Default | Notes |
 |---|---|---|
-| `PORT` | `8080` | HTTP listen port. Really only useful for dev work; native apps handle port selection automatically, and if you're using Docker, use port remapping instead. |
-| `DATA_DIR` | `/data` | Root of the database, library files, backups, and logs |
+| `PORT` | `8080` (Docker), `26163` (native apps) | HTTP listen port. Really only useful for dev work; native apps handle port selection automatically, and if you're using Docker, use port remapping instead. |
+| `DATA_DIR` | `/data` (Docker), `~/Music/Sonneck Library` (native apps) | Root of the database, library files, backups, and logs |
 | `BACKUP_DIR` | `$DATA_DIR/backups` | Where daily DB snapshots are written |
 | `BACKUP_CRON` | `0 3 * * *` | Standard cron expression for the daily backup job |
-| `BACKUP_RETENTION_DAYS` | `30` | Backups and logs older than this are pruned at launch |
+| `BACKUP_RETENTION_DAYS` | `30` | Backups and logs older than this are deleted by the daily backup job |
 | `CITATION_FORMAT` | (built-in template) | Reserved for future use. |
 | `LOG_LEVEL` | `info` | One of `debug`, `info`, `warn`, `error` (case-insensitive). Turn this up to `debug` on a deployed instance if you need more detail while diagnosing an issue |
 | `COPYRIGHT_REGION` | `en-US` | One of `en-US`, `eu-generic`, `en-GB`, `ca` — which region's rule Sonneck's "Likely Public Domain" badge calculation uses. See [Public domain badge](#public-domain-badge) below |
-| `AUTH_METHOD` | (unset) | One of `none`, `singlepass`, `oidc` — see [Security](#security) below |
+| `AUTH_METHOD` | (unset) | One of `none`, `singlepass`, `oidc` — see [Security options](#security-options) below |
 
 ### Security options
 
 > [!CAUTION]
-> **If you are running this on Docker:** Sonneck on Docker first launches with no security enabled and open to the network (see [Security](#security) below). Until you enable a password or SSO support, anyone who can reach the server over the network can use the full API, with no separation between "trusted operator" and "anonymous visitor." It should go without saying but **do not expose it on the open internet like this.**
+> **If you are running this on Docker:** Sonneck on Docker first launches with no security enabled and open to the network. Until you enable a password or SSO support, anyone who can reach the server over the network can use the full API, with no separation between "trusted operator" and "anonymous visitor." It should go without saying but **do not expose it on the open internet like this.**
 
 Sonneck supports the following authentication methods, in order of least to greatest security:
 1. **No password.** Anyone that can find Sonneck can do anything. One user, full admin. If you're just running it as an app on your computer and not gonna use another device, this is fine.
@@ -128,10 +130,10 @@ There's a secret fourth option, which is gating Sonneck behind an authenticating
 For example, in Cloudflare Access, this is set up as a separate application covering these paths with a **Bypass** policy. The greater specificity for these paths will make it take priority over the main application.
 
 ### Public domain badge
-A piece's badge is one of four states: **In Public Domain** or **Copyleft** (both set explicitly by you), or **Likely Public Domain** / **In Copyright** (computed automatically). The computed states use a per-region formula, reviewed against IMSLP's [Copyright Made Simple](https://imslp.org/wiki/IMSLP:Copyright_Made_Simple) and [Public domain](https://imslp.org/wiki/Public_domain) pages. `COPYRIGHT_REGION` (above) picks which region's rule applies to your whole library — the U.S. rule is based on the copyright year alone; the EU/UK/Canada rules are based on the composer's death year (falling back to an approximation from the copyright year if no death year is on record).
+A piece's badge is one of five states: **In Public Domain** or **Copyleft** (set explicitly by you), or **Likely Public Domain**, **Possibly Public Domain** or **In Copyright** (computed automatically). The computed states use a per-region formula, reviewed against IMSLP's [Copyright Made Simple](https://imslp.org/wiki/IMSLP:Copyright_Made_Simple) and [Public domain](https://imslp.org/wiki/Public_domain) pages. `COPYRIGHT_REGION` (above) picks which region's rule applies to your whole library — the U.S. rule is based on the copyright year alone; the EU/UK/Canada rules are based on the composer's death year (falling back to an approximation from the copyright year if no death year is on record).
 
 > [!IMPORTANT]
-> **This is not legal advice.** The calculation is a labeled approximation meant to be a useful starting point, not a determination you should rely on without your own judgment. Especially in the US, there are some edge cases that can throw normal rules out the window; the [Hirtle chart](https://commons.wikimedia.org/wiki/Commons:Hirtle_chart#Works_except_sound_recordings_and_architecture) lays out more of those in detail. Verify independently before treating a piece as public domain. To be absolutely sure, consult an appropriate lawyer.
+> **This is not legal advice.** The calculation is a labeled approximation meant to be a useful starting point, not a determination you should rely on without your own judgment. Especially in the U.S., there are some edge cases that can throw normal rules out the window; the [Hirtle chart](https://commons.wikimedia.org/wiki/Commons:Hirtle_chart#Works_except_sound_recordings_and_architecture) lays out more of those in detail. Verify independently before treating a piece as public domain. To be absolutely sure, consult an appropriate lawyer.
 
 ### Backups & logs
 **Backup:** Automatic, done as a scheduled job by the database using the above environment variables. Backups can be found at `$BACKUP_DIR/sonneck-YYYY-MM-DD.sqlite` before they're cycled out after a number of days set by env var `BACKUP_RETENTION_DAYS`.
