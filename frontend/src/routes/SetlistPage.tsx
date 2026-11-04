@@ -803,7 +803,9 @@ export function SetlistPage() {
                         </span>
                       )}
                       <div className="flex items-baseline gap-2">
-                        <span className="w-8 shrink-0 text-center font-sans text-sm tabular-nums text-ink-soft">
+                        {/* Centered on the title's first line: a box one title line
+                    tall (text-base's 1.5rem), pinned to the row's top. */}
+                        <span className="flex h-6 w-8 shrink-0 items-center justify-center self-start font-sans text-sm tabular-nums text-ink-soft">
                           {entry.displayNumber ?? '—'}
                         </span>
                         <div className="min-w-0 flex-1">
