@@ -971,13 +971,15 @@ export function PieceDetailsSample() {
                   {/* The real page's item (PiecePage.tsx): the piece's PDF
                       with your Sheet Viewer marks as real annotations,
                       hidden colors left out. With nothing to export it
-                      fades, its reason on a tap. Inert here. */}
+                      fades, its reason in the same note under it. Inert here. */}
                   <button
                     type="button"
                     className="block w-full cursor-pointer px-3 py-2 text-left text-sm text-ink hover:bg-paper-hover"
                   >
                     Download PDF + Annotations
-                    <span className="block text-xs text-ink-muted">Hidden colors are left out</span>
+                    <span className="block text-xs text-ink-muted italic">
+                      Hidden colors are left out
+                    </span>
                   </button>
                 </div>
               )}

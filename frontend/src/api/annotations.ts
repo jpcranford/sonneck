@@ -40,8 +40,9 @@ export function annotationExportBlocked(
   scope: 'piece' | 'set',
 ): string | null {
   if (!summary || summary.shown > 0) return null
-  const where = scope === 'piece' ? 'this piece' : "this set's pieces"
-  return summary.hidden > 0
-    ? `Your annotations on ${where} are all in hidden colors. Show a color in the Sheet Viewer's Layers menu to include it.`
-    : `No annotations on ${where} yet. Draw some in the Sheet Viewer first.`
+  // A short note, shown under the faded menu item.
+  if (summary.hidden > 0) return 'All annotations are hidden'
+  return scope === 'piece'
+    ? 'No annotations on this piece yet'
+    : 'No annotations on these pieces yet'
 }

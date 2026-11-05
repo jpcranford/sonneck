@@ -822,7 +822,7 @@ export function SetlistDetailsMockup() {
               {/* The real page's item (SetlistPage.tsx): the Set PDF with
                   your Sheet Viewer marks on each piece as real
                   annotations, hidden colors left out. With nothing to
-                  export it fades, its reason on a tap. Inert here. */}
+                  export it fades, its reason in the same note under it. Inert here. */}
               <button
                 type="button"
                 className="flex w-full cursor-pointer items-start gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-paper-hover"
@@ -830,7 +830,9 @@ export function SetlistDetailsMockup() {
                 <IconDownload size={16} className="mt-0.5 shrink-0 text-ink-soft" />
                 <span>
                   Download Set PDF + Annotations
-                  <span className="block text-xs text-ink-muted">Hidden colors are left out</span>
+                  <span className="block text-xs text-ink-muted italic">
+                    Hidden colors are left out
+                  </span>
                 </span>
               </button>
               <div className="my-1 h-px bg-border" />

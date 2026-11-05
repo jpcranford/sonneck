@@ -39,7 +39,6 @@ import { EditEntryModal } from '../components/EditEntryModal'
 import { EditPieceModal } from '../components/EditPieceModal'
 import { EditRoleModal } from '../components/EditRoleModal'
 import { EditSetlistModal } from '../components/EditSetlistModal'
-import { InfoTooltip } from '../components/InfoTooltip'
 import {
   annotationExportBlocked,
   getSetlistAnnotationSummary,
@@ -678,18 +677,25 @@ export function SetlistPage() {
                       {/* Your Sheet Viewer marks on each piece, as real PDF
                           annotations (needs practice, like the viewer).
                           With nothing to export it fades, with the reason
-                          on a tap: an InfoTooltip, since a disabled element
-                          takes no taps. */}
+                          in a note under it. */}
                       {annotationsBlocked ? (
-                        <InfoTooltip
-                          message={annotationsBlocked}
-                          ariaLabel="Download Set PDF + Annotations (nothing to export)"
-                          showPointerCursor={false}
-                          triggerClassName="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink opacity-50"
+                        <div
+                          aria-disabled="true"
+                          className="flex w-full items-start gap-2 px-3 py-2 text-left text-sm"
                         >
-                          <IconDownload size={16} className="shrink-0 text-ink-soft" />
-                          Download Set PDF + Annotations
-                        </InfoTooltip>
+                          <IconDownload
+                            size={16}
+                            className="mt-0.5 shrink-0 text-ink-soft opacity-50"
+                          />
+                          <span>
+                            <span className="block text-ink opacity-50">
+                              Download Set PDF + Annotations
+                            </span>
+                            <span className="block text-xs text-ink-muted italic">
+                              {annotationsBlocked}
+                            </span>
+                          </span>
+                        </div>
                       ) : (
                         <DownloadLink
                           href={withAnnotations(getSetlistPdfUrl(setlistId))}
@@ -699,7 +705,7 @@ export function SetlistPage() {
                           <span>
                             Download Set PDF + Annotations
                             {!!annotationSummary?.hidden && (
-                              <span className="block text-xs text-ink-muted">
+                              <span className="block text-xs text-ink-muted italic">
                                 Hidden colors are left out
                               </span>
                             )}

@@ -973,18 +973,17 @@ export function PiecePage() {
                       </DownloadLink>
                       {/* Your Sheet Viewer marks as real PDF annotations
                         (needs practice, like the viewer). With nothing to
-                        export it fades, with the reason on a tap: an
-                        InfoTooltip, since a disabled element takes no taps. */}
+                        export it fades, with the reason in a note under it. */}
                       {canPractice &&
                         (annotationsBlocked ? (
-                          <InfoTooltip
-                            message={annotationsBlocked}
-                            ariaLabel="Download PDF + Annotations (nothing to export)"
-                            showPointerCursor={false}
-                            triggerClassName="block w-full px-3 py-2 text-left text-sm text-ink opacity-50"
-                          >
-                            Download PDF + Annotations
-                          </InfoTooltip>
+                          <div aria-disabled="true" className="px-3 py-2 text-left text-sm">
+                            <span className="block text-ink opacity-50">
+                              Download PDF + Annotations
+                            </span>
+                            <span className="block text-xs text-ink-muted italic">
+                              {annotationsBlocked}
+                            </span>
+                          </div>
                         ) : (
                           <DownloadLink
                             href={withAnnotations(getPieceFileUrl(piece.id))}
@@ -992,7 +991,7 @@ export function PiecePage() {
                           >
                             Download PDF + Annotations
                             {!!annotationSummary?.hidden && (
-                              <span className="block text-xs text-ink-muted">
+                              <span className="block text-xs text-ink-muted italic">
                                 Hidden colors are left out
                               </span>
                             )}
