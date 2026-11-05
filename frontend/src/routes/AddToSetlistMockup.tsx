@@ -447,13 +447,13 @@ function FixtureGridCard({
             label: piece.favorite ? 'Remove from Favorites' : 'Add to Favorites',
             onSelect: () => {},
           },
-          { label: 'Add to Setlist', onSelect: () => setPickerOpen(true) },
           // Sheet Viewer plan, Phase 6: added to the end of the list;
           // hidden without the practice permission.
           {
             label: onPracticeList ? 'Remove from Practice List' : 'Add to Practice List',
             onSelect: () => setOnPracticeList(!onPracticeList),
           },
+          { label: 'Add to Setlist', onSelect: () => setPickerOpen(true) },
           { label: 'Edit Piece', onSelect: () => {} },
           { label: 'Delete Piece', destructive: true, onSelect: () => {} },
         ]}
@@ -533,13 +533,13 @@ function FixtureListCard({
             label: piece.favorite ? 'Remove from Favorites' : 'Add to Favorites',
             onSelect: () => {},
           },
-          { label: 'Add to Setlist', onSelect: () => setPickerOpen(true) },
           // Sheet Viewer plan, Phase 6: added to the end of the list;
           // hidden without the practice permission.
           {
             label: onPracticeList ? 'Remove from Practice List' : 'Add to Practice List',
             onSelect: () => setOnPracticeList(!onPracticeList),
           },
+          { label: 'Add to Setlist', onSelect: () => setPickerOpen(true) },
           { label: 'Edit Piece', onSelect: () => {} },
           { label: 'Delete Piece', destructive: true, onSelect: () => {} },
         ]}

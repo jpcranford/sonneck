@@ -30,10 +30,10 @@ interface PieceContextMenuProps {
 
 // Shared right-click menu for piece cards (Library grid + list, Book
 // Details, Person Details): the practice status strip on top (hidden
-// without `practice`), then a favorite toggle, "Add to Setlist" (hidden
-// without `create`), "Add to Practice List" or "Remove from Practice List"
-// (hidden without `practice`), "Edit Piece", and, at the end, a
-// destructive "Delete Piece".
+// without `practice`), then a favorite toggle, "Add to Practice List" or
+// "Remove from Practice List" (hidden without `practice`), "Add to Setlist"
+// (hidden without `create`), "Edit Piece", and, at the end, a destructive
+// "Delete Piece".
 export const PieceContextMenu = forwardRef<ContextMenuHandle, PieceContextMenuProps>(
   function PieceContextMenu({ piece, children, hideTriggerButton, siblingPieces }, ref) {
     const [editOpen, setEditOpen] = useState(false)
@@ -157,9 +157,6 @@ export const PieceContextMenu = forwardRef<ContextMenuHandle, PieceContextMenuPr
                   },
                 ]
               : []),
-            ...(canCreate
-              ? [{ label: 'Add to Setlist', onSelect: () => setPickerOpen(true) }]
-              : []),
             // Added to the end of the list.
             ...(canPractice && practiceList
               ? [
@@ -168,6 +165,9 @@ export const PieceContextMenu = forwardRef<ContextMenuHandle, PieceContextMenuPr
                     onSelect: () => practiceListMutation.mutate(!onPracticeList),
                   },
                 ]
+              : []),
+            ...(canCreate
+              ? [{ label: 'Add to Setlist', onSelect: () => setPickerOpen(true) }]
               : []),
             ...(canEdit
               ? [
