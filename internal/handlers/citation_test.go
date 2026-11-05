@@ -2,6 +2,7 @@ package handlers_test
 
 import (
 	"net/http"
+	"strings"
 	"testing"
 )
 
@@ -1170,14 +1171,15 @@ func selfPublishedCitation(t *testing.T, fields map[string]any) string {
 
 // A "self-published" publisher (any case/spacing/punctuation) with no
 // explicit copyright holder credits the arranger(s), not the literal
-// publisher text.
+// publisher text, and reads "self-published" mid-sentence whatever its
+// typed capitalization.
 func TestCitation_SelfPublishedHolderFallsBackToArranger(t *testing.T) {
 	got := selfPublishedCitation(t, map[string]any{
 		"composers": []string{"Jane Composer"},
 		"arrangers": []string{"Sam Arranger", "Pat Arranger"},
 		"publisher": "SELF published",
 	})
-	want := `Jane Composer, "Solo", arr. Sam Arranger and Pat Arranger, SELF published, 2021. Copyright © 2021 Sam Arranger and Pat Arranger.`
+	want := `Jane Composer, "Solo", arr. Sam Arranger and Pat Arranger, self-published, 2021. Copyright © 2021 Sam Arranger and Pat Arranger.`
 	if got != want {
 		t.Errorf("citation = %q, want %q", got, want)
 	}
@@ -1189,7 +1191,7 @@ func TestCitation_SelfPublishedHolderFallsBackToComposer(t *testing.T) {
 		"composers": []string{"Jane Composer"},
 		"publisher": "Self-Published",
 	})
-	want := `Jane Composer, "Solo", Self-Published, 2021. Copyright © 2021 Jane Composer.`
+	want := `Jane Composer, "Solo", self-published, 2021. Copyright © 2021 Jane Composer.`
 	if got != want {
 		t.Errorf("citation = %q, want %q", got, want)
 	}
@@ -1204,8 +1206,55 @@ func TestCitation_SelfPublishedExplicitHolderWins(t *testing.T) {
 		"publisher":       "Self-Published",
 		"copyrightHolder": "Doe Music LLC",
 	})
-	want := `Jane Composer, "Solo", arr. Sam Arranger, Self-Published, 2021. Copyright © 2021 Doe Music LLC.`
+	want := `Jane Composer, "Solo", arr. Sam Arranger, self-published, 2021. Copyright © 2021 Doe Music LLC.`
 	if got != want {
 		t.Errorf("citation = %q, want %q", got, want)
+	}
+}
+
+// In the two-sentence citation, a self-published book starts its own
+// sentence ("Self-published, 2015.") rather than "Published by
+// self-published"; after a book title it stays lowercase.
+func TestCitation_SelfPublishedBookSentence(t *testing.T) {
+	cite := func(opusMatchesBook bool) string {
+		h := newTestServer(t)
+		bookID, _ := uploadBook(t, h, "book.pdf", 4)
+		decodeData(t, doJSON(t, h, http.MethodPatch, apiBooksURL(bookID), map[string]any{
+			"bookTitle":      "Album for the Young",
+			"composers":      []string{"Jane Doe"},
+			"workOpusNumber": "Op. 68",
+			"publisher":      "Self-Published",
+			"yearPublished":  "2015",
+		}), nil)
+		confirmRec := doJSON(t, h, http.MethodPost, apiBooksURL(bookID)+"/confirm-import", map[string]any{
+			"ranges": []map[string]any{{"start": 1, "end": 4}},
+			"pieces": []map[string]any{{"title": "The Reaper's Song"}},
+		})
+		var result struct {
+			Pieces []pieceResponse `json:"pieces"`
+		}
+		decodeData(t, confirmRec, &result)
+		opus := "Op. 99"
+		if opusMatchesBook {
+			opus = "Op. 68, No. 3"
+		}
+		decodeData(t, doJSON(t, h, http.MethodPatch, apiPiecesURL(result.Pieces[0].ID), map[string]any{
+			"title":          "The Reaper's Song",
+			"sourceBookId":   bookID,
+			"workOpusNumber": opus,
+			"copyrightYear":  2015,
+		}), nil)
+		var citation struct {
+			Citation string `json:"citation"`
+		}
+		decodeData(t, doJSON(t, h, http.MethodGet, apiPiecesURL(result.Pieces[0].ID)+"/citation", nil), &citation)
+		return citation.Citation
+	}
+
+	if got := cite(true); !strings.Contains(got, `. Self-published, 2015. Copyright`) || strings.Contains(got, "Published by") {
+		t.Errorf("opus match: citation = %q, want its book sentence to read \"Self-published, 2015.\"", got)
+	}
+	if got := cite(false); !strings.Contains(got, `Published in Album for the Young, Op. 68, self-published, 2015. Copyright`) {
+		t.Errorf("no opus match: citation = %q, want \"Published in Album for the Young, Op. 68, self-published, 2015.\"", got)
 	}
 }

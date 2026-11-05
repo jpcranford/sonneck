@@ -390,11 +390,18 @@ func buildTwoSentenceCitation(in citationInput) string {
 	}
 
 	if len(publishParts) > 0 {
-		verb := "Published in "
-		if opus.matched {
-			verb = "Published by "
+		sentence := strings.Join(publishParts, ", ") + "."
+		switch {
+		case isSelfPublished(eff.Publisher.Value) && strings.HasPrefix(sentence, selfPublishedText):
+			// "Published by self-published" says nothing: the sentence
+			// starts with the fact itself, "Self-published, 2015."
+			sentence = "S" + strings.TrimPrefix(sentence, "s")
+		case opus.matched:
+			sentence = "Published by " + sentence
+		default:
+			sentence = "Published in " + sentence
 		}
-		parts = append(parts, verb+strings.Join(publishParts, ", ")+".")
+		parts = append(parts, sentence)
 	}
 
 	if clause := copyrightClause(eff, in.composerNames, in.arrangerNames); clause != "" {
@@ -506,6 +513,9 @@ func publisherOrIdentifierParts(eff *repo.EffectivePiece, isbn string) []string 
 // otherwise combine it with different things (IMSLP-dominant vs.
 // IMSLP-additive).
 func fusePublisherAndID(publisher, publisherID string) string {
+	if isSelfPublished(publisher) {
+		publisher = selfPublishedText
+	}
 	switch {
 	case publisher != "" && publisherID != "":
 		return fmt.Sprintf("%s #%s", publisher, publisherID)
@@ -575,6 +585,12 @@ func copyrightClause(eff *repo.EffectivePiece, composerNames, arrangerNames []st
 	}
 	return base
 }
+
+// selfPublishedText is how a self-published publisher reads mid-sentence in
+// a citation, however it was typed ("Self-Published", "SELF published"):
+// a description, not a name, so lowercase. A sentence that starts with it
+// capitalizes it ("Self-published, 2015.").
+const selfPublishedText = "self-published"
 
 // isSelfPublished reports whether a publisher value means "self-published",
 // ignoring case, spaces, and punctuation: "Self-Published", "self
