@@ -8,12 +8,13 @@ import {
   type ReactNode,
 } from 'react'
 import { createPortal } from 'react-dom'
-import { Navigate, useNavigate, useParams } from 'react-router-dom'
+import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   IconArrowBackUp,
   IconArrowForwardUp,
   IconArrowLeft,
+  IconArrowRight,
   IconCheck,
   IconChevronLeft,
   IconChevronRight,
@@ -1767,6 +1768,17 @@ function SheetViewer({
     if ((window.history.state as { idx?: number } | null)?.idx) navigate(-1)
     else navigate(session.exitTo, { replace: true })
   }
+  // Info's "See all details": leave for the piece's own page. It takes the
+  // viewer's place in history, so Back goes where the viewer was opened
+  // from; opened from this piece's own Piece Details (its Play button
+  // marks that), it just goes back there rather than stacking a second
+  // copy. Leaving saves anything still waiting, as Exit does.
+  const location = useLocation()
+  function openPieceDetails(id: number) {
+    const fromPiece = (location.state as { fromPiece?: number } | null)?.fromPiece
+    if (fromPiece === id && (window.history.state as { idx?: number } | null)?.idx) navigate(-1)
+    else navigate(`/pieces/${id}`, { replace: true })
+  }
 
   // One finger on the score: a tap turns by where it lands, a swipe by which
   // way it goes (lib/sheetViewerGestures.ts). A second finger (a pinch)
@@ -2348,6 +2360,18 @@ function SheetViewer({
               </Fragment>
             ))}
           </dl>
+          {/* Leaves the viewer for the piece's own page, with everything the
+              details above leave out (option C of
+              https://claude.ai/artifact/3bwSWq4TLtSrpPAWksqmmS). */}
+          <button
+            type="button"
+            data-hit
+            onClick={() => openPieceDetails(piece.id)}
+            className={`${HIT} group/b -my-2 gap-1 self-start text-sm font-medium text-accent`}
+          >
+            <span className="underline-offset-[3px] group-hover/b:underline">See all details</span>
+            <IconArrowRight size={16} />
+          </button>
         </section>
       )}
     </div>

@@ -15,6 +15,7 @@ import {
   IconArrowBackUp,
   IconArrowForwardUp,
   IconArrowLeft,
+  IconArrowRight,
   IconBallpen,
   IconCheck,
   IconChevronLeft,
@@ -2140,6 +2141,19 @@ export function SheetViewerMockup() {
               </Fragment>
             ))}
           </dl>
+          {/* Leaves the viewer for the piece's own page, with everything
+              the details above leave out (option C of
+              https://claude.ai/artifact/3bwSWq4TLtSrpPAWksqmmS). The real
+              viewer saves anything waiting first; here it just goes. */}
+          <button
+            type="button"
+            data-hit
+            onClick={() => navigate(`/pieces/${piece.id}`)}
+            className={`${HIT} group/b -my-2 gap-1 self-start text-sm font-medium text-accent`}
+          >
+            <span className="underline-offset-[3px] group-hover/b:underline">See all details</span>
+            <IconArrowRight size={16} />
+          </button>
         </section>
       )}
     </div>
