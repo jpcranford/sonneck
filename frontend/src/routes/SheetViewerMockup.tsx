@@ -34,6 +34,8 @@ import {
   IconMetronome,
   IconMinus,
   IconNotebook,
+  IconHeart,
+  IconHeartFilled,
   IconPencil,
   IconPhotoCog,
   IconPlayerPause,
@@ -603,6 +605,9 @@ export function SheetViewerMockup() {
   // statuses and the bar's on/off are kept per piece but never written.
   const [notesOverride, setNotesOverride] = useState<Record<number, string>>({})
   const [statusOverride, setStatusOverride] = useState<Record<number, string | null>>({})
+  // The favorite heart beside the title in About this piece (option B of
+  // https://claude.ai/artifact/PFNMqbNZoR42qUDCyiPbuB), per piece.
+  const [favoriteOverride, setFavoriteOverride] = useState<Record<number, boolean>>({})
   const [hoveredStatus, setHoveredStatus] = useState<string | null>(null)
   // Your own statuses (read only — the mockup writes nothing).
   const { data: practiceStatuses = [] } = useQuery({
@@ -647,6 +652,10 @@ export function SheetViewerMockup() {
     activeId !== null && activeId in statusOverride
       ? statusOverride[activeId]
       : (piece?.practiceStatus ?? null)
+  const favorite =
+    activeId !== null && activeId in favoriteOverride
+      ? favoriteOverride[activeId]
+      : (piece?.favorite ?? false)
   const infoOpen = menu === 'info'
   // Hidden while any menu or Info is open, so nothing stacks over it.
   const showBar = notes !== '' && barOn && menu === null && !customKey
@@ -2092,9 +2101,36 @@ export function SheetViewerMockup() {
       {piece && (
         <section className="flex flex-col gap-2">
           <h3 className={sectionLabel}>About this piece</h3>
-          <div>
-            <p className="font-display text-lg leading-snug font-medium">{piece.title}</p>
-            {credit && <p className="text-sm text-ink-soft">{credit}</p>}
+          {/* The favorite heart beside the title, as on Piece Details: an
+              outline when off, filled green when on. Its 48pt tap area
+              hangs past the title's first line, like the notes' pencil;
+              the real viewer leaves it out without the edit permission. */}
+          <div className="flex items-start gap-2">
+            <div className="min-w-0 flex-1">
+              <p className="font-display text-lg leading-snug font-medium">{piece.title}</p>
+              {credit && <p className="text-sm text-ink-soft">{credit}</p>}
+            </div>
+            {activeId !== null && (
+              <div className="-my-2 -mr-1 shrink-0">
+                <HitButton
+                  label={favorite ? 'Remove from Favorites' : 'Add to Favorites'}
+                  onClick={() => {
+                    setFavoriteOverride({ ...favoriteOverride, [activeId]: !favorite })
+                    flash(
+                      favorite
+                        ? 'Removed from Favorites (mockup: nothing is written)'
+                        : 'Added to Favorites (mockup: nothing is written)',
+                    )
+                  }}
+                >
+                  {favorite ? (
+                    <IconHeartFilled size={20} className="text-accent" />
+                  ) : (
+                    <IconHeart size={20} />
+                  )}
+                </HitButton>
+              </div>
+            )}
           </div>
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
             {details.map(([label, value]) => (

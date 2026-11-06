@@ -28,6 +28,8 @@ import {
   IconEye,
   IconEyeOff,
   IconGripVertical,
+  IconHeart,
+  IconHeartFilled,
   IconInfoCircle,
   IconListNumbers,
   IconMetronome,
@@ -76,6 +78,7 @@ import {
   savePracticeSettings,
   setPiecePracticeStatus,
   setPieceUserNotes,
+  updatePiece,
   type PracticeSettings,
 } from '../api/pieces'
 import {
@@ -124,6 +127,7 @@ import {
   type Tool,
 } from '../lib/sheetViewerTools'
 import { hasPermission, useAuth } from '../lib/AuthContext'
+import { pieceToWriteRequest } from '../lib/pieceToWriteRequest'
 import { COMMAND_KEY, type ShortcutSection } from '../lib/shortcuts'
 import { Shortcuts } from '../components/Shortcuts'
 import { ShortcutHelp } from '../components/ShortcutHelp'
@@ -2092,6 +2096,25 @@ function SheetViewer({
   const status = statusMutation.isPending
     ? (statusMutation.variables ?? null)
     : (piece?.practiceStatus ?? null)
+  // The favorite heart beside the title in About this piece (option B of
+  // https://claude.ai/artifact/PFNMqbNZoR42qUDCyiPbuB). Favoriting saves the
+  // whole piece, as Piece Details' heart does, so it needs `edit` and is
+  // left out without it.
+  const canFavorite = hasPermission(useAuth(), 'edit')
+  const favoriteMutation = useMutation({
+    mutationFn: (next: boolean) =>
+      updatePiece(pieceId as number, { ...pieceToWriteRequest(piece!), favorite: next }),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(['piece', pieceId], updated)
+      queryClient.invalidateQueries({ queryKey: ['pieces'] })
+      queryClient.invalidateQueries({ queryKey: ['pieceFacets'] })
+      flash(updated.favorite ? 'Added to Favorites' : 'Removed from Favorites')
+    },
+    onError: () => flash('Couldn’t save the favorite'),
+  })
+  const favorite = favoriteMutation.isPending
+    ? favoriteMutation.variables
+    : (piece?.favorite ?? false)
 
   function openInfo(open: boolean) {
     setMenu(open ? 'info' : null)
@@ -2293,9 +2316,29 @@ function SheetViewer({
       {piece && (
         <section className="flex flex-col gap-2">
           <h3 className={sectionLabel}>About this piece</h3>
-          <div>
-            <p className="font-display text-lg leading-snug font-medium">{piece.title}</p>
-            {credit && <p className="text-sm text-ink-soft">{credit}</p>}
+          {/* The favorite heart beside the title, as on Piece Details: an
+              outline when off, filled green when on. Its 48pt tap area
+              hangs past the title's first line, like the notes' pencil. */}
+          <div className="flex items-start gap-2">
+            <div className="min-w-0 flex-1">
+              <p className="font-display text-lg leading-snug font-medium">{piece.title}</p>
+              {credit && <p className="text-sm text-ink-soft">{credit}</p>}
+            </div>
+            {canFavorite && (
+              <div className="-my-2 -mr-1 shrink-0">
+                <HitButton
+                  label={favorite ? 'Remove from Favorites' : 'Add to Favorites'}
+                  onClick={() => favoriteMutation.mutate(!favorite)}
+                  disabled={favoriteMutation.isPending}
+                >
+                  {favorite ? (
+                    <IconHeartFilled size={20} className="text-accent" />
+                  ) : (
+                    <IconHeart size={20} />
+                  )}
+                </HitButton>
+              </div>
+            )}
           </div>
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
             {details.map(([label, value]) => (
