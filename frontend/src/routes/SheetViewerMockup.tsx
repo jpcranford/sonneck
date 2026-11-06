@@ -2998,13 +2998,6 @@ export function SheetViewerMockup() {
       <ShortcutHelp />
       <Shortcuts
         shortcuts={[
-          { key: 'i', label: 'Info', run: () => openInfo(!infoOpen), enabled: !customKey },
-          {
-            key: 'n',
-            label: 'Practice Notes',
-            run: () => openNotes(!notesOpen),
-            enabled: !customKey,
-          },
           {
             key: 'q',
             label: sessionKind === 'setlist' ? 'Setlist queue' : 'Practice List',
@@ -3014,22 +3007,42 @@ export function SheetViewerMockup() {
           { key: 'c', label: 'Clock', run: () => setMenu(menu === 'clock' ? null : 'clock') },
           { key: 's', label: 'Start or pause the stopwatch', run: toggleStopwatch },
           {
+            key: 'n',
+            label: 'Practice Notes',
+            run: () => openNotes(!notesOpen),
+            enabled: !customKey,
+          },
+          {
             key: 'p',
             label: 'Photo filters',
             run: () => setMenu(menu === 'photo' ? null : 'photo'),
           },
-          { key: 'm', label: 'Edge margin', run: () => setPhoto({ margin: !photo.margin }) },
+          { key: 'i', label: 'Info', run: () => openInfo(!infoOpen), enabled: !customKey },
+          {
+            key: 'a',
+            label: mode === 'annotate' ? 'Leave Annotate' : 'Annotate',
+            run: () => (mode === 'annotate' ? leaveAnnotate() : enterAnnotate()),
+            enabled: !customKey,
+          },
+          { key: 'm', label: 'Toggle edge margin', run: () => setPhoto({ margin: !photo.margin }) },
           {
             key: 'b',
-            label: 'Notes banner',
+            label: 'Toggle notes banner',
             run: () => setBar(!barOn),
             enabled: !!notes && !customKey,
+          },
+          {
+            key: 'f',
+            label: 'Toggle fullscreen',
+            run: () =>
+              void toggleFullscreen().catch(() => flash('Full screen isn’t available here')),
+            enabled: canFullscreen(),
           },
           // Favorite, Piece Details' key. In Annotate L is Layers, so only
           // outside it.
           {
             key: 'l',
-            label: favorite ? 'Remove from favorites' : 'Add to favorites',
+            label: favorite ? 'Remove piece from favorites' : 'Add piece to favorites',
             run: () => {
               if (activeId === null) return
               setFavoriteOverride({ ...favoriteOverride, [activeId]: !favorite })
@@ -3040,19 +3053,6 @@ export function SheetViewerMockup() {
               )
             },
             enabled: mode !== 'annotate' && !customKey && activeId !== null,
-          },
-          {
-            key: 'f',
-            label: 'Full screen',
-            run: () =>
-              void toggleFullscreen().catch(() => flash('Full screen isn’t available here')),
-            enabled: canFullscreen(),
-          },
-          {
-            key: 'a',
-            label: mode === 'annotate' ? 'Leave Annotate' : 'Annotate',
-            run: () => (mode === 'annotate' ? leaveAnnotate() : enterAnnotate()),
-            enabled: !customKey,
           },
         ]}
         options={{ title: 'Sheet Viewer', wide: true, sections: shortcutSections }}

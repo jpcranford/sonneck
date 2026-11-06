@@ -3612,13 +3612,6 @@ function SheetViewer({
       <ShortcutHelp />
       <Shortcuts
         shortcuts={[
-          { key: 'i', label: 'Info', run: () => openInfo(!infoOpen), enabled: !custom },
-          {
-            key: 'n',
-            label: 'Practice Notes',
-            run: () => openNotes(!notesOpen),
-            enabled: !custom,
-          },
           {
             key: 'q',
             label: session.kind === 'setlist' ? 'Setlist queue' : 'Practice List',
@@ -3628,42 +3621,49 @@ function SheetViewer({
           { key: 'c', label: 'Clock', run: () => setMenu(menu === 'clock' ? null : 'clock') },
           { key: 's', label: 'Start or pause the stopwatch', run: toggleStopwatch },
           {
+            key: 'n',
+            label: 'Practice Notes',
+            run: () => openNotes(!notesOpen),
+            enabled: !custom,
+          },
+          {
             key: 'p',
             label: 'Photo filters',
             run: () => setMenu(menu === 'photo' ? null : 'photo'),
           },
-          {
-            key: 'm',
-            label: 'Edge margin',
-            run: () => setPhoto({ edgeMargin: !photo.edgeMargin }),
-          },
-          {
-            key: 'b',
-            label: 'Notes banner',
-            run: () => setPractice({ notesBarShown: !notesBarShown }),
-            enabled: !!notes && !custom,
-          },
-          // Favorite, Piece Details' key. In Annotate L is Layers, so only
-          // outside it; left out without `edit`, like the heart in Info.
-          {
-            key: 'l',
-            label: favorite ? 'Remove from favorites' : 'Add to favorites',
-            run: () => favoriteMutation.mutate(!favorite),
-            enabled:
-              canFavorite && !annotating && !custom && !!piece && !favoriteMutation.isPending,
-          },
-          {
-            key: 'f',
-            label: 'Full screen',
-            run: () =>
-              void toggleFullscreen().catch(() => flash('Full screen isn’t available here')),
-            enabled: canFullscreen(),
-          },
+          { key: 'i', label: 'Info', run: () => openInfo(!infoOpen), enabled: !custom },
           {
             key: 'a',
             label: annotating ? 'Leave Annotate' : 'Annotate',
             run: () => (annotating ? leaveAnnotate() : enterAnnotate()),
             enabled: !custom && pieceId !== null,
+          },
+          {
+            key: 'm',
+            label: 'Toggle edge margin',
+            run: () => setPhoto({ edgeMargin: !photo.edgeMargin }),
+          },
+          {
+            key: 'b',
+            label: 'Toggle notes banner',
+            run: () => setPractice({ notesBarShown: !notesBarShown }),
+            enabled: !!notes && !custom,
+          },
+          {
+            key: 'f',
+            label: 'Toggle fullscreen',
+            run: () =>
+              void toggleFullscreen().catch(() => flash('Full screen isn’t available here')),
+            enabled: canFullscreen(),
+          },
+          // Favorite, Piece Details' key. In Annotate L is Layers, so only
+          // outside it; left out without `edit`, like the heart in Info.
+          {
+            key: 'l',
+            label: favorite ? 'Remove piece from favorites' : 'Add piece to favorites',
+            run: () => favoriteMutation.mutate(!favorite),
+            enabled:
+              canFavorite && !annotating && !custom && !!piece && !favoriteMutation.isPending,
           },
         ]}
         options={{ title: 'Sheet Viewer', wide: true, sections: shortcutSections }}
