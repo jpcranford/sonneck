@@ -29,7 +29,7 @@ import {
   updateSetlistEntry,
 } from '../api/setlists'
 import { useFreshOnOpen } from '../hooks/useFreshOnOpen'
-import type { Piece, SetlistDetail, SetlistEntry } from '../api/types'
+import type { Piece, SetlistDetail, SetlistEntry, SetlistPieceSummary } from '../api/types'
 import { personCreditPart } from '../lib/joinNames'
 import { useDebouncedValue } from '../hooks/useDebouncedValue'
 import { InfoTooltip } from './InfoTooltip'
@@ -42,7 +42,6 @@ import { showAlert } from '../lib/dialogs'
 import { isMultilineField } from '../lib/multilineField'
 import { MarkdownHint } from './MarkdownHint'
 import { assumedDurationHint } from '../lib/setlistEstimate'
-import { confirmRemoveCustomEntry } from '../lib/confirmRemoveEntry'
 
 // Real port of EditSetlistMockup.tsx's own exported EditSetlistModal
 // (Setlists design pass, Phase 10 mockup approved, decision 23's full
@@ -67,16 +66,16 @@ import { confirmRemoveCustomEntry } from '../lib/confirmRemoveEntry'
 // mockup's own create-mode Program tab worked from pure local state with
 // no such constraint; this asymmetry doesn't exist there.
 //
-// The Setlist Details tab's own name/gigDate/description are plain local
-// form state, saved only when the footer's Save button is pressed (Cancel
-// discards them) — the same convention every other Edit modal in this app
-// follows. The Program Order tab is the opposite: every action (add a
-// piece, add/edit a custom entry, remove, reorder) calls its own backend
-// endpoint immediately and updates the shared ['setlist', id] query cache
-// on success, the same "live list management" posture TagComboBox/
-// AddToSetlistPicker already take elsewhere in this app — there's nothing
-// for the footer Save/Cancel pair to commit or discard on that tab, since
-// nothing on it is ever left unsaved.
+// Nothing here is saved until a Save button is pressed. The Details tab's
+// name/gigDate/description are local form state, and the Program tab works
+// on a local copy of the entries (`entries`, filled once per open): adding
+// a piece or custom entry, removing one and reordering change only that
+// copy. Save Setlist applies all of it (saveAllMutation: the details, then
+// removals, additions and the final order); Cancel discards it, without
+// asking, like every other edit window. The one exception is an entry's
+// own small Save in its inline role or custom-entry card: on an entry
+// already in the setlist it writes that entry at once; on one added in
+// this window it only updates the copy, which Save Setlist then creates.
 
 function formatDuration(seconds: number): string {
   const m = Math.floor(seconds / 60)
@@ -88,6 +87,27 @@ function parseDurationInput(value: string): number | undefined {
   const match = value.trim().match(/^(\d+):(\d{2})$/)
   if (!match) return undefined
   return Number(match[1]) * 60 + Number(match[2])
+}
+
+type CustomEntryFields = {
+  customName: string
+  customDurationSeconds: number | null
+  customNotes: string | null
+  customCountsAsMusic: boolean
+}
+
+// A search result as a program row, for an entry added in this window.
+function pieceSummary(piece: Piece): SetlistPieceSummary {
+  return {
+    id: piece.id,
+    title: piece.title,
+    workOpusNumber: piece.workOpusNumber.value,
+    composer: piece.composer.values,
+    arranger: piece.arranger.values,
+    keys: piece.keys,
+    duration: piece.duration,
+    pageCount: piece.pageCount,
+  }
 }
 
 function pieceKeysLabel(piece: Piece | SetlistEntry['piece']): string {
@@ -147,6 +167,11 @@ export function EditSetlistModal({
     enabled: mode === 'edit' && setlistId != null,
   })
 
+  // The Program as it will be saved: filled once per open (with the
+  // Details fields, below), then changed only here until Save Setlist.
+  // An entry added in this window has a negative id until it's saved.
+  const [entries, setEntries] = useState<SetlistEntry[]>([])
+  const nextDraftId = useRef(-1)
   const [name, setName] = useState('')
   const [gigDate, setGigDate] = useState('')
   const [description, setDescription] = useState('')
@@ -168,6 +193,7 @@ export function EditSetlistModal({
       setName(fresh.name)
       setGigDate(fresh.gigDate ?? '')
       setDescription(fresh.description ?? '')
+      setEntries(fresh.entries)
       detailsSyncedRef.current = true
     },
   )
@@ -182,6 +208,7 @@ export function EditSetlistModal({
       setName(initialName)
       setGigDate('')
       setDescription('')
+      setEntries([])
       detailsSyncedRef.current = true
       return
     }
@@ -189,21 +216,12 @@ export function EditSetlistModal({
       setName(setlistDetail.name)
       setGigDate(setlistDetail.gigDate ?? '')
       setDescription(setlistDetail.description ?? '')
+      setEntries(setlistDetail.entries)
       detailsSyncedRef.current = true
     }
   }, [open, mode, setlistDetail, initialName, loadingFresh])
 
-  // Local, draggable copy of the Program's entries — mirrors the query's
-  // own entries whenever a drag isn't in progress; a drag mutates this
-  // directly for instant visual feedback and only calls the reorder
-  // endpoint once, on drop.
-  const [entries, setEntries] = useState<SetlistEntry[]>([])
   const [draggingId, setDraggingId] = useState<number | null>(null)
-  useEffect(() => {
-    if (draggingId !== null) return
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate: mirrors the ['setlist', id] query's own entries into local, freely-mutable drag state whenever a drag isn't actively reordering it.
-    setEntries(setlistDetail?.entries ?? [])
-  }, [setlistDetail, draggingId])
 
   const [ghostPos, setGhostPos] = useState<{ x: number; y: number } | null>(null)
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
@@ -266,31 +284,21 @@ export function EditSetlistModal({
     queryClient.invalidateQueries({ queryKey: ['setlist', setlistId, 'program'] })
   }
 
-  const addPieceMutation = useMutation({
-    mutationFn: (pieceId: number) => addSetlistEntry(setlistId!, { pieceId }),
-    onSuccess: applyUpdatedSetlist,
-    onError: (error) =>
-      showAlert(error instanceof ApiError ? error.message : 'Could not add that piece.'),
-  })
+  // An entry's own small Save, on an entry already in the setlist: writes
+  // just that entry, then takes the saved copy into the draft (the rest of
+  // the draft keeps its unsaved changes).
+  function takeSavedEntry(updated: SetlistDetail, entryId: number) {
+    applyUpdatedSetlist(updated)
+    const saved = updated.entries.find((e) => e.id === entryId)
+    if (saved) setEntries((current) => current.map((e) => (e.id === entryId ? saved : e)))
+  }
 
-  const addOrEditCustomMutation = useMutation({
-    mutationFn: () => {
-      const body = {
-        customName: customName.trim(),
-        customDurationSeconds: parseDurationInput(customDuration) ?? null,
-        customNotes: customDescription.trim() || null,
-        customCountsAsMusic,
-      }
-      if (editingEntryId != null) {
-        const existing = entries.find((e) => e.id === editingEntryId)
-        return updateSetlistEntry(setlistId!, editingEntryId, {
-          role: existing?.role ?? null,
-          ...body,
-        })
-      }
-      return addSetlistEntry(setlistId!, body)
+  const editCustomMutation = useMutation({
+    mutationFn: ({ entryId, body }: { entryId: number; body: CustomEntryFields }) => {
+      const existing = entries.find((e) => e.id === entryId)
+      return updateSetlistEntry(setlistId!, entryId, { role: existing?.role ?? null, ...body })
     },
-    onSuccess: applyUpdatedSetlist,
+    onSuccess: (updated, { entryId }) => takeSavedEntry(updated, entryId),
     onError: (error) =>
       showAlert(error instanceof ApiError ? error.message : 'Could not save that entry.'),
   })
@@ -300,27 +308,17 @@ export function EditSetlistModal({
   const editRoleMutation = useMutation({
     mutationFn: ({ entryId, role }: { entryId: number; role: string | null }) =>
       updateSetlistEntry(setlistId!, entryId, { role, customCountsAsMusic: false }),
-    onSuccess: applyUpdatedSetlist,
+    onSuccess: (updated, { entryId }) => takeSavedEntry(updated, entryId),
     onError: (error) =>
       showAlert(error instanceof ApiError ? error.message : 'Could not save that role.'),
   })
 
-  const removeMutation = useMutation({
-    mutationFn: (entryId: number) => removeSetlistEntry(setlistId!, entryId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['setlist', setlistId] }),
-    onError: (error) =>
-      showAlert(error instanceof ApiError ? error.message : 'Could not remove that entry.'),
-  })
-
-  const reorderMutation = useMutation({
-    mutationFn: (entryIds: number[]) => reorderSetlistEntries(setlistId!, entryIds),
-    onSuccess: applyUpdatedSetlist,
-    onError: (error) =>
-      showAlert(error instanceof ApiError ? error.message : 'Could not save the new order.'),
-  })
+  function patchDraftEntry(entryId: number, patch: Partial<SetlistEntry>) {
+    setEntries((current) => current.map((e) => (e.id === entryId ? { ...e, ...patch } : e)))
+  }
 
   function removeEntry(id: number) {
-    removeMutation.mutate(id)
+    setEntries((current) => current.filter((e) => e.id !== id))
   }
 
   function openPieceSearch() {
@@ -338,7 +336,18 @@ export function EditSetlistModal({
   // duplicates allowed on purpose). The search stays open afterward so
   // several pieces can be added in a row — only the query/highlight reset.
   function selectPiece(piece: Piece) {
-    addPieceMutation.mutate(piece.id)
+    const id = nextDraftId.current--
+    setEntries((current) => [
+      ...current,
+      {
+        id,
+        kind: 'piece',
+        piece: pieceSummary(piece),
+        customCountsAsMusic: false,
+        role: null,
+        displayNumber: null,
+      },
+    ])
     setPieceQuery('')
     setSearchHighlight(-1)
     pieceSearchInputRef.current?.focus()
@@ -399,6 +408,11 @@ export function EditSetlistModal({
   function submitRoleForm() {
     const role = roleDraft.trim() || null
     if ((!role && !roleDraftHadRole) || editingEntryId == null) return
+    if (editingEntryId < 0) {
+      patchDraftEntry(editingEntryId, { role })
+      closeRoleForm()
+      return
+    }
     editRoleMutation.mutate({ entryId: editingEntryId, role }, { onSuccess: closeRoleForm })
   }
 
@@ -423,20 +437,36 @@ export function EditSetlistModal({
 
   function submitCustomForm() {
     if (!customName.trim()) return
-    const wasEditing = editingEntryId != null
-    addOrEditCustomMutation.mutate(undefined, {
-      onSuccess: () => {
-        if (wasEditing) {
-          closeCustomForm()
-        } else {
-          setCustomName('')
-          setCustomDuration('')
-          setCustomDescription('')
-          setCustomCountsAsMusic(false)
-          customNameInputRef.current?.focus()
-        }
-      },
-    })
+    const body: CustomEntryFields = {
+      customName: customName.trim(),
+      customDurationSeconds: parseDurationInput(customDuration) ?? null,
+      customNotes: customDescription.trim() || null,
+      customCountsAsMusic,
+    }
+    const draftFields = {
+      customName: body.customName,
+      customDurationSeconds: body.customDurationSeconds ?? undefined,
+      customNotes: body.customNotes ?? undefined,
+      customCountsAsMusic: body.customCountsAsMusic,
+    }
+    if (editingEntryId == null) {
+      // A new entry joins the draft; the form stays open for another.
+      const id = nextDraftId.current--
+      setEntries((current) => [
+        ...current,
+        { id, kind: 'custom', role: null, displayNumber: null, ...draftFields },
+      ])
+      setCustomName('')
+      setCustomDuration('')
+      setCustomDescription('')
+      setCustomCountsAsMusic(false)
+      customNameInputRef.current?.focus()
+    } else if (editingEntryId < 0) {
+      patchDraftEntry(editingEntryId, draftFields)
+      closeCustomForm()
+    } else {
+      editCustomMutation.mutate({ entryId: editingEntryId, body }, { onSuccess: closeCustomForm })
+    }
   }
 
   // Pointer-based reorder — works for mouse and touch alike. Capture is
@@ -544,23 +574,12 @@ export function EditSetlistModal({
     }
   }, [draggingId, reorderAtPoint])
 
-  // Drop — commits the local order to the backend in one call, only if it
-  // actually changed from what's currently persisted.
+  // Drop — the new order stays in the draft until Save Setlist.
   function endDrag() {
-    const id = draggingId
     setDraggingId(null)
     setGhostPos(null)
     scrollContainerRef.current = null
     lastPointerRef.current = null
-    if (id == null) return
-    const persistedIds = (setlistDetail?.entries ?? []).map((e) => e.id)
-    const currentIds = entries.map((e) => e.id)
-    if (
-      persistedIds.length === currentIds.length &&
-      persistedIds.every((v, i) => v === currentIds[i])
-    )
-      return
-    reorderMutation.mutate(currentIds)
   }
 
   const createMutation = useMutation({
@@ -579,21 +598,60 @@ export function EditSetlistModal({
       showAlert(error instanceof ApiError ? error.message : 'Could not create this setlist.'),
   })
 
-  const updateDetailsMutation = useMutation({
-    mutationFn: () =>
-      updateSetlist(setlistId!, {
+  // Save Setlist: the details, then the Program made to match the draft —
+  // entries removed, entries added in this window created (each with its
+  // role or custom fields, appended in draft order), and the final order
+  // sent if it isn't already the server's.
+  const saveAllMutation = useMutation({
+    mutationFn: async () => {
+      const id = setlistId!
+      const saved =
+        queryClient.getQueryData<SetlistDetail>(['setlist', id])?.entries ??
+        setlistDetail?.entries ??
+        []
+      await updateSetlist(id, {
         name: name.trim(),
         gigDate: gigDate || null,
         description: description.trim() || null,
         archived: setlistDetail?.archived ?? false,
-      }),
+      })
+      const keptIds = new Set(entries.filter((e) => e.id > 0).map((e) => e.id))
+      const removed = saved.filter((e) => !keptIds.has(e.id))
+      for (const entry of removed) await removeSetlistEntry(id, entry.id)
+      const realIds = new Map<number, number>()
+      for (const entry of entries) {
+        if (entry.id > 0) continue
+        const body =
+          entry.kind === 'piece'
+            ? { pieceId: entry.piece!.id, role: entry.role }
+            : {
+                customName: entry.customName,
+                customDurationSeconds: entry.customDurationSeconds ?? null,
+                customNotes: entry.customNotes ?? null,
+                customCountsAsMusic: entry.customCountsAsMusic,
+              }
+        const after = await addSetlistEntry(id, body)
+        realIds.set(entry.id, after.entries[after.entries.length - 1].id)
+      }
+      const finalIds = entries.map((e) => (e.id > 0 ? e.id : realIds.get(e.id)!))
+      const serverIds = [
+        ...saved.filter((e) => keptIds.has(e.id)).map((e) => e.id),
+        ...entries.filter((e) => e.id < 0).map((e) => realIds.get(e.id)!),
+      ]
+      if (finalIds.some((v, i) => v !== serverIds[i])) await reorderSetlistEntries(id, finalIds)
+      return getSetlist(id)
+    },
     onSuccess: (updated) => {
       applyUpdatedSetlist(updated)
       queryClient.invalidateQueries({ queryKey: ['setlists'] })
+      queryClient.invalidateQueries({ queryKey: ['setlist-memberships'] })
       onClose()
     },
-    onError: (error) =>
-      showAlert(error instanceof ApiError ? error.message : 'Could not save this setlist.'),
+    onError: (error) => {
+      showAlert(error instanceof ApiError ? error.message : 'Could not save this setlist.')
+      // Part of it may have saved: show the page what the server has now.
+      queryClient.invalidateQueries({ queryKey: ['setlist', setlistId] })
+    },
   })
 
   function handleCancel() {
@@ -607,11 +665,11 @@ export function EditSetlistModal({
     if (mode === 'create') {
       createMutation.mutate()
     } else {
-      updateDetailsMutation.mutate()
+      saveAllMutation.mutate()
     }
   }
 
-  const saving = createMutation.isPending || updateDetailsMutation.isPending
+  const saving = createMutation.isPending || saveAllMutation.isPending
 
   function handleFormKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
     // A line break in a description/notes field, never a save.
@@ -720,7 +778,7 @@ export function EditSetlistModal({
           </button>
           <button
             type="submit"
-            disabled={!customName.trim() || addOrEditCustomMutation.isPending}
+            disabled={!customName.trim() || editCustomMutation.isPending}
             className="cursor-pointer rounded-md bg-accent-fill px-3 py-1.5 text-sm text-white hover:bg-accent-fill/90 disabled:opacity-50"
           >
             {editingEntryId ? 'Save' : 'Add'}
@@ -852,7 +910,7 @@ export function EditSetlistModal({
               onClick={handleCancel}
               className="cursor-pointer rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-ink hover:border-accent"
             >
-              {mode === 'create' || activeTab === 'details' ? 'Cancel' : 'Close'}
+              Cancel
             </button>
             <button
               type="button"
@@ -861,7 +919,8 @@ export function EditSetlistModal({
               className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-white hover:bg-accent-fill/90 disabled:opacity-50"
             >
               {/* "Save Setlist", not "Save": the Program tab's inline role and
-                  custom-entry cards have small Save buttons of their own. */}
+                  custom-entry cards have small Save buttons of their own. It
+                  saves both tabs. */}
               {saving ? 'Saving…' : 'Save Setlist'}
             </button>
           </div>
@@ -1030,15 +1089,10 @@ export function EditSetlistModal({
                         )}
                         <button
                           type="button"
-                          onClick={() =>
-                            // A custom entry's typed-in text can't be got
-                            // back: ask first. A piece is just removed.
-                            entry.kind === 'custom'
-                              ? void confirmRemoveCustomEntry(title).then(
-                                  (ok) => ok && removeEntry(entry.id),
-                                )
-                              : removeEntry(entry.id)
-                          }
+                          // Undone by Cancel until Save Setlist, so no
+                          // confirmation here (Setlist Details' own Remove,
+                          // which saves at once, still asks).
+                          onClick={() => removeEntry(entry.id)}
                           aria-label={`Remove ${title}`}
                           className="no-drag mt-0.5 shrink-0 cursor-pointer text-ink-soft hover:text-ink"
                         >
