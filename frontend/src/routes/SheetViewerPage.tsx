@@ -3462,6 +3462,15 @@ function SheetViewer({
             run: () => setPractice({ notesBarShown: !notesBarShown }),
             enabled: !!notes && !custom,
           },
+          // Favorite, Piece Details' key. In Annotate L is Layers, so only
+          // outside it; left out without `edit`, like the heart in Info.
+          {
+            key: 'l',
+            label: favorite ? 'Remove from favorites' : 'Add to favorites',
+            run: () => favoriteMutation.mutate(!favorite),
+            enabled:
+              canFavorite && !annotating && !custom && !!piece && !favoriteMutation.isPending,
+          },
           {
             key: 'f',
             label: 'Full screen',

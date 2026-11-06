@@ -2846,6 +2846,22 @@ export function SheetViewerMockup() {
             run: () => setBar(!barOn),
             enabled: !!notes && !customKey,
           },
+          // Favorite, Piece Details' key. In Annotate L is Layers, so only
+          // outside it.
+          {
+            key: 'l',
+            label: favorite ? 'Remove from favorites' : 'Add to favorites',
+            run: () => {
+              if (activeId === null) return
+              setFavoriteOverride({ ...favoriteOverride, [activeId]: !favorite })
+              flash(
+                favorite
+                  ? 'Removed from Favorites (mockup: nothing is written)'
+                  : 'Added to Favorites (mockup: nothing is written)',
+              )
+            },
+            enabled: mode !== 'annotate' && !customKey && activeId !== null,
+          },
           {
             key: 'f',
             label: 'Full screen',
