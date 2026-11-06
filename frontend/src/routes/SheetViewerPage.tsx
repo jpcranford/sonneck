@@ -1,10 +1,12 @@
 import {
   Fragment,
+  useCallback,
   useEffect,
   useLayoutEffect,
   useRef,
   useState,
   useSyncExternalStore,
+  type CSSProperties,
   type ReactNode,
 } from 'react'
 import { createPortal } from 'react-dom'
@@ -32,6 +34,7 @@ import {
   IconHeart,
   IconHeartFilled,
   IconInfoCircle,
+  IconNote,
   IconListNumbers,
   IconMetronome,
   IconMinus,
@@ -171,6 +174,17 @@ const PHOTO_MAX = 150
 const SAVE_DELAY_MS = 400
 
 const INFO_WIDTH = 380
+// Fitting the toolbar's right-hand group (see fits): the page cyclers'
+// width (two 48pt buttons around the page count), the divider before
+// Annotate with its margins, the labeled Annotate button, the clock
+// button's usual width until it's measured, and the five tools that can
+// move into ⋯ (Practice Notes, Metronome, Theory reference, Photo filters,
+// Info).
+const CYCLERS_WIDTH = 159
+const SEPARATOR_WIDTH = 9
+const ANNOTATE_LABELED_WIDTH = 126
+const CLOCK_WIDTH_GUESS = 129
+const TOOL_COUNT = 5
 const QUEUE_WIDTH = 380
 // A piece counts as practiced today once this long has been spent on it in
 // the viewer, across visits in a session.
@@ -909,9 +923,55 @@ function SheetViewer({
   // The current page's full 300ppi image also lies over its screen-size
   // drawing then, so zoomed detail stays sharp.
   const zoomed = usePinchZoomed()
-  const tier = width >= 1100 ? 'wide' : width >= 640 ? 'mid' : 'phone'
-  // Below 900px a labeled Annotate button doesn't fit, so it's an icon.
-  const annotateLabel = width >= 900
+  // The clock button's width as drawn (seconds, a stopwatch's hours and the
+  // clock face all change it), for fitting the toolbar. Watched through the
+  // element itself, a new one whenever the toolbar changes layout; a
+  // detached one measures 0.
+  const clockAnchorRef = useRef<HTMLDivElement>(null)
+  const [clockWidth, setClockWidth] = useState(CLOCK_WIDTH_GUESS)
+  const [clockEl, setClockEl] = useState<HTMLDivElement | null>(null)
+  const clockRef = useCallback((node: HTMLDivElement | null) => {
+    clockAnchorRef.current = node
+    setClockEl(node)
+  }, [])
+  useEffect(() => {
+    if (!clockEl) return
+    const observer = new ResizeObserver(() => {
+      const w = clockEl.getBoundingClientRect().width
+      if (w > 0) setClockWidth(w)
+    })
+    observer.observe(clockEl)
+    return () => observer.disconnect()
+  }, [clockEl])
+  // Phones, and any window too narrow for the one-row toolbar even with its
+  // right-hand group at its most compact (the clock, ⋯ and Annotate's
+  // icon), take two rows.
+  const half = (width - 8 - CYCLERS_WIDTH) / 2
+  const oneRowFits = clockWidth + SEPARATOR_WIDTH + 2 * 48 <= half
+  const tier = width < 640 || !oneRowFits ? 'phone' : 'wide'
+  // The toolbar's right-hand group, in one order at every width: Clock,
+  // Practice Notes, Metronome, Theory reference, Photo filters, Info, then
+  // ⋯ (only when something is in it) and Annotate. As the window narrows,
+  // Annotate drops its label first; then the tools move into ⋯ from the
+  // right end (Info first, Practice Notes last), keeping their order there.
+  // The clock stays. Sized from the clock's measured width, so its seconds
+  // or a stopwatch never push the group into the centered page cyclers. On
+  // phones Practice Notes and Info stay in the first row, the rest in ⋯.
+  const fits = (tools: number, label: boolean) =>
+    clockWidth +
+      SEPARATOR_WIDTH +
+      48 * tools +
+      (tools < TOOL_COUNT ? 48 : 0) +
+      (label ? ANNOTATE_LABELED_WIDTH : 48) <=
+    half
+  const annotateLabel = tier !== 'phone' && fits(TOOL_COUNT, true)
+  const inlineTools = tier === 'phone' ? 0 : ([5, 4, 3, 2, 1].find((n) => fits(n, false)) ?? 0)
+  const notesInline = tier === 'phone' || inlineTools >= 1
+  const metronomeInline = inlineTools >= 2
+  const theoryInline = inlineTools >= 3
+  const photoInline = inlineTools >= 4
+  const infoInline = tier === 'phone' || inlineTools >= 5
+  const moreNeeded = !(notesInline && metronomeInline && theoryInline && photoInline && infoInline)
 
   // Outside AppShell, so the viewer keeps the theme in step itself.
   const { data: settings } = useQuery({ queryKey: ['user-settings'], queryFn: getUserSettings })
@@ -954,7 +1014,7 @@ function SheetViewer({
   const [attempt, setAttempt] = useState(0)
   // An empty Practice List opens with its queue showing what to do.
   const [menu, setMenu] = useState<
-    'clock' | 'more' | 'photo' | 'info' | 'queue' | 'layers' | 'tool' | null
+    'clock' | 'more' | 'photo' | 'info' | 'notes' | 'queue' | 'layers' | 'tool' | null
   >(session.kind === 'list' && !item ? 'queue' : null)
   const [closeArmed, setCloseArmed] = useState(false)
   // A pill the session handed over (moving to the next item shows its
@@ -1596,9 +1656,9 @@ function SheetViewer({
 
   const photoAnchorRef = useRef<HTMLDivElement>(null)
   const phoneRow2Ref = useRef<HTMLDivElement>(null)
-  const clockAnchorRef = useRef<HTMLDivElement>(null)
   const moreAnchorRef = useRef<HTMLDivElement>(null)
   const infoAnchorRef = useRef<HTMLDivElement>(null)
+  const notesAnchorRef = useRef<HTMLDivElement>(null)
   const queueAnchorRef = useRef<HTMLDivElement>(null)
   const closeTimer = useRef<number | undefined>(undefined)
   useEffect(
@@ -1856,7 +1916,7 @@ function SheetViewer({
 
   const ClockIcon = clockMode === 'stopwatch' ? IconStopwatch : IconClock
   const clockButton = (
-    <div ref={clockAnchorRef} className="relative">
+    <div ref={clockRef} className="relative">
       <HitButton label="Clock" onClick={() => setMenu(menu === 'clock' ? null : 'clock')} inset>
         <span className={`flex items-center gap-1.5 ${clockOn ? 'px-2.5' : ''}`}>
           <ClockIcon size={20} />
@@ -1963,18 +2023,15 @@ function SheetViewer({
       document.body,
     )
 
-  // Wide screens show the extras and the photo button inline; elsewhere
-  // they're in ⋯.
-  const inlineExtras = tier === 'wide'
-  const extras = (
-    <>
-      <SoonButton label="Metronome" message="Metronome: coming soon">
-        <IconMetronome size={22} />
-      </SoonButton>
-      <SoonButton label="Theory reference" message="Theory reference: coming soon">
-        <IconClef size={22} />
-      </SoonButton>
-    </>
+  const metronomeButton = (
+    <SoonButton label="Metronome" message="Metronome: coming soon">
+      <IconMetronome size={22} />
+    </SoonButton>
+  )
+  const theoryButton = (
+    <SoonButton label="Theory reference" message="Theory reference: coming soon">
+      <IconClef size={22} />
+    </SoonButton>
   )
   const photoButton = (
     <div ref={photoAnchorRef} className="relative">
@@ -1988,10 +2045,10 @@ function SheetViewer({
     </div>
   )
 
-  // Under the photo button; under ⋯ on a tablet; on a phone, centered under
-  // the whole two-row toolbar so it never covers the page cyclers.
+  // Under the photo button, or ⋯ when it's in there; on a phone, centered
+  // under the whole two-row toolbar so it never covers the page cyclers.
   const photoStyle = useAnchoredPanel(
-    tier === 'wide' ? photoAnchorRef : tier === 'phone' ? phoneRow2Ref : moreAnchorRef,
+    tier === 'phone' ? phoneRow2Ref : photoInline ? photoAnchorRef : moreAnchorRef,
     menu === 'photo',
     'below-center',
     { gap: 6, panelWidth: PHOTO_WIDTH },
@@ -2079,6 +2136,7 @@ function SheetViewer({
   // score closes it first rather than turning the page.
   const notes = piece?.userNotes ?? ''
   const infoOpen = menu === 'info'
+  const notesOpen = menu === 'notes'
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
   const [sheetFull, setSheetFull] = useState(false)
@@ -2132,14 +2190,20 @@ function SheetViewer({
     setMenu(open ? 'info' : null)
     setSheetFull(false)
   }
+  function openNotes(open: boolean) {
+    setMenu(open ? 'notes' : null)
+    setSheetFull(false)
+  }
   function startEdit() {
     setDraft(notes)
     setEditing(true)
   }
-  // Hidden while any menu or Info is open, so nothing stacks over it.
+  // Hidden while any menu or panel is open, so nothing stacks over it.
   const showBar = !custom && notes !== '' && notesBarShown && menu === null
 
-  // A dot on Info whenever the piece has notes and Info is closed.
+  // Info: the piece's own details. Your practice status and notes are in
+  // Practice Notes, beside it (the split of
+  // https://claude.ai/artifact/1my7Fq6HxJsynRmTp7w68n's option F).
   const infoButton = (
     <div ref={infoAnchorRef} className="relative">
       <HitButton
@@ -2153,13 +2217,44 @@ function SheetViewer({
       >
         <IconInfoCircle size={22} />
       </HitButton>
-      {notes && !infoOpen && (
-        <span className="pointer-events-none absolute top-[11px] right-[11px] size-[9px] rounded-full bg-accent-fill ring-2 ring-paper" />
-      )}
+    </div>
+  )
+  // A dot on Practice Notes (or on ⋯, when it's in there) whenever the
+  // piece has notes and the panel is closed.
+  const notesDot = (
+    <span
+      className={`pointer-events-none absolute top-[11px] right-[11px] size-[9px] rounded-full bg-accent-fill ring-2 ${annotating ? 'ring-accent-soft' : 'ring-paper'}`}
+    />
+  )
+  const notesButton = (
+    <div ref={notesAnchorRef} className="relative">
+      <HitButton
+        label="Practice Notes"
+        onClick={() => openNotes(!notesOpen)}
+        faceClassName={
+          notesOpen ? (annotating ? 'bg-accent-fill text-white' : 'bg-accent-soft text-accent') : ''
+        }
+      >
+        <IconNote size={22} />
+      </HitButton>
+      {notes && !notesOpen && notesDot}
     </div>
   )
 
   const sectionLabel = 'text-xs font-semibold tracking-wider text-ink-muted uppercase'
+  // Info's description: three lines until More, which shows only when the
+  // text runs past them (measured as it lays out).
+  const [descOpen, setDescOpen] = useState(false)
+  const [descEl, setDescEl] = useState<HTMLDivElement | null>(null)
+  const [descClipped, setDescClipped] = useState(false)
+  useEffect(() => {
+    if (!descEl) return
+    const observer = new ResizeObserver(() =>
+      setDescClipped(descEl.scrollHeight > descEl.clientHeight + 1),
+    )
+    observer.observe(descEl)
+    return () => observer.disconnect()
+  }, [descEl])
   const details: [string, string][] = piece
     ? (
         [
@@ -2179,7 +2274,132 @@ function SheetViewer({
     : []
 
   const infoBody = (
+    <div className="flex flex-col gap-5 px-5 pt-4 pb-5">
+      {piece && (
+        <section className="flex flex-col gap-2">
+          {/* The favorite heart beside the title, as on Piece Details: an
+              outline when off, filled green when on. Its 48pt tap area
+              hangs past the title's first line, like the notes' pencil. */}
+          <div className="flex items-start gap-2">
+            <div className="min-w-0 flex-1">
+              <p className="font-display text-lg leading-snug font-medium">{piece.title}</p>
+              {credit && <p className="text-sm text-ink-soft">{credit}</p>}
+            </div>
+            {canFavorite && (
+              <div className="-my-2 -mr-1 shrink-0">
+                <HitButton
+                  label={favorite ? 'Remove from Favorites' : 'Add to Favorites'}
+                  onClick={() => favoriteMutation.mutate(!favorite)}
+                  disabled={favoriteMutation.isPending}
+                >
+                  {favorite ? (
+                    <IconHeartFilled size={20} className="text-accent" />
+                  ) : (
+                    <IconHeart size={20} />
+                  )}
+                </HitButton>
+              </div>
+            )}
+          </div>
+          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
+            {details.map(([label, value]) => (
+              <Fragment key={label}>
+                <dt className="text-ink-muted">{label}</dt>
+                <dd>{value}</dd>
+              </Fragment>
+            ))}
+          </dl>
+          {/* The piece's description (book-inheritable), after its details,
+              at most three lines until More (option F of
+              https://claude.ai/artifact/1my7Fq6HxJsynRmTp7w68n). Markdown and
+              :shortcodes:, as everywhere. */}
+          {piece.description.value && (
+            <div className="flex flex-col">
+              {piece.description.inherited && (
+                <span className="text-xs text-ink-muted">From the book</span>
+              )}
+              <div
+                ref={setDescEl}
+                className={`text-sm leading-relaxed select-text ${descOpen ? '' : 'line-clamp-3'}`}
+              >
+                <MarkdownText>{piece.description.value}</MarkdownText>
+              </div>
+              {(descClipped || descOpen) && (
+                <button
+                  type="button"
+                  data-hit
+                  onClick={() => setDescOpen(!descOpen)}
+                  className={`${HIT} -mt-2 justify-start! self-start text-sm font-medium text-accent hover:underline`}
+                >
+                  {descOpen ? 'Less' : 'More'}
+                </button>
+              )}
+            </div>
+          )}
+          {/* Leaves the viewer for the piece's own page, with everything the
+              details above leave out (option C of
+              https://claude.ai/artifact/3bwSWq4TLtSrpPAWksqmmS). */}
+          <button
+            type="button"
+            data-hit
+            onClick={() => openPieceDetails(piece.id)}
+            className={`${HIT} group/b -my-2 gap-1 self-start text-sm font-medium text-accent`}
+          >
+            <span className="underline-offset-[3px] group-hover/b:underline">See all details</span>
+            <IconArrowRight size={16} />
+          </button>
+        </section>
+      )}
+    </div>
+  )
+  // Practice Notes: your practice status first, then your notes.
+  const notesBody = (
     <div className="flex flex-col gap-5 px-5 pt-3 pb-5">
+      {/* The piece menu's practice status strip at 48pt: your own statuses
+          in practice order (one with no icon shows its initial), the
+          current one filled; the label line names the hovered or focused
+          status, else the current one. Tap a status to set it, the current
+          one again to clear it. */}
+      <section className="flex flex-col gap-1" onMouseLeave={() => setHoveredStatus(null)}>
+        <div className="flex items-baseline justify-between gap-3">
+          <h3 className={sectionLabel}>Practice status</h3>
+          <span className="truncate text-sm font-medium">{hoveredStatus ?? status ?? 'None'}</span>
+        </div>
+        <div className="-mb-1 -ml-1 flex flex-wrap" role="radiogroup" aria-label="Practice status">
+          {sortPracticeStatuses(practiceStatuses).map((item) => {
+            const isCurrent = status === item.name
+            return (
+              <button
+                key={item.id}
+                type="button"
+                data-hit
+                role="radio"
+                aria-checked={isCurrent}
+                aria-label={isCurrent ? `${item.name} (tap to clear)` : item.name}
+                onMouseEnter={() => setHoveredStatus(item.name)}
+                onFocus={() => setHoveredStatus(item.name)}
+                onBlur={() => setHoveredStatus(null)}
+                onClick={() => statusMutation.mutate(isCurrent ? null : item.name)}
+                className={`${HIT} group/b`}
+              >
+                <span
+                  className={`${FACE} border text-sm font-medium ${
+                    isCurrent
+                      ? 'border-accent bg-accent-soft text-accent'
+                      : 'border-border bg-paper-raised text-ink-soft group-hover/b:border-accent group-hover/b:text-ink'
+                  }`}
+                >
+                  {item.iconKey ? (
+                    <PracticeStatusKeyIcon iconKey={item.iconKey} size={20} />
+                  ) : (
+                    item.name.slice(0, 1).toUpperCase()
+                  )}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      </section>
       <section className="flex flex-col gap-2">
         {/* Only as tall as the pencil's face (32px): its 48pt tap area
             hangs 8px over above and below, and 4px past the right edge, so
@@ -2280,111 +2500,27 @@ function SheetViewer({
           </>
         )}
       </section>
-      {/* The piece menu's practice status strip at 48pt: your own statuses
-          in practice order (one with no icon shows its initial), the
-          current one filled; the label line names the hovered or focused
-          status, else the current one. Tap a status to set it, the current
-          one again to clear it. */}
-      <section className="flex flex-col gap-1" onMouseLeave={() => setHoveredStatus(null)}>
-        <div className="flex items-baseline justify-between gap-3">
-          <h3 className={sectionLabel}>Practice status</h3>
-          <span className="truncate text-sm font-medium">{hoveredStatus ?? status ?? 'None'}</span>
-        </div>
-        <div className="-mb-1 -ml-1 flex flex-wrap" role="radiogroup" aria-label="Practice status">
-          {sortPracticeStatuses(practiceStatuses).map((item) => {
-            const isCurrent = status === item.name
-            return (
-              <button
-                key={item.id}
-                type="button"
-                data-hit
-                role="radio"
-                aria-checked={isCurrent}
-                aria-label={isCurrent ? `${item.name} (tap to clear)` : item.name}
-                onMouseEnter={() => setHoveredStatus(item.name)}
-                onFocus={() => setHoveredStatus(item.name)}
-                onBlur={() => setHoveredStatus(null)}
-                onClick={() => statusMutation.mutate(isCurrent ? null : item.name)}
-                className={`${HIT} group/b`}
-              >
-                <span
-                  className={`${FACE} border text-sm font-medium ${
-                    isCurrent
-                      ? 'border-accent bg-accent-soft text-accent'
-                      : 'border-border bg-paper-raised text-ink-soft group-hover/b:border-accent group-hover/b:text-ink'
-                  }`}
-                >
-                  {item.iconKey ? (
-                    <PracticeStatusKeyIcon iconKey={item.iconKey} size={20} />
-                  ) : (
-                    item.name.slice(0, 1).toUpperCase()
-                  )}
-                </span>
-              </button>
-            )
-          })}
-        </div>
-      </section>
-      {piece && (
-        <section className="flex flex-col gap-2">
-          <h3 className={sectionLabel}>About this piece</h3>
-          {/* The favorite heart beside the title, as on Piece Details: an
-              outline when off, filled green when on. Its 48pt tap area
-              hangs past the title's first line, like the notes' pencil. */}
-          <div className="flex items-start gap-2">
-            <div className="min-w-0 flex-1">
-              <p className="font-display text-lg leading-snug font-medium">{piece.title}</p>
-              {credit && <p className="text-sm text-ink-soft">{credit}</p>}
-            </div>
-            {canFavorite && (
-              <div className="-my-2 -mr-1 shrink-0">
-                <HitButton
-                  label={favorite ? 'Remove from Favorites' : 'Add to Favorites'}
-                  onClick={() => favoriteMutation.mutate(!favorite)}
-                  disabled={favoriteMutation.isPending}
-                >
-                  {favorite ? (
-                    <IconHeartFilled size={20} className="text-accent" />
-                  ) : (
-                    <IconHeart size={20} />
-                  )}
-                </HitButton>
-              </div>
-            )}
-          </div>
-          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
-            {details.map(([label, value]) => (
-              <Fragment key={label}>
-                <dt className="text-ink-muted">{label}</dt>
-                <dd>{value}</dd>
-              </Fragment>
-            ))}
-          </dl>
-          {/* Leaves the viewer for the piece's own page, with everything the
-              details above leave out (option C of
-              https://claude.ai/artifact/3bwSWq4TLtSrpPAWksqmmS). */}
-          <button
-            type="button"
-            data-hit
-            onClick={() => openPieceDetails(piece.id)}
-            className={`${HIT} group/b -my-2 gap-1 self-start text-sm font-medium text-accent`}
-          >
-            <span className="underline-offset-[3px] group-hover/b:underline">See all details</span>
-            <IconArrowRight size={16} />
-          </button>
-        </section>
-      )}
     </div>
   )
 
-  const infoStyle = useAnchoredPanel(infoAnchorRef, infoOpen && tier !== 'phone', 'below-center', {
-    gap: 6,
-    panelWidth: INFO_WIDTH,
-  })
-  const infoHeader = (title: ReactNode) => (
+  // Info and Practice Notes each hang from their button, or from ⋯ when
+  // they're in it; on phones they're bottom sheets.
+  const infoStyle = useAnchoredPanel(
+    infoInline ? infoAnchorRef : moreAnchorRef,
+    infoOpen && tier !== 'phone',
+    'below-center',
+    { gap: 6, panelWidth: INFO_WIDTH },
+  )
+  const notesStyle = useAnchoredPanel(
+    notesInline ? notesAnchorRef : moreAnchorRef,
+    notesOpen && tier !== 'phone',
+    'below-center',
+    { gap: 6, panelWidth: INFO_WIDTH },
+  )
+  const panelHeader = (title: ReactNode, which: 'info' | 'notes') => (
     <div className="flex shrink-0 items-center border-b border-border pr-4">
       {title}
-      {piece && canDownload && (
+      {which === 'info' && piece && canDownload && (
         <HitButton
           label={
             exportBlocked
@@ -2397,14 +2533,21 @@ function SheetViewer({
           <IconDownload size={20} />
         </HitButton>
       )}
-      <HitButton label="Close Info" onClick={() => openInfo(false)}>
+      <HitButton
+        label={`Close ${which === 'info' ? 'Info' : 'Practice Notes'}`}
+        onClick={() => setMenu(null)}
+      >
         <IconX size={20} />
       </HitButton>
     </div>
   )
-  const infoPanel =
-    infoOpen &&
-    (tier === 'phone'
+  const renderPanel = (
+    which: 'info' | 'notes',
+    title: string,
+    style: CSSProperties | null | undefined,
+    body: ReactNode,
+  ) =>
+    tier === 'phone'
       ? createPortal(
           <div
             className={`fixed inset-x-0 bottom-0 z-50 flex flex-col rounded-t-2xl border-t border-border bg-paper pb-[env(safe-area-inset-bottom)] font-sans text-ink shadow-2xl select-none [--sv-hover:var(--color-paper-hover)] ${
@@ -2413,32 +2556,38 @@ function SheetViewer({
           >
             <span className="pointer-events-none absolute top-1.5 left-1/2 h-[5px] w-10 -translate-x-1/2 rounded-full bg-ink-fainter" />
             {/* The title row is the handle: tap it to take the full height. */}
-            {infoHeader(
+            {panelHeader(
               <button
                 type="button"
                 data-hit
                 onClick={() => setSheetFull(!sheetFull)}
-                aria-label={sheetFull ? 'Shrink Info' : 'Expand Info'}
+                aria-label={sheetFull ? `Shrink ${title}` : `Expand ${title}`}
                 className={`${HIT} mt-2 flex-1 justify-start pl-5`}
               >
-                <span className="font-display text-base font-medium">Info</span>
+                <span className="font-display text-base font-medium">{title}</span>
               </button>,
+              which,
             )}
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">{infoBody}</div>
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">{body}</div>
           </div>,
           document.body,
         )
-      : infoStyle &&
+      : style &&
         createPortal(
           <div
-            style={{ ...infoStyle, width: INFO_WIDTH }}
+            style={{ ...style, width: INFO_WIDTH }}
             className="z-50 flex max-h-[calc(100dvh-5.5rem)] flex-col overflow-hidden rounded-xl border border-border bg-paper font-sans text-ink shadow-xl select-none [--sv-hover:var(--color-paper-hover)]"
           >
-            {infoHeader(<h2 className="flex-1 pl-5 font-display text-base font-medium">Info</h2>)}
-            <div className="min-h-0 overflow-y-auto overscroll-contain">{infoBody}</div>
+            {panelHeader(
+              <h2 className="flex-1 pl-5 font-display text-base font-medium">{title}</h2>,
+              which,
+            )}
+            <div className="min-h-0 overflow-y-auto overscroll-contain">{body}</div>
           </div>,
           document.body,
-        ))
+        )
+  const infoPanel = infoOpen && renderPanel('info', 'Info', infoStyle, infoBody)
+  const notesPanel = notesOpen && renderPanel('notes', 'Practice Notes', notesStyle, notesBody)
   const annotateButton = (
     <HitButton
       label="Annotate"
@@ -2694,6 +2843,8 @@ function SheetViewer({
       <HitButton label="More" onClick={() => setMenu(menu === 'more' ? null : 'more')}>
         <IconDots size={22} />
       </HitButton>
+      {/* With Practice Notes in ⋯, its "has notes" dot moves here. */}
+      {!notesInline && pieceId !== null && notes && menu !== 'more' && !notesOpen && notesDot}
     </div>
   )
 
@@ -3463,6 +3614,12 @@ function SheetViewer({
         shortcuts={[
           { key: 'i', label: 'Info', run: () => openInfo(!infoOpen), enabled: !custom },
           {
+            key: 'n',
+            label: 'Practice Notes',
+            run: () => openNotes(!notesOpen),
+            enabled: !custom,
+          },
+          {
             key: 'q',
             label: session.kind === 'setlist' ? 'Setlist queue' : 'Practice List',
             run: toggleQueue,
@@ -3537,6 +3694,7 @@ function SheetViewer({
                 ) : (
                   titleBlock
                 )}
+                {pieceId !== null && notesButton}
                 {pieceId !== null && infoButton}
                 {moreButton}
                 <span
@@ -3582,10 +3740,12 @@ function SheetViewer({
                 {!annotating && (
                   <>
                     {clockButton}
-                    {inlineExtras && extras}
-                    {inlineExtras && photoButton}
-                    {pieceId !== null && infoButton}
-                    {!inlineExtras && moreButton}
+                    {pieceId !== null && notesInline && notesButton}
+                    {metronomeInline && metronomeButton}
+                    {theoryInline && theoryButton}
+                    {photoInline && photoButton}
+                    {pieceId !== null && infoInline && infoButton}
+                    {moreNeeded && moreButton}
                     {!custom && (
                       <>
                         <span className="mx-1 h-7 w-px shrink-0 bg-border" />
@@ -3616,29 +3776,54 @@ function SheetViewer({
             {clockMenu}
             {photoPanel}
             {infoPanel}
+            {notesPanel}
             {queuePanel}
             {layersPanel}
             {toolOptionsPanel}
             {menu === 'more' && (
+              // The tools that didn't fit in the toolbar, in its own order.
               <div className="absolute top-full right-2 z-50 mt-1.5 w-72 rounded-xl border border-border bg-paper p-3 shadow-xl [--sv-hover:var(--color-paper-hover)]">
-                <MenuRow
-                  icon={<IconMetronome size={20} />}
-                  label="Metronome"
-                  trailing="Coming soon"
-                  soon
-                />
-                <MenuRow
-                  icon={<IconClef size={20} />}
-                  label="Theory reference"
-                  trailing="Coming soon"
-                  soon
-                />
-                {!inlineExtras && (
+                {!notesInline && pieceId !== null && (
+                  <MenuRow
+                    icon={<IconNote size={20} />}
+                    label="Practice Notes"
+                    trailing={
+                      notes ? (
+                        <span className="block size-2 rounded-full bg-accent-fill" />
+                      ) : undefined
+                    }
+                    onClick={() => openNotes(true)}
+                  />
+                )}
+                {!metronomeInline && (
+                  <MenuRow
+                    icon={<IconMetronome size={20} />}
+                    label="Metronome"
+                    trailing="Coming soon"
+                    soon
+                  />
+                )}
+                {!theoryInline && (
+                  <MenuRow
+                    icon={<IconClef size={20} />}
+                    label="Theory reference"
+                    trailing="Coming soon"
+                    soon
+                  />
+                )}
+                {!photoInline && (
                   <MenuRow
                     icon={<IconPhotoCog size={20} />}
                     label="Photo filters"
                     trailing={photoChanged ? 'On' : undefined}
                     onClick={() => setMenu('photo')}
+                  />
+                )}
+                {!infoInline && pieceId !== null && (
+                  <MenuRow
+                    icon={<IconInfoCircle size={20} />}
+                    label="Info"
+                    onClick={() => openInfo(true)}
                   />
                 )}
               </div>
@@ -3688,7 +3873,7 @@ function SheetViewer({
             <button
               type="button"
               data-hit
-              onClick={() => openInfo(true)}
+              onClick={() => openNotes(true)}
               className={`${HIT} min-w-0 flex-1 justify-start group/b`}
               aria-label="Open your notes"
             >

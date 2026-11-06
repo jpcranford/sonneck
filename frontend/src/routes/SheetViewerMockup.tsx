@@ -1,5 +1,6 @@
 import {
   Fragment,
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -31,6 +32,7 @@ import {
   IconGripVertical,
   IconHighlight,
   IconInfoCircle,
+  IconNote,
   IconListNumbers,
   IconMetronome,
   IconMinus,
@@ -277,6 +279,16 @@ const EXAMPLE_NOTES =
 const EMPTY_NOTES =
   'Nothing yet. Big picture notes go here: what to remember about this piece, or a log of how practice is going. Markings on the music can be made in Annotate mode.'
 const INFO_WIDTH = 380
+// Fitting the toolbar's right-hand group (see fitLevel): the page cyclers'
+// width (two 48pt buttons around the page count), the divider before
+// Annotate with its margins, the labeled Annotate button, and the clock
+// button's usual width until it's measured.
+const CYCLERS_WIDTH = 159
+const SEPARATOR_WIDTH = 9
+const ANNOTATE_LABELED_WIDTH = 126
+const CLOCK_WIDTH_GUESS = 129
+// Practice Notes, Metronome, Theory reference, Photo filters and Info.
+const TOOL_COUNT = 5
 const QUEUE_WIDTH = 380
 // A piece counts as practiced today once at least this long has been spent
 // on it (30s; no longer also needing its last page reached, user 2026-10-27).
@@ -472,11 +484,31 @@ export function SheetViewerMockup() {
   // Pinch-zoomed in, the score pans instead of turning: taps and swipes
   // on it do nothing (the pedal keys and the toolbar still turn).
   const zoomed = usePinchZoomed()
-  const tier = width >= 1100 ? 'wide' : width >= 640 ? 'mid' : 'phone'
-  // Below 900px the labeled Annotate button doesn't fit (beside the clock
-  // and Info with the cyclers centered; on a phone, beside the title, Info
-  // and ⋯), so it's an icon there.
-  const annotateLabel = width >= 900
+  const clockAnchorRef = useRef<HTMLDivElement>(null)
+  // The clock button's width as drawn (seconds, a stopwatch's hours and the
+  // clock face's own size all change it), for fitting the toolbar below.
+  // Watched through the element itself (clockEl, set by its ref), which is
+  // a new one whenever the toolbar changes layout; a detached one measures 0.
+  const [clockWidth, setClockWidth] = useState(CLOCK_WIDTH_GUESS)
+  const [clockEl, setClockEl] = useState<HTMLDivElement | null>(null)
+  const clockRef = useCallback((node: HTMLDivElement | null) => {
+    clockAnchorRef.current = node
+    setClockEl(node)
+  }, [])
+  useEffect(() => {
+    if (!clockEl) return
+    const observer = new ResizeObserver(() => {
+      const w = clockEl.getBoundingClientRect().width
+      if (w > 0) setClockWidth(w)
+    })
+    observer.observe(clockEl)
+    return () => observer.disconnect()
+  }, [clockEl])
+  // Phones, and any window too narrow for the one-row toolbar even with
+  // its right-hand group at its most compact (see fitLevel), take the
+  // two-row layout.
+  const oneRowFits = clockWidth + SEPARATOR_WIDTH + 2 * 48 <= (width - 8 - CYCLERS_WIDTH) / 2
+  const tier = width < 640 || !oneRowFits ? 'phone' : width >= 1100 ? 'wide' : 'mid'
 
   const [pieceId, setPieceId] = useState<number | null>(null)
   // The Mockup panel's turn test (lib/sheetViewerTurnTest.ts). A run that
@@ -561,7 +593,7 @@ export function SheetViewerMockup() {
   const [eraserSize, setEraserSize] = useState<Size>('M')
   const eraserRadius = SIZES.eraser[eraserSize] / 200
   const [menu, setMenu] = useState<
-    'clock' | 'more' | 'info' | 'photo' | 'queue' | 'layers' | 'tool' | null
+    'clock' | 'more' | 'info' | 'notes' | 'photo' | 'queue' | 'layers' | 'tool' | null
   >(null)
   // Phase 11 trial: color layers hidden (kept per piece in the real thing),
   // and the page image's shape, so the marks can be laid over it.
@@ -609,6 +641,19 @@ export function SheetViewerMockup() {
   // The favorite heart beside the title in About this piece (option B of
   // https://claude.ai/artifact/PFNMqbNZoR42qUDCyiPbuB), per piece.
   const [favoriteOverride, setFavoriteOverride] = useState<Record<number, boolean>>({})
+  // Info's description: clamped to three lines until More; More shows only
+  // when the text runs past them (measured as it lays out).
+  const [descOpen, setDescOpen] = useState(false)
+  const [descEl, setDescEl] = useState<HTMLDivElement | null>(null)
+  const [descClipped, setDescClipped] = useState(false)
+  useEffect(() => {
+    if (!descEl) return
+    const observer = new ResizeObserver(() =>
+      setDescClipped(descEl.scrollHeight > descEl.clientHeight + 1),
+    )
+    observer.observe(descEl)
+    return () => observer.disconnect()
+  }, [descEl])
   const [hoveredStatus, setHoveredStatus] = useState<string | null>(null)
   // Your own statuses (read only — the mockup writes nothing).
   const { data: practiceStatuses = [] } = useQuery({
@@ -658,6 +703,7 @@ export function SheetViewerMockup() {
       ? favoriteOverride[activeId]
       : (piece?.favorite ?? false)
   const infoOpen = menu === 'info'
+  const notesOpen = menu === 'notes'
   // Hidden while any menu or Info is open, so nothing stacks over it.
   const showBar = notes !== '' && barOn && menu === null && !customKey
 
@@ -699,7 +745,7 @@ export function SheetViewerMockup() {
   const toolAnchorRef = useRef<HTMLDivElement>(null)
   const phoneRow2Ref = useRef<HTMLDivElement>(null)
   const infoAnchorRef = useRef<HTMLDivElement>(null)
-  const clockAnchorRef = useRef<HTMLDivElement>(null)
+  const notesAnchorRef = useRef<HTMLDivElement>(null)
   const moreAnchorRef = useRef<HTMLDivElement>(null)
   const closeTimer = useRef<number | undefined>(undefined)
   const hintTimer = useRef<number | undefined>(undefined)
@@ -1609,7 +1655,7 @@ export function SheetViewerMockup() {
 
   const ClockIcon = clockMode === 'stopwatch' ? IconStopwatch : IconClock
   const clockButton = (
-    <div ref={clockAnchorRef} className="relative">
+    <div ref={clockRef} className="relative">
       <HitButton label="Clock" onClick={() => setMenu(menu === 'clock' ? null : 'clock')} inset>
         <span className={`flex items-center gap-1.5 ${clockOn ? 'px-2.5' : ''}`}>
           <ClockIcon size={20} />
@@ -1736,18 +1782,41 @@ export function SheetViewerMockup() {
       document.body,
     )
 
-  // Wide screens show the photo button inline; elsewhere it's in ⋯.
-  const photoInline = tier === 'wide'
-  const inlineExtras = tier === 'wide'
-  const extras = (
-    <>
-      <SoonButton label="Metronome" message="Metronome: coming soon">
-        <IconMetronome size={22} />
-      </SoonButton>
-      <SoonButton label="Theory reference" message="Theory reference: coming soon">
-        <IconClef size={22} />
-      </SoonButton>
-    </>
+  // The toolbar's right-hand group, in one order at every width: Clock,
+  // Practice Notes, Metronome, Theory reference, Photo filters, Info, then
+  // ⋯ (only when something is in it) and Annotate. As the window narrows,
+  // Annotate drops its label first; then the tools move into ⋯ from the
+  // right end (Info first, Practice Notes last), keeping their order there.
+  // The clock stays. Sized from the clock's measured width, so its seconds
+  // or a stopwatch never push the group into the centered page cyclers;
+  // when even the clock, ⋯ and Annotate can't fit, the toolbar takes the
+  // phones' two rows (tier). On phones Practice Notes and Info stay in the
+  // first row and the rest are in ⋯.
+  const half = (width - 8 - CYCLERS_WIDTH) / 2
+  const fits = (tools: number, label: boolean) =>
+    clockWidth +
+      SEPARATOR_WIDTH +
+      48 * tools +
+      (tools < TOOL_COUNT ? 48 : 0) +
+      (label ? ANNOTATE_LABELED_WIDTH : 48) <=
+    half
+  const annotateLabel = tier !== 'phone' && fits(TOOL_COUNT, true)
+  const inlineTools = tier === 'phone' ? 0 : ([5, 4, 3, 2, 1].find((n) => fits(n, false)) ?? 0)
+  const notesInline = tier === 'phone' || inlineTools >= 1
+  const metronomeInline = inlineTools >= 2
+  const theoryInline = inlineTools >= 3
+  const photoInline = inlineTools >= 4
+  const infoInline = tier === 'phone' || inlineTools >= 5
+  const moreNeeded = !(notesInline && metronomeInline && theoryInline && photoInline && infoInline)
+  const metronomeButton = (
+    <SoonButton label="Metronome" message="Metronome: coming soon">
+      <IconMetronome size={22} />
+    </SoonButton>
+  )
+  const theoryButton = (
+    <SoonButton label="Theory reference" message="Theory reference: coming soon">
+      <IconClef size={22} />
+    </SoonButton>
   )
   const photoButton = (
     <div ref={photoAnchorRef} className="relative">
@@ -1821,7 +1890,7 @@ export function SheetViewerMockup() {
   // Under the photo button; under ⋯ on a tablet; on a phone, centered under
   // the whole two-row toolbar so it never covers the page cyclers.
   const photoStyle = useAnchoredPanel(
-    tier === 'wide' ? photoAnchorRef : tier === 'phone' ? phoneRow2Ref : moreAnchorRef,
+    photoInline ? photoAnchorRef : tier === 'phone' ? phoneRow2Ref : moreAnchorRef,
     menu === 'photo',
     'below-center',
     { gap: 6, panelWidth: PHOTO_WIDTH },
@@ -1877,7 +1946,8 @@ export function SheetViewerMockup() {
       ].join(', ')
     : ''
 
-  // A dot on Info whenever the piece has notes and Info is closed (Phase 3).
+  // A dot on Practice Notes whenever the piece has notes and the panel is
+  // closed (Phase 3's dot, moved here from Info with the notes).
   const notesDot = (
     <span
       className={`pointer-events-none absolute top-[11px] right-[11px] size-[9px] rounded-full bg-accent-fill ring-2 ${mode === 'annotate' ? 'ring-accent-soft' : 'ring-paper'}`}
@@ -1900,12 +1970,36 @@ export function SheetViewerMockup() {
       >
         <IconInfoCircle size={22} />
       </HitButton>
-      {notes && !infoOpen && notesDot}
+    </div>
+  )
+  // Practice Notes: your practice status and notes, split off from Info
+  // (which keeps the piece's own details) — a panel of its own under the
+  // note icon, opened and shown the same way as Info.
+  const notesButton = (
+    <div ref={notesAnchorRef} className="relative">
+      <HitButton
+        label="Practice Notes"
+        onClick={() => openNotes(!notesOpen)}
+        faceClassName={
+          notesOpen
+            ? mode === 'annotate'
+              ? 'bg-accent-fill text-white'
+              : 'bg-accent-soft text-accent'
+            : ''
+        }
+      >
+        <IconNote size={22} />
+      </HitButton>
+      {notes && !notesOpen && notesDot}
     </div>
   )
 
   function openInfo(open: boolean) {
     setMenu(open ? 'info' : null)
+    setSheetFull(false)
+  }
+  function openNotes(open: boolean) {
+    setMenu(open ? 'notes' : null)
     setSheetFull(false)
   }
   function startEdit() {
@@ -1941,8 +2035,148 @@ export function SheetViewerMockup() {
       ).filter(([, v]) => v)
     : []
 
+  // Info: the piece's own details (option F of
+  // https://claude.ai/artifact/1my7Fq6HxJsynRmTp7w68n). Your status and notes
+  // are in Practice Notes.
   const infoBody = (
+    <div className="flex flex-col gap-5 px-5 pt-4 pb-5">
+      {piece && (
+        <section className="flex flex-col gap-2">
+          {/* The favorite heart beside the title, as on Piece Details: an
+              outline when off, filled green when on. Its 48pt tap area
+              hangs past the title's first line, like the notes' pencil;
+              the real viewer leaves it out without the edit permission. */}
+          <div className="flex items-start gap-2">
+            <div className="min-w-0 flex-1">
+              <p className="font-display text-lg leading-snug font-medium">{piece.title}</p>
+              {credit && <p className="text-sm text-ink-soft">{credit}</p>}
+            </div>
+            {activeId !== null && (
+              <div className="-my-2 -mr-1 shrink-0">
+                <HitButton
+                  label={favorite ? 'Remove from Favorites' : 'Add to Favorites'}
+                  onClick={() => {
+                    setFavoriteOverride({ ...favoriteOverride, [activeId]: !favorite })
+                    flash(
+                      favorite
+                        ? 'Removed from Favorites (mockup: nothing is written)'
+                        : 'Added to Favorites (mockup: nothing is written)',
+                    )
+                  }}
+                >
+                  {favorite ? (
+                    <IconHeartFilled size={20} className="text-accent" />
+                  ) : (
+                    <IconHeart size={20} />
+                  )}
+                </HitButton>
+              </div>
+            )}
+          </div>
+          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
+            {details.map(([label, value]) => (
+              <Fragment key={label}>
+                <dt className="text-ink-muted">{label}</dt>
+                <dd>{value}</dd>
+              </Fragment>
+            ))}
+          </dl>
+          {/* The piece's description (book-inheritable), after its details,
+              at most three lines until More (option F of
+              https://claude.ai/artifact/1my7Fq6HxJsynRmTp7w68n, A's style in
+              E's place). Markdown and :shortcodes:, as everywhere. */}
+          {piece.description.value && (
+            <div className="flex flex-col">
+              {piece.description.inherited && (
+                <span className="text-xs text-ink-muted">From the book</span>
+              )}
+              <div
+                ref={setDescEl}
+                className={`text-sm leading-relaxed select-text ${descOpen ? '' : 'line-clamp-3'}`}
+              >
+                <MarkdownText>{piece.description.value}</MarkdownText>
+              </div>
+              {(descClipped || descOpen) && (
+                <button
+                  type="button"
+                  data-hit
+                  onClick={() => setDescOpen(!descOpen)}
+                  className={`${HIT} -mt-2 justify-start! self-start text-sm font-medium text-accent hover:underline`}
+                >
+                  {descOpen ? 'Less' : 'More'}
+                </button>
+              )}
+            </div>
+          )}
+          {/* Leaves the viewer for the piece's own page, with everything
+              the details above leave out (option C of
+              https://claude.ai/artifact/3bwSWq4TLtSrpPAWksqmmS). The real
+              viewer saves anything waiting first; here it just goes. */}
+          <button
+            type="button"
+            data-hit
+            onClick={() => navigate(`/pieces/${piece.id}`)}
+            className={`${HIT} group/b -my-2 gap-1 self-start text-sm font-medium text-accent`}
+          >
+            <span className="underline-offset-[3px] group-hover/b:underline">See all details</span>
+            <IconArrowRight size={16} />
+          </button>
+        </section>
+      )}
+    </div>
+  )
+  // Practice Notes: your practice status first, then your notes.
+  const notesBody = (
     <div className="flex flex-col gap-5 px-5 pt-3 pb-5">
+      {/* Phase 7: the real PracticeStatusStrip's design at 48pt — your own
+          statuses in practice order (a status with no icon shows its
+          initial), raised tiles whose border turns green on hover, the
+          current one filled; the label line names the hovered or focused
+          status, else the current one. Tap a status to set it, the current
+          one again to clear it. */}
+      <section className="flex flex-col gap-1" onMouseLeave={() => setHoveredStatus(null)}>
+        <div className="flex items-baseline justify-between gap-3">
+          <h3 className={sectionLabel}>Practice status</h3>
+          <span className="truncate text-sm font-medium">{hoveredStatus ?? status ?? 'None'}</span>
+        </div>
+        <div className="-mb-1 -ml-1 flex flex-wrap" role="radiogroup" aria-label="Practice status">
+          {sortPracticeStatuses(practiceStatuses).map((item) => {
+            const isCurrent = status === item.name
+            return (
+              <button
+                key={item.id}
+                type="button"
+                data-hit
+                role="radio"
+                aria-checked={isCurrent}
+                aria-label={isCurrent ? `${item.name} (tap to clear)` : item.name}
+                onMouseEnter={() => setHoveredStatus(item.name)}
+                onFocus={() => setHoveredStatus(item.name)}
+                onBlur={() => setHoveredStatus(null)}
+                onClick={() => {
+                  if (activeId === null) return
+                  setStatusOverride({ ...statusOverride, [activeId]: isCurrent ? null : item.name })
+                }}
+                className={`${HIT} group/b`}
+              >
+                <span
+                  className={`${FACE} border text-sm font-medium ${
+                    isCurrent
+                      ? 'border-accent bg-accent-soft text-accent'
+                      : 'border-border bg-paper-raised text-ink-soft group-hover/b:border-accent group-hover/b:text-ink'
+                  }`}
+                >
+                  {item.iconKey ? (
+                    <PracticeStatusKeyIcon iconKey={item.iconKey} size={20} />
+                  ) : (
+                    item.name.slice(0, 1).toUpperCase()
+                  )}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      </section>
       <section className="flex flex-col gap-2">
         {/* Only as tall as the pencil's face (32px): its 48pt tap area
             hangs 8px over above and below, and 4px past the right edge, so
@@ -2050,123 +2284,31 @@ export function SheetViewerMockup() {
           </>
         )}
       </section>
-      {/* Phase 7: the real PracticeStatusStrip's design at 48pt — your own
-          statuses in practice order (a status with no icon shows its
-          initial), raised tiles whose border turns green on hover, the
-          current one filled; the label line names the hovered or focused
-          status, else the current one. Tap a status to set it, the current
-          one again to clear it. */}
-      <section className="flex flex-col gap-1" onMouseLeave={() => setHoveredStatus(null)}>
-        <div className="flex items-baseline justify-between gap-3">
-          <h3 className={sectionLabel}>Practice status</h3>
-          <span className="truncate text-sm font-medium">{hoveredStatus ?? status ?? 'None'}</span>
-        </div>
-        <div className="-mb-1 -ml-1 flex flex-wrap" role="radiogroup" aria-label="Practice status">
-          {sortPracticeStatuses(practiceStatuses).map((item) => {
-            const isCurrent = status === item.name
-            return (
-              <button
-                key={item.id}
-                type="button"
-                data-hit
-                role="radio"
-                aria-checked={isCurrent}
-                aria-label={isCurrent ? `${item.name} (tap to clear)` : item.name}
-                onMouseEnter={() => setHoveredStatus(item.name)}
-                onFocus={() => setHoveredStatus(item.name)}
-                onBlur={() => setHoveredStatus(null)}
-                onClick={() => {
-                  if (activeId === null) return
-                  setStatusOverride({ ...statusOverride, [activeId]: isCurrent ? null : item.name })
-                }}
-                className={`${HIT} group/b`}
-              >
-                <span
-                  className={`${FACE} border text-sm font-medium ${
-                    isCurrent
-                      ? 'border-accent bg-accent-soft text-accent'
-                      : 'border-border bg-paper-raised text-ink-soft group-hover/b:border-accent group-hover/b:text-ink'
-                  }`}
-                >
-                  {item.iconKey ? (
-                    <PracticeStatusKeyIcon iconKey={item.iconKey} size={20} />
-                  ) : (
-                    item.name.slice(0, 1).toUpperCase()
-                  )}
-                </span>
-              </button>
-            )
-          })}
-        </div>
-      </section>
-      {piece && (
-        <section className="flex flex-col gap-2">
-          <h3 className={sectionLabel}>About this piece</h3>
-          {/* The favorite heart beside the title, as on Piece Details: an
-              outline when off, filled green when on. Its 48pt tap area
-              hangs past the title's first line, like the notes' pencil;
-              the real viewer leaves it out without the edit permission. */}
-          <div className="flex items-start gap-2">
-            <div className="min-w-0 flex-1">
-              <p className="font-display text-lg leading-snug font-medium">{piece.title}</p>
-              {credit && <p className="text-sm text-ink-soft">{credit}</p>}
-            </div>
-            {activeId !== null && (
-              <div className="-my-2 -mr-1 shrink-0">
-                <HitButton
-                  label={favorite ? 'Remove from Favorites' : 'Add to Favorites'}
-                  onClick={() => {
-                    setFavoriteOverride({ ...favoriteOverride, [activeId]: !favorite })
-                    flash(
-                      favorite
-                        ? 'Removed from Favorites (mockup: nothing is written)'
-                        : 'Added to Favorites (mockup: nothing is written)',
-                    )
-                  }}
-                >
-                  {favorite ? (
-                    <IconHeartFilled size={20} className="text-accent" />
-                  ) : (
-                    <IconHeart size={20} />
-                  )}
-                </HitButton>
-              </div>
-            )}
-          </div>
-          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
-            {details.map(([label, value]) => (
-              <Fragment key={label}>
-                <dt className="text-ink-muted">{label}</dt>
-                <dd>{value}</dd>
-              </Fragment>
-            ))}
-          </dl>
-          {/* Leaves the viewer for the piece's own page, with everything
-              the details above leave out (option C of
-              https://claude.ai/artifact/3bwSWq4TLtSrpPAWksqmmS). The real
-              viewer saves anything waiting first; here it just goes. */}
-          <button
-            type="button"
-            data-hit
-            onClick={() => navigate(`/pieces/${piece.id}`)}
-            className={`${HIT} group/b -my-2 gap-1 self-start text-sm font-medium text-accent`}
-          >
-            <span className="underline-offset-[3px] group-hover/b:underline">See all details</span>
-            <IconArrowRight size={16} />
-          </button>
-        </section>
-      )}
     </div>
   )
 
   // Phase 3: a card hanging from Info on tablets and desktop, a bottom sheet
   // on phones. Portaled, over the backdrop — so a tap on the score closes
   // Info first rather than turning the page.
-  const infoStyle = useAnchoredPanel(infoAnchorRef, infoOpen && tier !== 'phone', 'below-center', {
-    gap: 6,
-    panelWidth: INFO_WIDTH,
-  })
-  const infoHeader = (title: ReactNode) => (
+  const infoStyle = useAnchoredPanel(
+    infoInline ? infoAnchorRef : moreAnchorRef,
+    infoOpen && tier !== 'phone',
+    'below-center',
+    {
+      gap: 6,
+      panelWidth: INFO_WIDTH,
+    },
+  )
+  const notesStyle = useAnchoredPanel(
+    notesInline ? notesAnchorRef : moreAnchorRef,
+    notesOpen && tier !== 'phone',
+    'below-center',
+    {
+      gap: 6,
+      panelWidth: INFO_WIDTH,
+    },
+  )
+  const panelHeader = (title: ReactNode, which: 'info' | 'notes') => (
     <div className="flex shrink-0 items-center border-b border-border pr-4">
       {title}
       {/* Download PDF + Annotations, beside Close (placement C, picked
@@ -2175,7 +2317,7 @@ export function SheetViewerMockup() {
           left out; the real viewer saves any waiting marks first. Faded,
           its reason in a pill on a tap, when there's nothing to export.
           Hidden without the download permission. Inert here. */}
-      {piece && (
+      {which === 'info' && piece && (
         <HitButton
           label={
             exportShown > 0
@@ -2198,14 +2340,23 @@ export function SheetViewerMockup() {
           <IconDownload size={20} />
         </HitButton>
       )}
-      <HitButton label="Close Info" onClick={() => openInfo(false)}>
+      <HitButton
+        label={`Close ${which === 'info' ? 'Info' : 'Practice Notes'}`}
+        onClick={() => setMenu(null)}
+      >
         <IconX size={20} />
       </HitButton>
     </div>
   )
-  const infoPanel =
-    infoOpen &&
-    (tier === 'phone'
+  // Info and Practice Notes share one panel: a card under its button on
+  // tablets and desktop, a bottom sheet on phones.
+  const renderPanel = (
+    which: 'info' | 'notes',
+    title: string,
+    style: CSSProperties | null,
+    body: ReactNode,
+  ) =>
+    tier === 'phone'
       ? createPortal(
           <div
             className={`fixed inset-x-0 bottom-0 z-50 flex flex-col rounded-t-2xl border-t border-border bg-paper pb-[env(safe-area-inset-bottom)] shadow-2xl [--sv-hover:var(--color-paper-hover)] ${
@@ -2214,32 +2365,38 @@ export function SheetViewerMockup() {
           >
             <span className="pointer-events-none absolute top-1.5 left-1/2 h-[5px] w-10 -translate-x-1/2 rounded-full bg-ink-fainter" />
             {/* The title row is the handle: tap it to take the full height. */}
-            {infoHeader(
+            {panelHeader(
               <button
                 type="button"
                 data-hit
                 onClick={() => setSheetFull(!sheetFull)}
-                aria-label={sheetFull ? 'Shrink Info' : 'Expand Info'}
+                aria-label={sheetFull ? `Shrink ${title}` : `Expand ${title}`}
                 className={`${HIT} mt-2 flex-1 justify-start pl-5`}
               >
-                <span className="font-display text-base font-medium">Info</span>
+                <span className="font-display text-base font-medium">{title}</span>
               </button>,
+              which,
             )}
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">{infoBody}</div>
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">{body}</div>
           </div>,
           document.body,
         )
-      : infoStyle &&
+      : style &&
         createPortal(
           <div
-            style={{ ...infoStyle, width: INFO_WIDTH }}
+            style={{ ...style, width: INFO_WIDTH }}
             className="z-50 flex max-h-[calc(100dvh-5.5rem)] flex-col overflow-hidden rounded-xl border border-border bg-paper shadow-xl [--sv-hover:var(--color-paper-hover)]"
           >
-            {infoHeader(<h2 className="flex-1 pl-5 font-display text-base font-medium">Info</h2>)}
-            <div className="min-h-0 overflow-y-auto overscroll-contain">{infoBody}</div>
+            {panelHeader(
+              <h2 className="flex-1 pl-5 font-display text-base font-medium">{title}</h2>,
+              which,
+            )}
+            <div className="min-h-0 overflow-y-auto overscroll-contain">{body}</div>
           </div>,
           document.body,
-        ))
+        )
+  const infoPanel = infoOpen && renderPanel('info', 'Info', infoStyle, infoBody)
+  const notesPanel = notesOpen && renderPanel('notes', 'Practice Notes', notesStyle, notesBody)
 
   // The queue (Phase 6): a card under its button (a bottom sheet on phones),
   // like Info. The Practice List can be reordered and trimmed here; a
@@ -2826,6 +2983,8 @@ export function SheetViewerMockup() {
       <HitButton label="More" onClick={() => setMenu(menu === 'more' ? null : 'more')}>
         <IconDots size={22} />
       </HitButton>
+      {/* With Practice Notes in ⋯, its "has notes" dot moves here. */}
+      {!notesInline && !custom && notes && menu !== 'more' && !notesOpen && notesDot}
     </div>
   )
 
@@ -2840,6 +2999,12 @@ export function SheetViewerMockup() {
       <Shortcuts
         shortcuts={[
           { key: 'i', label: 'Info', run: () => openInfo(!infoOpen), enabled: !customKey },
+          {
+            key: 'n',
+            label: 'Practice Notes',
+            run: () => openNotes(!notesOpen),
+            enabled: !customKey,
+          },
           {
             key: 'q',
             label: sessionKind === 'setlist' ? 'Setlist queue' : 'Practice List',
@@ -2929,6 +3094,7 @@ export function SheetViewerMockup() {
                     )}
                   </div>
                 )}
+                {!custom && notesButton}
                 {!custom && infoButton}
                 {moreButton}
                 <span
@@ -2983,10 +3149,12 @@ export function SheetViewerMockup() {
                 {!annotating && (
                   <>
                     {clockButton}
-                    {inlineExtras && extras}
+                    {!custom && notesInline && notesButton}
+                    {metronomeInline && metronomeButton}
+                    {theoryInline && theoryButton}
                     {photoInline && photoButton}
-                    {!custom && infoButton}
-                    {!inlineExtras && moreButton}
+                    {!custom && infoInline && infoButton}
+                    {moreNeeded && moreButton}
                     <span className="mx-1 h-7 w-px shrink-0 bg-border" />
                     {annotateButton}
                   </>
@@ -3012,31 +3180,56 @@ export function SheetViewerMockup() {
             <div className="fixed inset-0 z-30" onPointerDown={() => setMenu(null)} />
             {clockMenu}
             {infoPanel}
+            {notesPanel}
             {photoPanel}
             {queuePanel}
             {layersPanel}
             {toolOptionsPanel}
             {ghostCard}
             {menu === 'more' && (
+              // The tools that didn't fit in the toolbar, in its own order.
               <div className="absolute top-full right-2 z-50 mt-1.5 w-72 rounded-xl border border-border bg-paper p-3 shadow-xl [--sv-hover:var(--color-paper-hover)]">
-                <MenuRow
-                  icon={<IconMetronome size={20} />}
-                  label="Metronome"
-                  trailing="Coming soon"
-                  soon
-                />
-                <MenuRow
-                  icon={<IconClef size={20} />}
-                  label="Theory reference"
-                  trailing="Coming soon"
-                  soon
-                />
+                {!notesInline && !custom && (
+                  <MenuRow
+                    icon={<IconNote size={20} />}
+                    label="Practice Notes"
+                    trailing={
+                      notes ? (
+                        <span className="block size-2 rounded-full bg-accent-fill" />
+                      ) : undefined
+                    }
+                    onClick={() => openNotes(true)}
+                  />
+                )}
+                {!metronomeInline && (
+                  <MenuRow
+                    icon={<IconMetronome size={20} />}
+                    label="Metronome"
+                    trailing="Coming soon"
+                    soon
+                  />
+                )}
+                {!theoryInline && (
+                  <MenuRow
+                    icon={<IconClef size={20} />}
+                    label="Theory reference"
+                    trailing="Coming soon"
+                    soon
+                  />
+                )}
                 {!photoInline && (
                   <MenuRow
                     icon={<IconPhotoCog size={20} />}
                     label="Photo filters"
                     trailing={photoChanged ? 'On' : undefined}
                     onClick={() => setMenu('photo')}
+                  />
+                )}
+                {!infoInline && !custom && (
+                  <MenuRow
+                    icon={<IconInfoCircle size={20} />}
+                    label="Info"
+                    onClick={() => openInfo(true)}
                   />
                 )}
               </div>
@@ -3193,8 +3386,9 @@ export function SheetViewerMockup() {
         </div>
         {showZones && (mode === 'play' || !tool) && <ZoneOverlay />}
         {/* The notes bar (Phase 3): your notes' first line over the top of
-            the page; tap it for Info, ✕ hides it for this piece (Info's
-            "Show practice notes as banner" brings it back). Its own taps never turn. */}
+            the page; tap it for Practice Notes, ✕ hides it for this piece
+            (Practice Notes' "Show practice notes as banner" brings it back).
+            Its own taps never turn. */}
         {showBar && activeId !== null && (
           <div
             className="absolute inset-x-0 top-0 z-10 flex items-center border-b border-accent/30 bg-accent-soft pr-1 pl-2 [--sv-hover:var(--color-accent-soft-hover)]"
@@ -3204,7 +3398,7 @@ export function SheetViewerMockup() {
             <button
               type="button"
               data-hit
-              onClick={() => openInfo(true)}
+              onClick={() => openNotes(true)}
               className={`${HIT} min-w-0 flex-1 justify-start group/b`}
               aria-label="Open your notes"
             >
