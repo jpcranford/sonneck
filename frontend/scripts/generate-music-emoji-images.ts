@@ -51,12 +51,10 @@ async function main() {
   const fontBase64 = readFileSync(FONT_PATH).toString('base64')
   const symbols = uniqueSymbols()
 
-  // Target output: a hard 75px-tall cap (GitHub renders a plain
-  // ![]()-embedded image at its native pixel size, no downscaling, so the
-  // *actual* PNG dimensions are what matters here, not just a CSS size).
-  // deviceScaleFactor 2 buys some antialiasing quality over a flat 1x
-  // render while staying comfortably under the cap: 36px CSS height * 2 =
-  // 72px physical.
+  // Rendered at 2x: 36px CSS height * 2 = 72px tall PNGs. docs/music-emoji.md
+  // shows each at half that (`<img height="36">`), so they stay sharp on
+  // high-density screens; a plain ![]() would show them at their full
+  // pixel size.
   const CSS_HEIGHT = 36
   const browser = await chromium.launch()
   const page = await browser.newPage({ deviceScaleFactor: 2 })
@@ -91,14 +89,14 @@ async function main() {
 
     await page.setContent(html)
     await page.evaluate(() => document.fonts.ready)
-    await page
-      .locator('#s')
-      .screenshot({ path: path.join(OUT_DIR, `${slug}.png`) })
+    await page.locator('#s').screenshot({ path: path.join(OUT_DIR, `${slug}.png`) })
     console.log(`wrote ${slug}.png`)
   }
 
   await browser.close()
-  console.log(`\nDone — ${symbols.length} symbols written to ${path.relative(process.cwd(), OUT_DIR)}`)
+  console.log(
+    `\nDone — ${symbols.length} symbols written to ${path.relative(process.cwd(), OUT_DIR)}`,
+  )
 }
 
 main()
