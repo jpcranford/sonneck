@@ -2198,8 +2198,9 @@ function SheetViewer({
     setDraft(notes)
     setEditing(true)
   }
-  // Hidden while any menu or panel is open, so nothing stacks over it.
-  const showBar = !custom && notes !== '' && notesBarShown && menu === null
+  // Hidden while another menu or panel is open, so nothing stacks over it.
+  // Practice Notes keeps it, so its banner switch shows its effect behind it.
+  const showBar = !custom && notes !== '' && notesBarShown && (menu === null || menu === 'notes')
 
   // Info: the piece's own details. Your practice status and notes are in
   // Practice Notes, beside it (the split of

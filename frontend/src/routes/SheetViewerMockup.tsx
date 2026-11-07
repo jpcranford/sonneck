@@ -704,8 +704,9 @@ export function SheetViewerMockup() {
       : (piece?.favorite ?? false)
   const infoOpen = menu === 'info'
   const notesOpen = menu === 'notes'
-  // Hidden while any menu or Info is open, so nothing stacks over it.
-  const showBar = notes !== '' && barOn && menu === null && !customKey
+  // Hidden while another menu or panel is open, so nothing stacks over it.
+  // Practice Notes keeps it, so its banner switch shows its effect behind it.
+  const showBar = notes !== '' && barOn && (menu === null || notesOpen) && !customKey
 
   const photo = (activeId !== null && photoByPiece[activeId]) || PHOTO_DEFAULT
   function setPhoto(change: Partial<Photo>) {
