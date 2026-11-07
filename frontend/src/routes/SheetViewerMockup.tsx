@@ -3123,9 +3123,12 @@ export function SheetViewerMockup() {
                 {queueButton}
                 {annotating ? (
                   toolsInline ? (
+                    // Inline (wide): Layers, Undo and Redo on the left; the
+                    // tools sit by Done on the right.
                     <>
                       <span className="mx-1 h-7 w-px shrink-0 bg-accent/30" />
-                      {toolButtons}
+                      {layersButton}
+                      {undoRedo}
                     </>
                   ) : (
                     <span className="truncate px-2 text-sm font-medium text-accent">
@@ -3160,10 +3163,9 @@ export function SheetViewerMockup() {
                     {annotateButton}
                   </>
                 )}
-                {/* Inline (wide), Layers joins Undo and Redo on the right:
-                    the tools and swatches already fill the left side. */}
-                {annotating && toolsInline && layersButton}
-                {annotating && toolsInline && undoRedo}
+                {/* Inline (wide), the tools sit next to Done; toolButtons
+                    ends with the divider between them. */}
+                {annotating && toolsInline && toolButtons}
                 {annotating && doneButton}
               </div>
             </div>
