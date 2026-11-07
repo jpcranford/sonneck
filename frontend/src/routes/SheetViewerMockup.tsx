@@ -2022,8 +2022,6 @@ export function SheetViewerMockup() {
     ? (
         [
           ['Opus', piece.workOpusNumber.value],
-          ['Keys', piece.keys.map((k) => k.name).join(' › ')],
-          ['Sheet type', piece.sheetType.value?.name ?? ''],
           [
             'Book',
             piece.sourceBookTitle
@@ -2031,7 +2029,6 @@ export function SheetViewerMockup() {
               : '',
           ],
           ['Duration', piece.duration ? formatDuration(piece.duration) : ''],
-          ['Pages', String(piece.pageCount)],
         ] as [string, string][]
       ).filter(([, v]) => v)
     : []
@@ -2074,14 +2071,16 @@ export function SheetViewerMockup() {
               </div>
             )}
           </div>
-          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
-            {details.map(([label, value]) => (
-              <Fragment key={label}>
-                <dt className="text-ink-muted">{label}</dt>
-                <dd>{value}</dd>
-              </Fragment>
-            ))}
-          </dl>
+          {details.length > 0 && (
+            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
+              {details.map(([label, value]) => (
+                <Fragment key={label}>
+                  <dt className="text-ink-muted">{label}</dt>
+                  <dd>{value}</dd>
+                </Fragment>
+              ))}
+            </dl>
+          )}
           {/* The piece's description (book-inheritable), after its details,
               at most three lines until More (option F of
               https://claude.ai/artifact/1my7Fq6HxJsynRmTp7w68n, A's style in
