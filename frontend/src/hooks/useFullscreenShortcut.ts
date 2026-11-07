@@ -10,7 +10,7 @@ export function useFullscreenShortcut() {
     [
       {
         key: 'f',
-        label: 'Full screen',
+        label: 'Toggle fullscreen',
         run: () => void toggleFullscreen().catch(() => {}),
         enabled: canFullscreen(),
       },

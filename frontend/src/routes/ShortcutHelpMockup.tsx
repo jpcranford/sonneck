@@ -201,7 +201,7 @@ function ShortcutCard({
       )}
       <div className="mt-1.5 border-t border-border pt-2">
         <KeyRow keys={['1', String(sidebarKeys)]} label="Sidebar, top to bottom" />
-        <KeyRow keys={['F']} label="Full screen" />
+        <KeyRow keys={['F']} label="Toggle fullscreen" />
       </div>
       <p className="mt-2 flex items-center gap-1.5 text-xs text-ink-muted">
         Let go of <Key>{heldKey}</Key> to close
