@@ -3640,10 +3640,13 @@ function SheetViewer({
             run: () => (annotating ? leaveAnnotate() : enterAnnotate()),
             enabled: !custom && pieceId !== null,
           },
+          // Edge margin. In Annotate E is the Eraser, so only outside it.
+          // M and T stay free for the Metronome and Theory reference.
           {
-            key: 'm',
+            key: 'e',
             label: 'Toggle edge margin',
             run: () => setPhoto({ edgeMargin: !photo.edgeMargin }),
+            enabled: !annotating,
           },
           {
             key: 'b',

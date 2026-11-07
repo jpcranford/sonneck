@@ -3026,7 +3026,14 @@ export function SheetViewerMockup() {
             run: () => (mode === 'annotate' ? leaveAnnotate() : enterAnnotate()),
             enabled: !customKey,
           },
-          { key: 'm', label: 'Toggle edge margin', run: () => setPhoto({ margin: !photo.margin }) },
+          // Edge margin. In Annotate E is the Eraser, so only outside it.
+          // M and T stay free for the Metronome and Theory reference.
+          {
+            key: 'e',
+            label: 'Toggle edge margin',
+            run: () => setPhoto({ margin: !photo.margin }),
+            enabled: mode !== 'annotate',
+          },
           {
             key: 'b',
             label: 'Toggle notes banner',
