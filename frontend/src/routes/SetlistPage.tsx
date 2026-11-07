@@ -60,7 +60,7 @@ import { EmptyState } from '../components/EmptyState'
 import { EDIT_WINDOW_KEYS, useShortcuts } from '../lib/shortcuts'
 import { estimateTotal } from '../lib/setlistEstimate'
 import { useToday } from '../hooks/useToday'
-import { confirmRemoveCustomEntry } from '../lib/confirmRemoveEntry'
+import { confirmRemoveCustomEntry, confirmRemovePieceEntry } from '../lib/confirmRemoveEntry'
 
 // The real Setlist Details page (§13) — built against SetlistDetailsMockup.tsx
 // (the approved Phase 6 mockup, incl. its own Round 1-10 polish and the
@@ -125,7 +125,15 @@ function getEntryMenuItems(
         : []),
       { label: 'Edit Piece', onSelect: () => entry.piece && onEditPiece(entry.piece.id) },
       { label: entry.role ? 'Edit Role' : 'Add Role', onSelect: () => onEditRole(entry) },
-      { label: 'Remove from Setlist', destructive: true, onSelect: () => onRemove(entry.id) },
+      {
+        label: 'Remove from Setlist',
+        destructive: true,
+        // Removed at once, so ask first.
+        onSelect: () =>
+          void confirmRemovePieceEntry(entry.piece?.title ?? '').then(
+            (ok) => ok && onRemove(entry.id),
+          ),
+      },
     ]
   }
   return [
@@ -133,7 +141,7 @@ function getEntryMenuItems(
     {
       label: 'Remove from Setlist',
       destructive: true,
-      // A custom entry's typed-in text can't be got back: ask first.
+      // Removed at once, and its typed-in text can't be got back: ask first.
       onSelect: () =>
         void confirmRemoveCustomEntry(entry.customName ?? '').then(
           (ok) => ok && onRemove(entry.id),

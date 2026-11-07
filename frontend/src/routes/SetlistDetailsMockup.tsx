@@ -38,7 +38,7 @@ import { confirmAction } from '../lib/dialogs'
 import { copyToClipboard } from '../lib/clipboard'
 import { EDIT_WINDOW_KEYS, useShortcuts } from '../lib/shortcuts'
 import { estimateTotal } from '../lib/setlistEstimate'
-import { confirmRemoveCustomEntry } from '../lib/confirmRemoveEntry'
+import { confirmRemoveCustomEntry, confirmRemovePieceEntry } from '../lib/confirmRemoveEntry'
 
 // Setlists design pass, Phase 6 — the real Setlist Details page (§13),
 // built against the approved Phase 2 layout (Option B, "Stats dashboard")
@@ -325,7 +325,13 @@ function getEntryMenuItems(
       },
       { label: 'Edit Piece', onSelect: () => {} },
       { label: entry.role ? 'Edit Role' : 'Add Role', onSelect: () => onEditRole(entry) },
-      { label: 'Remove from Setlist', destructive: true, onSelect: () => onRemove(entry.id) },
+      {
+        label: 'Remove from Setlist',
+        destructive: true,
+        // Removed at once, so ask first.
+        onSelect: () =>
+          void confirmRemovePieceEntry(entry.title).then((ok) => ok && onRemove(entry.id)),
+      },
     ]
   }
   return [
@@ -333,7 +339,7 @@ function getEntryMenuItems(
     {
       label: 'Remove from Setlist',
       destructive: true,
-      // A custom entry's typed-in text can't be got back: ask first.
+      // Removed at once, and its typed-in text can't be got back: ask first.
       onSelect: () =>
         void confirmRemoveCustomEntry(entry.title).then((ok) => ok && onRemove(entry.id)),
     },
