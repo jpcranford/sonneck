@@ -2459,7 +2459,27 @@ function SheetViewer({
           </>
         ) : notes ? (
           <>
-            <div className="rounded-xl border border-accent/40 bg-paper-raised px-4 py-3 text-base leading-relaxed select-text">
+            {/* Tap the notes to edit them, as well as the pencil. A tap on
+                a link in them follows the link, and selecting text doesn't
+                start editing. */}
+            <div
+              role="button"
+              tabIndex={0}
+              aria-label="Edit your notes"
+              onClick={(event) => {
+                if ((event.target as Element).closest('a')) return
+                if (window.getSelection()?.toString()) return
+                startEdit()
+              }}
+              onKeyDown={(event) => {
+                if (event.target !== event.currentTarget) return
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault()
+                  startEdit()
+                }
+              }}
+              className="cursor-text rounded-xl border border-accent/40 bg-paper-raised px-4 py-3 text-base leading-relaxed select-text hover:border-accent"
+            >
               <MarkdownText>{notes}</MarkdownText>
             </div>
             {/* The switch row: the label lined up with the notes' text (the
