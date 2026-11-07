@@ -36,6 +36,9 @@ interface ListBooksParams {
   personId?: number
   sort?: 'dateAdded' | 'title' | 'composer' | 'yearPublished'
   dir?: 'asc' | 'desc'
+  /** Paging: the server returns 50 books unless asked otherwise. */
+  limit?: number
+  offset?: number
 }
 
 // Books library view's browse/search — mirrors searchPieces's

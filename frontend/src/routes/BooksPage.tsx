@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import { useEffect, useRef, useState } from 'react'
+import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { IconX } from '@tabler/icons-react'
 import { countBooks, getBookFacets, listBooks } from '../api/books'
 import { ApiError } from '../api/client'
@@ -28,6 +28,9 @@ import { noMatchMessage } from '../lib/emptyMessages'
 import { filterChipClass, filterChipRemoveClass } from '../lib/filterChips'
 
 type BookSortField = 'dateAdded' | 'title' | 'composer' | 'yearPublished'
+
+// Books per request (the server's own default).
+const PAGE_SIZE = 50
 
 const SORT_FIELDS: SortFieldOption<BookSortField>[] = [
   { value: 'dateAdded', label: 'Date Added' },
@@ -80,24 +83,45 @@ export function BooksPage() {
       }),
   })
 
-  const {
-    data: books,
-    isLoading,
-    isError,
-    error,
-  } = useQuery({
-    queryKey: [
-      'books',
-      { query: debouncedQuery, ...debouncedDrawerFilters, sortField, sortDirection },
-    ],
-    queryFn: () =>
-      listBooks({
-        query: debouncedQuery || undefined,
-        ...bookFilterApiParams(debouncedDrawerFilters),
-        sort: sortField,
-        dir: sortDirection,
-      }),
-  })
+  // A page at a time, the next one fetched as the end of the list nears
+  // (the Piece library's pattern, PieceBrowseView.tsx).
+  const { data, isLoading, isError, error, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useInfiniteQuery({
+      queryKey: [
+        'books',
+        { query: debouncedQuery, ...debouncedDrawerFilters, sortField, sortDirection },
+      ],
+      queryFn: ({ pageParam }) =>
+        listBooks({
+          query: debouncedQuery || undefined,
+          ...bookFilterApiParams(debouncedDrawerFilters),
+          sort: sortField,
+          dir: sortDirection,
+          limit: PAGE_SIZE,
+          offset: pageParam,
+        }),
+      initialPageParam: 0,
+      // A bare array, no total: a short page is the last one.
+      getNextPageParam: (lastPage, allPages) =>
+        lastPage.length === PAGE_SIZE ? allPages.length * PAGE_SIZE : undefined,
+    })
+  const books = data?.pages.flat()
+
+  // Loads the next page once the marker under the list comes within 400px
+  // of the screen, so it's usually there before the end is reached.
+  const sentinelRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const sentinel = sentinelRef.current
+    if (!sentinel || !hasNextPage) return
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !isFetchingNextPage) fetchNextPage()
+      },
+      { rootMargin: '400px' },
+    )
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage])
 
   const activeCount = activeBookFilterCount(drawerFilters)
 
@@ -234,6 +258,12 @@ export function BooksPage() {
                 <BookListCard book={book} />
               </div>
             ))}
+          </div>
+        )}
+
+        {books && books.length > 0 && (
+          <div ref={sentinelRef} className="p-4 text-center text-sm text-ink-soft">
+            {isFetchingNextPage && 'Loading more…'}
           </div>
         )}
       </div>
