@@ -2954,14 +2954,15 @@ export function SheetViewerMockup() {
   const annotating = mode === 'annotate'
   const drawing = markTool() !== null
 
+  // Plain like its toolbar neighbors (option A of
+  // https://claude.ai/artifact/2sGPaeuUQ4BzURCeSB2Czu): a hover fill and no
+  // border, labeled or not; the divider before it sets it apart.
   const annotateButton = (
     <HitButton
       label="Annotate"
       onClick={enterAnnotate}
       inset
-      faceClassName={
-        annotateLabel ? 'border border-border px-3 font-medium hover:border-accent' : ''
-      }
+      faceClassName={annotateLabel ? `${FACE_HOVER} px-3 font-medium` : ''}
     >
       <IconPencil size={20} />
       {annotateLabel && 'Annotate'}
