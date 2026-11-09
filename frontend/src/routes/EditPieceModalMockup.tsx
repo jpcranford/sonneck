@@ -2000,7 +2000,7 @@ export function EditPieceModalMockup() {
                   <textarea
                     id="f-notes"
                     rows={2}
-                    className="min-h-[96px] px-3 pt-2 pb-1 text-ink flex-1 bg-transparent outline-none focus-visible:outline-none"
+                    className="min-h-[96px] px-3 pt-2 pb-1 text-ink flex-auto bg-transparent outline-none focus-visible:outline-none"
                     {...register('userNotes')}
                   />
                 </MarkdownHint>

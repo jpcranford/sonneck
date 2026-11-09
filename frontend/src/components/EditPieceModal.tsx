@@ -1513,10 +1513,13 @@ export function EditPieceModal({
                   Your notes
                 </label>
                 <MarkdownHint className="flex-1 min-h-0">
+                  {/* flex-auto, not flex-1: a zero flex basis overrides the
+                      height the resize handle sets, so dragging it did
+                      nothing. It still fills the column's spare height. */}
                   <textarea
                     id="f-notes"
                     rows={2}
-                    className="min-h-[96px] px-3 pt-2 pb-1 text-ink flex-1 bg-transparent outline-none focus-visible:outline-none"
+                    className="min-h-[96px] px-3 pt-2 pb-1 text-ink flex-auto bg-transparent outline-none focus-visible:outline-none"
                     {...register('userNotes')}
                   />
                 </MarkdownHint>
