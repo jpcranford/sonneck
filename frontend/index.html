@@ -27,7 +27,7 @@
          lib/theme.ts saves (light, dark or system; system when there's
          none yet), so a dark page never flashes light first, plus the
          Dark Mode Scores flag. Mirrors lib/theme.ts's resolveTheme, its
-         browser-bar colors and useDarkScoresSync. -->
+         browser-bar colors (and installed-app check) and useDarkScoresSync. -->
     <script>
       try {
         var pref = localStorage.getItem('sonneck-theme') || 'system'
@@ -35,8 +35,16 @@
           pref === 'dark' ||
           (pref === 'system' && matchMedia('(prefers-color-scheme: dark)').matches)
         document.documentElement.dataset.theme = dark ? 'dark' : 'light'
-        if (dark)
-          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#231e1a')
+        // Installed as an app (not on iPhone/iPad), the title or status bar
+        // takes the sidebar's color; in a browser tab, the page's.
+        var ua = navigator.userAgent
+        var ios =
+          /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)
+        var installed = !ios && matchMedia('(display-mode: standalone)').matches
+        if (installed || dark)
+          document
+            .querySelector('meta[name="theme-color"]')
+            .setAttribute('content', installed ? '#0f0c0b' : '#231e1a')
         if (localStorage.getItem('sonneck-dark-scores') === '1')
           document.documentElement.dataset.darkScores = ''
         // The macOS desktop app hides its title bar; mark it so the page
