@@ -55,11 +55,14 @@
 #      - "prereleased" only  -> points :beta at it — the other half of
 #                             :beta's coverage, unconditionally (no
 #                             latest-style check; every pre-release is, by
-#                             definition, newer than the last one). :dev
-#                             never moves on a release event either way —
-#                             it's nightly-only now, driven off main's own
-#                             validated commits, not releases (see #2
-#                             above).
+#                             definition, newer than the last one).
+#      - either action       -> also points :dev at it, but only if the
+#                             release's commit is the latest commit on main
+#                             whose push validation (#1) succeeded — the
+#                             nightly's own rule (#2), so :dev never moves
+#                             backwards to a release cut from an older
+#                             commit, and doesn't wait a day for the
+#                             nightly when the release is main's newest.
 #   4. manual (workflow_dispatch)
 #                          -> no build at all. Just re-checks
 #                             releases/latest and re-points :latest at
@@ -89,9 +92,10 @@ env:
 permissions:
   contents: read
   packages: write
-  # actions: read is only for the nightly build's own "Resolve latest
-  # validated commit on main" step (gh run list needs it to query this
-  # workflow's own past runs) — every other job either doesn't need it or
+  # actions: read is for the two steps that ask which commit on main last
+  # passed validation (gh run list needs it to query this workflow's own
+  # past runs): the nightly's "Resolve latest validated commit on main" and
+  # the release's ":dev" step — every other job either doesn't need it or
   # already overrides permissions locally (attach-assets).
   actions: read
 
@@ -301,9 +305,7 @@ jobs:
           fi
 
       # prereleased only — the other half of :beta's coverage (the above
-      # step's "released" branch is the first half). :dev never moves here
-      # at all (it's nightly-only now, driven off main's own validated
-      # commits, not releases — see the "nightly" job below).
+      # step's "released" branch is the first half).
       - name: Point :beta at this pre-release
         if: github.event.action == 'prereleased'
         env:
@@ -313,6 +315,31 @@ jobs:
           docker buildx imagetools create \
             -t "${{ env.IMAGE }}:beta" \
             "${{ env.IMAGE }}:$RELEASE_TAG"
+
+      # Either action — so :dev doesn't sit a day behind a release cut from
+      # main's newest commit until the next nightly catches up. Only when
+      # the release's commit IS the latest commit on main whose own push
+      # validation run succeeded (the nightly's own rule): a release cut
+      # from an older commit or another branch must not move :dev
+      # backwards, and one published before its commit's validation run
+      # finished is left for the nightly.
+      - name: Point :dev at this release, if it's main's latest validated commit
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_SHA: ${{ github.sha }}
+        run: |
+          validated=$(gh run list --repo "${{ github.repository }}" --workflow docker-publish.yml \
+            --branch main --event push --status success --limit 1 \
+            --json headSha --jq '.[0].headSha // empty')
+          if [ "$validated" = "$RELEASE_SHA" ]; then
+            echo "$RELEASE_TAG is main's latest validated commit ($RELEASE_SHA) — tagging :dev"
+            docker buildx imagetools create \
+              -t "${{ env.IMAGE }}:dev" \
+              "${{ env.IMAGE }}:$RELEASE_TAG"
+          else
+            echo "$RELEASE_TAG is $RELEASE_SHA, main's latest validated commit is ${validated:-none} — leaving :dev for the nightly"
+          fi
 
   # schedule only — takes the two digests build produced (from the latest
   # commit on main that build's own "Resolve latest validated commit on
