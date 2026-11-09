@@ -1,3 +1,4 @@
+import { cancelImageOnUnmount } from '../lib/cancelImageOnUnmount'
 import {
   useEffect,
   useRef,
@@ -148,6 +149,7 @@ function PieceGrid({ pieces }: { pieces: Piece[] }) {
                 )}
                 alt=""
                 loading="lazy"
+                ref={cancelImageOnUnmount}
                 className="score-page h-full w-full object-cover object-top"
               />
             </div>
@@ -295,6 +297,7 @@ function PieceList({ pieces }: { pieces: Piece[] }) {
                   )}
                   alt=""
                   loading="lazy"
+                  ref={cancelImageOnUnmount}
                   className="score-page h-full w-full object-cover object-top"
                 />
               </div>

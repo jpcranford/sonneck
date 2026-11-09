@@ -1,3 +1,4 @@
+import { cancelImageOnUnmount } from '../lib/cancelImageOnUnmount'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -210,6 +211,7 @@ function WorkThumbnail({ piece, className }: { piece: Piece; className: string }
         src={getPieceThumbnailUrl(piece.id, piece.thumbnailPage, thumbVersion(piece.fileHash))}
         alt=""
         loading="lazy"
+        ref={cancelImageOnUnmount}
         className="score-page h-full w-full object-cover object-top"
       />
     </div>

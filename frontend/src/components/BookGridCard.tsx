@@ -1,3 +1,4 @@
+import { cancelImageOnUnmount } from '../lib/cancelImageOnUnmount'
 import { useEffect, useState } from 'react'
 import { IconClefStaff, IconFileX } from '@tabler/icons-react'
 import { getBookCoverUrl } from '../api/books'
@@ -70,6 +71,7 @@ export function BookGridCard({ book }: BookGridCardProps) {
               onLoad={() => setCoverLoaded(true)}
               alt=""
               loading="lazy"
+              ref={cancelImageOnUnmount}
               className={coverLoaded ? 'block h-auto w-full' : 'invisible h-full w-full'}
             />
           ) : (

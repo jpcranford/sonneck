@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { cancelImageOnUnmount } from '../lib/cancelImageOnUnmount'
 import { IconCalendarFilled, IconHeartFilled } from '@tabler/icons-react'
 import { getPieceThumbnailUrl } from '../api/pieces'
 import { listPieceSetlistMemberships } from '../api/setlists'
@@ -81,6 +82,7 @@ export function PieceGridCard({ piece, backLabel, siblingPieces }: PieceGridCard
             src={getPieceThumbnailUrl(piece.id, piece.thumbnailPage, thumbVersion(piece.fileHash))}
             alt=""
             loading="lazy"
+            ref={cancelImageOnUnmount}
             className="score-page h-full w-full object-cover object-top"
           />
           {/* Practice status as a badge over the thumbnail, not a footer

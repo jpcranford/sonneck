@@ -1,3 +1,4 @@
+import { cancelImageOnUnmount } from '../lib/cancelImageOnUnmount'
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { IconCalendarFilled, IconHeartFilled } from '@tabler/icons-react'
@@ -72,6 +73,7 @@ export function PieceListCard({ piece, backLabel, siblingPieces }: PieceListCard
               src={getPieceThumbnailUrl(piece.id, page, thumbVersion(piece.fileHash))}
               alt=""
               loading="lazy"
+              ref={cancelImageOnUnmount}
               className="score-page h-[84px] w-auto rounded-md border border-border object-contain"
             />
           </div>
