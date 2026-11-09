@@ -383,8 +383,9 @@ function HeaderIconButton({
       onClick={onClick}
       aria-label={label}
       title={label}
-      className="flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent"
+      className="relative flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent"
     >
+      <span data-hit aria-hidden="true" className="hit-area" />
       {icon}
     </button>
   )
@@ -590,22 +591,24 @@ export function SetlistDetailsMockup() {
           divider, Duplicate, and the one labeled action, Edit, last. Wraps to two
           rows at phone widths; Edit drops its label below 360px. The
           Back link returns to the mockup index, as every mockup's does. */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4 touch:gap-y-5">
         <Link
           to="/mockup"
-          className="inline-flex w-fit items-center gap-1.5 text-sm whitespace-nowrap text-ink-soft hover:text-ink"
+          className="relative inline-flex w-fit items-center gap-1.5 text-sm whitespace-nowrap text-ink-soft hover:text-ink"
         >
+          <span data-hit aria-hidden="true" className="hit-area" />
           <IconArrowLeft size={24} />
           Back to Setlists
         </Link>
-        <div className="flex shrink-0 items-stretch gap-2.5">
+        <div className="flex shrink-0 items-stretch gap-2.5 touch:gap-3">
           <button
             type="button"
             onClick={handleDelete}
             aria-label="Delete Setlist"
             title="Delete Setlist"
-            className="flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-danger hover:border-danger"
+            className="relative flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-danger hover:border-danger"
           >
+            <span data-hit aria-hidden="true" className="hit-area" />
             <IconTrash size={16} />
           </button>
           <HeaderIconButton
@@ -626,8 +629,9 @@ export function SetlistDetailsMockup() {
             onClick={() => openEditSetlist('details')}
             aria-label="Edit Setlist"
             title="Edit Setlist"
-            className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink hover:border-accent max-[360px]:w-[38px] max-[360px]:px-0"
+            className="relative flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink hover:border-accent max-[360px]:w-[38px] max-[360px]:px-0"
           >
+            <span data-hit aria-hidden="true" className="hit-area" />
             <IconEditFilled size={16} />
             <span className="max-[360px]:hidden">Edit Setlist</span>
           </button>
@@ -728,18 +732,19 @@ export function SetlistDetailsMockup() {
           genuinely recolors from whichever side is actually hovered,
           not always from the same one. Same fix ported to
           `PieceDetailsSample.tsx` and the real `PiecePage.tsx`. */}
-      <div ref={menuRowRef} className="flex flex-wrap items-center gap-2">
+      <div ref={menuRowRef} className="flex flex-wrap items-center gap-2 touch:gap-3">
         {/* Play Set (Sheet Viewer Phase 6): opens the viewer on this set,
             in its order, for that session only — custom entries get
             placeholder pages. The caret adds every piece to the Practice
             List (custom entries skipped, pieces already there left as
             they are). */}
-        <div className="relative">
+        <div className="relative touch:mr-3">
           <div className="flex">
             <Link
               to="/mockup/sheet-viewer?from=setlist"
-              className="flex cursor-pointer items-center gap-2 rounded-l-md bg-accent-fill px-4 py-2 font-display font-medium text-sm text-white hover:bg-accent-fill/90"
+              className="relative flex cursor-pointer items-center gap-2 rounded-l-md bg-accent-fill px-4 py-2 font-display font-medium text-sm text-white hover:bg-accent-fill/90"
             >
+              <span data-hit aria-hidden="true" className="hit-area" />
               <IconPlayerPlay size={16} />
               Play Set
             </Link>
@@ -747,8 +752,9 @@ export function SetlistDetailsMockup() {
               type="button"
               onClick={() => toggleMenu('play')}
               aria-label="More play options"
-              className="flex cursor-pointer items-center justify-center rounded-r-md border-l border-white/25 bg-accent-fill px-2 text-white hover:bg-accent-fill/90"
+              className="relative flex cursor-pointer items-center justify-center rounded-r-md border-l border-white/25 bg-accent-fill px-2 text-white hover:bg-accent-fill/90"
             >
+              <span data-hit aria-hidden="true" className="hit-area hit-area-start" />
               <IconChevronDown size={16} />
             </button>
           </div>
@@ -810,6 +816,7 @@ export function SetlistDetailsMockup() {
               type="button"
               className="relative flex cursor-pointer items-center gap-2 rounded-l-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm text-ink transition-colors hover:z-10 hover:border-accent"
             >
+              <span data-hit aria-hidden="true" className="hit-area" />
               <IconDownload size={16} />
               Download Set PDF
             </button>
@@ -820,6 +827,7 @@ export function SetlistDetailsMockup() {
               aria-label="More download and copy options"
               className="relative -ml-px flex cursor-pointer items-center justify-center rounded-r-md border border-border bg-paper-raised px-2 text-ink transition-colors hover:z-10 hover:border-accent"
             >
+              <span data-hit aria-hidden="true" className="hit-area hit-area-start" />
               <IconChevronDown size={16} />
             </button>
           </div>
@@ -942,8 +950,9 @@ export function SetlistDetailsMockup() {
           <button
             type="button"
             onClick={() => openEditSetlist('program')}
-            className="flex cursor-pointer items-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm text-ink hover:border-accent"
+            className="relative flex cursor-pointer items-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm text-ink hover:border-accent"
           >
+            <span data-hit aria-hidden="true" className="hit-area" />
             <IconListDetails size={16} />
             Edit Program
           </button>

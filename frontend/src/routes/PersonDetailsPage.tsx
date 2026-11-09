@@ -1,4 +1,5 @@
 import { cancelImageOnUnmount } from '../lib/cancelImageOnUnmount'
+import { HitArea } from '../components/HitArea'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -560,16 +561,17 @@ export function PersonDetailsPage() {
 
   return (
     <div className={`${CONTENT_MAX_W} flex flex-1 flex-col gap-6 p-6 md:p-8`}>
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4 touch:gap-y-5">
         <Link
           to="/people"
-          className="inline-flex w-fit items-center gap-1.5 text-sm whitespace-nowrap text-ink-soft hover:text-ink"
+          className="relative inline-flex w-fit items-center gap-1.5 text-sm whitespace-nowrap text-ink-soft hover:text-ink"
         >
+          <HitArea />
           <IconArrowLeft size={24} />
           Back to People
         </Link>
         {person && (
-          <div className="flex shrink-0 items-stretch gap-2.5">
+          <div className="flex shrink-0 items-stretch gap-2.5 touch:gap-3">
             {/* Hidden, divider and all, without `delete`; the divider
                 also goes when there's nothing after it. */}
             {canDelete && (
@@ -580,8 +582,9 @@ export function PersonDetailsPage() {
                   disabled={deleteMutation.isPending}
                   aria-label="Delete Person"
                   title="Delete Person"
-                  className="flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-danger hover:border-danger disabled:opacity-50"
+                  className="relative flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-danger hover:border-danger disabled:opacity-50"
                 >
+                  <HitArea />
                   <IconTrash size={16} />
                 </button>
                 {canEdit && <span aria-hidden="true" className="h-6 w-px self-center bg-border" />}
@@ -592,8 +595,9 @@ export function PersonDetailsPage() {
                 <button
                   type="button"
                   onClick={() => setSplitOpen(true)}
-                  className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink hover:border-accent"
+                  className="relative flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink hover:border-accent"
                 >
+                  <HitArea />
                   <IconArrowsSplit2 size={16} />
                   <span className="max-[420px]:hidden">Split People</span>
                 </button>
@@ -601,8 +605,9 @@ export function PersonDetailsPage() {
                   type="button"
                   onClick={() => setEditOpen(true)}
                   aria-label="Edit Person"
-                  className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink hover:border-accent max-[360px]:w-[38px] max-[360px]:px-0"
+                  className="relative flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink hover:border-accent max-[360px]:w-[38px] max-[360px]:px-0"
                 >
+                  <HitArea />
                   <IconEditFilled size={16} />
                   <span className="max-[360px]:hidden">Edit Person</span>
                 </button>

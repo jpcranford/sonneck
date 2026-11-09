@@ -1,4 +1,5 @@
-// Checks the Sheet Viewer's touch targets (its plan's Phase 0 rule): every
+// Checks touch targets (the Sheet Viewer's rule, also the details pages'
+// toolbars on touch screens and phones): every
 // element marked data-hit must be at least 48×48 CSS px, and no two may
 // overlap. Measured at a phone, both tablet orientations and a desktop
 // window, in the page's starting state and again after each --click (the
@@ -36,8 +37,11 @@ function measure() {
     const s = getComputedStyle(el)
     return s.visibility !== 'hidden' && s.display !== 'none'
   }
-  const describe = (el) =>
-    el.getAttribute('aria-label') || el.textContent.trim().slice(0, 30) || el.tagName
+  // A HitArea span is named after the control it sits in.
+  const describe = (node) => {
+    const el = node.matches('.hit-area') ? (node.closest('button, a, [role]') ?? node) : node
+    return el.getAttribute('aria-label') || el.textContent.trim().slice(0, 30) || el.tagName
+  }
   return [...document.querySelectorAll('[data-hit]')].filter(visible).map((el) => {
     const r = el.getBoundingClientRect()
     return { name: describe(el), x: r.x, y: r.y, w: r.width, h: r.height }

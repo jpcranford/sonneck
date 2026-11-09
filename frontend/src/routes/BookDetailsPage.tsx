@@ -1,4 +1,5 @@
 import { cancelImageOnUnmount } from '../lib/cancelImageOnUnmount'
+import { HitArea } from '../components/HitArea'
 import {
   useEffect,
   useRef,
@@ -626,16 +627,17 @@ export function BookDetailsPage() {
           width and got silently clipped by an ancestor's overflow. Now the
           row wraps instead: the back link gets its own line, the group
           drops to a second line below it. */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4 touch:gap-y-5">
         <Link
           to="/books"
-          className="inline-flex w-fit items-center gap-1.5 text-sm whitespace-nowrap text-ink-soft hover:text-ink"
+          className="relative inline-flex w-fit items-center gap-1.5 text-sm whitespace-nowrap text-ink-soft hover:text-ink"
         >
+          <HitArea />
           <IconArrowLeft size={24} />
           Back to Books
         </Link>
         {book && (
-          <div className="flex shrink-0 items-stretch gap-2.5">
+          <div className="flex shrink-0 items-stretch gap-2.5 touch:gap-3">
             {/* Delete Book, icon-only, leftmost in the group, permanently
                 red. Same cascade-delete action as
                 BookContextMenu's "Delete Book" (library right-click menu) —
@@ -657,8 +659,9 @@ export function BookDetailsPage() {
                   disabled={deleteMutation.isPending}
                   aria-label="Delete Book"
                   title="Delete Book"
-                  className="flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-danger hover:border-danger disabled:opacity-50"
+                  className="relative flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-danger hover:border-danger disabled:opacity-50"
                 >
+                  <HitArea />
                   <IconTrash size={16} />
                 </button>
                 {(canDownload || canEdit) && (
@@ -676,8 +679,9 @@ export function BookDetailsPage() {
                 rel="noreferrer"
                 aria-label="Open Book PDF"
                 title="Open Book PDF"
-                className="flex w-[38px] items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent"
+                className="relative flex w-[38px] items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent"
               >
+                <HitArea />
                 <IconFileTypePdf size={16} />
               </a>
             ) : (
@@ -698,8 +702,9 @@ export function BookDetailsPage() {
                 onClick={openCoverFilePicker}
                 aria-label="Change cover image"
                 title="Change cover image"
-                className="flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent"
+                className="relative flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent"
               >
+                <HitArea />
                 <IconPhotoUp size={16} />
               </button>
             )}
@@ -723,8 +728,9 @@ export function BookDetailsPage() {
                 type="button"
                 onClick={() => setBookEditOpen(true)}
                 aria-label="Edit Book"
-                className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink hover:border-accent max-[360px]:w-[38px] max-[360px]:px-0"
+                className="relative flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink hover:border-accent max-[360px]:w-[38px] max-[360px]:px-0"
               >
+                <HitArea />
                 <IconEditFilled size={16} />
                 <span className="max-[360px]:hidden">Edit Book</span>
               </button>

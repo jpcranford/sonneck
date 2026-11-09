@@ -1120,30 +1120,33 @@ export function PersonDetailsSample() {
           not wherever its own label implies — same convention as
           PieceDetailsSample.tsx/BookDetailsSample.tsx (see CLAUDE.md >
           Frontend). */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4 touch:gap-y-5">
         <Link
           to="/mockup"
-          className="inline-flex w-fit items-center gap-1.5 text-sm whitespace-nowrap text-ink-soft hover:text-ink"
+          className="relative inline-flex w-fit items-center gap-1.5 text-sm whitespace-nowrap text-ink-soft hover:text-ink"
         >
+          <span data-hit aria-hidden="true" className="hit-area" />
           <IconArrowLeft size={24} />
           Back to People
         </Link>
-        <div className="flex shrink-0 items-stretch gap-2.5">
+        <div className="flex shrink-0 items-stretch gap-2.5 touch:gap-3">
           <button
             type="button"
             onClick={handleDelete}
             aria-label="Delete Person"
             title="Delete Person"
-            className="flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-danger hover:border-danger"
+            className="relative flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-danger hover:border-danger"
           >
+            <span data-hit aria-hidden="true" className="hit-area" />
             <IconTrash size={16} />
           </button>
           <span aria-hidden="true" className="h-6 w-px self-center bg-border" />
           <button
             type="button"
             onClick={() => setSplitPeopleOpen(true)}
-            className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink hover:border-accent"
+            className="relative flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink hover:border-accent"
           >
+            <span data-hit aria-hidden="true" className="hit-area" />
             <IconArrowsSplit2 size={16} />
             <span className="max-[420px]:hidden">Split People</span>
           </button>
@@ -1151,8 +1154,9 @@ export function PersonDetailsSample() {
             type="button"
             title="Opens the Edit Person modal (stub in this mockup)"
             onClick={handleEditPerson}
-            className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink hover:border-accent max-[360px]:w-[38px] max-[360px]:px-0"
+            className="relative flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink hover:border-accent max-[360px]:w-[38px] max-[360px]:px-0"
           >
+            <span data-hit aria-hidden="true" className="hit-area" />
             <IconEditFilled size={16} />
             <span className="max-[360px]:hidden">Edit Person</span>
           </button>

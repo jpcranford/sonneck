@@ -787,7 +787,7 @@ export function BookDetailsSample() {
           group still won't shrink internally, but now it's not competing
           with the back link for the same line, so it just drops to its own
           full line below (adequate room there — 284px fits in 311px). */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4 touch:gap-y-5">
         {/* Label reads "Back to Books" (matching BookDetailsPage.tsx's real
             copy) but actually routes to /mockup, not /books — every
             mockup's Back control returns to the mockup index rather than
@@ -795,12 +795,13 @@ export function BookDetailsSample() {
             into real app routes/state. */}
         <Link
           to="/mockup"
-          className="inline-flex w-fit items-center gap-1.5 text-sm whitespace-nowrap text-ink-soft hover:text-ink"
+          className="relative inline-flex w-fit items-center gap-1.5 text-sm whitespace-nowrap text-ink-soft hover:text-ink"
         >
+          <span data-hit aria-hidden="true" className="hit-area" />
           <IconArrowLeft size={24} />
           Back to Books
         </Link>
-        <div className="flex shrink-0 items-stretch gap-2.5">
+        <div className="flex shrink-0 items-stretch gap-2.5 touch:gap-3">
           {/* Delete Book, icon-only, leftmost in the group, divider after
               it. The same cascade-delete action already reachable via
               right-click on a library card (BookContextMenu's "Delete
@@ -819,8 +820,9 @@ export function BookDetailsSample() {
             type="button"
             aria-label="Delete Book"
             title="Delete Book — not wired in this mockup"
-            className="flex w-[38px] cursor-not-allowed items-center justify-center rounded-md border border-border bg-paper-raised text-danger"
+            className="relative flex w-[38px] cursor-not-allowed items-center justify-center rounded-md border border-border bg-paper-raised text-danger"
           >
+            <span data-hit aria-hidden="true" className="hit-area" />
             <IconTrash size={16} />
           </button>
           {/* self-center overrides the container's items-stretch (needed so
@@ -836,8 +838,9 @@ export function BookDetailsSample() {
             onClick={(event) => event.preventDefault()}
             aria-label="Open Book PDF"
             title="Open Book PDF — no real file in this mockup"
-            className="flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent"
+            className="relative flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent"
           >
+            <span data-hit aria-hidden="true" className="hit-area" />
             <IconFileTypePdf size={16} />
           </button>
           {/* "D" from the cover-upload comparison — identical bordered-
@@ -847,8 +850,9 @@ export function BookDetailsSample() {
             onClick={openCoverFilePicker}
             aria-label="Change cover image"
             title="Change cover image"
-            className="flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent"
+            className="relative flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent"
           >
+            <span data-hit aria-hidden="true" className="hit-area" />
             <IconPhotoUp size={16} />
           </button>
           {/* Collapses to icon-only below 360px — even
@@ -868,8 +872,9 @@ export function BookDetailsSample() {
             type="button"
             aria-label="Edit Book"
             title="Edit Book — not wired in this mockup"
-            className="flex cursor-not-allowed items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink max-[360px]:w-[38px] max-[360px]:px-0"
+            className="relative flex cursor-not-allowed items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink max-[360px]:w-[38px] max-[360px]:px-0"
           >
+            <span data-hit aria-hidden="true" className="hit-area" />
             <IconEditFilled size={16} />
             <span className="max-[360px]:hidden">Edit Book</span>
           </button>

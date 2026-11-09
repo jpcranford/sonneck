@@ -35,6 +35,7 @@ import type { SetlistEntry } from '../api/types'
 import { ClickableCard } from '../components/ClickableCard'
 import { ContextMenu, type ContextMenuItem } from '../components/ContextMenu'
 import { DownloadLink } from '../components/DownloadLink'
+import { HitArea } from '../components/HitArea'
 import { EditEntryModal } from '../components/EditEntryModal'
 import { EditPieceModal } from '../components/EditPieceModal'
 import { EditRoleModal } from '../components/EditRoleModal'
@@ -182,8 +183,9 @@ function HeaderIconButton({
       onClick={onClick}
       aria-label={label}
       title={label}
-      className="flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent"
+      className="relative flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent"
     >
+      <HitArea />
       {icon}
     </button>
   )
@@ -493,24 +495,26 @@ export function SetlistPage() {
           Archive beside it, a divider, Duplicate, and the one labeled
           action, Edit, last. Wraps to two rows on a phone; Edit drops its
           label below 360px. */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4 touch:gap-y-5">
         <Link
           to="/setlists"
-          className="inline-flex w-fit items-center gap-1.5 text-sm whitespace-nowrap text-ink-soft hover:text-ink"
+          className="relative inline-flex w-fit items-center gap-1.5 text-sm whitespace-nowrap text-ink-soft hover:text-ink"
         >
+          <HitArea />
           <IconArrowLeft size={24} />
           Back to Setlists
         </Link>
         {setlist && (
-          <div className="flex shrink-0 items-stretch gap-2.5">
+          <div className="flex shrink-0 items-stretch gap-2.5 touch:gap-3">
             <button
               type="button"
               onClick={handleDelete}
               disabled={deleteMutation.isPending}
               aria-label="Delete Setlist"
               title="Delete Setlist"
-              className="flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-danger hover:border-danger disabled:opacity-50"
+              className="relative flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-danger hover:border-danger disabled:opacity-50"
             >
+              <HitArea />
               <IconTrash size={16} />
             </button>
             <HeaderIconButton
@@ -533,8 +537,9 @@ export function SetlistPage() {
               onClick={() => openEditSetlist('details')}
               aria-label="Edit Setlist"
               title="Edit Setlist"
-              className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink hover:border-accent max-[360px]:w-[38px] max-[360px]:px-0"
+              className="relative flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink hover:border-accent max-[360px]:w-[38px] max-[360px]:px-0"
             >
+              <HitArea />
               <IconEditFilled size={16} />
               <span className="max-[360px]:hidden">Edit Setlist</span>
             </button>
@@ -580,19 +585,21 @@ export function SetlistPage() {
             </div>
           </div>
 
-          <div ref={menuRowRef} className="flex flex-wrap items-center gap-2">
+          <div ref={menuRowRef} className="flex flex-wrap items-center gap-2 touch:gap-3">
             {/* Play Set: the set in its order, for that session only —
                 custom entries get placeholder pages. The caret adds every
                 piece to the Practice List (custom entries skipped, pieces
                 already there left as they are); its feedback stays in the
                 menu item. Hidden without `practice`. */}
             {canPractice && (
-              <div className="relative">
+              // touch:mr-3: the caret's tap area reaches rightward past it.
+              <div className="relative touch:mr-3">
                 <div className="flex">
                   <Link
                     to={`/setlists/${setlistId}/play`}
-                    className="flex cursor-pointer items-center gap-2 rounded-l-md bg-accent-fill px-4 py-2 font-display font-medium text-sm text-white hover:bg-accent-fill/90"
+                    className="relative flex cursor-pointer items-center gap-2 rounded-l-md bg-accent-fill px-4 py-2 font-display font-medium text-sm text-white hover:bg-accent-fill/90"
                   >
+                    <HitArea />
                     <IconPlayerPlay size={16} />
                     Play Set
                   </Link>
@@ -600,8 +607,9 @@ export function SetlistPage() {
                     type="button"
                     onClick={() => toggleMenu('play')}
                     aria-label="More play options"
-                    className="flex cursor-pointer items-center justify-center rounded-r-md border-l border-white/25 bg-accent-fill px-2 text-white hover:bg-accent-fill/90"
+                    className="relative flex cursor-pointer items-center justify-center rounded-r-md border-l border-white/25 bg-accent-fill px-2 text-white hover:bg-accent-fill/90"
                   >
+                    <HitArea start />
                     <IconChevronDown size={16} />
                   </button>
                 </div>
@@ -650,6 +658,7 @@ export function SetlistPage() {
                     href={getSetlistPdfUrl(setlistId)}
                     className="relative flex cursor-pointer items-center gap-2 rounded-l-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm text-ink transition-colors hover:z-10 hover:border-accent"
                   >
+                    <HitArea />
                     <IconDownload size={16} />
                     Download Set PDF
                   </DownloadLink>
@@ -660,6 +669,7 @@ export function SetlistPage() {
                     aria-label="More download and copy options"
                     className="relative -ml-px flex cursor-pointer items-center justify-center rounded-r-md border border-border bg-paper-raised px-2 text-ink transition-colors hover:z-10 hover:border-accent"
                   >
+                    <HitArea start />
                     <IconChevronDown size={16} />
                   </button>
                 </div>
@@ -668,8 +678,9 @@ export function SetlistPage() {
                   ref={downloadMenuButtonRef}
                   type="button"
                   onClick={() => toggleMenu('download')}
-                  className="flex cursor-pointer items-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm text-ink transition-colors hover:border-accent"
+                  className="relative flex cursor-pointer items-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm text-ink transition-colors hover:border-accent"
                 >
+                  <HitArea />
                   <IconCopy size={16} />
                   Copy Program
                   <IconChevronDown size={16} />
@@ -783,8 +794,9 @@ export function SetlistPage() {
               <button
                 type="button"
                 onClick={() => openEditSetlist('program')}
-                className="flex cursor-pointer items-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm text-ink hover:border-accent"
+                className="relative flex cursor-pointer items-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm text-ink hover:border-accent"
               >
+                <HitArea />
                 <IconListDetails size={16} />
                 Edit Program
               </button>

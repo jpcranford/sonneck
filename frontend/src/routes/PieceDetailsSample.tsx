@@ -531,8 +531,9 @@ function ActionButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`flex cursor-pointer items-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink hover:border-accent disabled:opacity-50 disabled:hover:border-border ${className}`}
+      className={`relative flex cursor-pointer items-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink hover:border-accent disabled:opacity-50 disabled:hover:border-border ${className}`}
     >
+      <span data-hit aria-hidden="true" className="hit-area" />
       {icon}
       {label}
     </button>
@@ -700,7 +701,7 @@ export function PieceDetailsSample() {
           The row itself wraps instead: the back link gets its own line,
           the button group (whitespace-nowrap below, fits its line on its
           own) drops to a second line, left-aligned. */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4 touch:gap-y-5">
         {/* Label reads "Back to Library" (matching PiecePage.tsx's real
             copy, the whole point of this page being a visual reference)
             but actually routes to /mockup, not "/" — every mockup's Back
@@ -709,12 +710,13 @@ export function PieceDetailsSample() {
             routes/state. */}
         <Link
           to="/mockup"
-          className="inline-flex w-fit items-center gap-1.5 text-sm whitespace-nowrap text-ink-soft hover:text-ink"
+          className="relative inline-flex w-fit items-center gap-1.5 text-sm whitespace-nowrap text-ink-soft hover:text-ink"
         >
+          <span data-hit aria-hidden="true" className="hit-area" />
           <IconArrowLeft size={24} />
           Back to Library
         </Link>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 touch:gap-3">
           {/* Delete Piece, icon-only, leftmost in the group, divider after
               it separating it from Random Piece/Edit Piece. The same
               destructive action already reachable via right-click on a
@@ -730,8 +732,9 @@ export function PieceDetailsSample() {
             disabled
             aria-label="Delete Piece"
             title="Delete Piece"
-            className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-danger hover:border-danger disabled:opacity-50 disabled:hover:border-border"
+            className="relative flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-danger hover:border-danger disabled:opacity-50 disabled:hover:border-border"
           >
+            <span data-hit aria-hidden="true" className="hit-area" />
             <IconTrash size={18} />
           </button>
           <span aria-hidden="true" className="h-6 w-px bg-border" />
@@ -745,8 +748,9 @@ export function PieceDetailsSample() {
             disabled
             aria-label="Random Piece"
             title="Random Piece"
-            className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent disabled:opacity-50"
+            className="relative flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent disabled:opacity-50"
           >
+            <span data-hit aria-hidden="true" className="hit-area" />
             <IconDice5 size={18} />
           </button>
           {/* Add to Setlist (decision 2) — one of this feature's three
@@ -778,8 +782,9 @@ export function PieceDetailsSample() {
               onClick={() => setAddToSetlistOpen((o) => !o)}
               aria-label={inUpcomingSet ? 'In an upcoming set. Add to Setlist' : 'Add to Setlist'}
               title={inUpcomingSet ? 'In an upcoming set • Add to Setlist' : 'Add to Setlist'}
-              className={`flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised hover:border-accent ${inUpcomingSet ? 'text-accent' : 'text-ink'}`}
+              className={`relative flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised hover:border-accent ${inUpcomingSet ? 'text-accent' : 'text-ink'}`}
             >
+              <span data-hit aria-hidden="true" className="hit-area" />
               {inUpcomingSet ? <IconCalendarCheck size={18} /> : <IconCalendarPlus size={18} />}
             </button>
             {addToSetlistOpen && (
@@ -911,7 +916,10 @@ export function PieceDetailsSample() {
             />
           )}
 
-          <div ref={rowRef} className="flex flex-wrap items-center justify-center gap-2">
+          <div
+            ref={rowRef}
+            className="flex flex-wrap items-center justify-center gap-2 touch:gap-3"
+          >
             {/* Play (Sheet Viewer Phase 6): solid accent as the page's
                 primary action; opens the Sheet Viewer mockup. Adding the
                 piece to the Practice List is the list icon in the
@@ -919,8 +927,9 @@ export function PieceDetailsSample() {
                 practice permission in the real page. */}
             <Link
               to="/mockup/sheet-viewer"
-              className="flex cursor-pointer items-center gap-2 rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-sm text-white hover:bg-accent-fill/90"
+              className="relative flex cursor-pointer items-center gap-2 rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-sm text-white hover:bg-accent-fill/90"
             >
+              <span data-hit aria-hidden="true" className="hit-area" />
               <IconPlayerPlay size={16} />
               Play
             </Link>
@@ -944,13 +953,15 @@ export function PieceDetailsSample() {
                 `hover:border-accent` recolors it — so the seam genuinely
                 recolors from whichever side is actually hovered. Same fix
                 ported to the real `PiecePage.tsx` and
-                `SetlistDetailsMockup.tsx`'s own Download Set PDF copy. */}
-            <div className="relative">
+                `SetlistDetailsMockup.tsx`'s own Download Set PDF copy.
+                touch:mr-3: the caret's tap area reaches rightward past it. */}
+            <div className="relative touch:mr-3">
               <div className="flex">
                 <button
                   type="button"
                   className="relative flex cursor-pointer items-center gap-2 rounded-l-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm text-ink transition-colors hover:z-10 hover:border-accent"
                 >
+                  <span data-hit aria-hidden="true" className="hit-area" />
                   <IconDownload size={16} />
                   Download PDF
                 </button>
@@ -960,6 +971,7 @@ export function PieceDetailsSample() {
                   aria-label="More download options"
                   className="relative -ml-px flex cursor-pointer items-center justify-center rounded-r-md border border-border bg-paper-raised px-2 text-ink transition-colors hover:z-10 hover:border-accent"
                 >
+                  <span data-hit aria-hidden="true" className="hit-area hit-area-start" />
                   <IconChevronDown size={16} />
                 </button>
               </div>
@@ -995,8 +1007,9 @@ export function PieceDetailsSample() {
                 type="button"
                 onClick={() => toggleMenu('more')}
                 aria-label="More actions"
-                className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent"
+                className="relative flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent"
               >
+                <span data-hit aria-hidden="true" className="hit-area" />
                 <IconDotsVertical size={18} />
               </button>
               {moreActionsOpen && (

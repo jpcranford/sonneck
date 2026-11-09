@@ -49,6 +49,7 @@ import { hasPermission, useAuth } from '../lib/AuthContext'
 import { usePageTitle } from '../lib/usePageTitle'
 import { yearWrittenSource } from '../lib/yearWrittenSource'
 import { DownloadLink } from '../components/DownloadLink'
+import { HitArea } from '../components/HitArea'
 import { PersonNameLinks } from '../components/PersonNameLinks'
 import {
   deletePiece,
@@ -254,8 +255,9 @@ function ActionButton({
       onClick={onClick}
       disabled={disabled}
       title={title}
-      className={`flex cursor-pointer items-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink hover:border-accent disabled:opacity-50 disabled:hover:border-border ${className}`}
+      className={`relative flex cursor-pointer items-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink hover:border-accent disabled:opacity-50 disabled:hover:border-border ${className}`}
     >
+      <HitArea />
       {icon}
       {label}
     </button>
@@ -665,17 +667,18 @@ export function PiecePage() {
           inside its own button. The row wraps instead: the back link
           gets its own line, the button group drops to a second line below
           it. */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4 touch:gap-y-5">
         <button
           type="button"
           onClick={handleBack}
-          className="inline-flex w-fit cursor-pointer items-center gap-1.5 text-sm whitespace-nowrap text-ink-soft hover:text-ink"
+          className="relative inline-flex w-fit cursor-pointer items-center gap-1.5 text-sm whitespace-nowrap text-ink-soft hover:text-ink"
         >
+          <HitArea />
           <IconArrowLeft size={24} />
           Back{backLabel ? ` to ${backLabel}` : hasBackHistory ? '' : ' to Library'}
         </button>
         {piece && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 touch:gap-3">
             {/* Delete Piece, icon-only, leftmost in the group, permanently
                 red. Same destructive action as PieceContextMenu's "Delete
                 Piece" (library right-click menu) — handleDelete above
@@ -690,8 +693,9 @@ export function PiecePage() {
                   disabled={deleteMutation.isPending}
                   aria-label="Delete Piece"
                   title="Delete Piece"
-                  className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-danger hover:border-danger disabled:opacity-50"
+                  className="relative flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-danger hover:border-danger disabled:opacity-50"
                 >
+                  <HitArea />
                   <IconTrash size={18} />
                 </button>
                 <span aria-hidden="true" className="h-6 w-px bg-border" />
@@ -708,8 +712,9 @@ export function PiecePage() {
               disabled={randomPieceMutation.isPending}
               aria-label="Random Piece"
               title="Random Piece"
-              className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent disabled:opacity-50"
+              className="relative flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent disabled:opacity-50"
             >
+              <HitArea />
               <IconDice5 size={18} />
             </button>
             {/* Add to Setlist (decision 2) — one of this feature's three
@@ -743,8 +748,9 @@ export function PiecePage() {
                     inUpcomingSet ? 'In an upcoming set. Add to Setlist' : 'Add to Setlist'
                   }
                   title={inUpcomingSet ? 'In an upcoming set • Add to Setlist' : 'Add to Setlist'}
-                  className={`flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised hover:border-accent ${inUpcomingSet ? 'text-accent' : 'text-ink'}`}
+                  className={`relative flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised hover:border-accent ${inUpcomingSet ? 'text-accent' : 'text-ink'}`}
                 >
+                  <HitArea />
                   {inUpcomingSet ? <IconCalendarCheck size={18} /> : <IconCalendarPlus size={18} />}
                 </button>
                 {addToSetlistOpen && (
@@ -888,7 +894,10 @@ export function PiecePage() {
             {/* Download / Replace File — act on the file the preview above
                 shows, so both sit with the preview rather than in the info
                 column's field list. */}
-            <div ref={rowRef} className="flex flex-wrap items-center justify-center gap-2">
+            <div
+              ref={rowRef}
+              className="flex flex-wrap items-center justify-center gap-2 touch:gap-3"
+            >
               {/* Play — opens the piece in the Sheet Viewer, the page's one
                   primary action, so it carries the accent-solid treatment.
                   Adding the piece to the Practice List is the list icon
@@ -900,8 +909,9 @@ export function PiecePage() {
                   // Lets the viewer's "See all details" come back here
                   // rather than stack a second copy of this page.
                   state={{ fromPiece: piece.id }}
-                  className="flex items-center gap-2 rounded-md bg-accent-fill px-4 py-2 font-display text-sm font-medium text-white hover:bg-accent-fill/90"
+                  className="relative flex items-center gap-2 rounded-md bg-accent-fill px-4 py-2 font-display text-sm font-medium text-white hover:bg-accent-fill/90"
                 >
+                  <HitArea />
                   <IconPlayerPlay size={16} />
                   Play
                 </Link>
@@ -919,7 +929,8 @@ export function PiecePage() {
                   styles/bounding-box during live verification, not visible
                   from reading the JSX alone. */}
               {canDownload && (
-                <div className="relative">
+                // touch:mr-2: the caret's tap area reaches rightward past it.
+                <div className="relative touch:mr-3">
                   {/* Download PDF — still a split button (main action + a
                     caret opening "Download Piece PDF"/"Download PDF +
                     Annotations"), but recolored to the same bordered/
@@ -949,6 +960,7 @@ export function PiecePage() {
                       href={getPieceFileUrl(piece.id)}
                       className="relative flex items-center gap-2 rounded-l-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm text-ink transition-colors hover:z-10 hover:border-accent"
                     >
+                      <HitArea />
                       <IconDownload size={16} />
                       Download PDF
                     </DownloadLink>
@@ -958,6 +970,7 @@ export function PiecePage() {
                       aria-label="More download options"
                       className="relative -ml-px flex cursor-pointer items-center justify-center rounded-r-md border border-border bg-paper-raised px-2 text-ink transition-colors hover:z-10 hover:border-accent"
                     >
+                      <HitArea start />
                       <IconChevronDown size={16} />
                     </button>
                   </div>
@@ -1020,8 +1033,9 @@ export function PiecePage() {
                     type="button"
                     onClick={() => toggleMenu('more')}
                     aria-label="More actions"
-                    className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent"
+                    className="relative flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent"
                   >
+                    <HitArea />
                     <IconDotsVertical size={18} />
                   </button>
                   {moreActionsOpen && (

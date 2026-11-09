@@ -11,6 +11,12 @@
   }
 }
 
+/* touch: on a touch screen or a phone-width window — where the details
+   pages' toolbars give every control a 48×48 tap area (.hit-area below, the
+   Sheet Viewer's rule) and space their buttons so those areas don't
+   overlap. */
+@custom-variant touch (@media (pointer: coarse), (max-width: 47.99rem));
+
 /* Libre Baskerville, self-hosted (SIL OFL 1.1, Google Fonts) rather than
    loaded from Google's CDN at runtime — see README > Acknowledgements. Used
    only for display text (headings, piece/card titles, sidebar nav); general
@@ -826,4 +832,29 @@ body {
 button:disabled,
 [role='button'][aria-disabled='true'] {
   cursor: not-allowed;
+}
+
+/* A control's 48×48 tap area (components/HitArea.tsx): an invisible span
+   inside the button (which must be position: relative), centered on it and
+   reaching past its edges to at least 48px each way, so the drawn button
+   keeps its size. Only on a touch screen or a phone-width window, where it
+   also carries data-hit for scripts/check-hit-areas.mjs. .hit-area-start
+   keeps the left edge on the button and grows rightward only — for the
+   narrow caret half of a split button, whose other half is on its left. */
+.hit-area {
+  display: none;
+}
+@media (pointer: coarse), (max-width: 47.99rem) {
+  .hit-area {
+    display: block;
+    position: absolute;
+    top: min(0px, calc((100% - 48px) / 2));
+    bottom: min(0px, calc((100% - 48px) / 2));
+    left: min(0px, calc((100% - 48px) / 2));
+    right: min(0px, calc((100% - 48px) / 2));
+  }
+  .hit-area-start {
+    left: 0;
+    right: min(0px, calc(100% - 48px));
+  }
 }
