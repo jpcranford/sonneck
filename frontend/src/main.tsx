@@ -9,6 +9,7 @@ import { DialogHost } from './components/DialogHost'
 import { installNativeExternalLinks } from './lib/nativeLinks'
 import { installTruncationTitles } from './lib/truncationTitles'
 import { installShortcuts } from './lib/shortcuts'
+import { installFullscreenEscape } from './lib/fullscreen'
 import { ApiError } from './api/client'
 
 // Retry a failed load up to three times (TanStack's default), except when
@@ -55,6 +56,7 @@ declare module '@tanstack/react-query' {
 installNativeExternalLinks()
 installTruncationTitles()
 installShortcuts()
+installFullscreenEscape()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

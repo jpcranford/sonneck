@@ -188,12 +188,19 @@ export function isPlainKeyPress(event: KeyboardEvent, key: string): boolean {
   )
 }
 
-function isTypingTarget(target: EventTarget | null): boolean {
+export function isTypingTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false
   if (isMultilineField(target) || target.tagName === 'SELECT') return true
   if (target.tagName !== 'INPUT') return false
   const type = (target as HTMLInputElement).type
   return type !== 'checkbox' && type !== 'radio'
+}
+
+/** Whether a window, menu, drawer or other overlay is open — anything
+ * that takes Esc for itself (lib/fullscreen.ts asks, so Esc closes it
+ * before leaving full screen). */
+export function isOverlayOpen(): boolean {
+  return blockers > 0 || isAnyModalOpen()
 }
 
 function blocked(event: KeyboardEvent): boolean {

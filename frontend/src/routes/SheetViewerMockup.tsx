@@ -836,7 +836,7 @@ export function SheetViewerMockup() {
   // The keys the viewer handles itself (below), each render's own.
   const keysRef = useRef<{
     menu: typeof menu
-    escape: () => void
+    escape: () => boolean
     goEnd: (end: 'first' | 'last') => void
     stepPiece: (dir: -1 | 1) => void
     moveQueue: (dir: -1 | 1) => void
@@ -881,8 +881,10 @@ export function SheetViewerMockup() {
       if (event.metaKey || event.ctrlKey || event.altKey) return
       // Esc closes the open panel; with none open, it presses Exit (twice
       // to leave). A window over the viewer takes its own Esc.
+      // Marked used (preventDefault), so in full screen Esc stays the
+      // viewer's and doesn't leave full screen (lib/fullscreen.ts); F does.
       if (event.key === 'Escape') {
-        if (!isAnyModalOpen()) keys.escape()
+        if (!isAnyModalOpen() && keys.escape()) event.preventDefault()
         return
       }
       // In the open queue, ↑ and ↓ pick a piece and Enter opens it.
@@ -991,10 +993,13 @@ export function SheetViewerMockup() {
   // in the shortcut help, which the viewer renders for itself); page turns,
   // Home/End, [ ], Esc and undo/redo in the viewer's own key handler above,
   // listed here for the help.
-  function pressEscape() {
+  // Returns whether it used the press — always, so in full screen Esc
+  // never leaves it here (lib/fullscreen.ts): it closes, then arms Exit,
+  // and F leaves full screen.
+  function pressEscape(): boolean {
     if (menu !== null) {
       setMenu(null)
-      return
+      return true
     }
     // In Annotate, step back one thing at a time — the tool, then Annotate
     // itself — never arming Exit.
@@ -1004,9 +1009,10 @@ export function SheetViewerMockup() {
         setTool(null)
         flash('No tool: taps turn pages')
       } else leaveAnnotate()
-      return
+      return true
     }
     pressClose()
+    return true
   }
   // Annotate's keys: D/H/T/E pick a tool (its own key again puts it down),
   // 1–6 the picked tool's color, - and = its size, L the Layers menu.
