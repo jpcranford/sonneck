@@ -2125,7 +2125,9 @@ export function SheetViewerMockup() {
             onClick={() => navigate(`/pieces/${piece.id}`)}
             className={`${HIT} group/b -my-2 gap-1 self-start text-sm font-medium text-accent`}
           >
-            <span className="underline-offset-[3px] group-hover/b:underline">See all details</span>
+            <span className="underline-offset-[3px] group-hover/b:underline">
+              Exit to details page
+            </span>
             <IconArrowRight size={16} />
           </button>
         </section>

@@ -1831,7 +1831,7 @@ function SheetViewer({
     if ((window.history.state as { idx?: number } | null)?.idx) navigate(-1)
     else navigate(session.exitTo, { replace: true })
   }
-  // Info's "See all details": leave for the piece's own page. It takes the
+  // Info's "Exit to details page": leave for the piece's own page. It takes the
   // viewer's place in history, so Back goes where the viewer was opened
   // from; opened from this piece's own Piece Details (its Play button
   // marks that), it just goes back there rather than stacking a second
@@ -2348,7 +2348,9 @@ function SheetViewer({
             onClick={() => openPieceDetails(piece.id)}
             className={`${HIT} group/b -my-2 gap-1 self-start text-sm font-medium text-accent`}
           >
-            <span className="underline-offset-[3px] group-hover/b:underline">See all details</span>
+            <span className="underline-offset-[3px] group-hover/b:underline">
+              Exit to details page
+            </span>
             <IconArrowRight size={16} />
           </button>
         </section>

@@ -906,7 +906,7 @@ export function PiecePage() {
               {canPractice && (
                 <Link
                   to={`/pieces/${piece.id}/play`}
-                  // Lets the viewer's "See all details" come back here
+                  // Lets the viewer's "Exit to details page" come back here
                   // rather than stack a second copy of this page.
                   state={{ fromPiece: piece.id }}
                   className="relative flex items-center gap-2 rounded-md bg-accent-fill px-4 py-2 font-display text-sm font-medium text-white hover:bg-accent-fill/90"
