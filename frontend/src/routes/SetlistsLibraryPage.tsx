@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { TimeText } from '../components/TimeText'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { IconPlus } from '@tabler/icons-react'
@@ -158,10 +159,10 @@ function SetlistCard({
             <>
               {' '}
               <span aria-hidden="true">•</span>{' '}
-              <span className="font-mono text-xs tracking-normal normal-case tabular-nums">
-                {setlist.durationEstimated && '~'}
-                {formatDuration(setlist.totalDurationSeconds)}
-              </span>
+              <TimeText
+                className="text-xs normal-case"
+                text={`${setlist.durationEstimated ? '~' : ''}${formatDuration(setlist.totalDurationSeconds)}`}
+              />
             </>
           )}
         </span>

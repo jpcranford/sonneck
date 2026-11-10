@@ -272,13 +272,14 @@ function useRootTheme() {
   return { dark, darkScores }
 }
 
-/** The clock and stopwatch readouts: Atkinson Hyperlegible Next with
- * tabular figures (--font-clock), so the time never shifts as it ticks. Its
+/** The clock and stopwatch readouts, in the app's time figures
+ * (`time-figures`: Atkinson Hyperlegible Next, tabular, spaced) at the
+ * button's 500 weight (400, the durations' weight, read too thin here), so the time never shifts as it ticks. Its
  * colons sit on the baseline, so each is raised 0.09em — centered on the
  * figures' height, measured from the font's own outlines. */
 function ClockText({ text }: { text: string }) {
   return (
-    <span className="font-clock whitespace-nowrap tabular-nums">
+    <span className="time-figures whitespace-nowrap">
       {text.split(':').map((part, i) => (
         <Fragment key={i}>
           {i > 0 && <span className="relative -top-[0.09em]">:</span>}
@@ -463,7 +464,7 @@ function StepperRow({
       >
         <IconMinus size={20} />
       </HitButton>
-      <span className="w-12 text-center font-clock tabular-nums">{value}%</span>
+      <span className="time-figures w-12 text-center font-medium">{value}%</span>
       <HitButton
         label={`More ${label.toLowerCase()}`}
         onClick={() => onChange(value + PHOTO_STEP)}

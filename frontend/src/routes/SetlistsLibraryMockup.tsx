@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, Fragment } from 'react'
 import { Link } from 'react-router-dom'
 import { IconArrowLeft, IconPlus } from '@tabler/icons-react'
 import { ClickableCard } from '../components/ClickableCard'
@@ -60,6 +60,21 @@ import { useShortcuts } from '../lib/shortcuts'
 // a single-setlist detail page has nowhere to visibly reflect the result),
 // this page IS a list, so a real toggle/removal has an obvious effect to
 // demonstrate.
+
+/** Mockup copy of components/TimeText.tsx: a time in the app's figures
+ * (`time-figures`), its colons raised 0.09em onto the figures' middle. */
+function TimeText({ text, className = '' }: { text: string; className?: string }) {
+  return (
+    <span className={`time-figures font-normal whitespace-nowrap ${className}`}>
+      {text.split(':').map((part, i) => (
+        <Fragment key={i}>
+          {i > 0 && <span className="relative -top-[0.09em]">:</span>}
+          {part}
+        </Fragment>
+      ))}
+    </span>
+  )
+}
 
 function formatDuration(seconds: number): string {
   const m = Math.floor(seconds / 60)
@@ -196,10 +211,10 @@ function SetlistCard({
             <>
               {' '}
               <span aria-hidden="true">•</span>{' '}
-              <span className="font-mono text-xs tracking-normal normal-case tabular-nums">
-                {setlist.durationEstimated && '~'}
-                {formatDuration(setlist.totalDurationSeconds)}
-              </span>
+              <TimeText
+                className="text-xs normal-case"
+                text={`${setlist.durationEstimated ? '~' : ''}${formatDuration(setlist.totalDurationSeconds)}`}
+              />
             </>
           )}
         </span>

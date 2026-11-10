@@ -5,6 +5,7 @@ import {
   useState,
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
+  Fragment,
 } from 'react'
 import { useDismiss } from '../hooks/useDismiss'
 import { Link } from 'react-router-dom'
@@ -136,6 +137,21 @@ type SetlistEntry = SetlistPieceEntry | SetlistCustomEntry
 // (from the not-yet-built Edit Setlist modal) takes a real number right
 // alongside the pieces around it, not just the common dash case the other
 // two custom rows show. Order matches that resolved example exactly.
+/** Mockup copy of components/TimeText.tsx: a time in the app's figures
+ * (`time-figures`), its colons raised 0.09em onto the figures' middle. */
+function TimeText({ text, className = '' }: { text: string; className?: string }) {
+  return (
+    <span className={`time-figures font-normal whitespace-nowrap ${className}`}>
+      {text.split(':').map((part, i) => (
+        <Fragment key={i}>
+          {i > 0 && <span className="relative -top-[0.09em]">:</span>}
+          {part}
+        </Fragment>
+      ))}
+    </span>
+  )
+}
+
 const INITIAL_ENTRIES: SetlistEntry[] = [
   {
     id: 'e1',
@@ -1007,9 +1023,10 @@ export function SetlistDetailsMockup() {
                     </span>
                   </div>
                   {entry.durationSeconds != null && (
-                    <span className="shrink-0 font-mono text-sm tabular-nums text-ink-soft">
-                      {formatDuration(entry.durationSeconds)}
-                    </span>
+                    <TimeText
+                      className="shrink-0 text-sm text-ink-soft"
+                      text={formatDuration(entry.durationSeconds)}
+                    />
                   )}
                 </div>
                 {entry.kind === 'piece' ? (
@@ -1094,10 +1111,10 @@ export function SetlistDetailsMockup() {
               <>
                 {' '}
                 <span aria-hidden="true">•</span>{' '}
-                <span className="font-mono text-xs tracking-normal normal-case tabular-nums">
-                  {duration.estimated && '~'}
-                  {formatDuration(duration.seconds)}
-                </span>
+                <TimeText
+                  className="text-xs normal-case"
+                  text={`${duration.estimated ? '~' : ''}${formatDuration(duration.seconds)}`}
+                />
               </>
             )}
           </div>

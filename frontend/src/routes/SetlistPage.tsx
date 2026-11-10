@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react'
+import { TimeText } from '../components/TimeText'
 import { useDismiss } from '../hooks/useDismiss'
 import { startDownload } from '../lib/download'
 import { Link, useNavigate, useParams } from 'react-router-dom'
@@ -850,9 +851,10 @@ export function SetlistPage() {
                           </span>
                         </div>
                         {durationSeconds != null && (
-                          <span className="shrink-0 font-mono text-sm tabular-nums text-ink-soft">
-                            {formatDuration(durationSeconds)}
-                          </span>
+                          <TimeText
+                            className="shrink-0 text-sm text-ink-soft"
+                            text={formatDuration(durationSeconds)}
+                          />
                         )}
                       </div>
                       {entry.kind === 'piece' && entry.piece ? (
@@ -955,10 +957,10 @@ export function SetlistPage() {
                     <>
                       {' '}
                       <span aria-hidden="true">•</span>{' '}
-                      <span className="font-mono text-xs tracking-normal normal-case tabular-nums">
-                        {duration.estimated && '~'}
-                        {formatDuration(duration.seconds)}
-                      </span>
+                      <TimeText
+                        className="text-xs normal-case"
+                        text={`${duration.estimated ? '~' : ''}${formatDuration(duration.seconds)}`}
+                      />
                     </>
                   )}
                 </div>

@@ -7,6 +7,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react'
+import { TimeText } from './TimeText'
 import { createPortal } from 'react-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -1083,9 +1084,10 @@ export function EditSetlistModal({
                           )}
                         </div>
                         {durationSeconds != null && (
-                          <span className="mt-0.5 shrink-0 font-mono text-xs tabular-nums text-ink-soft">
-                            {formatDuration(durationSeconds)}
-                          </span>
+                          <TimeText
+                            className="mt-0.5 shrink-0 text-xs text-ink-soft"
+                            text={formatDuration(durationSeconds)}
+                          />
                         )}
                         <button
                           type="button"
@@ -1238,9 +1240,10 @@ export function EditSetlistModal({
                                       </div>
                                     </div>
                                     {piece.duration != null && (
-                                      <span className="shrink-0 font-mono text-xs tabular-nums text-ink-soft">
-                                        {formatDuration(piece.duration)}
-                                      </span>
+                                      <TimeText
+                                        className="shrink-0 text-xs text-ink-soft"
+                                        text={formatDuration(piece.duration)}
+                                      />
                                     )}
                                   </div>
                                 )
@@ -1326,13 +1329,14 @@ export function EditSetlistModal({
             {(draggingEntry.kind === 'piece'
               ? draggingEntry.piece?.duration
               : draggingEntry.customDurationSeconds) != null && (
-              <span className="mt-0.5 shrink-0 font-mono text-xs tabular-nums text-ink-soft">
-                {formatDuration(
+              <TimeText
+                className="mt-0.5 shrink-0 text-xs text-ink-soft"
+                text={formatDuration(
                   (draggingEntry.kind === 'piece'
                     ? draggingEntry.piece?.duration
                     : draggingEntry.customDurationSeconds)!,
                 )}
-              </span>
+              />
             )}
           </div>,
           document.body,

@@ -6,6 +6,7 @@ import {
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
+  Fragment,
 } from 'react'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
@@ -93,6 +94,21 @@ export interface ProgramLibraryPiece {
 
 // Same fixture universe as EditProgramMockup.tsx (12 pieces) — hand-copied,
 // not shared, per this project's standing mockup-fixture convention.
+/** Mockup copy of components/TimeText.tsx: a time in the app's figures
+ * (`time-figures`), its colons raised 0.09em onto the figures' middle. */
+function TimeText({ text, className = '' }: { text: string; className?: string }) {
+  return (
+    <span className={`time-figures font-normal whitespace-nowrap ${className}`}>
+      {text.split(':').map((part, i) => (
+        <Fragment key={i}>
+          {i > 0 && <span className="relative -top-[0.09em]">:</span>}
+          {part}
+        </Fragment>
+      ))}
+    </span>
+  )
+}
+
 const LIBRARY_PIECES: ProgramLibraryPiece[] = [
   {
     id: 'p1',
@@ -1263,9 +1279,10 @@ export function EditSetlistModal({
                       )}
                     </div>
                     {entry.durationSeconds != null && (
-                      <span className="mt-0.5 shrink-0 font-mono text-xs tabular-nums text-ink-soft">
-                        {formatDuration(entry.durationSeconds)}
-                      </span>
+                      <TimeText
+                        className="mt-0.5 shrink-0 text-xs text-ink-soft"
+                        text={formatDuration(entry.durationSeconds)}
+                      />
                     )}
                     <button
                       type="button"
@@ -1453,9 +1470,10 @@ export function EditSetlistModal({
                                   {piece.keys.join(' › ')}
                                 </div>
                               </div>
-                              <span className="shrink-0 font-mono text-xs tabular-nums text-ink-soft">
-                                {formatDuration(piece.durationSeconds)}
-                              </span>
+                              <TimeText
+                                className="shrink-0 text-xs text-ink-soft"
+                                text={formatDuration(piece.durationSeconds)}
+                              />
                             </div>
                           )
                         })
@@ -1535,9 +1553,10 @@ export function EditSetlistModal({
               )}
             </div>
             {draggingEntry.durationSeconds != null && (
-              <span className="mt-0.5 shrink-0 font-mono text-xs tabular-nums text-ink-soft">
-                {formatDuration(draggingEntry.durationSeconds)}
-              </span>
+              <TimeText
+                className="mt-0.5 shrink-0 text-xs text-ink-soft"
+                text={formatDuration(draggingEntry.durationSeconds)}
+              />
             )}
           </div>,
           document.body,
