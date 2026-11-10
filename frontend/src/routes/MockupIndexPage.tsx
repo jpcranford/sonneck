@@ -9,7 +9,13 @@ import { useMockupTitle } from '../lib/useMockupTitle'
 interface Mockup {
   to: string
   name: string
+  /** What the page shows and what to try on it: at most 50 words. */
   note: string
+  /** What's open for testing on it, each item at most 20 words, shown as a
+   * bulleted list under a bold "Currently testing:" (not counted in the note's 50).
+   * Remove an item once it no longer needs testing, and the field with the
+   * last one. */
+  testing?: string[]
 }
 
 const SECTIONS: { title: string; mockups: Mockup[] }[] = [
@@ -19,17 +25,17 @@ const SECTIONS: { title: string; mockups: Mockup[] }[] = [
       {
         to: '/mockup/style-sampler',
         name: 'Style Sampler',
-        note: 'The app’s visual style at a glance: every color token (with where it’s used), hard-coded colors, an example window drawn from the tokens, a type specimen of every size/weight in use, and every button and field style. Read live from index.css and the app’s own source, so it never needs updating by hand. Reference for prototyping dark mode.',
+        note: "The app's visual style at a glance: every color token and where it's used, hard-coded colors, an example window, every type size and weight in use, and every button and field style. Read live from index.css and the source, so it never needs updating.",
       },
       {
         to: '/mockup/states',
         name: 'Empty, Error & Loading States',
-        note: 'Every empty, error and loading state in the app on one page, with an Empty / Error / Loading switch and a Light / Dark switch — states that only appear in special moments and are easy to miss page by page. Hand-maintained copies of the real markup, each labeled with where the real one lives.',
+        note: 'Every empty, error and loading state in the app on one page, with Empty / Error / Loading and Light / Dark switches. Each is a hand-kept copy of the real markup, labeled with where the real one lives.',
       },
       {
         to: '/mockup/shortcut-help',
         name: 'Shortcut Help',
-        note: 'Hold / or ? (about a second, not while typing) for a corner card listing the page’s keyboard shortcuts; letting go hides it. Pick a page and what the viewer may do — keys they can’t use are left off, edit-window keys are listed for reference, and a “Keep holding” pill fills first.',
+        note: "Hold / or ? for about a second to see a corner card of the page's keyboard shortcuts; let go to hide it. Pick a page and the viewer's permissions: keys they can't use are left off.",
       },
       {
         to: '/mockup/mobile-nav-drawer',
@@ -44,7 +50,7 @@ const SECTIONS: { title: string; mockups: Mockup[] }[] = [
       {
         to: '/mockup/sidebar-setlists',
         name: 'Sidebar Setlists',
-        note: 'Setlists feature, Phase 5 — replaces the inert "Coming soon" Setlists placeholder with a divider, an "Upcoming Sets" heading, 5 fixture setlists (real gig dates relative to today, soonest first), and a "⋯" menu for View All/Archive (both still-unbuilt, Phase 10). Also carries the Sheet Viewer’s Practice List entry (above Want to Learn), which opens the viewer on the list. Try collapsing the rail or the mobile drawer.',
+        note: 'The sidebar with its Upcoming Sets list (sample setlists, soonest first) and ⋯ menu, plus the Practice List entry above Want to Learn, which opens the Sheet Viewer. Try collapsing the rail, the phone drawer and the content corner sizes.',
       },
       {
         to: '/mockup/device-info',
@@ -74,12 +80,12 @@ const SECTIONS: { title: string; mockups: Mockup[] }[] = [
       {
         to: '/mockup/setlists-library',
         name: 'Setlists Library',
-        note: 'Setlists feature, Phase 12 — the unified /setlists page (was "Setlist Archive" — renamed, since Active is most of what\'s here). Built against Phase 4\'s approved Option C artifact: Active/Archived as two scrolled sections, no toggle, cards in a compact grid (not a list). Every card\'s right-click menu is real: Archive/Unarchive (a genuine Modal confirm, moves the card between sections — offered only when there\'s something meaningful to toggle, not for a setlist already archived purely by a passed gig date), Duplicate (decision 19\'s own forward note), Edit Setlist, and Delete (genuinely removes the card). "New Setlist"/"Edit Setlist" open the real EditSetlistModal in its create/edit states.',
+        note: "The Setlists page: Active and Archived sections of compact cards. Each card's right-click menu works: Archive or Unarchive with a confirmation, Duplicate, Edit Setlist and Delete. New Setlist and Edit Setlist open the real Edit Setlist window.",
       },
       {
         to: '/mockup/add-to-setlist',
         name: 'Add to Setlist',
-        note: 'Setlists feature, Phase 5 — the Library grid/list cards’ new right-click "Add to Setlist" item and the "already in a setlist" indicator next to the favorite heart. The same menu now opens with a practice status strip (design C′). Right-click/long-press a card to try both. The menu also has Add to (or Remove from) Practice List, for the Sheet Viewer.',
+        note: "A Library card's right-click or long-press menu: the practice status strip at the top, Add to Setlist with its setlist picker, and Add to or Remove from Practice List.",
       },
     ],
   },
@@ -90,6 +96,10 @@ const SECTIONS: { title: string; mockups: Mockup[] }[] = [
         to: '/mockup/piece-details',
         name: 'Piece Details',
         note: 'Reference sample for the Piece Details page (§14) — kept as a standing design reference. Play opens the Sheet Viewer mockup; its caret adds the piece to (or removes it from) the Practice List.',
+        testing: [
+          'On a phone or tablet, the top toolbar and the Play / Download row are easy to tap.',
+          "In Chrome's full screen, Esc closes an open window first, and only then leaves full screen.",
+        ],
       },
       {
         to: '/mockup/edit-piece-modal',
@@ -105,6 +115,7 @@ const SECTIONS: { title: string; mockups: Mockup[] }[] = [
         to: '/mockup/book-details',
         name: 'Book Details',
         note: 'Book Details page (header card + pieces grid/list) design mockup.',
+        testing: ["On a phone or tablet, the top toolbar's buttons and Back are easy to tap."],
       },
       {
         to: '/mockup/edit-book-modal',
@@ -114,7 +125,8 @@ const SECTIONS: { title: string; mockups: Mockup[] }[] = [
       {
         to: '/mockup/person-details',
         name: 'Person Details',
-        note: 'Composer/arranger overhaul — header card (oval portrait + camera-badge Upload Portrait flow with device/Wikipedia search + drag/zoom adjust, bio, book-credit chips) and a works grid/list mirroring Book Details’ own PieceList, plus a Split People modal reusing the real TagComboBox as its ordered replacement picker. Genuinely interactive against one fixture person (Chopin).',
+        note: "A person's page, for one sample composer: the header with portrait (upload, or search Wikipedia, then crop), bio and book credits, a grid or list of works, and the Split People window.",
+        testing: ["On a phone or tablet, the top toolbar's buttons and Back are easy to tap."],
       },
       {
         to: '/mockup/edit-person-modal',
@@ -124,22 +136,25 @@ const SECTIONS: { title: string; mockups: Mockup[] }[] = [
       {
         to: '/mockup/setlist-details',
         name: 'Setlist Details',
-        note: 'Setlists feature, Phase 6 — the full Setlist Details page (§13), built against the approved "Stats dashboard" layout and rough-in decisions: relative gig date, role labels, non-piece entries (one with a note callout, one toggled to count as music), a real Archive/Unarchive confirm modal, and each row’s right-click menu. Play Set opens the Sheet Viewer mockup on the set (custom entries as placeholder pages), and its caret adds every piece to the Practice List; Archive and Remove are real.',
+        note: "The Setlist Details page: gig date, roles, custom entries (one with a note, one counted as music), each row's right-click menu and the Archive confirmation. Play Set opens the Sheet Viewer mockup on the set; its caret adds every piece to the Practice List.",
+        testing: [
+          'On a phone or tablet, the toolbar, the Play Set and Download row, and Edit Program are easy to tap.',
+        ],
       },
       {
         to: '/mockup/edit-setlist',
         name: 'Edit Setlist',
-        note: 'Setlists feature, Phase 10 — decision 23\'s full fold: the former standalone Edit Program modal no longer exists — its own restyled, bordered-card Program list ("+ Piece"/"+ Custom Entry", drag-handle reordering, inline custom-entry edit) now lives as this modal\'s own "Program Order" tab, alongside a "Setlist Details" tab (name/gig date/description). Doubles as the New Setlist create state via the "Open New Setlist" button; "Open on Program Tab" demonstrates the Setlist Details page\'s own "Edit Program" button landing here pre-set to that tab. Whole-setlist delete lives on the Setlist Details page itself, not here. Nothing is final until "Save."',
+        note: 'The Edit Setlist window: a Setlist Details tab (name, gig date, description) and a Program Order tab (add pieces or custom entries, drag to reorder, edit in place). Buttons open its New Setlist state or land on the Program tab. Nothing is saved until Save Setlist.',
       },
       {
         to: '/mockup/edit-entry',
         name: 'Edit Entry',
-        note: 'Setlists feature, Phase 11 — a single custom entry\'s own name/duration/"Count as music"/description, reached from that entry\'s right-click "Edit Entry" item on the Setlist Details page. Same field set as the Edit Setlist modal\'s own Program Order tab uses for its inline "edit an existing custom entry" form — deliberately duplicated (a fast single-entry path), not shared.',
+        note: "The window for one custom setlist entry (name, duration, Count as music, notes), opened from its right-click Edit Entry on Setlist Details. Edit Setlist's Program tab edits the same fields in place.",
       },
       {
         to: '/mockup/setlist-program-page',
         name: 'Download Set PDF',
-        note: 'Setlists "Download Set PDF" export (§13) — all four locked page directions, in packet order: Cover, Table of Contents, a Generated Program Page (the stand-in page a custom, non-piece entry contributes, since it has no sheet music of its own), and Colophon. Only the cover and colophon reference the app itself. Preview-entry and page-shape (Letter/A4) toggles exist only in this mockup — a real generated page shows one entry at one fixed shape.',
+        note: "The Set PDF's generated pages in order: Cover, Table of Contents, the stand-in page for a custom entry, and Colophon, drawn in real points. Switches for the previewed entry and the page size (Letter or A4) exist only here.",
       },
     ],
   },
@@ -149,7 +164,13 @@ const SECTIONS: { title: string; mockups: Mockup[] }[] = [
       {
         to: '/mockup/sheet-viewer',
         name: 'Sheet Viewer',
-        note: 'The full-screen practice and performance mode: real pages from a piece you pick, a top toolbar, side-thirds tap zones (pedal keys too), two-tap close, the clock and stopwatch, faint coming-soon Metronome and Theory buttons, Annotate’s tinted toolbar, and Info: a card under the Info button (a bottom sheet on phones) with the piece’s details — a favorite heart beside its title, its description (three lines, then More) and “Exit to details page →” to leave for Piece Details. Practice Notes (the note icon beside it, N): your practice status and your notes, editable in place; the toolbar’s right side runs Clock, Practice Notes, Metronome, Theory reference, Photo filters, Info at every width, and what doesn’t fit (sized from the clock’s measured width) goes into ⋯ in that order, from the right end, after Annotate drops its label, plus the notes bar over the page and a dot on Practice Notes when the piece has notes. Photo filters (Phase 5): brightness and contrast in steps, grayscale and invert, stacked on top of the dark theme’s dim or Dark Mode Scores, and kept per piece; the photo panel also holds the edge margin, and Invert locks on under Dark Mode Scores; the Mockup panel can try the other theme and Dark Mode Scores. The Practice List (Phase 6): a queue button opens the list (or a setlist’s order, jump-only) with drag to reorder, remove, and practiced-today marks that set themselves once you’ve spent 30 seconds on a piece; turning past a piece’s end goes on to the next. A setlist session shows each custom entry as a placeholder page, the Setlist PDF’s at 1.5×. The Mockup panel picks where the viewer was opened from. Nothing is written to the library. The page cyclers stay put in both modes. Toggles for notes, tap zones and 48pt hit areas. Annotation controls (Phases 12–14, design B2): Pen, Highlighter, Text and Eraser each remember their own color (a bar under the icon); tap a picked tool again for its six colors and S / M / L, once more to put it down. A Layers button lists each color with its marks on this page and an eye (a hidden color shows crossed out). Hidden marks stay on the page as faint 12% ghosts in Play and Annotate (a User Setting, tried from the Mockup panel, turns them off), and in Annotate tapping one brings its color back. Drawing (Phase 15): Pen and Highlighter draw on the page with perfect-freehand (an Apple Pencil’s real pressure; simulated from speed for a finger or mouse), in the tuned palette for the page’s look (light, dimmed, inverted) at the locked sizes; drawing in a hidden color, or tapping one of its ghosts, unhides it with a pill. The instruction pills are tips, each shown its first 3 times (the Mockup panel and User Settings’ “Show tips again” start them over). The Eraser removes every visible mark it touches, whole; tap it again for S / M / L, its only option. Undo and Redo (⌘Z / ⇧⌘Z too) cover the whole visit, turning to another page or piece first when that’s where the change was. Text (Phase 17), in Lexend Medium: with the Text tool, tap the page to write there (Return starts a new line, a tap anywhere else finishes), tap a text mark to edit it, drag it to move it; picking a color or size while typing changes that box; the page lifts the box clear of the keyboard (the Mockup panel can pretend one is up). Pages start with sample marks. The Mockup panel’s Turn test times page turns on the picked piece’s real 300ppi pages, the old build’s stacked images against the current canvases — for running on the iPad.',
+        note: 'The full-screen practice and performance mode on real pages from a piece you pick: toolbar, tap zones and keys, clock, Info, Practice Notes, photo filters, the Practice List and Annotate. The Mockup panel sets where it opened from, the theme, a pretend keyboard and a page-turn timer.',
+        testing: [
+          'Turn speed in real practice on the iPad: report any slow turns, so the temporary turn-timing code can come out.',
+          "In Chrome's full screen, Esc closes a panel, then arms Exit; F leaves full screen.",
+          'Practice Notes: tap your notes to edit them; a link inside them still opens.',
+          "Practice Notes' banner switch shows or hides the banner behind the open panel.",
+        ],
       },
     ],
   },
@@ -194,12 +215,12 @@ const SECTIONS: { title: string; mockups: Mockup[] }[] = [
       {
         to: '/mockup/user-settings',
         name: 'User Settings',
-        note: 'Multi-user support — separate cards per section: Account (display name, identity line, Change Password), Appearance (Theme, Dark disabled/"Soon"), Library (Hide Books in sidebar, Paginated views), Your Tags and Practice Status (per-user create/delete/merge, same pattern as Admin Settings\' Lookup Tables). Switch identity state to see the Account card adapt. Sheet Viewer card: Track practice (on by default) turns off the viewer’s practiced-today marks and their record.',
+        note: 'User Settings as cards: Account (name, identity, Change Password), Appearance, Library, Sheet Viewer, Your Tags and Practice Status (create, rename, delete with a merge). Switch the identity to see the Account card change.',
       },
       {
         to: '/mockup/admin-settings',
         name: 'Admin Settings',
-        note: 'Multi-user support — a single scrolling page with jump-nav, each section in its own bordered card matching User Settings\' card look (same max-width too): Library Settings (every field independently env-var-shadowed; Security is now read-only, env-var-only, no in-app change control — see the Auth Change Flow mockup for how a change gets handled instead), Library counts, Version (identifies the build by commit SHA against GitHub release/pre-release tags, falling back to "Dev build, from commit <SHA> on <date>"), Users (expandable permission grid with a hover/tap description per permission, last-admin lock, per-row delete behind the shared confirm dialog), Lookup Tables (inline-editable Sheet Types/Instruments with usage instructions, a "+" to create a new entry, and a per-row delete that opens a real modal to merge into another entry or delete outright). Switch identity state to see the user list change.',
+        note: 'One scrolling page of cards: Library Settings (fields an environment variable can lock), library counts, Version, Users (permission grid, last admin locked, delete with a confirmation) and Lookup Tables (rename, add, delete with a merge). Switch the identity to change the user list.',
       },
       {
         to: '/mockup/first-launch',
@@ -209,12 +230,12 @@ const SECTIONS: { title: string; mockups: Mockup[] }[] = [
       {
         to: '/mockup/auth-change-flow',
         name: 'Auth Change Flow',
-        note: 'Multi-user support — a boot-time gate that replaces Admin Settings\' removed in-app Security-change capability: the app detects its AUTH_METHOD no longer matches what it last ran under and walks the admin through the adjustment, mirroring the first-launch flow\'s own full-page-takeover weight. Reuses the choose-surviving-admin/confirm-delete content Admin Settings briefly held before it was pulled out. Switch the "Simulate detected change" scenario to preview every content path: an OIDC upgrade (informational only), a new-password requirement, a light single-account downgrade, and the full destructive multi-account downgrade.',
+        note: 'The start-up flow when the sign-in method (AUTH_METHOD) has changed since the last run. Switch "Simulate detected change" for each case: an OIDC upgrade, a new password needed, a single-account downgrade, and a multi-account downgrade (choose the surviving admin, confirm the deletions).',
       },
       {
         to: '/mockup/login-screen',
         name: 'Login Screen',
-        note: 'Multi-user support — the boot-time login wall for singlepass/OIDC installs, built after the fact (no mockup existed when the real page was first built). Added so the Auth Change Flow mockup has something real to preview as the hand-off screen a completed transition lands on. Switch preview state to see the password and OIDC branches, each with and without an error.',
+        note: 'The sign-in screen for password and OIDC installs, and where a finished Auth Change Flow lands. Switch the preview to see the password and OIDC versions, each with and without an error.',
       },
     ],
   },
@@ -243,6 +264,16 @@ export function MockupIndexPage() {
                   <Link to={m.to} className="block px-4 py-3 hover:bg-paper">
                     <p className="font-display font-medium text-ink">{m.name}</p>
                     <p className="text-sm text-ink-soft">{m.note}</p>
+                    {m.testing && m.testing.length > 0 && (
+                      <div className="mt-1 text-sm text-ink-soft">
+                        <p className="font-bold text-ink">Currently testing:</p>
+                        <ul className="list-disc pl-5">
+                          {m.testing.map((item) => (
+                            <li key={item}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                     <p className="text-xs text-ink-soft/60">{m.to}</p>
                   </Link>
                 </li>
