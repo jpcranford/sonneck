@@ -140,6 +140,63 @@ type PracticeSettings struct {
 	// HiddenColors (migration 00035): the annotation colors hidden on this
 	// piece, bit i for color i.
 	HiddenColors int `json:"hiddenColors"`
+	// Metronome (migration 00037): nil until the user changes the
+	// metronome on this piece; the viewer then starts it from the piece's
+	// own BPM and beats per measure.
+	Metronome *MetronomeSettings `json:"metronome"`
+}
+
+// MetronomeSettings is the Sheet Viewer metronome's setting for one piece.
+type MetronomeSettings struct {
+	BPM int `json:"bpm"`
+	// Levels has one entry per beat: 0 silent, 1 played, 2 accented.
+	Levels []int `json:"levels"`
+	// Subdivision is the clicks per beat: 1, 2, 3 (triplets) or 4.
+	Subdivision int `json:"subdivision"`
+}
+
+// The metronome's limits, matching the frontend's lib/metronome.ts.
+const (
+	MetronomeMinBPM         = 30
+	MetronomeMaxBPM         = 300
+	MetronomeMaxBeats       = 12
+	MetronomeMaxSubdivision = 4
+)
+
+// Valid reports whether m is within the metronome's limits.
+func (m MetronomeSettings) Valid() bool {
+	if m.BPM < MetronomeMinBPM || m.BPM > MetronomeMaxBPM {
+		return false
+	}
+	if m.Subdivision < 1 || m.Subdivision > MetronomeMaxSubdivision {
+		return false
+	}
+	if len(m.Levels) < 1 || len(m.Levels) > MetronomeMaxBeats {
+		return false
+	}
+	for _, l := range m.Levels {
+		if l < 0 || l > 2 {
+			return false
+		}
+	}
+	return true
+}
+
+// metronomeBeats stores beat levels as a string of digits ("2111").
+func metronomeBeats(levels []int) string {
+	b := make([]byte, len(levels))
+	for i, l := range levels {
+		b[i] = byte('0' + l)
+	}
+	return string(b)
+}
+
+func metronomeLevels(beats string) []int {
+	levels := make([]int, len(beats))
+	for i := range beats {
+		levels[i] = int(beats[i] - '0')
+	}
+	return levels
 }
 
 // The photo panel's brightness/contrast range, in percent.
@@ -156,12 +213,23 @@ var DefaultPracticeSettings = PracticeSettings{Brightness: 100, Contrast: 100}
 // when there are none.
 func GetPracticeSettings(ctx context.Context, q Queryer, userID, pieceID int64) (PracticeSettings, error) {
 	s := DefaultPracticeSettings
+	var bpm, subdivision sql.NullInt64
+	var beats sql.NullString
 	err := q.QueryRowContext(ctx, `
-		SELECT brightness, contrast, grayscale, invert, edge_margin, notes_bar, hidden_colors
+		SELECT brightness, contrast, grayscale, invert, edge_margin, notes_bar, hidden_colors,
+			metronome_bpm, metronome_beats, metronome_subdivision
 		FROM piece_practice_settings WHERE user_id = ? AND piece_id = ?`, userID, pieceID,
-	).Scan(&s.Brightness, &s.Contrast, &s.Grayscale, &s.Invert, &s.EdgeMargin, &s.NotesBarShown, &s.HiddenColors)
+	).Scan(&s.Brightness, &s.Contrast, &s.Grayscale, &s.Invert, &s.EdgeMargin, &s.NotesBarShown, &s.HiddenColors,
+		&bpm, &beats, &subdivision)
 	if errors.Is(err, sql.ErrNoRows) {
 		return DefaultPracticeSettings, nil
+	}
+	if bpm.Valid && beats.Valid && subdivision.Valid {
+		s.Metronome = &MetronomeSettings{
+			BPM:         int(bpm.Int64),
+			Levels:      metronomeLevels(beats.String),
+			Subdivision: int(subdivision.Int64),
+		}
 	}
 	return s, err
 }
@@ -176,16 +244,23 @@ func SetPracticeSettings(ctx context.Context, q Queryer, userID, pieceID int64, 
 		)
 		return err
 	}
+	var bpm, beats, subdivision any
+	if m := s.Metronome; m != nil {
+		bpm, beats, subdivision = m.BPM, metronomeBeats(m.Levels), m.Subdivision
+	}
 	_, err := q.ExecContext(ctx, `
 		INSERT INTO piece_practice_settings
-			(user_id, piece_id, brightness, contrast, grayscale, invert, edge_margin, notes_bar, hidden_colors)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+			(user_id, piece_id, brightness, contrast, grayscale, invert, edge_margin, notes_bar, hidden_colors,
+				metronome_bpm, metronome_beats, metronome_subdivision)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT (user_id, piece_id) DO UPDATE SET
 			brightness = excluded.brightness, contrast = excluded.contrast,
 			grayscale = excluded.grayscale, invert = excluded.invert,
 			edge_margin = excluded.edge_margin, notes_bar = excluded.notes_bar,
-			hidden_colors = excluded.hidden_colors`,
+			hidden_colors = excluded.hidden_colors, metronome_bpm = excluded.metronome_bpm,
+			metronome_beats = excluded.metronome_beats, metronome_subdivision = excluded.metronome_subdivision`,
 		userID, pieceID, s.Brightness, s.Contrast, s.Grayscale, s.Invert, s.EdgeMargin, s.NotesBarShown, s.HiddenColors,
+		bpm, beats, subdivision,
 	)
 	return err
 }
@@ -332,7 +407,14 @@ type UserSettings struct {
 	// GhostMarks (migration 00035): a hidden annotation color's marks stay
 	// as faint ghosts.
 	GhostMarks bool `json:"ghostMarks"`
+	// MetronomeShow (migration 00037): what the Sheet Viewer metronome's
+	// toolbar button shows beside its icon, one of MetronomeShows.
+	MetronomeShow string `json:"metronomeShow"`
 }
+
+// MetronomeShows are the metronome button's choices: the beat playing, the
+// tempo, or the icon alone.
+var MetronomeShows = []string{"beat", "tempo", "icon"}
 
 // ClockModes are the Sheet Viewer clock's modes.
 var ClockModes = []string{"clock", "stopwatch"}
@@ -348,10 +430,11 @@ func GetUserSettings(ctx context.Context, q Queryer, userID int64) (*UserSetting
 		SELECT show_books_in_sidebar, theme_preference, content_view_mode, dark_mode_scores,
 			sheet_viewer_turn_guard_ms, sheet_viewer_clock_shown, sheet_viewer_clock_mode,
 			sheet_viewer_clock_seconds, track_practice, sheet_viewer_notes_bar_default,
-			sheet_viewer_ghost_marks
+			sheet_viewer_ghost_marks, sheet_viewer_metronome_show
 		FROM user_settings WHERE user_id = ?`, userID,
 	).Scan(&s.ShowBooksInSidebar, &s.ThemePreference, &s.ContentViewMode, &s.DarkModeScores, &s.TurnGuardMs,
-		&s.ClockShown, &s.ClockMode, &s.ClockSeconds, &s.TrackPractice, &s.NotesBarDefault, &s.GhostMarks)
+		&s.ClockShown, &s.ClockMode, &s.ClockSeconds, &s.TrackPractice, &s.NotesBarDefault, &s.GhostMarks,
+		&s.MetronomeShow)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -368,10 +451,11 @@ func UpdateUserSettings(ctx context.Context, q Queryer, userID int64, s UserSett
 		UPDATE user_settings SET show_books_in_sidebar = ?, theme_preference = ?, content_view_mode = ?,
 			dark_mode_scores = ?, sheet_viewer_turn_guard_ms = ?, sheet_viewer_clock_shown = ?,
 			sheet_viewer_clock_mode = ?, sheet_viewer_clock_seconds = ?, track_practice = ?,
-			sheet_viewer_notes_bar_default = ?, sheet_viewer_ghost_marks = ?
+			sheet_viewer_notes_bar_default = ?, sheet_viewer_ghost_marks = ?, sheet_viewer_metronome_show = ?
 		WHERE user_id = ?`,
 		s.ShowBooksInSidebar, s.ThemePreference, s.ContentViewMode, s.DarkModeScores, s.TurnGuardMs,
-		s.ClockShown, s.ClockMode, s.ClockSeconds, s.TrackPractice, s.NotesBarDefault, s.GhostMarks, userID,
+		s.ClockShown, s.ClockMode, s.ClockSeconds, s.TrackPractice, s.NotesBarDefault, s.GhostMarks,
+		s.MetronomeShow, userID,
 	)
 	return err
 }

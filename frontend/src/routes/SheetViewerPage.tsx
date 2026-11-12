@@ -18,6 +18,7 @@ import {
   IconArrowLeft,
   IconArrowRight,
   IconCheck,
+  IconChevronDown,
   IconChevronLeft,
   IconChevronRight,
   IconCircle,
@@ -31,6 +32,7 @@ import {
   IconEye,
   IconEyeOff,
   IconGripVertical,
+  IconHandFinger,
   IconHeart,
   IconHeartFilled,
   IconInfoCircle,
@@ -43,6 +45,8 @@ import {
   IconPhotoCog,
   IconPlayerPause,
   IconPlayerPlay,
+  IconPlayerPlayFilled,
+  IconPlayerStopFilled,
   IconPlaylist,
   IconPlus,
   IconRefresh,
@@ -87,6 +91,7 @@ import {
 } from '../api/pieces'
 import {
   getUserSettings,
+  type MetronomeShow,
   TURN_GUARD_DEFAULT,
   updateUserSettings,
   type UserSettings,
@@ -141,6 +146,27 @@ import { sortPracticeStatuses } from '../lib/practiceStatusOrder'
 import { useDarkScoresSync, useThemeSync } from '../lib/theme'
 import { usePageTitle } from '../lib/usePageTitle'
 import { MarkdownHint } from '../components/MarkdownHint'
+import { TimeText } from '../components/TimeText'
+import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion'
+import {
+  clampBpm,
+  markingFor,
+  MetronomeEngine,
+  METRONOME_HOLD_STEP,
+  METRONOME_MAX_BEATS,
+  METRONOME_MAX_BPM,
+  METRONOME_MIN_BEATS,
+  METRONOME_MIN_BPM,
+  nextLevel,
+  parseBpm,
+  resizeBeats,
+  seedMetronome,
+  SUBDIVISIONS,
+  tapTempo,
+  TEMPO_MARKINGS,
+  type MetronomeSettings,
+  type Subdivision,
+} from '../lib/metronome'
 
 // The Sheet Viewer (design doc §13; plan phases in memory): a full-screen
 // mode for reading a piece — the score, and a toolbar that's always there.
@@ -174,6 +200,20 @@ const PHOTO_MAX = 150
 const SAVE_DELAY_MS = 400
 
 const INFO_WIDTH = 380
+// The metronome's panel, and the lists of tempo markings and subdivisions
+// it opens.
+const METRONOME_WIDTH = 320
+const MARKS_WIDTH = 220
+const NOTES_WIDTH = 240
+// How much wider the metronome button is with its beat or tempo showing
+// (measured in Chromium).
+const METRONOME_BEAT_EXTRA = 24
+const METRONOME_TEMPO_EXTRA = 33
+const METRONOME_SHOW: [MetronomeShow, string][] = [
+  ['beat', 'Beat'],
+  ['tempo', 'Tempo'],
+  ['icon', 'Icon only'],
+]
 // Fitting the toolbar's right-hand group (see fits): the page cyclers'
 // width (two 48pt buttons around the page count), the divider before
 // Annotate with its margins, the labeled Annotate button, the clock
@@ -343,6 +383,475 @@ function HitButton({
     >
       <span className={`${FACE} ${faceClassName || FACE_HOVER}`}>{children}</span>
     </button>
+  )
+}
+
+/** A subdivision as engraved notes: a quarter, two beamed eighths, three
+ * eighths under a 3, or two beamed sixteenths. */
+function NoteValueIcon({ value, size = 24 }: { value: Subdivision; size?: number }) {
+  const note = (cx: number, top: number) => (
+    <g key={cx}>
+      <ellipse cx={cx} cy={18.6} rx={3.1} ry={2.25} transform={`rotate(-22 ${cx} 18.6)`} />
+      <rect x={cx + 1.75} y={top} width={1.5} height={18.4 - top} />
+    </g>
+  )
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      {value === 1 && note(10, 4)}
+      {value === 2 && (
+        <>
+          {note(6, 4)}
+          {note(16.5, 4)}
+          <rect x={7.75} y={4} width={11.75} height={2.8} />
+        </>
+      )}
+      {value === 3 && (
+        <>
+          {note(3.6, 8)}
+          {note(11.1, 8)}
+          {note(18.6, 8)}
+          <rect x={5.35} y={8} width={15} height={2.4} />
+          <text
+            x={12.6}
+            y={6}
+            fontSize={6.5}
+            fontWeight={700}
+            textAnchor="middle"
+            fontFamily="var(--font-sans)"
+          >
+            3
+          </text>
+        </>
+      )}
+      {value === 4 && (
+        <>
+          {note(6, 4)}
+          {note(16.5, 4)}
+          <rect x={7.75} y={4} width={11.75} height={2.5} />
+          <rect x={7.75} y={8.4} width={11.75} height={2.5} />
+        </>
+      )}
+    </svg>
+  )
+}
+
+function MetronomeIcon({ size = 22, swung = false }: { size?: number; swung?: boolean }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {swung ? (
+        <>
+          <path d="M7.847 8.188l.72 -3.236a2.493 2.493 0 0 1 4.867 0l3.025 13.614a2 2 0 0 1 -1.952 2.434h-7.014a2 2 0 0 1 -1.952 -2.434l.524 -2.357m4.935 1.791l-9 -13" />
+          <path d="M3 5a1 1 0 1 1 -2 0a1 1 0 1 1 2 0" />
+        </>
+      ) : (
+        <>
+          <path d="M14.153 8.188l-.72 -3.236a2.493 2.493 0 0 0 -4.867 0l-3.025 13.614a2 2 0 0 0 1.952 2.434h7.014a2 2 0 0 0 1.952 -2.434l-.524 -2.357m-4.935 1.791l9 -13" />
+          <path d="M19 5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+        </>
+      )}
+    </svg>
+  )
+}
+
+/** The metronome's panel (option A5 of
+ * https://claude.ai/artifact/FqYsh6YjuaqHNeFBzmuqZD): the tempo, "BPM" beside
+ * it between − and +, the Italian marking under them (a list to jump to),
+ * one tile per beat with a dot per click under it, "− 3 beats +" beside the
+ * subdivision's note menu (option B with C's dots, of
+ * https://claude.ai/artifact/1ueVX73wWrosYCdRbVCftG), then Start and Tap.
+ * Typing a tempo, the two lists, holding − or + and tap tempo keep their
+ * state here; the settings themselves are the piece's, kept by the viewer. */
+function MetronomeBody({
+  settings,
+  onChange,
+  playing,
+  beat,
+  click,
+  onToggle,
+  hint,
+  show,
+  onShowChange,
+}: {
+  settings: MetronomeSettings
+  onChange: (update: (m: MetronomeSettings) => MetronomeSettings) => void
+  playing: boolean
+  beat: number
+  click: number
+  onToggle: () => void
+  hint: string | null
+  show: MetronomeShow
+  onShowChange: (show: MetronomeShow) => void
+}) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState('')
+  const [marksOpen, setMarksOpen] = useState(false)
+  const markRef = useRef<HTMLButtonElement>(null)
+  const marksStyle = useAnchoredPanel(markRef, marksOpen, 'below-center', {
+    gap: 2,
+    panelWidth: MARKS_WIDTH,
+  })
+  const [notesOpen, setNotesOpen] = useState(false)
+  const noteRef = useRef<HTMLButtonElement>(null)
+  const notesStyle = useAnchoredPanel(noteRef, notesOpen, 'below-right', {
+    gap: 2,
+    panelWidth: NOTES_WIDTH,
+  })
+  const subdivision = SUBDIVISIONS.find((d) => d.value === settings.subdivision) ?? SUBDIVISIONS[0]
+  const taps = useRef<number[]>([])
+  // Holding − or + steps by 5 after a moment; the click that ends a hold
+  // doesn't step again.
+  const hold = useRef<{ timer: number | null; held: boolean }>({ timer: null, held: false })
+  const n = settings.levels.length
+  const marking = markingFor(settings.bpm)
+
+  function stepBpm(by: number) {
+    onChange((m) => ({ ...m, bpm: clampBpm(m.bpm + by) }))
+  }
+  function holdStart(dir: -1 | 1) {
+    hold.current.held = false
+    const repeat = () => {
+      hold.current.held = true
+      stepBpm(dir * METRONOME_HOLD_STEP)
+      hold.current.timer = window.setTimeout(repeat, 180)
+    }
+    hold.current.timer = window.setTimeout(repeat, 450)
+  }
+  function holdEnd() {
+    if (hold.current.timer !== null) window.clearTimeout(hold.current.timer)
+    hold.current.timer = null
+  }
+  function commitDraft(keep: boolean) {
+    const bpm = keep ? parseBpm(draft) : null
+    if (bpm !== null) onChange((m) => ({ ...m, bpm }))
+    setEditing(false)
+  }
+  function tap() {
+    const result = tapTempo(taps.current, performance.now())
+    taps.current = result.taps
+    const bpm = result.bpm
+    if (bpm !== null) onChange((m) => ({ ...m, bpm }))
+  }
+
+  const bordered = `${FACE} border border-border bg-paper-raised group-hover/b:border-accent`
+  const stepper = (dir: -1 | 1) => (
+    <button
+      type="button"
+      data-hit
+      aria-label={dir < 0 ? 'Slower' : 'Faster'}
+      disabled={dir < 0 ? settings.bpm <= METRONOME_MIN_BPM : settings.bpm >= METRONOME_MAX_BPM}
+      onPointerDown={() => holdStart(dir)}
+      onPointerUp={holdEnd}
+      onPointerLeave={holdEnd}
+      onPointerCancel={holdEnd}
+      onClick={() => {
+        if (!hold.current.held) stepBpm(dir)
+        hold.current.held = false
+      }}
+      className={`${HIT} group/b disabled:opacity-50`}
+    >
+      <span className={bordered}>{dir < 0 ? <IconMinus size={20} /> : <IconPlus size={20} />}</span>
+    </button>
+  )
+
+  return (
+    <div className="flex flex-col gap-3 px-5 pt-3 pb-5">
+      <div className="grid grid-cols-[auto_auto_auto] items-center justify-center gap-x-2">
+        {stepper(-1)}
+        {/* The tempo and "BPM" as one pair, centered between − and +. Tap
+            the number to type one. */}
+        <span className="flex items-baseline justify-self-center gap-1.5">
+          {editing ? (
+            <input
+              autoFocus
+              inputMode="numeric"
+              maxLength={3}
+              value={draft}
+              aria-label="Tempo in BPM"
+              onChange={(event) => setDraft(event.target.value.replace(/\D/g, ''))}
+              onFocus={(event) => event.target.select()}
+              onBlur={() => commitDraft(true)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') commitDraft(true)
+                if (event.key === 'Escape') {
+                  event.preventDefault()
+                  commitDraft(false)
+                }
+              }}
+              className="h-12 w-[3.2ch] rounded-lg border border-accent bg-paper-raised text-center time-figures text-[44px] font-medium leading-none text-ink outline-none"
+            />
+          ) : (
+            <button
+              type="button"
+              data-hit
+              aria-label={`Tempo ${settings.bpm} BPM. Tap to type one`}
+              onClick={() => {
+                setDraft(String(settings.bpm))
+                setEditing(true)
+              }}
+              className="flex h-12 min-w-12 cursor-text items-center justify-center rounded-lg px-1 time-figures text-[44px] font-medium leading-none text-ink hover:bg-(--sv-hover)"
+            >
+              <TimeText text={String(settings.bpm)} />
+            </button>
+          )}
+          <span className="text-[15px] text-ink-soft">BPM</span>
+        </span>
+        {stepper(1)}
+        <div className="col-span-3 flex justify-center">
+          <button
+            ref={markRef}
+            type="button"
+            data-hit
+            aria-expanded={marksOpen}
+            aria-label={`Tempo marking ${marking}. Choose another`}
+            onClick={() => setMarksOpen(!marksOpen)}
+            className={`${HIT} group/b`}
+          >
+            <span
+              className={`${FACE} ${marksOpen ? 'bg-(--sv-hover)' : FACE_HOVER} gap-0.5 px-2 font-display text-sm font-medium italic`}
+            >
+              {marking}
+              <IconChevronDown size={14} className="text-ink-faint" />
+            </span>
+          </button>
+        </div>
+      </div>
+
+      {/* One tile per beat: tap to go played → accented → silent. The beat
+          playing now is outlined, and, with a subdivision picked, under each
+          tile a dot per click (the beat's own first, stronger) lights the
+          click playing now. */}
+      <div className="-mx-3 flex flex-wrap justify-center" role="group" aria-label="Beats">
+        {settings.levels.map((level, i) => (
+          <button
+            key={i}
+            type="button"
+            data-hit
+            aria-label={`Beat ${i + 1}: ${['silent', 'played', 'accented'][level]}`}
+            onClick={() =>
+              onChange((m) => ({
+                ...m,
+                levels: m.levels.map((l, j) => (j === i ? nextLevel(l) : l)),
+              }))
+            }
+            className={`flex ${settings.subdivision > 1 ? 'h-[84px]' : 'h-[74px]'} w-[50px] cursor-pointer flex-col items-center justify-end gap-1 p-1`}
+          >
+            <span
+              className={`flex h-[46px] w-[44px] items-end overflow-hidden rounded-lg border bg-paper-raised ${
+                playing && beat === i
+                  ? 'border-accent ring-2 ring-accent'
+                  : level === 0
+                    ? 'border-dashed border-ink-faint'
+                    : 'border-border'
+              }`}
+            >
+              <span
+                className={`w-full ${playing && beat === i ? 'bg-accent' : 'bg-ink-soft'} ${
+                  level === 2 ? 'h-full' : level === 1 ? 'h-1/2' : 'h-0'
+                }`}
+              />
+            </span>
+            {settings.subdivision > 1 && (
+              <span className="flex h-1.5 items-center gap-[3px]">
+                {Array.from({ length: settings.subdivision }, (_, j) => (
+                  <span
+                    key={j}
+                    className={`size-1.5 rounded-full ${
+                      playing && beat === i && click === j
+                        ? 'bg-accent'
+                        : level === 0
+                          ? 'ring-1 ring-border ring-inset'
+                          : j === 0
+                            ? 'bg-ink-faint'
+                            : 'bg-border'
+                    }`}
+                  />
+                ))}
+              </span>
+            )}
+            <span className="time-figures text-xs text-ink-soft">{i + 1}</span>
+          </button>
+        ))}
+      </div>
+      {/* The beat count on the left, the subdivision's note menu on the
+          right. */}
+      <div className="-mx-1 -mt-3 flex items-center justify-between">
+        <div className="flex items-center">
+          <HitButton
+            label="Fewer beats"
+            disabled={n <= METRONOME_MIN_BEATS}
+            onClick={() => onChange((m) => ({ ...m, levels: resizeBeats(m.levels, n - 1) }))}
+          >
+            <IconMinus size={20} />
+          </HitButton>
+          <span className="w-[7ch] text-center">
+            {n} {n === 1 ? 'beat' : 'beats'}
+          </span>
+          <HitButton
+            label="More beats"
+            disabled={n >= METRONOME_MAX_BEATS}
+            onClick={() => onChange((m) => ({ ...m, levels: resizeBeats(m.levels, n + 1) }))}
+          >
+            <IconPlus size={20} />
+          </HitButton>
+        </div>
+        <button
+          ref={noteRef}
+          type="button"
+          data-hit
+          aria-expanded={notesOpen}
+          aria-label={`Clicks: ${subdivision.label}. Choose another`}
+          onClick={() => setNotesOpen(!notesOpen)}
+          className={`${HIT} group/b`}
+        >
+          <span className={`${bordered} gap-0.5 px-2`}>
+            <NoteValueIcon value={settings.subdivision} />
+            <IconChevronDown size={14} className="text-ink-faint" />
+          </span>
+        </button>
+      </div>
+
+      {/* What the toolbar button shows beside its swinging icon while it
+          plays: the beat number, the tempo, or nothing. Your choice on every
+          piece. Drawn like the clock menu's Clock / Stopwatch switch, with
+          its label above it so all three fit the panel's width. */}
+      <div className="flex flex-col gap-1">
+        <span className="text-sm text-ink-soft">Toolbar shows:</span>
+        <div
+          role="radiogroup"
+          aria-label="While playing, the toolbar button shows"
+          className="flex rounded-[13px] bg-paper-sunken px-1"
+        >
+          {METRONOME_SHOW.map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              data-hit
+              role="radio"
+              aria-checked={show === value}
+              onClick={() => onShowChange(value)}
+              className={`${HIT} min-w-0 flex-1 group/b`}
+            >
+              <span
+                className={`${FACE} w-full min-w-0 px-1 ${
+                  show === value ? 'bg-paper-raised font-medium shadow-sm' : 'text-ink-soft'
+                }`}
+              >
+                {label}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="-mx-1 flex">
+        <button type="button" data-hit onClick={onToggle} className={`${HIT} group/b flex-1 px-1`}>
+          <span
+            className={`${FACE} w-full bg-accent-fill font-medium text-white group-hover/b:bg-accent-fill/90`}
+          >
+            {playing ? <IconPlayerStopFilled size={18} /> : <IconPlayerPlayFilled size={18} />}
+            {playing ? 'Stop' : 'Start'}
+          </span>
+        </button>
+        <button type="button" data-hit onClick={tap} className={`${HIT} group/b px-1`}>
+          <span className={`${bordered} px-3`}>
+            <IconHandFinger size={20} />
+            Tap
+          </span>
+        </button>
+      </div>
+      {/* A piece with no tempo of its own says where it started. */}
+      {hint && <p className="-mt-1 text-center text-xs text-ink-muted italic">{hint}</p>}
+
+      {notesOpen &&
+        notesStyle &&
+        createPortal(
+          <>
+            {/* A tap anywhere else closes the list, not the panel. */}
+            <div className="fixed inset-0 z-[55]" onPointerDown={() => setNotesOpen(false)} />
+            <div
+              role="listbox"
+              aria-label="Clicks"
+              style={{ ...notesStyle, width: NOTES_WIDTH }}
+              className="z-[60] rounded-xl border border-border bg-paper py-1 shadow-xl [--sv-hover:var(--color-paper-hover)]"
+            >
+              {SUBDIVISIONS.map((d) => (
+                <button
+                  key={d.value}
+                  type="button"
+                  data-hit
+                  role="option"
+                  aria-selected={settings.subdivision === d.value}
+                  onClick={() => {
+                    onChange((m) => ({ ...m, subdivision: d.value }))
+                    setNotesOpen(false)
+                  }}
+                  className={`${HIT} group/b w-full px-1`}
+                >
+                  <span className={`${FACE} ${FACE_HOVER} w-full justify-start gap-3 px-3`}>
+                    <NoteValueIcon value={d.value} />
+                    <span className="flex-1 text-left">{d.label}</span>
+                    <span className="w-3.5">
+                      {settings.subdivision === d.value && (
+                        <IconCheck size={14} className="text-accent" />
+                      )}
+                    </span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </>,
+          document.body,
+        )}
+
+      {marksOpen &&
+        marksStyle &&
+        createPortal(
+          <>
+            {/* A tap anywhere else closes the list, not the panel. */}
+            <div className="fixed inset-0 z-[55]" onPointerDown={() => setMarksOpen(false)} />
+            <div
+              role="listbox"
+              aria-label="Tempo markings"
+              style={{ ...marksStyle, width: MARKS_WIDTH }}
+              className="z-[60] rounded-xl border border-border bg-paper py-1 shadow-xl [--sv-hover:var(--color-paper-hover)]"
+            >
+              {TEMPO_MARKINGS.map((mark) => (
+                <button
+                  key={mark.name}
+                  type="button"
+                  data-hit
+                  role="option"
+                  aria-selected={marking === mark.name}
+                  onClick={() => {
+                    onChange((m) => ({ ...m, bpm: mark.bpm }))
+                    setMarksOpen(false)
+                  }}
+                  className={`${HIT} group/b w-full px-1`}
+                >
+                  <span className={`${FACE} ${FACE_HOVER} w-full justify-start gap-3 px-3`}>
+                    <span className="flex-1 text-left font-display italic">{mark.name}</span>
+                    <TimeText text={String(mark.bpm)} className="text-sm text-ink-muted" />
+                    <span className="w-3.5">
+                      {marking === mark.name && <IconCheck size={14} className="text-accent" />}
+                    </span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </>,
+          document.body,
+        )}
+    </div>
   )
 }
 
@@ -944,6 +1453,18 @@ function SheetViewer({
     observer.observe(clockEl)
     return () => observer.disconnect()
   }, [clockEl])
+  // Outside AppShell, so the viewer keeps the theme in step itself.
+  const { data: settings } = useQuery({ queryKey: ['user-settings'], queryFn: getUserSettings })
+  // What the metronome's button shows beside its icon (per user), and how
+  // much wider that makes it: it's the second tool, so the fit counts it
+  // once Metronome is in the row.
+  const metroShow: MetronomeShow = settings?.metronomeShow ?? 'icon'
+  const metroExtra =
+    custom || metroShow === 'icon'
+      ? 0
+      : metroShow === 'beat'
+        ? METRONOME_BEAT_EXTRA
+        : METRONOME_TEMPO_EXTRA
   // Phones, and any window too narrow for the one-row toolbar even with its
   // right-hand group at its most compact (the clock, ⋯ and Annotate's
   // icon), take two rows.
@@ -962,6 +1483,7 @@ function SheetViewer({
     clockWidth +
       SEPARATOR_WIDTH +
       48 * tools +
+      (tools >= 2 ? metroExtra : 0) +
       (tools < TOOL_COUNT ? 48 : 0) +
       (label ? ANNOTATE_LABELED_WIDTH : 48) <=
     half
@@ -974,8 +1496,6 @@ function SheetViewer({
   const infoInline = tier === 'phone' || inlineTools >= 5
   const moreNeeded = !(notesInline && metronomeInline && theoryInline && photoInline && infoInline)
 
-  // Outside AppShell, so the viewer keeps the theme in step itself.
-  const { data: settings } = useQuery({ queryKey: ['user-settings'], queryFn: getUserSettings })
   useThemeSync(settings?.themePreference)
   useDarkScoresSync(settings?.darkModeScores)
   const { dark, darkScores } = useRootTheme()
@@ -1015,7 +1535,7 @@ function SheetViewer({
   const [attempt, setAttempt] = useState(0)
   // An empty Practice List opens with its queue showing what to do.
   const [menu, setMenu] = useState<
-    'clock' | 'more' | 'photo' | 'info' | 'notes' | 'queue' | 'layers' | 'tool' | null
+    'clock' | 'more' | 'photo' | 'info' | 'notes' | 'metronome' | 'queue' | 'layers' | 'tool' | null
   >(session.kind === 'list' && !item ? 'queue' : null)
   const [closeArmed, setCloseArmed] = useState(false)
   // A pill the session handed over (moving to the next item shows its
@@ -1086,14 +1606,88 @@ function SheetViewer({
   })
   // Leaving the viewer saves anything still waiting.
   useEffect(() => () => flushPractice.current(), [])
+  // Built on the cached copy, not this render's: a held − or + on the
+  // metronome changes it again from a timer, before a re-render.
   function setPractice(change: Partial<PracticeSettings>) {
-    const next = { ...practice, ...change }
+    const next = {
+      ...(queryClient.getQueryData<PracticeSettings>(practiceKey) ?? practice),
+      ...change,
+    }
     queryClient.setQueryData(practiceKey, next)
     pendingPractice.current = next
     window.clearTimeout(practiceTimer.current)
     practiceTimer.current = window.setTimeout(() => flushPractice.current(), SAVE_DELAY_MS)
   }
   const photo = practice
+
+  // The metronome (design A5 of
+  // https://claude.ai/artifact/FqYsh6YjuaqHNeFBzmuqZD, subdivisions as B
+  // with C's dots of https://claude.ai/artifact/1ueVX73wWrosYCdRbVCftG).
+  // Its tempo, beats and subdivision are this piece's practice setting,
+  // starting from the piece's own BPM and beats per measure until changed.
+  // It plays for this item only: moving on unmounts this viewer, which
+  // stops it.
+  const metro = practice.metronome ?? seedMetronome(piece ?? {})
+  const metroEngine = useRef<MetronomeEngine | null>(null)
+  const [metroPlaying, setMetroPlaying] = useState(false)
+  const [metroBeat, setMetroBeat] = useState(-1)
+  // The click within the beat (0 for the beat itself), for the tiles' dots.
+  const [metroClick, setMetroClick] = useState(-1)
+  const [swing, setSwing] = useState(false)
+  const reducedMotion = usePrefersReducedMotion()
+  // Beat or Tempo puts text beside the button's icon at all times: the
+  // tempo, or the beat playing now (a dash while it's stopped).
+  const metroText =
+    custom || metroShow === 'icon'
+      ? null
+      : metroShow === 'tempo'
+        ? String(metro.bpm)
+        : metroPlaying && metroBeat >= 0
+          ? String(metroBeat + 1)
+          : '\u2013'
+  // A piece with no tempo of its own says where it started, until it's set.
+  const metroHint =
+    piece && piece.bpm == null && !practice.metronome
+      ? 'No tempo on this piece: 100 BPM, 4 beats'
+      : null
+  function changeMetro(update: (m: MetronomeSettings) => MetronomeSettings) {
+    if (pieceId === null) return
+    const current = queryClient.getQueryData<PracticeSettings>(practiceKey) ?? practice
+    setPractice({ metronome: update(current.metronome ?? seedMetronome(piece ?? {})) })
+  }
+  function toggleMetronome() {
+    if (custom || pieceId === null) return
+    if (metroPlaying) {
+      metroEngine.current?.stop()
+      setMetroPlaying(false)
+      return
+    }
+    metroEngine.current ??= new MetronomeEngine()
+    metroEngine.current.start(metro, (beat, click) => {
+      setMetroClick(click)
+      if (click > 0) return
+      setMetroBeat(beat)
+      setSwing((on) => !on)
+    })
+    setMetroBeat(-1)
+    setMetroClick(-1)
+    setMetroPlaying(true)
+  }
+  // A change while it plays applies from the next click.
+  useEffect(() => {
+    if (metroPlaying) metroEngine.current?.update(metro)
+  }, [metro, metroPlaying])
+  // Leaving the item (or the viewer) stops it.
+  useEffect(() => () => metroEngine.current?.stop(), [])
+  function setMetroShow(metronomeShow: MetronomeShow) {
+    if (!settings) return
+    const next = { ...settings, metronomeShow }
+    queryClient.setQueryData(['user-settings'], next)
+    updateUserSettings(next).catch(() => {
+      flash('Couldn’t save the metronome setting')
+      queryClient.invalidateQueries({ queryKey: ['user-settings'] })
+    })
+  }
   // The stopwatch belongs to the session, so it keeps running across items.
   const { swStart, swAcc, setSwStart, setSwAcc } = session.shared
   const [now, setNow] = useState(() => Date.now())
@@ -1660,6 +2254,7 @@ function SheetViewer({
   const moreAnchorRef = useRef<HTMLDivElement>(null)
   const infoAnchorRef = useRef<HTMLDivElement>(null)
   const notesAnchorRef = useRef<HTMLDivElement>(null)
+  const metronomeAnchorRef = useRef<HTMLDivElement>(null)
   const queueAnchorRef = useRef<HTMLDivElement>(null)
   const closeTimer = useRef<number | undefined>(undefined)
   useEffect(
@@ -1713,6 +2308,7 @@ function SheetViewer({
     moveQueue: (dir: -1 | 1) => void
     openQueued: () => void
     annotateKey: (key: string) => boolean
+    metronome: () => void
   } | null>(null)
   useEffect(() => {
     turnRef.current = turn
@@ -1738,6 +2334,14 @@ function SheetViewer({
         return
       }
       if (event.metaKey || event.ctrlKey || event.altKey) return
+      // Shift+M starts or stops the metronome, anywhere in the viewer. Its
+      // own handler, since the shortcut registry takes letters without Shift
+      // only (M alone opens the panel, through the registry).
+      if (event.shiftKey && key === 'm') {
+        event.preventDefault()
+        if (!event.repeat) keys.metronome()
+        return
+      }
       // Esc closes the open panel; with none open, it presses Exit (twice
       // to leave). A window over the viewer takes its own Esc.
       // Marked used (preventDefault), so in full screen Esc stays the
@@ -2027,9 +2631,27 @@ function SheetViewer({
     )
 
   const metronomeButton = (
-    <SoonButton label="Metronome" message="Metronome: coming soon">
-      <IconMetronome size={22} />
-    </SoonButton>
+    <div ref={metronomeAnchorRef} className="relative">
+      <HitButton
+        label={metroPlaying ? `Metronome, playing at ${metro.bpm} BPM` : 'Metronome'}
+        onClick={() => setMenu(menu === 'metronome' ? null : 'metronome')}
+        inset={metroText !== null}
+        faceClassName={`${menu === 'metronome' ? 'bg-accent-soft text-accent' : FACE_HOVER} ${metroText !== null ? 'px-2' : ''}`}
+      >
+        {/* While it plays, the arm swings side to side on each beat; the
+            body never moves (MetronomeIcon). Not with Reduce Motion. */}
+        <MetronomeIcon size={22} swung={metroPlaying && swing && !reducedMotion} />
+        {/* "Beat" counts the beats beside the icon, "Tempo" shows the BPM,
+            each in a slot of fixed width so the button keeps one width. */}
+        {metroText !== null && (
+          <span
+            className={`time-figures text-[15px] font-medium ${metroShow === 'beat' ? 'w-[2ch] text-left' : 'w-[3ch] text-left'}`}
+          >
+            {metroText}
+          </span>
+        )}
+      </HitButton>
+    </div>
   )
   const theoryButton = (
     <SoonButton label="Theory reference" message="Theory reference: coming soon">
@@ -2542,7 +3164,13 @@ function SheetViewer({
     'below-center',
     { gap: 6, panelWidth: INFO_WIDTH },
   )
-  const panelHeader = (title: ReactNode, which: 'info' | 'notes') => (
+  type PanelKind = 'info' | 'notes' | 'metronome'
+  const PANEL_NAMES: Record<PanelKind, string> = {
+    info: 'Info',
+    notes: 'Practice Notes',
+    metronome: 'Metronome',
+  }
+  const panelHeader = (title: ReactNode, which: PanelKind) => (
     <div className="flex shrink-0 items-center border-b border-border pr-4">
       {title}
       {which === 'info' && piece && canDownload && (
@@ -2558,19 +3186,17 @@ function SheetViewer({
           <IconDownload size={20} />
         </HitButton>
       )}
-      <HitButton
-        label={`Close ${which === 'info' ? 'Info' : 'Practice Notes'}`}
-        onClick={() => setMenu(null)}
-      >
+      <HitButton label={`Close ${PANEL_NAMES[which]}`} onClick={() => setMenu(null)}>
         <IconX size={20} />
       </HitButton>
     </div>
   )
   const renderPanel = (
-    which: 'info' | 'notes',
+    which: PanelKind,
     title: string,
     style: CSSProperties | null | undefined,
     body: ReactNode,
+    width = INFO_WIDTH,
   ) =>
     tier === 'phone'
       ? createPortal(
@@ -2600,7 +3226,7 @@ function SheetViewer({
       : style &&
         createPortal(
           <div
-            style={{ ...style, width: INFO_WIDTH }}
+            style={{ ...style, width }}
             className="z-50 flex max-h-[calc(100dvh-5.5rem)] flex-col overflow-hidden rounded-xl border border-border bg-paper font-sans text-ink shadow-xl select-none [--sv-hover:var(--color-paper-hover)]"
           >
             {panelHeader(
@@ -2613,6 +3239,33 @@ function SheetViewer({
         )
   const infoPanel = infoOpen && renderPanel('info', 'Info', infoStyle, infoBody)
   const notesPanel = notesOpen && renderPanel('notes', 'Practice Notes', notesStyle, notesBody)
+  // The metronome: a card under its button (or ⋯), a bottom sheet on phones.
+  const metronomeOpen = menu === 'metronome' && !custom && pieceId !== null
+  const metronomeStyle = useAnchoredPanel(
+    metronomeInline ? metronomeAnchorRef : moreAnchorRef,
+    metronomeOpen && tier !== 'phone',
+    'below-center',
+    { gap: 6, panelWidth: METRONOME_WIDTH },
+  )
+  const metronomePanel =
+    metronomeOpen &&
+    renderPanel(
+      'metronome',
+      'Metronome',
+      metronomeStyle,
+      <MetronomeBody
+        settings={metro}
+        onChange={changeMetro}
+        playing={metroPlaying}
+        beat={metroBeat}
+        click={metroClick}
+        onToggle={toggleMetronome}
+        hint={metroHint}
+        show={metroShow}
+        onShowChange={setMetroShow}
+      />,
+      METRONOME_WIDTH,
+    )
   // Plain like its toolbar neighbors (option A of
   // https://claude.ai/artifact/2sGPaeuUQ4BzURCeSB2Czu): a hover fill and no
   // border, labeled or not; the divider before it sets it apart.
@@ -3578,6 +4231,7 @@ function SheetViewer({
       moveQueue,
       openQueued,
       annotateKey,
+      metronome: toggleMetronome,
     }
   })
   const inQueue = session.kind !== 'piece'
@@ -3619,6 +4273,9 @@ function SheetViewer({
             ],
           },
         ]
+      : []),
+    ...(!custom && pieceId !== null
+      ? [{ title: 'Metronome', rows: [{ keys: ['Shift', 'M'], label: 'Start or stop' }] }]
       : []),
     {
       title: annotating ? 'Undo and leave' : 'Undo and exit',
@@ -3668,8 +4325,14 @@ function SheetViewer({
             run: () => (annotating ? leaveAnnotate() : enterAnnotate()),
             enabled: !custom && pieceId !== null,
           },
+          {
+            key: 'm',
+            label: 'Metronome',
+            run: () => setMenu(menu === 'metronome' ? null : 'metronome'),
+            enabled: !custom && pieceId !== null,
+          },
           // Edge margin. In Annotate E is the Eraser, so only outside it.
-          // M and T stay free for the Metronome and Theory reference.
+          // T stays free for the Theory reference.
           {
             key: 'e',
             label: 'Toggle edge margin',
@@ -3777,7 +4440,7 @@ function SheetViewer({
                   <>
                     {clockButton}
                     {pieceId !== null && notesInline && notesButton}
-                    {metronomeInline && metronomeButton}
+                    {metronomeInline && !custom && pieceId !== null && metronomeButton}
                     {theoryInline && theoryButton}
                     {photoInline && photoButton}
                     {pieceId !== null && infoInline && infoButton}
@@ -3812,6 +4475,7 @@ function SheetViewer({
             {photoPanel}
             {infoPanel}
             {notesPanel}
+            {metronomePanel}
             {queuePanel}
             {layersPanel}
             {toolOptionsPanel}
@@ -3830,12 +4494,12 @@ function SheetViewer({
                     onClick={() => openNotes(true)}
                   />
                 )}
-                {!metronomeInline && (
+                {!metronomeInline && !custom && pieceId !== null && (
                   <MenuRow
                     icon={<IconMetronome size={20} />}
                     label="Metronome"
-                    trailing="Coming soon"
-                    soon
+                    trailing={metroPlaying ? `${metro.bpm} BPM` : undefined}
+                    onClick={() => setMenu('metronome')}
                   />
                 )}
                 {!theoryInline && (

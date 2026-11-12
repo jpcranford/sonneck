@@ -134,3 +134,52 @@ func TestPracticeSettings(t *testing.T) {
 		t.Errorf("PUT without practice: status %d, want 403", rec.Code)
 	}
 }
+
+// The metronome's per-piece setting (migration 00037): none until saved,
+// round-trips with its beat levels in order, is checked, and a row holding
+// only a metronome isn't removed as defaults.
+func TestPracticeSettings_Metronome(t *testing.T) {
+	h, conn := newTestServerWithDB(t)
+	pieceID := uploadTestPiece(t, h)
+	url := apiPiecesURL(pieceID) + "/practice-settings"
+
+	var got repo.PracticeSettings
+	decodeData(t, doJSON(t, h, http.MethodGet, url, nil), &got)
+	if got.Metronome != nil {
+		t.Fatalf("unsaved metronome = %+v, want none", got.Metronome)
+	}
+
+	want := repo.DefaultPracticeSettings
+	want.Metronome = &repo.MetronomeSettings{BPM: 132, Levels: []int{2, 0, 1, 1, 2, 1}, Subdivision: 3}
+	if rec := doJSON(t, h, http.MethodPut, url, want); rec.Code != http.StatusOK {
+		t.Fatalf("PUT: status %d, body %s", rec.Code, rec.Body.String())
+	}
+	got = repo.PracticeSettings{}
+	decodeData(t, doJSON(t, h, http.MethodGet, url, nil), &got)
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("after saving, got %+v (metronome %+v), want %+v", got, got.Metronome, want.Metronome)
+	}
+	var rows int
+	if err := conn.QueryRow(`SELECT COUNT(*) FROM piece_practice_settings`).Scan(&rows); err != nil {
+		t.Fatal(err)
+	}
+	if rows != 1 {
+		t.Errorf("rows with only a metronome saved = %d, want 1", rows)
+	}
+
+	for _, bad := range []repo.MetronomeSettings{
+		{BPM: 20, Levels: []int{2}, Subdivision: 1},
+		{BPM: 301, Levels: []int{2}, Subdivision: 1},
+		{BPM: 100, Levels: nil, Subdivision: 1},
+		{BPM: 100, Levels: make([]int, 13), Subdivision: 1},
+		{BPM: 100, Levels: []int{3}, Subdivision: 1},
+		{BPM: 100, Levels: []int{2}, Subdivision: 0},
+		{BPM: 100, Levels: []int{2}, Subdivision: 5},
+	} {
+		body := repo.DefaultPracticeSettings
+		body.Metronome = &bad
+		if rec := doJSON(t, h, http.MethodPut, url, body); rec.Code != http.StatusBadRequest {
+			t.Errorf("PUT metronome %+v: status %d, want 400", bad, rec.Code)
+		}
+	}
+}

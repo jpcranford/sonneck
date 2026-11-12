@@ -82,6 +82,10 @@ func (s *Server) handleUpdateUserSettings(w http.ResponseWriter, r *http.Request
 		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "clockMode must be one of clock, stopwatch")
 		return
 	}
+	if !slices.Contains(repo.MetronomeShows, req.MetronomeShow) {
+		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "metronomeShow must be one of beat, tempo, icon")
+		return
+	}
 
 	if err := repo.UpdateUserSettings(r.Context(), s.DB, user.ID, req); err != nil {
 		s.writeError(w, err)

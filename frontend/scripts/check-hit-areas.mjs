@@ -31,11 +31,19 @@ const VIEWPORTS = [
 const MIN = 47.5
 
 function measure() {
+  // A control under an open menu or popover (whatever is on top at its
+  // center belongs to something else) can't be tapped, so it isn't counted.
+  const covered = (el, r) => {
+    const top = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)
+    if (!top) return false
+    const control = el.matches('.hit-area') ? (el.closest('button, a, [role]') ?? el) : el
+    return !control.contains(top) && !top.contains(control)
+  }
   const visible = (el) => {
     const r = el.getBoundingClientRect()
     if (r.width === 0 || r.height === 0) return false
     const s = getComputedStyle(el)
-    return s.visibility !== 'hidden' && s.display !== 'none'
+    return s.visibility !== 'hidden' && s.display !== 'none' && !covered(el, r)
   }
   // A HitArea span is named after the control it sits in.
   const describe = (node) => {

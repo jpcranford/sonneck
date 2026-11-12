@@ -150,3 +150,25 @@ func TestUserSettings_NotesBarDefault(t *testing.T) {
 		t.Error("notesBarDefault didn't save as on, or a later PATCH reset it")
 	}
 }
+
+// The metronome button's choice (migration 00037) is icon only by default,
+// saves, and is checked.
+func TestUserSettings_MetronomeShow(t *testing.T) {
+	h := newTestServer(t)
+	var settings repo.UserSettings
+	decodeData(t, doJSON(t, h, http.MethodGet, "/api/user-settings", nil), &settings)
+	if settings.MetronomeShow != "icon" {
+		t.Fatalf("metronomeShow = %q, want icon by default", settings.MetronomeShow)
+	}
+	if rec := doJSON(t, h, http.MethodPatch, "/api/user-settings", map[string]any{"metronomeShow": "tempo"}); rec.Code != http.StatusOK {
+		t.Fatalf("PATCH: status %d", rec.Code)
+	}
+	var reread repo.UserSettings
+	decodeData(t, doJSON(t, h, http.MethodGet, "/api/user-settings", nil), &reread)
+	if reread.MetronomeShow != "tempo" {
+		t.Errorf("metronomeShow = %q after saving tempo", reread.MetronomeShow)
+	}
+	if rec := doJSON(t, h, http.MethodPatch, "/api/user-settings", map[string]any{"metronomeShow": "dot"}); rec.Code != http.StatusBadRequest {
+		t.Errorf("PATCH dot: status %d, want 400", rec.Code)
+	}
+}

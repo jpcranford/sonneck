@@ -93,6 +93,11 @@ func (s *Server) handlePutPracticeSettings(w http.ResponseWriter, r *http.Reques
 			return
 		}
 	}
+	if req.Metronome != nil && !req.Metronome.Valid() {
+		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError,
+			"metronome needs a bpm of 30 to 300, 1 to 12 beat levels of 0, 1 or 2, and a subdivision of 1 to 4")
+		return
+	}
 	err := s.withTx(r.Context(), func(tx *sql.Tx) error {
 		if _, err := repo.GetPieceByID(r.Context(), tx, id); err != nil {
 			return err

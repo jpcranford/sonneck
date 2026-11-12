@@ -8,6 +8,7 @@ import {
   apiUploadWithStatus,
 } from './client'
 import type { Piece, PieceWriteRequest } from './types'
+import type { MetronomeSettings } from '../lib/metronome'
 
 /**
  * Backend dedupes on SHA-256 match (CLAUDE.md > File handling): uploading a
@@ -110,6 +111,9 @@ export interface PracticeSettings {
   notesBarShown: boolean | null
   // The annotation colors hidden on this piece: bit i for color i.
   hiddenColors: number
+  // The metronome's tempo, beat levels and clicks per beat; null until
+  // changed on this piece, when it starts from the piece's own BPM and beats.
+  metronome: MetronomeSettings | null
 }
 
 export const DEFAULT_PRACTICE_SETTINGS: PracticeSettings = {
@@ -120,6 +124,7 @@ export const DEFAULT_PRACTICE_SETTINGS: PracticeSettings = {
   edgeMargin: false,
   notesBarShown: null,
   hiddenColors: 0,
+  metronome: null,
 }
 
 export function getPracticeSettings(id: number): Promise<PracticeSettings> {

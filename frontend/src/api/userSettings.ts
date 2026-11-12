@@ -26,7 +26,12 @@ export interface UserSettings {
   // User Settings › Sheet Viewer › Show hidden colors faintly: a hidden
   // annotation color's marks stay as faint ghosts.
   ghostMarks: boolean
+  // What the Sheet Viewer metronome's toolbar button shows beside its icon:
+  // the beat playing, the tempo, or the icon alone.
+  metronomeShow: MetronomeShow
 }
+
+export type MetronomeShow = 'beat' | 'tempo' | 'icon'
 
 export type TurnGuardMs = 0 | 250 | 500 | 750 | 1000
 export const TURN_GUARD_DEFAULT: TurnGuardMs = 500
