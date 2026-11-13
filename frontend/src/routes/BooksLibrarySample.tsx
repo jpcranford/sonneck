@@ -1,7 +1,7 @@
 import { useRef, useState, type KeyboardEvent, type Ref } from 'react'
 import { useForm } from 'react-hook-form'
 import {
-  IconAdjustmentsHorizontal,
+  IconFilter,
   IconArrowDown,
   IconArrowUp,
   IconCheck,
@@ -1115,7 +1115,7 @@ export function BooksLibrarySample() {
                       : 'border-border bg-paper-raised text-ink hover:bg-paper-hover'
                   }`}
                 >
-                  <IconAdjustmentsHorizontal size={16} />
+                  <IconFilter size={16} />
                   <span className="inline max-[389px]:hidden sm:hidden 2xl:inline">Filters</span>
                   {activeCount > 0 && (
                     <span className="flex size-4 items-center justify-center rounded-full bg-accent-fill text-[0.65rem] font-semibold text-white">
