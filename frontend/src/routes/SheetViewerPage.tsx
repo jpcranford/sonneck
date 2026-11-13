@@ -642,7 +642,9 @@ function MetronomeBody({
         </div>
       </div>
 
-      {/* One tile per beat: tap to go played → accented → silent. The beat
+      {/* One tile per beat: tap to go played → accented → silent. Option D
+          of https://claude.ai/artifact/RfnXwd9X9xMmBWgUXnd9DZ: the muted
+          green level in a well of the panel's own paper. The beat
           playing now is outlined, and, with a subdivision picked, under each
           tile a dot per click (the beat's own first, stronger) lights the
           click playing now. */}
@@ -662,7 +664,7 @@ function MetronomeBody({
             className={`flex ${settings.subdivision > 1 ? 'h-[84px]' : 'h-[74px]'} w-[50px] cursor-pointer flex-col items-center justify-end gap-1 p-1`}
           >
             <span
-              className={`flex h-[46px] w-[44px] items-end overflow-hidden rounded-lg border bg-paper-raised ${
+              className={`flex h-[46px] w-[44px] items-end overflow-hidden rounded-lg border bg-paper ${
                 playing && beat === i
                   ? 'border-accent ring-2 ring-accent'
                   : level === 0
@@ -671,7 +673,7 @@ function MetronomeBody({
               }`}
             >
               <span
-                className={`w-full ${playing && beat === i ? 'bg-accent' : 'bg-ink-soft'} ${
+                className={`w-full ${playing && beat === i ? 'bg-accent' : 'bg-accent-muted'} ${
                   level === 2 ? 'h-full' : level === 1 ? 'h-1/2' : 'h-0'
                 }`}
               />
