@@ -935,46 +935,88 @@ function MenuRow({
   )
 }
 
-// A label over a sunken switch, like the metronome's "Toolbar shows:".
-function Segmented<T extends string>({
-  label,
-  items,
+// Display's page layout as one choice of three pictures (design B of
+// https://claude.ai/artifact/J9T8zCieMcc82cRqRJXKFD): one page, spreads, or
+// pages sliding a page at a time. Spreads and Sliding grey out while the
+// screen fits only one page (or the whole piece); One page never does, so
+// it can always be switched back from.
+type LayoutChoice = 'one' | 'spread' | 'slide'
+function LayoutPicture({ kind }: { kind: LayoutChoice }) {
+  const page = (x: number, dashed = false) => (
+    <rect
+      x={x}
+      y={6}
+      width={16}
+      height={22}
+      rx={1.5}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.6}
+      strokeDasharray={dashed ? '2.5 2' : undefined}
+    />
+  )
+  return (
+    <svg width={56} height={34} viewBox="0 0 56 34" aria-hidden="true">
+      {kind === 'one' && page(20)}
+      {kind === 'spread' && (
+        <>
+          {page(11)}
+          {page(29)}
+        </>
+      )}
+      {kind === 'slide' && (
+        <>
+          {page(2, true)}
+          {page(20)}
+          {page(38)}
+          <path
+            d="M23 31h12m-3 -2.5l3 2.5l-3 2.5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.4}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </>
+      )}
+    </svg>
+  )
+}
+function LayoutPictures({
   value,
   onChange,
+  screenIdle,
 }: {
-  label: string
-  items: [T, string][]
-  value: T
-  onChange: (v: T) => void
+  value: LayoutChoice
+  onChange: (v: LayoutChoice) => void
+  screenIdle: boolean
 }) {
+  const items: [LayoutChoice, string][] = [
+    ['one', 'One page'],
+    ['spread', 'Spreads'],
+    ['slide', 'Sliding'],
+  ]
   return (
-    <div className="flex flex-col gap-1 px-1 pb-1">
-      <span className="text-sm text-ink-soft">{label}</span>
-      <div
-        role="radiogroup"
-        aria-label={label}
-        className="flex rounded-[13px] bg-paper-sunken px-1"
-      >
-        {items.map(([v, text]) => (
-          <button
-            key={v}
-            type="button"
-            data-hit
-            role="radio"
-            aria-checked={value === v}
-            onClick={() => onChange(v)}
-            className={`${HIT} min-w-0 flex-1 group/b`}
-          >
-            <span
-              className={`${FACE} w-full min-w-0 px-1 ${
-                value === v ? 'bg-paper-raised font-medium shadow-sm' : 'text-ink-soft'
-              }`}
-            >
-              {text}
-            </span>
-          </button>
-        ))}
-      </div>
+    <div role="radiogroup" aria-label="Pages" className="grid grid-cols-3 gap-1.5 pb-1">
+      {items.map(([kind, label]) => (
+        <button
+          key={kind}
+          type="button"
+          data-hit
+          role="radio"
+          aria-checked={value === kind}
+          disabled={screenIdle && kind !== 'one'}
+          onClick={() => onChange(kind)}
+          className={`flex cursor-pointer flex-col items-center gap-1.5 rounded-xl border px-1 pt-2.5 pb-2 text-[13px] disabled:opacity-50 ${
+            value === kind
+              ? 'border-accent bg-accent-soft font-medium text-accent'
+              : 'border-border bg-paper-raised text-ink-soft hover:border-accent'
+          }`}
+        >
+          <LayoutPicture kind={kind} />
+          {label}
+        </button>
+      ))}
     </div>
   )
 }
@@ -1900,14 +1942,16 @@ function SheetViewer({
   const [focusPage, setFocusPage] = useState(1)
   const markPage = shown.includes(focusPage) ? focusPage : shown[0]
   // Display's Turn and Keep pages together grey out while nothing turns.
-  const layoutIdle =
-    perScreen >= pageCount
+  // Spreads and Sliding grey out while the screen (or the piece) leaves
+  // nothing to turn; Keep pages together also while showing one page.
+  const screenIdle = custom
+    ? null
+    : fit.count >= pageCount
       ? 'The whole piece fits on screen, so nothing turns.'
-      : perScreen === 1
-        ? layoutPages === 'one'
-          ? 'Showing one page at a time.'
-          : 'This screen fits one page at a time.'
+      : fit.count === 1
+        ? 'This screen fits one page at a time.'
         : null
+  const layoutIdle = screenIdle ?? (layoutPages === 'one' ? 'Showing one page at a time.' : null)
   // Display's Keep pages together page, in place of the panel's own.
   const [displaySub, setDisplaySub] = useState(false)
   function openDisplay(open: boolean) {
@@ -2886,28 +2930,19 @@ function SheetViewer({
   // would turn.
   const displayLayout = (
     <>
-      <Segmented
-        label="Pages:"
-        items={[
-          ['auto', 'As many as fit'],
-          ['one', 'One'],
-        ]}
-        value={layoutPages}
-        onChange={(pages) => setPractice({ pages })}
+      <LayoutPictures
+        value={layoutPages === 'one' ? 'one' : layoutTurn}
+        onChange={(kind) =>
+          kind === 'one'
+            ? setPractice({ pages: 'one' })
+            : setPractice({ pages: 'auto', turn: kind })
+        }
+        screenIdle={!!screenIdle}
       />
       <div
         className={layoutIdle ? 'pointer-events-none opacity-45' : ''}
         aria-disabled={!!layoutIdle}
       >
-        <Segmented
-          label="Turn:"
-          items={[
-            ['spread', 'By spread'],
-            ['slide', 'Slide'],
-          ]}
-          value={layoutTurn}
-          onChange={(turn) => setPractice({ turn })}
-        />
         <MenuRow
           icon={<IconLink size={20} />}
           label="Keep pages together"
@@ -2930,12 +2965,6 @@ function SheetViewer({
   )
   const keepTogether = pieceId !== null && (
     <>
-      <div className="-mt-2 -ml-2 flex items-center">
-        <HitButton label="Back to Display" onClick={() => setDisplaySub(false)}>
-          <IconArrowLeft size={20} />
-        </HitButton>
-        <h2 className="font-display text-base font-medium">Keep pages together</h2>
-      </div>
       <SwitchRow
         label="Page 1 alone"
         checked={practice.firstAlone && !practice.links.includes(1)}
@@ -3036,60 +3065,81 @@ function SheetViewer({
     createPortal(
       <div
         style={{ ...photoStyle, width: PHOTO_WIDTH }}
-        className="z-50 max-h-[calc(100dvh-5.5rem)] overflow-y-auto overscroll-contain rounded-xl border border-border bg-paper px-3 pt-3 pb-2 font-sans text-ink shadow-xl select-none [--sv-hover:var(--color-paper-hover)]"
+        className="z-50 flex max-h-[calc(100dvh-5.5rem)] flex-col overflow-hidden rounded-xl border border-border bg-paper font-sans text-ink shadow-xl select-none [--sv-hover:var(--color-paper-hover)]"
       >
-        {displaySub ? keepTogether : displayLayout}
-        {!displaySub && (
-          <>
-            <StepperRow
-              label="Brightness"
-              Icon={IconSun}
-              value={photo.brightness}
-              onChange={(v) => setPhoto({ brightness: v })}
-            />
-            <StepperRow
-              label="Contrast"
-              Icon={IconContrast}
-              value={photo.contrast}
-              onChange={(v) => setPhoto({ contrast: v })}
-            />
-            <SwitchRow
-              label="Grayscale"
-              checked={photo.grayscale}
-              onChange={(v) => setPhoto({ grayscale: v })}
-            />
-            <SwitchRow
-              label="Invert"
-              checked={invertLocked ? true : photo.invert}
-              onChange={(v) => setPhoto({ invert: v })}
-              disabled={invertLocked}
-            />
-            {invertLocked && (
-              <p className="-mt-1 pr-3 pb-1 pl-[42px] text-xs text-ink-muted">
-                Dark Mode Scores already inverts the pages.
-              </p>
-            )}
-            <SwitchRow
-              label="Edge margin"
-              checked={photo.edgeMargin}
-              onChange={(v) => setPhoto({ edgeMargin: v })}
-            />
-            <button
-              type="button"
-              data-hit
-              disabled={!photoChanged}
-              onClick={() =>
-                setPhoto({ brightness: 100, contrast: 100, grayscale: false, invert: false })
-              }
-              className={`${HIT} w-full group/b disabled:opacity-50`}
-            >
-              <span className={`${FACE} ${FACE_HOVER} w-full justify-start gap-2.5 px-3`}>
-                <IconRefresh size={20} />
-                Reset filters
+        {/* Named, with a close button, like the other panels; on its Keep
+            pages together page, a back arrow before that page's name. */}
+        <div className="flex shrink-0 items-center border-b border-border pr-4">
+          {displaySub ? (
+            <>
+              <span className="pl-2">
+                <HitButton label="Back to Display" onClick={() => setDisplaySub(false)}>
+                  <IconArrowLeft size={20} />
+                </HitButton>
               </span>
-            </button>
-          </>
-        )}
+              <h2 className="flex-1 font-display text-base font-medium">Keep pages together</h2>
+            </>
+          ) : (
+            <h2 className="flex-1 pl-5 font-display text-base font-medium">Display</h2>
+          )}
+          <HitButton label="Close Display" onClick={() => openDisplay(false)}>
+            <IconX size={20} />
+          </HitButton>
+        </div>
+        <div className="min-h-0 overflow-y-auto overscroll-contain px-3 pt-2 pb-2">
+          {displaySub ? keepTogether : displayLayout}
+          {!displaySub && (
+            <>
+              <StepperRow
+                label="Brightness"
+                Icon={IconSun}
+                value={photo.brightness}
+                onChange={(v) => setPhoto({ brightness: v })}
+              />
+              <StepperRow
+                label="Contrast"
+                Icon={IconContrast}
+                value={photo.contrast}
+                onChange={(v) => setPhoto({ contrast: v })}
+              />
+              <SwitchRow
+                label="Grayscale"
+                checked={photo.grayscale}
+                onChange={(v) => setPhoto({ grayscale: v })}
+              />
+              <SwitchRow
+                label="Invert"
+                checked={invertLocked ? true : photo.invert}
+                onChange={(v) => setPhoto({ invert: v })}
+                disabled={invertLocked}
+              />
+              {invertLocked && (
+                <p className="-mt-1 pr-3 pb-1 pl-[42px] text-xs text-ink-muted">
+                  Dark Mode Scores already inverts the pages.
+                </p>
+              )}
+              <SwitchRow
+                label="Edge margin"
+                checked={photo.edgeMargin}
+                onChange={(v) => setPhoto({ edgeMargin: v })}
+              />
+              <button
+                type="button"
+                data-hit
+                disabled={!photoChanged}
+                onClick={() =>
+                  setPhoto({ brightness: 100, contrast: 100, grayscale: false, invert: false })
+                }
+                className={`${HIT} w-full group/b disabled:opacity-50`}
+              >
+                <span className={`${FACE} ${FACE_HOVER} w-full justify-start gap-2.5 px-3`}>
+                  <IconRefresh size={20} />
+                  Reset filters
+                </span>
+              </button>
+            </>
+          )}
+        </div>
       </div>,
       document.body,
     )
