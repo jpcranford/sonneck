@@ -199,6 +199,10 @@ npm run dev
 ```
 Vite serves on `:5173` and proxies `/api/*` to the backend on `:8080` — you'll want both running at once for local dev. `npm run build` produces the static bundle the Go binary embeds for a real deployment.
 
+**Dependency overrides:** `frontend/package.json` pins `minimatch` to `^11.0.1` through `overrides`, for a security advisory in 10.x that eslint and typescript-eslint still depend on (they only use `new Minimatch`, `.match()`, `minimatch()` and the `dot`/`flipNegate` options, all unchanged in 11). Remove the override once both ask for minimatch 11 themselves, and check `npm ls minimatch` before keeping any override longer.
+
+**Reaching the dev server from a phone or tablet:** open `http://<your computer's LAN address>:5173` (with `http://`, since the dev server has no HTTPS, and port 5173, since the backend's own port serves only a placeholder page). A VPN on the computer can block it: Surfshark's "Invisible on LAN", for one, refuses connections from your own network.
+
 ## Docker
 
 You don't need Docker for local development (see above), but if you're touching the `Dockerfile`, `docker-compose.yml`, or `internal/webui` (the package that embeds the frontend into the binary), build and run it directly:
