@@ -129,6 +129,8 @@ There's a secret fourth option, which is gating Sonneck behind an authenticating
 
 For example, in Cloudflare Access, this is set up as a separate application covering these paths with a **Bypass** policy. The greater specificity for these paths will make it take priority over the main application.
 
+Android needs them too: Chrome's **Install app** has a Google server fetch the manifest and icons to build a real installed app, and when it gets your login page instead, Chrome quietly adds a plain home-screen shortcut. A shortcut opens with your wallpaper's colors around it rather than Sonneck's, and it isn't listed at `chrome://webapks`. Chrome only installs real apps from HTTPS addresses, so over plain HTTP you'll always get the shortcut.
+
 ### Public domain badge
 A piece's badge is one of five states: **In Public Domain** or **Copyleft** (set explicitly by you), or **Likely Public Domain**, **Possibly Public Domain** or **In Copyright** (computed automatically). The computed states use a per-region formula, reviewed against IMSLP's [Copyright Made Simple](https://imslp.org/wiki/IMSLP:Copyright_Made_Simple) and [Public domain](https://imslp.org/wiki/Public_domain) pages. `COPYRIGHT_REGION` (above) picks which region's rule applies to your whole library — the U.S. rule is based on the copyright year alone; the EU/UK/Canada rules are based on the composer's death year (falling back to an approximation from the copyright year if no death year is on record).
 
