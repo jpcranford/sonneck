@@ -3729,6 +3729,20 @@ export function SheetViewerMockup() {
   // The marks on this page. A custom setlist entry has none.
   const pageMarks = custom || activeId === null ? [] : marksFor(pageKey)
 
+  // With Reduce Motion a slide is instant, so the pages fade in quickly
+  // instead, still showing the turn without moving. Only on a turn.
+  const firstShown = shown[0]
+  const lastFirstShown = useRef(firstShown)
+  useLayoutEffect(() => {
+    if (lastFirstShown.current === firstShown) return
+    lastFirstShown.current = firstShown
+    if (!sliding || !reducedMotion) return
+    document
+      .querySelectorAll<HTMLElement>('[data-slide-strip]')
+      .forEach((strip) =>
+        strip.animate([{ opacity: 0.35 }, { opacity: 1 }], { duration: 160, easing: 'ease-out' }),
+      )
+  }, [firstShown, sliding, reducedMotion])
   // Where each page on screen goes, in the score area's own pixels.
   const layout = (() => {
     const W = stageSize.width
@@ -4445,6 +4459,7 @@ export function SheetViewerMockup() {
               // placed like a book (first on the right, last on the left).
               // Sliding, every nearby page sits on one strip that slides.
               <div
+                data-slide-strip
                 className={`absolute inset-0 ${sliding ? 'transition-transform duration-200 ease-out motion-reduce:transition-none' : ''}`}
                 style={{ transform: layout.shift }}
               >

@@ -237,6 +237,8 @@ const SLIDE_CLASS = 'transition-transform duration-200 ease-out motion-reduce:tr
 // A page joining the preload window as a slide starts waits this long, so
 // its drawing never competes with the slide.
 const SLIDE_SETTLE_MS = 250
+// With Reduce Motion, the quick fade that stands in for a slide.
+const SLIDE_FADE_MS = 160
 const SEPARATOR_WIDTH = 9
 const ANNOTATE_LABELED_WIDTH = 126
 const CLOCK_WIDTH_GUESS = 129
@@ -1876,6 +1878,23 @@ function SheetViewer({
     sliding && cells
       ? `translate${cells.across ? 'X' : 'Y'}(${-(shown[0] - 1) * cells.step}px)`
       : undefined
+  // With Reduce Motion a slide is instant (motion-reduce on the strip), so
+  // the pages fade in quickly instead, still showing the turn without
+  // moving (an opacity change, which the slide's own reason to skip
+  // doesn't cover). Not on the first showing, only on a turn.
+  const firstShown = shown[0]
+  const lastFirstShown = useRef(firstShown)
+  useLayoutEffect(() => {
+    if (lastFirstShown.current === firstShown) return
+    lastFirstShown.current = firstShown
+    if (!sliding || !reducedMotion) return
+    document.querySelectorAll<HTMLElement>('[data-slide-strip]').forEach((strip) =>
+      strip.animate([{ opacity: 0.35 }, { opacity: 1 }], {
+        duration: SLIDE_FADE_MS,
+        easing: 'ease-out',
+      }),
+    )
+  }, [firstShown, sliding, reducedMotion])
   // Annotate marks the page on screen you touch, which stays the marked
   // one until you touch another or turn it away.
   const [focusPage, setFocusPage] = useState(1)
@@ -4422,6 +4441,7 @@ function SheetViewer({
     if (!turnDebug.has('nomarks') && cells)
       marksLayer = (
         <div
+          data-slide-strip
           className={`absolute inset-0 ${sliding ? SLIDE_CLASS : ''}`}
           style={{ transform: stripShift }}
         >
@@ -4457,6 +4477,7 @@ function SheetViewer({
           })}
         {cells && (
           <div
+            data-slide-strip
             className={`absolute inset-0 ${sliding ? SLIDE_CLASS : ''}`}
             style={{ transform: stripShift }}
           >
