@@ -82,6 +82,14 @@ func (s *Server) handleUpdateUserSettings(w http.ResponseWriter, r *http.Request
 		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "clockMode must be one of clock, stopwatch")
 		return
 	}
+	if !slices.Contains(repo.LayoutPages, req.SheetViewerPages) {
+		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "sheetViewerPages must be auto or one")
+		return
+	}
+	if !slices.Contains(repo.LayoutTurns, req.SheetViewerTurn) {
+		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "sheetViewerTurn must be spread or slide")
+		return
+	}
 	if !slices.Contains(repo.MetronomeShows, req.MetronomeShow) {
 		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "metronomeShow must be one of beat, tempo, icon")
 		return

@@ -386,6 +386,9 @@ export function UserSettingsMockup() {
   const [tipsReset, setTipsReset] = useState(false)
   const [ghostMarks, setGhostMarks] = useState(true)
   const [notesBarDefault, setNotesBarDefault] = useState(false)
+  // The Sheet Viewer Display panel's page layout defaults.
+  const [layoutPages, setLayoutPages] = useState('auto')
+  const [layoutTurn, setLayoutTurn] = useState('spread')
   // The double-turn guard, in ms (real page: user_settings.sheet_viewer_turn_guard_ms).
   const [turnGuardMs, setTurnGuardMs] = useState(500)
   const [darkModeScores, setDarkModeScores] = useState(false)
@@ -580,6 +583,38 @@ export function UserSettingsMockup() {
                   { value: '500', label: '½ second (default)' },
                   { value: '750', label: '¾ second' },
                   { value: '1000', label: '1 second' },
+                ]}
+              />
+            }
+          />
+          <SettingsRow
+            label="Pages on screen"
+            help="On a screen big enough for more than one page, show as many as fit, or one at a time. A piece set its own way in the Sheet Viewer's Display panel keeps it."
+            control={
+              <SingleSelect
+                ariaLabel="Pages on screen"
+                size="sm"
+                value={layoutPages}
+                onChange={setLayoutPages}
+                options={[
+                  { value: 'auto', label: 'As many as fit (default)' },
+                  { value: 'one', label: 'One' },
+                ]}
+              />
+            }
+          />
+          <SettingsRow
+            label="Turn pages"
+            help="With more than one page showing, turn a whole spread at a time, or slide along one page at a time."
+            control={
+              <SingleSelect
+                ariaLabel="Turn pages"
+                size="sm"
+                value={layoutTurn}
+                onChange={setLayoutTurn}
+                options={[
+                  { value: 'spread', label: 'By spread (default)' },
+                  { value: 'slide', label: 'Slide' },
                 ]}
               />
             }

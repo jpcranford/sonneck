@@ -114,6 +114,14 @@ export interface PracticeSettings {
   // The metronome's tempo, beat levels and clicks per beat; null until
   // changed on this piece, when it starts from the piece's own BPM and beats.
   metronome: MetronomeSettings | null
+  // Display's page layout on screens big enough for more than one page:
+  // Pages and Turn, null to follow User Settings' defaults; Page 1 alone;
+  // and each page kept in one spread with the next (4 keeps 4 and 5
+  // together), ascending. The last two only matter when turning by spread.
+  pages: 'auto' | 'one' | null
+  turn: 'spread' | 'slide' | null
+  firstAlone: boolean
+  links: number[]
 }
 
 export const DEFAULT_PRACTICE_SETTINGS: PracticeSettings = {
@@ -125,6 +133,10 @@ export const DEFAULT_PRACTICE_SETTINGS: PracticeSettings = {
   notesBarShown: null,
   hiddenColors: 0,
   metronome: null,
+  pages: null,
+  turn: null,
+  firstAlone: false,
+  links: [],
 }
 
 export function getPracticeSettings(id: number): Promise<PracticeSettings> {

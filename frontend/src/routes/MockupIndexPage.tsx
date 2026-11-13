@@ -164,9 +164,10 @@ const SECTIONS: { title: string; mockups: Mockup[] }[] = [
       {
         to: '/mockup/sheet-viewer',
         name: 'Sheet Viewer',
-        note: 'The full-screen practice and performance mode on real pages from a piece you pick: toolbar, tap zones and keys, clock, metronome, Info, Practice Notes, photo filters, the Practice List and Annotate. The Mockup panel sets where it opened from, the theme, a pretend keyboard and a page-turn timer.',
+        note: 'The full-screen practice and performance mode on pages from a piece you pick: toolbar, tap zones and keys, clock, metronome, Info, Practice Notes, Display (two or more pages on bigger screens), the Practice List and Annotate. The Mockup panel sets where it opened from, the theme and a page-turn timer.',
         testing: [
           'The metronome (A5): sound and timing on the iPad, tap tempo, Shift+M, the swinging icon, Toolbar shows, and subdivisions with their dots.',
+          'More pages in the real viewer on the iPad: spreads, sliding, links, Display, V, and the User Settings defaults.',
           'Turn speed in real practice on the iPad: report any slow turns, so the temporary turn-timing code can come out.',
           "In Chrome's full screen, Esc closes a panel, then arms Exit; F leaves full screen.",
           'Practice Notes: tap your notes to edit them; a link inside them still opens.',

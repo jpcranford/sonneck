@@ -29,6 +29,10 @@ export interface UserSettings {
   // What the Sheet Viewer metronome's toolbar button shows beside its icon:
   // the beat playing, the tempo, or the icon alone.
   metronomeShow: MetronomeShow
+  // User Settings › Sheet Viewer: Display's Pages and Turn for a piece
+  // that hasn't set its own.
+  sheetViewerPages: 'auto' | 'one'
+  sheetViewerTurn: 'spread' | 'slide'
 }
 
 export type MetronomeShow = 'beat' | 'tempo' | 'icon'

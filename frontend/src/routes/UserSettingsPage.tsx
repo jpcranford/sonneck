@@ -667,6 +667,41 @@ export function UserSettingsPage() {
                 />
               }
             />
+            {/* Display's page layout defaults; a piece set its own way keeps it. */}
+            <SettingsRow
+              label="Pages on screen"
+              help="On a screen big enough for more than one page, show as many as fit, or one at a time. A piece set its own way in the Sheet Viewer's Display panel keeps it."
+              control={
+                <SingleSelect
+                  ariaLabel="Pages on screen"
+                  size="sm"
+                  value={settings?.sheetViewerPages ?? 'auto'}
+                  onChange={(next) => patchSettings({ sheetViewerPages: next as 'auto' | 'one' })}
+                  options={[
+                    { value: 'auto', label: 'As many as fit (default)' },
+                    { value: 'one', label: 'One' },
+                  ]}
+                />
+              }
+            />
+            <SettingsRow
+              label="Turn pages"
+              help="With more than one page showing, turn a whole spread at a time, or slide along one page at a time."
+              control={
+                <SingleSelect
+                  ariaLabel="Turn pages"
+                  size="sm"
+                  value={settings?.sheetViewerTurn ?? 'spread'}
+                  onChange={(next) =>
+                    patchSettings({ sheetViewerTurn: next as 'spread' | 'slide' })
+                  }
+                  options={[
+                    { value: 'spread', label: 'By spread (default)' },
+                    { value: 'slide', label: 'Slide' },
+                  ]}
+                />
+              }
+            />
             {/* The notes banner's default; a piece's own Info switch
                 overrides it for that piece. */}
             <SettingsRow

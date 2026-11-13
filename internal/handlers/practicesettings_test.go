@@ -72,7 +72,7 @@ func TestPracticeSettings(t *testing.T) {
 	}
 
 	shown := true
-	want := repo.PracticeSettings{Brightness: 120, Contrast: 80, Grayscale: true, EdgeMargin: true, NotesBarShown: &shown}
+	want := repo.PracticeSettings{Brightness: 120, Contrast: 80, Grayscale: true, EdgeMargin: true, NotesBarShown: &shown, Links: []int{}}
 	if rec := doJSON(t, h, http.MethodPut, url, want); rec.Code != http.StatusOK {
 		t.Fatalf("PUT: status %d, body %s", rec.Code, rec.Body.String())
 	}
@@ -181,5 +181,57 @@ func TestPracticeSettings_Metronome(t *testing.T) {
 		if rec := doJSON(t, h, http.MethodPut, url, body); rec.Code != http.StatusBadRequest {
 			t.Errorf("PUT metronome %+v: status %d, want 400", bad, rec.Code)
 		}
+	}
+}
+
+// The page layout (migration 00038): Pages and Turn follow the user until
+// set, links come back sorted with no repeats, a link must name a page
+// before the last, and a row holding only a layout choice is kept.
+func TestPracticeSettings_Layout(t *testing.T) {
+	h, conn := newTestServerWithDB(t)
+	pieceID := uploadTestPiece(t, h)
+	url := apiPiecesURL(pieceID) + "/practice-settings"
+	if _, err := conn.Exec(`UPDATE pieces SET page_count = 8 WHERE id = ?`, pieceID); err != nil {
+		t.Fatal(err)
+	}
+
+	var got repo.PracticeSettings
+	decodeData(t, doJSON(t, h, http.MethodGet, url, nil), &got)
+	if got.Pages != nil || got.Turn != nil || got.FirstAlone || len(got.Links) != 0 || got.Links == nil {
+		t.Fatalf("unsaved layout = %+v, want nothing set and an empty links list", got)
+	}
+
+	slide := "slide"
+	body := map[string]any{"brightness": 100, "contrast": 100, "turn": slide, "firstAlone": true, "links": []int{7, 4, 4}}
+	if rec := doJSON(t, h, http.MethodPut, url, body); rec.Code != http.StatusOK {
+		t.Fatalf("PUT: status %d, body %s", rec.Code, rec.Body.String())
+	}
+	got = repo.PracticeSettings{}
+	decodeData(t, doJSON(t, h, http.MethodGet, url, nil), &got)
+	if got.Turn == nil || *got.Turn != "slide" || got.Pages != nil || !got.FirstAlone || !reflect.DeepEqual(got.Links, []int{4, 7}) {
+		t.Errorf("after saving, got %+v", got)
+	}
+
+	for _, bad := range []map[string]any{
+		{"brightness": 100, "contrast": 100, "pages": "two"},
+		{"brightness": 100, "contrast": 100, "turn": "flip"},
+		{"brightness": 100, "contrast": 100, "links": []int{8}},
+		{"brightness": 100, "contrast": 100, "links": []int{0}},
+	} {
+		if rec := doJSON(t, h, http.MethodPut, url, bad); rec.Code != http.StatusBadRequest {
+			t.Errorf("PUT %v: status %d, want 400", bad, rec.Code)
+		}
+	}
+
+	one := map[string]any{"brightness": 100, "contrast": 100, "pages": "one"}
+	if rec := doJSON(t, h, http.MethodPut, url, one); rec.Code != http.StatusOK {
+		t.Fatalf("PUT pages only: status %d", rec.Code)
+	}
+	var rows int
+	if err := conn.QueryRow(`SELECT COUNT(*) FROM piece_practice_settings`).Scan(&rows); err != nil {
+		t.Fatal(err)
+	}
+	if rows != 1 {
+		t.Errorf("rows with only Pages set = %d, want 1", rows)
 	}
 }

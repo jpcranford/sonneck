@@ -2,13 +2,14 @@ import {
   Fragment,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   useSyncExternalStore,
   type CSSProperties,
   type ReactNode,
 } from 'react'
-import { createPortal } from 'react-dom'
+import { createPortal, flushSync } from 'react-dom'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -44,7 +45,7 @@ import {
   IconHeart,
   IconHeartFilled,
   IconPencil,
-  IconPhotoCog,
+  IconLink,
   IconPlayerPause,
   IconPlayerPlay,
   IconPlaylist,
@@ -59,6 +60,7 @@ import {
   IconEyeOff,
   IconStack2,
 } from '@tabler/icons-react'
+import type { Piece } from '../api/types'
 import { getPiece, getPiecePageUrl, getPieceThumbnailUrl, searchPieces } from '../api/pieces'
 import { listPracticeStatuses } from '../api/lookups'
 import { Checkbox } from '../components/Checkbox'
@@ -77,7 +79,14 @@ import { ShortcutHelp } from '../components/ShortcutHelp'
 import { isAnyModalOpen } from '../components/Modal'
 import { canFullscreen, toggleFullscreen } from '../lib/fullscreen'
 import { useMockupTitle } from '../lib/useMockupTitle'
-import { resetTips, takeTip } from '../lib/sheetViewerTips'
+import { takeTip } from '../lib/sheetViewerTips'
+import {
+  fitPages,
+  groupSpreads,
+  pagesShown,
+  SPREAD_GAP,
+  turnTarget,
+} from '../lib/sheetViewerSpreads'
 import {
   applyChange,
   eraserTouches,
@@ -308,7 +317,7 @@ const INFO_WIDTH = 380
 // width (two 48pt buttons around the page count), the divider before
 // Annotate with its margins, the labeled Annotate button, and the clock
 // button's usual width until it's measured.
-const CYCLERS_WIDTH = 159
+const CYCLERS_WIDTH = 173
 const SEPARATOR_WIDTH = 9
 const ANNOTATE_LABELED_WIDTH = 126
 const CLOCK_WIDTH_GUESS = 129
@@ -358,12 +367,23 @@ const METRONOME_SHOW: [MetronomeShow, string][] = [
 ]
 
 // Photo controls (Phase 5): discrete steps, never live-dragged values.
+// The Display panel's settings, per piece: the page layout (more pages on
+// bigger screens, https://claude.ai/artifact/J9T8zCieMcc82cRqRJXKFD) and
+// the photo filters.
 interface Photo {
   brightness: number
   contrast: number
   grayscale: boolean
   invert: boolean
   margin: boolean
+  // As many pages as fit (lib/sheetViewerSpreads.ts' fitPages), or one.
+  pages: 'auto' | 'one'
+  // By spread, or sliding one page at a time.
+  turn: 'spread' | 'slide'
+  // Page 1 alone, and each page linked to the next (a link on 4 keeps 4
+  // and 5 together); both only when turning by spread.
+  firstAlone: boolean
+  links: number[]
 }
 const PHOTO_DEFAULT: Photo = {
   brightness: 100,
@@ -371,7 +391,18 @@ const PHOTO_DEFAULT: Photo = {
   grayscale: false,
   invert: false,
   margin: false,
+  pages: 'auto',
+  turn: 'spread',
+  firstAlone: false,
+  links: [],
 }
+// The Mockup panel's pieces (see picks): Just a Closer Walk with Thee
+// (engraved, upright Letter, 3 pp.), Toccata in F Major (an upright scan,
+// 8 pp.), Allegro (a landscape A4 scan, 7 pp.), Andante con moto (landscape
+// Letter, 4 pp.), Merry-Go-Round of Life (upright A4, 5 pp., 80 BPM in 3),
+// How Many More Times (26 pp.), Benedictus (6 pp., 60 BPM in 6) and Waltz
+// in E♭ (one page).
+const MOCKUP_PICKS = [159, 29, 157, 144, 10, 61, 3, 129]
 const PHOTO_STEP = 10
 const PHOTO_MIN = 50
 const PHOTO_MAX = 150
@@ -1037,7 +1068,18 @@ export function SheetViewerMockup() {
     queryKey: ['pieces', 'sheet-viewer-mockup'],
     queryFn: () => searchPieces({ sort: 'dateAdded', dir: 'desc', limit: 60 }),
   })
-  const activeId = pieceId ?? recent.find((p) => p.pageCount > 1)?.id ?? recent[0]?.id ?? null
+  // The Mockup panel's pieces: eight from the dev library spanning its
+  // formats (engraved and scanned, upright and landscape, Letter and A4,
+  // one page to twenty-six), or the newest eight in another library.
+  const { data: picked = [] } = useQuery({
+    queryKey: ['pieces', 'sheet-viewer-mockup-picks'],
+    queryFn: async () =>
+      (await Promise.all(MOCKUP_PICKS.map((id) => getPiece(id).catch(() => null)))).filter(
+        (p): p is Piece => p !== null,
+      ),
+  })
+  const picks = picked.length ? picked : recent.slice(0, 8)
+  const activeId = pieceId ?? picks[0]?.id ?? recent.find((p) => p.pageCount > 1)?.id ?? null
   const { data: piece } = useQuery({
     queryKey: ['piece', activeId],
     queryFn: () => getPiece(activeId as number),
@@ -1076,19 +1118,18 @@ export function SheetViewerMockup() {
     sessionKind === 'list' ? practiceList : sessionKind === 'setlist' ? setlistQueue : []
   const currentKey: QueueKey | null = customKey ?? activeId
   const queueIndex = currentKey === null ? -1 : queueIds.indexOf(currentKey)
-  const byId = new Map(recent.map((p) => [p.id, p]))
+  const byId = new Map([...recent, ...picked].map((p) => [p.id, p]))
   // Practiced today: true marked, false explicitly unmarked (not re-marked
   // automatically that day). Clears at midnight in the real thing.
   const [practiced, setPracticed] = useState<Record<number, boolean>>({})
-  const [fastMinute, setFastMinute] = useState(false)
-  // User Settings' "Track practice in the Sheet Viewer" (on by default).
-  const [trackingOn, setTrackingOn] = useState(true)
-  // User Settings' "Show hidden colors faintly" (on by default): off, a
-  // hidden color's marks don't show at all.
-  const [ghostsOn, setGhostsOn] = useState(true)
-  // User Settings' "Show practice notes as banner" (off by default): the
-  // banner for a piece whose own switch hasn't been set.
-  const [barDefault, setBarDefault] = useState(false)
+  // User Settings' Sheet Viewer switches at their defaults (the Mockup
+  // panel's toggles for them came out once they were settled): practice
+  // tracking on, after the real 30 seconds; hidden colors shown faintly;
+  // the notes banner off for a piece whose own switch hasn't been set.
+  const fastMinute = false
+  const trackingOn = true
+  const ghostsOn = true
+  const barDefault = false
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   // The floating card that follows the pointer while dragging (Edit
   // Program's own pattern): where the pointer is, and where it grabbed the
@@ -1127,9 +1168,9 @@ export function SheetViewerMockup() {
   const [textEdit, setTextEdit] = useState<TextEdit | null>(null)
   const [lift, setLift] = useState(0)
   const [textDrag, setTextDrag] = useState<{ id: string; dx: number; dy: number } | null>(null)
-  // Mockup panel: pretend an on-screen keyboard covers the bottom 40%, for
-  // trying the lift without an iPad.
-  const [fakeKeyboard, setFakeKeyboard] = useState(false)
+  // An on-screen keyboard is only real on a device (the Mockup panel's
+  // pretend one came out once the text box's lift was settled).
+  const fakeKeyboard = false
   const [history, setHistory] = useState<{ done: MarkChange[]; undone: MarkChange[] }>({
     done: [],
     undone: [],
@@ -1244,6 +1285,46 @@ export function SheetViewerMockup() {
     setPhotoByPiece({ ...photoByPiece, [activeId]: { ...photo, ...change } })
   }
 
+  // More pages on bigger screens: as many as pass fitPages' two rules in
+  // the score area, unless Display's Pages is One; grouped into spreads
+  // (links, page 1 alone) or slid a page at a time. `page` is the first
+  // page on screen.
+  const [stageEl, setStageEl] = useState<HTMLDivElement | null>(null)
+  const [stageSize, setStageSize] = useState({ width: 0, height: 0 })
+  useEffect(() => {
+    if (!stageEl) return
+    const observer = new ResizeObserver(() => {
+      const r = stageEl.getBoundingClientRect()
+      setStageSize({ width: Math.round(r.width), height: Math.round(r.height) })
+    })
+    observer.observe(stageEl)
+    return () => observer.disconnect()
+  }, [stageEl])
+  const fit = fitPages(stageSize, pageAspect, custom ? 1 : pageCount)
+  const perScreen = custom || photo.pages === 'one' ? 1 : fit.count
+  const sliding = photo.turn === 'slide' && perScreen > 1
+  const spreads = groupSpreads(pageCount, perScreen, photo.firstAlone, new Set(photo.links))
+  const shown = pagesShown(page, pageCount, perScreen, sliding, spreads)
+  // Annotate marks the page on screen you touch, which stays the one marked
+  // (the focused page) until you touch another or turn it away.
+  const [focusPage, setFocusPage] = useState(1)
+  const markPage = shown.includes(focusPage) ? focusPage : shown[0]
+  // Display's Turn and Keep pages together grey out while nothing turns.
+  const layoutIdle =
+    perScreen >= pageCount
+      ? 'The whole piece fits on screen, so nothing turns.'
+      : perScreen === 1
+        ? photo.pages === 'one'
+          ? 'Showing one page at a time.'
+          : 'This screen fits one page at a time.'
+        : null
+  // Display's Keep pages together page, in place of the panel's own.
+  const [displaySub, setDisplaySub] = useState(false)
+  function openDisplay(open: boolean) {
+    setDisplaySub(false)
+    setMenu(open ? 'photo' : null)
+  }
+
   // The metronome (option A5 of https://claude.ai/artifact/FqYsh6YjuaqHNeFBzmuqZD).
   const metro = (activeId !== null && metroByPiece[activeId]) || seedMetronome(piece ?? {})
   const metroPlaying = metroFor !== null && metroFor === activeId && !customKey
@@ -1332,6 +1413,8 @@ export function SheetViewerMockup() {
   const hintTimer = useRef<number | undefined>(undefined)
   const undoTimer = useRef<number | undefined>(undefined)
   const pageBoxRef = useRef<HTMLDivElement>(null)
+  // Every page box on screen, by page number; pageBoxRef is the marked one.
+  const pageBoxes = useRef(new Map<number, HTMLDivElement>())
   useEffect(
     () => () => {
       window.clearTimeout(closeTimer.current)
@@ -1360,8 +1443,8 @@ export function SheetViewerMockup() {
       return
     }
     last.current = { dir, at: t }
-    const next = Math.max(1, Math.min(pageCount, page + dir))
-    if (next === page) {
+    const next = turnTarget(page, dir, pageCount, perScreen, sliding, spreads)
+    if (next === null) {
       // In a queue (the Practice List or a setlist), turning past a piece's
       // end goes on to the next piece; back from its start, to the previous
       // piece's last page.
@@ -1549,10 +1632,10 @@ export function SheetViewerMockup() {
   // Neighbors load ahead so a turn shows the next page at once.
   useEffect(() => {
     if (activeId === null) return
-    for (const p of [page - 1, page + 1]) {
+    for (const p of [shown[0] - 1, shown[shown.length - 1] + 1]) {
       if (p >= 1 && p <= pageCount) new Image().src = getPieceThumbnailUrl(activeId, p)
     }
-  }, [activeId, page, pageCount])
+  }, [activeId, shown, pageCount])
 
   function pressClose() {
     window.clearTimeout(closeTimer.current)
@@ -1790,6 +1873,25 @@ export function SheetViewerMockup() {
       down.current = null
       return
     }
+    // In Annotate, a touch on another page on screen makes it the marked
+    // one, then is handled again by the handler that page's render made.
+    if (mode === 'annotate' && !custom) {
+      const hit = shown.find((n) => {
+        const r = pageBoxes.current.get(n)?.getBoundingClientRect()
+        return (
+          r &&
+          event.clientX >= r.left &&
+          event.clientX <= r.right &&
+          event.clientY >= r.top &&
+          event.clientY <= r.bottom
+        )
+      })
+      if (hit !== undefined && hit !== markPage) {
+        flushSync(() => setFocusPage(hit))
+        stagePointerDownRef.current(event)
+        return
+      }
+    }
     // Pen, highlighter or eraser picked: the pointer marks the page, zoomed
     // in or not (two fingers still pinch and pan).
     if (markTool()) {
@@ -1806,6 +1908,10 @@ export function SheetViewerMockup() {
     else if (event.button === 0)
       down.current = { x: event.clientX, y: event.clientY, t: performance.now() }
   }
+  const stagePointerDownRef = useRef(onStagePointerDown)
+  useLayoutEffect(() => {
+    stagePointerDownRef.current = onStagePointerDown
+  })
   function onStagePointerUp(event: React.PointerEvent<HTMLDivElement>) {
     if (finishMark(event)) return
     fingers.current.delete(event.pointerId)
@@ -1835,7 +1941,7 @@ export function SheetViewerMockup() {
   // (lib/sheetViewerMarks.ts) with an Apple Pencil's real pressure, or
   // pressure simulated from speed for a finger or mouse. Every point is a
   // share of the page, so marks keep their place at any size.
-  const pageKey = `${activeId}:${page}`
+  const pageKey = `${activeId}:${markPage}`
   const marksFor = (key: string) => marksByPage[key] ?? seedMarks(Number(key.split(':')[1]))
   // Info's Download PDF + Annotations: how many of the piece's marks it
   // would carry, and how many it leaves out for being in a hidden color.
@@ -2181,12 +2287,12 @@ export function SheetViewerMockup() {
     // A pill names what's undone or redone, so a press always shows; one
     // elsewhere says where, since the view turns there first.
     const [changePiece, changePage] = change.key.split(':').map(Number)
-    const where =
-      change.key === pageKey && !custom
-        ? ''
-        : changePiece === activeId && !custom
-          ? `, page ${changePage}`
-          : `, ${byId.get(changePiece)?.title ?? 'another piece'}`
+    const onScreen = !custom && changePiece === activeId && shown.includes(changePage)
+    const where = onScreen
+      ? ''
+      : changePiece === activeId && !custom
+        ? `, page ${changePage}`
+        : `, ${byId.get(changePiece)?.title ?? 'another piece'}`
     flash(`${direction === 'undo' ? 'Undo' : 'Redo'}: ${describeChange(change)}${where}`)
     const apply = () => {
       setMarksByPage((prev) => ({
@@ -2199,7 +2305,8 @@ export function SheetViewerMockup() {
           : { done: [...h.done, change], undone: h.undone.slice(0, -1) },
       )
     }
-    if (change.key === pageKey && !custom) {
+    if (onScreen) {
+      setFocusPage(changePage)
       apply()
       return
     }
@@ -2445,11 +2552,11 @@ export function SheetViewerMockup() {
   const photoButton = (
     <div ref={photoAnchorRef} className="relative">
       <HitButton
-        label="Photo filters"
-        onClick={() => setMenu(menu === 'photo' ? null : 'photo')}
+        label="Display"
+        onClick={() => openDisplay(menu !== 'photo')}
         faceClassName={menu === 'photo' || photoChanged ? 'bg-accent-soft text-accent' : ''}
       >
-        <IconPhotoCog size={22} />
+        <IconAdjustmentsHorizontal size={22} />
       </HitButton>
     </div>
   )
@@ -2461,6 +2568,9 @@ export function SheetViewerMockup() {
     checked: boolean,
     onChange: (v: boolean) => void,
     disabled?: boolean,
+    // Lined up with the text of icon rows, or flush with the panel's own
+    // text where no row above has an icon.
+    indent = true,
   ) {
     return (
       <div
@@ -2476,7 +2586,7 @@ export function SheetViewerMockup() {
           onChange={onChange}
           label={label}
           disabled={disabled}
-          className="h-10 w-full rounded-[10px] pr-3 pl-[42px] hover:bg-(--sv-hover)"
+          className={`h-10 w-full rounded-[10px] pr-3 hover:bg-(--sv-hover) ${indent ? 'pl-[42px]' : 'pl-3'}`}
         />
       </div>
     )
@@ -2513,6 +2623,191 @@ export function SheetViewerMockup() {
   }
   // Under the photo button; under ⋯ on a tablet; on a phone, centered under
   // the whole two-row toolbar so it never covers the page cyclers.
+  // A label over a sunken switch, like the metronome's "Toolbar shows:".
+  function segmented<T extends string>(
+    label: string,
+    items: [T, string][],
+    value: T,
+    onChange: (v: T) => void,
+  ) {
+    return (
+      <div className="flex flex-col gap-1 px-1 pb-1">
+        <span className="text-sm text-ink-soft">{label}</span>
+        <div
+          role="radiogroup"
+          aria-label={label}
+          className="flex rounded-[13px] bg-paper-sunken px-1"
+        >
+          {items.map(([v, text]) => (
+            <button
+              key={v}
+              type="button"
+              data-hit
+              role="radio"
+              aria-checked={value === v}
+              onClick={() => onChange(v)}
+              className={`${HIT} min-w-0 flex-1 group/b`}
+            >
+              <span
+                className={`${FACE} w-full min-w-0 px-1 ${
+                  value === v ? 'bg-paper-raised font-medium shadow-sm' : 'text-ink-soft'
+                }`}
+              >
+                {text}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+    )
+  }
+  const linkSummary =
+    [
+      photo.firstAlone && !photo.links.includes(1) ? 'page 1 alone' : '',
+      photo.links.length
+        ? `${photo.links.length} ${photo.links.length === 1 ? 'link' : 'links'}`
+        : '',
+    ]
+      .filter(Boolean)
+      .join(', ') || 'None'
+  // Display's page layout (design A of
+  // https://claude.ai/artifact/J9T8zCieMcc82cRqRJXKFD), over the filters.
+  // Turn and Keep pages together grey out, with the reason, while nothing
+  // would turn.
+  const displayLayout = (
+    <>
+      {segmented(
+        'Pages:',
+        [
+          ['auto', 'As many as fit'],
+          ['one', 'One'],
+        ],
+        photo.pages,
+        (pages) => setPhoto({ pages }),
+      )}
+      <div
+        className={layoutIdle ? 'pointer-events-none opacity-45' : ''}
+        aria-disabled={!!layoutIdle}
+      >
+        {segmented(
+          'Turn:',
+          [
+            ['spread', 'By spread'],
+            ['slide', 'Slide'],
+          ],
+          photo.turn,
+          (turn) => setPhoto({ turn }),
+        )}
+        <MenuRow
+          icon={<IconLink size={20} />}
+          label="Keep pages together"
+          trailing={linkSummary}
+          onClick={() => setDisplaySub(true)}
+        />
+      </div>
+      {layoutIdle && <p className="px-3 pb-1 text-xs text-ink-muted italic">{layoutIdle}</p>}
+      <div className="-mx-3 my-1 border-t border-border" />
+    </>
+  )
+  // Keep pages together (editor A1 of the same artifact): every page in
+  // rows of three, each followed by its link to the next; tapping a link
+  // keeps that pair in one spread. Applies when turning by spread.
+  const pairsPerScreen = Math.max(2, perScreen)
+  const preview = groupSpreads(pageCount, pairsPerScreen, photo.firstAlone, new Set(photo.links))
+  const keepTogether = activeId !== null && (
+    <>
+      <div className="-mt-2 -ml-2 flex items-center">
+        <HitButton label="Back to Display" onClick={() => setDisplaySub(false)}>
+          <IconArrowLeft size={20} />
+        </HitButton>
+        <h2 className="font-display text-base font-medium">Keep pages together</h2>
+      </div>
+      {switchRow(
+        'Page 1 alone',
+        photo.firstAlone && !photo.links.includes(1),
+        (firstAlone) => setPhoto({ firstAlone }),
+        photo.links.includes(1),
+        false,
+      )}
+      {photo.links.includes(1) && (
+        <p className="-mt-1 px-3 pb-1 text-xs text-ink-muted">
+          Pages 1 and 2 are linked, so they always show together.
+        </p>
+      )}
+      {/* Padded one link's width on the left too, which centers the pages
+          themselves. */}
+      <div className="grid grid-cols-[repeat(3,auto)] justify-center gap-y-2.5 py-2 pl-[34px]">
+        {Array.from({ length: pageCount }, (_, i) => i + 1).map((n) => {
+          const linked = photo.links.includes(n)
+          return (
+            <span key={n} className="flex items-center">
+              <span className="relative block h-[61px] w-[46px] overflow-hidden rounded-[3px] bg-white ring-1 ring-border">
+                <img
+                  src={getPieceThumbnailUrl(activeId, n)}
+                  alt=""
+                  draggable={false}
+                  className="score-page block h-full w-full object-cover"
+                />
+                <span className="absolute inset-x-0 bottom-0 bg-white/85 text-center text-[11px] font-medium text-scrim time-figures">
+                  {n}
+                </span>
+              </span>
+              {n < pageCount ? (
+                <button
+                  type="button"
+                  aria-pressed={linked}
+                  aria-label={`Keep pages ${n} and ${n + 1} together`}
+                  onClick={() =>
+                    setPhoto({
+                      links: linked
+                        ? photo.links.filter((l) => l !== n)
+                        : [...photo.links, n].sort((a, b) => a - b),
+                    })
+                  }
+                  className="group/b relative flex h-12 w-[34px] cursor-pointer items-center justify-center"
+                >
+                  {/* Its tap area reaches over the pages beside it, which
+                      aren't controls. */}
+                  <span
+                    data-hit
+                    aria-hidden="true"
+                    className="absolute top-0 left-1/2 size-12 -translate-x-1/2"
+                  />
+                  <span
+                    className={`flex size-7 items-center justify-center rounded-full ${
+                      linked
+                        ? 'bg-accent-fill text-white'
+                        : 'border-[1.5px] border-dashed border-ink-fainter text-ink-fainter group-hover/b:border-accent group-hover/b:text-accent'
+                    }`}
+                  >
+                    <IconLink size={16} />
+                  </span>
+                </button>
+              ) : (
+                <span className="w-[34px]" />
+              )}
+            </span>
+          )
+        })}
+      </div>
+      <p className="px-3 pt-1.5 pb-2 text-sm text-ink-soft">
+        Spreads:{' '}
+        {preview.map((g, i) => (
+          <Fragment key={g[0]}>
+            {i > 0 && ' \u2022 '}
+            <span className="font-medium text-ink time-figures">
+              {g.length > 1 ? `${g[0]}\u2013${g.at(-1)}` : g[0]}
+            </span>
+          </Fragment>
+        ))}
+      </p>
+      {sliding && (
+        <p className="px-3 pb-2 text-xs text-ink-muted italic">
+          Sliding ignores these; they apply when turning by spread.
+        </p>
+      )}
+    </>
+  )
   const photoStyle = useAnchoredPanel(
     photoInline ? photoAnchorRef : tier === 'phone' ? phoneRow2Ref : moreAnchorRef,
     menu === 'photo',
@@ -2525,39 +2820,46 @@ export function SheetViewerMockup() {
     createPortal(
       <div
         style={{ ...photoStyle, width: PHOTO_WIDTH }}
-        className="z-50 rounded-xl border border-border bg-paper px-3 pt-3 pb-2 shadow-xl [--sv-hover:var(--color-paper-hover)]"
+        className="z-50 max-h-[calc(100dvh-5.5rem)] overflow-y-auto overscroll-contain rounded-xl border border-border bg-paper px-3 pt-3 pb-2 shadow-xl [--sv-hover:var(--color-paper-hover)]"
       >
-        {stepperRow('Brightness', IconSun, photo.brightness, (v) => setPhoto({ brightness: v }))}
-        {stepperRow('Contrast', IconContrast, photo.contrast, (v) => setPhoto({ contrast: v }))}
-        {switchRow('Grayscale', photo.grayscale, (v) => setPhoto({ grayscale: v }))}
-        {switchRow(
-          'Invert',
-          invertHidden ? true : photo.invert,
-          (v) => setPhoto({ invert: v }),
-          invertHidden,
-        )}
-        {invertHidden && (
-          <p className="-mt-1 pr-3 pb-1 pl-[42px] text-xs text-ink-muted">
-            Dark Mode Scores already inverts the pages.
-          </p>
-        )}
-        {/* Phase 5 (option A): the edge margin lives here, not on its own
+        {displaySub ? keepTogether : displayLayout}
+        {!displaySub && (
+          <>
+            {stepperRow('Brightness', IconSun, photo.brightness, (v) =>
+              setPhoto({ brightness: v }),
+            )}
+            {stepperRow('Contrast', IconContrast, photo.contrast, (v) => setPhoto({ contrast: v }))}
+            {switchRow('Grayscale', photo.grayscale, (v) => setPhoto({ grayscale: v }))}
+            {switchRow(
+              'Invert',
+              invertHidden ? true : photo.invert,
+              (v) => setPhoto({ invert: v }),
+              invertHidden,
+            )}
+            {invertHidden && (
+              <p className="-mt-1 pr-3 pb-1 pl-[42px] text-xs text-ink-muted">
+                Dark Mode Scores already inverts the pages.
+              </p>
+            )}
+            {/* Phase 5 (option A): the edge margin lives here, not on its own
             toolbar button. */}
-        {switchRow('Edge margin', photo.margin, (v) => setPhoto({ margin: v }))}
-        <button
-          type="button"
-          data-hit
-          disabled={!photoChanged}
-          onClick={() =>
-            setPhoto({ brightness: 100, contrast: 100, grayscale: false, invert: false })
-          }
-          className={`${HIT} w-full group/b disabled:opacity-50`}
-        >
-          <span className={`${FACE} ${FACE_HOVER} w-full justify-start gap-2.5 px-3`}>
-            <IconRefresh size={20} />
-            Reset filters
-          </span>
-        </button>
+            {switchRow('Edge margin', photo.margin, (v) => setPhoto({ margin: v }))}
+            <button
+              type="button"
+              data-hit
+              disabled={!photoChanged}
+              onClick={() =>
+                setPhoto({ brightness: 100, contrast: 100, grayscale: false, invert: false })
+              }
+              className={`${HIT} w-full group/b disabled:opacity-50`}
+            >
+              <span className={`${FACE} ${FACE_HOVER} w-full justify-start gap-2.5 px-3`}>
+                <IconRefresh size={20} />
+                Reset filters
+              </span>
+            </button>
+          </>
+        )}
       </div>,
       document.body,
     )
@@ -3381,17 +3683,19 @@ export function SheetViewerMockup() {
       <HitButton
         label="Previous page"
         onClick={() => turn(-1)}
-        disabled={page <= 1 && !(queueIndex > 0)}
+        disabled={shown[0] <= 1 && !(queueIndex > 0)}
       >
         <IconChevronLeft size={22} />
       </HitButton>
-      <span className="w-[4.5em] text-center text-sm text-ink-soft tabular-nums">
-        {page} / {pageCount}
+      <span className="w-[5.5em] text-center text-sm text-ink-soft tabular-nums">
+        {shown.length > 1 ? `${shown[0]}\u2013${shown.at(-1)}` : shown[0]} / {pageCount}
       </span>
       <HitButton
         label="Next page"
         onClick={() => turn(1)}
-        disabled={page >= pageCount && !(queueIndex >= 0 && queueIndex < queueIds.length - 1)}
+        disabled={
+          shown.at(-1)! >= pageCount && !(queueIndex >= 0 && queueIndex < queueIds.length - 1)
+        }
       >
         <IconChevronRight size={22} />
       </HitButton>
@@ -3422,6 +3726,164 @@ export function SheetViewerMockup() {
     invertHidden || photo.invert ? 'dark' : theme === 'dark' ? 'dim' : 'light'
   // The marks on this page. A custom setlist entry has none.
   const pageMarks = custom || activeId === null ? [] : marksFor(pageKey)
+
+  // Where each page on screen goes, in the score area's own pixels.
+  const layout = (() => {
+    const W = stageSize.width
+    const H = stageSize.height
+    const across = fit.axis === 'row'
+    const pageW = Math.round(perScreen > 1 ? fit.width : fit.alone)
+    const pageH = Math.round(pageW / pageAspect)
+    const step = (across ? pageW : pageH) + SPREAD_GAP
+    const span = perScreen * (across ? pageW : pageH) + (perScreen - 1) * SPREAD_GAP
+    const lead = Math.round(((across ? W : H) - span) / 2)
+    const cross = Math.round(((across ? H : W) - (across ? pageH : pageW)) / 2)
+    const at = (slot: number): CSSProperties => ({
+      width: pageW,
+      height: pageH,
+      left: across ? lead + slot * step : cross,
+      top: across ? cross : lead + slot * step,
+    })
+    if (sliding) {
+      const near: number[] = []
+      for (let n = Math.max(1, shown[0] - 2); n <= Math.min(pageCount, shown.at(-1)! + 2); n++)
+        near.push(n)
+      const by = -(shown[0] - 1) * step
+      return {
+        pages: near.map((n) => [n, at(n - 1)] as const),
+        shift: across ? `translateX(${by}px)` : `translateY(${by}px)`,
+      }
+    }
+    // A short spread sits like a book: first in the piece on the right,
+    // anywhere else on the left.
+    const offset =
+      shown.length < perScreen && shown[0] === spreads[0]?.[0] ? perScreen - shown.length : 0
+    return { pages: shown.map((n, i) => [n, at(i + offset)] as const), shift: undefined }
+  })()
+
+  // One page on screen at `place`, with its marks over it in the same box;
+  // the marked page (see markPage) also takes the live stroke, the text box
+  // and the keyboard's lift.
+  function renderPage(n: number, place: CSSProperties) {
+    if (activeId === null) return null
+    const key = `${activeId}:${n}`
+    const focused = n === markPage
+    const marks = focused ? pageMarks : marksFor(key)
+    return (
+      <div
+        key={n}
+        ref={(el) => {
+          if (el) pageBoxes.current.set(n, el)
+          else pageBoxes.current.delete(n)
+          if (focused) pageBoxRef.current = el
+        }}
+        className="absolute transition-transform duration-200 ease-out motion-reduce:transition-none"
+        style={{
+          ...place,
+          transform: focused && lift ? `translateY(${-lift}px)` : undefined,
+        }}
+      >
+        <img
+          key={`${activeId}-${n}`}
+          src={getPieceThumbnailUrl(activeId, n)}
+          alt={`Page ${n}`}
+          draggable={false}
+          onLoad={(event) => {
+            const img = event.currentTarget
+            if (img.naturalWidth) setPageAspect(img.naturalWidth / img.naturalHeight)
+            pageShown(key)
+          }}
+          onError={() => pageShown(key)}
+          style={{ filter: scoreFilter }}
+          className="block h-full w-full"
+        />
+        <PageMarks
+          marks={marks}
+          live={focused ? live : null}
+          eraserAt={focused ? eraserAt : null}
+          eraserRadius={eraserRadius}
+          hidden={hiddenLayers}
+          ghosts={ghostsOn}
+          aspect={pageAspect}
+          look={pageLook}
+          // In Annotate with no tool, a faint mark brings its layer
+          // back (I); with a tool picked, a touch there marks.
+          onShowLayer={annotating && !tool ? unhideFromGhost : undefined}
+        />
+        <TextMarks
+          marks={marks.filter(
+            (m): m is TextMark => m.kind === 'text' && m.id !== textEdit?.original?.id,
+          )}
+          hidden={hiddenLayers}
+          ghosts={ghostsOn}
+          look={pageLook}
+          drag={textDrag}
+          onDrag={
+            focused && annotating && tool === 'text'
+              ? {
+                  start: () => finishText(),
+                  move: (id, dx, dy) => setTextDrag({ id, dx, dy }),
+                  end: (m, dx, dy, moved) => {
+                    setTextDrag(null)
+                    if (moved) moveText(m, dx, dy)
+                    else editText(m)
+                  },
+                  cancel: () => setTextDrag(null),
+                }
+              : undefined
+          }
+        >
+          {/* The text box: mounted while the Text tool is picked (see
+            openTextBox), shown while one is open. It sizes itself
+            to what's typed (the grid's ::after copy), up to the
+            page's right edge, where it wraps. */}
+          {focused && annotating && tool === 'text' && (
+            <div
+              ref={textWrapRef}
+              data-value={textEdit?.text ?? ''}
+              onPointerDown={(event) => event.stopPropagation()}
+              onPointerUp={(event) => event.stopPropagation()}
+              className="pointer-events-auto absolute inline-grid w-max font-hand after:invisible after:whitespace-pre-wrap after:content-[attr(data-value)_'_'] after:[grid-area:1/1] after:[overflow-wrap:anywhere]"
+              style={{
+                ...(textEdit ? textBoxStyle(textEdit) : { left: 0, top: 0 }),
+                visibility: textEdit ? 'visible' : 'hidden',
+                lineHeight: TEXT_LINE_HEIGHT,
+                outline: `1.5px dashed ${textEdit ? layerColor(textEdit.layer, pageLook) : 'transparent'}`,
+                outlineOffset: '0.25em',
+                borderRadius: '0.15em',
+              }}
+            >
+              <textarea
+                ref={textFieldRef}
+                rows={1}
+                value={textEdit?.text ?? ''}
+                onChange={(event) =>
+                  textEdit && setTextEdit({ ...textEdit, text: event.target.value })
+                }
+                onKeyDown={(event) => {
+                  // Esc or Shift+Enter (as in the app's edit windows)
+                  // finishes the box, keeping it, like a tap
+                  // elsewhere; plain Enter starts a new line.
+                  if (event.key === 'Escape' || (event.key === 'Enter' && event.shiftKey)) {
+                    event.preventDefault()
+                    finishText()
+                  }
+                }}
+                aria-label="Text mark"
+                spellCheck={false}
+                autoCapitalize="off"
+                className="min-w-[0.6em] resize-none overflow-hidden border-0 bg-transparent p-0 whitespace-pre-wrap outline-none [font:inherit] [grid-area:1/1] [overflow-wrap:anywhere]"
+                style={{
+                  color: textEdit ? layerColor(textEdit.layer, pageLook) : undefined,
+                  fontStyle: textEdit?.italic ? 'italic' : undefined,
+                }}
+              />
+            </div>
+          )}
+        </TextMarks>
+      </div>
+    )
+  }
   function toggleLayer(layer: number) {
     setHiddenLayers(
       hiddenLayers.includes(layer)
@@ -3691,8 +4153,20 @@ export function SheetViewerMockup() {
           },
           {
             key: 'p',
-            label: 'Photo filters',
-            run: () => setMenu(menu === 'photo' ? null : 'photo'),
+            label: 'Display',
+            run: () => openDisplay(menu !== 'photo'),
+          },
+          // V switches Pages between One and As many as fit ("view", as
+          // the library pages' grid/list key).
+          {
+            key: 'v',
+            label: photo.pages === 'one' ? 'Show as many pages as fit' : 'Show one page',
+            run: () => {
+              const pages = photo.pages === 'one' ? 'auto' : 'one'
+              setPhoto({ pages })
+              flash(pages === 'one' ? 'One page' : 'As many pages as fit')
+            },
+            enabled: !customKey && activeId !== null,
           },
           { key: 'i', label: 'Info', run: () => openInfo(!infoOpen), enabled: !customKey },
           {
@@ -3912,10 +4386,10 @@ export function SheetViewerMockup() {
                 )}
                 {!photoInline && (
                   <MenuRow
-                    icon={<IconPhotoCog size={20} />}
-                    label="Photo filters"
-                    trailing={photoChanged ? 'On' : undefined}
-                    onClick={() => setMenu('photo')}
+                    icon={<IconAdjustmentsHorizontal size={20} />}
+                    label="Display"
+                    trailing={photoChanged ? 'Filters on' : undefined}
+                    onClick={() => openDisplay(true)}
                   />
                 )}
                 {!infoInline && !custom && (
@@ -3951,6 +4425,7 @@ export function SheetViewerMockup() {
             Firefox and Safari don't recompute those when only its padding
             changes — the page stayed put until the window was resized. */}
         <div
+          ref={setStageEl}
           style={{ containerType: 'size' }}
           className={`absolute flex items-center justify-center ${
             photo.margin
@@ -3964,115 +4439,14 @@ export function SheetViewerMockup() {
             </div>
           ) : (
             activeId !== null && (
-              // The page, fitted to the stage at its own shape, with the
-              // marks over it in the same box.
+              // The pages on screen: side by side or stacked, a lone page
+              // placed like a book (first on the right, last on the left).
+              // Sliding, every nearby page sits on one strip that slides.
               <div
-                ref={pageBoxRef}
-                className="relative transition-transform duration-200 ease-out motion-reduce:transition-none"
-                style={{
-                  width: `min(100cqw, calc(100cqh * ${pageAspect}))`,
-                  aspectRatio: pageAspect,
-                  transform: lift ? `translateY(${-lift}px)` : undefined,
-                }}
+                className={`absolute inset-0 ${sliding ? 'transition-transform duration-200 ease-out motion-reduce:transition-none' : ''}`}
+                style={{ transform: layout.shift }}
               >
-                <img
-                  key={`${activeId}-${page}`}
-                  src={getPieceThumbnailUrl(activeId, page)}
-                  alt={`Page ${page}`}
-                  draggable={false}
-                  onLoad={(event) => {
-                    const img = event.currentTarget
-                    if (img.naturalWidth) setPageAspect(img.naturalWidth / img.naturalHeight)
-                    pageShown(pageKey)
-                  }}
-                  onError={() => pageShown(pageKey)}
-                  style={{ filter: scoreFilter }}
-                  className="block h-full w-full"
-                />
-                <PageMarks
-                  marks={pageMarks}
-                  live={live}
-                  eraserAt={eraserAt}
-                  eraserRadius={eraserRadius}
-                  hidden={hiddenLayers}
-                  ghosts={ghostsOn}
-                  aspect={pageAspect}
-                  look={pageLook}
-                  // In Annotate with no tool, a faint mark brings its layer
-                  // back (I); with a tool picked, a touch there marks.
-                  onShowLayer={annotating && !tool ? unhideFromGhost : undefined}
-                />
-                <TextMarks
-                  marks={pageMarks.filter(
-                    (m): m is TextMark => m.kind === 'text' && m.id !== textEdit?.original?.id,
-                  )}
-                  hidden={hiddenLayers}
-                  ghosts={ghostsOn}
-                  look={pageLook}
-                  drag={textDrag}
-                  onDrag={
-                    annotating && tool === 'text'
-                      ? {
-                          start: () => finishText(),
-                          move: (id, dx, dy) => setTextDrag({ id, dx, dy }),
-                          end: (m, dx, dy, moved) => {
-                            setTextDrag(null)
-                            if (moved) moveText(m, dx, dy)
-                            else editText(m)
-                          },
-                          cancel: () => setTextDrag(null),
-                        }
-                      : undefined
-                  }
-                >
-                  {/* The text box: mounted while the Text tool is picked (see
-                      openTextBox), shown while one is open. It sizes itself
-                      to what's typed (the grid's ::after copy), up to the
-                      page's right edge, where it wraps. */}
-                  {annotating && tool === 'text' && (
-                    <div
-                      ref={textWrapRef}
-                      data-value={textEdit?.text ?? ''}
-                      onPointerDown={(event) => event.stopPropagation()}
-                      onPointerUp={(event) => event.stopPropagation()}
-                      className="pointer-events-auto absolute inline-grid w-max font-hand after:invisible after:whitespace-pre-wrap after:content-[attr(data-value)_'_'] after:[grid-area:1/1] after:[overflow-wrap:anywhere]"
-                      style={{
-                        ...(textEdit ? textBoxStyle(textEdit) : { left: 0, top: 0 }),
-                        visibility: textEdit ? 'visible' : 'hidden',
-                        lineHeight: TEXT_LINE_HEIGHT,
-                        outline: `1.5px dashed ${textEdit ? layerColor(textEdit.layer, pageLook) : 'transparent'}`,
-                        outlineOffset: '0.25em',
-                        borderRadius: '0.15em',
-                      }}
-                    >
-                      <textarea
-                        ref={textFieldRef}
-                        rows={1}
-                        value={textEdit?.text ?? ''}
-                        onChange={(event) =>
-                          textEdit && setTextEdit({ ...textEdit, text: event.target.value })
-                        }
-                        onKeyDown={(event) => {
-                          // Esc or Shift+Enter (as in the app's edit windows)
-                          // finishes the box, keeping it, like a tap
-                          // elsewhere; plain Enter starts a new line.
-                          if (event.key === 'Escape' || (event.key === 'Enter' && event.shiftKey)) {
-                            event.preventDefault()
-                            finishText()
-                          }
-                        }}
-                        aria-label="Text mark"
-                        spellCheck={false}
-                        autoCapitalize="off"
-                        className="min-w-[0.6em] resize-none overflow-hidden border-0 bg-transparent p-0 whitespace-pre-wrap outline-none [font:inherit] [grid-area:1/1] [overflow-wrap:anywhere]"
-                        style={{
-                          color: textEdit ? layerColor(textEdit.layer, pageLook) : undefined,
-                          fontStyle: textEdit?.italic ? 'italic' : undefined,
-                        }}
-                      />
-                    </div>
-                  )}
-                </TextMarks>
+                {layout.pages.map(([n, place]) => renderPage(n, place))}
               </div>
             )
           )}
@@ -4133,12 +4507,12 @@ export function SheetViewerMockup() {
             Mockup
           </button>
           {panelOpen && (
-            <div className="flex w-72 flex-col gap-3 rounded-xl border border-border bg-paper-raised p-3 text-sm shadow-xl">
+            <div className="flex max-h-[calc(100dvh-5rem)] w-72 flex-col gap-3 overflow-y-auto overscroll-contain rounded-xl border border-border bg-paper-raised p-3 text-sm shadow-xl">
               <p className="font-display font-medium">Mockup</p>
               <SingleSelect
                 size="sm"
                 label="Piece"
-                options={recent.map((p) => ({
+                options={picks.map((p) => ({
                   value: String(p.id),
                   label: `${p.title} (${p.pageCount} pp.)`,
                 }))}
@@ -4169,39 +4543,6 @@ export function SheetViewerMockup() {
                   onChange={(e) => setListOverride(e.target.checked ? [] : null)}
                 />
                 Empty Practice List
-              </label>
-              <button
-                type="button"
-                onClick={() => {
-                  resetTips()
-                  flash('Tips will show again')
-                }}
-                className="cursor-pointer self-start rounded-lg border border-border bg-paper-raised px-3 py-1.5 font-medium hover:border-accent"
-              >
-                Show tips again
-              </button>
-              <label className="flex items-center gap-2">
-                <Checkbox checked={fastMinute} onChange={(e) => setFastMinute(e.target.checked)} />
-                “Practiced” after 5 s, not 30
-              </label>
-              <label className="flex items-center gap-2">
-                <Checkbox checked={trackingOn} onChange={(e) => setTrackingOn(e.target.checked)} />
-                Practice tracking (User Settings)
-              </label>
-              <label className="flex items-center gap-2">
-                <Checkbox checked={ghostsOn} onChange={(e) => setGhostsOn(e.target.checked)} />
-                Hidden colors shown faintly (User Settings)
-              </label>
-              <label className="flex items-center gap-2">
-                <Checkbox
-                  checked={fakeKeyboard}
-                  onChange={(e) => setFakeKeyboard(e.target.checked)}
-                />
-                Pretend a keyboard covers the bottom 40% while typing
-              </label>
-              <label className="flex items-center gap-2">
-                <Checkbox checked={barDefault} onChange={(e) => setBarDefault(e.target.checked)} />
-                Notes banner by default (User Settings)
               </label>
               <label className="flex items-center gap-2">
                 <Checkbox checked={hasNotes} onChange={(e) => setHasNotes(e.target.checked)} />
@@ -4236,12 +4577,13 @@ export function SheetViewerMockup() {
               <div className="flex flex-col gap-2 border-t border-border pt-3">
                 <p className="font-medium">Turn test</p>
                 <p className="text-xs text-ink-soft">
-                  Times page turns on this piece&rsquo;s real pages, the old build&rsquo;s way and
-                  the current one. About half a minute; don&rsquo;t touch the screen.
+                  Times page turns on this piece&rsquo;s real pages: one at a time as today, two
+                  turning by spread, and two sliding, with the canvas memory each needs. About half
+                  a minute; don&rsquo;t touch the screen.
                 </p>
                 <button
                   type="button"
-                  disabled={turnTestRunning || !piece || piece.pageCount < 3}
+                  disabled={turnTestRunning || !piece || piece.pageCount < 4}
                   onClick={async () => {
                     if (!piece) return
                     setTurnTestRunning(true)
@@ -4256,8 +4598,8 @@ export function SheetViewerMockup() {
                 >
                   {turnTestRunning
                     ? 'Running…'
-                    : piece && piece.pageCount < 3
-                      ? 'Pick a piece of 3+ pages'
+                    : piece && piece.pageCount < 4
+                      ? 'Pick a piece of 4+ pages'
                       : 'Run turn test'}
                 </button>
                 {turnTestResult && (

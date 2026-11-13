@@ -4,6 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"slices"
+	"strconv"
+	"strings"
 )
 
 // UserPieceData is the per-(user,piece) data — favorite/notes/practice
@@ -144,6 +147,54 @@ type PracticeSettings struct {
 	// metronome on this piece; the viewer then starts it from the piece's
 	// own BPM and beats per measure.
 	Metronome *MetronomeSettings `json:"metronome"`
+	// The page layout on screens big enough for more than one page
+	// (migration 00038): Pages is one of LayoutPages and Turn one of
+	// LayoutTurns, each nil to follow the user's default
+	// (UserSettings.SheetViewerPages/Turn). FirstAlone shows page 1 by
+	// itself; Links lists each page kept in one spread with the next (4
+	// keeps 4 and 5 together), ascending, never nil. Both only matter when
+	// turning by spread.
+	Pages      *string `json:"pages"`
+	Turn       *string `json:"turn"`
+	FirstAlone bool    `json:"firstAlone"`
+	Links      []int   `json:"links"`
+}
+
+// The Display panel's choices: as many pages as fit or one, and turning by
+// spread or sliding a page at a time.
+var (
+	LayoutPages = []string{"auto", "one"}
+	LayoutTurns = []string{"spread", "slide"}
+)
+
+// isDefault reports whether s is what a piece the user never adjusted has.
+func (s PracticeSettings) isDefault() bool {
+	return s.Brightness == 100 && s.Contrast == 100 && !s.Grayscale && !s.Invert && !s.EdgeMargin &&
+		s.NotesBarShown == nil && s.HiddenColors == 0 && s.Metronome == nil &&
+		s.Pages == nil && s.Turn == nil && !s.FirstAlone && len(s.Links) == 0
+}
+
+// The links as stored ("4,9"), and back.
+func joinLinks(links []int) any {
+	if len(links) == 0 {
+		return nil
+	}
+	parts := make([]string, len(links))
+	for i, l := range links {
+		parts[i] = strconv.Itoa(l)
+	}
+	return strings.Join(parts, ",")
+}
+
+func splitLinks(stored string) []int {
+	links := []int{}
+	for _, part := range strings.Split(stored, ",") {
+		if n, err := strconv.Atoi(part); err == nil {
+			links = append(links, n)
+		}
+	}
+	slices.Sort(links)
+	return links
 }
 
 // MetronomeSettings is the Sheet Viewer metronome's setting for one piece.
@@ -207,22 +258,26 @@ const (
 )
 
 // DefaultPracticeSettings is what a piece the user has never adjusted uses.
-var DefaultPracticeSettings = PracticeSettings{Brightness: 100, Contrast: 100}
+var DefaultPracticeSettings = PracticeSettings{Brightness: 100, Contrast: 100, Links: []int{}}
 
 // GetPracticeSettings loads userID's settings for pieceID, or the defaults
 // when there are none.
 func GetPracticeSettings(ctx context.Context, q Queryer, userID, pieceID int64) (PracticeSettings, error) {
 	s := DefaultPracticeSettings
 	var bpm, subdivision sql.NullInt64
-	var beats sql.NullString
+	var beats, links sql.NullString
 	err := q.QueryRowContext(ctx, `
 		SELECT brightness, contrast, grayscale, invert, edge_margin, notes_bar, hidden_colors,
-			metronome_bpm, metronome_beats, metronome_subdivision
+			metronome_bpm, metronome_beats, metronome_subdivision, pages, turn, first_alone, links
 		FROM piece_practice_settings WHERE user_id = ? AND piece_id = ?`, userID, pieceID,
 	).Scan(&s.Brightness, &s.Contrast, &s.Grayscale, &s.Invert, &s.EdgeMargin, &s.NotesBarShown, &s.HiddenColors,
-		&bpm, &beats, &subdivision)
+		&bpm, &beats, &subdivision, &s.Pages, &s.Turn, &s.FirstAlone, &links)
 	if errors.Is(err, sql.ErrNoRows) {
 		return DefaultPracticeSettings, nil
+	}
+	s.Links = []int{}
+	if links.Valid {
+		s.Links = splitLinks(links.String)
 	}
 	if bpm.Valid && beats.Valid && subdivision.Valid {
 		s.Metronome = &MetronomeSettings{
@@ -238,7 +293,7 @@ func GetPracticeSettings(ctx context.Context, q Queryer, userID, pieceID int64) 
 // (full-replace). Settings back at the defaults remove the row, so the
 // table only holds pieces someone actually adjusted.
 func SetPracticeSettings(ctx context.Context, q Queryer, userID, pieceID int64, s PracticeSettings) error {
-	if s == DefaultPracticeSettings {
+	if s.isDefault() {
 		_, err := q.ExecContext(ctx,
 			`DELETE FROM piece_practice_settings WHERE user_id = ? AND piece_id = ?`, userID, pieceID,
 		)
@@ -251,16 +306,18 @@ func SetPracticeSettings(ctx context.Context, q Queryer, userID, pieceID int64, 
 	_, err := q.ExecContext(ctx, `
 		INSERT INTO piece_practice_settings
 			(user_id, piece_id, brightness, contrast, grayscale, invert, edge_margin, notes_bar, hidden_colors,
-				metronome_bpm, metronome_beats, metronome_subdivision)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+				metronome_bpm, metronome_beats, metronome_subdivision, pages, turn, first_alone, links)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT (user_id, piece_id) DO UPDATE SET
 			brightness = excluded.brightness, contrast = excluded.contrast,
 			grayscale = excluded.grayscale, invert = excluded.invert,
 			edge_margin = excluded.edge_margin, notes_bar = excluded.notes_bar,
 			hidden_colors = excluded.hidden_colors, metronome_bpm = excluded.metronome_bpm,
-			metronome_beats = excluded.metronome_beats, metronome_subdivision = excluded.metronome_subdivision`,
+			metronome_beats = excluded.metronome_beats, metronome_subdivision = excluded.metronome_subdivision,
+			pages = excluded.pages, turn = excluded.turn, first_alone = excluded.first_alone,
+			links = excluded.links`,
 		userID, pieceID, s.Brightness, s.Contrast, s.Grayscale, s.Invert, s.EdgeMargin, s.NotesBarShown, s.HiddenColors,
-		bpm, beats, subdivision,
+		bpm, beats, subdivision, s.Pages, s.Turn, s.FirstAlone, joinLinks(s.Links),
 	)
 	return err
 }
@@ -410,6 +467,10 @@ type UserSettings struct {
 	// MetronomeShow (migration 00037): what the Sheet Viewer metronome's
 	// toolbar button shows beside its icon, one of MetronomeShows.
 	MetronomeShow string `json:"metronomeShow"`
+	// The Display panel's defaults for a piece whose own Pages or Turn
+	// isn't set (migration 00038): one of LayoutPages, one of LayoutTurns.
+	SheetViewerPages string `json:"sheetViewerPages"`
+	SheetViewerTurn  string `json:"sheetViewerTurn"`
 }
 
 // MetronomeShows are the metronome button's choices: the beat playing, the
@@ -430,11 +491,11 @@ func GetUserSettings(ctx context.Context, q Queryer, userID int64) (*UserSetting
 		SELECT show_books_in_sidebar, theme_preference, content_view_mode, dark_mode_scores,
 			sheet_viewer_turn_guard_ms, sheet_viewer_clock_shown, sheet_viewer_clock_mode,
 			sheet_viewer_clock_seconds, track_practice, sheet_viewer_notes_bar_default,
-			sheet_viewer_ghost_marks, sheet_viewer_metronome_show
+			sheet_viewer_ghost_marks, sheet_viewer_metronome_show, sheet_viewer_pages, sheet_viewer_turn
 		FROM user_settings WHERE user_id = ?`, userID,
 	).Scan(&s.ShowBooksInSidebar, &s.ThemePreference, &s.ContentViewMode, &s.DarkModeScores, &s.TurnGuardMs,
 		&s.ClockShown, &s.ClockMode, &s.ClockSeconds, &s.TrackPractice, &s.NotesBarDefault, &s.GhostMarks,
-		&s.MetronomeShow)
+		&s.MetronomeShow, &s.SheetViewerPages, &s.SheetViewerTurn)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -451,11 +512,12 @@ func UpdateUserSettings(ctx context.Context, q Queryer, userID int64, s UserSett
 		UPDATE user_settings SET show_books_in_sidebar = ?, theme_preference = ?, content_view_mode = ?,
 			dark_mode_scores = ?, sheet_viewer_turn_guard_ms = ?, sheet_viewer_clock_shown = ?,
 			sheet_viewer_clock_mode = ?, sheet_viewer_clock_seconds = ?, track_practice = ?,
-			sheet_viewer_notes_bar_default = ?, sheet_viewer_ghost_marks = ?, sheet_viewer_metronome_show = ?
+			sheet_viewer_notes_bar_default = ?, sheet_viewer_ghost_marks = ?, sheet_viewer_metronome_show = ?,
+			sheet_viewer_pages = ?, sheet_viewer_turn = ?
 		WHERE user_id = ?`,
 		s.ShowBooksInSidebar, s.ThemePreference, s.ContentViewMode, s.DarkModeScores, s.TurnGuardMs,
 		s.ClockShown, s.ClockMode, s.ClockSeconds, s.TrackPractice, s.NotesBarDefault, s.GhostMarks,
-		s.MetronomeShow, userID,
+		s.MetronomeShow, s.SheetViewerPages, s.SheetViewerTurn, userID,
 	)
 	return err
 }

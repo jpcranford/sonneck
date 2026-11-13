@@ -9,7 +9,7 @@ import {
   type CSSProperties,
   type ReactNode,
 } from 'react'
-import { createPortal } from 'react-dom'
+import { createPortal, flushSync } from 'react-dom'
 import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -42,7 +42,8 @@ import {
   IconMinus,
   IconNotebook,
   IconPencil,
-  IconPhotoCog,
+  IconAdjustmentsHorizontal,
+  IconLink,
   IconPlayerPause,
   IconPlayerPlay,
   IconPlayerPlayFilled,
@@ -81,6 +82,7 @@ import {
   getPiece,
   getPieceFileUrl,
   getPiecePageUrl,
+  getPieceThumbnailUrl,
   getPracticeSettings,
   preparePiecePages,
   savePracticeSettings,
@@ -102,6 +104,7 @@ import { MarkdownText } from '../components/MarkdownText'
 import { PracticeStatusKeyIcon } from '../components/PracticeStatusIcon'
 import { Toggle } from '../components/Toggle'
 import { useAnchoredPanel } from '../hooks/useAnchorRect'
+import { useThumbnailVersion } from '../hooks/useThumbnailVersion'
 import { useNoPageScroll } from '../hooks/useNoPageScroll'
 import { useToday } from '../hooks/useToday'
 import { stageTurn, type StagePoint } from '../lib/sheetViewerGestures'
@@ -146,6 +149,13 @@ import { sortPracticeStatuses } from '../lib/practiceStatusOrder'
 import { useDarkScoresSync, useThemeSync } from '../lib/theme'
 import { usePageTitle } from '../lib/usePageTitle'
 import { MarkdownHint } from '../components/MarkdownHint'
+import {
+  fitPages,
+  groupSpreads,
+  pagesShown,
+  SPREAD_GAP,
+  turnTarget,
+} from '../lib/sheetViewerSpreads'
 import { TimeText } from '../components/TimeText'
 import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion'
 import {
@@ -220,7 +230,13 @@ const METRONOME_SHOW: [MetronomeShow, string][] = [
 // button's usual width until it's measured, and the five tools that can
 // move into ⋯ (Practice Notes, Metronome, Theory reference, Photo filters,
 // Info).
-const CYCLERS_WIDTH = 159
+const CYCLERS_WIDTH = 173
+// Sliding, the strip of pages moves a page at a time (instant with Reduce
+// Motion).
+const SLIDE_CLASS = 'transition-transform duration-200 ease-out motion-reduce:transition-none'
+// A page joining the preload window as a slide starts waits this long, so
+// its drawing never competes with the slide.
+const SLIDE_SETTLE_MS = 250
 const SEPARATOR_WIDTH = 9
 const ANNOTATE_LABELED_WIDTH = 126
 const CLOCK_WIDTH_GUESS = 129
@@ -915,6 +931,50 @@ function MenuRow({
   )
 }
 
+// A label over a sunken switch, like the metronome's "Toolbar shows:".
+function Segmented<T extends string>({
+  label,
+  items,
+  value,
+  onChange,
+}: {
+  label: string
+  items: [T, string][]
+  value: T
+  onChange: (v: T) => void
+}) {
+  return (
+    <div className="flex flex-col gap-1 px-1 pb-1">
+      <span className="text-sm text-ink-soft">{label}</span>
+      <div
+        role="radiogroup"
+        aria-label={label}
+        className="flex rounded-[13px] bg-paper-sunken px-1"
+      >
+        {items.map(([v, text]) => (
+          <button
+            key={v}
+            type="button"
+            data-hit
+            role="radio"
+            aria-checked={value === v}
+            onClick={() => onChange(v)}
+            className={`${HIT} min-w-0 flex-1 group/b`}
+          >
+            <span
+              className={`${FACE} w-full min-w-0 px-1 ${
+                value === v ? 'bg-paper-raised font-medium shadow-sm' : 'text-ink-soft'
+              }`}
+            >
+              {text}
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // The Sheet Viewer's switch row (design D): label first, lined up with the
 // icon rows' text (12px padding + 20px icon + 10px gap), the 44×26 switch at
 // the right edge; the whole 48pt row flips it.
@@ -923,11 +983,15 @@ function SwitchRow({
   checked,
   onChange,
   disabled,
+  indent = true,
 }: {
   label: string
   checked: boolean
   onChange: (v: boolean) => void
   disabled?: boolean
+  // Lined up with icon rows' text, or flush with the panel's own text
+  // where no row above has an icon.
+  indent?: boolean
 }) {
   return (
     <div
@@ -943,7 +1007,7 @@ function SwitchRow({
         onChange={onChange}
         label={label}
         disabled={disabled}
-        className="h-10 w-full rounded-[10px] pr-3 pl-[42px] hover:bg-(--sv-hover)"
+        className={`h-10 w-full rounded-[10px] pr-3 hover:bg-(--sv-hover) ${indent ? 'pl-[42px]' : 'pl-3'}`}
       />
     </div>
   )
@@ -1725,15 +1789,119 @@ function SheetViewer({
   const photoChanged =
     photo.brightness !== 100 || photo.contrast !== 100 || photo.grayscale || photo.invert
 
+  // The score area's size, for drawing each page at screen size. Measured
+  // whole pixels, so a redraw only follows a real change (rotation, the edge
+  // margin).
+  const [stageBox, setStageBox] = useState<{ w: number; h: number } | null>(null)
+  function measureStage(el: HTMLDivElement | null) {
+    if (!el) return
+    const observer = new ResizeObserver(([entry]) => {
+      const w = Math.round(entry.contentRect.width)
+      const h = Math.round(entry.contentRect.height)
+      setStageBox((box) => (box && box.w === w && box.h === h ? box : { w, h }))
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }
+
+  // More pages on bigger screens (https://claude.ai/artifact/J9T8zCieMcc82cRqRJXKFD,
+  // lib/sheetViewerSpreads.ts): as many as fit by fitPages' two rules,
+  // unless Display's Pages is One; turned by spread (links, page 1 alone)
+  // or slid a page at a time. A piece's own Pages and Turn win over User
+  // Settings' defaults. `page` is the first page on screen.
+  const layoutPages = practice.pages ?? settings?.sheetViewerPages ?? 'auto'
+  const layoutTurn = practice.turn ?? settings?.sheetViewerTurn ?? 'spread'
+  // The piece's page shape, from its first drawing (they're drawn at the
+  // size it decides, so it can't wait for the page on screen).
+  const [fitAspect, setFitAspect] = useState(8.5 / 11)
+  const fit = fitPages(
+    { width: stageBox?.w ?? 0, height: stageBox?.h ?? 0 },
+    fitAspect,
+    custom ? 1 : pageCount,
+  )
+  const perScreen = custom || layoutPages === 'one' ? 1 : fit.count
+  const sliding = layoutTurn === 'slide' && perScreen > 1
+  const spreads = groupSpreads(pageCount, perScreen, practice.firstAlone, new Set(practice.links))
+  const shownFor = (first: number) => pagesShown(first, pageCount, perScreen, sliding, spreads)
+  const shown = shownFor(page)
+  function windowFor(first: number) {
+    const on = shownFor(first)
+    const pages: number[] = []
+    for (let p = on[0] - perScreen; p <= on[on.length - 1] + 2 * perScreen; p++)
+      if (p >= 1 && p <= pageCount) pages.push(p)
+    return pages
+  }
+  const pageUrl = (p: number) => getPiecePageUrl(pieceId ?? 0, p, pageVersion)
+  // Each page on screen sits in a cell of whole pixels, drawn at the cell's
+  // size and centered in it (ShownPage); one page's cell is the whole area.
+  const cells = (() => {
+    if (!stageBox) return null
+    const W = stageBox.w
+    const H = stageBox.h
+    if (perScreen === 1) return { width: W, height: H, step: 0, lead: 0, across: true }
+    const across = fit.axis === 'row'
+    const pageW = Math.floor(fit.width)
+    const pageH = Math.floor(pageW / fitAspect)
+    const width = across ? pageW : W
+    const height = across ? H : pageH
+    const step = (across ? width : height) + SPREAD_GAP
+    const span = perScreen * (across ? width : height) + (perScreen - 1) * SPREAD_GAP
+    return { width, height, step, lead: Math.floor(((across ? W : H) - span) / 2), across }
+  })()
+  const cellAt = (slot: number): CSSProperties | undefined =>
+    cells === null
+      ? undefined
+      : {
+          width: cells.width,
+          height: cells.height,
+          left: cells.across ? cells.lead + slot * cells.step : 0,
+          top: cells.across ? 0 : cells.lead + slot * cells.step,
+        }
+  // The pages drawn on screen and each one's slot: sliding, every page near
+  // the screen on one strip that moves; by spread, the spread's pages, a
+  // short one placed like a book (first in the piece on the right, last on
+  // the left).
+  const onScreen: [number, number][] = sliding
+    ? windowFor(page)
+        .filter((p) => p >= shown[0] - 1 && p <= shown[shown.length - 1] + 1)
+        .map((p) => [p, p - 1])
+    : shown.map((p, i) => [
+        p,
+        i +
+          (shown.length < perScreen && shown[0] === spreads[0]?.[0] ? perScreen - shown.length : 0),
+      ])
+  const stripShift =
+    sliding && cells
+      ? `translate${cells.across ? 'X' : 'Y'}(${-(shown[0] - 1) * cells.step}px)`
+      : undefined
+  // Annotate marks the page on screen you touch, which stays the marked
+  // one until you touch another or turn it away.
+  const [focusPage, setFocusPage] = useState(1)
+  const markPage = shown.includes(focusPage) ? focusPage : shown[0]
+  // Display's Turn and Keep pages together grey out while nothing turns.
+  const layoutIdle =
+    perScreen >= pageCount
+      ? 'The whole piece fits on screen, so nothing turns.'
+      : perScreen === 1
+        ? layoutPages === 'one'
+          ? 'Showing one page at a time.'
+          : 'This screen fits one page at a time.'
+        : null
+  // Display's Keep pages together page, in place of the panel's own.
+  const [displaySub, setDisplaySub] = useState(false)
+  function openDisplay(open: boolean) {
+    setDisplaySub(false)
+    setMenu(open ? 'photo' : null)
+  }
+  const thumbVersion = useThumbnailVersion()
+
   // Shows a page of this item (a turn, or an undo turning back).
   function showPage(next: number) {
     setPage(next)
     if (pieceId === null) return
     // Pages leaving the preload window unmount; drop their "ready" so one
     // that comes back shows only once it's decoded again.
-    const keep = new Set(
-      [next - 1, next, next + 1, next + 2].map((p) => getPiecePageUrl(pieceId, p, pageVersion)),
-    )
+    const keep = new Set(windowFor(next).map(pageUrl))
     setReady((r) => Object.fromEntries(Object.entries(r).filter(([url]) => keep.has(url))))
   }
 
@@ -1789,8 +1957,8 @@ function SheetViewer({
       exportHidden ? 'Downloading, hidden colors left out' : 'Downloading with your annotations',
     )
   }
-  const pageKey = `${pieceId}:${page}`
-  const pageMarks = loadedPages?.[page] ?? []
+  const pageKey = `${pieceId}:${markPage}`
+  const pageMarks = loadedPages?.[markPage] ?? []
   const marksFor = (key: string) => {
     const [pid, pg] = key.split(':').map(Number)
     return annot.pages[pid]?.[pg] ?? []
@@ -1844,8 +2012,8 @@ function SheetViewer({
   // with an Apple Pencil's real pressure, or pressure simulated from speed
   // for a finger or mouse. Every point is a share of the page.
   const pageBoxRef = useRef<HTMLDivElement>(null)
-  // The page showing's drawing, once it's ready: its shape is the page's.
-  const drawingNow = ready[getPiecePageUrl(pieceId ?? 0, page, pageVersion)]
+  // The marked page's drawing, once it's ready: its shape is the page's.
+  const drawingNow = ready[getPiecePageUrl(pieceId ?? 0, markPage, pageVersion)]
   const pageAspect = drawingNow
     ? Number(drawingNow.dataset.cssWidth) / Number(drawingNow.dataset.cssHeight)
     : 8.5 / 11
@@ -2208,12 +2376,14 @@ function SheetViewer({
     const where =
       pid !== pieceId
         ? `, ${elsewhere?.kind === 'piece' ? elsewhere.title : 'another piece'}`
-        : pg !== page
+        : !shown.includes(pg)
           ? `, page ${pg}`
           : ''
     const pillText = `${direction === 'undo' ? 'Undo' : 'Redo'}: ${describeChange(change)}${where}`
     flash(pillText)
-    if (pid === pieceId && pg === page) {
+    // A change on a page on screen applies there, without turning.
+    if (pid === pieceId && shown.includes(pg)) {
+      setFocusPage(pg)
       annot.apply(direction)
       return
     }
@@ -2271,8 +2441,8 @@ function SheetViewer({
       flash('Double-turn ignored')
       return
     }
-    const next = Math.max(1, Math.min(pageCount, page + dir))
-    if (next === page) {
+    const next = turnTarget(page, dir, pageCount, perScreen, sliding, spreads)
+    if (next === null) {
       // In a queue, turning past an item's end goes on to the next item;
       // back from its start, to the previous one's last page.
       const neighbor = session.index >= 0 ? session.items[session.index + dir] : undefined
@@ -2387,28 +2557,12 @@ function SheetViewer({
     return () => document.removeEventListener('keydown', onKey, true)
   }, [menuOpen])
 
-  // The score area's size, for drawing each page at screen size. Measured
-  // whole pixels, so a redraw only follows a real change (rotation, the edge
-  // margin).
-  const [stageBox, setStageBox] = useState<{ w: number; h: number } | null>(null)
-  function measureStage(el: HTMLDivElement | null) {
-    if (!el) return
-    const observer = new ResizeObserver(([entry]) => {
-      const w = Math.round(entry.contentRect.width)
-      const h = Math.round(entry.contentRect.height)
-      setStageBox((box) => (box && box.w === w && box.h === h ? box : { w, h }))
-    })
-    observer.observe(el)
-    return () => observer.disconnect()
-  }
-
-  // The preload window: the page showing, the two after it and the one
-  // before stay drawn, off screen, so a turn just copies the next one onto
+  // The preload window: the pages showing, one screen before them and two
+  // after stay drawn, off screen, so a turn just copies the next ones onto
   // the screen (ShownPage). Pages further away are let go (decoding is what
   // a turn would otherwise cost).
-  const windowPages = [page - 1, page, page + 1, page + 2].filter((p) => p >= 1 && p <= pageCount)
-  const pageUrl = (p: number) => getPiecePageUrl(pieceId ?? 0, p, pageVersion)
-  const currentUrl = pageUrl(page)
+  const windowPages = windowFor(page)
+  const currentUrl = pageUrl(shown[0])
   const currentReady = !!ready[currentUrl]
   const currentFailed = !!failed[currentUrl]
   const [slowUrl, setSlowUrl] = useState<string | null>(null)
@@ -2459,6 +2613,27 @@ function SheetViewer({
       down.current = null
       return
     }
+    // In Annotate, a touch on another page on screen makes it the marked
+    // one, then is handled again by the handler that page's render made.
+    if (annotating && shown.length > 1) {
+      const hit = Array.from(document.querySelectorAll<HTMLElement>('[data-marks-for]')).find(
+        (box) => {
+          const r = box.getBoundingClientRect()
+          return (
+            event.clientX >= r.left &&
+            event.clientX <= r.right &&
+            event.clientY >= r.top &&
+            event.clientY <= r.bottom
+          )
+        },
+      )
+      const hitPage = hit ? Number(hit.dataset.marksFor?.split(':')[1]) : null
+      if (hitPage !== null && hitPage !== markPage && shown.includes(hitPage)) {
+        flushSync(() => setFocusPage(hitPage))
+        stagePointerDownRef.current(event)
+        return
+      }
+    }
     // Pen, highlighter or eraser picked: the pointer marks the page, zoomed
     // in or not (two fingers still pinch and pan).
     if (markTool()) {
@@ -2475,6 +2650,10 @@ function SheetViewer({
     else if (event.button === 0)
       down.current = { x: event.clientX, y: event.clientY, t: event.timeStamp }
   }
+  const stagePointerDownRef = useRef(onStagePointerDown)
+  useLayoutEffect(() => {
+    stagePointerDownRef.current = onStagePointerDown
+  })
   function onStagePointerUp(event: React.PointerEvent<HTMLDivElement>) {
     if (finishMark(event)) return
     fingers.current.delete(event.pointerId)
@@ -2661,15 +2840,167 @@ function SheetViewer({
   const photoButton = (
     <div ref={photoAnchorRef} className="relative">
       <HitButton
-        label="Photo filters"
-        onClick={() => setMenu(menu === 'photo' ? null : 'photo')}
+        label="Display"
+        onClick={() => openDisplay(menu !== 'photo')}
         faceClassName={menu === 'photo' || photoChanged ? 'bg-accent-soft text-accent' : ''}
       >
-        <IconPhotoCog size={22} />
+        <IconAdjustmentsHorizontal size={22} />
       </HitButton>
     </div>
   )
 
+  // The Display panel (Photo filters, renamed): the page layout over the
+  // filters (design A of https://claude.ai/artifact/J9T8zCieMcc82cRqRJXKFD).
+  // Its Keep pages together page replaces the panel's own while open.
+  const linkSummary =
+    [
+      practice.firstAlone && !practice.links.includes(1) ? 'page 1 alone' : '',
+      practice.links.length
+        ? `${practice.links.length} ${practice.links.length === 1 ? 'link' : 'links'}`
+        : '',
+    ]
+      .filter(Boolean)
+      .join(', ') || 'None'
+  // Turn and Keep pages together grey out, with the reason, while nothing
+  // would turn.
+  const displayLayout = (
+    <>
+      <Segmented
+        label="Pages:"
+        items={[
+          ['auto', 'As many as fit'],
+          ['one', 'One'],
+        ]}
+        value={layoutPages}
+        onChange={(pages) => setPractice({ pages })}
+      />
+      <div
+        className={layoutIdle ? 'pointer-events-none opacity-45' : ''}
+        aria-disabled={!!layoutIdle}
+      >
+        <Segmented
+          label="Turn:"
+          items={[
+            ['spread', 'By spread'],
+            ['slide', 'Slide'],
+          ]}
+          value={layoutTurn}
+          onChange={(turn) => setPractice({ turn })}
+        />
+        <MenuRow
+          icon={<IconLink size={20} />}
+          label="Keep pages together"
+          trailing={linkSummary}
+          onClick={() => setDisplaySub(true)}
+        />
+      </div>
+      {layoutIdle && <p className="px-3 pb-1 text-xs text-ink-muted italic">{layoutIdle}</p>}
+      <div className="-mx-3 my-1 border-t border-border" />
+    </>
+  )
+  // Keep pages together (editor A1 of the same artifact): every page in
+  // rows of three, each followed by its link to the next; a link keeps that
+  // pair in one spread. Only when turning by spread.
+  const preview = groupSpreads(
+    pageCount,
+    Math.max(2, perScreen),
+    practice.firstAlone,
+    new Set(practice.links),
+  )
+  const keepTogether = pieceId !== null && (
+    <>
+      <div className="-mt-2 -ml-2 flex items-center">
+        <HitButton label="Back to Display" onClick={() => setDisplaySub(false)}>
+          <IconArrowLeft size={20} />
+        </HitButton>
+        <h2 className="font-display text-base font-medium">Keep pages together</h2>
+      </div>
+      <SwitchRow
+        label="Page 1 alone"
+        checked={practice.firstAlone && !practice.links.includes(1)}
+        onChange={(firstAlone) => setPractice({ firstAlone })}
+        disabled={practice.links.includes(1)}
+        indent={false}
+      />
+      {practice.links.includes(1) && (
+        <p className="-mt-1 px-3 pb-1 text-xs text-ink-muted">
+          Pages 1 and 2 are linked, so they always show together.
+        </p>
+      )}
+      {/* Padded one link's width on the left too, which centers the pages
+          themselves. */}
+      <div className="grid grid-cols-[repeat(3,auto)] justify-center gap-y-2.5 py-2 pl-[34px]">
+        {Array.from({ length: pageCount }, (_, i) => i + 1).map((n) => {
+          const linked = practice.links.includes(n)
+          return (
+            <span key={n} className="flex items-center">
+              <span className="relative block h-[61px] w-[46px] overflow-hidden rounded-[3px] bg-white ring-1 ring-border">
+                <img
+                  src={getPieceThumbnailUrl(pieceId, n, thumbVersion(piece?.fileHash))}
+                  alt=""
+                  draggable={false}
+                  className="score-page block h-full w-full object-cover"
+                />
+                <span className="absolute inset-x-0 bottom-0 bg-white/85 text-center text-[11px] font-medium text-scrim time-figures">
+                  {n}
+                </span>
+              </span>
+              {n < pageCount ? (
+                <button
+                  type="button"
+                  aria-pressed={linked}
+                  aria-label={`Keep pages ${n} and ${n + 1} together`}
+                  onClick={() =>
+                    setPractice({
+                      links: linked
+                        ? practice.links.filter((l) => l !== n)
+                        : [...practice.links, n].sort((a, b) => a - b),
+                    })
+                  }
+                  className="group/b relative flex h-12 w-[34px] cursor-pointer items-center justify-center"
+                >
+                  {/* Its tap area reaches over the pages beside it, which
+                      aren't controls. */}
+                  <span
+                    data-hit
+                    aria-hidden="true"
+                    className="absolute top-0 left-1/2 size-12 -translate-x-1/2"
+                  />
+                  <span
+                    className={`flex size-7 items-center justify-center rounded-full ${
+                      linked
+                        ? 'bg-accent-fill text-white'
+                        : 'border-[1.5px] border-dashed border-ink-fainter text-ink-fainter group-hover/b:border-accent group-hover/b:text-accent'
+                    }`}
+                  >
+                    <IconLink size={16} />
+                  </span>
+                </button>
+              ) : (
+                <span className="w-[34px]" />
+              )}
+            </span>
+          )
+        })}
+      </div>
+      <p className="px-3 pt-1.5 pb-2 text-sm text-ink-soft">
+        Spreads:{' '}
+        {preview.map((g, i) => (
+          <Fragment key={g[0]}>
+            {i > 0 && ' \u2022 '}
+            <span className="font-medium text-ink time-figures">
+              {g.length > 1 ? `${g[0]}\u2013${g[g.length - 1]}` : g[0]}
+            </span>
+          </Fragment>
+        ))}
+      </p>
+      {sliding && (
+        <p className="px-3 pb-2 text-xs text-ink-muted italic">
+          Sliding ignores these; they apply when turning by spread.
+        </p>
+      )}
+    </>
+  )
   // Under the photo button, or ⋯ when it's in there; on a phone, centered
   // under the whole two-row toolbar so it never covers the page cyclers.
   const photoStyle = useAnchoredPanel(
@@ -2684,55 +3015,60 @@ function SheetViewer({
     createPortal(
       <div
         style={{ ...photoStyle, width: PHOTO_WIDTH }}
-        className="z-50 rounded-xl border border-border bg-paper px-3 pt-3 pb-2 font-sans text-ink shadow-xl select-none [--sv-hover:var(--color-paper-hover)]"
+        className="z-50 max-h-[calc(100dvh-5.5rem)] overflow-y-auto overscroll-contain rounded-xl border border-border bg-paper px-3 pt-3 pb-2 font-sans text-ink shadow-xl select-none [--sv-hover:var(--color-paper-hover)]"
       >
-        <StepperRow
-          label="Brightness"
-          Icon={IconSun}
-          value={photo.brightness}
-          onChange={(v) => setPhoto({ brightness: v })}
-        />
-        <StepperRow
-          label="Contrast"
-          Icon={IconContrast}
-          value={photo.contrast}
-          onChange={(v) => setPhoto({ contrast: v })}
-        />
-        <SwitchRow
-          label="Grayscale"
-          checked={photo.grayscale}
-          onChange={(v) => setPhoto({ grayscale: v })}
-        />
-        <SwitchRow
-          label="Invert"
-          checked={invertLocked ? true : photo.invert}
-          onChange={(v) => setPhoto({ invert: v })}
-          disabled={invertLocked}
-        />
-        {invertLocked && (
-          <p className="-mt-1 pr-3 pb-1 pl-[42px] text-xs text-ink-muted">
-            Dark Mode Scores already inverts the pages.
-          </p>
+        {displaySub ? keepTogether : displayLayout}
+        {!displaySub && (
+          <>
+            <StepperRow
+              label="Brightness"
+              Icon={IconSun}
+              value={photo.brightness}
+              onChange={(v) => setPhoto({ brightness: v })}
+            />
+            <StepperRow
+              label="Contrast"
+              Icon={IconContrast}
+              value={photo.contrast}
+              onChange={(v) => setPhoto({ contrast: v })}
+            />
+            <SwitchRow
+              label="Grayscale"
+              checked={photo.grayscale}
+              onChange={(v) => setPhoto({ grayscale: v })}
+            />
+            <SwitchRow
+              label="Invert"
+              checked={invertLocked ? true : photo.invert}
+              onChange={(v) => setPhoto({ invert: v })}
+              disabled={invertLocked}
+            />
+            {invertLocked && (
+              <p className="-mt-1 pr-3 pb-1 pl-[42px] text-xs text-ink-muted">
+                Dark Mode Scores already inverts the pages.
+              </p>
+            )}
+            <SwitchRow
+              label="Edge margin"
+              checked={photo.edgeMargin}
+              onChange={(v) => setPhoto({ edgeMargin: v })}
+            />
+            <button
+              type="button"
+              data-hit
+              disabled={!photoChanged}
+              onClick={() =>
+                setPhoto({ brightness: 100, contrast: 100, grayscale: false, invert: false })
+              }
+              className={`${HIT} w-full group/b disabled:opacity-50`}
+            >
+              <span className={`${FACE} ${FACE_HOVER} w-full justify-start gap-2.5 px-3`}>
+                <IconRefresh size={20} />
+                Reset filters
+              </span>
+            </button>
+          </>
         )}
-        <SwitchRow
-          label="Edge margin"
-          checked={photo.edgeMargin}
-          onChange={(v) => setPhoto({ edgeMargin: v })}
-        />
-        <button
-          type="button"
-          data-hit
-          disabled={!photoChanged}
-          onClick={() =>
-            setPhoto({ brightness: 100, contrast: 100, grayscale: false, invert: false })
-          }
-          className={`${HIT} w-full group/b disabled:opacity-50`}
-        >
-          <span className={`${FACE} ${FACE_HOVER} w-full justify-start gap-2.5 px-3`}>
-            <IconRefresh size={20} />
-            Reset filters
-          </span>
-        </button>
       </div>,
       document.body,
     )
@@ -3921,19 +4257,22 @@ function SheetViewer({
       <HitButton
         label="Previous page"
         onClick={() => turn(-1)}
-        disabled={!item || (page <= 1 && !(session.index > 0))}
+        disabled={!item || (shown[0] <= 1 && !(session.index > 0))}
       >
         <IconChevronLeft size={22} />
       </HitButton>
-      <span className="w-[4.5em] text-center text-sm text-ink-soft tabular-nums">
-        {item ? `${page} / ${pageCount}` : ''}
+      <span className="w-[5.5em] text-center text-sm text-ink-soft tabular-nums">
+        {item
+          ? `${shown.length > 1 ? `${shown[0]}\u2013${shown[shown.length - 1]}` : shown[0]} / ${pageCount}`
+          : ''}
       </span>
       <HitButton
         label="Next page"
         onClick={() => turn(1)}
         disabled={
           !item ||
-          (page >= pageCount && !(session.index >= 0 && session.index < session.items.length - 1))
+          (shown[shown.length - 1] >= pageCount &&
+            !(session.index >= 0 && session.index < session.items.length - 1))
         }
       >
         <IconChevronRight size={22} />
@@ -3973,38 +4312,51 @@ function SheetViewer({
       </StageMessage>
     )
   } else if (pageVersion) {
-    if (ready[currentUrl] && !currentFailed && !turnDebug.has('nomarks'))
-      marksLayer = (
+    // One page's marks, laid over it (ShownPage keeps the box on the page,
+    // found by its data-marks-for). The marked page (markPage) also takes
+    // the live stroke, the text box, dragging and the keyboard's lift.
+    const pageMarksBox = (p: number) => {
+      const key = `${pieceId}:${p}`
+      const focused = p === markPage
+      const marks = focused ? pageMarks : (loadedPages?.[p] ?? [])
+      const drawing = ready[pageUrl(p)]
+      const aspect = drawing
+        ? Number(drawing.dataset.cssWidth) / Number(drawing.dataset.cssHeight)
+        : pageAspect
+      const drags = focused && textTool
+      return (
         <div
-          ref={pageBoxRef}
+          key={p}
+          ref={focused ? pageBoxRef : undefined}
+          data-marks-for={key}
           className="absolute transition-transform duration-200 ease-out motion-reduce:transition-none"
-          style={{ transform: lift ? `translateY(${-lift}px)` : undefined }}
+          style={{ transform: focused && lift ? `translateY(${-lift}px)` : undefined }}
         >
           <PageMarks
-            marks={pageMarks}
-            live={live}
-            eraserAt={eraserAt}
+            marks={marks}
+            live={focused ? live : null}
+            eraserAt={focused ? eraserAt : null}
             eraserRadius={eraserRadius}
             hidden={hiddenLayers}
             ghosts={ghostsOn}
-            aspect={pageAspect}
+            aspect={aspect}
             look={pageLook}
             // In Annotate with no tool, a faint mark brings its layer
             // back; with a tool picked, a touch there marks.
             onShowLayer={annotating && !tool ? unhideFromGhost : undefined}
           />
           <TextMarks
-            marks={pageMarks.filter(
+            marks={marks.filter(
               (m): m is TextMark => m.kind === 'text' && m.id !== textEdit?.original?.id,
             )}
             hidden={hiddenLayers}
             ghosts={ghostsOn}
             look={pageLook}
             drag={textDrag}
-            onDragStart={textTool ? () => finishText() : undefined}
-            onDragMove={textTool ? (id, dx, dy) => setTextDrag({ id, dx, dy }) : undefined}
+            onDragStart={drags ? () => finishText() : undefined}
+            onDragMove={drags ? (id, dx, dy) => setTextDrag({ id, dx, dy }) : undefined}
             onDragEnd={
-              textTool
+              drags
                 ? (m, dx, dy, moved) => {
                     setTextDrag(null)
                     if (moved) moveText(m, dx, dy)
@@ -4012,13 +4364,13 @@ function SheetViewer({
                   }
                 : undefined
             }
-            onDragCancel={textTool ? () => setTextDrag(null) : undefined}
+            onDragCancel={drags ? () => setTextDrag(null) : undefined}
           >
             {/* The text box: mounted while the Text tool is picked (see
-                    openTextBox), shown while one is open. It sizes itself to
-                    what's typed (the grid's ::after copy), up to the page's
-                    right edge, where it wraps. */}
-            {annotating && tool === 'text' && (
+                  openTextBox), shown while one is open. It sizes itself to
+                  what's typed (the grid's ::after copy), up to the page's
+                  right edge, where it wraps. */}
+            {focused && annotating && tool === 'text' && (
               <div
                 ref={textWrapRef}
                 data-value={textEdit?.text ?? ''}
@@ -4064,9 +4416,25 @@ function SheetViewer({
           </TextMarks>
         </div>
       )
+    }
+    if (!turnDebug.has('nomarks') && cells)
+      marksLayer = (
+        <div
+          className={`absolute inset-0 ${sliding ? SLIDE_CLASS : ''}`}
+          style={{ transform: stripShift }}
+        >
+          {onScreen.map(([p, slot]) =>
+            ready[pageUrl(p)] && !failed[pageUrl(p)] ? (
+              <div key={p} className="absolute" style={cellAt(slot)}>
+                {pageMarksBox(p)}
+              </div>
+            ) : null,
+          )}
+        </div>
+      )
     stage = (
       <div ref={measureStage} className="relative h-full w-full">
-        {stageBox &&
+        {cells &&
           windowPages.map((p) => {
             const url = pageUrl(p)
             if (failed[url]) return null
@@ -4074,25 +4442,43 @@ function SheetViewer({
               <PageDrawing
                 key={`${url}#${attempt}`}
                 src={url}
-                width={stageBox.w}
-                height={stageBox.h}
-                onReady={(drawing) => setReady((r) => ({ ...r, [url]: drawing }))}
+                width={cells.width}
+                height={cells.height}
+                delay={sliding && !shown.includes(p) ? SLIDE_SETTLE_MS : 0}
+                onReady={(drawing) => {
+                  setReady((r) => ({ ...r, [url]: drawing }))
+                  setFitAspect(Number(drawing.dataset.aspect) || 8.5 / 11)
+                }}
                 onError={() => setFailed((f) => ({ ...f, [url]: true }))}
               />
             )
           })}
-        {ready[currentUrl] && !currentFailed && (
-          <ShownPage
-            drawing={ready[currentUrl]}
-            src={currentUrl}
-            label={`Page ${page} of ${piece?.title ?? ''}`}
-            sharp={zoomed}
-            lift={lift}
-            mirror={pageBoxRef}
-            onPainted={
-              turnDebug.has('turntime') ? (ms) => flash(`Turn ${Math.round(ms)} ms`) : undefined
-            }
-          />
+        {cells && (
+          <div
+            className={`absolute inset-0 ${sliding ? SLIDE_CLASS : ''}`}
+            style={{ transform: stripShift }}
+          >
+            {onScreen.map(([p, slot]) => {
+              const url = pageUrl(p)
+              return ready[url] && !failed[url] ? (
+                <div key={p} className="absolute" style={cellAt(slot)}>
+                  <ShownPage
+                    drawing={ready[url]}
+                    src={url}
+                    label={`Page ${p} of ${piece?.title ?? ''}`}
+                    sharp={zoomed && shown.includes(p)}
+                    lift={p === markPage ? lift : 0}
+                    mirror={`${pieceId}:${p}`}
+                    onPainted={
+                      p === shown[0] && turnDebug.has('turntime')
+                        ? (ms) => flash(`Turn ${Math.round(ms)} ms`)
+                        : undefined
+                    }
+                  />
+                </div>
+              ) : null
+            })}
+          </div>
         )}
         {currentFailed ? (
           <StageMessage>
@@ -4315,8 +4701,20 @@ function SheetViewer({
           },
           {
             key: 'p',
-            label: 'Photo filters',
-            run: () => setMenu(menu === 'photo' ? null : 'photo'),
+            label: 'Display',
+            run: () => openDisplay(menu !== 'photo'),
+          },
+          // V switches Pages between One and As many as fit ("view", as the
+          // library pages' grid/list key).
+          {
+            key: 'v',
+            label: layoutPages === 'one' ? 'Show as many pages as fit' : 'Show one page',
+            run: () => {
+              const pages = layoutPages === 'one' ? 'auto' : 'one'
+              setPractice({ pages })
+              flash(pages === 'one' ? 'One page' : 'As many pages as fit')
+            },
+            enabled: !custom && pieceId !== null,
           },
           { key: 'i', label: 'Info', run: () => openInfo(!infoOpen), enabled: !custom },
           {
@@ -4512,10 +4910,10 @@ function SheetViewer({
                 )}
                 {!photoInline && (
                   <MenuRow
-                    icon={<IconPhotoCog size={20} />}
-                    label="Photo filters"
-                    trailing={photoChanged ? 'On' : undefined}
-                    onClick={() => setMenu('photo')}
+                    icon={<IconAdjustmentsHorizontal size={20} />}
+                    label="Display"
+                    trailing={photoChanged ? 'Filters on' : undefined}
+                    onClick={() => openDisplay(true)}
                   />
                 )}
                 {!infoInline && pieceId !== null && (
@@ -4653,12 +5051,16 @@ function PageDrawing({
   src,
   width,
   height,
+  delay = 0,
   onReady,
   onError,
 }: {
   src: string
   width: number
   height: number
+  // Waits this long before starting (ms): sliding, a page joining the
+  // window is drawn after the slide, never during it.
+  delay?: number
   onReady: (drawing: HTMLCanvasElement) => void
   onError: () => void
 }) {
@@ -4666,11 +5068,20 @@ function PageDrawing({
   useEffect(() => {
     callbacks.current = { onReady, onError }
   })
+  // Only the first drawing waits; a redraw (a resize) starts at once.
+  const startDelay = useRef(delay)
   useEffect(() => {
     if (!width || !height) return
+    const delay = startDelay.current
+    startDelay.current = 0
     let cancelled = false
     let drawn: HTMLCanvasElement | null = null
-    fetch(src)
+    const wait = new Promise<void>((resolve) => window.setTimeout(resolve, delay))
+    wait
+      .then(() => {
+        if (cancelled) throw new Error('cancelled')
+        return fetch(src)
+      })
       .then((response) => {
         if (!response.ok) throw new Error(`page ${response.status}`)
         return response.blob()
@@ -4698,6 +5109,7 @@ function PageDrawing({
         canvas.dataset.cssHeight = String(cssHeight)
         canvas.dataset.areaWidth = String(width)
         canvas.dataset.areaHeight = String(height)
+        canvas.dataset.aspect = String(img.width / img.height)
         img.close()
         drawn = canvas
         callbacks.current.onReady(canvas)
@@ -4747,8 +5159,9 @@ function ShownPage({
   sharp: boolean
   // How far the page lifts to keep an open text box above the keyboard.
   lift: number
-  // The marks layer's box, kept on exactly the page's size and place.
-  mirror: React.RefObject<HTMLDivElement | null>
+  // The marks layer's box for this page (its data-marks-for value), kept
+  // on exactly the page's size and place.
+  mirror: string
   // TEMPORARY: told how long after the last tap or key the page painted.
   onPainted?: (ms: number) => void
 }) {
@@ -4806,7 +5219,8 @@ function ShownPage({
       // score area may start between pixels too).
       const snap = (start: number, room: number, size: number) =>
         Math.round((start + (room - size) / 2) * dpr) / dpr - start
-      for (const box of [wrap, mirror.current]) {
+      const marks = document.querySelector<HTMLElement>(`[data-marks-for="${mirror}"]`)
+      for (const box of [wrap, marks]) {
         if (!box) continue
         box.style.width = `${width}px`
         box.style.height = `${height}px`
@@ -4818,7 +5232,7 @@ function ShownPage({
     const observer = new ResizeObserver(place)
     observer.observe(parent)
     return () => observer.disconnect()
-  }, [drawing])
+  }, [drawing, mirror])
   return (
     <div
       ref={wrapRef}

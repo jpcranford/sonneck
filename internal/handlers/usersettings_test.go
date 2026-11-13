@@ -172,3 +172,27 @@ func TestUserSettings_MetronomeShow(t *testing.T) {
 		t.Errorf("PATCH dot: status %d, want 400", rec.Code)
 	}
 }
+
+// Display's defaults for Pages and Turn (migration 00038): as many as fit
+// and by spread, saved, and checked.
+func TestUserSettings_SheetViewerLayout(t *testing.T) {
+	h := newTestServer(t)
+	var settings repo.UserSettings
+	decodeData(t, doJSON(t, h, http.MethodGet, "/api/user-settings", nil), &settings)
+	if settings.SheetViewerPages != "auto" || settings.SheetViewerTurn != "spread" {
+		t.Fatalf("defaults = %q, %q; want auto, spread", settings.SheetViewerPages, settings.SheetViewerTurn)
+	}
+	if rec := doJSON(t, h, http.MethodPatch, "/api/user-settings", map[string]any{"sheetViewerPages": "one", "sheetViewerTurn": "slide"}); rec.Code != http.StatusOK {
+		t.Fatalf("PATCH: status %d", rec.Code)
+	}
+	var reread repo.UserSettings
+	decodeData(t, doJSON(t, h, http.MethodGet, "/api/user-settings", nil), &reread)
+	if reread.SheetViewerPages != "one" || reread.SheetViewerTurn != "slide" {
+		t.Errorf("after saving: %q, %q", reread.SheetViewerPages, reread.SheetViewerTurn)
+	}
+	for _, bad := range []map[string]any{{"sheetViewerPages": "two"}, {"sheetViewerTurn": "flip"}} {
+		if rec := doJSON(t, h, http.MethodPatch, "/api/user-settings", bad); rec.Code != http.StatusBadRequest {
+			t.Errorf("PATCH %v: status %d, want 400", bad, rec.Code)
+		}
+	}
+}

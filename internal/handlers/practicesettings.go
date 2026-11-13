@@ -3,6 +3,7 @@ package handlers
 import (
 	"database/sql"
 	"net/http"
+	"slices"
 
 	"github.com/jpcranford/sonneck/internal/api"
 	"github.com/jpcranford/sonneck/internal/models"
@@ -98,7 +99,33 @@ func (s *Server) handlePutPracticeSettings(w http.ResponseWriter, r *http.Reques
 			"metronome needs a bpm of 30 to 300, 1 to 12 beat levels of 0, 1 or 2, and a subdivision of 1 to 4")
 		return
 	}
-	err := s.withTx(r.Context(), func(tx *sql.Tx) error {
+	if req.Pages != nil && !slices.Contains(repo.LayoutPages, *req.Pages) {
+		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "pages must be auto, one or null")
+		return
+	}
+	if req.Turn != nil && !slices.Contains(repo.LayoutTurns, *req.Turn) {
+		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "turn must be spread, slide or null")
+		return
+	}
+	if req.Links == nil {
+		req.Links = []int{}
+	}
+	slices.Sort(req.Links)
+	req.Links = slices.Compact(req.Links)
+	piece, err := repo.GetPieceByID(r.Context(), s.DB, id)
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+	// A link joins a page to the next, so it names a page before the last.
+	for _, l := range req.Links {
+		if l < 1 || l >= piece.PageCount {
+			api.WriteError(w, http.StatusBadRequest, api.CodeValidationError,
+				"links must name pages from 1 to the second-to-last")
+			return
+		}
+	}
+	err = s.withTx(r.Context(), func(tx *sql.Tx) error {
 		if _, err := repo.GetPieceByID(r.Context(), tx, id); err != nil {
 			return err
 		}
