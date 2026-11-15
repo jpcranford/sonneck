@@ -19,6 +19,13 @@ import { SingleSelect } from '../components/SingleSelect'
 import { TagComboBox } from '../components/TagComboBox'
 import { TagPills } from '../components/TagPills'
 import { InfoIconTooltip } from '../components/InfoIconTooltip'
+import { Checkbox } from '../components/Checkbox'
+import { Radio } from '../components/Radio'
+import { Slider } from '../components/Slider'
+import { ViewModeToggle, type ViewMode } from '../components/ViewModeToggle'
+import { TimeText } from '../components/TimeText'
+import { EmptyState } from '../components/EmptyState'
+import { SkippedBadge } from '../components/SkippedBadge'
 import type { Tag } from '../api/types'
 import {
   colorUsage,
@@ -772,6 +779,10 @@ function LiveComponents({ disabled }: { disabled: boolean }) {
   const [select, setSelect] = useState('learning')
   const [instruments, setInstruments] = useState<Tag[]>([DEMO_OPTIONS[0]])
   const [tags, setTags] = useState<Tag[]>([{ id: 10, name: 'Christmas' }])
+  const [checked, setChecked] = useState(true)
+  const [radio, setRadio] = useState('singlepass')
+  const [zoom, setZoom] = useState(140)
+  const [view, setView] = useState<ViewMode>('grid')
 
   return (
     <div className="mt-10">
@@ -847,6 +858,60 @@ function LiveComponents({ disabled }: { disabled: boolean }) {
             ]}
             sheetType={{ id: 1, name: 'Score' }}
             instruments={[{ id: 1, name: 'Piano' }]}
+          />
+        </div>
+        <div className="flex flex-col gap-2">
+          <p className="font-mono text-xs text-ink-soft">Checkbox • Radio</p>
+          <label className="flex items-center gap-2 text-sm text-ink">
+            <Checkbox
+              checked={checked}
+              onChange={(e) => setChecked(e.target.checked)}
+              disabled={disabled}
+            />
+            Download
+          </label>
+          {(['none', 'singlepass'] as const).map((v) => (
+            <label key={v} className="flex items-center gap-2 text-sm text-ink">
+              <Radio
+                name="sampler-radio"
+                checked={radio === v}
+                onChange={() => setRadio(v)}
+                disabled={disabled}
+              />
+              {v === 'none' ? 'No sign-in' : 'One shared password'}
+            </label>
+          ))}
+        </div>
+        <div className="flex flex-col gap-2">
+          <p className="font-mono text-xs text-ink-soft">Slider</p>
+          <Slider
+            value={zoom}
+            min={100}
+            max={300}
+            onChange={setZoom}
+            disabled={disabled}
+            aria-label="Zoom"
+            className="w-full"
+          />
+          <p className="font-mono text-xs text-ink-soft">ViewModeToggle</p>
+          <ViewModeToggle value={view} onChange={setView} className="self-start" />
+        </div>
+        <div className="flex flex-col gap-2">
+          <p className="font-mono text-xs text-ink-soft">TimeText (time-figures)</p>
+          <p className="text-sm text-ink">
+            <TimeText text="1:28:05" /> • <TimeText text="4:00" />
+          </p>
+          <p className="font-mono text-xs text-ink-soft">SkippedBadge (over a page)</p>
+          <div className="flex h-36 w-28 items-start rounded-sm bg-white p-2 shadow-sm">
+            <SkippedBadge />
+          </div>
+        </div>
+        <div>
+          <p className="mb-1 font-mono text-xs text-ink-soft">EmptyState</p>
+          <EmptyState
+            title="No pieces yet"
+            detail="Pieces you upload show up here."
+            className="rounded-lg border border-dashed border-border p-4"
           />
         </div>
       </div>

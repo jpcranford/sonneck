@@ -25,7 +25,7 @@ const SECTIONS: { title: string; mockups: Mockup[] }[] = [
       {
         to: '/mockup/style-sampler',
         name: 'Style Sampler',
-        note: "The app's visual style at a glance: every color token and where it's used, hard-coded colors, an example window, every type size and weight in use, and every button and field style. Read live from index.css and the source, so it never needs updating.",
+        note: "The app's visual style at a glance: every color token and where it's used, hard-coded colors, an example window, every type size and weight, every button and field style, and the shared controls, live. Colors and styles come from index.css and the source; the controls list is hand-kept.",
       },
       {
         to: '/mockup/states',
@@ -95,7 +95,7 @@ const SECTIONS: { title: string; mockups: Mockup[] }[] = [
       {
         to: '/mockup/piece-details',
         name: 'Piece Details',
-        note: 'Reference sample for the Piece Details page (§14) — kept as a standing design reference. Play opens the Sheet Viewer mockup; its caret adds the piece to (or removes it from) the Practice List.',
+        note: 'Reference sample for the Piece Details page (§14). Play opens the Sheet Viewer mockup; the list icon adds the piece to the Practice List. ⋯ › Manage Pages skips pages at the start and end: the sample begins on a skipped title page, marked Skipped.',
         testing: [
           'On a phone or tablet, the top toolbar and the Play / Download row are easy to tap.',
           "In Chrome's full screen, Esc closes an open window first, and only then leaves full screen.",
@@ -165,9 +165,9 @@ const SECTIONS: { title: string; mockups: Mockup[] }[] = [
       {
         to: '/mockup/sheet-viewer',
         name: 'Sheet Viewer',
-        note: 'The full-screen practice and performance mode on pages from a piece you pick: toolbar, tap zones and keys, clock, metronome, Info, Practice Notes, Display (two or more pages on bigger screens), the Practice List and Annotate. The Mockup panel sets where it opened from, the theme and a page-turn timer.',
+        note: 'The full-screen practice and performance mode on a piece you pick: toolbar, tap zones and keys, clock, metronome, Info, Practice Notes, Display (more pages on bigger screens, skipped pages), the Practice List and Annotate. Benedictus opens past its cover. The Mockup panel picks the piece, theme and entry point.',
         testing: [
-          'The metronome (A5): sound and timing on the iPad, tap tempo, Shift+M, the swinging icon, Toolbar shows, and subdivisions with their dots.',
+          'The metronome on the iPad: sound, timing, tap tempo, Shift+M, the swinging icon, Toolbar shows, subdivisions and dots.',
           'More pages in the real viewer on the iPad: spreads, sliding, links, Display, V, and the User Settings defaults.',
           'Turn speed in real practice on the iPad: report any slow turns, so the temporary turn-timing code can come out.',
           "In Chrome's full screen, Esc closes a panel, then arms Exit; F leaves full screen.",
