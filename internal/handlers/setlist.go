@@ -24,12 +24,13 @@ func (s *Server) handleListSetlists(w http.ResponseWriter, r *http.Request) {
 	}
 	summaries := make([]api.SetlistSummaryResponse, 0, len(setlists))
 	for i := range setlists {
-		summary, err := api.BuildSetlistSummaryResponse(r.Context(), s.DB, &setlists[i])
+		// The full response, for the page count (the Set PDF's own).
+		resp, err := s.buildSetlistResponse(r, &setlists[i])
 		if err != nil {
 			s.writeError(w, err)
 			return
 		}
-		summaries = append(summaries, *summary)
+		summaries = append(summaries, resp.SetlistSummaryResponse)
 	}
 	api.WriteData(w, http.StatusOK, summaries)
 }
@@ -88,7 +89,7 @@ func (s *Server) handleCreateSetlist(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, err)
 		return
 	}
-	resp, err := api.BuildSetlistResponse(r.Context(), s.DB, setlist)
+	resp, err := s.buildSetlistResponse(r, setlist)
 	if err != nil {
 		s.writeError(w, err)
 		return
@@ -111,7 +112,7 @@ func (s *Server) handleGetSetlist(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, err)
 		return
 	}
-	resp, err := api.BuildSetlistResponse(r.Context(), s.DB, setlist)
+	resp, err := s.buildSetlistResponse(r, setlist)
 	if err != nil {
 		s.writeError(w, err)
 		return
@@ -161,7 +162,7 @@ func (s *Server) handleUpdateSetlist(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, err)
 		return
 	}
-	resp, err := api.BuildSetlistResponse(r.Context(), s.DB, setlist)
+	resp, err := s.buildSetlistResponse(r, setlist)
 	if err != nil {
 		s.writeError(w, err)
 		return
@@ -234,7 +235,7 @@ func (s *Server) handleAddSetlistEntry(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, err)
 		return
 	}
-	resp, err := api.BuildSetlistResponse(r.Context(), s.DB, setlist)
+	resp, err := s.buildSetlistResponse(r, setlist)
 	if err != nil {
 		s.writeError(w, err)
 		return
@@ -302,7 +303,7 @@ func (s *Server) handleUpdateSetlistEntry(w http.ResponseWriter, r *http.Request
 		s.writeError(w, err)
 		return
 	}
-	resp, err := api.BuildSetlistResponse(r.Context(), s.DB, setlist)
+	resp, err := s.buildSetlistResponse(r, setlist)
 	if err != nil {
 		s.writeError(w, err)
 		return
@@ -398,7 +399,7 @@ func (s *Server) handleReorderSetlistEntries(w http.ResponseWriter, r *http.Requ
 		s.writeError(w, err)
 		return
 	}
-	resp, err := api.BuildSetlistResponse(r.Context(), s.DB, setlist)
+	resp, err := s.buildSetlistResponse(r, setlist)
 	if err != nil {
 		s.writeError(w, err)
 		return

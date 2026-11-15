@@ -127,18 +127,3 @@ func TotalDuration(entries []Entry) (seconds int, estimated bool, ok bool) {
 	seconds, estimated = setlistduration.Total(items)
 	return seconds, estimated, len(entries) > 0
 }
-
-// TotalPageCount sums only piece entries' own real page counts — matches
-// this app's established "pages of music" convention (CLAUDE.md >
-// Setlists), which a custom entry's own single generated page is
-// deliberately excluded from, distinct from Layout.TotalPages (every page
-// in the actual merged packet, generated pages included).
-func TotalPageCount(entries []Entry) int {
-	total := 0
-	for _, e := range entries {
-		if e.IsPiece {
-			total += e.PiecePageCount
-		}
-	}
-	return total
-}

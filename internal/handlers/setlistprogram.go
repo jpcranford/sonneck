@@ -53,7 +53,7 @@ func (s *Server) handleGetSetlistProgram(w http.ResponseWriter, r *http.Request)
 		s.writeError(w, err)
 		return
 	}
-	resp, err := api.BuildSetlistResponse(r.Context(), s.DB, setlist)
+	resp, err := s.buildSetlistResponse(r, setlist)
 	if err != nil {
 		s.writeError(w, err)
 		return

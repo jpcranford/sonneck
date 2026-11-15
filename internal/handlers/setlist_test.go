@@ -1,10 +1,16 @@
 package handlers_test
 
 import (
+	"context"
 	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/jpcranford/sonneck/internal/pdf"
 )
 
 // uploadTestPiece uploads a minimal real piece via the actual HTTP upload
@@ -417,5 +423,59 @@ func TestGetSetlist_PieceEntryCarriesPracticeStatus(t *testing.T) {
 	}
 	if got.Entries[1].PracticeStatus != nil {
 		t.Errorf("custom entry has a status: %v", *got.Entries[1].PracticeStatus)
+	}
+}
+
+// TestSetlistTotalPages_MatchesItsPDF checks that a setlist's page count is
+// its Set PDF's: cover, table of contents (two pages here), the piece's
+// pages, a page per custom entry, and the colophon — on the detail and in
+// the list alike.
+func TestSetlistTotalPages_MatchesItsPDF(t *testing.T) {
+	h := newTestServer(t)
+	pieceID := uploadTestPiece(t, h)
+	rec := doJSON(t, h, http.MethodPost, "/api/setlists", map[string]any{"name": "Lessons and Carols"})
+	var setlist struct {
+		ID         int64 `json:"id"`
+		TotalPages int   `json:"totalPages"`
+	}
+	decodeData(t, rec, &setlist)
+	add := func(body map[string]any) {
+		rec := doJSON(t, h, http.MethodPost, setlistURL(setlist.ID, "/entries"), body)
+		if rec.Code != http.StatusCreated {
+			t.Fatalf("add entry: status %d, body %s", rec.Code, rec.Body.String())
+		}
+	}
+	add(map[string]any{"pieceId": pieceID})
+	for i := range 30 {
+		add(map[string]any{"customName": "Reading " + strconv.Itoa(i+1)})
+	}
+
+	rec = doJSON(t, h, http.MethodGet, setlistURL(setlist.ID, ""), nil)
+	decodeData(t, rec, &setlist)
+
+	rec = recordRequest(h, httptest.NewRequest(http.MethodGet, setlistURL(setlist.ID, "/pdf"), nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("pdf: status %d, body %s", rec.Code, rec.Body.String())
+	}
+	path := filepath.Join(t.TempDir(), "set.pdf")
+	if err := os.WriteFile(path, rec.Body.Bytes(), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	pages, err := pdf.PageCount(context.Background(), "", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Cover, 2 TOC pages, 2 piece pages, 30 custom pages, colophon.
+	if pages != 36 || setlist.TotalPages != pages {
+		t.Errorf("totalPages = %d, PDF pages = %d, want both 36", setlist.TotalPages, pages)
+	}
+
+	rec = doJSON(t, h, http.MethodGet, "/api/setlists", nil)
+	var list []struct {
+		TotalPages int `json:"totalPages"`
+	}
+	decodeData(t, rec, &list)
+	if len(list) != 1 || list[0].TotalPages != pages {
+		t.Errorf("list totalPages = %+v, want %d", list, pages)
 	}
 }

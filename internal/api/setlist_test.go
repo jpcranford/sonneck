@@ -118,9 +118,6 @@ func TestBuildSetlistResponse_TotalsSumDurationAndPages(t *testing.T) {
 	if resp.EntryCount != 3 {
 		t.Errorf("EntryCount = %d, want 3", resp.EntryCount)
 	}
-	if resp.TotalPages != 5 {
-		t.Errorf("TotalPages = %d, want 5 (3 + 2, the custom entry contributing nothing)", resp.TotalPages)
-	}
 	if resp.TotalDurationSeconds == nil || *resp.TotalDurationSeconds != 390 || !resp.DurationEstimated {
 		t.Errorf("TotalDurationSeconds = %v, DurationEstimated = %v, want 390 (180 + 60, plus 150 assumed for the untimed piece), true",
 			resp.TotalDurationSeconds, resp.DurationEstimated)
@@ -222,12 +219,12 @@ func TestBuildSetlistResponse_PieceEntryResolvesComposerThroughBookInheritance(t
 	}
 }
 
-// TestBuildSetlistSummaryResponse_EffectiveArchivedReflectsPassedGigDate
+// TestBuildSetlistResponse_EffectiveArchivedReflectsPassedGigDate
 // wires decision 3's own asymmetric rule through the real DB-backed
 // builder (repo.Setlist.EffectiveArchived is already unit-tested in
 // isolation, internal/repo/setlist_test.go) — confirms the summary
 // response actually surfaces it correctly end to end.
-func TestBuildSetlistSummaryResponse_EffectiveArchivedReflectsPassedGigDate(t *testing.T) {
+func TestBuildSetlistResponse_EffectiveArchivedReflectsPassedGigDate(t *testing.T) {
 	ctx := context.Background()
 	dbConn := newTestDB(t)
 
@@ -239,9 +236,9 @@ func TestBuildSetlistSummaryResponse_EffectiveArchivedReflectsPassedGigDate(t *t
 	if err != nil {
 		t.Fatalf("GetSetlist: %v", err)
 	}
-	resp, err := api.BuildSetlistSummaryResponse(ctx, dbConn, setlist)
+	resp, err := api.BuildSetlistResponse(ctx, dbConn, setlist)
 	if err != nil {
-		t.Fatalf("BuildSetlistSummaryResponse: %v", err)
+		t.Fatalf("BuildSetlistResponse: %v", err)
 	}
 	if resp.Archived {
 		t.Error("Archived (the explicit flag) should still be false — nothing set it")

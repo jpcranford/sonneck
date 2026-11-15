@@ -482,7 +482,12 @@ export function SetlistDetailsMockup() {
       durationSeconds: e.durationSeconds,
     })),
   )
-  const totalPages = entries.reduce((sum, e) => sum + (e.kind === 'piece' ? e.pages : 0), 0)
+  // The Set PDF's page count: cover, table of contents, each piece's pages,
+  // a page per custom entry, and the colophon. The real one measures the
+  // contents; here about 18 rows fill a page, as on Letter.
+  const tocPages = Math.max(1, Math.ceil(entries.length / 18))
+  const totalPages =
+    2 + tocPages + entries.reduce((sum, e) => sum + (e.kind === 'piece' ? e.pages : 1), 0)
 
   function removeEntry(id: string) {
     setEntries((current) => current.filter((e) => e.id !== id))

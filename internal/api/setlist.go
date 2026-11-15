@@ -59,17 +59,20 @@ type SetlistEntryResponse struct {
 // summary) — every total is computed at read time, never stored (design
 // doc §13), same posture as EffectiveArchived itself.
 type SetlistSummaryResponse struct {
-	ID                   int64     `json:"id"`
-	Name                 string    `json:"name"`
-	GigDate              *string   `json:"gigDate"`
-	Archived             bool      `json:"archived"`
-	EffectiveArchived    bool      `json:"effectiveArchived"`
-	EntryCount           int       `json:"entryCount"`
-	TotalDurationSeconds *int      `json:"totalDurationSeconds"`
-	DurationEstimated    bool      `json:"durationEstimated"`
-	TotalPages           int       `json:"totalPages"`
-	CreatedAt            time.Time `json:"createdAt"`
-	UpdatedAt            time.Time `json:"updatedAt"`
+	ID                   int64   `json:"id"`
+	Name                 string  `json:"name"`
+	GigDate              *string `json:"gigDate"`
+	Archived             bool    `json:"archived"`
+	EffectiveArchived    bool    `json:"effectiveArchived"`
+	EntryCount           int     `json:"entryCount"`
+	TotalDurationSeconds *int    `json:"totalDurationSeconds"`
+	DurationEstimated    bool    `json:"durationEstimated"`
+	// TotalPages is the Set PDF's page count, generated pages included;
+	// the handlers set it (Server.buildSetlistResponse), since it's planned
+	// in the reader's locale.
+	TotalPages int       `json:"totalPages"`
+	CreatedAt  time.Time `json:"createdAt"`
+	UpdatedAt  time.Time `json:"updatedAt"`
 }
 
 // SetlistResponse is GET /api/setlists/{id}'s full detail — the summary
@@ -80,21 +83,16 @@ type SetlistResponse struct {
 	Entries     []SetlistEntryResponse `json:"entries"`
 }
 
-// setlistTotals computes entryCount/totalDurationSeconds/totalPages from
-// an already-loaded entry list — shared by BuildSetlistSummaryResponse and
-// BuildSetlistResponse so the two can never disagree about a setlist's own
-// totals. totalDurationSeconds is the running time from
+// setlistTotals computes entryCount/totalDurationSeconds from an
+// already-loaded entry list. totalDurationSeconds is the running time from
 // internal/setlistduration — a typical length assumed for any entry
 // without a duration, durationEstimated reporting whether one was — and nil
 // only for an empty program.
-func setlistTotals(entries []repo.SetlistEntry) (entryCount int, totalDurationSeconds *int, durationEstimated bool, totalPages int) {
+func setlistTotals(entries []repo.SetlistEntry) (entryCount int, totalDurationSeconds *int, durationEstimated bool) {
 	entryCount = len(entries)
 	items := make([]setlistduration.Entry, len(entries))
 	for i, e := range entries {
 		if e.PieceID != nil {
-			if e.PiecePageCount != nil {
-				totalPages += *e.PiecePageCount
-			}
 			items[i] = setlistduration.Entry{Seconds: e.PieceDuration, IsMusic: true}
 		} else {
 			items[i] = setlistduration.Entry{Seconds: e.CustomDurationSeconds, IsMusic: e.CountsAsMusic()}
@@ -104,33 +102,7 @@ func setlistTotals(entries []repo.SetlistEntry) (entryCount int, totalDurationSe
 		seconds, estimated := setlistduration.Total(items)
 		totalDurationSeconds, durationEstimated = &seconds, estimated
 	}
-	return entryCount, totalDurationSeconds, durationEstimated, totalPages
-}
-
-// BuildSetlistSummaryResponse builds one GET /api/setlists row — loads
-// s's own entries just far enough to compute totals (repo.SetlistEntry
-// already carries the joined-in piece duration/page_count, so no further
-// per-piece query is needed here).
-func BuildSetlistSummaryResponse(ctx context.Context, q repo.Queryer, s *repo.Setlist) (*SetlistSummaryResponse, error) {
-	entries, err := repo.ListSetlistEntries(ctx, q, s.ID)
-	if err != nil {
-		return nil, err
-	}
-	entryCount, totalDurationSeconds, durationEstimated, totalPages := setlistTotals(entries)
-	today := time.Now().Format("2006-01-02")
-	return &SetlistSummaryResponse{
-		ID:                   s.ID,
-		Name:                 s.Name,
-		GigDate:              s.GigDate,
-		Archived:             s.Archived,
-		EffectiveArchived:    s.EffectiveArchived(today),
-		EntryCount:           entryCount,
-		TotalDurationSeconds: totalDurationSeconds,
-		DurationEstimated:    durationEstimated,
-		TotalPages:           totalPages,
-		CreatedAt:            s.CreatedAt,
-		UpdatedAt:            s.UpdatedAt,
-	}, nil
+	return entryCount, totalDurationSeconds, durationEstimated
 }
 
 // BuildSetlistResponse builds GET /api/setlists/{id}'s full detail,
@@ -142,7 +114,7 @@ func BuildSetlistResponse(ctx context.Context, q repo.Queryer, s *repo.Setlist) 
 	if err != nil {
 		return nil, err
 	}
-	entryCount, totalDurationSeconds, durationEstimated, totalPages := setlistTotals(entries)
+	entryCount, totalDurationSeconds, durationEstimated := setlistTotals(entries)
 	today := time.Now().Format("2006-01-02")
 
 	respEntries := make([]SetlistEntryResponse, 0, len(entries))
@@ -189,7 +161,6 @@ func BuildSetlistResponse(ctx context.Context, q repo.Queryer, s *repo.Setlist) 
 			EntryCount:           entryCount,
 			TotalDurationSeconds: totalDurationSeconds,
 			DurationEstimated:    durationEstimated,
-			TotalPages:           totalPages,
 			CreatedAt:            s.CreatedAt,
 			UpdatedAt:            s.UpdatedAt,
 		},

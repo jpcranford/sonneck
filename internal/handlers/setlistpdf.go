@@ -44,8 +44,8 @@ func (s *Server) handleDownloadSetlistPDF(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	entries, err := buildPDFEntries(r, s.DB, resp.Entries)
-	if err != nil {
+	entries := pdfEntries(resp.Entries)
+	if err := addPDFFilePaths(r, s.DB, resp.Entries, entries); err != nil {
 		s.writeError(w, err)
 		return
 	}
@@ -75,34 +75,7 @@ func (s *Server) handleDownloadSetlistPDF(w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	// Dates are written in the requester's own locale (Accept-Language).
-	// The gig date is a calendar day: parsed and formatted with no timezone.
-	// The table of contents names the day of the week too; the cover doesn't.
-	formatDate := longDateFormatter(r)
-	var gigDate, tocDate string
-	if setlist.GigDate != nil {
-		if t, parseErr := time.Parse("2006-01-02", *setlist.GigDate); parseErr == nil {
-			gigDate = formatDate(t)
-			tocDate = weekdayDateFormatter(r)(t)
-		}
-	}
-	description := ""
-	if resp.Description != nil {
-		description = *resp.Description
-	}
-
-	out, err := setlistpdf.Generate(r.Context(), s.Cfg.PDFBinDir, setlistpdf.Input{
-		Setlist: setlistpdf.Setlist{
-			Name:        setlist.Name,
-			GigDate:     gigDate,
-			TOCDate:     tocDate,
-			Description: description,
-		},
-		Entries:    entries,
-		Shape:      setlistpdf.ShapeForRegion(s.Cfg.CopyrightRegion()),
-		Now:        time.Now(),
-		FormatDate: formatDate,
-	})
+	out, err := setlistpdf.Generate(r.Context(), s.Cfg.PDFBinDir, s.setlistPDFInput(r, setlist, resp, entries))
 	if err != nil {
 		s.writeError(w, err)
 		return
@@ -118,21 +91,77 @@ func (s *Server) handleDownloadSetlistPDF(w http.ResponseWriter, r *http.Request
 	w.Write(out)
 }
 
-// buildPDFEntries converts the already-resolved API entry shape into
-// setlistpdf.Entry, additionally fetching each piece entry's own real
-// FilePath — SetlistPieceSummary is deliberately lean and doesn't carry
-// it (CLAUDE.md > Setlists), so this is the one extra per-piece-entry
-// lookup the export needs beyond what api.BuildSetlistResponse already
-// resolved (same small-N-per-entry-lookup pattern buildSetlistPieceSummary
-// itself already uses for other fields).
-func buildPDFEntries(r *http.Request, db *sql.DB, in []api.SetlistEntryResponse) ([]setlistpdf.Entry, error) {
+// setlistPDFInput is everything the Set PDF is drawn from. Dates are
+// written in the requester's own locale (Accept-Language); the gig date is
+// a calendar day, parsed and formatted with no timezone. The table of
+// contents names the day of the week too; the cover doesn't.
+func (s *Server) setlistPDFInput(r *http.Request, setlist *repo.Setlist, resp *api.SetlistResponse, entries []setlistpdf.Entry) setlistpdf.Input {
+	formatDate := longDateFormatter(r)
+	var gigDate, tocDate string
+	if setlist.GigDate != nil {
+		if t, err := time.Parse("2006-01-02", *setlist.GigDate); err == nil {
+			gigDate = formatDate(t)
+			tocDate = weekdayDateFormatter(r)(t)
+		}
+	}
+	description := ""
+	if resp.Description != nil {
+		description = *resp.Description
+	}
+	return setlistpdf.Input{
+		Setlist: setlistpdf.Setlist{
+			Name:        setlist.Name,
+			GigDate:     gigDate,
+			TOCDate:     tocDate,
+			Description: description,
+		},
+		Entries:    entries,
+		Shape:      setlistpdf.ShapeForRegion(s.Cfg.CopyrightRegion()),
+		Now:        time.Now(),
+		FormatDate: formatDate,
+	}
+}
+
+// buildSetlistResponse is api.BuildSetlistResponse with totalPages set to
+// the Set PDF's own page count — cover, table of contents, every piece's
+// pages, a page per custom entry and the colophon — planned the same way
+// the PDF is (setlistpdf.Paginate), in the requester's locale, so the two
+// always agree.
+func (s *Server) buildSetlistResponse(r *http.Request, setlist *repo.Setlist) (*api.SetlistResponse, error) {
+	resp, err := api.BuildSetlistResponse(r.Context(), s.DB, setlist)
+	if err != nil {
+		return nil, err
+	}
+	in := s.setlistPDFInput(r, setlist, resp, pdfEntries(resp.Entries))
+	resp.TotalPages = setlistpdf.Paginate(in).TotalPages
+	return resp, nil
+}
+
+// addPDFFilePaths fills in each piece entry's own file — SetlistPieceSummary
+// is deliberately lean and doesn't carry it (CLAUDE.md > Setlists), so this
+// is the one extra per-piece lookup the export needs beyond what
+// api.BuildSetlistResponse already resolved.
+func addPDFFilePaths(r *http.Request, db *sql.DB, in []api.SetlistEntryResponse, out []setlistpdf.Entry) error {
+	for i, e := range in {
+		if e.Piece == nil {
+			continue
+		}
+		piece, err := repo.GetPieceByID(r.Context(), db, e.Piece.ID)
+		if err != nil {
+			return err
+		}
+		out[i].PieceFilePath = piece.FilePath
+	}
+	return nil
+}
+
+// pdfEntries converts the already-resolved API entry shape into
+// setlistpdf.Entry, without the piece files (addPDFFilePaths), which only
+// drawing the PDF needs.
+func pdfEntries(in []api.SetlistEntryResponse) []setlistpdf.Entry {
 	out := make([]setlistpdf.Entry, len(in))
 	for i, e := range in {
 		if e.Piece != nil {
-			piece, err := repo.GetPieceByID(r.Context(), db, e.Piece.ID)
-			if err != nil {
-				return nil, err
-			}
 			keys := make([]string, len(e.Piece.Keys))
 			for j, k := range e.Piece.Keys {
 				keys[j] = k.Name
@@ -144,7 +173,6 @@ func buildPDFEntries(r *http.Request, db *sql.DB, in []api.SetlistEntryResponse)
 				PieceRole:      e.Role,
 				PieceKeys:      keys,
 				PieceDuration:  e.Piece.Duration,
-				PieceFilePath:  piece.FilePath,
 				PiecePageCount: e.Piece.PageCount,
 			}
 			continue
@@ -162,5 +190,5 @@ func buildPDFEntries(r *http.Request, db *sql.DB, in []api.SetlistEntryResponse)
 			CustomNotes:           e.CustomNotes,
 		}
 	}
-	return out, nil
+	return out
 }

@@ -59,7 +59,8 @@ export function daysFromNow(days: number): string {
 //
 // entryCount/totalDurationSeconds/totalPages for '1' ("Sunday Morning
 // Service") are the exact real totals `SetlistDetailsMockup.tsx`'s own
-// 7-entry fixture sums to (2+3+4+1 pages, 150+180+225+255+180+120+300
+// 7-entry fixture sums to (its Set PDF's 16 pages: cover, contents,
+// 2+3+4+1 pages of music, 3 custom entries, colophon; 150+180+225+255+180+120+300
 // seconds = 23:30) — kept in sync deliberately, not coincidental, so a
 // setlist's own card and its detail page never disagree about its totals.
 // Every other entry's numbers are just plausible, not derived from a real
@@ -71,7 +72,7 @@ export const ALL_MOCK_SETLISTS: MockSetlist[] = [
     gigDate: daysFromNow(22),
     entryCount: 7,
     totalDurationSeconds: 1410,
-    totalPages: 10,
+    totalPages: 16,
   },
   {
     id: '2',
@@ -80,7 +81,7 @@ export const ALL_MOCK_SETLISTS: MockSetlist[] = [
     entryCount: 4,
     totalDurationSeconds: 780,
     durationEstimated: true,
-    totalPages: 6,
+    totalPages: 9,
   },
   {
     id: '3',
@@ -88,7 +89,7 @@ export const ALL_MOCK_SETLISTS: MockSetlist[] = [
     gigDate: daysFromNow(50),
     entryCount: 9,
     totalDurationSeconds: 1920,
-    totalPages: 14,
+    totalPages: 19,
   },
   {
     id: '4',
@@ -97,7 +98,7 @@ export const ALL_MOCK_SETLISTS: MockSetlist[] = [
     entryCount: 12,
     totalDurationSeconds: 2640,
     durationEstimated: true,
-    totalPages: 22,
+    totalPages: 29,
   },
   {
     id: '5',
@@ -105,7 +106,7 @@ export const ALL_MOCK_SETLISTS: MockSetlist[] = [
     gigDate: daysFromNow(103),
     entryCount: 10,
     totalDurationSeconds: 2100,
-    totalPages: 17,
+    totalPages: 23,
   },
   {
     id: '6',
@@ -113,7 +114,7 @@ export const ALL_MOCK_SETLISTS: MockSetlist[] = [
     gigDate: daysFromNow(130),
     entryCount: 6,
     totalDurationSeconds: 1560,
-    totalPages: 11,
+    totalPages: 15,
   },
   {
     id: '7',
@@ -121,7 +122,7 @@ export const ALL_MOCK_SETLISTS: MockSetlist[] = [
     gigDate: daysFromNow(160),
     entryCount: 8,
     totalDurationSeconds: 1740,
-    totalPages: 13,
+    totalPages: 18,
     archived: true,
   },
   {
@@ -130,9 +131,9 @@ export const ALL_MOCK_SETLISTS: MockSetlist[] = [
     gigDate: daysFromNow(-10),
     entryCount: 5,
     totalDurationSeconds: 960,
-    totalPages: 8,
+    totalPages: 12,
   },
-  { id: '9', name: 'Spring Showcase (planning)', entryCount: 2, totalPages: 3 },
+  { id: '9', name: 'Spring Showcase (planning)', entryCount: 2, totalPages: 6 },
 ]
 
 // The sidebar's own rule (decision 10): genuinely upcoming only (a

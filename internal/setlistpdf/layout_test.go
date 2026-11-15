@@ -111,17 +111,6 @@ func TestTotalDuration_AssumesTypicalLengths(t *testing.T) {
 	}
 }
 
-func TestTotalPageCount_OnlyCountsPieces(t *testing.T) {
-	entries := []setlistpdf.Entry{
-		{IsPiece: true, PiecePageCount: 2},
-		{IsPiece: false}, // a custom entry has no pages of music
-		{IsPiece: true, PiecePageCount: 3},
-	}
-	if got := setlistpdf.TotalPageCount(entries); got != 5 {
-		t.Errorf("TotalPageCount = %d, want 5", got)
-	}
-}
-
 func TestShapeForRegion(t *testing.T) {
 	cases := map[string]setlistpdf.Shape{
 		"en-US":       setlistpdf.ShapeLetter,
