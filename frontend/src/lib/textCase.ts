@@ -20,7 +20,10 @@
 function capitalizeWord(word: string): string {
   return word
     .toLowerCase()
-    .replace(/(^|[-'.(])([a-zà-öø-ÿ])/g, (_, sep: string, letter: string) => sep + letter.toUpperCase())
+    .replace(
+      /(^|[-'.(])([a-zà-öø-ÿ])/g,
+      (_, sep: string, letter: string) => sep + letter.toUpperCase(),
+    )
 }
 
 // Headline-style minor words — lowercase unless first/last in the title
@@ -28,10 +31,35 @@ function capitalizeWord(word: string): string {
 // conjunctions/articles only; anything longer (e.g. "about", "under")
 // reads as a real content word in a piece title and stays capitalized.
 const MINOR_WORDS = new Set([
-  'a', 'an', 'the',
-  'and', 'but', 'or', 'nor', 'for', 'so', 'yet',
-  'as', 'at', 'by', 'in', 'into', 'near', 'of', 'off', 'on', 'onto', 'out',
-  'over', 'past', 'per', 'to', 'up', 'via', 'with', 'from',
+  'a',
+  'an',
+  'the',
+  'and',
+  'but',
+  'or',
+  'nor',
+  'for',
+  'so',
+  'yet',
+  'as',
+  'at',
+  'by',
+  'in',
+  'into',
+  'near',
+  'of',
+  'off',
+  'on',
+  'onto',
+  'out',
+  'over',
+  'past',
+  'per',
+  'to',
+  'up',
+  'via',
+  'with',
+  'from',
 ])
 
 export function titleCase(input: string): string {
@@ -67,7 +95,20 @@ export function titleCase(input: string): string {
 // first word of the whole name, since a bare surname on its own
 // ("van Gogh" typed alone, no first name) reads as capitalized.
 const NAME_PARTICLES = new Set([
-  'van', 'von', 'der', 'den', 'de', 'del', 'della', 'di', 'la', 'le', 'du', 'da', 'dos', 'das',
+  'van',
+  'von',
+  'der',
+  'den',
+  'de',
+  'del',
+  'della',
+  'di',
+  'la',
+  'le',
+  'du',
+  'da',
+  'dos',
+  'das',
 ])
 
 // Joins two credited names in one field ("Rodgers and Hammerstein",

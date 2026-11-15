@@ -151,7 +151,9 @@ function LeafTable({ leaves }: { leaves: Leaf[] }) {
             <tr key={leaf.id} className="border-b border-border align-top last:border-b-0">
               <td className="px-3 py-2 font-mono font-semibold text-accent">{leaf.id}</td>
               <td className="px-3 py-2 text-ink-soft">{leaf.pattern}</td>
-              <td className="px-3 py-2 font-mono text-[0.8em] leading-snug text-ink">{leaf.example}</td>
+              <td className="px-3 py-2 font-mono text-[0.8em] leading-snug text-ink">
+                {leaf.example}
+              </td>
               <td className="px-3 py-2 break-all text-[0.7rem] text-ink-soft/70">{leaf.source}</td>
             </tr>
           ))}
@@ -195,7 +197,8 @@ const ARRANGER_EXAMPLES: ArrangerExample[] = [
   },
   {
     id: 'C3',
-    label: 'Has a book, In Copyright/Copyleft (buildTwoSentenceCitation) — placement relative to "Published..."',
+    label:
+      'Has a book, In Copyright/Copyleft (buildTwoSentenceCitation) — placement relative to "Published..."',
     old: `Jane Doe, Album for the Young, Op. 68, No. 3 "The Reaper's Song". Arrangement by Alex Arranger, 1878. Published by Henle Verlag, 2015. Copyright ©\u00A02015 Henle Verlag.`,
     current: `Jane Doe, Album for the Young, Op. 68, No. 3 "The Reaper's Song", arr. Alex Arranger, 1878. Published by Henle Verlag, 2015. Copyright ©\u00A02015 Henle Verlag.`,
     note: '"arr." joins sentence 1 right after the title, with the arrangement year ending it. The "Published..." sentence and the copyright clause are unchanged.',
@@ -260,10 +263,10 @@ export function CitationLogicMockup() {
         <h1 className="font-display text-xl font-medium text-ink">Citation Logic</h1>
         <p className="max-w-3xl text-sm text-ink-soft">
           A decision-flow reference for <span className="font-mono">buildCitation</span> (
-          <span className="font-mono">internal/handlers/citation.go</span>) — not a screen
-          mockup, since there's no citation UI to preview, but kept under the same standing
-          mockup-parity rule: whenever the real branching logic changes, this page (diagram and
-          examples both) is updated in the same pass.
+          <span className="font-mono">internal/handlers/citation.go</span>) — not a screen mockup,
+          since there's no citation UI to preview, but kept under the same standing mockup-parity
+          rule: whenever the real branching logic changes, this page (diagram and examples both) is
+          updated in the same pass.
         </p>
       </div>
 
@@ -293,8 +296,12 @@ export function CitationLogicMockup() {
         <LeafTable leaves={TWO_SENTENCE_LEAVES} />
         <p className="max-w-2xl text-xs text-ink-soft">
           Examples above are shown without it, but all six (B1-B6) can additionally end with a
-          trailing <span className="font-mono">Copyright ©{'\u00A0'}{'{year}'} {'{holder}'}.</span> clause
-          whenever there's a year or holder to attribute to (
+          trailing{' '}
+          <span className="font-mono">
+            Copyright ©{'\u00A0'}
+            {'{year}'} {'{holder}'}.
+          </span>{' '}
+          clause whenever there's a year or holder to attribute to (
           <span className="font-mono">copyrightClause</span>, see below).
         </p>
       </section>
@@ -305,8 +312,8 @@ export function CitationLogicMockup() {
             Arranger credit — cuts across both paths
           </h2>
           <p className="max-w-3xl text-sm text-ink-soft">
-            An arranger renders inline, right after the title (and its opus parenthetical), in
-            both <span className="font-mono">buildFlatCitation</span> and{' '}
+            An arranger renders inline, right after the title (and its opus parenthetical), in both{' '}
+            <span className="font-mono">buildFlatCitation</span> and{' '}
             <span className="font-mono">buildTwoSentenceCitation</span>. Nothing else in the line
             moves: IMSLP, publisher/ID, ISBN, book and opus all stay where they were.
           </p>
@@ -321,7 +328,10 @@ export function CitationLogicMockup() {
             "Published...".)
           </li>
           <li>
-            The separate <span className="font-mono">"Arrangement by {'{arranger}'}, {'{year}'}."</span>{' '}
+            The separate{' '}
+            <span className="font-mono">
+              "Arrangement by {'{arranger}'}, {'{year}'}."
+            </span>{' '}
             sentence is gone.
           </li>
           <li>
@@ -329,10 +339,11 @@ export function CitationLogicMockup() {
             <span className="font-mono">effectiveArrangementYearWritten</span>{' '}
             (resolveArrangementYearWritten): the same fallback chain as{' '}
             <span className="font-mono">yearWritten</span> with one change:{' '}
-            <strong>book's yearPublished takes precedence over the piece's own copyrightYear</strong>{' '}
-            (piece.yearWritten → book.yearPublished → piece.copyrightYear, vs. plain
-            yearWritten's piece.yearWritten → piece.copyrightYear → book.yearPublished). See C2
-            below.
+            <strong>
+              book's yearPublished takes precedence over the piece's own copyrightYear
+            </strong>{' '}
+            (piece.yearWritten → book.yearPublished → piece.copyrightYear, vs. plain yearWritten's
+            piece.yearWritten → piece.copyrightYear → book.yearPublished). See C2 below.
           </li>
         </ul>
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
@@ -346,9 +357,9 @@ export function CitationLogicMockup() {
         <div>
           <h2 className="font-display text-lg font-medium text-ink">Independent of the flow</h2>
           <p className="max-w-3xl text-sm text-ink-soft">
-            Self-contained formatting rules the branches above call into, but that don't
-            themselves branch on copyright status or book presence — each is the same regardless
-            of which path above is taken.
+            Self-contained formatting rules the branches above call into, but that don't themselves
+            branch on copyright status or book presence — each is the same regardless of which path
+            above is taken.
           </p>
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">

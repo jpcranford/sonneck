@@ -17,12 +17,7 @@ export function formatPieceMeta(piece: Piece): string {
     piece.composer.values.map((p) => p.name),
     piece.arranger.values.map((p) => p.name),
   )
-  return [
-    composerPart,
-    piece.workOpusNumber.value,
-    piece.sourceBookTitle,
-    piece.yearWritten.value,
-  ]
+  return [composerPart, piece.workOpusNumber.value, piece.sourceBookTitle, piece.yearWritten.value]
     .filter((part): part is string => !!part)
     .join(' • ')
 }

@@ -55,7 +55,9 @@ function fixturePiece(overrides: Partial<Piece> = {}): Piece {
 
 describe('pieceToWriteRequest', () => {
   it('blanks an inherited composer instead of echoing the resolved value back as an override', () => {
-    const piece = fixturePiece({ composer: { values: [{ id: 1, name: 'Fr. Chopin' }], inherited: true } })
+    const piece = fixturePiece({
+      composer: { values: [{ id: 1, name: 'Fr. Chopin' }], inherited: true },
+    })
     expect(pieceToWriteRequest(piece).composers).toEqual([])
   })
 

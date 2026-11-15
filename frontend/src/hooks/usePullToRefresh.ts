@@ -35,7 +35,10 @@ function isInsideOverlayOrScrollable(target: EventTarget | null, container: HTML
     if (el instanceof HTMLElement) {
       const style = getComputedStyle(el)
       if (style.position === 'fixed') return true
-      if ((style.overflowY === 'auto' || style.overflowY === 'scroll') && el.scrollHeight > el.clientHeight) {
+      if (
+        (style.overflowY === 'auto' || style.overflowY === 'scroll') &&
+        el.scrollHeight > el.clientHeight
+      ) {
         return true
       }
     }

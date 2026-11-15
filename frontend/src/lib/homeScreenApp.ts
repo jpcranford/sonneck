@@ -5,7 +5,7 @@
 // `navigator.standalone` is iOS Safari's own older flag for the same thing.
 export function isHomeScreenApp(): boolean {
   if (typeof window === 'undefined') return false
-  const iosStandalone = (window.navigator as Navigator & { standalone?: boolean }).standalone === true
+  const iosStandalone =
+    (window.navigator as Navigator & { standalone?: boolean }).standalone === true
   return iosStandalone || window.matchMedia?.('(display-mode: standalone)').matches === true
 }
-

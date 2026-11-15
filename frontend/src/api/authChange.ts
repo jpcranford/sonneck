@@ -26,6 +26,9 @@ export function getAuthChangeCandidates(): Promise<AuthChangeCandidate[]> {
 // password/keepUserId are each required only for specific transitions —
 // the server re-derives which apply from its own state, not from which
 // fields this call happens to send.
-export function completeAuthChange(body: { password?: string; keepUserId?: number }): Promise<{ ok: boolean }> {
+export function completeAuthChange(body: {
+  password?: string
+  keepUserId?: number
+}): Promise<{ ok: boolean }> {
   return apiPost<{ ok: boolean }>('/api/auth-change/complete', body)
 }

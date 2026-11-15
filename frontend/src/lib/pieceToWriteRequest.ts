@@ -54,7 +54,10 @@ export function pieceToWriteRequest(piece: Piece): PieceWriteRequest {
     copyrightYear: piece.copyrightYear.inherited ? null : piece.copyrightYear.value,
     copyrightHolder: piece.copyrightHolder.inherited ? '' : piece.copyrightHolder.value,
     copyrightSlug: piece.copyrightSlug.inherited ? '' : piece.copyrightSlug.value,
-    copyrightStatus: piece.copyrightStatus.inherited || !piece.copyrightStatus.value ? null : piece.copyrightStatus.value,
+    copyrightStatus:
+      piece.copyrightStatus.inherited || !piece.copyrightStatus.value
+        ? null
+        : piece.copyrightStatus.value,
     // US renewal follow-up — same inherited-blank convention; null (not
     // false) is what continues inheriting the book's value, matching
     // copyrightYear's own number|null shape just above.

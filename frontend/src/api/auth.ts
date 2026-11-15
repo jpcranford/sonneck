@@ -34,6 +34,9 @@ export function updateMe(displayName: string): Promise<AuthMe> {
   return apiPatch<AuthMe>('/api/auth/me', { displayName })
 }
 
-export function changePassword(currentPassword: string, newPassword: string): Promise<{ ok: boolean }> {
+export function changePassword(
+  currentPassword: string,
+  newPassword: string,
+): Promise<{ ok: boolean }> {
   return apiPost<{ ok: boolean }>('/api/auth/change-password', { currentPassword, newPassword })
 }

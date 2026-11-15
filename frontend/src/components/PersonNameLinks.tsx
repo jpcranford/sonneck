@@ -28,7 +28,10 @@ export function PersonNameLinks({ people, className }: { people: Tag[]; classNam
       {people.map((person, i) => (
         <span key={person.id}>
           {i > 0 && (i === people.length - 1 ? (people.length > 2 ? ', and ' : ' and ') : ', ')}
-          <Link to={`/people/${person.id}`} className={className ?? 'hover:text-accent hover:underline'}>
+          <Link
+            to={`/people/${person.id}`}
+            className={className ?? 'hover:text-accent hover:underline'}
+          >
             {person.name}
           </Link>
         </span>

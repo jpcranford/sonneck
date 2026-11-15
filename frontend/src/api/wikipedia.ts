@@ -26,5 +26,7 @@ export function searchWikipedia(query: string): Promise<WikipediaSearchResult[]>
 // server-side image proxy is needed). null when that page genuinely has
 // no lead image on record — a normal result, not an error.
 export function getWikipediaPageImage(title: string): Promise<{ imageUrl: string | null }> {
-  return apiGet<{ imageUrl: string | null }>(`/api/wikipedia/page-image?title=${encodeURIComponent(title)}`)
+  return apiGet<{ imageUrl: string | null }>(
+    `/api/wikipedia/page-image?title=${encodeURIComponent(title)}`,
+  )
 }

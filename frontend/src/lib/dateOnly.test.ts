@@ -13,10 +13,19 @@ const LONG: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'long', day: 
 describe('formatDateOnly', () => {
   // The stored day, whatever the viewer's timezone — including the ones
   // west of UTC where `new Date(iso)` alone lands on the day before.
-  for (const tz of ['America/Los_Angeles', 'America/New_York', 'UTC', 'Europe/London', 'Asia/Tokyo', 'Pacific/Kiritimati']) {
+  for (const tz of [
+    'America/Los_Angeles',
+    'America/New_York',
+    'UTC',
+    'Europe/London',
+    'Asia/Tokyo',
+    'Pacific/Kiritimati',
+  ]) {
     it(`keeps the stored day in ${tz}`, () => {
       process.env.TZ = tz
-      expect(new Date('2026-10-31').toLocaleDateString('en-US', { ...LONG, timeZone: 'UTC' })).toBe('October 31, 2026')
+      expect(new Date('2026-10-31').toLocaleDateString('en-US', { ...LONG, timeZone: 'UTC' })).toBe(
+        'October 31, 2026',
+      )
       expect(formatDateOnly('2026-10-31', LONG)).toContain('31')
     })
   }

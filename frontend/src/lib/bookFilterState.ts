@@ -36,11 +36,17 @@ export function activeBookFilterCount(f: BookFilterState): number {
   return Object.keys(f.sheetTypeId).length + Object.keys(f.instrumentId).length
 }
 
-function idDimensionParams(map: Record<string, TriState>): { include?: number[]; exclude?: number[] } {
+function idDimensionParams(map: Record<string, TriState>): {
+  include?: number[]
+  exclude?: number[]
+} {
   const entries = Object.entries(map)
   const include = entries.filter(([, s]) => s === 'include').map(([k]) => Number(k))
   const exclude = entries.filter(([, s]) => s === 'exclude').map(([k]) => Number(k))
-  return { include: include.length ? include : undefined, exclude: exclude.length ? exclude : undefined }
+  return {
+    include: include.length ? include : undefined,
+    exclude: exclude.length ? exclude : undefined,
+  }
 }
 
 /** Converts a BookFilterState into the query-param shape both listBooks

@@ -6,6 +6,9 @@ import { apiPost } from './client'
 // server ignores it and uses its own env var value in that case — see
 // handleCompleteSetup's own comment); password only matters for
 // "singlepass".
-export function completeSetup(authMethod: 'none' | 'singlepass', password?: string): Promise<{ ok: boolean }> {
+export function completeSetup(
+  authMethod: 'none' | 'singlepass',
+  password?: string,
+): Promise<{ ok: boolean }> {
   return apiPost<{ ok: boolean }>('/api/setup/complete', { authMethod, password })
 }

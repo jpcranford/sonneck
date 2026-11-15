@@ -31,7 +31,11 @@ export function createUserListItem(resource: UserListResource, name: string): Pr
   return apiPost<Tag>(`/api/${resource}`, { name })
 }
 
-export function renameUserListItem(resource: UserListResource, id: number, name: string): Promise<Tag> {
+export function renameUserListItem(
+  resource: UserListResource,
+  id: number,
+  name: string,
+): Promise<Tag> {
   return apiPatch<Tag>(`/api/${resource}/${id}`, { name })
 }
 

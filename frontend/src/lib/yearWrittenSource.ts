@@ -10,5 +10,7 @@ import type { Piece } from '../api/types'
 // when the piece's own raw column is set, i.e. the effective CopyrightYear
 // is both present and not itself inherited from the book.
 export function yearWrittenSource(piece: Piece): string {
-  return piece.copyrightYear.value != null && !piece.copyrightYear.inherited ? 'copyright year' : 'book'
+  return piece.copyrightYear.value != null && !piece.copyrightYear.inherited
+    ? 'copyright year'
+    : 'book'
 }

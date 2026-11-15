@@ -20,7 +20,7 @@ func TestDamerauLevenshtein(t *testing.T) {
 		{"ab", "ba", 1},   // adjacent transposition — the reason for Damerau over plain Levenshtein
 		{"nutkracker", "nutcracker", 1},
 		{"sostenato", "sostenuto", 1}, // single substitution: "a"→"u"
-		{"kitten", "sitting", 3}, // classic textbook example
+		{"kitten", "sitting", 3},      // classic textbook example
 	} {
 		if got := fuzzy.DamerauLevenshtein(tc.a, tc.b); got != tc.want {
 			t.Errorf("DamerauLevenshtein(%q, %q) = %d, want %d", tc.a, tc.b, got, tc.want)
@@ -57,11 +57,11 @@ func TestMaxDistance(t *testing.T) {
 		query string
 		want  int
 	}{
-		{"a", 1},                             // floored at 1, never zero
+		{"a", 1}, // floored at 1, never zero
 		{"an", 1},
 		{"boelu", 2},                         // ceil(5/4) = 2, not floor(5/4) = 1 — the case this was widened for
 		{"andantno", 2},                      // 8 chars: exact multiple of 4, ceiling == floor here
-		{"nutkracker suite", 3},               // 16 chars / 4 = 4, capped at 3
+		{"nutkracker suite", 3},              // 16 chars / 4 = 4, capped at 3
 		{"a very long search query here", 3}, // capped regardless of length
 	} {
 		if got := fuzzy.MaxDistance(tc.query); got != tc.want {

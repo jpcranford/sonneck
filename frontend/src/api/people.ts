@@ -50,7 +50,9 @@ export function splitPerson(id: number, req: PersonSplitRequest): Promise<Person
 // otherwise the same string before and after a portrait upload/removal and
 // nothing else forces a re-fetch.
 export function getPersonPortraitUrl(personId: number, version?: string | null): string {
-  return version ? `/api/people/${personId}/portrait?v=${version}` : `/api/people/${personId}/portrait`
+  return version
+    ? `/api/people/${personId}/portrait?v=${version}`
+    : `/api/people/${personId}/portrait`
 }
 
 export function uploadPersonPortrait(personId: number, file: File): Promise<Person> {

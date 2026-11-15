@@ -7,14 +7,7 @@ import type { Tag } from './types'
 // hit a different, non-admin route.
 
 export type Permission =
-  | 'read'
-  | 'download'
-  | 'practice'
-  | 'edit'
-  | 'upload'
-  | 'create'
-  | 'delete'
-  | 'admin'
+  'read' | 'download' | 'practice' | 'edit' | 'upload' | 'create' | 'delete' | 'admin'
 
 export interface AdminUser {
   id: number
@@ -39,7 +32,10 @@ export function deleteAdminUser(id: number): Promise<{ deleted: boolean; id: num
 // handleAdminSecurity for the full scope this deliberately doesn't cover).
 // password omitted/blank when switching to singlepass with one already set
 // means "keep the current password."
-export function setSecurity(authMethod: 'none' | 'singlepass', password?: string): Promise<{ ok: boolean }> {
+export function setSecurity(
+  authMethod: 'none' | 'singlepass',
+  password?: string,
+): Promise<{ ok: boolean }> {
   return apiPost<{ ok: boolean }>('/api/admin/security', { authMethod, password })
 }
 

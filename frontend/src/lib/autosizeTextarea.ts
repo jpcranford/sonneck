@@ -16,7 +16,11 @@ export function autosizeTextarea(el: HTMLTextAreaElement | null) {
 // name) — Enter should behave like it does in a plain <input> (submit the
 // form) rather than a textarea's own default (insert a newline), which
 // would silently embed a literal "\n" into saved data.
-export function preventTextareaNewline(event: { key: string; preventDefault: () => void; currentTarget: HTMLTextAreaElement }) {
+export function preventTextareaNewline(event: {
+  key: string
+  preventDefault: () => void
+  currentTarget: HTMLTextAreaElement
+}) {
   if (event.key !== 'Enter') return
   event.preventDefault()
   event.currentTarget.form?.requestSubmit()
