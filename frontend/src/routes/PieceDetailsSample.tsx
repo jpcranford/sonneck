@@ -28,6 +28,8 @@ import {
   IconEditFilled,
   IconDownload,
   IconExternalLink,
+  IconEyeOff,
+  IconFiles,
   IconHeart,
   IconHeartFilled,
   IconImageInPicture,
@@ -50,6 +52,8 @@ import { MarkdownText } from '../components/MarkdownText'
 import { PracticeStatusIcon } from '../components/PracticeStatusIcon'
 import { hyphenateISBN } from '../lib/isbn'
 import { useMockupTitle } from '../lib/useMockupTitle'
+import { shownRange } from '../lib/sheetViewerSpreads'
+import { ManagePagesWindow } from './ManagePagesMockup'
 import { EDIT_PIECE_KEYS, useShortcutBlocker, useShortcuts } from '../lib/shortcuts'
 
 // ---------------------------------------------------------------------
@@ -172,13 +176,15 @@ const samplePiece = {
   instruments: { values: [{ id: 1, name: 'Piano' }] as Tag[], inherited: true },
   sourceBookId: 1,
   sourcePageStart: 22,
-  sourcePageEnd: 24,
+  sourcePageEnd: 26,
   duration: 95,
   bpm: 88,
   measureCount: 35,
   beatsPerMeasure: 3,
   fileHash: 'e71c2f9b8a4d5e6f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f',
-  pageCount: 3,
+  // A title page before the music and a publisher's catalogue after it,
+  // to try Manage Pages on.
+  pageCount: 5,
   // Public Domain Badge feature — copyrightYear set (unlike before) so
   // the citation's copyright clause has a real year to show once the
   // preview toggle below lands on a clause-showing state. copyrightHolder
@@ -270,17 +276,63 @@ function sampleCitationFor(status: CopyrightStatus): string {
   return `${FLAT_CITATION} ${publicDomainNote(samplePiece.copyrightSlug)}`
 }
 
-function SheetPagePlaceholder({ page }: { page: number }) {
-  return (
+// The sample's first page is a title page and its last a publisher's
+// catalogue; the pages between are music.
+function SheetPagePlaceholder({ page, className }: { page: number; className?: string }) {
+  const frame = <rect x="0.5" y="0.5" width="199" height="259" fill="#fffdf9" stroke="#e4e0d8" />
+  const svg = (children: ReactNode) => (
     <svg
       viewBox="0 0 200 260"
       width={850}
       height={1105}
-      className={`block h-auto w-auto max-w-full ${PIECE_PAGE_MAX_H}`}
+      className={className ?? `block h-auto w-auto max-w-full ${PIECE_PAGE_MAX_H}`}
       role="img"
       aria-label={`Page ${page} preview`}
     >
-      <rect x="0.5" y="0.5" width="199" height="259" fill="#fffdf9" stroke="#e4e0d8" />
+      {frame}
+      {children}
+    </svg>
+  )
+  if (page === 1)
+    return svg(
+      <g fontFamily="Georgia, serif" textAnchor="middle" fill="#3d362f">
+        <text x="100" y="70" fontSize="15" letterSpacing="1.5">
+          ALBUM
+        </text>
+        <text x="100" y="86" fontSize="8" fontStyle="italic">
+          für die
+        </text>
+        <text x="100" y="104" fontSize="15" letterSpacing="1.5">
+          JUGEND
+        </text>
+        <text x="100" y="124" fontSize="7">
+          Op. 68
+        </text>
+        <line x1="80" x2="120" y1="138" y2="138" stroke="#8f857a" strokeWidth="0.6" />
+        <text x="100" y="156" fontSize="9">
+          Robert Schumann
+        </text>
+        <text x="100" y="232" fontSize="7" letterSpacing="1">
+          G. SCHIRMER • NEW YORK
+        </text>
+      </g>,
+    )
+  if (page === samplePiece.pageCount)
+    return svg(
+      <g fontFamily="Georgia, serif" fill="#5c5349">
+        <text x="100" y="30" fontSize="8" textAnchor="middle" letterSpacing="1">
+          SCHIRMER&apos;S LIBRARY
+        </text>
+        {Array.from({ length: 20 }, (_, i) => (
+          <g key={i}>
+            <rect x="24" y={46 + i * 10} width={60 + ((i * 37) % 50)} height="3" fill="#c9c2b6" />
+            <rect x="160" y={46 + i * 10} width="16" height="3" fill="#c9c2b6" />
+          </g>
+        ))}
+      </g>,
+    )
+  return svg(
+    <>
       <text
         x="100"
         y="26"
@@ -308,7 +360,21 @@ function SheetPagePlaceholder({ page }: { page: number }) {
       >
         {page}
       </text>
-    </svg>
+    </>,
+  )
+}
+
+// Marks a page Manage Pages skips (the Sheet Viewer leaves it out); the
+// page itself stays at full strength here.
+function SkippedBadge({ className = '' }: { className?: string }) {
+  return (
+    <span
+      title="Skipped in the Sheet Viewer"
+      className={`pointer-events-none flex items-center gap-1 rounded-full bg-scrim/80 px-2 py-1 text-xs text-white/90 shadow-md backdrop-blur-sm ${className}`}
+    >
+      <IconEyeOff size={13} />
+      Skipped
+    </span>
   )
 }
 
@@ -328,12 +394,14 @@ function SheetPagePlaceholder({ page }: { page: number }) {
 function PageLightbox({
   page,
   pageCount,
+  skipped,
   onClose,
   onPrev,
   onNext,
 }: {
   page: number
   pageCount: number
+  skipped: boolean
   onClose: () => void
   onPrev: () => void
   onNext: () => void
@@ -389,6 +457,7 @@ function PageLightbox({
       <div className="pointer-events-none absolute top-6 right-6 rounded-full bg-scrim/80 px-3 py-1.5 text-xs text-white/90 shadow-md backdrop-blur-sm">
         Click image to {zoom === 'fit' ? 'zoom in' : 'fit to screen'}
       </div>
+      {skipped && <SkippedBadge className="absolute top-7 left-1/2 -translate-x-1/2" />}
 
       <button
         type="button"
@@ -556,8 +625,18 @@ export function PieceDetailsSample() {
   useKeepInView(statusMenuRef, statusOpen)
   const book = sampleBook
 
-  const [page, setPage] = useState(1)
-  const [thumbnailPage, setThumbnailPage] = useState(1)
+  const [thumbnailPage, setThumbnailPage] = useState(2)
+  // Manage Pages: pages the Sheet Viewer skips at the start and the end.
+  const [skip, setSkip] = useState({ start: 1, end: 1 })
+  // The preview opens on the thumbnail's page, or the first shown page when
+  // that one is skipped. It still steps through every page of the file.
+  const [page, setPage] = useState(() => {
+    const { first, last } = shownRange(piece.pageCount, skip.start, skip.end)
+    return thumbnailPage >= first && thumbnailPage <= last ? thumbnailPage : first
+  })
+  const [managePagesOpen, setManagePagesOpen] = useState(false)
+  const shown = shownRange(piece.pageCount, skip.start, skip.end)
+  const pageSkipped = (p: number) => p < shown.first || p > shown.last
   const [lightboxOpen, setLightboxOpen] = useState(false)
   // The two menus under the page (Download's caret and ⋯):
   // one open at a time, so opening one closes whichever else was open.
@@ -672,6 +751,8 @@ export function PieceDetailsSample() {
         if (next >= 100) {
           window.clearInterval(interval)
           window.setTimeout(() => setReplacePending(false), 400)
+          // A new file shows every page again.
+          setSkip({ start: 0, end: 0 })
           return 100
         }
         return next
@@ -862,6 +943,7 @@ export function PieceDetailsSample() {
             >
               <SheetPagePlaceholder page={page} />
             </button>
+            {pageSkipped(page) && <SkippedBadge className="absolute top-2.5 left-2.5" />}
 
             {/* Always-visible "view larger" hint, not a hover reveal —
                 same device-aware reasoning as the lightbox's own zoom
@@ -910,6 +992,7 @@ export function PieceDetailsSample() {
               key={page}
               page={page}
               pageCount={piece.pageCount}
+              skipped={pageSkipped(page)}
               onClose={() => setLightboxOpen(false)}
               onPrev={() => setPage((p) => Math.max(1, p - 1))}
               onNext={() => setPage((p) => Math.min(piece.pageCount, p + 1))}
@@ -1040,8 +1123,42 @@ export function PieceDetailsSample() {
                     <IconImageInPicture size={16} />
                     Use Page as Thumbnail
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setManagePagesOpen(true)
+                      setOpenMenu(null)
+                    }}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-paper-hover"
+                  >
+                    <IconFiles size={16} />
+                    Manage Pages…
+                  </button>
                 </div>
               )}
+              <ManagePagesWindow
+                open={managePagesOpen}
+                onClose={() => setManagePagesOpen(false)}
+                title={piece.title}
+                credit={
+                  piece.arranger.value
+                    ? `${piece.composer.value}, arr. ${piece.arranger.value}`
+                    : piece.composer.value
+                }
+                pageCount={piece.pageCount}
+                skipStart={skip.start}
+                skipEnd={skip.end}
+                onSave={(start, end) => {
+                  setSkip({ start, end })
+                  // A thumbnail on a page now skipped moves to the first shown page.
+                  const next = shownRange(piece.pageCount, start, end)
+                  if (thumbnailPage < next.first || thumbnailPage > next.last)
+                    setThumbnailPage(next.first)
+                }}
+                renderPage={(n) => (
+                  <SheetPagePlaceholder page={n} className="block h-full w-full" />
+                )}
+              />
             </div>
             <input
               ref={replaceFileInputRef}
@@ -1529,6 +1646,9 @@ export function PieceDetailsSample() {
                 </DetailRow>
                 <DetailRow small tight label="Page count">
                   {piece.pageCount}
+                  {skip.start + skip.end > 0 && (
+                    <span className="text-ink-muted"> ({skip.start + skip.end} skipped)</span>
+                  )}
                 </DetailRow>
                 <DetailRow small tight label="Created">
                   {formatDate(piece.createdAt)}

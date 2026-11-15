@@ -31,6 +31,7 @@ import {
   IconDownload,
   IconEye,
   IconEyeOff,
+  IconFiles,
   IconGripVertical,
   IconHandFinger,
   IconHeart,
@@ -87,10 +88,12 @@ import {
   preparePiecePages,
   savePracticeSettings,
   setPiecePracticeStatus,
+  setPieceSkippedPages,
   setPieceUserNotes,
   updatePiece,
   type PracticeSettings,
 } from '../api/pieces'
+import { ManagePagesModal } from '../components/ManagePagesModal'
 import {
   getUserSettings,
   type MetronomeShow,
@@ -153,6 +156,7 @@ import {
   fitPages,
   groupSpreads,
   pagesShown,
+  shownRange,
   SPREAD_GAP,
   turnTarget,
 } from '../lib/sheetViewerSpreads'
@@ -1637,7 +1641,24 @@ function SheetViewer({
   const [pageState, setPage] = useState<number | 'last'>(
     startPage === 'last' ? 'last' : startPage === 'first' ? 1 : startPage,
   )
-  const page = pageState === 'last' ? pageCount : pageState
+  // Manage Pages: the piece runs from its first shown page to its last;
+  // Display's Show skipped pages brings the rest back for this visit (the
+  // viewer remounts per item, so it's off again on the next). The counter
+  // counts from `first`, so the viewer's page 1 is the first shown page.
+  const [showSkipped, setShowSkipped] = useState(false)
+  const skippedCount = custom || !piece ? 0 : piece.skipStart + piece.skipEnd
+  const range =
+    custom || !piece || showSkipped
+      ? { first: 1, last: pageCount }
+      : shownRange(pageCount, piece.skipStart, piece.skipEnd)
+  const shownCount = range.last - range.first + 1
+  const viewerNumber = (n: number) => n - range.first + 1
+  // `page` is the file's page number, kept inside the range: opening at
+  // page 1 lands on the first shown page, at 'last' on the last.
+  const page = Math.min(
+    Math.max(pageState === 'last' ? range.last : pageState, range.first),
+    range.last,
+  )
   // Per page URL: its finished drawing (PageDrawing); failed to load. A
   // retry bumps attempt, which remounts the failed page.
   const [ready, setReady] = useState<Record<string, HTMLCanvasElement>>({})
@@ -1863,18 +1884,25 @@ function SheetViewer({
   const fit = fitPages(
     { width: stageBox?.w ?? 0, height: stageBox?.h ?? 0 },
     fitAspect,
-    custom ? 1 : pageCount,
+    custom ? 1 : shownCount,
   )
   const perScreen = custom || layoutPages === 'one' ? 1 : fit.count
   const sliding = layoutTurn === 'slide' && perScreen > 1
-  const spreads = groupSpreads(pageCount, perScreen, practice.firstAlone, new Set(practice.links))
-  const shownFor = (first: number) => pagesShown(first, pageCount, perScreen, sliding, spreads)
+  const spreads = groupSpreads(
+    range.last,
+    perScreen,
+    practice.firstAlone,
+    new Set(practice.links),
+    range.first,
+  )
+  const shownFor = (first: number) =>
+    pagesShown(first, range.last, perScreen, sliding, spreads, range.first)
   const shown = shownFor(page)
   function windowFor(first: number) {
     const on = shownFor(first)
     const pages: number[] = []
     for (let p = on[0] - perScreen; p <= on[on.length - 1] + 2 * perScreen; p++)
-      if (p >= 1 && p <= pageCount) pages.push(p)
+      if (p >= range.first && p <= range.last) pages.push(p)
     return pages
   }
   const pageUrl = (p: number) => getPiecePageUrl(pieceId ?? 0, p, pageVersion)
@@ -1946,7 +1974,7 @@ function SheetViewer({
   // nothing to turn; Keep pages together also while showing one page.
   const screenIdle = custom
     ? null
-    : fit.count >= pageCount
+    : fit.count >= shownCount
       ? 'The whole piece fits on screen, so nothing turns.'
       : fit.count === 1
         ? 'This screen fits one page at a time.'
@@ -1963,6 +1991,11 @@ function SheetViewer({
   // Shows a page of this item (a turn, or an undo turning back).
   function showPage(next: number) {
     setPage(next)
+    // An undo turning to a skipped page shows the skipped pages.
+    if (piece && !custom) {
+      const r = shownRange(pageCount, piece.skipStart, piece.skipEnd)
+      if (next < r.first || next > r.last) setShowSkipped(true)
+    }
     if (pieceId === null) return
     // Pages leaving the preload window unmount; drop their "ready" so one
     // that comes back shows only once it's decoded again.
@@ -1999,7 +2032,21 @@ function SheetViewer({
   // saves any change still waiting first, so a mark just drawn is in it.
   // Faded, with its reason on a tap, when there's nothing to export;
   // hidden without the download permission.
-  const canDownload = hasPermission(useAuth(), 'download')
+  const me = useAuth()
+  const canDownload = hasPermission(me, 'download')
+  const canEdit = hasPermission(me, 'edit')
+  // Manage Pages, opened from Display.
+  const [managePagesOpen, setManagePagesOpen] = useState(false)
+  const skippedPagesMutation = useMutation({
+    mutationFn: ({ start, end }: { start: number; end: number }) =>
+      setPieceSkippedPages(pieceId as number, start, end),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(['piece', pieceId], updated)
+      queryClient.invalidateQueries({ queryKey: ['pieces'] })
+      queryClient.invalidateQueries({ queryKey: ['setlists'] })
+      queryClient.invalidateQueries({ queryKey: ['setlist'] })
+    },
+  })
   const pieceMarks = Object.values(loadedPages ?? {}).flat()
   const exportHidden = pieceMarks.filter((m) => hiddenLayers.includes(m.layer)).length
   const exportShown = pieceMarks.length - exportHidden
@@ -2506,7 +2553,7 @@ function SheetViewer({
       flash('Double-turn ignored')
       return
     }
-    const next = turnTarget(page, dir, pageCount, perScreen, sliding, spreads)
+    const next = turnTarget(page, dir, range.last, perScreen, sliding, spreads, range.first)
     if (next === null) {
       // In a queue, turning past an item's end goes on to the next item;
       // back from its start, to the previous one's last page.
@@ -2917,12 +2964,14 @@ function SheetViewer({
   // The Display panel (Photo filters, renamed): the page layout over the
   // filters (design A of https://claude.ai/artifact/J9T8zCieMcc82cRqRJXKFD).
   // Its Keep pages together page replaces the panel's own while open.
+  // Links and Page 1 alone apply to the shown pages: page 1 is the first
+  // shown one, and a link on a skipped page does nothing.
+  const firstLinked = practice.links.includes(range.first)
+  const shownLinks = practice.links.filter((l) => l >= range.first && l < range.last)
   const linkSummary =
     [
-      practice.firstAlone && !practice.links.includes(1) ? 'page 1 alone' : '',
-      practice.links.length
-        ? `${practice.links.length} ${practice.links.length === 1 ? 'link' : 'links'}`
-        : '',
+      practice.firstAlone && !firstLinked ? 'page 1 alone' : '',
+      shownLinks.length ? `${shownLinks.length} ${shownLinks.length === 1 ? 'link' : 'links'}` : '',
     ]
       .filter(Boolean)
       .join(', ') || 'None'
@@ -2951,6 +3000,22 @@ function SheetViewer({
         />
       </div>
       {layoutIdle && <p className="px-3 pb-1 text-xs text-ink-muted italic">{layoutIdle}</p>}
+      {/* Manage Pages (edit only), and a look at the skipped pages for this
+          visit. */}
+      {!custom && piece && canEdit && (
+        <MenuRow
+          icon={<IconFiles size={20} />}
+          label="Manage pages"
+          trailing={skippedCount ? `${skippedCount} skipped` : 'None skipped'}
+          onClick={() => {
+            openDisplay(false)
+            setManagePagesOpen(true)
+          }}
+        />
+      )}
+      {skippedCount > 0 && (
+        <SwitchRow label="Show skipped pages" checked={showSkipped} onChange={setShowSkipped} />
+      )}
       <div className="-mx-3 my-1 border-t border-border" />
     </>
   )
@@ -2958,21 +3023,22 @@ function SheetViewer({
   // rows of three, each followed by its link to the next; a link keeps that
   // pair in one spread. Only when turning by spread.
   const preview = groupSpreads(
-    pageCount,
+    range.last,
     Math.max(2, perScreen),
     practice.firstAlone,
     new Set(practice.links),
+    range.first,
   )
   const keepTogether = pieceId !== null && (
     <>
       <SwitchRow
         label="Page 1 alone"
-        checked={practice.firstAlone && !practice.links.includes(1)}
+        checked={practice.firstAlone && !firstLinked}
         onChange={(firstAlone) => setPractice({ firstAlone })}
-        disabled={practice.links.includes(1)}
+        disabled={firstLinked}
         indent={false}
       />
-      {practice.links.includes(1) && (
+      {firstLinked && (
         <p className="-mt-1 px-3 pb-1 text-xs text-ink-muted">
           Pages 1 and 2 are linked, so they always show together.
         </p>
@@ -2980,7 +3046,7 @@ function SheetViewer({
       {/* Padded one link's width on the left too, which centers the pages
           themselves. */}
       <div className="grid grid-cols-[repeat(3,auto)] justify-center gap-y-2.5 py-2 pl-[34px]">
-        {Array.from({ length: pageCount }, (_, i) => i + 1).map((n) => {
+        {Array.from({ length: shownCount }, (_, i) => range.first + i).map((n) => {
           const linked = practice.links.includes(n)
           return (
             <span key={n} className="flex items-center">
@@ -2992,14 +3058,14 @@ function SheetViewer({
                   className="score-page block h-full w-full object-cover"
                 />
                 <span className="absolute inset-x-0 bottom-0 bg-white/85 text-center text-[11px] font-medium text-scrim time-figures">
-                  {n}
+                  {viewerNumber(n)}
                 </span>
               </span>
-              {n < pageCount ? (
+              {n < range.last ? (
                 <button
                   type="button"
                   aria-pressed={linked}
-                  aria-label={`Keep pages ${n} and ${n + 1} together`}
+                  aria-label={`Keep pages ${viewerNumber(n)} and ${viewerNumber(n) + 1} together`}
                   onClick={() =>
                     setPractice({
                       links: linked
@@ -3039,7 +3105,9 @@ function SheetViewer({
           <Fragment key={g[0]}>
             {i > 0 && ' \u2022 '}
             <span className="font-medium text-ink time-figures">
-              {g.length > 1 ? `${g[0]}\u2013${g[g.length - 1]}` : g[0]}
+              {g.length > 1
+                ? `${viewerNumber(g[0])}\u2013${viewerNumber(g[g.length - 1])}`
+                : viewerNumber(g[0])}
             </span>
           </Fragment>
         ))}
@@ -3982,7 +4050,7 @@ function SheetViewer({
   // so moving on to it shows its first page at once.
   const nextItem = session.index >= 0 ? session.items[session.index + 1] : undefined
   const nextPieceId = nextItem?.kind === 'piece' ? nextItem.id : null
-  const nearEnd = item !== null && page >= pageCount - 1
+  const nearEnd = item !== null && page >= range.last - 1
   useEffect(() => {
     if (!nearEnd || nextPieceId === null || !config) return
     preparePiecePages(nextPieceId).catch(() => {})
@@ -4328,13 +4396,13 @@ function SheetViewer({
       <HitButton
         label="Previous page"
         onClick={() => turn(-1)}
-        disabled={!item || (shown[0] <= 1 && !(session.index > 0))}
+        disabled={!item || (shown[0] <= range.first && !(session.index > 0))}
       >
         <IconChevronLeft size={22} />
       </HitButton>
       <span className="w-[5.5em] text-center text-sm text-ink-soft tabular-nums">
         {item
-          ? `${shown.length > 1 ? `${shown[0]}\u2013${shown[shown.length - 1]}` : shown[0]} / ${pageCount}`
+          ? `${shown.length > 1 ? `${viewerNumber(shown[0])}\u2013${viewerNumber(shown[shown.length - 1])}` : viewerNumber(shown[0])} / ${shownCount}`
           : ''}
       </span>
       <HitButton
@@ -4342,7 +4410,7 @@ function SheetViewer({
         onClick={() => turn(1)}
         disabled={
           !item ||
-          (shown[shown.length - 1] >= pageCount &&
+          (shown[shown.length - 1] >= range.last &&
             !(session.index >= 0 && session.index < session.items.length - 1))
         }
       >
@@ -4648,7 +4716,7 @@ function SheetViewer({
   }
   function goToEnd(end: 'first' | 'last') {
     finishText()
-    showPage(end === 'first' ? 1 : pageCount)
+    showPage(end === 'first' ? range.first : range.last)
   }
   function stepPiece(dir: -1 | 1) {
     finishText()
@@ -5073,6 +5141,26 @@ function SheetViewer({
           </div>
         )}
       </main>
+      {canEdit && piece && pieceId !== null && (
+        <ManagePagesModal
+          open={managePagesOpen}
+          onClose={() => setManagePagesOpen(false)}
+          title={piece.title}
+          credit={credit}
+          pageCount={piece.pageCount}
+          skipStart={piece.skipStart}
+          skipEnd={piece.skipEnd}
+          onSave={(start, end) => skippedPagesMutation.mutateAsync({ start, end })}
+          renderPage={(n) => (
+            <img
+              src={getPieceThumbnailUrl(pieceId, n, thumbVersion(piece.fileHash))}
+              alt=""
+              draggable={false}
+              className="score-page block h-full w-full object-cover"
+            />
+          )}
+        />
+      )}
     </div>
   )
 }

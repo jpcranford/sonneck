@@ -173,7 +173,12 @@ func pdfEntries(in []api.SetlistEntryResponse) []setlistpdf.Entry {
 				PieceRole:      e.Role,
 				PieceKeys:      keys,
 				PieceDuration:  e.Piece.Duration,
-				PiecePageCount: e.Piece.PageCount,
+				PiecePageCount: e.Piece.LastPage - e.Piece.FirstPage + 1,
+			}
+			// Pages skipped at the start or end are left out.
+			if e.Piece.FirstPage > 1 || e.Piece.LastPage < e.Piece.PageCount {
+				out[i].PieceFirstPage = e.Piece.FirstPage
+				out[i].PieceLastPage = e.Piece.LastPage
 			}
 			continue
 		}

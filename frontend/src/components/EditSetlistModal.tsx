@@ -43,6 +43,7 @@ import { showAlert } from '../lib/dialogs'
 import { isMultilineField } from '../lib/multilineField'
 import { MarkdownHint } from './MarkdownHint'
 import { assumedDurationHint } from '../lib/setlistEstimate'
+import { shownRange } from '../lib/sheetViewerSpreads'
 
 // Real port of EditSetlistMockup.tsx's own exported EditSetlistModal
 // (Setlists design pass, Phase 10 mockup approved, decision 23's full
@@ -108,7 +109,13 @@ function pieceSummary(piece: Piece): SetlistPieceSummary {
     keys: piece.keys,
     duration: piece.duration,
     pageCount: piece.pageCount,
+    ...shownPages(piece),
   }
+}
+
+function shownPages(piece: Piece) {
+  const { first, last } = shownRange(piece.pageCount, piece.skipStart, piece.skipEnd)
+  return { firstPage: first, lastPage: last }
 }
 
 function pieceKeysLabel(piece: Piece | SetlistEntry['piece']): string {

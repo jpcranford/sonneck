@@ -175,6 +175,10 @@ export interface Piece {
    * (design doc §14 addition) — user-selectable from the Piece Details page,
    * defaults to 1. */
   thumbnailPage: number
+  /** Manage Pages: pages at the start and end the Sheet Viewer and the Set
+   * PDF skip (lib/sheetViewerSpreads.ts' shownRange gives the rest). */
+  skipStart: number
+  skipEnd: number
   // Public Domain Badge feature (migration 00022) — copyrightYear/Holder/
   // Slug are book-inheritable (same EffectiveField family as every other
   // such field); copyrightStatus additionally carries the *effective*
@@ -411,6 +415,9 @@ export interface SetlistPieceSummary {
   keys: Tag[]
   duration: number | null
   pageCount: number
+  /** The pages the Set PDF splices in (skipped pages left out). */
+  firstPage: number
+  lastPage: number
 }
 
 /** One row of a Setlist's own ordered "entries" (SetlistEntryResponse) —

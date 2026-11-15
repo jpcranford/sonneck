@@ -77,6 +77,10 @@ type PieceResponse struct {
 	FileHash        string              `json:"fileHash"`
 	PageCount       int                 `json:"pageCount"`
 	ThumbnailPage   int                 `json:"thumbnailPage"`
+	// SkipStart/SkipEnd: pages at the start and end the Sheet Viewer and the
+	// Set PDF skip (Manage Pages).
+	SkipStart int `json:"skipStart"`
+	SkipEnd   int `json:"skipEnd"`
 	// CopyrightYear/CopyrightHolder/CopyrightSlug (Public Domain Badge
 	// feature, migration 00022) are book-inheritable, same EffectiveField
 	// shape as every other such field. CopyrightStatus carries both the
@@ -152,6 +156,8 @@ func BuildPieceResponse(ctx context.Context, q repo.Queryer, p *models.Piece, re
 		FileHash:         p.FileHash,
 		PageCount:        p.PageCount,
 		ThumbnailPage:    p.ThumbnailPage,
+		SkipStart:        p.SkipStart,
+		SkipEnd:          p.SkipEnd,
 		CreatedAt:        p.CreatedAt,
 		UpdatedAt:        p.UpdatedAt,
 		Keys:             []repo.Tag{},

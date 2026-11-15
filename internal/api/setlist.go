@@ -31,6 +31,10 @@ type SetlistPieceSummary struct {
 	Keys           []repo.Tag `json:"keys"`
 	Duration       *int       `json:"duration"`
 	PageCount      int        `json:"pageCount"`
+	// The pages the Set PDF splices in: every page but those Manage Pages
+	// skips (Piece.ShownRange).
+	FirstPage int `json:"firstPage"`
+	LastPage  int `json:"lastPage"`
 }
 
 // SetlistEntryResponse is one row of GetSetlist's own ordered "entries"
@@ -189,6 +193,7 @@ func buildSetlistPieceSummary(ctx context.Context, q repo.Queryer, pieceID int64
 		return nil, err
 	}
 
+	first, last := p.ShownRange()
 	summary := &SetlistPieceSummary{
 		ID:             p.ID,
 		Title:          p.Title,
@@ -198,6 +203,8 @@ func buildSetlistPieceSummary(ctx context.Context, q repo.Queryer, pieceID int64
 		Keys:           []repo.Tag{},
 		Duration:       p.Duration,
 		PageCount:      p.PageCount,
+		FirstPage:      first,
+		LastPage:       last,
 	}
 	if len(eff.Composer.IDs) > 0 {
 		people, err := repo.PeopleByIDs(ctx, q, eff.Composer.IDs)

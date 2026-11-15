@@ -31,6 +31,7 @@ import {
   IconExternalLink,
   IconHeart,
   IconHeartFilled,
+  IconFiles,
   IconImageInPicture,
   IconMusic,
   IconPlayerPlay,
@@ -61,6 +62,7 @@ import {
   getRandomPiece,
   replacePieceFile,
   setPiecePracticeStatus,
+  setPieceSkippedPages,
   setPieceThumbnailPage,
   updatePiece,
 } from '../api/pieces'
@@ -89,6 +91,10 @@ import {
 } from '../api/annotations'
 import { MarkdownText } from '../components/MarkdownText'
 import { PageLightbox } from '../components/PageLightbox'
+import { ManagePagesModal } from '../components/ManagePagesModal'
+import { SkippedBadge } from '../components/SkippedBadge'
+import { shownRange } from '../lib/sheetViewerSpreads'
+import { personCreditPart } from '../lib/joinNames'
 import { PracticeStatusIcon } from '../components/PracticeStatusIcon'
 import { PracticeStatusStrip } from '../components/PracticeStatusStrip'
 import { confirmAction, showAlert } from '../lib/dialogs'
@@ -348,11 +354,16 @@ export function PiecePage() {
   // since an effect here would cause an extra cascading render. Waits for
   // `piece` to actually be loaded (pageResetFor starts null) since
   // thumbnailPage isn't known until then.
+  // Opens on the thumbnail page, or the first page Manage Pages leaves
+  // shown when that one is skipped.
   const [page, setPage] = useState(1)
   const [pageResetFor, setPageResetFor] = useState<number | null>(null)
   if (piece && pageResetFor !== pieceId) {
     setPageResetFor(pieceId)
-    setPage(piece.thumbnailPage)
+    const { first, last } = shownRange(piece.pageCount, piece.skipStart, piece.skipEnd)
+    setPage(
+      piece.thumbnailPage >= first && piece.thumbnailPage <= last ? piece.thumbnailPage : first,
+    )
   }
 
   const me = useAuth()
@@ -556,6 +567,21 @@ export function PiecePage() {
     },
   })
 
+  // Manage Pages: skips pages at the start and end in the Sheet Viewer and
+  // the Set PDF. The server may move the thumbnail off a skipped page.
+  const [managePagesOpen, setManagePagesOpen] = useState(false)
+  const skippedPagesMutation = useMutation({
+    mutationFn: ({ start, end }: { start: number; end: number }) =>
+      setPieceSkippedPages(piece!.id, start, end),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(['piece', pieceId], updated)
+      queryClient.invalidateQueries({ queryKey: ['pieces'] })
+      // Setlist page totals follow the Set PDF, which leaves skipped pages out.
+      queryClient.invalidateQueries({ queryKey: ['setlists'] })
+      queryClient.invalidateQueries({ queryKey: ['setlist'] })
+    },
+  })
+
   const setThumbnailMutation = useMutation({
     mutationFn: (thumbnailPage: number) => setPieceThumbnailPage(piece!.id, thumbnailPage),
     onSuccess: (updated) => {
@@ -651,6 +677,10 @@ export function PiecePage() {
     if (!citationData) return
     handleCopy(citationData.citation, event)
   }
+
+  // A page Manage Pages skips shows a Skipped badge on the preview.
+  const shownPages = piece && shownRange(piece.pageCount, piece.skipStart, piece.skipEnd)
+  const pageSkipped = !!shownPages && (page < shownPages.first || page > shownPages.last)
 
   return (
     // py- (not pt-only, as before) — this page had no bottom padding at
@@ -824,6 +854,7 @@ export function PiecePage() {
                   className={`score-page block h-auto w-auto max-w-full ${PIECE_PAGE_MAX_H}`}
                 />
               </button>
+              {pageSkipped && <SkippedBadge className="absolute top-2.5 left-2.5" />}
 
               {/* Always-visible "view larger" hint, not a hover reveal —
                   same device-aware reasoning as the lightbox's own zoom
@@ -885,6 +916,7 @@ export function PiecePage() {
                 alt={`Page ${page} of ${piece.title}`}
                 page={page}
                 pageCount={piece.pageCount}
+                badge={pageSkipped ? <SkippedBadge /> : undefined}
                 onClose={() => setLightboxOpen(false)}
                 onPrev={() => setPage((p) => Math.max(1, p - 1))}
                 onNext={() => setPage((p) => Math.min(piece.pageCount, p + 1))}
@@ -1070,7 +1102,45 @@ export function PiecePage() {
                           Use Page as Thumbnail
                         </button>
                       )}
+                      {canEdit && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setManagePagesOpen(true)
+                            setOpenMenu(null)
+                          }}
+                          className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-paper-hover"
+                        >
+                          <IconFiles size={16} />
+                          Manage Pages…
+                        </button>
+                      )}
                     </div>
+                  )}
+                  {canEdit && (
+                    <ManagePagesModal
+                      open={managePagesOpen}
+                      onClose={() => setManagePagesOpen(false)}
+                      title={piece.title}
+                      credit={
+                        personCreditPart(
+                          piece.composer.values.map((p) => p.name),
+                          piece.arranger.values.map((p) => p.name),
+                        ) ?? undefined
+                      }
+                      pageCount={piece.pageCount}
+                      skipStart={piece.skipStart}
+                      skipEnd={piece.skipEnd}
+                      onSave={(start, end) => skippedPagesMutation.mutateAsync({ start, end })}
+                      renderPage={(n) => (
+                        <img
+                          src={getPieceThumbnailUrl(piece.id, n, thumbVersion(piece.fileHash))}
+                          alt=""
+                          draggable={false}
+                          className="score-page block h-full w-full object-cover"
+                        />
+                      )}
+                    />
                   )}
                 </div>
               )}
@@ -1730,6 +1800,12 @@ export function PiecePage() {
                   </DetailRow>
                   <DetailRow small tight label="Page count">
                     {piece.pageCount}
+                    {piece.skipStart + piece.skipEnd > 0 && (
+                      <span className="text-ink-muted">
+                        {' '}
+                        ({piece.skipStart + piece.skipEnd} skipped)
+                      </span>
+                    )}
                   </DetailRow>
                   <DetailRow small tight label="Created">
                     {formatDate(piece.createdAt)}

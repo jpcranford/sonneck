@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { IconChevronLeft, IconChevronRight, IconX } from '@tabler/icons-react'
 import { useShortcutBlocker } from '../lib/shortcuts'
 
@@ -23,6 +23,7 @@ export function PageLightbox({
   pageCount,
   minPage = 1,
   pagePrefix = '',
+  badge,
   onClose,
   onPrev,
   onNext,
@@ -53,6 +54,8 @@ export function PageLightbox({
   // as an opt-in prop rather than a hardcoded default, same reasoning as
   // minPage above.
   pagePrefix?: string
+  // Shown at the top center over the page (Piece Details: "Skipped").
+  badge?: ReactNode
   onClose: () => void
   onPrev: () => void
   onNext: () => void
@@ -125,6 +128,11 @@ export function PageLightbox({
       <div className="pointer-events-none absolute top-6 right-6 rounded-full bg-scrim/80 px-3 py-1.5 text-xs text-white/90 shadow-md backdrop-blur-sm">
         Click image to {zoom === 'fit' ? 'zoom in' : 'fit to screen'}
       </div>
+      {badge && (
+        <div className="pointer-events-none absolute top-[calc(1.75rem+var(--titlebar-inset))] left-1/2 -translate-x-1/2">
+          {badge}
+        </div>
+      )}
 
       <button
         type="button"

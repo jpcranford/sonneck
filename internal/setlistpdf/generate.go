@@ -179,7 +179,17 @@ func Generate(ctx context.Context, binDir string, input Input) ([]byte, error) {
 			if _, err := os.Stat(e.PieceFilePath); err != nil {
 				return nil, fmt.Errorf("piece file for %q: %w", e.PieceTitle, err)
 			}
-			segments = append(segments, e.PieceFilePath)
+			path := e.PieceFilePath
+			if e.PieceFirstPage > 0 {
+				// Only the shown pages: copied, never redrawn, so the
+				// pages keep their annotations (poppler.ExtractPages).
+				segIdx++
+				path = filepath.Join(tmpDir, fmt.Sprintf("piece-%03d.pdf", segIdx))
+				if err := poppler.ExtractPages(ctx, binDir, e.PieceFilePath, e.PieceFirstPage, e.PieceLastPage, path); err != nil {
+					return nil, fmt.Errorf("trimming %q: %w", e.PieceTitle, err)
+				}
+			}
+			segments = append(segments, path)
 			pdf = newDoc()
 			continue
 		}

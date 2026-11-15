@@ -8,10 +8,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/jpcranford/sonneck/internal/models"
+	"github.com/jpcranford/sonneck/internal/pdf"
 	"github.com/jpcranford/sonneck/internal/repo"
 )
 
@@ -999,5 +1001,71 @@ func TestSetPiecePracticeStatus(t *testing.T) {
 	}
 	if rec := doJSON(t, h, http.MethodPatch, url, map[string]any{"practiceStatus": "Learning"}); rec.Code != http.StatusForbidden {
 		t.Errorf("without practice: status %d, want 403", rec.Code)
+	}
+}
+
+// TestSetPieceSkippedPages covers Manage Pages: saving skips, moving a
+// thumbnail off a skipped page, refusing to skip every page, leaving the
+// skipped pages out of the Set PDF, and a file replacement showing every
+// page again.
+func TestSetPieceSkippedPages(t *testing.T) {
+	h := newTestServer(t)
+	dir := t.TempDir()
+	path := dir + "/piece.pdf"
+	writeFixturePDF(t, path, 5)
+	var piece struct {
+		ID            int64 `json:"id"`
+		ThumbnailPage int   `json:"thumbnailPage"`
+		SkipStart     int   `json:"skipStart"`
+		SkipEnd       int   `json:"skipEnd"`
+	}
+	decodeData(t, recordRequest(h, multipartUpload(t, "/api/pieces", "piece.pdf", readAll(t, path))), &piece)
+	url := apiPiecesURL(piece.ID) + "/skipped-pages"
+
+	rec := doJSON(t, h, http.MethodPut, url, map[string]any{"skipStart": 1, "skipEnd": 1})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("set: status %d, body %s", rec.Code, rec.Body.String())
+	}
+	decodeData(t, rec, &piece)
+	if piece.SkipStart != 1 || piece.SkipEnd != 1 || piece.ThumbnailPage != 2 {
+		t.Errorf("after set: %+v, want skips 1/1 and the thumbnail moved to page 2", piece)
+	}
+	for _, bad := range []map[string]any{{"skipStart": 3, "skipEnd": 2}, {"skipStart": -1, "skipEnd": 0}} {
+		if rec := doJSON(t, h, http.MethodPut, url, bad); rec.Code != http.StatusBadRequest {
+			t.Errorf("%v: status %d, want 400", bad, rec.Code)
+		}
+	}
+
+	// The Set PDF holds pages 2–4 only: cover, contents, 3 pages, colophon.
+	rec = doJSON(t, h, http.MethodPost, "/api/setlists", map[string]any{"name": "Recital"})
+	var setlist struct {
+		ID         int64 `json:"id"`
+		TotalPages int   `json:"totalPages"`
+	}
+	decodeData(t, rec, &setlist)
+	rec = doJSON(t, h, http.MethodPost, setlistURL(setlist.ID, "/entries"), map[string]any{"pieceId": piece.ID})
+	decodeData(t, rec, &setlist)
+	rec = recordRequest(h, httptest.NewRequest(http.MethodGet, setlistURL(setlist.ID, "/pdf"), nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("pdf: status %d, body %s", rec.Code, rec.Body.String())
+	}
+	pdfPath := filepath.Join(dir, "set.pdf")
+	if err := os.WriteFile(pdfPath, rec.Body.Bytes(), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	pages, err := pdf.PageCount(context.Background(), "", pdfPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if pages != 6 || setlist.TotalPages != 6 {
+		t.Errorf("Set PDF pages = %d, totalPages = %d, want both 6", pages, setlist.TotalPages)
+	}
+
+	// A new file shows every page again.
+	writeFixturePDF(t, dir+"/new.pdf", 4)
+	rec = recordRequest(h, multipartUpload(t, apiPiecesURL(piece.ID)+"/replace-file", "new.pdf", readAll(t, dir+"/new.pdf")))
+	decodeData(t, rec, &piece)
+	if piece.SkipStart != 0 || piece.SkipEnd != 0 {
+		t.Errorf("after replace: skips %d/%d, want 0/0", piece.SkipStart, piece.SkipEnd)
 	}
 }

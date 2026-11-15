@@ -39,6 +39,12 @@ type Piece struct {
 	PageCount     int // total pages in FilePath, for the Library card page-cycle control
 	ThumbnailPage int // which page renders as the Library card thumbnail (design doc §14 addition); user-selectable via the Piece Details page, defaults to 1
 
+	// SkipStart/SkipEnd: pages at the file's start and end the Sheet Viewer
+	// and the Set PDF leave out (Manage Pages, migration 00039); at least one
+	// page always stays. ShownRange gives the pages that remain.
+	SkipStart int
+	SkipEnd   int
+
 	// CopyrightYear: pre-built (CLAUDE.md > Database migrations), now live
 	// as of migration 00022 (Public Domain Badge feature) — book-inheritable.
 	// CopyrightHolder/CopyrightSlug/CopyrightStatus are new in that same
@@ -80,4 +86,13 @@ type Piece struct {
 	UserTagIDs    []int64
 	ComposerIDs   []int64 // book-inheritable, ordered
 	ArrangerIDs   []int64 // book-inheritable, ordered
+}
+
+// ShownRange is the first and last page (1-based) the Sheet Viewer shows:
+// every page but those skipped at the start and end, at least one.
+func (p *Piece) ShownRange() (first, last int) {
+	count := max(p.PageCount, 1)
+	first = min(max(1, p.SkipStart+1), count)
+	last = max(first, count-max(0, p.SkipEnd))
+	return first, last
 }

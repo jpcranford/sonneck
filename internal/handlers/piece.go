@@ -568,6 +568,8 @@ func (s *Server) handleReplacePieceFile(w http.ResponseWriter, r *http.Request) 
 		// number anymore, if the new file is shorter) — reset to 1 rather
 		// than carry a stale/out-of-range selection forward silently.
 		p.ThumbnailPage = 1
+		// The new file's front and back matter may differ: show every page.
+		p.SkipStart, p.SkipEnd = 0, 0
 		p.UpdatedAt = time.Now().UTC()
 		if err := repo.UpdatePiece(r.Context(), tx, p); err != nil {
 			return err
@@ -684,5 +686,61 @@ func (s *Server) handleSetPieceThumbnailPage(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	api.WriteData(w, http.StatusOK, resp)
+}
+
+type setSkippedPagesRequest struct {
+	SkipStart int `json:"skipStart"`
+	SkipEnd   int `json:"skipEnd"`
+}
+
+// handleSetPieceSkippedPages saves Manage Pages: how many pages at the
+// piece's start and end the Sheet Viewer and the Set PDF skip. At least
+// one page always stays shown. A thumbnail on a page that's now skipped
+// moves to the first shown page. Library metadata shared by everyone, so
+// it needs edit, like the thumbnail page.
+func (s *Server) handleSetPieceSkippedPages(w http.ResponseWriter, r *http.Request) {
+	user, ok := s.requirePermission(w, r, models.PermissionEdit)
+	if !ok {
+		return
+	}
+	id, ok := pathID(r, "id")
+	if !ok {
+		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid piece id")
+		return
+	}
+	var req setSkippedPagesRequest
+	if err := decodeJSON(r, &req); err != nil {
+		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid request body: "+err.Error())
+		return
+	}
+
+	var resp *api.PieceResponse
+	err := s.withTx(r.Context(), func(tx *sql.Tx) error {
+		p, err := repo.GetPieceByID(r.Context(), tx, id)
+		if err != nil {
+			return err
+		}
+		if req.SkipStart < 0 || req.SkipEnd < 0 || req.SkipStart+req.SkipEnd >= p.PageCount {
+			return api.ValidationErrors{{
+				Field:   "skipStart",
+				Message: fmt.Sprintf("must leave at least one of the %d pages shown", p.PageCount),
+			}}
+		}
+		p.SkipStart, p.SkipEnd = req.SkipStart, req.SkipEnd
+		if first, last := p.ShownRange(); p.ThumbnailPage < first || p.ThumbnailPage > last {
+			p.ThumbnailPage = first
+		}
+		p.UpdatedAt = time.Now().UTC()
+		if err := repo.UpdatePiece(r.Context(), tx, p); err != nil {
+			return err
+		}
+		resp, err = api.BuildPieceResponse(r.Context(), tx, p, s.Cfg.CopyrightRegion(), user.ID)
+		return err
+	})
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
 	api.WriteData(w, http.StatusOK, resp)
 }

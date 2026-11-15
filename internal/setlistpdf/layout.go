@@ -56,7 +56,11 @@ type Entry struct {
 	PieceKeys      []string // e.g. ["Eb"]; more than one for a modulating piece
 	PieceDuration  *int     // seconds
 	PieceFilePath  string
-	PiecePageCount int
+	PiecePageCount int // the pages spliced in: the shown range's length when trimmed
+	// PieceFirstPage/PieceLastPage, when PieceFirstPage is set, trim the
+	// file to those pages (Manage Pages' skipped pages are left out).
+	PieceFirstPage int
+	PieceLastPage  int
 
 	// Custom fields, meaningful only when IsPiece is false.
 	CustomName            string

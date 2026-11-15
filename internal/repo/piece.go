@@ -23,14 +23,16 @@ func CreatePiece(ctx context.Context, q Queryer, p *models.Piece) (int64, error)
 			imslp_number, source_book_id, source_page_start, source_page_end,
 			duration, bpm, measure_count, beats_per_measure,
 			file_path, file_hash, page_count, thumbnail_page, copyright_year,
-			copyright_holder, copyright_slug, copyright_status, copyright_renewed
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			copyright_holder, copyright_slug, copyright_status, copyright_renewed,
+			skip_start, skip_end
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		p.Title, p.WorkOpusNumber, p.SheetTypeID,
 		p.Publisher, p.PublisherID, p.YearWritten, p.Description,
 		p.ImslpNumber, p.SourceBookID, p.SourcePageStart, p.SourcePageEnd,
 		p.Duration, p.BPM, p.MeasureCount, p.BeatsPerMeasure,
 		p.FilePath, p.FileHash, p.PageCount, p.ThumbnailPage, p.CopyrightYear,
 		p.CopyrightHolder, p.CopyrightSlug, p.CopyrightStatus, p.CopyrightRenewed,
+		p.SkipStart, p.SkipEnd,
 	)
 	if err != nil {
 		return 0, err
@@ -46,7 +48,8 @@ func GetPieceByID(ctx context.Context, q Queryer, id int64) (*models.Piece, erro
 			imslp_number, source_book_id, source_page_start, source_page_end,
 			duration, bpm, measure_count, beats_per_measure,
 			file_path, file_hash, page_count, thumbnail_page, copyright_year,
-			copyright_holder, copyright_slug, copyright_status, copyright_renewed, created_at, updated_at
+			copyright_holder, copyright_slug, copyright_status, copyright_renewed,
+			skip_start, skip_end, created_at, updated_at
 		FROM pieces WHERE id = ?`, id,
 	).Scan(
 		&p.ID, &p.Title, &p.WorkOpusNumber, &p.SheetTypeID,
@@ -54,7 +57,8 @@ func GetPieceByID(ctx context.Context, q Queryer, id int64) (*models.Piece, erro
 		&p.ImslpNumber, &p.SourceBookID, &p.SourcePageStart, &p.SourcePageEnd,
 		&p.Duration, &p.BPM, &p.MeasureCount, &p.BeatsPerMeasure,
 		&p.FilePath, &p.FileHash, &p.PageCount, &p.ThumbnailPage, &p.CopyrightYear,
-		&p.CopyrightHolder, &p.CopyrightSlug, &p.CopyrightStatus, &p.CopyrightRenewed, &p.CreatedAt, &p.UpdatedAt,
+		&p.CopyrightHolder, &p.CopyrightSlug, &p.CopyrightStatus, &p.CopyrightRenewed,
+		&p.SkipStart, &p.SkipEnd, &p.CreatedAt, &p.UpdatedAt,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
@@ -113,7 +117,7 @@ func UpdatePiece(ctx context.Context, q Queryer, p *models.Piece) error {
 			duration = ?, bpm = ?, measure_count = ?, beats_per_measure = ?,
 			file_path = ?, file_hash = ?, page_count = ?, thumbnail_page = ?, copyright_year = ?,
 			copyright_holder = ?, copyright_slug = ?, copyright_status = ?, copyright_renewed = ?,
-			updated_at = ?
+			skip_start = ?, skip_end = ?, updated_at = ?
 		WHERE id = ?`,
 		p.Title, p.WorkOpusNumber,
 		p.SheetTypeID, p.Publisher, p.PublisherID, p.YearWritten,
@@ -122,7 +126,7 @@ func UpdatePiece(ctx context.Context, q Queryer, p *models.Piece) error {
 		p.Duration, p.BPM, p.MeasureCount, p.BeatsPerMeasure,
 		p.FilePath, p.FileHash, p.PageCount, p.ThumbnailPage, p.CopyrightYear,
 		p.CopyrightHolder, p.CopyrightSlug, p.CopyrightStatus, p.CopyrightRenewed,
-		p.UpdatedAt,
+		p.SkipStart, p.SkipEnd, p.UpdatedAt,
 		p.ID,
 	)
 	return err

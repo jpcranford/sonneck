@@ -49,6 +49,24 @@ export function fitPages(
 const range = (from: number, to: number) =>
   Array.from({ length: Math.max(0, to - from + 1) }, (_, i) => from + i)
 
+/** The pages the viewer shows: the piece's pages less those skipped from
+ * its start and its end (Manage Pages), always at least one. */
+export function shownRange(
+  pageCount: number,
+  skipStart: number,
+  skipEnd: number,
+): { first: number; last: number } {
+  const count = Math.max(1, pageCount)
+  const first = Math.min(Math.max(1, skipStart + 1), count)
+  const last = Math.max(first, count - Math.max(0, skipEnd))
+  return { first, last }
+}
+
+// The functions below lay out pages `first` to `last` (the shown range,
+// 1 when nothing is skipped): they work on the range as pages 1 to n and
+// shift back, so "page 1 alone" is the first shown page.
+const shift = (spreads: number[][], by: number) => spreads.map((s) => s.map((p) => p + by))
+
 /** Groups a piece's pages into spreads of up to `perScreen`, for turning by
  * spread. `links` holds each page linked to the next (a link on 4 keeps 4
  * and 5 together); `firstAlone` shows page 1 by itself, as printed books
@@ -59,6 +77,21 @@ const range = (from: number, to: number) =>
  * longer than one screen can't stay together and splits as usual. A link
  * between pages 1 and 2 overrides `firstAlone`. */
 export function groupSpreads(
+  last: number,
+  perScreen: number,
+  firstAlone: boolean,
+  links: ReadonlySet<number>,
+  first = 1,
+): number[][] {
+  if (first > 1) {
+    const off = first - 1
+    const local = new Set([...links].filter((l) => l >= first && l < last).map((l) => l - off))
+    return shift(groupSpreadsFrom1(last - off, perScreen, firstAlone, local), off)
+  }
+  return groupSpreadsFrom1(last, perScreen, firstAlone, links)
+}
+
+function groupSpreadsFrom1(
   pageCount: number,
   perScreen: number,
   firstAlone: boolean,
@@ -115,6 +148,23 @@ export function groupSpreads(
  * shorter). */
 export function pagesShown(
   page: number,
+  last: number,
+  perScreen: number,
+  slide: boolean,
+  spreads: number[][],
+  first = 1,
+): number[] {
+  if (first > 1) {
+    const off = first - 1
+    return pagesShownFrom1(page - off, last - off, perScreen, slide, shift(spreads, -off)).map(
+      (p) => p + off,
+    )
+  }
+  return pagesShownFrom1(page, last, perScreen, slide, spreads)
+}
+
+function pagesShownFrom1(
+  page: number,
   pageCount: number,
   perScreen: number,
   slide: boolean,
@@ -132,13 +182,30 @@ export function pagesShown(
 export function turnTarget(
   page: number,
   dir: -1 | 1,
+  last: number,
+  perScreen: number,
+  slide: boolean,
+  spreads: number[][],
+  first = 1,
+): number | null {
+  if (first > 1) {
+    const off = first - 1
+    const t = turnTargetFrom1(page - off, dir, last - off, perScreen, slide, shift(spreads, -off))
+    return t === null ? null : t + off
+  }
+  return turnTargetFrom1(page, dir, last, perScreen, slide, spreads)
+}
+
+function turnTargetFrom1(
+  page: number,
+  dir: -1 | 1,
   pageCount: number,
   perScreen: number,
   slide: boolean,
   spreads: number[][],
 ): number | null {
   if (slide || perScreen < 2) {
-    const first = pagesShown(page, pageCount, perScreen, slide, spreads)[0]
+    const first = pagesShownFrom1(page, pageCount, perScreen, slide, spreads)[0]
     const next = first + dir
     return next < 1 || next > Math.max(1, pageCount - perScreen + 1) ? null : next
   }

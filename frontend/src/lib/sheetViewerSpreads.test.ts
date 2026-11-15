@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { fitPages, groupSpreads, pagesShown, turnTarget } from './sheetViewerSpreads'
+import { fitPages, groupSpreads, pagesShown, shownRange, turnTarget } from './sheetViewerSpreads'
 
 const LETTER = 612 / 792
 const fmt = (spreads: number[][]) => spreads.map((s) => s.join('-')).join(' ')
@@ -74,5 +74,37 @@ describe('pagesShown and turnTarget', () => {
     expect(turnTarget(3, 1, 8, 2, true, spreads)).toBe(4)
     expect(turnTarget(7, 1, 8, 2, true, spreads)).toBeNull()
     expect(pagesShown(8, 8, 2, true, spreads)).toEqual([7, 8])
+  })
+})
+
+describe('skipped pages (Manage Pages)', () => {
+  // Rowley's Benedictus: a cover and a blank page, then four of music.
+  it('keeps at least one page shown', () => {
+    expect(shownRange(6, 2, 0)).toEqual({ first: 3, last: 6 })
+    expect(shownRange(6, 0, 1)).toEqual({ first: 1, last: 5 })
+    expect(shownRange(6, 4, 4)).toEqual({ first: 5, last: 5 })
+    expect(shownRange(6, 9, 0)).toEqual({ first: 6, last: 6 })
+  })
+  it('opens the music like a book: its first page alone', () => {
+    expect(fmt(groupSpreads(6, 2, true, new Set(), 3))).toBe('3 4-5 6')
+    expect(fmt(groupSpreads(6, 2, false, new Set(), 3))).toBe('3-4 5-6')
+  })
+  it('keeps links on the shown pages and drops the rest', () => {
+    // A link on 4 keeps 4 and 5 together; links on skipped pages do nothing.
+    expect(fmt(groupSpreads(6, 2, false, new Set([1, 4, 6]), 3))).toBe('3 4-5 6')
+    // A link on the first shown page wins over its being alone.
+    expect(fmt(groupSpreads(6, 2, true, new Set([3]), 3))).toBe('3-4 5-6')
+  })
+  it('turns within the shown pages only', () => {
+    const spreads = groupSpreads(5, 2, true, new Set(), 3)
+    expect(pagesShown(3, 5, 2, false, spreads, 3)).toEqual([3])
+    expect(turnTarget(3, -1, 5, 2, false, spreads, 3)).toBeNull()
+    expect(turnTarget(3, 1, 5, 2, false, spreads, 3)).toBe(4)
+    expect(turnTarget(4, 1, 5, 2, false, spreads, 3)).toBeNull()
+    // Sliding: two at a time from the first shown page, never past the last.
+    expect(pagesShown(3, 6, 2, true, [], 3)).toEqual([3, 4])
+    expect(turnTarget(3, -1, 6, 2, true, [], 3)).toBeNull()
+    expect(turnTarget(5, 1, 6, 2, true, [], 3)).toBeNull()
+    expect(pagesShown(3, 6, 1, false, [], 3)).toEqual([3])
   })
 })

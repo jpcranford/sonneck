@@ -155,6 +155,15 @@ export function setPieceThumbnailPage(id: number, page: number): Promise<Piece> 
   return apiPatch<Piece>(`/api/pieces/${id}/thumbnail-page`, { page })
 }
 
+/** Manage Pages: how many pages at the start and end to skip. */
+export function setPieceSkippedPages(
+  id: number,
+  skipStart: number,
+  skipEnd: number,
+): Promise<Piece> {
+  return apiPut<Piece>(`/api/pieces/${id}/skipped-pages`, { skipStart, skipEnd })
+}
+
 export function getCitation(id: number): Promise<{ citation: string }> {
   return apiGet(`/api/pieces/${id}/citation`)
 }

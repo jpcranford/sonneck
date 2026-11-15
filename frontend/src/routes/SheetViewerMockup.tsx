@@ -58,6 +58,7 @@ import {
   IconX,
   IconEye,
   IconEyeOff,
+  IconFiles,
   IconStack2,
 } from '@tabler/icons-react'
 import type { Piece } from '../api/types'
@@ -84,9 +85,11 @@ import {
   fitPages,
   groupSpreads,
   pagesShown,
+  shownRange,
   SPREAD_GAP,
   turnTarget,
 } from '../lib/sheetViewerSpreads'
+import { ManagePagesWindow } from './ManagePagesMockup'
 import {
   applyChange,
   eraserTouches,
@@ -1230,7 +1233,30 @@ export function SheetViewerMockup() {
     width: number
   } | null>(null)
 
-  const [page, setPage] = useState(1)
+  const [pageState, setPage] = useState(1)
+  // Manage Pages: pages skipped at a piece's start and end (a piece's own
+  // setting, shared by everyone). Benedictus (piece 3, among the picks)
+  // starts with its cover and blank page skipped. Display's Show skipped
+  // pages lasts while the piece is open.
+  const [skipByPiece, setSkipByPiece] = useState<Record<number, { start: number; end: number }>>({
+    3: { start: 2, end: 0 },
+  })
+  const skip = (activeId !== null && skipByPiece[activeId]) || { start: 0, end: 0 }
+  const skippedCount = custom ? 0 : skip.start + skip.end
+  const [showSkippedFor, setShowSkippedFor] = useState<number | null>(null)
+  const showSkipped = showSkippedFor !== null && showSkippedFor === activeId
+  const [managePagesOpen, setManagePagesOpen] = useState(false)
+  // The pages this piece runs through: `first` to `last`. The viewer counts
+  // from `first` ("1 / 4"), so its page 1 is the first page of the music.
+  const pageRange =
+    custom || showSkipped
+      ? { first: 1, last: pageCount }
+      : shownRange(pageCount, skip.start, skip.end)
+  const shownCount = pageRange.last - pageRange.first + 1
+  // `page` is the file's page number, kept inside the range: opening a
+  // piece at page 1 lands on its first shown page, its end on its last.
+  const page = Math.min(Math.max(pageState, pageRange.first), pageRange.last)
+  const viewerNumber = (n: number) => n - pageRange.first + 1
   const [mode, setMode] = useState<'play' | 'annotate'>('play')
   const [tool, setTool] = useState<Tool | null>(null)
   // Each tool's own color and size (B2: a tool remembers what it last used).
@@ -1388,11 +1414,17 @@ export function SheetViewerMockup() {
     observer.observe(stageEl)
     return () => observer.disconnect()
   }, [stageEl])
-  const fit = fitPages(stageSize, pageAspect, custom ? 1 : pageCount)
+  const fit = fitPages(stageSize, pageAspect, custom ? 1 : shownCount)
   const perScreen = custom || photo.pages === 'one' ? 1 : fit.count
   const sliding = photo.turn === 'slide' && perScreen > 1
-  const spreads = groupSpreads(pageCount, perScreen, photo.firstAlone, new Set(photo.links))
-  const shown = pagesShown(page, pageCount, perScreen, sliding, spreads)
+  const spreads = groupSpreads(
+    pageRange.last,
+    perScreen,
+    photo.firstAlone,
+    new Set(photo.links),
+    pageRange.first,
+  )
+  const shown = pagesShown(page, pageRange.last, perScreen, sliding, spreads, pageRange.first)
   // Annotate marks the page on screen you touch, which stays the one marked
   // (the focused page) until you touch another or turn it away.
   const [focusPage, setFocusPage] = useState(1)
@@ -1402,7 +1434,7 @@ export function SheetViewerMockup() {
   // nothing to turn; Keep pages together also while showing one page.
   const screenIdle = custom
     ? null
-    : fit.count >= pageCount
+    : fit.count >= shownCount
       ? 'The whole piece fits on screen, so nothing turns.'
       : fit.count === 1
         ? 'This screen fits one page at a time.'
@@ -1533,7 +1565,7 @@ export function SheetViewerMockup() {
       return
     }
     last.current = { dir, at: t }
-    const next = turnTarget(page, dir, pageCount, perScreen, sliding, spreads)
+    const next = turnTarget(page, dir, pageRange.last, perScreen, sliding, spreads, pageRange.first)
     if (next === null) {
       // In a queue (the Practice List or a setlist), turning past a piece's
       // end goes on to the next piece; back from its start, to the previous
@@ -1723,9 +1755,10 @@ export function SheetViewerMockup() {
   useEffect(() => {
     if (activeId === null) return
     for (const p of [shown[0] - 1, shown[shown.length - 1] + 1]) {
-      if (p >= 1 && p <= pageCount) new Image().src = getPieceThumbnailUrl(activeId, p)
+      if (p >= pageRange.first && p <= pageRange.last)
+        new Image().src = getPieceThumbnailUrl(activeId, p)
     }
-  }, [activeId, shown, pageCount])
+  }, [activeId, shown, pageRange.first, pageRange.last])
 
   function pressClose() {
     window.clearTimeout(closeTimer.current)
@@ -2713,12 +2746,14 @@ export function SheetViewerMockup() {
   }
   // Under the photo button; under ⋯ on a tablet; on a phone, centered under
   // the whole two-row toolbar so it never covers the page cyclers.
+  // Links and Page 1 alone apply to the shown pages: page 1 is the first
+  // shown one, and a link on a skipped page does nothing.
+  const firstLinked = photo.links.includes(pageRange.first)
+  const shownLinks = photo.links.filter((l) => l >= pageRange.first && l < pageRange.last)
   const linkSummary =
     [
-      photo.firstAlone && !photo.links.includes(1) ? 'page 1 alone' : '',
-      photo.links.length
-        ? `${photo.links.length} ${photo.links.length === 1 ? 'link' : 'links'}`
-        : '',
+      photo.firstAlone && !firstLinked ? 'page 1 alone' : '',
+      shownLinks.length ? `${shownLinks.length} ${shownLinks.length === 1 ? 'link' : 'links'}` : '',
     ]
       .filter(Boolean)
       .join(', ') || 'None'
@@ -2747,6 +2782,23 @@ export function SheetViewerMockup() {
         />
       </div>
       {layoutIdle && <p className="px-3 pb-1 text-xs text-ink-muted italic">{layoutIdle}</p>}
+      {/* Manage Pages (edit only in the real viewer), and a look at the
+          skipped pages for this visit. */}
+      {!custom && (
+        <MenuRow
+          icon={<IconFiles size={20} />}
+          label="Manage pages"
+          trailing={skippedCount ? `${skippedCount} skipped` : 'None skipped'}
+          onClick={() => {
+            openDisplay(false)
+            setManagePagesOpen(true)
+          }}
+        />
+      )}
+      {skippedCount > 0 &&
+        switchRow('Show skipped pages', showSkipped, (on) =>
+          setShowSkippedFor(on ? activeId : null),
+        )}
       <div className="-mx-3 my-1 border-t border-border" />
     </>
   )
@@ -2754,17 +2806,23 @@ export function SheetViewerMockup() {
   // rows of three, each followed by its link to the next; tapping a link
   // keeps that pair in one spread. Applies when turning by spread.
   const pairsPerScreen = Math.max(2, perScreen)
-  const preview = groupSpreads(pageCount, pairsPerScreen, photo.firstAlone, new Set(photo.links))
+  const preview = groupSpreads(
+    pageRange.last,
+    pairsPerScreen,
+    photo.firstAlone,
+    new Set(photo.links),
+    pageRange.first,
+  )
   const keepTogether = activeId !== null && (
     <>
       {switchRow(
         'Page 1 alone',
-        photo.firstAlone && !photo.links.includes(1),
+        photo.firstAlone && !firstLinked,
         (firstAlone) => setPhoto({ firstAlone }),
-        photo.links.includes(1),
+        firstLinked,
         false,
       )}
-      {photo.links.includes(1) && (
+      {firstLinked && (
         <p className="-mt-1 px-3 pb-1 text-xs text-ink-muted">
           Pages 1 and 2 are linked, so they always show together.
         </p>
@@ -2772,7 +2830,7 @@ export function SheetViewerMockup() {
       {/* Padded one link's width on the left too, which centers the pages
           themselves. */}
       <div className="grid grid-cols-[repeat(3,auto)] justify-center gap-y-2.5 py-2 pl-[34px]">
-        {Array.from({ length: pageCount }, (_, i) => i + 1).map((n) => {
+        {Array.from({ length: shownCount }, (_, i) => pageRange.first + i).map((n) => {
           const linked = photo.links.includes(n)
           return (
             <span key={n} className="flex items-center">
@@ -2784,14 +2842,14 @@ export function SheetViewerMockup() {
                   className="score-page block h-full w-full object-cover"
                 />
                 <span className="absolute inset-x-0 bottom-0 bg-white/85 text-center text-[11px] font-medium text-scrim time-figures">
-                  {n}
+                  {viewerNumber(n)}
                 </span>
               </span>
-              {n < pageCount ? (
+              {n < pageRange.last ? (
                 <button
                   type="button"
                   aria-pressed={linked}
-                  aria-label={`Keep pages ${n} and ${n + 1} together`}
+                  aria-label={`Keep pages ${viewerNumber(n)} and ${viewerNumber(n) + 1} together`}
                   onClick={() =>
                     setPhoto({
                       links: linked
@@ -2831,7 +2889,9 @@ export function SheetViewerMockup() {
           <Fragment key={g[0]}>
             {i > 0 && ' \u2022 '}
             <span className="font-medium text-ink time-figures">
-              {g.length > 1 ? `${g[0]}\u2013${g.at(-1)}` : g[0]}
+              {g.length > 1
+                ? `${viewerNumber(g[0])}\u2013${viewerNumber(g.at(-1)!)}`
+                : viewerNumber(g[0])}
             </span>
           </Fragment>
         ))}
@@ -3741,18 +3801,21 @@ export function SheetViewerMockup() {
       <HitButton
         label="Previous page"
         onClick={() => turn(-1)}
-        disabled={shown[0] <= 1 && !(queueIndex > 0)}
+        disabled={shown[0] <= pageRange.first && !(queueIndex > 0)}
       >
         <IconChevronLeft size={22} />
       </HitButton>
       <span className="w-[5.5em] text-center text-sm text-ink-soft tabular-nums">
-        {shown.length > 1 ? `${shown[0]}\u2013${shown.at(-1)}` : shown[0]} / {pageCount}
+        {shown.length > 1
+          ? `${viewerNumber(shown[0])}\u2013${viewerNumber(shown.at(-1)!)}`
+          : viewerNumber(shown[0])}{' '}
+        / {shownCount}
       </span>
       <HitButton
         label="Next page"
         onClick={() => turn(1)}
         disabled={
-          shown.at(-1)! >= pageCount && !(queueIndex >= 0 && queueIndex < queueIds.length - 1)
+          shown.at(-1)! >= pageRange.last && !(queueIndex >= 0 && queueIndex < queueIds.length - 1)
         }
       >
         <IconChevronRight size={22} />
@@ -3818,7 +3881,11 @@ export function SheetViewerMockup() {
     })
     if (sliding) {
       const near: number[] = []
-      for (let n = Math.max(1, shown[0] - 2); n <= Math.min(pageCount, shown.at(-1)! + 2); n++)
+      for (
+        let n = Math.max(pageRange.first, shown[0] - 2);
+        n <= Math.min(pageRange.last, shown.at(-1)! + 2);
+        n++
+      )
         near.push(n)
       const by = -(shown[0] - 1) * step
       return {
@@ -4566,6 +4633,27 @@ export function SheetViewerMockup() {
           </div>
         )}
       </main>
+      {/* Manage Pages, opened from Display. */}
+      {activeId !== null && piece && (
+        <ManagePagesWindow
+          open={managePagesOpen}
+          onClose={() => setManagePagesOpen(false)}
+          title={piece.title}
+          credit={credit}
+          pageCount={pageCount}
+          skipStart={skip.start}
+          skipEnd={skip.end}
+          onSave={(start, end) => setSkipByPiece({ ...skipByPiece, [activeId]: { start, end } })}
+          renderPage={(n) => (
+            <img
+              src={getPieceThumbnailUrl(activeId, n)}
+              alt=""
+              draggable={false}
+              className="score-page block h-full w-full object-cover"
+            />
+          )}
+        />
+      )}
       {/* Mockup-only controls, bottom-left and over everything (portaled,
           above the cards), opening upward; outside the score, so they never
           turn a page. */}

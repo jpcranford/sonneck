@@ -40,6 +40,8 @@ function fixturePiece(overrides: Partial<Piece> = {}): Piece {
     fileHash: 'abc',
     pageCount: 1,
     thumbnailPage: 1,
+    skipStart: 0,
+    skipEnd: 0,
     copyrightYear: { value: null, inherited: false },
     copyrightHolder: { value: '', inherited: false },
     copyrightSlug: { value: '', inherited: false },

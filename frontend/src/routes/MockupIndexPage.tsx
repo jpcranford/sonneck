@@ -99,6 +99,7 @@ const SECTIONS: { title: string; mockups: Mockup[] }[] = [
         testing: [
           'On a phone or tablet, the top toolbar and the Play / Download row are easy to tap.',
           "In Chrome's full screen, Esc closes an open window first, and only then leaves full screen.",
+          'Manage Pages on the real Piece Details: drag the handles by finger on the iPad; check the Skipped badge.',
         ],
       },
       {
@@ -172,6 +173,7 @@ const SECTIONS: { title: string; mockups: Mockup[] }[] = [
           "In Chrome's full screen, Esc closes a panel, then arms Exit; F leaves full screen.",
           'Practice Notes: tap your notes to edit them; a link inside them still opens.',
           "Practice Notes' banner switch shows or hides the banner behind the open panel.",
+          'Skipped pages in the real viewer on the iPad: opens on the music; Manage pages and Show skipped pages.',
         ],
       },
     ],
