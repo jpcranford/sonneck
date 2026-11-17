@@ -72,6 +72,7 @@ import { SingleSelect } from '../components/SingleSelect'
 import { Toggle } from '../components/Toggle'
 import { useAnchoredPanel } from '../hooks/useAnchorRect'
 import { useNoPageScroll } from '../hooks/useNoPageScroll'
+import { useNoContextMenu } from '../hooks/useNoContextMenu'
 import { stageTurn, type StagePoint } from '../lib/sheetViewerGestures'
 import { sortPracticeStatuses } from '../lib/practiceStatusOrder'
 import { COMMAND_KEY, type ShortcutSection } from '../lib/shortcuts'
@@ -1118,6 +1119,7 @@ export function SheetViewerMockup() {
   useMockupTitle('Sheet Viewer')
   // Nothing here scrolls: no page bounce, no browser pull-to-refresh.
   useNoPageScroll()
+  useNoContextMenu()
   const navigate = useNavigate()
   const width = useWindowWidth()
   // Pinch-zoomed in, the score pans instead of turning: taps and swipes

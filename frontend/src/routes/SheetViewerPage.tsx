@@ -109,6 +109,7 @@ import { Toggle } from '../components/Toggle'
 import { useAnchoredPanel } from '../hooks/useAnchorRect'
 import { useThumbnailVersion } from '../hooks/useThumbnailVersion'
 import { useNoPageScroll } from '../hooks/useNoPageScroll'
+import { useNoContextMenu } from '../hooks/useNoContextMenu'
 import { useToday } from '../hooks/useToday'
 import { stageTurn, type StagePoint } from '../lib/sheetViewerGestures'
 import {
@@ -1540,6 +1541,7 @@ function SheetViewer({
   const custom = item?.kind === 'custom' ? item : null
   // Nothing here scrolls: no page bounce, no browser pull-to-refresh.
   useNoPageScroll()
+  useNoContextMenu()
   const navigate = useNavigate()
   const width = useWindowWidth()
   // Pinch-zoomed in, the score pans instead of turning: taps and swipes
