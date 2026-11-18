@@ -118,6 +118,45 @@ export function tapTempo(taps: number[], now: number): { taps: number[]; bpm: nu
 
 type AudioContextConstructor = typeof AudioContext
 
+// One audio context for the whole page, made on first use and kept: every
+// item in a queue mounts its own viewer, and a context per viewer meant each
+// piece's first Start paid to set one up, while Safari allows only a few
+// per page.
+let sharedContext: AudioContext | null = null
+function audioContext(): AudioContext {
+  if (!sharedContext) {
+    const Context =
+      window.AudioContext ??
+      (window as unknown as { webkitAudioContext: AudioContextConstructor }).webkitAudioContext
+    sharedContext = new Context()
+  }
+  return sharedContext
+}
+
+// A silent tone that keeps the audio running while the metronome panel is
+// open, so an iPad doesn't let its audio sleep and Start sounds at once.
+let keepAwake: OscillatorNode | null = null
+
+/** Wakes the audio when the metronome's panel opens (on: true), keeping it
+ * awake until the panel closes (on: false). Call it from the tap or key
+ * press that opens the panel: browsers only let audio start from one. */
+export function wakeMetronomeAudio(on: boolean) {
+  if (!on) {
+    keepAwake?.stop()
+    keepAwake = null
+    return
+  }
+  const context = audioContext()
+  void context.resume()
+  if (keepAwake) return
+  const tone = context.createOscillator()
+  const silence = context.createGain()
+  silence.gain.value = 0
+  tone.connect(silence).connect(context.destination)
+  tone.start()
+  keepAwake = tone
+}
+
 /** The clicks: a short woodblock-like tone drawn by the browser, higher for
  * an accent and lower for the clicks between beats, scheduled a little ahead
  * with Web Audio so they stay on time however busy the page is. The settings
@@ -126,6 +165,9 @@ type AudioContextConstructor = typeof AudioContext
 export class MetronomeEngine {
   private context: AudioContext | null = null
   private timer: number | null = null
+  // Counts starts, so a start still waiting for the audio to wake is dropped
+  // if it's stopped (or started again) meanwhile.
+  private run = 0
   private next = 0
   private beat = 0
   private click = 0
@@ -136,29 +178,28 @@ export class MetronomeEngine {
   }
   private onClick: (beat: number, click: number) => void = () => {}
 
-  get playing(): boolean {
-    return this.timer !== null
-  }
-
   /** Starts from beat 1. Call it from a tap or key press: browsers only let
    * sound start from one. `onClick` hears each click as it sounds, with its
-   * beat and its place in the beat (0 for the beat itself). */
+   * beat and its place in the beat (0 for the beat itself). The first click
+   * is timed once the audio is running: timed from a clock still waking up,
+   * it sounded late, after a pause. */
   start(settings: MetronomeSettings, onClick: (beat: number, click: number) => void) {
     this.stop()
-    if (!this.context) {
-      const Context =
-        window.AudioContext ??
-        (window as unknown as { webkitAudioContext: AudioContextConstructor }).webkitAudioContext
-      this.context = new Context()
-    }
-    void this.context.resume()
+    const context = audioContext()
+    this.context = context
     this.settings = settings
     this.onClick = onClick
     this.beat = 0
     this.click = 0
-    this.next = this.context.currentTime + 0.06
-    this.schedule()
-    this.timer = window.setInterval(() => this.schedule(), 25)
+    const run = ++this.run
+    const begin = () => {
+      if (run !== this.run) return
+      this.next = context.currentTime + 0.06
+      this.schedule()
+      this.timer = window.setInterval(() => this.schedule(), 25)
+    }
+    if (context.state === 'running') begin()
+    else context.resume().then(begin, begin)
   }
 
   update(settings: MetronomeSettings) {
@@ -166,6 +207,7 @@ export class MetronomeEngine {
   }
 
   stop() {
+    this.run++
     if (this.timer !== null) window.clearInterval(this.timer)
     this.timer = null
   }
@@ -173,6 +215,9 @@ export class MetronomeEngine {
   private schedule() {
     const context = this.context
     if (!context) return
+    // What's heard comes out after the output's own delay (Bluetooth
+    // especially), where the browser reports it; the tiles wait for it.
+    const latency = (context as AudioContext & { outputLatency?: number }).outputLatency ?? 0
     while (this.next < context.currentTime + 0.12) {
       const { levels, subdivision, bpm } = this.settings
       const beat = this.beat % levels.length
@@ -180,9 +225,10 @@ export class MetronomeEngine {
       const click = this.click < subdivision ? this.click : 0
       const sound = clickSound(levels[beat] ?? 1, click)
       if (sound) this.sound(this.next, sound)
-      const delay = Math.max(0, (this.next - context.currentTime) * 1000)
+      const delay = Math.max(0, (this.next - context.currentTime + latency) * 1000)
+      const run = this.run
       window.setTimeout(() => {
-        if (this.timer !== null) this.onClick(beat, click)
+        if (run === this.run && this.timer !== null) this.onClick(beat, click)
       }, delay)
       this.next += 60 / bpm / subdivision
       if (click + 1 < subdivision) {

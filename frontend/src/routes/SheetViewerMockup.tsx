@@ -121,6 +121,7 @@ import {
   clampBpm,
   markingFor,
   MetronomeEngine,
+  wakeMetronomeAudio,
   METRONOME_HOLD_STEP,
   METRONOME_MAX_BEATS,
   METRONOME_MAX_BPM,
@@ -1482,6 +1483,17 @@ export function SheetViewerMockup() {
     const base = seedMetronome(piece ?? {})
     setMetroByPiece((prev) => ({ ...prev, [activeId]: update(prev[activeId] ?? base) }))
   }
+  // Opening the panel wakes the audio (from the tap or key press, which
+  // browsers require) and keeps it awake while it's open, so Start sounds
+  // at once; closing it lets the audio sleep again (lib/metronome.ts).
+  function showMetronomePanel(open: boolean) {
+    if (open) wakeMetronomeAudio(true)
+    setMenu(open ? 'metronome' : null)
+  }
+  useEffect(() => {
+    if (menu !== 'metronome') wakeMetronomeAudio(false)
+  }, [menu])
+  useEffect(() => () => wakeMetronomeAudio(false), [])
   function toggleMetronome() {
     if (activeId === null || customKey) return
     if (metroPlaying) {
@@ -2664,7 +2676,7 @@ export function SheetViewerMockup() {
     <div ref={metronomeAnchorRef} className="relative">
       <HitButton
         label={metroPlaying ? `Metronome, playing at ${metro.bpm} BPM` : 'Metronome'}
-        onClick={() => setMenu(menu === 'metronome' ? null : 'metronome')}
+        onClick={() => showMetronomePanel(menu !== 'metronome')}
         inset={metroText !== null}
         faceClassName={`${menu === 'metronome' ? 'bg-accent-soft text-accent' : FACE_HOVER} ${metroText !== null ? 'px-2' : ''}`}
       >
@@ -4393,7 +4405,7 @@ export function SheetViewerMockup() {
           {
             key: 'm',
             label: 'Metronome',
-            run: () => setMenu(menu === 'metronome' ? null : 'metronome'),
+            run: () => showMetronomePanel(menu !== 'metronome'),
             enabled: !customKey,
           },
           // Edge margin. In Annotate E is the Eraser, so only outside it.
@@ -4588,7 +4600,7 @@ export function SheetViewerMockup() {
                     icon={<IconMetronome size={20} />}
                     label="Metronome"
                     trailing={metroPlaying ? `${metro.bpm} BPM` : undefined}
-                    onClick={() => setMenu('metronome')}
+                    onClick={() => showMetronomePanel(true)}
                   />
                 )}
                 {!theoryInline && (
