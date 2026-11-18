@@ -5534,15 +5534,16 @@ const PRINT_FAINT = '#5c5349'
 const PRINT_FAINTER = '#b3a99e'
 const LETTER = { w: 612, h: 792 }
 // The page's width, from the viewer area around it (its size container),
-// not the page's own: the page isn't a container, so 50cqw inside it is
-// half the viewer's width.
+// not the page's own: the page isn't a container, so cqw units inside it
+// are shares of the viewer's width.
 const PAGE_WIDTH = `min(100cqw, calc(100cqh * ${LETTER.w} / ${LETTER.h}))`
 const pt = (n: number) => `calc(${n} * ${PAGE_WIDTH} / ${LETTER.w})`
 // On screen it's drawn half again as large as the printed page (picked from
 // a side-by-side, https://claude.ai/artifact/WRq89mAWk6oVYk4N595MGS, option
 // B): print size read small on a stand. Margins and the optical lift stay
 // the page's; the column widens to 400pt. Outside the phone layout the
-// name and notes instead wrap at half the viewer's width, centered — past
+// name and notes instead wrap at half the viewer's width (at most 480px, a
+// comfortable line for the capped text however wide the screen), centered — past
 // the page's edges where it's narrower, onto the mat, which is white too.
 // The Setlist PDF is unchanged.
 const PLACEHOLDER_SCALE = 1.5
@@ -5552,8 +5553,13 @@ const PLACEHOLDER_COLUMN = 400
 // 16px — a short screen (a phone on its side) makes the page tiny. Past
 // that floor the whole block grows together; the page's margins don't.
 const PLACEHOLDER_MIN_UNIT = 16 / (12 * 1.08 * PLACEHOLDER_SCALE)
+// Nor grows past a 32px title (the notes then about 17px): on a big
+// portrait screen (a 14" tablet stood up, a page about 920px wide) it
+// otherwise grew half again, the title past 50px. Past that cap the block
+// stays put in the middle of the larger page.
+const PLACEHOLDER_MAX_UNIT = 32 / (24 * PLACEHOLDER_SCALE)
 const ps = (n: number) =>
-  `calc(${n * PLACEHOLDER_SCALE} * max(${PAGE_WIDTH} / ${LETTER.w}, ${PLACEHOLDER_MIN_UNIT}px))`
+  `calc(${n * PLACEHOLDER_SCALE} * clamp(${PLACEHOLDER_MIN_UNIT}px, ${PAGE_WIDTH} / ${LETTER.w}, ${PLACEHOLDER_MAX_UNIT}px))`
 function PlaceholderPage({
   entry,
   wideColumn,
@@ -5561,7 +5567,7 @@ function PlaceholderPage({
   entry: Extract<QueueItem, { kind: 'custom' }>
   wideColumn: boolean
 }) {
-  const column = wideColumn ? '50cqw' : pt(PLACEHOLDER_COLUMN)
+  const column = wideColumn ? 'min(50cqw, 480px)' : pt(PLACEHOLDER_COLUMN)
   const smallCaps = {
     fontSize: ps(11 * 1.08),
     letterSpacing: '0.1em',
