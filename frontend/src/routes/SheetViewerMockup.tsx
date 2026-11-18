@@ -93,6 +93,7 @@ import {
 } from '../lib/sheetViewerSpreads'
 import { ManagePagesWindow } from './ManagePagesMockup'
 import { holdWhileZoomed } from '../lib/pinchZoom'
+import { loadToolMemory, saveToolMemory } from '../lib/sheetViewerToolMemory'
 import {
   applyChange,
   eraserTouches,
@@ -215,6 +216,13 @@ const TOOL_START: Record<ColorTool, { color: number; size: Size }> = {
   pen: { color: 5, size: 'M' },
   highlighter: { color: 1, size: 'M' },
   text: { color: 2, size: 'M' },
+}
+// Annotate's last-used colors and sizes start where this device left them
+// (lib/sheetViewerToolMemory.ts, shared with the real viewer).
+const TOOL_MEMORY_START = {
+  toolStyle: TOOL_START,
+  eraserSize: 'M' as Size,
+  lastDrawTool: 'pen' as ColorTool,
 }
 
 // Sample marks the pages start with, so the layers have something to hide
@@ -1273,9 +1281,10 @@ export function SheetViewerMockup() {
   const [mode, setMode] = useState<'play' | 'annotate'>('play')
   const [tool, setTool] = useState<Tool | null>(null)
   // Each tool's own color and size (B2: a tool remembers what it last used).
-  const [toolStyle, setToolStyle] = useState(TOOL_START)
+  const [toolStyle, setToolStyle] = useState(() => loadToolMemory(TOOL_MEMORY_START).toolStyle)
   // The eraser has a size but no color.
-  const [eraserSize, setEraserSize] = useState<Size>('M')
+  const [eraserSize, setEraserSize] = useState(() => loadToolMemory(TOOL_MEMORY_START).eraserSize)
+  useEffect(() => saveToolMemory({ toolStyle, eraserSize }), [toolStyle, eraserSize])
   const eraserRadius = SIZES.eraser[eraserSize] / 200
   const [menu, setMenu] = useState<
     'clock' | 'more' | 'info' | 'notes' | 'photo' | 'metronome' | 'queue' | 'layers' | 'tool' | null
@@ -1989,8 +1998,11 @@ export function SheetViewerMockup() {
   // down, so taps turn pages again.
   // The drawing tool last picked (Pen, Highlighter or Text), for the zoomed
   // Annotate bar's tool button.
-  const [lastDrawTool, setLastDrawTool] = useState<ColorTool>('pen')
+  const [lastDrawTool, setLastDrawTool] = useState<ColorTool>(
+    () => loadToolMemory(TOOL_MEMORY_START).lastDrawTool,
+  )
   if (tool && tool !== 'eraser' && tool !== lastDrawTool) setLastDrawTool(tool)
+  useEffect(() => saveToolMemory({ lastDrawTool }), [lastDrawTool])
 
   function pickTool(key: Tool) {
     if (tool !== key) {

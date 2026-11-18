@@ -96,6 +96,7 @@ import {
 } from '../api/pieces'
 import { ManagePagesModal } from '../components/ManagePagesModal'
 import { holdWhileZoomed } from '../lib/pinchZoom'
+import { loadToolMemory, saveToolMemory } from '../lib/sheetViewerToolMemory'
 import {
   getUserSettings,
   type MetronomeShow,
@@ -1202,11 +1203,20 @@ interface AnnotationSession {
   saveNow: () => Promise<boolean>
 }
 
+// Annotate's last-used colors and sizes start where this device left them
+// (lib/sheetViewerToolMemory.ts), not from the defaults each session.
+const TOOL_MEMORY_START = {
+  toolStyle: TOOL_START,
+  eraserSize: 'M' as Size,
+  lastDrawTool: 'pen' as ColorTool,
+}
+
 function useAnnotationSession(): AnnotationSession {
   const [mode, setMode] = useState<'play' | 'annotate'>('play')
   const [tool, setTool] = useState<Tool | null>(null)
-  const [toolStyle, setToolStyle] = useState(TOOL_START)
-  const [eraserSize, setEraserSize] = useState<Size>('M')
+  const [toolStyle, setToolStyle] = useState(() => loadToolMemory(TOOL_MEMORY_START).toolStyle)
+  const [eraserSize, setEraserSize] = useState(() => loadToolMemory(TOOL_MEMORY_START).eraserSize)
+  useEffect(() => saveToolMemory({ toolStyle, eraserSize }), [toolStyle, eraserSize])
   const [pages, setPages] = useState<Record<number, AnnotationPages>>({})
   const [history, setHistory] = useState<{ done: MarkChange[]; undone: MarkChange[] }>({
     done: [],
@@ -2125,10 +2135,11 @@ function SheetViewer({
   // turn pages again.
   // The drawing tool last picked (Pen, Highlighter or Text), for the zoomed
   // Annotate bar's tool button.
-  const [lastDrawTool, setLastDrawTool] = useState<ColorTool>(
-    tool && tool !== 'eraser' ? tool : 'pen',
+  const [lastDrawTool, setLastDrawTool] = useState<ColorTool>(() =>
+    tool && tool !== 'eraser' ? tool : loadToolMemory(TOOL_MEMORY_START).lastDrawTool,
   )
   if (tool && tool !== 'eraser' && tool !== lastDrawTool) setLastDrawTool(tool)
+  useEffect(() => saveToolMemory({ lastDrawTool }), [lastDrawTool])
 
   function pickTool(key: Tool) {
     if (tool !== key) {
