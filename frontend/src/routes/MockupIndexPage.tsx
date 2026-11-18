@@ -174,6 +174,7 @@ const SECTIONS: { title: string; mockups: Mockup[] }[] = [
           'Practice Notes: tap your notes to edit them; a link inside them still opens.',
           "Practice Notes' banner switch shows or hides the banner behind the open panel.",
           'Skipped pages in the real viewer on the iPad: opens on the music; Manage pages and Show skipped pages.',
+          'The zoomed Annotate bar in the real viewer on the iPad: steady while pinching and panning, then drawing.',
         ],
       },
     ],

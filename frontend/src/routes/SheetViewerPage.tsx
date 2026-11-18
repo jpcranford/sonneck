@@ -7,6 +7,7 @@ import {
   useState,
   useSyncExternalStore,
   type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from 'react'
 import { createPortal, flushSync } from 'react-dom'
@@ -94,6 +95,7 @@ import {
   type PracticeSettings,
 } from '../api/pieces'
 import { ManagePagesModal } from '../components/ManagePagesModal'
+import { holdWhileZoomed } from '../lib/pinchZoom'
 import {
   getUserSettings,
   type MetronomeShow,
@@ -303,9 +305,17 @@ function useWindowWidth() {
 
 // Whether the page is pinch-zoomed in (the visual viewport scaled up).
 // Browsers without visualViewport never report it.
+// iPad Safari doesn't always fire resize at a pinch's end, so a lifted
+// finger and a viewport scroll check again too.
 function subscribeViewportZoom(callback: () => void) {
   window.visualViewport?.addEventListener('resize', callback)
-  return () => window.visualViewport?.removeEventListener('resize', callback)
+  window.visualViewport?.addEventListener('scroll', callback)
+  window.addEventListener('touchend', callback)
+  return () => {
+    window.visualViewport?.removeEventListener('resize', callback)
+    window.visualViewport?.removeEventListener('scroll', callback)
+    window.removeEventListener('touchend', callback)
+  }
 }
 function usePinchZoomed() {
   return useSyncExternalStore(
@@ -2101,6 +2111,13 @@ function SheetViewer({
   // Tapping the picked tool again opens its color and size (the eraser's,
   // its size); tapping it once more, options showing, puts it down, so taps
   // turn pages again.
+  // The drawing tool last picked (Pen, Highlighter or Text), for the zoomed
+  // Annotate bar's tool button.
+  const [lastDrawTool, setLastDrawTool] = useState<ColorTool>(
+    tool && tool !== 'eraser' ? tool : 'pen',
+  )
+  if (tool && tool !== 'eraser' && tool !== lastDrawTool) setLastDrawTool(tool)
+
   function pickTool(key: Tool) {
     if (tool !== key) {
       finishText()
@@ -3868,72 +3885,135 @@ function SheetViewer({
     gap: 6,
     panelWidth: 312,
   })
+  // The tool's color and size, under its button: beside the main toolbar's,
+  // or, pinch-zoomed in Annotate, under the zoomed bar's (zoomedBar).
+  const TOOL_OPTIONS_CLASS =
+    'rounded-xl border border-border bg-paper px-3 pt-3 pb-3 font-sans text-ink shadow-xl select-none [--sv-hover:var(--color-paper-hover)]'
+  // Picking a color or size keeps the text box's keyboard up.
+  const keepTextKeyboard = (event: ReactMouseEvent) => textEdit && event.preventDefault()
+  const toolOptionsBody = tool && optionsStyle && (
+    <>
+      {tool !== 'eraser' && (
+        <>
+          <p className="px-1 pb-1 text-xs font-semibold tracking-wider text-ink-muted uppercase">
+            {TOOLS.find((t) => t.key === tool)?.label} color
+          </p>
+          <div className="flex">
+            {LAYER_COLORS.map((c, i) => (
+              <HitButton
+                key={c.name}
+                label={`${c.name}${hiddenLayers.includes(i) ? ' (hidden)' : ''}`}
+                onClick={() => setOptionsColor(i)}
+                faceClassName={FACE_HOVER}
+              >
+                <ColorDot
+                  layer={i}
+                  hidden={hiddenLayers.includes(i)}
+                  picked={optionsStyle.color === i}
+                  look={pageLook}
+                />
+              </HitButton>
+            ))}
+          </div>
+        </>
+      )}
+      <p
+        className={`px-1 pb-1 text-xs font-semibold tracking-wider text-ink-muted uppercase ${tool === 'eraser' ? '' : 'pt-2'}`}
+      >
+        {tool === 'eraser' ? 'Eraser size' : 'Size'}
+      </p>
+      <div className="flex rounded-[13px] bg-paper-sunken px-1">
+        {(['S', 'M', 'L'] as const).map((sz) => (
+          <button
+            key={sz}
+            type="button"
+            data-hit
+            aria-label={{ S: 'Small', M: 'Medium', L: 'Large' }[sz]}
+            onClick={() => setOptionsSize(sz)}
+            className={`${HIT} flex-1 group/b`}
+          >
+            <span
+              className={`${FACE} w-full font-medium ${
+                optionsStyle.size === sz
+                  ? 'bg-paper-raised shadow-sm'
+                  : `text-ink-soft ${FACE_HOVER}`
+              }`}
+            >
+              {sz}
+            </span>
+          </button>
+        ))}
+      </div>
+    </>
+  )
   const toolOptionsPanel =
     menu === 'tool' &&
-    tool &&
-    optionsStyle &&
+    !zoomed &&
+    toolOptionsBody &&
     toolOptionsStyle &&
     createPortal(
       <div
         style={{ ...toolOptionsStyle, width: 312 }}
-        // Picking a color or size keeps the text box's keyboard up.
-        onMouseDown={(event) => textEdit && event.preventDefault()}
-        className="z-50 rounded-xl border border-border bg-paper px-3 pt-3 pb-3 font-sans text-ink shadow-xl select-none [--sv-hover:var(--color-paper-hover)]"
+        onMouseDown={keepTextKeyboard}
+        className={`z-50 ${TOOL_OPTIONS_CLASS}`}
       >
-        {tool !== 'eraser' && (
-          <>
-            <p className="px-1 pb-1 text-xs font-semibold tracking-wider text-ink-muted uppercase">
-              {TOOLS.find((t) => t.key === tool)?.label} color
-            </p>
-            <div className="flex">
-              {LAYER_COLORS.map((c, i) => (
-                <HitButton
-                  key={c.name}
-                  label={`${c.name}${hiddenLayers.includes(i) ? ' (hidden)' : ''}`}
-                  onClick={() => setOptionsColor(i)}
-                  faceClassName={FACE_HOVER}
-                >
-                  <ColorDot
-                    layer={i}
-                    hidden={hiddenLayers.includes(i)}
-                    picked={optionsStyle.color === i}
-                    look={pageLook}
-                  />
-                </HitButton>
-              ))}
-            </div>
-          </>
-        )}
-        <p
-          className={`px-1 pb-1 text-xs font-semibold tracking-wider text-ink-muted uppercase ${tool === 'eraser' ? '' : 'pt-2'}`}
-        >
-          {tool === 'eraser' ? 'Eraser size' : 'Size'}
-        </p>
-        <div className="flex rounded-[13px] bg-paper-sunken px-1">
-          {(['S', 'M', 'L'] as const).map((sz) => (
-            <button
-              key={sz}
-              type="button"
-              data-hit
-              aria-label={{ S: 'Small', M: 'Medium', L: 'Large' }[sz]}
-              onClick={() => setOptionsSize(sz)}
-              className={`${HIT} flex-1 group/b`}
-            >
-              <span
-                className={`${FACE} w-full font-medium ${
-                  optionsStyle.size === sz
-                    ? 'bg-paper-raised shadow-sm'
-                    : `text-ink-soft ${FACE_HOVER}`
-                }`}
-              >
-                {sz}
-              </span>
-            </button>
-          ))}
-        </div>
+        {toolOptionsBody}
       </div>,
       document.body,
     )
+  // Pinch-zoomed in Annotate, the toolbar zooms off the screen, so a small
+  // bar holds steady at the top right at its normal size (design B of
+  // https://claude.ai/artifact/45Cv8tYpwo5Bef9E9E5g5F): the last drawing
+  // tool, the Eraser, and Undo. Each tool button works as on the toolbar
+  // (tap to pick, again for its color and size, whose panel opens under
+  // the bar). Held on a full-screen layer by lib/pinchZoom.ts'
+  // holdWhileZoomed, which hides it while not zoomed.
+  const zoomedBarTool = (key: Tool) => {
+    const { label, Icon } = TOOLS.find((t) => t.key === key)!
+    const picked = tool === key
+    const own = key !== 'eraser' ? toolStyle[key] : null
+    return (
+      <div onMouseDown={(event) => key === 'text' && textEdit && event.preventDefault()}>
+        <HitButton
+          label={picked ? `${label}: ${key === 'eraser' ? 'size' : 'color and size'}` : label}
+          onClick={() => pickTool(key)}
+          faceClassName={picked ? 'bg-accent-fill text-white' : ''}
+        >
+          <Icon size={22} />
+          {own && (
+            <span
+              className="pointer-events-none absolute bottom-[9px] left-1/2 h-[3px] w-3.5 -translate-x-1/2 rounded-full"
+              style={{
+                background: layerColor(own.color, pageLook),
+                boxShadow: picked ? '0 0 0 1.5px white' : undefined,
+              }}
+            />
+          )}
+        </HitButton>
+      </div>
+    )
+  }
+  const zoomedBar = (
+    <div className="pointer-events-auto absolute top-[max(14px,env(safe-area-inset-top))] right-[max(14px,env(safe-area-inset-right))] flex flex-col items-end gap-1.5">
+      <div className="flex items-center rounded-2xl border border-accent/30 bg-accent-soft p-1 text-ink shadow-lg [--sv-hover:var(--color-accent-soft-hover)]">
+        {zoomedBarTool(lastDrawTool)}
+        {zoomedBarTool('eraser')}
+        <span className="mx-1 h-7 w-px shrink-0 bg-accent/30" />
+        <HitButton
+          label="Undo"
+          onClick={() => stepHistory('undo')}
+          disabled={!annot.history.done.length && !textEdit}
+        >
+          <IconArrowBackUp size={22} />
+        </HitButton>
+      </div>
+      {menu === 'tool' && zoomed && toolOptionsBody && (
+        <div onMouseDown={keepTextKeyboard} className={`w-[312px] ${TOOL_OPTIONS_CLASS}`}>
+          {toolOptionsBody}
+        </div>
+      )}
+    </div>
+  )
   const toolButtons = (
     <>
       {TOOLS.map(({ key, label, Icon }) => {
@@ -5143,6 +5223,11 @@ function SheetViewer({
           </div>
         )}
       </main>
+      {annotating && (
+        <div ref={holdWhileZoomed} className="pointer-events-none invisible fixed inset-0 z-[45]">
+          {zoomedBar}
+        </div>
+      )}
       {canEdit && piece && pieceId !== null && (
         <ManagePagesModal
           open={managePagesOpen}
