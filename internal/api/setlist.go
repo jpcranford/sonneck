@@ -48,7 +48,7 @@ type SetlistEntryResponse struct {
 	Piece                 *SetlistPieceSummary `json:"piece,omitempty"`
 	CustomName            *string              `json:"customName,omitempty"`
 	CustomDurationSeconds *int                 `json:"customDurationSeconds,omitempty"`
-	CustomNotes           *string              `json:"customNotes,omitempty"`
+	Description           *string              `json:"description,omitempty"`
 	CustomCountsAsMusic   bool                 `json:"customCountsAsMusic"`
 	Role                  *string              `json:"role"`
 	DisplayNumber         *int                 `json:"displayNumber"`
@@ -127,7 +127,7 @@ func BuildSetlistResponse(ctx context.Context, q repo.Queryer, s *repo.Setlist) 
 		resp := SetlistEntryResponse{
 			ID:                    e.ID,
 			CustomDurationSeconds: e.CustomDurationSeconds,
-			CustomNotes:           e.CustomNotes,
+			Description:           e.Description,
 			CustomCountsAsMusic:   e.CustomCountsAsMusic,
 			Role:                  e.Role,
 		}
@@ -249,7 +249,7 @@ type SetlistEntryInput struct {
 	PieceID               *int64  `json:"pieceId"`
 	CustomName            *string `json:"customName"`
 	CustomDurationSeconds *int    `json:"customDurationSeconds"`
-	CustomNotes           *string `json:"customNotes"`
+	Description           *string `json:"description"`
 	CustomCountsAsMusic   bool    `json:"customCountsAsMusic"`
 	Role                  *string `json:"role"`
 }

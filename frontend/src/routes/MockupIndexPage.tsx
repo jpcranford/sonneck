@@ -137,7 +137,7 @@ const SECTIONS: { title: string; mockups: Mockup[] }[] = [
       {
         to: '/mockup/setlist-details',
         name: 'Setlist Details',
-        note: "The Setlist Details page: gig date, roles, custom entries (one with a note, one counted as music), each row's right-click menu and the Archive confirmation. Play Set opens the Sheet Viewer mockup on the set; its caret adds every piece to the Practice List.",
+        note: "Setlist Details: gig date, roles, custom entries (one with a note, one counted as music with a role), a piece with a description, each row's right-click menu and the Archive confirmation. Play Set opens the Sheet Viewer mockup on the set; its caret adds every piece to the Practice List.",
         testing: [
           'On a phone or tablet, the toolbar, the Play Set and Download row, and Edit Program are easy to tap.',
           'Copy program as image in the real Setlist Details: pastes into Messages or Mail; Save over plain HTTP.',
@@ -151,7 +151,8 @@ const SECTIONS: { title: string; mockups: Mockup[] }[] = [
       {
         to: '/mockup/edit-entry',
         name: 'Edit Entry',
-        note: "The window for one custom setlist entry (name, duration, Count as music, notes), opened from its right-click Edit Entry on Setlist Details. Edit Setlist's Program tab edits the same fields in place.",
+        note: "The window for one custom setlist entry (name, duration, Count as music, a role while counted as music, notes), opened from its right-click Edit Entry on Setlist Details. Edit Setlist's Program tab edits the same fields in place.",
+        testing: ['Turn Count as music on and off: Role appears and goes.'],
       },
       {
         to: '/mockup/setlist-program-page',

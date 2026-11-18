@@ -272,12 +272,16 @@ export function SetlistsLibraryPage() {
       })
       for (const entry of full.entries) {
         if (entry.kind === 'piece' && entry.piece) {
-          await addSetlistEntry(created.id, { pieceId: entry.piece.id, role: entry.role })
+          await addSetlistEntry(created.id, {
+            pieceId: entry.piece.id,
+            role: entry.role,
+            description: entry.description ?? null,
+          })
         } else {
           await addSetlistEntry(created.id, {
             customName: entry.customName,
             customDurationSeconds: entry.customDurationSeconds ?? null,
-            customNotes: entry.customNotes ?? null,
+            description: entry.description ?? null,
             customCountsAsMusic: entry.customCountsAsMusic,
             role: entry.role,
           })

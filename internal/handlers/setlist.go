@@ -222,7 +222,7 @@ func (s *Server) handleAddSetlistEntry(w http.ResponseWriter, r *http.Request) {
 		PieceID:               in.PieceID,
 		CustomName:            in.CustomName,
 		CustomDurationSeconds: in.CustomDurationSeconds,
-		CustomNotes:           in.CustomNotes,
+		Description:           in.Description,
 		CustomCountsAsMusic:   in.CustomCountsAsMusic,
 		Role:                  in.Role,
 	})
@@ -243,13 +243,14 @@ func (s *Server) handleAddSetlistEntry(w http.ResponseWriter, r *http.Request) {
 	api.WriteData(w, http.StatusCreated, resp)
 }
 
-// setlistEntryUpdateRequest edits an existing entry's own role, and — only
-// meaningful for a custom entry — name/duration/notes/counts-as-music.
+// setlistEntryUpdateRequest edits an existing entry's own role and
+// description, and — only meaningful for a custom entry —
+// name/duration/counts-as-music. A full replace: a field left out clears it.
 type setlistEntryUpdateRequest struct {
 	Role                  *string `json:"role"`
 	CustomName            *string `json:"customName"`
 	CustomDurationSeconds *int    `json:"customDurationSeconds"`
-	CustomNotes           *string `json:"customNotes"`
+	Description           *string `json:"description"`
 	CustomCountsAsMusic   bool    `json:"customCountsAsMusic"`
 }
 
@@ -292,7 +293,7 @@ func (s *Server) handleUpdateSetlistEntry(w http.ResponseWriter, r *http.Request
 		Role:                  req.Role,
 		CustomName:            req.CustomName,
 		CustomDurationSeconds: req.CustomDurationSeconds,
-		CustomNotes:           req.CustomNotes,
+		Description:           req.Description,
 		CustomCountsAsMusic:   req.CustomCountsAsMusic,
 	}); err != nil {
 		s.writeError(w, err)

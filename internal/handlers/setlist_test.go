@@ -510,3 +510,57 @@ func TestGetSetlistProgramImage(t *testing.T) {
 		t.Errorf("image %dx%d, want 1080 wide and as tall as the program", cfg.Width, cfg.Height)
 	}
 }
+
+// TestSetlistEntryDescription_PieceAndCustom covers an entry's description
+// on a piece entry (added with one, then edited with its role) and a role
+// on a custom entry counted as music, read back through GET.
+func TestSetlistEntryDescription_PieceAndCustom(t *testing.T) {
+	h := newTestServer(t)
+	pieceID := uploadTestPiece(t, h)
+	rec := doJSON(t, h, http.MethodPost, "/api/setlists", map[string]any{"name": "Program"})
+	var setlist struct {
+		ID int64 `json:"id"`
+	}
+	decodeData(t, rec, &setlist)
+
+	type entry struct {
+		ID          int64   `json:"id"`
+		Role        *string `json:"role"`
+		Description *string `json:"description"`
+	}
+	var detail struct {
+		Entries []entry `json:"entries"`
+	}
+	rec = doJSON(t, h, http.MethodPost, setlistURL(setlist.ID, "/entries"), map[string]any{
+		"pieceId": pieceID, "description": "Organ only",
+	})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("add piece entry: status %d, body %s", rec.Code, rec.Body.String())
+	}
+	rec = doJSON(t, h, http.MethodPost, setlistURL(setlist.ID, "/entries"), map[string]any{
+		"customName": "Improvisation", "customCountsAsMusic": true, "role": "Postlude",
+	})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("add custom entry: status %d, body %s", rec.Code, rec.Body.String())
+	}
+	decodeData(t, rec, &detail)
+	if d := detail.Entries[0].Description; d == nil || *d != "Organ only" {
+		t.Fatalf("piece entry description after add = %v, want Organ only", d)
+	}
+	if r := detail.Entries[1].Role; r == nil || *r != "Postlude" {
+		t.Fatalf("custom entry role = %v, want Postlude", r)
+	}
+
+	rec = doJSON(t, h, http.MethodPatch, setlistURL(setlist.ID, "/entries/"+strconv.FormatInt(detail.Entries[0].ID, 10)), map[string]any{
+		"role": "Prelude", "description": "Second verse a cappella",
+	})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("edit piece entry: status %d, body %s", rec.Code, rec.Body.String())
+	}
+	rec = doJSON(t, h, http.MethodGet, setlistURL(setlist.ID, ""), nil)
+	decodeData(t, rec, &detail)
+	got := detail.Entries[0]
+	if got.Role == nil || *got.Role != "Prelude" || got.Description == nil || *got.Description != "Second verse a cappella" {
+		t.Fatalf("piece entry after edit = role %v, description %v; want Prelude, Second verse a cappella", got.Role, got.Description)
+	}
+}

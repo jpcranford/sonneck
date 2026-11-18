@@ -192,7 +192,7 @@ func pdfEntries(in []api.SetlistEntryResponse) []setlistpdf.Entry {
 			CustomName:            name,
 			CustomRole:            e.Role,
 			CustomDurationSeconds: e.CustomDurationSeconds,
-			CustomNotes:           e.CustomNotes,
+			CustomNotes:           e.Description,
 		}
 	}
 	return out

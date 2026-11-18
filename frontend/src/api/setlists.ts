@@ -48,13 +48,14 @@ export function removeSetlistEntry(
 // PATCH .../entries/{entryId} is a full replace of every field at once
 // (internal/handlers/setlist.go's own setlistEntryUpdateRequest), same
 // convention PATCH /api/setlists/{id} itself follows — a caller must pass
-// the entry's own current `role` through unchanged if it isn't the field
-// being edited, not omit it.
+// the entry's own current `role` and `description` through unchanged if
+// they aren't the fields being edited, not omit them (both are required
+// here so a caller can't forget).
 export interface SetlistEntryUpdateRequest {
   role: string | null
+  description: string | null
   customName?: string | null
   customDurationSeconds?: number | null
-  customNotes?: string | null
   customCountsAsMusic: boolean
 }
 

@@ -14,14 +14,16 @@ import { assumedDurationHint } from '../lib/setlistEstimate'
 
 // Real port of EditEntryMockup.tsx's own exported EditEntryModal (Setlists
 // design pass, Phase 11 mockup approved; this is Phase 15's real build) — a
-// single custom entry's own name/duration/"Count as music"/description,
+// single custom entry's own name/duration/"Count as music"/role/description,
 // reached from that entry's own right-click "Edit Entry" item on the
 // Setlist Details page (decision 11). Deliberately duplicates the same
-// four fields the real EditSetlistModal's own Program Order tab already
+// fields the real EditSetlistModal's own Program Order tab already
 // edits inline — that form exists for editing while already reordering/
 // adding others; this one is the fast single-entry path from a right-click.
-// A piece entry's own right-click menu opens Edit Piece instead — this
-// modal is custom-entry only, same as the mockup.
+// A piece entry's own "Edit Entry" opens EditRoleModal.tsx instead (role and
+// description only). The role, as on a piece, is for entries counted as
+// music: its field shows only then, and saving an entry not counted as music
+// clears it.
 
 function formatDuration(seconds: number): string {
   const m = Math.floor(seconds / 60)
@@ -52,9 +54,7 @@ export function EditEntryModal({ open, onClose, setlistId, entry }: EditEntryMod
   const [duration, setDuration] = useState('')
   const [description, setDescription] = useState('')
   const [countsAsMusic, setCountsAsMusic] = useState(false)
-  // Sent back unchanged on save (a full replace) — kept current with the
-  // fresh copy, so a role changed elsewhere isn't overwritten.
-  const [role, setRole] = useState<string | null>(null)
+  const [role, setRole] = useState('')
 
   useEffect(() => {
     if (!open || !entry) return
@@ -63,9 +63,9 @@ export function EditEntryModal({ open, onClose, setlistId, entry }: EditEntryMod
     setDuration(
       entry.customDurationSeconds != null ? formatDuration(entry.customDurationSeconds) : '',
     )
-    setDescription(entry.customNotes ?? '')
+    setDescription(entry.description ?? '')
     setCountsAsMusic(entry.customCountsAsMusic)
-    setRole(entry.role)
+    setRole(entry.role ?? '')
   }, [open, entry])
 
   // The fields fill from the entry as the server has it now, not the copy
@@ -87,19 +87,19 @@ export function EditEntryModal({ open, onClose, setlistId, entry }: EditEntryMod
       setDuration(
         current.customDurationSeconds != null ? formatDuration(current.customDurationSeconds) : '',
       )
-      setDescription(current.customNotes ?? '')
+      setDescription(current.description ?? '')
       setCountsAsMusic(current.customCountsAsMusic)
-      setRole(current.role)
+      setRole(current.role ?? '')
     },
   )
 
   const saveMutation = useMutation({
     mutationFn: () =>
       updateSetlistEntry(setlistId, entry!.id, {
-        role,
+        role: countsAsMusic ? role.trim() || null : null,
         customName: name.trim(),
         customDurationSeconds: parseDurationInput(duration) ?? null,
-        customNotes: description.trim() || null,
+        description: description.trim() || null,
         customCountsAsMusic: countsAsMusic,
       }),
     onSuccess: (updated) => {
@@ -216,6 +216,21 @@ export function EditEntryModal({ open, onClose, setlistId, entry }: EditEntryMod
               <Toggle checked={countsAsMusic} onChange={setCountsAsMusic} label="Count as music" />
             </div>
           </div>
+          {countsAsMusic && (
+            <div className="flex flex-col gap-1">
+              <label htmlFor="f-entry-role" className="text-sm text-ink-soft">
+                Role
+              </label>
+              <input
+                id="f-entry-role"
+                type="text"
+                value={role}
+                onChange={(event) => setRole(event.target.value)}
+                placeholder="Postlude"
+                className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+              />
+            </div>
+          )}
           <div className="flex flex-col gap-1">
             <label htmlFor="f-entry-description" className="text-sm text-ink-soft">
               Description

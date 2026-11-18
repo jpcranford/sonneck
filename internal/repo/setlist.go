@@ -57,7 +57,7 @@ type SetlistEntry struct {
 	PieceID               *int64
 	CustomName            *string
 	CustomDurationSeconds *int
-	CustomNotes           *string
+	Description           *string
 	CustomCountsAsMusic   bool
 	Role                  *string
 	SortOrder             int
@@ -193,7 +193,7 @@ func DeleteSetlist(ctx context.Context, q Queryer, ownerUserID, id int64) error 
 func ListSetlistEntries(ctx context.Context, q Queryer, setlistID int64) ([]SetlistEntry, error) {
 	rows, err := q.QueryContext(ctx, `
 		SELECT se.id, se.setlist_id, se.piece_id, se.custom_name, se.custom_duration_seconds,
-		       se.custom_notes, se.custom_counts_as_music, se.role, se.sort_order,
+		       se.description, se.custom_counts_as_music, se.role, se.sort_order,
 		       p.duration, p.page_count
 		FROM setlist_entries se
 		LEFT JOIN pieces p ON p.id = se.piece_id
@@ -211,7 +211,7 @@ func ListSetlistEntries(ctx context.Context, q Queryer, setlistID int64) ([]Setl
 		var countsAsMusic int
 		if err := rows.Scan(
 			&e.ID, &e.SetlistID, &e.PieceID, &e.CustomName, &e.CustomDurationSeconds,
-			&e.CustomNotes, &countsAsMusic, &e.Role, &e.SortOrder,
+			&e.Description, &countsAsMusic, &e.Role, &e.SortOrder,
 			&e.PieceDuration, &e.PiecePageCount,
 		); err != nil {
 			return nil, err
@@ -280,14 +280,14 @@ func GetSetlistEntry(ctx context.Context, q Queryer, setlistID, entryID int64) (
 	var countsAsMusic int
 	err := q.QueryRowContext(ctx, `
 		SELECT se.id, se.setlist_id, se.piece_id, se.custom_name, se.custom_duration_seconds,
-		       se.custom_notes, se.custom_counts_as_music, se.role, se.sort_order,
+		       se.description, se.custom_counts_as_music, se.role, se.sort_order,
 		       p.duration, p.page_count
 		FROM setlist_entries se
 		LEFT JOIN pieces p ON p.id = se.piece_id
 		WHERE se.id = ? AND se.setlist_id = ?`, entryID, setlistID,
 	).Scan(
 		&e.ID, &e.SetlistID, &e.PieceID, &e.CustomName, &e.CustomDurationSeconds,
-		&e.CustomNotes, &countsAsMusic, &e.Role, &e.SortOrder,
+		&e.Description, &countsAsMusic, &e.Role, &e.SortOrder,
 		&e.PieceDuration, &e.PiecePageCount,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -308,7 +308,7 @@ type AddSetlistEntryParams struct {
 	PieceID               *int64
 	CustomName            *string
 	CustomDurationSeconds *int
-	CustomNotes           *string
+	Description           *string
 	CustomCountsAsMusic   bool
 	Role                  *string
 }
@@ -329,9 +329,9 @@ func AddSetlistEntry(ctx context.Context, q Queryer, setlistID int64, p AddSetli
 	}
 	res, err := q.ExecContext(ctx, `
 		INSERT INTO setlist_entries
-			(setlist_id, piece_id, custom_name, custom_duration_seconds, custom_notes, custom_counts_as_music, role, sort_order)
+			(setlist_id, piece_id, custom_name, custom_duration_seconds, description, custom_counts_as_music, role, sort_order)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		setlistID, p.PieceID, p.CustomName, p.CustomDurationSeconds, p.CustomNotes, countsAsMusic, p.Role, nextOrder,
+		setlistID, p.PieceID, p.CustomName, p.CustomDurationSeconds, p.Description, countsAsMusic, p.Role, nextOrder,
 	)
 	if err != nil {
 		return 0, err
@@ -339,20 +339,21 @@ func AddSetlistEntry(ctx context.Context, q Queryer, setlistID int64, p AddSetli
 	return res.LastInsertId()
 }
 
-// UpdateSetlistEntryParams edits an existing entry's own role, and — only
-// meaningful for a custom entry — its name/duration/notes/counts-as-music
-// toggle. A piece entry's own PieceID/piece-derived fields are never
-// editable here (editing the piece itself is "Edit Piece," a separate
-// concern); only Role applies to both kinds.
+// UpdateSetlistEntryParams edits an existing entry's own role and
+// description, and — only meaningful for a custom entry — its
+// name/duration/counts-as-music toggle. A piece entry's own
+// PieceID/piece-derived fields are never editable here (editing the piece
+// itself is "Edit Piece," a separate concern); only Role and Description
+// apply to both kinds.
 type UpdateSetlistEntryParams struct {
 	Role                  *string
 	CustomName            *string
 	CustomDurationSeconds *int
-	CustomNotes           *string
+	Description           *string
 	CustomCountsAsMusic   bool
 }
 
-// UpdateSetlistEntry edits entryID's own role/custom fields, scoped to
+// UpdateSetlistEntry edits entryID's own role/description/custom fields, scoped to
 // setlistID (which the caller has already confirmed belongs to the
 // calling user). isCustom decides whether the custom_* columns are
 // written at all — updating them on a piece entry would violate nothing
@@ -369,14 +370,14 @@ func UpdateSetlistEntry(ctx context.Context, q Queryer, setlistID, entryID int64
 		}
 		res, err = q.ExecContext(ctx, `
 			UPDATE setlist_entries
-			SET role = ?, custom_name = ?, custom_duration_seconds = ?, custom_notes = ?, custom_counts_as_music = ?
+			SET role = ?, custom_name = ?, custom_duration_seconds = ?, description = ?, custom_counts_as_music = ?
 			WHERE id = ? AND setlist_id = ?`,
-			p.Role, p.CustomName, p.CustomDurationSeconds, p.CustomNotes, countsAsMusic, entryID, setlistID,
+			p.Role, p.CustomName, p.CustomDurationSeconds, p.Description, countsAsMusic, entryID, setlistID,
 		)
 	} else {
 		res, err = q.ExecContext(ctx, `
-			UPDATE setlist_entries SET role = ? WHERE id = ? AND setlist_id = ?`,
-			p.Role, entryID, setlistID,
+			UPDATE setlist_entries SET role = ?, description = ? WHERE id = ? AND setlist_id = ?`,
+			p.Role, p.Description, entryID, setlistID,
 		)
 	}
 	if err != nil {

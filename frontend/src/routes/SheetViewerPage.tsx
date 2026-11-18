@@ -1520,7 +1520,7 @@ function SetlistSession({ setlistId }: { setlistId: number }) {
           key: `e:${e.id}`,
           name: e.customName ?? '',
           role: e.role,
-          notes: e.customNotes ?? null,
+          notes: e.description ?? null,
           durationSeconds: e.customDurationSeconds ?? null,
           music: !!e.customCountsAsMusic,
         },

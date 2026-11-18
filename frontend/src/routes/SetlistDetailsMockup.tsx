@@ -120,11 +120,15 @@ interface SetlistPieceEntry {
   keys: string[]
   durationSeconds?: number
   pages: number
+  // The entry's description, shown under its details line.
+  note?: string
 }
 
 interface SetlistCustomEntry {
   id: string
   kind: 'custom'
+  // Only while counted as music, as on a piece.
+  role?: string
   title: string
   durationSeconds?: number
   note?: string
@@ -204,10 +208,12 @@ const INITIAL_ENTRIES: SetlistEntry[] = [
     keys: ['E♭ major', 'F major'],
     durationSeconds: 180,
     pages: 1,
+    note: 'Second verse a cappella; organ back in for the last.',
   },
   {
     id: 'e6',
     kind: 'custom',
+    role: 'Response',
     title: 'Congregational Response',
     durationSeconds: 120,
     countsAsMusic: true,
@@ -288,7 +294,7 @@ function buildProgramCopy(
     const num = n != null ? `${n}. ` : ''
     let rowMd = num
     let rowPt = num
-    if (entry.kind === 'piece' && entry.role) {
+    if (entry.role) {
       rowMd += `*${escapeMarkdown(entry.role)}:* `
       rowPt += `${entry.role}: `
     }
@@ -323,8 +329,8 @@ function buildProgramCopy(
 // — "Edit Piece" stays inert (opening the real EditPieceModal for a fixture
 // piece is out of this mockup's own scope, same posture every other inert
 // action on this page takes for a dependency it doesn't actually have).
-// A piece entry also gets "Add Role" (no role yet) / "Edit Role" (one set),
-// opening EditRoleMockup.tsx's single-text-box modal, and — as every
+// A piece entry also gets "Edit Entry" (its role and description), opening
+// EditRoleMockup.tsx's modal, and — as every
 // piece's menu in the library has (PieceContextMenu.tsx) — Add to / Remove
 // from Practice List, under the practice status strip (the menu's header).
 function getEntryMenuItems(
@@ -342,7 +348,7 @@ function getEntryMenuItems(
         onSelect: onTogglePracticeList,
       },
       { label: 'Edit Piece', onSelect: () => {} },
-      { label: entry.role ? 'Edit Role' : 'Add Role', onSelect: () => onEditRole(entry) },
+      { label: 'Edit Entry', onSelect: () => onEditRole(entry) },
       {
         label: 'Remove from Setlist',
         destructive: true,
@@ -515,11 +521,15 @@ export function SetlistDetailsMockup() {
   const [entryStatus, setEntryStatus] = useState<Record<string, string | null>>({})
   const [entryOnList, setEntryOnList] = useState<Record<string, boolean>>({})
 
-  function saveRole(role: string | undefined) {
+  function saveRole(values: { role?: string; description?: string }) {
     if (!editingRoleEntry) return
     const id = editingRoleEntry.id
     setEntries((current) =>
-      current.map((e) => (e.id === id && e.kind === 'piece' ? { ...e, role } : e)),
+      current.map((e) =>
+        e.id === id && e.kind === 'piece'
+          ? { ...e, role: values.role, note: values.description }
+          : e,
+      ),
     )
   }
 
@@ -540,6 +550,7 @@ export function SetlistDetailsMockup() {
               durationSeconds: values.durationSeconds,
               note: values.description,
               countsAsMusic: values.countsAsMusic,
+              role: values.role,
             }
           : entry,
       ),
@@ -1043,7 +1054,7 @@ export function SetlistDetailsMockup() {
                   number column was widened/enlarged — keep these two in
                   lockstep, a previous mismatch here was a real
                   live-reported bug.) */}
-                {entry.kind === 'piece' && entry.role && (
+                {entry.role && (entry.kind === 'piece' || entry.countsAsMusic) && (
                   <span className="ml-10 block text-[0.65rem] font-medium tracking-wide text-ink-soft uppercase [font-variant:small-caps]">
                     {entry.role}
                   </span>
@@ -1078,18 +1089,19 @@ export function SetlistDetailsMockup() {
                     />
                   )}
                 </div>
-                {entry.kind === 'piece' ? (
+                {entry.kind === 'piece' && (
                   <div className="ml-10 break-words text-xs text-ink-soft">
                     {entry.composer} <span aria-hidden="true">•</span>{' '}
                     <KeySequence keys={entry.keys} /> <span aria-hidden="true">•</span>{' '}
                     {formatPages(entry.pages)}
                   </div>
-                ) : (
-                  entry.note && (
-                    <div className="mt-1 ml-10 rounded border border-border bg-paper-sunken px-2 py-1 text-xs leading-snug text-ink-soft">
-                      {entry.note}
-                    </div>
-                  )
+                )}
+                {/* A piece's description sits under its details line, a
+                    custom entry's under its name. */}
+                {entry.note && (
+                  <div className="mt-1 ml-10 rounded border border-border bg-paper-sunken px-2 py-1 text-xs leading-snug text-ink-soft">
+                    {entry.note}
+                  </div>
                 )}
               </>
             )
@@ -1297,6 +1309,7 @@ export function SetlistDetailsMockup() {
         initialDurationSeconds={editingEntry?.durationSeconds}
         initialDescription={editingEntry?.note}
         initialCountsAsMusic={editingEntry?.countsAsMusic}
+        initialRole={editingEntry?.role}
         onSave={saveEntryEdit}
       />
 
@@ -1305,6 +1318,7 @@ export function SetlistDetailsMockup() {
         onClose={() => setEditingRoleEntry(null)}
         pieceTitle={editingRoleEntry?.title ?? ''}
         initialRole={editingRoleEntry?.role}
+        initialDescription={editingRoleEntry?.note}
         onSave={saveRole}
       />
 
@@ -1346,7 +1360,7 @@ export function SetlistDetailsMockup() {
               if (entry.kind === 'custom')
                 return n == null
                   ? { kind: 'other', title: entry.title }
-                  : { kind: 'music', number: n, title: entry.title }
+                  : { kind: 'music', number: n, role: entry.role, title: entry.title }
               return {
                 kind: 'music',
                 number: n ?? 0,

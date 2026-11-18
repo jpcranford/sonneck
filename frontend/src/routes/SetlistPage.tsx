@@ -104,8 +104,8 @@ function formatHeaderDate(iso: string): string {
   return formatDateOnly(iso, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
 }
 
-// A piece entry also gets "Add Role" (no role yet) / "Edit Role" (one set),
-// opening EditRoleModal, and — as every piece's menu in the library has
+// A piece entry also gets "Edit Entry" (its role and description), opening
+// EditRoleModal, and — as every piece's menu in the library has
 // (PieceContextMenu.tsx) — Add to / Remove from Practice List, under the
 // practice status strip (the menu's header), both with `practice` only
 // (practiceList is null without it).
@@ -128,7 +128,7 @@ function getEntryMenuItems(
           ]
         : []),
       { label: 'Edit Piece', onSelect: () => entry.piece && onEditPiece(entry.piece.id) },
-      { label: entry.role ? 'Edit Role' : 'Add Role', onSelect: () => onEditRole(entry) },
+      { label: 'Edit Entry', onSelect: () => onEditRole(entry) },
       {
         label: 'Remove from Setlist',
         destructive: true,
@@ -427,12 +427,16 @@ export function SetlistPage() {
       })
       for (const entry of setlist!.entries) {
         if (entry.kind === 'piece' && entry.piece) {
-          await addSetlistEntry(created.id, { pieceId: entry.piece.id, role: entry.role })
+          await addSetlistEntry(created.id, {
+            pieceId: entry.piece.id,
+            role: entry.role,
+            description: entry.description ?? null,
+          })
         } else {
           await addSetlistEntry(created.id, {
             customName: entry.customName,
             customDurationSeconds: entry.customDurationSeconds ?? null,
-            customNotes: entry.customNotes ?? null,
+            description: entry.description ?? null,
             customCountsAsMusic: entry.customCountsAsMusic,
             role: entry.role,
           })
@@ -865,7 +869,7 @@ export function SetlistPage() {
                     entry.kind === 'piece' ? entry.piece?.duration : entry.customDurationSeconds
                   const rowContent = (
                     <>
-                      {entry.kind === 'piece' && entry.role && (
+                      {entry.role && (entry.kind === 'piece' || entry.customCountsAsMusic) && (
                         <span className="ml-10 block text-[0.65rem] font-medium tracking-wide text-ink-soft uppercase [font-variant:small-caps]">
                           {entry.role}
                         </span>
@@ -898,7 +902,7 @@ export function SetlistPage() {
                           />
                         )}
                       </div>
-                      {entry.kind === 'piece' && entry.piece ? (
+                      {entry.kind === 'piece' && entry.piece && (
                         <div className="ml-10 break-words text-xs text-ink-soft">
                           <MetaLine
                             parts={[
@@ -913,12 +917,13 @@ export function SetlistPage() {
                             ]}
                           />
                         </div>
-                      ) : (
-                        entry.customNotes && (
-                          <div className="mt-1 ml-10 rounded border border-border bg-paper-sunken px-2 py-1 text-xs leading-snug text-ink-soft">
-                            <MarkdownText>{entry.customNotes}</MarkdownText>
-                          </div>
-                        )
+                      )}
+                      {/* A piece's description sits under its details line,
+                          a custom entry's under its name. */}
+                      {entry.description && (
+                        <div className="mt-1 ml-10 rounded border border-border bg-paper-sunken px-2 py-1 text-xs leading-snug text-ink-soft">
+                          <MarkdownText>{entry.description}</MarkdownText>
+                        </div>
                       )}
                     </>
                   )

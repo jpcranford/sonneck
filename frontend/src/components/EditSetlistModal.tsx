@@ -92,9 +92,10 @@ function parseDurationInput(value: string): number | undefined {
 }
 
 type CustomEntryFields = {
+  role: string | null
   customName: string
   customDurationSeconds: number | null
-  customNotes: string | null
+  description: string | null
   customCountsAsMusic: boolean
 }
 
@@ -249,12 +250,16 @@ export function EditSetlistModal({
   const [customDuration, setCustomDuration] = useState('')
   const [customDescription, setCustomDescription] = useState('')
   const [customCountsAsMusic, setCustomCountsAsMusic] = useState(false)
-  // A piece row's pencil opens an inline role card in the row's own
+  // Shown, and saved, only while Count as music is on (as on a piece).
+  const [customRole, setCustomRole] = useState('')
+  // A piece row's pencil opens an inline role-and-description card in the row's own
   // position (renderRoleForm) — shares `editingEntryId` with the custom
   // inline form, so only one card is ever open and the scroll-into-view
   // effect covers it too.
   const [roleDraft, setRoleDraft] = useState('')
-  const [roleDraftHadRole, setRoleDraftHadRole] = useState(false)
+  const [descriptionDraft, setDescriptionDraft] = useState('')
+  // The entry's role and description when its card opened.
+  const [entryDraftSaved, setEntryDraftSaved] = useState({ role: '', description: '' })
   const pieceSearchInputRef = useRef<HTMLInputElement>(null)
   const customNameInputRef = useRef<HTMLInputElement>(null)
   const expandedRef = useRef<HTMLElement | null>(null)
@@ -303,22 +308,30 @@ export function EditSetlistModal({
 
   const editCustomMutation = useMutation({
     mutationFn: ({ entryId, body }: { entryId: number; body: CustomEntryFields }) => {
-      const existing = entries.find((e) => e.id === entryId)
-      return updateSetlistEntry(setlistId!, entryId, { role: existing?.role ?? null, ...body })
+      return updateSetlistEntry(setlistId!, entryId, body)
     },
     onSuccess: (updated, { entryId }) => takeSavedEntry(updated, entryId),
     onError: (error) =>
       showAlert(error instanceof ApiError ? error.message : 'Could not save that entry.'),
   })
 
-  // Piece entries only carry `role` on PATCH's full-replace body (their
-  // custom_* columns are never written — repo.UpdateSetlistEntry).
+  // Piece entries only carry `role` and `description` on PATCH's
+  // full-replace body (their custom_* columns are never written —
+  // repo.UpdateSetlistEntry).
   const editRoleMutation = useMutation({
-    mutationFn: ({ entryId, role }: { entryId: number; role: string | null }) =>
-      updateSetlistEntry(setlistId!, entryId, { role, customCountsAsMusic: false }),
+    mutationFn: ({
+      entryId,
+      role,
+      description,
+    }: {
+      entryId: number
+      role: string | null
+      description: string | null
+    }) =>
+      updateSetlistEntry(setlistId!, entryId, { role, description, customCountsAsMusic: false }),
     onSuccess: (updated, { entryId }) => takeSavedEntry(updated, entryId),
     onError: (error) =>
-      showAlert(error instanceof ApiError ? error.message : 'Could not save that role.'),
+      showAlert(error instanceof ApiError ? error.message : 'Could not save that entry.'),
   })
 
   function patchDraftEntry(entryId: number, patch: Partial<SetlistEntry>) {
@@ -395,33 +408,44 @@ export function EditSetlistModal({
     setCustomDuration(
       entry.customDurationSeconds != null ? formatDuration(entry.customDurationSeconds) : '',
     )
-    setCustomDescription(entry.customNotes ?? '')
+    setCustomDescription(entry.description ?? '')
     setCustomCountsAsMusic(entry.customCountsAsMusic)
+    setCustomRole(entry.role ?? '')
   }
 
   function openEditRoleForm(entry: SetlistEntry) {
     if (addRowMode !== 'buttons') closeAddRow()
     setEditingEntryId(entry.id)
     setRoleDraft(entry.role ?? '')
-    setRoleDraftHadRole(Boolean(entry.role))
+    setDescriptionDraft(entry.description ?? '')
+    setEntryDraftSaved({ role: entry.role ?? '', description: entry.description ?? '' })
   }
 
   function closeRoleForm() {
     setEditingEntryId(null)
     setRoleDraft('')
-    setRoleDraftHadRole(false)
+    setDescriptionDraft('')
+    setEntryDraftSaved({ role: '', description: '' })
   }
 
-  // An empty save is only valid when it means "remove the existing role".
+  const roleFormChanged =
+    roleDraft.trim() !== entryDraftSaved.role ||
+    descriptionDraft.trim() !== entryDraftSaved.description
+
+  // Saves only a change; a field left blank clears it.
   function submitRoleForm() {
+    if (!roleFormChanged || editingEntryId == null) return
     const role = roleDraft.trim() || null
-    if ((!role && !roleDraftHadRole) || editingEntryId == null) return
+    const description = descriptionDraft.trim() || null
     if (editingEntryId < 0) {
-      patchDraftEntry(editingEntryId, { role })
+      patchDraftEntry(editingEntryId, { role, description: description ?? undefined })
       closeRoleForm()
       return
     }
-    editRoleMutation.mutate({ entryId: editingEntryId, role }, { onSuccess: closeRoleForm })
+    editRoleMutation.mutate(
+      { entryId: editingEntryId, role, description },
+      { onSuccess: closeRoleForm },
+    )
   }
 
   function closeCustomForm() {
@@ -430,6 +454,7 @@ export function EditSetlistModal({
     setCustomDuration('')
     setCustomDescription('')
     setCustomCountsAsMusic(false)
+    setCustomRole('')
     if (addRowMode === 'custom') closeAddRow()
   }
 
@@ -446,15 +471,17 @@ export function EditSetlistModal({
   function submitCustomForm() {
     if (!customName.trim()) return
     const body: CustomEntryFields = {
+      role: customCountsAsMusic ? customRole.trim() || null : null,
       customName: customName.trim(),
       customDurationSeconds: parseDurationInput(customDuration) ?? null,
-      customNotes: customDescription.trim() || null,
+      description: customDescription.trim() || null,
       customCountsAsMusic,
     }
     const draftFields = {
+      role: body.role,
       customName: body.customName,
       customDurationSeconds: body.customDurationSeconds ?? undefined,
-      customNotes: body.customNotes ?? undefined,
+      description: body.description ?? undefined,
       customCountsAsMusic: body.customCountsAsMusic,
     }
     if (editingEntryId == null) {
@@ -462,12 +489,13 @@ export function EditSetlistModal({
       const id = nextDraftId.current--
       setEntries((current) => [
         ...current,
-        { id, kind: 'custom', role: null, displayNumber: null, ...draftFields },
+        { id, kind: 'custom', displayNumber: null, ...draftFields },
       ])
       setCustomName('')
       setCustomDuration('')
       setCustomDescription('')
       setCustomCountsAsMusic(false)
+      setCustomRole('')
       customNameInputRef.current?.focus()
     } else if (editingEntryId < 0) {
       patchDraftEntry(editingEntryId, draftFields)
@@ -631,11 +659,12 @@ export function EditSetlistModal({
         if (entry.id > 0) continue
         const body =
           entry.kind === 'piece'
-            ? { pieceId: entry.piece!.id, role: entry.role }
+            ? { pieceId: entry.piece!.id, role: entry.role, description: entry.description ?? null }
             : {
+                role: entry.role,
                 customName: entry.customName,
                 customDurationSeconds: entry.customDurationSeconds ?? null,
-                customNotes: entry.customNotes ?? null,
+                description: entry.description ?? null,
                 customCountsAsMusic: entry.customCountsAsMusic,
               }
         const after = await addSetlistEntry(id, body)
@@ -763,6 +792,21 @@ export function EditSetlistModal({
             />
           </div>
         </div>
+        {customCountsAsMusic && (
+          <>
+            <label htmlFor="f-custom-role" className="text-sm text-ink-soft">
+              Role
+            </label>
+            <input
+              id="f-custom-role"
+              type="text"
+              value={customRole}
+              onChange={(event) => setCustomRole(event.target.value)}
+              placeholder="Postlude"
+              className="mt-1 mb-2 w-full rounded-md border border-border bg-paper-raised px-3 py-1.5 text-sm text-ink"
+            />
+          </>
+        )}
         <label htmlFor="f-custom-description" className="text-sm text-ink-soft">
           Description
         </label>
@@ -799,7 +843,6 @@ export function EditSetlistModal({
   // Same chrome as renderCustomEntryForm's inline edit, with the piece's
   // own title kept visible so it's clear which row this edits.
   function renderRoleForm(entry: SetlistEntry) {
-    const canSave = roleDraft.trim() !== '' || roleDraftHadRole
     return (
       <form
         key={entry.id}
@@ -813,7 +856,7 @@ export function EditSetlistModal({
         <button
           type="button"
           onClick={closeRoleForm}
-          aria-label="Cancel role edit"
+          aria-label="Cancel entry edit"
           className="absolute top-2 right-2 cursor-pointer rounded p-1 text-ink-soft hover:bg-paper-hover hover:text-ink"
         >
           <IconX size={13} />
@@ -831,13 +874,21 @@ export function EditSetlistModal({
           value={roleDraft}
           onChange={(event) => setRoleDraft(event.target.value)}
           placeholder="Prelude"
-          className={`mt-1 w-full rounded-md border border-border bg-paper-raised px-3 py-1.5 text-sm text-ink ${roleDraftHadRole ? 'mb-1' : 'mb-3'}`}
+          className="mt-1 mb-2 w-full rounded-md border border-border bg-paper-raised px-3 py-1.5 text-sm text-ink"
         />
-        {roleDraftHadRole && (
-          <p className="mb-3 text-xs text-ink-soft italic">
-            Leave blank and save to remove the role.
-          </p>
-        )}
+        <label htmlFor="f-entry-description-inline" className="text-sm text-ink-soft">
+          Description
+        </label>
+        <MarkdownHint className="mt-1 mb-3">
+          <textarea
+            id="f-entry-description-inline"
+            value={descriptionDraft}
+            onChange={(event) => setDescriptionDraft(event.target.value)}
+            placeholder="Second verse a cappella; organ back in for the last."
+            rows={2}
+            className="w-full resize-none px-3 pt-1.5 pb-1 text-sm text-ink bg-transparent outline-none focus-visible:outline-none"
+          />
+        </MarkdownHint>
         <div className="flex justify-end gap-2">
           <button
             type="button"
@@ -848,7 +899,7 @@ export function EditSetlistModal({
           </button>
           <button
             type="submit"
-            disabled={!canSave || editRoleMutation.isPending}
+            disabled={!roleFormChanged || editRoleMutation.isPending}
             className="cursor-pointer rounded-md bg-accent-fill px-3 py-1.5 text-sm text-white hover:bg-accent-fill/90 disabled:opacity-50"
           >
             Save
@@ -1042,21 +1093,15 @@ export function EditSetlistModal({
                           aria-label={
                             entry.kind === 'custom'
                               ? `Edit ${title}`
-                              : `${entry.role ? 'Edit' : 'Add'} role for ${title}`
+                              : `Edit role and description for ${title}`
                           }
-                          title={
-                            entry.kind === 'piece'
-                              ? entry.role
-                                ? 'Edit role'
-                                : 'Add role'
-                              : undefined
-                          }
+                          title={entry.kind === 'piece' ? 'Edit role and description' : undefined}
                           className="no-drag mt-0.5 shrink-0 cursor-pointer text-ink-soft hover:text-accent"
                         >
                           <IconPencil size={13} />
                         </button>
                         <div className="min-w-0 flex-1">
-                          {entry.kind === 'piece' && entry.role && (
+                          {entry.role && (entry.kind === 'piece' || entry.customCountsAsMusic) && (
                             <div className="truncate text-[0.65rem] font-medium tracking-wide text-ink-soft uppercase [font-variant:small-caps]">
                               {entry.role}
                             </div>
@@ -1070,7 +1115,7 @@ export function EditSetlistModal({
                           >
                             {title}
                           </div>
-                          {entry.kind === 'piece' ? (
+                          {entry.kind === 'piece' && (
                             <div className="truncate text-xs text-ink-soft">
                               <MetaLine
                                 parts={[
@@ -1082,12 +1127,11 @@ export function EditSetlistModal({
                                 ]}
                               />
                             </div>
-                          ) : (
-                            entry.customNotes && (
-                              <div className="line-clamp-2 text-xs text-ink-soft italic">
-                                <MarkdownText>{entry.customNotes}</MarkdownText>
-                              </div>
-                            )
+                          )}
+                          {entry.description && (
+                            <div className="line-clamp-2 text-xs text-ink-soft italic">
+                              <MarkdownText>{entry.description}</MarkdownText>
+                            </div>
                           )}
                         </div>
                         {durationSeconds != null && (
@@ -1297,11 +1341,12 @@ export function EditSetlistModal({
               <IconPencil size={13} />
             </span>
             <div className="min-w-0 flex-1">
-              {draggingEntry.kind === 'piece' && draggingEntry.role && (
-                <div className="truncate text-[0.65rem] font-medium tracking-wide text-ink-soft uppercase [font-variant:small-caps]">
-                  {draggingEntry.role}
-                </div>
-              )}
+              {draggingEntry.role &&
+                (draggingEntry.kind === 'piece' || draggingEntry.customCountsAsMusic) && (
+                  <div className="truncate text-[0.65rem] font-medium tracking-wide text-ink-soft uppercase [font-variant:small-caps]">
+                    {draggingEntry.role}
+                  </div>
+                )}
               <div
                 className={`truncate ${
                   draggingEntry.kind === 'piece'
@@ -1313,7 +1358,7 @@ export function EditSetlistModal({
                   ? draggingEntry.piece?.title
                   : draggingEntry.customName}
               </div>
-              {draggingEntry.kind === 'piece' ? (
+              {draggingEntry.kind === 'piece' && (
                 <div className="truncate text-xs text-ink-soft">
                   <MetaLine
                     parts={[
@@ -1325,12 +1370,11 @@ export function EditSetlistModal({
                     ]}
                   />
                 </div>
-              ) : (
-                draggingEntry.customNotes && (
-                  <div className="line-clamp-2 text-xs text-ink-soft italic">
-                    <MarkdownText>{draggingEntry.customNotes}</MarkdownText>
-                  </div>
-                )
+              )}
+              {draggingEntry.description && (
+                <div className="line-clamp-2 text-xs text-ink-soft italic">
+                  <MarkdownText>{draggingEntry.description}</MarkdownText>
+                </div>
               )}
             </div>
             {(draggingEntry.kind === 'piece'

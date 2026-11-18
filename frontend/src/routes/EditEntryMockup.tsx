@@ -53,6 +53,8 @@ export interface EditEntryValues {
   durationSeconds?: number
   description?: string
   countsAsMusic: boolean
+  /** Kept only while counted as music, as on a piece. */
+  role?: string
 }
 
 interface EditEntryModalProps {
@@ -68,6 +70,7 @@ interface EditEntryModalProps {
   initialDurationSeconds?: number
   initialDescription?: string
   initialCountsAsMusic?: boolean
+  initialRole?: string
   onSave: (values: EditEntryValues) => void
 }
 
@@ -78,6 +81,7 @@ export function EditEntryModal({
   initialDurationSeconds,
   initialDescription = '',
   initialCountsAsMusic = false,
+  initialRole = '',
   onSave,
 }: EditEntryModalProps) {
   const [name, setName] = useState(initialName)
@@ -86,6 +90,7 @@ export function EditEntryModal({
   )
   const [description, setDescription] = useState(initialDescription)
   const [countsAsMusic, setCountsAsMusic] = useState(initialCountsAsMusic)
+  const [role, setRole] = useState(initialRole)
   const nameInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -95,7 +100,15 @@ export function EditEntryModal({
     setDuration(initialDurationSeconds != null ? formatDuration(initialDurationSeconds) : '')
     setDescription(initialDescription)
     setCountsAsMusic(initialCountsAsMusic)
-  }, [open, initialName, initialDurationSeconds, initialDescription, initialCountsAsMusic])
+    setRole(initialRole)
+  }, [
+    open,
+    initialName,
+    initialDurationSeconds,
+    initialDescription,
+    initialCountsAsMusic,
+    initialRole,
+  ])
 
   function handleCancel() {
     onClose()
@@ -108,6 +121,7 @@ export function EditEntryModal({
       durationSeconds: parseDurationInput(duration),
       description: description.trim() || undefined,
       countsAsMusic,
+      role: countsAsMusic ? role.trim() || undefined : undefined,
     })
     onClose()
   }
@@ -210,6 +224,22 @@ export function EditEntryModal({
             <Toggle checked={countsAsMusic} onChange={setCountsAsMusic} label="Count as music" />
           </div>
         </div>
+        {/* A role (as on a piece) only for an entry counted as music. */}
+        {countsAsMusic && (
+          <div className="flex flex-col gap-1">
+            <label htmlFor="f-entry-role" className="text-sm text-ink-soft">
+              Role
+            </label>
+            <input
+              id="f-entry-role"
+              type="text"
+              value={role}
+              onChange={(event) => setRole(event.target.value)}
+              placeholder="Postlude"
+              className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+            />
+          </div>
+        )}
         <div className="flex flex-col gap-1">
           <label htmlFor="f-entry-description" className="text-sm text-ink-soft">
             Description
@@ -246,7 +276,13 @@ export function EditEntryMockup() {
 
   const demoValues: Record<
     typeof demo,
-    { name: string; durationSeconds?: number; description?: string; countsAsMusic?: boolean }
+    {
+      name: string
+      durationSeconds?: number
+      description?: string
+      countsAsMusic?: boolean
+      role?: string
+    }
   > = {
     announcement: {
       name: 'Welcome & Announcements',
@@ -258,6 +294,7 @@ export function EditEntryMockup() {
       name: 'Congregational Response',
       durationSeconds: 120,
       countsAsMusic: true,
+      role: 'Response',
     },
     bare: {
       name: 'Postlude Improvisation',
@@ -279,13 +316,13 @@ export function EditEntryMockup() {
       <div className="rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-4 py-2 text-sm text-ink-soft">
         Reference sample — <span className="font-medium text-ink">Edit Entry modal</span> (design
         doc §13, Phase 11, decision 16) — a single custom entry's own name/duration/"Count as
-        music"/description, reached from a custom entry's right-click "Edit Entry" item on the
-        Setlist Details page. Carries the exact same field set as the Edit Setlist modal's own
-        Program Order tab uses for its inline "edit an existing custom entry" form
-        (EditSetlistMockup.tsx) — deliberately duplicated, not shared, since that form exists for
-        editing while already reordering/adding others, and this one is the fast single-entry path
-        from a right-click. A piece entry's own right-click menu opens Edit Piece instead — this
-        modal is custom-entry only.
+        music"/role/description (Role shows only while counted as music), reached from a custom
+        entry's right-click "Edit Entry" item on the Setlist Details page. Carries the exact same
+        field set as the Edit Setlist modal's own Program Order tab uses for its inline "edit an
+        existing custom entry" form (EditSetlistMockup.tsx) — deliberately duplicated, not shared,
+        since that form exists for editing while already reordering/adding others, and this one is
+        the fast single-entry path from a right-click. A piece entry's own "Edit Entry" opens the
+        role-and-description modal instead (EditRoleMockup.tsx).
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -320,6 +357,7 @@ export function EditEntryMockup() {
         initialDurationSeconds={demoValues[demo].durationSeconds}
         initialDescription={demoValues[demo].description}
         initialCountsAsMusic={demoValues[demo].countsAsMusic}
+        initialRole={demoValues[demo].role}
         onSave={() => {}}
       />
     </div>

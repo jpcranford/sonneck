@@ -431,7 +431,8 @@ export interface SetlistEntry {
   piece?: SetlistPieceSummary
   customName?: string
   customDurationSeconds?: number
-  customNotes?: string
+  /** Shown under the entry (a piece's too); Markdown. */
+  description?: string
   customCountsAsMusic: boolean
   role: string | null
   displayNumber: number | null
@@ -464,7 +465,7 @@ export interface SetlistEntryInput {
   pieceId?: number
   customName?: string
   customDurationSeconds?: number | null
-  customNotes?: string | null
+  description?: string | null
   customCountsAsMusic?: boolean
   role?: string | null
 }
