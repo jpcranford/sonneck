@@ -16,6 +16,7 @@ import { hasPermission, useAuth } from '../lib/AuthContext'
 import { setPendingUpload } from '../lib/pendingUpload'
 import { clearWizardDraft, loadWizardDraft, type WizardDraftStep } from '../lib/useWizardDraft'
 import { isAnyModalOpen, Modal } from './Modal'
+import { isDropToUploadBlocked } from '../lib/dropToUploadBlock'
 import { showAlert } from '../lib/dialogs'
 
 // Drag-and-drop upload anywhere in the app (design doc §13; design B,
@@ -152,7 +153,8 @@ export function DropToUpload() {
   })
 
   useEffect(() => {
-    const inactive = () => stateRef.current.onUploadPage || isAnyModalOpen()
+    const inactive = () =>
+      stateRef.current.onUploadPage || isAnyModalOpen() || isDropToUploadBlocked()
     const refusalFor = (files: { name: string; type: string }[]): Refusal | null => {
       if (!stateRef.current.canUpload) return 'permission'
       if (files.length > 1) return 'multiple'

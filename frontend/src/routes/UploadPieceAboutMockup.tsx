@@ -19,6 +19,7 @@ import { SingleSelect } from '../components/SingleSelect'
 import { useMockupTitle } from '../lib/useMockupTitle'
 import { imslpNumberFromFilename, isDetectedImslpNumber } from '../lib/imslpFromFilename'
 import { MarkdownHint } from '../components/MarkdownHint'
+import { useDropToUploadBlocker } from '../lib/dropToUploadBlock'
 
 // ---------------------------------------------------------------------
 // DESIGN MOCKUP — single-piece Upload's own "details" step (the real
@@ -180,6 +181,8 @@ function PageLightbox({
   onPrev: () => void
   onNext: () => void
 }) {
+  // Drop-to-upload pauses while it's open, as in the real one.
+  useDropToUploadBlocker(true)
   const [zoom, setZoom] = useState<'fit' | 'actual'>('fit')
 
   useEffect(() => {

@@ -55,6 +55,7 @@ import { useMockupTitle } from '../lib/useMockupTitle'
 import { shownRange } from '../lib/sheetViewerSpreads'
 import { ManagePagesWindow } from './ManagePagesMockup'
 import { EDIT_PIECE_KEYS, useShortcutBlocker, useShortcuts } from '../lib/shortcuts'
+import { useDropToUploadBlocker } from '../lib/dropToUploadBlock'
 
 // ---------------------------------------------------------------------
 // REFERENCE SAMPLE — unlinked from nav, not wired to the API. Ported
@@ -406,6 +407,8 @@ function PageLightbox({
   onPrev: () => void
   onNext: () => void
 }) {
+  // Drop-to-upload pauses while it's open, as in the real one.
+  useDropToUploadBlocker(true)
   // Page shortcuts pause while the viewer is open, as in the real one.
   useShortcutBlocker(true)
   // 'fit' shows the whole page within the screen; 'actual' shows it

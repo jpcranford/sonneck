@@ -28,6 +28,7 @@ import { useMockupTitle } from '../lib/useMockupTitle'
 import { confirmAction } from '../lib/dialogs'
 import { imslpNumberFromFilename, isDetectedImslpNumber } from '../lib/imslpFromFilename'
 import { MarkdownHint } from '../components/MarkdownHint'
+import { useDropToUploadBlocker } from '../lib/dropToUploadBlock'
 
 // ---------------------------------------------------------------------
 // DESIGN MOCKUP — Book Upload Wizard, Screen 3 of 6: "About this book"
@@ -278,6 +279,8 @@ function PageLightbox({
   onPrev: () => void
   onNext: () => void
 }) {
+  // Drop-to-upload pauses while it's open, as in the real one.
+  useDropToUploadBlocker(true)
   const [zoom, setZoom] = useState<'fit' | 'actual'>('fit')
 
   useEffect(() => {

@@ -17,6 +17,7 @@ import { autosizeTextarea, preventTextareaNewline } from '../lib/autosizeTextare
 import { normalizeForSearch } from '../lib/normalizeForSearch'
 import { nameCase, titleCase } from '../lib/textCase'
 import { confirmAction } from '../lib/dialogs'
+import { useDropToUploadBlocker } from '../lib/dropToUploadBlock'
 
 // ---------------------------------------------------------------------
 // DESIGN MOCKUP — Book Upload Wizard, Screen 5 of 6: "Name each piece"
@@ -406,6 +407,8 @@ function PageLightbox({
   onPrev: () => void
   onNext: () => void
 }) {
+  // Drop-to-upload pauses while it's open, as in the real one.
+  useDropToUploadBlocker(true)
   const piece = pieceForPage(page)
   // 'fit' shows the whole page within the screen; 'actual' shows it at a
   // larger, fixed pixel size in a scrollable box — this mockup's

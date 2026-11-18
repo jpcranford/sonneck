@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { IconChevronLeft, IconChevronRight, IconX } from '@tabler/icons-react'
 import { useShortcutBlocker } from '../lib/shortcuts'
+import { useDropToUploadBlocker } from '../lib/dropToUploadBlock'
 
 // Full-screen page preview overlay, shared by every page-thumbnail preview
 // in the app that wants a click-to-enlarge view (Piece Details, the Book
@@ -62,6 +63,8 @@ export function PageLightbox({
 }) {
   // Page shortcuts pause while this is open (lib/shortcuts.ts).
   useShortcutBlocker(true)
+  // So does drop-to-upload (components/DropToUpload.tsx).
+  useDropToUploadBlocker(true)
   // 'fit' scales the image down to fit the screen (object-contain, no
   // scroll needed). 'actual' renders the image at its real native pixel
   // size — no width/height constraint on the <img> itself, just a
