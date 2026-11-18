@@ -220,6 +220,7 @@ func New(db *sql.DB, cfg *config.Config, logger *slog.Logger, frontend fs.FS, sc
 	mux.HandleFunc("GET /api/setlists/{id}/pdf", s.handleDownloadSetlistPDF)
 	mux.HandleFunc("GET /api/setlists/{id}/annotations/summary", s.handleSetlistAnnotationSummary)
 	mux.HandleFunc("GET /api/setlists/{id}/program", s.handleGetSetlistProgram)
+	mux.HandleFunc("GET /api/setlists/{id}/program.png", s.handleGetSetlistProgramImage)
 	mux.HandleFunc("PATCH /api/setlists/{id}", s.handleUpdateSetlist)
 	mux.HandleFunc("DELETE /api/setlists/{id}", s.handleDeleteSetlist)
 	mux.HandleFunc("POST /api/setlists/{id}/entries", s.handleAddSetlistEntry)

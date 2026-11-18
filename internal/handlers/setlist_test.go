@@ -1,7 +1,9 @@
 package handlers_test
 
 import (
+	"bytes"
 	"context"
+	"image/png"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -477,5 +479,34 @@ func TestSetlistTotalPages_MatchesItsPDF(t *testing.T) {
 	decodeData(t, rec, &list)
 	if len(list) != 1 || list[0].TotalPages != pages {
 		t.Errorf("list totalPages = %+v, want %d", list, pages)
+	}
+}
+
+// TestGetSetlistProgramImage checks the program image is a PNG 1080 pixels
+// wide, with only read permission needed.
+func TestGetSetlistProgramImage(t *testing.T) {
+	h := newTestServer(t)
+	pieceID := uploadTestPiece(t, h)
+	rec := doJSON(t, h, http.MethodPost, "/api/setlists", map[string]any{"name": "Recital", "gigDate": "2026-12-06"})
+	var setlist struct {
+		ID int64 `json:"id"`
+	}
+	decodeData(t, rec, &setlist)
+	doJSON(t, h, http.MethodPost, setlistURL(setlist.ID, "/entries"), map[string]any{"pieceId": pieceID, "role": "Prelude"})
+	doJSON(t, h, http.MethodPost, setlistURL(setlist.ID, "/entries"), map[string]any{"customName": "Welcome"})
+
+	rec = recordRequest(h, httptest.NewRequest(http.MethodGet, setlistURL(setlist.ID, "/program.png"), nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status %d, body %s", rec.Code, rec.Body.String())
+	}
+	if ct := rec.Header().Get("Content-Type"); ct != "image/png" {
+		t.Errorf("Content-Type = %q, want image/png", ct)
+	}
+	cfg, err := png.DecodeConfig(bytes.NewReader(rec.Body.Bytes()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Width != 1080 || cfg.Height < 300 {
+		t.Errorf("image %dx%d, want 1080 wide and as tall as the program", cfg.Width, cfg.Height)
 	}
 }

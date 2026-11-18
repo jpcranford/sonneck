@@ -167,3 +167,18 @@ func RenderThumbnail(ctx context.Context, binDir, src string, page, dpi int, out
 	}
 	return path, nil
 }
+
+// RenderPNG draws one page as a full-color PNG at dpi (the program image:
+// a 540pt page at 144ppi is 1080 pixels wide), kept as pdftoppm writes it,
+// unlike a thumbnail. It writes outPrefix + ".png" and returns that path.
+func RenderPNG(ctx context.Context, binDir, src string, page, dpi int, outPrefix string) (string, error) {
+	cmd := exec.CommandContext(ctx, toolPath(binDir, "pdftoppm"), "-png",
+		"-f", strconv.Itoa(page), "-l", strconv.Itoa(page),
+		"-r", strconv.Itoa(dpi), "-singlefile", src, outPrefix)
+	path := outPrefix + ".png"
+	if out, err := cmd.CombinedOutput(); err != nil {
+		os.Remove(path)
+		return "", fmt.Errorf("pdftoppm -f %d %s: %w: %s", page, src, err, out)
+	}
+	return path, nil
+}

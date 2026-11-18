@@ -11,6 +11,7 @@ import {
   IconCheck,
   IconChevronDown,
   IconCopy,
+  IconPhoto,
   IconDownload,
   IconEditFilled,
   IconListDetails,
@@ -28,6 +29,7 @@ import {
   deleteSetlist,
   getSetlist,
   getSetlistPdfUrl,
+  getSetlistProgramImageUrl,
   getSetlistProgram,
   removeSetlistEntry,
   updateSetlist,
@@ -57,7 +59,7 @@ import { formatRelativeWeeks } from '../lib/relativeWeeks'
 import { usePageTitle } from '../lib/usePageTitle'
 import { formatDateOnly } from '../lib/dateOnly'
 import { confirmAction, showAlert } from '../lib/dialogs'
-import { copyToClipboard } from '../lib/clipboard'
+import { canCopyImage, copyImageToClipboard, copyToClipboard } from '../lib/clipboard'
 import { EmptyState } from '../components/EmptyState'
 import { EDIT_WINDOW_KEYS, useShortcuts } from '../lib/shortcuts'
 import { estimateTotal } from '../lib/setlistEstimate'
@@ -312,6 +314,33 @@ export function SetlistPage() {
     queryFn: () => getSetlistProgram(setlistId),
   })
   const [copyToast, setCopyToast] = useState<{ x: number; y: number } | null>(null)
+  // Copy program as image (design F of
+  // https://claude.ai/artifact/8Z7qPoVzws8L5SZih6WkAW): the server draws
+  // the PNG. Copying an image needs a secure connection, so over plain HTTP
+  // (and wherever the browser refuses) it's saved instead.
+  const imageCopyable = canCopyImage()
+  function handleCopyProgramImage(event: MouseEvent) {
+    const { clientX: x, clientY: y } = event
+    setOpenMenu(null)
+    if (!setlist) return
+    const url = getSetlistProgramImageUrl(setlist.id)
+    if (!imageCopyable) {
+      startDownload(url)
+      return
+    }
+    const png = fetch(url, { credentials: 'same-origin' }).then((response) => {
+      if (!response.ok) throw new Error(`status ${response.status}`)
+      return response.blob()
+    })
+    void copyImageToClipboard(png).then((copied) => {
+      if (!copied) {
+        startDownload(url)
+        return
+      }
+      setCopyToast({ x, y })
+      window.setTimeout(() => setCopyToast(null), 1200)
+    })
+  }
   function handleCopyProgram(text: string, event: MouseEvent) {
     const { clientX: x, clientY: y } = event
     setOpenMenu(null)
@@ -754,6 +783,18 @@ export function SetlistPage() {
                       {label}
                     </button>
                   ))}
+                  <button
+                    type="button"
+                    onClick={handleCopyProgramImage}
+                    className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-paper-hover"
+                  >
+                    {imageCopyable ? (
+                      <IconPhoto size={16} className="shrink-0 text-ink-soft" />
+                    ) : (
+                      <IconDownload size={16} className="shrink-0 text-ink-soft" />
+                    )}
+                    {imageCopyable ? 'Copy program as image' : 'Save program as image'}
+                  </button>
                 </div>
               )}
             </div>

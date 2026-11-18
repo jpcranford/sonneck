@@ -103,6 +103,12 @@ export function getSetlistPdfUrl(id: number): string {
   return `/api/setlists/${id}/pdf`
 }
 
+/** The program as an image (design F), a PNG 1080 pixels wide
+ * (internal/handlers/setlistprogramimage.go). */
+export function getSetlistProgramImageUrl(id: number): string {
+  return `/api/setlists/${id}/program.png`
+}
+
 /** The program as Markdown and as plain text, for Setlist Details' copy
  * items (internal/handlers/setlistprogram.go builds both). */
 export function getSetlistProgram(id: number): Promise<{ markdown: string; text: string }> {

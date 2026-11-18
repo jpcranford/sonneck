@@ -50,3 +50,26 @@ export async function copyToClipboard(text: string): Promise<boolean> {
   document.body.removeChild(textarea)
   return copied
 }
+
+/** Whether this page can put an image on the clipboard: it needs a secure
+ * context (HTTPS, or the same computer) and the async Clipboard API, with
+ * no older fallback for images — so over plain HTTP on a home network it
+ * can't. Setlist Details saves the image instead there. */
+export function canCopyImage(): boolean {
+  return (
+    window.isSecureContext && typeof ClipboardItem !== 'undefined' && !!navigator.clipboard?.write
+  )
+}
+
+/** Copies a PNG to the clipboard, resolving whether it worked. Call it
+ * inside the tap or click: Safari only allows the write there, so the
+ * image's download is handed over as a promise rather than awaited first. */
+export async function copyImageToClipboard(png: Promise<Blob>): Promise<boolean> {
+  try {
+    const typed = png.then((blob) => new Blob([blob], { type: 'image/png' }))
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': typed })])
+    return true
+  } catch {
+    return false
+  }
+}

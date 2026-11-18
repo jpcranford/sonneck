@@ -20,12 +20,14 @@ import {
   IconEditFilled,
   IconListDetails,
   IconPlayerPlay,
+  IconPhoto,
   IconPlaylistAdd,
   IconTrash,
 } from '@tabler/icons-react'
 import { ContextMenu, type ContextMenuItem } from '../components/ContextMenu'
 import { MarkdownText } from '../components/MarkdownText'
 import { Modal } from '../components/Modal'
+import { ProgramImagePreview, type ProgramImageRow } from './ProgramImageMockup'
 import { CONTENT_MAX_W } from '../lib/layout'
 import { ALL_MOCK_SETLISTS, type MockSetlist } from '../lib/setlistsMockupFixture'
 import { formatRelativeWeeks } from '../lib/relativeWeeks'
@@ -36,7 +38,7 @@ import { EditRoleModal } from './EditRoleMockup'
 import { PracticeStatusStrip } from './AddToSetlistMockup'
 import { formatDateOnly } from '../lib/dateOnly'
 import { confirmAction } from '../lib/dialogs'
-import { copyToClipboard } from '../lib/clipboard'
+import { canCopyImage as canBrowserCopyImage, copyToClipboard } from '../lib/clipboard'
 import { EDIT_WINDOW_KEYS, useShortcuts } from '../lib/shortcuts'
 import { estimateTotal } from '../lib/setlistEstimate'
 import { confirmRemoveCustomEntry, confirmRemovePieceEntry } from '../lib/confirmRemoveEntry'
@@ -458,6 +460,14 @@ export function SetlistDetailsMockup() {
 
   const displayNumbers = useMemo(() => computeDisplayNumbers(entries), [entries])
   const [copyToast, setCopyToast] = useState<{ x: number; y: number } | null>(null)
+  // Copy program as image (design F): the real item copies a PNG the
+  // server draws; here it opens a preview of it. Copying an image needs a
+  // secure connection (HTTPS, or the same computer), so over plain HTTP the
+  // item saves the PNG instead; the Preview row's Connection switch shows
+  // that here.
+  const [programImageOpen, setProgramImageOpen] = useState(false)
+  const [plainHttp, setPlainHttp] = useState(false)
+  const canCopyImage = !plainHttp && canBrowserCopyImage()
   function handleCopyProgram(format: 'markdown' | 'text', event: ReactMouseEvent) {
     const { clientX: x, clientY: y } = event
     const program = buildProgramCopy(
@@ -698,6 +708,25 @@ export function SetlistDetailsMockup() {
             </button>
           ))}
         </div>
+        <span className="ml-3">Connection:</span>
+        <div className="flex overflow-hidden rounded border border-border">
+          {(
+            [
+              ['HTTPS', false],
+              ['Plain HTTP', true],
+            ] as const
+          ).map(([label, value]) => (
+            <button
+              key={label}
+              type="button"
+              aria-pressed={plainHttp === value}
+              onClick={() => setPlainHttp(value)}
+              className={`cursor-pointer px-2 py-1 ${plainHttp === value ? 'bg-accent-fill text-white' : 'bg-paper hover:bg-paper-hover'}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -887,6 +916,21 @@ export function SetlistDetailsMockup() {
                   {label}
                 </button>
               ))}
+              <button
+                type="button"
+                onClick={() => {
+                  setOpenMenu(null)
+                  setProgramImageOpen(true)
+                }}
+                className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-paper-hover"
+              >
+                {canCopyImage ? (
+                  <IconPhoto size={16} className="shrink-0 text-ink-soft" />
+                ) : (
+                  <IconDownload size={16} className="shrink-0 text-ink-soft" />
+                )}
+                {canCopyImage ? 'Copy program as image' : 'Save program as image'}
+              </button>
             </div>
           )}
         </div>
@@ -1264,6 +1308,57 @@ export function SetlistDetailsMockup() {
         onSave={saveRole}
       />
 
+      <Modal
+        open={programImageOpen}
+        onClose={() => setProgramImageOpen(false)}
+        labelledBy="program-image-title"
+        size="lg"
+        header={
+          <div>
+            <h2 id="program-image-title" className="font-display text-2xl font-medium text-ink">
+              Program image
+            </h2>
+            <p className="text-sm text-ink-soft">
+              {canCopyImage
+                ? 'The real item copies this as a PNG, 1080 pixels wide, and shows “Copied!”. Nothing is copied in this mockup.'
+                : `Over plain HTTP the real item saves this as “${setlist.name}.png”, 1080 pixels wide. Nothing is saved in this mockup.`}
+            </p>
+          </div>
+        }
+        footer={
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => setProgramImageOpen(false)}
+              className="cursor-pointer rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-white hover:bg-accent-fill/90"
+            >
+              Done
+            </button>
+          </div>
+        }
+      >
+        <div className="flex justify-center overflow-x-auto rounded-lg bg-paper-sunken p-4">
+          <ProgramImagePreview
+            name={setlist.name}
+            date={setlist.gigDate ? formatHeaderDate(setlist.gigDate) : ''}
+            rows={entries.map((entry, i): ProgramImageRow => {
+              const n = displayNumbers[i]
+              if (entry.kind === 'custom')
+                return n == null
+                  ? { kind: 'other', title: entry.title }
+                  : { kind: 'music', number: n, title: entry.title }
+              return {
+                kind: 'music',
+                number: n ?? 0,
+                role: entry.role,
+                title: entry.title,
+                opus: entry.opus,
+                credit: entry.composer,
+              }
+            })}
+          />
+        </div>
+      </Modal>
       {copyToast && (
         <div
           className="pointer-events-none fixed z-50 -translate-x-1/2 -translate-y-[140%] rounded-md bg-scrim px-2 py-1 text-xs text-white shadow-md"
