@@ -3,6 +3,7 @@ package handlers_test
 import (
 	"net/http"
 	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -360,11 +361,11 @@ func TestBookFacets_SheetTypeAndInstrumentCounts(t *testing.T) {
 }
 
 // The Practice Status facet lists statuses in practice order (Want to
-// Learn → Dropped), not alphabetically — the same order as the piece
-// menu's strip and the Edit Piece dropdown.
+// Learn, Learning, Stalled, Learned, Dropped), not alphabetically — the
+// same order as the piece menu's strip and the Edit Piece dropdown.
 func TestPieceFacets_PracticeStatusesInPracticeOrder(t *testing.T) {
 	h := newTestServer(t)
-	for _, status := range []string{"Dropped", "Learning", "Want to Learn"} {
+	for _, status := range []string{"Dropped", "Learned", "Learning", "Stalled", "Want to Learn"} {
 		p := createTestPiece(t, h, map[string]any{"title": status + " piece"})
 		rec := doJSON(t, h, http.MethodPatch, apiPiecesURL(p.ID)+"/practice-status", map[string]any{"practiceStatus": status})
 		if rec.Code != http.StatusOK {
@@ -382,8 +383,8 @@ func TestPieceFacets_PracticeStatusesInPracticeOrder(t *testing.T) {
 	for _, s := range facets.PracticeStatuses {
 		got = append(got, s.Status)
 	}
-	want := []string{"Want to Learn", "Learning", "Dropped"}
-	if len(got) != len(want) || got[0] != want[0] || got[1] != want[1] || got[2] != want[2] {
+	want := []string{"Want to Learn", "Learning", "Stalled", "Learned", "Dropped"}
+	if strings.Join(got, "|") != strings.Join(want, "|") {
 		t.Errorf("practice status facet order = %v, want %v", got, want)
 	}
 }

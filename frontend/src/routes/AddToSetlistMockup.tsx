@@ -79,7 +79,7 @@ const FIXTURE_PIECES: FixturePiece[] = [
 // The five seeded statuses, in their usual order (User Settings, the Filter
 // Drawer). The real build reads the viewer's own list from
 // GET /api/practice-statuses, whose iconKey keeps a renamed status's icon.
-const PRACTICE_STATUSES = ['Want to Learn', 'Learning', 'Learned', 'Stalled', 'Dropped']
+const PRACTICE_STATUSES = ['Want to Learn', 'Learning', 'Stalled', 'Learned', 'Dropped']
 
 // Practice status, set from the right-click / long-press menu (design C′,
 // chosen from a four-way comparison): a labelled strip of the five status

@@ -45,7 +45,7 @@ import { useMockupTitle } from '../lib/useMockupTitle'
 // only); their right-click / long-press menu is the Piece Library's with
 // Open Piece Details on top.
 
-type Status = 'Want to Learn' | 'Learning' | 'Learned' | 'Stalled' | 'Dropped'
+type Status = 'Want to Learn' | 'Learning' | 'Stalled' | 'Learned' | 'Dropped'
 
 interface MockPiece {
   id: number

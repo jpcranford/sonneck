@@ -99,8 +99,8 @@ const PRACTICE_STATUS_OPTIONS = [
   { value: '', label: 'No status set' },
   { value: 'Want to Learn', label: 'Want to Learn' },
   { value: 'Learning', label: 'Learning' },
-  { value: 'Learned', label: 'Learned' },
   { value: 'Stalled', label: 'Stalled' },
+  { value: 'Learned', label: 'Learned' },
   { value: 'Dropped', label: 'Dropped' },
 ]
 

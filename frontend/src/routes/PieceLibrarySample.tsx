@@ -75,7 +75,7 @@ interface MockPiece {
   // Annotated by this account: marked in the Sheet Viewer, or notes written
   // on it (the real filter counts each account's own).
   hasAnnotations: boolean
-  practiceStatus: 'Want to Learn' | 'Learning' | 'Learned' | 'Stalled'
+  practiceStatus: 'Want to Learn' | 'Learning' | 'Stalled' | 'Learned'
   // Drives PageCycleControl in the list view — that control renders
   // nothing at all for a pageCount of 1 (the common single-page-upload
   // case), so most fixture pieces stay at 1 and a couple get a real
@@ -289,8 +289,8 @@ const USER_TAG_OPTIONS = distinct('userTags')
 const STATUS_OPTIONS: MockPiece['practiceStatus'][] = [
   'Want to Learn',
   'Learning',
-  'Learned',
   'Stalled',
+  'Learned',
 ]
 
 // Live/faceted, matching the real backend's own switch —

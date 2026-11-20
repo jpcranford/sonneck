@@ -136,8 +136,8 @@ const INITIAL_USER_LISTS: Record<UserListKey, ListItem[]> = {
   'Practice Status': [
     { id: 10, name: 'Want to Learn' },
     { id: 11, name: 'Learning' },
-    { id: 12, name: 'Learned' },
     { id: 13, name: 'Stalled' },
+    { id: 12, name: 'Learned' },
     { id: 14, name: 'Dropped' },
   ],
 }

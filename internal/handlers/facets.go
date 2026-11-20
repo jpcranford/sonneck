@@ -244,8 +244,8 @@ func (s *Server) handlePieceFacets(w http.ResponseWriter, r *http.Request) {
 		-- matching the frontend's sortPracticeStatuses; statuses without
 		-- one follow by name.
 		ORDER BY CASE ps.icon_key
-			WHEN 'want_to_learn' THEN 0 WHEN 'learning' THEN 1 WHEN 'learned' THEN 2
-			WHEN 'stalled' THEN 3 WHEN 'dropped' THEN 4 ELSE 5 END, ps.name`, psQueryArgs...)
+			WHEN 'want_to_learn' THEN 0 WHEN 'learning' THEN 1 WHEN 'stalled' THEN 2
+			WHEN 'learned' THEN 3 WHEN 'dropped' THEN 4 ELSE 5 END, ps.name`, psQueryArgs...)
 	if err != nil {
 		s.writeError(w, err)
 		return
