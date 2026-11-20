@@ -788,18 +788,17 @@ function ShelfCard({
       >
         <div
           className={`relative aspect-[180/132] overflow-hidden rounded-md border border-border ${
-            onList ? '' : 'group-hover:border-accent'
+            onList ? 'bg-paper' : 'group-hover:border-accent'
           }`}
         >
-          {/* A white page faded by opacity turns mid-grey on the dark theme,
-              so the page itself takes --skip-fade (CLAUDE.md). */}
-          <div className={onList ? 'h-full opacity-(--skip-fade)' : 'h-full'}>
+          {/* Faded over the paper, not a grey fill (--onlist-fade). */}
+          <div className={onList ? 'h-full opacity-(--onlist-fade)' : 'h-full'}>
             <PageThumb seed={piece.id} />
           </div>
           {showStatus && piece.status && (
             <span
               className={`absolute bottom-1.5 left-1.5 flex items-center gap-1 rounded-full border border-accent/30 bg-accent-soft px-1.5 py-px text-[0.65rem] font-medium text-accent ${
-                onList ? 'opacity-45' : ''
+                onList ? 'opacity-55' : ''
               }`}
             >
               <PracticeStatusIcon status={piece.status} size={10} />
@@ -834,7 +833,7 @@ function ShelfCard({
             </button>
           )}
         </div>
-        <div className={onList ? 'opacity-45' : ''}>
+        <div className={onList ? 'opacity-55' : ''}>
           <p className="truncate font-display text-sm font-medium text-ink">{piece.title}</p>
           <p className="truncate text-xs text-ink-soft">{detail}</p>
         </div>

@@ -491,12 +491,11 @@ function ShelfCard({
         className="shelf-card group relative flex w-36 shrink-0 cursor-pointer flex-col gap-1.5"
       >
         <div
-          className={`relative aspect-[180/132] overflow-hidden rounded-md border border-border bg-border ${
-            onList ? '' : 'group-hover:border-accent'
+          className={`relative aspect-[180/132] overflow-hidden rounded-md border border-border ${
+            onList ? 'bg-paper' : 'bg-border group-hover:border-accent'
           }`}
         >
-          {/* A white page faded by opacity turns mid-grey on the dark
-              theme, so the page itself takes --skip-fade. */}
+          {/* Faded over the paper, not the grey card fill (--onlist-fade). */}
           <img
             src={getPieceThumbnailUrl(piece.id, piece.thumbnailPage, thumbVersion(piece.fileHash))}
             alt=""
@@ -504,13 +503,13 @@ function ShelfCard({
             draggable={false}
             ref={cancelImageOnUnmount}
             className={`score-page h-full w-full object-cover object-top ${
-              onList ? 'opacity-(--skip-fade)' : ''
+              onList ? 'opacity-(--onlist-fade)' : ''
             }`}
           />
           {showStatus && piece.practiceStatus && (
             <span
               className={`absolute bottom-1.5 left-1.5 flex max-w-[calc(100%-0.75rem)] items-center gap-1 rounded-full border border-accent/30 bg-accent-soft px-1.5 py-px text-[0.65rem] font-medium text-accent ${
-                onList ? 'opacity-45' : ''
+                onList ? 'opacity-55' : ''
               }`}
             >
               <PracticeStatusIcon status={piece.practiceStatus} size={10} className="shrink-0" />
@@ -549,7 +548,7 @@ function ShelfCard({
             )
           )}
         </div>
-        <div className={onList ? 'opacity-45' : ''}>
+        <div className={onList ? 'opacity-55' : ''}>
           <p className="truncate font-display text-sm font-medium text-ink">{piece.title}</p>
           <p className="truncate text-xs text-ink-soft">{detail}</p>
         </div>

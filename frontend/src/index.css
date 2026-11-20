@@ -613,10 +613,15 @@
    stronger in the dark theme, where 10% barely shows. --skip-fade: the
    opacity of a skipped page's tile. A faded white page sinks into a light
    background but turns mid-grey on a dark one, standing out instead of
-   receding, so the dark theme fades it much further. */
+   receding, so the dark theme fades it much further. --onlist-fade: a
+   Practice Dashboard thumbnail already on the Practice List, faded over
+   the paper (not the grey card fill) and only a little further in the
+   dark theme, so the music stays readable (option B of a side-by-side,
+   https://claude.ai/artifact/VEfSKy2oMvQas4tLQshk4d). */
 :root {
   --split-tint: 10%;
   --skip-fade: 0.6;
+  --onlist-fade: 0.5;
   --titlebar-inset: 0px;
   --titlebar-lights: 0px;
 }
@@ -700,6 +705,7 @@ body:has(#app-scroll-container) .titlebar-drag-strip {
 
   --split-tint: 20%;
   --skip-fade: 0.15;
+  --onlist-fade: 0.45;
 
   --shadow-tint-sm: rgb(8 6 6 / 0.45);
   --shadow-tint-md: rgb(8 6 6 / 0.45);
