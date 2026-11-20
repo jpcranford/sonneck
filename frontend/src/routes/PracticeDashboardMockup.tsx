@@ -646,18 +646,16 @@ function GigCard({
       onKeyDown={(e) => e.key === 'Enter' && navigate('/mockup/setlist-details')}
       className="flex cursor-pointer items-center gap-[19px] rounded-lg border border-gig-border bg-gig p-4 hover:border-accent"
     >
-      <div className="px-[7px] text-center">
-        {days <= 1 ? (
-          <div className="font-display text-xl leading-tight font-bold text-gig-ink">
-            {days === 0 ? 'Today' : 'Tomorrow'}
-          </div>
+      <div className="w-16 shrink-0 text-center">
+        {days === 0 ? (
+          <div className="font-display text-xl leading-tight font-bold text-gig-ink">Today</div>
         ) : (
           <>
             <div className="font-display text-4xl leading-none font-bold text-gig-ink tabular-nums">
               {days}
             </div>
             <div className="mt-1 text-[0.68rem] font-semibold tracking-wider text-gig-ink uppercase">
-              days
+              {days === 1 ? 'day' : 'days'}
             </div>
           </>
         )}
