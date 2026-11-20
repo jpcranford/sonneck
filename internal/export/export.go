@@ -37,8 +37,8 @@ var excludedTables = map[string]bool{
 }
 
 // fts5ShadowSuffixes are the fixed set of internal tables SQLite creates
-// alongside any FTS5 virtual table that stores its own content (no
-// content='' external-content option) — confirmed directly against a real
+// alongside any FTS5 virtual table that stores its own content (not one
+// whose content option is set to an empty string) — confirmed directly against a real
 // fts5 table via this project's actual pinned driver, not assumed from
 // SQLite's docs alone.
 var fts5ShadowSuffixes = []string{"_data", "_idx", "_content", "_docsize", "_config"}
