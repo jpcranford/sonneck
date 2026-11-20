@@ -959,18 +959,18 @@ function PracticeDashboard() {
         setShelfDrag(false)
       }}
     >
-      <div className="flex items-baseline justify-between px-1 pb-2">
+      <div className="flex items-center justify-between gap-2 px-1 pb-2">
         <span className="text-xs font-semibold tracking-wider text-ink-soft uppercase">
           Practice List
         </span>
         {list.length > 0 && (
-          <button
-            type="button"
-            onClick={() => void clearList()}
-            className="cursor-pointer text-sm text-accent hover:underline"
+          <Link
+            to="/practice-list/play"
+            className="hidden items-center gap-1.5 rounded-md bg-accent-fill px-2.5 py-1 font-display text-sm font-medium text-white hover:bg-accent-fill/90 lg:inline-flex"
           >
-            Clear
-          </button>
+            <IconPlayerPlayFilled size={11} />
+            Practice
+          </Link>
         )}
       </div>
 
@@ -1077,7 +1077,19 @@ function PracticeDashboard() {
             {list.length} {list.length === 1 ? 'piece' : 'pieces'} • {practicedCount} practiced
             today
           </span>
-          {totalSeconds > 0 && <span className="tabular-nums">{formatMinutes(totalSeconds)}</span>}
+          <span className="flex items-center gap-2">
+            {totalSeconds > 0 && (
+              <span className="tabular-nums">{formatMinutes(totalSeconds)}</span>
+            )}
+            {/* Clear moved here when Practice took the header. */}
+            <button
+              type="button"
+              onClick={() => void clearList()}
+              className="cursor-pointer text-accent hover:underline"
+            >
+              Clear
+            </button>
+          </span>
         </div>
       )}
     </div>
@@ -1091,22 +1103,11 @@ function PracticeDashboard() {
 
   return (
     <div className={`${CONTENT_MAX_W} flex flex-1 flex-col gap-5 px-4 py-6 md:px-8`}>
-      {/* The page's toolbar: its name, and the one primary action — the
-          Sheet Viewer on the Practice List. */}
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="font-display text-2xl font-bold text-ink">Practice</h1>
-        <Link
-          to="/practice-list/play"
-          aria-disabled={list.length === 0}
-          onClick={(e) => list.length === 0 && e.preventDefault()}
-          className={`inline-flex items-center gap-2 rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-white hover:bg-accent-fill/90 ${
-            list.length === 0 ? 'pointer-events-none opacity-50' : ''
-          }`}
-        >
-          <IconPlayerPlayFilled size={14} />
-          Practice
-        </Link>
-      </div>
+      {/* The page's title. Its Practice button lives with the list it
+          plays (D of https://claude.ai/artifact/My1kLD9LpjNwCKsDrejseh): in
+          the list's header on a wide screen, where the column is pinned, and
+          in a bar pinned to the bottom on a narrow one. */}
+      <h1 className="font-display text-2xl font-bold text-ink">Practice</h1>
 
       {/* Narrow: gigs, week + list, shelves. Wide: gigs and shelves on the
           left, the week and list pinned on the right for the whole page.
@@ -1161,6 +1162,23 @@ function PracticeDashboard() {
           <AppFooter className="mt-6" />
         </div>
       </div>
+      {/* Narrow screens: the list isn't pinned there, so Practice rides in a
+          bar pinned to the bottom of the screen, with what it will play. */}
+      {list.length > 0 && (
+        <div className="sticky bottom-0 z-10 -mx-4 -mb-6 flex items-center justify-between gap-3 border-t border-border bg-paper-raised px-4 pt-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom,0px))] md:-mx-8 md:px-8 lg:hidden">
+          <span className="text-sm text-ink-soft">
+            {list.length} {list.length === 1 ? 'piece' : 'pieces'}
+            {totalSeconds > 0 ? ` • ${formatMinutes(totalSeconds)}` : ''}
+          </span>
+          <Link
+            to="/practice-list/play"
+            className="inline-flex items-center gap-1.5 rounded-md bg-accent-fill px-3 py-1.5 font-display text-sm font-medium text-white hover:bg-accent-fill/90"
+          >
+            <IconPlayerPlayFilled size={12} />
+            Practice
+          </Link>
+        </div>
+      )}
     </div>
   )
 }

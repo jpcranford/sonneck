@@ -1137,6 +1137,19 @@ export function PracticeDashboardMockup() {
     setReorderId(null)
   }
 
+  function clearList() {
+    void confirmAction({
+      title: 'Clear the Practice List?',
+      message: 'Every piece comes off the list. The pieces themselves aren’t touched.',
+      confirmLabel: 'Clear list',
+    }).then((ok) => {
+      if (ok) {
+        setList([])
+        setPracticedToday(new Set())
+      }
+    })
+  }
+
   const totalSeconds = list.reduce((s, id) => s + (byId.get(id)?.durationSeconds ?? 0), 0)
   const practicedCount = list.filter((id) => practicedToday.has(id)).length
 
@@ -1164,29 +1177,18 @@ export function PracticeDashboardMockup() {
         setShelfDrag(false)
       }}
     >
-      <div className="flex items-baseline justify-between px-1 pb-2">
+      <div className="flex items-center justify-between gap-2 px-1 pb-2">
         <span className="text-xs font-semibold tracking-wider text-ink-soft uppercase">
           Practice List
         </span>
         {list.length > 0 && (
-          <button
-            type="button"
-            onClick={() =>
-              void confirmAction({
-                title: 'Clear the Practice List?',
-                message: 'Every piece comes off the list. The pieces themselves aren’t touched.',
-                confirmLabel: 'Clear list',
-              }).then((ok) => {
-                if (ok) {
-                  setList([])
-                  setPracticedToday(new Set())
-                }
-              })
-            }
-            className="cursor-pointer text-sm text-accent hover:underline"
+          <Link
+            to="/mockup/sheet-viewer?from=list"
+            className="hidden items-center gap-1.5 rounded-md bg-accent-fill px-2.5 py-1 font-display text-sm font-medium text-white hover:bg-accent-fill/90 lg:inline-flex"
           >
-            Clear
-          </button>
+            <IconPlayerPlayFilled size={11} />
+            Practice
+          </Link>
         )}
       </div>
 
@@ -1295,7 +1297,17 @@ export function PracticeDashboardMockup() {
             {list.length} {list.length === 1 ? 'piece' : 'pieces'} • {practicedCount} practiced
             today
           </span>
-          <span className="tabular-nums">{formatMinutes(totalSeconds)}</span>
+          <span className="flex items-center gap-2">
+            <span className="tabular-nums">{formatMinutes(totalSeconds)}</span>
+            {/* Clear moved here when Practice took the header. */}
+            <button
+              type="button"
+              onClick={clearList}
+              className="cursor-pointer text-accent hover:underline"
+            >
+              Clear
+            </button>
+          </span>
         </div>
       )}
     </div>
@@ -1303,21 +1315,11 @@ export function PracticeDashboardMockup() {
 
   return (
     <div className={`${CONTENT_MAX_W} flex flex-1 flex-col gap-5 px-4 py-6 md:px-8`}>
-      {/* The page's toolbar: its name, and the one primary action. */}
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="font-display text-2xl font-bold text-ink">Practice</h1>
-        <Link
-          to="/mockup/sheet-viewer?from=list"
-          aria-disabled={list.length === 0}
-          onClick={(e) => list.length === 0 && e.preventDefault()}
-          className={`inline-flex items-center gap-2 rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-white hover:bg-accent-fill/90 ${
-            list.length === 0 ? 'pointer-events-none opacity-50' : ''
-          }`}
-        >
-          <IconPlayerPlayFilled size={14} />
-          Practice
-        </Link>
-      </div>
+      {/* The page's title. Its Practice button lives with the list it
+          plays (D of https://claude.ai/artifact/My1kLD9LpjNwCKsDrejseh): in
+          the list's header on a wide screen, where the column is pinned, and
+          in a bar pinned to the bottom on a narrow one. */}
+      <h1 className="font-display text-2xl font-bold text-ink">Practice</h1>
 
       <div className="rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-4 py-2 text-sm text-ink-soft">
         Mockup only: gigs{' '}
@@ -1398,6 +1400,23 @@ export function PracticeDashboardMockup() {
           <AppFooter className="mt-6" />
         </div>
       </div>
+      {/* Narrow screens: the list isn't pinned there, so Practice rides in a
+          bar pinned to the bottom of the screen, with what it will play. */}
+      {list.length > 0 && (
+        <div className="sticky bottom-0 z-10 -mx-4 -mb-6 flex items-center justify-between gap-3 border-t border-border bg-paper-raised px-4 pt-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom,0px))] md:-mx-8 md:px-8 lg:hidden">
+          <span className="text-sm text-ink-soft">
+            {list.length} {list.length === 1 ? 'piece' : 'pieces'}
+            {totalSeconds > 0 ? ` • ${formatMinutes(totalSeconds)}` : ''}
+          </span>
+          <Link
+            to="/mockup/sheet-viewer?from=list"
+            className="inline-flex items-center gap-1.5 rounded-md bg-accent-fill px-3 py-1.5 font-display text-sm font-medium text-white hover:bg-accent-fill/90"
+          >
+            <IconPlayerPlayFilled size={12} />
+            Practice
+          </Link>
+        </div>
+      )}
     </div>
   )
 }
