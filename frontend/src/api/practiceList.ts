@@ -62,6 +62,9 @@ export interface PracticeDashboard {
   learned: Piece[]
   /** Each day ('YYYY-MM-DD') with a piece marked practiced, oldest first. */
   practiceDays: string[]
+  /** Each shelf-with-a-page's whole count, for See all: shown only when
+   * the shelf doesn't already hold them all. */
+  totals: { practicing: number; favorites: number; wantToLearn: number; learned: number }
 }
 
 export function getPracticeDashboard(day: string): Promise<PracticeDashboard> {

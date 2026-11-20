@@ -615,7 +615,7 @@ function SeeAllLink({ to }: { to: string }) {
 /** One shelf: its heading with Show more / Show less, then the sideways
  * row or, expanded, the same cards wrapped onto rows (same size and
  * spacing either way). A shelf with a page of its own ends with See all in
- * both. Show more shows only when the row holds more than fits; every
+ * both — unless it already holds every piece that page would list. Show more shows only when the row holds more than fits; every
  * visit starts collapsed. */
 function Shelf({ title, seeAll, cards }: { title: string; seeAll?: string; cards: ReactNode[] }) {
   const [expanded, setExpanded] = useState(false)
@@ -829,7 +829,8 @@ function PracticeDashboard() {
         {
           key: 'practicing',
           title: 'Currently Practicing',
-          seeAll: '/practicing',
+          seeAll:
+            dashboard.totals.practicing > dashboard.practicing.length ? '/practicing' : undefined,
           // Learning is the shelf's own status; Stalled is worth saying.
           cards: cardsFor(dashboard.practicing, credit, (p) =>
             p.practiceStatus ? iconKeyOf.get(p.practiceStatus) !== 'learning' : false,
@@ -859,19 +860,23 @@ function PracticeDashboard() {
         {
           key: 'favorites',
           title: 'Favorites',
-          seeAll: '/favorites',
+          seeAll:
+            dashboard.totals.favorites > dashboard.favorites.length ? '/favorites' : undefined,
           cards: cardsFor(dashboard.favorites, credit, () => true),
         },
         {
           key: 'want',
           title: 'Want to Learn',
-          seeAll: '/want-to-learn',
+          seeAll:
+            dashboard.totals.wantToLearn > dashboard.wantToLearn.length
+              ? '/want-to-learn'
+              : undefined,
           cards: cardsFor(dashboard.wantToLearn, credit, () => false),
         },
         {
           key: 'learned',
           title: 'Learned',
-          seeAll: '/learned',
+          seeAll: dashboard.totals.learned > dashboard.learned.length ? '/learned' : undefined,
           cards: cardsFor(dashboard.learned, credit, () => false),
         },
       ]

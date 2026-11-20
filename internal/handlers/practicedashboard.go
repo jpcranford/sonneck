@@ -51,6 +51,16 @@ type practiceDashboardResponse struct {
 	// Every day with a piece marked practiced, from six weeks before ?day=
 	// through it, oldest first.
 	PracticeDays []string `json:"practiceDays"`
+	// How many pieces each shelf with a page of its own has in all, so the
+	// page shows See all only when the shelf doesn't already hold them all.
+	Totals shelfTotals `json:"totals"`
+}
+
+type shelfTotals struct {
+	Practicing  int `json:"practicing"`
+	Favorites   int `json:"favorites"`
+	WantToLearn int `json:"wantToLearn"`
+	Learned     int `json:"learned"`
 }
 
 func (s *Server) handlePracticeDashboard(w http.ResponseWriter, r *http.Request) {
@@ -120,6 +130,25 @@ func (s *Server) handlePracticeDashboard(w http.ResponseWriter, r *http.Request)
 	}
 	if err == nil {
 		resp.PracticeDays, err = s.practiceDays(ctx, user.ID, day)
+	}
+	slotCount := func(slot string, n *int) error {
+		return s.DB.QueryRowContext(ctx, `
+			SELECT COUNT(*) FROM piece_practice_status pps
+			JOIN practice_statuses ps ON ps.id = pps.status_id
+			WHERE pps.user_id = ? AND ps.sidebar_slot = ?`, user.ID, slot).Scan(n)
+	}
+	if err == nil {
+		err = slotCount("practicing", &resp.Totals.Practicing)
+	}
+	if err == nil {
+		err = s.DB.QueryRowContext(ctx,
+			`SELECT COUNT(*) FROM piece_favorites WHERE user_id = ?`, user.ID).Scan(&resp.Totals.Favorites)
+	}
+	if err == nil {
+		err = slotCount("want_to_learn", &resp.Totals.WantToLearn)
+	}
+	if err == nil {
+		err = slotCount("learned", &resp.Totals.Learned)
 	}
 	if err != nil {
 		s.writeError(w, err)

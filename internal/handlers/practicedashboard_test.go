@@ -20,6 +20,11 @@ type dashboard struct {
 	WantToLearn   []dashPiece `json:"wantToLearn"`
 	Learned       []dashPiece `json:"learned"`
 	PracticeDays  []string    `json:"practiceDays"`
+	Totals        struct {
+		Practicing  int `json:"practicing"`
+		WantToLearn int `json:"wantToLearn"`
+		Learned     int `json:"learned"`
+	} `json:"totals"`
 }
 
 func dashIDs(ps []dashPiece) []int64 {
@@ -119,6 +124,10 @@ func TestPracticeDashboard(t *testing.T) {
 			t.Errorf("practice days = %v, want %v", got.PracticeDays, wantDays)
 			break
 		}
+	}
+
+	if got.Totals.Practicing != 2 || got.Totals.WantToLearn != 1 || got.Totals.Learned != 1 {
+		t.Errorf("totals = %+v, want practicing 2, want to learn 1, learned 1", got.Totals)
 	}
 
 	if rec := doJSON(t, h, http.MethodGet, "/api/practice/dashboard", nil); rec.Code != http.StatusBadRequest {

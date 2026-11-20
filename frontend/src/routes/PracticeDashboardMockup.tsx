@@ -719,6 +719,10 @@ interface ShelfDef {
   /** Whether a piece's status pill shows here (not when it's the shelf's own). */
   showStatus: (p: MockPiece) => boolean
   seeAll?: string
+  /** The whole view's count; See all shows only when it's more than the
+   * shelf holds. Favorites and Learned pretend the library has more than
+   * the sample, so both cases show. */
+  total?: number
 }
 
 function ShelfCard({
@@ -1025,6 +1029,7 @@ export function PracticeDashboardMockup() {
         detail: (p) => p.composer,
         showStatus: () => true,
         seeAll: '/favorites',
+        total: 23,
       },
       {
         key: 'want',
@@ -1041,6 +1046,7 @@ export function PracticeDashboardMockup() {
         detail: (p) => p.composer,
         showStatus: () => false,
         seeAll: '/learned',
+        total: 31,
       },
     ]
   }, [pieces])
@@ -1349,7 +1355,11 @@ export function PracticeDashboardMockup() {
           {shelves
             .filter((s) => s.pieces.length > 0)
             .map((s) => (
-              <Shelf key={s.key} title={s.title} seeAll={s.seeAll}>
+              <Shelf
+                key={s.key}
+                title={s.title}
+                seeAll={(s.total ?? s.pieces.length) > s.pieces.length ? s.seeAll : undefined}
+              >
                 {() =>
                   s.pieces.map((p) => (
                     <ShelfCard
