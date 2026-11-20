@@ -7,6 +7,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from 'react'
+import { createPortal } from 'react-dom'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   IconArrowRight,
@@ -23,6 +24,7 @@ import { PracticeStatusIcon } from '../components/PracticeStatusIcon'
 import { AppFooter } from '../components/AppFooter'
 import { useDismiss } from '../hooks/useDismiss'
 import { useFitToScreen } from '../hooks/useFitToScreen'
+import { useMediaQuery } from '../hooks/useMediaQuery'
 import { PracticeStatusStrip } from './AddToSetlistMockup'
 import { CONTENT_MAX_W } from '../lib/layout'
 import { daysUntil, formatDateOnly, todayDateOnly } from '../lib/dateOnly'
@@ -320,6 +322,18 @@ const EXTRA_PRACTICE_DAYS = [10, 14, 15, 17]
 
 const PRACTICING: Status[] = ['Learning', 'Stalled']
 const GIG_WINDOW_DAYS = 28
+/** The Practice List drawer's handles: a press that moves less than this is
+ * a tap; a drag past DRAG_COMMIT opens (or closes) the drawer on release,
+ * anything between drops it back. */
+const TAP_SLOP = 6
+const DRAG_COMMIT = 60
+/** The drawer's handle sits this far below its top edge: dragging the tab
+ * up, the drawer is placed so the handle stays under the finger. */
+const HANDLE_GRAB = 13
+/** Empty drawer below the list, hidden behind the bar: dragging the tab up
+ * past the drawer's full height uncovers it rather than lifting the drawer
+ * off the bar. The drawer stops rising once it's all showing. */
+const OVERSHOOT = 120
 
 // ---------------------------------------------------------------------
 // Dates
@@ -963,6 +977,35 @@ function Shelf({
 export function PracticeDashboardMockup() {
   const railRef = useRef<HTMLDivElement>(null)
   useFitToScreen(railRef)
+  // Wide (lg), the list sits in the pinned column; narrower, it lives in a
+  // drawer that unfolds from the bar pinned to the bottom of the screen.
+  const isWide = useMediaQuery('(min-width: 64rem)')
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  // A drag on a handle: the tab above the bar (up, to open) or the drawer's
+  // own handle (down, to close). The drawer follows the finger; a tap, or
+  // a drag past DRAG_COMMIT px, carries it through.
+  const [drag, setDrag] = useState<{ from: 'open' | 'close'; startY: number; y: number } | null>(
+    null,
+  )
+  // The drawer lives above the bar: its box ends at the bar's top edge, so
+  // it slides out from behind the bar and only the page above dims.
+  const barRef = useRef<HTMLDivElement>(null)
+  const [barTop, setBarTop] = useState(() => window.innerHeight)
+  const measureBar = () => {
+    if (barRef.current) setBarTop(barRef.current.getBoundingClientRect().top)
+  }
+  useEffect(() => {
+    if (!drawerOpen) return
+    window.addEventListener('resize', measureBar)
+    return () => window.removeEventListener('resize', measureBar)
+  }, [drawerOpen])
+  const drawerShown = drawerOpen && !isWide
+  useEffect(() => {
+    if (!drawerShown) return
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setDrawerOpen(false)
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [drawerShown])
   useMockupTitle('Practice Dashboard')
   const navigate = useNavigate()
   const [pieces, setPieces] = useState(PIECES)
@@ -1152,6 +1195,10 @@ export function PracticeDashboardMockup() {
 
   const totalSeconds = list.reduce((s, id) => s + (byId.get(id)?.durationSeconds ?? 0), 0)
   const practicedCount = list.filter((id) => practicedToday.has(id)).length
+  const listSummary =
+    list.length > 0
+      ? `${list.length} ${list.length === 1 ? 'piece' : 'pieces'}${totalSeconds > 0 ? ` • ${formatMinutes(totalSeconds)}` : ''}`
+      : 'empty'
 
   const ghost = (
     <div className="my-0.5 h-9 rounded-md border-[1.5px] border-dashed border-accent bg-accent-soft" />
@@ -1159,7 +1206,9 @@ export function PracticeDashboardMockup() {
 
   const practiceList = (
     <div
-      className="flex min-h-0 flex-1 flex-col rounded-lg border border-border bg-paper-raised p-3"
+      className={`flex min-h-0 flex-1 flex-col ${
+        isWide ? 'rounded-lg border border-border bg-paper-raised p-3' : 'px-4 pt-1 pb-3'
+      }`}
       onDragOver={(e) => {
         if (!shelfDrag) return
         e.preventDefault()
@@ -1181,21 +1230,37 @@ export function PracticeDashboardMockup() {
         <span className="text-xs font-semibold tracking-wider text-ink-soft uppercase">
           Practice List
         </span>
-        {list.length > 0 && (
-          <Link
-            to="/mockup/sheet-viewer?from=list"
-            className="hidden items-center gap-1.5 rounded-md bg-accent-fill px-2.5 py-1 font-display text-sm font-medium text-white hover:bg-accent-fill/90 lg:inline-flex"
-          >
-            <IconPlayerPlayFilled size={11} />
-            Practice
-          </Link>
-        )}
+        {/* Wide, the header holds Practice; narrow, Practice is on the bar
+            right under the drawer, so Clear comes up here, well away from
+            it. */}
+        {list.length > 0 &&
+          (isWide ? (
+            <Link
+              to="/mockup/sheet-viewer?from=list"
+              className="inline-flex items-center gap-1.5 rounded-md bg-accent-fill px-2.5 py-1 font-display text-sm font-medium text-white hover:bg-accent-fill/90"
+            >
+              <IconPlayerPlayFilled size={11} />
+              Practice
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={clearList}
+              className="cursor-pointer text-sm text-accent hover:underline"
+            >
+              Clear
+            </button>
+          ))}
       </div>
 
       {list.length === 0 && !shelfDrag ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-2 px-3 py-6 text-center">
           <p className="font-display font-bold text-ink">Nothing queued yet</p>
-          <p className="text-sm text-ink-soft">Press + on a piece, or drag it here.</p>
+          <p className="text-sm text-ink-soft">
+            {/* Dragging a piece in needs a mouse, which a narrow screen
+                rarely has. */}
+            {isWide ? 'Press + on a piece, or drag it here.' : 'Press + on a piece to add it here.'}
+          </p>
           <div className="mt-2 w-full rounded-md border-[1.5px] border-dashed border-border p-3 text-xs text-ink-faint">
             Drop pieces here
           </div>
@@ -1286,7 +1351,9 @@ export function PracticeDashboardMockup() {
           >
             {dropAt != null
               ? 'Let go to add it where the gap is'
-              : 'Drag pieces here, or press + on a piece'}
+              : isWide
+                ? 'Drag pieces here, or press + on a piece'
+                : 'Press + on a piece to add it'}
           </p>
         </div>
       )}
@@ -1299,14 +1366,16 @@ export function PracticeDashboardMockup() {
           </span>
           <span className="flex items-center gap-2">
             <span className="tabular-nums">{formatMinutes(totalSeconds)}</span>
-            {/* Clear moved here when Practice took the header. */}
-            <button
-              type="button"
-              onClick={clearList}
-              className="cursor-pointer text-accent hover:underline"
-            >
-              Clear
-            </button>
+            {/* Wide, Clear sits here, since Practice took the header. */}
+            {isWide && (
+              <button
+                type="button"
+                onClick={clearList}
+                className="cursor-pointer text-accent hover:underline"
+              >
+                Clear
+              </button>
+            )}
           </span>
         </div>
       )}
@@ -1360,7 +1429,7 @@ export function PracticeDashboardMockup() {
           className="flex flex-col gap-4 [grid-area:rail] lg:sticky lg:top-6 lg:h-[calc(100dvh-3rem)] lg:self-start"
         >
           <WeekBox practicedDays={practicedDays} settings={week} onSettings={setWeek} />
-          {practiceList}
+          {isWide && practiceList}
         </div>
 
         <div className="flex min-w-0 flex-col gap-6 [grid-area:shelves]">
@@ -1400,23 +1469,142 @@ export function PracticeDashboardMockup() {
           <AppFooter className="mt-6" />
         </div>
       </div>
-      {/* Narrow screens: the list isn't pinned there, so Practice rides in a
-          bar pinned to the bottom of the screen, with what it will play. */}
-      {list.length > 0 && (
-        <div className="sticky bottom-0 z-10 -mx-4 -mb-6 flex items-center justify-between gap-3 border-t border-border bg-paper-raised px-4 pt-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom,0px))] md:-mx-8 md:px-8 lg:hidden">
-          <span className="text-sm text-ink-soft">
-            {list.length} {list.length === 1 ? 'piece' : 'pieces'}
-            {totalSeconds > 0 ? ` • ${formatMinutes(totalSeconds)}` : ''}
-          </span>
-          <Link
-            to="/mockup/sheet-viewer?from=list"
-            className="inline-flex items-center gap-1.5 rounded-md bg-accent-fill px-3 py-1.5 font-display text-sm font-medium text-white hover:bg-accent-fill/90"
+      {/* Narrow screens: a bar pinned to the bottom of the screen with what
+          the list holds and Practice, and on top of it a tab with an up
+          arrow — tap it or drag it up and the Practice List rises out of the
+          bar as a drawer. Shown even for an empty list, so the drawer (with
+          how to add pieces) is always a tap away. */}
+      {!isWide && (
+        <div
+          ref={barRef}
+          className="sticky bottom-0 z-10 -mx-4 -mb-6 flex items-center justify-between gap-3 border-t border-border bg-paper-raised px-4 pt-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom,0px))] md:-mx-8 md:px-8"
+        >
+          <button
+            type="button"
+            aria-label="Open the Practice List"
+            aria-expanded={drawerShown}
+            onPointerDown={(e) => {
+              e.currentTarget.setPointerCapture(e.pointerId)
+              measureBar()
+              setDrag({ from: 'open', startY: e.clientY, y: e.clientY })
+            }}
+            onPointerMove={(e) => drag?.from === 'open' && setDrag({ ...drag, y: e.clientY })}
+            onPointerUp={() => {
+              const moved = drag ? drag.startY - drag.y : 0
+              if (drag?.from === 'open' && (Math.abs(moved) < TAP_SLOP || moved > DRAG_COMMIT))
+                setDrawerOpen(true)
+              setDrag(null)
+            }}
+            onPointerCancel={() => setDrag(null)}
+            // Keyboard only: a pointer's tap is handled on pointer up.
+            onClick={(e) => {
+              if (e.detail !== 0) return
+              measureBar()
+              setDrawerOpen(true)
+            }}
+            className={`absolute bottom-[calc(100%-1px)] left-1/2 flex h-6 w-14 -translate-x-1/2 cursor-pointer touch-none items-center justify-center rounded-t-lg border border-b-0 border-border bg-paper-raised text-ink-soft hover:text-ink ${
+              // Out of sight while the drawer is out, so the bar's top
+              // line runs unbroken under it.
+              drawerShown || drag ? 'opacity-0' : ''
+            }`}
           >
-            <IconPlayerPlayFilled size={12} />
-            Practice
-          </Link>
+            <IconChevronUp size={18} stroke={2.25} />
+          </button>
+          <span className="min-w-0 truncate">
+            <span className="font-display text-sm font-bold text-ink">Practice List</span>
+            <span className="text-sm text-ink-soft">
+              {' · '}
+              {listSummary}
+            </span>
+          </span>
+          {list.length > 0 && (
+            <Link
+              to="/mockup/sheet-viewer?from=list"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-accent-fill px-3 py-1.5 font-display text-sm font-medium text-white hover:bg-accent-fill/90"
+            >
+              <IconPlayerPlayFilled size={12} />
+              Practice
+            </Link>
+          )}
         </div>
       )}
+
+      {/* The drawer, over everything above the bar: it rises from behind the
+          bar's top edge (its box ends there), with only the page above
+          dimmed, so it reads as opening out of the bar. Dragging the tab up,
+          the drawer's handle stays under the finger. Tap the page or press
+          Escape to close, or tap its handle or drag it down. Kept mounted so
+          it slides. */}
+      {!isWide &&
+        createPortal(
+          <div
+            className={`fixed inset-x-0 top-0 z-40 overflow-hidden ${drawerShown || drag ? '' : 'pointer-events-none'}`}
+            style={{ height: barTop }}
+            aria-hidden={!drawerShown}
+          >
+            <button
+              type="button"
+              aria-label="Close the Practice List"
+              tabIndex={drawerShown ? 0 : -1}
+              onClick={() => setDrawerOpen(false)}
+              className={`absolute inset-0 cursor-default bg-scrim/40 transition-opacity duration-200 ${
+                drawerShown || drag ? 'opacity-100' : 'opacity-0'
+              }`}
+            />
+            <div
+              role="dialog"
+              aria-label="Practice List"
+              style={
+                drag
+                  ? {
+                      // Tailwind's translate-y-* set the `translate`
+                      // property, so the drag sets that too (a `transform`
+                      // would add to it rather than replace it). Opening,
+                      // the handle (HANDLE_GRAB px below the drawer's top)
+                      // sits under the finger; closing, the drawer moves
+                      // down with it.
+                      translate:
+                        drag.from === 'open'
+                          ? `0 max(-${OVERSHOOT}px, calc(100% - ${Math.max(0, barTop - drag.y + HANDLE_GRAB + OVERSHOOT)}px))`
+                          : `0 ${Math.max(0, drag.y - drag.startY)}px`,
+                      transition: 'none',
+                      bottom: -OVERSHOOT,
+                    }
+                  : { bottom: -OVERSHOOT }
+              }
+              className={`absolute inset-x-0 flex max-h-[calc(85%+120px)] flex-col rounded-t-2xl bg-paper-raised shadow-[0_-8px_24px_rgba(28,24,21,0.18)] transition-[translate] duration-200 ease-out ${
+                drawerShown ? 'translate-y-0' : 'translate-y-full'
+              }`}
+            >
+              <button
+                type="button"
+                aria-label="Close the Practice List"
+                tabIndex={drawerShown ? 0 : -1}
+                onPointerDown={(e) => {
+                  e.currentTarget.setPointerCapture(e.pointerId)
+                  setDrag({ from: 'close', startY: e.clientY, y: e.clientY })
+                }}
+                onPointerMove={(e) => drag?.from === 'close' && setDrag({ ...drag, y: e.clientY })}
+                onPointerUp={() => {
+                  const moved = drag ? drag.y - drag.startY : 0
+                  if (drag?.from === 'close' && (Math.abs(moved) < TAP_SLOP || moved > DRAG_COMMIT))
+                    setDrawerOpen(false)
+                  setDrag(null)
+                }}
+                onPointerCancel={() => setDrag(null)}
+                onClick={(e) => e.detail === 0 && setDrawerOpen(false)}
+                className="flex shrink-0 cursor-pointer touch-none justify-center pt-2.5 pb-1.5"
+              >
+                <span className="h-1.5 w-10 rounded-full bg-border" />
+              </button>
+              {practiceList}
+              {/* The overshoot room: hidden behind the bar unless a drag
+                  pulls the drawer past its full height. */}
+              <div aria-hidden="true" className="shrink-0" style={{ height: OVERSHOOT }} />
+            </div>
+          </div>,
+          document.body,
+        )}
     </div>
   )
 }
