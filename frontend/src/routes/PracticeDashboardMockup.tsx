@@ -20,7 +20,9 @@ import {
 } from '@tabler/icons-react'
 import { ContextMenu, type ContextMenuItem } from '../components/ContextMenu'
 import { PracticeStatusIcon } from '../components/PracticeStatusIcon'
+import { AppFooter } from '../components/AppFooter'
 import { useDismiss } from '../hooks/useDismiss'
+import { useFitToScreen } from '../hooks/useFitToScreen'
 import { PracticeStatusStrip } from './AddToSetlistMockup'
 import { CONTENT_MAX_W } from '../lib/layout'
 import { daysUntil, formatDateOnly, todayDateOnly } from '../lib/dateOnly'
@@ -959,6 +961,8 @@ function Shelf({
 // The page
 
 export function PracticeDashboardMockup() {
+  const railRef = useRef<HTMLDivElement>(null)
+  useFitToScreen(railRef)
   useMockupTitle('Practice Dashboard')
   const navigate = useNavigate()
   const [pieces, setPieces] = useState(PIECES)
@@ -1346,7 +1350,13 @@ export function PracticeDashboardMockup() {
           <div className="hidden [grid-area:gigs] lg:block lg:h-0" />
         )}
 
-        <div className="flex flex-col gap-4 [grid-area:rail] lg:sticky lg:top-6 lg:h-[calc(100dvh-3rem)] lg:self-start">
+        {/* Pinned on a wide screen, and sized to the room it has there
+            (hooks/useFitToScreen): it starts under the title row, so a
+            fixed screen-height column ran off the bottom. */}
+        <div
+          ref={railRef}
+          className="flex flex-col gap-4 [grid-area:rail] lg:sticky lg:top-6 lg:h-[calc(100dvh-3rem)] lg:self-start"
+        >
           <WeekBox practicedDays={practicedDays} settings={week} onSettings={setWeek} />
           {practiceList}
         </div>
@@ -1382,6 +1392,10 @@ export function PracticeDashboardMockup() {
                 }
               </Shelf>
             ))}
+          {/* The footer mark ends the shelves column rather than the page
+              (lib/appFooter.ts' PAGES_WITH_OWN_FOOTER), so the pinned column runs
+              the page's full height. */}
+          <AppFooter className="mt-6" />
         </div>
       </div>
     </div>

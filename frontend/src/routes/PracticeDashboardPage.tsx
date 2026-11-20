@@ -35,7 +35,9 @@ import type { Piece, PracticeStatusItem, Setlist } from '../api/types'
 import { getUserSettings, updateUserSettings, type UserSettings } from '../api/userSettings'
 import { PieceContextMenu } from '../components/PieceContextMenu'
 import { PracticeStatusIcon } from '../components/PracticeStatusIcon'
+import { AppFooter } from '../components/AppFooter'
 import { useDismiss } from '../hooks/useDismiss'
+import { useFitToScreen } from '../hooks/useFitToScreen'
 import { useThumbnailVersion } from '../hooks/useThumbnailVersion'
 import { useToday } from '../hooks/useToday'
 import { hasPermission, useAuth } from '../lib/AuthContext'
@@ -662,6 +664,8 @@ export function PracticeDashboardPage() {
 }
 
 function PracticeDashboard() {
+  const railRef = useRef<HTMLDivElement>(null)
+  useFitToScreen(railRef)
   usePageTitle('Practice')
   const today = useToday()
   const queryClient = useQueryClient()
@@ -1126,7 +1130,13 @@ function PracticeDashboard() {
           </div>
         ) : null}
 
-        <div className="flex flex-col gap-4 [grid-area:rail] lg:sticky lg:top-6 lg:h-[calc(100dvh-3rem)] lg:self-start">
+        {/* Pinned on a wide screen, and sized to the room it has there
+            (hooks/useFitToScreen): it starts under the title row, so a
+            fixed screen-height column ran off the bottom. */}
+        <div
+          ref={railRef}
+          className="flex flex-col gap-4 [grid-area:rail] lg:sticky lg:top-6 lg:h-[calc(100dvh-3rem)] lg:self-start"
+        >
           <WeekBox
             today={today}
             practicedDays={practicedDays}
@@ -1145,6 +1155,10 @@ function PracticeDashboard() {
           {visibleShelves.map((s) => (
             <Shelf key={s.key} title={s.title} seeAll={s.seeAll} cards={s.cards} />
           ))}
+          {/* The footer mark ends the shelves column rather than the page
+              (lib/appFooter.ts' PAGES_WITH_OWN_FOOTER), so the pinned column runs
+              the page's full height. */}
+          <AppFooter className="mt-6" />
         </div>
       </div>
     </div>

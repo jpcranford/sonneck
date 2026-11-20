@@ -1,11 +1,12 @@
 import { useCallback, useRef, useState } from 'react'
-import { Outlet } from 'react-router-dom'
+import { Outlet, useLocation } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { IconLoader2 } from '@tabler/icons-react'
 import { Sidebar } from './Sidebar'
 import { DropToUpload } from './DropToUpload'
 import { MobileNavDrawer, MobileNavTopBar } from './MobileNav'
-import { SonneckMark } from './SonneckMark'
+import { AppFooter } from './AppFooter'
+import { PAGES_WITH_OWN_FOOTER } from '../lib/appFooter'
 import { useMediaQuery } from '../hooks/useMediaQuery'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { getUserSettings } from '../api/userSettings'
@@ -17,6 +18,7 @@ import { useScrollRestoration } from '../hooks/useScrollRestoration'
 import { ShortcutHelp } from './ShortcutHelp'
 
 export function AppShell() {
+  const location = useLocation()
   useSidebarShortcuts()
   useFullscreenShortcut()
   // Owned here, not inside MobileNav itself, because the top bar and the
@@ -165,55 +167,7 @@ export function AppShell() {
             <main className="flex flex-1 flex-col">
               <Outlet />
             </main>
-            {/* flex-col + items-center, not justify-center on a wrapped text
-            box: a wrapped text child sizes to its own available width, not
-            its rendered line width, so bounding-box centering alone
-            doesn't visually center ragged wrapped text against a
-            fixed-position icon. This layout has no such box to fight —
-            centering is exact regardless of content width.
-            Color is ink-fainter, a solid token rather than a translucent
-            opacity utility — the S mark's overlapping strokes would re-blend
-            unevenly under real translucency (CLAUDE.md > Frontend's icon
-            pre-blend rule). Lives on the <a> itself with the mark/text
-            inheriting it, so hover:text-ink below applies to both at once.
-            SonneckMark is Gwendolyn 700 (bold) — see that component's own
-            comment for the full reasoning. */}
-            <footer className="flex shrink-0 flex-col items-center px-6 pt-0 pb-9">
-              {/* NOTE: the above's pb-8 is the space between s mark and bottom of page. The below's mb-6 is the space between s mark and line. Kept at 2:3 ratio for now 'cause it looks nice. */}
-              <span aria-hidden="true" className="mb-6 h-px w-10 bg-border" />
-              <a
-                href="https://github.com/jpcranford/sonneck"
-                target="_blank"
-                rel="noreferrer"
-                className="flex cursor-pointer flex-col items-center gap-3.5 text-ink-fainter hover:text-ink"
-              >
-                {/* No whitespace-nowrap here on purpose, even though the design
-                intent is "one line" — the sentence's natural width (~288px)
-                comfortably fits one line on any normal desktop/tablet width,
-                but is wider than the available content area on a narrow
-                phone (e.g. ~263px on a 375px-wide screen once the sidebar
-                rail and padding are subtracted). This container scrolls
-                with overflow-x-hidden (see this file's own comment on that
-                further up), so a forced nowrap would silently clip the text
-                on narrow screens rather than scroll or wrap — leaving
-                default wrapping in place lets it degrade to two lines only
-                when genuinely too narrow, which is the safer failure mode.
-                text-center is required here, not redundant with the
-                column's own items-center: once this span wraps, its box
-                sizes to the *available* width (CSS's fit-content formula:
-                max(min-content, available) when max-content > available),
-                not to its own longest rendered line — so items-center
-                (which only centers that box within the column) leaves the
-                ragged lines flush-left inside a box that's already full
-                width — text-align:center on the span itself is the direct
-                fix, since there's no icon position here that needs to
-                stay synced with a ragged box. */}
-                {/* <span className="text-center font-display text-[0.78rem] italic">
-              Powered by Sonneck, an open-source music library
-            </span> */}
-                <SonneckMark className="size-8 shrink-0" />
-              </a>
-            </footer>
+            {!PAGES_WITH_OWN_FOOTER.includes(location.pathname) && <AppFooter />}
           </div>
         </div>
         <MobileNavDrawer open={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
