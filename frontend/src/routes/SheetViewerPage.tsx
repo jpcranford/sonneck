@@ -1377,11 +1377,13 @@ export function SheetViewerPage() {
   return <PieceOrListSession key={pieceId} pieceId={pieceId} />
 }
 
-/** /practice-list/play — the sidebar's Practice List, from the top. */
+/** /practice-list/play — the Practice List from the top (the Practice
+ * Dashboard's Practice button); opened straight from an address, it exits
+ * to the dashboard. */
 export function PracticeListPlayPage() {
   const me = useAuth()
   if (!hasPermission(me, 'practice')) return <Navigate to="/" replace />
-  return <ListSession startId={null} exitTo="/" />
+  return <ListSession startId={null} exitTo="/practice" />
 }
 
 /** /setlists/:id/play — Play Set: the setlist in its order, for this

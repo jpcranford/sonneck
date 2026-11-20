@@ -1,5 +1,5 @@
 import { apiDelete, apiGet, apiPost, apiPut } from './client'
-import type { SetlistPieceSummary } from './types'
+import type { Piece, SetlistPieceSummary } from './types'
 
 // The Sheet Viewer's Practice List and practiced days (internal/handlers/
 // practicelist.go). Every call needs the `practice` permission. A "day" is
@@ -45,4 +45,25 @@ export function getPracticed(pieceId: number, day: string): Promise<PracticedSta
 /** Marks a piece practiced on `day`, or (false) unmarks it for that day. */
 export function setPracticed(pieceId: number, day: string, practiced: boolean): Promise<unknown> {
   return apiPut(`/api/pieces/${pieceId}/practiced/${day}`, { practiced })
+}
+
+/** GET /api/practice/dashboard (internal/handlers/practicedashboard.go):
+ * every shelf of the Practice Dashboard, sorted and capped by the server,
+ * and the days practiced in the six weeks to `day`. */
+export interface PracticeDashboard {
+  /** Learning or Stalled, the most recently changed status first. */
+  practicing: Piece[]
+  /** Practiced pieces not in Currently Practicing, the latest day first. */
+  recentlyPlayed: { piece: Piece; lastPracticed: string }[]
+  /** The newest uploads first (10). */
+  recentlyAdded: Piece[]
+  favorites: Piece[]
+  wantToLearn: Piece[]
+  learned: Piece[]
+  /** Each day ('YYYY-MM-DD') with a piece marked practiced, oldest first. */
+  practiceDays: string[]
+}
+
+export function getPracticeDashboard(day: string): Promise<PracticeDashboard> {
+  return apiGet<PracticeDashboard>(`/api/practice/dashboard?day=${day}`)
 }

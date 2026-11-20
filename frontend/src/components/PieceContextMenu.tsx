@@ -1,5 +1,6 @@
 import { forwardRef, useRef, useState, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { deletePiece, setPiecePracticeStatus, updatePiece } from '../api/pieces'
 import { listPracticeStatuses } from '../api/lookups'
 import { addToPracticeList, getPracticeList, removeFromPracticeList } from '../api/practiceList'
@@ -26,16 +27,25 @@ interface PieceContextMenuProps {
    * (whatever's currently on screen at the call site). Optional; omitting
    * it hides the nav control entirely. */
   siblingPieces?: Piece[]
+  /** Adds "Open Piece Details" at the top of the items — for a card that
+   * isn't itself a link to the piece (the Practice Dashboard's shelves).
+   * The value is Piece Details' "Back to …" label. */
+  openDetailsBackLabel?: string
 }
 
 // Shared right-click menu for piece cards (Library grid + list, Book
 // Details, Person Details): the practice status strip on top (hidden
-// without `practice`), then a favorite toggle, "Add to Practice List" or
+// without `practice`), then (the Practice Dashboard only) "Open Piece
+// Details", a favorite toggle, "Add to Practice List" or
 // "Remove from Practice List" (hidden without `practice`), "Add to Setlist"
 // (hidden without `create`), "Edit Piece", and, at the end, a destructive
 // "Delete Piece".
 export const PieceContextMenu = forwardRef<ContextMenuHandle, PieceContextMenuProps>(
-  function PieceContextMenu({ piece, children, hideTriggerButton, siblingPieces }, ref) {
+  function PieceContextMenu(
+    { piece, children, hideTriggerButton, siblingPieces, openDetailsBackLabel },
+    ref,
+  ) {
+    const navigate = useNavigate()
     const [editOpen, setEditOpen] = useState(false)
     // Edit Piece is created the first time this card opens it, then kept
     // (so its close animation can play). Mounting one per card up front
@@ -146,6 +156,17 @@ export const PieceContextMenu = forwardRef<ContextMenuHandle, PieceContextMenuPr
               : undefined
           }
           items={[
+            ...(openDetailsBackLabel !== undefined
+              ? [
+                  {
+                    label: 'Open Piece Details',
+                    onSelect: () =>
+                      navigate(`/pieces/${piece.id}`, {
+                        state: { backLabel: openDetailsBackLabel },
+                      }),
+                  },
+                ]
+              : []),
             // Each item is left out without its permission; with none
             // left, ContextMenu doesn't open at all. Favoriting saves the
             // whole piece, so it needs `edit`.

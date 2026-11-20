@@ -532,6 +532,11 @@
   /* Solid green fills with white labels: primary buttons, an on switch. The same green as accent in the light theme; stays deep in the dark one, where accent itself turns light. */
   --color-accent-fill: #3f5c3f;
 
+  /* An imminent gig (the Practice Dashboard's gig cards): a warm paper, its border, and its countdown/eyebrow ink. */
+  --color-gig: #f5ecd9;
+  --color-gig-border: #e6d3ad;
+  --color-gig-ink: #7a5a1e;
+
   /* The keyboard focus outline. Same as accent, referenced directly so
      the two can't drift apart. */
   --color-focus: var(--color-accent);
@@ -667,6 +672,10 @@ body:has(#app-scroll-container) .titlebar-drag-strip {
   --color-accent-on-dark: #86a67f;
   --color-accent-muted: #4a6b48;
   --color-accent-fill: #4a6b48;
+
+  --color-gig: #3a3021;
+  --color-gig-border: #5a4a30;
+  --color-gig-ink: #e0c48c;
 
   --color-danger: #f66e5f;
   --color-danger-strong: #ff8f81;

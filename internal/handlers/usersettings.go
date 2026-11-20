@@ -94,6 +94,18 @@ func (s *Server) handleUpdateUserSettings(w http.ResponseWriter, r *http.Request
 		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "metronomeShow must be one of beat, tempo, icon")
 		return
 	}
+	if !slices.Contains(repo.PracticeHistoryModes, req.PracticeHistoryMode) {
+		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "practiceHistoryMode must be daily or target")
+		return
+	}
+	if req.PracticeTargetDays < 1 || req.PracticeTargetDays > 7 {
+		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "practiceTargetDays must be 1 to 7")
+		return
+	}
+	if !slices.Contains(repo.PracticeWeekStarts, req.PracticeWeekStart) {
+		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "practiceWeekStart must be sunday, monday or empty")
+		return
+	}
 
 	if err := repo.UpdateUserSettings(r.Context(), s.DB, user.ID, req); err != nil {
 		s.writeError(w, err)

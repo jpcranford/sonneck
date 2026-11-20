@@ -253,6 +253,7 @@ func New(db *sql.DB, cfg *config.Config, logger *slog.Logger, frontend fs.FS, sc
 	mux.HandleFunc("POST /api/practice-list", s.handleAddToPracticeList)
 	mux.HandleFunc("PUT /api/practice-list/order", s.handleReorderPracticeList)
 	mux.HandleFunc("DELETE /api/practice-list/{pieceId}", s.handleRemoveFromPracticeList)
+	mux.HandleFunc("GET /api/practice/dashboard", s.handlePracticeDashboard)
 	mux.HandleFunc("GET /api/pieces/{id}/practice-settings", s.handleGetPracticeSettings)
 	mux.HandleFunc("PUT /api/pieces/{id}/practice-settings", s.handlePutPracticeSettings)
 	mux.HandleFunc("GET /api/pieces/{id}/annotations", s.handleGetAnnotations)

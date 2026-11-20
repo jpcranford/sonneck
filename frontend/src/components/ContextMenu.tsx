@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom'
 import {
   forwardRef,
   useEffect,
@@ -215,41 +216,47 @@ export const ContextMenu = forwardRef<ContextMenuHandle, ContextMenuProps>(funct
           </button>
         )}
       </div>
-      {position && (
-        <div
-          ref={menuRef}
-          role="menu"
-          className="fixed z-50 w-max max-w-[calc(100vw-16px)] min-w-40 rounded-lg border border-border bg-paper-raised py-1 shadow-lg"
-          style={{ top: position.y, left: position.x }}
-          onMouseDown={(event) => event.stopPropagation()}
-        >
-          {header && (
-            <>
-              {header(() => setPosition(null))}
-              {items.length > 0 && <div className="my-1 h-px bg-border" />}
-            </>
-          )}
-          {items.map((item) => (
-            <button
-              key={item.label}
-              role="menuitem"
-              disabled={item.disabled}
-              title={item.disabled ? item.disabledReason : undefined}
-              onClick={() => {
-                item.onSelect()
-                setPosition(null)
-              }}
-              className={`block w-full px-3 py-1.5 text-left text-sm ${
-                item.disabled
-                  ? 'cursor-not-allowed text-ink-soft/50'
-                  : `hover:bg-paper-hover ${item.destructive ? 'text-danger' : 'text-ink'}`
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-      )}
+      {/* Drawn at the end of the page (a portal), so no ancestor's
+          clipping, mask or transform can cut it off or move it — a menu
+          inside a shelf row whose edges fade (a CSS mask) was clipped by
+          it. Its events still bubble through this component as before. */}
+      {position &&
+        createPortal(
+          <div
+            ref={menuRef}
+            role="menu"
+            className="fixed z-50 w-max max-w-[calc(100vw-16px)] min-w-40 rounded-lg border border-border bg-paper-raised py-1 shadow-lg"
+            style={{ top: position.y, left: position.x }}
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            {header && (
+              <>
+                {header(() => setPosition(null))}
+                {items.length > 0 && <div className="my-1 h-px bg-border" />}
+              </>
+            )}
+            {items.map((item) => (
+              <button
+                key={item.label}
+                role="menuitem"
+                disabled={item.disabled}
+                title={item.disabled ? item.disabledReason : undefined}
+                onClick={() => {
+                  item.onSelect()
+                  setPosition(null)
+                }}
+                className={`block w-full px-3 py-1.5 text-left text-sm ${
+                  item.disabled
+                    ? 'cursor-not-allowed text-ink-soft/50'
+                    : `hover:bg-paper-hover ${item.destructive ? 'text-danger' : 'text-ink'}`
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>,
+          document.body,
+        )}
     </>
   )
 })

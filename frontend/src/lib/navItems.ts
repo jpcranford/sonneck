@@ -54,9 +54,10 @@ export const NAV_ITEMS: NavItem[] = [
 // own right — split below the divider from the primary nav above.
 export const SECONDARY_NAV_ITEMS: NavItem[] = [
   { to: '/favorites', label: 'Favorites', icon: IconHeart },
-  // The Sheet Viewer's Practice List: opens the viewer full screen on the
-  // list, from the top. Needs `practice`, like the viewer.
-  { to: '/practice-list/play', label: 'Practice List', icon: IconPlaylist, permission: 'practice' },
+  // The Practice Dashboard: the Practice List, the week, upcoming gigs and
+  // shelves to add from (its Practice button opens the viewer on the list).
+  // Needs `practice`, like the viewer.
+  { to: '/practice', label: 'Practice', icon: IconPlaylist, permission: 'practice' },
   // Same icon as the "Want to Learn" practice-status pill
   // (PracticeStatusIcon) — this view is a filter on exactly that status.
   { to: '/want-to-learn', label: 'Want to Learn', icon: IconCircleDashed },

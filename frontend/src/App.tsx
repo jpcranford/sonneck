@@ -27,6 +27,8 @@ import { SetlistDetailsMockup } from './routes/SetlistDetailsMockup'
 import { EditSetlistMockup } from './routes/EditSetlistMockup'
 import { EditEntryMockup } from './routes/EditEntryMockup'
 import { SetlistsLibraryMockup } from './routes/SetlistsLibraryMockup'
+import { PracticeDashboardMockup } from './routes/PracticeDashboardMockup'
+import { PracticeDashboardPage } from './routes/PracticeDashboardPage'
 import { SetlistProgramPageMockup } from './routes/SetlistProgramPageMockup'
 import { BooksLibrarySample } from './routes/BooksLibrarySample'
 import { PeopleLibrarySample } from './routes/PeopleLibrarySample'
@@ -184,6 +186,7 @@ function AppRoutes() {
         <Route path="mockup/edit-setlist" element={<EditSetlistMockup />} />
         <Route path="mockup/edit-entry" element={<EditEntryMockup />} />
         <Route path="mockup/setlists-library" element={<SetlistsLibraryMockup />} />
+        <Route path="mockup/practice-dashboard" element={<PracticeDashboardMockup />} />
         <Route path="mockup/setlist-program-page" element={<SetlistProgramPageMockup />} />
         <Route path="mockup/books-library" element={<BooksLibrarySample />} />
         <Route path="mockup/people-library" element={<PeopleLibrarySample />} />
@@ -206,6 +209,7 @@ function AppRoutes() {
         <Route path="favorites" element={<FavoritesPage />} />
         <Route path="want-to-learn" element={<WantToLearnPage />} />
         <Route path="practicing" element={<PracticingPage />} />
+        <Route path="practice" element={<PracticeDashboardPage />} />
         <Route path="learned" element={<LearnedPage />} />
         <Route path="setlists" element={<SetlistsLibraryPage />} />
         <Route path="setlists/:id" element={<SetlistPage />} />

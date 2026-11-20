@@ -33,6 +33,12 @@ export interface UserSettings {
   // that hasn't set its own.
   sheetViewerPages: 'auto' | 'one'
   sheetViewerTurn: 'spread' | 'slide'
+  // The Practice Dashboard week's Customize: the last 7 days, or this week
+  // toward a target of 1–7 days; and the week's first day ('' follows the
+  // browser's locale).
+  practiceHistoryMode: 'daily' | 'target'
+  practiceTargetDays: number
+  practiceWeekStart: '' | 'sunday' | 'monday'
 }
 
 export type MetronomeShow = 'beat' | 'tempo' | 'icon'

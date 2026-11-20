@@ -92,12 +92,19 @@ func SetUserPieceData(ctx context.Context, q Queryer, userID, pieceID int64, dat
 // SetUserPracticeStatus sets userID's practice status for pieceID (a
 // practice_statuses id already checked to be that user's own), or clears it
 // when statusID is nil — leaving their favorite and notes alone. The piece
-// menu's practice status strip writes through this alone.
+// menu's practice status strip writes through this alone. updated_at
+// (migration 00041, Currently Practicing's order on the Practice Dashboard)
+// moves only when the status actually changes, so saving Edit Piece with
+// the same status doesn't bump it.
 func SetUserPracticeStatus(ctx context.Context, q Queryer, userID, pieceID int64, statusID *int64) error {
 	if statusID != nil {
 		_, err := q.ExecContext(ctx, `
-			INSERT INTO piece_practice_status (user_id, piece_id, status_id) VALUES (?, ?, ?)
-			ON CONFLICT (user_id, piece_id) DO UPDATE SET status_id = excluded.status_id`,
+			INSERT INTO piece_practice_status (user_id, piece_id, status_id, updated_at)
+			VALUES (?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+			ON CONFLICT (user_id, piece_id) DO UPDATE SET
+				updated_at = CASE WHEN piece_practice_status.status_id = excluded.status_id
+					THEN piece_practice_status.updated_at ELSE excluded.updated_at END,
+				status_id = excluded.status_id`,
 			userID, pieceID, *statusID,
 		)
 		return err
@@ -471,7 +478,22 @@ type UserSettings struct {
 	// isn't set (migration 00038): one of LayoutPages, one of LayoutTurns.
 	SheetViewerPages string `json:"sheetViewerPages"`
 	SheetViewerTurn  string `json:"sheetViewerTurn"`
+	// The Practice Dashboard week's Customize settings (migration 00041):
+	// one of PracticeHistoryModes; the weekly target in days (1–7); and the
+	// week's first day, one of PracticeWeekStarts ("" follows the
+	// browser's locale).
+	PracticeHistoryMode string `json:"practiceHistoryMode"`
+	PracticeTargetDays  int    `json:"practiceTargetDays"`
+	PracticeWeekStart   string `json:"practiceWeekStart"`
 }
+
+// PracticeHistoryModes are the dashboard week's modes: the last 7 days, or
+// this week toward a target.
+var PracticeHistoryModes = []string{"daily", "target"}
+
+// PracticeWeekStarts are the week's first-day choices; "" follows the
+// browser's locale.
+var PracticeWeekStarts = []string{"", "sunday", "monday"}
 
 // MetronomeShows are the metronome button's choices: the beat playing, the
 // tempo, or the icon alone.
@@ -491,11 +513,13 @@ func GetUserSettings(ctx context.Context, q Queryer, userID int64) (*UserSetting
 		SELECT show_books_in_sidebar, theme_preference, content_view_mode, dark_mode_scores,
 			sheet_viewer_turn_guard_ms, sheet_viewer_clock_shown, sheet_viewer_clock_mode,
 			sheet_viewer_clock_seconds, track_practice, sheet_viewer_notes_bar_default,
-			sheet_viewer_ghost_marks, sheet_viewer_metronome_show, sheet_viewer_pages, sheet_viewer_turn
+			sheet_viewer_ghost_marks, sheet_viewer_metronome_show, sheet_viewer_pages, sheet_viewer_turn,
+			practice_history_mode, practice_target_days, practice_week_start
 		FROM user_settings WHERE user_id = ?`, userID,
 	).Scan(&s.ShowBooksInSidebar, &s.ThemePreference, &s.ContentViewMode, &s.DarkModeScores, &s.TurnGuardMs,
 		&s.ClockShown, &s.ClockMode, &s.ClockSeconds, &s.TrackPractice, &s.NotesBarDefault, &s.GhostMarks,
-		&s.MetronomeShow, &s.SheetViewerPages, &s.SheetViewerTurn)
+		&s.MetronomeShow, &s.SheetViewerPages, &s.SheetViewerTurn,
+		&s.PracticeHistoryMode, &s.PracticeTargetDays, &s.PracticeWeekStart)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -513,11 +537,13 @@ func UpdateUserSettings(ctx context.Context, q Queryer, userID int64, s UserSett
 			dark_mode_scores = ?, sheet_viewer_turn_guard_ms = ?, sheet_viewer_clock_shown = ?,
 			sheet_viewer_clock_mode = ?, sheet_viewer_clock_seconds = ?, track_practice = ?,
 			sheet_viewer_notes_bar_default = ?, sheet_viewer_ghost_marks = ?, sheet_viewer_metronome_show = ?,
-			sheet_viewer_pages = ?, sheet_viewer_turn = ?
+			sheet_viewer_pages = ?, sheet_viewer_turn = ?,
+			practice_history_mode = ?, practice_target_days = ?, practice_week_start = ?
 		WHERE user_id = ?`,
 		s.ShowBooksInSidebar, s.ThemePreference, s.ContentViewMode, s.DarkModeScores, s.TurnGuardMs,
 		s.ClockShown, s.ClockMode, s.ClockSeconds, s.TrackPractice, s.NotesBarDefault, s.GhostMarks,
-		s.MetronomeShow, s.SheetViewerPages, s.SheetViewerTurn, userID,
+		s.MetronomeShow, s.SheetViewerPages, s.SheetViewerTurn,
+		s.PracticeHistoryMode, s.PracticeTargetDays, s.PracticeWeekStart, userID,
 	)
 	return err
 }

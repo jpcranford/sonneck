@@ -165,6 +165,16 @@ const SECTIONS: { title: string; mockups: Mockup[] }[] = [
     title: 'Sheet Viewer',
     mockups: [
       {
+        to: '/mockup/practice-dashboard',
+        name: 'Practice Dashboard',
+        note: 'Where the sidebar’s Practice lands: gigs under 4 weeks away, shelves to add from (+, drag, right-click; Show more opens one up), and the week and Practice List pinned at the right. Customize switches the week to a weekly target; the Mockup line switches the gigs.',
+        testing: [
+          'The real Practice page on the iPad: + and × always shown, long-press menu, Show more.',
+          'Drag a piece from a shelf into the list with a mouse; it lands where the gap shows.',
+          'Customize the week on one device; it shows the same on another.',
+        ],
+      },
+      {
         to: '/mockup/sheet-viewer',
         name: 'Sheet Viewer',
         note: 'The full-screen practice and performance mode on a piece you pick: toolbar, tap zones and keys, clock, metronome, Info, Practice Notes, Display (more pages on bigger screens, skipped pages), the Practice List and Annotate. Benedictus opens past its cover. The Mockup panel picks the piece, theme and entry point.',
