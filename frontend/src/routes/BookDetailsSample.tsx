@@ -757,7 +757,7 @@ export function BookDetailsSample() {
   const fields = bookFields(filenameExpanded, () => setFilenameExpanded((v) => !v))
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-6 md:p-8">
+    <div className="flex flex-1 flex-col gap-6 p-6 md:px-8">
       <div className="rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-4 py-2 text-sm text-ink-soft">
         Design mockup — <span className="font-medium text-ink">Book Details page</span>. Not wired
         to real data; Open Book PDF, Edit Book, and Delete Book stay inert here on purpose — this

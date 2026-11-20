@@ -145,7 +145,7 @@ export function StyleSamplerMockup() {
   usePreviewTheme(theme)
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-8">
+    <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-8">
       <h1 className="font-display text-3xl font-medium text-ink">Style Sampler</h1>
       <p className="mt-2 max-w-3xl text-sm text-ink-soft">
         The app’s visual style at a glance. Read live from{' '}

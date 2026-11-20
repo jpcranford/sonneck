@@ -343,7 +343,7 @@ export function BookUploadAboutStep({
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-6 md:p-8">
+    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-6 md:px-8">
       {/* Wizard chrome — identical across screens 3-6. */}
       <div className="flex items-center justify-between">
         <button

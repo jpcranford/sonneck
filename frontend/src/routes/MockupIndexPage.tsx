@@ -262,7 +262,7 @@ export function MockupIndexPage() {
   useMockupTitle('Mockup Index')
 
   return (
-    <div className={`flex flex-1 flex-col gap-6 p-6 md:p-8 ${WIDE_CONTENT_MAX_W}`}>
+    <div className={`flex flex-1 flex-col gap-6 p-6 md:px-8 ${WIDE_CONTENT_MAX_W}`}>
       <div>
         <h1 className="font-display text-xl font-medium text-ink">Mockups</h1>
         <p className="text-sm text-ink-soft">

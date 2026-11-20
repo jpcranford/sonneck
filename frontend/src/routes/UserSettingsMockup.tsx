@@ -462,7 +462,7 @@ export function UserSettingsMockup() {
   const identity = IDENTITIES[identityKey]
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-6 md:p-8">
+    <div className="flex flex-1 flex-col gap-4 p-6 md:px-8">
       <IdentityStateToggle state={identityKey} onChange={setIdentityKey} />
 
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-4">

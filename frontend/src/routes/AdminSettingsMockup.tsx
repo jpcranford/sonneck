@@ -839,7 +839,7 @@ export function AdminSettingsMockup() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-6 md:p-8">
+    <div className="flex flex-1 flex-col gap-4 p-6 md:px-8">
       <IdentityStateToggle
         state={identityKey}
         onChange={(key) => {

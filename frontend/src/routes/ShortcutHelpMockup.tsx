@@ -338,7 +338,7 @@ export function ShortcutHelpMockup() {
   ]
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-8">
+    <div className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-8">
       <h1 className="font-display text-3xl font-medium text-ink">Shortcut Help</h1>
       <p className="mt-2 max-w-2xl text-sm text-ink-soft">
         Hold <Key>/</Key> or <Key>?</Key> for about a second — anywhere but a text field — and a

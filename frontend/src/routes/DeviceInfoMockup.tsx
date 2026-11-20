@@ -107,7 +107,7 @@ export function DeviceInfoMockup() {
   const sidebarMode = snap.innerWidth >= 768 ? 'Sidebar (desktop)' : 'Mobile nav (drawer)'
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-6 md:p-8">
+    <div className="flex flex-1 flex-col gap-6 p-6 md:px-8">
       <div>
         <h1 className="font-display text-xl font-medium text-ink">Device Info</h1>
         <p className="max-w-3xl text-sm text-ink-soft">

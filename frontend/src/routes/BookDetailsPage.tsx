@@ -616,7 +616,7 @@ export function BookDetailsPage() {
   }
 
   return (
-    <div className={`${CONTENT_MAX_W} flex flex-1 flex-col gap-6 p-6 md:p-8`}>
+    <div className={`${CONTENT_MAX_W} flex flex-1 flex-col gap-6 p-6 md:px-8`}>
       {/* Edit / Change Cover / Open Book PDF live in this top toolbar row,
           mirroring Piece Details page's own toolbar (PiecePage.tsx): icon-only
           buttons first (Open Book PDF, Change Cover — identical

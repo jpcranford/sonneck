@@ -1115,7 +1115,7 @@ export function PersonDetailsSample() {
   )
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-6 md:p-8">
+    <div className="flex flex-1 flex-col gap-6 p-6 md:px-8">
       {/* Every /mockup/* page's Back control routes to the mockup index,
           not wherever its own label implies — same convention as
           PieceDetailsSample.tsx/BookDetailsSample.tsx (see CLAUDE.md >

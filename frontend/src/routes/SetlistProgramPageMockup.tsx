@@ -609,7 +609,7 @@ export function SetlistProgramPageMockup() {
   }, [tocLayoutKey, tocPageCount, shape.widthPt, shape.heightPt])
 
   return (
-    <div className={`${CONTENT_MAX_W} flex flex-1 flex-col gap-6 px-6 py-6 md:px-8 md:py-8`}>
+    <div className={`${CONTENT_MAX_W} flex flex-1 flex-col gap-6 px-6 py-6 md:px-8`}>
       <Link
         to="/mockup"
         className="inline-flex w-fit items-center gap-1.5 text-sm text-ink-soft hover:text-ink"

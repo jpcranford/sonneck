@@ -933,7 +933,7 @@ export function BookUploadTitlesStep({
   // — see the perf comment above DesktopPieceRow for why they moved.
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-6 md:p-8">
+    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-6 md:px-8">
       <div className="flex items-center justify-between">
         <button
           type="button"

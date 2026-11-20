@@ -523,7 +523,7 @@ export function SetlistPage() {
   )
 
   return (
-    <div className={`${CONTENT_MAX_W} flex flex-1 flex-col gap-6 px-6 py-6 md:px-8 md:py-8`}>
+    <div className={`${CONTENT_MAX_W} flex flex-1 flex-col gap-6 px-6 py-6 md:px-8`}>
       {/* The details pages' shared top toolbar (Piece, Book and Person
           Details): Back on the left; on the right the red Delete with
           Archive beside it, a divider, Duplicate, and the one labeled

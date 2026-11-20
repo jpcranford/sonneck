@@ -686,7 +686,7 @@ export function PiecePage() {
     // py- (not pt-only, as before) — this page had no bottom padding at
     // all, so a long citation string (or any tall page) ran flush into
     // the app footer with nothing separating them.
-    <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-6 py-6 md:px-8 md:py-8">
+    <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-6 py-6 md:px-8">
       {/* Edit Piece is a proper labeled button in this top toolbar row,
           matching every other action button on this page (Download PDF,
           Replace File, Use Page as Thumbnail). Only rendered once piece

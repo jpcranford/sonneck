@@ -1400,7 +1400,7 @@ export function AdminPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-6 md:p-8">
+    <div className="flex flex-1 flex-col gap-4 p-6 md:px-8">
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-4">
         <h1 className="font-display text-xl font-medium text-ink">Admin Settings</h1>
 

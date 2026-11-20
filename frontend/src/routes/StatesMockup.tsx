@@ -428,7 +428,7 @@ export function StatesMockup() {
   usePreviewTheme(theme)
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-8">
+    <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-8">
       <h1 className="font-display text-3xl font-medium text-ink">
         Empty, Error &amp; Loading States
       </h1>

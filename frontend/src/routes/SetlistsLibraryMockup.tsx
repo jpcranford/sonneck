@@ -319,7 +319,7 @@ export function SetlistsLibraryMockup() {
   const archiveDirection = archiveTarget ? archiveDirectionFor(archiveTarget) : null
 
   return (
-    <div className={`flex flex-1 flex-col gap-6 p-6 md:p-8 ${CONTENT_MAX_W}`}>
+    <div className={`flex flex-1 flex-col gap-6 p-6 md:px-8 ${CONTENT_MAX_W}`}>
       <Link
         to="/mockup"
         className="inline-flex w-fit items-center gap-1.5 text-sm text-ink-soft hover:text-ink"

@@ -351,7 +351,7 @@ export function EditPersonModalMockup() {
   const saving = saveState !== 'idle'
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6 md:p-8">
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6 md:px-8">
       <div className="rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-4 py-2 text-sm text-ink-soft">
         Design mockup — <span className="font-medium text-ink">Edit Person modal</span>. Not wired
         to real data — Save replays the approved progress animation. Click the cloud icon next to

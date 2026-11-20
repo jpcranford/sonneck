@@ -767,7 +767,7 @@ export function PieceDetailsSample() {
     // py- (not pt-only), kept in sync with PiecePage.tsx's real fix — see
     // that file's comment: this page had no bottom padding at all, so a
     // long citation string ran flush into the app footer.
-    <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-6 py-6 md:px-8 md:py-8">
+    <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-6 py-6 md:px-8">
       {/* Edit Piece promoted from an icon-only button next to the title
           (still visible there in PiecePage.tsx as of this writing — port
           the same move over once approved) to a proper labeled button in

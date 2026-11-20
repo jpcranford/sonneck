@@ -309,7 +309,7 @@ export function SetlistsLibraryPage() {
   const archiveDirection = archiveTarget ? archiveDirectionFor(archiveTarget, today) : null
 
   return (
-    <div className={`flex flex-1 flex-col gap-6 p-6 md:p-8 ${CONTENT_MAX_W}`}>
+    <div className={`flex flex-1 flex-col gap-6 p-6 md:px-8 ${CONTENT_MAX_W}`}>
       <div className="flex items-center justify-between gap-4">
         <h1 className="font-display text-xl font-medium text-ink">Setlists</h1>
         {canCreate && (

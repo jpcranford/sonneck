@@ -180,7 +180,7 @@ export function EditBookModalMockup() {
   const saving = saveState !== 'idle'
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6 md:p-8">
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6 md:px-8">
       <div className="rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-4 py-2 text-sm text-ink-soft">
         Design mockup — <span className="font-medium text-ink">Book Properties Edit Menu</span>{' '}
         (design doc §16). Not wired to real data — Save just replays the approved progress

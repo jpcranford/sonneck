@@ -560,7 +560,7 @@ export function PersonDetailsPage() {
       : []
 
   return (
-    <div className={`${CONTENT_MAX_W} flex flex-1 flex-col gap-6 p-6 md:p-8`}>
+    <div className={`${CONTENT_MAX_W} flex flex-1 flex-col gap-6 p-6 md:px-8`}>
       <div className="flex flex-wrap items-center justify-between gap-4 touch:gap-y-5">
         <Link
           to="/people"
