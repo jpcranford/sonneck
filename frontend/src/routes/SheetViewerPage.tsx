@@ -4353,8 +4353,14 @@ function SheetViewer({
                   className={`${FACE} ${FACE_HOVER} h-11 w-full justify-start px-2 ${menu === 'queue' && queueCursor === i ? 'bg-(--sv-hover)' : ''}`}
                 >
                   <span className="flex min-w-0 -translate-y-[0.5px] flex-col text-left">
-                    <span className="truncate font-display font-medium">{q.title}</span>
-                    <span className="truncate text-xs text-ink-soft">
+                    <span
+                      className={`truncate font-display font-medium ${done && !current ? 'text-ink-faint' : ''}`}
+                    >
+                      {q.title}
+                    </span>
+                    <span
+                      className={`truncate text-xs ${done && !current ? 'text-ink-faint' : 'text-ink-soft'}`}
+                    >
                       {current ? 'Now open' : q.credit || `${q.pageCount} pp.`}
                     </span>
                   </span>
