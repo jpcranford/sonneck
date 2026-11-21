@@ -1635,7 +1635,7 @@ function SheetViewer({
   const infoInline = tier === 'phone' || inlineTools >= 5
   const moreNeeded = !(notesInline && metronomeInline && theoryInline && photoInline && infoInline)
 
-  useThemeSync(settings?.themePreference)
+  useThemeSync()
   useDarkScoresSync(settings?.darkModeScores)
   const { dark, darkScores } = useRootTheme()
 

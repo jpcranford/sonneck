@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { IconLoader2 } from '@tabler/icons-react'
@@ -9,13 +9,30 @@ import { AppFooter } from './AppFooter'
 import { PAGES_WITH_OWN_FOOTER } from '../lib/appFooter'
 import { useMediaQuery } from '../hooks/useMediaQuery'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
-import { getUserSettings } from '../api/userSettings'
+import { getUserSettings, updateUserSettings, type UserSettings } from '../api/userSettings'
 import { PageToolbarSlotContext } from '../lib/pageToolbarSlot'
-import { useDarkScoresSync, useThemeSync } from '../lib/theme'
+import { useDarkScoresSync, useThemePreference, useThemeSync } from '../lib/theme'
 import { useSidebarShortcuts } from '../hooks/useSidebarShortcuts'
 import { useFullscreenShortcut } from '../hooks/useFullscreenShortcut'
 import { useScrollRestoration } from '../hooks/useScrollRestoration'
 import { ShortcutHelp } from './ShortcutHelp'
+
+// The native app opens its window on the account's saved theme color before
+// the page loads (cmd/sonneck-desktop/theme.go), so there the device's
+// choice is copied to the account. A native install is its own device, so
+// the two never disagree for long; browsers leave the account's copy alone.
+function useNativeLaunchTheme(settings: UserSettings | undefined) {
+  const queryClient = useQueryClient()
+  const preference = useThemePreference()
+  useEffect(() => {
+    if (!window.runtime || !settings || settings.themePreference === preference) return
+    updateUserSettings({ ...settings, themePreference: preference })
+      .then((updated) => queryClient.setQueryData(['user-settings'], updated))
+      .catch(() => {
+        // Only the next launch's window color is affected.
+      })
+  }, [preference, settings, queryClient])
+}
 
 export function AppShell() {
   const location = useLocation()
@@ -29,11 +46,12 @@ export function AppShell() {
   // state, not a ref, so the toolbar re-renders into it once it mounts.
   const [toolbarSlot, setToolbarSlot] = useState<HTMLDivElement | null>(null)
 
-  // The user's light/dark/system choice, applied app-wide. Same query the
-  // account menu's theme switcher reads, so a change there applies at once.
+  // This device's light/dark/system choice, applied app-wide; Dark Mode
+  // Scores is the account's.
   const { data: settings } = useQuery({ queryKey: ['user-settings'], queryFn: getUserSettings })
-  useThemeSync(settings?.themePreference)
+  useThemeSync()
   useDarkScoresSync(settings?.darkModeScores)
+  useNativeLaunchTheme(settings)
 
   // Pull-to-refresh — mobile/tablet widths only, not desktop (a touch
   // gesture makes no sense gated purely on chrome, which stays desktop/

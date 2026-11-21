@@ -32,6 +32,7 @@ import {
   type TurnGuardMs,
   type UserSettings,
 } from '../api/userSettings'
+import { setThemePreference, useThemePreference, type ThemePreference } from '../lib/theme'
 import {
   listPracticeStatuses,
   listUserTags,
@@ -121,7 +122,7 @@ function SettingsRow({
 }
 
 const THEME_OPTIONS: {
-  key: UserSettings['themePreference']
+  key: ThemePreference
   label: string
   icon: typeof IconSun
 }[] = [
@@ -133,11 +134,9 @@ const THEME_OPTIONS: {
 function ThemeControl({
   theme,
   onChange,
-  disabled,
 }: {
-  theme: UserSettings['themePreference']
-  onChange: (theme: UserSettings['themePreference']) => void
-  disabled: boolean
+  theme: ThemePreference
+  onChange: (theme: ThemePreference) => void
 }) {
   return (
     <div className="flex rounded-md border border-border">
@@ -145,7 +144,6 @@ function ThemeControl({
         <button
           key={key}
           type="button"
-          disabled={disabled}
           aria-pressed={theme === key}
           onClick={() => onChange(key)}
           className={`flex cursor-pointer items-center gap-1.5 px-2.5 py-1.5 text-sm disabled:opacity-50 ${
@@ -465,6 +463,8 @@ export function UserSettingsPage() {
     mutationFn: updateUserSettings,
     onSuccess: (updated) => queryClient.setQueryData(['user-settings'], updated),
   })
+  const themePreference = useThemePreference()
+
   function patchSettings(partial: Partial<UserSettings>) {
     if (!settings) return
     updateSettingsMutation.mutate({ ...settings, ...partial })
@@ -568,14 +568,8 @@ export function UserSettingsPage() {
         <SettingsCard title="Appearance">
           <SettingsRow
             label="Theme"
-            help="System follows your device's own light/dark setting."
-            control={
-              <ThemeControl
-                theme={settings?.themePreference ?? 'system'}
-                onChange={(theme) => patchSettings({ themePreference: theme })}
-                disabled={settingsLoading}
-              />
-            }
+            help="Saved on this device only. System follows the device's own light/dark setting."
+            control={<ThemeControl theme={themePreference} onChange={setThemePreference} />}
           />
           <SettingsRow
             label="Dark Mode Scores"

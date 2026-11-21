@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ComponentType } from 'react'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   IconDeviceDesktop,
   IconLogout,
@@ -14,9 +14,8 @@ import {
 } from '@tabler/icons-react'
 import { logout } from '../api/auth'
 import { clearAccountData } from '../lib/clearAccountData'
-import { getUserSettings, updateUserSettings, type UserSettings } from '../api/userSettings'
 import { useAuth } from '../lib/AuthContext'
-import type { ThemePreference } from '../lib/theme'
+import { setThemePreference, useThemePreference, type ThemePreference } from '../lib/theme'
 import { useAnchoredPanel } from '../hooks/useAnchorRect'
 import { useShortcutBlocker } from '../lib/shortcuts'
 
@@ -36,11 +35,9 @@ const AUTH_METHOD_BLURB: Record<string, string> = {
 }
 
 // Ported from the mockup's own ThemeSwitcher (SidebarUserMenuMockup.tsx).
-// Real persistence — shares the exact same
-// ['user-settings'] query/mutation as User Settings' own Appearance card
-// (UserSettingsPage.tsx), so changing the theme in either place updates
-// the other immediately and survives a reload. AppShell applies the saved
-// choice (lib/theme.ts).
+// The choice is this device's (lib/theme.ts's store, shared with User
+// Settings' Appearance card), so changing it in either place updates the
+// other at once; AppShell applies it.
 type ThemePreview = ThemePreference
 
 const THEME_OPTIONS: {
@@ -134,20 +131,8 @@ export function UserMenuButton({
     },
   })
 
-  // 'system' fallback while loading — matches user_settings.theme_preference's
-  // own real DEFAULT 'system' (migration 00025), not the mockup's own
-  // arbitrary 'light' preview starting point.
-  const { data: settings } = useQuery({ queryKey: ['user-settings'], queryFn: getUserSettings })
-  const theme = settings?.themePreference ?? 'system'
-  const updateSettingsMutation = useMutation({
-    mutationFn: updateUserSettings,
-    onSuccess: (updated) => queryClient.setQueryData(['user-settings'], updated),
-  })
-  function setTheme(next: ThemePreview) {
-    if (!settings) return
-    const full: UserSettings = { ...settings, themePreference: next }
-    updateSettingsMutation.mutate(full)
-  }
+  const theme = useThemePreference()
+  const setTheme = setThemePreference
 
   // Closes on outside click/Escape, same dismiss convention as
   // ContextMenu.tsx (and the mockup this was built from).

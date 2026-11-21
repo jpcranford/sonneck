@@ -505,7 +505,7 @@ export function UserSettingsMockup() {
         <SettingsCard title="Appearance">
           <SettingsRow
             label="Theme"
-            help="System follows your device's own light/dark setting."
+            help="Saved on this device only. System follows the device's own light/dark setting."
             control={<ThemeControl theme={theme} onChange={setTheme} />}
           />
           <SettingsRow

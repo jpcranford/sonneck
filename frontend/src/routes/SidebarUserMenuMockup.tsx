@@ -440,9 +440,8 @@ export function SidebarUserMenuMockup() {
   const [identityKey, setIdentityKey] = useState<IdentityKey>('none')
   const [collapsed, setCollapsed] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
-  // 'system' — matches user_settings.theme_preference's own real DEFAULT
-  // 'system' (migration 00025), and the real build (UserMenuButton.tsx)
-  // now ported from this mockup.
+  // 'system', the real default for a device with no saved choice
+  // (lib/theme.ts; the theme is per device).
   const [theme, setTheme] = useState<ThemePreview>('system')
   const identity = IDENTITIES[identityKey]
 

@@ -1,16 +1,18 @@
-import { useEffect } from 'react'
+import { useEffect, useSyncExternalStore } from 'react'
 
-// Light/dark theme: the user's choice (user_settings.theme_preference) is
-// turned into <html data-theme="light|dark">, which index.css's dark block
-// keys off. "system" follows the device and keeps following it while the
-// app is open.
+// Light/dark theme: the choice is turned into <html data-theme="light|dark">,
+// which index.css's dark block keys off. "system" follows the device and
+// keeps following it while the app is open.
 //
-// The choice is also kept in localStorage so index.html's inline script can
-// set the right theme before the first paint, on every page including the
-// login and first-launch screens, which load before the user's settings
-// can be fetched. That script repeats resolveTheme's logic and the
+// The choice belongs to the device, not the account: it lives in this
+// browser's localStorage, so a phone can stay dark while a computer stays
+// light. index.html's inline script reads the same key to set the theme
+// before the first paint, on every page including the login and
+// first-launch screens. That script repeats resolveTheme's logic and the
 // browser-bar colors below (the installed-app check too); keep the copies
-// in step.
+// in step. The account's user_settings.theme_preference is kept only for the
+// native app, which opens its window on that color before the page loads
+// (AppShell copies the device's choice there; cmd/sonneck-desktop/theme.go).
 
 export type ThemePreference = 'light' | 'dark' | 'system'
 
@@ -63,19 +65,56 @@ export function applyTheme(preference: ThemePreference) {
   window.runtime?.WindowSetBackgroundColour?.(r, g, b, 255)
   if (theme === 'dark') window.runtime?.WindowSetDarkTheme?.()
   else window.runtime?.WindowSetLightTheme?.()
+}
+
+function readStoredTheme(): ThemePreference {
   try {
-    localStorage.setItem(THEME_STORAGE_KEY, preference)
+    const stored = localStorage.getItem(THEME_STORAGE_KEY)
+    if (stored === 'light' || stored === 'dark' || stored === 'system') return stored
   } catch {
-    // Storage can be unavailable (private browsing); the theme still applies
-    // for this page, only the next first paint falls back to the device.
+    // Storage unavailable (private browsing): follow the device.
+  }
+  return 'system'
+}
+
+let currentTheme = readStoredTheme()
+const themeListeners = new Set<() => void>()
+
+function subscribeTheme(listener: () => void) {
+  themeListeners.add(listener)
+  // Another tab changed it: follow along.
+  const onStorage = (event: StorageEvent) => {
+    if (event.key !== THEME_STORAGE_KEY) return
+    currentTheme = readStoredTheme()
+    listener()
+  }
+  window.addEventListener('storage', onStorage)
+  return () => {
+    themeListeners.delete(listener)
+    window.removeEventListener('storage', onStorage)
   }
 }
 
-// Keeps <html data-theme> in step with the user's saved preference, and with
-// the device while that preference is "system".
-export function useThemeSync(preference: ThemePreference | undefined) {
+/** This device's light/dark/system choice. */
+export function useThemePreference(): ThemePreference {
+  return useSyncExternalStore(subscribeTheme, () => currentTheme)
+}
+
+export function setThemePreference(preference: ThemePreference) {
+  currentTheme = preference
+  try {
+    localStorage.setItem(THEME_STORAGE_KEY, preference)
+  } catch {
+    // Storage unavailable: the theme still applies until the page reloads.
+  }
+  themeListeners.forEach((listener) => listener())
+}
+
+// Keeps <html data-theme> in step with this device's choice, and with the
+// device's own setting while that choice is "system".
+export function useThemeSync() {
+  const preference = useThemePreference()
   useEffect(() => {
-    if (!preference) return
     applyTheme(preference)
     if (preference !== 'system') return
     const query = darkQuery()
