@@ -110,6 +110,27 @@ describe('strokePath', () => {
   })
 })
 
+describe('strokePath on a short stroke', () => {
+  // The x-extent of a path's points.
+  const extent = (d: string) => {
+    const xs = [...d.matchAll(/(-?[\d.]+),(-?[\d.]+)/g)].map((m) => Number(m[1]))
+    return [Math.min(...xs), Math.max(...xs)]
+  }
+  it('keeps a tick its full length, with round ends and no taper', () => {
+    // A 6-unit tick (about 1.5 pen widths at M) across a 1000-unit page.
+    const tick = stroke(
+      't',
+      Array.from({ length: 7 }, (_, i) => [0.5 + i * 0.001, 0.5] as [number, number]),
+    )
+    const [left, right] = extent(strokePath(tick, 1000, ASPECT))
+    const radius = (tick.size / 100) * 1000 * 0.5
+    // The outline reaches past both ends by about the pen's radius (round
+    // caps), so its length is the tick plus most of a pen width.
+    expect(left).toBeLessThan(500 - radius * 0.5)
+    expect(right).toBeGreaterThan(506 + radius * 0.5)
+  })
+})
+
 describe('strokeTouchesPage', () => {
   it('keeps a stroke with any point on the page, even one running off an edge', () => {
     expect(strokeTouchesPage(stroke('a', [[0.5, 0.5]]))).toBe(true)

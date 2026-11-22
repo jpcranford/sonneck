@@ -1,4 +1,4 @@
-import { getStroke } from 'perfect-freehand'
+import { getStrokeOutlinePoints, getStrokePoints } from 'perfect-freehand'
 
 // The Sheet Viewer's annotation marks, shared by the mockup and (from Phase
 // 18) the real viewer. Every position is a share of the page — x of its
@@ -36,29 +36,90 @@ export type PageBox = { left: number; top: number; right: number; bottom: number
 export const TEXT_LINE_HEIGHT = 1.25
 export type Mark = StrokeMark | TextMark
 
+// How a stroke is traced and outlined (perfect-freehand's options, plus the
+// two worked around below). The pen follows the Pencil closely, so short
+// strokes (ticks, commas, fingering numbers) keep their shape; the
+// highlighter keeps one width, like a chisel tip, and smooths more. Neither
+// tapers; both ends are round. Tuned in the pen playground
+// (/mockup/pen-playground). The PDF export draws the same outline
+// (internal/annotpdf's strokeTunings, strokeScale and viewerStroke): keep
+// them in step, and regenerate its fixtures (testdata/freehand-fixtures.mjs).
+export type StrokeTuning = {
+  /** 0–1: how far each drawn point lags toward the pen. Lower traces closer. */
+  streamline: number
+  /** 0–1: how far apart the outline's nodes must be, as a share of the size. */
+  smoothing: number
+  /** 0–1: how much pressure (real or simulated) thins the line. */
+  thinning: number
+  /** Taper at each end, as a share of the page's width (0: none). */
+  taperStart: number
+  taperEnd: number
+  /** Round ends (false: flat). */
+  capStart: boolean
+  capEnd: boolean
+}
+export const STROKE_TUNING: Record<StrokeMark['tool'], StrokeTuning> = {
+  pen: {
+    streamline: 0.2,
+    smoothing: 0.25,
+    thinning: 0.5,
+    taperStart: 0,
+    taperEnd: 0,
+    capStart: true,
+    capEnd: true,
+  },
+  highlighter: {
+    streamline: 0.5,
+    smoothing: 0.5,
+    thinning: 0,
+    taperStart: 0,
+    taperEnd: 0,
+    capStart: true,
+    capEnd: true,
+  },
+}
+
+// perfect-freehand works in its own units and has two fixed thresholds that
+// eat short strokes: it skips outline points within 3 units of the end, and
+// skips input points until the stroke has run one pen width. Strokes are
+// worked out 10× larger, so the first is a tenth of a unit of the page;
+// the second is skipped by tracing the points with no size of their own.
+const STROKE_SCALE = 10
+
 // The stroke's outline as an SVG path, in a box `width` units wide and
-// `width / aspect` tall. The pen thins with pressure; the highlighter keeps
-// one width, like a chisel tip (the size playground's settings).
-export function strokePath(mark: StrokeMark, width: number, aspect: number, last = true) {
-  const h = width / aspect
-  const outline = getStroke(
-    mark.points.map(([x, y, p]) => [x * width, y * h, p]),
-    {
-      size: (mark.size / 100) * width,
-      thinning: mark.tool === 'highlighter' ? 0 : 0.5,
-      smoothing: 0.5,
-      streamline: 0.5,
-      simulatePressure: !mark.pressure,
-      last,
-    },
+// `width / aspect` tall. `last`: the stroke is finished, so its final
+// point is drawn exactly where the pen lifted.
+export function strokePath(
+  mark: StrokeMark,
+  width: number,
+  aspect: number,
+  last = true,
+  tuning: StrokeTuning = STROKE_TUNING[mark.tool],
+) {
+  const scale = width * STROKE_SCALE
+  const h = scale / aspect
+  const size = (mark.size / 100) * scale
+  const traced = getStrokePoints(
+    mark.points.map(([x, y, p]) => [x * scale, y * h, p]),
+    { size: Number.EPSILON, streamline: tuning.streamline, last },
   )
-  return pathFromOutline(outline)
+  const outline = getStrokeOutlinePoints(traced, {
+    size,
+    thinning: tuning.thinning,
+    smoothing: tuning.smoothing,
+    simulatePressure: !mark.pressure,
+    start: { taper: tuning.taperStart * scale, cap: tuning.capStart },
+    end: { taper: tuning.taperEnd * scale, cap: tuning.capEnd },
+    last,
+  })
+  return pathFromOutline(outline, 1 / STROKE_SCALE)
 }
 
 // perfect-freehand's own outline-to-path helper (its README): quadratic
-// curves through the midpoints, closed.
-function pathFromOutline(points: number[][]) {
-  if (points.length < 4) return ''
+// curves through the midpoints, closed. `k` scales the points back down.
+function pathFromOutline(outline: number[][], k = 1) {
+  if (outline.length < 4) return ''
+  const points = outline.map(([x, y]) => [x * k, y * k])
   const mid = (a: number, b: number) => ((a + b) / 2).toFixed(2)
   let [a, b] = points
   const c = points[2]

@@ -176,6 +176,12 @@ const SECTIONS: { title: string; mockups: Mockup[] }[] = [
         ],
       },
       {
+        to: '/mockup/pen-playground',
+        name: 'Pen Playground',
+        note: 'Tune the Sheet Viewer’s pen and highlighter with a stylus: write on blank staves and every stroke redraws as the sliders move. Shows the old pen underneath, the raw stylus points, and the last stroke enlarged.',
+        testing: ['In the real viewer with a stylus: short strokes look as they do here.'],
+      },
+      {
         to: '/mockup/sheet-viewer',
         name: 'Sheet Viewer',
         note: 'The full-screen practice and performance mode on a piece you pick: toolbar, tap zones and keys, clock, metronome, Info, Practice Notes, Display (more pages on bigger screens, skipped pages), the Practice List and Annotate. Benedictus opens past its cover. The Mockup panel picks the piece, theme and entry point.',

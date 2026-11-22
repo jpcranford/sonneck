@@ -254,3 +254,16 @@ func strokeOutline(points []strokePoint, o strokeOptions) []vec {
 func getStroke(points [][3]float64, o strokeOptions) []vec {
 	return strokeOutline(strokePoints(points, o), o)
 }
+
+// traceSize is JavaScript's Number.EPSILON: the size the viewer traces a
+// stroke's points with, so strokePoints keeps every point from the first
+// (it otherwise skips them until the stroke has run one pen width).
+const traceSize = 2.220446049250313e-16
+
+// viewerStroke is how the viewer outlines a stroke (sheetViewerMarks.ts's
+// strokePath): getStrokePoints with no size of its own, then
+// getStrokeOutlinePoints with the real one.
+func viewerStroke(points [][3]float64, o strokeOptions) []vec {
+	traced := strokePoints(points, strokeOptions{size: traceSize, streamline: o.streamline, last: o.last})
+	return strokeOutline(traced, o)
+}

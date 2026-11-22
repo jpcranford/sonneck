@@ -28,6 +28,7 @@ import { EditSetlistMockup } from './routes/EditSetlistMockup'
 import { EditEntryMockup } from './routes/EditEntryMockup'
 import { SetlistsLibraryMockup } from './routes/SetlistsLibraryMockup'
 import { PracticeDashboardMockup } from './routes/PracticeDashboardMockup'
+import { PenPlaygroundMockup } from './routes/PenPlaygroundMockup'
 import { PracticeDashboardPage } from './routes/PracticeDashboardPage'
 import { SetlistProgramPageMockup } from './routes/SetlistProgramPageMockup'
 import { BooksLibrarySample } from './routes/BooksLibrarySample'
@@ -187,6 +188,7 @@ function AppRoutes() {
         <Route path="mockup/edit-entry" element={<EditEntryMockup />} />
         <Route path="mockup/setlists-library" element={<SetlistsLibraryMockup />} />
         <Route path="mockup/practice-dashboard" element={<PracticeDashboardMockup />} />
+        <Route path="mockup/pen-playground" element={<PenPlaygroundMockup />} />
         <Route path="mockup/setlist-program-page" element={<SetlistProgramPageMockup />} />
         <Route path="mockup/books-library" element={<BooksLibrarySample />} />
         <Route path="mockup/people-library" element={<PeopleLibrarySample />} />

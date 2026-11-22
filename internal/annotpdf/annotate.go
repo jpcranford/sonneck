@@ -295,25 +295,35 @@ func (a annotation) RenderDict(x *model.XRefTable, page *types.IndirectRef) (typ
 	return a.strokeDict(x, d, color)
 }
 
+// strokeScale and strokeTunings are sheetViewerMarks.ts's STROKE_SCALE and
+// STROKE_TUNING (no tapers, both ends round, as the port always draws):
+// keep them in step, so a stroke exports the shape the viewer draws.
+const strokeScale = 10
+
+type strokeTuning struct{ streamline, smoothing, thinning float64 }
+
+var strokeTunings = map[string]strokeTuning{
+	"pen":         {streamline: 0.2, smoothing: 0.25, thinning: 0.5},
+	"highlighter": {streamline: 0.5, smoothing: 0.5, thinning: 0},
+}
+
 // strokeDict fills in a pen or highlighter stroke's /Ink annotation.
 func (a annotation) strokeDict(x *model.XRefTable, d types.Dict, color [3]float64) (types.Dict, error) {
 	g, m := a.geo, a.m
 	// The viewer works out the outline in a box 1000 units wide (its
-	// MARKS_W): the library's few fixed distances are in those units, so
-	// the same box gives the same shape.
-	const marksW = 1000.0
+	// MARKS_W), 10 times larger (sheetViewerMarks.ts's STROKE_SCALE): the
+	// library's few fixed distances are in those units, so the same box
+	// gives the same shape.
+	const marksW = 1000.0 * strokeScale
 	marksH := marksW * g.height / g.width
 	points := make([][3]float64, len(m.Points))
 	for i, p := range m.Points {
 		points[i] = [3]float64{p[0] * marksW, p[1] * marksH, p[2]}
 	}
-	thinning := 0.5
-	if m.Tool == "highlighter" {
-		thinning = 0
-	}
-	outline := getStroke(points, strokeOptions{
-		size: m.Size / 100 * marksW, thinning: thinning, smoothing: 0.5, streamline: 0.5,
-		simulatePressure: !m.Pressure, last: true,
+	tuning := strokeTunings[m.Tool]
+	outline := viewerStroke(points, strokeOptions{
+		size: m.Size / 100 * marksW, thinning: tuning.thinning, smoothing: tuning.smoothing,
+		streamline: tuning.streamline, simulatePressure: !m.Pressure, last: true,
 	})
 	scale := g.width / marksW
 	display := make([]vec, len(outline))
