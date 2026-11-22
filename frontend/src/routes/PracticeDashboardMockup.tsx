@@ -397,7 +397,7 @@ function DayCircle({
     return (
       <span
         title={title}
-        className="relative flex size-7 items-center justify-center text-xs font-semibold text-accent"
+        className="relative flex aspect-square w-7 min-w-0 shrink items-center justify-center text-xs font-semibold text-accent"
       >
         <svg viewBox="0 0 28 28" className="absolute inset-0" aria-hidden="true">
           <circle
@@ -423,45 +423,10 @@ function DayCircle({
   return (
     <span
       title={title}
-      className={`flex size-7 items-center justify-center rounded-full border-[1.5px] text-xs font-semibold ${look}`}
+      className={`flex aspect-square w-7 min-w-0 shrink items-center justify-center rounded-full border-[1.5px] text-xs font-semibold ${look}`}
     >
       {letter}
     </span>
-  )
-}
-
-function TargetRing({ done, target }: { done: number; target: number }) {
-  const r = 22
-  const c = 2 * Math.PI * r
-  const filled = (c * Math.min(done, target)) / target
-  return (
-    <svg
-      viewBox="0 0 54 54"
-      className="size-[54px] shrink-0"
-      aria-label={`${done} of ${target} days`}
-    >
-      <circle cx="27" cy="27" r={r} fill="none" strokeWidth="6" className="stroke-paper-sunken" />
-      <circle
-        cx="27"
-        cy="27"
-        r={r}
-        fill="none"
-        strokeWidth="6"
-        strokeLinecap="round"
-        strokeDasharray={`${filled} ${c}`}
-        transform="rotate(-90 27 27)"
-        className="stroke-accent-fill"
-      />
-      <text
-        x="27"
-        y="27.5"
-        textAnchor="middle"
-        dominantBaseline="central"
-        className="fill-ink font-display text-[13px] font-bold"
-      >
-        {done}/{target}
-      </text>
-    </svg>
   )
 }
 
@@ -489,6 +454,7 @@ function WeekBox({
   }
   const done = days.filter((d) => d <= today && practicedDays.has(d)).length
   const lastDay = formatDateOnly(days[6], { weekday: 'long' })
+  const target = settings.target
 
   return (
     <div className="rounded-lg border border-border bg-paper-raised p-4">
@@ -592,7 +558,7 @@ function WeekBox({
 
       {settings.mode === 'daily' ? (
         <>
-          <div className="flex gap-1.5">
+          <div className="flex w-full min-w-0 items-center gap-1.5">
             {days.map((d) => (
               <DayCircle
                 key={d}
@@ -606,27 +572,43 @@ function WeekBox({
           <p className="mt-3 text-sm text-ink-soft">Practiced {done} of the last 7 days</p>
         </>
       ) : (
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex min-w-0 flex-col gap-2">
-            <div className="flex gap-1.5">
-              {days.map((d) => (
-                <DayCircle
-                  key={d}
-                  iso={d}
-                  practiced={d <= today && practicedDays.has(d)}
-                  today={d === today}
-                  future={d > today}
-                />
-              ))}
-            </div>
-            <p className="text-sm text-ink-soft">
-              {done >= settings.target
-                ? 'Target met'
-                : `${settings.target - done} to go by ${lastDay}`}
-            </p>
+        // W3 of https://claude.ai/artifact/SFrqyBdvMYGjLY6hLpR3Bg: the
+        // days, how many are done and how many to go, and a bar toward the
+        // target that stays full once it's met.
+        <>
+          <div className="flex w-full min-w-0 items-center gap-1.5">
+            {days.map((d) => (
+              <DayCircle
+                key={d}
+                iso={d}
+                practiced={d <= today && practicedDays.has(d)}
+                today={d === today}
+                future={d > today}
+              />
+            ))}
           </div>
-          <TargetRing done={done} target={settings.target} />
-        </div>
+          <div className="mt-3 flex flex-wrap items-baseline justify-between gap-x-2 text-sm">
+            <span className="whitespace-nowrap text-ink-soft tabular-nums">
+              {done} of {target} {target === 1 ? 'day' : 'days'}
+            </span>
+            <span className="whitespace-nowrap text-ink-faint">
+              {done >= target ? 'Target met' : `${target - done} to go by ${lastDay}`}
+            </span>
+          </div>
+          <div
+            role="progressbar"
+            aria-label="This week's target"
+            aria-valuemin={0}
+            aria-valuemax={target}
+            aria-valuenow={Math.min(done, target)}
+            className="mt-2 h-1.5 overflow-hidden rounded-full bg-paper-sunken"
+          >
+            <div
+              className="h-full rounded-full bg-accent-fill"
+              style={{ width: `${(Math.min(done, target) / target) * 100}%` }}
+            />
+          </div>
+        </>
       )}
     </div>
   )
