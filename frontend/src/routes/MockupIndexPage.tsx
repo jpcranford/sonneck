@@ -173,6 +173,7 @@ const SECTIONS: { title: string; mockups: Mockup[] }[] = [
           'Phone or iPad portrait: tap the bottom bar to unfold the Practice List; reorder, tick and remove inside it.',
           'Drag a piece from a shelf into the list with a mouse; it lands where the gap shows.',
           'Customize the week on one device; it shows the same on another.',
+          'On the real Practice page, a gig’s +N beside Practice adds its missing pieces; tap it on the iPad.',
         ],
       },
       {

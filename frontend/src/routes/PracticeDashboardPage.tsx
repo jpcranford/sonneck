@@ -9,14 +9,16 @@ import {
 } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, Navigate } from 'react-router-dom'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   IconArrowRight,
   IconCheck,
   IconChevronDown,
   IconChevronUp,
   IconGripVertical,
+  IconListCheck,
   IconPlayerPlayFilled,
+  IconPlaylistAdd,
   IconPlus,
   IconX,
 } from '@tabler/icons-react'
@@ -31,7 +33,7 @@ import {
   setPracticed,
   type PracticeListEntry,
 } from '../api/practiceList'
-import { listSetlists } from '../api/setlists'
+import { getSetlist, listSetlists } from '../api/setlists'
 import type { Piece, PracticeStatusItem, Setlist } from '../api/types'
 import { getUserSettings, updateUserSettings, type UserSettings } from '../api/userSettings'
 import { PieceContextMenu } from '../components/PieceContextMenu'
@@ -405,8 +407,25 @@ function WeekBox({
 // ---------------------------------------------------------------------
 // Gig card: the countdown, the setlist, and its own Practice
 
-function GigCard({ setlist, today }: { setlist: Setlist & { gigDate: string }; today: string }) {
+function GigCard({
+  setlist,
+  today,
+  pieceIds,
+  onList,
+  onAddMissing,
+}: {
+  setlist: Setlist & { gigDate: string }
+  today: string
+  /** The set's pieces, in its order, once loaded (custom entries have none). */
+  pieceIds: number[] | undefined
+  onList: Set<number>
+  onAddMissing: (ids: number[]) => void
+}) {
   const days = daysUntil(setlist.gigDate, today)
+  const missing = (pieceIds ?? []).filter((id) => !onList.has(id))
+  const addLabel = missing.length
+    ? `Add ${missing.length} missing ${missing.length === 1 ? 'piece' : 'pieces'} to the Practice List`
+    : 'All of this set’s pieces are on the Practice List'
   return (
     <div className="relative flex items-center gap-[19px] rounded-lg border border-gig-border bg-gig p-4 hover:border-accent">
       <div className="w-16 shrink-0 text-center">
@@ -437,7 +456,7 @@ function GigCard({ setlist, today }: { setlist: Setlist & { gigDate: string }; t
           {formatDateOnly(setlist.gigDate, { weekday: 'long', month: 'long', day: 'numeric' })}
           {setlist.totalDurationSeconds ? ` • ${formatMinutes(setlist.totalDurationSeconds)}` : ''}
         </div>
-        <div>
+        <div className="flex items-center gap-2">
           <Link
             to={`/setlists/${setlist.id}/play`}
             className="relative z-10 inline-flex items-center gap-1.5 rounded-md bg-accent-fill px-3 py-1.5 font-display text-sm font-medium text-white hover:bg-accent-fill/90"
@@ -445,6 +464,29 @@ function GigCard({ setlist, today }: { setlist: Setlist & { gigDate: string }; t
             <IconPlayerPlayFilled size={13} />
             Practice
           </Link>
+          {/* Small beside Practice: the set's pieces not yet on the
+              Practice List, added in the set's order. Once they're all on
+              it, a quiet check in the same place, so Practice never moves.
+              Practice's height either way, so the card never changes
+              height when it's done; only its width follows what it shows. */}
+          {pieceIds && pieceIds.length > 0 && (
+            <button
+              type="button"
+              disabled={missing.length === 0}
+              onClick={() => onAddMissing(missing)}
+              aria-label={addLabel}
+              title={addLabel}
+              className="relative z-10 inline-flex h-8 shrink-0 cursor-pointer items-center justify-center gap-1 px-2 rounded-md border border-gig-border bg-paper-raised text-sm leading-none font-medium text-accent tabular-nums hover:border-accent disabled:cursor-default disabled:text-ink-faint disabled:hover:border-gig-border"
+            >
+              {missing.length ? (
+                <>
+                  <IconPlaylistAdd size={16} />+{missing.length}
+                </>
+              ) : (
+                <IconListCheck size={16} />
+              )}
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -764,6 +806,18 @@ function PracticeDashboard() {
     }
     queryClient.invalidateQueries({ queryKey: ['practice-list'] })
   }
+  // A gig's missing pieces, all at once, in the set's order.
+  async function addPieces(ids: number[]) {
+    const fresh = ids.filter((id) => !onList.has(id))
+    if (!fresh.length) return
+    try {
+      await addToPracticeList(fresh)
+    } catch {
+      listFailed('Could not add those pieces to your Practice List.')
+      return
+    }
+    queryClient.invalidateQueries({ queryKey: ['practice-list'] })
+  }
   async function removePiece(id: number) {
     queryClient.setQueryData<PracticeListEntry[]>(listKey, (old) =>
       (old ?? []).filter((e) => e.piece.id !== id),
@@ -830,6 +884,19 @@ function PracticeDashboard() {
         .sort((a, b) => (a.gigDate < b.gigDate ? -1 : 1)),
     [setlists, today],
   )
+
+  // Each gig's pieces, for its add-missing button: the set itself (the
+  // same query as Setlist Details, so one primes the other).
+  const gigSets = useQueries({
+    queries: gigs.map((s) => ({ queryKey: ['setlist', s.id], queryFn: () => getSetlist(s.id) })),
+  })
+  const gigPieceIds = (i: number) => {
+    const entries = gigSets[i]?.data?.entries
+    if (!entries) return undefined
+    const ids: number[] = []
+    for (const e of entries) if (e.piece && !ids.includes(e.piece.id)) ids.push(e.piece.id)
+    return ids
+  }
 
   // ---- Shelves
   const [shelfDrag, setShelfDrag] = useState(false)
@@ -1021,7 +1088,7 @@ function PracticeDashboard() {
           (isWide ? (
             <Link
               to="/practice-list/play"
-              className="inline-flex items-center gap-1.5 rounded-md bg-accent-fill px-2.5 py-1 font-display text-sm font-medium text-white hover:bg-accent-fill/90"
+              className="inline-flex h-8 items-center gap-1.5 rounded-md bg-accent-fill px-2.5 font-display text-sm font-medium text-white hover:bg-accent-fill/90"
             >
               <IconPlayerPlayFilled size={11} />
               Practice
@@ -1195,8 +1262,15 @@ function PracticeDashboard() {
           <div className="@container [grid-area:gigs]">
             {/* Two across only where the column has room for them. */}
             <div className="grid grid-cols-1 gap-4 @2xl:grid-cols-2">
-              {gigs.map((s) => (
-                <GigCard key={s.id} setlist={s} today={today} />
+              {gigs.map((s, i) => (
+                <GigCard
+                  key={s.id}
+                  setlist={s}
+                  today={today}
+                  pieceIds={gigPieceIds(i)}
+                  onList={onList}
+                  onAddMissing={addPieces}
+                />
               ))}
             </div>
           </div>

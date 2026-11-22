@@ -15,7 +15,9 @@ import {
   IconChevronDown,
   IconChevronUp,
   IconGripVertical,
+  IconListCheck,
   IconPlayerPlayFilled,
+  IconPlaylistAdd,
   IconPlus,
   IconX,
 } from '@tabler/icons-react'
@@ -65,6 +67,13 @@ interface MockPiece {
   statusDaysAgo: number
   durationSeconds: number
 }
+
+// Mockup stand-in for each gig's pieces (mock setlists have no entries):
+// the first gig, the second, and so on, by their order on the page.
+const MOCK_GIG_PIECES = [
+  [3, 1, 6, 9, 12],
+  [2, 5, 8, 14, 17, 20],
+]
 
 const PIECES: MockPiece[] = [
   {
@@ -628,6 +637,9 @@ function WeekBox({
 
 function GigCard({
   setlist,
+  pieceIds,
+  onList,
+  onAddMissing,
 }: {
   setlist: {
     id: string
@@ -636,9 +648,14 @@ function GigCard({
     entryCount: number
     totalDurationSeconds?: number
   }
+  /** The set's pieces, in its order (custom entries have none). */
+  pieceIds: number[]
+  onList: Set<number>
+  onAddMissing: (ids: number[]) => void
 }) {
   const navigate = useNavigate()
   const days = daysUntil(setlist.gigDate)
+  const missing = pieceIds.filter((id) => !onList.has(id))
   return (
     <div
       role="link"
@@ -667,7 +684,7 @@ function GigCard({
           {formatDateOnly(setlist.gigDate, { weekday: 'long', month: 'long', day: 'numeric' })}
           {setlist.totalDurationSeconds ? ` • ${formatMinutes(setlist.totalDurationSeconds)}` : ''}
         </div>
-        <div>
+        <div className="flex items-center gap-2">
           <Link
             to="/mockup/sheet-viewer?from=setlist"
             onClick={(e) => e.stopPropagation()}
@@ -676,6 +693,40 @@ function GigCard({
             <IconPlayerPlayFilled size={13} />
             Practice
           </Link>
+          {/* Small beside Practice: the set's pieces not yet on the
+              Practice List, added in the set's order. Once they're all on
+              it, a quiet check in the same place, so Practice never moves.
+              Practice's height either way, so the card never changes
+              height when it's done; only its width follows what it shows. */}
+          {pieceIds.length > 0 && (
+            <button
+              type="button"
+              disabled={missing.length === 0}
+              onClick={(e) => {
+                e.stopPropagation()
+                onAddMissing(missing)
+              }}
+              aria-label={
+                missing.length
+                  ? `Add ${missing.length} missing ${missing.length === 1 ? 'piece' : 'pieces'} to the Practice List`
+                  : 'All of this set’s pieces are on the Practice List'
+              }
+              title={
+                missing.length
+                  ? `Add ${missing.length} missing ${missing.length === 1 ? 'piece' : 'pieces'} to the Practice List`
+                  : 'All of this set’s pieces are on the Practice List'
+              }
+              className="inline-flex h-8 shrink-0 cursor-pointer items-center justify-center gap-1 px-2 rounded-md border border-gig-border bg-paper-raised text-sm leading-none font-medium text-accent tabular-nums hover:border-accent disabled:cursor-default disabled:text-ink-faint disabled:hover:border-gig-border"
+            >
+              {missing.length ? (
+                <>
+                  <IconPlaylistAdd size={16} />+{missing.length}
+                </>
+              ) : (
+                <IconListCheck size={16} />
+              )}
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -1008,6 +1059,7 @@ export function PracticeDashboardMockup() {
   const navigate = useNavigate()
   const [pieces, setPieces] = useState(PIECES)
   const [list, setList] = useState<number[]>(INITIAL_LIST)
+  const onListSet = useMemo(() => new Set(list), [list])
   const [practicedToday, setPracticedToday] = useState<Set<number>>(new Set())
   const [week, setWeek] = useState<WeekSettings>({ mode: 'daily', target: 4, weekStart: 'monday' })
   // Mockup-only preview switches.
@@ -1239,7 +1291,7 @@ export function PracticeDashboardMockup() {
           (isWide ? (
             <Link
               to="/mockup/sheet-viewer?from=list"
-              className="inline-flex items-center gap-1.5 rounded-md bg-accent-fill px-2.5 py-1 font-display text-sm font-medium text-white hover:bg-accent-fill/90"
+              className="inline-flex h-8 items-center gap-1.5 rounded-md bg-accent-fill px-2.5 font-display text-sm font-medium text-white hover:bg-accent-fill/90"
             >
               <IconPlayerPlayFilled size={11} />
               Practice
@@ -1414,8 +1466,14 @@ export function PracticeDashboardMockup() {
           <div className="@container [grid-area:gigs]">
             {/* Two across only where the column has room for them. */}
             <div className="grid grid-cols-1 gap-4 @2xl:grid-cols-2">
-              {gigs.map((s) => (
-                <GigCard key={s.id} setlist={s} />
+              {gigs.map((s, i) => (
+                <GigCard
+                  key={s.id}
+                  setlist={s}
+                  pieceIds={MOCK_GIG_PIECES[i % MOCK_GIG_PIECES.length]}
+                  onList={onListSet}
+                  onAddMissing={(ids) => ids.forEach((id) => addToList(id))}
+                />
               ))}
             </div>
           </div>
