@@ -24,6 +24,7 @@ import {
 import { ContextMenu, type ContextMenuItem } from '../components/ContextMenu'
 import { PracticeStatusIcon } from '../components/PracticeStatusIcon'
 import { AppFooter } from '../components/AppFooter'
+import { Radio } from '../components/Radio'
 import { useDismiss } from '../hooks/useDismiss'
 import { useFitToScreen } from '../hooks/useFitToScreen'
 import { useMediaQuery } from '../hooks/useMediaQuery'
@@ -482,13 +483,14 @@ function WeekBox({
                   ['target', 'A weekly target', 'This week, toward a number of days.'],
                 ] as const
               ).map(([mode, label, hint]) => (
-                <label key={mode} className="flex cursor-pointer gap-2 text-sm">
-                  <input
-                    type="radio"
+                // The radio centers on the title's lowercase letters (mt-1, as
+                // in User Settings): centered on the capitals it looked high.
+                <label key={mode} className="flex cursor-pointer items-start gap-2 text-sm">
+                  <Radio
                     name="week-mode"
                     checked={settings.mode === mode}
                     onChange={() => onSettings({ ...settings, mode })}
-                    className="mt-1 accent-accent-fill"
+                    className="mt-1"
                   />
                   <span>
                     <span className="font-medium text-ink">{label}</span>
@@ -1482,7 +1484,7 @@ export function PracticeDashboardMockup() {
             fixed screen-height column ran off the bottom. */}
         <div
           ref={railRef}
-          className="flex flex-col gap-4 [grid-area:rail] lg:sticky lg:top-6 lg:h-[calc(100dvh-3rem)] lg:self-start"
+          className="relative z-10 flex flex-col gap-4 [grid-area:rail] lg:sticky lg:top-6 lg:h-[calc(100dvh-3rem)] lg:self-start"
         >
           <WeekBox practicedDays={practicedDays} settings={week} onSettings={setWeek} />
           {isWide && practiceList}
