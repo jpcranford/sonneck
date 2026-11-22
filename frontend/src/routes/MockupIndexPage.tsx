@@ -194,6 +194,7 @@ const SECTIONS: { title: string; mockups: Mockup[] }[] = [
           "Practice Notes' banner switch shows or hides the banner behind the open panel.",
           'Skipped pages in the real viewer on the iPad: opens on the music; Manage pages and Show skipped pages.',
           'The zoomed Annotate bar in the real viewer on the iPad: steady while pinching and panning, then drawing.',
+          'Annotate in the real viewer on the iPad: color and size beside the tool (one button in portrait); pinch in and they sit by the zoomed bar.',
         ],
       },
     ],
