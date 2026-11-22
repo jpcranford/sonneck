@@ -30,6 +30,7 @@ import {
   getPracticeList,
   removeFromPracticeList,
   reorderPracticeList,
+  refreshAfterPracticed,
   setPracticed,
   type PracticeListEntry,
 } from '../api/practiceList'
@@ -841,7 +842,7 @@ function PracticeDashboard() {
       (old ?? []).map((e) => (e.piece.id === id ? { ...e, practiced } : e)),
     )
     try {
-      await setPracticed(id, today, practiced)
+      refreshAfterPracticed(queryClient, id, await setPracticed(id, today, practiced))
     } catch {
       listFailed('Could not save that.')
       return

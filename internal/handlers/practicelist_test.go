@@ -155,3 +155,86 @@ func TestPracticedDays(t *testing.T) {
 		t.Errorf("missing practiced: status %d, want 400", rec.Code)
 	}
 }
+
+// Three days practiced within the last four weeks, not all in one week (the
+// marked day, and at least one 7 to 27 days before it), move a piece with no
+// status, or Want to Learn, to Learning — and say so; every other status
+// stays, as do two days, three days in one week, and days spread over more
+// than four weeks.
+func TestPracticedMovesToLearning(t *testing.T) {
+	h := newTestServer(t)
+	none := uploadTestPiece(t, h)
+	wanted := uploadDistinctTestPiece(t, h, 3)
+	stalled := uploadDistinctTestPiece(t, h, 4)
+	learned := uploadDistinctTestPiece(t, h, 5)
+	other := uploadDistinctTestPiece(t, h, 6)
+
+	setStatus := func(id int64, status string) {
+		t.Helper()
+		if rec := doJSON(t, h, http.MethodPatch, apiPiecesURL(id)+"/practice-status", map[string]any{"practiceStatus": status}); rec.Code != http.StatusOK {
+			t.Fatalf("set status: %d %s", rec.Code, rec.Body.String())
+		}
+	}
+	mark := func(id int64, day string, practiced bool) bool {
+		t.Helper()
+		rec := doJSON(t, h, http.MethodPut, apiPiecesURL(id)+"/practiced/"+day, map[string]bool{"practiced": practiced})
+		if rec.Code != http.StatusOK {
+			t.Fatalf("mark %s: %d %s", day, rec.Code, rec.Body.String())
+		}
+		var r struct {
+			MovedToLearning bool `json:"movedToLearning"`
+		}
+		decodeData(t, rec, &r)
+		return r.MovedToLearning
+	}
+	status := func(id int64) string {
+		t.Helper()
+		var p struct {
+			PracticeStatus *string `json:"practiceStatus"`
+		}
+		decodeData(t, doJSON(t, h, http.MethodGet, apiPiecesURL(id), nil), &p)
+		if p.PracticeStatus == nil {
+			return ""
+		}
+		return *p.PracticeStatus
+	}
+
+	setStatus(wanted, "Want to Learn")
+	setStatus(stalled, "Stalled")
+	setStatus(learned, "Learned")
+
+	// Three days in one week don't count; a day the next week makes two
+	// weeks, but only once there are three days.
+	for _, id := range []int64{none, wanted, stalled, learned} {
+		for _, day := range []string{"2026-11-02", "2026-11-04", "2026-11-08"} {
+			if mark(id, day, true) {
+				t.Errorf("piece %d: moved to Learning within one week (%s)", id, day)
+			}
+		}
+	}
+	for id, want := range map[int64]bool{none: true, wanted: true, stalled: false, learned: false} {
+		if got := mark(id, "2026-11-10", true); got != want {
+			t.Errorf("piece %d: movedToLearning = %v, want %v", id, got, want)
+		}
+	}
+	for id, want := range map[int64]string{none: "Learning", wanted: "Learning", stalled: "Stalled", learned: "Learned"} {
+		if got := status(id); got != want {
+			t.Errorf("piece %d: status %q, want %q", id, got, want)
+		}
+	}
+
+	// Two days in different weeks aren't enough; a third makes it — but not
+	// one over four weeks back, or a day only unmarked.
+	mark(other, "2026-10-01", true)
+	if mark(other, "2026-10-12", true) || status(other) != "" {
+		t.Errorf("two days moved it to Learning (status %q)", status(other))
+	}
+	mark(other, "2026-10-20", false)
+	if mark(other, "2026-11-01", true) || status(other) != "" {
+		// 10-01 is over four weeks before; 10-20 was unmarked.
+		t.Errorf("10-12 and 11-01 alone moved it to Learning (status %q)", status(other))
+	}
+	if !mark(other, "2026-11-02", true) || status(other) != "Learning" {
+		t.Errorf("10-12, 11-01, 11-02: status %q, want Learning", status(other))
+	}
+}

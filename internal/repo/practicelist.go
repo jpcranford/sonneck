@@ -120,6 +120,62 @@ func SetPracticed(ctx context.Context, q Queryer, userID, pieceID int64, day str
 	return err
 }
 
+// LearningAfterDays is how many days practiced, within the last four
+// weeks and not all in one week, move a piece the user hadn't started (no
+// status, or Want to Learn) to Learning.
+const LearningAfterDays = 3
+
+// PromoteToLearning moves userID's pieceID to their Learning status when
+// it has been practiced on at least LearningAfterDays days within the last
+// four weeks (the day just marked and the 27 before it), at least one of
+// them in an earlier week than the marked day (7 to 27 days before it).
+// Weeks roll back from the marked day rather than following the calendar,
+// so a Sunday and the next Monday don't count as two weeks, and no
+// week-start setting is needed. Only a piece with no status, or Want to
+// Learn, moves (statuses are matched by icon key, which survives
+// renaming); any other status is left alone, as is a user without a
+// Learning status. It's checked when a day is marked practiced, so it
+// reports whether it changed anything.
+func PromoteToLearning(ctx context.Context, q Queryer, userID, pieceID int64, day string) (bool, error) {
+	var days, earlierWeeks int
+	if err := q.QueryRowContext(ctx, `
+		SELECT COUNT(*), COALESCE(SUM(day <= date(?, '-7 days')), 0) FROM piece_practice_days
+		WHERE user_id = ? AND piece_id = ? AND practiced = 1
+			AND day BETWEEN date(?, '-27 days') AND ?`,
+		day, userID, pieceID, day, day,
+	).Scan(&days, &earlierWeeks); err != nil {
+		return false, err
+	}
+	if days < LearningAfterDays || earlierWeeks == 0 {
+		return false, nil
+	}
+	var current sql.NullString
+	err := q.QueryRowContext(ctx, `
+		SELECT ps.icon_key FROM piece_practice_status pps
+		JOIN practice_statuses ps ON ps.id = pps.status_id
+		WHERE pps.user_id = ? AND pps.piece_id = ?`, userID, pieceID).Scan(&current)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return false, err
+	}
+	if err == nil && current.String != "want_to_learn" {
+		return false, nil
+	}
+	var learning int64
+	err = q.QueryRowContext(ctx,
+		`SELECT id FROM practice_statuses WHERE owner_user_id = ? AND icon_key = 'learning'`,
+		userID).Scan(&learning)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	if err := SetUserPracticeStatus(ctx, q, userID, pieceID, &learning); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 // LastPracticed returns the latest day userID practiced pieceID, or nil.
 func LastPracticed(ctx context.Context, q Queryer, userID, pieceID int64) (*string, error) {
 	var day sql.NullString

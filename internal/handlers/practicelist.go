@@ -222,15 +222,27 @@ func (s *Server) handleSetPracticed(w http.ResponseWriter, r *http.Request) {
 		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "practiced (true or false) is required")
 		return
 	}
+	// Marking a day practiced may move the piece to Learning
+	// (repo.PromoteToLearning); the response says so, so the app can show
+	// the piece's new status.
+	learning := false
 	err := s.withTx(r.Context(), func(tx *sql.Tx) error {
 		if _, err := repo.GetPieceByID(r.Context(), tx, id); err != nil {
 			return err
 		}
-		return repo.SetPracticed(r.Context(), tx, user.ID, id, day, *req.Practiced)
+		if err := repo.SetPracticed(r.Context(), tx, user.ID, id, day, *req.Practiced); err != nil {
+			return err
+		}
+		if !*req.Practiced {
+			return nil
+		}
+		var err error
+		learning, err = repo.PromoteToLearning(r.Context(), tx, user.ID, id, day)
+		return err
 	})
 	if err != nil {
 		s.writeError(w, err)
 		return
 	}
-	api.WriteData(w, http.StatusOK, map[string]bool{"practiced": *req.Practiced})
+	api.WriteData(w, http.StatusOK, map[string]bool{"practiced": *req.Practiced, "movedToLearning": learning})
 }

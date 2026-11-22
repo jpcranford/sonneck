@@ -72,6 +72,7 @@ import {
   getPracticeList,
   removeFromPracticeList,
   reorderPracticeList,
+  refreshAfterPracticed,
   setPracticed,
   type PracticedState,
   type PracticeListEntry,
@@ -1478,7 +1479,10 @@ function ListSession({ startId, exitTo }: { startId: number | null; exitTo: stri
         lastPracticed: practiced ? day : (old?.lastPracticed ?? null),
       }))
       setPracticed(pieceId, day, practiced)
-        .then(() => queryClient.invalidateQueries({ queryKey: ['practiced', pieceId] }))
+        .then((result) => {
+          queryClient.invalidateQueries({ queryKey: ['practiced', pieceId] })
+          refreshAfterPracticed(queryClient, pieceId, result)
+        })
         .catch(() => failed('Couldn’t save the mark'))
     },
     onRemove: (pieceId) => {
@@ -4274,10 +4278,12 @@ function SheetViewer({
       queryClient.setQueryData<PracticeListEntry[]>(['practice-list', day], (old) =>
         old?.map((e) => (e.piece.id === pieceId ? { ...e, practiced: true } : e)),
       )
-      setPracticed(pieceId, day, true).catch(() => {
-        state.marked = false
-        queryClient.invalidateQueries({ queryKey: ['practiced', pieceId] })
-      })
+      setPracticed(pieceId, day, true)
+        .then((result) => refreshAfterPracticed(queryClient, pieceId, result))
+        .catch(() => {
+          state.marked = false
+          queryClient.invalidateQueries({ queryKey: ['practiced', pieceId] })
+        })
     }, 1000)
     return () => {
       window.clearInterval(t)

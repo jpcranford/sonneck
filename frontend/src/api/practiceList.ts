@@ -1,3 +1,4 @@
+import type { QueryClient } from '@tanstack/react-query'
 import { apiDelete, apiGet, apiPost, apiPut } from './client'
 import type { Piece, SetlistPieceSummary } from './types'
 
@@ -42,9 +43,41 @@ export function getPracticed(pieceId: number, day: string): Promise<PracticedSta
   return apiGet<PracticedState>(`/api/pieces/${pieceId}/practiced?day=${day}`)
 }
 
+export interface PracticedResult {
+  practiced: boolean
+  /** The piece has now been practiced on three days within the last four
+   * weeks, not all in one week (at least one 7 to 27 days before this
+   * day), and it had no status or was Want to Learn, so it's now Learning
+   * (internal/repo's PromoteToLearning). */
+  movedToLearning: boolean
+}
+
 /** Marks a piece practiced on `day`, or (false) unmarks it for that day. */
-export function setPracticed(pieceId: number, day: string, practiced: boolean): Promise<unknown> {
-  return apiPut(`/api/pieces/${pieceId}/practiced/${day}`, { practiced })
+export function setPracticed(
+  pieceId: number,
+  day: string,
+  practiced: boolean,
+): Promise<PracticedResult> {
+  return apiPut<PracticedResult>(`/api/pieces/${pieceId}/practiced/${day}`, { practiced })
+}
+
+/** After a mark moved a piece to Learning: refreshes everything showing its
+ * status (the piece, the libraries and dashboard, the filter counts, the
+ * Practice List, setlists). */
+export function refreshAfterPracticed(
+  queryClient: QueryClient,
+  pieceId: number,
+  result: PracticedResult,
+) {
+  if (!result.movedToLearning) return
+  for (const queryKey of [
+    ['piece', pieceId],
+    ['pieces'],
+    ['pieceFacets'],
+    ['practice-list'],
+    ['setlist'],
+  ])
+    queryClient.invalidateQueries({ queryKey })
 }
 
 /** GET /api/practice/dashboard (internal/handlers/practicedashboard.go):
