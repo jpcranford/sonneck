@@ -31,6 +31,7 @@ import { daysUntil, formatDateOnly, todayDateOnly } from '../lib/dateOnly'
 import { ALL_MOCK_SETLISTS, daysFromNow, getUpcomingSetlists } from '../lib/setlistsMockupFixture'
 import { confirmAction } from '../lib/dialogs'
 import { useMockupTitle } from '../lib/useMockupTitle'
+import { estimateTotal } from '../lib/setlistEstimate'
 
 // The Practice Dashboard: where the sidebar's "Practice" lands (real:
 // routes/PracticeDashboardPage.tsx). Layout A3 of https://claude.ai/artifact/AadkReodCUoqEqNqS8Acjn
@@ -1190,7 +1191,11 @@ export function PracticeDashboardMockup() {
     })
   }
 
-  const totalSeconds = list.reduce((s, id) => s + (byId.get(id)?.durationSeconds ?? 0), 0)
+  // A piece with no duration counts as the typical length setlists assume
+  // (2:30, lib/setlistEstimate.ts), so the list's "about" total isn't short.
+  const totalSeconds = estimateTotal(
+    list.map((id) => ({ isMusic: true, durationSeconds: byId.get(id)?.durationSeconds })),
+  ).seconds
   const practicedCount = list.filter((id) => practicedToday.has(id)).length
   const listSummary =
     list.length > 0

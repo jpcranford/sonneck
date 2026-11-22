@@ -48,6 +48,7 @@ import { daysUntil, formatDateOnly } from '../lib/dateOnly'
 import { confirmAction, showAlert } from '../lib/dialogs'
 import { personCreditPart } from '../lib/joinNames'
 import { CONTENT_MAX_W } from '../lib/layout'
+import { estimateTotal } from '../lib/setlistEstimate'
 import { usePageTitle } from '../lib/usePageTitle'
 
 // The Practice Dashboard (/practice), the sidebar's Practice. Ported from
@@ -967,7 +968,11 @@ function PracticeDashboard() {
     setReorder(null)
   }
 
-  const totalSeconds = list.reduce((s, e) => s + (e.piece.duration ?? 0), 0)
+  // A piece with no duration counts as the typical length setlists assume
+  // (2:30, lib/setlistEstimate.ts), so the list's "about" total isn't short.
+  const totalSeconds = estimateTotal(
+    list.map((e) => ({ isMusic: true, durationSeconds: e.piece.duration })),
+  ).seconds
   const practicedCount = list.filter((e) => e.practiced).length
   const listSummary =
     list.length > 0
