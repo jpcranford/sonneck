@@ -2,7 +2,7 @@ import { useSyncExternalStore } from 'react'
 import { todayDateOnly } from '../lib/dateOnly'
 
 // Today's date ("YYYY-MM-DD"), and a redraw for whatever shows something
-// relative to it ("in 2 wks", "this week") when the date changes. Labels
+// relative to it ("in 2 wks", "tomorrow") when the date changes. Labels
 // like those were worked out at draw time only, so a page left open
 // across midnight — data unchanged, so nothing else redrew it — kept
 // yesterday's wording. Checked when the app comes back into view and once

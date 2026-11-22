@@ -13,8 +13,14 @@ export function formatRelativeWeeks(
 ): string {
   const dayDiff = daysUntil(dateISO, today)
 
-  if (dayDiff >= 0 && dayDiff < 7) return dayDiff === 0 ? 'today' : 'this week'
-  if (dayDiff < 0 && dayDiff > -7) return 'this week'
+  // Within a week it counts days: "in 7 days" down to "in 2 days", then
+  // "tomorrow", "today", "yesterday", "2 days ago" to "6 days ago". From 7
+  // days back it's weeks again ("1 wk ago").
+  if (dayDiff === 0) return 'today'
+  if (dayDiff === 1) return 'tomorrow'
+  if (dayDiff === -1) return 'yesterday'
+  if (dayDiff > 1 && dayDiff <= 7) return `in ${dayDiff} days`
+  if (dayDiff < -1 && dayDiff > -7) return `${-dayDiff} days ago`
 
   const unit = abbreviated ? 'wk' : 'week'
   if (dayDiff > 0) {
