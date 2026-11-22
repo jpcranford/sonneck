@@ -8,7 +8,20 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"time"
 )
+
+// TimestampLayout is the one format timestamps are stored in: SQLite's own
+// ("YYYY-MM-DD HH:MM:SS", what CURRENT_TIMESTAMP writes), always UTC, so
+// they compare and sort correctly as text, against each other and against
+// CURRENT_TIMESTAMP (migration 00042). A time.Time passed straight to the
+// driver would be written as Go's own text instead ("… +0000 UTC", in
+// whatever zone it carries), so a Go time goes through Timestamp first.
+const TimestampLayout = "2006-01-02 15:04:05"
+
+// Timestamp is t in UTC, as TimestampLayout text, for writing to a
+// timestamp column.
+func Timestamp(t time.Time) string { return t.UTC().Format(TimestampLayout) }
 
 // ErrNotFound is returned by Get-style functions when no row matches.
 var ErrNotFound = errors.New("not found")

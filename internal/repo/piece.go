@@ -126,7 +126,7 @@ func UpdatePiece(ctx context.Context, q Queryer, p *models.Piece) error {
 		p.Duration, p.BPM, p.MeasureCount, p.BeatsPerMeasure,
 		p.FilePath, p.FileHash, p.PageCount, p.ThumbnailPage, p.CopyrightYear,
 		p.CopyrightHolder, p.CopyrightSlug, p.CopyrightStatus, p.CopyrightRenewed,
-		p.SkipStart, p.SkipEnd, p.UpdatedAt,
+		p.SkipStart, p.SkipEnd, Timestamp(p.UpdatedAt),
 		p.ID,
 	)
 	return err

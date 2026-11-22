@@ -386,7 +386,7 @@ func ApplyAuthChangeDowngrade(ctx context.Context, q Queryer, keepUserID int64) 
 // a pure persistence step, no token generation here.
 func CreateSession(ctx context.Context, q Queryer, token string, userID int64, expiresAt time.Time) error {
 	_, err := q.ExecContext(ctx,
-		`INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)`, token, userID, expiresAt,
+		`INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)`, token, userID, Timestamp(expiresAt),
 	)
 	return err
 }

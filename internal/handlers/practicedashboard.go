@@ -96,9 +96,7 @@ func (s *Server) handlePracticeDashboard(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Favorites list the most recently edited piece first (pieces.updated_at:
-	// favoriting isn't dated, so the piece's own edits stand in). Compared
-	// to the second: rows written over time carry different fraction and
-	// zone suffixes, but all start "YYYY-MM-DD HH:MM:SS".
+	// favoriting isn't dated, so the piece's own edits stand in).
 	// Want to Learn and Learned list the latest status change first
 	// (updated_at, migration 00041; a status set before it, with none, goes
 	// last), then by title. Currently Practicing lists the latest practiced
@@ -123,7 +121,7 @@ func (s *Server) handlePracticeDashboard(w http.ResponseWriter, r *http.Request)
 		ids, err = s.pieceIDs(ctx, `
 			SELECT p.id FROM pieces p
 			JOIN piece_favorites f ON f.piece_id = p.id AND f.user_id = ?
-			ORDER BY substr(p.updated_at, 1, 19) DESC, `+byTitle+`, p.id DESC LIMIT ?`, user.ID, dashboardShelfCap)
+			ORDER BY p.updated_at DESC, `+byTitle+`, p.id DESC LIMIT ?`, user.ID, dashboardShelfCap)
 		if err == nil {
 			resp.Favorites, err = s.pieceResponses(ctx, ids, user.ID)
 		}

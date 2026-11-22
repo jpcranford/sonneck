@@ -100,7 +100,7 @@ func SetUserPracticeStatus(ctx context.Context, q Queryer, userID, pieceID int64
 	if statusID != nil {
 		_, err := q.ExecContext(ctx, `
 			INSERT INTO piece_practice_status (user_id, piece_id, status_id, updated_at)
-			VALUES (?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+			VALUES (?, ?, ?, strftime('%Y-%m-%d %H:%M:%f', 'now'))
 			ON CONFLICT (user_id, piece_id) DO UPDATE SET
 				updated_at = CASE WHEN piece_practice_status.status_id = excluded.status_id
 					THEN piece_practice_status.updated_at ELSE excluded.updated_at END,
