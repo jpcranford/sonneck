@@ -11,7 +11,7 @@ import { isMultilineField } from '../lib/multilineField'
 import { MarkdownHint } from './MarkdownHint'
 
 // A piece entry's Edit Entry modal — its `role` (the small-caps label above
-// it in the Program list, e.g. "Prelude") and its description (shown under
+// it in the Program list, e.g. "Opener") and its description (shown under
 // it on Setlist Details). Reached from a piece entry's right-click "Edit
 // Entry" item on SetlistPage.tsx. Inside EditSetlistModal's Program tab the
 // same edit is an inline card instead (never a second modal stacked on that
@@ -163,7 +163,7 @@ export function EditRoleModal({ open, onClose, setlistId, entry }: EditRoleModal
               autoFocus
               value={role}
               onChange={(event) => setRole(event.target.value)}
-              placeholder="Prelude"
+              placeholder="Opener"
               className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
             />
           </div>
@@ -176,7 +176,7 @@ export function EditRoleModal({ open, onClose, setlistId, entry }: EditRoleModal
                 id="f-piece-entry-description"
                 value={description}
                 onChange={(event) => setDescription(event.target.value)}
-                placeholder="Second verse a cappella; organ back in for the last."
+                placeholder="Take the repeat; hold the last chord a little longer."
                 rows={3}
                 className="w-full resize-none px-3 pt-2 pb-1 text-ink bg-transparent outline-none focus-visible:outline-none"
               />

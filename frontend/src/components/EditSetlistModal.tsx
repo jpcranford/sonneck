@@ -802,7 +802,7 @@ export function EditSetlistModal({
               type="text"
               value={customRole}
               onChange={(event) => setCustomRole(event.target.value)}
-              placeholder="Postlude"
+              placeholder="Encore"
               className="mt-1 mb-2 w-full rounded-md border border-border bg-paper-raised px-3 py-1.5 text-sm text-ink"
             />
           </>
@@ -815,7 +815,7 @@ export function EditSetlistModal({
             id="f-custom-description"
             value={customDescription}
             onChange={(event) => setCustomDescription(event.target.value)}
-            placeholder="Reminder: mention the bake sale sign-up sheet before the offering."
+            placeholder="Reminder: thank everyone for coming before the last piece."
             rows={2}
             className="w-full resize-none px-3 pt-1.5 pb-1 text-sm text-ink bg-transparent outline-none focus-visible:outline-none"
           />
@@ -873,7 +873,7 @@ export function EditSetlistModal({
           autoFocus
           value={roleDraft}
           onChange={(event) => setRoleDraft(event.target.value)}
-          placeholder="Prelude"
+          placeholder="Opener"
           className="mt-1 mb-2 w-full rounded-md border border-border bg-paper-raised px-3 py-1.5 text-sm text-ink"
         />
         <label htmlFor="f-entry-description-inline" className="text-sm text-ink-soft">
@@ -884,7 +884,7 @@ export function EditSetlistModal({
             id="f-entry-description-inline"
             value={descriptionDraft}
             onChange={(event) => setDescriptionDraft(event.target.value)}
-            placeholder="Second verse a cappella; organ back in for the last."
+            placeholder="Take the repeat; hold the last chord a little longer."
             rows={2}
             className="w-full resize-none px-3 pt-1.5 pb-1 text-sm text-ink bg-transparent outline-none focus-visible:outline-none"
           />

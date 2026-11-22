@@ -235,7 +235,7 @@ export function EditEntryModal({
               type="text"
               value={role}
               onChange={(event) => setRole(event.target.value)}
-              placeholder="Postlude"
+              placeholder="Encore"
               className="w-full rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
             />
           </div>
@@ -249,7 +249,7 @@ export function EditEntryModal({
               id="f-entry-description"
               value={description}
               onChange={(event) => setDescription(event.target.value)}
-              placeholder="Reminder: mention the bake sale sign-up sheet before the offering."
+              placeholder="Reminder: thank everyone for coming before the last piece."
               rows={3}
               className="w-full resize-none px-3 pt-2 pb-1 text-ink bg-transparent outline-none focus-visible:outline-none"
             />
