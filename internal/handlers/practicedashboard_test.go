@@ -3,6 +3,7 @@ package handlers_test
 import (
 	"net/http"
 	"testing"
+	"time"
 )
 
 type dashPiece struct {
@@ -17,6 +18,7 @@ type dashboard struct {
 		LastPracticed string    `json:"lastPracticed"`
 	} `json:"recentlyPlayed"`
 	RecentlyAdded []dashPiece `json:"recentlyAdded"`
+	Favorites     []dashPiece `json:"favorites"`
 	WantToLearn   []dashPiece `json:"wantToLearn"`
 	Learned       []dashPiece `json:"learned"`
 	PracticeDays  []string    `json:"practiceDays"`
@@ -72,8 +74,9 @@ func TestPracticeDashboard(t *testing.T) {
 		}
 	}
 
-	// a, then b set to Learning: b is the more recent change. Setting a to
-	// Learning again changes nothing, so a stays behind b.
+	// a and b are both on Currently Practicing (b the later status change);
+	// a was practiced and b never, so a comes first (latest practiced
+	// first, never practiced last).
 	setStatus(a, "Learning")
 	setStatus(b, "Stalled")
 	setStatus(a, "Learning")
@@ -93,8 +96,8 @@ func TestPracticeDashboard(t *testing.T) {
 	var got dashboard
 	decodeData(t, rec, &got)
 
-	if ids := dashIDs(got.Practicing); !equalIDs(ids, []int64{b, a}) {
-		t.Errorf("practicing = %v, want [b a] = %v", ids, []int64{b, a})
+	if ids := dashIDs(got.Practicing); !equalIDs(ids, []int64{a, b}) {
+		t.Errorf("practicing = %v, want [a b] = %v", ids, []int64{a, b})
 	}
 	var played []int64
 	for _, p := range got.RecentlyPlayed {
@@ -163,5 +166,84 @@ func TestUserSettings_PracticeWeek(t *testing.T) {
 		if rec := doJSON(t, h, http.MethodPatch, "/api/user-settings", bad); rec.Code != http.StatusBadRequest {
 			t.Errorf("patch %v: status %d, want 400", bad, rec.Code)
 		}
+	}
+}
+
+// Want to Learn and Learned list the latest status change first; setting the
+// same status again doesn't move a piece. Currently Practicing lists the
+// latest practiced first.
+func TestPracticeDashboard_StatusShelvesRecentFirst(t *testing.T) {
+	h := newTestServer(t)
+	x := uploadTestPiece(t, h)
+	y := uploadDistinctTestPiece(t, h, 3)
+	z := uploadDistinctTestPiece(t, h, 4)
+
+	setStatus := func(id int64, status string) {
+		t.Helper()
+		rec := doJSON(t, h, http.MethodPatch, apiPiecesURL(id)+"/practice-status", map[string]any{"practiceStatus": status})
+		if rec.Code != http.StatusOK {
+			t.Fatalf("set status: %d %s", rec.Code, rec.Body.String())
+		}
+		time.Sleep(5 * time.Millisecond) // updated_at is to the millisecond
+	}
+	get := func() dashboard {
+		t.Helper()
+		var d dashboard
+		decodeData(t, doJSON(t, h, http.MethodGet, "/api/practice/dashboard?day=2026-11-22", nil), &d)
+		return d
+	}
+
+	setStatus(x, "Learned")
+	setStatus(y, "Learned")
+	setStatus(z, "Learned")
+	setStatus(x, "Learned") // the same status again: x stays last
+	if ids := dashIDs(get().Learned); !equalIDs(ids, []int64{z, y, x}) {
+		t.Errorf("learned = %v, want [z y x] (latest change first)", ids)
+	}
+	setStatus(y, "Want to Learn")
+	setStatus(x, "Want to Learn")
+	d := get()
+	if ids := dashIDs(d.WantToLearn); !equalIDs(ids, []int64{x, y}) {
+		t.Errorf("want to learn = %v, want [x y]", ids)
+	}
+	if ids := dashIDs(d.Learned); !equalIDs(ids, []int64{z}) {
+		t.Errorf("learned = %v, want [z]", ids)
+	}
+
+	// Currently Practicing goes by the latest day practiced instead: y was
+	// set to Learning last but practiced longest ago.
+	for _, id := range []int64{x, z, y} {
+		setStatus(id, "Learning")
+	}
+	for id, day := range map[int64]string{x: "2026-11-20", y: "2026-11-01", z: "2026-11-21"} {
+		doJSON(t, h, http.MethodPut, apiPiecesURL(id)+"/practiced/"+day, map[string]bool{"practiced": true})
+	}
+	if ids := dashIDs(get().Practicing); !equalIDs(ids, []int64{z, x, y}) {
+		t.Errorf("practicing = %v, want [z x y] (latest practiced first)", ids)
+	}
+}
+
+// Favorites list the most recently edited piece first, compared to the
+// second whatever suffix a row's updated_at carries.
+func TestPracticeDashboard_FavoritesRecentlyEditedFirst(t *testing.T) {
+	h, conn := newTestServerWithDB(t)
+	older := createTestPiece(t, h, map[string]any{"title": "Alpha", "favorite": true})
+	newest := createTestPiece(t, h, map[string]any{"title": "Beta", "favorite": true})
+	middle := createTestPiece(t, h, map[string]any{"title": "Gamma", "favorite": true})
+	createTestPiece(t, h, map[string]any{"title": "Not a favorite", "favorite": false})
+
+	for id, at := range map[int64]string{
+		older.ID:  "2026-11-01 10:00:00",
+		newest.ID: "2026-11-20 08:00:00.123 +0000 UTC",
+		middle.ID: "2026-11-10 09:00:00.5 +0000 UTC",
+	} {
+		if _, err := conn.Exec(`UPDATE pieces SET updated_at = ? WHERE id = ?`, at, id); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var d dashboard
+	decodeData(t, doJSON(t, h, http.MethodGet, "/api/practice/dashboard?day=2026-11-22", nil), &d)
+	if ids := dashIDs(d.Favorites); !equalIDs(ids, []int64{newest.ID, middle.ID, older.ID}) {
+		t.Errorf("favorites = %v, want [Beta Gamma Alpha] = %v", ids, []int64{newest.ID, middle.ID, older.ID})
 	}
 }

@@ -80,17 +80,31 @@ func (s *Server) handlePracticeDashboard(w http.ResponseWriter, r *http.Request)
 	var err error
 
 	// The sidebar views' own rule: by sidebar_slot, so a renamed status
-	// still lands on its shelf.
+	// still lands on its shelf. lp.last_day is the piece's latest day
+	// practiced (NULL if never), for Currently Practicing's order.
 	slotIDs := func(slot, order string, limit int) ([]int64, error) {
 		return s.pieceIDs(ctx, `
 			SELECT p.id FROM pieces p
 			JOIN piece_practice_status pps ON pps.piece_id = p.id AND pps.user_id = ?
 			JOIN practice_statuses ps ON ps.id = pps.status_id
+			LEFT JOIN (
+				SELECT piece_id, MAX(day) AS last_day FROM piece_practice_days
+				WHERE user_id = ? AND practiced = 1 GROUP BY piece_id
+			) lp ON lp.piece_id = p.id
 			WHERE ps.sidebar_slot = ?
-			ORDER BY `+order+`, p.id DESC LIMIT ?`, user.ID, slot, limit)
+			ORDER BY `+order+`, p.id DESC LIMIT ?`, user.ID, user.ID, slot, limit)
 	}
 
-	practicingIDs, err := slotIDs("practicing", "pps.updated_at IS NULL, pps.updated_at DESC, "+byTitle, dashboardShelfCap)
+	// Favorites list the most recently edited piece first (pieces.updated_at:
+	// favoriting isn't dated, so the piece's own edits stand in). Compared
+	// to the second: rows written over time carry different fraction and
+	// zone suffixes, but all start "YYYY-MM-DD HH:MM:SS".
+	// Want to Learn and Learned list the latest status change first
+	// (updated_at, migration 00041; a status set before it, with none, goes
+	// last), then by title. Currently Practicing lists the latest practiced
+	// first (never practiced last), then the same.
+	recentFirst := "pps.updated_at IS NULL, pps.updated_at DESC, " + byTitle
+	practicingIDs, err := slotIDs("practicing", "lp.last_day IS NULL, lp.last_day DESC, "+recentFirst, dashboardShelfCap)
 	if err == nil {
 		resp.Practicing, err = s.pieceResponses(ctx, practicingIDs, user.ID)
 	}
@@ -109,21 +123,21 @@ func (s *Server) handlePracticeDashboard(w http.ResponseWriter, r *http.Request)
 		ids, err = s.pieceIDs(ctx, `
 			SELECT p.id FROM pieces p
 			JOIN piece_favorites f ON f.piece_id = p.id AND f.user_id = ?
-			ORDER BY `+byTitle+`, p.id DESC LIMIT ?`, user.ID, dashboardShelfCap)
+			ORDER BY substr(p.updated_at, 1, 19) DESC, `+byTitle+`, p.id DESC LIMIT ?`, user.ID, dashboardShelfCap)
 		if err == nil {
 			resp.Favorites, err = s.pieceResponses(ctx, ids, user.ID)
 		}
 	}
 	if err == nil {
 		var ids []int64
-		ids, err = slotIDs("want_to_learn", byTitle, dashboardShelfCap)
+		ids, err = slotIDs("want_to_learn", recentFirst, dashboardShelfCap)
 		if err == nil {
 			resp.WantToLearn, err = s.pieceResponses(ctx, ids, user.ID)
 		}
 	}
 	if err == nil {
 		var ids []int64
-		ids, err = slotIDs("learned", byTitle, dashboardShelfCap)
+		ids, err = slotIDs("learned", recentFirst, dashboardShelfCap)
 		if err == nil {
 			resp.Learned, err = s.pieceResponses(ctx, ids, user.ID)
 		}

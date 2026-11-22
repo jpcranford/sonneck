@@ -1089,7 +1089,13 @@ export function PracticeDashboardMockup() {
   const shelves: ShelfDef[] = useMemo(() => {
     const practicing = pieces
       .filter((p) => p.status && PRACTICING.includes(p.status))
-      .sort((a, b) => a.statusDaysAgo - b.statusDaysAgo)
+      // Latest practiced first, never practiced last, then the latest
+      // status change (the real page's order).
+      .sort(
+        (a, b) =>
+          (a.playedDaysAgo ?? Infinity) - (b.playedDaysAgo ?? Infinity) ||
+          a.statusDaysAgo - b.statusDaysAgo,
+      )
     const practicingIds = new Set(practicing.map((p) => p.id))
     const byTitle = (a: MockPiece, b: MockPiece) => a.title.localeCompare(b.title)
     return [
@@ -1122,7 +1128,11 @@ export function PracticeDashboardMockup() {
       {
         key: 'favorites',
         title: 'Favorites',
-        pieces: pieces.filter((p) => p.favorite).sort(byTitle),
+        // The real shelf: the most recently edited first. Mock pieces have no
+        // edit dates, so the day each was added stands in.
+        pieces: pieces
+          .filter((p) => p.favorite)
+          .sort((a, b) => a.addedDaysAgo - b.addedDaysAgo || byTitle(a, b)),
         detail: (p) => p.composer,
         showStatus: () => true,
         seeAll: '/favorites',
@@ -1131,7 +1141,9 @@ export function PracticeDashboardMockup() {
       {
         key: 'want',
         title: 'Want to Learn',
-        pieces: pieces.filter((p) => p.status === 'Want to Learn').sort(byTitle),
+        pieces: pieces
+          .filter((p) => p.status === 'Want to Learn')
+          .sort((a, b) => a.statusDaysAgo - b.statusDaysAgo || byTitle(a, b)),
         detail: (p) => p.composer,
         showStatus: () => false,
         seeAll: '/want-to-learn',
@@ -1139,7 +1151,9 @@ export function PracticeDashboardMockup() {
       {
         key: 'learned',
         title: 'Learned',
-        pieces: pieces.filter((p) => p.status === 'Learned').sort(byTitle),
+        pieces: pieces
+          .filter((p) => p.status === 'Learned')
+          .sort((a, b) => a.statusDaysAgo - b.statusDaysAgo || byTitle(a, b)),
         detail: (p) => p.composer,
         showStatus: () => false,
         seeAll: '/learned',
