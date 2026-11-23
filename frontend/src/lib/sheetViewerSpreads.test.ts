@@ -5,6 +5,15 @@ const LETTER = 612 / 792
 const fmt = (spreads: number[][]) => spreads.map((s) => s.join('-')).join(' ')
 
 describe('fitPages', () => {
+  it('leaves the given gap between pages', () => {
+    const area = { width: 1400, height: 900 }
+    const plain = fitPages(area, LETTER, 2)
+    const wide = fitPages(area, LETTER, 2, 24)
+    expect(plain.count).toBe(2)
+    expect(wide.count).toBe(2)
+    expect(plain.width * 2 + 8).toBeLessThanOrEqual(1400)
+    expect(wide.width * 2 + 24).toBeLessThanOrEqual(1400)
+  })
   it('puts two pages side by side on a landscape tablet', () => {
     // iPad 11" landscape, under the toolbar.
     const fit = fitPages({ width: 1194, height: 777 }, LETTER, 8)

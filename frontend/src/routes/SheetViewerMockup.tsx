@@ -59,8 +59,9 @@ import {
   IconX,
   IconEye,
   IconEyeOff,
-  IconFiles,
   IconStack2,
+  IconCrop,
+  IconCopy,
 } from '@tabler/icons-react'
 import type { Piece } from '../api/types'
 import { getPiece, getPiecePageUrl, getPieceThumbnailUrl, searchPieces } from '../api/pieces'
@@ -92,6 +93,17 @@ import {
   turnTarget,
 } from '../lib/sheetViewerSpreads'
 import { ManagePagesWindow } from './ManagePagesMockup'
+import { TrimFrame } from '../components/SheetViewerTrimFrame'
+import {
+  FULL_PAGE,
+  TRIMMED_GAP,
+  clipStroke,
+  isTrimmed,
+  placeTrimmed,
+  trimExtent,
+  trimmedAspect,
+  type TrimBox,
+} from '../lib/sheetViewerTrim'
 import { holdWhileZoomed } from '../lib/pinchZoom'
 import { loadToolMemory, saveToolMemory } from '../lib/sheetViewerToolMemory'
 import {
@@ -1267,6 +1279,23 @@ export function SheetViewerMockup() {
   const [showSkippedFor, setShowSkippedFor] = useState<number | null>(null)
   const showSkipped = showSkippedFor !== null && showSkippedFor === activeId
   const [managePagesOpen, setManagePagesOpen] = useState(false)
+  // Piece Preparation (S2 and Trim mode B of
+  // https://claude.ai/artifact/3mpmGQfJggWhAUPXV5nNVg): each piece's trim
+  // frames by page (shared by everyone in the real thing), your own Show
+  // original pages per piece (on until you do a step yourself), and the
+  // frames being edited while the Trim mode is open.
+  const [trimsByPiece, setTrimsByPiece] = useState<Record<number, Record<number, TrimBox>>>({})
+  // Pieces whose trims Reset switched off: kept for the Trim mode to start
+  // from, the pages shown untrimmed. Saving frames switches them back on.
+  const [trimsOff, setTrimsOff] = useState<number[]>([])
+  const [originalByPiece, setOriginalByPiece] = useState<Record<number, boolean>>({})
+  const [trimDraft, setTrimDraft] = useState<Record<number, TrimBox> | null>(null)
+  const [resetArmed, setResetArmed] = useState(false)
+  // The Trim mode's advice shows until the first drag.
+  const [trimAdvice, setTrimAdvice] = useState(false)
+  const trimming = trimDraft !== null
+  const savedTrims = (activeId !== null && !custom && trimsByPiece[activeId]) || {}
+  const trims = activeId !== null && trimsOff.includes(activeId) ? {} : savedTrims
   // The pages this piece runs through: `first` to `last`. The viewer counts
   // from `first` ("1 / 4"), so its page 1 is the first page of the music.
   const pageRange =
@@ -1278,6 +1307,18 @@ export function SheetViewerMockup() {
   // piece at page 1 lands on its first shown page, its end on its last.
   const page = Math.min(Math.max(pageState, pageRange.first), pageRange.last)
   const viewerNumber = (n: number) => n - pageRange.first + 1
+  // The shown pages' frames (a page with none is the whole page). Trimmed,
+  // every page is drawn at the one scale their extent sets, until Note
+  // Size sets one of its own; the edge margin stays on.
+  const shownTrims = Array.from(
+    { length: pageRange.last - pageRange.first + 1 },
+    (_, i) => trims[pageRange.first + i] ?? FULL_PAGE,
+  )
+  const trimmedCount = shownTrims.filter(isTrimmed).length
+  const prepared = Object.keys(trims).length > 0
+  const showOriginal = activeId === null || (originalByPiece[activeId] ?? true)
+  const trimView = prepared && !showOriginal && !trimming
+  const extent = trimExtent(shownTrims)
   const [mode, setMode] = useState<'play' | 'annotate'>('play')
   const [tool, setTool] = useState<Tool | null>(null)
   // Each tool's own color and size (B2: a tool remembers what it last used).
@@ -1447,8 +1488,15 @@ export function SheetViewerMockup() {
     observer.observe(stageEl)
     return () => observer.disconnect()
   }, [stageEl])
-  const fit = fitPages(stageSize, pageAspect, custom ? 1 : shownCount)
-  const perScreen = custom || photo.pages === 'one' ? 1 : fit.count
+  // Trimmed, pages fit and spread in their trimmed shape.
+  const slotAspect = trimView ? trimmedAspect(pageAspect, extent) : pageAspect
+  // The Trim mode keeps the margin too, so a handle at the page's edge is
+  // never at the screen's.
+  const margin = photo.margin || trimView || trimming
+  const pageGap = trimView ? TRIMMED_GAP : SPREAD_GAP
+  const fit = fitPages(stageSize, slotAspect, custom ? 1 : shownCount, pageGap)
+  // The Trim mode shows one page at a time.
+  const perScreen = custom || photo.pages === 'one' || trimming ? 1 : fit.count
   const sliding = photo.turn === 'slide' && perScreen > 1
   const spreads = groupSpreads(
     pageRange.last,
@@ -1612,8 +1660,8 @@ export function SheetViewerMockup() {
     if (next === null) {
       // In a queue (the Practice List or a setlist), turning past a piece's
       // end goes on to the next piece; back from its start, to the previous
-      // piece's last page.
-      const neighbor = queueIndex >= 0 ? queueIds[queueIndex + dir] : undefined
+      // piece's last page. Not in the Trim mode, which stays on its piece.
+      const neighbor = queueIndex >= 0 && !trimming ? queueIds[queueIndex + dir] : undefined
       if (neighbor !== undefined) {
         const target = typeof neighbor === 'number' ? byId.get(neighbor) : undefined
         goToPiece(neighbor, dir > 0 ? 1 : (target?.pageCount ?? 1))
@@ -1621,7 +1669,7 @@ export function SheetViewerMockup() {
         flash(`${dir > 0 ? 'Next' : 'Previous'}: ${name ?? 'entry'}`)
         return
       }
-      flash(dir < 0 ? 'First page' : queueIds.length ? 'End of the list' : 'Last page')
+      flash(dir < 0 ? 'First page' : queueIds.length && !trimming ? 'End of the list' : 'Last page')
       return
     }
     setPage(next)
@@ -1827,6 +1875,77 @@ export function SheetViewerMockup() {
     tip('play', 'Play: taps turn pages')
   }
 
+  // The Trim mode (design B): its own bar in place of the toolbar, the page
+  // whole and full size with its frame on it; turning works as usual. It
+  // starts from the piece's frames; Done keeps the edits, Cancel drops them.
+  function enterTrim() {
+    if (activeId === null || custom) return
+    if (mode === 'annotate') leaveAnnotate()
+    setMenu(null)
+    setTrimDraft({ ...savedTrims })
+    setTrimAdvice(true)
+  }
+  function cancelTrim() {
+    setTrimDraft(null)
+  }
+  function finishTrim() {
+    if (activeId === null || !trimDraft) return
+    const kept = Object.fromEntries(
+      Object.entries(trimDraft).filter(([, box]) => isTrimmed(box)),
+    ) as Record<number, TrimBox>
+    const { [activeId]: _, ...others } = trimsByPiece
+    void _
+    setTrimsByPiece(Object.keys(kept).length ? { ...trimsByPiece, [activeId]: kept } : others)
+    setTrimsOff(trimsOff.filter((id) => id !== activeId))
+    setTrimDraft(null)
+    // Doing a step turns your own Show original pages off, so you see it.
+    if (Object.keys(kept).length) {
+      setOriginalByPiece({ ...originalByPiece, [activeId]: false })
+      flash('Trimmed (mockup: nothing is written)')
+    } else flash('No pages trimmed')
+  }
+  // The frame on the page in the Trim mode, and its helpers.
+  const trimPage = shown[0]
+  const trimBox = trimDraft?.[trimPage] ?? FULL_PAGE
+  function setTrimBox(box: TrimBox) {
+    if (!trimDraft) return
+    setTrimAdvice(false)
+    const { [trimPage]: _, ...rest } = trimDraft
+    void _
+    setTrimDraft(isTrimmed(box) ? { ...trimDraft, [trimPage]: box } : rest)
+  }
+  function trimLikePrevious() {
+    if (!trimDraft || trimPage <= pageRange.first) return
+    setTrimBox(trimDraft[trimPage - 1] ?? FULL_PAGE)
+    flash(`Same as page ${viewerNumber(trimPage - 1)}`)
+  }
+  function trimAllLikeThis() {
+    if (!trimDraft) return
+    const all = { ...trimDraft }
+    for (let n = pageRange.first; n <= pageRange.last; n++) {
+      if (isTrimmed(trimBox)) all[n] = trimBox
+      else delete all[n]
+    }
+    setTrimDraft(all)
+    flash(`This frame on all ${shownCount} pages`)
+  }
+  // Reset undoes Trim onward (skipped pages stay), after a second tap.
+  const resetTimer = useRef(0)
+  function pressReset() {
+    if (activeId === null) return
+    if (!resetArmed) {
+      setResetArmed(true)
+      window.clearTimeout(resetTimer.current)
+      resetTimer.current = window.setTimeout(() => setResetArmed(false), CLOSE_CONFIRM_MS)
+      return
+    }
+    window.clearTimeout(resetTimer.current)
+    setResetArmed(false)
+    setTrimsOff([...trimsOff, activeId])
+    setOriginalByPiece({ ...originalByPiece, [activeId]: true })
+    flash('Piece Preparation reset (mockup: nothing is written)')
+  }
+
   // Keyboard shortcuts (approved list): letters through the app's shortcut
   // registry (lib/shortcuts.ts — the same rules as every page, and listed
   // in the shortcut help, which the viewer renders for itself); page turns,
@@ -1838,6 +1957,11 @@ export function SheetViewerMockup() {
   function pressEscape(): boolean {
     if (menu !== null) {
       setMenu(null)
+      return true
+    }
+    // In the Trim mode, Esc is Cancel.
+    if (trimming) {
+      cancelTrim()
       return true
     }
     // In Annotate, step back one thing at a time — the tool, then Annotate
@@ -1905,6 +2029,7 @@ export function SheetViewerMockup() {
   }
   function stepPiece(dir: -1 | 1) {
     finishText()
+    if (trimming) return
     const neighbor = queueIndex >= 0 ? queueIds[queueIndex + dir] : undefined
     if (neighbor === undefined) {
       if (queueIds.length) flash(dir < 0 ? 'Start of the list' : 'End of the list')
@@ -2254,8 +2379,18 @@ export function SheetViewerMockup() {
     // A stroke that never touched the page isn't kept.
     if (mark && strokeTouchesPage(mark)) {
       const key = pageKey
-      setMarksByPage((prev) => ({ ...prev, [key]: [...(prev[key] ?? marksFor(key)), mark] }))
-      record({ key, added: [mark], removed: [] })
+      // Trimmed, a stroke is cut at the frame's edge: no mark is made
+      // where the trim hides it.
+      const added: StrokeMark[] = trimView
+        ? clipStroke(mark.points, trims[markPage] ?? FULL_PAGE).map((points, i) => ({
+            ...mark,
+            id: i ? `${mark.id}-${i}` : mark.id,
+            points,
+          }))
+        : [mark]
+      if (!added.length) return true
+      setMarksByPage((prev) => ({ ...prev, [key]: [...(prev[key] ?? marksFor(key)), ...added] }))
+      record({ key, added, removed: [] })
     }
     return true
   }
@@ -2764,6 +2899,45 @@ export function SheetViewerMockup() {
       </div>
     )
   }
+  // A Piece Preparation step: its number in a circle (a tick once done) on
+  // the line joining the steps, its name, and its status. Without onClick
+  // it isn't built yet, and greys.
+  function prepStep(
+    n: number,
+    label: string,
+    done: boolean,
+    { trailing, onClick, start }: { trailing: string; onClick?: () => void; start?: boolean },
+  ) {
+    return (
+      <button
+        type="button"
+        data-hit
+        onClick={onClick}
+        aria-disabled={!onClick || undefined}
+        className={`${HIT} w-full group/b ${onClick ? '' : 'cursor-default'}`}
+      >
+        <span
+          className={`${FACE} ${onClick ? FACE_HOVER : 'text-ink-fainter'} w-full justify-start gap-3 px-3`}
+        >
+          <span
+            className={`relative flex size-[22px] shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
+              done
+                ? 'bg-accent-fill text-white'
+                : `border-[1.5px] bg-paper ${onClick ? 'border-ink-faint text-ink-soft' : 'border-ink-fainter'}`
+            }`}
+          >
+            {done ? <IconCheck size={14} stroke={2.5} /> : n}
+          </span>
+          {label}
+          <span
+            className={`ml-auto text-xs ${start ? 'font-medium text-accent' : onClick ? 'text-ink-faint' : ''}`}
+          >
+            {trailing}
+          </span>
+        </span>
+      </button>
+    )
+  }
   function stepperRow(
     label: string,
     Icon: typeof IconSun,
@@ -2832,24 +3006,63 @@ export function SheetViewerMockup() {
         />
       </div>
       {layoutIdle && <p className="px-3 pb-1 text-xs text-ink-muted italic">{layoutIdle}</p>}
-      {/* Manage Pages (edit only in the real viewer), and a look at the
-          skipped pages for this visit. */}
-      {!custom && (
-        <MenuRow
-          icon={<IconFiles size={20} />}
-          label="Manage pages"
-          trailing={skippedCount ? `${skippedCount} skipped` : 'None skipped'}
-          onClick={() => {
-            openDisplay(false)
-            setManagePagesOpen(true)
-          }}
-        />
-      )}
-      {skippedCount > 0 &&
-        switchRow('Show skipped pages', showSkipped, (on) =>
-          setShowSkippedFor(on ? activeId : null),
-        )}
       <div className="-mx-3 my-1 border-t border-border" />
+      {/* Piece Preparation (S2): the chain as numbered steps, a done step
+          ticked; tapping one (re)does it. The steps are edit only in the
+          real viewer; Show original pages is everyone's own. */}
+      {!custom && (
+        <>
+          <div className="flex items-center pl-3">
+            <h3 className="flex-1 text-xs font-semibold tracking-[0.08em] text-ink-faint uppercase">
+              Piece Preparation
+            </h3>
+            <button
+              type="button"
+              data-hit
+              disabled={!prepared}
+              onClick={pressReset}
+              className={`${HIT} group/b disabled:opacity-45`}
+            >
+              <span
+                className={`${FACE} ${FACE_HOVER} px-3 text-sm font-medium ${resetArmed ? 'text-danger' : 'text-ink-soft'}`}
+              >
+                {resetArmed ? 'Reset?' : 'Reset'}
+              </span>
+            </button>
+          </div>
+          <div className="relative">
+            <span
+              aria-hidden="true"
+              className="absolute top-6 bottom-6 left-[22.25px] w-[1.5px] bg-border"
+            />
+            {prepStep(1, 'Manage pages', skippedCount > 0, {
+              trailing: `Optional • ${skippedCount ? `${skippedCount} skipped` : 'none skipped'}`,
+              onClick: () => {
+                openDisplay(false)
+                setManagePagesOpen(true)
+              },
+            })}
+            {prepStep(2, 'Trim margins', prepared, {
+              trailing: prepared ? `${trimmedCount} of ${shownCount} pages` : 'Start',
+              start: !prepared,
+              onClick: enterTrim,
+            })}
+            {prepStep(3, 'Note size', false, { trailing: 'Coming soon' })}
+            {prepStep(4, 'Slice & reflow', false, { trailing: 'Coming soon' })}
+          </div>
+          {skippedCount > 0 &&
+            switchRow('Show skipped pages', showSkipped, (on) =>
+              setShowSkippedFor(on ? activeId : null),
+            )}
+          {switchRow(
+            'Show original pages',
+            !prepared || showOriginal,
+            (on) => activeId !== null && setOriginalByPiece({ ...originalByPiece, [activeId]: on }),
+            !prepared,
+          )}
+          <div className="-mx-3 my-1 border-t border-border" />
+        </>
+      )}
     </>
   )
   // Keep pages together (editor A1 of the same artifact): every page in
@@ -3010,7 +3223,12 @@ export function SheetViewerMockup() {
               )}
               {/* Phase 5 (option A): the edge margin lives here, not on its own
             toolbar button. */}
-              {switchRow('Edge margin', photo.margin, (v) => setPhoto({ margin: v }))}
+              {switchRow('Edge margin', margin, (v) => setPhoto({ margin: v }), trimView)}
+              {trimView && (
+                <p className="-mt-1 pr-3 pb-1 pl-[42px] text-xs text-ink-muted">
+                  On while the pages are trimmed.
+                </p>
+              )}
               <button
                 type="button"
                 data-hit
@@ -3857,7 +4075,7 @@ export function SheetViewerMockup() {
       <HitButton
         label="Previous page"
         onClick={() => turn(-1)}
-        disabled={shown[0] <= pageRange.first && !(queueIndex > 0)}
+        disabled={shown[0] <= pageRange.first && !(queueIndex > 0 && !trimming)}
       >
         <IconChevronLeft size={22} />
       </HitButton>
@@ -3871,7 +4089,8 @@ export function SheetViewerMockup() {
         label="Next page"
         onClick={() => turn(1)}
         disabled={
-          shown.at(-1)! >= pageRange.last && !(queueIndex >= 0 && queueIndex < queueIds.length - 1)
+          shown.at(-1)! >= pageRange.last &&
+          !(queueIndex >= 0 && queueIndex < queueIds.length - 1 && !trimming)
         }
       >
         <IconChevronRight size={22} />
@@ -3924,9 +4143,9 @@ export function SheetViewerMockup() {
     const H = stageSize.height
     const across = fit.axis === 'row'
     const pageW = Math.round(perScreen > 1 ? fit.width : fit.alone)
-    const pageH = Math.round(pageW / pageAspect)
-    const step = (across ? pageW : pageH) + SPREAD_GAP
-    const span = perScreen * (across ? pageW : pageH) + (perScreen - 1) * SPREAD_GAP
+    const pageH = Math.round(pageW / slotAspect)
+    const step = (across ? pageW : pageH) + pageGap
+    const span = perScreen * (across ? pageW : pageH) + (perScreen - 1) * pageGap
     const lead = Math.round(((across ? W : H) - span) / 2)
     const cross = Math.round(((across ? H : W) - (across ? pageH : pageW)) / 2)
     const at = (slot: number): CSSProperties => ({
@@ -3964,20 +4183,57 @@ export function SheetViewerMockup() {
     const key = `${activeId}:${n}`
     const focused = n === markPage
     const marks = focused ? pageMarks : marksFor(key)
-    return (
-      <div
-        key={n}
-        ref={(el) => {
-          if (el) pageBoxes.current.set(n, el)
-          else pageBoxes.current.delete(n)
-          if (focused) pageBoxRef.current = el
-        }}
-        className="absolute transition-transform duration-200 ease-out motion-reduce:transition-none"
-        style={{
-          ...place,
-          transform: focused && lift ? `translateY(${-lift}px)` : undefined,
-        }}
-      >
+    // Trimmed, the slot holds the frame, centered, at the piece's one
+    // scale; the whole page (and its marks) sits behind it in register, so
+    // the clip hides what's trimmed away. Marks still measure the page.
+    const fitted = trimView
+      ? placeTrimmed(
+          { width: Number(place.width), height: Number(place.height) },
+          trims[n] ?? FULL_PAGE,
+          extent,
+        )
+      : null
+    const pageBox = (children: ReactNode) =>
+      fitted ? (
+        <div
+          key={n}
+          className="absolute transition-transform duration-200 ease-out motion-reduce:transition-none"
+          style={{ ...place, transform: focused && lift ? `translateY(${-lift}px)` : undefined }}
+        >
+          <div className="absolute overflow-hidden" style={fitted.clip}>
+            <div
+              ref={(el) => {
+                if (el) pageBoxes.current.set(n, el)
+                else pageBoxes.current.delete(n)
+                if (focused) pageBoxRef.current = el
+              }}
+              className="absolute"
+              style={fitted.page}
+            >
+              {children}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div
+          key={n}
+          ref={(el) => {
+            if (el) pageBoxes.current.set(n, el)
+            else pageBoxes.current.delete(n)
+            if (focused) pageBoxRef.current = el
+          }}
+          className="absolute transition-transform duration-200 ease-out motion-reduce:transition-none"
+          style={{
+            ...place,
+            transform: focused && lift ? `translateY(${-lift}px)` : undefined,
+          }}
+        >
+          {children}
+          {trimming && n === trimPage && <TrimFrame box={trimBox} onChange={setTrimBox} />}
+        </div>
+      )
+    return pageBox(
+      <>
         <img
           key={`${activeId}-${n}`}
           src={getPieceThumbnailUrl(activeId, n)}
@@ -4076,7 +4332,7 @@ export function SheetViewerMockup() {
             </div>
           )}
         </TextMarks>
-      </div>
+      </>,
     )
   }
   function toggleLayer(layer: number) {
@@ -4516,6 +4772,109 @@ export function SheetViewerMockup() {
       {annotateLabel && 'Done'}
     </HitButton>
   )
+  // The Trim mode's bar (design B), in place of the toolbar: its name and
+  // helpers left of the page cyclers, Reset page, Cancel and Done on the
+  // right; the helpers lose their words below 1100px. On a phone, the name
+  // and Cancel/Done, then the helpers beside the cyclers.
+  const trimWords = width >= 1100
+  const trimHelper = (
+    label: string,
+    short: string,
+    icon: ReactNode,
+    run: () => void,
+    disabled = false,
+  ) => (
+    <HitButton
+      label={label}
+      onClick={run}
+      disabled={disabled}
+      inset={trimWords}
+      faceClassName={trimWords ? `${FACE_HOVER} px-3` : ''}
+    >
+      {icon}
+      {trimWords && short}
+    </HitButton>
+  )
+  const trimSame = trimHelper(
+    'Same as previous page',
+    'Same as previous',
+    <IconCopy size={20} />,
+    trimLikePrevious,
+    trimPage <= pageRange.first,
+  )
+  const trimAll = trimHelper(
+    'This frame on all pages',
+    'All pages',
+    <IconStack2 size={20} />,
+    trimAllLikeThis,
+  )
+  const trimReset = trimHelper(
+    'Reset this page',
+    'Reset page',
+    <IconRefresh size={20} />,
+    () => setTrimBox(FULL_PAGE),
+    !isTrimmed(trimBox),
+  )
+  const trimName = (
+    <span className="flex shrink-0 items-center gap-2 px-2 text-sm font-medium text-accent">
+      <IconCrop size={20} />
+      Trim margins
+    </span>
+  )
+  const trimDone = (
+    <>
+      <HitButton
+        label="Cancel trimming"
+        onClick={cancelTrim}
+        inset
+        faceClassName={`${FACE_HOVER} px-3`}
+      >
+        Cancel
+      </HitButton>
+      <HitButton
+        label="Done trimming"
+        onClick={finishTrim}
+        inset
+        faceClassName="bg-accent-fill px-3 font-medium text-white group-hover/b:bg-accent-fill/90"
+      >
+        <IconCheck size={20} />
+        Done
+      </HitButton>
+    </>
+  )
+  const trimBar =
+    tier === 'phone' ? (
+      <>
+        <div className="flex h-14 items-center px-1">
+          {trimName}
+          <span className="flex-1" />
+          {trimDone}
+        </div>
+        <div className="flex h-14 items-center border-t border-accent/30 px-1">
+          <div className="flex min-w-0 flex-1 items-center">
+            {trimSame}
+            {trimAll}
+            {trimReset}
+          </div>
+          {cyclers}
+        </div>
+      </>
+    ) : (
+      <div className="grid h-14 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center px-1">
+        <div className="flex min-w-0 items-center">
+          {trimName}
+          <span className="mx-1 h-7 w-px shrink-0 bg-accent/30" />
+          {trimSame}
+          {trimAll}
+        </div>
+        {cyclers}
+        <div className="flex min-w-0 items-center justify-end">
+          {trimReset}
+          <span className="mx-1 h-7 w-px shrink-0 bg-accent/30" />
+          {trimDone}
+        </div>
+      </div>
+    )
   const moreButton = (
     <div ref={moreAnchorRef} className="relative">
       <HitButton label="More" onClick={() => setMenu(menu === 'more' ? null : 'more')}>
@@ -4586,7 +4945,7 @@ export function SheetViewerMockup() {
             key: 'e',
             label: 'Toggle edge margin',
             run: () => setPhoto({ margin: !photo.margin }),
-            enabled: mode !== 'annotate',
+            enabled: mode !== 'annotate' && !trimView,
           },
           {
             key: 'b',
@@ -4622,7 +4981,7 @@ export function SheetViewerMockup() {
       />
       <header
         className={`relative z-20 shrink-0 border-b pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)] ${
-          annotating
+          annotating || trimming
             ? 'border-accent/30 bg-accent-soft [--sv-hover:var(--color-accent-soft-hover)]'
             : 'border-border bg-paper [--sv-hover:var(--color-paper-hover)]'
         }`}
@@ -4630,7 +4989,9 @@ export function SheetViewerMockup() {
         {/* Toolbar rows sit over the menus' backdrop (z-40), so their
             buttons keep working while a menu is open. */}
         <div className="relative z-40">
-          {tier === 'phone' ? (
+          {trimming ? (
+            trimBar
+          ) : tier === 'phone' ? (
             <>
               {/* Phones take two rows (a letter or A4 page leaves the
                   height to spare): ✕, the title, Info, ⋯ and Annotate/Done,
@@ -4835,7 +5196,7 @@ export function SheetViewerMockup() {
           ref={setStageEl}
           style={{ containerType: 'size' }}
           className={`absolute flex items-center justify-center ${
-            photo.margin
+            margin
               ? 'inset-6 bottom-[calc(1.5rem+env(safe-area-inset-bottom))]'
               : 'inset-0 bottom-[env(safe-area-inset-bottom)]'
           }`}
@@ -4890,6 +5251,13 @@ export function SheetViewerMockup() {
             <HitButton label="Hide the banner for this piece" onClick={() => setBar(false)}>
               <IconX size={18} />
             </HitButton>
+          </div>
+        )}
+        {/* The Trim mode's advice, over the foot of the page. */}
+        {trimming && trimAdvice && (
+          <div className="pointer-events-none absolute bottom-[calc(0.75rem+env(safe-area-inset-bottom))] left-1/2 z-10 w-max max-w-[calc(100%-2rem)] -translate-x-1/2 rounded-2xl bg-scrim/90 px-4 py-2 text-center text-sm text-white">
+            Trim it as close as possible, as a small margin will be applied to keep the image off
+            the edge of your screen.
           </div>
         )}
         {hint && (

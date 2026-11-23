@@ -81,6 +81,11 @@ type PieceResponse struct {
 	// Set PDF skip (Manage Pages).
 	SkipStart int `json:"skipStart"`
 	SkipEnd   int `json:"skipEnd"`
+	// PageTrims: the trimmed pages' frames (Trim Margins), by page.
+	// PageTrimsOff: Piece Preparation's Reset switched them off; they're
+	// kept as Trim Margins' starting point, but the pages show untrimmed.
+	PageTrims    []repo.PageTrim `json:"pageTrims"`
+	PageTrimsOff bool            `json:"pageTrimsOff"`
 	// CopyrightYear/CopyrightHolder/CopyrightSlug (Public Domain Badge
 	// feature, migration 00022) are book-inheritable, same EffectiveField
 	// shape as every other such field. CopyrightStatus carries both the
@@ -123,6 +128,14 @@ func BuildPieceResponse(ctx context.Context, q repo.Queryer, p *models.Piece, re
 	if err != nil {
 		return nil, err
 	}
+	pageTrims, err := repo.GetPageTrims(ctx, q, p.ID)
+	if err != nil {
+		return nil, err
+	}
+	pageTrimsOff, err := repo.PageTrimsOff(ctx, q, p.ID)
+	if err != nil {
+		return nil, err
+	}
 
 	resp := &PieceResponse{
 		ID:              p.ID,
@@ -158,6 +171,8 @@ func BuildPieceResponse(ctx context.Context, q repo.Queryer, p *models.Piece, re
 		ThumbnailPage:    p.ThumbnailPage,
 		SkipStart:        p.SkipStart,
 		SkipEnd:          p.SkipEnd,
+		PageTrims:        pageTrims,
+		PageTrimsOff:     pageTrimsOff,
 		CreatedAt:        p.CreatedAt,
 		UpdatedAt:        p.UpdatedAt,
 		Keys:             []repo.Tag{},

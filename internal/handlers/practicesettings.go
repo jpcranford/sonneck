@@ -78,7 +78,9 @@ func (s *Server) handlePutPracticeSettings(w http.ResponseWriter, r *http.Reques
 	if !ok {
 		return
 	}
-	var req repo.PracticeSettings
+	// Show original pages is on unless the request says otherwise (a client
+	// that doesn't know it never turns it off).
+	req := repo.PracticeSettings{ShowOriginal: true}
 	if err := decodeJSON(r, &req); err != nil {
 		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid request body: "+err.Error())
 		return

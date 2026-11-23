@@ -1069,3 +1069,113 @@ func TestSetPieceSkippedPages(t *testing.T) {
 		t.Errorf("after replace: skips %d/%d, want 0/0", piece.SkipStart, piece.SkipEnd)
 	}
 }
+
+// TestSetPieceTrims covers Trim Margins: saving frames (a whole-page one
+// dropped), refusing bad frames, the practice setting's Show original pages
+// defaulting on, Reset clearing them, and a file replacement clearing them.
+func TestSetPieceTrims(t *testing.T) {
+	h := newTestServer(t)
+	dir := t.TempDir()
+	path := dir + "/piece.pdf"
+	writeFixturePDF(t, path, 3)
+	type trim struct {
+		Page   int     `json:"page"`
+		Left   float64 `json:"left"`
+		Top    float64 `json:"top"`
+		Right  float64 `json:"right"`
+		Bottom float64 `json:"bottom"`
+	}
+	var piece struct {
+		ID        int64  `json:"id"`
+		PageTrims []trim `json:"pageTrims"`
+	}
+	decodeData(t, recordRequest(h, multipartUpload(t, "/api/pieces", "piece.pdf", readAll(t, path))), &piece)
+	if piece.PageTrims == nil || len(piece.PageTrims) != 0 {
+		t.Fatalf("new piece: pageTrims %v, want []", piece.PageTrims)
+	}
+	url := apiPiecesURL(piece.ID) + "/page-trims"
+
+	frames := []trim{
+		{Page: 2, Left: 0.1, Top: 0.05, Right: 0.9, Bottom: 0.95},
+		{Page: 1, Left: 0.08, Top: 0.06, Right: 0.92, Bottom: 0.94},
+		{Page: 3, Left: 0, Top: 0, Right: 1, Bottom: 1},
+	}
+	rec := doJSON(t, h, http.MethodPut, url, map[string]any{"trims": frames})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("set: status %d, body %s", rec.Code, rec.Body.String())
+	}
+	decodeData(t, rec, &piece)
+	if len(piece.PageTrims) != 2 || piece.PageTrims[0] != frames[1] || piece.PageTrims[1] != frames[0] {
+		t.Errorf("after set: %+v, want pages 1 and 2 (the whole-page frame dropped)", piece.PageTrims)
+	}
+	rec = doJSON(t, h, http.MethodGet, apiPiecesURL(piece.ID), nil)
+	decodeData(t, rec, &piece)
+	if len(piece.PageTrims) != 2 {
+		t.Errorf("get: %d trims, want 2", len(piece.PageTrims))
+	}
+
+	for name, bad := range map[string][]trim{
+		"page 0":       {{Page: 0, Left: 0.1, Top: 0.1, Right: 0.9, Bottom: 0.9}},
+		"past the end": {{Page: 4, Left: 0.1, Top: 0.1, Right: 0.9, Bottom: 0.9}},
+		"off the page": {{Page: 1, Left: -0.1, Top: 0.1, Right: 0.9, Bottom: 0.9}},
+		"too narrow":   {{Page: 1, Left: 0.5, Top: 0.1, Right: 0.55, Bottom: 0.9}},
+		"inside out":   {{Page: 1, Left: 0.9, Top: 0.1, Right: 0.1, Bottom: 0.9}},
+		"twice": {
+			{Page: 1, Left: 0.1, Top: 0.1, Right: 0.9, Bottom: 0.9},
+			{Page: 1, Left: 0.2, Top: 0.1, Right: 0.9, Bottom: 0.9},
+		},
+	} {
+		if rec := doJSON(t, h, http.MethodPut, url, map[string]any{"trims": bad}); rec.Code != http.StatusBadRequest {
+			t.Errorf("%s: status %d, want 400", name, rec.Code)
+		}
+	}
+
+	// Show original pages starts on, and a request without it leaves it on.
+	settingsURL := apiPiecesURL(piece.ID) + "/practice-settings"
+	var settings struct {
+		ShowOriginal bool `json:"showOriginal"`
+	}
+	decodeData(t, doJSON(t, h, http.MethodGet, settingsURL, nil), &settings)
+	if !settings.ShowOriginal {
+		t.Error("showOriginal: off for a piece never adjusted, want on")
+	}
+	decodeData(t, doJSON(t, h, http.MethodPut, settingsURL, map[string]any{"brightness": 110, "contrast": 100}), &settings)
+	if !settings.ShowOriginal {
+		t.Error("showOriginal: a request without it turned it off")
+	}
+	doJSON(t, h, http.MethodPut, settingsURL, map[string]any{"brightness": 100, "contrast": 100, "showOriginal": false})
+	decodeData(t, doJSON(t, h, http.MethodGet, settingsURL, nil), &settings)
+	if settings.ShowOriginal {
+		t.Error("showOriginal: turned off, but came back on")
+	}
+
+	// Reset switches them off but keeps them, for Trim Margins to start
+	// from; saving frames switches them back on.
+	var reset struct {
+		PageTrims    []trim `json:"pageTrims"`
+		PageTrimsOff bool   `json:"pageTrimsOff"`
+	}
+	decodeData(t, doJSON(t, h, http.MethodDelete, url, nil), &reset)
+	if !reset.PageTrimsOff || len(reset.PageTrims) != 2 {
+		t.Errorf("after reset: off %v with %d frames, want off with 2 kept", reset.PageTrimsOff, len(reset.PageTrims))
+	}
+	decodeData(t, doJSON(t, h, http.MethodPut, url, map[string]any{"trims": frames[:1]}), &reset)
+	if reset.PageTrimsOff || len(reset.PageTrims) != 1 {
+		t.Errorf("after saving again: off %v with %d frames, want on with 1", reset.PageTrimsOff, len(reset.PageTrims))
+	}
+
+	// No frames clears them.
+	decodeData(t, doJSON(t, h, http.MethodPut, url, map[string]any{"trims": []trim{}}), &piece)
+	if len(piece.PageTrims) != 0 {
+		t.Errorf("after an empty save: %+v, want none", piece.PageTrims)
+	}
+
+	// A new file clears them too.
+	doJSON(t, h, http.MethodPut, url, map[string]any{"trims": frames[:1]})
+	writeFixturePDF(t, dir+"/new.pdf", 3)
+	rec = recordRequest(h, multipartUpload(t, apiPiecesURL(piece.ID)+"/replace-file", "new.pdf", readAll(t, dir+"/new.pdf")))
+	decodeData(t, rec, &piece)
+	if len(piece.PageTrims) != 0 {
+		t.Errorf("after replace: %+v, want none", piece.PageTrims)
+	}
+}

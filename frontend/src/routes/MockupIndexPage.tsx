@@ -186,7 +186,7 @@ const SECTIONS: { title: string; mockups: Mockup[] }[] = [
       {
         to: '/mockup/sheet-viewer',
         name: 'Sheet Viewer',
-        note: 'The full-screen practice and performance mode on a piece you pick: toolbar, tap zones and keys, clock, metronome, Info, Practice Notes, Display (more pages on bigger screens, skipped pages), the Practice List and Annotate. Benedictus opens past its cover. The Mockup panel picks the piece, theme and entry point.',
+        note: 'The full-screen practice and performance mode on a piece you pick: toolbar, tap zones and keys, clock, metronome, Info, Practice Notes, Display (more pages on bigger screens, Piece Preparation: skipped pages, trimming), the Practice List and Annotate. Benedictus opens past its cover. The Mockup panel picks the piece, theme and entry point.',
         testing: [
           'The metronome on the iPad: sound, timing, tap tempo, Shift+M, the swinging icon, Toolbar shows, subdivisions and dots.',
           'More pages in the real viewer on the iPad: spreads, sliding, links, Display, V, and the User Settings defaults.',
@@ -197,6 +197,7 @@ const SECTIONS: { title: string; mockups: Mockup[] }[] = [
           'Skipped pages in the real viewer on the iPad: opens on the music; Manage pages and Show skipped pages.',
           'The zoomed Annotate bar in the real viewer on the iPad: steady while pinching and panning, then drawing.',
           'Annotate in the real viewer on the iPad: color and size beside the tool (one button in portrait); pinch in and they sit by the zoomed bar.',
+          'Trim margins in the real viewer on the iPad: drag the handles with finger and Pencil, Done, turn trimmed pages.',
         ],
       },
     ],

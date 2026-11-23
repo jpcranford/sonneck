@@ -574,6 +574,13 @@ func (s *Server) handleReplacePieceFile(w http.ResponseWriter, r *http.Request) 
 		if err := repo.UpdatePiece(r.Context(), tx, p); err != nil {
 			return err
 		}
+		// Its trims framed the old file's pages.
+		if err := repo.SetPageTrims(r.Context(), tx, id, nil); err != nil {
+			return err
+		}
+		if err := repo.SetPageTrimsOff(r.Context(), tx, id, false); err != nil {
+			return err
+		}
 		if err := repo.ResyncSearchIndex(r.Context(), tx, id); err != nil {
 			return err
 		}
@@ -730,6 +737,104 @@ func (s *Server) handleSetPieceSkippedPages(w http.ResponseWriter, r *http.Reque
 		p.SkipStart, p.SkipEnd = req.SkipStart, req.SkipEnd
 		if first, last := p.ShownRange(); p.ThumbnailPage < first || p.ThumbnailPage > last {
 			p.ThumbnailPage = first
+		}
+		p.UpdatedAt = time.Now().UTC()
+		if err := repo.UpdatePiece(r.Context(), tx, p); err != nil {
+			return err
+		}
+		resp, err = api.BuildPieceResponse(r.Context(), tx, p, s.Cfg.CopyrightRegion(), user.ID)
+		return err
+	})
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+	api.WriteData(w, http.StatusOK, resp)
+}
+
+type setPageTrimsRequest struct {
+	Trims []repo.PageTrim `json:"trims"`
+}
+
+// handleSetPieceTrims saves Trim Margins: the frames of the piece's trimmed
+// pages, replacing what was there, and switches them on (an empty list
+// leaves nothing to switch on). A frame that trims nothing is dropped.
+// Library data shared by everyone, so it needs edit, like Manage Pages.
+func (s *Server) handleSetPieceTrims(w http.ResponseWriter, r *http.Request) {
+	user, ok := s.requirePermission(w, r, models.PermissionEdit)
+	if !ok {
+		return
+	}
+	id, ok := pathID(r, "id")
+	if !ok {
+		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid piece id")
+		return
+	}
+	var req setPageTrimsRequest
+	if err := decodeJSON(r, &req); err != nil {
+		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid request body: "+err.Error())
+		return
+	}
+
+	var resp *api.PieceResponse
+	err := s.withTx(r.Context(), func(tx *sql.Tx) error {
+		p, err := repo.GetPieceByID(r.Context(), tx, id)
+		if err != nil {
+			return err
+		}
+		seen := map[int]bool{}
+		for _, t := range req.Trims {
+			if !t.Valid(p.PageCount) || seen[t.Page] {
+				return api.ValidationErrors{{
+					Field: "trims",
+					Message: fmt.Sprintf("each frame needs a page from 1 to %d (once) and edges from 0 to 1, "+
+						"at least a tenth of the page across and down", p.PageCount),
+				}}
+			}
+			seen[t.Page] = true
+		}
+		if err := repo.SetPageTrims(r.Context(), tx, id, req.Trims); err != nil {
+			return err
+		}
+		if err := repo.SetPageTrimsOff(r.Context(), tx, id, false); err != nil {
+			return err
+		}
+		p.UpdatedAt = time.Now().UTC()
+		if err := repo.UpdatePiece(r.Context(), tx, p); err != nil {
+			return err
+		}
+		resp, err = api.BuildPieceResponse(r.Context(), tx, p, s.Cfg.CopyrightRegion(), user.ID)
+		return err
+	})
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+	api.WriteData(w, http.StatusOK, resp)
+}
+
+// handleResetPieceTrims is Piece Preparation's Reset: the piece's trims
+// switched off, its pages shown untrimmed. The frames are kept, so Trim
+// Margins opens on them next time; saving frames switches them back on.
+// Skipped pages (Manage Pages) stay as they are.
+func (s *Server) handleResetPieceTrims(w http.ResponseWriter, r *http.Request) {
+	user, ok := s.requirePermission(w, r, models.PermissionEdit)
+	if !ok {
+		return
+	}
+	id, ok := pathID(r, "id")
+	if !ok {
+		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "invalid piece id")
+		return
+	}
+	var resp *api.PieceResponse
+	err := s.withTx(r.Context(), func(tx *sql.Tx) error {
+		p, err := repo.GetPieceByID(r.Context(), tx, id)
+		if err != nil {
+			return err
+		}
+		if err := repo.SetPageTrimsOff(r.Context(), tx, id, true); err != nil {
+			return err
 		}
 		p.UpdatedAt = time.Now().UTC()
 		if err := repo.UpdatePiece(r.Context(), tx, p); err != nil {

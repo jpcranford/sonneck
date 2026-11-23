@@ -24,19 +24,21 @@ export interface PageFit {
 
 /** How many pages of the given shape (width ÷ height) fit in the area: the
  * most that keep each page at SPREAD_MIN_SHARE of its size alone and at
- * least SPREAD_MIN_WIDTH wide, up to `max` (the piece's page count). */
+ * least SPREAD_MIN_WIDTH wide, up to `max` (the piece's page count), with
+ * `gap` between them (wider for trimmed pages: TRIMMED_GAP). */
 export function fitPages(
   area: { width: number; height: number },
   aspect: number,
   max: number,
+  gap = SPREAD_GAP,
 ): PageFit {
   const { width: W, height: H } = area
   const axis: SpreadAxis = W >= H ? 'row' : 'column'
   const alone = Math.min(W, H * aspect)
   const widthFor = (n: number) =>
     axis === 'row'
-      ? Math.min((W - (n - 1) * SPREAD_GAP) / n, H * aspect)
-      : Math.min(W, ((H - (n - 1) * SPREAD_GAP) / n) * aspect)
+      ? Math.min((W - (n - 1) * gap) / n, H * aspect)
+      : Math.min(W, ((H - (n - 1) * gap) / n) * aspect)
   let count = 1
   for (let n = 2; n <= max; n++) {
     const w = widthFor(n)

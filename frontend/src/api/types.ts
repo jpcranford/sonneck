@@ -179,6 +179,12 @@ export interface Piece {
    * PDF skip (lib/sheetViewerSpreads.ts' shownRange gives the rest). */
   skipStart: number
   skipEnd: number
+  /** Trim Margins: each trimmed page's frame, as shares of the page
+   * (lib/sheetViewerTrim.ts), by page. Shared by everyone. */
+  pageTrims: PageTrim[]
+  /** Piece Preparation's Reset switched the trims off: the pages show
+   * untrimmed, and Trim Margins starts from these frames. */
+  pageTrimsOff: boolean
   // Public Domain Badge feature (migration 00022) — copyrightYear/Holder/
   // Slug are book-inheritable (same EffectiveField family as every other
   // such field); copyrightStatus additionally carries the *effective*
@@ -486,4 +492,13 @@ export interface PieceSetlistMembership {
   /** The setlist's effectiveArchived: the "in an upcoming set" indicator
    * counts only sets that aren't. */
   setlistArchived: boolean
+}
+
+/** One page's Trim Margins frame: its edges as shares of the page, 0–1. */
+export interface PageTrim {
+  page: number
+  left: number
+  top: number
+  right: number
+  bottom: number
 }

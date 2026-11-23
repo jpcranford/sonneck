@@ -41,6 +41,8 @@ function fixturePiece(overrides: Partial<Piece> = {}): Piece {
     pageCount: 1,
     thumbnailPage: 1,
     skipStart: 0,
+    pageTrims: [],
+    pageTrimsOff: false,
     skipEnd: 0,
     copyrightYear: { value: null, inherited: false },
     copyrightHolder: { value: '', inherited: false },

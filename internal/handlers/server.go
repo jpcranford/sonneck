@@ -245,6 +245,8 @@ func New(db *sql.DB, cfg *config.Config, logger *slog.Logger, frontend fs.FS, sc
 	mux.HandleFunc("POST /api/pieces/{id}/replace-file", s.handleReplacePieceFile)
 	mux.HandleFunc("PATCH /api/pieces/{id}/thumbnail-page", s.handleSetPieceThumbnailPage)
 	mux.HandleFunc("PUT /api/pieces/{id}/skipped-pages", s.handleSetPieceSkippedPages)
+	mux.HandleFunc("PUT /api/pieces/{id}/page-trims", s.handleSetPieceTrims)
+	mux.HandleFunc("DELETE /api/pieces/{id}/page-trims", s.handleResetPieceTrims)
 	mux.HandleFunc("PATCH /api/pieces/{id}/practice-status", s.handleSetPiecePracticeStatus)
 	mux.HandleFunc("PATCH /api/pieces/{id}/user-notes", s.handleSetPieceUserNotes)
 	mux.HandleFunc("GET /api/pieces/{id}/practiced", s.handleGetPracticed)

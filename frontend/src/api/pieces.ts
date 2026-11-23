@@ -7,7 +7,7 @@ import {
   apiUpload,
   apiUploadWithStatus,
 } from './client'
-import type { Piece, PieceWriteRequest } from './types'
+import type { PageTrim, Piece, PieceWriteRequest } from './types'
 import type { MetronomeSettings } from '../lib/metronome'
 
 /**
@@ -122,6 +122,9 @@ export interface PracticeSettings {
   turn: 'spread' | 'slide' | null
   firstAlone: boolean
   links: number[]
+  // Display's Show original pages: the pages untrimmed. On until you do a
+  // step of Piece Preparation on the piece yourself.
+  showOriginal: boolean
 }
 
 export const DEFAULT_PRACTICE_SETTINGS: PracticeSettings = {
@@ -137,6 +140,7 @@ export const DEFAULT_PRACTICE_SETTINGS: PracticeSettings = {
   turn: null,
   firstAlone: false,
   links: [],
+  showOriginal: true,
 }
 
 export function getPracticeSettings(id: number): Promise<PracticeSettings> {
@@ -162,6 +166,18 @@ export function setPieceSkippedPages(
   skipEnd: number,
 ): Promise<Piece> {
   return apiPut<Piece>(`/api/pieces/${id}/skipped-pages`, { skipStart, skipEnd })
+}
+
+/** Trim Margins: the trimmed pages' frames, replacing the piece's, and
+ * switched on. */
+export function setPieceTrims(id: number, trims: PageTrim[]): Promise<Piece> {
+  return apiPut<Piece>(`/api/pieces/${id}/page-trims`, { trims })
+}
+
+/** Piece Preparation's Reset: the trims switched off but kept, so Trim
+ * Margins opens on them next time. */
+export function resetPieceTrims(id: number): Promise<Piece> {
+  return apiDelete<Piece>(`/api/pieces/${id}/page-trims`)
 }
 
 export function getCitation(id: number): Promise<{ citation: string }> {

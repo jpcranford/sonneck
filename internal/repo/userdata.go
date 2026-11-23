@@ -165,6 +165,10 @@ type PracticeSettings struct {
 	Turn       *string `json:"turn"`
 	FirstAlone bool    `json:"firstAlone"`
 	Links      []int   `json:"links"`
+	// ShowOriginal (migration 00043): Display's Show original pages, the
+	// piece's pages as they are instead of trimmed. On until the user does
+	// a step of Piece Preparation on the piece themselves.
+	ShowOriginal bool `json:"showOriginal"`
 }
 
 // The Display panel's choices: as many pages as fit or one, and turning by
@@ -178,7 +182,7 @@ var (
 func (s PracticeSettings) isDefault() bool {
 	return s.Brightness == 100 && s.Contrast == 100 && !s.Grayscale && !s.Invert && !s.EdgeMargin &&
 		s.NotesBarShown == nil && s.HiddenColors == 0 && s.Metronome == nil &&
-		s.Pages == nil && s.Turn == nil && !s.FirstAlone && len(s.Links) == 0
+		s.Pages == nil && s.Turn == nil && !s.FirstAlone && len(s.Links) == 0 && s.ShowOriginal
 }
 
 // The links as stored ("4,9"), and back.
@@ -265,7 +269,7 @@ const (
 )
 
 // DefaultPracticeSettings is what a piece the user has never adjusted uses.
-var DefaultPracticeSettings = PracticeSettings{Brightness: 100, Contrast: 100, Links: []int{}}
+var DefaultPracticeSettings = PracticeSettings{Brightness: 100, Contrast: 100, Links: []int{}, ShowOriginal: true}
 
 // GetPracticeSettings loads userID's settings for pieceID, or the defaults
 // when there are none.
@@ -275,10 +279,10 @@ func GetPracticeSettings(ctx context.Context, q Queryer, userID, pieceID int64) 
 	var beats, links sql.NullString
 	err := q.QueryRowContext(ctx, `
 		SELECT brightness, contrast, grayscale, invert, edge_margin, notes_bar, hidden_colors,
-			metronome_bpm, metronome_beats, metronome_subdivision, pages, turn, first_alone, links
+			metronome_bpm, metronome_beats, metronome_subdivision, pages, turn, first_alone, links, show_original
 		FROM piece_practice_settings WHERE user_id = ? AND piece_id = ?`, userID, pieceID,
 	).Scan(&s.Brightness, &s.Contrast, &s.Grayscale, &s.Invert, &s.EdgeMargin, &s.NotesBarShown, &s.HiddenColors,
-		&bpm, &beats, &subdivision, &s.Pages, &s.Turn, &s.FirstAlone, &links)
+		&bpm, &beats, &subdivision, &s.Pages, &s.Turn, &s.FirstAlone, &links, &s.ShowOriginal)
 	if errors.Is(err, sql.ErrNoRows) {
 		return DefaultPracticeSettings, nil
 	}
@@ -313,8 +317,8 @@ func SetPracticeSettings(ctx context.Context, q Queryer, userID, pieceID int64, 
 	_, err := q.ExecContext(ctx, `
 		INSERT INTO piece_practice_settings
 			(user_id, piece_id, brightness, contrast, grayscale, invert, edge_margin, notes_bar, hidden_colors,
-				metronome_bpm, metronome_beats, metronome_subdivision, pages, turn, first_alone, links)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+				metronome_bpm, metronome_beats, metronome_subdivision, pages, turn, first_alone, links, show_original)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT (user_id, piece_id) DO UPDATE SET
 			brightness = excluded.brightness, contrast = excluded.contrast,
 			grayscale = excluded.grayscale, invert = excluded.invert,
@@ -322,9 +326,9 @@ func SetPracticeSettings(ctx context.Context, q Queryer, userID, pieceID int64, 
 			hidden_colors = excluded.hidden_colors, metronome_bpm = excluded.metronome_bpm,
 			metronome_beats = excluded.metronome_beats, metronome_subdivision = excluded.metronome_subdivision,
 			pages = excluded.pages, turn = excluded.turn, first_alone = excluded.first_alone,
-			links = excluded.links`,
+			links = excluded.links, show_original = excluded.show_original`,
 		userID, pieceID, s.Brightness, s.Contrast, s.Grayscale, s.Invert, s.EdgeMargin, s.NotesBarShown, s.HiddenColors,
-		bpm, beats, subdivision, s.Pages, s.Turn, s.FirstAlone, joinLinks(s.Links),
+		bpm, beats, subdivision, s.Pages, s.Turn, s.FirstAlone, joinLinks(s.Links), s.ShowOriginal,
 	)
 	return err
 }
