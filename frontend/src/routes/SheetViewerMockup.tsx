@@ -3203,6 +3203,26 @@ export function SheetViewerMockup() {
           {displaySub ? keepTogether : displayLayout}
           {!displaySub && (
             <>
+              {/* Photo Filters, headed like Piece Preparation, its Reset
+                  beside the heading. */}
+              <div className="flex min-h-12 items-center pl-3">
+                <h3 className="flex-1 text-xs font-semibold tracking-[0.08em] text-ink-faint uppercase">
+                  Photo Filters
+                </h3>
+                <button
+                  type="button"
+                  data-hit
+                  disabled={!photoChanged}
+                  onClick={() =>
+                    setPhoto({ brightness: 100, contrast: 100, grayscale: false, invert: false })
+                  }
+                  className={`${HIT} group/b disabled:opacity-45`}
+                >
+                  <span className={`${FACE} ${FACE_HOVER} px-3 text-sm font-medium text-ink-soft`}>
+                    Reset
+                  </span>
+                </button>
+              </div>
               {stepperRow('Brightness', IconSun, photo.brightness, (v) =>
                 setPhoto({ brightness: v }),
               )}
@@ -3229,20 +3249,6 @@ export function SheetViewerMockup() {
                   On while the pages are trimmed.
                 </p>
               )}
-              <button
-                type="button"
-                data-hit
-                disabled={!photoChanged}
-                onClick={() =>
-                  setPhoto({ brightness: 100, contrast: 100, grayscale: false, invert: false })
-                }
-                className={`${HIT} w-full group/b disabled:opacity-50`}
-              >
-                <span className={`${FACE} ${FACE_HOVER} w-full justify-start gap-2.5 px-3`}>
-                  <IconRefresh size={20} />
-                  Reset filters
-                </span>
-              </button>
             </>
           )}
         </div>
