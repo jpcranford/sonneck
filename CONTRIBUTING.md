@@ -231,6 +231,8 @@ Write both the `-- +goose Up` and `-- +goose Down` sections. If a down migration
 
 **If your migration rebuilds an existing table** (the `CREATE ..._new` / copy rows / `DROP TABLE <old>` / `RENAME` pattern — needed whenever SQLite can't `ALTER` a `UNIQUE` constraint or `DROP COLUMN` a column with its own `CHECK`), and anything else references that table via `ON DELETE CASCADE`, bracket the `DROP TABLE` in `PRAGMA foreign_keys = OFF;`/`PRAGMA foreign_keys = ON;` with a `-- +goose NO TRANSACTION` directive. This project's connections run with foreign keys enabled, which makes `DROP TABLE` perform an implicit `DELETE FROM` first — genuinely firing cascades into every referencing table, not just dropping schema. Migration `00025`'s own header comment has a real, fixed example to copy, and `internal/db/migration_safety_test.go` is a regression guard for exactly this class of bug (it seeds real rows in every FK-child table before migrating, and asserts they survive) — run it against any migration that rebuilds a table with real dependents.
 
+**Timestamps are stored in one layout**: SQLite's own `YYYY-MM-DD HH:MM:SS`, in UTC (what `CURRENT_TIMESTAMP` writes), so they compare and sort correctly as text. Prefer `CURRENT_TIMESTAMP` in SQL; a time from Go goes through `repo.Timestamp(t)`, never straight to the driver, which would store Go's own text (`… +0000 UTC`, in whatever zone the time carries). Migration `00042` and `internal/repo/timestamps_test.go` show the rule and its check. When you read a timestamp column back in a test, append `|| ''` in SQL to see the stored text: the driver otherwise parses it into a time.
+
 Migrations run automatically against `$DATA_DIR` on every backend startup (including `go run`), so you don't need a separate step to apply one locally — just restart the backend.
 
 ## Testing
@@ -285,7 +287,7 @@ Download PDF + Annotations (`internal/annotpdf`) redraws each Sheet Viewer mark 
   node internal/annotpdf/testdata/freehand-fixtures.mjs > internal/annotpdf/testdata/freehand.json
   go test ./internal/annotpdf
   ```
-- **Stroke options and colors**: the options `strokePath` passes (`frontend/src/lib/sheetViewerMarks.ts`) and `LAYER_COLORS`' light values (`frontend/src/lib/sheetViewerTools.ts`) are repeated in `annotate.go`.
+- **Stroke tuning and colors**: the viewer's `STROKE_TUNING` and `STROKE_SCALE` (`frontend/src/lib/sheetViewerMarks.ts`) are repeated in `annotate.go` as `strokeTunings` and `strokeScale`, and `strokePath`'s two-step outline (points traced with no size, then outlined) is `freehand.go`'s `viewerStroke`. `LAYER_COLORS`' light values (`frontend/src/lib/sheetViewerTools.ts`) are repeated there too. After changing the tuning, update both sides and the `viewer` cases in `testdata/freehand-fixtures.mjs`, regenerate, and rerun the test (as above).
 - **Text layout**: `text.go` follows `textBoxStyle` and the text marks' line height; `internal/annotpdf/assets/Lexend-Medium.ttf` and `Lexend-Bold.ttf` are the same cuts as the web app's woff2 files (see Adding a font cut).
 
 ## Setlist PDF fleuron
