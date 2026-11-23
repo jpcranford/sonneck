@@ -2,7 +2,10 @@ package handlers
 
 import (
 	"context"
+	"math/rand/v2"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/jpcranford/sonneck/internal/api"
@@ -73,8 +76,31 @@ func (s *Server) handlePracticeDashboard(w http.ResponseWriter, r *http.Request)
 		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, "day must be YYYY-MM-DD")
 		return
 	}
+	seeds, ok := shelfShuffleSeeds(r.URL.Query().Get("shuffle"))
+	if !ok {
+		api.WriteError(w, http.StatusBadRequest, api.CodeValidationError,
+			"shuffle must be shelf:seed pairs, comma-separated (seeds positive integers)")
+		return
+	}
 	ctx := r.Context()
 	byTitle := titleSortColumn("p.title")("ASC")
+	// A shuffled shelf drawn from a whole view takes every piece in it,
+	// then a random cap's worth (shuffleCap); unshuffled, just the cap.
+	limitFor := func(shelf string, limit int) int {
+		if seeds[shelf] != 0 {
+			return -1 // SQLite: no limit
+		}
+		return limit
+	}
+	shuffleCap := func(shelf string, ids []int64, limit int) []int64 {
+		if seed := seeds[shelf]; seed != 0 {
+			ids = shuffledIDs(ids, seed)
+		}
+		if len(ids) > limit {
+			ids = ids[:limit]
+		}
+		return ids
+	}
 
 	resp := practiceDashboardResponse{}
 	var err error
@@ -102,18 +128,23 @@ func (s *Server) handlePracticeDashboard(w http.ResponseWriter, r *http.Request)
 	// last), then by title. Currently Practicing lists the latest practiced
 	// first (never practiced last), then the same.
 	recentFirst := "pps.updated_at IS NULL, pps.updated_at DESC, " + byTitle
-	practicingIDs, err := slotIDs("practicing", "lp.last_day IS NULL, lp.last_day DESC, "+recentFirst, dashboardShelfCap)
+	practicingIDs, err := slotIDs("practicing", "lp.last_day IS NULL, lp.last_day DESC, "+recentFirst, limitFor("practicing", dashboardShelfCap))
 	if err == nil {
-		resp.Practicing, err = s.pieceResponses(ctx, practicingIDs, user.ID)
+		resp.Practicing, err = s.pieceResponses(ctx, shuffleCap("practicing", practicingIDs, dashboardShelfCap), user.ID)
 	}
+	// The two recent shelves are defined by recency, so a shuffle reorders
+	// the same latest pieces rather than reaching further back.
 	if err == nil {
 		resp.RecentlyPlayed, err = s.recentlyPlayed(ctx, user.ID)
+		if seed := seeds["played"]; err == nil && seed != 0 {
+			shuffleInPlace(resp.RecentlyPlayed, seed)
+		}
 	}
 	if err == nil {
 		var ids []int64
 		ids, err = s.pieceIDs(ctx, `SELECT p.id FROM pieces p ORDER BY p.id DESC LIMIT ?`, dashboardRecentlyAddedCap)
 		if err == nil {
-			resp.RecentlyAdded, err = s.pieceResponses(ctx, ids, user.ID)
+			resp.RecentlyAdded, err = s.pieceResponses(ctx, shuffleCap("added", ids, dashboardRecentlyAddedCap), user.ID)
 		}
 	}
 	if err == nil {
@@ -121,23 +152,23 @@ func (s *Server) handlePracticeDashboard(w http.ResponseWriter, r *http.Request)
 		ids, err = s.pieceIDs(ctx, `
 			SELECT p.id FROM pieces p
 			JOIN piece_favorites f ON f.piece_id = p.id AND f.user_id = ?
-			ORDER BY p.updated_at DESC, `+byTitle+`, p.id DESC LIMIT ?`, user.ID, dashboardShelfCap)
+			ORDER BY p.updated_at DESC, `+byTitle+`, p.id DESC LIMIT ?`, user.ID, limitFor("favorites", dashboardShelfCap))
 		if err == nil {
-			resp.Favorites, err = s.pieceResponses(ctx, ids, user.ID)
+			resp.Favorites, err = s.pieceResponses(ctx, shuffleCap("favorites", ids, dashboardShelfCap), user.ID)
 		}
 	}
 	if err == nil {
 		var ids []int64
-		ids, err = slotIDs("want_to_learn", recentFirst, dashboardShelfCap)
+		ids, err = slotIDs("want_to_learn", recentFirst, limitFor("want", dashboardShelfCap))
 		if err == nil {
-			resp.WantToLearn, err = s.pieceResponses(ctx, ids, user.ID)
+			resp.WantToLearn, err = s.pieceResponses(ctx, shuffleCap("want", ids, dashboardShelfCap), user.ID)
 		}
 	}
 	if err == nil {
 		var ids []int64
-		ids, err = slotIDs("learned", recentFirst, dashboardShelfCap)
+		ids, err = slotIDs("learned", recentFirst, limitFor("learned", dashboardShelfCap))
 		if err == nil {
-			resp.Learned, err = s.pieceResponses(ctx, ids, user.ID)
+			resp.Learned, err = s.pieceResponses(ctx, shuffleCap("learned", ids, dashboardShelfCap), user.ID)
 		}
 	}
 	if err == nil {
@@ -273,4 +304,43 @@ func (s *Server) pieceResponses(ctx context.Context, ids []int64, userID int64) 
 		out = append(out, resp)
 	}
 	return out, nil
+}
+
+// dashboardShelves are the shelves a shuffle can name (the page's own keys).
+var dashboardShelves = map[string]bool{
+	"practicing": true, "played": true, "added": true, "favorites": true, "want": true, "learned": true,
+}
+
+// shelfShuffleSeeds reads ?shuffle=practicing:123,favorites:456 — the
+// shelves in random order (lib/shelfShuffle.ts), each with the seed that
+// fixes its order. An unknown shelf is ignored; a malformed pair isn't ok.
+func shelfShuffleSeeds(param string) (map[string]uint64, bool) {
+	seeds := map[string]uint64{}
+	if param == "" {
+		return seeds, true
+	}
+	for _, pair := range strings.Split(param, ",") {
+		shelf, raw, found := strings.Cut(pair, ":")
+		seed, err := strconv.ParseUint(raw, 10, 64)
+		if !found || err != nil || seed == 0 {
+			return nil, false
+		}
+		if dashboardShelves[shelf] {
+			seeds[shelf] = seed
+		}
+	}
+	return seeds, true
+}
+
+// shuffledIDs is ids in a random order fixed by seed: the same seed gives
+// the same order, so a shelf keeps its order until it's reshuffled.
+func shuffledIDs(ids []int64, seed uint64) []int64 {
+	out := append([]int64(nil), ids...)
+	shuffleInPlace(out, seed)
+	return out
+}
+
+func shuffleInPlace[T any](items []T, seed uint64) {
+	rnd := rand.New(rand.NewPCG(seed, seed^0x9e3779b97f4a7c15))
+	rnd.Shuffle(len(items), func(i, j int) { items[i], items[j] = items[j], items[i] })
 }

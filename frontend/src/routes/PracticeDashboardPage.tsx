@@ -12,6 +12,7 @@ import { Link, Navigate } from 'react-router-dom'
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   IconArrowRight,
+  IconArrowsShuffle,
   IconCheck,
   IconChevronDown,
   IconChevronUp,
@@ -53,6 +54,7 @@ import { confirmAction, showAlert } from '../lib/dialogs'
 import { personCreditPart } from '../lib/joinNames'
 import { CONTENT_MAX_W } from '../lib/layout'
 import { estimateTotal } from '../lib/setlistEstimate'
+import { useShelfShuffles } from '../lib/shelfShuffle'
 import { usePageTitle } from '../lib/usePageTitle'
 
 // The Practice Dashboard (/practice), the sidebar's Practice. Ported from
@@ -661,25 +663,54 @@ function SeeAllLink({ to }: { to: string }) {
  * spacing either way). A shelf with a page of its own ends with See all in
  * both — unless it already holds every piece that page would list. Show more shows only when the row holds more than fits; every
  * visit starts collapsed. */
-function Shelf({ title, seeAll, cards }: { title: string; seeAll?: string; cards: ReactNode[] }) {
+function Shelf({
+  title,
+  seeAll,
+  cards,
+  shuffled,
+  onShuffle,
+}: {
+  title: string
+  seeAll?: string
+  cards: ReactNode[]
+  /** Random order is on; the button toggles it (a new order each time on). */
+  shuffled: boolean
+  onShuffle: () => void
+}) {
   const [expanded, setExpanded] = useState(false)
   const [overflows, setOverflows] = useState(false)
   const link = seeAll ? <SeeAllLink key="see-all" to={seeAll} /> : null
   return (
     <section className="flex min-w-0 flex-col gap-2.5">
-      <div className="flex items-baseline justify-between gap-2">
+      <div className="flex items-center justify-between gap-2">
         <h2 className="font-display text-lg font-bold text-ink">{title}</h2>
-        {(overflows || expanded) && (
+        <div className="flex shrink-0 items-center gap-3">
           <button
             type="button"
-            onClick={() => setExpanded((e) => !e)}
-            aria-expanded={expanded}
-            className="inline-flex shrink-0 cursor-pointer items-center gap-1 text-sm text-accent hover:underline"
+            onClick={onShuffle}
+            aria-pressed={shuffled}
+            aria-label={`Random order for ${title}`}
+            title={shuffled ? 'Random order (click to turn off)' : 'Random order'}
+            className={`flex size-7 cursor-pointer items-center justify-center rounded-full ${
+              shuffled
+                ? 'bg-accent-fill text-white hover:bg-accent-fill/90'
+                : 'text-ink-soft hover:bg-paper-hover hover:text-ink'
+            }`}
           >
-            {expanded ? 'Show less' : 'Show more'}
-            {expanded ? <IconChevronUp size={14} /> : <IconChevronDown size={14} />}
+            <IconArrowsShuffle size={16} />
           </button>
-        )}
+          {(overflows || expanded) && (
+            <button
+              type="button"
+              onClick={() => setExpanded((e) => !e)}
+              aria-expanded={expanded}
+              className="inline-flex shrink-0 cursor-pointer items-center gap-1 text-sm text-accent hover:underline"
+            >
+              {expanded ? 'Show less' : 'Show more'}
+              {expanded ? <IconChevronUp size={14} /> : <IconChevronDown size={14} />}
+            </button>
+          )}
+        </div>
       </div>
       {expanded ? (
         <div className="flex flex-wrap gap-x-3 gap-y-4 pb-2">
@@ -741,11 +772,17 @@ function PracticeDashboard() {
   const today = useToday()
   const queryClient = useQueryClient()
 
+  // Each shelf's random order (lib/shelfShuffle.ts), per device: the
+  // server does the picking, so a big shelf draws from all of its view.
+  const { seeds: shuffleSeeds, seedOf, toggle: toggleShuffle } = useShelfShuffles()
   const { data: dashboard } = useQuery({
     // Under 'pieces', so the piece menu's own changes (status, favorite,
     // edit, delete) refresh the shelves too.
-    queryKey: ['pieces', 'practice-dashboard', today],
-    queryFn: () => getPracticeDashboard(today),
+    queryKey: ['pieces', 'practice-dashboard', today, shuffleSeeds],
+    queryFn: () => getPracticeDashboard(today, shuffleSeeds),
+    // Turning a shuffle on or off keeps the shelves up until the new ones
+    // arrive, rather than blanking the page.
+    placeholderData: (previous) => previous,
   })
   const listKey = ['practice-list', today]
   const { data: list = [] } = useQuery({
@@ -1287,7 +1324,14 @@ function PracticeDashboard() {
             </p>
           )}
           {visibleShelves.map((s) => (
-            <Shelf key={s.key} title={s.title} seeAll={s.seeAll} cards={s.cards} />
+            <Shelf
+              key={s.key}
+              title={s.title}
+              seeAll={s.seeAll}
+              cards={s.cards}
+              shuffled={!!seedOf(s.key)}
+              onShuffle={() => toggleShuffle(s.key)}
+            />
           ))}
           {/* The footer mark ends the shelves column rather than the page
               (lib/appFooter.ts' PAGES_WITH_OWN_FOOTER), so the pinned column runs

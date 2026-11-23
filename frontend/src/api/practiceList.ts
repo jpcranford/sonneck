@@ -100,6 +100,15 @@ export interface PracticeDashboard {
   totals: { practicing: number; favorites: number; wantToLearn: number; learned: number }
 }
 
-export function getPracticeDashboard(day: string): Promise<PracticeDashboard> {
-  return apiGet<PracticeDashboard>(`/api/practice/dashboard?day=${day}`)
+export function getPracticeDashboard(
+  day: string,
+  /** The shelves in random order, each with its seed (lib/shelfShuffle.ts):
+   * the server picks at random from the whole view, then caps. */
+  shuffle: Record<string, number> = {},
+): Promise<PracticeDashboard> {
+  const pairs = Object.entries(shuffle)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([shelf, seed]) => `${shelf}:${seed}`)
+  const q = pairs.length ? `&shuffle=${pairs.join(',')}` : ''
+  return apiGet<PracticeDashboard>(`/api/practice/dashboard?day=${day}${q}`)
 }

@@ -11,6 +11,7 @@ import { createPortal } from 'react-dom'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   IconArrowRight,
+  IconArrowsShuffle,
   IconCheck,
   IconChevronDown,
   IconChevronUp,
@@ -35,6 +36,7 @@ import { ALL_MOCK_SETLISTS, daysFromNow, getUpcomingSetlists } from '../lib/setl
 import { confirmAction } from '../lib/dialogs'
 import { useMockupTitle } from '../lib/useMockupTitle'
 import { estimateTotal } from '../lib/setlistEstimate'
+import { shuffledBy, useShelfShuffles } from '../lib/shelfShuffle'
 
 // The Practice Dashboard: where the sidebar's "Practice" lands (real:
 // routes/PracticeDashboardPage.tsx). Layout A3 of https://claude.ai/artifact/AadkReodCUoqEqNqS8Acjn
@@ -961,10 +963,15 @@ function SeeAllTile({ to }: { to: string }) {
 function Shelf({
   title,
   seeAll,
+  shuffled,
+  onShuffle,
   children,
 }: {
   title: string
   seeAll?: string
+  /** Random order is on; the button toggles it (a new order each time on). */
+  shuffled: boolean
+  onShuffle: () => void
   children: () => ReactNode[]
 }) {
   const [expanded, setExpanded] = useState(false)
@@ -973,19 +980,35 @@ function Shelf({
   const tile = seeAll ? <SeeAllTile key="see-all" to={seeAll} /> : null
   return (
     <section className="flex min-w-0 flex-col gap-2.5">
-      <div className="flex items-baseline justify-between gap-2">
+      <div className="flex items-center justify-between gap-2">
         <h2 className="font-display text-lg font-bold text-ink">{title}</h2>
-        {(overflows || expanded) && (
+        <div className="flex shrink-0 items-center gap-3">
           <button
             type="button"
-            onClick={() => setExpanded((e) => !e)}
-            aria-expanded={expanded}
-            className="inline-flex shrink-0 cursor-pointer items-center gap-1 text-sm text-accent hover:underline"
+            onClick={onShuffle}
+            aria-pressed={shuffled}
+            aria-label={`Random order for ${title}`}
+            title={shuffled ? 'Random order (click to turn off)' : 'Random order'}
+            className={`flex size-7 cursor-pointer items-center justify-center rounded-full ${
+              shuffled
+                ? 'bg-accent-fill text-white hover:bg-accent-fill/90'
+                : 'text-ink-soft hover:bg-paper-hover hover:text-ink'
+            }`}
           >
-            {expanded ? 'Show less' : 'Show more'}
-            {expanded ? <IconChevronUp size={14} /> : <IconChevronDown size={14} />}
+            <IconArrowsShuffle size={16} />
           </button>
-        )}
+          {(overflows || expanded) && (
+            <button
+              type="button"
+              onClick={() => setExpanded((e) => !e)}
+              aria-expanded={expanded}
+              className="inline-flex shrink-0 cursor-pointer items-center gap-1 text-sm text-accent hover:underline"
+            >
+              {expanded ? 'Show less' : 'Show more'}
+              {expanded ? <IconChevronUp size={14} /> : <IconChevronDown size={14} />}
+            </button>
+          )}
+        </div>
       </div>
       {expanded ? (
         // The same cards with the same gap as the row, wrapped onto new
@@ -1070,7 +1093,16 @@ export function PracticeDashboardMockup() {
     return gigPreview === 'none' ? [] : gigPreview === 'one' ? upcoming.slice(0, 1) : upcoming
   }, [gigPreview])
 
+  // Each shelf's random order (lib/shelfShuffle.ts), per device.
+  const { seedOf, toggle: toggleShuffle } = useShelfShuffles()
   const shelves: ShelfDef[] = useMemo(() => {
+    // A shuffled shelf: a shelf drawn from a whole view (a status,
+    // Favorites) picks at random from all of it; one defined by recency
+    // (the latest played, the newest added) shuffles that same set.
+    const order = (key: string, list: MockPiece[]) => {
+      const seed = seedOf(key)
+      return seed ? shuffledBy(list, seed) : list
+    }
     const practicing = pieces
       .filter((p) => p.status && PRACTICING.includes(p.status))
       // Latest practiced first, never practiced last, then the latest
@@ -1086,7 +1118,7 @@ export function PracticeDashboardMockup() {
       {
         key: 'practicing',
         title: 'Currently Practicing',
-        pieces: practicing,
+        pieces: order('practicing', practicing),
         detail: (p) => p.composer,
         showStatus: (p) => p.status === 'Stalled',
         seeAll: '/practicing',
@@ -1094,17 +1126,23 @@ export function PracticeDashboardMockup() {
       {
         key: 'played',
         title: 'Other Recently Played',
-        pieces: pieces
-          .filter((p) => p.playedDaysAgo != null && !practicingIds.has(p.id))
-          .sort((a, b) => a.playedDaysAgo! - b.playedDaysAgo!)
-          .slice(0, 15),
+        pieces: order(
+          'played',
+          pieces
+            .filter((p) => p.playedDaysAgo != null && !practicingIds.has(p.id))
+            .sort((a, b) => a.playedDaysAgo! - b.playedDaysAgo!)
+            .slice(0, 15),
+        ),
         detail: (p) => dayLabel(p.playedDaysAgo!),
         showStatus: () => true,
       },
       {
         key: 'added',
         title: 'Recently Added',
-        pieces: [...pieces].sort((a, b) => a.addedDaysAgo - b.addedDaysAgo).slice(0, 10),
+        pieces: order(
+          'added',
+          [...pieces].sort((a, b) => a.addedDaysAgo - b.addedDaysAgo).slice(0, 10),
+        ),
         detail: (p) =>
           `Added ${dayLabel(p.addedDaysAgo).replace(/^(Today|Yesterday)$/, (m) => m.toLowerCase())}`,
         showStatus: () => true,
@@ -1114,9 +1152,12 @@ export function PracticeDashboardMockup() {
         title: 'Favorites',
         // The real shelf: the most recently edited first. Mock pieces have no
         // edit dates, so the day each was added stands in.
-        pieces: pieces
-          .filter((p) => p.favorite)
-          .sort((a, b) => a.addedDaysAgo - b.addedDaysAgo || byTitle(a, b)),
+        pieces: order(
+          'favorites',
+          pieces
+            .filter((p) => p.favorite)
+            .sort((a, b) => a.addedDaysAgo - b.addedDaysAgo || byTitle(a, b)),
+        ),
         detail: (p) => p.composer,
         showStatus: () => true,
         seeAll: '/favorites',
@@ -1125,9 +1166,12 @@ export function PracticeDashboardMockup() {
       {
         key: 'want',
         title: 'Want to Learn',
-        pieces: pieces
-          .filter((p) => p.status === 'Want to Learn')
-          .sort((a, b) => a.statusDaysAgo - b.statusDaysAgo || byTitle(a, b)),
+        pieces: order(
+          'want',
+          pieces
+            .filter((p) => p.status === 'Want to Learn')
+            .sort((a, b) => a.statusDaysAgo - b.statusDaysAgo || byTitle(a, b)),
+        ),
         detail: (p) => p.composer,
         showStatus: () => false,
         seeAll: '/want-to-learn',
@@ -1135,16 +1179,19 @@ export function PracticeDashboardMockup() {
       {
         key: 'learned',
         title: 'Learned',
-        pieces: pieces
-          .filter((p) => p.status === 'Learned')
-          .sort((a, b) => a.statusDaysAgo - b.statusDaysAgo || byTitle(a, b)),
+        pieces: order(
+          'learned',
+          pieces
+            .filter((p) => p.status === 'Learned')
+            .sort((a, b) => a.statusDaysAgo - b.statusDaysAgo || byTitle(a, b)),
+        ),
         detail: (p) => p.composer,
         showStatus: () => false,
         seeAll: '/learned',
         total: 31,
       },
     ]
-  }, [pieces])
+  }, [pieces, seedOf])
 
   function addToList(id: number, at?: number) {
     setList((cur) => {
@@ -1498,6 +1545,8 @@ export function PracticeDashboardMockup() {
                 key={s.key}
                 title={s.title}
                 seeAll={(s.total ?? s.pieces.length) > s.pieces.length ? s.seeAll : undefined}
+                shuffled={!!seedOf(s.key)}
+                onShuffle={() => toggleShuffle(s.key)}
               >
                 {() =>
                   s.pieces.map((p) => (

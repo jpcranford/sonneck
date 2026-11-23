@@ -1,6 +1,7 @@
 package handlers_test
 
 import (
+	"fmt"
 	"net/http"
 	"testing"
 	"time"
@@ -245,5 +246,88 @@ func TestPracticeDashboard_FavoritesRecentlyEditedFirst(t *testing.T) {
 	decodeData(t, doJSON(t, h, http.MethodGet, "/api/practice/dashboard?day=2026-11-22", nil), &d)
 	if ids := dashIDs(d.Favorites); !equalIDs(ids, []int64{newest.ID, middle.ID, older.ID}) {
 		t.Errorf("favorites = %v, want [Beta Gamma Alpha] = %v", ids, []int64{newest.ID, middle.ID, older.ID})
+	}
+}
+
+// A shuffled shelf: drawn at random from the whole view, then capped; the
+// same seed gives the same shelf, a new seed a new one. The recent shelves
+// keep their own pieces, only reordered. A malformed shuffle is refused.
+func TestPracticeDashboard_Shuffle(t *testing.T) {
+	h := newTestServer(t)
+	for i := 0; i < 30; i++ {
+		createTestPiece(t, h, map[string]any{"title": fmt.Sprintf("Fav %02d", i), "favorite": true})
+	}
+	get := func(q string) dashboard {
+		t.Helper()
+		rec := doJSON(t, h, http.MethodGet, "/api/practice/dashboard?day=2026-11-22"+q, nil)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("dashboard%s: %d %s", q, rec.Code, rec.Body.String())
+		}
+		var d dashboard
+		decodeData(t, rec, &d)
+		return d
+	}
+	plain := get("")
+	if len(plain.Favorites) != 16 {
+		t.Fatalf("favorites = %d, want the cap of 16", len(plain.Favorites))
+	}
+	inPlain := map[int64]bool{}
+	for _, id := range dashIDs(plain.Favorites) {
+		inPlain[id] = true
+	}
+
+	// Over a few seeds, the shuffled shelf reaches pieces past the usual 16.
+	reached := map[int64]bool{}
+	for seed := 1; seed <= 6; seed++ {
+		d := get(fmt.Sprintf("&shuffle=favorites:%d", seed))
+		if len(d.Favorites) != 16 {
+			t.Fatalf("seed %d: %d favorites, want 16", seed, len(d.Favorites))
+		}
+		for _, id := range dashIDs(d.Favorites) {
+			reached[id] = true
+		}
+	}
+	outside := 0
+	for id := range reached {
+		if !inPlain[id] {
+			outside++
+		}
+	}
+	if outside == 0 {
+		t.Errorf("shuffled favorites never reached past the usual 16")
+	}
+
+	a := dashIDs(get("&shuffle=favorites:42").Favorites)
+	if !equalIDs(a, dashIDs(get("&shuffle=favorites:42").Favorites)) {
+		t.Errorf("the same seed gave a different shelf")
+	}
+	if equalIDs(a, dashIDs(get("&shuffle=favorites:43").Favorites)) {
+		t.Errorf("a new seed gave the same shelf")
+	}
+
+	// Recently Added: the same 10 newest, in another order.
+	shuffledAdded := dashIDs(get("&shuffle=added:9").RecentlyAdded)
+	plainAdded := dashIDs(plain.RecentlyAdded)
+	if len(shuffledAdded) != 10 || equalIDs(shuffledAdded, plainAdded) {
+		t.Errorf("shuffled recently added = %v, want the same 10 reordered (%v)", shuffledAdded, plainAdded)
+	}
+	set := map[int64]bool{}
+	for _, id := range plainAdded {
+		set[id] = true
+	}
+	for _, id := range shuffledAdded {
+		if !set[id] {
+			t.Errorf("shuffled recently added has %d, not one of the 10 newest", id)
+		}
+	}
+
+	// Other shelves are untouched by a favorites shuffle; bad input is a 400.
+	if !equalIDs(dashIDs(get("&shuffle=favorites:5").RecentlyAdded), plainAdded) {
+		t.Errorf("shuffling favorites reordered recently added")
+	}
+	for _, bad := range []string{"favorites", "favorites:x", "favorites:0", "favorites:-3"} {
+		if rec := doJSON(t, h, http.MethodGet, "/api/practice/dashboard?day=2026-11-22&shuffle="+bad, nil); rec.Code != http.StatusBadRequest {
+			t.Errorf("shuffle=%s: %d, want 400", bad, rec.Code)
+		}
 	}
 }

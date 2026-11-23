@@ -174,6 +174,7 @@ const SECTIONS: { title: string; mockups: Mockup[] }[] = [
           'Drag a piece from a shelf into the list with a mouse; it lands where the gap shows.',
           'Customize the week on one device; it shows the same on another.',
           'On the real Practice page, a gig’s +N beside Practice adds its missing pieces; tap it on the iPad.',
+          'On the real Practice page, each shelf’s shuffle button on the iPad: a new order each time it’s turned on.',
         ],
       },
       {
