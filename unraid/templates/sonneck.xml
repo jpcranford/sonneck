@@ -2,6 +2,15 @@
 <Container version="2">
   <Name>Sonneck</Name>
   <Repository>ghcr.io/jpcranford/sonneck:latest</Repository>
+  <DefaultTagDescription>latest: the newest stable release (recommended)</DefaultTagDescription>
+  <Branch>
+    <Tag>beta</Tag>
+    <TagDescription>beta: the newest pre-release, or the stable release when it's newer; may have rough edges</TagDescription>
+  </Branch>
+  <Branch>
+    <Tag>dev</Tag>
+    <TagDescription>dev: a nightly build of the newest tested commit on main; not stable, may break, a lot of changes per update</TagDescription>
+  </Branch>
   <Registry>https://github.com/jpcranford/sonneck/pkgs/container/sonneck</Registry>
   <Network>bridge</Network>
   <MyIP/>
