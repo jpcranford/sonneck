@@ -30,6 +30,18 @@ describe('titleCase', () => {
     expect(titleCase('somewhere (the reprise)')).toBe('Somewhere (The Reprise)')
   })
 
+  it('leaves contractions and possessives lowercase after the apostrophe', () => {
+    expect(titleCase("charlie's angels")).toBe("Charlie's Angels")
+    expect(titleCase("you're my sunshine")).toBe("You're My Sunshine")
+    expect(titleCase('don’t stop believin’')).toBe('Don’t Stop Believin’')
+    expect(titleCase("rock 'n' roll")).toBe("Rock 'n' Roll")
+  })
+
+  it("capitalizes after a single-letter elision like O' or L'", () => {
+    expect(titleCase("l'arlésienne suite")).toBe("L'Arlésienne Suite")
+    expect(titleCase("(o'brien's song)")).toBe("(O'Brien's Song)")
+  })
+
   it('leaves blank input untouched', () => {
     expect(titleCase('')).toBe('')
     expect(titleCase('   ')).toBe('   ')
@@ -55,6 +67,12 @@ describe('nameCase', () => {
 
   it('capitalizes both letters of a two-initial abbreviation', () => {
     expect(nameCase('j.s. bach')).toBe('J.S. Bach')
+  })
+
+  it("capitalizes after O' and D' but not in a possessive", () => {
+    expect(nameCase("sinéad o'connor")).toBe("Sinéad O'Connor")
+    expect(nameCase("vincent d'indy")).toBe("Vincent D'Indy")
+    expect(nameCase('d’arcy smith')).toBe('D’Arcy Smith')
   })
 
   it('normalizes ALL CAPS input', () => {

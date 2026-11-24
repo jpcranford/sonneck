@@ -7,22 +7,29 @@
 // ones this app's own fields are likely to see.
 
 // Capitalizes the first letter of a word and of every segment after an
-// internal hyphen, apostrophe, period, or opening parenthesis — a plain
+// internal hyphen, period, or opening parenthesis — a plain
 // "uppercase the first character" would leave "well-tempered" as
 // "Well-tempered" and "j.s." as "J.s." instead of "Well-Tempered"/"J.S.".
 // The "(" case matters because titleCase/nameCase split on whitespace
 // only (see below), so a title like "Somewhere (reprise)" has "(reprise)"
 // as one whole token — without "(" in this set, nothing inside ever
 // followed one of the other recognized separators, so it stayed entirely
-// lowercase, not just under-capitalized. Lowercases
-// everything else first, so this also normalizes ALL-CAPS or sTrAnGe-CaSe
-// input, not just plain lowercase.
+// lowercase, not just under-capitalized. After an apostrophe (straight or
+// curly) only when it follows a single opening letter — O'Brien, D'Arcy,
+// L'Amour — never in a contraction or possessive ("Charlie's", "You're",
+// "Don't" became "Charlie'S"/"You'Re"/"Don'T" when every apostrophe
+// counted). Lowercases everything else first, so this also normalizes
+// ALL-CAPS or sTrAnGe-CaSe input, not just plain lowercase.
 function capitalizeWord(word: string): string {
   return word
     .toLowerCase()
     .replace(
-      /(^|[-'.(])([a-zà-öø-ÿ])/g,
+      /(^|[-.(])([a-zà-öø-ÿ])/g,
       (_, sep: string, letter: string) => sep + letter.toUpperCase(),
+    )
+    .replace(
+      /(^|[-.(])([a-zà-öø-ÿA-ZÀ-ÖØ-Þ]['’])([a-zà-öø-ÿ])/g,
+      (_, sep: string, start: string, letter: string) => sep + start + letter.toUpperCase(),
     )
 }
 
