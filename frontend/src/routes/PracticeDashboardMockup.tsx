@@ -1487,9 +1487,11 @@ export function PracticeDashboardMockup() {
     <div className="my-0.5 h-9 rounded-md border-[1.5px] border-dashed border-accent bg-accent-soft" />
   )
 
+  // No text selection anywhere in the list (a press on a row, a drag or a
+  // long press would otherwise start one), wide or in the drawer.
   const practiceList = (
     <div
-      className={`flex min-h-0 flex-1 flex-col ${
+      className={`flex min-h-0 flex-1 select-none flex-col ${
         isWide ? 'rounded-lg border border-border bg-paper-raised p-3' : 'px-4 pt-1 pb-3'
       }`}
       onDragOver={(e) => {
@@ -1554,7 +1556,7 @@ export function PracticeDashboardMockup() {
           onPointerMove={onListPointerMove}
           onPointerUp={endReorder}
           onPointerCancel={endReorder}
-          className={`-mx-1 min-h-0 flex-1 overflow-y-auto px-1 ${reorderId != null ? 'select-none' : ''}`}
+          className="-mx-1 min-h-0 flex-1 overflow-y-auto px-1"
         >
           {list.map((id, i) => {
             const p = byId.get(id)!
@@ -1832,7 +1834,7 @@ export function PracticeDashboardMockup() {
       {!isWide && (
         <div
           ref={barRef}
-          className="sticky bottom-0 z-10 -mx-4 -mb-6 flex items-center justify-between gap-3 border-t border-border bg-paper-raised px-4 pt-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom,0px))] md:-mx-8 md:px-8"
+          className="sticky bottom-0 z-10 -mx-4 -mb-6 flex items-center select-none justify-between gap-3 border-t border-border bg-paper-raised px-4 pt-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom,0px))] md:-mx-8 md:px-8"
         >
           <button
             type="button"
