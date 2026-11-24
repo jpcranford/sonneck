@@ -213,7 +213,7 @@ const SECTIONS: { title: string; mockups: Mockup[] }[] = [
       {
         to: '/mockup/upload-piece-about',
         name: 'Upload Piece — About This Piece',
-        note: 'Single-piece Upload flow\'s "details" step — Title/Composer/Arranger/Year Written/IMSLP No. always visible, the rest behind "More details" and "From a book?". The IMSLP number from the filename autofills blank fields shortly after the screen appears, as the book upload does.',
+        note: 'Single-piece Upload flow\'s "details" step — Title/Composer/Arranger/Year Written/IMSLP No. always visible, the rest behind "More details", "From a book?" and "Copyright". The IMSLP number from the filename autofills blank fields shortly after the screen appears, as the book upload does.',
       },
       {
         to: '/mockup/upload-book-about',

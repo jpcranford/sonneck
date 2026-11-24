@@ -16,6 +16,13 @@ import {
 import type { Tag } from '../api/types'
 import { TagComboBox } from '../components/TagComboBox'
 import { SingleSelect } from '../components/SingleSelect'
+import { InfoIconTooltip } from '../components/InfoIconTooltip'
+import { Toggle } from '../components/Toggle'
+import {
+  US_RENEWAL_WINDOW_START,
+  US_RENEWAL_WINDOW_END,
+  inUSRenewalWindow,
+} from '../lib/usRenewalWindow'
 import { useMockupTitle } from '../lib/useMockupTitle'
 import { imslpNumberFromFilename, isDetectedImslpNumber } from '../lib/imslpFromFilename'
 import { MarkdownHint } from '../components/MarkdownHint'
@@ -90,7 +97,39 @@ interface FormValues {
   imslpNumber: string
   instruments: Tag[]
   description: string
+  copyrightStatus: string
+  copyrightYear: string
+  copyrightHolder: string
+  copyrightSlug: string
+  copyrightRenewed: '' | 'true' | 'false'
 }
+
+// The real page's copyright status list (UploadPage.tsx, EditPieceModal.tsx).
+const COPYRIGHT_STATUS_OPTIONS = [
+  {
+    value: 'publicDomain',
+    label: 'In Public Domain',
+    description: 'No copyright applies. Sticky once picked — the calculation never overrides this.',
+  },
+  {
+    value: 'likelyPublicDomain',
+    label: 'Likely Public Domain',
+    description:
+      'Calculated automatically from copyright year and composer death year. Sticky if picked by hand too.',
+  },
+  {
+    value: 'inCopyright',
+    label: 'In Copyright',
+    description:
+      'Your own call — but if the calculation later determines the term has expired, this moves to Likely Public Domain on its own.',
+  },
+  {
+    value: 'copyleft',
+    label: 'Copyleft',
+    description:
+      'A license like Creative Commons has been attached to this piece. Same auto-upgrade as In Copyright if the calculation later says the term expired anyway.',
+  },
+]
 
 const defaultValues: FormValues = {
   title: 'Clair de Lune',
@@ -106,6 +145,11 @@ const defaultValues: FormValues = {
   imslpNumber: '02334',
   instruments: [],
   description: '',
+  copyrightStatus: '',
+  copyrightYear: '',
+  copyrightHolder: '',
+  copyrightSlug: '',
+  copyrightRenewed: '',
 }
 
 // Stand-in for a real piece page image (this mockup has no real pieceId to
@@ -344,6 +388,9 @@ export function UploadPieceAboutMockup() {
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [moreDetailsOpen, setMoreDetailsOpen] = useState(false)
   const [bookOpen, setBookOpen] = useState(false)
+  // Copyright, collapsed by default like the book upload's (the renewal
+  // toggle shows as for an en-US library).
+  const [copyrightOpen, setCopyrightOpen] = useState(false)
 
   const {
     register,
@@ -732,6 +779,88 @@ export function UploadPieceAboutMockup() {
               <div className="flex items-center gap-2 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink-soft/60">
                 <IconSearch size={16} />
                 <span className="text-sm italic">Search books…</span>
+              </div>
+            </CollapsibleSection>
+
+            <CollapsibleSection
+              label="Copyright"
+              open={copyrightOpen}
+              onToggle={() => setCopyrightOpen((o) => !o)}
+            >
+              <Controller
+                name="copyrightStatus"
+                control={control}
+                render={({ field }) => (
+                  <SingleSelect
+                    label="Copyright status"
+                    options={COPYRIGHT_STATUS_OPTIONS}
+                    value={field.value}
+                    onChange={field.onChange}
+                    placeholder="Not set"
+                    placeholderDescription="No status set for this piece yet."
+                    onClear={() => field.onChange('')}
+                  />
+                )}
+              />
+              <div className="flex flex-col gap-3 min-[525px]:flex-row">
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  <label
+                    htmlFor="m-copyright-year"
+                    className="flex items-center gap-1 text-sm text-ink-soft"
+                  >
+                    Copyright year
+                    <InfoIconTooltip
+                      message="Enter the year copyright was first established for this piece — usually the year of first publication."
+                      ariaLabel="What Copyright year means"
+                    />
+                  </label>
+                  <input
+                    id="m-copyright-year"
+                    type="number"
+                    className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+                    {...register('copyrightYear')}
+                  />
+                </div>
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  <label htmlFor="m-copyright-holder" className="text-sm text-ink-soft">
+                    Copyright holder
+                  </label>
+                  <input
+                    id="m-copyright-holder"
+                    className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink"
+                    {...register('copyrightHolder', { maxLength: 255 })}
+                  />
+                </div>
+              </div>
+              {inUSRenewalWindow(watch('copyrightYear')) && (
+                <div className="flex items-center gap-1.5 rounded-md border border-dashed border-border p-3">
+                  <Controller
+                    name="copyrightRenewed"
+                    control={control}
+                    render={({ field }) => (
+                      <Toggle
+                        checked={field.value === 'true'}
+                        onChange={(next) => field.onChange(next ? 'true' : 'false')}
+                        label="This work was renewed"
+                      />
+                    )}
+                  />
+                  <InfoIconTooltip
+                    message={`US works published ${US_RENEWAL_WINDOW_START}–${US_RENEWAL_WINDOW_END} needed a separate renewal filing to keep protection past the first 28 years. Enable this if your source shows a "(renewed …)" note next to the copyright year above.`}
+                    ariaLabel="What 'This work was renewed' means"
+                  />
+                </div>
+              )}
+              <div className="flex min-w-0 flex-col gap-1">
+                <label htmlFor="m-copyright-slug" className="text-sm text-ink-soft">
+                  Copyright details
+                </label>
+                <input
+                  id="m-copyright-slug"
+                  placeholder="Optional — e.g. license terms, renewal notes"
+                  className="w-full min-w-0 rounded-md border border-border bg-paper-raised px-3 py-2 text-ink placeholder:text-ink-soft/40 placeholder:italic"
+                  {...register('copyrightSlug')}
+                />
               </div>
             </CollapsibleSection>
 
