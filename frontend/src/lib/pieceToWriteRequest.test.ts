@@ -27,6 +27,7 @@ function fixturePiece(overrides: Partial<Piece> = {}): Piece {
     description: { value: '', inherited: true },
     userNotes: null,
     userTags: [],
+    bookUserTags: [],
     practiceStatus: null,
     imslpNumber: { value: '', inherited: true },
     instruments: { values: [], inherited: true },

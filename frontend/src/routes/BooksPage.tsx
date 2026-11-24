@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query'
+import { useSearchParams } from 'react-router-dom'
 import { IconX } from '@tabler/icons-react'
 import { countBooks, getBookFacets, listBooks } from '../api/books'
 import { ApiError } from '../api/client'
@@ -62,7 +63,18 @@ export function BooksPage() {
   const [viewMode, setViewMode] = useViewPreference('books')
   const [newBookOpen, setNewBookOpen] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const [drawerFilters, setDrawerFilters] = useState<BookFilterState>(EMPTY_BOOK_FILTERS)
+  // Book Details' tag pills link here (`/books?userTagId=5`): the filter
+  // starts set, read once on arrival, then the URL is cleared — the same
+  // as the Piece Library's pill links (PieceBrowseView.tsx).
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [drawerFilters, setDrawerFilters] = useState<BookFilterState>(() => {
+    const userTagId = searchParams.get('userTagId')
+    return { ...EMPTY_BOOK_FILTERS, userTagId: userTagId ? { [userTagId]: 'include' } : {} }
+  })
+  useEffect(() => {
+    if (searchParams.has('userTagId')) setSearchParams({}, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, on arrival
+  }, [])
   const [sortField, setSortField] = useState<BookSortField>('dateAdded')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
   const debouncedQuery = useDebouncedValue(query)
@@ -135,6 +147,12 @@ export function BooksPage() {
     label: string
     state: TriState
   }[] = [
+    ...Object.entries(drawerFilters.userTagId).map(([id, state]) => ({
+      field: 'userTagId' as const,
+      value: id,
+      label: facets?.userTags.find((v) => v.id === Number(id))?.name ?? id,
+      state,
+    })),
     ...Object.entries(drawerFilters.sheetTypeId).map(([id, state]) => ({
       field: 'sheetTypeId' as const,
       value: id,
@@ -191,17 +209,20 @@ export function BooksPage() {
             )}
             {pillEntries.map((entry) => {
               const excluded = entry.state === 'exclude'
+              // Your tags are your own data, green like the Piece
+              // Library's; the rest are catalog facts.
+              const tone = entry.field === 'userTagId' ? 'own' : 'catalog'
               return (
                 <span
                   key={entry.field + entry.value}
-                  className={`flex items-center gap-1.5 rounded-full border py-1 pr-1.5 pl-3 text-xs font-medium ${filterChipClass('catalog', excluded)}`}
+                  className={`flex items-center gap-1.5 rounded-full border py-1 pr-1.5 pl-3 text-xs font-medium ${filterChipClass(tone, excluded)}`}
                 >
                   {excluded ? `Not ${entry.label}` : entry.label}
                   <button
                     type="button"
                     onClick={() => clearDrawerFilter(entry.field, entry.value)}
                     aria-label={`Remove ${excluded ? 'not ' : ''}${entry.label} filter`}
-                    className={`flex size-4 cursor-pointer items-center justify-center rounded-full opacity-75 hover:opacity-100 ${filterChipRemoveClass('catalog', excluded)}`}
+                    className={`flex size-4 cursor-pointer items-center justify-center rounded-full opacity-75 hover:opacity-100 ${filterChipRemoveClass(tone, excluded)}`}
                   >
                     <IconX size={11} />
                   </button>

@@ -80,6 +80,8 @@ const sampleBook = {
   workOpusNumber: 'Op. 68',
   sheetType: 'PVG Score',
   instruments: ['Piano'],
+  // Your tags on the book (its pieces carry them too).
+  userTags: ['romantic era'],
   publisher: 'Breitkopf & Härtel',
   publisherId: '8845',
   description:
@@ -344,8 +346,8 @@ function SheetThumb() {
 // sharing the same inherited
 // sheet type/instruments would otherwise repeat the identical pill on
 // every single row, adding nothing the book header (above the piece list)
-// hasn't already shown once. Keys and userTags were never book-inheritable
-// to begin with (design doc §3), so this only actually changes behavior
+// hasn't already shown once. Keys were never book-inheritable, and userTags
+// is the piece's own (the book's tags show in the header), so this only actually changes behavior
 // for sheetType/instruments. This is a real, currently-unfixed gap in the
 // live app: BookDetailsPage.tsx's TagPills call passes
 // piece.sheetType.value/piece.instruments.values — the *effective*
@@ -966,8 +968,20 @@ export function BookDetailsSample() {
                 <p className="text-base text-ink-soft">{metaLine}</p>
               </div>
 
-              {(sampleBook.sheetType || sampleBook.instruments.length > 0) && (
+              {(sampleBook.sheetType ||
+                sampleBook.instruments.length > 0 ||
+                sampleBook.userTags.length > 0) && (
                 <div className="mt-1 mb-1.5 flex flex-wrap gap-1.5">
+                  {/* Your tags first, green as your own data (the real
+                      page links each to the Books library, filtered). */}
+                  {sampleBook.userTags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="rounded-full border border-accent/30 bg-accent-soft px-2.5 py-0.5 text-xs font-medium text-accent"
+                    >
+                      {tag}
+                    </span>
+                  ))}
                   {sampleBook.sheetType && (
                     <span className="rounded-full border border-border px-2.5 py-0.5 text-xs font-medium text-ink-soft">
                       {sampleBook.sheetType}

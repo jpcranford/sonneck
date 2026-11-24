@@ -172,6 +172,8 @@ const samplePiece = {
   },
   userNotes: 'Left hand voicing in m.9 keeps tripping me up — slow it down to 60bpm next time.',
   userTags: [{ id: 1, name: 'recital candidate' }] as Tag[],
+  // Your tags on its book, carried read-only (PiecePage.tsx's bookUserTags).
+  bookUserTags: [{ id: 2, name: 'romantic era' }] as Tag[],
   practiceStatus: 'Learning' as PracticeStatus | null,
   imslpNumber: { value: 'IMSLP04154', inherited: true },
   instruments: { values: [{ id: 1, name: 'Piano' }] as Tag[], inherited: true },
@@ -1341,6 +1343,17 @@ export function PieceDetailsSample() {
                 className="rounded-full border border-accent/30 bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent"
               >
                 {tag.name}
+              </span>
+            ))}
+            {/* Your tags on its book, marked inherited like the sheet
+                type (PiecePage.tsx's real version). */}
+            {piece.bookUserTags.map((tag) => (
+              <span
+                key={`book-${tag.id}`}
+                className="flex items-center gap-1 rounded-full border border-accent/30 bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent"
+              >
+                {tag.name}
+                <InheritedNote compact />
               </span>
             ))}
             {/* One merged pill for the whole key sequence, kept in sync

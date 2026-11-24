@@ -58,6 +58,8 @@ interface MockBook {
   pieceCount: number
   sheetType: string
   instruments: string[]
+  // Your tags on the book (the real Books library's Your Tags filter).
+  userTags?: string[]
   // [width, height] ratio units — omitted defaults to a portrait 2:3
   // "real cover art" shape. A couple of entries below get a landscape
   // ratio instead, standing in for the common real-app case of a book
@@ -99,6 +101,7 @@ const MOCK_BOOKS: MockBook[] = [
     pieceCount: 43,
     sheetType: 'Solo Piece',
     instruments: ['Piano'],
+    userTags: ['romantic era', 'recital candidate'],
   },
   {
     id: 2,
@@ -381,6 +384,7 @@ function distinctInstruments(): string[] {
 
 const SHEET_TYPE_OPTIONS = distinctBookValues('sheetType')
 const INSTRUMENT_OPTIONS = distinctInstruments()
+const USER_TAG_OPTIONS = ['recital candidate', 'romantic era']
 
 // Three-way segmented control, ported from PieceLibrarySample.tsx — see
 // that file's own comment on TriState/dimensionState/setDimensionState/
@@ -431,6 +435,7 @@ function booksMatchExcept(
 ): boolean {
   if (exclude !== 'sheetType' && !matchesDimension(f.sheetType, b.sheetType)) return false
   if (exclude !== 'instruments' && !matchesTagDimension(f.instruments, b.instruments)) return false
+  if (exclude !== 'userTags' && !matchesTagDimension(f.userTags, b.userTags ?? [])) return false
   if (query.trim() && !b.bookTitle.toLowerCase().includes(query.trim().toLowerCase())) return false
   return true
 }
@@ -448,11 +453,21 @@ function countInstrument(value: string, f: BookFilterState, query: string): numb
 interface BookFilterState {
   sheetType: Record<string, TriState>
   instruments: Record<string, TriState>
+  userTags: Record<string, TriState>
 }
-const EMPTY_BOOK_FILTERS: BookFilterState = { sheetType: {}, instruments: {} }
+const EMPTY_BOOK_FILTERS: BookFilterState = { sheetType: {}, instruments: {}, userTags: {} }
 
 function activeBookFilterCount(f: BookFilterState): number {
-  return Object.keys(f.sheetType).length + Object.keys(f.instruments).length
+  return (
+    Object.keys(f.sheetType).length +
+    Object.keys(f.instruments).length +
+    Object.keys(f.userTags).length
+  )
+}
+function countUserTag(value: string, f: BookFilterState, query: string): number {
+  return MOCK_BOOKS.filter(
+    (b) => (b.userTags ?? []).includes(value) && booksMatchExcept(b, f, 'userTags', query),
+  ).length
 }
 function bookMatches(b: MockBook, f: BookFilterState): boolean {
   return booksMatchExcept(b, f, null, '')
@@ -598,6 +613,20 @@ function BookFilterDrawer({
         </p>
 
         <div className="flex-1 overflow-y-auto px-4 py-2">
+          <BookFacetSection title="Your Tags">
+            {USER_TAG_OPTIONS.map((v) => (
+              <BookFacetRow
+                key={v}
+                label={v}
+                count={countUserTag(v, filters, query)}
+                state={dimensionState(filters.userTags, v)}
+                onChange={(next) =>
+                  onChange({ ...filters, userTags: setDimensionState(filters.userTags, v, next) })
+                }
+              />
+            ))}
+          </BookFacetSection>
+
           <BookFacetSection title="Sheet Type">
             {SHEET_TYPE_OPTIONS.map((v) => (
               <BookFacetRow
@@ -992,6 +1021,11 @@ export function BooksLibrarySample() {
     setAppliedFilters((f) => ({ ...f, [field]: setDimensionState(f[field], value, 'neutral') }))
   }
   const pillEntries: { field: keyof BookFilterState; value: string; state: TriState }[] = [
+    ...Object.entries(appliedFilters.userTags).map(([v, state]) => ({
+      field: 'userTags' as const,
+      value: v,
+      state,
+    })),
     ...Object.entries(appliedFilters.sheetType).map(([v, state]) => ({
       field: 'sheetType' as const,
       value: v,
@@ -1141,17 +1175,18 @@ export function BooksLibrarySample() {
                 <MatchCount count={sortedBooks.length} singular="book" plural="books"></MatchCount>
                 {pillEntries.map((entry) => {
                   const excluded = entry.state === 'exclude'
+                  const tone = entry.field === 'userTags' ? 'own' : 'catalog'
                   return (
                     <span
                       key={entry.field + entry.value}
-                      className={`flex items-center gap-1.5 rounded-full border py-1 pr-1.5 pl-3 text-xs font-medium ${filterChipClass('catalog', excluded)}`}
+                      className={`flex items-center gap-1.5 rounded-full border py-1 pr-1.5 pl-3 text-xs font-medium ${filterChipClass(tone, excluded)}`}
                     >
                       {excluded ? `Not ${entry.value}` : entry.value}
                       <button
                         type="button"
                         onClick={() => clearAppliedFilter(entry.field, entry.value)}
                         aria-label={`Remove ${excluded ? 'not ' : ''}${entry.value} filter`}
-                        className={`flex size-4 cursor-pointer items-center justify-center rounded-full opacity-75 hover:opacity-100 ${filterChipRemoveClass('catalog', excluded)}`}
+                        className={`flex size-4 cursor-pointer items-center justify-center rounded-full opacity-75 hover:opacity-100 ${filterChipRemoveClass(tone, excluded)}`}
                       >
                         <IconX size={11} />
                       </button>

@@ -275,9 +275,9 @@ function PieceList({ pieces }: { pieces: Piece[] }) {
                     sheet type/instruments would otherwise repeat the
                     identical pill on every single row, adding nothing the
                     book header above the piece list hasn't already shown
-                    once. Keys/userTags were never book-inheritable to begin
-                    with (design doc §3), so passing them through unfiltered
-                    is unchanged. */}
+                    once. Keys were never book-inheritable, and userTags is
+                    the piece's own (the book's tags show in the header, not
+                    as each piece's bookUserTags), so both pass through. */}
                 <TagPills
                   practiceStatus={piece.practiceStatus}
                   keys={piece.keys}
@@ -885,8 +885,22 @@ export function BookDetailsPage() {
                   </p>
                 </div>
 
-                {(book.sheetType || book.instruments.length > 0) && (
+                {(book.sheetType ||
+                  book.instruments.length > 0 ||
+                  (book.userTags ?? []).length > 0) && (
                   <div className="mt-1 mb-1.5 flex flex-wrap gap-1.5">
+                    {/* Your tags first, green as your own data (Piece
+                        Details' pills), each opening the Books library
+                        filtered by it; its pieces carry them too. */}
+                    {(book.userTags ?? []).map((tag) => (
+                      <Link
+                        key={tag.id}
+                        to={`/books?userTagId=${tag.id}`}
+                        className="rounded-full border border-accent/30 bg-accent-soft px-2.5 py-0.5 text-xs font-medium text-accent transition-colors hover:bg-accent/20"
+                      >
+                        {tag.name}
+                      </Link>
+                    ))}
                     {book.sheetType && (
                       <span className="rounded-full border border-border px-2.5 py-0.5 text-xs font-medium text-ink-soft">
                         {book.sheetType.name}

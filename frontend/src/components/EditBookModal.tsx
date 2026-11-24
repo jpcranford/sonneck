@@ -5,7 +5,7 @@ import { IconAlertTriangle, IconChevronRight, IconCheck, IconX } from '@tabler/i
 import { getBook, updateBook } from '../api/books'
 import { useFreshOnOpen } from '../hooks/useFreshOnOpen'
 import { lookupImslp } from '../api/imslp'
-import { listInstruments, listSheetTypes } from '../api/lookups'
+import { listInstruments, listSheetTypes, listUserTags } from '../api/lookups'
 import { listPeople } from '../api/people'
 import { getConfig } from '../api/config'
 import { ApiError } from '../api/client'
@@ -54,6 +54,8 @@ interface FormValues {
   yearPublished: string
   workOpusNumber: string
   instruments: Tag[]
+  // Your own tags on the book (private to you), which its pieces carry too.
+  userTags: Tag[]
   sheetType: string
   publisher: string
   publisherId: string
@@ -84,6 +86,7 @@ function bookToFormValues(book: Book): FormValues {
     yearPublished: book.yearPublished ?? '',
     workOpusNumber: book.workOpusNumber ?? '',
     instruments: book.instruments,
+    userTags: book.userTags ?? [],
     sheetType: book.sheetType?.name ?? '',
     publisher: book.publisher ?? '',
     publisherId: book.publisherId ?? '',
@@ -169,6 +172,7 @@ function formValuesToWriteRequest(data: FormValues): BookWriteRequest {
     imslpNumber: stripImslpPrefix(data.imslpNumber) || null,
     isbn: data.isbn || null,
     instruments: data.instruments.map((i) => i.name),
+    userTags: data.userTags.map((t) => t.name),
     // Public Domain Badge feature (migration 00022) — same plain
     // direct-mapping treatment as every other field above.
     copyrightStatus: (data.copyrightStatus || null) as BookWriteRequest['copyrightStatus'],
@@ -252,6 +256,7 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
     queryKey: ['instruments'],
     queryFn: listInstruments,
   })
+  const { data: userTagOptions = [] } = useQuery({ queryKey: ['user-tags'], queryFn: listUserTags })
   // People catalog — same unpaginated lookup convention as every other
   // field here.
   const { data: peopleOptions = [] } = useQuery({
@@ -343,6 +348,9 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
       refreshAfterSave(queryClient, 'book', updated)
       queryClient.invalidateQueries({ queryKey: ['pieces'] })
       queryClient.invalidateQueries({ queryKey: ['piece'] })
+      // The book's tags count for its pieces, and a new one joins your list.
+      queryClient.invalidateQueries({ queryKey: ['pieceFacets'] })
+      queryClient.invalidateQueries({ queryKey: ['user-tags'] })
       afterMinDuration(saveStartedAtRef.current, () => {
         setSaveState('saved')
         setTimeout(() => {
@@ -676,6 +684,21 @@ export function EditBookModal({ book, open, onClose }: EditBookModalProps) {
                     label="Instruments"
                     pillStyle="paper"
                     options={instrumentOptions}
+                    selected={field.value}
+                    multiple
+                    onChange={field.onChange}
+                  />
+                )}
+              />
+              {/* Your tags, as on a piece (Edit Piece's Personal section);
+                  every piece in the book carries them too. */}
+              <Controller
+                name="userTags"
+                control={control}
+                render={({ field }) => (
+                  <TagComboBox
+                    label="Your tags"
+                    options={userTagOptions}
                     selected={field.value}
                     multiple
                     onChange={field.onChange}

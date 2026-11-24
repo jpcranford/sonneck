@@ -30,6 +30,9 @@ interface ListBooksParams {
   excludeSheetTypeId?: number[]
   instrumentId?: number[]
   excludeInstrumentId?: number[]
+  /** Your tags on the book. */
+  userTagId?: number[]
+  excludeUserTagId?: number[]
   /** Person Details' own "Also credited directly on N books" chip strip —
    * a book directly crediting this person as composer or arranger (no
    * inheritance to consider, Book is the top of that hierarchy). */
@@ -68,6 +71,8 @@ export function countBooks(
 export interface BookFacets {
   sheetTypes: FacetCount[]
   instruments: FacetCount[]
+  /** Your own tags on books. */
+  userTags: FacetCount[]
 }
 
 /** Same shape as ListBooksParams minus sort/personId (neither is a Filter
@@ -79,6 +84,8 @@ export interface BookFacetsParams {
   excludeSheetTypeId?: number[]
   instrumentId?: number[]
   excludeInstrumentId?: number[]
+  userTagId?: number[]
+  excludeUserTagId?: number[]
 }
 
 export function getBookFacets(params: BookFacetsParams = {}): Promise<BookFacets> {

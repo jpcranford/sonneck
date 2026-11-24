@@ -488,7 +488,7 @@ func negateClause(where string) string {
 
 // idListClause builds one namedClause (or its exclude counterpart, via
 // negateClause) for a simple "the piece's id appears in this join-table
-// subquery" facet — keyId/userTagId's own shape, no book-inheritance
+// subquery" facet — keyId's own shape (userTagId has its own, userTagClause), no book-inheritance
 // fallback to worry about.
 func idListClause(name, subqueryTable, subqueryCol string, ids []int64, excl bool) namedClause {
 	where := "p.id IN (SELECT piece_id FROM " + subqueryTable + " WHERE " + subqueryCol + " IN (" + sqlPlaceholders(len(ids)) + "))"
@@ -496,6 +496,21 @@ func idListClause(name, subqueryTable, subqueryCol string, ids []int64, excl boo
 		where = negateClause(where)
 	}
 	return namedClause{name: name, where: where, args: idsToArgs(ids)}
+}
+
+// userTagClause matches a piece carrying any of these tags, its own or its
+// book's (migration 00044: a book's tags are added to its pieces', never
+// replacing them). Tag ids are already private to their owner, so the ids
+// scope it to the caller. Excluding goes through negateClause: a bookless
+// piece's `source_book_id IN (...)` is NULL, which COALESCE makes false.
+func userTagClause(ids []int64, excl bool) namedClause {
+	ph := sqlPlaceholders(len(ids))
+	where := "(p.id IN (SELECT piece_id FROM piece_user_tags WHERE tag_id IN (" + ph + "))" +
+		" OR p.source_book_id IN (SELECT book_id FROM book_user_tags WHERE tag_id IN (" + ph + ")))"
+	if excl {
+		where = negateClause(where)
+	}
+	return namedClause{name: "userTagId", where: where, args: append(idsToArgs(ids), idsToArgs(ids)...)}
 }
 
 // buildPieceFilterClauses parses the Piece Filter Drawer's own filter query
@@ -557,12 +572,12 @@ func buildPieceFilterClauses(w http.ResponseWriter, q url.Values, userID int64) 
 	if ids, present, ok := parseIDListFilter(w, q, "userTagId"); !ok {
 		return nil, false
 	} else if present {
-		clauses = append(clauses, idListClause("userTagId", "piece_user_tags", "tag_id", ids, false))
+		clauses = append(clauses, userTagClause(ids, false))
 	}
 	if ids, present, ok := parseIDListFilter(w, q, "excludeUserTagId"); !ok {
 		return nil, false
 	} else if present {
-		clauses = append(clauses, idListClause("userTagId", "piece_user_tags", "tag_id", ids, true))
+		clauses = append(clauses, userTagClause(ids, true))
 	}
 
 	// favorite: genuinely tri-state on the wire (true → must be favorite,

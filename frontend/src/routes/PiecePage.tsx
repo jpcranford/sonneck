@@ -1418,6 +1418,20 @@ export function PiecePage() {
                   {tag.name}
                 </Link>
               ))}
+              {/* Your tags on its book, which it carries too: the same
+                  pill, marked inherited like the sheet type's, and set on
+                  the book rather than here. */}
+              {/* The name is the link, the mark its own button beside it
+                  (a button can't sit inside a link). */}
+              {(piece.bookUserTags ?? []).map((tag) => (
+                <span
+                  key={`book-${tag.id}`}
+                  className="flex items-center gap-1 rounded-full border border-accent/30 bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent transition-colors has-[a:hover]:bg-accent/20"
+                >
+                  <Link to={`/?userTagId=${tag.id}`}>{tag.name}</Link>
+                  <InheritedNote compact />
+                </span>
+              ))}
               {/* A piece's keys are a sequence, not an unordered set of
                     tags — a piece that modulates (e.g. A Minor → C Major)
                     needs that order to survive the display. One merged

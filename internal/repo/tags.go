@@ -119,6 +119,50 @@ func SetPieceUserTags(ctx context.Context, q Queryer, pieceID, ownerUserID int64
 	return nil
 }
 
+// SetBookUserTags replaces ownerUserID's own tags on a book (migration
+// 00044), leaving every other account's tags on it alone — the same scoped
+// delete SetPieceUserTags needs, for the same reason (book_user_tags has no
+// user_id column of its own).
+func SetBookUserTags(ctx context.Context, q Queryer, bookID, ownerUserID int64, tagIDs []int64) error {
+	if _, err := q.ExecContext(ctx, `
+		DELETE FROM book_user_tags
+		WHERE book_id = ? AND tag_id IN (SELECT id FROM user_tags WHERE owner_user_id = ?)`,
+		bookID, ownerUserID,
+	); err != nil {
+		return err
+	}
+	for _, tagID := range tagIDs {
+		if _, err := q.ExecContext(ctx,
+			`INSERT OR IGNORE INTO book_user_tags (book_id, tag_id) VALUES (?, ?)`, bookID, tagID,
+		); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// BookUserTagsForUser lists userID's own tags on a book, by name. Never nil.
+func BookUserTagsForUser(ctx context.Context, q Queryer, bookID, userID int64) ([]Tag, error) {
+	rows, err := q.QueryContext(ctx, `
+		SELECT t.id, t.name FROM book_user_tags bt
+		JOIN user_tags t ON t.id = bt.tag_id
+		WHERE bt.book_id = ? AND t.owner_user_id = ?
+		ORDER BY t.name`, bookID, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	tags := []Tag{}
+	for rows.Next() {
+		var t Tag
+		if err := rows.Scan(&t.ID, &t.Name); err != nil {
+			return nil, err
+		}
+		tags = append(tags, t)
+	}
+	return tags, rows.Err()
+}
+
 // SetBookInstruments replaces the full set of instrument tags on a book.
 func SetBookInstruments(ctx context.Context, q Queryer, bookID int64, instrumentIDs []int64) error {
 	return replaceJoinRows(ctx, q, "book_instruments", "book_id", "instrument_id", bookID, instrumentIDs)
@@ -291,8 +335,9 @@ func UserTagsByIDsForUser(ctx context.Context, q Queryer, ownerUserID int64, ids
 
 // PieceIDsWithUserTag collects every piece needing a search-index resync
 // after a user tag delete/merge (CLAUDE.md > Search) — direct join-table
-// membership only, no book-inheritance fallback (user_tags was never
-// book-inheritable). Must be called BEFORE DeleteUserTag, same "collect
+// membership only: a book's tags (book_user_tags, migration 00044) reach
+// its pieces through the filters, never through the search index, which
+// leaves user tags out. Must be called BEFORE DeleteUserTag, same "collect
 // before the value moves" convention as PieceIDsUsingSheetType/
 // PieceIDsUsingInstrument.
 func PieceIDsWithUserTag(ctx context.Context, q Queryer, tagID int64) ([]int64, error) {
@@ -309,6 +354,15 @@ func DeleteUserTag(ctx context.Context, q Queryer, tagID int64, mergeIntoID *int
 			UPDATE piece_user_tags SET tag_id = ?
 			WHERE tag_id = ? AND piece_id NOT IN (
 				SELECT piece_id FROM piece_user_tags WHERE tag_id = ?
+			)`, *mergeIntoID, tagID, *mergeIntoID,
+		); err != nil {
+			return err
+		}
+		// Books' tags merge the same way (migration 00044).
+		if _, err := q.ExecContext(ctx, `
+			UPDATE book_user_tags SET tag_id = ?
+			WHERE tag_id = ? AND book_id NOT IN (
+				SELECT book_id FROM book_user_tags WHERE tag_id = ?
 			)`, *mergeIntoID, tagID, *mergeIntoID,
 		); err != nil {
 			return err

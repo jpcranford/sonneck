@@ -1991,6 +1991,11 @@ export function EditPieceModalMockup() {
                     />
                   )}
                 />
+                {/* Your tags on its book, read-only (the real modal's
+                    bookUserTags line). */}
+                <p className="-mt-2 text-xs text-ink-soft">
+                  Also from its book: <span className="text-ink italic">romantic era</span>
+                </p>
               </div>
               <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1">
                 <label htmlFor="f-notes" className="text-sm text-ink-soft">

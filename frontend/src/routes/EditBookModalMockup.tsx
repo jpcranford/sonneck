@@ -42,6 +42,13 @@ const SHEET_TYPE_SELECT_OPTIONS = [
   { value: '', label: '—' },
   ...SHEET_TYPE_OPTIONS.map((o) => ({ value: o.name, label: o.name })),
 ]
+// Your tags (private to you), as Edit Piece's.
+const USER_TAG_OPTIONS: Tag[] = [
+  { id: 1, name: 'recital candidate' },
+  { id: 2, name: 'romantic era' },
+  { id: 3, name: 'sight-reading practice' },
+]
+
 const INSTRUMENT_OPTIONS: Tag[] = [
   { id: 1, name: 'Piano' },
   { id: 2, name: 'Organ' },
@@ -90,6 +97,7 @@ interface FormValues {
   yearWritten: string
   workOpusNumber: string
   instruments: Tag[]
+  userTags: Tag[]
   sheetType: string
   publisher: string
   publisherId: string
@@ -113,6 +121,7 @@ const defaultValues: FormValues = {
   yearWritten: '1848',
   workOpusNumber: 'Op. 68',
   instruments: [{ id: 1, name: 'Piano' }],
+  userTags: [{ id: 2, name: 'romantic era' }],
   sheetType: 'Solo Piece',
   publisher: 'G. Schirmer',
   publisherId: 'HL50253670',
@@ -448,6 +457,20 @@ export function EditBookModalMockup() {
                     label="Instruments"
                     pillStyle="paper"
                     options={INSTRUMENT_OPTIONS}
+                    selected={field.value}
+                    multiple
+                    onChange={field.onChange}
+                  />
+                )}
+              />
+              {/* Your tags, which every piece in the book carries too. */}
+              <Controller
+                name="userTags"
+                control={control}
+                render={({ field }) => (
+                  <TagComboBox
+                    label="Your tags"
+                    options={USER_TAG_OPTIONS}
                     selected={field.value}
                     multiple
                     onChange={field.onChange}

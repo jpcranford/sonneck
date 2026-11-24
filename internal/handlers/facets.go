@@ -82,6 +82,8 @@ type PieceFacets struct {
 type BookFacets struct {
 	SheetTypes  []FacetCount `json:"sheetTypes"`
 	Instruments []FacetCount `json:"instruments"`
+	// UserTags: the caller's own tags on books (migration 00044).
+	UserTags []FacetCount `json:"userTags"`
 }
 
 // pieceTextMatchClause builds the free-text portion of a piece facet
@@ -195,11 +197,14 @@ func (s *Server) handlePieceFacets(w http.ResponseWriter, r *http.Request) {
 	utWhere, utArgs := buildWhere("userTagId")
 	// The caller's own tags only (a tag is private to its owner, CLAUDE.md
 	// > Concurrency) — another account's tag names never reach this list.
+	// A piece counts for its own tags and its book's (migration 00044),
+	// once each — mirroring userTagClause.
 	userTags, err := queryFacetCountsKeeping(ctx, s.DB, "user_tags t", `
-		SELECT t.id AS id, COUNT(put.piece_id) AS n
+		SELECT t.id AS id, COUNT(DISTINCT p.id) AS n
 		FROM user_tags t
-		JOIN piece_user_tags put ON put.tag_id = t.id
-		JOIN pieces p ON p.id = put.piece_id`+textJoin+
+		JOIN pieces p ON
+			p.id IN (SELECT piece_id FROM piece_user_tags WHERE tag_id = t.id)
+			OR p.source_book_id IN (SELECT book_id FROM book_user_tags WHERE tag_id = t.id)`+textJoin+
 		whereClauseSuffix(utWhere)+`
 		GROUP BY t.id`, utArgs, "t.owner_user_id = ?", []any{user.ID}, "t.name",
 		selectedFacetIDs(q, "userTagId", "excludeUserTagId"))
@@ -363,6 +368,26 @@ func countPiecesMatching(ctx context.Context, db *sql.DB, ownCondition, textJoin
 // they are rather than rewired through a shared, alias-qualified builder
 // for no behavioral gain.
 func buildBookFilterClauses(w http.ResponseWriter, q url.Values) (clauses []namedClause, ok bool) {
+	// Your tags on the book (migration 00044); the ids are your own.
+	if ids, present, ok := parseIDListFilter(w, q, "userTagId"); !ok {
+		return nil, false
+	} else if present {
+		clauses = append(clauses, namedClause{
+			name:  "userTagId",
+			where: "b.id IN (SELECT book_id FROM book_user_tags WHERE tag_id IN (" + sqlPlaceholders(len(ids)) + "))",
+			args:  idsToArgs(ids),
+		})
+	}
+	if ids, present, ok := parseIDListFilter(w, q, "excludeUserTagId"); !ok {
+		return nil, false
+	} else if present {
+		clauses = append(clauses, namedClause{
+			name:  "userTagId",
+			where: "b.id NOT IN (SELECT book_id FROM book_user_tags WHERE tag_id IN (" + sqlPlaceholders(len(ids)) + "))",
+			args:  idsToArgs(ids),
+		})
+	}
+
 	if ids, present, ok := parseIDListFilter(w, q, "sheetTypeId"); !ok {
 		return nil, false
 	} else if present {
@@ -429,7 +454,8 @@ func bookTextMatchClause(query string) (where string, args []any) {
 }
 
 func (s *Server) handleBookFacets(w http.ResponseWriter, r *http.Request) {
-	if _, ok := s.requirePermission(w, r, models.PermissionRead); !ok {
+	user, ok := s.requirePermission(w, r, models.PermissionRead)
+	if !ok {
 		return
 	}
 	ctx := r.Context()
@@ -484,9 +510,25 @@ func (s *Server) handleBookFacets(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Your own tags only, as on pieces.
+	utWhere, utArgs := buildWhere("userTagId")
+	userTags, err := queryFacetCountsKeeping(ctx, s.DB, "user_tags t", `
+		SELECT t.id AS id, COUNT(DISTINCT bt.book_id) AS n
+		FROM user_tags t
+		JOIN book_user_tags bt ON bt.tag_id = t.id
+		JOIN books b ON b.id = bt.book_id`+
+		whereClauseSuffix(utWhere)+`
+		GROUP BY t.id`, utArgs, "t.owner_user_id = ?", []any{user.ID}, "t.name",
+		selectedFacetIDs(q, "userTagId", "excludeUserTagId"))
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+
 	api.WriteData(w, http.StatusOK, BookFacets{
 		SheetTypes:  sheetTypes,
 		Instruments: instruments,
+		UserTags:    userTags,
 	})
 }
 

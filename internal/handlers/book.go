@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -57,7 +58,8 @@ func normalizeISBN(raw *string) *string {
 // handleCreatePerson need), `upload` covers "accepts a file"; uploading and
 // splitting a book file needs both, not either alone.
 func (s *Server) handleUploadBook(w http.ResponseWriter, r *http.Request) {
-	if _, ok := s.requirePermission(w, r, models.PermissionEdit); !ok {
+	user, ok := s.requirePermission(w, r, models.PermissionEdit)
+	if !ok {
 		return
 	}
 	if _, ok := s.requirePermission(w, r, models.PermissionUpload); !ok {
@@ -82,7 +84,7 @@ func (s *Server) handleUploadBook(w http.ResponseWriter, r *http.Request) {
 	}
 	if existing != nil {
 		os.Remove(tempPath)
-		resp, err := api.BuildBookResponse(r.Context(), s.DB, existing)
+		resp, err := api.BuildBookResponse(r.Context(), s.DB, existing, user.ID)
 		if err != nil {
 			s.writeError(w, err)
 			return
@@ -117,7 +119,7 @@ func (s *Server) handleUploadBook(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return err
 		}
-		resp, err = api.BuildBookResponse(r.Context(), tx, created)
+		resp, err = api.BuildBookResponse(r.Context(), tx, created, user.ID)
 		return err
 	})
 	if err != nil {
@@ -139,7 +141,8 @@ func (s *Server) handleUploadBook(w http.ResponseWriter, r *http.Request) {
 // handleCreatePerson already uses, not the file-accepting one
 // handleUploadBook (above) needs on top of that same `edit` requirement.
 func (s *Server) handleCreateBookManual(w http.ResponseWriter, r *http.Request) {
-	if _, ok := s.requirePermission(w, r, models.PermissionEdit); !ok {
+	user, ok := s.requirePermission(w, r, models.PermissionEdit)
+	if !ok {
 		return
 	}
 	var req api.BookCreateRequest
@@ -188,7 +191,7 @@ func (s *Server) handleCreateBookManual(w http.ResponseWriter, r *http.Request) 
 		if err != nil {
 			return err
 		}
-		resp, err = api.BuildBookResponse(r.Context(), tx, created)
+		resp, err = api.BuildBookResponse(r.Context(), tx, created, user.ID)
 		return err
 	})
 	if err != nil {
@@ -260,7 +263,8 @@ func (s *Server) handleCountBooks(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) listBooks(w http.ResponseWriter, r *http.Request, countOnly bool) {
-	if _, ok := s.requirePermission(w, r, models.PermissionRead); !ok {
+	user, ok := s.requirePermission(w, r, models.PermissionRead)
+	if !ok {
 		return
 	}
 	q := r.URL.Query()
@@ -314,6 +318,21 @@ func (s *Server) listBooks(w http.ResponseWriter, r *http.Request, countOnly boo
 		return
 	} else if present {
 		where = append(where, "id IN (SELECT book_id FROM book_instruments WHERE instrument_id IN ("+sqlPlaceholders(len(ids))+"))")
+		args = append(args, idsToArgs(ids)...)
+	}
+
+	// Your tags on the book (migration 00044); tag ids are private to
+	// their owner, so they scope this to the caller.
+	if ids, present, ok := parseIDListFilter(w, q, "userTagId"); !ok {
+		return
+	} else if present {
+		where = append(where, "id IN (SELECT book_id FROM book_user_tags WHERE tag_id IN ("+sqlPlaceholders(len(ids))+"))")
+		args = append(args, idsToArgs(ids)...)
+	}
+	if ids, present, ok := parseIDListFilter(w, q, "excludeUserTagId"); !ok {
+		return
+	} else if present {
+		where = append(where, "id NOT IN (SELECT book_id FROM book_user_tags WHERE tag_id IN ("+sqlPlaceholders(len(ids))+"))")
 		args = append(args, idsToArgs(ids)...)
 	}
 	if ids, present, ok := parseIDListFilter(w, q, "excludeInstrumentId"); !ok {
@@ -404,7 +423,7 @@ func (s *Server) listBooks(w http.ResponseWriter, r *http.Request, countOnly boo
 			s.writeError(w, err)
 			return
 		}
-		resp, err := api.BuildBookResponse(r.Context(), s.DB, b)
+		resp, err := api.BuildBookResponse(r.Context(), s.DB, b, user.ID)
 		if err != nil {
 			s.writeError(w, err)
 			return
@@ -416,7 +435,8 @@ func (s *Server) listBooks(w http.ResponseWriter, r *http.Request, countOnly boo
 }
 
 func (s *Server) handleGetBook(w http.ResponseWriter, r *http.Request) {
-	if _, ok := s.requirePermission(w, r, models.PermissionRead); !ok {
+	user, ok := s.requirePermission(w, r, models.PermissionRead)
+	if !ok {
 		return
 	}
 	id, ok := pathID(r, "id")
@@ -429,7 +449,7 @@ func (s *Server) handleGetBook(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, err)
 		return
 	}
-	resp, err := api.BuildBookResponse(r.Context(), s.DB, b)
+	resp, err := api.BuildBookResponse(r.Context(), s.DB, b, user.ID)
 	if err != nil {
 		s.writeError(w, err)
 		return
@@ -441,7 +461,8 @@ func (s *Server) handleGetBook(w http.ResponseWriter, r *http.Request) {
 // writes only the Book row, then fans the search-index resync out to
 // every piece that inherits from it — not just this one row.
 func (s *Server) handleUpdateBook(w http.ResponseWriter, r *http.Request) {
-	if _, ok := s.requirePermission(w, r, models.PermissionEdit); !ok {
+	user, ok := s.requirePermission(w, r, models.PermissionEdit)
+	if !ok {
 		return
 	}
 	id, ok := pathID(r, "id")
@@ -518,11 +539,24 @@ func (s *Server) handleUpdateBook(w http.ResponseWriter, r *http.Request) {
 		if err := repo.SetBookArrangers(r.Context(), tx, id, b.ArrangerIDs); err != nil {
 			return err
 		}
+		// Your own tags on the book, only when the request names them.
+		if req.UserTags != nil {
+			findOrCreateOwnUserTag := func(ctx context.Context, q repo.Queryer, name string) (int64, error) {
+				return repo.FindOrCreateUserTag(ctx, q, user.ID, name)
+			}
+			tagIDs, err := resolveTagNames(r.Context(), tx, findOrCreateOwnUserTag, *req.UserTags, "userTags")
+			if err != nil {
+				return err
+			}
+			if err := repo.SetBookUserTags(r.Context(), tx, id, user.ID, tagIDs); err != nil {
+				return err
+			}
+		}
 		if err := repo.ResyncSearchIndexForBook(r.Context(), tx, id); err != nil {
 			return err
 		}
 
-		resp, err = api.BuildBookResponse(r.Context(), tx, b)
+		resp, err = api.BuildBookResponse(r.Context(), tx, b, user.ID)
 		return err
 	})
 	if err != nil {
@@ -779,7 +813,8 @@ func (s *Server) handleGetBookCover(w http.ResponseWriter, r *http.Request) {
 // Same move-into-place-then-transaction-then-orphan-cleanup shape as
 // handleReplacePieceFile.
 func (s *Server) handleUploadBookCover(w http.ResponseWriter, r *http.Request) {
-	if _, ok := s.requirePermission(w, r, models.PermissionEdit); !ok {
+	user, ok := s.requirePermission(w, r, models.PermissionEdit)
+	if !ok {
 		return
 	}
 	id, ok := pathID(r, "id")
@@ -836,7 +871,7 @@ func (s *Server) handleUploadBookCover(w http.ResponseWriter, r *http.Request) {
 		b.CoverImageHash = &hash
 		b.CoverImageContentType = &contentType
 
-		resp, err = api.BuildBookResponse(r.Context(), tx, b)
+		resp, err = api.BuildBookResponse(r.Context(), tx, b, user.ID)
 		return err
 	})
 	if err != nil {
@@ -871,7 +906,8 @@ func (s *Server) handleUploadBookCover(w http.ResponseWriter, r *http.Request) {
 // placeholder). Same orphan-cleanup-then-log shape as the piece/book file
 // deletion paths elsewhere in this file.
 func (s *Server) handleDeleteBookCover(w http.ResponseWriter, r *http.Request) {
-	if _, ok := s.requirePermission(w, r, models.PermissionEdit); !ok {
+	user, ok := s.requirePermission(w, r, models.PermissionEdit)
+	if !ok {
 		return
 	}
 	id, ok := pathID(r, "id")
@@ -897,7 +933,7 @@ func (s *Server) handleDeleteBookCover(w http.ResponseWriter, r *http.Request) {
 			b.CoverImageContentType = nil
 		}
 
-		resp, err = api.BuildBookResponse(r.Context(), tx, b)
+		resp, err = api.BuildBookResponse(r.Context(), tx, b, user.ID)
 		return err
 	})
 	if err != nil {

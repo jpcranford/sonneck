@@ -51,18 +51,22 @@ type PieceResponse struct {
 	// Composer/Arranger (composer/arranger overhaul, migration 00020) are
 	// ordered many-to-many now — same EffectiveTagRefs wire shape
 	// Instruments already uses, not a plain EffectiveField string.
-	Composer        EffectiveTagRefs    `json:"composer"`
-	Arranger        EffectiveTagRefs    `json:"arranger"`
-	Favorite        bool                `json:"favorite"`
-	WorkOpusNumber  repo.EffectiveField `json:"workOpusNumber"`
-	Keys            []repo.Tag          `json:"keys"`
-	SheetType       EffectiveTagRef     `json:"sheetType"`
-	Publisher       repo.EffectiveField `json:"publisher"`
-	PublisherID     repo.EffectiveField `json:"publisherId"`
-	YearWritten     repo.EffectiveField `json:"yearWritten"`
-	Description     repo.EffectiveField `json:"description"`
-	UserNotes       *string             `json:"userNotes"`
-	UserTags        []repo.Tag          `json:"userTags"`
+	Composer       EffectiveTagRefs    `json:"composer"`
+	Arranger       EffectiveTagRefs    `json:"arranger"`
+	Favorite       bool                `json:"favorite"`
+	WorkOpusNumber repo.EffectiveField `json:"workOpusNumber"`
+	Keys           []repo.Tag          `json:"keys"`
+	SheetType      EffectiveTagRef     `json:"sheetType"`
+	Publisher      repo.EffectiveField `json:"publisher"`
+	PublisherID    repo.EffectiveField `json:"publisherId"`
+	YearWritten    repo.EffectiveField `json:"yearWritten"`
+	Description    repo.EffectiveField `json:"description"`
+	UserNotes      *string             `json:"userNotes"`
+	UserTags       []repo.Tag          `json:"userTags"`
+	// BookUserTags: your tags on the piece's book (migration 00044), which
+	// the piece carries too — read-only here, set on the book. A tag the
+	// piece has of its own isn't repeated.
+	BookUserTags    []repo.Tag          `json:"bookUserTags"`
 	PracticeStatus  *string             `json:"practiceStatus"`
 	ImslpNumber     repo.EffectiveField `json:"imslpNumber"`
 	Instruments     EffectiveTagRefs    `json:"instruments"`
@@ -242,6 +246,22 @@ func BuildPieceResponse(ctx context.Context, q repo.Queryer, p *models.Piece, re
 		}
 		resp.UserTags = tags
 	}
+	resp.BookUserTags = []repo.Tag{}
+	if p.SourceBookID != nil {
+		bookTags, err := repo.BookUserTagsForUser(ctx, q, *p.SourceBookID, userID)
+		if err != nil {
+			return nil, err
+		}
+		own := map[int64]bool{}
+		for _, t := range resp.UserTags {
+			own[t.ID] = true
+		}
+		for _, t := range bookTags {
+			if !own[t.ID] {
+				resp.BookUserTags = append(resp.BookUserTags, t)
+			}
+		}
+	}
 
 	if p.SourceBookID != nil {
 		book, err := repo.GetBookByID(ctx, q, *p.SourceBookID)
@@ -280,8 +300,11 @@ type BookResponse struct {
 	ImslpNumber    *string   `json:"imslpNumber"`
 	// ISBN (migration 00017): plain digits, no hyphens — see models.Book's
 	// own doc comment. The frontend hyphenates for display.
-	ISBN             *string    `json:"isbn"`
-	Instruments      []repo.Tag `json:"instruments"`
+	ISBN        *string    `json:"isbn"`
+	Instruments []repo.Tag `json:"instruments"`
+	// UserTags: the caller's own tags on the book (migration 00044), which
+	// its pieces carry too.
+	UserTags         []repo.Tag `json:"userTags"`
 	OriginalFilename *string    `json:"originalFilename"`
 	FileHash         *string    `json:"fileHash"`
 	// HasCustomCover (migration 00018): true when a manually uploaded cover
@@ -322,7 +345,8 @@ type BookResponse struct {
 	CopyrightRenewed *bool `json:"copyrightRenewed"`
 }
 
-func BuildBookResponse(ctx context.Context, q repo.Queryer, b *models.Book) (*BookResponse, error) {
+// userID scopes UserTags to the caller's own (a tag is private to its owner).
+func BuildBookResponse(ctx context.Context, q repo.Queryer, b *models.Book, userID int64) (*BookResponse, error) {
 	resp := &BookResponse{
 		ID:               b.ID,
 		BookTitle:        b.BookTitle,
@@ -378,6 +402,12 @@ func BuildBookResponse(ctx context.Context, q repo.Queryer, b *models.Book) (*Bo
 		}
 		resp.Instruments = tags
 	}
+
+	userTags, err := repo.BookUserTagsForUser(ctx, q, b.ID, userID)
+	if err != nil {
+		return nil, err
+	}
+	resp.UserTags = userTags
 
 	count, err := repo.CountPiecesForBook(ctx, q, b.ID)
 	if err != nil {
@@ -479,6 +509,11 @@ type BookWriteRequest struct {
 	// whatever punctuation/label the user typed.
 	ISBN        *string  `json:"isbn"`
 	Instruments []string `json:"instruments"`
+	// UserTags: the caller's own tags on the book, by name (found or
+	// created in their own vocabulary, like a piece's). Unlike every other
+	// field here, absent (null) leaves them as they are, so a caller that
+	// doesn't edit tags (the book upload wizard) never clears them.
+	UserTags *[]string `json:"userTags"`
 	// CopyrightYear/CopyrightHolder/CopyrightSlug/CopyrightStatus (Public
 	// Domain Badge feature, migration 00022) — full-replace like every
 	// other field here. CopyrightStatus is validated against the same

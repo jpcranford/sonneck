@@ -11,10 +11,10 @@ import { useEscapeToClose } from '../hooks/useEscapeToClose'
 
 // Real build of BooksLibrarySample.tsx's own BookFilterDrawer — same
 // system as PieceFilterDrawer.tsx, adjusted for Books' own (much lighter)
-// filter facets: Sheet Type and Instrument only, no Key/tags/Favorite/
-// Practice Status (those are piece-only fields, design doc §3's Naming/
-// architecture note), so there's no "Show only" boolean section the way
-// Pieces' drawer has one. BookFilterState/EMPTY_BOOK_FILTERS/
+// filter facets: Your Tags (your own tags on books), Sheet Type and
+// Instrument — no Key/Favorite/Practice Status (those are piece-only
+// fields, design doc §3's Naming/architecture note), so there's no "Show
+// only" boolean section the way Pieces' drawer has one. BookFilterState/EMPTY_BOOK_FILTERS/
 // activeBookFilterCount live in lib/bookFilterState.ts, not here
 // (react-refresh/only-export-components — CLAUDE.md > Frontend).
 //
@@ -158,6 +158,25 @@ export function BookFilterDrawer({
         <div className="flex-1 overflow-y-auto px-4 py-2">
           {facets && (
             <>
+              {facets.userTags.length > 0 && (
+                <FacetSection title="Your Tags">
+                  {facets.userTags.map((v) => (
+                    <FacetRow
+                      key={v.id}
+                      label={v.name}
+                      count={v.count}
+                      state={dimensionState(filters.userTagId, String(v.id))}
+                      onChange={(next) =>
+                        onChange({
+                          ...filters,
+                          userTagId: setDimensionState(filters.userTagId, String(v.id), next),
+                        })
+                      }
+                    />
+                  ))}
+                </FacetSection>
+              )}
+
               {facets.sheetTypes.length > 0 && (
                 <FacetSection title="Sheet Type">
                   {facets.sheetTypes.map((v) => (

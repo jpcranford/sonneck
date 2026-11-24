@@ -13,9 +13,15 @@ export type TriState = 'exclude' | 'neutral' | 'include'
 export interface BookFilterState {
   sheetTypeId: Record<string, TriState>
   instrumentId: Record<string, TriState>
+  /** Your tags on the book. */
+  userTagId: Record<string, TriState>
 }
 
-export const EMPTY_BOOK_FILTERS: BookFilterState = { sheetTypeId: {}, instrumentId: {} }
+export const EMPTY_BOOK_FILTERS: BookFilterState = {
+  sheetTypeId: {},
+  instrumentId: {},
+  userTagId: {},
+}
 
 export function dimensionState(map: Record<string, TriState>, value: string): TriState {
   return map[value] ?? 'neutral'
@@ -33,7 +39,11 @@ export function setDimensionState(
 }
 
 export function activeBookFilterCount(f: BookFilterState): number {
-  return Object.keys(f.sheetTypeId).length + Object.keys(f.instrumentId).length
+  return (
+    Object.keys(f.sheetTypeId).length +
+    Object.keys(f.instrumentId).length +
+    Object.keys(f.userTagId).length
+  )
 }
 
 function idDimensionParams(map: Record<string, TriState>): {
@@ -56,7 +66,10 @@ function idDimensionParams(map: Record<string, TriState>): {
 export function bookFilterApiParams(f: BookFilterState) {
   const sheetType = idDimensionParams(f.sheetTypeId)
   const instrument = idDimensionParams(f.instrumentId)
+  const userTag = idDimensionParams(f.userTagId)
   return {
+    userTagId: userTag.include,
+    excludeUserTagId: userTag.exclude,
     sheetTypeId: sheetType.include,
     excludeSheetTypeId: sheetType.exclude,
     instrumentId: instrument.include,

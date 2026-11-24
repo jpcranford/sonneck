@@ -1507,6 +1507,17 @@ export function EditPieceModal({
                     />
                   )}
                 />
+                {/* Your tags on its book, which it carries in addition to
+                    its own: read-only here (no Copy, unlike InheritedNote —
+                    there's nothing to copy into), changed on the book. */}
+                {(piece.bookUserTags ?? []).length > 0 && (
+                  <p className="-mt-2 text-xs text-ink-soft">
+                    Also from its book:{' '}
+                    <span className="text-ink italic">
+                      {piece.bookUserTags.map((t) => t.name).join(', ')}
+                    </span>
+                  </p>
+                )}
               </div>
               <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1">
                 <label htmlFor="f-notes" className="text-sm text-ink-soft">

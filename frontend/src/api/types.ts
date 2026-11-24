@@ -158,6 +158,9 @@ export interface Piece {
   description: EffectiveField
   userNotes: string | null
   userTags: Tag[]
+  /** Your tags on the piece's book, which the piece carries too — read-only
+   * here, set on the book (one the piece has of its own isn't repeated). */
+  bookUserTags: Tag[]
   practiceStatus: PracticeStatus | null
   imslpNumber: EffectiveField
   instruments: EffectiveTagRefs
@@ -229,6 +232,8 @@ export interface Book {
    * display via lib/isbn.ts's hyphenateISBN. */
   isbn: string | null
   instruments: Tag[]
+  /** Your own tags on the book, which its pieces carry too. */
+  userTags: Tag[]
   // Nullable (backend migration 00014) — a manually created book (Books
   // library view's "New Book" button) has no underlying file.
   originalFilename: string | null
@@ -360,6 +365,9 @@ export interface BookWriteRequest {
    * trailing check-digit X) are actually stored. */
   isbn?: string | null
   instruments: string[]
+  /** Your own tags on the book, by name. Unlike every other field, leaving
+   * it out keeps them as they are (the upload wizard doesn't edit tags). */
+  userTags?: string[]
   // Public Domain Badge feature (migration 00022) — full-replace like
   // every other field here.
   copyrightYear?: number | null
