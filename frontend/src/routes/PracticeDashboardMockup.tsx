@@ -1043,17 +1043,33 @@ export function PracticeDashboardMockup() {
   const [drag, setDrag] = useState<{ from: 'open' | 'close'; startY: number; y: number } | null>(
     null,
   )
-  // The drawer lives above the bar: its box ends at the bar's top edge, so
-  // it slides out from behind the bar and only the page above dims.
+  // The drawer lives above the bar, as wide as it: its box ends at the
+  // bar's top edge and spans the bar's width (the content column, beside the
+  // sidebar), so it slides out from behind the bar and only the page above
+  // dims.
   const barRef = useRef<HTMLDivElement>(null)
-  const [barTop, setBarTop] = useState(() => window.innerHeight)
+  const [barBox, setBarBox] = useState(() => ({
+    top: window.innerHeight,
+    left: 0,
+    width: window.innerWidth,
+  }))
+  const barTop = barBox.top
   const measureBar = () => {
-    if (barRef.current) setBarTop(barRef.current.getBoundingClientRect().top)
+    if (!barRef.current) return
+    const { top, left, width } = barRef.current.getBoundingClientRect()
+    setBarBox({ top, left, width })
   }
   useEffect(() => {
-    if (!drawerOpen) return
+    const bar = barRef.current
+    if (!drawerOpen || !bar) return
     window.addEventListener('resize', measureBar)
-    return () => window.removeEventListener('resize', measureBar)
+    // The bar also resizes without the window (the sidebar collapsing).
+    const observer = new ResizeObserver(measureBar)
+    observer.observe(bar)
+    return () => {
+      window.removeEventListener('resize', measureBar)
+      observer.disconnect()
+    }
   }, [drawerOpen])
   const drawerShown = drawerOpen && !isWide
   useEffect(() => {
@@ -1645,8 +1661,8 @@ export function PracticeDashboardMockup() {
       {!isWide &&
         createPortal(
           <div
-            className={`fixed inset-x-0 top-0 z-40 overflow-hidden ${drawerShown || drag ? '' : 'pointer-events-none'}`}
-            style={{ height: barTop }}
+            className={`fixed top-0 z-40 overflow-hidden ${drawerShown || drag ? '' : 'pointer-events-none'}`}
+            style={{ height: barBox.top, left: barBox.left, width: barBox.width }}
             aria-hidden={!drawerShown}
           >
             <button
