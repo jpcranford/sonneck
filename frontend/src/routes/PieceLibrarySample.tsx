@@ -1,6 +1,7 @@
 import { useRef, useState, type KeyboardEvent, type Ref } from 'react'
 import {
   IconFilter,
+  IconFilterFilled,
   IconArrowDown,
   IconArrowUp,
   IconCheck,
@@ -28,6 +29,8 @@ import { EmptyState } from '../components/EmptyState'
 import { noMatchMessage } from '../lib/emptyMessages'
 import { useShortcutBlocker, useShortcuts, FILTERS_KEY } from '../lib/shortcuts'
 import { filterChipClass, filterChipRemoveClass, type FilterChipTone } from '../lib/filterChips'
+import { PageRangeSlider } from '../components/PageRangeSlider'
+import { ANY_PAGES, inPageRange, isAnyPages, pageRangeText, type PageRange } from '../lib/pageRange'
 
 // lib/filterChips.ts's pieceFilterTone, for this mockup's own filter names.
 function mockFilterTone(field: string): FilterChipTone {
@@ -342,6 +345,9 @@ function matchesFiltersExcept(
     return false
   if (exclude !== 'hasAnnotations' && !matchesBoolean(f.hasAnnotations, p.hasAnnotations))
     return false
+  // Pages counts the pages the Sheet Viewer shows; no fixture piece skips
+  // any, so that's its page count here.
+  if (exclude !== 'pages' && !inPageRange(p.pageCount, f.pages)) return false
   if (query.trim() && !p.title.toLowerCase().includes(query.trim().toLowerCase())) return false
   return true
 }
@@ -456,6 +462,8 @@ interface FilterState {
   bookless: TriState
   hasImslpNumber: TriState
   hasAnnotations: TriState
+  // Shown pages, 1 to "12+" (lib/pageRange.ts).
+  pages: PageRange
 }
 
 const EMPTY_FILTERS: FilterState = {
@@ -468,6 +476,7 @@ const EMPTY_FILTERS: FilterState = {
   bookless: 'neutral',
   hasImslpNumber: 'neutral',
   hasAnnotations: 'neutral',
+  pages: ANY_PAGES,
 }
 
 function activeFilterCount(f: FilterState): number {
@@ -480,7 +489,8 @@ function activeFilterCount(f: FilterState): number {
     (f.favorite !== 'neutral' ? 1 : 0) +
     (f.bookless !== 'neutral' ? 1 : 0) +
     (f.hasImslpNumber !== 'neutral' ? 1 : 0) +
-    (f.hasAnnotations !== 'neutral' ? 1 : 0)
+    (f.hasAnnotations !== 'neutral' ? 1 : 0) +
+    (isAnyPages(f.pages) ? 0 : 1)
   )
 }
 
@@ -774,6 +784,23 @@ function FilterDrawer({
                 }
               />
             ))}
+          </FacetSection>
+
+          {/* Pages (design A of https://claude.ai/artifact/2uohZcztpi3ajke7bsZCrP):
+              shown pages, 1 to 12+, with how many pieces the range holds
+              under every other filter. */}
+          <FacetSection title="Pages">
+            <PageRangeSlider
+              value={filters.pages}
+              onChange={(pages) => onChange({ ...filters, pages })}
+              count={
+                PIECES.filter(
+                  (p) =>
+                    inPageRange(p.pageCount, filters.pages) &&
+                    matchesFiltersExcept(p, filters, 'pages', query),
+                ).length
+              }
+            />
           </FacetSection>
 
           <FacetSection title="Key">
@@ -1119,6 +1146,10 @@ export function PieceLibrarySample() {
       setAppliedFilters((f) => ({ ...f, [field]: 'neutral' }))
       return
     }
+    if (field === 'pages') {
+      setAppliedFilters((f) => ({ ...f, pages: ANY_PAGES }))
+      return
+    }
     setAppliedFilters((f) => ({
       ...f,
       [field]: setDimensionState(f[field] as Record<string, TriState>, value!, 'neutral'),
@@ -1155,6 +1186,16 @@ export function PieceLibrarySample() {
           },
         ]
       : []),
+    // One gray chip for the page range: "3–8 pages".
+    ...(isAnyPages(appliedFilters.pages)
+      ? []
+      : [
+          {
+            field: 'pages' as const,
+            label: pageRangeText(appliedFilters.pages),
+            state: 'include' as TriState,
+          },
+        ]),
     ...Object.entries(appliedFilters.key).map(([v, state]) => ({
       field: 'key' as const,
       value: v,
@@ -1344,7 +1385,8 @@ export function PieceLibrarySample() {
                       : 'border-border bg-paper-raised text-ink hover:bg-paper-hover'
                   }`}
                 >
-                  <IconFilter size={16} />
+                  {/* Solid while any filter is on, outline otherwise. */}
+                  {activeCount > 0 ? <IconFilterFilled size={16} /> : <IconFilter size={16} />}
                   <span className="inline max-[389px]:hidden sm:hidden 2xl:inline">Filters</span>
                   {activeCount > 0 && (
                     <span className="flex size-4 items-center justify-center rounded-full bg-accent-fill text-[0.65rem] font-semibold text-white">

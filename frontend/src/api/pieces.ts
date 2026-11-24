@@ -225,6 +225,10 @@ export interface SearchPiecesParams {
   /** Pieces the signed-in account has annotated: marked in the Sheet Viewer,
    * or written notes on (its own only) — tri-state like `bookless`. */
   hasAnnotations?: boolean
+  /** The Pages filter: shown pages (skipped ones left out), either end
+   * optional (lib/pageRange.ts). */
+  minPages?: number
+  maxPages?: number
   /** Book Details page: every piece belonging to this book, sorted by
    * start page ascending (server-side tie-break: a same-start-page 1-page
    * piece sorts before a longer one) instead of the default newest-first
@@ -299,6 +303,8 @@ export interface PieceFacetsParams {
   bookless?: boolean
   hasImslpNumber?: boolean
   hasAnnotations?: boolean
+  minPages?: number
+  maxPages?: number
 }
 
 /** practiceStatus has no separate lookup table/ID (a CHECK constraint on
@@ -320,6 +326,9 @@ export interface PieceFacets {
   bookless: number
   hasImslpNumber: number
   hasAnnotations: number
+  /** How many pieces show each number of pages, the last (PAGES_TOP)
+   * counting that many or more; only counts that occur. */
+  pageCounts: { pages: number; count: number }[]
 }
 
 export function getPieceFacets(params: PieceFacetsParams = {}): Promise<PieceFacets> {

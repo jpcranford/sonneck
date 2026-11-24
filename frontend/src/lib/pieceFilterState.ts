@@ -13,6 +13,8 @@
 // same dimensionState/setDimensionState helpers; convert back with
 // Number(k) wherever a real numeric id is needed (pieceFilterApiParams
 // below, and PieceBrowseView.tsx's own facet-name lookups).
+import { ANY_PAGES, isAnyPages, pageRangeParams, type PageRange } from './pageRange'
+
 export type TriState = 'exclude' | 'neutral' | 'include'
 
 export interface PieceFilterState {
@@ -25,6 +27,8 @@ export interface PieceFilterState {
   bookless: TriState
   hasImslpNumber: TriState
   hasAnnotations: TriState
+  /** The Pages filter's range of shown pages (lib/pageRange.ts). */
+  pages: PageRange
 }
 
 export const EMPTY_PIECE_FILTERS: PieceFilterState = {
@@ -37,6 +41,7 @@ export const EMPTY_PIECE_FILTERS: PieceFilterState = {
   bookless: 'neutral',
   hasImslpNumber: 'neutral',
   hasAnnotations: 'neutral',
+  pages: ANY_PAGES,
 }
 
 export function dimensionState(map: Record<string, TriState>, value: string): TriState {
@@ -67,7 +72,8 @@ export function activePieceFilterCount(f: PieceFilterState): number {
     (f.favorite !== 'neutral' ? 1 : 0) +
     (f.bookless !== 'neutral' ? 1 : 0) +
     (f.hasImslpNumber !== 'neutral' ? 1 : 0) +
-    (f.hasAnnotations !== 'neutral' ? 1 : 0)
+    (f.hasAnnotations !== 'neutral' ? 1 : 0) +
+    (isAnyPages(f.pages) ? 0 : 1)
   )
 }
 
@@ -130,5 +136,6 @@ export function pieceFilterApiParams(f: PieceFilterState) {
     bookless: triBool(f.bookless),
     hasImslpNumber: triBool(f.hasImslpNumber),
     hasAnnotations: triBool(f.hasAnnotations),
+    ...pageRangeParams(f.pages),
   }
 }

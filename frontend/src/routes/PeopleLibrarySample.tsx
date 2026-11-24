@@ -2,6 +2,7 @@ import { useRef, useState, type KeyboardEvent, type Ref } from 'react'
 import { useForm } from 'react-hook-form'
 import {
   IconFilter,
+  IconFilterFilled,
   IconArrowDown,
   IconArrowUp,
   IconCheck,
@@ -1259,7 +1260,12 @@ export function PeopleLibrarySample() {
                       : 'border-border bg-paper-raised text-ink hover:bg-paper-hover'
                   }`}
                 >
-                  <IconFilter size={16} />
+                  {/* Solid while any filter is on, outline otherwise. */}
+                  {activeFilterCount > 0 ? (
+                    <IconFilterFilled size={16} />
+                  ) : (
+                    <IconFilter size={16} />
+                  )}
                   <span className="inline max-[389px]:hidden sm:hidden 2xl:inline">Filters</span>
                   {activeFilterCount > 0 && (
                     <span className="flex size-4 items-center justify-center rounded-full bg-accent-fill text-[0.65rem] font-semibold text-white">

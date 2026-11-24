@@ -77,6 +77,16 @@ type PieceFacets struct {
 	// HasAnnotations counts the pieces the caller has marked in the Sheet
 	// Viewer or written notes on (their own only).
 	HasAnnotations int `json:"hasAnnotations"`
+	// PageCounts: how many pieces show each number of pages, the last
+	// (pagesTop) counting that many or more — the Pages filter's count line
+	// sums them over its range. Only counts that occur are listed.
+	PageCounts []PageCount `json:"pageCounts"`
+}
+
+// PageCount is one entry of PieceFacets.PageCounts.
+type PageCount struct {
+	Pages int `json:"pages"`
+	Count int `json:"count"`
 }
 
 type BookFacets struct {
@@ -314,7 +324,15 @@ func (s *Server) handlePieceFacets(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	pgWhere, pgArgs := buildWhere("pages")
+	pageCounts, err := queryPageCounts(ctx, s.DB, textJoin, pgWhere, pgArgs)
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+
 	api.WriteData(w, http.StatusOK, PieceFacets{
+		PageCounts:       pageCounts,
 		Keys:             keys,
 		Instruments:      instruments,
 		SheetTypes:       sheetTypes,
@@ -604,6 +622,28 @@ func queryFacetCounts(ctx context.Context, db *sql.DB, query string, args ...any
 			return nil, err
 		}
 		counts = append(counts, fc)
+	}
+	return counts, rows.Err()
+}
+
+// queryPageCounts groups the pieces matching `where` (every other active
+// filter and the search) by shown pages, capped at pagesTop.
+func queryPageCounts(ctx context.Context, db *sql.DB, textJoin, where string, args []any) ([]PageCount, error) {
+	rows, err := db.QueryContext(ctx, `
+		SELECT MIN(`+shownPagesSQL+`, ?) AS pages, COUNT(*) FROM pieces p`+textJoin+
+		whereClauseSuffix(where)+`
+		GROUP BY pages ORDER BY pages`, append([]any{pagesTop}, args...)...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	counts := []PageCount{}
+	for rows.Next() {
+		var c PageCount
+		if err := rows.Scan(&c.Pages, &c.Count); err != nil {
+			return nil, err
+		}
+		counts = append(counts, c)
 	}
 	return counts, rows.Err()
 }

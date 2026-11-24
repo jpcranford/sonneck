@@ -513,6 +513,17 @@ func userTagClause(ids []int64, excl bool) namedClause {
 	return namedClause{name: "userTagId", where: where, args: append(idsToArgs(ids), idsToArgs(ids)...)}
 }
 
+// shownPagesSQL is a piece's shown pages: the pages the Sheet Viewer shows,
+// those Manage Pages skips left out (never fewer than 1, like
+// models.Piece.ShownRange). The Pages filter counts these rather than the
+// file's pages — a deliberate exception to the file count used everywhere
+// but the viewer and setlist totals, since "how long is it" is the point.
+const shownPagesSQL = "MAX(1, p.page_count - p.skip_start - p.skip_end)"
+
+// pagesTop is the Pages filter's top stop ("12+"): its counts group every
+// piece of that many shown pages or more together.
+const pagesTop = 12
+
 // buildPieceFilterClauses parses the Piece Filter Drawer's own filter query
 // params — keyId/sheetTypeId/instrumentId/userTagId/favorite/
 // practiceStatus/bookless/hasImslpNumber, plus each one's exclude*
@@ -630,6 +641,22 @@ func buildPieceFilterClauses(w http.ResponseWriter, q url.Values, userID int64) 
 		return nil, false
 	} else if present {
 		clauses = append(clauses, clause)
+	}
+
+	// minPages/maxPages: the Pages filter, a range of shown pages (see
+	// shownPagesSQL), either end optional. One clause name for both, so
+	// its facet skips the whole range.
+	for _, end := range []struct{ param, op string }{{"minPages", ">="}, {"maxPages", "<="}} {
+		v := q.Get(end.param)
+		if v == "" {
+			continue
+		}
+		n, err := strconv.Atoi(v)
+		if err != nil || n < 1 {
+			api.WriteError(w, http.StatusBadRequest, api.CodeValidationError, end.param+" must be a whole number of pages, at least 1")
+			return nil, false
+		}
+		clauses = append(clauses, namedClause{name: "pages", where: shownPagesSQL + " " + end.op + " ?", args: []any{n}})
 	}
 
 	// bookless: pieces with no sourceBookId at all (design doc §3/§5 — a

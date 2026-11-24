@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { ANY_PAGES, isAnyPages, pageRangeText } from '../lib/pageRange'
 import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { IconX } from '@tabler/icons-react'
 import { countPieces, getPieceFacets, searchPieces, type SearchPiecesParams } from '../api/pieces'
@@ -258,6 +259,10 @@ export function PieceBrowseView({
       setDrawerFilters((f) => ({ ...f, [field]: 'neutral' }))
       return
     }
+    if (field === 'pages') {
+      setDrawerFilters((f) => ({ ...f, pages: ANY_PAGES }))
+      return
+    }
     setDrawerFilters((f) => ({ ...f, [field]: setDimensionState(f[field], value!, 'neutral') }))
   }
 
@@ -291,6 +296,16 @@ export function PieceBrowseView({
           },
         ]
       : []),
+    // One gray chip for the Pages range ("3–8 pages").
+    ...(isAnyPages(drawerFilters.pages)
+      ? []
+      : [
+          {
+            field: 'pages' as const,
+            label: pageRangeText(drawerFilters.pages),
+            state: 'include' as TriState,
+          },
+        ]),
     ...Object.entries(drawerFilters.keyId).map(([id, state]) => ({
       field: 'keyId' as const,
       value: id,

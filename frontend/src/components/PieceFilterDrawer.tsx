@@ -7,6 +7,8 @@ import {
   type TriState,
 } from '../lib/pieceFilterState'
 import { FILTERS_KEY } from '../lib/shortcuts'
+import { countInPageRange } from '../lib/pageRange'
+import { PageRangeSlider } from './PageRangeSlider'
 import { useEscapeToClose } from '../hooks/useEscapeToClose'
 import { hasPermission, useAuth } from '../lib/AuthContext'
 
@@ -288,6 +290,18 @@ export function PieceFilterDrawer({
                   ))}
                 </FacetSection>
               )}
+
+              {/* Pages (design A of
+                  https://claude.ai/artifact/2uohZcztpi3ajke7bsZCrP): shown
+                  pages, 1 to 12+, with how many pieces the range holds under
+                  every other filter. */}
+              <FacetSection title="Pages">
+                <PageRangeSlider
+                  value={filters.pages}
+                  onChange={(pages) => onChange({ ...filters, pages })}
+                  count={countInPageRange(facets.pageCounts ?? [], filters.pages)}
+                />
+              </FacetSection>
 
               {facets.keys.length > 0 && (
                 <FacetSection title="Key">

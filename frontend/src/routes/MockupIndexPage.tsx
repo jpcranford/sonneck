@@ -65,7 +65,10 @@ const SECTIONS: { title: string; mockups: Mockup[] }[] = [
       {
         to: '/mockup/piece-library',
         name: 'Piece Library — Sort/Filter',
-        note: 'Filter Drawer (Option B of a 4-option comparison) added to the Piece Library toolbar — Filters button + slide-in drawer (Key/Instrument/Sheet Type/Tags/Status/Favorite), plus a new Sort control. Genuinely interactive against 10 fixture pieces.',
+        note: 'The Piece Library toolbar: a Filters button (its icon solid while any filter is on) opening a slide-in drawer (Key, Instrument, Sheet Type, Tags, Status, Favorite, and a two-knob Pages range), plus the Sort control. Interactive against 10 fixture pieces.',
+        testing: [
+          'The Pages slider on the iPad and a phone: drag both knobs by finger, type in its fields.',
+        ],
       },
       {
         to: '/mockup/books-library',

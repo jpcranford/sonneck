@@ -875,6 +875,129 @@ body {
   }
 }
 
+/* components/PageRangeSlider.tsx: two knobs on one track. Two range inputs
+   lie over a drawn track (Slider's look: 6px, accent-fill between the
+   knobs --range-from and --range-to, border outside) and take the pointer
+   only at their knobs. A knob is drawn as Slider's (18px white, ringed 3px
+   in accent-fill) at the middle of a larger transparent grab area,
+   --range-thumb: 24px, or 48px on a touch screen. The track runs between
+   the knobs' centers at either end, half a grab area in from each side. */
+@layer components {
+  .range-slider-root {
+    --range-thumb: 24px;
+  }
+  @media (pointer: coarse) {
+    .range-slider-root {
+      --range-thumb: 48px;
+    }
+  }
+  .range-slider {
+    --range-knob: radial-gradient(
+      circle,
+      #fff 0 6px,
+      var(--color-accent-fill) 6px 9px,
+      transparent 9.5px
+    );
+    position: relative;
+    height: 48px;
+  }
+  .range-slider-track {
+    position: absolute;
+    top: 21px;
+    left: calc(var(--range-thumb) / 2);
+    right: calc(var(--range-thumb) / 2);
+    height: 6px;
+    border-radius: 9999px;
+    background: var(--color-border);
+  }
+  .range-slider-fill {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: var(--range-from);
+    right: calc(100% - var(--range-to));
+    border-radius: 9999px;
+    background: var(--color-accent-fill);
+  }
+  .range-slider input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    appearance: none;
+    background: transparent;
+    pointer-events: none;
+  }
+  .range-slider input::-webkit-slider-runnable-track {
+    height: 48px;
+    background: transparent;
+  }
+  .range-slider input::-moz-range-track {
+    background: transparent;
+  }
+  .range-slider input::-webkit-slider-thumb {
+    appearance: none;
+    pointer-events: auto;
+    cursor: grab;
+    width: var(--range-thumb);
+    height: var(--range-thumb);
+    margin-top: calc((48px - var(--range-thumb)) / 2);
+    border: 0;
+    border-radius: 50%;
+    background: var(--range-knob);
+  }
+  .range-slider input::-moz-range-thumb {
+    pointer-events: auto;
+    cursor: grab;
+    width: var(--range-thumb);
+    height: var(--range-thumb);
+    border: 0;
+    border-radius: 50%;
+    background: var(--range-knob);
+  }
+  .range-slider input:active::-webkit-slider-thumb {
+    cursor: grabbing;
+  }
+  .range-slider input:active::-moz-range-thumb {
+    cursor: grabbing;
+  }
+  .range-slider input:focus-visible {
+    outline: none;
+  }
+  .range-slider input:focus-visible::-webkit-slider-thumb {
+    background:
+      radial-gradient(
+        circle,
+        transparent 0 11px,
+        var(--color-accent) 11px 12.5px,
+        transparent 13px
+      ),
+      var(--range-knob);
+  }
+  .range-slider input:focus-visible::-moz-range-thumb {
+    background:
+      radial-gradient(
+        circle,
+        transparent 0 11px,
+        var(--color-accent) 11px 12.5px,
+        transparent 13px
+      ),
+      var(--range-knob);
+  }
+  /* The tick labels under the track, each centered on its stop. */
+  .range-slider-ticks {
+    position: relative;
+    height: 14px;
+    margin: -10px calc(var(--range-thumb) / 2) 0;
+  }
+  .range-slider-ticks span {
+    position: absolute;
+    transform: translateX(-50%);
+    white-space: nowrap;
+  }
+}
+
 /* Every disabled button shows the not-allowed cursor, whatever cursor-*
    utility it carries. Deliberately outside any @layer: unlayered CSS beats
    Tailwind's layered utilities, so no per-button disabled:cursor-* class is

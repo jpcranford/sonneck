@@ -1,5 +1,5 @@
 import { useRef, type ReactNode } from 'react'
-import { IconFilter, IconPlus, IconSearch } from '@tabler/icons-react'
+import { IconFilter, IconFilterFilled, IconPlus, IconSearch } from '@tabler/icons-react'
 import { SortControl, type SortDirection, type SortFieldOption } from './SortControl'
 import { WIDE_CONTENT_MAX_W } from '../lib/layout'
 import { PageToolbarPortal } from './PageToolbarSlot'
@@ -200,7 +200,8 @@ export function LibraryToolbar<Field extends string>({
                     : 'border-border bg-paper-raised text-ink hover:bg-paper-hover'
                 }`}
               >
-                <IconFilter size={16} />
+                {/* Solid while any filter is on, outline otherwise. */}
+                {activeFilterCount > 0 ? <IconFilterFilled size={16} /> : <IconFilter size={16} />}
                 <span className="inline max-[389px]:hidden sm:hidden 2xl:inline">Filters</span>
                 {activeFilterCount > 0 && (
                   <span className="flex size-4 items-center justify-center rounded-full bg-accent-fill text-[0.65rem] font-semibold text-white">
