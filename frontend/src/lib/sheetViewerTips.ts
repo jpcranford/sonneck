@@ -3,6 +3,9 @@
 // tips again" starts them over. Feedback pills ("Double-turn ignored") are
 // not tips and always show.
 //
+// The Practice page's drawer tip shares this store (tipDone/finishTip), so
+// "Show tips again" brings it back too.
+//
 // Counted in this browser's storage, per device (user, 2026-10-27): tips
 // are about this device's taps and gestures, so a new device shows them
 // again. The real viewer and the mockups share the count.
@@ -29,6 +32,21 @@ export function takeTip(id: string) {
     // Storage blocked: the tip still shows, every time.
   }
   return true
+}
+
+/** A tip shown until it's dismissed, then never again (the Practice page's
+ * drawer tip): whether it has been dismissed on this device. */
+export function tipDone(id: string) {
+  return (read()[id] ?? 0) >= TIP_SHOWS
+}
+
+/** Dismisses a show-until-dismissed tip for good, on this device. */
+export function finishTip(id: string) {
+  try {
+    localStorage.setItem(KEY, JSON.stringify({ ...read(), [id]: TIP_SHOWS }))
+  } catch {
+    // Storage blocked: the tip shows again next visit.
+  }
 }
 
 export function resetTips() {

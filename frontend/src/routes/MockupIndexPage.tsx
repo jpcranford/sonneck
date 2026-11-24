@@ -180,6 +180,8 @@ const SECTIONS: { title: string; mockups: Mockup[] }[] = [
           'On the real Practice page, each shelf’s shuffle button on the iPad: a new order each time it’s turned on.',
           'The heading by context: try each practice history with and without gigs; ticking or clearing the list leaves it as loaded.',
           'Track practice Off: no week box, list checks or Other Recently Played; the heading follows the gig and list.',
+          'Phone or iPad portrait: the labelled Practice List tab, and + on a card flying into it with an Added message.',
+          'Phone or iPad portrait, first visit: the drawer tip, and each way of dismissing it; the Mockup line shows it again.',
         ],
       },
       {

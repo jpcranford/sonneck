@@ -35,6 +35,7 @@ import { daysUntil, formatDateOnly, todayDateOnly } from '../lib/dateOnly'
 import { ALL_MOCK_SETLISTS, daysFromNow, getUpcomingSetlists } from '../lib/setlistsMockupFixture'
 import { confirmAction } from '../lib/dialogs'
 import { practiceHeading } from '../lib/practiceHeading'
+import { finishTip, tipDone } from '../lib/sheetViewerTips'
 import { useMockupTitle } from '../lib/useMockupTitle'
 import { estimateTotal } from '../lib/setlistEstimate'
 import { shuffledBy, useShelfShuffles } from '../lib/shelfShuffle'
@@ -336,6 +337,12 @@ const EXTRA_PRACTICE_DAYS = [10, 14, 15, 17]
 
 const PRACTICING: Status[] = ['Learning', 'Stalled']
 const GIG_WINDOW_DAYS = 28
+/** The added-piece nudge: the fly into the tab, then how long the tab stays
+ * lit and its message shows. */
+const FLY_MS = 450
+/** The drawer tip's id in lib/sheetViewerTips.ts. */
+const DRAWER_TIP = 'practice-list-drawer'
+const NUDGE_MS = 3000
 /** The Practice List drawer's handles: a press that moves less than this is
  * a tap; a drag past DRAG_COMMIT opens (or closes) the drawer on release,
  * anything between drops it back. */
@@ -860,7 +867,8 @@ function ShelfCard({
   detail: string
   showStatus: boolean
   onList: boolean
-  onAdd: () => void
+  /** The + button's box, for the narrow layout's fly into the bar. */
+  onAdd: (from: DOMRect) => void
   onRemove: () => void
   onDragStart: () => void
   onDragEnd: () => void
@@ -930,7 +938,7 @@ function ShelfCard({
               title="Add to Practice List"
               onClick={(e) => {
                 e.stopPropagation()
-                onAdd()
+                onAdd(e.currentTarget.getBoundingClientRect())
               }}
               className="absolute top-1.5 right-1.5 flex size-6 cursor-pointer items-center justify-center rounded-full bg-accent-fill text-white opacity-0 shadow-md transition-opacity group-hover:opacity-100 focus-visible:opacity-100 touch:opacity-100"
             >
@@ -1332,6 +1340,59 @@ export function PracticeDashboardMockup() {
     return trackPractice ? all : all.filter((s) => s.key !== 'played')
   }, [pieces, seedOf, trackPractice])
 
+  // E of https://claude.ai/artifact/3WcfhJoJXhAaH7v1cM3SU7: with the list in
+  // a drawer, adding a piece says where it went — a small page flies from
+  // the card's + into the tab (not with Reduce Motion, nor from a menu or a
+  // gig's +N), the tab lights up, and a message offers to show the list.
+  const tabRef = useRef<HTMLButtonElement>(null)
+  const [fly, setFly] = useState<{ key: number; from: DOMRect; to: DOMRect } | null>(null)
+  const [nudge, setNudge] = useState(0)
+  const nudgeKey = useRef(0)
+  useEffect(() => {
+    if (!nudge) return
+    const t = window.setTimeout(() => setNudge(0), NUDGE_MS)
+    return () => window.clearTimeout(t)
+  }, [nudge])
+  // F of the same page: the first time the list is a drawer on this device,
+  // a tip points at the tab, the page above dimmed, until it's dismissed —
+  // Got it, a tap on the page, Escape, or opening the drawer — for good
+  // (lib/sheetViewerTips.ts, so "Show tips again" brings it back).
+  const [tipOpen, setTipOpen] = useState(() => !tipDone(DRAWER_TIP))
+  const tipShown = tipOpen && !isWide && !drawerShown
+  function closeTip() {
+    if (!tipOpen) return
+    finishTip(DRAWER_TIP)
+    setTipOpen(false)
+  }
+  useEffect(() => {
+    if (!tipShown) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      finishTip(DRAWER_TIP)
+      setTipOpen(false)
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [tipShown])
+
+  function addedNudge(from?: DOMRect) {
+    if (isWide) return
+    nudgeKey.current += 1
+    const key = nudgeKey.current
+    const to = tabRef.current?.getBoundingClientRect()
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (from && to && !reduced) setFly({ key, from, to })
+    else setNudge(key)
+  }
+  function openDrawerFromBar() {
+    setDrawerOpen(true)
+    closeTip()
+  }
+  function addFromCard(id: number, from: DOMRect) {
+    addToList(id)
+    addedNudge(from)
+  }
+
   function addToList(id: number, at?: number) {
     setList((cur) => {
       if (cur.includes(id)) return cur
@@ -1364,7 +1425,13 @@ export function PracticeDashboardMockup() {
       },
       onList.has(p.id)
         ? { label: 'Remove from Practice List', onSelect: () => removeFromList(p.id) }
-        : { label: 'Add to Practice List', onSelect: () => addToList(p.id) },
+        : {
+            label: 'Add to Practice List',
+            onSelect: () => {
+              addToList(p.id)
+              addedNudge()
+            },
+          },
       { label: 'Add to Setlist', onSelect: () => {} },
       { label: 'Edit Piece', onSelect: () => {} },
       {
@@ -1478,10 +1545,17 @@ export function PracticeDashboardMockup() {
     list.map((id) => ({ isMusic: true, durationSeconds: byId.get(id)?.durationSeconds })),
   ).seconds
   const practicedCount = list.filter((id) => practicedToday.has(id)).length
-  const listSummary =
+  // The bar beside the tab (which names the list and counts it): the time,
+  // and what's practiced today when tracking.
+  const barSummary =
     list.length > 0
-      ? `${list.length} ${list.length === 1 ? 'piece' : 'pieces'}${totalSeconds > 0 ? ` • ${formatMinutes(totalSeconds)}` : ''}`
-      : 'empty'
+      ? [
+          totalSeconds > 0 ? formatMinutes(totalSeconds) : null,
+          trackPractice ? `${practicedCount} practiced today` : null,
+        ]
+          .filter(Boolean)
+          .join(' • ')
+      : 'Nothing queued yet'
 
   const ghost = (
     <div className="my-0.5 h-9 rounded-md border-[1.5px] border-dashed border-accent bg-accent-soft" />
@@ -1747,8 +1821,16 @@ export function PracticeDashboardMockup() {
             {on ? 'On' : 'Off'}
           </button>
         ))}
-        — tick a list row to mark it practiced today, and today’s circle fills; Clear empties the
-        list.
+        • drawer tip{' '}
+        <button
+          type="button"
+          onClick={() => setTipOpen(true)}
+          className="mx-0.5 cursor-pointer rounded px-1.5 hover:text-ink"
+        >
+          Show again
+        </button>
+        (narrow only) — tick a list row to mark it practiced today, and today’s circle fills; Clear
+        empties the list.
       </div>
 
       {/* Narrow: gigs, week + list, shelves. Wide: gigs and shelves on the
@@ -1764,7 +1846,10 @@ export function PracticeDashboardMockup() {
                   setlist={s}
                   pieceIds={MOCK_GIG_PIECES[i % MOCK_GIG_PIECES.length]}
                   onList={onListSet}
-                  onAddMissing={(ids) => ids.forEach((id) => addToList(id))}
+                  onAddMissing={(ids) => {
+                    ids.forEach((id) => addToList(id))
+                    addedNudge()
+                  }}
                 />
               ))}
             </div>
@@ -1806,7 +1891,7 @@ export function PracticeDashboardMockup() {
                       detail={s.detail(p)}
                       showStatus={s.showStatus(p)}
                       onList={onList.has(p.id)}
-                      onAdd={() => addToList(p.id)}
+                      onAdd={(from) => addFromCard(p.id, from)}
                       onRemove={() => removeFromList(p.id)}
                       onDragStart={() => setShelfDrag(true)}
                       onDragEnd={() => {
@@ -1836,7 +1921,19 @@ export function PracticeDashboardMockup() {
           ref={barRef}
           className="sticky bottom-0 z-10 -mx-4 -mb-6 flex items-center select-none justify-between gap-3 border-t border-border bg-paper-raised px-4 pt-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom,0px))] md:-mx-8 md:px-8"
         >
+          {/* The drawer tip's dimmed page: everything above the bar (the
+              scroller clips it to the page), under the tab, which comes
+              after it so it stays bright and usable. */}
+          {tipShown && (
+            <button
+              type="button"
+              aria-label="Dismiss the tip"
+              onClick={closeTip}
+              className="absolute inset-x-0 bottom-full h-[100dvh] cursor-default bg-scrim/40"
+            />
+          )}
           <button
+            ref={tabRef}
             type="button"
             aria-label="Open the Practice List"
             aria-expanded={drawerShown}
@@ -1849,7 +1946,7 @@ export function PracticeDashboardMockup() {
             onPointerUp={() => {
               const moved = drag ? drag.startY - drag.y : 0
               if (drag?.from === 'open' && (Math.abs(moved) < TAP_SLOP || moved > DRAG_COMMIT))
-                setDrawerOpen(true)
+                openDrawerFromBar()
               setDrag(null)
             }}
             onPointerCancel={() => setDrag(null)}
@@ -1857,23 +1954,75 @@ export function PracticeDashboardMockup() {
             onClick={(e) => {
               if (e.detail !== 0) return
               measureBar()
-              setDrawerOpen(true)
+              openDrawerFromBar()
             }}
-            className={`absolute bottom-[calc(100%-1px)] left-1/2 flex h-6 w-14 -translate-x-1/2 cursor-pointer touch-none items-center justify-center rounded-t-lg border border-b-0 border-border bg-paper-raised text-ink-soft hover:text-ink ${
+            // B of https://claude.ai/artifact/3WcfhJoJXhAaH7v1cM3SU7: a pull
+            // tab that says what it opens, with the list's count; lit for a
+            // moment when a piece goes in.
+            className={`absolute bottom-[calc(100%-1px)] left-1/2 flex h-[30px] -translate-x-1/2 cursor-pointer touch-none items-center gap-1.5 rounded-t-[10px] border border-b-0 px-3.5 text-sm font-medium whitespace-nowrap text-ink transition-colors duration-300 ${
+              nudge ? 'border-accent bg-accent-soft' : 'border-border bg-paper-raised'
+            } ${
               // Out of sight while the drawer is out, so the bar's top
               // line runs unbroken under it.
               drawerShown || drag ? 'opacity-0' : ''
             }`}
           >
-            <IconChevronUp size={18} stroke={2.25} />
+            <IconChevronUp size={16} stroke={2.5} className="text-accent" />
+            Practice List
+            {list.length > 0 && (
+              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-accent-fill px-1.5 text-xs font-bold text-white tabular-nums">
+                {list.length}
+              </span>
+            )}
           </button>
-          <span className="min-w-0 truncate">
-            <span className="font-display text-sm font-bold text-ink">Practice List</span>
-            <span className="text-sm text-ink-soft">
-              {' · '}
-              {listSummary}
-            </span>
-          </span>
+          {tipShown && (
+            <div
+              role="dialog"
+              aria-label="Tip"
+              className="absolute bottom-[calc(100%+44px)] left-1/2 w-72 max-w-[calc(100vw-2rem)] -translate-x-1/2 rounded-lg border border-accent bg-paper-raised px-3.5 pt-3 pb-2.5 text-sm text-ink-soft shadow-lg"
+            >
+              <p className="font-display font-bold text-ink">Your Practice List lives here</p>
+              <p className="mt-0.5 leading-snug">
+                {trackPractice
+                  ? 'Tap the tab or drag it up to see your list, put it in order and check off what you’ve practiced.'
+                  : 'Tap the tab or drag it up to see your list and put it in order.'}
+              </p>
+              <div className="mt-1.5 flex justify-end">
+                <button
+                  type="button"
+                  onClick={closeTip}
+                  className="cursor-pointer rounded px-1.5 py-0.5 font-medium text-accent hover:bg-accent-soft"
+                >
+                  Got it
+                </button>
+              </div>
+              {/* The pointer, toward the tab. */}
+              <span
+                aria-hidden="true"
+                className="absolute -bottom-[7px] left-1/2 size-3 -translate-x-1/2 rotate-45 border-r border-b border-accent bg-paper-raised"
+              />
+            </div>
+          )}
+          {nudge > 0 && !drawerShown && !tipShown && (
+            <div
+              role="status"
+              className="absolute bottom-[calc(100%+40px)] left-1/2 flex -translate-x-1/2 items-center gap-3 rounded-lg bg-scrim px-3 py-2 text-sm whitespace-nowrap text-white shadow-lg"
+            >
+              Added to your Practice List
+              <button
+                type="button"
+                onClick={() => {
+                  setNudge(0)
+                  measureBar()
+                  openDrawerFromBar()
+                }}
+                className="cursor-pointer font-bold underline underline-offset-2"
+              >
+                Show
+              </button>
+            </div>
+          )}
+          <span className="min-w-0 truncate text-sm text-ink-soft">{barSummary}</span>
           {list.length > 0 && (
             <Link
               to="/mockup/sheet-viewer?from=list"
@@ -1885,6 +2034,36 @@ export function PracticeDashboardMockup() {
           )}
         </div>
       )}
+
+      {fly &&
+        createPortal(
+          <div
+            key={fly.key}
+            aria-hidden="true"
+            ref={(el) => {
+              if (!el) return
+              const dx = fly.to.left + fly.to.width / 2 - (fly.from.left + fly.from.width / 2)
+              const dy = fly.to.top + fly.to.height / 2 - (fly.from.top + fly.from.height / 2)
+              const a = el.animate(
+                [
+                  { transform: 'translate(0, 0) scale(1)', opacity: 1 },
+                  { transform: `translate(${dx}px, ${dy}px) scale(0.45)`, opacity: 0.85 },
+                ],
+                { duration: FLY_MS, easing: 'cubic-bezier(0.4, 0, 0.6, 1)', fill: 'forwards' },
+              )
+              a.onfinish = () => {
+                setFly(null)
+                setNudge(fly.key)
+              }
+            }}
+            style={{
+              left: fly.from.left + fly.from.width / 2 - 13,
+              top: fly.from.top + fly.from.height / 2 - 16,
+            }}
+            className="pointer-events-none fixed z-[60] h-8 w-[26px] rounded-[3px] border border-accent bg-white bg-[repeating-linear-gradient(to_bottom,transparent_0_5px,var(--color-border)_5px_6px)] bg-[length:70%_100%] bg-[position:center_4px] bg-no-repeat shadow-lg"
+          />,
+          document.body,
+        )}
 
       {/* The drawer, over everything above the bar: it rises from behind the
           bar's top edge (its box ends there), with only the page above

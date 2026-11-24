@@ -31,6 +31,9 @@ interface PieceContextMenuProps {
    * isn't itself a link to the piece (the Practice Dashboard's shelves).
    * The value is Piece Details' "Back to …" label. */
   openDetailsBackLabel?: string
+  /** Called once "Add to Practice List" has saved — the Practice
+   * Dashboard's nudge toward its drawer. */
+  onAddedToPracticeList?: () => void
 }
 
 // Shared right-click menu for piece cards (Library grid + list, Book
@@ -42,7 +45,14 @@ interface PieceContextMenuProps {
 // "Delete Piece".
 export const PieceContextMenu = forwardRef<ContextMenuHandle, PieceContextMenuProps>(
   function PieceContextMenu(
-    { piece, children, hideTriggerButton, siblingPieces, openDetailsBackLabel },
+    {
+      piece,
+      children,
+      hideTriggerButton,
+      siblingPieces,
+      openDetailsBackLabel,
+      onAddedToPracticeList,
+    },
     ref,
   ) {
     const navigate = useNavigate()
@@ -84,7 +94,10 @@ export const PieceContextMenu = forwardRef<ContextMenuHandle, PieceContextMenuPr
         if (add) await addToPracticeList([piece.id])
         else await removeFromPracticeList(piece.id)
       },
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: ['practice-list'] }),
+      onSuccess: (_, add) => {
+        queryClient.invalidateQueries({ queryKey: ['practice-list'] })
+        if (add) onAddedToPracticeList?.()
+      },
       onError: () => showAlert('Could not update your Practice List.'),
     })
 
