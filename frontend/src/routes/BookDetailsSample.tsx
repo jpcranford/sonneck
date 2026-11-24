@@ -797,7 +797,7 @@ export function BookDetailsSample() {
             into real app routes/state. */}
         <Link
           to="/mockup"
-          className="relative inline-flex w-fit items-center gap-1.5 text-sm whitespace-nowrap text-ink-soft hover:text-ink"
+          className="relative inline-flex min-h-9.5 w-fit items-center gap-1.5 text-sm whitespace-nowrap text-ink-soft hover:text-ink"
         >
           <span data-hit aria-hidden="true" className="hit-area" />
           <IconArrowLeft size={24} />

@@ -636,7 +636,7 @@ export function SetlistDetailsMockup() {
       <div className="flex flex-wrap items-center justify-between gap-4 touch:gap-y-5">
         <Link
           to="/mockup"
-          className="relative inline-flex w-fit items-center gap-1.5 text-sm whitespace-nowrap text-ink-soft hover:text-ink"
+          className="relative inline-flex min-h-9.5 w-fit items-center gap-1.5 text-sm whitespace-nowrap text-ink-soft hover:text-ink"
         >
           <span data-hit aria-hidden="true" className="hit-area" />
           <IconArrowLeft size={24} />

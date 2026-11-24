@@ -701,7 +701,7 @@ export function PiecePage() {
         <button
           type="button"
           onClick={handleBack}
-          className="relative inline-flex w-fit cursor-pointer items-center gap-1.5 text-sm whitespace-nowrap text-ink-soft hover:text-ink"
+          className="relative inline-flex min-h-9.5 w-fit cursor-pointer items-center gap-1.5 text-sm whitespace-nowrap text-ink-soft hover:text-ink"
         >
           <HitArea />
           <IconArrowLeft size={24} />
