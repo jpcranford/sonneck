@@ -1030,6 +1030,27 @@ function Shelf({
 // ---------------------------------------------------------------------
 // The page
 
+// Which slot clientY points at among the rows with these ids (before the
+// first row whose middle is below it).
+function rowIndexAt(rows: Map<number, HTMLDivElement>, clientY: number, ids: number[]): number {
+  for (let i = 0; i < ids.length; i++) {
+    const el = rows.get(ids[i])
+    if (!el) continue
+    const r = el.getBoundingClientRect()
+    if (clientY < r.top + r.height / 2) return i
+  }
+  return ids.length
+}
+
+// The list with the dragged piece moved to where clientY points (the same
+// array when that's where it already is).
+function movedTo(rows: Map<number, HTMLDivElement>, list: number[], id: number, clientY: number) {
+  const others = list.filter((x) => x !== id)
+  const next = [...others]
+  next.splice(rowIndexAt(rows, clientY, others), 0, id)
+  return next.some((v, i) => v !== list[i]) ? next : list
+}
+
 export function PracticeDashboardMockup() {
   const railRef = useRef<HTMLDivElement>(null)
   useFitToScreen(railRef)
@@ -1265,31 +1286,76 @@ export function PracticeDashboardMockup() {
   const [shelfDrag, setShelfDrag] = useState(false)
   const [dropAt, setDropAt] = useState<number | null>(null)
 
-  function indexAt(clientY: number, ids: number[]): number {
-    for (let i = 0; i < ids.length; i++) {
-      const el = rowRefs.current.get(ids[i])
-      if (!el) continue
-      const r = el.getBoundingClientRect()
-      if (clientY < r.top + r.height / 2) return i
-    }
-    return ids.length
-  }
+  const indexAt = (clientY: number, ids: number[]) => rowIndexAt(rowRefs.current, clientY, ids)
+  // The card that follows the pointer while a row is dragged (Edit
+  // Setlist's): where the pointer is, where it grabbed the row, the row's
+  // width. The row itself stays in the list, faded, at the place it'd drop.
+  const [dragCard, setDragCard] = useState<{
+    x: number
+    y: number
+    offsetX: number
+    offsetY: number
+    width: number
+  } | null>(null)
+  const lastPointerY = useRef(0)
   function onGripDown(e: ReactPointerEvent, id: number) {
     e.preventDefault()
+    const row = rowRefs.current.get(id)?.getBoundingClientRect()
+    if (!row) return
     listRef.current?.setPointerCapture(e.pointerId)
+    lastPointerY.current = e.clientY
     setReorderId(id)
+    setDragCard({
+      x: e.clientX,
+      y: e.clientY,
+      offsetX: e.clientX - row.left,
+      offsetY: e.clientY - row.top,
+      width: row.width,
+    })
   }
   function onListPointerMove(e: ReactPointerEvent) {
     if (reorderId == null) return
-    const others = list.filter((x) => x !== reorderId)
-    const at = indexAt(e.clientY, others)
-    const next = [...others]
-    next.splice(at, 0, reorderId)
-    if (next.some((v, i) => v !== list[i])) setList(next)
+    lastPointerY.current = e.clientY
+    setDragCard((c) => c && { ...c, x: e.clientX, y: e.clientY })
+    setList((cur) => movedTo(rowRefs.current, cur, reorderId, e.clientY))
   }
   function endReorder() {
+    setDragCard(null)
     setReorderId(null)
   }
+  // Held near the list's top or bottom edge, the list scrolls, moving the
+  // row along with it.
+  useEffect(() => {
+    if (reorderId == null) return
+    const id = reorderId
+    document.body.style.cursor = 'grabbing'
+    const rows = rowRefs.current
+    const EDGE = 48
+    const SPEED = 10
+    let frame = requestAnimationFrame(function tick() {
+      const el = listRef.current
+      if (el) {
+        const box = el.getBoundingClientRect()
+        const y = lastPointerY.current
+        const step =
+          y < box.top + EDGE
+            ? -Math.ceil(((box.top + EDGE - y) / EDGE) * SPEED)
+            : y > box.bottom - EDGE
+              ? Math.ceil(((y - (box.bottom - EDGE)) / EDGE) * SPEED)
+              : 0
+        if (step !== 0) {
+          const before = el.scrollTop
+          el.scrollTop += step
+          if (el.scrollTop !== before) setList((cur) => movedTo(rows, cur, id, y))
+        }
+      }
+      frame = requestAnimationFrame(tick)
+    })
+    return () => {
+      cancelAnimationFrame(frame)
+      document.body.style.cursor = ''
+    }
+  }, [reorderId])
 
   function clearList() {
     void confirmAction({
@@ -1386,7 +1452,7 @@ export function PracticeDashboardMockup() {
           onPointerMove={onListPointerMove}
           onPointerUp={endReorder}
           onPointerCancel={endReorder}
-          className="-mx-1 min-h-0 flex-1 overflow-y-auto px-1"
+          className={`-mx-1 min-h-0 flex-1 overflow-y-auto px-1 ${reorderId != null ? 'select-none' : ''}`}
         >
           {list.map((id, i) => {
             const p = byId.get(id)!
@@ -1400,12 +1466,15 @@ export function PracticeDashboardMockup() {
                     else rowRefs.current.delete(id)
                   }}
                   className={`group flex items-center gap-2 rounded-md px-1 py-1.5 hover:bg-paper-hover ${
-                    reorderId === id ? 'bg-paper-hover shadow-sm' : ''
+                    reorderId === id ? 'opacity-40' : ''
                   }`}
                 >
+                  {/* The grip's area runs the row's full height and its left
+                      padding, wider on a touch screen, so a finger finds it;
+                      the rest of the row scrolls the list. */}
                   <span
                     onPointerDown={(e) => onGripDown(e, id)}
-                    className="flex shrink-0 cursor-grab touch-none text-ink-faint"
+                    className="-my-1.5 -ml-1 flex shrink-0 cursor-grab touch-none items-center justify-center self-stretch pl-1 text-ink-faint touch:w-9"
                     aria-label="Drag to reorder"
                   >
                     <IconGripVertical size={15} />
@@ -1456,6 +1525,32 @@ export function PracticeDashboardMockup() {
             )
           })}
           {dropAt === list.length && ghost}
+          {dragCard &&
+            reorderId != null &&
+            createPortal(
+              <div
+                aria-hidden="true"
+                style={{
+                  left: dragCard.x - dragCard.offsetX,
+                  top: dragCard.y - dragCard.offsetY,
+                  width: dragCard.width,
+                }}
+                className="pointer-events-none fixed z-[9999] flex items-center gap-2 rounded-md border border-accent bg-paper-raised px-1 py-1.5 shadow-xl"
+              >
+                <span className="flex shrink-0 text-ink-faint touch:w-9 touch:justify-center">
+                  <IconGripVertical size={15} />
+                </span>
+                <span className="flex min-w-0 flex-1 flex-col">
+                  <span className="truncate font-display text-sm font-medium text-ink">
+                    {byId.get(reorderId)!.title}
+                  </span>
+                  <span className="truncate text-xs text-ink-soft">
+                    {byId.get(reorderId)!.composer}
+                  </span>
+                </span>
+              </div>,
+              document.body,
+            )}
           {/* How pieces get here, always in view under the rows; while a
               piece is being dragged over it says what letting go does.
               Text only: the gap above is the one drop marker. */}
