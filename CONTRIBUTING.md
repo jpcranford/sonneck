@@ -110,6 +110,7 @@ For the full original design rationale (why SQLite over Postgres, why FTS5 over 
 ```
 sonneck/
 ├── cmd/sonneck/main.go        # Entry point — server bootstrap + CLI subcommands
+├── docker/sonneck.sh          # The image's `sonneck` command: makes the library folder PUID:PGID's, then runs the binary as that user
 ├── internal/
 │   ├── annotpdf/              # Download PDF + Annotations: Sheet Viewer marks written into a piece's PDF as real annotations (pdfcpu)
 │   ├── api/                   # {data}/{error} response envelope, shared field validation
@@ -150,6 +151,7 @@ sonneck/
 ├── .github/workflows/          # docker-publish.yml — see the Docker section below
 ├── Dockerfile                  # 3-stage: build frontend → embed it into the Go binary → slim runtime
 ├── docker-compose.yml          # What the README's Docker install path actually downloads and runs
+├── unraid/                     # Unraid Community Apps template (templates/sonneck.xml) and ca_profile.xml
 ├── sonneck-design.md           # Original design doc — the plan as first written
 ├── CLAUDE.md                   # Running conventions log — the plan as it actually evolved
 ├── README.md                   # User-facing docs (install, config, deployment)
@@ -213,6 +215,10 @@ docker run --rm -p 8080:8080 -v sonneck-local-data:/data sonneck:local
 ```
 
 This runs the full multi-stage build (frontend build → embed into the Go binary → slim runtime with `poppler-utils`) exactly as the release pipeline does — the frontend is built fresh inside the image every time, so there's no separate "remember to rebuild the frontend first" step to forget the way there might be if you were embedding a stale local `frontend/dist`. Confirm it's actually serving the real app, not just that it built: `curl localhost:8080/healthz`, then load `http://localhost:8080/` in a browser.
+
+**The image's `sonneck` command is a script** (`docker/sonneck.sh`), not the binary itself (which sits at `/usr/local/lib/sonneck/sonneck`): started as root, it creates the library folder if missing, hands it to `PUID:PGID` (default 1000:1000) only when the owner differs, and runs the binary as that user; started as anyone else, it just runs the binary. `docker exec <container> sonneck <command>` goes through it too, so admin commands never write root-owned files. If you change it, test a fresh empty folder, a root-owned one, an existing 1000-owned library and a `--user` start in a locally built image; `shellcheck` it too.
+
+The Unraid template lives in `unraid/` (`templates/sonneck.xml`, `ca_profile.xml`), published from its own templates repo; keep its fields in step with the env vars in the README.
 
 To test `docker-compose.yml` itself against a local build rather than the published image, temporarily point its `image:` at `sonneck:local` (don't commit that change though obvs).
 
