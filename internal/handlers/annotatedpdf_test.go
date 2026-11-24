@@ -10,6 +10,8 @@ import (
 	"github.com/pdfcpu/pdfcpu/pkg/api"
 	"github.com/pdfcpu/pdfcpu/pkg/pdfcpu/model"
 	"github.com/pdfcpu/pdfcpu/pkg/pdfcpu/types"
+
+	"github.com/jpcranford/sonneck/internal/testutil"
 )
 
 // annotationSubtypes lists each page's annotation subtypes in a PDF.
@@ -235,5 +237,93 @@ func TestAnnotatedSetlistDownload_LeavesOutSkippedPages(t *testing.T) {
 	}
 	if inks != 1 {
 		t.Errorf("annotated Set PDF has %d ink annotations, want 1 (the skipped page's left out)", inks)
+	}
+}
+
+// A book whose comments name their page (/P, as editors store them) splits
+// into pieces that keep the comments through every later use: the Set PDF
+// merge keeps them, and Download PDF + Annotations can read the piece and
+// add the caller's marks beside them. The book's own file is unchanged.
+func TestBookSplit_KeepsCommentsUsable(t *testing.T) {
+	h := newTestServer(t)
+	path := t.TempDir() + "/book.pdf"
+	testutil.WriteAnnotatedPDF(t, path, 5)
+	original := readAll(t, path)
+	rec := recordRequest(h, multipartUpload(t, "/api/books", "book.pdf", original))
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("upload book: status %d, body %s", rec.Code, rec.Body.String())
+	}
+	var uploaded struct {
+		Book struct {
+			ID int64 `json:"id"`
+		} `json:"book"`
+	}
+	decodeData(t, rec, &uploaded)
+	bookID := uploaded.Book.ID
+	decodeData(t, doJSON(t, h, http.MethodPatch, apiBooksURL(bookID), map[string]any{
+		"bookTitle": "Five Studies", "composers": []string{"Anon."},
+	}), nil)
+	var result struct {
+		Pieces []struct {
+			ID int64 `json:"id"`
+		} `json:"pieces"`
+	}
+	decodeData(t, doJSON(t, h, http.MethodPost, apiBooksURL(bookID)+"/confirm-import", map[string]any{
+		"ranges": []map[string]any{{"start": 1, "end": 2}, {"start": 3, "end": 5}},
+		"pieces": []map[string]any{{"title": "One"}, {"title": "Two"}},
+	}), &result)
+	if len(result.Pieces) != 2 {
+		t.Fatalf("created %d pieces, want 2", len(result.Pieces))
+	}
+	second := result.Pieces[1].ID
+
+	inks := func(pdf []byte) int {
+		n := 0
+		for _, subtypes := range annotationSubtypes(t, pdf) {
+			for _, s := range subtypes {
+				if s == "Ink" {
+					n++
+				}
+			}
+		}
+		return n
+	}
+
+	// The book's own file is exactly what was uploaded.
+	if got := doJSON(t, h, http.MethodGet, apiBooksURL(bookID)+"/file", nil); !bytes.Equal(got.Body.Bytes(), original) {
+		t.Error("the book's file changed")
+	}
+
+	// In a Set PDF, the piece's three comments come through.
+	rec = doJSON(t, h, http.MethodPost, "/api/setlists", map[string]any{"name": "Evensong"})
+	var setlist struct {
+		ID int64 `json:"id"`
+	}
+	decodeData(t, rec, &setlist)
+	if rec := doJSON(t, h, http.MethodPost, setlistURL(setlist.ID, "/entries"), map[string]any{"pieceId": second}); rec.Code != http.StatusCreated {
+		t.Fatalf("add entry: status %d", rec.Code)
+	}
+	set := doJSON(t, h, http.MethodGet, setlistURL(setlist.ID, "/pdf"), nil)
+	if set.Code != http.StatusOK {
+		t.Fatalf("Set PDF: status %d", set.Code)
+	}
+	if n := inks(set.Body.Bytes()); n != 3 {
+		t.Errorf("Set PDF has %d ink comments, want 3 (pages 3-5)", n)
+	}
+
+	// Download PDF + Annotations reads the piece: its 3 comments plus a mark.
+	marks := []map[string]any{
+		{"id": "pen", "kind": "stroke", "tool": "pen", "layer": 5, "size": 0.39, "pressure": false,
+			"points": [][]float64{{0.1, 0.2, 0.5}, {0.2, 0.22, 0.5}, {0.3, 0.21, 0.5}}},
+	}
+	if rec := doJSON(t, h, http.MethodPut, apiPiecesURL(second)+"/annotations/1", map[string]any{"marks": marks}); rec.Code != http.StatusOK {
+		t.Fatalf("PUT marks: status %d", rec.Code)
+	}
+	dl := doJSON(t, h, http.MethodGet, apiPiecesURL(second)+"/file?annotations=true", nil)
+	if dl.Code != http.StatusOK {
+		t.Fatalf("annotated download: status %d, body %s", dl.Code, dl.Body.String())
+	}
+	if n := inks(dl.Body.Bytes()); n != 4 {
+		t.Errorf("annotated download has %d ink annotations, want 4", n)
 	}
 }

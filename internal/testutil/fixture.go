@@ -58,6 +58,40 @@ func WriteFixturePDF(t *testing.T, path string, pageCount int) {
 	}
 }
 
+// WriteAnnotatedPDF writes a pageCount-page PDF whose every page carries
+// one ink annotation (a pen stroke), the way a PDF editor stores one.
+func WriteAnnotatedPDF(t *testing.T, path string, pageCount int) {
+	t.Helper()
+	var buf bytes.Buffer
+	var offsets []int
+	obj := func(body string) {
+		offsets = append(offsets, buf.Len())
+		fmt.Fprintf(&buf, "%d 0 obj\n%s\nendobj\n", len(offsets), body)
+	}
+	buf.WriteString("%PDF-1.4\n")
+	obj("<< /Type /Catalog /Pages 2 0 R >>")
+	kids := make([]string, pageCount)
+	for i := range kids {
+		kids[i] = fmt.Sprintf("%d 0 R", 3+2*i)
+	}
+	obj(fmt.Sprintf("<< /Type /Pages /Kids [%s] /Count %d >>", strings.Join(kids, " "), pageCount))
+	for i := 0; i < pageCount; i++ {
+		page, annot := 3+2*i, 4+2*i
+		obj(fmt.Sprintf("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Annots [%d 0 R] >>", annot))
+		obj(fmt.Sprintf("<< /Type /Annot /Subtype /Ink /Rect [100 100 300 200] /F 4 "+
+			"/InkList [[100 100 200 200 300 100]] /C [1 0 0] /Contents (stroke on page %d) /P %d 0 R >>", i+1, page))
+	}
+	xref := buf.Len()
+	fmt.Fprintf(&buf, "xref\n0 %d\n0000000000 65535 f \n", len(offsets)+1)
+	for _, off := range offsets {
+		fmt.Fprintf(&buf, "%010d 00000 n \n", off)
+	}
+	fmt.Fprintf(&buf, "trailer\n<< /Size %d /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n", len(offsets)+1, xref)
+	if err := os.WriteFile(path, buf.Bytes(), 0o644); err != nil {
+		t.Fatalf("writing annotated PDF: %v", err)
+	}
+}
+
 // WriteFixturePNG writes a tiny real PNG (solid fill, r/g/b as given) to
 // path — for the book cover-image upload tests (handleUploadBookCover),
 // which validate the upload via image.DecodeConfig and so need a file that

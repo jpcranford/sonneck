@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/jpcranford/sonneck/internal/annotpdf"
 	"github.com/jpcranford/sonneck/internal/api"
 	"github.com/jpcranford/sonneck/internal/models"
 	"github.com/jpcranford/sonneck/internal/pdf"
@@ -105,6 +106,9 @@ func (s *Server) handleConfirmImport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	splitSrc, removeSplitSrc := s.bookSplitSource(*book.FilePath)
+	defer removeSplitSrc()
+
 	staged := make([]stagedPiece, 0, len(ranges))
 	defer func() {
 		// Any staged file that never made it into a committed piece (the
@@ -124,7 +128,7 @@ func (s *Server) handleConfirmImport(w http.ResponseWriter, r *http.Request) {
 		tempPath := tmp.Name()
 		tmp.Close()
 
-		if err := pdf.ExtractPages(r.Context(), s.Cfg.PDFBinDir, *book.FilePath, rg.Start, rg.End, tempPath); err != nil {
+		if err := pdf.ExtractPages(r.Context(), s.Cfg.PDFBinDir, splitSrc, rg.Start, rg.End, tempPath); err != nil {
 			os.Remove(tempPath)
 			s.writeError(w, err)
 			return
@@ -272,4 +276,38 @@ func (s *Server) handleConfirmImport(w http.ResponseWriter, r *http.Request) {
 	}
 
 	api.WriteData(w, http.StatusCreated, map[string]any{"pieces": responses})
+}
+
+// bookSplitSource is the file the split copies pages from: the book's own,
+// or, when its annotations name their page (/P), a temporary copy without
+// it (annotpdf.StripPageRefs: pdfunite would leave it pointing at the
+// wrong object in each piece). The book file itself is never changed. If
+// the copy can't be made the split uses the book as it is, as before.
+func (s *Server) bookSplitSource(bookPath string) (string, func()) {
+	noop := func() {}
+	src, err := os.Open(bookPath)
+	if err != nil {
+		return bookPath, noop
+	}
+	defer src.Close()
+	// The system temp folder, not DATA_DIR, which is often a slow share.
+	tmp, err := os.CreateTemp("", "sonneck-split-*.pdf")
+	if err != nil {
+		return bookPath, noop
+	}
+	remove := func() { os.Remove(tmp.Name()) }
+	changed, err := annotpdf.StripPageRefs(src, tmp)
+	if cerr := tmp.Close(); err == nil {
+		err = cerr
+	}
+	if err != nil {
+		s.Logger.Warn("book split: couldn't clear annotation page references, splitting the book as it is", "path", bookPath, "error", err)
+		remove()
+		return bookPath, noop
+	}
+	if !changed {
+		remove()
+		return bookPath, noop
+	}
+	return tmp.Name(), remove
 }
