@@ -125,7 +125,7 @@ export function MobileNavDrawer({ open, onClose }: { open: boolean; onClose: () 
         onClick={onClose}
       />
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col bg-sidebar-bg pt-[var(--titlebar-inset)] transition-[translate,visibility] duration-200 md:hidden ${
+        className={`select-none fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col bg-sidebar-bg pt-[var(--titlebar-inset)] transition-[translate,visibility] duration-200 md:hidden ${
           open ? 'translate-x-0' : 'invisible -translate-x-full'
         }`}
       >

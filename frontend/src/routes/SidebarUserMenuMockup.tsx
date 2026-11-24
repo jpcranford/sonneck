@@ -453,7 +453,7 @@ export function SidebarUserMenuMockup() {
           md:block` wrapper + Sidebar.tsx's internal flex-col in one class
           list, since this mockup isn't nested inside the real AppShell. */}
       <aside
-        className={`hidden h-dvh shrink-0 flex-col bg-sidebar-bg transition-[width] duration-150 md:flex ${
+        className={`select-none hidden h-dvh shrink-0 flex-col bg-sidebar-bg transition-[width] duration-150 md:flex ${
           collapsed ? 'w-16' : 'w-64'
         }`}
       >
@@ -525,7 +525,7 @@ export function SidebarUserMenuMockup() {
         onClick={() => setDrawerOpen(false)}
       />
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col bg-sidebar-bg transition-[translate,visibility] duration-200 md:hidden ${
+        className={`select-none fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col bg-sidebar-bg transition-[translate,visibility] duration-200 md:hidden ${
           drawerOpen ? 'translate-x-0' : 'invisible -translate-x-full'
         }`}
       >

@@ -140,7 +140,7 @@ export function MobileNavDrawerMockup() {
         onClick={() => setDrawerOpen(false)}
       />
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col bg-sidebar-bg transition-[translate,visibility] duration-200 md:hidden ${
+        className={`select-none fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col bg-sidebar-bg transition-[translate,visibility] duration-200 md:hidden ${
           drawerOpen ? 'translate-x-0' : 'invisible -translate-x-full'
         }`}
       >
