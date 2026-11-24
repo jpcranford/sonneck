@@ -913,7 +913,8 @@ export function SetlistPage() {
                               entry.piece.keys.length > 0 ? (
                                 <KeySequence keys={entry.piece.keys.map((k) => k.name)} />
                               ) : null,
-                              formatPages(entry.piece.pageCount),
+                              // Shown pages: Manage Pages' skips left out, as in the Set PDF.
+                              formatPages(entry.piece.lastPage - entry.piece.firstPage + 1),
                             ]}
                           />
                         </div>
