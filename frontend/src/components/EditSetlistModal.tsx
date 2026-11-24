@@ -91,6 +91,51 @@ function parseDurationInput(value: string): number | undefined {
   return Number(match[1]) * 60 + Number(match[2])
 }
 
+// An unfinished "+ Custom Entry" form left by Cancel, per setlist, so the
+// next open shows it as it was. Kept for this tab in sessionStorage, outside
+// the component, since the Setlists library mounts a fresh window per open.
+type CustomEntryDraft = {
+  name: string
+  duration: string
+  description: string
+  countsAsMusic: boolean
+  role: string
+}
+const customDraftKey = (setlistId: number) => `sonneck-setlist-custom-draft:${setlistId}`
+const customEntryDrafts = {
+  get(setlistId: number): CustomEntryDraft | null {
+    try {
+      const raw = sessionStorage.getItem(customDraftKey(setlistId))
+      if (!raw) return null
+      const d = JSON.parse(raw) as Partial<CustomEntryDraft>
+      const str = (v: unknown) => (typeof v === 'string' ? v : '')
+      return {
+        name: str(d.name),
+        duration: str(d.duration),
+        description: str(d.description),
+        countsAsMusic: d.countsAsMusic === true,
+        role: str(d.role),
+      }
+    } catch {
+      return null
+    }
+  },
+  set(setlistId: number, draft: CustomEntryDraft) {
+    try {
+      sessionStorage.setItem(customDraftKey(setlistId), JSON.stringify(draft))
+    } catch {
+      // Storage unavailable: the draft just isn't kept.
+    }
+  },
+  delete(setlistId: number) {
+    try {
+      sessionStorage.removeItem(customDraftKey(setlistId))
+    } catch {
+      // Nothing to clear.
+    }
+  },
+}
+
 type CustomEntryFields = {
   role: string | null
   customName: string
@@ -262,6 +307,21 @@ export function EditSetlistModal({
   const [entryDraftSaved, setEntryDraftSaved] = useState({ role: '', description: '' })
   const pieceSearchInputRef = useRef<HTMLInputElement>(null)
   const customNameInputRef = useRef<HTMLInputElement>(null)
+
+  // A "+ Custom Entry" form left unfinished by Cancel comes back as it was.
+  useEffect(() => {
+    if (!open || mode !== 'edit' || setlistId == null) return
+    const draft = customEntryDrafts.get(setlistId)
+    if (!draft) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate: restores the form kept by Cancel, once per open (this component's instance can persist across open/close).
+    setEditingEntryId(null)
+    setCustomName(draft.name)
+    setCustomDuration(draft.duration)
+    setCustomDescription(draft.description)
+    setCustomCountsAsMusic(draft.countsAsMusic)
+    setCustomRole(draft.role)
+    setAddRowMode('custom')
+  }, [open, mode, setlistId])
   const expandedRef = useRef<HTMLElement | null>(null)
   const setExpandedRef = useCallback((node: HTMLElement | null) => {
     expandedRef.current = node
@@ -468,8 +528,37 @@ export function EditSetlistModal({
     else openAddCustomForm()
   }
 
+  // The custom form's fields as a new entry for the draft (null without a
+  // name): what "Add" appends, and what Save Setlist takes along from an
+  // add form left filled in.
+  function newCustomEntry(): SetlistEntry | null {
+    if (!customName.trim()) return null
+    return {
+      id: nextDraftId.current--,
+      kind: 'custom',
+      displayNumber: null,
+      role: customCountsAsMusic ? customRole.trim() || null : null,
+      customName: customName.trim(),
+      customDurationSeconds: parseDurationInput(customDuration),
+      description: customDescription.trim() || undefined,
+      customCountsAsMusic,
+    }
+  }
+
   function submitCustomForm() {
     if (!customName.trim()) return
+    if (editingEntryId == null) {
+      // A new entry joins the draft; the form stays open for another.
+      const entry = newCustomEntry()!
+      setEntries((current) => [...current, entry])
+      setCustomName('')
+      setCustomDuration('')
+      setCustomDescription('')
+      setCustomCountsAsMusic(false)
+      setCustomRole('')
+      customNameInputRef.current?.focus()
+      return
+    }
     const body: CustomEntryFields = {
       role: customCountsAsMusic ? customRole.trim() || null : null,
       customName: customName.trim(),
@@ -484,20 +573,7 @@ export function EditSetlistModal({
       description: body.description ?? undefined,
       customCountsAsMusic: body.customCountsAsMusic,
     }
-    if (editingEntryId == null) {
-      // A new entry joins the draft; the form stays open for another.
-      const id = nextDraftId.current--
-      setEntries((current) => [
-        ...current,
-        { id, kind: 'custom', displayNumber: null, ...draftFields },
-      ])
-      setCustomName('')
-      setCustomDuration('')
-      setCustomDescription('')
-      setCustomCountsAsMusic(false)
-      setCustomRole('')
-      customNameInputRef.current?.focus()
-    } else if (editingEntryId < 0) {
+    if (editingEntryId < 0) {
       patchDraftEntry(editingEntryId, draftFields)
       closeCustomForm()
     } else {
@@ -639,7 +715,7 @@ export function EditSetlistModal({
   // role or custom fields, appended in draft order), and the final order
   // sent if it isn't already the server's.
   const saveAllMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (entries: SetlistEntry[]) => {
       const id = setlistId!
       const saved =
         queryClient.getQueryData<SetlistDetail>(['setlist', id])?.entries ??
@@ -679,6 +755,7 @@ export function EditSetlistModal({
       return getSetlist(id)
     },
     onSuccess: (updated) => {
+      if (setlistId != null) customEntryDrafts.delete(setlistId)
       applyUpdatedSetlist(updated)
       queryClient.invalidateQueries({ queryKey: ['setlists'] })
       queryClient.invalidateQueries({ queryKey: ['setlist-memberships'] })
@@ -691,7 +768,23 @@ export function EditSetlistModal({
     },
   })
 
+  // Cancel discards the window's changes but keeps a "+ Custom Entry" form
+  // with anything typed in it, for the next open.
   function handleCancel() {
+    if (setlistId != null) {
+      const addingCustom = addRowMode === 'custom' && editingEntryId == null
+      const draft = {
+        name: customName,
+        duration: customDuration,
+        description: customDescription,
+        countsAsMusic: customCountsAsMusic,
+        role: customRole,
+      }
+      const filled =
+        draft.name.trim() || draft.duration.trim() || draft.description.trim() || draft.role.trim()
+      if (addingCustom && filled) customEntryDrafts.set(setlistId, draft)
+      else customEntryDrafts.delete(setlistId)
+    }
     closeAddRow()
     closeCustomForm()
     onClose()
@@ -702,7 +795,14 @@ export function EditSetlistModal({
     if (mode === 'create') {
       createMutation.mutate()
     } else {
-      saveAllMutation.mutate()
+      // A "+ Custom Entry" form with a name is added at the end first.
+      const pending = addRowMode === 'custom' && editingEntryId == null ? newCustomEntry() : null
+      const toSave = pending ? [...entries, pending] : entries
+      if (pending) {
+        setEntries(toSave)
+        closeCustomForm()
+      }
+      saveAllMutation.mutate(toSave)
     }
   }
 

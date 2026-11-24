@@ -425,6 +425,8 @@ export function EditSetlistModal({
   // doesn't change).
   const pieceSearchInputRef = useRef<HTMLInputElement>(null)
   const customNameInputRef = useRef<HTMLInputElement>(null)
+  // Ids for a custom entry Save Setlist takes from a filled-in add form.
+  const savedCustomCount = useRef(0)
   // The one currently-open expanding block — the piece search, the bottom
   // add-row's own custom-entry form, or an existing entry's inline edit
   // form — whichever is rendered right now (addRowMode/editingEntryId are
@@ -830,19 +832,47 @@ export function EditSetlistModal({
     lastPointerRef.current = null
   }
 
+  // Cancel discards the window's changes but keeps a "+ Custom Entry" form
+  // with anything typed in it, as it is, for the next open.
   function handleCancel() {
     setName(initialName)
     setGigDate(initialGigDate)
     setDescription(initialDescription)
     setProgramEntries(mode === 'create' ? [] : INITIAL_PROGRAM_ENTRIES)
     setActiveTab('details')
-    closeAddRow()
-    closeCustomForm()
+    const keepCustomDraft =
+      addRowMode === 'custom' &&
+      editingEntryId == null &&
+      Boolean(
+        customName.trim() || customDuration.trim() || customDescription.trim() || customRole.trim(),
+      )
+    if (!keepCustomDraft) {
+      closeAddRow()
+      closeCustomForm()
+    }
     onClose()
   }
 
+  // A "+ Custom Entry" form with a name is added at the end first.
   function handleSave() {
-    onSave?.({ name: name.trim(), gigDate, description }, programEntries)
+    let entries = programEntries
+    if (addRowMode === 'custom' && editingEntryId == null && customName.trim()) {
+      entries = [
+        ...programEntries,
+        {
+          id: `custom-saved-${savedCustomCount.current++}`,
+          kind: 'custom',
+          title: customName.trim(),
+          durationSeconds: parseDurationInput(customDuration),
+          description: customDescription.trim() || undefined,
+          countsAsMusic: customCountsAsMusic,
+          role: customCountsAsMusic ? customRole.trim() || undefined : undefined,
+        },
+      ]
+      setProgramEntries(entries)
+      closeCustomForm()
+    }
+    onSave?.({ name: name.trim(), gigDate, description }, entries)
     onClose()
   }
 
