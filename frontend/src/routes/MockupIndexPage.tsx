@@ -170,7 +170,7 @@ const SECTIONS: { title: string; mockups: Mockup[] }[] = [
       {
         to: '/mockup/practice-dashboard',
         name: 'Practice Dashboard',
-        note: 'Where the sidebar’s Practice lands: gigs under 4 weeks away, shelves to add from (+, drag, right-click; Show more opens one up), and the week and Practice List pinned at the right. Customize switches the week to a weekly target; the Mockup line switches the gigs.',
+        note: 'Where the sidebar’s Practice lands: gigs under 4 weeks away, shelves to add from (+, drag, right-click; Show more opens one up), and the week and Practice List pinned at the right. Customize switches the week to a weekly target; the Mockup line switches the gigs, the practice history and Track practice, which pick the heading.',
         testing: [
           'The real Practice page on the iPad: + and × always shown, long-press menu, Show more.',
           'Phone or iPad portrait: tap the bottom bar to unfold the Practice List; reorder, tick and remove inside it.',
@@ -178,6 +178,8 @@ const SECTIONS: { title: string; mockups: Mockup[] }[] = [
           'Customize the week on one device; it shows the same on another.',
           'On the real Practice page, a gig’s +N beside Practice adds its missing pieces; tap it on the iPad.',
           'On the real Practice page, each shelf’s shuffle button on the iPad: a new order each time it’s turned on.',
+          'The heading by context: try each practice history with and without gigs; ticking or clearing the list leaves it as loaded.',
+          'Track practice Off: no week box, list checks or Other Recently Played; the heading follows the gig and list.',
         ],
       },
       {

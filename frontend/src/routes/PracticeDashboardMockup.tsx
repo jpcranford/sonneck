@@ -34,6 +34,7 @@ import { CONTENT_MAX_W } from '../lib/layout'
 import { daysUntil, formatDateOnly, todayDateOnly } from '../lib/dateOnly'
 import { ALL_MOCK_SETLISTS, daysFromNow, getUpcomingSetlists } from '../lib/setlistsMockupFixture'
 import { confirmAction } from '../lib/dialogs'
+import { practiceHeading } from '../lib/practiceHeading'
 import { useMockupTitle } from '../lib/useMockupTitle'
 import { estimateTotal } from '../lib/setlistEstimate'
 import { shuffledBy, useShelfShuffles } from '../lib/shelfShuffle'
@@ -433,6 +434,79 @@ function DayCircle({
   )
 }
 
+// The box's seven days: the last seven, or this week from its first day.
+function weekDaysFor(settings: WeekSettings): string[] {
+  if (settings.mode === 'daily') return Array.from({ length: 7 }, (_, i) => daysFromNow(i - 6))
+  const weekday = new Date().getDay() // 0 = Sunday
+  const back = settings.weekStart === 'monday' ? (weekday + 6) % 7 : weekday
+  return Array.from({ length: 7 }, (_, i) => daysFromNow(i - back))
+}
+
+// Mockup-only: which practice history the page shows, to see each heading.
+type HistoryPreview = 'week' | 'earlier' | 'lapsed' | 'never'
+const HISTORY_PREVIEWS: { key: HistoryPreview; label: string }[] = [
+  { key: 'week', label: 'This week' },
+  { key: 'earlier', label: 'Earlier this month' },
+  { key: 'lapsed', label: 'Over a month ago' },
+  { key: 'never', label: 'Never' },
+]
+
+type GigPreview = 'two' | 'one' | 'none'
+
+// The practiced days the page shows: the fixture's history, or the
+// preview's stand-in (days 10–23 ago: this month, never this week; 35–40
+// ago: lapsed; or none). Today comes from today's marks only (the
+// fixture's last days never include today), so ticking a list row fills it.
+function practicedDaysFor(
+  pieces: MockPiece[],
+  history: HistoryPreview,
+  practicedToday: Set<number>,
+): Set<string> {
+  const s = new Set<string>()
+  if (history === 'week') {
+    for (const p of pieces) if (p.playedDaysAgo != null) s.add(daysFromNow(-p.playedDaysAgo))
+    for (const d of EXTRA_PRACTICE_DAYS) s.add(daysFromNow(-d))
+  } else if (history === 'earlier') {
+    for (const d of [10, 16, 23]) s.add(daysFromNow(-d))
+  } else if (history === 'lapsed') {
+    for (const d of [35, 40]) s.add(daysFromNow(-d))
+  }
+  s.delete(todayDateOnly())
+  if (practicedToday.size > 0) s.add(todayDateOnly())
+  return s
+}
+
+// The gig cards: under 4 weeks away, as many as the preview asks for.
+function gigsFor(preview: GigPreview) {
+  const upcoming = getUpcomingSetlists(ALL_MOCK_SETLISTS).filter(
+    (s) => daysUntil(s.gigDate) < GIG_WINDOW_DAYS,
+  )
+  return preview === 'none' ? [] : preview === 'one' ? upcoming.slice(0, 1) : upcoming
+}
+
+// The heading for the page as it loads (lib/practiceHeading.ts).
+function mockHeading(o: {
+  pieces: MockPiece[]
+  history: HistoryPreview
+  practicedToday: Set<number>
+  gigPreview: GigPreview
+  week: WeekSettings
+  listLength: number
+  trackPractice: boolean
+}) {
+  const gig = gigsFor(o.gigPreview)[0]
+  return practiceHeading({
+    today: todayDateOnly(),
+    practicedDays: practicedDaysFor(o.pieces, o.history, o.practicedToday),
+    weekDays: weekDaysFor(o.week),
+    weekMode: o.week.mode === 'daily' ? 'daily' : 'target',
+    weekTarget: o.week.target,
+    nextGig: gig?.gigDate ? { name: gig.name, gigDate: gig.gigDate } : null,
+    listLength: o.listLength,
+    trackPractice: o.trackPractice,
+  })
+}
+
 function WeekBox({
   practicedDays,
   settings,
@@ -447,14 +521,7 @@ function WeekBox({
   const wrapRef = useRef<HTMLDivElement>(null)
   useDismiss(open, wrapRef, () => setOpen(false))
 
-  let days: string[]
-  if (settings.mode === 'daily') {
-    days = Array.from({ length: 7 }, (_, i) => daysFromNow(i - 6))
-  } else {
-    const weekday = new Date().getDay() // 0 = Sunday
-    const back = settings.weekStart === 'monday' ? (weekday + 6) % 7 : weekday
-    days = Array.from({ length: 7 }, (_, i) => daysFromNow(i - back))
-  }
+  const days = weekDaysFor(settings)
   const done = days.filter((d) => d <= today && practicedDays.has(d)).length
   const lastDay = formatDateOnly(days[6], { weekday: 'long' })
   const target = settings.target
@@ -477,7 +544,7 @@ function WeekBox({
           {open && (
             <div className="absolute top-full right-0 z-20 mt-2 flex w-72 flex-col gap-3 rounded-lg border border-border bg-paper-raised p-4 shadow-lg">
               <span className="text-xs font-semibold tracking-wider text-ink-soft uppercase">
-                Practice history
+                Practice goal
               </span>
               {(
                 [
@@ -1107,28 +1174,59 @@ export function PracticeDashboardMockup() {
   const [practicedToday, setPracticedToday] = useState<Set<number>>(new Set())
   const [week, setWeek] = useState<WeekSettings>({ mode: 'daily', target: 4, weekStart: 'monday' })
   // Mockup-only preview switches.
-  const [gigPreview, setGigPreview] = useState<'two' | 'one' | 'none'>('two')
+  const [gigPreview, setGigPreview] = useState<GigPreview>('two')
+  const [historyPreview, setHistoryPreview] = useState<HistoryPreview>('week')
+  const [trackPractice, setTrackPractice] = useState(true)
 
   const byId = useMemo(() => new Map(pieces.map((p) => [p.id, p])), [pieces])
   const onList = useMemo(() => new Set(list), [list])
 
-  const practicedDays = useMemo(() => {
-    const s = new Set<string>()
-    for (const p of pieces) if (p.playedDaysAgo != null) s.add(daysFromNow(-p.playedDaysAgo))
-    for (const d of EXTRA_PRACTICE_DAYS) s.add(daysFromNow(-d))
-    // Today's circle comes from today's marks only (the fixture's last
-    // days never include today), so ticking a list row fills it.
-    s.delete(todayDateOnly())
-    if (practicedToday.size > 0) s.add(todayDateOnly())
-    return s
-  }, [pieces, practicedToday])
+  const practicedDays = useMemo(
+    () => practicedDaysFor(pieces, historyPreview, practicedToday),
+    [pieces, practicedToday, historyPreview],
+  )
+  const gigs = useMemo(() => gigsFor(gigPreview), [gigPreview])
 
-  const gigs = useMemo(() => {
-    const upcoming = getUpcomingSetlists(ALL_MOCK_SETLISTS).filter(
-      (s) => daysUntil(s.gigDate) < GIG_WINDOW_DAYS,
+  // The heading is picked once, when the page loads, and then stays: adding,
+  // ticking or clearing in the list doesn't change it. The preview switches
+  // stand for loading the page in another situation, so they pick it again
+  // (previewLoad).
+  const [heading, setHeading] = useState(() =>
+    mockHeading({
+      pieces,
+      history: historyPreview,
+      practicedToday,
+      gigPreview,
+      week,
+      listLength: list.length,
+      trackPractice,
+    }),
+  )
+  function previewLoad(change: {
+    gigPreview?: GigPreview
+    historyPreview?: HistoryPreview
+    trackPractice?: boolean
+  }) {
+    const next = {
+      gigPreview: change.gigPreview ?? gigPreview,
+      historyPreview: change.historyPreview ?? historyPreview,
+      trackPractice: change.trackPractice ?? trackPractice,
+    }
+    setGigPreview(next.gigPreview)
+    setHistoryPreview(next.historyPreview)
+    setTrackPractice(next.trackPractice)
+    setHeading(
+      mockHeading({
+        pieces,
+        history: next.historyPreview,
+        practicedToday,
+        gigPreview: next.gigPreview,
+        week,
+        listLength: list.length,
+        trackPractice: next.trackPractice,
+      }),
     )
-    return gigPreview === 'none' ? [] : gigPreview === 'one' ? upcoming.slice(0, 1) : upcoming
-  }, [gigPreview])
+  }
 
   // Each shelf's random order (lib/shelfShuffle.ts), per device.
   const { seedOf, toggle: toggleShuffle } = useShelfShuffles()
@@ -1143,15 +1241,16 @@ export function PracticeDashboardMockup() {
     const practicing = pieces
       .filter((p) => p.status && PRACTICING.includes(p.status))
       // Latest practiced first, never practiced last, then the latest
-      // status change (the real page's order).
+      // status change (the real page's order). With Track practice off
+      // there are no practiced days to go by: the status change alone.
       .sort(
         (a, b) =>
-          (a.playedDaysAgo ?? Infinity) - (b.playedDaysAgo ?? Infinity) ||
+          (trackPractice ? (a.playedDaysAgo ?? Infinity) - (b.playedDaysAgo ?? Infinity) : 0) ||
           a.statusDaysAgo - b.statusDaysAgo,
       )
     const practicingIds = new Set(practicing.map((p) => p.id))
     const byTitle = (a: MockPiece, b: MockPiece) => a.title.localeCompare(b.title)
-    return [
+    const all: ShelfDef[] = [
       {
         key: 'practicing',
         title: 'Currently Practicing',
@@ -1228,7 +1327,10 @@ export function PracticeDashboardMockup() {
         total: 31,
       },
     ]
-  }, [pieces, seedOf])
+    // Other Recently Played is ordered by practiced days, so it goes with
+    // Track practice off.
+    return trackPractice ? all : all.filter((s) => s.key !== 'played')
+  }, [pieces, seedOf, trackPractice])
 
   function addToList(id: number, at?: number) {
     setList((cur) => {
@@ -1456,7 +1558,8 @@ export function PracticeDashboardMockup() {
         >
           {list.map((id, i) => {
             const p = byId.get(id)!
-            const done = practicedToday.has(id)
+            // Track practice off: no practiced marks, as in the viewer's queue.
+            const done = trackPractice && practicedToday.has(id)
             return (
               <div key={id}>
                 {dropAt === i && ghost}
@@ -1491,26 +1594,28 @@ export function PracticeDashboardMockup() {
                     </span>
                     <span className="truncate text-xs text-ink-soft">{p.composer}</span>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setPracticedToday((cur) => {
-                        const next = new Set(cur)
-                        if (next.has(id)) next.delete(id)
-                        else next.add(id)
-                        return next
-                      })
-                    }
-                    title={done ? 'Practiced today (click to unmark)' : 'Mark practiced today'}
-                    aria-pressed={done}
-                    className={`flex size-[22px] shrink-0 cursor-pointer items-center justify-center rounded-full border-[1.5px] ${
-                      done
-                        ? 'border-accent-fill bg-accent-fill text-white'
-                        : 'border-border text-transparent hover:border-accent'
-                    }`}
-                  >
-                    <IconCheck size={13} stroke={3} />
-                  </button>
+                  {trackPractice && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setPracticedToday((cur) => {
+                          const next = new Set(cur)
+                          if (next.has(id)) next.delete(id)
+                          else next.add(id)
+                          return next
+                        })
+                      }
+                      title={done ? 'Practiced today (click to unmark)' : 'Mark practiced today'}
+                      aria-pressed={done}
+                      className={`flex size-[22px] shrink-0 cursor-pointer items-center justify-center rounded-full border-[1.5px] ${
+                        done
+                          ? 'border-accent-fill bg-accent-fill text-white'
+                          : 'border-border text-transparent hover:border-accent'
+                      }`}
+                    >
+                      <IconCheck size={13} stroke={3} />
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => removeFromList(id)}
@@ -1571,8 +1676,8 @@ export function PracticeDashboardMockup() {
       {list.length > 0 && (
         <div className="mt-2 flex items-center justify-between border-t border-border px-1 pt-2 text-xs text-ink-soft">
           <span>
-            {list.length} {list.length === 1 ? 'piece' : 'pieces'} • {practicedCount} practiced
-            today
+            {list.length} {list.length === 1 ? 'piece' : 'pieces'}
+            {trackPractice && ` • ${practicedCount} practiced today`}
           </span>
           <span className="flex items-center gap-2">
             <span className="tabular-nums">{formatMinutes(totalSeconds)}</span>
@@ -1598,7 +1703,13 @@ export function PracticeDashboardMockup() {
           plays (D of https://claude.ai/artifact/My1kLD9LpjNwCKsDrejseh): in
           the list's header on a wide screen, where the column is pinned, and
           in a bar pinned to the bottom on a narrow one. */}
-      <h1 className="font-display text-2xl font-bold text-ink">Practice</h1>
+      {/* The heading is an instruction with a line of help, like the book
+          upload steps, picked from what the page shows
+          (lib/practiceHeading.ts). */}
+      <div className="flex flex-col gap-1">
+        <h1 className="font-display text-2xl font-medium text-ink">{heading.title}</h1>
+        <p className="text-sm text-ink-soft">{heading.help}</p>
+      </div>
 
       <div className="rounded-md border border-dashed border-accent/40 bg-accent-soft/40 px-4 py-2 text-sm text-ink-soft">
         Mockup only: gigs{' '}
@@ -1606,13 +1717,36 @@ export function PracticeDashboardMockup() {
           <button
             key={g}
             type="button"
-            onClick={() => setGigPreview(g)}
+            onClick={() => previewLoad({ gigPreview: g })}
             className={`mx-0.5 cursor-pointer rounded px-1.5 ${gigPreview === g ? 'bg-accent-soft font-semibold text-accent' : 'hover:text-ink'}`}
           >
             {g === 'two' ? 'Two' : g === 'one' ? 'One' : 'None'}
           </button>
         ))}
-        — tick a list row to mark it practiced today, and today’s circle fills.
+        • practiced{' '}
+        {HISTORY_PREVIEWS.map((h) => (
+          <button
+            key={h.key}
+            type="button"
+            onClick={() => previewLoad({ historyPreview: h.key })}
+            className={`mx-0.5 cursor-pointer rounded px-1.5 ${historyPreview === h.key ? 'bg-accent-soft font-semibold text-accent' : 'hover:text-ink'}`}
+          >
+            {h.label}
+          </button>
+        ))}
+        • Track practice{' '}
+        {([true, false] as const).map((on) => (
+          <button
+            key={String(on)}
+            type="button"
+            onClick={() => previewLoad({ trackPractice: on })}
+            className={`mx-0.5 cursor-pointer rounded px-1.5 ${trackPractice === on ? 'bg-accent-soft font-semibold text-accent' : 'hover:text-ink'}`}
+          >
+            {on ? 'On' : 'Off'}
+          </button>
+        ))}
+        — tick a list row to mark it practiced today, and today’s circle fills; Clear empties the
+        list.
       </div>
 
       {/* Narrow: gigs, week + list, shelves. Wide: gigs and shelves on the
@@ -1644,7 +1778,10 @@ export function PracticeDashboardMockup() {
           ref={railRef}
           className="relative z-10 flex flex-col gap-4 [grid-area:rail] lg:sticky lg:top-6 lg:h-[calc(100dvh-3rem)] lg:self-start"
         >
-          <WeekBox practicedDays={practicedDays} settings={week} onSettings={setWeek} />
+          {/* Nothing is recorded with Track practice off, so no week. */}
+          {trackPractice && (
+            <WeekBox practicedDays={practicedDays} settings={week} onSettings={setWeek} />
+          )}
           {isWide && practiceList}
         </div>
 

@@ -55,6 +55,7 @@ import { personCreditPart } from '../lib/joinNames'
 import { CONTENT_MAX_W } from '../lib/layout'
 import { estimateTotal } from '../lib/setlistEstimate'
 import { useShelfShuffles } from '../lib/shelfShuffle'
+import { practiceHeading, type PracticeHeading } from '../lib/practiceHeading'
 import { usePageTitle } from '../lib/usePageTitle'
 
 // The Practice Dashboard (/practice), the sidebar's Practice. Ported from
@@ -207,6 +208,19 @@ type WeekSettings = Pick<
   'practiceHistoryMode' | 'practiceTargetDays' | 'practiceWeekStart'
 >
 
+// The week box's seven days: the last seven, or this week from its first
+// day (the user's choice, else the locale's).
+function weekDaysFor(today: string, settings: WeekSettings): string[] {
+  if (settings.practiceHistoryMode === 'daily') {
+    return Array.from({ length: 7 }, (_, i) => addDays(today, i - 6))
+  }
+  const weekStart = settings.practiceWeekStart || localeWeekStart()
+  const [y, m, d] = today.split('-').map(Number)
+  const weekday = new Date(y, m - 1, d).getDay() // 0 = Sunday
+  const back = weekStart === 'monday' ? (weekday + 6) % 7 : weekday
+  return Array.from({ length: 7 }, (_, i) => addDays(today, i - back))
+}
+
 function WeekBox({
   today,
   practicedDays,
@@ -223,16 +237,7 @@ function WeekBox({
   useDismiss(open, wrapRef, () => setOpen(false))
   const weekStart = settings.practiceWeekStart || localeWeekStart()
   const daily = settings.practiceHistoryMode === 'daily'
-
-  let days: string[]
-  if (daily) {
-    days = Array.from({ length: 7 }, (_, i) => addDays(today, i - 6))
-  } else {
-    const [y, m, d] = today.split('-').map(Number)
-    const weekday = new Date(y, m - 1, d).getDay() // 0 = Sunday
-    const back = weekStart === 'monday' ? (weekday + 6) % 7 : weekday
-    days = Array.from({ length: 7 }, (_, i) => addDays(today, i - back))
-  }
+  const days = weekDaysFor(today, settings)
   const done = days.filter((d) => d <= today && practicedDays.has(d)).length
   const target = settings.practiceTargetDays
   const lastDay = formatDateOnly(days[6], { weekday: 'long' })
@@ -255,7 +260,7 @@ function WeekBox({
           {open && (
             <div className="absolute top-full right-0 z-20 mt-2 flex w-72 flex-col gap-3 rounded-lg border border-border bg-paper-raised p-4 shadow-lg">
               <span className="text-xs font-semibold tracking-wider text-ink-soft uppercase">
-                Practice history
+                Practice goal
               </span>
               {(
                 [
@@ -822,7 +827,7 @@ function PracticeDashboard() {
   // Each shelf's random order (lib/shelfShuffle.ts), per device: the
   // server does the picking, so a big shelf draws from all of its view.
   const { seeds: shuffleSeeds, seedOf, toggle: toggleShuffle } = useShelfShuffles()
-  const { data: dashboard } = useQuery({
+  const { data: dashboard, isSuccess: dashboardLoaded } = useQuery({
     // Under 'pieces', so the piece menu's own changes (status, favorite,
     // edit, delete) refresh the shelves too.
     queryKey: ['pieces', 'practice-dashboard', today, shuffleSeeds],
@@ -832,16 +837,24 @@ function PracticeDashboard() {
     placeholderData: (previous) => previous,
   })
   const listKey = ['practice-list', today]
-  const { data: list = [] } = useQuery({
+  const { data: list = [], isSuccess: listLoaded } = useQuery({
     queryKey: listKey,
     queryFn: () => getPracticeList(today),
   })
-  const { data: setlists = [] } = useQuery({ queryKey: ['setlists'], queryFn: listSetlists })
+  const { data: setlists = [], isSuccess: setlistsLoaded } = useQuery({
+    queryKey: ['setlists'],
+    queryFn: listSetlists,
+  })
   const { data: statuses = [] } = useQuery({
     queryKey: ['practice-statuses'],
     queryFn: listPracticeStatuses,
   })
   const { data: settings } = useQuery({ queryKey: ['user-settings'], queryFn: getUserSettings })
+  // User Settings › Sheet Viewer › Track practice. Off, nothing is recorded,
+  // so the page leaves out what practiced days drive: the week box, the
+  // list's practiced checks and count (the server leaves out Other Recently
+  // Played). Unknown until the settings load, so none of it flashes up.
+  const tracking = settings?.trackPractice === true
 
   const settingsMutation = useMutation({
     mutationFn: (next: UserSettings) => updateUserSettings(next),
@@ -956,6 +969,25 @@ function PracticeDashboard() {
         .sort((a, b) => (a.gigDate < b.gigDate ? -1 : 1)),
     [setlists, today],
   )
+
+  // The heading (lib/practiceHeading.ts) is picked once, when everything it
+  // goes by has loaded, and then kept for the visit: adding, ticking or
+  // clearing in the list doesn't change it.
+  const [heading, setHeading] = useState<PracticeHeading | null>(null)
+  if (heading === null && dashboardLoaded && listLoaded && setlistsLoaded && settings) {
+    setHeading(
+      practiceHeading({
+        today,
+        practicedDays,
+        weekDays: weekDaysFor(today, settings),
+        weekMode: settings.practiceHistoryMode === 'daily' ? 'daily' : 'target',
+        weekTarget: settings.practiceTargetDays,
+        nextGig: gigs[0] ? { name: gigs[0].name, gigDate: gigs[0].gigDate } : null,
+        listLength: list.length,
+        trackPractice: settings.trackPractice,
+      }),
+    )
+  }
 
   // Each gig's pieces, for its add-missing button: the set itself (the
   // same query as Setlist Details, so one primes the other).
@@ -1239,7 +1271,7 @@ function PracticeDashboard() {
         >
           {shown.map((entry, i) => {
             const p = entry.piece
-            const done = !!entry.practiced
+            const done = tracking && !!entry.practiced
             return (
               <div key={p.id}>
                 {dropAt === i && ghost}
@@ -1279,19 +1311,21 @@ function PracticeDashboard() {
                       )}
                     </span>
                   </Link>
-                  <button
-                    type="button"
-                    onClick={() => void togglePracticed(p.id, !done)}
-                    title={done ? 'Practiced today (click to unmark)' : 'Mark practiced today'}
-                    aria-pressed={done}
-                    className={`flex size-[22px] shrink-0 cursor-pointer items-center justify-center rounded-full border-[1.5px] ${
-                      done
-                        ? 'border-accent-fill bg-accent-fill text-white'
-                        : 'border-border text-transparent hover:border-accent'
-                    }`}
-                  >
-                    <IconCheck size={13} stroke={3} />
-                  </button>
+                  {tracking && (
+                    <button
+                      type="button"
+                      onClick={() => void togglePracticed(p.id, !done)}
+                      title={done ? 'Practiced today (click to unmark)' : 'Mark practiced today'}
+                      aria-pressed={done}
+                      className={`flex size-[22px] shrink-0 cursor-pointer items-center justify-center rounded-full border-[1.5px] ${
+                        done
+                          ? 'border-accent-fill bg-accent-fill text-white'
+                          : 'border-border text-transparent hover:border-accent'
+                      }`}
+                    >
+                      <IconCheck size={13} stroke={3} />
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => void removePiece(p.id)}
@@ -1359,8 +1393,8 @@ function PracticeDashboard() {
       {list.length > 0 && (
         <div className="mt-2 flex items-center justify-between border-t border-border px-1 pt-2 text-xs text-ink-soft">
           <span>
-            {list.length} {list.length === 1 ? 'piece' : 'pieces'} • {practicedCount} practiced
-            today
+            {list.length} {list.length === 1 ? 'piece' : 'pieces'}
+            {tracking && ` • ${practicedCount} practiced today`}
           </span>
           <span className="flex items-center gap-2">
             {totalSeconds > 0 && (
@@ -1394,7 +1428,16 @@ function PracticeDashboard() {
           plays (D of https://claude.ai/artifact/My1kLD9LpjNwCKsDrejseh): in
           the list's header on a wide screen, where the column is pinned, and
           in a bar pinned to the bottom on a narrow one. */}
-      <h1 className="font-display text-2xl font-bold text-ink">Practice</h1>
+      {/* An instruction with a line of help, like the book upload steps;
+          the space is held while it's picked, so the page doesn't shift. */}
+      <div className="flex min-h-14 flex-col gap-1">
+        {heading && (
+          <>
+            <h1 className="font-display text-2xl font-medium text-ink">{heading.title}</h1>
+            <p className="text-sm text-ink-soft">{heading.help}</p>
+          </>
+        )}
+      </div>
 
       {/* Narrow: gigs, week + list, shelves. Wide: gigs and shelves on the
           left, the week and list pinned on the right for the whole page.
@@ -1432,12 +1475,14 @@ function PracticeDashboard() {
           ref={railRef}
           className="relative z-10 flex flex-col gap-4 [grid-area:rail] lg:sticky lg:top-6 lg:h-[calc(100dvh-3rem)] lg:self-start"
         >
-          <WeekBox
-            today={today}
-            practicedDays={practicedDays}
-            settings={weekSettings}
-            onSettings={(patch) => settings && settingsMutation.mutate({ ...settings, ...patch })}
-          />
+          {tracking && (
+            <WeekBox
+              today={today}
+              practicedDays={practicedDays}
+              settings={weekSettings}
+              onSettings={(patch) => settings && settingsMutation.mutate({ ...settings, ...patch })}
+            />
+          )}
           {isWide && practiceList}
         </div>
 

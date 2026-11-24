@@ -103,7 +103,15 @@ func (s *Server) handlePracticeDashboard(w http.ResponseWriter, r *http.Request)
 	}
 
 	resp := practiceDashboardResponse{}
-	var err error
+	// With Track practice off nothing new is recorded, so the practiced
+	// days don't order anything: Currently Practicing goes by status change
+	// alone, and Other Recently Played is left empty.
+	settings, err := repo.GetUserSettings(ctx, s.DB, user.ID)
+	if err != nil {
+		s.writeError(w, err)
+		return
+	}
+	tracking := settings.TrackPractice
 
 	// The sidebar views' own rule: by sidebar_slot, so a renamed status
 	// still lands on its shelf. lp.last_day is the piece's latest day
@@ -126,15 +134,21 @@ func (s *Server) handlePracticeDashboard(w http.ResponseWriter, r *http.Request)
 	// Want to Learn and Learned list the latest status change first
 	// (updated_at, migration 00041; a status set before it, with none, goes
 	// last), then by title. Currently Practicing lists the latest practiced
-	// first (never practiced last), then the same.
+	// first (never practiced last), then the same — or, with Track practice
+	// off, the same alone.
 	recentFirst := "pps.updated_at IS NULL, pps.updated_at DESC, " + byTitle
-	practicingIDs, err := slotIDs("practicing", "lp.last_day IS NULL, lp.last_day DESC, "+recentFirst, limitFor("practicing", dashboardShelfCap))
+	practicingOrder := recentFirst
+	if tracking {
+		practicingOrder = "lp.last_day IS NULL, lp.last_day DESC, " + recentFirst
+	}
+	practicingIDs, err := slotIDs("practicing", practicingOrder, limitFor("practicing", dashboardShelfCap))
 	if err == nil {
 		resp.Practicing, err = s.pieceResponses(ctx, shuffleCap("practicing", practicingIDs, dashboardShelfCap), user.ID)
 	}
 	// The two recent shelves are defined by recency, so a shuffle reorders
 	// the same latest pieces rather than reaching further back.
-	if err == nil {
+	resp.RecentlyPlayed = []recentlyPlayedPiece{}
+	if err == nil && tracking {
 		resp.RecentlyPlayed, err = s.recentlyPlayed(ctx, user.ID)
 		if seed := seeds["played"]; err == nil && seed != 0 {
 			shuffleInPlace(resp.RecentlyPlayed, seed)

@@ -3,6 +3,7 @@ package handlers_test
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 )
@@ -329,5 +330,61 @@ func TestPracticeDashboard_Shuffle(t *testing.T) {
 		if rec := doJSON(t, h, http.MethodGet, "/api/practice/dashboard?day=2026-11-22&shuffle="+bad, nil); rec.Code != http.StatusBadRequest {
 			t.Errorf("shuffle=%s: %d, want 400", bad, rec.Code)
 		}
+	}
+}
+
+// With Track practice off the practiced days order nothing: Currently
+// Practicing goes by status change alone, and Other Recently Played is
+// empty (an empty list, not null).
+func TestPracticeDashboard_TrackPracticeOff(t *testing.T) {
+	h := newTestServer(t)
+	a := uploadTestPiece(t, h)
+	b := uploadDistinctTestPiece(t, h, 3)
+	c := uploadDistinctTestPiece(t, h, 4)
+	for _, s := range []struct {
+		id     int64
+		status string
+	}{{a, "Learning"}, {b, "Stalled"}, {c, "Learned"}} {
+		if rec := doJSON(t, h, http.MethodPatch, apiPiecesURL(s.id)+"/practice-status", map[string]any{"practiceStatus": s.status}); rec.Code != http.StatusOK {
+			t.Fatalf("set status: %d %s", rec.Code, rec.Body.String())
+		}
+	}
+	// a practiced (first with tracking on), c practiced (Other Recently Played).
+	for _, id := range []int64{a, c} {
+		if rec := doJSON(t, h, http.MethodPut, apiPiecesURL(id)+"/practiced/2026-11-18", map[string]any{"practiced": true}); rec.Code != http.StatusOK {
+			t.Fatalf("mark practiced: %d %s", rec.Code, rec.Body.String())
+		}
+	}
+	get := func() (dashboard, string) {
+		t.Helper()
+		rec := doJSON(t, h, http.MethodGet, "/api/practice/dashboard?day=2026-11-19", nil)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("dashboard: %d %s", rec.Code, rec.Body.String())
+		}
+		var got dashboard
+		decodeData(t, rec, &got)
+		return got, rec.Body.String()
+	}
+
+	on, _ := get()
+	if ids := dashIDs(on.Practicing); !equalIDs(ids, []int64{a, b}) {
+		t.Errorf("tracking on: practicing = %v, want [a b] (a practiced)", ids)
+	}
+	if len(on.RecentlyPlayed) != 1 {
+		t.Errorf("tracking on: %d recently played, want 1 (c)", len(on.RecentlyPlayed))
+	}
+
+	if rec := doJSON(t, h, http.MethodPatch, "/api/user-settings", map[string]any{"trackPractice": false}); rec.Code != http.StatusOK {
+		t.Fatalf("turn tracking off: %d %s", rec.Code, rec.Body.String())
+	}
+	off, body := get()
+	if ids := dashIDs(off.Practicing); !equalIDs(ids, []int64{b, a}) {
+		t.Errorf("tracking off: practicing = %v, want [b a] (latest status change first)", ids)
+	}
+	if len(off.RecentlyPlayed) != 0 {
+		t.Errorf("tracking off: %d recently played, want none", len(off.RecentlyPlayed))
+	}
+	if !strings.Contains(body, `"recentlyPlayed":[]`) {
+		t.Error(`tracking off: recentlyPlayed isn't an empty list`)
 	}
 }
