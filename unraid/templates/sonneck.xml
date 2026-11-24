@@ -1,0 +1,44 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>Sonneck</Name>
+  <Repository>ghcr.io/jpcranford/sonneck:latest</Repository>
+  <Registry>https://github.com/jpcranford/sonneck/pkgs/container/sonneck</Registry>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>bash</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/jpcranford/sonneck/issues</Support>
+  <Project>https://github.com/jpcranford/sonneck</Project>
+  <Overview>An intuitive sheet music organizer, made by a musician for musicians. Import, tag, search and download pieces and whole books of sheet music (a built-in book splitter turns one PDF into its pieces), practice and perform from a full-screen sheet viewer with annotations, a metronome and a Practice List, and plan setlists with one combined PDF. Important: Sonneck first starts with no password. Open the web UI right away and choose a sign-in method on the setup screen (or set Sign-in method below) before exposing it to your network.</Overview>
+  <Category>MediaServer:Books MediaServer:Music Productivity:</Category>
+  <WebUI>http://[IP]:[PORT:8080]/</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/jpcranford/unraid-templates/main/templates/sonneck.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/jpcranford/sonneck/main/frontend/public/icon-512.png</Icon>
+  <License>GPL-3.0</License>
+  <ReadMe>https://github.com/jpcranford/sonneck#readme</ReadMe>
+  <ExtraSearchTerms>sheet music scores pdf library setlist practice musician</ExtraSearchTerms>
+  <ExtraParams/>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled/>
+  <DonateText/>
+  <DonateLink/>
+  <Requires/>
+  <Config Name="Web UI port" Target="8080" Default="8080" Mode="tcp" Description="Port for the web UI." Type="Port" Display="always" Required="true" Mask="false">8080</Config>
+  <Config Name="Library" Target="/data" Default="/mnt/user/appdata/sonneck" Mode="rw" Description="Everything Sonneck keeps: the database, your PDFs and covers, backups and logs. To use an existing Sonneck library, point this at it." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/sonneck</Config>
+  <Config Name="User ID (PUID)" Target="PUID" Default="1000" Mode="" Description="The user Sonneck runs as. The library folder is created for, and owned by, this user." Type="Variable" Display="advanced" Required="true" Mask="false">1000</Config>
+  <Config Name="Group ID (PGID)" Target="PGID" Default="1000" Mode="" Description="The group Sonneck runs as. The library folder is created for, and owned by, this group." Type="Variable" Display="advanced" Required="true" Mask="false">1000</Config>
+  <Config Name="Sign-in method" Target="AUTH_METHOD" Default="|none|singlepass|oidc" Mode="" Description="Optional: none, singlepass (one password) or oidc (sign in with SSO). Leave on the blank choice to pick on the first-launch setup screen; any other choice locks it. See the README's Security options." Type="Variable" Display="always" Required="false" Mask="false"></Config>
+  <Config Name="Copyright region" Target="COPYRIGHT_REGION" Default="|en-US|eu-generic|en-GB|ca" Mode="" Description="Optional: which public-domain rule the Likely Public Domain badge uses (en-US when blank). The blank choice leaves it editable in Admin Settings." Type="Variable" Display="advanced" Required="false" Mask="false"></Config>
+  <Config Name="Backup schedule" Target="BACKUP_CRON" Default="" Mode="" Description="Optional. A cron expression for the daily database backup (0 3 * * * when blank: 3am in Unraid's time zone). Blank leaves it editable in Admin Settings." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="Backup retention (days)" Target="BACKUP_RETENTION_DAYS" Default="" Mode="" Description="Optional. Backups and logs older than this are deleted (30 when blank). Blank leaves it editable in Admin Settings." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="Log level" Target="LOG_LEVEL" Default="|debug|info|warn|error" Mode="" Description="Optional: how much Sonneck logs (info when blank). The blank choice leaves it editable in Admin Settings." Type="Variable" Display="advanced" Required="false" Mask="false"></Config>
+  <Config Name="Behind an HTTPS proxy" Target="TRUST_PROXY_HTTPS" Default="false|true" Mode="" Description="true only if a reverse proxy in front of Sonneck terminates HTTPS; marks sign-in cookies Secure." Type="Variable" Display="advanced" Required="false" Mask="false">false</Config>
+  <Config Name="SSO issuer URL" Target="OIDC_ISSUER_URL" Default="" Mode="" Description="For Sign-in method oidc: your identity provider's base URL. See docs/oidc-setup.md." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="SSO client ID" Target="OIDC_CLIENT_ID" Default="" Mode="" Description="For Sign-in method oidc: this app's client ID at your identity provider." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="SSO client secret" Target="OIDC_CLIENT_SECRET" Default="" Mode="" Description="For Sign-in method oidc: this app's client secret at your identity provider." Type="Variable" Display="advanced" Required="false" Mask="true"/>
+  <Config Name="SSO redirect URI" Target="OIDC_REDIRECT_URI" Default="" Mode="" Description="For Sign-in method oidc: the full callback URL, e.g. https://sonneck.example.com/api/auth/oidc/callback, exactly as registered with your provider." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="SSO button name" Target="EXTERNAL_PROVIDER" Default="" Mode="" Description="Optional, for oidc: the name on the Sign in with... button (your identity provider when blank)." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="SSO allow registration" Target="OIDC_ALLOW_REGISTRATION" Default="true|false" Mode="" Description="For oidc: true gives first-time sign-ins an account; false rejects them until an admin links them." Type="Variable" Display="advanced" Required="false" Mask="false">true</Config>
+  <Config Name="SSO default permissions" Target="OIDC_DEFAULT_PERMISSIONS" Default="" Mode="" Description="Optional, for oidc: comma-separated permissions for new accounts (read when blank): read, download, practice, edit, upload, create, delete, admin." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+</Container>

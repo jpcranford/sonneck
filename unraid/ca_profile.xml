@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<CommunityApplications>
+  <Profile>Unraid templates for Sonneck, a self-hosted sheet music library: import, tag and search pieces and whole books, practice and perform from a full-screen sheet viewer, and plan setlists. Support and bug reports go to the project's GitHub issues.</Profile>
+  <Icon>https://raw.githubusercontent.com/jpcranford/sonneck/main/frontend/public/icon-512.png</Icon>
+  <WebPage>https://github.com/jpcranford/sonneck</WebPage>
+</CommunityApplications>
