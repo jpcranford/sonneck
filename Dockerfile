@@ -72,11 +72,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # imslp.org); without it, Go's crypto/tls has no system CA bundle to
 # verify imslp.org's certificate against, and the request fails.
 
-# Non-root by default — a fixed UID/GID (1000, the common first-user
-# default on most Linux distros) so a
-# host bind-mount at /data "just works" without extra configuration for the
-# common case; document chown-ing to 1000:1000 if someone's host directory
-# was created under a different UID. Creating /data here (owned by the new
+# The sonneck user (1000:1000, the common first-user default on most Linux
+# distros) is PUID/PGID's default; docker/sonneck.sh runs Sonneck as
+# whatever PUID:PGID says, and hands a library folder owned by anyone else
+# over to it. Creating /data here (owned by the new
 # user) *before* anything mounts over it matters: Docker initializes a
 # fresh, empty named volume's ownership from whatever's already at that
 # path in the image, so docker-compose.yml's named volume inherits the
@@ -86,7 +85,10 @@ RUN groupadd -g 1000 sonneck \
     && mkdir -p /data \
     && chown sonneck:sonneck /data
 
-COPY --from=backend-builder /out/sonneck /usr/local/bin/sonneck
+# The real binary sits outside PATH; /usr/local/bin/sonneck is
+# docker/sonneck.sh, which runs it as PUID:PGID (see below).
+COPY --from=backend-builder /out/sonneck /usr/local/lib/sonneck/sonneck
+COPY --chmod=755 docker/sonneck.sh /usr/local/bin/sonneck
 
 # org.opencontainers.image.source specifically: GHCR reads this label to
 # auto-link the published package back to this repo, so that doesn't need
@@ -102,5 +104,11 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD wget -q -O- http://localhost:8080/healthz || exit 1
 
-USER sonneck
+# No USER: the container starts as root only long enough for
+# /usr/local/bin/sonneck (docker/sonneck.sh) to create the library folder
+# and give it to PUID:PGID (default 1000:1000, the sonneck user above), then
+# runs the binary as that user. `docker exec <container> sonneck <command>`
+# goes through the same script, so admin commands write as that user too.
+# Started as non-root (Compose's `user:`), the script changes nothing.
+ENV PUID=1000 PGID=1000
 ENTRYPOINT ["/usr/local/bin/sonneck"]

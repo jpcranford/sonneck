@@ -5,13 +5,15 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ./data:/data # default behavior is to put everything in a sibling folder to this file. (Be sure to create the folder first though.) If you have an existing Sonneck library somewhere else, use the left side of the colon to point Sonneck at it.
+      - ./data:/data # default behavior is to put everything in a sibling folder to this file (created on first start if missing). If you have an existing Sonneck library somewhere else, use the left side of the colon to point Sonneck at it.
     environment: # All optional, uncomment what you want to change. See the README's "Advanced options" for details.
       # BACKUP_CRON: "0 3 * * *"      # standard cron expression, default = daily at 3am
       # BACKUP_RETENTION_DAYS: "30"
       # LOG_LEVEL: info               # debug | info | warn | error — turn up to debug if you're troubleshooting
       # COPYRIGHT_REGION: en-US       # en-US | eu-generic | en-GB | ca — which public-domain rule the "Likely Public Domain" badge uses, default = en-US
       # AUTH_METHOD: none             # none | singlepass | oidc — locks the first-launch security choice instead of leaving it pickable, see README's "Security" section
+      # PUID: "1000"                  # the user and group Sonneck runs as (run `id` on the host for yours); the data folder is handed to them on start
+      # PGID: "1000"
       TZ: UTC # set to your own timezone (e.g. America/New_York) so BACKUP_CRON fires when you expect
     healthcheck:
       test: ["CMD", "wget", "-q", "-O-", "http://localhost:8080/healthz"]

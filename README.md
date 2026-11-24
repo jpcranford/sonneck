@@ -70,8 +70,8 @@ The compose file takes care of the fiddly bits like remembering where you put yo
 
 **Need a `docker run` command instead?** Grab the compose file, change what you need, then use [Decomposerize](https://www.decomposerize.com/) to convert it.
 
-> [!WARNING]
-> **Create the `data` folder yourself before the first run.** If you don't, Docker will create it for you as root when the container starts, which may cause write issues. If you hit a permission error on startup, it's almost always this; fix it by running `sudo chown -R 1000:1000 ./data` on the host machine.
+> [!NOTE]
+> **Sonneck runs as user and group 1000 by default.** On first start it creates the `data` folder if it's missing and makes sure it belongs to that user (Docker would otherwise create it as root). If your own user has different IDs, set `PUID` and `PGID` to them (run `id` on the host to see them), and Sonneck takes the folder over on its next start.
 
 ### Running locally
 Check the `CONTRIBUTING.md` file for full local run instructions. Here's the TL;DR for those that understand what this means.
@@ -99,6 +99,7 @@ Several of these (`BACKUP_CRON`, `BACKUP_RETENTION_DAYS`, `LOG_LEVEL`, `COPYRIGH
 
 | Variable | Default | Notes |
 |---|---|---|
+| `PUID` / `PGID` | `1000` / `1000` | Docker only. The user and group Sonneck runs as; the library folder (and a `BACKUP_DIR` elsewhere) is created if missing and handed to them on start. `docker exec … sonneck <command>` runs as them too. |
 | `PORT` | `8080` (Docker), `26163` (native apps) | HTTP listen port. Really only useful for dev work; native apps handle port selection automatically, and if you're using Docker, use port remapping instead. |
 | `DATA_DIR` | `/data` (Docker), `~/Music/Sonneck Library` (native apps) | Root of the database, library files, backups, and logs |
 | `BACKUP_DIR` | `$DATA_DIR/backups` | Where daily DB snapshots are written |
