@@ -3,6 +3,7 @@ package handlers_test
 import (
 	"bytes"
 	"net/http"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -170,5 +171,69 @@ func TestAnnotatedSetlistDownload(t *testing.T) {
 	}
 	if inks != 2 {
 		t.Errorf("Set PDF has %d ink annotations, want 2 (the piece twice)", inks)
+	}
+}
+
+// The Set PDF + Annotations leaves a piece's skipped pages out, as the plain
+// Set PDF does, with the marks on them: same page count as the plain one,
+// and only the mark on a shown page.
+func TestAnnotatedSetlistDownload_LeavesOutSkippedPages(t *testing.T) {
+	h := newTestServer(t)
+	path := t.TempDir() + "/five.pdf"
+	writeFixturePDF(t, path, 5)
+	var piece struct {
+		ID int64 `json:"id"`
+	}
+	decodeData(t, recordRequest(h, multipartUpload(t, "/api/pieces", "five.pdf", readAll(t, path))), &piece)
+	if rec := doJSON(t, h, http.MethodPut, apiPiecesURL(piece.ID)+"/skipped-pages", map[string]any{"skipStart": 1, "skipEnd": 1}); rec.Code != http.StatusOK {
+		t.Fatalf("skip pages: status %d, body %s", rec.Code, rec.Body.String())
+	}
+	rec := doJSON(t, h, http.MethodPost, "/api/setlists", map[string]any{"name": "Evensong"})
+	var setlist struct {
+		ID int64 `json:"id"`
+	}
+	decodeData(t, rec, &setlist)
+	if rec := doJSON(t, h, http.MethodPost, setlistURL(setlist.ID, "/entries"), map[string]any{"pieceId": piece.ID}); rec.Code != http.StatusCreated {
+		t.Fatalf("add entry: status %d", rec.Code)
+	}
+	// One mark on skipped page 1, one on shown page 2.
+	for page, id := range map[int]string{1: "skipped", 2: "shown"} {
+		marks := []map[string]any{
+			{"id": id, "kind": "stroke", "tool": "pen", "layer": 5, "size": 0.39, "pressure": false,
+				"points": [][]float64{{0.1, 0.2, 0.5}, {0.2, 0.22, 0.5}, {0.3, 0.21, 0.5}}},
+		}
+		if rec := doJSON(t, h, http.MethodPut, apiPiecesURL(piece.ID)+"/annotations/"+strconv.Itoa(page), map[string]any{"marks": marks}); rec.Code != http.StatusOK {
+			t.Fatalf("PUT marks on page %d: status %d", page, rec.Code)
+		}
+	}
+
+	pageCount := func(pdf []byte) int {
+		conf := model.NewDefaultConfiguration()
+		conf.ValidationMode = model.ValidationRelaxed
+		ctx, err := api.ReadAndValidate(bytes.NewReader(pdf), conf)
+		if err != nil {
+			t.Fatalf("reading the PDF: %v", err)
+		}
+		return ctx.PageCount
+	}
+	plain := doJSON(t, h, http.MethodGet, setlistURL(setlist.ID, "/pdf"), nil)
+	annotated := doJSON(t, h, http.MethodGet, setlistURL(setlist.ID, "/pdf?annotations=true"), nil)
+	if plain.Code != http.StatusOK || annotated.Code != http.StatusOK {
+		t.Fatalf("Set PDFs: status %d / %d", plain.Code, annotated.Code)
+	}
+	// Cover, contents, the 3 shown pages, colophon.
+	if p, a := pageCount(plain.Body.Bytes()), pageCount(annotated.Body.Bytes()); p != 6 || a != 6 {
+		t.Errorf("Set PDF pages: plain %d, annotated %d, want 6 each", p, a)
+	}
+	inks := 0
+	for _, subtypes := range annotationSubtypes(t, annotated.Body.Bytes()) {
+		for _, s := range subtypes {
+			if s == "Ink" {
+				inks++
+			}
+		}
+	}
+	if inks != 1 {
+		t.Errorf("annotated Set PDF has %d ink annotations, want 1 (the skipped page's left out)", inks)
 	}
 }

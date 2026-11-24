@@ -179,17 +179,31 @@ func Generate(ctx context.Context, binDir string, input Input) ([]byte, error) {
 			if _, err := os.Stat(e.PieceFilePath); err != nil {
 				return nil, fmt.Errorf("piece file for %q: %w", e.PieceTitle, err)
 			}
-			path := e.PieceFilePath
 			if e.PieceFirstPage > 0 {
-				// Only the shown pages: copied, never redrawn, so the
-				// pages keep their annotations (poppler.ExtractPages).
+				// Only the shown pages: copied, never redrawn, so the pages
+				// keep their annotations. Each page goes into the final
+				// merge as its own file — an ExtractPages copy would go
+				// through pdfunite twice, and the second pass drops
+				// annotations (poppler.SeparatePages).
 				segIdx++
-				path = filepath.Join(tmpDir, fmt.Sprintf("piece-%03d.pdf", segIdx))
-				if err := poppler.ExtractPages(ctx, binDir, e.PieceFilePath, e.PieceFirstPage, e.PieceLastPage, path); err != nil {
+				dir := filepath.Join(tmpDir, fmt.Sprintf("piece-%03d", segIdx))
+				if err := os.Mkdir(dir, 0o700); err != nil {
 					return nil, fmt.Errorf("trimming %q: %w", e.PieceTitle, err)
 				}
+				pages, err := poppler.SeparatePages(ctx, binDir, e.PieceFilePath, e.PieceFirstPage, e.PieceLastPage, dir)
+				if err != nil {
+					// A source pdfseparate can't take (encrypted): ExtractPages
+					// falls back to redrawing the pages.
+					path := filepath.Join(dir, "pages.pdf")
+					if err := poppler.ExtractPages(ctx, binDir, e.PieceFilePath, e.PieceFirstPage, e.PieceLastPage, path); err != nil {
+						return nil, fmt.Errorf("trimming %q: %w", e.PieceTitle, err)
+					}
+					pages = []string{path}
+				}
+				segments = append(segments, pages...)
+			} else {
+				segments = append(segments, e.PieceFilePath)
 			}
-			segments = append(segments, path)
 			pdf = newDoc()
 			continue
 		}

@@ -102,16 +102,36 @@ func copyPages(ctx context.Context, binDir, src string, first, last int, dst str
 	}
 	defer os.RemoveAll(dir)
 
+	pages, err := SeparatePages(ctx, binDir, src, first, last, dir)
+	if err != nil {
+		return err
+	}
+	return Merge(ctx, binDir, pages, dst)
+}
+
+// SeparatePages writes pages [first, last] of src into dir, one file per
+// page (pdfseparate, which copies each page's objects whole), and returns
+// their paths in order.
+//
+// For a caller that merges the pages with other files anyway (the Set
+// PDF): hand these to Merge directly rather than an ExtractPages copy.
+// pdfunite leaves an annotation's /P (its page) pointing at the old page
+// number, which no reader minds in a finished file, but a second pdfunite
+// over that file finds the broken reference and drops the annotations.
+func SeparatePages(ctx context.Context, binDir, src string, first, last int, dir string) ([]string, error) {
+	if first < 1 || last < first {
+		return nil, fmt.Errorf("invalid page range [%d, %d]", first, last)
+	}
 	cmd := exec.CommandContext(ctx, toolPath(binDir, "pdfseparate"),
 		"-f", strconv.Itoa(first), "-l", strconv.Itoa(last), src, filepath.Join(dir, "%d.pdf"))
 	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("pdfseparate -f %d -l %d %s: %w: %s", first, last, src, err, out)
+		return nil, fmt.Errorf("pdfseparate -f %d -l %d %s: %w: %s", first, last, src, err, out)
 	}
 	pages := make([]string, 0, last-first+1)
 	for page := first; page <= last; page++ {
 		pages = append(pages, filepath.Join(dir, fmt.Sprintf("%d.pdf", page)))
 	}
-	return Merge(ctx, binDir, pages, dst)
+	return pages, nil
 }
 
 // Merge concatenates srcPaths, in order, into a single output PDF at dst,

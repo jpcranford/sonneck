@@ -273,9 +273,12 @@ func (a annotation) CustomTypeString() string   { return "" }
 func (a annotation) RenderDict(x *model.XRefTable, page *types.IndirectRef) (types.Dict, error) {
 	color := hexColor(layerColors[a.m.Layer])
 	date := types.DateString(a.doc.opts.Now)
+	// No /P (the annotation's page; optional): pdfunite, which joins
+	// pages for the Set PDF and its skipped-page trims, keeps its old
+	// object number, so in the merged file it points at some other object
+	// — and a second pdfunite over that file drops the annotations.
 	d := types.Dict{
 		"Type":         types.Name("Annot"),
-		"P":            *page,
 		"F":            types.Integer(4), // print
 		"NM":           types.StringLiteral("sonneck-" + a.m.ID),
 		"M":            types.StringLiteral(date),
