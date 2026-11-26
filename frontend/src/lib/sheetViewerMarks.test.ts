@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   applyChange,
+  easeMousePoint,
+  MOUSE_PRESSURE_SWING,
   eraserTouches,
   removedSince,
   strokePath,
@@ -153,5 +155,34 @@ describe('strokeTouchesPage', () => {
       ),
     ).toBe(false)
     expect(strokeTouchesPage(stroke('d', [[0.5, -0.1]]))).toBe(false)
+  })
+})
+
+describe('easeMousePoint', () => {
+  const size = 0.58 // the pen's XL
+  const w = size / 100
+  it('lags a slow step strongly and keeps up with a fast one', () => {
+    const slow = easeMousePoint([0.5, 0.5, 0.5], [0.5 + w * 0.05, 0.5], size, 1)
+    expect(slow[0] - 0.5).toBeCloseTo(w * 0.05 * 0.2, 10)
+    const fast = easeMousePoint([0.5, 0.5, 0.5], [0.5 + w * 2, 0.5], size, 1)
+    expect(fast[0] - 0.5).toBeCloseTo(w * 2 * 0.8, 10)
+  })
+  it('keeps pressure within the gentle swing, a little higher when slow', () => {
+    let slow: [number, number, number] = [0.5, 0.5, 0.5]
+    let fast: [number, number, number] = [0.5, 0.5, 0.5]
+    for (let i = 0; i < 50; i++) {
+      slow = easeMousePoint(slow, [slow[0] + w * 0.02, 0.5], size, 1)
+      fast = easeMousePoint(fast, [fast[0] + w * 3, 0.5], size, 1)
+    }
+    expect(slow[2]).toBeGreaterThan(0.5)
+    expect(slow[2]).toBeLessThanOrEqual(0.5 + MOUSE_PRESSURE_SWING)
+    expect(fast[2]).toBeLessThan(0.5)
+    expect(fast[2]).toBeGreaterThanOrEqual(0.5 - MOUSE_PRESSURE_SWING)
+  })
+  it('measures a vertical step in page widths', () => {
+    // On a page twice as tall as it's wide, a step of 0.01 of its height is
+    // 0.02 of its width: past a pen width, so it's barely lagged.
+    const p = easeMousePoint([0.5, 0.5, 0.5], [0.5, 0.5 + 0.01], size, 0.5)
+    expect(p[1] - 0.5).toBeCloseTo(0.01 * 0.8, 10)
   })
 })

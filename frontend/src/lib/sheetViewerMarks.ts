@@ -135,6 +135,46 @@ function pathFromOutline(outline: number[][], k = 1) {
 // Marks wholly off the page are never kept (the server drops them too,
 // repo.StrokeTouchesPage): a stroke may run off an edge as long as one of
 // its points is on the page.
+// A pen stroke drawn without a stylus (mouse, trackpad, finger) is eased as
+// it's drawn (option A of https://claude.ai/artifact/LTu1bg5gS9B5FJYzTwY96L):
+// a slow mouse reports whole-pixel steps, and the library's own speed
+// pressure swelled the line there until it traced the staircase. Each point
+// lags toward the pointer — strongly for steps under a tenth of the pen's
+// width, lightly from a whole width on, so a fast line keeps up — and takes
+// a pressure of its own, a little over 0.5 when slow and under when fast
+// (MOUSE_PRESSURE_SWING), eased between points. The stroke is then saved
+// with `pressure: true`, so it draws from these points; a stroke saved
+// before (`pressure: false`) still draws as it always did.
+export const MOUSE_PRESSURE_SWING = 0.08
+const MOUSE_EASE_SLOW = 0.8
+const MOUSE_EASE_FAST = 0.2
+const MOUSE_PRESSURE_EASE = 0.3
+
+/** The next point of a pen stroke drawn without a stylus: `last` is the
+ * stroke's last (eased) point, `raw` where the pointer is, `size` the pen's
+ * size (percent of the page's width), `aspect` the page's width over its
+ * height (points are shares of width and of height). */
+export function easeMousePoint(
+  last: MarkPoint,
+  raw: [number, number],
+  size: number,
+  aspect: number,
+): MarkPoint {
+  const width = size / 100
+  const dx = raw[0] - last[0]
+  const dy = (raw[1] - last[1]) / aspect
+  const d = Math.hypot(dx, dy)
+  const t = Math.min(1, Math.max(0, (d / width - 0.1) / 0.9))
+  const lag = MOUSE_EASE_SLOW + (MOUSE_EASE_FAST - MOUSE_EASE_SLOW) * t
+  const step = d * (1 - lag)
+  const target = 0.5 + MOUSE_PRESSURE_SWING * (1 - 2 * Math.min(1, step / width))
+  return [
+    last[0] + (raw[0] - last[0]) * (1 - lag),
+    last[1] + (raw[1] - last[1]) * (1 - lag),
+    last[2] + (target - last[2]) * MOUSE_PRESSURE_EASE,
+  ]
+}
+
 export function strokeTouchesPage(mark: StrokeMark) {
   return mark.points.some(([x, y]) => x >= 0 && x <= 1 && y >= 0 && y <= 1)
 }

@@ -38,22 +38,58 @@ export const LAYER_COLORS: { name: string; light: string; dim: string; dark: str
 // inverted (Dark Mode Scores, or the photo panel's Invert).
 export type PageLook = 'light' | 'dim' | 'dark'
 export const layerColor = (layer: number, look: PageLook) => LAYER_COLORS[layer][look]
+// A letter drawn on a color's dot (the size letter on the color-and-size
+// button): Ink's dark brown on a light dot, white on a dark one, judged by
+// the dot as it shows on this page — Yellow always, and Ink once the page
+// is inverted, take the dark letter.
+export function labelColorOn(hex: string): string {
+  const channel = (i: number) => {
+    const c = parseInt(hex.slice(1 + i * 2, 3 + i * 2), 16) / 255
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+  }
+  const luminance = 0.2126 * channel(0) + 0.7152 * channel(1) + 0.0722 * channel(2)
+  return luminance > 0.4 ? LAYER_COLORS[5].light : '#ffffff'
+}
+export const layerLabelColor = (layer: number, look: PageLook) =>
+  labelColorOn(layerColor(layer, look))
 // The tools' sizes, as a share of the page's width (picked in the size
 // playground; the pen's retuned on the iPad), so a mark keeps its weight at
-// any screen size. The eraser's is the width of its reach; M is about 28pt
-// across on an iPad in landscape.
-export type Size = 'S' | 'M' | 'L'
-export const SIZES: Record<Tool, Record<Size, number>> = {
-  pen: { S: 0.25, M: 0.39, L: 0.58 },
+// any screen size. The eraser's is the width of its reach; its L is about
+// 28pt across on an iPad in landscape.
+//
+// The pen and eraser have four: a smaller S under what were S, M and L,
+// which moved up a step to M, L and XL keeping their numbers
+// (https://claude.ai/artifact/6xe2m4JqWWz6W376tZhb4y). A saved mark keeps
+// its own number, never a letter, so no mark changed; each device's
+// remembered letters moved up with them (lib/sheetViewerToolMemory.ts).
+// The highlighter and text keep their three.
+export type Size = 'S' | 'M' | 'L' | 'XL'
+export const SIZES: Record<Tool, Partial<Record<Size, number>>> = {
+  pen: { S: 0.15, M: 0.25, L: 0.39, XL: 0.58 },
   highlighter: { S: 1.2, M: 2, L: 3 },
   text: { S: 1.4, M: 1.8, L: 2.4 },
-  eraser: { S: 3, M: 5, L: 8 },
+  eraser: { S: 1.9, M: 3, L: 5, XL: 8 },
+}
+export const SIZE_NAMES: Record<Size, string> = {
+  S: 'Small',
+  M: 'Medium',
+  L: 'Large',
+  XL: 'Extra large',
+}
+/** A tool's sizes, smallest first. */
+export const sizesOf = (tool: Tool) => Object.keys(SIZES[tool]) as Size[]
+/** A size's number for a tool; for a size it doesn't have, its largest. */
+export function sizeValue(tool: Tool, size: Size): number {
+  const own = SIZES[tool][size]
+  if (own !== undefined) return own
+  const list = sizesOf(tool)
+  return SIZES[tool][list[list.length - 1]]!
 }
 // Each tool remembers its own color and size; these are where they start:
 // the pen in Ink, the highlighter in Yellow, text in Blue.
 export type ColorTool = 'pen' | 'highlighter' | 'text'
 export const TOOL_START: Record<ColorTool, { color: number; size: Size }> = {
-  pen: { color: 5, size: 'M' },
+  pen: { color: 5, size: 'L' },
   highlighter: { color: 1, size: 'M' },
   text: { color: 2, size: 'M' },
 }

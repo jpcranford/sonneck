@@ -131,6 +131,7 @@ import { useNoContextMenu } from '../hooks/useNoContextMenu'
 import { useToday } from '../hooks/useToday'
 import { stageTurn, type StagePoint } from '../lib/sheetViewerGestures'
 import {
+  easeMousePoint,
   applyChange,
   eraserTouches,
   removedSince,
@@ -148,8 +149,11 @@ import {
   describeChange,
   LAYER_COLORS,
   layerColor,
+  layerLabelColor,
   LIFT_GAP,
-  SIZES,
+  SIZE_NAMES,
+  sizesOf,
+  sizeValue,
   textBoxStyle,
   TOOL_START,
   TOOLS,
@@ -1271,7 +1275,7 @@ interface AnnotationSession {
 // (lib/sheetViewerToolMemory.ts), not from the defaults each session.
 const TOOL_MEMORY_START = {
   toolStyle: TOOL_START,
-  eraserSize: 'M' as Size,
+  eraserSize: 'L' as Size,
   lastDrawTool: 'pen' as ColorTool,
 }
 
@@ -1780,7 +1784,6 @@ function SheetViewer({
     | 'metronome'
     | 'queue'
     | 'layers'
-    | 'color'
     | 'size'
     | 'style'
     | null
@@ -2180,7 +2183,7 @@ function SheetViewer({
   const annot = session.shared.annotations
   const annotating = annot.mode === 'annotate' && !custom
   const { tool, toolStyle, eraserSize, setToolStyle, setEraserSize } = annot
-  const eraserRadius = SIZES.eraser[eraserSize] / 200
+  const eraserRadius = sizeValue('eraser', eraserSize) / 200
   const hiddenLayers = LAYER_COLORS.map((_, i) => i).filter((i) => practice.hiddenColors & (1 << i))
   function setHiddenLayers(layers: number[]) {
     setPractice({ hiddenColors: layers.reduce((mask, l) => mask | (1 << l), 0) })
@@ -2407,6 +2410,8 @@ function SheetViewer({
   const [eraserAt, setEraserAt] = useState<[number, number] | null>(null)
   const marking = useRef<{ id: number; type: string } | null>(null)
   const liveRef = useRef<StrokeMark | null>(null)
+  // Where the pointer is, while a pen stroke without a stylus is drawn.
+  const mouseRaw = useRef<[number, number] | null>(null)
   const erasing = useRef<{
     key: string
     before: Mark[]
@@ -2464,14 +2469,19 @@ function SheetViewer({
       setHiddenLayers(hiddenLayers.filter((l) => l !== style.color))
       flash(`${LAYER_COLORS[style.color].name} unhidden`)
     }
+    // A pen stroke without a stylus is eased as it's drawn (easeMousePoint)
+    // and saved with its own pressures; the raw pointer is kept for where
+    // it lifts.
+    const eased = t === 'pen' && event.pointerType !== 'pen'
+    mouseRaw.current = eased ? p : null
     const mark: StrokeMark = {
       id: newMarkId(),
       kind: 'stroke',
       tool: t,
       layer: style.color,
-      size: SIZES[t][style.size],
-      pressure: event.pointerType === 'pen',
-      points: [[p[0], p[1], event.pressure || 0.5]],
+      size: sizeValue(t, style.size),
+      pressure: event.pointerType === 'pen' || eased,
+      points: [[p[0], p[1], eased ? 0.5 : event.pressure || 0.5]],
     }
     liveRef.current = mark
     setLive(mark)
@@ -2492,9 +2502,15 @@ function SheetViewer({
     const mark = liveRef.current
     if (!mark) return
     const added: MarkPoint[] = []
+    let last = mark.points[mark.points.length - 1]
     for (const e of all) {
       const p = pagePoint(e)
-      if (p) added.push([p[0], p[1], e.pressure || 0.5])
+      if (!p) continue
+      if (mouseRaw.current) {
+        mouseRaw.current = p
+        last = easeMousePoint(last, p, mark.size, pageAspect)
+        added.push(last)
+      } else added.push([p[0], p[1], e.pressure || 0.5])
     }
     const next = { ...mark, points: [...mark.points, ...added] }
     liveRef.current = next
@@ -2530,9 +2546,17 @@ function SheetViewer({
       if (removed.length) annot.record({ key: e.key, added: [], removed })
       return true
     }
-    const mark = liveRef.current
+    let mark = liveRef.current
     liveRef.current = null
     setLive(null)
+    // An eased stroke ends exactly where the pointer lifted.
+    const raw = mouseRaw.current
+    mouseRaw.current = null
+    if (mark && raw) {
+      const end = mark.points[mark.points.length - 1]
+      if (end[0] !== raw[0] || end[1] !== raw[1])
+        mark = { ...mark, points: [...mark.points, [raw[0], raw[1], end[2]]] }
+    }
     // A stroke that never touched the page isn't kept.
     if (mark && strokeTouchesPage(mark)) {
       // Trimmed, a stroke is cut at the frame's edge: no mark is made where
@@ -2552,6 +2576,7 @@ function SheetViewer({
   }
   function cancelMark() {
     marking.current = null
+    mouseRaw.current = null
     liveRef.current = null
     setLive(null)
     const e = erasing.current
@@ -2595,7 +2620,7 @@ function SheetViewer({
   function startTextBox(p: [number, number]) {
     if (!loadedPages) return
     const style = toolStyle.text
-    const size = SIZES.text[style.size]
+    const size = sizeValue('text', style.size)
     // The first line's middle sits on the tap: its baseline 3/8 of a line
     // below it (the line is 1.25 sizes, its baseline 1 size down).
     const em = (size / 100) * pageAspect
@@ -4203,8 +4228,8 @@ function SheetViewer({
       </HitButton>
     </div>
   )
-  // The picked tool's options: its six colors and S / M / L (the eraser:
-  // just S / M / L). Picking a hidden color is allowed — it shows again as
+  // The picked tool's options: its six colors and its sizes (the eraser:
+  // just its sizes). Picking a hidden color is allowed — it shows again as
   // soon as you mark with it. An open text box takes either change too.
   const optionsStyle = tool
     ? tool === 'eraser'
@@ -4214,7 +4239,7 @@ function SheetViewer({
   function setOptionsSize(size: Size) {
     if (tool === 'eraser') setEraserSize(size)
     else if (tool) setToolStyle({ ...toolStyle, [tool]: { ...toolStyle[tool], size } })
-    if (tool === 'text' && textEdit) setTextEdit({ ...textEdit, size: SIZES.text[size] })
+    if (tool === 'text' && textEdit) setTextEdit({ ...textEdit, size: sizeValue('text', size) })
   }
   function setOptionsColor(color: number) {
     if (!tool || tool === 'eraser') return
@@ -4223,31 +4248,21 @@ function SheetViewer({
   }
   // Picking a color or size keeps the text box's keyboard up.
   const keepTextKeyboard = (event: ReactMouseEvent) => textEdit && event.preventDefault()
-  // The picked tool's color and size: two buttons right beside it in the
-  // toolbar (design A of https://claude.ai/artifact/XNcKs6NW2EKi9RU3ZxCABf,
-  // one button each instead of the whole palette), showing the current
-  // color and size. Each opens a small panel to pick from; picking closes
-  // it. The eraser has only its size. Pinch-zoomed, the same two sit beside
-  // the zoomed bar's tool, and their panels open under that bar.
-  //
-  // Where two don't fit beside the tools (an iPad in portrait, a phone), one
-  // button shows the color with the size letter on it and opens one panel
-  // with both, which stays open for picking both until × or a tap outside.
-  // A phone's tools row has no room even for that, so there it sits in the
-  // top row, in place of "Annotating".
-  const SIZE_NAMES: Record<Size, string> = { S: 'Small', M: 'Medium', L: 'Large' }
-  const COMBINED_BELOW = 900
-  const combinedOptions = tier === 'phone' || (toolsInline && width < COMBINED_BELOW)
-  const colorAnchorRef = useRef<HTMLDivElement>(null)
+  // The picked tool's color and size: one button right beside it, at every
+  // width and in the zoomed bar (design A of
+  // https://claude.ai/artifact/XNcKs6NW2EKi9RU3ZxCABf, made one circle): the
+  // color as a dot with the size letter on it, opening one panel with both,
+  // which stays open for picking both until × or a tap outside. The
+  // eraser's is the same circle, outlined, opening its sizes. Pinch-zoomed,
+  // the button sits beside the zoomed bar's tool, its panel under that bar.
   const sizeAnchorRef = useRef<HTMLDivElement>(null)
   const styleAnchorRef = useRef<HTMLDivElement>(null)
-  const colorStyle = useAnchoredPanel(colorAnchorRef, menu === 'color' && !zoomed, 'below-center', {
-    gap: 6,
-    panelWidth: 312,
-  })
+  // Wide enough for the tool's sizes: three 48pt buttons, or four for the
+  // pen and eraser.
+  const sizePanelWidth = tool && sizesOf(tool).length > 3 ? 248 : 200
   const sizeStyle = useAnchoredPanel(sizeAnchorRef, menu === 'size' && !zoomed, 'below-center', {
     gap: 6,
-    panelWidth: 200,
+    panelWidth: sizePanelWidth,
   })
   const styleStyle = useAnchoredPanel(styleAnchorRef, menu === 'style' && !zoomed, 'below-center', {
     gap: 6,
@@ -4289,7 +4304,7 @@ function SheetViewer({
   const sizeRow = (closeOnPick: boolean) =>
     optionsStyle && (
       <div className="flex rounded-[13px] bg-paper-sunken px-1">
-        {(['S', 'M', 'L'] as const).map((sz) => (
+        {sizesOf(tool!).map((sz) => (
           <button
             key={sz}
             type="button"
@@ -4315,13 +4330,6 @@ function SheetViewer({
         ))}
       </div>
     )
-  const colorBody = tool && tool !== 'eraser' && (
-    <>
-      {panelClose(`Close ${optionsLabel} color`)}
-      {panelHeading(`${optionsLabel} color`)}
-      {colorRow(true)}
-    </>
-  )
   const sizeBody = tool && (
     <>
       {panelClose(`Close ${optionsLabel} size`)}
@@ -4338,26 +4346,26 @@ function SheetViewer({
       {sizeRow(false)}
     </>
   )
-  // The color as a dot with the size letter on it, in ink on Yellow and
-  // white on the rest.
+  // The color as a dot with the size letter on it, the letter dark or white
+  // by how light the dot is on this page (layerLabelColor).
   const combinedFace = (color: number, size: Size) => (
     <span
       className="flex size-[26px] items-center justify-center rounded-full text-[12px] font-bold"
       style={{
         background: layerColor(color, pageLook),
-        color: color === 1 ? '#2b2622' : '#ffffff',
+        color: layerLabelColor(color, pageLook),
       }}
     >
       {size}
     </span>
   )
-  // The buttons, for the toolbar or the zoomed bar (whose copy isn't where
-  // the toolbar's panels anchor; it always has room for two).
+  // The one button, for the toolbar or the zoomed bar (whose copy isn't
+  // where the toolbar's panels anchor).
   const toolOptionButtons = (inZoomedBar: boolean) =>
     tool &&
     optionsStyle &&
-    (!inZoomedBar && combinedOptions && tool !== 'eraser' && optionsStyle.color !== null ? (
-      <div ref={styleAnchorRef}>
+    (tool !== 'eraser' && optionsStyle.color !== null ? (
+      <div ref={inZoomedBar ? undefined : styleAnchorRef}>
         <HitButton
           label={`${optionsLabel} color and size: ${LAYER_COLORS[optionsStyle.color].name}, ${SIZE_NAMES[optionsStyle.size]}`}
           onClick={() => setMenu(menu === 'style' ? null : 'style')}
@@ -4367,30 +4375,17 @@ function SheetViewer({
         </HitButton>
       </div>
     ) : (
-      <>
-        {tool !== 'eraser' && optionsStyle.color !== null && (
-          <div ref={inZoomedBar ? undefined : colorAnchorRef}>
-            <HitButton
-              label={`${optionsLabel} color: ${LAYER_COLORS[optionsStyle.color].name}`}
-              onClick={() => setMenu(menu === 'color' ? null : 'color')}
-              faceClassName={menu === 'color' ? 'bg-(--sv-hover)' : ''}
-            >
-              <ColorDot layer={optionsStyle.color} hidden={false} look={pageLook} />
-            </HitButton>
-          </div>
-        )}
-        <div ref={inZoomedBar ? undefined : sizeAnchorRef}>
-          <HitButton
-            label={`${optionsLabel} size: ${SIZE_NAMES[optionsStyle.size]}`}
-            onClick={() => setMenu(menu === 'size' ? null : 'size')}
-            faceClassName={menu === 'size' ? 'bg-(--sv-hover)' : ''}
-          >
-            <span className="flex size-[26px] items-center justify-center rounded-md border border-accent/40 text-sm font-semibold">
-              {optionsStyle.size}
-            </span>
-          </HitButton>
-        </div>
-      </>
+      <div ref={inZoomedBar ? undefined : sizeAnchorRef}>
+        <HitButton
+          label={`${optionsLabel} size: ${SIZE_NAMES[optionsStyle.size]}`}
+          onClick={() => setMenu(menu === 'size' ? null : 'size')}
+          faceClassName={menu === 'size' ? 'bg-(--sv-hover)' : ''}
+        >
+          <span className="flex size-[26px] items-center justify-center rounded-full border-[1.5px] border-current text-[12px] font-bold">
+            {optionsStyle.size}
+          </span>
+        </HitButton>
+      </div>
     ))
   const optionsPanel = (body: ReactNode, style: CSSProperties | null, w: number) =>
     body &&
@@ -4405,8 +4400,7 @@ function SheetViewer({
       </div>,
       document.body,
     )
-  const colorPanel = menu === 'color' && !zoomed && optionsPanel(colorBody, colorStyle, 312)
-  const sizePanel = menu === 'size' && !zoomed && optionsPanel(sizeBody, sizeStyle, 200)
+  const sizePanel = menu === 'size' && !zoomed && optionsPanel(sizeBody, sizeStyle, sizePanelWidth)
   const stylePanel = menu === 'style' && !zoomed && optionsPanel(styleBody, styleStyle, 312)
   // Pinch-zoomed in Annotate, the toolbar zooms off the screen, so a small
   // bar holds steady at the top right at its normal size (design B of
@@ -4456,12 +4450,13 @@ function SheetViewer({
           <IconArrowBackUp size={22} />
         </HitButton>
       </div>
-      {zoomed && (menu === 'color' || menu === 'size' || menu === 'style') && (
+      {zoomed && (menu === 'size' || menu === 'style') && (
         <div
           onMouseDown={keepTextKeyboard}
-          className={`${menu === 'size' ? 'w-[200px]' : 'w-[312px]'} ${OPTIONS_PANEL_CLASS}`}
+          style={{ width: menu === 'size' ? sizePanelWidth : 312 }}
+          className={OPTIONS_PANEL_CLASS}
         >
-          {menu === 'color' ? colorBody : menu === 'size' ? sizeBody : styleBody}
+          {menu === 'size' ? sizeBody : styleBody}
         </div>
       )}
     </div>
@@ -4496,7 +4491,15 @@ function SheetViewer({
                 )}
               </HitButton>
             </div>
-            {picked && tier !== 'phone' && toolOptionButtons(false)}
+            {picked && (
+              // Kept in view when the tools' own row scrolls.
+              <div
+                className="shrink-0"
+                ref={(el) => el?.scrollIntoView({ block: 'nearest', inline: 'nearest' })}
+              >
+                {toolOptionButtons(false)}
+              </div>
+            )}
           </Fragment>
         )
       })}
@@ -4937,6 +4940,29 @@ function SheetViewer({
     </div>
   )
 
+  // The Annotate top row under 720px: its own, its left and right groups'
+  // and its cyclers' widths, for whether the cyclers can sit in the middle
+  // without touching the exit button (or Done).
+  const [annotateWidths, setAnnotateWidths] = useState({ row: 0, left: 0, right: 0, cyclers: 0 })
+  const measureAnnotate = (part: keyof typeof annotateWidths) => (el: HTMLDivElement | null) => {
+    if (!el) return
+    const observer = new ResizeObserver(([entry]) => {
+      const w = Math.ceil(entry.borderBoxSize?.[0]?.inlineSize ?? entry.contentRect.width)
+      setAnnotateWidths((prev) => (prev[part] === w ? prev : { ...prev, [part]: w }))
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }
+  const annotateRowRef = measureAnnotate('row')
+  const annotateLeftRef = measureAnnotate('left')
+  const annotateRightRef = measureAnnotate('right')
+  const annotateCyclersRef = measureAnnotate('cyclers')
+  // Centered while the cyclers' left edge clears the exit button's right
+  // edge (and their right edge clears Done); the row is padded 4px a side.
+  const annotateHalfSpare = (annotateWidths.row - annotateWidths.cyclers) / 2
+  const annotateCyclersCentered =
+    annotateHalfSpare >= 4 + annotateWidths.left && annotateHalfSpare >= 4 + annotateWidths.right
+
   const cyclers = (
     <div className="flex items-center">
       <HitButton
@@ -5359,13 +5385,14 @@ function SheetViewer({
     }
     if (key === '-' || key === '=') {
       if (!tool) return true
-      const order: Size[] = ['S', 'M', 'L']
+      const order = sizesOf(tool)
       const current = tool === 'eraser' ? eraserSize : toolStyle[tool].size
-      const size = order[Math.max(0, Math.min(2, order.indexOf(current) + (key === '=' ? 1 : -1)))]
+      const at = order.indexOf(current) + (key === '=' ? 1 : -1)
+      const size = order[Math.max(0, Math.min(order.length - 1, at))]
       if (tool === 'eraser') setEraserSize(size)
       else setToolStyle({ ...toolStyle, [tool]: { ...toolStyle[tool], size } })
-      if (tool === 'text' && textEdit) setTextEdit({ ...textEdit, size: SIZES.text[size] })
-      flash(`${label(tool)}: ${{ S: 'Small', M: 'Medium', L: 'Large' }[size]}`)
+      if (tool === 'text' && textEdit) setTextEdit({ ...textEdit, size: sizeValue('text', size) })
+      flash(`${label(tool)}: ${SIZE_NAMES[size]}`)
       return true
     }
     if (key === 'l') {
@@ -5580,41 +5607,50 @@ function SheetViewer({
         <div className="relative z-40">
           {trimming ? (
             trimBar
+          ) : annotating && !toolsInline ? (
+            // Annotate without room for the tools in this row (under 720px,
+            // phones included): exit, the page cyclers and Done, the tools
+            // in their own row below. The cyclers sit in the middle until
+            // they'd touch the exit button, then move right, beside a
+            // divider before Done (annotateCyclersCentered).
+            <div ref={annotateRowRef} className="relative flex h-14 items-center px-1">
+              <div ref={annotateLeftRef} className="flex items-center">
+                {closeButton}
+                {queueButton}
+              </div>
+              <div
+                ref={annotateCyclersRef}
+                className={
+                  annotateCyclersCentered ? 'absolute left-1/2 -translate-x-1/2' : 'ml-auto'
+                }
+              >
+                {cyclers}
+              </div>
+              {!annotateCyclersCentered && <span className="mx-1 h-7 w-px shrink-0 bg-accent/30" />}
+              <div ref={annotateRightRef} className={annotateCyclersCentered ? 'ml-auto' : ''}>
+                {doneButton}
+              </div>
+            </div>
           ) : tier === 'phone' ? (
             <>
-              {/* Phones take two rows (a letter or A4 page leaves the
+              {/* Phones take two rows in Play (a letter or A4 page leaves the
                   height to spare): exit, the title, Info, ⋯ and Annotate,
                   then the clock and the page cyclers pinned to the right
-                  edge, so they never move as the clock's width changes. */}
+                  edge, so they never move as the clock's width changes.
+                  (Annotate has its own rows, above.) */}
               <div className="flex h-14 items-center px-1">
                 {closeButton}
                 {queueButton}
-                {annotating ? (
-                  <>
-                    {toolOptionButtons(false)}
-                    {/* With a tool's color button beside it, the green
-                        toolbar says it's Annotate; the label would only
-                        be cut short. */}
-                    <span className="min-w-0 flex-1 truncate px-2 text-sm font-medium text-accent">
-                      {tool ? '' : 'Annotating'}
-                    </span>
-                  </>
-                ) : (
-                  titleBlock
-                )}
+                {titleBlock}
                 {pieceId !== null && notesButton}
                 {pieceId !== null && infoButton}
                 {moreButton}
-                <span
-                  className={`mx-1 h-7 w-px shrink-0 ${annotating ? 'bg-accent/30' : 'bg-border'}`}
-                />
-                {annotating ? doneButton : custom ? null : annotateButton}
+                <span className="mx-1 h-7 w-px shrink-0 bg-border" />
+                {!custom && annotateButton}
               </div>
               <div
                 ref={phoneRow2Ref}
-                className={`flex h-14 items-center border-t px-1 ${
-                  annotating ? 'border-accent/30' : 'border-border'
-                }`}
+                className="flex h-14 items-center border-t border-border px-1"
               >
                 <div className="flex min-w-0 flex-1 items-center">{clockButton}</div>
                 {cyclers}
@@ -5629,19 +5665,13 @@ function SheetViewer({
                 {closeButton}
                 {queueButton}
                 {annotating ? (
-                  toolsInline ? (
-                    // Inline (wide): Layers, Undo and Redo on the left; the
-                    // tools sit by Done on the right.
-                    <>
-                      <span className="mx-1 h-7 w-px shrink-0 bg-accent/30" />
-                      {layersButton}
-                      {undoRedo}
-                    </>
-                  ) : (
-                    <span className="truncate px-2 text-sm font-medium text-accent">
-                      Annotating
-                    </span>
-                  )
+                  // Inline (wide): Layers, Undo and Redo on the left; the
+                  // tools sit by Done on the right.
+                  <>
+                    <span className="mx-1 h-7 w-px shrink-0 bg-accent/30" />
+                    {layersButton}
+                    {undoRedo}
+                  </>
                 ) : (
                   titleBlock
                 )}
@@ -5673,7 +5703,11 @@ function SheetViewer({
             </div>
           )}
           {annotating && !toolsInline && (
-            <div className="flex items-center border-t border-accent/30 px-1">{toolButtons}</div>
+            // Scrolls sideways within itself when the picked tool's button
+            // doesn't leave room (a phone): the button stays beside its tool.
+            <div className="flex items-center overflow-x-auto border-t border-accent/30 px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {toolButtons}
+            </div>
           )}
         </div>
 
@@ -5690,7 +5724,6 @@ function SheetViewer({
             {metronomePanel}
             {queuePanel}
             {layersPanel}
-            {colorPanel}
             {sizePanel}
             {stylePanel}
             {menu === 'more' && (

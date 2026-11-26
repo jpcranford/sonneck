@@ -8,7 +8,7 @@ import {
   type StrokeMark,
   type StrokeTuning,
 } from '../lib/sheetViewerMarks'
-import { SIZES } from '../lib/sheetViewerTools'
+import { sizesOf, sizeValue, type Size } from '../lib/sheetViewerTools'
 
 // A place to tune the Sheet Viewer's pen with a real stylus: draw on a page
 // of empty staves, move the sliders, and every stroke redraws with them.
@@ -21,7 +21,6 @@ const ASPECT = 8.5 / 11
 const H = W / ASPECT
 
 type PenTool = StrokeMark['tool']
-type Size = 'S' | 'M' | 'L'
 
 // The pen as it shipped before this round, for comparison: perfect-freehand's
 // getStroke with its defaults' thresholds, worked out at the box's own size.
@@ -157,7 +156,8 @@ function Segmented<T extends string>({
 export function PenPlaygroundMockup() {
   useMockupTitle('Pen Playground')
   const [tool, setTool] = useState<PenTool>('pen')
-  const [size, setSize] = useState<Size>('M')
+  // The pen's L (0.39), its usual size.
+  const [size, setSize] = useState<Size>('L')
   const [tuning, setTuning] = useState<Record<PenTool, StrokeTuning>>(() => ({
     pen: { ...STROKE_TUNING.pen },
     highlighter: { ...STROKE_TUNING.highlighter },
@@ -212,7 +212,7 @@ export function PenPlaygroundMockup() {
       kind: 'stroke',
       tool,
       layer: tool === 'pen' ? 0 : 1,
-      size: SIZES[tool][size],
+      size: sizeValue(tool, size),
       pressure: e.pointerType === 'pen',
       points: [p],
     }
@@ -320,7 +320,7 @@ export function PenPlaygroundMockup() {
         <aside className="flex w-full shrink-0 flex-col gap-5 lg:sticky lg:top-6 lg:w-80">
           <div className="flex flex-col gap-2">
             <Segmented options={['pen', 'highlighter'] as const} value={tool} onChange={setTool} />
-            <Segmented options={['S', 'M', 'L'] as const} value={size} onChange={setSize} />
+            <Segmented options={sizesOf(tool)} value={size} onChange={setSize} />
           </div>
 
           <div className="flex flex-col gap-1.5">
