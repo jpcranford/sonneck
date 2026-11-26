@@ -29,6 +29,7 @@ import { useMockupTitle } from '../lib/useMockupTitle'
 import type { Tag } from '../api/types'
 import { confirmAction } from '../lib/dialogs'
 import { EDIT_WINDOW_KEYS, useShortcuts } from '../lib/shortcuts'
+import { PHONE_BUTTON, PHONE_SQUARE_BUTTON } from '../lib/detailsToolbar'
 
 // ---------------------------------------------------------------------
 // DESIGN MOCKUP for the Person Details page — one real page with two
@@ -1135,7 +1136,7 @@ export function PersonDetailsSample() {
             onClick={handleDelete}
             aria-label="Delete Person"
             title="Delete Person"
-            className="relative flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-danger hover:border-danger"
+            className={`relative flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-danger hover:border-danger ${PHONE_SQUARE_BUTTON}`}
           >
             <span data-hit aria-hidden="true" className="hit-area" />
             <IconTrash size={16} />
@@ -1144,7 +1145,7 @@ export function PersonDetailsSample() {
           <button
             type="button"
             onClick={() => setSplitPeopleOpen(true)}
-            className="relative flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink hover:border-accent"
+            className={`relative flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink hover:border-accent ${PHONE_BUTTON}`}
           >
             <span data-hit aria-hidden="true" className="hit-area" />
             <IconArrowsSplit2 size={16} />
@@ -1154,7 +1155,7 @@ export function PersonDetailsSample() {
             type="button"
             title="Opens the Edit Person modal (stub in this mockup)"
             onClick={handleEditPerson}
-            className="relative flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink hover:border-accent max-[360px]:w-[38px] max-[360px]:px-0"
+            className={`relative flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink hover:border-accent max-[360px]:w-11 max-[360px]:px-0 ${PHONE_BUTTON}`}
           >
             <span data-hit aria-hidden="true" className="hit-area" />
             <IconEditFilled size={16} />

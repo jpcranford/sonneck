@@ -50,6 +50,7 @@ import { EmptyState } from '../components/EmptyState'
 import { EDIT_WINDOW_KEYS, useShortcuts } from '../lib/shortcuts'
 import { useThumbnailVersion } from '../hooks/useThumbnailVersion'
 import { useMeasuredWidth } from '../hooks/useMeasuredWidth'
+import { PHONE_BUTTON, PHONE_SQUARE_BUTTON } from '../lib/detailsToolbar'
 
 // Book Details page — no design-doc spec (new ground, same as the Books
 // library view before it). Built from the "Book Details — Consolidated
@@ -659,7 +660,7 @@ export function BookDetailsPage() {
                   disabled={deleteMutation.isPending}
                   aria-label="Delete Book"
                   title="Delete Book"
-                  className="relative flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-danger hover:border-danger disabled:opacity-50"
+                  className={`relative flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-danger hover:border-danger disabled:opacity-50 ${PHONE_SQUARE_BUTTON}`}
                 >
                   <HitArea />
                   <IconTrash size={16} />
@@ -679,7 +680,7 @@ export function BookDetailsPage() {
                 rel="noreferrer"
                 aria-label="Open Book PDF"
                 title="Open Book PDF"
-                className="relative flex w-[38px] items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent"
+                className={`relative flex w-[38px] items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent ${PHONE_SQUARE_BUTTON}`}
               >
                 <HitArea />
                 <IconFileTypePdf size={16} />
@@ -702,7 +703,7 @@ export function BookDetailsPage() {
                 onClick={openCoverFilePicker}
                 aria-label="Change cover image"
                 title="Change cover image"
-                className="relative flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent"
+                className={`relative flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent ${PHONE_SQUARE_BUTTON}`}
               >
                 <HitArea />
                 <IconPhotoUp size={16} />
@@ -728,7 +729,7 @@ export function BookDetailsPage() {
                 type="button"
                 onClick={() => setBookEditOpen(true)}
                 aria-label="Edit Book"
-                className="relative flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink hover:border-accent max-[360px]:w-[38px] max-[360px]:px-0"
+                className={`relative flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink hover:border-accent max-[360px]:w-11 max-[360px]:px-0 ${PHONE_BUTTON}`}
               >
                 <HitArea />
                 <IconEditFilled size={16} />

@@ -42,6 +42,7 @@ import { canCopyImage as canBrowserCopyImage, copyToClipboard } from '../lib/cli
 import { EDIT_WINDOW_KEYS, useShortcuts } from '../lib/shortcuts'
 import { estimateTotal } from '../lib/setlistEstimate'
 import { confirmRemoveCustomEntry, confirmRemovePieceEntry } from '../lib/confirmRemoveEntry'
+import { PHONE_BUTTON, PHONE_CARET, PHONE_SQUARE_BUTTON } from '../lib/detailsToolbar'
 
 // Setlists design pass, Phase 6 — the real Setlist Details page (§13),
 // built against the approved Phase 2 layout (Option B, "Stats dashboard")
@@ -407,7 +408,7 @@ function HeaderIconButton({
       onClick={onClick}
       aria-label={label}
       title={label}
-      className="relative flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent"
+      className={`relative flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent ${PHONE_SQUARE_BUTTON}`}
     >
       <span data-hit aria-hidden="true" className="hit-area" />
       {icon}
@@ -648,7 +649,7 @@ export function SetlistDetailsMockup() {
             onClick={handleDelete}
             aria-label="Delete Setlist"
             title="Delete Setlist"
-            className="relative flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-danger hover:border-danger"
+            className={`relative flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-danger hover:border-danger ${PHONE_SQUARE_BUTTON}`}
           >
             <span data-hit aria-hidden="true" className="hit-area" />
             <IconTrash size={16} />
@@ -671,7 +672,7 @@ export function SetlistDetailsMockup() {
             onClick={() => openEditSetlist('details')}
             aria-label="Edit Setlist"
             title="Edit Setlist"
-            className="relative flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink hover:border-accent max-[360px]:w-[38px] max-[360px]:px-0"
+            className={`relative flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink hover:border-accent max-[360px]:w-11 max-[360px]:px-0 ${PHONE_BUTTON}`}
           >
             <span data-hit aria-hidden="true" className="hit-area" />
             <IconEditFilled size={16} />
@@ -803,7 +804,7 @@ export function SetlistDetailsMockup() {
           <div className="flex">
             <Link
               to="/mockup/sheet-viewer?from=setlist"
-              className="relative flex cursor-pointer items-center gap-2 rounded-l-md bg-accent-fill px-4 py-2 font-display font-medium text-sm text-white hover:bg-accent-fill/90"
+              className={`relative flex cursor-pointer items-center gap-2 rounded-l-md bg-accent-fill px-4 py-2 font-display font-medium text-sm text-white hover:bg-accent-fill/90 ${PHONE_BUTTON}`}
             >
               <span data-hit aria-hidden="true" className="hit-area" />
               <IconPlayerPlay size={16} />
@@ -813,7 +814,7 @@ export function SetlistDetailsMockup() {
               type="button"
               onClick={() => toggleMenu('play')}
               aria-label="More play options"
-              className="relative flex cursor-pointer items-center justify-center rounded-r-md border-l border-white/25 bg-accent-fill px-2 text-white hover:bg-accent-fill/90"
+              className={`relative flex cursor-pointer items-center justify-center rounded-r-md border-l border-white/25 bg-accent-fill px-2 text-white hover:bg-accent-fill/90 ${PHONE_CARET}`}
             >
               <span data-hit aria-hidden="true" className="hit-area hit-area-start" />
               <IconChevronDown size={16} />
@@ -875,7 +876,7 @@ export function SetlistDetailsMockup() {
                 matter which side is hovered. */}
             <button
               type="button"
-              className="relative flex cursor-pointer items-center gap-2 rounded-l-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm text-ink transition-colors hover:z-10 hover:border-accent"
+              className={`relative flex cursor-pointer items-center gap-2 rounded-l-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm text-ink transition-colors hover:z-10 hover:border-accent ${PHONE_BUTTON}`}
             >
               <span data-hit aria-hidden="true" className="hit-area" />
               <IconDownload size={16} />
@@ -886,7 +887,7 @@ export function SetlistDetailsMockup() {
               type="button"
               onClick={() => toggleMenu('download')}
               aria-label="More download and copy options"
-              className="relative -ml-px flex cursor-pointer items-center justify-center rounded-r-md border border-border bg-paper-raised px-2 text-ink transition-colors hover:z-10 hover:border-accent"
+              className={`relative -ml-px flex cursor-pointer items-center justify-center rounded-r-md border border-border bg-paper-raised px-2 text-ink transition-colors hover:z-10 hover:border-accent ${PHONE_CARET}`}
             >
               <span data-hit aria-hidden="true" className="hit-area hit-area-start" />
               <IconChevronDown size={16} />
@@ -1026,7 +1027,7 @@ export function SetlistDetailsMockup() {
           <button
             type="button"
             onClick={() => openEditSetlist('program')}
-            className="relative flex cursor-pointer items-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm text-ink hover:border-accent"
+            className={`relative flex cursor-pointer items-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm text-ink hover:border-accent ${PHONE_BUTTON}`}
           >
             <span data-hit aria-hidden="true" className="hit-area" />
             <IconListDetails size={16} />

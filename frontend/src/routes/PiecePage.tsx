@@ -100,6 +100,7 @@ import { PracticeStatusStrip } from '../components/PracticeStatusStrip'
 import { confirmAction, showAlert } from '../lib/dialogs'
 import { EDIT_PIECE_KEYS, useShortcuts } from '../lib/shortcuts'
 import { usePageVersion, useThumbnailVersion } from '../hooks/useThumbnailVersion'
+import { PHONE_BUTTON, PHONE_CARET, PHONE_SQUARE_BUTTON } from '../lib/detailsToolbar'
 
 // Mirrors UploadPage's own cap (backend's MaxUploadBytes) — same reasoning
 // as there: reject an oversized file instantly rather than after a slow
@@ -261,7 +262,7 @@ function ActionButton({
       onClick={onClick}
       disabled={disabled}
       title={title}
-      className={`relative flex cursor-pointer items-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink hover:border-accent disabled:opacity-50 disabled:hover:border-border ${className}`}
+      className={`relative flex cursor-pointer items-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink hover:border-accent disabled:opacity-50 disabled:hover:border-border ${className} ${PHONE_BUTTON}`}
     >
       <HitArea />
       {icon}
@@ -723,7 +724,7 @@ export function PiecePage() {
                   disabled={deleteMutation.isPending}
                   aria-label="Delete Piece"
                   title="Delete Piece"
-                  className="relative flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-danger hover:border-danger disabled:opacity-50"
+                  className={`relative flex size-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-danger hover:border-danger disabled:opacity-50 ${PHONE_SQUARE_BUTTON}`}
                 >
                   <HitArea />
                   <IconTrash size={18} />
@@ -742,7 +743,7 @@ export function PiecePage() {
               disabled={randomPieceMutation.isPending}
               aria-label="Random Piece"
               title="Random Piece"
-              className="relative flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent disabled:opacity-50"
+              className={`relative flex size-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent disabled:opacity-50 ${PHONE_SQUARE_BUTTON}`}
             >
               <HitArea />
               <IconDice5 size={18} />
@@ -778,7 +779,7 @@ export function PiecePage() {
                     inUpcomingSet ? 'In an upcoming set. Add to Setlist' : 'Add to Setlist'
                   }
                   title={inUpcomingSet ? 'In an upcoming set • Add to Setlist' : 'Add to Setlist'}
-                  className={`relative flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised hover:border-accent ${inUpcomingSet ? 'text-accent' : 'text-ink'}`}
+                  className={`relative flex size-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised hover:border-accent ${inUpcomingSet ? 'text-accent' : 'text-ink'} ${PHONE_SQUARE_BUTTON}`}
                 >
                   <HitArea />
                   {inUpcomingSet ? <IconCalendarCheck size={18} /> : <IconCalendarPlus size={18} />}
@@ -941,7 +942,7 @@ export function PiecePage() {
                   // Lets the viewer's "Exit to details page" come back here
                   // rather than stack a second copy of this page.
                   state={{ fromPiece: piece.id }}
-                  className="relative flex items-center gap-2 rounded-md bg-accent-fill px-4 py-2 font-display text-sm font-medium text-white hover:bg-accent-fill/90"
+                  className={`relative flex items-center gap-2 rounded-md bg-accent-fill px-4 py-2 font-display text-sm font-medium text-white hover:bg-accent-fill/90 ${PHONE_BUTTON}`}
                 >
                   <HitArea />
                   <IconPlayerPlay size={16} />
@@ -990,7 +991,7 @@ export function PiecePage() {
                     <DownloadLink
                       ref={downloadLinkRef}
                       href={getPieceFileUrl(piece.id)}
-                      className="relative flex items-center gap-2 rounded-l-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm text-ink transition-colors hover:z-10 hover:border-accent"
+                      className={`relative flex items-center gap-2 rounded-l-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm text-ink transition-colors hover:z-10 hover:border-accent ${PHONE_BUTTON}`}
                     >
                       <HitArea />
                       <IconDownload size={16} />
@@ -1000,7 +1001,7 @@ export function PiecePage() {
                       type="button"
                       onClick={() => toggleMenu('download')}
                       aria-label="More download options"
-                      className="relative -ml-px flex cursor-pointer items-center justify-center rounded-r-md border border-border bg-paper-raised px-2 text-ink transition-colors hover:z-10 hover:border-accent"
+                      className={`relative -ml-px flex cursor-pointer items-center justify-center rounded-r-md border border-border bg-paper-raised px-2 text-ink transition-colors hover:z-10 hover:border-accent ${PHONE_CARET}`}
                     >
                       <HitArea start />
                       <IconChevronDown size={16} />
@@ -1065,7 +1066,7 @@ export function PiecePage() {
                     type="button"
                     onClick={() => toggleMenu('more')}
                     aria-label="More actions"
-                    className="relative flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent"
+                    className={`relative flex size-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent ${PHONE_SQUARE_BUTTON}`}
                   >
                     <HitArea />
                     <IconDotsVertical size={18} />

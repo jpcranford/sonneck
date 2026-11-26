@@ -45,6 +45,7 @@ import { ViewModeToggle } from '../components/ViewModeToggle'
 import { EmptyState } from '../components/EmptyState'
 import { EDIT_WINDOW_KEYS, useShortcuts } from '../lib/shortcuts'
 import { useThumbnailVersion } from '../hooks/useThumbnailVersion'
+import { PHONE_BUTTON, PHONE_SQUARE_BUTTON } from '../lib/detailsToolbar'
 
 // The real Person Details page (/people/:id) — composer/arranger overhaul,
 // Stage B. Real build of PersonDetailsSample.tsx (/mockup/person-details,
@@ -582,7 +583,7 @@ export function PersonDetailsPage() {
                   disabled={deleteMutation.isPending}
                   aria-label="Delete Person"
                   title="Delete Person"
-                  className="relative flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-danger hover:border-danger disabled:opacity-50"
+                  className={`relative flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-danger hover:border-danger disabled:opacity-50 ${PHONE_SQUARE_BUTTON}`}
                 >
                   <HitArea />
                   <IconTrash size={16} />
@@ -595,7 +596,7 @@ export function PersonDetailsPage() {
                 <button
                   type="button"
                   onClick={() => setSplitOpen(true)}
-                  className="relative flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink hover:border-accent"
+                  className={`relative flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink hover:border-accent ${PHONE_BUTTON}`}
                 >
                   <HitArea />
                   <IconArrowsSplit2 size={16} />
@@ -605,7 +606,7 @@ export function PersonDetailsPage() {
                   type="button"
                   onClick={() => setEditOpen(true)}
                   aria-label="Edit Person"
-                  className="relative flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink hover:border-accent max-[360px]:w-[38px] max-[360px]:px-0"
+                  className={`relative flex cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink hover:border-accent max-[360px]:w-11 max-[360px]:px-0 ${PHONE_BUTTON}`}
                 >
                   <HitArea />
                   <IconEditFilled size={16} />

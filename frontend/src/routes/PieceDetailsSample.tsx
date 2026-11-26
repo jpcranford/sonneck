@@ -56,6 +56,7 @@ import { shownRange } from '../lib/sheetViewerSpreads'
 import { ManagePagesWindow } from './ManagePagesMockup'
 import { EDIT_PIECE_KEYS, useShortcutBlocker, useShortcuts } from '../lib/shortcuts'
 import { useDropToUploadBlocker } from '../lib/dropToUploadBlock'
+import { PHONE_BUTTON, PHONE_CARET, PHONE_SQUARE_BUTTON } from '../lib/detailsToolbar'
 
 // ---------------------------------------------------------------------
 // REFERENCE SAMPLE — unlinked from nav, not wired to the API. Ported
@@ -605,7 +606,7 @@ function ActionButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`relative flex cursor-pointer items-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink hover:border-accent disabled:opacity-50 disabled:hover:border-border ${className}`}
+      className={`relative flex cursor-pointer items-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink hover:border-accent disabled:opacity-50 disabled:hover:border-border ${className} ${PHONE_BUTTON}`}
     >
       <span data-hit aria-hidden="true" className="hit-area" />
       {icon}
@@ -818,7 +819,7 @@ export function PieceDetailsSample() {
             disabled
             aria-label="Delete Piece"
             title="Delete Piece"
-            className="relative flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-danger hover:border-danger disabled:opacity-50 disabled:hover:border-border"
+            className={`relative flex size-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-danger hover:border-danger disabled:opacity-50 disabled:hover:border-border ${PHONE_SQUARE_BUTTON}`}
           >
             <span data-hit aria-hidden="true" className="hit-area" />
             <IconTrash size={18} />
@@ -834,7 +835,7 @@ export function PieceDetailsSample() {
             disabled
             aria-label="Random Piece"
             title="Random Piece"
-            className="relative flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent disabled:opacity-50"
+            className={`relative flex size-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent disabled:opacity-50 ${PHONE_SQUARE_BUTTON}`}
           >
             <span data-hit aria-hidden="true" className="hit-area" />
             <IconDice5 size={18} />
@@ -868,7 +869,7 @@ export function PieceDetailsSample() {
               onClick={() => setAddToSetlistOpen((o) => !o)}
               aria-label={inUpcomingSet ? 'In an upcoming set. Add to Setlist' : 'Add to Setlist'}
               title={inUpcomingSet ? 'In an upcoming set • Add to Setlist' : 'Add to Setlist'}
-              className={`relative flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised hover:border-accent ${inUpcomingSet ? 'text-accent' : 'text-ink'}`}
+              className={`relative flex size-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised hover:border-accent ${inUpcomingSet ? 'text-accent' : 'text-ink'} ${PHONE_SQUARE_BUTTON}`}
             >
               <span data-hit aria-hidden="true" className="hit-area" />
               {inUpcomingSet ? <IconCalendarCheck size={18} /> : <IconCalendarPlus size={18} />}
@@ -1015,7 +1016,7 @@ export function PieceDetailsSample() {
                 practice permission in the real page. */}
             <Link
               to="/mockup/sheet-viewer"
-              className="relative flex cursor-pointer items-center gap-2 rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-sm text-white hover:bg-accent-fill/90"
+              className={`relative flex cursor-pointer items-center gap-2 rounded-md bg-accent-fill px-4 py-2 font-display font-medium text-sm text-white hover:bg-accent-fill/90 ${PHONE_BUTTON}`}
             >
               <span data-hit aria-hidden="true" className="hit-area" />
               <IconPlayerPlay size={16} />
@@ -1047,7 +1048,7 @@ export function PieceDetailsSample() {
               <div className="flex">
                 <button
                   type="button"
-                  className="relative flex cursor-pointer items-center gap-2 rounded-l-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm text-ink transition-colors hover:z-10 hover:border-accent"
+                  className={`relative flex cursor-pointer items-center gap-2 rounded-l-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm text-ink transition-colors hover:z-10 hover:border-accent ${PHONE_BUTTON}`}
                 >
                   <span data-hit aria-hidden="true" className="hit-area" />
                   <IconDownload size={16} />
@@ -1057,7 +1058,7 @@ export function PieceDetailsSample() {
                   type="button"
                   onClick={() => toggleMenu('download')}
                   aria-label="More download options"
-                  className="relative -ml-px flex cursor-pointer items-center justify-center rounded-r-md border border-border bg-paper-raised px-2 text-ink transition-colors hover:z-10 hover:border-accent"
+                  className={`relative -ml-px flex cursor-pointer items-center justify-center rounded-r-md border border-border bg-paper-raised px-2 text-ink transition-colors hover:z-10 hover:border-accent ${PHONE_CARET}`}
                 >
                   <span data-hit aria-hidden="true" className="hit-area hit-area-start" />
                   <IconChevronDown size={16} />
@@ -1095,7 +1096,7 @@ export function PieceDetailsSample() {
                 type="button"
                 onClick={() => toggleMenu('more')}
                 aria-label="More actions"
-                className="relative flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent"
+                className={`relative flex size-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent ${PHONE_SQUARE_BUTTON}`}
               >
                 <span data-hit aria-hidden="true" className="hit-area" />
                 <IconDotsVertical size={18} />

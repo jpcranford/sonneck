@@ -28,6 +28,7 @@ import { MarkdownText } from '../components/MarkdownText'
 import { PracticeStatusIcon } from '../components/PracticeStatusIcon'
 import { EDIT_WINDOW_KEYS, useShortcuts } from '../lib/shortcuts'
 import { useMeasuredWidth } from '../hooks/useMeasuredWidth'
+import { PHONE_BUTTON, PHONE_SQUARE_BUTTON } from '../lib/detailsToolbar'
 
 // ---------------------------------------------------------------------
 // DESIGN MOCKUP — Book Details page, kept as a standing design reference
@@ -822,7 +823,7 @@ export function BookDetailsSample() {
             type="button"
             aria-label="Delete Book"
             title="Delete Book — not wired in this mockup"
-            className="relative flex w-[38px] cursor-not-allowed items-center justify-center rounded-md border border-border bg-paper-raised text-danger"
+            className={`relative flex w-[38px] cursor-not-allowed items-center justify-center rounded-md border border-border bg-paper-raised text-danger ${PHONE_SQUARE_BUTTON}`}
           >
             <span data-hit aria-hidden="true" className="hit-area" />
             <IconTrash size={16} />
@@ -840,7 +841,7 @@ export function BookDetailsSample() {
             onClick={(event) => event.preventDefault()}
             aria-label="Open Book PDF"
             title="Open Book PDF — no real file in this mockup"
-            className="relative flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent"
+            className={`relative flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent ${PHONE_SQUARE_BUTTON}`}
           >
             <span data-hit aria-hidden="true" className="hit-area" />
             <IconFileTypePdf size={16} />
@@ -852,7 +853,7 @@ export function BookDetailsSample() {
             onClick={openCoverFilePicker}
             aria-label="Change cover image"
             title="Change cover image"
-            className="relative flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent"
+            className={`relative flex w-[38px] cursor-pointer items-center justify-center rounded-md border border-border bg-paper-raised text-ink hover:border-accent ${PHONE_SQUARE_BUTTON}`}
           >
             <span data-hit aria-hidden="true" className="hit-area" />
             <IconPhotoUp size={16} />
@@ -874,7 +875,7 @@ export function BookDetailsSample() {
             type="button"
             aria-label="Edit Book"
             title="Edit Book — not wired in this mockup"
-            className="relative flex cursor-not-allowed items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink max-[360px]:w-[38px] max-[360px]:px-0"
+            className={`relative flex cursor-not-allowed items-center justify-center gap-2 rounded-md border border-border bg-paper-raised px-4 py-2 font-display font-medium text-sm whitespace-nowrap text-ink max-[360px]:w-11 max-[360px]:px-0 ${PHONE_BUTTON}`}
           >
             <span data-hit aria-hidden="true" className="hit-area" />
             <IconEditFilled size={16} />
