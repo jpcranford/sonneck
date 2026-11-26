@@ -58,6 +58,7 @@ import { useShelfShuffles } from '../lib/shelfShuffle'
 import { practiceHeading, type PracticeHeading } from '../lib/practiceHeading'
 import { finishTip, tipDone } from '../lib/sheetViewerTips'
 import { usePageTitle } from '../lib/usePageTitle'
+import { useLockAppScroll } from '../hooks/useLockAppScroll'
 
 // The Practice Dashboard (/practice), the sidebar's Practice. Ported from
 // routes/PracticeDashboardMockup.tsx (layout A3 of
@@ -830,6 +831,8 @@ function PracticeDashboard() {
     }
   }, [drawerOpen])
   const drawerShown = drawerOpen && !isWide
+  // The page under the open drawer stays put, so the bar it rises from does.
+  useLockAppScroll(drawerShown, barRef)
   useEffect(() => {
     if (!drawerShown) return
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setDrawerOpen(false)
@@ -1345,7 +1348,7 @@ function PracticeDashboard() {
           onPointerMove={onListPointerMove}
           onPointerUp={endReorder}
           onPointerCancel={endReorder}
-          className="-mx-1 min-h-0 flex-1 overflow-y-auto px-1"
+          className="-mx-1 min-h-0 flex-1 overflow-y-auto overscroll-contain px-1"
         >
           {shown.map((entry, i) => {
             const p = entry.piece

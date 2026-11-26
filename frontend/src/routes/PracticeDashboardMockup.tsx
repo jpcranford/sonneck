@@ -39,6 +39,7 @@ import { finishTip, tipDone } from '../lib/sheetViewerTips'
 import { useMockupTitle } from '../lib/useMockupTitle'
 import { estimateTotal } from '../lib/setlistEstimate'
 import { shuffledBy, useShelfShuffles } from '../lib/shelfShuffle'
+import { useLockAppScroll } from '../hooks/useLockAppScroll'
 
 // The Practice Dashboard: where the sidebar's "Practice" lands (real:
 // routes/PracticeDashboardPage.tsx). Layout A3 of https://claude.ai/artifact/AadkReodCUoqEqNqS8Acjn
@@ -1168,6 +1169,8 @@ export function PracticeDashboardMockup() {
     }
   }, [drawerOpen])
   const drawerShown = drawerOpen && !isWide
+  // The page under the open drawer stays put, so the bar it rises from does.
+  useLockAppScroll(drawerShown, barRef)
   useEffect(() => {
     if (!drawerShown) return
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setDrawerOpen(false)
@@ -1630,7 +1633,7 @@ export function PracticeDashboardMockup() {
           onPointerMove={onListPointerMove}
           onPointerUp={endReorder}
           onPointerCancel={endReorder}
-          className="-mx-1 min-h-0 flex-1 overflow-y-auto px-1"
+          className="-mx-1 min-h-0 flex-1 overflow-y-auto overscroll-contain px-1"
         >
           {list.map((id, i) => {
             const p = byId.get(id)!
