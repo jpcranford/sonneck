@@ -196,6 +196,10 @@ export function PieceBrowseView({
         ...pieceFilterApiParams(debouncedDrawerFilters),
         ...filters,
       }),
+    // The drawer draws its sections only once counts exist: keep the last
+    // counts up while a change loads, or the drawer emptied and scrolled
+    // back to its top on every change (a Pages slider drag on a phone).
+    placeholderData: keepPreviousData,
   })
 
   const { data, isLoading, isError, error, fetchNextPage, hasNextPage, isFetchingNextPage } =

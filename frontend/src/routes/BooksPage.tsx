@@ -93,6 +93,10 @@ export function BooksPage() {
         query: debouncedQuery || undefined,
         ...bookFilterApiParams(debouncedDrawerFilters),
       }),
+    // The drawer draws its sections only once counts exist: keep the last
+    // counts up while a change loads, or the drawer emptied and scrolled
+    // back to its top on every change (a Pages slider drag on a phone).
+    placeholderData: keepPreviousData,
   })
 
   // A page at a time, the next one fetched as the end of the list nears

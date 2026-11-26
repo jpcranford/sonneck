@@ -945,7 +945,17 @@ body {
     margin-top: calc((48px - var(--range-thumb)) / 2);
     border: 0;
     border-radius: 50%;
+    box-shadow: none;
     background: var(--range-knob);
+    background-color: transparent;
+  }
+  /* iOS Safari draws its own white, shadowed knob at the thumb's full size
+     (48px on touch) under this one unless the prefixed appearance is off
+     (shadow and fill cleared too, above). Its own rule: in the same rule as
+     the unprefixed one, the build's CSS optimizer drops the prefix. */
+  .range-slider input,
+  .range-slider input::-webkit-slider-thumb {
+    -webkit-appearance: none;
   }
   .range-slider input::-moz-range-thumb {
     pointer-events: auto;
@@ -954,6 +964,7 @@ body {
     height: var(--range-thumb);
     border: 0;
     border-radius: 50%;
+    box-shadow: none;
     background: var(--range-knob);
   }
   .range-slider input:active::-webkit-slider-thumb {
