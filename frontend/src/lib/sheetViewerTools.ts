@@ -17,6 +17,10 @@ export const TOOLS = [
 export type Tool = (typeof TOOLS)[number]['key']
 // See toolsInline.
 export const TOOLS_INLINE_MIN_WIDTH = 720
+/** From this width Layers, Undo and Redo join the tools on the right of
+ * Annotate's one-row toolbar: the whole group (with a tool's circle) first
+ * clears the centered page cyclers at 1080px, and keeps 10px from them here. */
+export const TOOLS_ALL_RIGHT_MIN_WIDTH = 1100
 // The annotation palette (Phases 11–13): six colors, each its own layer.
 // Each is tuned so a mark reads as well where it crosses a note as on blank
 // paper, which lands on nearly the same value on a white page and on Dark

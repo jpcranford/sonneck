@@ -195,8 +195,6 @@ const SECTIONS: { title: string; mockups: Mockup[] }[] = [
         name: 'Sheet Viewer',
         note: 'The full-screen practice and performance mode on a piece you pick: toolbar, tap zones and keys, clock, metronome, Info, Practice Notes, Display (more pages on bigger screens, Piece Preparation: skipped pages, trimming), the Practice List and Annotate. Benedictus opens past its cover. The Mockup panel picks the piece, theme and entry point.',
         testing: [
-          'Annotate at every width: one color-and-size circle beside the picked tool; a phone’s tools row scrolls.',
-          'Pen with a mouse or trackpad: draw slowly at XL; the line should stay smooth and only gently vary.',
           'The metronome on the iPad: sound, timing, tap tempo, Shift+M, the swinging icon, Toolbar shows, subdivisions and dots.',
           'More pages in the real viewer on the iPad: spreads, sliding, links, Display, V, and the User Settings defaults.',
           'Turn speed in real practice on the iPad: report any slow turns, so the temporary turn-timing code can come out.',

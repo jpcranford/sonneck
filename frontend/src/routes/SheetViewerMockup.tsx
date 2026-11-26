@@ -191,6 +191,8 @@ const TOOLS = [
 type Tool = (typeof TOOLS)[number]['key']
 // See toolsInline.
 const TOOLS_INLINE_MIN_WIDTH = 720
+// See toolsAllRight.
+const TOOLS_ALL_RIGHT_MIN_WIDTH = 1100
 // The annotation palette (Phases 11–13): six colors, each its own layer.
 // Each is tuned so a mark reads as well where it crosses a note as on blank
 // paper, which lands on nearly the same value on a white page and on Dark
@@ -4169,10 +4171,16 @@ export function SheetViewerMockup() {
   )
 
   // From 720px (every iPad, portrait included) the Annotate tools share the
-  // one toolbar row: the tools left of the page cyclers, Layers, Undo and
-  // Redo beside Done on the right, since all of them don't fit on one side.
-  // Narrower, they take a second row. The tools' side first fits at 712px.
+  // one toolbar row: Layers, Undo and Redo left of the page cyclers, the
+  // tools beside Done on the right (until toolsAllRight). Narrower, they take
+  // a second row. The tools' side first fits at 712px.
   const toolsInline = width >= TOOLS_INLINE_MIN_WIDTH
+  // Wider still, Layers, Undo and Redo join the tools on the right, in the
+  // narrow tools row's order: the tools, a divider, Layers, Undo, Redo, then
+  // a divider before Done. The
+  // whole group (with a tool's circle) first clears the page cyclers at
+  // 1080px; from 1100 it keeps 10px from them.
+  const toolsAllRight = width >= TOOLS_ALL_RIGHT_MIN_WIDTH
   // Undo and Redo fade (disabled) when there's nothing to undo or redo.
   const canUndo = history.done.length > 0
   const canRedo = history.undone.length > 0
@@ -4779,8 +4787,8 @@ export function SheetViewerMockup() {
         )
       })}
       <span className="mx-1 h-7 w-px shrink-0 bg-accent/30" />
-      {!toolsInline && layersButton}
-      {!toolsInline && undoRedo}
+      {(!toolsInline || toolsAllRight) && layersButton}
+      {(!toolsInline || toolsAllRight) && undoRedo}
     </>
   )
 
@@ -5098,13 +5106,15 @@ export function SheetViewerMockup() {
                 {closeButton}
                 {queueButton}
                 {annotating ? (
-                  // Inline (wide): Layers, Undo and Redo on the left; the
-                  // tools sit by Done on the right.
-                  <>
-                    <span className="mx-1 h-7 w-px shrink-0 bg-accent/30" />
-                    {layersButton}
-                    {undoRedo}
-                  </>
+                  // Inline but not wide enough for all of them on the right:
+                  // Layers, Undo and Redo on the left; the tools sit by Done.
+                  !toolsAllRight && (
+                    <>
+                      <span className="mx-1 h-7 w-px shrink-0 bg-accent/30" />
+                      {layersButton}
+                      {undoRedo}
+                    </>
+                  )
                 ) : (
                   <div className="flex min-w-0 flex-col px-2">
                     <span className={`truncate font-display font-medium ${custom ? 'italic' : ''}`}>
@@ -5136,6 +5146,9 @@ export function SheetViewerMockup() {
                 {/* Inline (wide), the tools sit next to Done; toolButtons
                     ends with the divider between them. */}
                 {annotating && toolsInline && toolButtons}
+                {annotating && toolsAllRight && (
+                  <span className="mx-1 h-7 w-px shrink-0 bg-accent/30" />
+                )}
                 {annotating && doneButton}
               </div>
             </div>

@@ -158,6 +158,7 @@ import {
   TOOL_START,
   TOOLS,
   TOOLS_INLINE_MIN_WIDTH,
+  TOOLS_ALL_RIGHT_MIN_WIDTH,
   type ColorTool,
   type PageLook,
   type Size,
@@ -4142,9 +4143,12 @@ function SheetViewer({
     </HitButton>
   )
   // From 720px (every iPad, portrait included) the tools share the one
-  // toolbar row: the tools left of the page cyclers, Layers, Undo and Redo
+  // toolbar row: Layers, Undo and Redo left of the page cyclers, the tools
   // beside Done on the right. Narrower, they take a second row.
   const toolsInline = width >= TOOLS_INLINE_MIN_WIDTH
+  // From 1100px all of them sit on the right, in the second row's order: the
+  // tools, a divider, Layers, Undo, Redo, then a divider before Done.
+  const toolsAllRight = width >= TOOLS_ALL_RIGHT_MIN_WIDTH
   // Undo and Redo fade (disabled) when there's nothing to undo or redo.
   const undoRedo = (
     <>
@@ -4504,8 +4508,8 @@ function SheetViewer({
         )
       })}
       <span className="mx-1 h-7 w-px shrink-0 bg-accent/30" />
-      {!toolsInline && layersButton}
-      {!toolsInline && undoRedo}
+      {(!toolsInline || toolsAllRight) && layersButton}
+      {(!toolsInline || toolsAllRight) && undoRedo}
     </>
   )
   const [turnDebug] = useState(() => new URLSearchParams(window.location.search))
@@ -5664,17 +5668,17 @@ function SheetViewer({
               <div className="flex min-w-0 items-center">
                 {closeButton}
                 {queueButton}
-                {annotating ? (
-                  // Inline (wide): Layers, Undo and Redo on the left; the
-                  // tools sit by Done on the right.
-                  <>
-                    <span className="mx-1 h-7 w-px shrink-0 bg-accent/30" />
-                    {layersButton}
-                    {undoRedo}
-                  </>
-                ) : (
-                  titleBlock
-                )}
+                {annotating
+                  ? // Inline but under 1100px: Layers, Undo and Redo on the
+                    // left; the tools sit by Done on the right.
+                    !toolsAllRight && (
+                      <>
+                        <span className="mx-1 h-7 w-px shrink-0 bg-accent/30" />
+                        {layersButton}
+                        {undoRedo}
+                      </>
+                    )
+                  : titleBlock}
               </div>
               {cyclers}
               <div className="flex min-w-0 items-center justify-end">
@@ -5698,6 +5702,9 @@ function SheetViewer({
                 {/* Inline (wide), the tools sit next to Done; toolButtons
                     ends with the divider between them. */}
                 {annotating && toolsInline && toolButtons}
+                {annotating && toolsAllRight && (
+                  <span className="mx-1 h-7 w-px shrink-0 bg-accent/30" />
+                )}
                 {annotating && doneButton}
               </div>
             </div>
