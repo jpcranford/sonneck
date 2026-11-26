@@ -804,7 +804,7 @@ export function BookDetailsSample() {
           <IconArrowLeft size={24} />
           Back to Books
         </Link>
-        <div className="flex shrink-0 items-stretch gap-2.5 touch:gap-3">
+        <div className="ml-auto flex shrink-0 items-stretch gap-2.5 touch:gap-3">
           {/* Delete Book, icon-only, leftmost in the group, divider after
               it. The same cascade-delete action already reachable via
               right-click on a library card (BookContextMenu's "Delete

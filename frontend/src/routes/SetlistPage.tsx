@@ -540,7 +540,7 @@ export function SetlistPage() {
           Back to Setlists
         </Link>
         {setlist && (
-          <div className="flex shrink-0 items-stretch gap-2.5 touch:gap-3">
+          <div className="ml-auto flex shrink-0 items-stretch gap-2.5 touch:gap-3">
             <button
               type="button"
               onClick={handleDelete}

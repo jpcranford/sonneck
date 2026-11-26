@@ -638,7 +638,7 @@ export function BookDetailsPage() {
           Back to Books
         </Link>
         {book && (
-          <div className="flex shrink-0 items-stretch gap-2.5 touch:gap-3">
+          <div className="ml-auto flex shrink-0 items-stretch gap-2.5 touch:gap-3">
             {/* Delete Book, icon-only, leftmost in the group, permanently
                 red. Same cascade-delete action as
                 BookContextMenu's "Delete Book" (library right-click menu) —

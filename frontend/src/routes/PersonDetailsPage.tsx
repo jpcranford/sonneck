@@ -572,7 +572,7 @@ export function PersonDetailsPage() {
           Back to People
         </Link>
         {person && (
-          <div className="flex shrink-0 items-stretch gap-2.5 touch:gap-3">
+          <div className="ml-auto flex shrink-0 items-stretch gap-2.5 touch:gap-3">
             {/* Hidden, divider and all, without `delete`; the divider
                 also goes when there's nothing after it. */}
             {canDelete && (

@@ -803,7 +803,7 @@ export function PieceDetailsSample() {
           <IconArrowLeft size={24} />
           Back to Library
         </Link>
-        <div className="flex items-center gap-2 touch:gap-3">
+        <div className="ml-auto flex items-center gap-2 touch:gap-3">
           {/* Delete Piece, icon-only, leftmost in the group, divider after
               it separating it from Random Piece/Edit Piece. The same
               destructive action already reachable via right-click on a

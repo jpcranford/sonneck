@@ -709,7 +709,7 @@ export function PiecePage() {
           Back{backLabel ? ` to ${backLabel}` : hasBackHistory ? '' : ' to Library'}
         </button>
         {piece && (
-          <div className="flex items-center gap-2 touch:gap-3">
+          <div className="ml-auto flex items-center gap-2 touch:gap-3">
             {/* Delete Piece, icon-only, leftmost in the group, permanently
                 red. Same destructive action as PieceContextMenu's "Delete
                 Piece" (library right-click menu) — handleDelete above
