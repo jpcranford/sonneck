@@ -218,7 +218,7 @@ This runs the full multi-stage build (frontend build → embed into the Go binar
 
 **The image's `sonneck` command is a script** (`docker/sonneck.sh`), not the binary itself (which sits at `/usr/local/lib/sonneck/sonneck`): started as root, it creates the library folder if missing, hands it to `PUID:PGID` (default 1000:1000) only when the owner differs, and runs the binary as that user; started as anyone else, it just runs the binary. `docker exec <container> sonneck <command>` goes through it too, so admin commands never write root-owned files. If you change it, test a fresh empty folder, a root-owned one, an existing 1000-owned library and a `--user` start in a locally built image; `shellcheck` it too.
 
-The Unraid template lives in `unraid/` (`templates/sonneck.xml`, `ca_profile.xml`), published from its own templates repo; keep its fields in step with the env vars in the README.
+The Unraid template lives in `unraid/` (`templates/sonneck.xml`, `ca_profile.xml`), published from its own templates repo; keep its fields in step with the env vars the server actually reads (`internal/config/config.go`'s `Load()`). The README's Configuration table is only brought up to date when a release is cut, so between releases it can be behind.
 
 To test `docker-compose.yml` itself against a local build rather than the published image, temporarily point its `image:` at `sonneck:local` (don't commit that change though obvs).
 
