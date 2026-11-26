@@ -30,7 +30,7 @@ A code is only recognized if it's one of the ones listed here — anything else 
 | <img src="music-emoji-images/glasses.png" alt="glasses" height="36"> | `:glasses:` `:look:` | Glasses (the most important symbol of all) | U+EC62 |
 
 ### Technical notes
-Our code for general Markdown support is located [here](frontend/src/components/MarkdownText.tsx).
+Our code for general Markdown support is located [here](../frontend/src/components/MarkdownText.tsx).
 
 These "emoji" are rendered with a self-hosted subset of [Bravura Text](https://github.com/steinbergmedia/bravura) (Steinberg, SIL OFL 1.1) containing only the glyphs listed above.
 
