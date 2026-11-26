@@ -1721,7 +1721,10 @@ function PracticeDashboard() {
             key={fly.key}
             aria-hidden="true"
             ref={(el) => {
-              if (!el) return
+              // React calls this again whenever the page redraws (adding
+              // the piece redraws it mid-flight); starting again would
+              // restart the fly from the card, a second flyover.
+              if (!el || el.getAnimations().length > 0) return
               const dx = fly.to.left + fly.to.width / 2 - (fly.from.left + fly.from.width / 2)
               const dy = fly.to.top + fly.to.height / 2 - (fly.from.top + fly.from.height / 2)
               const a = el.animate(
