@@ -66,9 +66,6 @@ const SECTIONS: { title: string; mockups: Mockup[] }[] = [
         to: '/mockup/piece-library',
         name: 'Piece Library — Sort/Filter',
         note: 'The Piece Library toolbar: a Filters button (its icon solid while any filter is on) opening a slide-in drawer (Key, Instrument, Sheet Type, Tags, Status, Favorite, and a two-knob Pages range), plus the Sort control. Interactive against 10 fixture pieces.',
-        testing: [
-          'The Pages slider on the iPad and a phone: drag both knobs by finger, type in its fields.',
-        ],
       },
       {
         to: '/mockup/books-library',
@@ -100,7 +97,6 @@ const SECTIONS: { title: string; mockups: Mockup[] }[] = [
         name: 'Piece Details',
         note: 'Reference sample for the Piece Details page (§14). Play opens the Sheet Viewer mockup; the list icon adds the piece to the Practice List. ⋯ › Manage Pages skips pages at the start and end: the sample begins on a skipped title page, marked Skipped.',
         testing: [
-          'On a phone or tablet, the top toolbar and the Play / Download row are easy to tap.',
           "In Chrome's full screen, Esc closes an open window first, and only then leaves full screen.",
           'Manage Pages on the real Piece Details: drag the handles by finger on the iPad; check the Skipped badge.',
         ],
@@ -119,7 +115,6 @@ const SECTIONS: { title: string; mockups: Mockup[] }[] = [
         to: '/mockup/book-details',
         name: 'Book Details',
         note: 'Book Details page (header card + pieces grid/list) design mockup.',
-        testing: ["On a phone or tablet, the top toolbar's buttons and Back are easy to tap."],
       },
       {
         to: '/mockup/edit-book-modal',
@@ -130,7 +125,6 @@ const SECTIONS: { title: string; mockups: Mockup[] }[] = [
         to: '/mockup/person-details',
         name: 'Person Details',
         note: "A person's page, for one sample composer: the header with portrait (upload, or search Wikipedia, then crop), bio and book credits, a grid or list of works, and the Split People window.",
-        testing: ["On a phone or tablet, the top toolbar's buttons and Back are easy to tap."],
       },
       {
         to: '/mockup/edit-person-modal',
@@ -142,7 +136,6 @@ const SECTIONS: { title: string; mockups: Mockup[] }[] = [
         name: 'Setlist Details',
         note: "Setlist Details: gig date, roles, custom entries (one with a note, one counted as music with a role), a piece with a description, each row's right-click menu and the Archive confirmation. Play Set opens the Sheet Viewer mockup on the set; its caret adds every piece to the Practice List.",
         testing: [
-          'On a phone or tablet, the toolbar, the Play Set and Download row, and Edit Program are easy to tap.',
           'Copy program as image in the real Setlist Details: pastes into Messages or Mail; Save over plain HTTP.',
         ],
       },
@@ -173,15 +166,12 @@ const SECTIONS: { title: string; mockups: Mockup[] }[] = [
         note: 'Where the sidebar’s Practice lands: gigs under 4 weeks away, shelves to add from (+, drag, right-click; Show more opens one up), and the week and Practice List pinned at the right. Customize switches the week to a weekly target; the Mockup line switches the gigs, the practice history and Track practice, which pick the heading.',
         testing: [
           'The real Practice page on the iPad: + and × always shown, long-press menu, Show more.',
-          'Phone or iPad portrait: tap the bottom bar to unfold the Practice List; reorder, tick and remove inside it.',
           'Drag a piece from a shelf into the list with a mouse; it lands where the gap shows.',
           'Customize the week on one device; it shows the same on another.',
           'On the real Practice page, a gig’s +N beside Practice adds its missing pieces; tap it on the iPad.',
           'On the real Practice page, each shelf’s shuffle button on the iPad: a new order each time it’s turned on.',
           'The heading by context: try each practice history with and without gigs; ticking or clearing the list leaves it as loaded.',
           'Track practice Off: no week box, list checks or Other Recently Played; the heading follows the gig and list.',
-          'Phone or iPad portrait: the labelled Practice List tab, and + on a card flying into it with an Added message.',
-          'Phone or iPad portrait, first visit: the drawer tip, and each way of dismissing it; the Mockup line shows it again.',
         ],
       },
       {
