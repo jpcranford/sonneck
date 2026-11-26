@@ -59,6 +59,7 @@ import { practiceHeading, type PracticeHeading } from '../lib/practiceHeading'
 import { finishTip, tipDone } from '../lib/sheetViewerTips'
 import { usePageTitle } from '../lib/usePageTitle'
 import { useLockAppScroll } from '../hooks/useLockAppScroll'
+import { useTapNotScroll } from '../hooks/useTapNotScroll'
 
 // The Practice Dashboard (/practice), the sidebar's Practice. Ported from
 // routes/PracticeDashboardMockup.tsx (layout A3 of
@@ -75,6 +76,10 @@ import { useLockAppScroll } from '../hooks/useLockAppScroll'
 const GIG_WINDOW_DAYS = 28
 /** The added-piece nudge: the fly into the tab, then how long the tab stays
  * lit and its message shows. */
+/** Whether shelf cards can be dragged into the Practice List: only with a
+ * mouse or trackpad as the main pointer (touch adds with +), so a touch on a
+ * card never starts a drag. */
+const MOUSE_DRAG = window.matchMedia('(pointer: fine)').matches
 const FLY_MS = 450
 const NUDGE_MS = 3000
 /** The drawer tip's id in lib/sheetViewerTips.ts. */
@@ -524,6 +529,8 @@ function ShelfCard({
   onDragStart: () => void
   onDragEnd: () => void
 }) {
+  // A scroll that starts on the card never opens it.
+  const tap = useTapNotScroll()
   const thumbVersion = useThumbnailVersion()
   return (
     <PieceContextMenu
@@ -535,7 +542,8 @@ function ShelfCard({
       <Link
         to={`/pieces/${piece.id}`}
         state={{ backLabel: 'Practice' }}
-        draggable={canAdd && !onList}
+        {...tap}
+        draggable={MOUSE_DRAG && canAdd && !onList}
         onDragStart={(e: DragEvent) => {
           if (!canAdd || onList) return
           e.dataTransfer.setData(PIECE_DRAG_TYPE, String(piece.id))

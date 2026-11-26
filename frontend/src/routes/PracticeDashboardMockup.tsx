@@ -40,6 +40,7 @@ import { useMockupTitle } from '../lib/useMockupTitle'
 import { estimateTotal } from '../lib/setlistEstimate'
 import { shuffledBy, useShelfShuffles } from '../lib/shelfShuffle'
 import { useLockAppScroll } from '../hooks/useLockAppScroll'
+import { useTapNotScroll } from '../hooks/useTapNotScroll'
 
 // The Practice Dashboard: where the sidebar's "Practice" lands (real:
 // routes/PracticeDashboardPage.tsx). Layout A3 of https://claude.ai/artifact/AadkReodCUoqEqNqS8Acjn
@@ -340,6 +341,10 @@ const PRACTICING: Status[] = ['Learning', 'Stalled']
 const GIG_WINDOW_DAYS = 28
 /** The added-piece nudge: the fly into the tab, then how long the tab stays
  * lit and its message shows. */
+/** Whether shelf cards can be dragged into the Practice List: only with a
+ * mouse or trackpad as the main pointer (touch adds with +), so a touch on a
+ * card never starts a drag. */
+const MOUSE_DRAG = window.matchMedia('(pointer: fine)').matches
 const FLY_MS = 450
 /** The drawer tip's id in lib/sheetViewerTips.ts. */
 const DRAWER_TIP = 'practice-list-drawer'
@@ -876,6 +881,8 @@ function ShelfCard({
   menuItems: ContextMenuItem[]
   onStatus: (s: Status | null) => void
 }) {
+  // A scroll that starts on the card never opens it.
+  const tap = useTapNotScroll()
   const navigate = useNavigate()
   return (
     <ContextMenu
@@ -890,14 +897,15 @@ function ShelfCard({
       )}
     >
       <div
-        draggable={!onList}
+        draggable={MOUSE_DRAG && !onList}
         onDragStart={(e: DragEvent) => {
           e.dataTransfer.setData('text/plain', String(piece.id))
           e.dataTransfer.effectAllowed = 'copy'
           onDragStart()
         }}
         onDragEnd={onDragEnd}
-        onClick={() => navigate('/mockup/piece-details')}
+        {...tap}
+        onClick={(e) => !e.defaultPrevented && navigate('/mockup/piece-details')}
         className="shelf-card group relative flex w-36 shrink-0 cursor-pointer flex-col gap-1.5"
       >
         <div
